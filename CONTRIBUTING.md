@@ -38,8 +38,9 @@ live in a repository of its own; until it exists, its rules are kept here.
     (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
 13. **Fail closed.** Readers refuse an unknown family or version, a failed check point, or a request to
     sample an undeclared uncertainty structure. Never add a fallback that guesses.
-14. **Check points on every model parameter set**, computed by the family's reference implementation.
-    Never type them in.
+14. **Check points and a convention witness on every model parameter set.** Check points are computed by
+    the family's reference implementation; never type them in. The witness is a response the source itself
+    reports; without one, a parameter set is not admitted to the curated library.
 15. **Family versions are frozen.** Any change to a released definition or its vectors is a new version.
 16. **Ship nothing non-redistributable.** A value from a source whose redistribution status is not
     permitted, or is unknown, is reference-only. Every pull request that adds data carries the data
@@ -49,6 +50,12 @@ live in a repository of its own; until it exists, its rules are kept here.
 18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths.
 19. **Static releases.** No feature may require a hosted service, and nothing is fetched from the network
     unless the user asks.
+20. **No model on the read side.** No language model in a reader, in `vesalius check`, in a release build
+    or in any consumer's build. Vesalius calls no model and holds no keys.
+21. **Quotes and human review.** A value a model helped draft carries its quote, locator, document hash and
+    assistance record. No value enters a release without a human review record.
+22. **A model never decides** a tier, a redistribution status, a unit conversion, a check point, a witness
+    or a fit result.
 
 ## Identifier prefixes
 
@@ -146,15 +153,36 @@ request (architecture draft section 6.7).
 A change is recorded under **Data** in the library's CHANGELOG with a new material version. A value that
 faithfully transcribes a source later found wrong is a data update, not an anomaly.
 
+### Model-assisted extraction
+
+You may draft values with a language model through the MCP tools (architecture draft section 8), using your
+own agent and key. Then:
+
+- record the assistance: tool, model and provider as reported, the procedure's `VES-MTH-` entry and
+  version, and the date;
+- keep the evidence for every value: the verbatim quote, its locator and the SHA-256 of the document copy.
+  Do not publish quotes for reference-only values; a quote contains the value;
+- let deterministic tools convert units, bake check points and run fits. Never accept a model's number for
+  any of them;
+- for a parameter set, attach its convention witness and run the convention checker; the model's guess at
+  the family is only a proposal;
+- set tiers and redistribution statuses yourself;
+- review every value at its locator on the rendered page, not only the quote, and record the checklist;
+- before relying on a model, run the procedure against the gold set and look at its per-field errors.
+
+The MCP tools can only write drafts. Opening and merging the pull request are yours.
+
 ### Data attestation
 
 Every pull request that adds or changes library data includes this statement, ticked, in the pull-request
 template:
 
 > I attest that each value in this pull request was extracted from the cited source by the method recorded
-> for it, or comes from a measurement or fit I describe; that nothing was copied in bulk from a secondary
-> database; that each value's tier matches its source's redistribution status in the source registry; and
-> that I have the right to contribute the shipped values under the library's data licence.
+> for it, or comes from a measurement or fit I describe; that every value a language model helped draft is
+> recorded as such and was checked by a named reviewer against the source at its locator; that nothing was
+> copied in bulk from a secondary database; that each value's tier matches its source's redistribution
+> status in the source registry; and that I have the right to contribute the shipped values under the
+> library's data licence.
 
 ### Takedown
 

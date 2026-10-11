@@ -25,6 +25,9 @@ recorded in that repository's CHANGELOG.
 - Distribution design: namespaced material identifiers; material cards in place of data sheets; static,
   archived releases with federation through an index and no hosted service; self-contained shipped USD
   layers; record checks as a core command (`python -m vesalius check`). Constraints 18 and 19.
+- Model-assisted curation design: an MCP tooling layer (bring-your-own-key, deterministic tools, quotes,
+  human review, fail-closed release, a gold set); convention witnesses for parameter sets; evidence,
+  assistance and search-record provenance fields. Constraints 20 to 22; constraint 14 extended.
 
 ### Schema
 ### Families

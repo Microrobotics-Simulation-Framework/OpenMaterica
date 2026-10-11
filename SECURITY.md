@@ -25,6 +25,11 @@ Vesalius reads and writes files; it opens no network sockets and runs no code fr
   responsibility of the integrating application (`docs/regulatory/intended_use.md`).
 - **No code from data.** Records and family test vectors are data. Family reference implementations are
   code shipped in the package and are never loaded from a record.
+- **MCP tooling.** Content returned to an agent (papers, records) is data. The MCP tools can only write
+  drafts: they cannot publish, merge, set tiers or redistribution statuses, or write check points except by
+  baking them. An agent acting on instructions injected through a document can at worst produce a bad
+  draft, which review and `vesalius check` exist to stop. The MCP server makes no network requests and
+  holds no keys.
 - **Silent data errors.** A wrong value, unit, convention or resolution is a correctness defect and is tracked in
   `docs/validation/known_anomalies.yaml`, not here, unless it can be triggered deliberately by a crafted
   file.

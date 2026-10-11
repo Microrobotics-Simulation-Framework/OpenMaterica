@@ -33,6 +33,10 @@ Many values come from stand-ins: another species, another anatomical site, a cad
 phantom for tissue. Each record declares this per section or field, and whether a stand-in is adequate for
 a use is the user's judgement.
 
+Some values are drafted with the help of a language model. Each such value says so, with the quote and the
+document it was read from, and every value, assisted or not, is checked against its source by a named
+reviewer before release.
+
 Library records come in three tiers. A **shipped** record publishes its values. A **reference-only** record
 publishes provenance, a locator and an extraction recipe but no values, because the source does not permit
 redistribution or its status is unknown; its values are whatever the user fills in from their own copy of

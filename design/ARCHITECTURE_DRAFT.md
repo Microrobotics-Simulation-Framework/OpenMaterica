@@ -2,7 +2,7 @@
 
 **Status: a concept draft for iteration.** Written 2026-10-11 in the shared planning directory (first as
 `plans/MIME_MATERIAL_MODEL_DRAFT.md`), moved here the same day, and revised the same day after a design
-review (section 14). Referenced from `plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) but not
+review (section 15). Referenced from `plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) but not
 part of MIME's design yet: the maintainer wants to iterate on it first.
 
 **Decided (maintainer, 2026-10-11):**
@@ -44,11 +44,14 @@ Design principles:
 4. **Fail closed.** An unknown model family or version, an undeclared uncertainty structure, or a check
    point that disagrees makes a reader refuse, never guess.
 5. **Data carries its own verification.** A record holds the check points that let any consumer confirm it
-   reads the values as intended (section 4.6).
+   reads the values as intended, and the convention witness that confirms the values match their source
+   (section 4.6).
 6. **Mechanism in the core, content outside it.** The core defines how families, records and checks are
    declared and verified. Model families and the material library are separately versioned content
    (section 3.1), as MIME's physics is content on MADDENING's mechanism.
 7. **Small.** A section, a family or a library material enters only when a consumer needs it (section 7.6).
+8. **Models propose; code and people decide.** Language models may help draft records (section 8). They never
+   run on the read side or in the checks, and never decide a tier, a unit, a check point or a fit.
 
 What Vesalius is not:
 
@@ -60,6 +63,7 @@ What Vesalius is not:
 - not a store of patient data;
 - not a source of safety or biocompatibility claims (MICROROBOTICA's rule carries over: biocompatibility
   fields are information, never a safety claim);
+- not a language-model application: it calls no model and holds no keys (section 8);
 - not MIME. MIME is one consumer.
 
 ## 2. Why it is needed
@@ -114,7 +118,7 @@ library repository     content: curated materials                   a data licen
 
 ```
  L6  Adapters and tools   MIME adapter (in MIME); exporters, importers, Isaac adapters (vesalius.integrations);
-                          the record checks as a command (`python -m vesalius check`)
+                          the record checks as a command (`python -m vesalius check`); the MCP server (section 8)
        ^
  L5  Sampling (optional)  volume fractions on a consumer's grid; layered paths derived from 3-D geometry
        ^
@@ -245,7 +249,7 @@ Rules:
 - A family is admitted with a definition, golden vectors, a reference implementation and a named consumer
   (`DOCUMENTATION_ARCHITECTURE.md` section 6.4). A family with no consumer for two releases is deprecated.
 
-### 4.6 Check points in records
+### 4.6 Check points and convention witnesses
 
 When a model parameter set is written, the reference implementation of its family version computes the
 response at a handful of states (stated deformations, rates, frequencies, loading modes), and the record
@@ -255,6 +259,27 @@ implementation at the same states and compares. A mismatch is a refusal.
 - A convention mismatch then fails loudly even for a consumer that never ran the conformance suite.
 - Check points travel with the record into overlays, USD layers and private copies.
 - They are required for model parameter sets and optional for the other forms, where they add little.
+
+**Check points cannot catch an extraction error.** They are baked from the stored parameters, so a parameter
+set assigned to the wrong family, or transcribed in another convention, is self-consistent and passes.
+Check points verify that a consumer reads the record as intended. They say nothing about whether the record
+matches its source.
+
+That is the job of the **convention witness**: a response the source itself reports (a stress at a stated
+stretch, a modulus, points on a published curve, a permittivity at a stated frequency), stored with its
+locator, which the parameter set must reproduce under its assigned family version within a stated
+tolerance.
+
+- Every model parameter set taken from a source needs one, whoever or whatever extracted it. A curator's
+  own fit to a digitised curve is witnessed by construction: the curve is the witness, and fit
+  reproduction (section 4.10) checks it.
+- A parameter set whose source reports neither a curve nor a response value is not admitted to the curated
+  library. In a community namespace it carries the flag "convention unverified", and a consumer may refuse
+  it.
+- Witness data are reference data (section 4.4) and follow the same tiers. Where a witness cannot be
+  shipped, the curator's check at review is recorded and the public check reports "not checked", as for
+  fit reproduction.
+- `vesalius check` runs the witness checks.
 
 ### 4.7 Provenance
 
@@ -270,6 +295,10 @@ Each value carries:
 | proxy | section 4.11 |
 | review | who checked the value against the source, and when; the curator's ORCID |
 | tier | shipped, reference-only or private (section 6.2) |
+| evidence | for a value drafted from a document: the verbatim quote, its locator, and the SHA-256 of the document copy it was read from; for a digitised figure, the locator and the document hash. Required when a model assisted. Quotes are not published for reference-only values, because a quote contains the value |
+| assistance | when a model helped draft the value: tool, model and provider as reported, prompt version, date (section 8.5). The value's kind does not change |
+| search record | for a statistic pooled across sources: the queries, databases, date and inclusion criteria that found the sources |
+| witness | for a parameter set: its convention witness (section 4.6) |
 
 A value from a table is a declaration until something fits it (`MIME:CLAUDE.md`).
 
@@ -303,7 +332,7 @@ combinations that describe no real material, and some that the family's admissib
 Sampling therefore happens in the declared space, maps back, and rejects draws that violate admissibility,
 reporting how many it rejected. A consumer that cannot honour the declared structure refuses to sample and
 uses the nominal values. The core ships a reference sampler for tests and simple consumers; production
-uncertainty quantification belongs to the consumer (for MIME, to MADDENING: section 8.4).
+uncertainty quantification belongs to the consumer (for MIME, to MADDENING: section 9.4).
 
 ### 4.10 Fits and reference data
 
@@ -346,7 +375,7 @@ combination to the engine (recalled), which loses the pair. Open question 11.
 
 Isaac for Healthcare's ultrasound table mixes physical properties (impedance, attenuation, sound speed) with
 renderer settings (speckle parameters). Vesalius holds the physical ones. A renderer's settings sit on the
-same material in the renderer's own namespace (section 10.1).
+same material in the renderer's own namespace (section 11.1).
 
 ## 5. Geometry, records and the USD binding
 
@@ -503,8 +532,9 @@ CC0 for the widest reuse; open question 8), and each record states the licence i
 
 - A data attestation in the pull-request template, beside the sign-off.
 - A takedown procedure for a rights holder who objects.
-- One legal review before the first library release, scoped to three questions: individual values taken
-  from papers; curves digitised from figures; fits derived from others' data.
+- One legal review before the first library release, scoped to four questions: individual values taken
+  from papers; curves digitised from figures; fits derived from others' data; short verbatim quotes kept as
+  evidence in shipped records (section 8.3).
 - Own open measurements, published under an open licence, are the cleanest data and a contribution to the
   field in their own right.
 
@@ -568,7 +598,7 @@ Later, each when its trigger arrives:
 | a data wheel of the library on PyPI | the first Python consumer outside MIME |
 | a viewer on the static site (fits plotted over their reference data); a SQLite build queryable in the browser (recalled: Datasette Lite, sql.js) | a library big enough to browse |
 | an issue form that a bot turns into a draft record pull request | contributors who do not use git |
-| a mirror of each release on the Hugging Face Hub, for discoverability only | adoption work (section 9) |
+| a mirror of each release on the Hugging Face Hub, for discoverability only | adoption work (section 10) |
 
 Not planned unless the scope changes: a hosted database, a query API, accounts, an upload portal. Their
 triggers would be large imaging data, or many writers who cannot work through pull requests; both are
@@ -590,6 +620,8 @@ vesalius/
   integrations/    exporters/, importers/, i4h/                                              (L6, lazy imports)
   tools/           check.py: python -m vesalius check                                        (L6)
 ```
+
+The MCP server is a separate distribution, `vesalius-mcp` (section 8), so nothing in the core depends on it.
 
 Family packages and the library repository have their own layouts (`DOCUMENTATION_ARCHITECTURE.md`
 section 2).
@@ -652,9 +684,150 @@ Everything else (composition, unit conversion, derivation, fitting) was done whe
 - One maintainer at the start. The schema is the part that must stay stable; keep it small until a second
   consumer exists.
 
-## 8. Interface with MIME
+## 8. Layer 6: MCP tooling and curation
 
-### 8.1 Where it attaches
+Extracting tissue parameters from unstructured literature is the bottleneck of curation, and language
+models are good at the drafting part of it. This section puts them to work without letting them become an
+authority. The rule: **a model proposes; deterministic code and a named person decide.** Determinism is
+restored at the merge: once a reviewed record is released with its hash, nothing depends on how it was
+drafted or on running any model again.
+
+### 8.1 The BYOK boundary
+
+- **Vesalius calls no model and holds no keys.** It exposes deterministic tools over the Model Context
+  Protocol (MCP). The researcher's own agent (any MCP client: a coding agent, an IDE assistant, a custom
+  command-line tool) brings the model and the key. Bring-your-own-key holds by construction, not by
+  configuration.
+- **The MCP server** (`vesalius-mcp`, an optional separate distribution in L6) depends on the core and an
+  MCP server library only, with no model SDK. It makes no network requests and reads only files the user
+  points it at, such as their own copies of papers. Fetching papers is the agent's business, on the user's
+  request (`DOCUMENTATION_ARCHITECTURE.md` section 15, constraint 19).
+- **MCP sampling** would let the server request completions from the client's model, keeping
+  bring-your-own-key while letting Vesalius sequence the steps. Client support was uneven when last
+  recalled; the design assumes an agent-driven loop and keeps sampling as an option (open question 16).
+- **Nothing a model touches is on the read side.** No model runs in a reader, in `vesalius check`, in a
+  release build, or in any consumer's build. MIME's build binds materials by identifier and content hash
+  and never calls a model.
+
+### 8.2 The deterministic toolset
+
+MCP's three primitives map onto Vesalius as follows (recalled from the MCP specification; check before
+building):
+
+| Primitive | Exposes |
+|---|---|
+| Resources (read-only) | records, cards, `index.json`, family definitions, the source registry |
+| Tools (deterministic) | query the index; get a record (values bundled with conditions, proxy flags, tier and hash); compare sources on curves; gap analysis against a consumer's required properties; create a draft; attach and verify a quote; parse a unit string; run the convention checker; digitise with a stated axis calibration; run a fit; bake check points; run `vesalius check` |
+| Prompts | the extraction procedures and review checklists (section 8.3), versioned, so any MCP client gets them; the same text ships as agent skills |
+
+- **Capability scoping.** Draft tools write only to a drafts area of the user's working tree. No tool can
+  merge, push or open a pull request on its own, set a tier to shipped, set or change a redistribution
+  status, write a check point other than by baking it, or edit a released record. A person opens and
+  merges the pull request. An agent that follows instructions injected through a paper can at worst write a
+  bad draft, which the rest of the pipeline exists to stop.
+- **Private overlays** are excluded from tool output unless the user enables them explicitly, since tool
+  output goes to whatever model provider the user's agent uses.
+
+### 8.3 The curation pipeline
+
+```
+model proposes ──> grounded in quotes ──> deterministic checks ──> human review ──> pull request ──> release
+(a draft record)   (verbatim quote,        (quote exists at the      (checklist;        (sign-off,       (fails closed on
+                    locator, document       locator; numbers in the   rendered page      attestation)     any value without
+                    hash)                   quote; unit parses;       beside the draft)                   a review record)
+                                            plausibility; witness)
+```
+
+| Stage | Model's role | What decides |
+|---|---|---|
+| Finding sources | search and triage candidate papers; draft a search record | the curator; the search record is kept (section 4.7) |
+| Source registry | draft the citation and licence facts | a person sets the redistribution status; it stays "unknown" until then |
+| Locating values | propose a locator in the user's own copy | the quote check: the quote exists at that page of the document with the recorded hash |
+| Extracting values | value, unit as written, conditions, specimen and donor counts, the dispersion statistic and which one it is (standard deviation or standard error), species, site, preservation; each with a verbatim quote | the number-in-quote check; review |
+| Primary or cited | classify whether the paper measured the value or cites it | review; cited values are traced to their primary source |
+| Units | none: the unit string is recorded as written | the core's unit converter; an unparseable unit goes to a person |
+| Model family | propose the family version the paper's equation corresponds to | the convention checker against the convention witness (section 4.6) |
+| Figures | propose an axis calibration | a deterministic digitiser, an overlay plot a person inspects, a recorded digitising error |
+| Fits | draft bounds and initial guesses | deterministic fit code; the fit record |
+| Check points | none | the family's reference implementation |
+| Card prose | draft motivation, limitations and maintenance | a person edits; a lint rejects claims such as "validated" or "suitable for patients" |
+| Importing a code base that holds one parameter set per source | translate the code into records | a differential test: the original code and the reference implementation agree on the same inputs |
+
+Equations are never extracted: a parameter set's meaning comes from its family definition. Values in
+reference-only records are drafted the same way, but their quotes are not published (section 4.7).
+
+### 8.4 The query layer
+
+A model turns a question into a structured query, and a deterministic tool answers it. "Acoustic
+attenuation in human or porcine liver at 37 °C, 1 to 5 MHz" becomes ontology identifiers and condition
+ranges, matched against `index.json`. Ontology hierarchies supply the "semantic" part without embeddings,
+which would add another model-dependent, unreproducible step; a local embedding index built from a release
+stays an option.
+
+- Tools return values only bundled with their conditions, proxy flags, tier and content hash, so an answer
+  cannot lose them unless the agent discards them.
+- An optional checker confirms that every number in an answer appears in a tool result.
+- The query layer is advisory. A simulation binds a material by identifier and content hash, never by a
+  natural-language query.
+- It makes no applicability judgements. The prompts say so, and the claim lint applies to anything it
+  saves.
+
+### 8.5 Traceability and the SOUP boundary
+
+- **Provenance records the assistance** (section 4.7): tool, model and provider as reported, prompt
+  version, date. The value's kind does not change: a value read from a table is declared whether a person
+  or a model drafted it. A manufacturer can ask which inputs were model-assisted and get an exact answer.
+- **The evidence does not depend on the model.** The quote, its locator and the SHA-256 of the document
+  copy let anyone re-verify a value without any model, after the model is withdrawn. Model outputs are not
+  reproducible and need not be.
+- **Accountability is human.** The review record names who checked what against a checklist: value, unit,
+  conditions, statistic, primary or cited, family and witness.
+- **The release fails closed.** `vesalius check --release` refuses any value without a review record.
+  Drafts may exist in a working tree; they cannot enter a release.
+- **The MCP server is curation tooling, outside the SOUP package**, like the CI scripts. Every value it
+  helps draft is independently verified before release, which is the usual argument for light validation
+  of a tool used in a quality system (recalled: ISO 13485:2016 clause 4.1.6). Vesalius operates under no
+  QMS, but a manufacturer reasoning about it will look for exactly this argument. The SOUP package states
+  how many library values were model-assisted and which procedure versions drafted them
+  (`DOCUMENTATION_ARCHITECTURE.md` section 10).
+
+### 8.6 Measuring it
+
+The failure modes in section 8.7 come from general experience with language models, not from measurements
+on this literature. Three mechanisms measure them:
+
+- **A gold set**: papers with hand-verified extractions, and a deterministic scorer that compares any
+  agent's drafts against them, per field. With bring-your-own-key every user's model differs; the gold set
+  lets each user measure their own model and agent before trusting it, and the per-field error rates show
+  reviewers where to look. Papers are listed by DOI and document hash; PDFs are included only where their
+  licence allows.
+- **Independent dual extraction for parameter sets**: a second extraction made without seeing the first,
+  by a person, or by a second model with a person adjudicating every disagreement, as systematic reviews do
+  (recalled). Two models agreeing count as one extraction, not two, because they can share a failure such
+  as a broken PDF text layer.
+- **Measured review**: occasional seeded errors in review batches measure the reviewers' catch rate. An
+  unmeasured review is not a control.
+
+### 8.7 Risks and mitigations
+
+| Risk | Mitigation |
+|---|---|
+| Fabricated values, quotes or locators | a quote for every number; the quote and number-in-quote checks; review |
+| Plausible but wrong: conditions swapped, standard error read as standard deviation, specimen and donor counts confused, table rows misaligned, a cited value presented as measured | quotes for each of these fields; a review checklist that targets them. Plausibility bounds catch orders of magnitude only |
+| A wrong model convention (silent, `major`) | the convention witness and the convention checker; no witness means not admitted |
+| Garbled equations; misread figures | equations come from family definitions; figures go through a deterministic digitiser with an overlay |
+| Automation bias: reviewers accept fluent drafts | the rendered page beside the draft; dual extraction for parameter sets; seeded errors (section 8.6) |
+| Prompt injection from papers, including hidden text that a text-layer quote check accepts | capability-scoped tools; the reviewer confirms the quote is visible on the rendered page |
+| Selection bias in what a search finds, skewing pooled statistics | a search record for every pooled statistic: queries, databases, date, inclusion criteria, in the spirit of PRISMA |
+| Model drift; non-reproducible outputs | nothing depends on re-running; the evidence is the quote, the locator and the document hash |
+| Review overload: fast drafting erodes "small" | admission rules unchanged; review capacity is the intended bottleneck |
+| Legal: sending copyrighted papers to a model provider; mass extraction | the user's own copies, key and provider terms; primary literature only; tiers never set by a model; quotes in shipped records within the legal review (section 6.5) |
+| Leaking private overlays to a provider | excluded from tool output by default |
+| Query answers with numbers not from tools, or without their conditions and proxy flags | bundled tool outputs; the number checker; binding only by identifier and hash |
+
+## 9. Interface with MIME
+
+### 9.1 Where it attaches
 
 MIME depends on the Vesalius core (with the USD extra) and the families it uses. The adapter lives in MIME,
 beside the things of structure draft 4.1. Vesalius knows nothing of nodes, graphs or JAX.
@@ -669,7 +842,7 @@ USD stage (or plain records): geometry + bindings + Vesalius materials     (Vesa
     -> gm.params (differentiable) or static data (scope doc class P3)
 ```
 
-### 8.2 What changes in MIME
+### 9.2 What changes in MIME
 
 | Structure draft | Change |
 |---|---|
@@ -679,9 +852,9 @@ USD stage (or plain records): geometry + bindings + Vesalius materials     (Vesa
 | 5.5 Saved form (scope doc D2) | the stage holds things and materials; the experiment file holds models, controller and run settings |
 | 8 Metadata | biocompatibility and provenance move to the material; open question 8.8 is answered by one record; `MimeAssetSchema` refers to materials by identifier |
 | 3.8, 3.10 New nodes | Vesalius is a prerequisite for every new family: acoustics, X-ray, transport, photoacoustics |
-| 7.4 N3 | shared parameters become more pressing (8.3) |
+| 7.4 N3 | shared parameters become more pressing (9.3) |
 
-### 8.3 Differentiability
+### 9.3 Differentiability
 
 The split that keeps gradients:
 
@@ -697,7 +870,7 @@ hyperelastic parameter set) and, for moving bodies, poses. One material value us
 until MADDENING can tie a parameter across nodes (structure draft N3), MIME keeps one value per material and
 copies it out.
 
-### 8.4 Uncertainty
+### 9.4 Uncertainty
 
 MIME maps a record's statistics and uncertainty structure into MADDENING's UQ types. Today MADDENING's
 `UncertainParameter` describes one parameter at a time (`MADD:src/maddening/core/compliance/uq.py`), so
@@ -706,28 +879,28 @@ declared space, an ensemble, admissibility constraints) have been requested of M
 release. Until then MIME samples `ensemble` and `multivariate_normal` structures with Vesalius's reference
 sampler, or uses nominal values.
 
-### 8.5 Round trip
+### 9.5 Round trip
 
 A MIME fit writes its results back as a stronger layer (or overlay record) of fitted values with provenance
 (section 5.5), check points from the family's reference implementation, and a covariance where the fit
 produces one. The library's declared values stay underneath, and the fit's layer records what was fitted,
 from which data, by which run.
 
-### 8.6 Validity
+### 9.6 Validity
 
 MIME computes operating points from material values and the run: Reynolds number, acoustic Mach number, the
 diffusion approximation's condition for light. That is structure draft 8.5's "one validity declaration,
 checked against a computed operating point". A fitted parameter set adds its own envelope (section 4.10):
 the loading modes and ranges it was fitted over.
 
-### 8.7 Beside MADDENING and MICROROBOTICA
+### 9.7 Beside MADDENING and MICROROBOTICA
 
 - MADDENING's USD live stage and graph schema describe the simulation; Vesalius describes the scene's
   materials. They would be separate layers composed into one stage.
 - MICROROBOTICA would read materials for display and keep its rule that biocompatibility is never shown as
   a safety claim.
 
-## 9. Adoption
+## 10. Adoption
 
 The design should be worth having with no outside adopters: provenance, check points and the material input
 sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9) pay for themselves inside the projects that use it first.
@@ -760,7 +933,7 @@ Wider adoption is the upside, pursued as follows.
 An earlier materials-data exchange format, MatML, went from NIST to an OASIS technical committee in
 2003-2004. How widely it was adopted was not established here.
 
-## 10. Interface with Isaac for Healthcare
+## 11. Interface with Isaac for Healthcare
 
 None of this exists or has been proposed to them. Each row is a possible adapter, in the order I would try
 them.
@@ -773,7 +946,7 @@ them.
 | Physics (Newton, the XPBD catheter, soft tissue) | engine materials | mechanical families to engine parameters; interfaces (4.13) for catheter-wall friction | per engine; position-based solvers use compliance, which depends on the discretisation, so the adapter converts |
 | Workflows and scenes | USD scenes | scenes reference library layers | none: plain USD composition |
 
-### 10.1 The ultrasound adapter in more detail
+### 11.1 The ultrasound adapter in more detail
 
 - Their `Material(impedance, attenuation, speed_of_sound, mu0, mu1, sigma, specularity)` computes density as
   impedance times 1e6 over sound speed (`material.cpp:36-38`), so impedance is in MRayl. The attenuation
@@ -784,7 +957,7 @@ them.
 - Their four speckle parameters are renderer settings. They would sit on the same material prim in their
   own namespace (for example `i4h:ultrasound:mu0`), outside Vesalius's schema.
 
-### 10.2 Why this could interest them
+### 11.2 Why this could interest them
 
 - One patient twin would feed their ultrasound, X-ray and physics simulators, and other people's solvers.
 - It is framework-neutral, Apache-2.0, and competes with nothing of theirs.
@@ -792,7 +965,7 @@ them.
 
 I would rank this above the physics bridges of structure draft 7.7 as a first contribution.
 
-### 10.3 Caveats
+### 11.3 Caveats
 
 - NVIDIA may already have something partial. As I recall, SimReady assets carry non-visual materials for
   RTX sensors, and PhysX has deformable-body material schemas. Check both before proposing anything, and
@@ -800,19 +973,19 @@ I would rank this above the physics bridges of structure draft 7.7 as a first co
 - A standard succeeds by adoption. Round-tripping their patient twin's output matters more than a complete
   schema.
 
-## 11. Phasing (proposal, not committed)
+## 12. Phasing (proposal, not committed)
 
 | Vesalius | Contents | Consumers |
 |---|---|---|
-| 0.1 | core mechanism; plain records and their JSON Schema, with namespaced identifiers; USD schemas and I/O, with self-contained shipped layers; `vesalius check`; material cards; source registry; check points; uncertainty structures and the reference sampler; layered paths and region binding, plain and USD; sections fluid, acoustic, dielectric, radiological, magnetic, biocompatibility, and mechanics with linear elasticity and one hyperelastic family; conformance; a seed library (water, blood, soft tissue, silicone, agar, SU-8, NdFeB) with sources | MIME 0.3.0 for things if timing allows, otherwise the Python core only; an importer from an existing per-paper calibration code base as the design's acceptance test |
-| 0.2 | optical and thermal sections; composition and spectra; label volumes; field overrides; more families as consumers need them; the first exporters | photoacoustics in MIME, cheap rungs (Appendix A) |
+| 0.1 | core mechanism; plain records and their JSON Schema, with namespaced identifiers; USD schemas and I/O, with self-contained shipped layers; `vesalius check`; material cards; source registry; check points and convention witnesses; uncertainty structures and the reference sampler; layered paths and region binding, plain and USD; sections fluid, acoustic, dielectric, radiological, magnetic, biocompatibility, and mechanics with linear elasticity and one hyperelastic family; conformance; a seed library (water, blood, soft tissue, silicone, agar, SU-8, NdFeB) with sources | MIME 0.3.0 for things if timing allows, otherwise the Python core only; an importer from an existing per-paper calibration code base as the design's acceptance test |
+| 0.2 | optical and thermal sections; composition and spectra; label volumes; field overrides; more families as consumers need them; the first exporters; the MCP server (section 8) with the extraction prompts and the gold set, once the seed library exists | photoacoustics in MIME, cheap rungs (Appendix A); curators |
 | 0.3 | sampling helpers (L5), including layered paths derived from 3-D geometry; interfaces; the convention checker | resolved photoacoustic rungs; contact |
 | alongside 0.1 or 0.2 | the ultrasound adapter and the label mapping for the patient twin | Isaac for Healthcare, if they want it |
 
 Hosting items (the index repository, a data wheel, a viewer) follow their triggers in section 6.7, not this
 table.
 
-## 12. Open questions
+## 13. Open questions
 
 1. Source of truth for library materials: plain records with generated USD (lean), or USD with generated
    plain records.
@@ -837,8 +1010,12 @@ table.
 14. Who maintains Vesalius beyond the first version.
 15. The form of namespaces: short names, unique by first-come registration in the index (lean), or
     reverse-DNS names that need no registry.
+16. The MCP server's packaging (a separate distribution, lean, or an extra of the core), and whether to use
+    MCP sampling once clients support it.
+17. Whether quotes should be required for every value extracted from text or tables, not only for
+    model-assisted ones. It would help every review, at a cost to manual curation.
 
-## 13. Not examined
+## 14. Not examined
 
 - Nothing was built in a repository. The USD checks of section 5 ran in a scratch directory against
   USD 0.26.5, with one prototype schema. Plain records, family definitions, check points and the sampler
@@ -849,14 +1026,17 @@ table.
 - The adoption history of earlier materials-data formats was not researched.
 - The hosting and registry examples of section 6.7 (Zenodo, PyPI, Julia's registry, Datasette Lite, the
   Hugging Face Hub) are recalled; none was checked for limits or terms.
+- No MCP server was prototyped. MCP's primitives and client support are recalled. The failure modes of
+  section 8.7 come from general experience, not from measurements on tissue literature; the gold set
+  exists to measure them.
 - The papers, databases, ontologies and NVIDIA schemas named here are recalled.
 - The photoacoustic figures in Appendix A are my arithmetic on assumed values.
 
-## 14. Revision of 2026-10-11
+## 15. Revision of 2026-10-11
 
 A design review, using an existing per-paper tissue calibration code base as a case study, changed the
 draft as follows. A follow-up the same day on distribution, drawing on the Hugging Face Hub, added the last
-four rows.
+four rows, and a third revision added model-assisted curation (the last two rows).
 
 | Before | After | Why |
 |---|---|---|
@@ -875,6 +1055,8 @@ four rows.
 | data sheets | material cards: a metadata header and prose sections | a landing page that tools and people both read |
 | hosting unstated | git repositories, static archived releases, federation through an index; no hosted service | small data; static releases can be assessed; no service to run |
 | USD composition trusted | shipped layers self-contained, checked | reading a library layer reads one file, whoever published it |
+| check points only | check points plus a convention witness per parameter set | check points are baked from the stored parameters, so they cannot catch an extraction error |
+| none | model-assisted curation and query through MCP: bring-your-own-key, deterministic tools, quotes, human review, fail-closed release | extraction is the bottleneck; a model must never become an authority |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 
@@ -888,7 +1070,7 @@ Why it matters for MIME:
   vasculature (Wrede et al., Science Advances 2022, Razansky's group). Recalled, not checked.
 - It chains three physics (light, heat, sound) through one material, so it tests Vesalius.
 - Quantitative PA, recovering an absorption map from images, is a recognised inverse problem. With section
-  8.3 it becomes an ordinary fit of material values.
+  9.3 it becomes an ordinary fit of material values.
 
 ### A.1 What a PA frame is
 
@@ -928,7 +1110,7 @@ Why it matters for MIME:
 
 The diffusion approximation fails within about one transport mean free path of the source and of
 boundaries, and where absorption is not small against reduced scattering: a computed validity check
-(section 8.6).
+(section 9.6).
 
 ### A.4 Prerequisites, in order
 
