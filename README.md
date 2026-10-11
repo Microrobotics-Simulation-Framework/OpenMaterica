@@ -42,5 +42,5 @@ Design stage. There is no code or release yet. The architecture concept is in
 
 ## License
 
-Code: Apache License 2.0. See [LICENSE](LICENSE). The material library will be released separately under a
-data licence (to be chosen).
+Code: Apache License 2.0. See [LICENSE](LICENSE). The material library will be released separately, as
+static archived releases with a DOI, under a data licence (to be chosen).

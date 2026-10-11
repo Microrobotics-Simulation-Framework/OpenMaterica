@@ -22,6 +22,9 @@ recorded in that repository's CHANGELOG.
   records; declared uncertainty structures; per-field proxies; a source registry, three record tiers and a
   separate data licence; the core, family packages and library as separate components; the dielectric
   section; layered paths. Constraints 13 to 17 and the pull-request template with the data attestation.
+- Distribution design: namespaced material identifiers; material cards in place of data sheets; static,
+  archived releases with federation through an index and no hosted service; self-contained shipped USD
+  layers; record checks as a core command (`python -m vesalius check`). Constraints 18 and 19.
 
 ### Schema
 ### Families

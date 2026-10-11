@@ -98,11 +98,13 @@ family packages        content: model-family definitions            Apache-2.0
   reference implementation, admissibility
 
 library repository     content: curated materials                   a data licence (section 6.4)
-  its own releases, review process and DOI
+  its own review process; static releases with a DOI, no hosted service (section 6.7)
 ```
 
 - The core changes rarely. Families and materials grow only when a consumer needs them.
-- Anyone can publish families in their own namespace under the same evidence rules (section 4.5).
+- Anyone can publish families and materials in their own namespace, in their own repository, under the
+  same rules and the same checks (sections 4.1, 4.5 and 6.7). Only the curated library carries this
+  project's review.
 - A manufacturer assesses the core plus only the families and materials it uses, each with its own version
   and content hash (`DOCUMENTATION_ARCHITECTURE.md` section 10).
 - Whether families start as subpackages of this repository or as separate distributions, and whether
@@ -111,7 +113,8 @@ library repository     content: curated materials                   a data licen
 ### 3.2 Layers inside the core
 
 ```
- L6  Adapters             MIME adapter (in MIME); exporters, importers, Isaac adapters (vesalius.integrations)
+ L6  Adapters and tools   MIME adapter (in MIME); exporters, importers, Isaac adapters (vesalius.integrations);
+                          the record checks as a command (`python -m vesalius check`)
        ^
  L5  Sampling (optional)  volume fractions on a consumer's grid; layered paths derived from 3-D geometry
        ^
@@ -157,8 +160,14 @@ as plain overlay records; both name the base record by identifier, version and c
 
 ### 4.1 Material, section, value
 
-- A **material** has an identity (identifier, name, version), the record-schema version it was written
-  against, a content hash (section 5.5), and any subset of sections.
+- A **material** has an identity (a namespaced identifier, a human-readable name, a version), the
+  record-schema version it was written against, a content hash (section 5.6), and any subset of sections.
+- **Identifiers are namespaced**: `<namespace>/<local id>`. A namespace belongs to one publisher and is
+  shared by its materials and its families (section 4.5). `vesalius` is reserved for this project; in it,
+  local identifiers are the catalogue numbers `VES-MAT-XXXX` (for example `vesalius/VES-MAT-0001`). Other
+  publishers choose their own. Namespaces from the start let anyone publish records without a central
+  authority (section 6.7); adding them later would be a breaking schema change. Their form is open
+  question 15.
 - A **section** is one physics. A consumer checks only the sections it needs.
 - A **value** takes one of five forms (section 4.4), in fixed SI units, with provenance (section 4.7),
   statistics or an uncertainty structure (section 4.9), and the conditions it holds at (section 4.8).
@@ -418,6 +427,10 @@ typed access (recalled).
   a relationship per interval), or a `BasisCurves` prim with one `GeomSubset` per interval bound to its
   material. Open question 3.
 - Geometry units follow the stage's `metersPerUnit`; property values are SI whatever the stage says.
+- **Shipped layers are self-contained.** Every USD layer generated for a release has no composition arcs
+  (sublayers, references, payloads) and no asset paths; an aggregate layer, if one is shipped, is
+  flattened. A scene that uses the library adds its own arcs. Reading a library layer therefore reads that
+  one file and nothing else, whoever published it. `vesalius check` enforces this.
 
 ### 5.5 Declared, then fitted
 
@@ -447,7 +460,7 @@ The conformance suite (section 7.4) contains this case.
   values, provenance, statistics and check points. A simulation that records the hashes of the materials it
   used can show it used exactly those values.
 
-## 6. The library: sources, tiers and licences
+## 6. The library: sources, tiers, licences and distribution
 
 Not legal advice. As far as I could find (2026-10-11), the EU text-and-data-mining exceptions (Directive
 2019/790, Articles 3 and 4) cover copying and extraction for mining, but whether extracted results may be
@@ -495,6 +508,72 @@ CC0 for the widest reuse; open question 8), and each record states the licence i
 - Own open measurements, published under an open licence, are the cleanest data and a contribution to the
   field in their own right.
 
+### 6.6 Material cards
+
+Each record has a **card**, its landing page, generated from the record and never edited, as the Hugging
+Face Hub's model and dataset cards are the landing pages of their repositories. A card has two parts:
+
+- **A metadata header** (YAML): identifier, version, content hash, licence, tier, sections present, family
+  versions used, proxy flags per section, check-point and fit-reproduction status, curators' ORCIDs. It is
+  what an index, a viewer or a search reads.
+- **Prose sections**, adapted from "Datasheets for Datasets" (recalled: Gebru et al.): motivation (why the
+  material was curated, and for which consumer); composition (sections, value forms, conditions);
+  collection (sources and extraction methods); processing (conversions, derivations, fits); uses and
+  limitations (applicability hints, proxies, the conditions outside which nothing was measured);
+  distribution (tier and licence); maintenance (who curates it, and how to report a problem).
+
+The prose is stored in the record as fields, so the record stays the single source of truth and the card
+only assembles it. Cards replace the data sheets of earlier drafts.
+
+### 6.7 Distribution and hosting
+
+**Proposal: git repositories and static releases, no hosted service.** Three reasons:
+
+- **The library is small.** Records, digitised curves and spectra are kilobytes each. Large data
+  (CT-derived volumes, measured property maps) are scene data, outside Vesalius's scope (section 1).
+- **Static releases are what can be assessed.** A tagged release with a DOI and content hashes is under
+  configuration management and can be assessed as SOUP. A live database that changes under its users
+  cannot, and a hosted service would add uptime, access control and a cybersecurity boundary of its own.
+- **The closest model needs no hosting to copy.** The Hugging Face Hub is git repositories plus an index,
+  metadata cards and viewers, plus hosting for everyone. Vesalius can build the first three statically.
+
+The repository is the database:
+
+```
+records in git ── pull request + review ──> vesalius check ──> build ──────────────> release
+(source of truth)  (curation)                 (ingestion)       cards, USD layers,    GitHub release, archived on
+                                                                index.json, plots     Zenodo with a DOI; a static
+                                                                                      site on GitHub Pages
+```
+
+- **A release is one archive**: the records, the generated USD layers and cards, a generated `index.json`
+  (every record's identifier, version, content hash, sections, tier and licence), and the shipped reference
+  data. It is published as a GitHub release and archived on Zenodo with a DOI. A consumer pins a release by
+  DOI or hash and needs nothing online afterwards.
+- **Federation without hosting.** Any publisher keeps records in their own repository, under their own
+  namespace (section 4.1), and runs the same `vesalius check`. Nothing needs this project's permission.
+  Once a second publisher exists, an **index repository** would list namespaces, repository URLs and the
+  content hashes of releases, with CI that runs the checks on each registration pull request. It hosts no
+  data. Julia's package registry works this way (recalled). The index labels the curated namespace apart
+  from community ones.
+- **Data too big for git** goes on Zenodo. A record points to it by DOI and SHA-256, and a tool fetches it
+  only on explicit request, never when a record is read (`DOCUMENTATION_ARCHITECTURE.md` section 15,
+  constraint 11), as Homebrew and Spack pin downloads by checksum.
+
+Later, each when its trigger arrives:
+
+| Item | Trigger |
+|---|---|
+| the index repository | a second publisher |
+| a data wheel of the library on PyPI | the first Python consumer outside MIME |
+| a viewer on the static site (fits plotted over their reference data); a SQLite build queryable in the browser (recalled: Datasette Lite, sql.js) | a library big enough to browse |
+| an issue form that a bot turns into a draft record pull request | contributors who do not use git |
+| a mirror of each release on the Hugging Face Hub, for discoverability only | adoption work (section 9) |
+
+Not planned unless the scope changes: a hosted database, a query API, accounts, an upload portal. Their
+triggers would be large imaging data, or many writers who cannot work through pull requests; both are
+outside Vesalius's scope.
+
 ## 7. The core package
 
 ### 7.1 Layout (proposal)
@@ -509,6 +588,7 @@ vesalius/
   io/              plain.py (required); usd/ (needs pxr)                                     (L4)
   sample/          fractions.py, layered_path.py, reference_sampler.py                       (L5)
   integrations/    exporters/, importers/, i4h/                                              (L6, lazy imports)
+  tools/           check.py: python -m vesalius check                                        (L6)
 ```
 
 Family packages and the library repository have their own layouts (`DOCUMENTATION_ARCHITECTURE.md`
@@ -522,7 +602,7 @@ section 2).
   publishes wheels for macOS, Linux x86_64 and Windows only (checked 2026-10-11), while Isaac for
   Healthcare also supports Linux on aarch64. So `usd-core` must never be a hard requirement.
 - Release artifacts: the wheel on PyPI, and the schemas (L0), conformance data and golden vectors (L1) as a
-  separate archive for projects in other languages to vendor.
+  separate archive for projects in other languages to vendor. Library releases are separate (section 6.7).
 
 ### 7.3 Uncertainty and sampling
 
@@ -663,11 +743,18 @@ Wider adoption is the upside, pursued as follows.
     reproduces a reference curve.
 - **Cheap partial use.** A consumer can read one section, use plain records without USD, and ignore the
   rest.
+- **Somewhere to look.** The static site (section 6.7) shows each material's card, and later its fits
+  plotted over their reference data. Comparing sources on curves is what a curator, and a sceptical reader,
+  wants to see.
+- **Publishing without permission.** A lab publishes its phantom recipes or its own measurements under its
+  own namespace and runs the same checks (section 6.7). The curated library stays small; the long tail
+  lives outside it.
 - **Existing ecosystems.** OpenUSD for scenes and the Python scientific stack, not a new container format.
 - **Credit for curation.** The library is a citable dataset with a DOI per release; each curated value
   records its curator's ORCID.
 - **Criteria.** For example, by Vesalius 0.3: two consumers outside the founding projects, a stated number
-  of curated materials, and one outside contributor. If they are not met, Vesalius narrows to an internal
+  of curated materials, and one outside contributor or publisher. Measured from Zenodo, PyPI and GitHub
+  release downloads and, once it exists, the index. If they are not met, Vesalius narrows to an internal
   tool, which is still worth having.
 
 An earlier materials-data exchange format, MatML, went from NIST to an OASIS technical committee in
@@ -717,10 +804,13 @@ I would rank this above the physics bridges of structure draft 7.7 as a first co
 
 | Vesalius | Contents | Consumers |
 |---|---|---|
-| 0.1 | core mechanism; plain records and their JSON Schema; USD schemas and I/O; source registry; check points; uncertainty structures and the reference sampler; layered paths and region binding, plain and USD; sections fluid, acoustic, dielectric, radiological, magnetic, biocompatibility, and mechanics with linear elasticity and one hyperelastic family; conformance; a seed library (water, blood, soft tissue, silicone, agar, SU-8, NdFeB) with sources | MIME 0.3.0 for things if timing allows, otherwise the Python core only; an importer from an existing per-paper calibration code base as the design's acceptance test |
+| 0.1 | core mechanism; plain records and their JSON Schema, with namespaced identifiers; USD schemas and I/O, with self-contained shipped layers; `vesalius check`; material cards; source registry; check points; uncertainty structures and the reference sampler; layered paths and region binding, plain and USD; sections fluid, acoustic, dielectric, radiological, magnetic, biocompatibility, and mechanics with linear elasticity and one hyperelastic family; conformance; a seed library (water, blood, soft tissue, silicone, agar, SU-8, NdFeB) with sources | MIME 0.3.0 for things if timing allows, otherwise the Python core only; an importer from an existing per-paper calibration code base as the design's acceptance test |
 | 0.2 | optical and thermal sections; composition and spectra; label volumes; field overrides; more families as consumers need them; the first exporters | photoacoustics in MIME, cheap rungs (Appendix A) |
 | 0.3 | sampling helpers (L5), including layered paths derived from 3-D geometry; interfaces; the convention checker | resolved photoacoustic rungs; contact |
 | alongside 0.1 or 0.2 | the ultrasound adapter and the label mapping for the patient twin | Isaac for Healthcare, if they want it |
+
+Hosting items (the index repository, a data wheel, a viewer) follow their triggers in section 6.7, not this
+table.
 
 ## 12. Open questions
 
@@ -745,6 +835,8 @@ I would rank this above the physics bridges of structure draft 7.7 as a first co
 12. Deforming tissue: properties that move with a deforming mesh.
 13. Temperature coupling: properties that change with a simulated temperature field.
 14. Who maintains Vesalius beyond the first version.
+15. The form of namespaces: short names, unique by first-come registration in the index (lean), or
+    reverse-DNS names that need no registry.
 
 ## 13. Not examined
 
@@ -755,13 +847,16 @@ I would rank this above the physics bridges of structure draft 7.7 as a first co
 - Isaac for Healthcare was read at its main branches on 2026-10-09 to 2026-10-11 by documentation and file
   search; their asset catalogue, SimReady specifications and Newton material model were not read.
 - The adoption history of earlier materials-data formats was not researched.
+- The hosting and registry examples of section 6.7 (Zenodo, PyPI, Julia's registry, Datasette Lite, the
+  Hugging Face Hub) are recalled; none was checked for limits or terms.
 - The papers, databases, ontologies and NVIDIA schemas named here are recalled.
 - The photoacoustic figures in Appendix A are my arithmetic on assumed values.
 
 ## 14. Revision of 2026-10-11
 
 A design review, using an existing per-paper tissue calibration code base as a case study, changed the
-draft as follows.
+draft as follows. A follow-up the same day on distribution, drawing on the Hugging Face Hub, added the last
+four rows.
 
 | Before | After | Why |
 |---|---|---|
@@ -776,6 +871,10 @@ draft as follows.
 | none | check points per record; fail-closed readers; fit-reproduction check | silent convention mismatches are the main technical risk |
 | none | proxies per field; a conditions vocabulary with ontology identifiers | most tissue data comes from stand-ins |
 | none | adoption strategy with criteria | a standard succeeds by adoption |
+| catalogue numbers `VES-MAT-XXXX` | namespaced identifiers `<namespace>/<local id>` | anyone can publish without a central authority; retrofitting would break the schema |
+| data sheets | material cards: a metadata header and prose sections | a landing page that tools and people both read |
+| hosting unstated | git repositories, static archived releases, federation through an index; no hosted service | small data; static releases can be assessed; no service to run |
+| USD composition trusted | shipped layers self-contained, checked | reading a library layer reads one file, whoever published it |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

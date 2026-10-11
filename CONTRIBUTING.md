@@ -25,7 +25,8 @@ live in a repository of its own; until it exists, its rules are kept here.
    adapter or exporter, with vectors.
 6. **No value without provenance** (see "Adding or changing a library material").
 7. **The specification is normative.** A change to it needs conformance cases in the same pull request.
-8. **Do not hand-edit generated files.** USD layers and data sheets are generated from the plain records.
+8. **Do not hand-edit generated files.** USD layers, material cards and the index are generated from the
+   plain records.
 9. **No claims beyond the data.** Library values are declarations from cited sources, or fits to cited
    data. Biocompatibility fields are never a safety claim. Do not describe a value as validated for a
    patient.
@@ -45,6 +46,9 @@ live in a repository of its own; until it exists, its rules are kept here.
     attestation.
 17. **Data and code licences are separate.** Library records are under the library's data licence, stated
     on each record.
+18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths.
+19. **Static releases.** No feature may require a hosted service, and nothing is fetched from the network
+    unless the user asks.
 
 ## Identifier prefixes
 
@@ -52,7 +56,7 @@ live in a repository of its own; until it exists, its rules are kept here.
 |---|---|---|
 | Anomalies | `VES-ANO-XXX` | `VES-ANO-001` |
 | Verification items | `VES-VER-XXX` | `VES-VER-001` |
-| Library materials | `VES-MAT-XXXX` | `VES-MAT-0001` |
+| Materials | `<namespace>/<local id>`; in the curated library `vesalius/VES-MAT-XXXX` | `vesalius/VES-MAT-0001` |
 | Methods | `VES-MTH-XXX` | `VES-MTH-001` |
 | Model families | `<namespace>.<section>.<name>.v<N>` | `vesalius.mechanical.ogden_incompressible.v1` |
 
@@ -118,6 +122,10 @@ Every value needs (the full standard is `DOCUMENTATION_ARCHITECTURE.md` section 
 - a **review record**: who checked the value against the source, when, and their ORCID. Agreement with
   another database is not a review.
 
+Every material also needs the prose its card shows (architecture draft section 6.6): why it was curated and
+for which consumer, its uses and limitations, and who maintains it. Write it in the record; the card is
+generated.
+
 Rules for data:
 
 - Extract from primary literature. Never copy a secondary database in bulk.
@@ -128,6 +136,12 @@ Rules for data:
   curves stay reference-only. Say so in the fit record.
 - Own measurements published under an open licence are welcome and are the cleanest data the library can
   hold.
+
+Run `python -m vesalius check` before opening a pull request; CI runs it too.
+
+You do not need the curated library to publish records. Keep them in your own repository under your own
+namespace and run the same `vesalius check`. Once an index of namespaces exists, listing in it is by pull
+request (architecture draft section 6.7).
 
 A change is recorded under **Data** in the library's CHANGELOG with a new material version. A value that
 faithfully transcribes a source later found wrong is a data update, not an anomaly.

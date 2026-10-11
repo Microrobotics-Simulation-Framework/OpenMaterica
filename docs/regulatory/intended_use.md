@@ -47,7 +47,9 @@ biocompatibility assessment or a safety claim. A manufacturer performs their own
 Vesalius assumes trusted input files. It performs no authentication, authorisation or sanitisation beyond
 validating records against the record schema. A USD stage can pull in other files through its composition
 (sublayers, references, payloads) and through the host's asset resolver, so reading a stage may read any
-file that stage names. Vesalius itself makes no network requests and runs no code from the files it reads:
+file that stage names. Every USD layer Vesalius ships is self-contained (no composition arcs, no asset
+paths), so reading a library layer reads that file alone. Vesalius itself makes no network requests and
+runs no code from the files it reads:
 records and family vectors are data, and family reference implementations are code shipped in the package,
 never loaded from a record. Loading third-party records and stages, and the security of the asset resolver,
 are the responsibility of the integrating application.
