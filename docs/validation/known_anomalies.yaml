@@ -2,7 +2,7 @@
 #
 # Schema: the anomaly records are identical to MADDENING's (MADDENING DOCUMENTATION_ARCHITECTURE.md
 # section 9.7). Do not add fields; name affected components as schema:<API>, reader:<function>,
-# method:<VES-MTH id> or data:<VES-MAT id> (CONTRIBUTING.md).
+# method:<VES-MTH id>, model:<family identifier> or data:<VES-MAT id> (CONTRIBUTING.md).
 # Checked in CI with MADDENING's validator (a development-time dependency only):
 #   python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix VES-ANO-
 # The version field is vesalius_version. MADDENING's validator (at f2aa830e) accepts only

@@ -6,7 +6,9 @@ body:
     attributes:
       value: >
         Severity definitions are in DOCUMENTATION_ARCHITECTURE.md section 8.2. A silent wrong result is never
-        minor; a library value that differs from its cited source is a silent wrong result.
+        minor; a library value that differs from its cited source, and a reference implementation that
+        differs from its family definition, are silent wrong results. A licensing objection is not an
+        anomaly: see the takedown procedure in CONTRIBUTING.md.
   - type: input
     id: title
     attributes:
@@ -50,7 +52,7 @@ body:
       label: Affected components
       description: >
         Comma-separated, e.g. schema:VesaliusAcousticAPI, reader:resolve, method:VES-MTH-002,
-        data:VES-MAT-0003
+        model:vesalius.mechanical.ogden_incompressible.v1, data:VES-MAT-0003
     validations:
       required: true
   - type: input
@@ -63,10 +65,11 @@ body:
   - type: textarea
     id: source_check
     attributes:
-      label: For data anomalies, the source check
+      label: For data and family anomalies, the check
       description: >
-        The material and field, the stored value, the cited source and locator, and what the source
-        actually gives (with units).
+        Data: the material and field, the stored value, the cited source and locator, and what the source
+        actually gives (with units). Family: the family identifier, the input, what the reference
+        implementation returns, and what the definition requires.
   - type: textarea
     id: workaround
     attributes:

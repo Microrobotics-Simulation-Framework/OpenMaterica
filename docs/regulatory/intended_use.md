@@ -21,35 +21,52 @@ its suitability for their context of use and for all required verification and v
 
 ## Data statement
 
-The values in the Vesalius material library are **declarations taken from cited sources**. Vesalius
-warrants that each value is what its source gives, converted correctly to SI, with the conditions and range
-the source reports. Vesalius does **not** warrant that a value describes any particular patient, tissue
-sample, phantom batch or device, nor that a source is itself correct or current. Whether a library value is
-applicable to a given use is the user's and the manufacturer's judgement.
+The values in the Vesalius material library are **declarations taken from cited sources**, or fits to
+cited data. Vesalius warrants that each value is what its source gives (or what its recorded fit produces),
+converted correctly to SI, with the conditions, statistics and proxy status the record states; and that
+each model parameter set reproduces its check points under the family definition it names. Vesalius does
+**not** warrant that a value describes any particular patient, tissue sample, phantom batch or device, nor
+that a source is itself correct or current. Whether a library value is applicable to a given use is the
+user's and the manufacturer's judgement.
+
+Many values come from stand-ins: another species, another anatomical site, a cadaver for living tissue, a
+phantom for tissue. Each record declares this per section or field, and whether a stand-in is adequate for
+a use is the user's judgement.
+
+Library records come in three tiers. A **shipped** record publishes its values. A **reference-only** record
+publishes provenance, a locator and an extraction recipe but no values, because the source does not permit
+redistribution or its status is unknown; its values are whatever the user fills in from their own copy of
+the source, and Vesalius warrants nothing about them. A **private** overlay is an organisation's own data in
+the same format, and is entirely theirs.
 
 Biocompatibility fields are information about what has been reported for a material. They are never a
 biocompatibility assessment or a safety claim. A manufacturer performs their own ISO 10993 evaluation.
 
 ## Cybersecurity boundary statement (MDCG 2019-16)
 
-Vesalius assumes trusted input files. It performs no authentication, authorisation or sanitisation. A USD
-stage can pull in other files through its composition (sublayers, references, payloads) and through the
-host's asset resolver, so reading a stage may read any file that stage names. Vesalius itself makes no
-network requests and runs no code from the files it reads. Loading third-party stages, and the security of
-the asset resolver, are the responsibility of the integrating application.
+Vesalius assumes trusted input files. It performs no authentication, authorisation or sanitisation beyond
+validating records against the record schema. A USD stage can pull in other files through its composition
+(sublayers, references, payloads) and through the host's asset resolver, so reading a stage may read any
+file that stage names. Vesalius itself makes no network requests and runs no code from the files it reads:
+records and family vectors are data, and family reference implementations are code shipped in the package,
+never loaded from a record. Loading third-party records and stages, and the security of the asset resolver,
+are the responsibility of the integrating application.
 
 ## Licence
 
-Vesalius is licensed under the Apache License 2.0, which is permissive and includes an express patent grant.
-No copyleft obligation follows a product that incorporates it. This is a description, not legal advice.
+Vesalius's code is licensed under the Apache License 2.0, which is permissive and includes an express
+patent grant. No copyleft obligation follows a product that incorporates it. The material library's data is
+under a separate data licence, stated on each record. This is a description, not legal advice.
 
 ## Layered responsibility model
 
 | Responsibility | Owner | Standard | Evidence |
 |---|---|---|---|
 | Specification and read-side correctness | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite |
-| Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, data checks |
-| Choosing a material and judging its applicability | downstream user | ASME V&V 40 (model inputs) | the user's input justification |
+| Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden test vectors |
+| Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
+| A consumer's own implementation of a family | downstream user | IEC 62304 Clause 5.6 (their own) | the record's check points; the family's golden vectors |
+| Choosing a material, judging its applicability and its proxies | downstream user | ASME V&V 40 (model inputs) | the user's input justification |
 | Calculation verification of a simulation | downstream user | ASME V&V 40 | the simulator's own evidence |
 | SOUP assessment of Vesalius | device manufacturer | IEC 62304 Clauses 5.3.3, 5.3.4, 7.1.3 | Vesalius SOUP package and anomaly registry |
 | Risk management, clinical evidence, submission | device manufacturer | ISO 14971, EU MDR | the manufacturer's files |
