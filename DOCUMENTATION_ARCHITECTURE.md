@@ -117,6 +117,12 @@ contradict Vesalius's purpose (a neutral, permissive layer that C++ and PyTorch 
 would invert the stack. Vesalius therefore keeps its own small compliance module whose records have the
 same shape as MADDENING's, and MIME, which depends on both, translates between them (section 9).
 
+**A development-time dependency on MADDENING's validator.** Vesalius's CI validates its anomaly registry
+with MADDENING's validator (`python -m maddening.compliance check-anomalies`), in a CI job of its own, so
+the three registries are held to one implementation of one schema. This is a development dependency only:
+nothing in the Vesalius package imports MADDENING, and nothing installed by `pip install vesalius` depends
+on it.
+
 ---
 
 ## 2. Documentation Structure
@@ -362,7 +368,7 @@ layered stack); composition against worked examples in its sources.
 
 | Script | Checks |
 |---|---|
-| `scripts/check_anomalies.py` | the registry against the schema of section 8, prefix `VES-ANO-` |
+| `scripts/check_anomalies.py` | the registry against the schema of section 8, prefix `VES-ANO-`, by delegating to MADDENING's validator (section 8.1) |
 | `scripts/check_citations.py` | every `[@Key]` in the library and the guides exists in `bibliography.bib` |
 | `scripts/check_impl_mapping.py` | every function named in a method guide exists |
 | `scripts/check_library.py` | provenance completeness, plausibility, consistency, units |
@@ -431,14 +437,17 @@ The schema is kept identical on purpose, so that a manufacturer can collect MADD
 entries into one risk file, and so that one validator can check all three. The one difference is the
 version field, which MADDENING's Appendix F says each project names after itself: `vesalius_version`.
 
-**Checked 2026-10-11 against MADDENING `f2aa830e`:** MADDENING's validator
-(`python -m maddening.compliance check-anomalies <path> --prefix VES-ANO-`) refuses this registry, because it
+Vesalius's CI checks the registry with MADDENING's validator:
+`python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix VES-ANO-`
+(section 1).
+
+**This depends on a MADDENING change.** Checked 2026-10-11 against MADDENING `f2aa830e`: the validator
 accepts no top-level version field except `maddening_version`
-(`MADD:src/maddening/compliance/_validate.py`, `_KNOWN_TOPLEVEL_FIELDS`). MIME's registry fails it for the
-same reason. That contradicts MADDENING's own Appendix F, which has downstream registries carry their own
-version field and pass the validator. Until MADDENING accepts a project version field, Vesalius checks its
-registry with its own copy of the check (section 1), and the schema compatibility claim covers the anomaly
-records, not the version field.
+(`MADD:src/maddening/compliance/_validate.py`, `_KNOWN_TOPLEVEL_FIELDS`), so it refuses `vesalius_version`,
+and MIME's registry fails it for the same reason. That contradicts MADDENING's own Appendix F, which has
+downstream registries carry their own version field and pass the validator. Accepting a project version
+field has been requested of MADDENING and is to be prioritised there; until it lands, the CI job is
+expected to fail on this one field.
 
 ### 8.2 Severity, applied to data
 
@@ -645,7 +654,8 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
    the repository presents a value as validated for a patient.
 10. **Anomaly entries are never deleted**, only resolved.
 11. **No network access and no code execution from data**, at import or when reading files.
-12. **Schema compatibility with MADDENING's anomaly records** is kept (section 8.1).
+12. **The anomaly registry stays in MADDENING's schema** and is checked with MADDENING's validator, a
+    development-time dependency only (sections 1 and 8.1).
 
 ---
 
@@ -694,7 +704,8 @@ Status at 2026-10-11.
 
 - [ ] `docs/specification/` for the 0.1 sections, every normative statement with a conformance case
 - [ ] `tests/conformance/` with stages and expected answers as data files
-- [ ] `scripts/check_anomalies.py`, run in CI on every push
+- [ ] `scripts/check_anomalies.py`, delegating to MADDENING's validator, run in CI on every push
+- [ ] MADDENING's validator accepts a project version field (`vesalius_version`); requested of MADDENING
 - [ ] `scripts/check_signoff.py`, run in CI on every pull request
 - [ ] GitHub labels as in Appendix A
 

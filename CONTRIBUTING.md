@@ -24,9 +24,10 @@ Vesalius is at the design stage. These rules apply from the first code commit; t
    fields are never a safety claim. Do not describe a value as validated for a patient.
 10. **Never delete an anomaly entry.** Resolve it.
 11. **No network access and no code execution from data**, at import or when reading files.
-12. **Keep anomaly records in MADDENING's schema.** Do not add fields. The registry's version field is
-    `vesalius_version`; MADDENING's validator does not accept it yet (`DOCUMENTATION_ARCHITECTURE.md`
-    section 8.1).
+12. **Keep the anomaly registry in MADDENING's schema.** Do not add fields. CI checks it with MADDENING's
+    validator, which is a development-time dependency only; nothing in the package imports MADDENING. The
+    registry's version field is `vesalius_version`, which MADDENING's validator does not accept yet
+    (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
 
 ## Identifier prefixes
 

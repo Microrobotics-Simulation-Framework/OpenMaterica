@@ -3,8 +3,11 @@
 # Schema: the anomaly records are identical to MADDENING's (MADDENING DOCUMENTATION_ARCHITECTURE.md
 # section 9.7). Do not add fields; name affected components as schema:<API>, reader:<function>,
 # method:<VES-MTH id> or data:<VES-MAT id> (CONTRIBUTING.md).
+# Checked in CI with MADDENING's validator (a development-time dependency only):
+#   python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix VES-ANO-
 # The version field is vesalius_version. MADDENING's validator (at f2aa830e) accepts only
-# maddening_version and so refuses this file; see DOCUMENTATION_ARCHITECTURE.md section 8.1.
+# maddening_version; accepting a project version field has been requested of MADDENING
+# (DOCUMENTATION_ARCHITECTURE.md section 8.1).
 #
 # Severity definitions, applied to data: DOCUMENTATION_ARCHITECTURE.md section 8.2.
 # affected_versions: a PEP 440 specifier set, as in MADDENING (">=FIRST" while reachable,
