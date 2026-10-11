@@ -1,0 +1,19 @@
+# Vesalius Known Anomalies Registry
+#
+# Schema: the anomaly records are identical to MADDENING's (MADDENING DOCUMENTATION_ARCHITECTURE.md
+# section 9.7). Do not add fields; name affected components as schema:<API>, reader:<function>,
+# method:<VES-MTH id> or data:<VES-MAT id> (CONTRIBUTING.md).
+# The version field is vesalius_version. MADDENING's validator (at f2aa830e) accepts only
+# maddening_version and so refuses this file; see DOCUMENTATION_ARCHITECTURE.md section 8.1.
+#
+# Severity definitions, applied to data: DOCUMENTATION_ARCHITECTURE.md section 8.2.
+# affected_versions: a PEP 440 specifier set, as in MADDENING (">=FIRST" while reachable,
+# ">=FIRST, <FIX" once fixed, "none" for a defect no release carried).
+#
+# No version has been released; vesalius_version names the development line.
+
+schema_version: "1.0"
+vesalius_version: "0.1.0.dev0"
+generated_date: "2026-10-11"
+
+anomalies: []
