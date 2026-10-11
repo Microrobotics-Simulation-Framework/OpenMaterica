@@ -37,6 +37,11 @@ recorded in that repository's CHANGELOG.
   witnesses; fits written back only as scoped overlays; a reserved family `kind` for evolution families;
   failure properties under mechanics; biocompatibility as test evidence; an advisory index; rewritten
   spike controls. Constraints 23 to 25; constraints 6, 9, 13 and 14 revised.
+- Simplification pass: sections specified when a consumer needs them (fluid, mechanical with failure,
+  acoustic, radiological, magnetic, biocompatibility first; optical, thermal and dielectric later), with
+  three rules that make adding one a minor schema change; a publishers file and a template repository
+  from the first library release, with MIME as the first other publisher; prototypes before the package;
+  the advisory index and Hugging Face items as notes for later.
 
 ### Schema
 ### Families

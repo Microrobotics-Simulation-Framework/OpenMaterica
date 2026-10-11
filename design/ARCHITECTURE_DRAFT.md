@@ -250,13 +250,30 @@ eight places; the sections below no longer do.
 Mechanics is organised by model family, not by Young's modulus and Poisson's ratio: linear elasticity is one
 family among several, and most soft tissue needs another.
 
+**Which sections are specified first.** Fluid, mechanical (with failure), acoustic, radiological, magnetic
+and biocompatibility have consumers now (section 12). Optical, thermal and dielectric are described here so
+that the design accounts for them, and are specified when a consumer needs them; adding a section later is
+a minor schema change (section 5.6). Two of the deferrals need a word:
+
+- **Radiological now, optical later.** Both describe how photons interact with matter, in different
+  regimes. At X-ray energies attenuation follows from elemental composition (photoelectric absorption and
+  Compton scattering), and a projection needs no transport of scattered light. At optical wavelengths
+  absorption comes from chromophores and scattering dominates, so light needs a transport model. What they
+  share is machinery: tables over photon energy or wavelength, and spectra derived from composition. The
+  radiological section builds that machinery generally (a spectral axis in either unit; composition by
+  element or by named component), so that the optical section adds fields to it later.
+- **Temperature is a condition, not the thermal section.** Water at 25 °C and at 37 °C is the fluid
+  section's table over temperature, checked against a declared operating temperature (sections 4.8 and
+  3.5). The thermal section (conductivity, heat capacity, perfusion, expansion, the Grüneisen parameter) is
+  for consumers that compute heat, and enters with the first of them.
+
 **Failure** is part of mechanics: fracture energy, strength and critical stretch, each with its test method
 and specimen geometry as required conditions, because a tear test, a notched specimen, a puncture and a
 uniaxial test do not give interchangeable numbers. A puncture or cutting force is not a material property:
 it depends on the tool and on friction between tool and tissue, which is an interface (section 4.13). It is
-reference data for checking a model, never a stored property. Models of how failure develops in time
-(damage, crack growth) are evolution families (section 4.5). Failure enters when a consumer needs it
-(section 7.6).
+reference data for checking a model, never a stored property. Failure is specified with mechanics: its
+properties are static data, and a failure criterion that depends only on the current state is a static
+family. Models of how failure develops in time (damage, crack growth) are evolution families (section 4.5).
 
 **Solids in acoustics** need both wave speeds. A solid's compressibility depends on both; taken from the
 longitudinal speed alone, it is underestimated by about a third at a Poisson's ratio of 0.33 (my
@@ -365,9 +382,11 @@ by cases with analytic answers (relaxation after a step, creep under constant lo
 | Check points | responses at a few states | responses to a few standard histories (a step; ramps at stated rates), and event times. A history is chosen so that a condition crosses its threshold cleanly: an event time is badly conditioned where the condition only grazes it |
 | Witness | a reported value at a state | a reported trajectory or event time (section 4.6) |
 
-An event is where one family's range of states ends, computed rather than given, and the next model takes
-over there (section 3.5, rule 3). The `kind` field is reserved from the first release, so that adding
-evolution families later is not a breaking change.
+An event is where one family's range of states ends, computed rather than given, and the next model takes over
+there (section 3.5, rule 3). Events would be specified together with the differentiable events planned for
+MADDENING 0.5.0 (recalled from its scope), so that a consumer can compute an event inside a differentiable
+step; specifying them earlier would mean designing against an interface that does not exist yet. The `kind`
+field is reserved from the first release, so that adding evolution families later is not a breaking change.
 
 ### 4.6 Check points and convention witnesses
 
@@ -716,7 +735,14 @@ The conformance suite (section 7.4) contains this case.
   records the hashes of the materials it read can show which records it read. What its nodes received
   after overlays, unit conversion, mixing and derivation is shown by the derivation chain in the material
   input sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9.1), not by the hash.
-- **Advisories.** A pinned hash cannot learn that its source was later corrected, retracted or contested.
+- **Adding without breaking.** Any section or field can be added later as a minor schema change if three
+  rules hold. Sections are optional, and a reader ignores sections it does not use. An added field never
+  changes the meaning of an existing one; a change that would is major. Conditions a reader does not know
+  are not dropped silently: the material input sheet reports them as present and unchecked. A reader that
+  knows schema 1.2 therefore reads a 1.3 record, and refuses a 2.0 record. USD follows: a new section is a
+  new API schema, and an older plug-in still reads its attributes as plain attributes (recalled; to check).
+- **Advisories** (a note for later: built at the first retraction, or before the first release a regulated
+  consumer takes). A pinned hash cannot learn that its source was later corrected, retracted or contested.
   An advisory index, kept outside the records and versioned on its own, lists such notices by record and
   hash, as a package index marks a yanked release. A build reports any that apply to the records it pins,
   without changing their values.
@@ -820,12 +846,21 @@ records in git ── pull request + review ──> vesalius check ──> build
   (every record's identifier, version, content hash, sections, tier and licence), and the shipped reference
   data. It is published as a GitHub release and archived on Zenodo with a DOI. A consumer pins a release by
   DOI or hash and needs nothing online afterwards.
-- **Federation without hosting.** Any publisher keeps records in their own repository, under their own
-  namespace (section 4.1), and runs the same `vesalius check`. Nothing needs this project's permission.
-  Once a second publisher exists, an **index repository** would list namespaces, repository URLs and the
-  content hashes of releases, with CI that runs the checks on each registration pull request. It hosts no
-  data. Julia's package registry works this way (recalled). The index labels the curated namespace apart
-  from community ones.
+- **Federation without hosting, from the first library release.** Any publisher keeps records in their own
+  repository, under their own namespace (section 4.1), and runs the same `vesalius check`. Nothing needs
+  this project's permission. Waiting for a second publisher before building the way to publish would make
+  one less likely, so the first library release carries both pieces:
+  - **a publishers file** (`publishers.yaml`) in the library repository: namespace, repository URL and the
+    content hashes of releases, registered by pull request, first come first served, with CI that runs the
+    checks on each registered release. It hosts no data. Julia's package registry works this way
+    (recalled), folded here into a repository that exists anyway. The file labels the curated namespace
+    apart from community ones;
+  - **a template repository**: a publisher uses it, adds records and pushes, CI checks them, and a one-line
+    pull request registers the namespace.
+- **MIME is the first other publisher.** Its `mime` namespace, published from the MIME repository, holds
+  the records that do not belong in the curated library: a parameter set with no independent witness, MIME's
+  fit overlays (which are scoped to MIME's models, section 5.5), and calibrations of MIME's own devices.
+  Federation is then tested from the start on a real case.
 - **Data too big for git** goes on Zenodo. A record points to it by DOI and SHA-256, and a tool fetches it
   only on explicit request, never when a record is read (`DOCUMENTATION_ARCHITECTURE.md` section 15,
   constraint 11), as Homebrew and Spack pin downloads by checksum.
@@ -834,7 +869,7 @@ Later, each when its trigger arrives:
 
 | Item | Trigger |
 |---|---|
-| the index repository | a second publisher |
+| a separate index repository, if the publishers file outgrows the library repository | many publishers |
 | a data wheel of the library on PyPI | the first Python consumer outside MIME |
 | a viewer on the static site (fits plotted over their reference data); a SQLite build queryable in the browser (recalled: Datasette Lite, sql.js) | a library big enough to browse |
 | an issue form that a bot turns into a draft record pull request | contributors who do not use git |
@@ -1282,9 +1317,9 @@ Each set includes the one before it. A MIME row is done first as the spike named
 |---|---|---|---|
 | R1 | USD schemas, read and write, for the sections in use, with no fallback values on physical attributes; region binding; domains as collections; self-contained shipped layers | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
 | R2 | Acoustic section (density; longitudinal and, for solids, shear sound speed; attenuation as a power law over a stated band; B/A), for both body and medium | Vesalius | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
-| R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, and elemental composition; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | AD 4.4 *Five value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
+| R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, and elemental composition; the spectral axis and composition built generally, so that the optical section adds fields later; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | AD 4.2 *Sections*; AD 4.4 *Five value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
 | R4 | Mixing rules in the array API: the identities fixed, named rules with their assumptions, the consumer's pick recorded | Vesalius | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
-| R5 | The first model family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points, and the `kind` field reserved. Its named consumer is MIME's superparamagnetic response node. A parameter set enters the curated library only with an independent witness, such as held-out points of a published curve; a source whose quoted numbers were all used in the fit goes to a community namespace, flagged "no independent witness" | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
+| R5 | The first model family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points, and the `kind` field reserved. Its named consumer is MIME's superparamagnetic response node. Its first parameter set comes from a source that publishes a full magnetisation curve, so that held-out points witness the fit; a source whose quoted numbers were all used in the fit goes to MIME's namespace, flagged "no independent witness" (section 6.7). The importer of section 12.5 exercises the same machinery on mechanics families and real papers | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 6.7 *Distribution and hosting*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
 | R6 | Uncertainty structures, each saying what it represents, and the reference sampler. MIME maps the spread its question needs onto MADDENING's UQ types where they can carry it; a mean and a standard deviation need a MADDENING change (section 9.4) | Vesalius, MIME (S5) | AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling*; AD 9.4 *Uncertainty* |
 | R7 | `vesalius.compliance`: `collect_material_inputs` and the material input sheet, written into each MIME run's provenance, with the derivation chain of every node parameter, review status, and the consumer's declarations, picks and waivers | Vesalius, MIME (S5) | DA 9.1 *Where it fits*; DA 9.3 *What this would add to Vesalius*; AD 3.5 *Facts, declarations and the build* |
 | R8 | Material cards; the legal review; the library's first archived release, with a DOI | library | AD 6.5 *Process*; AD 6.6 *Material cards*; AD 6.7 *Distribution and hosting* |
@@ -1301,16 +1336,16 @@ Each set includes the one before it. A MIME row is done first as the spike named
 | A1 | Label volumes, and field overrides that carry provenance like any value | Vesalius | AD 5.1 *The geometry ladder*; SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* (the voxel-grid source of attenuation) |
 | A2 | Sampling helpers (L5): volume fractions inside a node's domain. MIME's soft-distance fractions for moving bodies, its declared discretisation, are checked against them | Vesalius, MIME (S7) | AD 3.2 *Layers inside the core* (L5); AD 9.3 *Differentiability*; AD 13 *Open questions* (no. 10) |
 | A3 | Joint uncertainty structures used in MIME's UQ through the reference sampler, before MADDENING supports them, with the results labelled | MIME (S5) | AD 9.4 *Uncertainty*; AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling* |
-| A4 | Fit write-back: a MIME fit stored as an overlay scoped to its field, the MIME model and the run, with check points and a covariance; never the material's value | Vesalius, MIME (S8) | AD 4.10 *Fits and reference data*; AD 5.5 *Declared, then fitted*; AD 9.5 *Round trip* |
+| A4 | Fit write-back: a MIME fit stored as an overlay scoped to its field, the MIME model and the run, with check points and a covariance, published in MIME's namespace; never the material's value | Vesalius, MIME (S8) | AD 4.10 *Fits and reference data*; AD 5.5 *Declared, then fitted*; AD 6.7 *Distribution and hosting*; AD 9.5 *Round trip* |
 | A5 | X-ray from materials: the analytic and ray-marched rungs take mass attenuation against energy from records and a stated spectrum, polychromatically, with gradients to pose and to attenuation values | MIME (S7) | SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks*; AD 4.4 *Five value forms* |
 | A6 | Interface records for friction | Vesalius | AD 4.13 *Interfaces between materials*; SD 3.8 *Nodes planned for 0.3.0* (existing nodes: surface contact, the contact-friction stub) |
 | A7 | Transport records: a species' diffusivity in a medium; contrast agents | Vesalius | SD 3.8 *Nodes planned for 0.3.0* (row 9); AD A.4 *Prerequisites, in order* (item 2) |
-| A8 | Optical and thermal sections with composition, for photoacoustics' cheap rungs | Vesalius | AD A.3 *A fidelity ladder (proposal)*; AD A.4 *Prerequisites, in order* (item 1) |
+| A8 | Optical and thermal sections with composition, for photoacoustics' cheap rungs, added to the radiological section's spectral machinery without breaking the schema | Vesalius | AD 4.2 *Sections*; AD 5.6 *Versions and hashes*; AD A.3 *A fidelity ladder (proposal)*; AD A.4 *Prerequisites, in order* (item 1) |
 | A9 | The MCP server, the extraction prompts and the gold set | `vesalius-mcp` | AD 8 *Layer 6: MCP tooling and curation* |
 
-Not in any set, for want of a MIME consumer (section 7.6): the dielectric section, mechanics families, failure
-properties and families, evolution families, and a non-Newtonian blood family. The mechanics families have a
-consumer of their own (section 12.2).
+Not in any set, for want of a MIME consumer (section 7.6): the dielectric section, evolution families, and a
+non-Newtonian blood family. Mechanics, with failure, has a consumer of its own and its own track (section
+12.2).
 
 ### 12.2 The target and the release order
 
@@ -1327,13 +1362,14 @@ Vesalius; an experiment whose materials are not ready keeps declaring its values
 | 0.2 | realistic | R1 to R9 | S2 to S6 | MIME 0.3.0: the release it is expected to pin |
 | 0.3 | target | A1, A2 and A4 (the Vesalius side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A9; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
-| beside 0.2 or 0.3 | independent of MIME | mechanics with linear elasticity and one hyperelastic family; layered paths; an importer from an existing per-paper calibration code base, as the design's acceptance test | none needed | that code base |
-| with a consumer | | the dielectric section; further families | | |
+| with 0.2 | the mechanics track: not a priority, but progressing | mechanics with linear elasticity and one hyperelastic family, failure properties and static failure criteria; layered paths; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
+| with a consumer | | the optical, thermal and dielectric sections, added without breaking the schema (section 5.6); evolution families, with MADDENING's events; further families | | |
 | beside 0.2 or 0.3 | | the ultrasound adapter and the label mapping for the patient twin | | Isaac for Healthcare, if they want it |
 
 A spike runs against the release that carries its features, before the next set starts, and a failed spike
-changes the next release's contents. Nothing here is sized. Hosting items (the index repository, a data
-wheel, a viewer) follow their triggers in section 6.7, not this table.
+changes the next release's contents. Nothing here is sized. The publishers file and the template
+repository come with the first library release; the other hosting items (a data wheel, a viewer) follow
+their triggers in section 6.7. The prototypes of section 12.5 come before all of it.
 
 ### 12.3 MIME spikes
 
@@ -1374,6 +1410,23 @@ would replace MIME's copying of one material value into several nodes (section 9
 stated parameterisation for `UncertainParameter`, are requested for a later release (section 9.4). The anomaly
 validator's version field affects only Vesalius's own CI (DA 8.1 *Adopted unchanged*).
 
+### 12.5 Prototypes before the package
+
+Added 2026-10-12, from a simplification pass (section 15): the design had been elaborated on paper, and
+every problem found so far was found by reading text. Before the package exists, each consumer's critical
+path gets the cheapest prototype that could show the design wrong, in `plans/spikes/`, with hand-written
+JSON records and a throwaway reader. What survives shapes Vesalius 0.1, and the specification is then
+rewritten shorter from it.
+
+| Order | Prototype | Shows | Could show wrong |
+|---|---|---|---|
+| 1 | MIME, one multi-region stage: a vessel in tissue; the FVM in the lumen's domain; the X-ray projector over the whole scene; Vesalius material bindings composed with `maddening.usd`'s graph layers; S1's reach matrix and S2's three-valued checks run here, early | domains, the USD binding, mixing inside a domain, the seam | whether domains and bindings are the right shapes for a real scene |
+| 2 | Isaac for Healthcare's ultrasound material table (water, blood, fat, liver, muscle, bone), built offline from records and compared with their hard-coded values | the acoustic section; derivations such as attenuation in dB per cm per MHz, which assumes attenuation linear in frequency | whether the standard serves its first outside consumer without a change on their side |
+| 3 | The importer: an existing per-paper calibration code base's parameter sets as records with one mechanics family; a differential test of the original code against the reference implementation; witnesses on real papers | families, check points, independent witnesses, provenance on real data | whether the family machinery survives real conventions |
+| 4 | Five hand-written records with full provenance (water, an NdFeB grade from a datasheet, SU-8, a tissue acoustic value from a paper, the Landers capsule with both fits), timed | the cost of curation per value | whether one maintainer can afford the provenance schema; the trigger for the MCP layer (section 8) |
+
+Fields that are always unstated, or never filled, in prototypes 3 and 4 are candidates for deletion.
+
 ## 13. Open questions
 
 1. Source of truth for library materials: plain records with generated USD (lean), or USD with generated
@@ -1397,7 +1450,7 @@ validator's version field affects only Vesalius's own CI (DA 8.1 *Adopted unchan
 12. Deforming tissue: properties that move with a deforming mesh.
 13. Temperature coupling: properties that change with a simulated temperature field.
 14. Who maintains Vesalius beyond the first version.
-15. The form of namespaces: short names, unique by first-come registration in the index (lean), or
+15. The form of namespaces: short names, unique by first-come registration in the publishers file (lean), or
     reverse-DNS names that need no registry.
 16. The MCP server's packaging (a separate distribution, lean, or an extra of the core), and whether to use
     MCP sampling once clients support it.
@@ -1449,7 +1502,9 @@ witness and MCP rows); a fourth set the phasing by MIME 0.3.0's needs (the phasi
 On 2026-10-12 a review tested the draft against two principles it had not stated (principles 9 and 10),
 in two independent passes, one told to break the design rather than confirm it. The draft disclaimed
 judging applicability (section 7.6) and then judged it in at least eight places, and several spike
-controls could not fail. The rows after the phasing row record what changed.
+controls could not fail. The rows after the phasing row record what changed. A simplification pass the
+same day (asking who needs each requirement, deferring what nobody needs yet, and prototyping before
+standardising) added the last three rows.
 
 | Before | After | Why |
 |---|---|---|
@@ -1484,6 +1539,9 @@ controls could not fail. The rows after the phasing row record what changed.
 | static families only | a reserved `kind` field on families; evolution families specified before the first is admitted; failure properties under mechanics | viscoelastic, damage and release models depend on history |
 | biocompatibility status on a material | test evidence on the material; status declared on the device | biocompatibility belongs to a device in its use |
 | eight spike controls | rewritten so that each can fail | several could not |
+| an index repository once a second publisher exists | a publishers file and a template repository from the first library release, with MIME's namespace as the first entry | waiting for a second publisher made one less likely |
+| every section specified together | sections specified when a consumer needs them; three rules make adding one later a minor schema change | a section added later must never break a reader |
+| MIME spikes after the first release | prototypes first: a multi-region MIME stage, the ultrasound table, the importer, timed hand-written records (section 12.5) | a schema should meet real data and real consumers before it is frozen |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

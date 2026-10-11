@@ -229,6 +229,7 @@ are static archives, published on GitHub and archived on Zenodo with a DOI; ther
 <library repository>/
 ├── README.md, LICENSE (data licence), CHANGELOG.md, CITATION.cff
 ├── sources.yaml                       # the source registry (architecture draft section 6.1)
+├── publishers.yaml                    # other namespaces: repository URLs, release hashes (section 6.7 there)
 ├── bibliography.bib
 ├── materials/                         # one plain record per material (the source of truth)
 ├── reference_data/                    # shipped reference curves and spectra, with their licences
@@ -501,11 +502,12 @@ Small cases, each with expected answers: the material bound to a prim or a path 
 point; a property at a wavelength or frequency; the owner of a point inside nested regions; the provenance of
 an overridden value, including USD's dictionary-merge trap; equality of a record's plain and USD forms;
 refusal on an unknown family or version; refusal on a failed check point; refusal to sample an undeclared
-uncertainty structure; refusal of an attribute that was not authored; refusal to interpolate across an edge or
-outside a range; unknown, not met, for an unstated condition; refusal of a nominal for an interval or an
-ensemble; refusal to mix a field with no general rule; a requirement checked over a domain's regions only. The
-cases and expected answers are data files, so a C++ or other reader can run them without Python. The Python
-reader runs them in CI.
+uncertainty structure; a record of a newer minor schema version, with a section the reader has never seen,
+read for the sections the reader knows; refusal of an attribute that was not authored; refusal to interpolate
+across an edge or outside a range; unknown, not met, for an unstated condition; refusal of a nominal for an
+interval or an ensemble; refusal to mix a field with no general rule; a requirement checked over a domain's
+regions only. The cases and expected answers are data files, so a C++ or other reader can run them without
+Python. The Python reader runs them in CI.
 
 ### 6.2 Method verification
 
@@ -582,6 +584,7 @@ policy checks:
 
 | Script | Checks |
 |---|---|
+| `scripts/check_publishers.py` | every namespace in `publishers.yaml` is unique, and every registered release passes `vesalius check` |
 | `scripts/check_sources.py` | every source key exists; no shipped value comes from a source whose redistribution status is not permitted or unknown; every record states its licence |
 | `scripts/check_signoff.py` | sign-off and data attestation on every pull request |
 
@@ -616,6 +619,12 @@ for a new value or section; **patch** for provenance wording. A family: any chan
 A schema change needs, in one pull request: the specification text, the conformance cases, the record
 schema and USD schema files, the reader change, a `changes.md` entry, and a CHANGELOG entry under
 **Schema**. Removal follows the stability levels below.
+
+Any section or field can be added later as a minor change, because three rules hold (architecture draft
+section 5.6): sections are optional and a reader ignores those it does not use; an added field never changes
+the meaning of an existing one, and a change that would is major; conditions a reader does not know are
+reported as present and unchecked, never dropped. A reader reads a record of a newer minor version and
+refuses one of a newer major version.
 
 ### 7.3 Stability levels
 
@@ -980,9 +989,10 @@ the sign-off check; GitHub labels as MADDENING's (`anomaly:critical`, `anomaly:m
 **Phase 2, with the first library material:** the library repository with its data licence; the source
 registry; the data entry standard, review process and takedown procedure; `bibliography.bib`; the library
 checks of section 6.5; generated USD layers, cards and index; the legal review of the architecture draft,
-section 6.5. Hosting items beyond the release archive (an index repository, a data wheel, a viewer) follow
-their triggers in the architecture draft, section 6.7. Once the seed library exists: the MCP server, the
-extraction procedures as method entries, and the gold set (architecture draft section 8).
+section 6.5. The publishers file and a template repository for other publishers come with the first library
+release; other hosting items (a data wheel, a viewer) follow their triggers in the architecture draft, section
+6.7. Once the seed library exists: the MCP server, the extraction procedures as method entries, and the gold
+set (architecture draft section 8).
 
 **Phase 3, at the first release:** `CITATION.cff`; the SOUP package; the SBOM; `iec62304_mapping.md`;
 `downstream_integration.md`; signed tags; the library's first DOI.
@@ -1028,6 +1038,8 @@ Status at 2026-10-11.
 
 - [ ] the library repository, with its data licence chosen (architecture draft open question 8)
 - [ ] `sources.yaml` with redistribution statuses
+- [ ] `publishers.yaml` and a template repository for other publishers, with MIME's namespace as the first
+  entry
 - [ ] `docs/data_entry_standard.md`, `review_process.md` and `takedown.md`
 - [ ] the library checks of section 6.5
 - [ ] generated material cards and `index.json`

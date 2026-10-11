@@ -186,8 +186,8 @@ Rules for data:
 Run `python -m vesalius check` before opening a pull request; CI runs it too.
 
 You do not need the curated library to publish records. Keep them in your own repository under your own
-namespace and run the same `vesalius check`. Once an index of namespaces exists, listing in it is by pull
-request (architecture draft section 6.7).
+namespace and run the same `vesalius check`. The template repository sets that up. To list your namespace,
+open a pull request adding one line to the library's `publishers.yaml` (architecture draft section 6.7).
 
 A change is recorded under **Data** in the library's CHANGELOG with a new material version. A value that
 faithfully transcribes a source later found wrong is a data update, not an anomaly; consumers that pin the old
