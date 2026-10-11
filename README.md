@@ -1,2 +1,2 @@
 # Vesalius
-OpenUSD multiphysics material schemas for biomedical digital twins.
+> *Vesalius* is an OpenUSD material schema and Python toolkit for biomedical digital twins. It binds acoustic, optical, thermal, and fluid properties directly to anatomical geometry, providing a unified physical foundation for high-fidelity solvers (like [MIME](https://github.com/Microrobotics-Simulation-Framework/MIME) and real-time simulators (like [NVIDIA Isaac for Healthcare](https://github.com/isaac-for-healthcare)).
