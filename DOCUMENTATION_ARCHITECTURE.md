@@ -933,13 +933,13 @@ Scaled down from MADDENING's Appendix B to what a small library needs.
 anomaly registry and its issue template; the pull-request template; `docs/regulatory/intended_use.md`; a
 README disclaimer.
 
-**Phase 1, with the first code:** the specification for the 0.1 contents (architecture draft section 12),
-including the record format with namespaced identifiers, uncertainty, model families, geometry and the
-USD binding; the conformance suite; the first family definitions with golden vectors and reference
-implementations; `python -m vesalius check`; `scripts/check_anomalies.py`, `check_families.py` and the
-sign-off check; GitHub labels as MADDENING's
-(`anomaly:critical`, `anomaly:major`, `anomaly:minor`, `safety-relevant`, `soup-assessment`,
-`known-anomaly`).
+**Phase 1, with the first code:** the specification for each release's contents as it is built (architecture
+draft section 12.2): first the record format with namespaced identifiers, values, provenance and required
+properties (Vesalius 0.1), then uncertainty, model families, geometry and the USD binding (0.2); the
+conformance suite; the first family definition (architecture draft section 12.1, R5) with golden vectors and a
+reference implementation; `python -m vesalius check`; `scripts/check_anomalies.py`, `check_families.py` and
+the sign-off check; GitHub labels as MADDENING's (`anomaly:critical`, `anomaly:major`, `anomaly:minor`,
+`safety-relevant`, `soup-assessment`, `known-anomaly`).
 
 **Phase 2, with the first library material:** the library repository with its data licence; the source
 registry; the data entry standard, review process and takedown procedure; `bibliography.bib`; the library
@@ -951,8 +951,8 @@ extraction procedures as method entries, and the gold set (architecture draft se
 **Phase 3, at the first release:** `CITATION.cff`; the SOUP package; the SBOM; `iec62304_mapping.md`;
 `downstream_integration.md`; signed tags; the library's first DOI.
 
-**Phase 4, when MIME adopts it:** `vesalius.compliance` (section 9); MIME's SOUP package section 8 entry
-for Vesalius.
+**Phase 4, when MIME adopts it** (planned with Vesalius 0.2, architecture draft section 12.2):
+`vesalius.compliance` (section 9); MIME's SOUP package section 8 entry for Vesalius.
 
 ---
 
@@ -978,7 +978,7 @@ Status at 2026-10-11.
 
 **Phase 1**
 
-- [ ] `docs/specification/` for the 0.1 contents, every normative statement with a conformance case
+- [ ] `docs/specification/` for each release's contents, every normative statement with a conformance case
 - [ ] `tests/conformance/` with cases and expected answers as data files, for plain records and USD
 - [ ] the first family definitions under `families/`, with golden vectors and reference implementations
 - [ ] `python -m vesalius check`, including the namespaced-identifier, self-contained-layer, witness,

@@ -1,9 +1,9 @@
 # Vesalius: an architecture concept
 
 **Status: a concept draft for iteration.** Written 2026-10-11 in the shared planning directory (first as
-`plans/MIME_MATERIAL_MODEL_DRAFT.md`), moved here the same day, and revised the same day after a design
-review (section 15). Referenced from `plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) but not
-part of MIME's design yet: the maintainer wants to iterate on it first.
+`plans/MIME_MATERIAL_MODEL_DRAFT.md`), moved here the same day, and revised the same day after a design review
+(section 15). Referenced from `plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) and used there by
+direction, not decision: MIME 0.3.0 aims between the realistic and ambitious sets of section 12.
 
 **Decided (maintainer, 2026-10-11):**
 
@@ -925,7 +925,7 @@ Wider adoption is the upside, pursued as follows.
 - **Existing ecosystems.** OpenUSD for scenes and the Python scientific stack, not a new container format.
 - **Credit for curation.** The library is a citable dataset with a DOI per release; each curated value
   records its curator's ORCID.
-- **Criteria.** For example, by Vesalius 0.3: two consumers outside the founding projects, a stated number
+- **Criteria.** For example, within a year of the library's first release: two consumers outside the founding projects, a stated number
   of curated materials, and one outside contributor or publisher. Measured from Zenodo, PyPI and GitHub
   release downloads and, once it exists, the index. If they are not met, Vesalius narrows to an internal
   tool, which is still worth having.
@@ -973,17 +973,135 @@ I would rank this above the physics bridges of structure draft 7.7 as a first co
 - A standard succeeds by adoption. Round-tripping their patient twin's output matters more than a complete
   schema.
 
-## 12. Phasing (proposal, not committed)
+## 12. Phasing for MIME 0.3.0 (proposal)
 
-| Vesalius | Contents | Consumers |
-|---|---|---|
-| 0.1 | core mechanism; plain records and their JSON Schema, with namespaced identifiers; USD schemas and I/O, with self-contained shipped layers; `vesalius check`; material cards; source registry; check points and convention witnesses; uncertainty structures and the reference sampler; layered paths and region binding, plain and USD; sections fluid, acoustic, dielectric, radiological, magnetic, biocompatibility, and mechanics with linear elasticity and one hyperelastic family; conformance; a seed library (water, blood, soft tissue, silicone, agar, SU-8, NdFeB) with sources | MIME 0.3.0 for things if timing allows, otherwise the Python core only; an importer from an existing per-paper calibration code base as the design's acceptance test |
-| 0.2 | optical and thermal sections; composition and spectra; label volumes; field overrides; more families as consumers need them; the first exporters; the MCP server (section 8) with the extraction prompts and the gold set, once the seed library exists | photoacoustics in MIME, cheap rungs (Appendix A); curators |
-| 0.3 | sampling helpers (L5), including layered paths derived from 3-D geometry; interfaces; the convention checker | resolved photoacoustic rungs; contact |
-| alongside 0.1 or 0.2 | the ultrasound adapter and the label mapping for the patient twin | Isaac for Healthcare, if they want it |
+MIME is the first consumer, so its 0.3.0 release sets the order. **Direction (maintainer, 2026-10-11):** aim
+between the realistic and ambitious sets below. Anything that touches MIME is first proven by a spike
+(section 12.3), while MIME waits for MADDENING 0.4.0's release, so that MIME 0.3.0 work starts from results
+rather than proposals. The cut in section 12.2 is my proposal.
 
-Hosting items (the index repository, a data wheel, a viewer) follow their triggers in section 6.7, not this
-table.
+Each feature names what it serves, as document, section number and *heading*:
+
+- **AD**: this architecture draft;
+- **DA**: `DOCUMENTATION_ARCHITECTURE.md`;
+- **SD**: the structure draft, `plans/MIME_030_STRUCTURE_DRAFT.md`;
+- **RS**: the scope doc, `plans/MIME_040_REFACTOR_SCOPE.md`.
+
+### 12.1 Three sets
+
+Each set includes the one before it. A MIME row is done first as the spike named in brackets.
+
+**Minimal: MIME's things hold materials, and no result changes.**
+
+| # | Feature | Where | Ties to |
+|---|---|---|---|
+| M1 | Plain records and their JSON Schema; namespaced identifiers; a schema version; content hashes | Vesalius | AD 4.1 *Material, section, value*; AD 5.2 *Plain records*; AD 5.6 *Versions and hashes* |
+| M2 | Sections for what MIME's experiments use today: fluid (density, viscosity), magnetic (remanence, saturation, susceptibility), biocompatibility | Vesalius | AD 4.2 *Sections*; SD 8.4 *Where each piece would go* (the `BiocompatibilityMeta` row) |
+| M3 | Three value forms: constant, table, power law. No model families yet | Vesalius | AD 4.4 *Five value forms* |
+| M4 | Provenance per value (kind, source, extraction, review); conditions, starting with temperature; scalar statistics; proxies | Vesalius | AD 4.7 *Provenance*; AD 4.8 *Conditions*; AD 4.9 *Statistics and uncertainty structures*; AD 4.11 *Proxies*; SD 8.3 *Principle: metadata sits on what it describes* |
+| M5 | A deterministic reader for plain records: a value in SI, with its provenance, at stated conditions. A refusal comes back as a structured result, never as a guess | Vesalius | AD 3.2 *Layers inside the core* (L2, L4); DA 15 *Project Constraints* (no. 13, fail closed) |
+| M6 | Required properties as a type (section, field, unit, conditions), and a check of a material against them | Vesalius | AD 9.1 *Where it attaches*; SD 5.1 *Build order* (step 1); RS H1 *What the layer does today* (presence-only checks) |
+| M7 | Conformance cases as data files | Vesalius | AD 7.4 *Conformance*; DA 6.1 *Conformance suite (the read side)* |
+| M8 | `vesalius check`: schema, provenance, plausibility | Vesalius | DA 6.5 *CI checks* |
+| M9 | A seed library holding the values MIME's experiments use today, transcribed as declared values with their sources (water as a table over temperature, SU-8, NdFeB grades, the tube materials); its source registry; the data licence decided | library | AD 6.1 *Source registry*; AD 6.2 *Three tiers*; AD 6.4 *Licences*; AD 13 *Open questions* (no. 8) |
+| M10 | Tagged releases of the package and the library, which MIME pins exactly | Vesalius | AD 6.7 *Distribution and hosting*; DA 7.1 *Four version lines* |
+| M11 | The seam: `Body` and `Medium` hold a material reference (identifier and hash) or an inline value labelled "declared in the experiment"; an adapter resolves either into what the nodes take today | MIME (S1) | SD 4.1 *Things*; AD 9.2 *What changes in MIME* |
+| M12 | Migration control: experiments built from records reproduce today's outputs exactly; corrections follow as separate changes | MIME (S1) | SD 8.2 *What is wrong with it* (point 4); RS *TODO: what it takes* (item 56, "results reproduce") |
+
+**Realistic: MIME 0.3.0's new nodes and its saved form use it.**
+
+| # | Feature | Where | Ties to |
+|---|---|---|---|
+| R1 | USD schemas, read and write, for the sections in use; region binding; self-contained shipped layers | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
+| R2 | Acoustic section (density, sound speed, attenuation as a power law in frequency, B/A), for both body and medium | Vesalius | SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
+| R3 | Radiological section: mass attenuation against photon energy, elemental composition, an effective value over a tube spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
+| R4 | Mixing rules in the array API | Vesalius | AD 4.12 *Mixing rules*; AD 9.3 *Differentiability* |
+| R5 | The first model family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation, check points and a convention witness. Its named consumer is MIME's superparamagnetic response node | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
+| R6 | Uncertainty structures and the reference sampler; scalar statistics mapped onto MADDENING's `UncertainParameter` | Vesalius, MIME (S5) | AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling*; AD 9.4 *Uncertainty* |
+| R7 | `vesalius.compliance`: `collect_material_inputs` and the material input sheet, written into each MIME run's provenance | Vesalius, MIME (S5) | DA 9.1 *Where it fits*; DA 9.3 *What this would add to Vesalius* |
+| R8 | Material cards; the legal review; the library's first archived release, with a DOI | library | AD 6.5 *Process*; AD 6.6 *Material cards*; AD 6.7 *Distribution and hosting* |
+| R9 | A decided record shape for properties of a pair: a species' diffusivity in a medium, and interfaces. Design only | Vesalius | AD 4.13 *Interfaces between materials*; AD 13 *Open questions* (no. 11); SD 3.8 *Nodes planned for 0.3.0* (row 9); SD 9 *Open decisions* (no. 10) |
+| R10 | Typed required properties on MIME's effect and observation models, checked at build against conditions and a computed operating point | MIME (S2) | SD 8.5 *One validity declaration, checked against a computed operating point*; AD 9.6 *Validity*; RS H1 *What the layer does today* |
+| R11 | MIME's JAX evaluators of value forms, mixing rules and the Langevin family, tested against Vesalius's conformance cases and golden vectors in MIME's default test lane | MIME (S3) | AD 9.3 *Differentiability*; AD 7.6 *Scope rules* (consumers write their own evaluators); DA 6.1 *Conformance suite (the read side)* |
+| R12 | Inputs derived, not typed: a magnet's dipole moment from remanence and volume; a density difference from two materials; a composite body's density from fractions; biocompatibility from the body's materials | MIME (S6) | SD 8.2 *What is wrong with it* (point 1); SD 8.4 *Where each piece would go*; DA 9.1 *Where it fits* (biocompatibility row) |
+| R13 | The saved form on a USD stage: MIME's things and Vesalius's layers composed with MADDENING's graph | MIME (S4) | RS *TODO: what it takes* (decision D2); RS H5 *The `Experiment`: what stays, what moves, where the other sides attach (a proposal)*; SD 5.5 *The saved form*; AD 9.7 *Beside MADDENING and MICROROBOTICA* |
+
+**Ambitious: images from materials, fits written back, and the pair properties.**
+
+| # | Feature | Where | Ties to |
+|---|---|---|---|
+| A1 | Label volumes and field overrides | Vesalius | AD 5.1 *The geometry ladder*; SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* (the voxel-grid source of attenuation) |
+| A2 | Sampling helpers (L5): volume fractions on a node's grid. MIME's soft-distance fractions for moving bodies are checked against them | Vesalius, MIME (S7) | AD 3.2 *Layers inside the core* (L5); AD 9.3 *Differentiability*; AD 13 *Open questions* (no. 10) |
+| A3 | Joint uncertainty structures used in MIME's UQ through the reference sampler, before MADDENING supports them | MIME (S5) | AD 9.4 *Uncertainty*; AD 4.9 *Statistics and uncertainty structures* |
+| A4 | Fit write-back: a MIME fit stored as an overlay with check points and a covariance; the declared values stay underneath | Vesalius, MIME (S8) | AD 4.10 *Fits and reference data*; AD 5.5 *Declared, then fitted*; AD 9.5 *Round trip* |
+| A5 | X-ray from materials: the analytic and ray-marched rungs take attenuation from records, with gradients to pose and to attenuation values | MIME (S7) | SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
+| A6 | Interface records for friction | Vesalius | AD 4.13 *Interfaces between materials*; SD 3.8 *Nodes planned for 0.3.0* (existing nodes: surface contact, the contact-friction stub) |
+| A7 | Transport records: a species' diffusivity in a medium; contrast agents | Vesalius | SD 3.8 *Nodes planned for 0.3.0* (row 9); AD A.4 *Prerequisites, in order* (item 2) |
+| A8 | Optical and thermal sections with composition, for photoacoustics' cheap rungs | Vesalius | AD A.3 *A fidelity ladder (proposal)*; AD A.4 *Prerequisites, in order* (item 1) |
+| A9 | The MCP server, the extraction prompts and the gold set | `vesalius-mcp` | AD 8 *Layer 6: MCP tooling and curation* |
+
+Not in any set, for want of a MIME consumer (section 7.6): the dielectric section, mechanics
+families, and a non-Newtonian blood family. The mechanics families have a consumer of their own (section
+12.2).
+
+### 12.2 The target and the release order
+
+**Proposed cut:** all of minimal and realistic, and A1 to A5 from ambitious. Each of A1 to A5 serves a node
+MIME 0.3.0 plans (the X-ray rungs) or MIME's rule that a declared value stays a declaration until something
+fits it (section 5.5). A6 to A9 are stretch: none of them blocks a 0.3.0 node.
+
+**Floor:** the minimal set. Because the seam (M11) also accepts inline values, MIME 0.3.0 never waits for
+Vesalius; an experiment whose materials are not ready keeps declaring its values inline.
+
+| Vesalius | Set | Contents | Proven in MIME by | Consumers |
+|---|---|---|---|---|
+| 0.1 | minimal | M1 to M10 | S1 | the MIME spikes |
+| 0.2 | realistic | R1 to R9 | S2 to S6 | MIME 0.3.0: the release it is expected to pin |
+| 0.3 | target | A1, A2 and A4 (the Vesalius side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
+| 0.4 | stretch | A6 to A9; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
+| beside 0.2 or 0.3 | independent of MIME | mechanics with linear elasticity and one hyperelastic family; layered paths; an importer from an existing per-paper calibration code base, as the design's acceptance test | none needed | that code base |
+| with a consumer | | the dielectric section; further families | | |
+| beside 0.2 or 0.3 | | the ultrasound adapter and the label mapping for the patient twin | | Isaac for Healthcare, if they want it |
+
+A spike runs against the release that carries its features, before the next set starts, and a failed spike
+changes the next release's contents. Nothing here is sized. Hosting items (the index repository, a data
+wheel, a viewer) follow their triggers in section 6.7, not this table.
+
+### 12.3 MIME spikes
+
+The spikes live in `plans/spikes/`, as the Warp spike before them did. They import MIME without changing it
+and run on MADDENING `release/0.4.0`. Each records its result in a README; the experiments each uses are
+named in SD 4.1 *Things*. Each has a control: a run that must come out differently if the spike's claim is
+false.
+
+| Spike | Does | Passes when | Control | Features |
+|---|---|---|---|---|
+| S1 Seam and migration | resolves materials into today's node parameters for two experiments that run on MADDENING 0.4.0 | outputs are bitwise equal to today's, at the same precision settings | change one record value (water density 997 to 993.3 kg/m³) and see the predicted change. An unchanged output would mean the record never reached a node | M11, M12 |
+| S2 Requirements and validity | typed requirements for the drag, magnetic and gravity effects, and for the planned radiation-force node (acoustic sections of body and medium) | the build refuses a missing field, a wrong unit and a temperature outside a table's range, each with a structured reason; a valid experiment builds the same graph as S1 | a material with every field present but at the wrong temperature: a presence-only check passes it, the typed check must not | M6, R10 |
+| S3 Differentiable evaluation | runs MIME's JAX evaluators against the conformance cases and the Langevin golden vectors and check points, in float32 and float64; takes a drag gradient with respect to a viscosity record | agreement within the tolerances the cases state; the gradient matches finite differences | a deliberately wrong convention (a chord slope read as the initial tangent, section 4.6) must fail the check points and refuse to build | R4, R5, R11 |
+| S4 Saved form on USD | writes a stage with things, Vesalius layers and MADDENING's graph; reloads and builds | `gm.to_dict()` and every material hash are equal after the round trip | a library layer with a composition arc is refused | R1, R13 |
+| S5 Provenance and UQ | writes the material input sheet into `SimulationProvenance.custom`; builds `UncertainParameter`s from statistics; samples a joint structure with the reference sampler | every value a node received appears in the sheet with its hash | compare the sheet with the built graph's parameters: a sheet that disagrees with what ran is the failure SD 8.4 removes | R6, R7, A3 |
+| S6 Derived inputs | derives a dipole moment, a density difference, a composite density and biocompatibility; feeds the asset gate | each derived value reproduces today's typed value, or the difference is explained | each typed value is compared with its derivation before it is replaced; SD 4.1 names one that may not match | R12 |
+| S7 X-ray from materials | the analytic and ray-marched rungs with attenuation from records, a label volume and soft-distance fractions | the ray-marched image of a sphere matches the analytic chord to a stated tolerance; gradients to pose and to an attenuation value match finite differences | the analytic radiograph is the oracle (SD 3.9) | A1, A2, A5 |
+| S8 Fit write-back | fits a viscosity, or a Langevin field scale, to a synthetic trajectory; writes an overlay; reloads | the known value is recovered within the fit's stated uncertainty; the overlay's check points pass; the declared value is still underneath | the synthetic truth is known | A4 |
+
+### 12.4 What MIME needs to rely on it
+
+| Requirement | Ties to |
+|---|---|
+| Exact pins: package, schema, library release and record hashes. No version ranges until the schema is stable | AD 5.6 *Versions and hashes*; DA 7.1 *Four version lines* |
+| A reader whose behaviour is defined by conformance data, not only by its code | AD 7.4 *Conformance*; DA 6.1 *Conformance suite (the read side)* |
+| Fail closed, with structured results that MIME can report | DA 15 *Project Constraints* (no. 13) |
+| No network access and no code execution at build or import; the library comes from the pinned release | DA 15 *Project Constraints* (nos. 11, 19); AD 6.7 *Distribution and hosting* |
+| No language model anywhere on MIME's build path | DA 15 *Project Constraints* (no. 20); AD 8.1 *The BYOK boundary* |
+| SI in the records. MIME converts to each node's units in its adapter, with tests: some of its nodes run in dimensionless units | DA 15 *Project Constraints* (no. 5) |
+| The migration first reproduces today's results exactly (S1); each correction then follows with its measured effect | SD 8.2 *What is wrong with it* (point 4) |
+| The comparisons of R11 run in MIME's default test lane. Tests marked `slow` or `gpu` do not run in its CI | DA 6.1 *Conformance suite (the read side)*; AD 7.6 *Scope rules* |
+
+From MADDENING, nothing blocks. Shared parameters across nodes (SD 7.4 *New candidates from this draft*, N3)
+would replace MIME's copying of one material value into several nodes (section 9.3). Joint uncertainty has
+been requested for a later release (section 9.4). The anomaly validator's version field affects only
+Vesalius's own CI (DA 8.1 *Adopted unchanged*).
 
 ## 13. Open questions
 
@@ -1031,12 +1149,15 @@ table.
   exists to measure them.
 - The papers, databases, ontologies and NVIDIA schemas named here are recalled.
 - The photoacoustic figures in Appendix A are my arithmetic on assumed values.
+- MIME's material needs in section 12.1 were found by searching its node and experiment files. None of the
+  spikes of section 12.3 has run, and the experiments chosen for S1 were not run on MADDENING 0.4.0.
 
 ## 15. Revision of 2026-10-11
 
 A design review, using an existing per-paper tissue calibration code base as a case study, changed the
-draft as follows. A follow-up the same day on distribution, drawing on the Hugging Face Hub, added the last
-four rows, and a third revision added model-assisted curation (the last two rows).
+draft as follows. A follow-up the same day on distribution, drawing on the Hugging Face Hub, added four rows
+(namespaced identifiers to self-contained layers); a third revision added model-assisted curation (the
+witness and MCP rows); a fourth set the phasing by MIME 0.3.0's needs (the last row).
 
 | Before | After | Why |
 |---|---|---|
@@ -1057,6 +1178,7 @@ four rows, and a third revision added model-assisted curation (the last two rows
 | USD composition trusted | shipped layers self-contained, checked | reading a library layer reads one file, whoever published it |
 | check points only | check points plus a convention witness per parameter set | check points are baked from the stored parameters, so they cannot catch an extraction error |
 | none | model-assisted curation and query through MCP: bring-your-own-key, deterministic tools, quotes, human review, fail-closed release | extraction is the bottleneck; a model must never become an authority |
+| phasing by section; MIME "if timing allows"; a mechanics family first | three sets for MIME 0.3.0, each feature tied to what it serves; MIME-facing features proven by spikes first; the Langevin magnetisation family first, mechanics on a track of its own | the first consumer sets the order; a spike is cheaper than a design reversed after release |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 
@@ -1114,7 +1236,7 @@ boundaries, and where absorption is not small against reduced scattering: a comp
 
 ### A.4 Prerequisites, in order
 
-1. Vesalius 0.2's optical and thermal sections, with composition.
+1. Vesalius's optical and thermal sections, with composition (section 12.1, A8).
 2. Scalar transport in MIME.
 3. The time-domain acoustic kernel.
 4. Observation models that run per frame.
