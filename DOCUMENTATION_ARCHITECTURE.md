@@ -42,7 +42,7 @@ transcription error, a wrong unit, a parameter set read in the wrong convention,
 the wrong region) reaches the device's computation silently. That is the failure this documentation
 architecture is built around.
 
-**What is different from MADDENING and MIME.** Four things.
+**What is different from MADDENING and MIME.** Five things.
 
 1. **Vesalius ships data as well as code.** Its library of materials is part of what a manufacturer would
    assess. The question for the data is not "does the solver converge" but "is this the value the cited
@@ -56,8 +56,13 @@ architecture is built around.
    conformance suite is the primary verification evidence (section 6).
 4. **Records carry their own verification.** A model parameter set carries check points that any consumer
    evaluates before using it, so a reader that never ran the conformance suite still fails loudly on a
-   convention mismatch. A convention witness from the source does the same for extraction: the parameters
-   must reproduce a response the source reports (architecture draft section 4.6).
+   convention mismatch. A convention witness from the source does the same for extraction: the parameters must
+   reproduce a response the source reports that was not used to obtain them (architecture draft section 4.6).
+5. **Records hold facts; consumers declare choices.** A record says what was measured and how it is known.
+   It never says where or in which regime a model applies, which stand-in is acceptable or how to mix
+   materials. The consumer declares those and the build records them, so the most common misuse, reading
+   "the data exists" as "the model applies", becomes a refusal or a recorded choice instead of a silent
+   default (architecture draft section 3.5).
 
 **Model-assisted curation.** Language models may help draft library records, through deterministic MCP
 tools driven by the user's own agent and key. That tooling sits outside the SOUP package and never on the
@@ -123,8 +128,8 @@ Vesalius adopts conventions, not code. Section numbers refer to MADDENING's `DOC
 | 9.3 Verification registration | Adopted pattern | `VES-VER-` identifiers, registered without a MADDENING import |
 | 9.5 Stability machinery | Adopted concept | the same four levels, on schema fields and API surfaces; family versions are frozen |
 | 9.7 Anomaly management | Adopted (section 8) | same schema, fields, enums, lifecycle and gate; data and family anomalies defined |
-| 9.8 ISO 14971 hooks | Adapted (section 8.4) | quantitative conditions, structured proxy declarations and qualitative applicability hints on materials |
-| 9.9 Usability | Adapted (section 3.5) | the main use errors are applying a value outside its conditions and reading parameters in the wrong convention |
+| 9.8 ISO 14971 hooks | Adapted (section 8.4) | quantitative conditions, structured specimen facts and qualitative known gaps on materials |
+| 9.9 Usability | Adapted (section 3.5) | the main use errors are applying a value outside its conditions, using a stand-in unknowingly, and reading parameters in the wrong convention |
 | 10. SOUP package | Adapted (section 10) | per component: core, families, library; SOUP of SOUP is numpy, a JSON Schema validator and OpenUSD |
 | 11. IEC 62304 mapping | Adapted (section 11) | |
 | 12, 13. EU MDR, MDCG 2019-11 | Referenced (section 13) | |
@@ -169,14 +174,15 @@ Vesalius/
 │   ├── index.md
 │   ├── specification/                 # NORMATIVE; versioned with the schema (section 4)
 │   │   ├── record_format.md           # plain records: structure, value forms, sections, fields, units
-│   │   ├── provenance.md              # provenance fields, conditions vocabulary, proxies, tiers
-│   │   ├── uncertainty.md             # statistics; the four uncertainty structures; sampling rules
-│   │   ├── model_families.md          # what a family definition must fix; identifiers; check points
+│   │   ├── provenance.md              # provenance fields, conditions vocabulary, specimen facts, tiers
+│   │   ├── uncertainty.md             # statistics and what they represent; five structures; sampling
+│   │   ├── model_families.md          # what a family definition must fix; kind; check points; witnesses
 │   │   ├── fits_and_reference_data.md # fit records, reference data, the fit-reproduction rule
-│   │   ├── geometry.md                # layered paths, region binding, label volumes, field overrides
+│   │   ├── geometry.md                # layered paths, regions, label volumes, field overrides, domains
 │   │   ├── usd_binding.md             # USD schemas, binding purpose, layered-path form, layers
 │   │   ├── read_side_contract.md      # what any reader must do, including when to refuse
-│   │   ├── mixing_rules.md            # one declared rule per field
+│   │   ├── mixing_rules.md            # identities; named rules picked by the consumer
+│   │   ├── declarations.md            # domains, targets, picks, tolerances, waivers; met/not met/unknown
 │   │   └── changes.md                 # schema version history
 │   ├── method_guide/                  # write-side computations (section 5.1)
 │   │   ├── _template.md
@@ -270,24 +276,28 @@ Rules for both trees:
 
 This is the statement MADDENING does not need and Vesalius does:
 
-> The values in the Vesalius material library are **declarations taken from cited sources**, or fits to
-> cited data. Vesalius warrants that each value is what its source gives (or what its recorded fit
-> produces), converted correctly to SI, with the conditions, statistics and proxy status the record
-> states; and that each model parameter set reproduces its check points under the family definition it
-> names. Vesalius does **not** warrant that a value describes any particular patient, tissue sample,
-> phantom batch or device, nor that a source is itself correct or current. Whether a library value is
-> applicable to a given use is the user's and the manufacturer's judgement.
+> The values in the Vesalius material library are **taken from cited sources**, or are fits to cited data,
+> labelled by origin. Vesalius warrants that each value is what its source gives (or what its recorded fit
+> produces), converted correctly to SI, with the specimen, conditions and statistics the record states; and
+> that each model parameter set reproduces its check points under the family definition it names, and its
+> independent convention witness where the record has one. Vesalius does **not** warrant that a value
+> describes any particular patient, tissue sample, phantom batch or device, nor that a source is itself
+> correct or current. Whether a library value is applicable to a given use is the user's and the
+> manufacturer's judgement.
 >
-> Many values come from stand-ins (another species, another site, a cadaver, a phantom). Each record says
-> so, per field. A reference-only record publishes no values; its values are whatever the user fills in
-> from their own copy of the source.
+> Many values were measured on specimens that differ from a user's target (another species, another site,
+> a cadaver, a phantom). Each record states its specimen, per field; whether it stands in adequately for a
+> target is the user's declaration, never the library's. A reference-only record publishes no values; its
+> values are whatever the user fills in from their own copy of the source, and the curator has not
+> reviewed them.
 >
 > Some values are drafted with the help of a language model. Each such value says so, with the quote and
 > the document it was read from, and every value, assisted or not, is checked against its source by a
 > named reviewer before release.
 >
-> Biocompatibility fields are information about what has been reported for a material. They are never a
-> biocompatibility assessment or a safety claim. A manufacturer performs their own ISO 10993 evaluation.
+> Biocompatibility fields record test evidence reported for a material. They are never a biocompatibility
+> assessment or a safety claim, and never a device's status. A manufacturer performs their own ISO 10993
+> evaluation.
 
 ### 3.3 Cybersecurity boundary statement (MDCG 2019-16)
 
@@ -316,16 +326,18 @@ advice.
 | Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden vectors (section 6.4) |
 | Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
 | A consumer's own implementation of a family | downstream user | IEC 62304 Clause 5.6 (their own) | the record's check points; the family's golden vectors |
-| Choosing a material, judging its applicability and its proxies | downstream user | ASME V&V 40 (model inputs) | the user's input justification |
+| Choosing a material; declaring its domain, target, mixing rule and picks; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
 | Measuring the language model an agent uses for extraction, before relying on it | the curator using it | none: curation tooling is outside the SOUP package | gold-set score; review of every value |
 | Calculation verification of a simulation | downstream user | ASME V&V 40 | the simulator's own evidence |
 | SOUP assessment of Vesalius | device manufacturer | IEC 62304 Clauses 5.3.3, 5.3.4, 7.1.3 | Vesalius SOUP package and anomaly registry |
 | Risk management, clinical evidence, submission | device manufacturer | ISO 14971, EU MDR | the manufacturer's files |
 
 The use errors Vesalius can make less likely are applying a value outside its conditions (a different
-temperature, frequency, wavelength, species or tissue state), using a proxy without knowing it, and reading
-a parameter set in another convention. Vesalius makes conditions and proxies machine-readable so an
-integrator can check them (section 8.4), and makes a convention mismatch fail at the check points.
+temperature, frequency, wavelength, species or tissue state), using a stand-in without knowing it, mixing
+across the edge of a domain, and reading a parameter set in another convention. Vesalius makes conditions
+and specimen facts machine-readable and the consumer's declarations explicit, so a build can check them
+(architecture draft section 3.5). A consumer's convention mismatch fails at the check points; an
+extraction in the wrong convention fails at the independent witness.
 
 ---
 
@@ -337,15 +349,16 @@ binding and everything a reader must do, in prose and tables, independently of t
 
 | Document | Defines |
 |---|---|
-| `record_format.md` | the plain record: identity, schema version, content hash, sections; every field with its SI unit, value form, default, allowed tokens and stability level; the five value forms |
-| `provenance.md` | provenance fields; the extraction methods; the conditions vocabulary and its ontology identifiers; proxy declarations; the three tiers; the source registry's fields and redistribution statuses; evidence, assistance and search records |
-| `uncertainty.md` | the statistics block; the four uncertainty structures; admissibility; the sampling rules, including refusal |
-| `model_families.md` | the identifier form; what a family definition must fix (architecture draft section 4.5); check points in records and the tolerance rule; convention witnesses; refusal on an unknown family or version or a failed check point |
+| `record_format.md` | the plain record: identity, schema version, content hash, sections; every field with its SI unit, value form, range, interpolation scheme and edges, allowed tokens and stability level; the five value forms; no fallback values |
+| `provenance.md` | provenance fields, including origin; the extraction methods; the conditions vocabulary, unstated conditions and the ontology identifiers; specimen facts; the three tiers and user fill-ins; the source registry's fields and redistribution statuses; evidence, assistance and search records |
+| `uncertainty.md` | the statistics block; what each spread represents; `dispersion: not_reported`; interval-only values; the five uncertainty structures; admissibility; the sampling rules, including refusal |
+| `model_families.md` | the identifier form; the `kind` field; what a family definition must fix (architecture draft section 4.5); check points in records, their coverage and the tolerance rule; independent convention witnesses; refusal on an unknown family or version or a failed check point |
 | `fits_and_reference_data.md` | the fit record; reference data and its link to a fit; the fit-reproduction rule and "not checked" |
-| `geometry.md` | layered paths; region binding; label volumes; field overrides; precedence; nested regions and background |
+| `geometry.md` | layered paths; region binding; label volumes; field overrides and their provenance; precedence declared by the scene; nested regions; background; domains |
 | `usd_binding.md` | the API schemas; attribute names; the binding purpose; the USD forms of layered paths and of parameter sets, statistics and check points; taking provenance from the layer that supplies the value |
 | `read_side_contract.md` | the read procedure (architecture draft section 7.5), in order, and every case in which a reader must refuse |
-| `mixing_rules.md` | the rule each field declares, with its equation |
+| `mixing_rules.md` | the identities; the named rules, each with its equation and assumptions; fields with no general rule |
+| `declarations.md` | what a consumer declares (domains, targets, family versions, mixing rules, picks, tolerances, waivers); the three results of a check (met, not met, unknown); how declarations are recorded (architecture draft section 3.5) |
 | `changes.md` | each schema version, what changed, and the conformance cases that came with it |
 
 Rules:
@@ -428,33 +441,34 @@ the convention checker (architecture draft section 10) are built from.
 
 Each library material has an identifier `vesalius/VES-MAT-[XXXX]` (architecture draft section 4.1) and one
 plain record in the library repository. Its USD layer and its **material card** (architecture draft section
-6.6) are generated from that record. The card's prose sections are fields of the record: motivation, uses
-and limitations, and maintenance are written by the curator; the rest is assembled from the other fields.
+6.6) are generated from that record. The card's prose sections are fields of the record: motivation, what was
+measured and what was not, and maintenance are written by the curator; the rest is assembled from the other
+fields.
 
 **Data entry standard** (`docs/data_entry_standard.md` in the library repository). Every value carries:
 
 | Field | Required | Notes |
 |---|---|---|
-| value | yes, unless the tier is reference-only | one of the five forms (architecture draft section 4.4) |
+| value | yes, unless the tier is reference-only | one of the five forms (architecture draft section 4.4), with the range it was measured or fitted over; a table with its interpolation scheme and edges; a constitutive constant with its trivial family |
 | unit | implied | always the SI unit the specification fixes for the field |
-| kind | yes | declared, measured, fitted or derived |
+| origin | yes | measured by the source, measured by the contributor, fitted, derived, or stated without an origin |
 | source | yes | a key in `sources.yaml`, with a locator: table, figure, page or equation |
 | extraction | yes | table, text, digitised figure (tool and digitising error), supplementary dataset (licence), own measurement, derivation (method ID) or fit (fit record) |
-| conditions | where the source states them | from the conditions vocabulary; anatomical site and species as ontology identifiers |
-| statistics | yes for scalars, unless the source gives a single exact value | number of specimens and donors, mean, standard deviation, minimum, maximum, distribution, basis; at least a range with its basis |
-| uncertainty structure | yes for parameter sets | `ensemble`, `multivariate_normal`, `independent` (with a justification) or `none` |
-| check points | yes for parameter sets | computed by the family's reference implementation; never typed in |
+| conditions | yes | as the source states them, from the conditions vocabulary; a condition the source does not state is recorded as unstated; anatomical site and species as ontology identifiers; specimen shape for magnetic values; test method and specimen geometry for failure values |
+| statistics | yes for scalars | number of specimens and donors, mean, standard deviation, minimum, maximum, distribution, basis, and what the spread represents (population, estimate, measurement, across sources); `dispersion: not_reported` where the source gives none; an interval-only value with its basis |
+| uncertainty structure | yes for parameter sets | `ensemble`, `multivariate_normal`, `independent` (with a justification), `interval` or `none`, and what it represents |
+| check points | yes for parameter sets | computed by the family's reference implementation, never typed in; spanning the fit's coverage and the family's branch points |
 | fit record | yes for fitted values | reference data (identifier, or DOI and hash), procedure, coverage, residual |
-| convention witness | yes for parameter sets taken from a source | a response the source reports, with its locator, that the parameters must reproduce (architecture draft section 4.6); without one, not admitted |
-| proxy | yes | none, or: a stand-in for what, and why; per section or field |
+| convention witness | yes for parameter sets taken from a source | a response the source reports, with its locator, that the parameters must reproduce, independent of how they were obtained (for a fit, a held-out datum); whether it tests the family alone or through a model of the test (architecture draft section 4.6); without one, "no independent witness" and not admitted |
+| specimen | yes | species, site, state, preparation and shape, per section or field; for a phantom or substitute, what its maker says it mimics |
 | tier | yes | shipped, reference-only or private |
 | evidence | yes when a model assisted; recommended otherwise | the verbatim quote, its locator and the SHA-256 of the document copy; for a digitised figure, the locator and the hash. Quotes are not published for reference-only values |
 | assistance | yes when a model assisted | tool, model and provider as reported, prompt version (`VES-MTH-` entry and version), date |
 | search record | yes for statistics pooled across sources | queries, databases, date, inclusion criteria |
-| reviewer, date and ORCID | yes | who checked the value against the source, and which checklist items: value, unit, conditions, statistic, primary or cited, family and witness |
+| reviewer, date and ORCID | yes | who checked the value against the source, whether they are independent of whoever or whatever extracted it, and which checklist items: value, unit, conditions, specimen, statistic, primary or cited, family and witness |
 
 **What review means.** A second person (or the same person on a later day, recorded as such) reads the
-source at the locator and confirms the value, the unit conversion, the conditions and the proxy status.
+source at the locator and confirms the value, the unit conversion, the conditions and the specimen facts.
 The record of that check is part of the evidence (section 6.3). Agreement with another database is not a
 review. For a model-assisted value, the reviewer reads the rendered page at the locator, not only the
 quote, and confirms the quote is visible there; hidden text in a document can pass a text-layer check.
@@ -464,11 +478,12 @@ the publication and of any dataset, a redistribution status (permitted; values o
 unknown) with its reason, who judged it and when, and the source's role. A value from a source whose
 status is not permitted or unknown is reference-only.
 
-**Plausibility and consistency checks** run in CI on the whole library: physical bounds per field (density
-and sound speed positive and within broad bounds for condensed matter); consistency between related fields
-(impedance against density times sound speed; a derived Grüneisen parameter against one given directly);
-admissibility of every parameter set and every ensemble member; completeness of provenance. A check failure
-blocks the merge.
+**Plausibility and consistency checks** run in CI on the whole library: physical bounds per field (density and
+sound speed positive and within broad bounds for condensed matter); consistency between related fields within
+one record (impedance against density times sound speed; a derived Grüneisen parameter against one given
+directly); admissibility of every parameter set and every ensemble member; completeness of provenance. A
+failure blocks the merge. Disagreement between sources is reported and kept, not blocked: which source a
+simulation uses is the consumer's pick (architecture draft section 3.5).
 
 **What the library is not.** It is not a database of everything published. A material is added when a
 consumer needs it, with the sources that consumer relies on.
@@ -483,33 +498,38 @@ an identifier `VES-VER-[XXX]`.
 ### 6.1 Conformance suite (the read side)
 
 Small cases, each with expected answers: the material bound to a prim or a path interval; a property at a
-point; a property at a wavelength or frequency; the owner of a point inside nested regions; the provenance
-of an overridden value, including USD's dictionary-merge trap; equality of a record's plain and USD forms;
+point; a property at a wavelength or frequency; the owner of a point inside nested regions; the provenance of
+an overridden value, including USD's dictionary-merge trap; equality of a record's plain and USD forms;
 refusal on an unknown family or version; refusal on a failed check point; refusal to sample an undeclared
-uncertainty structure. The cases and expected answers are data files, so a C++ or other reader can run them
-without Python. The Python reader runs them in CI.
+uncertainty structure; refusal of an attribute that was not authored; refusal to interpolate across an edge or
+outside a range; unknown, not met, for an unstated condition; refusal of a nominal for an interval or an
+ensemble; refusal to mix a field with no general rule; a requirement checked over a domain's regions only. The
+cases and expected answers are data files, so a C++ or other reader can run them without Python. The Python
+reader runs them in CI.
 
 ### 6.2 Method verification
 
-Each method guide entry has tests against exact or analytical results: unit conversions exactly; mixing
-rules against closed-form layered media (series and parallel conduction, effective sound speed of a
-layered stack); composition against worked examples in its sources; the reference sampler's moments and
-its rejection count against known cases. Extraction procedures are scored against the gold set by a
-deterministic scorer, per field and per model tested; the gold set lists papers by DOI and document hash,
-with PDFs only where their licence allows (architecture draft section 8.6).
+Each method guide entry has tests against exact or analytical results: unit conversions exactly; each named
+mixing rule against its limits (series and parallel conduction; Wood's rule and the ray limit for a layered
+stack); composition against worked examples in its sources; the reference sampler's moments and its rejection
+count against known cases. Extraction procedures are scored against the gold set by a deterministic scorer,
+per field and per model tested; the gold set lists papers by DOI and document hash, with PDFs only where their
+licence allows (architecture draft section 8.6).
 
 ### 6.3 Data verification
 
 - the transcription review record for every value (section 5.3);
 - the plausibility, consistency and admissibility checks (section 5.3);
 - **check points recomputed**: every stored check point is recomputed with the family's reference
-  implementation and must match;
+  implementation and must match. This shows that the implementation has not drifted; it is not evidence
+  about any value;
 - **fit reproduction**: every fitted parameter set is evaluated against its reference data and must achieve
   its stated residual. Where the reference data are not shipped, the result is "not checked", reported as
   such, never as a pass;
 - **convention witnesses**: every parameter set taken from a source reproduces its witness under its
-  family version. Where the witness cannot be shipped, the curator's check at review is recorded and the
-  public check reports "not checked";
+  family version, and the witness is independent of how the parameters were obtained. A record without an
+  independent witness is counted and reported, never shown as a pass. Where the witness cannot be shipped,
+  the curator's check at review is recorded and the public check reports "not checked";
 - **evidence**: every model-assisted value has a quote, a locator and a document hash. The quote is checked
   against the document when the draft is made, and again by the reviewer against their own copy, whose hash
   must match;
@@ -541,7 +561,9 @@ library and any other publisher run exactly the same checks (architecture draft 
 | fit reproduction | every fit reaches its stated residual; "not checked" is counted and reported |
 | generated | USD layers, cards and the index equal what the records produce |
 | self-contained | shipped USD layers have no composition arcs and no asset paths |
-| witness | parameter sets reproduce their convention witness; "not checked" is counted and reported |
+| witness | parameter sets reproduce an independent convention witness; "no independent witness" and "not checked" are counted and reported |
+| fallbacks | physical attributes in the USD schema have no fallback values |
+| tables | every table declares its interpolation scheme, its range and its edges; every form states its range |
 | evidence | model-assisted values carry a quote, a locator, a document hash and an assistance record; with the document present, the quote exists at the locator and contains the value's numbers |
 | release (`--release`) | fails on any value without a review record, and on any draft |
 
@@ -565,10 +587,10 @@ policy checks:
 
 ### 6.6 What this verification does not provide
 
-It does not show that any library value describes a patient, a tissue sample or a phantom batch, nor that
-a proxy is adequate for a use. That is validation of an input for a context of use, which belongs to the
-user and the manufacturer. Every verification document states this in a "Scope and Limitations" section,
-as MADDENING's do.
+It does not show that any library value describes a patient, a tissue sample or a phantom batch, nor that a
+specimen stands in adequately for a target. That is validation of an input for a context of use, which belongs
+to the user and the manufacturer. Every verification document states this in a "Scope and Limitations"
+section, as MADDENING's do.
 
 ---
 
@@ -584,10 +606,10 @@ as MADDENING's do.
 | Material version | one library material's values | the record; its card; its content hash (section 12); the library release that carries it |
 
 Schema: **major** for a removed or renamed field, a changed unit or a changed meaning; **minor** for a new
-optional field, section, token or value form; **patch** for wording only. A material: **major** when a
-value changes beyond its previous statistics, a condition or proxy status changes, or a parameter set moves
-to another family version; **minor** for a new value or section; **patch** for provenance wording. A
-family: any change is a new version.
+optional field, section, token or value form; **patch** for wording only. A material: **major** when a value
+changes by more than the uncertainty its record states for that value (a population's spread is not that
+measure), a condition or specimen fact changes, or a parameter set moves to another family version; **minor**
+for a new value or section; **patch** for provenance wording. A family: any change is a new version.
 
 ### 7.2 Changes to the schema
 
@@ -657,7 +679,7 @@ accompanied it. **A silent wrong result is never minor.**
 | Severity | Definition, with examples |
 |---|---|
 | `critical` | A silent wrong result that a default configuration reaches, that a user cannot detect from anything Vesalius returns, and that no workaround avoids short of not using the feature. Examples: the reader resolves the wrong material for nested regions in every stage; a reference implementation disagrees with its definition and the check points baked from it carry the error into every record. |
-| `major` | Any other silent wrong result. Examples: a library value that differs from its source; a wrong unit conversion; conditions or proxy status recorded wrongly; provenance attributed to the wrong layer; a sampler that ignores a declared structure; a model-assisted value its quote does not support. A loud failure whose only workaround is not to use the feature. |
+| `major` | Any other silent wrong result. Examples: a library value that differs from its source; a wrong unit conversion; conditions or specimen facts recorded wrongly; provenance attributed to the wrong layer; a sampler that ignores a declared structure; a model-assisted value its quote does not support. A loud failure whose only workaround is not to use the feature. |
 | `minor` | A loud failure with a workaround. A wrong statement in documentation where stored values are still right. A defect in performance. A cosmetic defect. |
 | `enhancement` | Not a defect: a request for behaviour Vesalius never claimed. |
 
@@ -694,17 +716,18 @@ no prefix.
 ### 8.4 ISO 14971 inputs
 
 MADDENING separates quantitative regimes from qualitative hazard hints (its section 9.1). Vesalius keeps the
-same split on materials, and adds proxy declarations, which are structured rather than free text:
+same split on materials, and adds specimen facts, which are structured rather than free text:
 
 | On a material | Nature | Example |
 |---|---|---|
 | conditions and statistics | quantitative | measured at 37 °C, 1 to 10 MHz; n = 12 specimens from 4 donors, mean 1575 m/s, standard deviation 18 m/s |
 | a fit's coverage | quantitative | uniaxial tension, stretch 1.0 to 1.3, strain rate 0.01 per second |
-| proxy declarations, per section or field | structured | acoustic section: porcine tissue standing in for human tissue, because no human data at the stated frequency |
-| applicability hints | qualitative | "adult human liver, ex vivo; not for fatty or fibrotic liver" |
+| specimen facts, per section or field | structured | acoustic section: porcine, ex vivo, 2 hours post-mortem |
+| known gaps | qualitative | "no data above 10 MHz; no diseased tissue" |
 
-A given limitation appears in exactly one of these. All are technical statements about the data, not
-clinical risk assessments; that boundary is MADDENING's (section 9.8) and is adopted unchanged.
+A given limitation appears in exactly one of these. All are technical statements about the data, never
+statements that it applies to a use, and not clinical risk assessments; that boundary is MADDENING's (section
+9.8) and is adopted unchanged.
 
 ---
 
@@ -720,19 +743,19 @@ exactly that information, so it can fill the gap. This section says where that f
 
 | Fit | What Vesalius provides | What uses it | Who translates |
 |---|---|---|---|
-| **Input provenance for a run** (clear) | `collect_material_inputs(...)`: every property value a set of prims or path intervals resolves to, with material identifier and version, content hash, kind, source, statistics, conditions, proxy status, tier, family version, check-point result, fit-reproduction and witness status, whether a model assisted, and the layer or overlay it came from. Exported as JSON and as a Markdown "material input sheet" | MADDENING's `SimulationProvenance.custom` (`MADD:src/maddening/core/compliance/provenance.py`); a credibility assessment's model-input evidence; MADDENING's context-of-use template | MIME writes the record into the run's provenance |
-| **Uncertainty inputs** (partial) | statistics for scalars; uncertainty structures for parameter sets | MADDENING's `UncertainParameter` (nominal, lower, upper, units, description) for UQ, which describes one parameter at a time | MIME builds `UncertainParameter` from scalar statistics and `independent` structures. Joint structures have been requested of MADDENING; until then MIME samples them with Vesalius's reference sampler |
-| **Operating-point checks** (clear) | conditions, material values and fit coverage | MADDENING's `ValidatedRegime` checks against computed operating points (Reynolds number, Mach number) | MIME |
+| **Input provenance for a run** (clear) | `collect_material_inputs(...)`: every property value a set of prims or path intervals resolves to, with material identifier and version, content hash, origin, source, statistics and what they represent, conditions, specimen facts, tier and review status (including user fill-ins), family version, fit-reproduction and witness status, whether a model assisted, and the layer or overlay it came from; the consumer's declarations (domains, targets, picks, tolerances, waivers) and the three-valued results; and the derivation chain from each record to each node parameter (overlays, unit conversion, mixing, defaults). Exported as JSON and as a Markdown "material input sheet" | MADDENING's `SimulationProvenance.custom` (`MADD:src/maddening/core/compliance/provenance.py`); a credibility assessment's model-input evidence; MADDENING's context-of-use template | MIME writes the record into the run's provenance |
+| **Uncertainty inputs** (partial) | statistics for scalars and uncertainty structures for parameter sets, each saying what it represents | MADDENING's `UncertainParameter` (a nominal, bounds and a distribution that defaults to uniform; no standard deviation), which describes one parameter at a time | MIME maps the spread its question needs where `UncertainParameter` can carry it; a mean and standard deviation, interval-only values and joint structures need MADDENING changes (architecture draft section 9.4). Until then MIME samples joint structures with Vesalius's reference sampler and labels the results |
+| **Operating-point checks** (clear) | conditions, material values and fit coverage | MIME's checks against computed operating points (Reynolds number, Mach number). Fit coverage is not mapped onto MADDENING's `ValidatedRegime`, which records regimes in which a node was verified | MIME |
 | **One anomaly schema** (clear) | `VES-ANO-` entries in MADDENING's format | one combined risk file; MIME entries can cite `VES-ANO-` entries as they cite `MADD-ANO-` ones | none needed |
-| **Biocompatibility** (partial) | a material's biocompatibility section | MIME's `BiocompatibilityMeta` (materials, tested flags, hazard hints) derived from a body's materials instead of typed in | MIME |
+| **Biocompatibility** (partial) | a material's reported test evidence | MIME's `BiocompatibilityMeta`, declared on the device's `Body` and citing that evidence; never derived from the materials | MIME |
 | **References** (clear) | source registry keys | MADDENING's `Reference(key, description)` | MIME |
 
 ### 9.2 Where it does not fit
 
 - **A Vesalius dependency on `maddening.compliance`**: ruled out in section 1.
 - **Vesalius nodes or benchmarks**: Vesalius simulates nothing.
-- **Clinical applicability**: Vesalius can record conditions, proxies and hints; deciding that a value
-  applies to a patient stays with the user and the manufacturer (section 3.2).
+- **Clinical applicability**: Vesalius can record conditions, specimen facts and known gaps; deciding that a
+  value applies to a patient stays with the user and the manufacturer (section 3.2).
 
 ### 9.3 What this would add to Vesalius
 
@@ -764,14 +787,15 @@ Contents, with the Vesalius-specific additions:
    versions; **plus** the schema version and the hash of the schema archive; the family versions included
    and the hash of their vectors; the library release, its DOI, its data licence and the hash of its
    archive.
-2. **Functional description**: the reader, the writer, the methods, the families, the reference sampler,
-   the library; **capabilities not provided**: no clinical interpretation; no assurance that a value or a
-   proxy applies to a patient; no validation of files from third parties; no production-grade or
-   differentiable evaluation of model families.
+2. **Functional description**: the reader, the writer, the methods, the families, the reference sampler, the
+   library; **capabilities not provided**: no clinical interpretation; no assurance that a value applies to a
+   use, a patient's included; no validation of files from third parties; no production-grade or differentiable
+   evaluation of model families.
 3. **Known anomalies**: summary counts, split into code, schema, family and data anomalies (by
    `affected_components`).
 4. **Verification evidence**: the conformance suite, method, family and data verification, with pass counts
-   per release, and the number of fits reported "not checked"; the scope statement of section 6.6.
+   per release, the number of fits reported "not checked", and the number of parameter sets with no
+   independent witness; the scope statement of section 6.6.
 5. **Lifecycle activities**: section 11.
 6. **Configuration management**: section 12.
 7. **Anomaly management policy**: section 8.
@@ -779,9 +803,9 @@ Contents, with the Vesalius-specific additions:
    the host application's own build (Isaac Sim ships its own), only with the `[usd]` extra. OpenUSD's
    licence is a modified Apache 2.0 (recalled; check the exact text before the first release).
 
-**Material library contents table**: every material with identifier, version, content hash, sections
-present, tier, licence, proxy flags per section, family versions used, number of reviewed values, number
-of model-assisted values, and fit-reproduction and witness status.
+**Material library contents table**: every material with identifier, version, content hash, sections present,
+tier, licence, specimen facts per section, family versions used, number of reviewed values, number of
+model-assisted values, and fit-reproduction and witness status (independent witness, or none).
 
 **Not in the package:** the MCP server and the extraction procedures are curation tooling (architecture
 draft section 8.5). Every value they help draft is reviewed against its source before release. The package
@@ -836,9 +860,9 @@ medical purpose; a commercial manufacturer assesses it as SOUP within their ISO 
 operates under no QMS and says so.
 
 One addition for a manufacturer's design inputs: library values are inputs to their simulation, so the
-manufacturer's design controls must cover the choice of material, its proxies and its applicability. The
-material input sheet of section 9 is meant to make that record easy to produce. A manufacturer's own
-measurements fit the same format as a private overlay, with the same provenance and checks.
+manufacturer's design controls must cover the choice of material and the declarations made for it (domain,
+target, picks, waivers). The material input sheet of section 9 is meant to make that record easy to produce. A
+manufacturer's own measurements fit the same format as a private overlay, with the same provenance and checks.
 
 ---
 
@@ -885,24 +909,26 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 5. **SI units in stored values, always.** Conversion happens in importers and adapters. Parameter sets are
    stored only in their family's convention; conversion to a solver's convention happens in adapters and
    exporters, with vectors.
-6. **No value without provenance.** Every library value has a kind, a source with a locator, an extraction
-   method, statistics or an uncertainty structure (or a reason for none), a proxy declaration, a tier and a
-   recorded review.
+6. **No value without provenance.** Every library value has an origin, a source with a locator, an
+   extraction method, its conditions, statistics or an uncertainty structure (or `not_reported`), specimen
+   facts, a tier and a recorded review.
 7. **The specification is normative.** Every normative statement gets a conformance case.
 8. **Generated files are never hand-edited.** USD layers, material cards and the index come from the plain
    records; CI checks equality.
-9. **Claim hygiene.** Library values are declarations, or fits to cited data. Biocompatibility is never a
-   safety claim. Nothing in the repository presents a value as validated for a patient.
+9. **Claim hygiene.** Library values are taken from cited sources, or fits to cited data, labelled by origin.
+   Biocompatibility is never a safety claim. Nothing in the repository presents a value as validated for a
+   patient.
 10. **Anomaly entries are never deleted**, only resolved.
 11. **No network access and no code execution from data**, at import or when reading files.
 12. **The anomaly registry stays in MADDENING's schema** and is checked with MADDENING's validator, a
     development-time dependency only (sections 1 and 8.1).
-13. **Fail closed.** A reader refuses an unknown family or version, a failed check point, or a request to
-    sample an undeclared uncertainty structure. It never guesses.
+13. **Fail closed.** A reader refuses an unknown family or version, a failed check point, a request to
+    sample an undeclared uncertainty structure, an attribute that was not authored, and interpolation across
+    an edge or outside a range. It never guesses.
 14. **Check points and a convention witness on every model parameter set.** Check points are computed by
     the family's reference implementation, never typed in. The witness is a response the source itself
-    reports, which the parameters must reproduce; a parameter set without one is not admitted to the
-    curated library.
+    reports, independent of how the parameters were obtained, which they must reproduce; a parameter set
+    without one is not admitted to the curated library.
 15. **Family versions are frozen.** A family is admitted with a definition, golden vectors, a reference
     implementation and a named consumer; any change is a new version.
 16. **Nothing non-redistributable is shipped.** A value from a source whose redistribution status is not
@@ -922,6 +948,16 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 22. **A model never decides.** A model never sets a tier or a redistribution status, converts a unit,
     writes a check point or a witness, or produces a fit result. The MCP tools are scoped so that it
     cannot.
+23. **Records hold facts; consumers declare choices** (architecture draft principle 9, section 3.5). No
+    record, card, check or default says where, in what state or in which regime a model applies, which
+    stand-in is acceptable, which mixing rule to use beyond the identities, or which of competing values
+    wins. Declarations, picks and waivers are recorded with the run.
+24. **Nothing stands in for a value without saying so** (principle 10). No fallback values on physical
+    attributes; no nominal, distribution or extrapolation the source does not give; an unstated condition is
+    unknown, never met; every spread says what it represents.
+25. **A check is reported for what it can show.** A witness is independent of how the parameters were
+    obtained, or the record says "no independent witness". Check points are not presented as evidence about
+    a value. An attestation by an interested party says that it is one.
 
 ---
 
@@ -981,8 +1017,8 @@ Status at 2026-10-11.
 - [ ] `docs/specification/` for each release's contents, every normative statement with a conformance case
 - [ ] `tests/conformance/` with cases and expected answers as data files, for plain records and USD
 - [ ] the first family definitions under `families/`, with golden vectors and reference implementations
-- [ ] `python -m vesalius check`, including the namespaced-identifier, self-contained-layer, witness,
-  evidence and `--release` checks
+- [ ] `python -m vesalius check`, including the namespaced-identifier, self-contained-layer, fallback, table,
+  witness, evidence and `--release` checks
 - [ ] `scripts/check_anomalies.py`, delegating to MADDENING's validator, run in CI on every push
 - [ ] MADDENING's validator accepts a project version field (`vesalius_version`); requested of MADDENING
 - [ ] `scripts/check_families.py` and `scripts/check_signoff.py`, run in CI on every pull request

@@ -21,17 +21,18 @@ its suitability for their context of use and for all required verification and v
 
 ## Data statement
 
-The values in the Vesalius material library are **declarations taken from cited sources**, or fits to
-cited data. Vesalius warrants that each value is what its source gives (or what its recorded fit produces),
-converted correctly to SI, with the conditions, statistics and proxy status the record states; and that
-each model parameter set reproduces its check points under the family definition it names. Vesalius does
-**not** warrant that a value describes any particular patient, tissue sample, phantom batch or device, nor
-that a source is itself correct or current. Whether a library value is applicable to a given use is the
-user's and the manufacturer's judgement.
+The values in the Vesalius material library are **taken from cited sources**, or are fits to cited data,
+labelled by origin. Vesalius warrants that each value is what its source gives (or what its recorded fit
+produces), converted correctly to SI, with the specimen, conditions and statistics the record states; and that
+each model parameter set reproduces its check points under the family definition it names, and its independent
+convention witness where the record has one. Vesalius does **not** warrant that a value describes any
+particular patient, tissue sample, phantom batch or device, nor that a source is itself correct or current.
+Whether a library value is applicable to a given use is the user's and the manufacturer's judgement.
 
-Many values come from stand-ins: another species, another anatomical site, a cadaver for living tissue, a
-phantom for tissue. Each record declares this per section or field, and whether a stand-in is adequate for
-a use is the user's judgement.
+Many values were measured on specimens that differ from a user's target: another species, another anatomical
+site, a cadaver for living tissue, a phantom for tissue. Each record states its specimen per section or field.
+Whether a specimen stands in adequately for a target is the user's declaration, which the user's build
+records, never the library's.
 
 Some values are drafted with the help of a language model. Each such value says so, with the quote and the
 document it was read from, and every value, assisted or not, is checked against its source by a named
@@ -43,8 +44,9 @@ redistribution or its status is unknown; its values are whatever the user fills 
 the source, and Vesalius warrants nothing about them. A **private** overlay is an organisation's own data in
 the same format, and is entirely theirs.
 
-Biocompatibility fields are information about what has been reported for a material. They are never a
-biocompatibility assessment or a safety claim. A manufacturer performs their own ISO 10993 evaluation.
+Biocompatibility fields record test evidence reported for a material. They are never a biocompatibility
+assessment or a safety claim, and never a device's status, which belongs to a finished device in its intended
+use. A manufacturer performs their own ISO 10993 evaluation.
 
 ## Cybersecurity boundary statement (MDCG 2019-16)
 
@@ -72,7 +74,7 @@ under a separate data licence, stated on each record. This is a description, not
 | Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden test vectors |
 | Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
 | A consumer's own implementation of a family | downstream user | IEC 62304 Clause 5.6 (their own) | the record's check points; the family's golden vectors |
-| Choosing a material, judging its applicability and its proxies | downstream user | ASME V&V 40 (model inputs) | the user's input justification |
+| Choosing a material; declaring its domain, target, mixing rule and picks; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
 | Calculation verification of a simulation | downstream user | ASME V&V 40 | the simulator's own evidence |
 | SOUP assessment of Vesalius | device manufacturer | IEC 62304 Clauses 5.3.3, 5.3.4, 7.1.3 | Vesalius SOUP package and anomaly registry |
 | Risk management, clinical evidence, submission | device manufacturer | ISO 14971, EU MDR | the manufacturer's files |

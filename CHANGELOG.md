@@ -28,6 +28,15 @@ recorded in that repository's CHANGELOG.
 - Model-assisted curation design: an MCP tooling layer (bring-your-own-key, deterministic tools, quotes,
   human review, fail-closed release, a gold set); convention witnesses for parameter sets; evidence,
   assistance and search-record provenance fields. Constraints 20 to 22; constraint 14 extended.
+- Phasing for MIME 0.3.0: three feature sets, each feature tied to what it serves; MIME spikes before MIME
+  work starts.
+- Revision against two new principles (records hold facts, consumers declare choices; carry what the
+  evidence supports): consumer declarations with three-valued checks; domains; specimen facts in place of
+  proxy flags; named mixing rules picked by the consumer; no schema fallbacks; tables with schemes, ranges
+  and edges; spreads that say what they represent, `not_reported` and interval-only values; independent
+  witnesses; fits written back only as scoped overlays; a reserved family `kind` for evolution families;
+  failure properties under mechanics; biocompatibility as test evidence; an advisory index; rewritten
+  spike controls. Constraints 23 to 25; constraints 6, 9, 13 and 14 revised.
 
 ### Schema
 ### Families

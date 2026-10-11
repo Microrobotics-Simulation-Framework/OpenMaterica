@@ -16,10 +16,10 @@ live in a repository of its own; until it exists, its rules are kept here.
    The core depends on numpy and a JSON Schema validator only. USD is an optional extra
    (`pip install vesalius[usd]`), and code must work with whatever USD build is installed, including the one
    Isaac Sim ships.
-4. **Keep the read side implementable without Vesalius code**, with a JSON parser or with USD. Compute on
-   the write side and store the result. Readers only read numbers, interpolate tables, evaluate power laws,
-   apply declared mixing rules, and evaluate model families with their own implementations after verifying
-   check points.
+4. **Keep the read side implementable without Vesalius code**, with a JSON parser or with USD. Compute on the
+   write side and store the result. Readers only read numbers, interpolate tables, evaluate power laws, apply
+   the mixing rules their consumer declared, and evaluate model families with their own implementations after
+   verifying check points.
 5. **SI units in stored values.** Convert in importers and adapters, never in the stored data. Store
    parameter sets only in their family's convention; conversion to a solver's convention belongs in an
    adapter or exporter, with vectors.
@@ -27,20 +27,22 @@ live in a repository of its own; until it exists, its rules are kept here.
 7. **The specification is normative.** A change to it needs conformance cases in the same pull request.
 8. **Do not hand-edit generated files.** USD layers, material cards and the index are generated from the
    plain records.
-9. **No claims beyond the data.** Library values are declarations from cited sources, or fits to cited
-   data. Biocompatibility fields are never a safety claim. Do not describe a value as validated for a
-   patient.
+9. **No claims beyond the data.** Library values are taken from cited sources, or are fits to cited data,
+   labelled by origin. Biocompatibility fields record test evidence, never a safety claim or a device's
+   status. Do not describe a value as validated for a patient, or as suited to any use.
 10. **Never delete an anomaly entry.** Resolve it.
 11. **No network access and no code execution from data**, at import or when reading files.
 12. **Keep the anomaly registry in MADDENING's schema.** Do not add fields. CI checks it with MADDENING's
     validator, which is a development-time dependency only; nothing in the package imports MADDENING. The
     registry's version field is `vesalius_version`, which MADDENING's validator does not accept yet
     (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
-13. **Fail closed.** Readers refuse an unknown family or version, a failed check point, or a request to
-    sample an undeclared uncertainty structure. Never add a fallback that guesses.
+13. **Fail closed.** Readers refuse an unknown family or version, a failed check point, a request to
+    sample an undeclared uncertainty structure, an attribute that was not authored, and interpolation across
+    an edge or outside a range. Never add a fallback that guesses.
 14. **Check points and a convention witness on every model parameter set.** Check points are computed by
     the family's reference implementation; never type them in. The witness is a response the source itself
-    reports; without one, a parameter set is not admitted to the curated library.
+    reports, independent of how the parameters were obtained (for a fit, a held-out datum); without one, a
+    parameter set is not admitted to the curated library.
 15. **Family versions are frozen.** Any change to a released definition or its vectors is a new version.
 16. **Ship nothing non-redistributable.** A value from a source whose redistribution status is not
     permitted, or is unknown, is reference-only. Every pull request that adds data carries the data
@@ -56,6 +58,15 @@ live in a repository of its own; until it exists, its rules are kept here.
     assistance record. No value enters a release without a human review record.
 22. **A model never decides** a tier, a redistribution status, a unit conversion, a check point, a witness
     or a fit result.
+23. **Records hold facts; consumers declare choices.** No record, card, check or default says where, in what
+    state or in which regime a model applies, which stand-in is acceptable, which mixing rule to use beyond
+    the identities, or which of competing values wins.
+24. **Nothing stands in for a value without saying so.** No fallback values on physical attributes; no
+    nominal, distribution or extrapolation the source does not give; an unstated condition is unknown, never
+    met; every spread says what it represents.
+25. **A check is reported for what it can show.** A witness is independent of how the parameters were
+    obtained, or the record says "no independent witness". Check points are not presented as evidence about
+    a value. An attestation by an interested party says that it is one.
 
 ## Identifier prefixes
 
@@ -99,43 +110,71 @@ a CHANGELOG entry under **Schema**. The version rules are in `DOCUMENTATION_ARCH
 
 A family is admitted with all of the following, in one pull request:
 
-- a `definition.md` following `DOCUMENTATION_ARCHITECTURE.md` section 5.2: kinematics and outputs,
-  equations, parameters with units, admissibility, references, and the known conventions elsewhere;
+- a `definition.md` following `DOCUMENTATION_ARCHITECTURE.md` section 5.2: its kind (`static`; an
+  `evolution` family is not admitted until that form is specified), kinematics and outputs, equations,
+  parameters with units, admissibility, references, and the known conventions elsewhere;
 - golden test vectors as data files, including edge cases and admissibility cases, with their precision;
 - a reference implementation in plain numpy, written for clarity, that reproduces the vectors;
 - a **named consumer**: who needs the family, and for what.
 
 The identifier is namespaced and versioned. Publishing under `vesalius.` is for families this project
-maintains; anyone may publish families in their own namespace under the same rules. A released version
-never changes: a correction is a new version, and the old one is deprecated with a pointer to it. A family
-with no consumer for two releases is deprecated. Record the change under **Families** in the CHANGELOG.
+maintains; anyone may publish families in their own namespace with the same checks, and needs no admission
+from this project. A released version never changes: a correction is a new version, and the old one is
+deprecated with a pointer to it. A family with no consumer for two releases is deprecated. Record the change
+under **Families** in the CHANGELOG.
+
+**A consumer that cannot be named.** A family under `vesalius.` may be admitted for a consumer that cannot
+be named publicly, on three conditions. The maintainer attests that the consumer exists and says nothing
+else about it. Where the maintainer also owns that consumer, the attestation certifies itself, and the
+admission record says so in those words. And the family reproduces a published dataset end to end (its
+witness and a fit), so that every claim in its record can be checked without the consumer: that
+reproduction is the check that carries weight. The attestation is renewed each release, or the
+two-release deprecation applies. A family that only a private project needs is better published in that
+project's own namespace, which needs no admission.
 
 ## Adding or changing a library material
 
 Every value needs (the full standard is `DOCUMENTATION_ARCHITECTURE.md` section 5.3):
 
-- its **kind**: declared, measured, fitted or derived;
+- its **origin**: measured by the source, measured by you, fitted, derived, or stated without an origin;
 - a **source** as a key in the source registry, with a locator (table, figure, page or equation);
 - the **extraction** method: table, text, digitised figure (with the tool and an estimate of digitising
   error), supplementary dataset (with its licence), own measurement, derivation or fit;
-- the **conditions** the source states, from the conditions vocabulary;
-- **statistics** for a scalar (specimens and donors, mean, standard deviation, minimum, maximum, basis; at
-  least a range with its basis), or an **uncertainty structure** for a parameter set (`ensemble`,
-  `multivariate_normal`, `independent` with a justification, or `none`), or the reason there is none;
-- for a parameter set, **check points** baked by the family's reference implementation; for a fit, the
-  **fit record** (reference data, procedure, coverage, residual);
-- a **proxy** declaration, per section or field: none, or what it stands in for and why;
+- the **conditions** as the source states them, from the conditions vocabulary, with any it does not state
+  recorded as unstated; the specimen's shape for magnetic values; the test method and specimen geometry
+  for failure values;
+- for a table or a power law, the **range** it covers; for a table, its **interpolation scheme** and
+  **edges**;
+- **statistics** for a scalar: specimens and donors, mean, standard deviation, minimum, maximum, basis, and
+  what the spread represents (a population, an estimate, measurement error or spread across sources); at
+  least a range with its basis; `dispersion: not_reported` if the source gives none; an interval with its
+  basis if that is all that is known. For a parameter set, an **uncertainty structure** (`ensemble`,
+  `multivariate_normal`, `independent` with a justification, `interval` or `none`) and what it represents;
+- for a parameter set, **check points** baked by the family's reference implementation, spanning the fit's
+  coverage and the family's branch points, and an **independent witness**: a response the source reports
+  that was not used to obtain the parameters, or the flag "no independent witness". For a fit, the **fit
+  record** (reference data, procedure, coverage, residual);
+- **specimen facts**, per section or field: species, site, state, preparation, shape; for a phantom or a
+  substitute, what its maker says it mimics. Do not write what the data is a proxy for: that depends on
+  each consumer's target;
+- for biocompatibility, the **test evidence** only: endpoint, standard and part, contact category and
+  duration tested, material form and processing; never a status;
 - a **tier**: shipped, reference-only or private;
-- a **review record**: who checked the value against the source, when, and their ORCID. Agreement with
-  another database is not a review.
+- a **review record**: who checked the value against the source, when, and their ORCID, and whether the
+  reviewer is independent of whoever, or whatever, extracted it. Agreement with another database is not a
+  review.
 
 Every material also needs the prose its card shows (architecture draft section 6.6): why it was curated and
-for which consumer, its uses and limitations, and who maintains it. Write it in the record; the card is
-generated.
+for which consumer, what was measured and what was not, and who maintains it. Do not write that it suits a
+use. Write it in the record; the card is generated.
 
 Rules for data:
 
 - Extract from primary literature. Never copy a secondary database in bulk.
+- Do not enter numbers found in code or datasheets with nothing behind them as library values. They stay in
+  their consumer as declared values until a source replaces them.
+- Keep competing values where sources disagree and a consumer's result depends on the choice; do not pick
+  one. The consumer picks.
 - Check the source's redistribution status in the source registry before shipping a value. If there is no
   entry, add one; if the status is not permitted or unknown, the value is reference-only: publish the
   provenance, the locator and an extraction recipe, not the value.
@@ -151,7 +190,8 @@ namespace and run the same `vesalius check`. Once an index of namespaces exists,
 request (architecture draft section 6.7).
 
 A change is recorded under **Data** in the library's CHANGELOG with a new material version. A value that
-faithfully transcribes a source later found wrong is a data update, not an anomaly.
+faithfully transcribes a source later found wrong is a data update, not an anomaly; consumers that pin the old
+version learn of it from the advisory index (architecture draft section 5.6).
 
 ### Model-assisted extraction
 
@@ -164,7 +204,7 @@ own agent and key. Then:
   Do not publish quotes for reference-only values; a quote contains the value;
 - let deterministic tools convert units, bake check points and run fits. Never accept a model's number for
   any of them;
-- for a parameter set, attach its convention witness and run the convention checker; the model's guess at
+- for a parameter set, attach its independent witness and run the convention checker; the model's guess at
   the family is only a proposal;
 - set tiers and redistribution statuses yourself;
 - review every value at its locator on the rendered page, not only the quote, and record the checklist;

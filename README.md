@@ -23,9 +23,10 @@ Design stage. There is no code or release yet. The architecture concept is in
 > body. When used as a component within regulated medical software, Vesalius is SOUP (Software of Unknown
 > Provenance) under IEC 62304, and the device manufacturer is responsible for assessing its suitability.
 >
-> Material values in the Vesalius library are declarations taken from cited sources, or fits to cited data.
-> They are not measurements of any particular patient, sample or device; many come from stand-ins, which
-> each record declares; and biocompatibility fields are never a safety claim. See
+> Material values in the Vesalius library are taken from cited sources, or are fits to cited data. They are
+> not measurements of any particular patient, sample or device; each record states the specimen it was
+> measured on, and whether that specimen stands in for yours is your declaration, not the library's.
+> Biocompatibility fields are never a safety claim. See
 > [`docs/regulatory/intended_use.md`](docs/regulatory/intended_use.md).
 
 ## Documentation
