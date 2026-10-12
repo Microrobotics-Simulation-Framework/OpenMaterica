@@ -76,9 +76,14 @@ recorded in that repository's CHANGELOG.
 - After an ecosystem survey of NVIDIA's schemas and the wider ecosystem, and its review: the USD binding,
   layered paths, label mappings and scene documents move into Vesalius 0.1, with no cut line; a region binds
   its material with the purpose `vesalius`, and `physics` is left to engines; an engine is declared as a
-  model, written by an engine adapter from pinned engine profiles and checked per shape by `vesalius check
+  model, written by an engine adapter from pinned engine maps and checked per shape by `vesalius check
   --stage`; readers detect schemas by name, traverse instances, and refuse unloaded payloads, point-instancer
   prototypes and time samples; acoustic attenuation is registered as `/m`; label mappings read by name.
+- Vesalius ships one engine map, for OpenUSD's `UsdPhysics`; a consumer writes and pins the map for any other
+  engine it runs, drafted by a scaffold from the engine's schema file and compared with the schema file it
+  pins by hash. The stamp on an engine material carries the APIs applied, each attribute's type and dimension
+  and the unit convention, so the stage check re-derives values without the map and checks the stamp against
+  its units.
 
 ### Schema
 ### Families

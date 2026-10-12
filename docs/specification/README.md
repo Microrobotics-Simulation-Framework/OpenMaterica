@@ -84,7 +84,7 @@ The EA profile, and the build checks of an engine model (BC-039), also need USD 
 | SA | sampling | consumers that sample uncertainty |
 | BC | build checks | consumers that check declarations at build (`declarations.md`) |
 | RC | record checks | `vesalius check` and any other checker of records, on the write side; `vesalius check --stage` |
-| EA | engine adapters | writers of engine materials from a declared engine model (`usd_binding.md` section 10) |
+| EA | engine adapters | writers of engine materials from a declared engine model, by an engine map (`usd_binding.md` section 10) |
 
 Numbers are reserved by document, so each document can add cases without colliding:
 
@@ -127,13 +127,26 @@ a constant of exactly 0.000692 Pa·s measured at 310.15 K, with its shear rate u
 `plain_read`, `hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`, `table_evaluation`, `mixing`,
 `family_evaluation`, `sampling`, `build_checks`, `record_checks` and `engine_adapter`.
 
-Two kinds of case take other inputs. A stage-check case (`usd_binding.md` section 9) names its stage in
-`inputs.stage`, has no `request`, and lists in `expected.items` what the check reports, each as `{"item":
-"<the rule's case id>", "prim": "<path>", "detail"?}`, and in `expected.listing`, per shape, `{"shape",
-"region", "material", "engine_materials", "effective_density"}`, the density a number or `{"status":
-"not_checked", "reason"}` where it is not comparable. An engine-adapter case names a stage, a declaration and
-its engine profiles in `inputs`; its `request` is `{"model": "<the engine model's name>"}`; and `expected`
-holds, per shape, the attributes written and their values, or the reasons the adapter refused.
+Three kinds of case take other inputs. Each names the schema files it passes in `inputs.schemas`
+(`usd_binding.md` section 10.1 item 8); a case that names none has none.
+
+- A **stage-check case** (`usd_binding.md` section 9) names its stage in `inputs.stage` and the engine maps it
+  passes in `inputs.maps`, and has no `request`. `expected.items` lists what the check reports, each as
+  `{"item": "<the rule's case id>", "prim": "<path>", "detail"?}`. `expected.listing` gives, per shape,
+  `{"shape", "region", "material", "engine_materials", "effective_density"}`: each engine material as
+  `{"material", "maps", "map_status"}`, with `maps` the stamped pin, or the pins of the held maps whose APIs
+  an unstamped material carries, and `map_status` one of `held`, `not_held` (stamped), `matched` (they agree
+  on the density attribute), `ambiguous` (they do not) and `unmatched` (none); the density a number, or
+  `{"status": "not_checked", "reason"}` where it is not compared. `expected.maps_held` lists the pins held,
+  `expected.unrecognised_apis` lists `{"prim", "api"}`, and `expected.not_compared` lists `{"map", "api",
+  "reason"}`.
+- A **map-validation case** (RC-140, RC-142, RC-143) names a map in `inputs.map` and has no stage and no
+  `request`; `expected.items` lists what the check reports, each as `{"item", "pointer", "detail"?}`, with
+  `pointer` a JSON pointer into the map, and `expected.not_compared` as above.
+- An **engine-adapter case** names a stage, a declaration and the engine maps it passes in `inputs`; its
+  `request` is `{"model": "<the engine model's name>"}`; and `expected` holds, per shape, the attributes
+  written and their values, or the reasons the adapter refused. A build-check case of an engine model
+  (BC-039 to BC-041) names the same inputs and expects the build's results.
 
 ## What 0.1.0 covers
 
@@ -143,10 +156,11 @@ bulk, fluid, magnetic and biocompatibility sections, the constant, table, interv
 forms in use, provenance, conditions, statistics, the reader and its reasons, declarations and the three
 results, `vesalius check`; then the plain scene manifest with regions, domains, layered paths and label
 mappings, with the helper that derives a layered path from 3-D geometry (AD 12.1, R14); then their USD form,
-the stage check, engine profiles and the engine adapter. Their cases are
-planned for 0.1.0, except the material input sheet's (R7, 0.2). Label volumes, field overrides and the label
-mapping's USD form wait for the minor version that brings their first consumer. The other forms (the power
-law, whose first field arrives with the acoustic section; the model parameter set; reference data), families
-and mixing are specified here so that 0.1.0's records do not have to change when they arrive; their profiles
-are optional until that version (AD 12.2). Every profile is a claim a reader chooses to make: a reader of
-plain records need not claim USD read.
+the stage check, the engine map with Vesalius's one map (`UsdPhysics`), and the engine adapter. Their cases
+are planned for 0.1.0, except the material input sheet's (R7, 0.2); the scaffold that drafts engine maps is a
+`vesalius-authoring` tool, tested there. Label volumes, field overrides and the label mapping's USD form wait
+for the minor version that brings their first consumer. The other forms (the power law, whose first field
+arrives with the acoustic section; the model parameter set; reference data), families and mixing are specified
+here so that 0.1.0's records do not have to change when they arrive; their profiles are optional until that
+version (AD 12.2). Every profile is a claim a reader chooses to make: a reader of plain records need not claim
+USD read.

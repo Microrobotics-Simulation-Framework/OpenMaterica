@@ -139,16 +139,17 @@ Every reason a read can give. A document that defines a new reason adds it here.
 | `payload_unloaded` | not_met | a point, domain or region read that reaches an unloaded payload | `usd_binding.md` |
 | `region_in_prototype` | not_met | a region under a point instancer's prototype | `usd_binding.md` |
 | `time_sampled` | not_met | a Vesalius attribute with time samples | `usd_binding.md` |
-| `engine_profile_invalid` | not_met | an engine profile with no source for its units, or whose hash differs from its pin | `usd_binding.md` |
+| `engine_map_invalid` | not_met | an engine map not passed, with no source for its units, whose hash differs from its pin, that does not validate, that differs from its pinned schema file, in `vesalius/` but not shipped by Vesalius, or with a held map's id and version and another hash | `usd_binding.md` |
+| `engine_value_invalid` | not_met | a declared engine value of another type than its attribute's, or a token outside the attribute's allowed tokens | `usd_binding.md` |
 | `engine_attribute_unset` | not_met | an engine attribute with neither a Vesalius field nor a declared value | `usd_binding.md` |
-| `engine_value_sourced` | not_met | a declared engine value for an attribute the profile sources from a field | `usd_binding.md` |
+| `engine_value_sourced` | not_met | a declared engine value for an attribute the map sources from a field | `usd_binding.md` |
 | `engine_binding_overridden` | not_met | a region whose engine binding a foreign stronger or subset `physics` binding would override | `usd_binding.md` |
 | `engine_region_instanced` | not_met | a region inside an instance, which the adapter cannot bind per region | `usd_binding.md` |
 | `engine_material_missing` | not_met | a simulated shape with no engine material, or only the physics scene's | `declarations.md` |
-| `engine_material_foreign` | not_met | an engine material with no stamp, or stamped for another material or other stage units | `declarations.md` |
+| `engine_material_foreign` | not_met | an engine material with no stamp, or stamped for another material, or stamped with the `stage` convention for other stage units | `declarations.md` |
 | `engine_material_stale` | not_met | a stamp that does not re-derive, or that differs from the current declaration | `declarations.md` |
-| `engine_density_overridden` | not_met | a `MassAPI` density that differs from the material's | `declarations.md` |
-| `engine_mass_not_comparable` | unknown | an explicit mass, so the density cannot be compared | `declarations.md` |
+| `engine_density_overridden` | not_met | an authored, non-zero `MassAPI` density that differs from the material's | `declarations.md` |
+| `engine_mass_not_comparable` | unknown | an authored, non-zero mass, so the density cannot be compared | `declarations.md` |
 | `path_arrays_mismatch` | not_met | a layered path whose arrays differ in length, or an index out of range | `usd_binding.md` |
 | `no_requirement` | unknown | a field a model reads with no requirement declared for it | `declarations.md` |
 | `label_mismatch` | not_met | a required label differs or is absent | `declarations.md` |

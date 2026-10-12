@@ -67,7 +67,7 @@ model that reads material fields.
 | `acceptances` | every pick, waiver, implied condition, accepted difference, extrapolation, nominal, distribution and overlay (section 4) |
 | `chains` | hand-overs at events, as pairs of family and record (section 6) |
 | `trainable` | fields the model fits, each with its region, interval or record (section 7) |
-| `engine` | for a model that is a physics engine: `profile`, the pinned engine profile (`usd_binding.md` section 10); `values`, per profile attribute with no Vesalius field, `{"value", "unit", "reason", "basis"}` in SI; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
+| `engine` | for a model that is a physics engine: `map`, the pin of its engine map (`usd_binding.md` section 10.1), Vesalius's or one the consumer writes and passes to the build with the declaration; `values`, per map attribute with no Vesalius field, `{"value", "unit", "reason", "basis"}` in SI, with no `unit` for an attribute with no dimension; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
 
 1. Only a model that reads a field declares anything about it. A field in `reads` with no requirement gives
    `unknown` with the reason `no_requirement`. [BC-003]
@@ -80,12 +80,14 @@ model that reads material fields.
    differs or is absent. [BC-027]
 6. A layered path read with `checked_over: {"path": ...}` is named by its `name` member (`geometry.md`), and
    its intervals by their 0-based index. [BC-036]
-7. A model with `engine` reads the fields its profile sources, with `want` `value`, and is checked over a
-   domain that does not include the background; one checked over a path or records, over a domain that
-   includes the background, or with another `want`, is refused at build. A declared engine value without
-   `reason` and `basis`, or for an attribute the profile sources from a field, is refused at build. Its
-   per-field results (section 2) gate what the adapter writes; its engine results (section 2 item 6), after
-   the adapter has written, gate the build. [BC-039] [BC-040]
+7. A model with `engine` reads the fields its map sources, with `want` `value`, and is checked over a domain
+   that does not include the background; one checked over a path or records, over a domain that includes the
+   background, or with another `want`, is refused at build. A declared engine value without `reason` and
+   `basis`, or for an attribute the map sources from a field, is refused at build, and so is a pinned map that
+   is not passed or does not validate (`engine_map_invalid`), and two engine models whose domains share a
+   region (`usd_binding.md` section 10.1 item 10). Its per-field results (section 2) gate what the adapter
+   writes; its engine results (section 2 item 6), after the adapter has written, gate the build. [BC-039]
+   [BC-040]
 
 ## 2. Results
 
@@ -128,14 +130,15 @@ added.
    of these applies:
    - `engine_material_missing` (not_met): no engine material, or only the physics scene's (`usd_binding.md`
      section 9 item 8);
-   - `engine_material_foreign` (not_met): an engine material with no stamp, or stamped for another material
-     or other stage units (item 6);
-   - `engine_material_stale` (not_met): a stamp that does not re-derive (item 7), or whose profile pin, read
+   - `engine_material_foreign` (not_met): an engine material with no stamp, or stamped for another material,
+     or stamped with the `stage` convention for other stage units (item 6);
+   - `engine_material_stale` (not_met): a stamp that does not re-derive (item 7), or whose map pin, read
      requests, acceptances or declared values differ from those the current declaration gives for that
      region, so engine materials written at 293 K fail a declaration at 310 K;
-   - `engine_density_overridden` (not_met): an effective density from `UsdPhysics.MassAPI` that differs
-     (item 5);
-   - `engine_mass_not_comparable` (unknown): an authored `physics:mass` on the shape or an ancestor (item 5).
+   - `engine_density_overridden` (not_met): an authored, non-zero effective density from
+     `UsdPhysics.MassAPI` that differs (item 5);
+   - `engine_mass_not_comparable` (unknown): an authored, non-zero `physics:mass` on the shape or an
+     ancestor (item 5).
 
    The build refuses while any engine result is not accepted (section 4.2). [BC-039] [BC-041]
 
@@ -341,5 +344,5 @@ The sheet is one JSON document per build. [BC-033]
 | BC-037 | build checks | an acceptance with no location where its kind needs one is refused |
 | BC-038 | build checks | a reason not in section 4.2's table is never accepted |
 | BC-039 | build checks | an engine model's engine results: `met` on the adapter's own output; `engine_material_missing` before it writes; `engine_material_foreign` for an Isaac-bound material; `engine_material_stale` when a declaration at 310 K meets materials written at 293 K; `engine_density_overridden` under a differing `MassAPI` density |
-| BC-040 | build checks | refused at build: a declared engine value without reason or basis, or for an attribute sourced from a field; an engine model checked over a path, over records, or over a domain that includes the background; one whose requirement wants anything but `value` |
+| BC-040 | build checks | refused at build: a declared engine value without reason or basis, or for an attribute sourced from a field; a pinned map not passed, or that does not validate; two engine models whose domains share a region; an engine model checked over a path, over records, or over a domain that includes the background; one whose requirement wants anything but `value` |
 | BC-041 | build checks | an explicit mass gives `engine_mass_not_comparable`, which a waiver accepts and nothing else does |

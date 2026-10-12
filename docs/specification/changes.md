@@ -14,6 +14,7 @@ at the end of each document. Scene documents, layered paths, label mappings, the
 and the engine adapter are in 0.1.0; families, fits and reference data, and mixing are specified but their
 profiles are optional until the minor version that brings their first consumer (`README.md`). In USD a region
 binds its material with the purpose `vesalius`; the `physics` purpose is left to engines, whose materials an
-engine adapter writes from a declared engine model, stamped with the reads they came from, and which the stage
-check re-derives per shape (`usd_binding.md` sections 5, 9 and 10). Acoustic attenuation is registered in
-`/m`.
+engine adapter writes from a declared engine model by an engine map, stamped with the reads they came from,
+and which the stage check re-derives per shape (`usd_binding.md` sections 5, 9 and 10). Vesalius ships one
+engine map, for `UsdPhysics`; a consumer writes the map for any other engine it runs, drafted by a scaffold.
+Acoustic attenuation is registered in `/m`.

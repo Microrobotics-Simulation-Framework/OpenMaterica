@@ -78,6 +78,9 @@ This repository is public. Everything in it, this file and commit messages inclu
   data. The core may run at a consumer's build, and is then third-party software in that consumer's product.
 - **Small.** A section, family or library material enters when a named consumer needs it. A later addition
   must be possible as a minor schema change (AD 5.6); if it is not, decide it before 0.1.
+- **Engine knowledge is the consumer's.** Vesalius ships one engine map, for `UsdPhysics`; a map for any
+  other engine is written and pinned by the consumer that runs it (maintainer, 2026-10-13, AD 5.4). Do not add
+  maps for other engines to `vesalius`; improve the scaffold and the checks instead.
 
 ## Gotchas, checked
 
@@ -102,8 +105,17 @@ USD, with `usd-core` 0.26.5:
 - `VES-MAT-0001` is not a valid prim name. A schema plug-in entry needs `schemaIdentifier`; a second
   codeless-schema plug-in must register before `import maddening.usd`, or use `PXR_PLUGINPATH_NAME`.
 - A material under `/Materials/<name>` merges silently with MADDENING's display material of the same name.
-- OpenUSD's reference physics parser reports a binding inherited from an ancestor only when the shape has
-  `MaterialBindingAPI` applied. A binding cannot be authored on an instance proxy.
+- OpenUSD's reference physics parser ignores a `physics` binding, direct or inherited, on a prim without
+  `MaterialBindingAPI`; it reports only materials that carry `PhysicsMaterialAPI`, an all-purpose binding to
+  one included. A binding cannot be authored on an instance proxy.
+- The schema registry (`Usd.SchemaRegistry().FindAppliedAPIPrimDefinition`) gives an API's attribute names,
+  types and fallbacks, but no units: the customData of `PhysicsMaterialAPI`'s four attributes holds only a
+  one-line `userDocBrief`. An API whose plug-in is not registered gives `None`. A plug-in's
+  `generatedSchema.usda` reads with Sdf without registering it, and composed `apiSchemas` never lists an API's
+  built-in APIs. The file differs between usd-core versions (usdPhysics: 0.25.5 against 0.26.5), so never
+  compare a map with an installed one.
+- `UsdPhysics` mass computation ignores a `MassAPI` density or mass of 0, and uses 1000 kg/m³ where a
+  material's density is unauthored or 0.
 
 From the ecosystem survey of 2026-10-12 and its review (sources in their private reports, not re-checked
 here):
