@@ -599,7 +599,10 @@ an identifier `VES-VER-[XXX]`.
 
 ### 6.1 Conformance suite (the read side)
 
-This is the one list of conformance cases; the architecture draft (section 7.4) refers to it. Each case is
+The cases are enumerated, one row each with its identifier, in the case table at the end of each
+specification document (`docs/specification/`, numbering in its `README.md`); that enumeration is the
+authoritative list. This section describes the suite by profile, and the architecture draft (section 7.4)
+refers to it. Each case is
 a data file with its expected answer, so a C++ or other reader can run it without Python; the Python reader
 runs them in CI. The cases are grouped into **profiles**, because no single reader needs all of them. A claim
 of conformance names the schema version and the profiles passed: a reader with only a JSON parser can claim

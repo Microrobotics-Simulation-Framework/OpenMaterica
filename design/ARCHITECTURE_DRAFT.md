@@ -1344,8 +1344,9 @@ labels its results so.
 
 ### 7.4 Conformance
 
-Small cases, each with expected answers, as data files; the full list is kept in one place,
-`DOCUMENTATION_ARCHITECTURE.md` section 6.1, and this section only describes it. Any implementation, in any
+Small cases, each with expected answers, as data files. They are enumerated in the case tables of the
+specification (`docs/specification/`) and described by profile in `DOCUMENTATION_ARCHITECTURE.md` section
+6.1; this section only describes them. Any implementation, in any
 language, checks itself against them. That is what makes a second reader trustworthy without a second
 implementation of everything.
 
