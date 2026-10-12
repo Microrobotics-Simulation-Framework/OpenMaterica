@@ -255,7 +255,7 @@ Principle 9 in practice. A record, a consumer and the build each make a differen
 
 | | States | Examples |
 |---|---|---|
-| A record | facts about a measurement, and how they are known | the specimen (species, site, state, preparation, shape); the conditions it was measured at; the range covered; statistics and what they represent; competing values where sources disagree |
+| A record | facts about a measurement, and how they are known | the specimen (species, site, state, preparation); the conditions it was measured at; the range covered; statistics and what they represent; competing values where sources disagree |
 | A consumer | choices, declared when it attaches a model | the domain (which regions); the target (species, site, state); the family version; the mixing rule; which competing value; tolerances; waivers; any extrapolation or nominal it assumes, with its basis; the overlays it applies |
 | The build | the relation between the two | per region and field: met, not met or unknown; how the specimen differs from the target; the picks and waivers, all recorded in the material input sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9.1) |
 
@@ -322,8 +322,9 @@ eight places; the sections below no longer do.
   statistics, families, check points). The body depends on the type.
   - Vesalius defines three types: `material` (a substance, with any subset of sections); `interface` (a pair,
     section 4.13; the name is reserved from the first schema, its body is specified in 0.2, R9); and
-    `overlay` (a scene-level or private replacement of some of a material's fields: it names its base
-    record's identifier and hash, its scope, and the fields it replaces; section 5.5). The curated library
+    `overlay` (a scene-level or private replacement of some of a material's fields, a consumer's fit, or a
+    user's fill-in of a reference-only value: it names its base record's identifier, version and hash, its
+    scope, and the fields it replaces; sections 5.5 and 6.2). The curated library
     curates, cards and lists materials and interfaces.
   - **A reader skips a type it does not know when it lists records, and refuses one that is referenced**: by
     a binding, an overlay declaration, a pin, a layered-path interval or an interface member. Skipping a
@@ -661,7 +662,8 @@ tolerance.
 - **Reference-only parameter sets ship no check points**, because a few check points determine a family's few
   parameters, which would publish them (section 6.2). The fill-in is checked by the witness instead: the
   record ships the witness's locator and an extraction recipe; the user fills in the parameters and the
-  witness datum from their own copy; `vesalius check` runs the witness locally. The fill-in tool also records
+  witness datum from their own copy, as an overlay in the user's own namespace (section 6.2); `vesalius
+  check` runs the witness locally. The fill-in tool also records
   the identifier and version of the user's copy and compares them with the record's; a mismatch gives
   "unknown", because a preprint and its version of record need not carry the same numbers (in prototype P4, a
   value MIME cites was not in the preprint; the version of record was not checked). The result is reported as
@@ -720,10 +722,12 @@ Two kinds of fact describe a measurement, and the record keeps them apart:
 
 - **Conditions describe the test**: temperature, frequency, wavelength, strain rate, shear rate, loading
   mode, test method, measurement geometry (a bulk rheometer; a tube of stated diameter), propagation
-  direction. Numeric conditions have a value or a range; categorical ones (loading mode, test method,
-  propagation direction, specimen orientation) take values from a vocabulary.
+  direction, and the specimen's shape and size. Numeric conditions have a value or a range; categorical ones
+  (loading mode, test method, propagation direction, specimen orientation, specimen shape) take values from a
+  vocabulary. Shape and size are conditions, not specimen facts, because they change what a value means, so a
+  consumer matches them through a requirement rather than accepting a difference (maintainer, 2026-10-12).
 - **Specimen facts describe the thing tested**: species, anatomical site, tissue state, disease and treatment
-  state, preparation, preservation and post-mortem interval, donor age, specimen shape (section 4.11).
+  state, preparation, preservation and post-mortem interval, donor age (section 4.11).
 
 Both use a controlled vocabulary with an extension mechanism. From the start it has three parts, because
 free-text specimen facts in the prototypes never matched a consumer's target: species as NCBI Taxonomy
@@ -826,7 +830,8 @@ acceptance is recorded in the material input sheet. Most tissue data comes from 
 by default would refuse nearly everything; requiring acceptance makes the choice visible instead.
 
 The facts compared are those of the vocabulary of section 4.8: species, anatomical site, tissue state,
-preparation and preservation, and the specimen's shape where a section requires it. A difference is reported
+disease and treatment state, preparation and preservation. A fact the record leaves unstated, or marks not
+applicable, against a fact the target states is reported as a difference too. A difference is reported
 as facts ("species: *Sus scrofa* against *Homo sapiens*"), with the ontology's relation where one exists (a
 part of the target site; a sibling of it). It is never graded into a score, which would be a judgement of
 adequacy (principle 9). An acceptance names the section and the fact, with a reason.
@@ -1108,16 +1113,16 @@ key.
   changes are minor; removals, renames and changes of meaning are major, with a deprecation period.
 - Every record records the schema version it was written against.
 - Each family version is frozen (section 4.5).
-- Each record has its own version and a **content hash**: SHA-256 of the record's canonical serialisation
-  (RFC 8785, recalled: an existing JSON canonicalisation that fixes number types and formatting, which
-  prototype P1c found a hash must do), taken over the whole record, including its type, identity, licence and
-  any extensions, and the schema and family versions it is read under, minus an explicit exclusion list: the
-  hash itself, review records, card prose, and evidence tied to one copy of a source (a copy's hash). So a
-  second review or a reworded card changes no pin, two users who fill in the same numbers from different
-  copies get the same hash, and a record cannot change type and keep its hash. The conformance suite has hash
-  test vectors. A simulation that records the hashes of the records it read can show which records it read.
-  What its nodes received after overlays, unit conversion, mixing and derivation is shown by the derivation
-  chain in the material input sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9.1), not by the hash.
+- Each record has its own version and a **content hash**: SHA-256 of the record's canonical serialisation (RFC
+  8785, recalled: an existing JSON canonicalisation that fixes number types and formatting, which prototype
+  P1c found a hash must do), taken over the whole record, including its type, identity, licence and any
+  extensions, and the schema and family versions it is read under, minus an explicit exclusion list: the hash
+  itself, review records, card prose, and evidence tied to one copy of a source (a copy's hash). So a second
+  review or a reworded card changes no pin, and a record cannot change type and keep its hash. The conformance
+  suite has hash test vectors. A simulation that records the hashes of the records it read can show which
+  records it read. What its nodes received after overlays, unit conversion, mixing and derivation is shown by
+  the derivation chain in the material input sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9.1), not by the
+  hash.
 - **Adding without breaking.** Any section, field, record type or extension can be added later as a minor
   schema change if four rules hold. Sections are optional, and a reader ignores sections it does not use. An
   added field never changes the meaning of an existing one; a change that would is major. A condition a reader
@@ -1126,8 +1131,10 @@ key.
   uncertainty structure) refuses that field, so an old reader never falls back to a default it does know. A
   reader skips a record type it does not know when listing, and refuses it when referenced (section 4.1). A
   reader that knows schema 1.2 therefore reads a 1.3 record, refusing exactly what it cannot interpret, and
-  refuses a 2.0 record. USD follows: a new section is a new API schema, and an older plug-in still reads its
-  attributes as plain attributes (recalled; to check).
+  refuses a 2.0 record. Before 1.0.0 a minor version may still change shapes, so a reader reads only records
+  of its own minor version (maintainer, 2026-10-12); consumers pin exact versions anyway (section 12.4). USD
+  follows: a new section is a new API schema, and an older plug-in still reads its attributes as plain
+  attributes (recalled; to check).
 - **Advisories** (a note for later: built at the first retraction, or before the first release a regulated
   consumer takes). A pinned hash cannot learn that its source was later corrected, retracted or contested.
   An advisory index, kept outside the records and versioned on its own, lists such notices by record and
@@ -1164,9 +1171,14 @@ The tools treat the three tiers identically, so the public library can be conser
 Vesalius weaker. Fits the curator makes from published curves are the curator's own work and can often be
 shipped where the curves themselves stay reference-only. So can a shipped fit's check points.
 
-The tools treat the tiers identically in mechanism, not in evidence. A value a user fills in from their own
-copy was not reviewed by the curator whose review the record carries, so it is labelled user-extracted and
-unreviewed, gets its own hash, and the material input sheet shows its review status. Shipping the check points
+The tools treat the tiers identically in mechanism, not in evidence. A user fills in a reference-only value
+as an overlay record in their own namespace, whose base is the reference-only record by hash (maintainer,
+2026-10-12). The curated record never changes, so every user and every scene that pins it holds the same
+record; the overlay carries the user's licence, the evidence from the user's copy and the user's review, and
+a reader labels every value read through it user-extracted. The material input sheet shows that label and
+the overlay's review status. In a reference-only value the statistics are withheld too, since a mean is the
+number itself, and the withheld state is what the public repository holds: the number lives only in the
+curator's private store, never in the repository's history. Shipping the check points
 of a reference-only parameter set would publish its parameters, since two points determine a two-parameter
 family, so none are shipped; the witness checks the fill-in instead (section 4.6).
 
@@ -1377,7 +1389,8 @@ What a consumer does, with no Vesalius code:
    knots and returning whether the condition was in range; evaluate power laws inside their range.
 3. For a parameter set: confirm the family identifier and version are known; evaluate your own
    implementation at the record's check points; refuse on a mismatch. For a reference-only set, fill in the
-   values from your own copy and run its witness locally (section 4.6).
+   values from your own copy as an overlay in your own namespace and run its witness locally (sections 4.6,
+   6.2).
 4. Apply the mixing rule you declared, inside your domain, and the identities where they exist; honour the
    precedence your scene declares (section 5.1); take provenance as in section 5.5.
 5. Sample only as the declared uncertainty structure allows, and only the spread your question needs
@@ -1858,7 +1871,7 @@ Vesalius; an experiment whose materials are not ready keeps declaring its values
 | with 0.2 | the mechanics track: not a priority, but progressing | mechanics with isotropic linear elasticity (A10 adds the anisotropic form), one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
 | with a consumer | | the optical, thermal and dielectric sections, added without breaking the schema (section 5.6); further families, of either kind | | |
 | with a consumer | transcranial focused ultrasound, for microrobotics in the brain (maintainer, 2026-10-12; not scheduled) | acoustic properties of skull bone as tables over porosity (substance data); the scanner's calibration from CT number to density as a system record in the consumer's namespace; the patient's property map as a field override (A1) carrying that calibration as provenance; shear attenuation (R2); the thermal section, since skull heating is usually the binding safety limit (recalled); anisotropy (A10) after these. On MIME's side it needs an elastic-wave solver | | MIME |
-| beside 0.2 or 0.3 | | the ultrasound adapter and the label mapping for the patient twin | | Isaac for Healthcare, if they want it |
+| beside 0.2 or 0.3 | | the ultrasound adapter and the label mapping for the patient twin. Its library values are sourced records, with the extrapolations outside their measured bands declared and labelled (section 3.5); a local copy of Isaac for Healthcare's own six materials, never published, serves as the adapter's test oracle, from the integration testing at the end of 0.1 (maintainer, 2026-10-12) | | Isaac for Healthcare, if they want it |
 
 A spike runs against the release that carries its features, before the next set starts, and a failed spike
 changes the next release's contents. Nothing here is sized. The publishers file and the template
@@ -2096,6 +2109,19 @@ decisions. The rows below record what changed.
 | "the core never runs inside a consumer's computation", undefined | defined as the step, compiled program and gradient path; the core runs at build; `vesalius` and `vesalius-authoring` split (2, 7.2) | MIME's build runs the reader and the checks, and the core bundled tools with network access |
 | priority defaulting to depth; a one-region default domain | refused or declared (5.1) | hierarchy is not containment |
 | the stiffness tensor in 0.2 | stretch, A10 (12.1) | the maintainer's call; for the skull, porosity and shear matter more (12.2) |
+
+The specification was then written (`docs/specification/`) and reviewed in two passes, one building a reader
+from it alone and one told to break it (124 findings). The maintainer answered three points; the rest were
+fixed within the decisions. The rows below record what the design gained.
+
+| Before | After | Why |
+|---|---|---|
+| a user fills in a reference-only record in place | a fill-in is an overlay in the user's namespace, based on the curated record by hash (6.2) | in place, the record kept the curated identity, licence and review for numbers the curator never saw |
+| a reader reads any newer minor version | before 1.0.0, only its own minor version (5.6) | a pre-1.0 minor version may still change shapes |
+| specimen shape as a specimen fact | shape and size are conditions (4.8) | they change what a value means, so they are matched by requirement, not accepted |
+| a reader validates against the record's schema | a closed writer schema and an open reader schema; an unknown token refuses its field, not the record | a validating reader would refuse every newer record whole |
+| conditions checked against what the consumer declared | every condition the field holds is checked: by tolerance, accept list or waiver, else unknown | an unstated condition the consumer never mentioned passed as met |
+| overlays scoped by configuration | scoped by model and configuration, base by identifier, version and hash; conflicts refused | another model in the same experiment would apply a fit |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

@@ -331,9 +331,10 @@ This is the statement MADDENING does not need and Vesalius does:
 >
 > Many values were measured on specimens that differ from a user's target (another species, another site,
 > a cadaver, a phantom). Each record states its specimen, per field; whether it stands in adequately for a
-> target is the user's declaration, never the library's. A reference-only record publishes no values; its
-> values are whatever the user fills in from their own copy of the source, and the curator has not
-> reviewed them.
+> target is the user's declaration, never the library's. A reference-only record publishes no values. A user
+> fills them in from their own copy of the source as an overlay in their own namespace; the curated record
+> never changes, the curator has not reviewed those values, and every value read through the overlay is
+> labelled user-extracted.
 >
 > Subject to the legal review (architecture draft section 6.5), every value in the curated library that was
 > extracted from text or a table carries the verbatim quote it was read from, with the identity and version
@@ -611,24 +612,37 @@ of conformance names the schema version and the profiles passed: a reader with o
 **Plain read**
 - a property at a point, a wavelength or a frequency; refusal to interpolate across an edge or outside a
   range;
-- unknown, not met, for an unstated condition; an unknown or waived result still carries its value;
-- a record of a newer minor schema version, with a section the reader has never seen, read for the sections
-  it knows; a record of a newer major version refused;
+- every condition a field holds checked by a tolerance, an accept list or a waiver, and `unknown` otherwise;
+  unknown, not met, for an unstated condition; an unknown or waived result still carries its value; every
+  reason reported, as codes;
+- before 1.0.0, a record of another minor schema version refused; from 1.0.0, a record of a newer minor
+  version, with a section the reader has never seen, read for the sections it knows; a record of another
+  major version refused;
 - an unknown token in an enumerated field (an interpolation scheme, a statistics basis, an uncertainty
   structure) refuses that field; an unknown condition gives "unknown", not "present and unchecked";
 - a record of a type the reader does not know, skipped when listing records and refused when referenced (by
   a binding, an overlay declaration, a pin, a layered-path interval or an interface member); a namespaced
   type's envelope and value machinery checked, its body not;
 - refusal of a nominal for an interval or an ensemble; an interval and a composition read in their own forms;
-- a malformed record gives "not met", never a crash;
-- an attenuation its source reported as an intensity coefficient, stored as the amplitude coefficient;
+- a malformed record (invalid JSON, or invalid against the open reader schema) gives "not met", never a
+  crash, while one unknown token refuses only its field;
+- an overlay applied only when declared, refused when its base differs, and `not_met` when its scope names
+  another model unless accepted; a value read through a fill-in labelled user-extracted.
+
+**Hash**
 - content-hash test vectors: RFC 8785 serialisation and SHA-256 over the whole record minus its exclusion
-  list (section 12);
+  list (section 12); a record whose recomputed hash differs from its own, or from a pin, refused.
+
+**Scene documents**
 - the plain scene manifest: the owner of a point inside nested regions with authored priorities; refusal
   when two regions with no authored priority claim one point; a requirement checked over a domain's regions
-  only; a background inside every domain that requires it; refusal of a direction-dependent value for a
-  region with no orientation; an interface record bound to a pair of regions;
+  only; a background inside every domain that lists it; refusal of a direction-dependent value for a region
+  with no orientation; an interface record bound to a pair of regions;
 - a layered path in its plain form, with a material repeated along it.
+
+**Fits and reference data**
+- a fit record, its coverage as a list of modes never merged into a box, and its histories; reference data
+  read only as reference data, never as a property.
 
 **USD read**
 - the material bound to a prim or a path interval, from a physics-purpose binding authored on the region
@@ -657,8 +671,8 @@ of conformance names the schema version and the profiles passed: a reader with o
 
 **Family evaluation**
 - refusal on an unknown family or version; refusal on a failed check point;
-- a reference-only parameter set: the fill-in checked against its witness, and "unknown" when the identity
-  or version of the user's copy differs from the record's.
+- a reference-only parameter set: the fill-in overlay checked against its witness, and "unknown" when the
+  identity or version of the user's copy differs from the record's.
 
 **Sampling**
 - refusal to sample an undeclared uncertainty structure; `marginals` never sampled jointly;
@@ -697,13 +711,13 @@ coefficient (whose value in nepers is twice the amplitude one).
   witness is independent of how the parameters were obtained. A record without an independent witness is
   counted and reported, never shown as a pass. Where the witness cannot be shipped, the curator's check at
   review is recorded and the public check reports "not checked";
-- **reference-only parameter sets** ship no check points, which would publish the parameters. A user who
-  fills in the parameters and the witness datum from their own copy runs the witness locally with `vesalius
-  check`. The fill-in tool records the identifier and version of the user's copy and compares them with the
-  record's; a mismatch is "unknown". The result is reported as "fill-in consistent with the user's copy",
-  which is all it shows: parameters and witness typed from the same wrong row, or the wrong version, can
-  agree. The curator's own result at review is recorded beside it. A consumer's CI that cannot hold filled
-  values uses values it declares inline;
+- **reference-only parameter sets** ship no check points, which would publish the parameters. A user who fills
+  in the parameters and the witness datum from their own copy, as an overlay in their own namespace, runs the
+  witness locally with `vesalius check`. The fill-in tool records the identifier and version of the user's
+  copy and compares them with the record's; a mismatch is "unknown". The result is reported as "fill-in
+  consistent with the user's copy", which is all it shows: parameters and witness typed from the same wrong
+  row, or the wrong version, can agree. The curator's own result at review is recorded beside it. A consumer's
+  CI that cannot hold filled values uses values it declares inline;
 - **evidence**: in the curated library, every value extracted from text or a table carries a quote (or, if
   the legal review rules that quotes may not ship, the quote's hash), a locator, the document's identity and
   version, and the hash of the copy read. The quote is checked against the document when the draft is made,
@@ -809,10 +823,12 @@ section 5.6): sections are optional and a reader ignores those it does not use; 
 the meaning of an existing one, and a change that would is major; a condition a reader does not know gives
 "unknown", refused unless the consumer waives it, never "present and unchecked". An added token in an
 enumerated field (an interpolation scheme, a statistics basis) refuses that field in an older reader instead
-of being read as something it knows. A reader reads a record of a newer minor version and refuses one of a
-newer major version. A new record type is additive in the same way: a reader skips a type it does not know
-when listing records, and refuses it when a record of that type is referenced. This works only because
-every record states its type from the first schema version (constraint 27).
+of being read as something it knows. From 1.0.0 a reader reads a record of a newer minor version and refuses
+one of another major version; before 1.0.0 it reads only its own minor version, because a pre-1.0 minor
+version may still change shapes (maintainer, 2026-10-12). A new record type is additive in the same way: a
+reader skips a type it does not know when listing records, and refuses it when a record of that type is
+referenced. This works only because every record states its type from the first schema version (constraint
+27).
 
 ### 7.3 Stability levels
 
@@ -1137,7 +1153,8 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
     outside its range unless the consumer declared an extrapolation with its basis. It never guesses.
 14. **Check points and a convention witness on every shipped model parameter set.** Check points are computed
     by the family's reference implementation, never typed in; a reference-only set ships none, because they
-    would publish its parameters, and its fill-in is checked against the witness instead. The witness is a
+    would publish its parameters, and a user's fill-in (an overlay in the user's namespace) is checked
+    against the witness instead. The witness is a
     response the source itself reports, independent of how the parameters were obtained, which they must
     reproduce; a parameter set without one is not admitted to the curated library.
 15. **Family versions are frozen.** A family is admitted with a definition, golden vectors, a reference

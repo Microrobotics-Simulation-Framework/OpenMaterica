@@ -45,7 +45,8 @@ live in a repository of its own; until it exists, its rules are kept here.
     guesses.
 14. **Check points and a convention witness on every shipped model parameter set.** Check points are computed
     by the family's reference implementation; never type them in. A reference-only set ships none (they would
-    publish its parameters); its fill-in is checked against the witness instead. The witness is a response the
+    publish its parameters); a user's fill-in, an overlay in the user's own namespace, is checked against
+    the witness instead. The witness is a response the
     source itself reports, independent of how the parameters were obtained (for a fit, a held-out datum);
     without one, a parameter set is not admitted to the curated library.
 15. **Family versions are frozen.** Any change to a released definition or its vectors is a new version.
@@ -201,7 +202,8 @@ Every value needs (the full standard is `DOCUMENTATION_ARCHITECTURE.md` section 
 - the **conditions** of the test as the source states them, from the conditions vocabulary (temperature,
   frequency, rate, loading mode, test method, measurement geometry, propagation direction for speeds in
   anisotropic tissue; categorical ones included), each with its basis (stated, or inferred from a figure),
-  and any the source does not state recorded as unstated; the specimen's shape for magnetic values; the
+  and any the source does not state recorded as unstated; the specimen's shape and size as conditions for
+  magnetic values; the
   test method and specimen geometry for failure values; the kind of density (apparent, or of the tissue
   itself);
 - for a table or a power law, the **range** it covers, and the range the source says it holds over where

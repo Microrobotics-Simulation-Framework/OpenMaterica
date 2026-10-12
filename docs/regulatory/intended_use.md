@@ -71,11 +71,12 @@ before release.
 
 Library records come in three tiers. A **shipped** record publishes its values. A **reference-only** record
 publishes provenance, a locator and an extraction recipe but no values, because the source does not permit
-redistribution or its status is unknown; its values are whatever the user fills in from their own copy of
-the source. Vesalius states nothing about them beyond one check, reported as "fill-in consistent with the
-user's copy": the filled parameters reproduce the witness datum filled from the same copy, whose identity
-and version match the record's. A **private** overlay is an organisation's own data in the same format, and
-is entirely theirs.
+redistribution or its status is unknown. A user fills its values in from their own copy of the source, as an
+overlay record in their own namespace; the curated record never changes, and every value read through the
+overlay is labelled user-extracted. Vesalius states nothing about those values beyond one check, reported as
+"fill-in consistent with the user's copy": the filled parameters reproduce the witness datum filled from the
+same copy, whose identity and version match the record's. A **private** overlay is an organisation's own data
+in the same format, and is entirely theirs.
 
 Biocompatibility fields record test evidence reported for a material. They are never a biocompatibility
 assessment or a safety claim, and never a device's status, which belongs to a finished device in its intended
