@@ -15,8 +15,9 @@
 
 - [ ] I attest that each value in this pull request was extracted from the cited source by the method
       recorded for it, or comes from a measurement or fit I describe; that every value extracted from text
-      or a table carries its verbatim quote and locator; that every value a language model helped draft is
-      recorded as such and was checked by a named reviewer against the source at its locator; that nothing
-      was copied in bulk from a secondary database; that each value's tier matches its source's
-      redistribution status in the source registry; and that I have the right to contribute the shipped
-      values under the library's data licence, CC0-1.0.
+      or a table carries its verbatim quote and locator, or the quote's hash if the legal review has ruled
+      that quotes may not ship; that every value a language model helped draft is recorded as such and was
+      checked by a named reviewer against the source at its locator; that nothing was copied in bulk from a
+      secondary database; that each value's tier matches its source's redistribution status in the source
+      registry; and that I have the right to contribute the shipped values under CC0-1.0. Quotes kept as
+      evidence remain the source's text.

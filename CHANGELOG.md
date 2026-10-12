@@ -54,7 +54,25 @@ recorded in that repository's CHANGELOG.
   elemental composition; the layered path's USD form as a typed prim, needed by MIME 0.3.0; an anisotropic
   linear elastic family for bone; conditions separated from specimen facts, with a starting vocabulary;
   new conformance cases (derivatives at table knots and ends, in-range reports, mixing at the cell, record
-  types, the stage's units, physics bindings). Constraints 26 and 27; constraints 17 and 21 revised.
+  types, the stage's units, physics bindings). Constraints 26 and 27; constraints 14, 17 and 21 revised.
+- Fixes after an independent review of that revision (2026-10-12): the transfer test replaced by a line
+  between test specimens (in, with their shape and size as conditions) and made objects as built (out); the
+  typed value beside each field's JSON string in USD deleted, and no `UsdPhysics.MaterialAPI` on shipped
+  layers; an `overlay` record type, overlays as prims of their own applied only when declared, scoped by a
+  hash of the consumer's model configuration; unknown record types skipped when listing and refused when
+  referenced, with namespaced types specified only after a consumer prototypes one; a plain scene manifest;
+  the layered path's USD form with an index per interval, since USD drops repeated relationship targets;
+  `interval` and `composition` value forms; attenuation stored as an amplitude coefficient, with shear
+  attenuation for solids; declared extrapolation as a consumer declaration; an unknown token refuses its
+  field and an unknown condition gives "unknown"; run-time watches on every declared condition; a
+  `marginals` uncertainty structure; quotes required by the curated library's policy and checked where
+  present, with a hash fallback if the legal review rules quotes may not ship, and evidence excluded from
+  the CC0 grant; the content hash over the whole record minus an exclusion list, with test vectors;
+  "a consumer's computation" defined as its step, compiled program and gradient path, the core running at
+  build, and the write-side tooling split into `vesalius-authoring`; the first library release defined as
+  the first archived release with a DOI; conformance profiles; disease and treatment state as specimen
+  facts; records in JSON only. The stiffness tensor for bone moved to stretch. Constraints 4, 5, 13, 14, 21,
+  24, 26 and 27 revised.
 
 ### Schema
 ### Families

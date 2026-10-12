@@ -17,7 +17,8 @@
 
 Vesalius describes substances, never systems: not an apparatus or its calibration, not the quantities of one
 object (its moment, inertia or mean density), not a drive, a procedure or a simulator's tuning. A value
-belongs here if it would hold for another object made of the same substance under the same conditions.
+belongs here if it is a substance's, measured on a test specimen whose shape and size are recorded; a value
+of a made object as built (a device, an assembled robot) belongs to its consumer.
 Geometry is scene data: Vesalius defines how geometry binds to materials and ships small test phantoms, never
 anatomy. Other publishers can use the same machinery in their own namespaces, for data Vesalius does not
 curate. The full statement is in [`docs/regulatory/intended_use.md`](docs/regulatory/intended_use.md).

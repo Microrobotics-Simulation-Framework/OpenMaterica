@@ -26,9 +26,11 @@ that stand in for them, agents introduced into them, and the materials of device
 It does not describe systems: an apparatus or its calibration, the quantities of one object (its moment,
 inertia or mean density), a drive, a procedure, or a simulator's tuning.
 
-- **The transfer test.** A value belongs in Vesalius if it would hold for another object made of the same
-  substance under the same conditions. If it changes with an object's shape, size or assembly, the consumer
-  computes or records it.
+- **Specimens, not objects.** A value of a substance, or of a mixture given by its composition, measured on a
+  test specimen whose shape and size are recorded as conditions, is in. A value of a made object as built (a
+  device, a product, an assembled robot) is out: its consumer computes or records it. A value that depends
+  on the specimen's shape (a magnetic value measured on a sphere, a blood viscosity measured in a tube of
+  stated diameter) is in, with the shape as a condition.
 - **Pairs.** A property of two substances in contact (friction, slip, a solute's diffusivity) is in, as an
   interface record, when the source states the surface conditions and the test method, which become
   required conditions. A number measured with one tool or device is reference data for checking a model.
@@ -36,36 +38,44 @@ inertia or mean density), a drive, a procedure, or a simulator's tuning.
   phantoms and label mappings from reference anatomies, never anatomy.
 - **Behaviour.** Behaviour computed from geometry and materials (an implant's heating in MRI, a puncture
   force) is the consumer's output; measured behaviour is reference data in the consumer's namespace.
-- **Entry.** Content enters when a named consumer needs it, and the curated library starts with the body.
-  Other publishers may use the same machinery in their own namespaces, including for data Vesalius does not
-  curate. Such data is a record of a type of its own: it shares the checks every record gets, but it is
-  never a material and Vesalius never curates it.
+- **Entry.** Content enters when a named consumer needs it, and the curated library starts with the body
+  and the materials of devices that enter or touch it. An apparatus's materials (a coil's copper, a
+  detector's scintillator) are published as material records in other namespaces. Other publishers may use
+  the same machinery in their own namespaces, including for data Vesalius does not curate. Such data is a
+  record of a type of its own: its envelope and value machinery are checked as for any record, but Vesalius
+  does not check its body, never treats it as a material and never curates it.
 
 ## Data statement
 
 The values in the Vesalius material library are **taken from cited sources**, or are fits to cited data,
-labelled by origin. Vesalius warrants that each value is what its source gives (or what its recorded fit
-produces), converted correctly to SI, with the specimen, conditions and statistics the record states; and that
-each model parameter set reproduces its check points under the family definition it names, and its independent
-convention witness where the record has one. Vesalius does **not** warrant that a value describes any
-particular patient, tissue sample, phantom batch or device, nor that a source is itself correct or current.
-Whether a library value is applicable to a given use is the user's and the manufacturer's judgement.
+labelled by origin. For each value, the library states what its source gives (or what its recorded fit
+produces), converted to SI, with the specimen, conditions and statistics the record states; and that each
+shipped model parameter set reproduces its check points under the family definition it names, and its
+independent convention witness where the record has one. `DOCUMENTATION_ARCHITECTURE.md` section 6 says how
+each of these statements is checked; nothing more is claimed. Vesalius does **not** state or check that a
+value describes any particular patient, tissue sample, phantom batch or device, nor that a source is itself
+correct or current. Whether a library value is applicable to a given use is the user's and the
+manufacturer's judgement.
 
 Many values were measured on specimens that differ from a user's target: another species, another anatomical
 site, a cadaver for living tissue, a phantom for tissue. Each record states its specimen per section or field.
 Whether a specimen stands in adequately for a target is the user's declaration, which the user's build
 records, never the library's.
 
-Every value in the curated library that was extracted from text or a table carries the verbatim quote it was
-read from, with the identity and version of the document. Some values are drafted with the help of a
-language model; each such value says so. Every value, assisted or not, is checked against its source by a
-named reviewer before release.
+Subject to the legal review planned before the first library release, every value in the curated library
+that was extracted from text or a table carries the verbatim quote it was read from, with the identity and
+version of the document. If quotes may not ship, the record carries the SHA-256 of the normalised quote with
+its locator, and the text stays with the curator. Some values are drafted with the help of a language model;
+each such value says so. Every value, assisted or not, is checked against its source by a named reviewer
+before release.
 
 Library records come in three tiers. A **shipped** record publishes its values. A **reference-only** record
 publishes provenance, a locator and an extraction recipe but no values, because the source does not permit
 redistribution or its status is unknown; its values are whatever the user fills in from their own copy of
-the source, and Vesalius warrants nothing about them. A **private** overlay is an organisation's own data in
-the same format, and is entirely theirs.
+the source. Vesalius states nothing about them beyond one check, reported as "fill-in consistent with the
+user's copy": the filled parameters reproduce the witness datum filled from the same copy, whose identity
+and version match the record's. A **private** overlay is an organisation's own data in the same format, and
+is entirely theirs.
 
 Biocompatibility fields record test evidence reported for a material. They are never a biocompatibility
 assessment or a safety claim, and never a device's status, which belongs to a finished device in its intended
@@ -89,7 +99,8 @@ Vesalius's code is licensed under the Apache License 2.0, which is permissive an
 patent grant. No copyleft obligation follows a product that incorporates it. The curated material library's
 data is released under CC0-1.0, stated on each record. A value whose source restricts redistribution stays
 reference-only whatever that licence says, and a short quote kept as evidence is the source's text, not
-relicensed. Other publishers choose their own licences. This is a description, not legal advice.
+relicensed: a record's licence field is structured, and excludes the evidence text from the CC0 grant. Other
+publishers choose their own licences. This is a description, not legal advice.
 
 ## Layered responsibility model
 
@@ -98,9 +109,10 @@ relicensed. Other publishers choose their own licences. This is a description, n
 | Specification and read-side correctness | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite |
 | Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden test vectors |
 | Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
-| A consumer's own reader, mixing rules and family evaluators | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance cases; the record's check points; the family's golden vectors |
-| Choosing a material; declaring its domain, target, mixing rule and picks; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
-| Watching, during a run, a condition that the run or an optimiser moves | downstream user | ASME V&V 40 | the evaluator's in-range output, recorded with the results |
+| A consumer's own code inside its computation (readers, mixing rules and family evaluators in its step, compiled program or gradient path) | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance profiles it passes; the record's check points; the family's golden vectors |
+| Vesalius code a consumer runs at build (the reader, requirement checks, the material input sheet, label-volume fractions, the reference sampler) | Vesalius, assessed by the manufacturer as SOUP | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite; the SOUP package |
+| Choosing a material; declaring its domain, target, mixing rule, picks and any extrapolation; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
+| Watching, during a run, every declared condition that the run or an optimiser moves | downstream user | ASME V&V 40 | the run-time watches the build emits, and the evaluators' in-range outputs, recorded with the results |
 | Calculation verification of a simulation | downstream user | ASME V&V 40 | the simulator's own evidence |
 | SOUP assessment of Vesalius | device manufacturer | IEC 62304 Clauses 5.3.3, 5.3.4, 7.1.3 | Vesalius SOUP package and anomaly registry |
 | Risk management, clinical evidence, submission | device manufacturer | ISO 14971, EU MDR | the manufacturer's files |
