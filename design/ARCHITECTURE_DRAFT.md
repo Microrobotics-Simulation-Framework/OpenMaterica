@@ -347,7 +347,7 @@ A family definition (a document and its data files) fixes:
 
 | Item | Contents |
 |---|---|
-| Kind | `static`, a response to the current input; or `evolution`, with internal state, a time axis and events. Only `static` is admitted until the evolution form is specified (open question 18) |
+| Kind | `static`, a response to the current input; or `evolution`, with internal state and a time axis, and optionally events. Both are admitted (below) |
 | Kinematics and outputs | the deformation or input measure (stretch, Green-Lagrange strain, frequency), the output measure (Cauchy or first Piola-Kirchhoff stress, complex permittivity), the loading modes covered |
 | Equations | the energy or response function, normatively; the treatment of incompressibility |
 | Parameters | names, units, meaning, order |
@@ -368,25 +368,42 @@ Rules:
   is deprecated. A consumer that cannot be named publicly may be attested instead, on conditions
   (`CONTRIBUTING.md`). A family in a publisher's own namespace needs no admission.
 
-**Evolution families.** Viscoelastic and rate-dependent mechanics, damage and crack growth, a drug-release
-law, thermal damage (an Arrhenius integral that reaches a threshold) and magnetic hysteresis depend on
-history. Linear history dependence has a static form in the frequency domain, a complex modulus against
-frequency, as Cole-Cole is for permittivity; nonlinear models and models with events have none. An
-evolution family would be defined by equations in continuous time, never by a discrete update, so that a
-time step never becomes a material parameter. Its reference implementation states its integrator, pinned
-by cases with analytic answers (relaxation after a step, creep under constant load). Three items change:
+**Evolution families.** Much of what MIME and other consumers meet depends on history and rate, not on the
+current state alone: viscoelastic and rate-dependent mechanics (tissue, vessel walls, hydrogels), a
+viscoelastic fluid such as vitreous humour (recalled), the relaxation of a magnetic particle's moment in a
+rotating field, a drug-release law, damage and crack growth, thermal damage (an Arrhenius integral that
+reaches a threshold), magnetic hysteresis. They are supported from the start, at two levels:
+
+- **State and history.** A family with internal state variables and a time axis: its definition states the
+  state variables, their initial values and the equations that evolve them in continuous time, never as a
+  discrete update, so that a time step never becomes a material parameter. Rate enters as an input history,
+  and the rates a fit covered are part of its coverage (section 4.10). Viscoelastic and rate-dependent
+  mechanics need nothing more.
+- **Events.** A family may also declare events: a condition on state and input that crosses zero in a
+  stated direction, and what follows (the state changes, or the family's range of states ends and the next
+  model takes over: section 3.5, rule 3). An event's time is computed, never given.
+
+Linear history dependence also has a static form in the frequency domain, a complex modulus against
+frequency, as Cole-Cole is for permittivity. A linear viscoelastic family can be stored in either form, and
+the exact conversion between them is an adapter with its own vectors (the rules above). Nonlinear models
+and models with events have only the time-domain form.
+
+The reference implementation states its integrator and its event location, pinned by cases with analytic
+answers (relaxation after a step, creep under constant load, a threshold reached at a known time). Three
+items change:
 
 | | Static | Evolution |
 |---|---|---|
 | Golden vectors | inputs and outputs | an initial state and an input history; state, outputs and event times at stated times, with tolerances |
-| Check points | responses at a few states | responses to a few standard histories (a step; ramps at stated rates), and event times. A history is chosen so that a condition crosses its threshold cleanly: an event time is badly conditioned where the condition only grazes it |
-| Witness | a reported value at a state | a reported trajectory or event time (section 4.6) |
+| Check points | responses at a few states | responses to a few standard histories (a step; ramps at stated rates; for a linear family, steady oscillation at stated frequencies), and event times. A history is chosen so that a condition crosses its threshold cleanly: an event time is badly conditioned where the condition only grazes it |
+| Witness | a reported value at a state | a reported trajectory (a relaxation or creep curve, a response at stated rates) or event time (section 4.6) |
 
-An event is where one family's range of states ends, computed rather than given, and the next model takes over
-there (section 3.5, rule 3). Events would be specified together with the differentiable events planned for
-MADDENING 0.5.0 (recalled from its scope), so that a consumer can compute an event inside a differentiable
-step; specifying them earlier would mean designing against an interface that does not exist yet. The `kind`
-field is reserved from the first release, so that adding evolution families later is not a breaking change.
+A family's events are defined independently of any solver (principle 2). Whether a consumer can use them
+inside a differentiable step is the consumer's matter: for MIME, an event becomes useful inside its
+compiled, differentiated step once MADDENING's differentiable events exist (planned for MADDENING 0.5.0,
+recalled from its scope). Until then a consumer evaluates an event-bearing family outside that step, or
+watches the event's condition with a runtime monitor (section 9.6). State-and-history families need
+nothing from MADDENING beyond what it already offers.
 
 ### 4.6 Check points and convention witnesses
 
@@ -1319,7 +1336,7 @@ Each set includes the one before it. A MIME row is done first as the spike named
 | R2 | Acoustic section (density; longitudinal and, for solids, shear sound speed; attenuation as a power law over a stated band; B/A), for both body and medium | Vesalius | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
 | R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, and elemental composition; the spectral axis and composition built generally, so that the optical section adds fields later; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | AD 4.2 *Sections*; AD 4.4 *Five value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
 | R4 | Mixing rules in the array API: the identities fixed, named rules with their assumptions, the consumer's pick recorded | Vesalius | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
-| R5 | The first model family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points, and the `kind` field reserved. Its named consumer is MIME's superparamagnetic response node. Its first parameter set comes from a source that publishes a full magnetisation curve, so that held-out points witness the fit; a source whose quoted numbers were all used in the fit goes to MIME's namespace, flagged "no independent witness" (section 6.7). The importer of section 12.5 exercises the same machinery on mechanics families and real papers | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 6.7 *Distribution and hosting*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
+| R5 | The family machinery, with both kinds: static, and evolution with state and history and optional events (section 4.5). The first family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points; its named consumer is MIME's superparamagnetic response node. Its first parameter set comes from a source that publishes a full magnetisation curve, so that held-out points witness the fit; a source whose quoted numbers were all used in the fit goes to MIME's namespace, flagged "no independent witness" (section 6.7). Rate-dependent families follow as soon as a consumer names one. The importer of section 12.5 exercises the same machinery on mechanics families and real papers | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 6.7 *Distribution and hosting*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
 | R6 | Uncertainty structures, each saying what it represents, and the reference sampler. MIME maps the spread its question needs onto MADDENING's UQ types where they can carry it; a mean and a standard deviation need a MADDENING change (section 9.4) | Vesalius, MIME (S5) | AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling*; AD 9.4 *Uncertainty* |
 | R7 | `vesalius.compliance`: `collect_material_inputs` and the material input sheet, written into each MIME run's provenance, with the derivation chain of every node parameter, review status, and the consumer's declarations, picks and waivers | Vesalius, MIME (S5) | DA 9.1 *Where it fits*; DA 9.3 *What this would add to Vesalius*; AD 3.5 *Facts, declarations and the build* |
 | R8 | Material cards; the legal review; the library's first archived release, with a DOI | library | AD 6.5 *Process*; AD 6.6 *Material cards*; AD 6.7 *Distribution and hosting* |
@@ -1343,9 +1360,9 @@ Each set includes the one before it. A MIME row is done first as the spike named
 | A8 | Optical and thermal sections with composition, for photoacoustics' cheap rungs, added to the radiological section's spectral machinery without breaking the schema | Vesalius | AD 4.2 *Sections*; AD 5.6 *Versions and hashes*; AD A.3 *A fidelity ladder (proposal)*; AD A.4 *Prerequisites, in order* (item 1) |
 | A9 | The MCP server, the extraction prompts and the gold set | `vesalius-mcp` | AD 8 *Layer 6: MCP tooling and curation* |
 
-Not in any set, for want of a MIME consumer (section 7.6): the dielectric section, evolution families, and a
-non-Newtonian blood family. Mechanics, with failure, has a consumer of its own and its own track (section
-12.2).
+Not in any set, for want of a MIME consumer (section 7.6): the dielectric section and a non-Newtonian blood
+family. The evolution form of families is part of R5, so that a rate-dependent family can be admitted as soon
+as a consumer names one. Mechanics, with failure, has a consumer of its own and its own track (section 12.2).
 
 ### 12.2 The target and the release order
 
@@ -1362,8 +1379,8 @@ Vesalius; an experiment whose materials are not ready keeps declaring its values
 | 0.2 | realistic | R1 to R9 | S2 to S6 | MIME 0.3.0: the release it is expected to pin |
 | 0.3 | target | A1, A2 and A4 (the Vesalius side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A9; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
-| with 0.2 | the mechanics track: not a priority, but progressing | mechanics with linear elasticity and one hyperelastic family, failure properties and static failure criteria; layered paths; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
-| with a consumer | | the optical, thermal and dielectric sections, added without breaking the schema (section 5.6); evolution families, with MADDENING's events; further families | | |
+| with 0.2 | the mechanics track: not a priority, but progressing | mechanics with linear elasticity, one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; layered paths; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
+| with a consumer | | the optical, thermal and dielectric sections, added without breaking the schema (section 5.6); further families, of either kind | | |
 | beside 0.2 or 0.3 | | the ultrasound adapter and the label mapping for the patient twin | | Isaac for Healthcare, if they want it |
 
 A spike runs against the release that carries its features, before the next set starts, and a failed spike
@@ -1456,9 +1473,8 @@ Fields that are always unstated, or never filled, in prototypes 3 and 4 are cand
     MCP sampling once clients support it.
 17. Whether quotes should be required for every value extracted from text or tables, not only for
     model-assisted ones. It would help every review, at a cost to manual curation.
-18. The evolution form of model families (section 4.5): golden vectors, check points and witnesses for
-    internal state and events, and how an event hands over to the next model. Until it is specified, only
-    `static` families are admitted.
+18. Events in evolution families (section 4.5): how a family names the model that takes over when its range of
+    states ends, and how a chain of families is recorded in a run's material input sheet.
 19. Check points for reference-only parameter sets: shipping them publishes the parameters; computing them
     locally after a fill-in checks only the consumer's evaluator, not the fill-in.
 20. Sections in another namespace. Families can live in another namespace, but sections cannot yet, because
@@ -1536,7 +1552,7 @@ standardising) added the last three rows.
 | a curator's fit "witnessed by construction" | a witness independent of the fit; witnesses through a model of the test labelled | a witness that cannot fail is not one |
 | one kind of statistic | each spread says what it represents | a population's spread and an estimate's uncertainty answer different questions |
 | provenance `kind`: declared, measured, fitted, derived | `origin`, separate from how a value was transcribed | a reported measurement is not a declaration |
-| static families only | a reserved `kind` field on families; evolution families specified before the first is admitted; failure properties under mechanics | viscoelastic, damage and release models depend on history |
+| static families only | evolution families with state and history, and optional events, specified in the core from the start; failure properties under mechanics | viscoelastic, rate-dependent, damage and release models depend on history; much of MIME's physics does |
 | biocompatibility status on a material | test evidence on the material; status declared on the device | biocompatibility belongs to a device in its use |
 | eight spike controls | rewritten so that each can fail | several could not |
 | an index repository once a second publisher exists | a publishers file and a template repository from the first library release, with MIME's namespace as the first entry | waiting for a second publisher made one less likely |

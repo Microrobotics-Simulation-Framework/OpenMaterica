@@ -110,10 +110,11 @@ a CHANGELOG entry under **Schema**. The version rules are in `DOCUMENTATION_ARCH
 
 A family is admitted with all of the following, in one pull request:
 
-- a `definition.md` following `DOCUMENTATION_ARCHITECTURE.md` section 5.2: its kind (`static`; an
-  `evolution` family is not admitted until that form is specified), kinematics and outputs, equations,
+- a `definition.md` following `DOCUMENTATION_ARCHITECTURE.md` section 5.2: its kind (`static`, or
+  `evolution` with its state variables, initial state and any events), kinematics and outputs, equations,
   parameters with units, admissibility, references, and the known conventions elsewhere;
-- golden test vectors as data files, including edge cases and admissibility cases, with their precision;
+- golden test vectors as data files, including edge cases and admissibility cases, with their precision
+  (for an evolution family: input histories, with tolerances, and analytic cases that pin the integrator);
 - a reference implementation in plain numpy, written for clarity, that reproduces the vectors;
 - a **named consumer**: who needs the family, and for what.
 

@@ -34,7 +34,7 @@ recorded in that repository's CHANGELOG.
   evidence supports): consumer declarations with three-valued checks; domains; specimen facts in place of
   proxy flags; named mixing rules picked by the consumer; no schema fallbacks; tables with schemes, ranges
   and edges; spreads that say what they represent, `not_reported` and interval-only values; independent
-  witnesses; fits written back only as scoped overlays; a reserved family `kind` for evolution families;
+  witnesses; fits written back only as scoped overlays; a family `kind` for evolution families;
   failure properties under mechanics; biocompatibility as test evidence; an advisory index; rewritten
   spike controls. Constraints 23 to 25; constraints 6, 9, 13 and 14 revised.
 - Simplification pass: sections specified when a consumer needs them (fluid, mechanical with failure,
@@ -42,6 +42,8 @@ recorded in that repository's CHANGELOG.
   three rules that make adding one a minor schema change; a publishers file and a template repository
   from the first library release, with MIME as the first other publisher; prototypes before the package;
   the advisory index and Hugging Face items as notes for later.
+- Evolution families in the core from the start: state and history (viscoelastic and rate-dependent
+  models), with optional events defined independently of any solver.
 
 ### Schema
 ### Families

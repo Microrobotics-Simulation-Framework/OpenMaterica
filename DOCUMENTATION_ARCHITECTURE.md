@@ -353,7 +353,7 @@ binding and everything a reader must do, in prose and tables, independently of t
 | `record_format.md` | the plain record: identity, schema version, content hash, sections; every field with its SI unit, value form, range, interpolation scheme and edges, allowed tokens and stability level; the five value forms; no fallback values |
 | `provenance.md` | provenance fields, including origin; the extraction methods; the conditions vocabulary, unstated conditions and the ontology identifiers; specimen facts; the three tiers and user fill-ins; the source registry's fields and redistribution statuses; evidence, assistance and search records |
 | `uncertainty.md` | the statistics block; what each spread represents; `dispersion: not_reported`; interval-only values; the five uncertainty structures; admissibility; the sampling rules, including refusal |
-| `model_families.md` | the identifier form; the `kind` field; what a family definition must fix (architecture draft section 4.5); check points in records, their coverage and the tolerance rule; independent convention witnesses; refusal on an unknown family or version or a failed check point |
+| `model_families.md` | the identifier form; the `kind` field; the evolution form (state variables, input histories, events); what a family definition must fix (architecture draft section 4.5); check points in records, their coverage and the tolerance rule; independent convention witnesses; refusal on an unknown family or version or a failed check point |
 | `fits_and_reference_data.md` | the fit record; reference data and its link to a fit; the fit-reproduction rule and "not checked" |
 | `geometry.md` | layered paths; region binding; label volumes; field overrides and their provenance; precedence declared by the scene; nested regions; background; domains |
 | `usd_binding.md` | the API schemas; attribute names; the binding purpose; the USD forms of layered paths and of parameter sets, statistics and check points; taking provenance from the layer that supplies the value |
@@ -424,6 +424,7 @@ Each family version has a `definition.md`, normative for that version, with thes
 **Status**: [admitted | deprecated]
 **Named consumer**: [who needed it, and for what]
 
+## Kind and state                # static or evolution; state variables, initial state, events
 ## Kinematics and outputs        # input measure, output measure, loading modes covered
 ## Equations                      # normative
 ## Parameters                     # name, unit, meaning, order
@@ -540,6 +541,8 @@ licence allows (architecture draft section 8.6).
 
 ### 6.4 Model-family verification and admission
 
+- An evolution family's reference implementation states its integrator and its event location, and
+  reproduces the family's analytic cases; its vectors carry tolerances, not only a precision.
 - Each family's reference implementation reproduces its golden vectors at the stated precision, including
   the admissibility cases.
 - Golden vectors are frozen per family version. CI fails if a released version's vectors change.
