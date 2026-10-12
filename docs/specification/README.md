@@ -68,7 +68,8 @@ Read them in this order.
 A reader claims conformance by naming the schema version and the profiles it passes. Plain read needs a JSON
 parser and the reader schema's checks, which are structural and can be written by hand; every reader compares
 a record's stated hash with any pin. Recomputing content hashes also needs an RFC 8785 serialiser and SHA-256
-(profile HS). No profile requires another, but a reader without HS labels its results `hash_not_checked`.
+(profile HS). No read profile requires another, but a reader without HS labels its results `hash_not_checked`.
+The EA profile, and the build checks of an engine model (BC-039), also need USD read and the stage check.
 
 | Prefix | Profile | Who needs it |
 |---|---|---|
@@ -82,7 +83,8 @@ a record's stated hash with any pin. Recomputing content hashes also needs an RF
 | FE | family evaluation | consumers that evaluate model parameter sets |
 | SA | sampling | consumers that sample uncertainty |
 | BC | build checks | consumers that check declarations at build (`declarations.md`) |
-| RC | record checks | `vesalius check` and any other checker of records, on the write side |
+| RC | record checks | `vesalius check` and any other checker of records, on the write side; `vesalius check --stage` |
+| EA | engine adapters | writers of engine materials from a declared engine model (`usd_binding.md` section 10) |
 
 Numbers are reserved by document, so each document can add cases without colliding:
 
@@ -95,7 +97,7 @@ Numbers are reserved by document, so each document can add cases without collidi
 | `geometry.md` | SC-001 to SC-049; RC-090 to RC-099 |
 | `read_side_contract.md` | PR-300 to PR-349; HS-010 to HS-019; TE-001 to TE-049 |
 | `model_families.md` | FE-001 to FE-039; RC-060 to RC-079 |
-| `usd_binding.md` | UR-001 to UR-099; RC-100 to RC-119 |
+| `usd_binding.md` | UR-001 to UR-099; RC-100 to RC-119; RC-140 to RC-159; EA-001 to EA-049 |
 | `mixing_rules.md` | MX-001 to MX-049 |
 | `declarations.md` | BC-001 to BC-049 |
 
@@ -123,17 +125,28 @@ relative tolerance for numbers (absolute where an expected number is zero). Reas
 texts never. An input the case does not need is omitted. In this example, `water.json` holds the viscosity as
 a constant of exactly 0.000692 Pa·s measured at 310.15 K, with its shear rate unstated. `profile` is one of
 `plain_read`, `hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`, `table_evaluation`, `mixing`,
-`family_evaluation`, `sampling`, `build_checks` and `record_checks`.
+`family_evaluation`, `sampling`, `build_checks`, `record_checks` and `engine_adapter`.
+
+Two kinds of case take other inputs. A stage-check case (`usd_binding.md` section 9) names its stage in
+`inputs.stage`, has no `request`, and lists in `expected.items` what the check reports, each as `{"item":
+"<the rule's case id>", "prim": "<path>", "detail"?}`, and in `expected.listing`, per shape, `{"shape",
+"region", "material", "engine_materials", "effective_density"}`, the density a number or `{"status":
+"not_checked", "reason"}` where it is not comparable. An engine-adapter case names a stage, a declaration and
+its engine profiles in `inputs`; its `request` is `{"model": "<the engine model's name>"}`; and `expected`
+holds, per shape, the attributes written and their values, or the reasons the adapter refused.
 
 ## What 0.1.0 covers
 
-Schema 0.1.0 is the minimal set of the AD's phasing (section 12.1, M1 to M10) and, built last, the scene
-documents and the USD binding (R1 and R14): plain records with the envelope, the bulk, fluid, magnetic and
-biocompatibility sections, the constant, table, interval, composition and evidence forms in use, provenance,
-conditions, statistics, the reader and its reasons, declarations and the three results, `vesalius check`, the
-plain scene manifest with regions, domains and layered paths, and their USD form. Their cases are planned for
-0.1.0. Label volumes, field overrides and the label mapping's USD form wait for the minor version that brings
-their first consumer. The other forms (the power law, whose first field arrives with the acoustic section; the
-model parameter set; reference data), families and mixing are specified here so that 0.1.0's records do not
-have to change when they arrive; their profiles are optional until that version (AD 12.2). Every profile is a
-claim a reader chooses to make: a reader of plain records need not claim USD read.
+Schema 0.1.0 is the minimal set of the AD's phasing (section 12.1, M1 to M10) with the scene documents,
+layered paths and the USD binding (R1 and R14), built in that order: plain records with the envelope, the
+bulk, fluid, magnetic and biocompatibility sections, the constant, table, interval, composition and evidence
+forms in use, provenance, conditions, statistics, the reader and its reasons, declarations and the three
+results, `vesalius check`; then the plain scene manifest with regions, domains, layered paths and label
+mappings, with the helper that derives a layered path from 3-D geometry (AD 12.1, R14); then their USD form,
+the stage check, engine profiles and the engine adapter. Their cases are
+planned for 0.1.0, except the material input sheet's (R7, 0.2). Label volumes, field overrides and the label
+mapping's USD form wait for the minor version that brings their first consumer. The other forms (the power
+law, whose first field arrives with the acoustic section; the model parameter set; reference data), families
+and mixing are specified here so that 0.1.0's records do not have to change when they arrive; their profiles
+are optional until that version (AD 12.2). Every profile is a claim a reader chooses to make: a reader of
+plain records need not claim USD read.

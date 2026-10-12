@@ -32,11 +32,18 @@ prototypes and the maintainer's decisions on their findings (section 15). Refere
   path): consumers write their own evaluators and mixing rules there, and verify them against conformance
   data. The core does run at a consumer's build (sections 4.12, 7.2, 7.6).
 - A consumer may declare an extrapolation, with its basis; the build records it (principle 10, section 3.5).
-- Layered paths are specified now, for MIME 0.3.0's acoustics and X-ray, and are built in Vesalius 0.1 with
-  the USD binding, as its last step; the anisotropic stiffness tensor is
+- Layered paths are specified now, for MIME 0.3.0's acoustics and X-ray; the anisotropic stiffness tensor is
   stretch (section 12).
 - The prototypes' findings the maintainer approved are written into the sections that carry them (section 15),
   and the answers to the open questions of the earlier drafts are in section 13.
+
+**Decided (maintainer, 2026-10-12, after the ecosystem survey and its review):**
+
+- Vesalius 0.1 carries the plain scene documents, layered paths, label mappings and the USD binding (R1, R14),
+  with no cut line: none of them slips to 0.2 (section 12.2).
+- A region binds its material with a purpose of Vesalius's own, `vesalius`; the `physics` purpose is left to
+  engines (section 5.4).
+- The engine adapter, its engine profiles and the stage check are specified and built in 0.1 (section 5.4).
 
 Everything else here is a proposal.
 
@@ -979,7 +986,9 @@ A scene without USD is described by plain **scene documents**, which are scene d
 - a **layered path**: an entry point and a direction (or a reference to the curve it was derived along), the
   intervals with their thicknesses and their materials' identifiers, versions and hashes, and the declared
   assumption of lateral homogeneity;
-- a **label mapping**: from a reference anatomy's labels to material identifiers, versions and hashes.
+- a **label mapping**: from a reference anatomy's labels, by number or by the segmenter's name, to material
+  identifiers, versions and hashes. Its USD form would use `UsdSemantics` labels for the names (a lean, from
+  the ecosystem survey; with A1).
 
 The conformance suite has every scene case (nested ownership, domain checks, binding refusals) in both the
 plain and the USD form, so a consumer never needs USD to use Vesalius.
@@ -1037,30 +1046,44 @@ typed access (recalled).
   reads density in the stage's mass and length units, which a self-contained library layer cannot know (1050
   kg/m³ would read as 1050 kg/cm³ in a centimetre scene), it stores float32 (prototype P1c), and applying it
   exposes friction and restitution with fallbacks of 0.0, so every region would become frictionless to an
-  engine (checked). An engine that needs it gets it from a scene-level adapter that writes it in the scene's
-  own units.
+  engine (checked). An engine gets its materials from the engine adapter, in the units its profile states
+  (below).
 - Library materials live under a scope of their own, never under `/Materials/<name>`, where they would merge
   silently with MADDENING's display materials of the same name (prototype P1c).
 - **Geometry binds a Vesalius material with `UsdShade.MaterialBindingAPI` and a purpose of our own,
   `vesalius`; the `physics` purpose is the engines'** (maintainer, 2026-10-12, reversing the reuse of
-  `physics` decided after prototype P1c). An engine never reads a Vesalius field: it reads typed attributes
-  in its own schema and in the stage's units, which shipped layers do not carry. Sharing the slot therefore
-  gave engines nothing (one following it found none of its attributes and used its own defaults), while the
-  slot is contested. Isaac Lab binds its own physics materials there, by default stronger than descendants;
-  SimReady requires every collider's physics binding to target a physics material; and NVIDIA's deformable
-  schema binds materials per mesh subset and advises separate rigid and deformable materials, more than one
-  target per prim can hold (ecosystem survey, 2026-10-12). Checked with USD 0.26.5: binding with purpose
-  `"vesalius"` writes `material:binding:vesalius`, which neither `ComputeBoundMaterial("physics")` nor a
-  renderer's purposes resolve.
-- **A Vesalius value reaches an engine only through an adapter.** The adapter reads each region's material
-  through a reader, converts it into the engine's attributes in the stage's units, and authors every one of
-  them, since an engine's fallback reads like a value (PhysX's deformable Young's modulus falls back to 5e7
-  Pa). What Vesalius does not hold (friction until interfaces arrive, a position-based solver's compliance,
-  which depends on the discretisation) comes from the consumer's declared engine configuration, labelled.
-  It writes engine materials as prims of its own, each stamped with the material reference it was converted
-  from, and binds them `physics`. The cost is two bindings per region that can disagree, so the stage check
-  sets them side by side and flags an engine material converted from another material or version, and a
-  simulated region with no engine material; a consumer's build may refuse on either.
+  `physics` decided after prototype P1c). An engine never reads a Vesalius field: it reads typed attributes in
+  its own schemas and in the units its profile states, which shipped layers do not carry. Sharing the slot
+  therefore gave engines nothing: given a `physics` binding to a Vesalius material, OpenUSD's reference
+  physics parser reports no material for the shape, so the engine uses its defaults (checked in the review of
+  2026-10-12). Meanwhile the slot is contested. Isaac Lab binds its own physics materials there, by default
+  stronger than descendants; SimReady requires every collider's physics binding to target a physics material;
+  and NVIDIA's deformable schema binds materials per mesh subset and advises separate rigid and deformable
+  materials, more than one target per prim can hold (ecosystem survey, 2026-10-12). Checked with USD 0.26.5:
+  binding with purpose `"vesalius"` writes `material:binding:vesalius`, which `ComputeBoundMaterial` resolves
+  for none of the purposes `physics`, `full`, `preview` and all-purpose, and OpenUSD's validators raise
+  nothing for it. Whether NVIDIA's own tools strip unknown purposes was not checked.
+- **A Vesalius value reaches an engine only through an engine adapter** (`usd_binding.md` section 10). An
+  engine is declared as a model: its reads, requirements, operating conditions and acceptances work as any
+  model's, and an **engine profile**, a pinned data document, lists every attribute that engine version reads,
+  with its SI dimension, whether a Vesalius field or the consumer's declaration supplies it, the engine's
+  fallback and a locator to the engine's documentation, and the engine's unit convention with its source. The
+  adapter writes a value only where the build result is met or accepted; converts by one rule from the SI
+  dimension and the stage's units; authors every attribute the profile lists, since an engine's fallback reads
+  like a value (PhysX's deformable Young's modulus falls back to 5e7 in stage units); writes engine materials
+  under a scope of its own, never on a Vesalius prim; and stamps each with the read requests and declared
+  values it came from and the stage units it was written for. In 0.1.0 the only Vesalius field an engine
+  receives is `bulk.density`; the rest is declared, with reason and basis, until the mechanical section and
+  interfaces arrive.
+- **The check judges shapes, not regions.** Engines resolve a material per collider, per subset and per
+  simulation mesh, and Isaac Lab binds the first colliders below the prim it is given, so the stage check
+  takes each shape OpenUSD's reference physics parser reports, with instance proxies traversed, maps it to the
+  innermost region above it, and re-derives its engine material from the stamp: a foreign material, a stale or
+  hand-edited one, a scene layer written for other units, or a missing one is reported. The density it
+  compares is the effective one, since `UsdPhysics.MassAPI` overrides a material's density. A declared engine
+  model is met only when the check reports none of these for its shapes. The cost of leaving `physics` to
+  engines is that the two materials can now disagree, where the shared slot made them one prim; the check is
+  what keeps that from being silent.
 - **Readers take a region's material only from a `vesalius`-purpose binding authored on the region's
   prim.** `ComputeBoundMaterial` falls back to an all-purpose binding, usually a display material, for a
   purpose with no binding authored (checked), so readers never call it, and they refuse an all-purpose
@@ -1075,8 +1098,8 @@ typed access (recalled).
   the declared assumption of lateral homogeneity. USD keeps a relationship's targets in order only when they
   are distinct, and removes repeats (checked: skin, fat, muscle, fat, skin reads back as skin, fat, muscle),
   so one target per interval would silently drop layers. Readers refuse a path whose arrays differ in length.
-  Thicknesses are geometry, in the stage's length units like the entry point. A project then
-  moves from one dimension to a full scene without changing representation. A curve prim with one subset
+  Thicknesses are geometry, in the length units of the layer that holds them, like the entry point. A project
+  then moves from one dimension to a full scene without changing representation. A curve prim with one subset
   per interval was the alternative; a typed prim keeps the intervals' thicknesses and the homogeneity
   assumption as data, where a curve would invite renderers to draw it.
 - Geometry units follow the stage's `metersPerUnit`; property values are SI whatever the stage says. Readers
@@ -1327,16 +1350,16 @@ outside Vesalius's scope.
 vesalius/                       the distribution a consumer's product depends on
   schema/          record and scene-document JSON Schemas; schema.usda, generatedSchema.usda,
                    plugInfo.json                                                             (L0)
-  data/            conformance/, spectra/, phantoms/                                         (L1)
+  data/            conformance/, spectra/, phantoms/, engine_profiles/                       (L1)
   core/            record.py, values.py, provenance.py, statistics.py, uncertainty.py,
                    units.py, mixing.py (reference forms), validate.py, checkpoints.py        (L2, numpy)
   io/              plain.py (required); usd/ (needs pxr)                                     (L4)
   sample/          label_fractions.py, layered_path.py, reference_sampler.py                 (L5)
-  tools/           check.py: python -m vesalius check                                        (L6)
+  tools/           check.py: python -m vesalius check, and --stage                           (L6)
 
 vesalius_authoring/             curation tooling, where records are written
   authoring/       compose.py, derive.py, fit_record.py, bake.py; curation tools (8.2)       (L3)
-  integrations/    exporters/, importers/, i4h/                                              (L6, lazy imports)
+  integrations/    exporters/, importers/, i4h/, engines/ (the engine adapter)               (L6, lazy imports)
 ```
 
 The MCP server is a separate distribution, `vesalius-mcp` (section 8), so nothing in the core depends on it.
@@ -1397,7 +1420,8 @@ fractions of the canonical test phantoms, and hash test vectors.
 
 What a consumer does, with no Vesalius code:
 
-1. Read a record with a JSON parser; or put the schema directory on USD's plug-in path and take each
+1. Read a record with a JSON parser; or, with no plug-in needed, detect Vesalius schemas by name in each
+   prim's composed `apiSchemas` and take each
    region's material from the `vesalius`-purpose binding authored on the region's prim, never from
    `ComputeBoundMaterial`'s fall-back to an all-purpose binding, and leave `physics` bindings to engines
    (section 5.4). Skip record types
@@ -1759,18 +1783,19 @@ them.
 | Their component | Today | Vesalius touchpoint | Adapter |
 |---|---|---|---|
 | Ultrasound simulator | six materials hard-coded in C++ | fill its material table from records | a build-time generator in `vesalius-authoring` that writes a drop-in `material.cpp`; their Python API cannot replace the table, so a change of materials needs a rebuild (prototype P2, at their commit `8bb07d9`; their own values round-tripped bit for bit, a test that covers 12 of the table's 48 fields) |
-| Patient twin | CT to labels to meshes and USD, no properties | a step that binds a library material to each label | a mapping file from their label names to library materials, plus a binding function that adds a `vesalius`-purpose binding beside their all-purpose display binding. They identify a structure by the segmenter's name (`anatomy:name`), not its path, and attach CT in millimetre stages (read at their commit `9a779a4` by the ecosystem survey, 2026-10-12) |
+| Patient twin | CT to labels to meshes and USD, no properties | a step that binds a library material to each label | a mapping file from their label names to library materials, plus a binding function that applies `VesaliusRegionAPI`, with the material reference and a priority, and a `vesalius`-purpose binding beside their all-purpose display binding. They identify a structure by the segmenter's name (`anatomy:name`), not its path, and attach CT in millimetre stages (read at their commit `9a779a4` by the ecosystem survey, 2026-10-12) |
 | X-ray simulator | linear map from CT number to attenuation | per-material attenuation from a label volume, computed by the adapter for a stated spectrum (an effective value depends on path length and filtration, so it is the adapter's model, labelled) | builds an attenuation volume; their renderer takes one in mm⁻¹, mapped from CT number, and models no tube voltage, spectrum or filtration (their preset documentation, read by the ecosystem survey, 2026-10-12; not run) |
-| Physics (Newton, the XPBD catheter, soft tissue) | engine materials | mechanical families to engine parameters; interfaces (4.13) for catheter-wall friction | per engine, writing engine materials of its own bound `physics` (5.4); position-based solvers use compliance, which depends on the discretisation, so it comes from the consumer's declared engine configuration, not from a conversion |
+| Physics (Newton, the XPBD catheter, soft tissue) | engine materials | mechanical families to engine parameters; interfaces (4.13) for catheter-wall friction | the engine adapter, per engine profile, writing engine materials of its own bound `physics` (5.4); position-based solvers use compliance, which depends on the discretisation, so it is a declared engine value, not a conversion |
 | Workflows and scenes | USD scenes | scenes reference library layers | none: plain USD composition |
 
 ### 11.1 The ultrasound adapter in more detail
 
 - Their `Material(impedance, attenuation, speed_of_sound, mu0, mu1, sigma, specularity)` computes density as
   impedance times 1e6 over sound speed (`material.cpp:36-38`). Their header documents impedance in MRayl,
-  attenuation in dB/(cm⋅MHz) and sound speed in m/s (`material.hpp`, same commit; checked 2026-10-12; an
-  earlier draft inferred the attenuation unit from the values), and calls `mu0` a scattering density and
-  `sigma` a scattering coefficient, which bears on open question 5 of section 13.
+  attenuation in dB/(cm⋅MHz) and sound speed in m/s (`material.hpp`, same commit; found by the ecosystem
+  survey and checked against prototype P2's copy of the header, 2026-10-12; an earlier draft inferred the
+  attenuation unit from the values), and calls `mu0` a scattering density and `sigma` a scattering
+  coefficient, which bears on open question 5 of section 13.
 - From Vesalius's bulk and acoustic sections: impedance as density times sound speed, sound speed
   directly, attenuation converted from SI to their units. A unit linear in frequency (dB per cm per MHz)
   assumes attenuation is linear in frequency, which holds only approximately for tissue and not at all for
@@ -1806,8 +1831,8 @@ I would rank this above the physics bridges of structure draft 7.7 as a first co
 MIME is the first consumer, so its 0.3.0 release sets the order. **Direction (maintainer, 2026-10-11):** aim
 between the realistic and ambitious sets below. Anything that touches MIME is first proven by a spike (section
 12.3), while MIME waits for MADDENING 0.4.0's release, so that MIME 0.3.0 work starts from results rather than
-proposals. The cut in section 12.2 is my proposal. The rows and spikes were revised on 2026-10-12 after the
-review of section 15.
+proposals. The cut in section 12.2 was my proposal; the maintainer then moved R1 and R14 into 0.1, with
+nothing to slip (2026-10-12). The rows and spikes were revised on 2026-10-12 after the review of section 15.
 
 Each feature names what it serves, as document, section number and *heading*:
 
@@ -1841,7 +1866,7 @@ Each set includes the one before it. A MIME row is done first as the spike named
 
 | # | Feature | Where | Ties to |
 |---|---|---|---|
-| R1 | Scene documents in plain form (the scene manifest, regions, domains) and the USD binding: schemas for the sections in use, read and write, with no fallback values on physical attributes; region binding; domains as collections; overlays; self-contained shipped layers. Built in 0.1, as its last step (section 12.2) | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
+| R1 | Scene documents in plain form (the scene manifest, regions, domains) and the USD binding: schemas for the sections in use, read and write, with no fallback values on physical attributes; region binding; domains as collections; overlays; self-contained shipped layers; the stage check (`vesalius check --stage`); engine profiles and the engine adapter. 0.1.0's profiles would be OpenUSD's `UsdPhysics` rigid materials and the deformable materials of the Isaac Sim release current when the adapter is built; a Newton profile waits until Newton's mass unit is verified (a proposal). Built in 0.1 (section 12.2) | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
 | R2 | Acoustic section (longitudinal and, for solids, shear sound speed, with propagation direction where the material is anisotropic; attenuation as an amplitude coefficient, a power law over a stated band with its exponent's basis, for each wave type, so shear attenuation too; B/A), for both body and medium; density from the bulk section | Vesalius | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
 | R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, derived where needed from the bulk section's composition; the spectral axis built generally, so that the optical section adds fields later; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | AD 4.2 *Sections*; AD 4.4 *Seven value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
 | R4 | Mixing rules specified: the identities fixed, named rules with their assumptions, numpy reference forms and conformance cases at a single cell; the consumer implements its pick and the pick is recorded | Vesalius | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
@@ -1887,16 +1912,17 @@ Vesalius; an experiment whose materials are not ready keeps declaring its values
 
 **USD and layered paths in 0.1** (maintainer, 2026-10-12). The core read path depends on scenes (a read's
 target can be a region, and requirements are checked over a domain or a path), so the code is designed with
-them from the start. They are built last in 0.1, in this order: plain records, the reader and the hash;
-declarations, build checks and the sheet; plain scene documents; the USD binding. USD stays an optional extra,
-so if the last step slips it moves to 0.2 without touching the others. USD is how MIME saves scenes and how
-the patient twin of Isaac for Healthcare would carry Vesalius materials; its novel parts (the layered-path
-prim, overlay prims, region markers, binding refusals, the units rules) are found only by implementing them.
-Label volumes, field overrides and the label mapping's USD form stay with A1.
+them from the start. 0.1 is built in this order: plain records, the reader and the hash; declarations and
+build checks; plain scene documents (regions, domains, layered paths with the L5 helper, label mappings); the
+USD binding, the stage check, engine profiles and the engine adapter. Nothing slips: the maintainer ruled out
+a cut line. USD is how MIME saves scenes and how the patient twin of Isaac for Healthcare would carry Vesalius
+materials; its novel parts (the layered-path prim, overlay prims, region markers, binding refusals, the units
+rules, engine materials) are found only by implementing them. The material input sheet stays R7, in 0.2. Label
+volumes, field overrides and the label mapping's USD form stay with A1.
 
 | Vesalius | Set | Contents | Proven in MIME by | Consumers |
 |---|---|---|---|---|
-| 0.1 | minimal, and R1 and R14 | M1 to M10; then, as the last step, R1 and R14 | S1, and S4 once R1 is in | the MIME spikes; the patient-twin binding for Isaac for Healthcare |
+| 0.1 | minimal, and R1 and R14 | M1 to M10, R1 and R14 | S1 and S4 | the MIME spikes |
 | 0.2 | realistic | R2 to R9 and R15 | S2, S3, S5, S6 | MIME 0.3.0: the release it is expected to pin |
 | 0.3 | target | A1, A2 and A4 (the Vesalius side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A10; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
@@ -1981,7 +2007,7 @@ Each answer is written into the section named.
 | # | Question | Answer |
 |---|---|---|
 | 1 | Source of truth for library materials | plain records; USD generated from them (3.4) |
-| 2 | Binding purpose | a purpose of our own, `vesalius`, with `physics` left to engines; readers take only a `vesalius`-purpose binding authored on the region's prim; adapters write engine materials stamped with their source (5.4). Reversed on 2026-10-12 from reusing `physics`, after the ecosystem survey |
+| 2 | Binding purpose | a purpose of our own, `vesalius`, with `physics` left to engines; readers take only a `vesalius`-purpose binding authored on the region's prim; an engine adapter writes engine materials from a declared engine model, by a pinned engine profile, stamped with their reads; the stage check re-derives them per shape (5.4). Reversed on 2026-10-12 from reusing `physics`, after the ecosystem survey |
 | 3 | The USD form of a layered path | a typed prim of our own, with one relationship to its distinct materials and an index per interval (USD removes repeated targets), specified now because MIME 0.3.0's acoustics and X-ray need it (5.1, 5.4) |
 | 4 | Family registry scope | families only for a named consumer; only reviewed pull requests publish under `vesalius.`; third-party families in their publishers' namespaces; one `vesalius-families` distribution with a hash per family version (3.1, 4.5) |
 | 5 | Where reference implementations sit | with their families; the core only runs vectors and check points (3.1) |
@@ -2037,7 +2063,10 @@ Still open:
   search. On 2026-10-12 an ecosystem survey read SimReady's specifications, NVIDIA's physics schemas, Newton's
   importer, Isaac for Healthcare's patient twin and simulators, and the ontologies, unit systems, medical
   label standards and solver formats a consumer would meet, with citations, in a private report; its
-  findings on units, bindings and label mappings are applied in sections 5.4 and 11.
+  findings on units, bindings and label mappings are applied in sections 5.4 and 11. Its review the same day
+  ran stages through OpenUSD's reference physics parser with usd-core 0.26.5 (instancing, payloads, subsets,
+  `MassAPI`, layered composition). The engine adapter, the engine profiles and the per-shape stage check are
+  unprototyped, and no NVIDIA engine was run.
 - The adoption history of earlier materials-data formats was not researched.
 - The hosting and registry examples of section 6.7 (Zenodo, PyPI, Julia's registry, Datasette Lite, the
   Hugging Face Hub) are recalled; none was checked for limits or terms.
@@ -2164,9 +2193,18 @@ fixed within the decisions. The rows below record what the design gained.
 | a reader validates against the record's schema | a closed writer schema and an open reader schema; an unknown token refuses its field, not the record | a validating reader would refuse every newer record whole |
 | conditions checked against what the consumer declared | every condition the field holds is checked: by tolerance, accept list or waiver, else unknown | an unstated condition the consumer never mentioned passed as met |
 | overlays scoped by configuration | scoped by model and configuration, base by identifier, version and hash; conflicts refused | another model in the same experiment would apply a fit |
-| USD binding and layered paths in Vesalius 0.2 | in 0.1, built last behind a cut line (12.2) | the read path depends on scenes; MIME saves scenes in USD and Isaac for Healthcare's patient twin is USD (maintainer) |
+
+The ecosystem survey of 2026-10-12, the maintainer's decisions on it, and a two-pass review of the result
+(40 findings) gave the rows below.
+
+| Before | After | Why |
+|---|---|---|
+| USD binding and layered paths in Vesalius 0.2 | in 0.1, with no cut line (12.2) | the read path depends on scenes; MIME saves scenes in USD and Isaac for Healthcare's patient twin is USD (maintainer) |
 | reuse the `physics` binding purpose | a purpose of our own, `vesalius`; engine materials written by adapters, stamped with their source, bound `physics`; the stage check flags a mismatch or a simulated region with none (5.4) | NVIDIA's tools write the `physics` slot, and an engine reads nothing from a Vesalius material (ecosystem survey; maintainer) |
 | attenuation in `Np/m` | registered as `/m`, nepers stated in the field's definition | `Np/m` is not valid UCUM (survey) |
+| an adapter configured by an undefined "engine configuration", checked per region by a label | an engine is a declared model; a pinned engine profile per engine version; one conversion rule by SI dimension; a stamp of the reads; a per-shape stage check that re-derives values, with `MassAPI` and instance proxies (5.4) | engines bind colliders, not regions; a label is never compared with values; `MassAPI` overrides a material's density (review) |
+| schemas found with `HasAPI` | by name in the composed `apiSchemas` | without a plug-in, USD omits unregistered schemas, so a reader found no regions (review, checked) |
+| instances, payloads, point instancers, time samples unspecified | traversed through instance proxies; unloaded payloads, prototypes and time samples refused | each let a point read the background silently (review, checked) |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

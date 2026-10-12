@@ -415,7 +415,7 @@ binding and everything a reader must do, in prose and tables, independently of t
 | `model_families.md` | the identifier form; the rule that a family enters `vesalius.` only when an in-scope record uses it; the `kind` field, stated per loading control, with every rate marked as an input or a test condition; input and output measures with conversion vectors; the domain of each term; the evolution form (state variables, input histories, events); events that say only where a family's range of states ends, never which model takes over, with chains declared by the consumer as pairs of family and record; what a family definition must fix (architecture draft section 4.5); coverage stated in measures that do not depend on the loading mode (principal stretches or invariants, and rate); check points in records, their coverage and the tolerance rule; independent convention witnesses and their tolerance, and a witness through a model of a test, which `vesalius check` reports as not checked; refusal on an unknown family or version or a failed check point |
 | `fits_and_reference_data.md` | the fit record, including "exactly determined"; coverage as a set of loading modes and ranges, with histories; a parameter set that is a mean of per-specimen fits, witnessed against per-specimen data or recorded "no independent witness"; the reference-data payload (points with their own origin and status; curves with a digitised flag and the digitiser's axis calibration); the fit-reproduction rule and "not checked" |
 | `geometry.md` | scene documents, which are scene data with their own schemas, not records: the plain scene manifest (regions with a material identifier, version and hash, a priority, an orientation and an opaque reference to their geometry; the background; domains as lists of region names; interface records bound to pairs of regions), layered paths (an entry point, a direction or curve, intervals with their thickness and material, the declared lateral homogeneity) and label mappings; a region's geometry; precedence declared by the scene, with no priority taken from hierarchy depth (two regions with no authored priority that claim one point are refused); a background that is inside every domain that requires it; every domain declared, none by default; an orientation wherever a direction-dependent value is used; label volumes; field overrides, their provenance and their frame (world, or the region's reference configuration) |
-| `usd_binding.md` | the API schemas; attribute names; a material prim's envelope as attributes (identifier, version, record type, content hash), since prim names carry no identity; each field's full plain form as one generated JSON string and nothing beside it; overlays as prims of their own (a relationship to the base material and the scope as a JSON string), applied only when a consumer declares them; no `UsdPhysics.MaterialAPI` on shipped layers (an engine that needs it gets it from a scene-level adapter in the scene's units); the physics binding purpose, authored on the region prim, and the bindings a reader refuses (the all-purpose fallback, a binding with no purpose, a different physics binding on a non-region prim inside a region); the region marker; the layered path's typed prim (one relationship to its distinct materials and an integer index per interval; thicknesses in the stage's length units); library materials under a scope of their own, never `/Materials/<name>`; the stage's authored `metersPerUnit` |
+| `usd_binding.md` | the API schemas; attribute names; a material prim's envelope as attributes (identifier, version, record type, content hash), since prim names carry no identity; each field's full plain form as one generated JSON string and nothing beside it; overlays as prims of their own (a relationship to the base material and the scope as a JSON string), applied only when a consumer declares them; no `UsdPhysics.MaterialAPI` on shipped layers; schemas detected by name in the composed `apiSchemas`, with no plug-in; instance proxies traversed, and unloaded payloads, point-instancer prototypes and time samples refused; the `vesalius` binding purpose, authored on the region prim, and the bindings a reader refuses (an all-purpose binding to a Vesalius material, a `vesalius` collection binding, a different `vesalius` binding on a non-region prim inside a region, a binding on a prim that is not a region); `physics` bindings left to engines; the region marker; the layered path's typed prim (one relationship to its distinct materials and an integer index per interval; thicknesses in the units of the layer that holds them); the stage check, per shape; engine profiles, the engine adapter and the stamp it writes; library materials under a scope of their own, never `/Materials/<name>`; the stage's authored `metersPerUnit` |
 | `read_side_contract.md` | the read procedure (architecture draft section 7.5), in order, and every case in which a reader must refuse (an unknown token, a referenced record of an unknown type, an unauthored attribute, a value outside its range unless an extrapolation is declared); an unknown condition gives "unknown", never "present and unchecked"; what an evaluator reports (whether its condition is in range, and which side's derivative it gives at a table's interior knots; at a table's ends, the inside derivative only); verifying a content hash, which needs an RFC 8785 serialiser and SHA-256 beside the JSON parser |
 | `mixing_rules.md` | the identities, with the volume-fraction identity for density holding for spatial mixing only, not for solutions; the named rules, each with its equation, its assumptions and a numpy reference; fields with no general rule. Consumers write the rules in their own code (constraint 26) |
 | `declarations.md` | what a consumer declares (domains, targets, family versions, mixing rules, picks, tolerances with their reason and consequence, waivers, a specimen fact that implies a condition, an extrapolation with its basis, overlays it accepts, chains of families across events as pairs of family and record); the three results of a check (met, not met, unknown), an unknown carrying its value; the run-time watch emitted for every declared condition with its tolerance; an overlay's scope key (a hash of the consumer's whole model configuration), any difference being "not met" unless accepted; a field made trainable, marked "record value used only as the initial value"; a clamping evaluator, which needs a declared extrapolation or stops the run when its in-range flag falls; how declarations are recorded (architecture draft section 3.5) |
@@ -649,6 +649,8 @@ of conformance names the schema version and the profiles passed: a reader with o
   prim; refusal of a Vesalius material reached through an all-purpose binding; refusal of a different
   Vesalius binding on a non-region prim inside a region; `physics` bindings left to engines; a binding that
   applies within its region and never across into a nested one;
+- schemas found with no plug-in registered; regions inside instances found; refusal of reads that reach an
+  unloaded payload, of regions in a point instancer's prototype, and of time-sampled attributes;
 - refusal of an attribute that was not authored; refusal of a stage with no authored `metersPerUnit`;
 - a material prim's envelope attributes; each field's JSON string equal to the plain record's field;
 - a layered path whose materials repeat (skin, fat, muscle, fat, skin), read through its index array;
@@ -679,7 +681,14 @@ of conformance names the schema version and the profiles passed: a reader with o
 - the analytic volume fractions of the canonical example phantoms (a sphere, a cylinder, a layered slab) on
   stated grids, which also serve as the example phantoms.
 
+**Engine adapters**
+- engine profiles pinned by hash and refused without a source for their units; one conversion rule by SI
+  dimension, with vectors in two unit systems; every attribute a profile lists authored, from a read that is
+  met or accepted or from a declared value; the stamp; refusal of overridden bindings and instanced regions;
+
 **Build checks**
+- an engine model's engine results per shape: missing, foreign, stale and overridden engine materials refused,
+  an explicit mass accepted only by a waiver;
 - a tolerance carries its reason; a declared operating condition that sits on a table knot is reported;
 - an extrapolation refused when undeclared, and recorded in the material input sheet when declared;
 - a run-time watch emitted for every declared condition with its tolerance;
@@ -761,6 +770,8 @@ its own policy checks below:
 | fit reproduction | every fit reaches its stated residual; "not checked" is counted and reported |
 | generated | USD layers, cards and the index equal what the records produce |
 | self-contained | shipped USD layers have no composition arcs and no asset paths |
+| units | every registered unit code parses as UCUM 2.2 with no special unit in a product or quotient |
+| stage (`--stage`) | on a scene: units, hashes and pins, and per engine shape its engine materials, effective density and stamp, re-derived (`usd_binding.md` section 9) |
 | witness | parameter sets reproduce an independent convention witness; "no independent witness" and "not checked" are counted and reported; a witness through a model of a test, and a witness of a family outside `vesalius.`, are reported "not checked" |
 | fallbacks | physical attributes in the USD schema have no fallback values; shipped layers do not apply `UsdPhysics.MaterialAPI` |
 | tables | every table declares its interpolation scheme, its range and its edges; every form states its range |
@@ -1213,10 +1224,11 @@ README disclaimer.
 
 **Phase 1, with the first code:** the specification for each release's contents as it is built (architecture
 draft section 12.2): first the record format with namespaced identifiers, record types, values, provenance and
-required properties, then, as 0.1's last step, geometry (the plain scene manifest and layered paths, with
-their USD forms) and the USD binding (Vesalius 0.1; library tags made then are unpublished pins for MIME's
-spikes, not a library release); then uncertainty structures and model families (0.2); the conformance suite;
-the first family definition (architecture draft section 12.1, R5) with golden vectors and a reference
+required properties, then geometry (the plain scene manifest, layered paths with the helper that derives one
+from 3-D geometry, and label mappings; the first two with their USD forms), the USD binding, the stage check
+and the engine adapter (all Vesalius 0.1, with no cut line; library tags made then are unpublished pins for
+MIME's spikes, not a library release); then uncertainty structures and model families (0.2); the conformance
+suite; the first family definition (architecture draft section 12.1, R5) with golden vectors and a reference
 implementation, in `vesalius-families`; `python -m vesalius check`; `scripts/check_anomalies.py`,
 `check_families.py` and the sign-off check; GitHub labels as MADDENING's (`anomaly:critical`, `anomaly:major`,
 `anomaly:minor`, `safety-relevant`, `soup-assessment`, `known-anomaly`).

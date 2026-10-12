@@ -92,13 +92,25 @@ USD, with `usd-core` 0.26.5:
 - `ComputeBoundMaterial(purpose)` falls back to the all-purpose binding, usually a display material, when no
   binding of that purpose is authored. A binding authored without `MaterialBindingAPI` applied still
   resolves, with a warning.
-- Engines never read a Vesalius field. The `physics` binding purpose is the engines' (Isaac Lab and SimReady
-  write it); Vesalius binds with `vesalius`, and adapters write engine materials of their own (AD 5.4).
+- Without its plug-in, an applied API schema is missing from `HasAPI` and `GetAppliedSchemas()`; only
+  `GetPrimTypeInfo().GetAppliedAPISchemas()` lists it. Detect Vesalius and engine schemas by name there.
+- The default traversal skips prims inside instances; use `Usd.TraverseInstanceProxies()`. An unloaded
+  payload's prims are simply absent.
+- A `float` attribute is single precision: 1.05e-3 reads back about 4e-8 relative off.
 - Dictionary metadata merges key by key across layers, so provenance written as a dictionary can be read with
   another layer's keys mixed in.
 - `VES-MAT-0001` is not a valid prim name. A schema plug-in entry needs `schemaIdentifier`; a second
   codeless-schema plug-in must register before `import maddening.usd`, or use `PXR_PLUGINPATH_NAME`.
 - A material under `/Materials/<name>` merges silently with MADDENING's display material of the same name.
+- OpenUSD's reference physics parser reports a binding inherited from an ancestor only when the shape has
+  `MaterialBindingAPI` applied. A binding cannot be authored on an instance proxy.
+
+From the ecosystem survey of 2026-10-12 and its review (sources in their private reports, not re-checked
+here):
+- Engines never read a Vesalius field. The `physics` binding purpose is the engines' (Isaac Lab and SimReady
+  write it); Vesalius binds with `vesalius`, and the engine adapter writes engine materials of its own (AD
+  5.4). Engines bind colliders and simulation meshes, not regions, and `UsdPhysics.MassAPI` overrides a
+  material's density.
 
 Sibling tools:
 - MADDENING's anomaly validator (read at `f2aa830e`) accepts only `maddening_version` as a registry's version

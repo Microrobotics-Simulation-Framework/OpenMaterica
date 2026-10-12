@@ -67,6 +67,7 @@ model that reads material fields.
 | `acceptances` | every pick, waiver, implied condition, accepted difference, extrapolation, nominal, distribution and overlay (section 4) |
 | `chains` | hand-overs at events, as pairs of family and record (section 6) |
 | `trainable` | fields the model fits, each with its region, interval or record (section 7) |
+| `engine` | for a model that is a physics engine: `profile`, the pinned engine profile (`usd_binding.md` section 10); `values`, per profile attribute with no Vesalius field, `{"value", "unit", "reason", "basis"}` in SI; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
 
 1. Only a model that reads a field declares anything about it. A field in `reads` with no requirement gives
    `unknown` with the reason `no_requirement`. [BC-003]
@@ -79,6 +80,12 @@ model that reads material fields.
    differs or is absent. [BC-027]
 6. A layered path read with `checked_over: {"path": ...}` is named by its `name` member (`geometry.md`), and
    its intervals by their 0-based index. [BC-036]
+7. A model with `engine` reads the fields its profile sources, with `want` `value`, and is checked over a
+   domain that does not include the background; one checked over a path or records, over a domain that
+   includes the background, or with another `want`, is refused at build. A declared engine value without
+   `reason` and `basis`, or for an attribute the profile sources from a field, is refused at build. Its
+   per-field results (section 2) gate what the adapter writes; its engine results (section 2 item 6), after
+   the adapter has written, gate the build. [BC-039] [BC-040]
 
 ## 2. Results
 
@@ -114,6 +121,23 @@ added.
    [BC-009]
 5. The build MUST refuse to build while any result is not accepted, and reports every such result, not only
    the first. [BC-010]
+6. **Engine results.** A model with `engine` is judged in order: the build reads its fields; the adapter
+   writes where those results are accepted (`usd_binding.md` section 10); the stage check runs; and the build
+   then gives one engine result per shape of the model's regions, `{"model", "region", "shape", "status",
+   "reasons"}`. An engine result states a fact about the stage, not a record. Its status is `met` unless one
+   of these applies:
+   - `engine_material_missing` (not_met): no engine material, or only the physics scene's (`usd_binding.md`
+     section 9 item 8);
+   - `engine_material_foreign` (not_met): an engine material with no stamp, or stamped for another material
+     or other stage units (item 6);
+   - `engine_material_stale` (not_met): a stamp that does not re-derive (item 7), or whose profile pin, read
+     requests, acceptances or declared values differ from those the current declaration gives for that
+     region, so engine materials written at 293 K fail a declaration at 310 K;
+   - `engine_density_overridden` (not_met): an effective density from `UsdPhysics.MassAPI` that differs
+     (item 5);
+   - `engine_mass_not_comparable` (unknown): an authored `physics:mass` on the shape or an ancestor (item 5).
+
+   The build refuses while any engine result is not accepted (section 4.2). [BC-039] [BC-041]
 
 ## 3. Specimen differences
 
@@ -178,6 +202,7 @@ reason not listed is never accepted. [BC-038]
 | `range_unstated`, `outside_coverage` | unknown | an `extrapolation` only |
 | `outside_range` | not_met | an `extrapolation` |
 | `want_mismatch`, for a value read from an interval | not_met | a `nominal` |
+| `engine_mass_not_comparable` | unknown | a `waiver` naming that code |
 | `overlay_scope_mismatch` | not_met | an `overlay_scope` naming every member that differs |
 | a specimen difference | (not a status) | an `accepted_difference` |
 | a condition reason, `outside_range`, `range_unstated`, `outside_coverage` or a specimen difference, on a field listed in `trainable` | any | its `trainable` entry (section 7) |
@@ -301,17 +326,20 @@ The sheet is one JSON document per build. [BC-033]
 | BC-021 | build checks | a declared distribution is sampled as declared and recorded as the consumer's assumption |
 | BC-022 | build checks | an overlay is applied only when an acceptance names it |
 | BC-023 | build checks | an overlay scope difference gives `overlay_scope_mismatch`, accepted only in the members named |
-| BC-025 | build checks | an applied overlay is recorded in the sheet |
-| BC-026 | build checks | a chain is recorded as pairs of family and record |
+| BC-025 | build checks | an applied overlay is recorded in the sheet (planned with R7) |
+| BC-026 | build checks | a chain is recorded as pairs of family and record (planned with R7) |
 | BC-027 | build checks | a required label that differs or is absent gives `label_mismatch` |
 | BC-028 | build checks | every result names its model and the region, interval or record it was read for |
 | BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported; its other refusals stand |
 | BC-030 | build checks | a tolerance watch holds the interval, or the accept list, within which the entry stays met |
 | BC-031 | build checks | a form-range watch is emitted for every table or power law, unwidened |
-| BC-032 | build checks | an operating condition on a table knot is noted |
-| BC-033 | build checks | the sheet holds every member of section 9 |
-| BC-034 | build checks | a parameter with no derivation is reported as unexplained |
-| BC-035 | build checks | a fill-in value shows its label and review result, an origin-less value its reason, in the sheet |
+| BC-032 | build checks | an operating condition on a table knot is noted (planned with R7) |
+| BC-033 | build checks | the sheet holds every member of section 9 (planned with R7) |
+| BC-034 | build checks | a parameter with no derivation is reported as unexplained (planned with R7) |
+| BC-035 | build checks | a fill-in value shows its label and review result, an origin-less value its reason, in the sheet (planned with R7) |
 | BC-036 | build checks | a layered path is named by its `name` and its intervals by 0-based index |
 | BC-037 | build checks | an acceptance with no location where its kind needs one is refused |
 | BC-038 | build checks | a reason not in section 4.2's table is never accepted |
+| BC-039 | build checks | an engine model's engine results: `met` on the adapter's own output; `engine_material_missing` before it writes; `engine_material_foreign` for an Isaac-bound material; `engine_material_stale` when a declaration at 310 K meets materials written at 293 K; `engine_density_overridden` under a differing `MassAPI` density |
+| BC-040 | build checks | refused at build: a declared engine value without reason or basis, or for an attribute sourced from a field; an engine model checked over a path, over records, or over a domain that includes the background; one whose requirement wants anything but `value` |
+| BC-041 | build checks | an explicit mass gives `engine_mass_not_comparable`, which a waiver accepts and nothing else does |

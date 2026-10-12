@@ -73,6 +73,12 @@ recorded in that repository's CHANGELOG.
   the first archived release with a DOI; conformance profiles; disease and treatment state as specimen
   facts; records in JSON only. The stiffness tensor for bone moved to stretch. Constraints 4, 5, 13, 14, 21,
   24, 26 and 27 revised.
+- After an ecosystem survey of NVIDIA's schemas and the wider ecosystem, and its review: the USD binding,
+  layered paths, label mappings and scene documents move into Vesalius 0.1, with no cut line; a region binds
+  its material with the purpose `vesalius`, and `physics` is left to engines; an engine is declared as a
+  model, written by an engine adapter from pinned engine profiles and checked per shape by `vesalius check
+  --stage`; readers detect schemas by name, traverse instances, and refuse unloaded payloads, point-instancer
+  prototypes and time samples; acoustic attenuation is registered as `/m`; label mappings read by name.
 
 ### Schema
 ### Families

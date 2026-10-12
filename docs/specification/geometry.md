@@ -37,7 +37,7 @@ Every operation returns a result as `read_side_contract.md` section 2 defines it
 | `in_domain(point, name)` | `true` or `false` (section 3.3) |
 | `intervals(path)` | the layered path's intervals in order, each with its start, end, thickness and material reference (section 4) |
 | `material_at(path, s)` | the material reference at distance `s` along the path (section 4) |
-| `label_material(mapping, label)` | the material reference for a label (section 5) |
+| `label_material(mapping, number or name, anatomy)` | the material reference for a label (section 5) |
 
 A read of a field at a point resolves the point's material through `owner`, then reads the field as
 `read_side_contract.md` says. [SC-005]
@@ -197,12 +197,16 @@ The five intervals are skin, fat, muscle, fat and skin: 2, 10, 15, 3 and 2 mm.
    `{"scene_schema_version": "0.1.0", "document_type": "label_mapping", "anatomy": {"name", "version"},
    "labels": {"5": {"material": {...}}, "6": {"material": {...}}}}`. `anatomy` names the segmenter or atlas,
    and its version, whose label numbers the mapping uses. A label MAY also carry `name`, that vocabulary's own
-   name for it, unique within the mapping, and an `uberon` identifier. [RC-097]
+   name for it, and an `uberon` identifier. Names are unique within a mapping after Unicode case folding, and
+   never consist of digits only. [RC-097]
 2. `label_material` gives `not_met` (`label_unmapped`) for a label the mapping does not map. [SC-023]
-3. `label_material` also takes a label's `name`, matched exactly, because tools such as Isaac for Healthcare's
-   patient twin identify a structure by its segmenter's name rather than its number. Codes are never joined
-   across vocabularies: a segmenter's clinical code for an organ and UBERON's cross-reference for the same
-   organ can differ (TotalSegmentator's liver, checked 2026-10-12). [SC-024]
+3. `label_material` takes a label's `number` or its `name`, never both (`request_incomplete`), and the
+   `anatomy` (`{"name", "version"}`) the caller's labels come from. A name is matched exactly. An anatomy
+   other than the mapping's gives `not_met` (`anatomy_mismatch`), because label numbers and names belong to
+   one segmenter or atlas. Tools such as Isaac for Healthcare's patient twin identify a structure by its
+   segmenter's name, hence the name. Codes are never joined across vocabularies: TotalSegmentator's SNOMED
+   mapping codes the liver 10200004, while UBERON's cross-reference for the liver is 181268008 (ecosystem
+   survey, 2026-10-12). [SC-024] [SC-025]
 
 ## 6. What is not represented in 0.1.0
 
@@ -237,7 +241,8 @@ and the representations of section 3.6 have no USD form in 0.1.0 (`usd_binding.m
 | SC-021 | scene documents | `material_at` at each boundary gives the interval after it |
 | SC-022 | scene documents | `material_at` before the entry point and at the path's end gives `outside_path` |
 | SC-023 | scene documents | an unmapped label gives `label_unmapped` |
-| SC-024 | scene documents | a label read by its name gives the same material as by its number |
+| SC-024 | scene documents | a label read by its name gives the material of its number; an unknown name gives `label_unmapped`; a read naming both is refused (`request_incomplete`) |
+| SC-025 | scene documents | a read with another anatomy gives `anatomy_mismatch` |
 | RC-090 | record checks | a name outside `[a-z0-9_]+`, or a region named `background`, flagged |
 | RC-091 | record checks | duplicate region names, or a domain naming no such region, flagged |
 | RC-092 | record checks | a malformed primitive, or a non-unit axis or normal, flagged |
@@ -245,4 +250,4 @@ and the representations of section 3.6 have no USD form in 0.1.0 (`usd_binding.m
 | RC-094 | record checks | a non-unit quaternion or an unknown frame token flagged |
 | RC-095 | record checks | an interface binding that does not name two distinct regions flagged |
 | RC-096 | record checks | a non-unit direction or a non-positive thickness flagged |
-| RC-097 | record checks | a label mapping with malformed material references, or two labels with one name, flagged |
+| RC-097 | record checks | a label mapping with malformed material references, two names that fold to one, or an all-digit name, flagged |
