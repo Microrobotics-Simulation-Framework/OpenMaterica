@@ -180,6 +180,7 @@ reason not listed is never accepted. [BC-038]
 | `want_mismatch`, for a value read from an interval | not_met | a `nominal` |
 | `overlay_scope_mismatch` | not_met | an `overlay_scope` naming every member that differs |
 | a specimen difference | (not a status) | an `accepted_difference` |
+| a condition reason, `outside_range`, `range_unstated`, `outside_coverage` or a specimen difference, on a field listed in `trainable` | any | its `trainable` entry (section 7) |
 
 ### 4.3 A declared distribution
 
@@ -266,8 +267,9 @@ The sheet is one JSON document per build. [BC-033]
 
 1. Every parameter in a model's `parameters` appears in `derivations`; one with no derivation is reported as
    unexplained. [BC-034]
-2. A value read through a fill-in overlay, or stated without origin, shows its label and its review result in
-   the sheet, so a run on a user-typed value never looks like a run on a curated one. [BC-035]
+2. A value read through a fill-in overlay shows its label (`user_extracted`) and its review result in the
+   sheet, and a value stated without origin its reason (`stated_without_origin`), so a run on a user-typed
+   value never looks like a run on a curated one. [BC-035]
 3. A review is reported as found in the record. The content hash does not cover reviews (`record_format.md`
    section 9), so a pinned record does not pin its review. [not yet covered]
 4. The sheet is stored in the run's provenance and, where the scene is a USD stage, on the stage
@@ -309,7 +311,7 @@ The sheet is one JSON document per build. [BC-033]
 | BC-032 | build checks | an operating condition on a table knot is noted |
 | BC-033 | build checks | the sheet holds every member of section 9 |
 | BC-034 | build checks | a parameter with no derivation is reported as unexplained |
-| BC-035 | build checks | a fill-in or origin-less value shows its label and review result in the sheet |
+| BC-035 | build checks | a fill-in value shows its label and review result, an origin-less value its reason, in the sheet |
 | BC-036 | build checks | a layered path is named by its `name` and its intervals by 0-based index |
 | BC-037 | build checks | an acceptance with no location where its kind needs one is refused |
 | BC-038 | build checks | a reason not in section 4.2's table is never accepted |

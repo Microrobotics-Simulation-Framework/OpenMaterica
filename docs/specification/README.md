@@ -37,7 +37,8 @@ Read them in this order.
   NaN or infinity, as I-JSON requires (RFC 7493, recalled). Numbers are IEEE 754 double precision. `null` is
   never used.
 - **Units.** Every stored value is in SI. A field, and a condition, registers exactly one unit, written as a
-  UCUM case-sensitive code (recalled: for example `kg/m3`, `Pa.s`, `Np/m`, `1` for a dimensionless value).
+  UCUM case-sensitive code (recalled: for example `kg/m3`, `Pa.s`, `Np/m`, `1` for a dimensionless value), or
+  `{"status": "not_applicable"}` for a field with no unit (`biocompatibility.evidence`).
 - **Status objects.** Where a member has no ordinary value it holds a status object: an object whose only
   members are `status`, with one of five tokens, and optionally `reason`, a text. The tokens are `unstated`,
   `not_checked`, `none`, `not_applicable` and `withheld` (`provenance.md` section 1). A member named `status`

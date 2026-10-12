@@ -116,8 +116,8 @@ data, and never says that the model holds there.
    stretches are listed in descending order, `λ1 >= λ2 >= λ3`; in the example, incompressible tension to a
    stretch of 1.25 takes the lateral stretches to 0.894, and simple shear to a shear of 0.3 takes the smallest
    to 0.861. The ranges are each measure's envelope over the modes, so a general state inside them is reported
-   "inside the invariant envelope", never as inside a fitted mode; a state outside them is `unknown` unless
-   the consumer declares it (`declarations.md`). [FD-011]
+   "inside the invariant envelope", never as inside a fitted mode; a state outside them gives `unknown`
+   (`outside_coverage`; what accepts it: `declarations.md` section 4.2). [FD-011]
 4. A history-valued requirement (strain rates up to 1 per second) is checked against `histories`
    (`declarations.md`). [FD-012]
 

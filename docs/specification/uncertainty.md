@@ -125,7 +125,8 @@ cannot honour a declared structure refuses to sample. [SA-001]
 10. `none`: it refuses to sample. [SA-009]
 11. It rejects every draw that violates the family's admissibility constraints and reports how many it
     rejected. [SA-010]
-12. A result produced with the reference sampler is labelled as such in the material input sheet. [SA-011]
+12. A result produced with the reference sampler is noted as such in the material input sheet's `notes`.
+    [SA-011]
 13. A distribution the consumer declares (its shape is in `declarations.md`) is drawn from as declared and
     recorded in the material input sheet as the consumer's assumption, never as the record's statistics.
     [SA-012]

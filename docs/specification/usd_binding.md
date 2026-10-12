@@ -69,13 +69,13 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    not an envelope member, each parsed as JSON into `body.sections.<section>.fields.<field>`, with
    `vesalius:<section>:specimen` parsed into `body.sections.<section>.specimen`; `vesalius:extensions` into
    `body.extensions`. Sections it does not know are kept, so that the hash covers them. [UR-010]
-6. **The hash.** A reader recomputes the reassembled record's hash as `record_format.md` section 9 says. It
-   refuses the material when the result differs from `vesalius:content_hash` (`hash_mismatch`), and when it
-   differs from the hash a region, a background or a path pins (`pin_mismatch`, sections 5 and 7). So a field
-   edited in a stronger layer without rewriting `vesalius:content_hash` is refused; a stronger layer that
-   edits both composes a consistent, different record, which only a pin catches. A reader that does not claim
-   the hash profile labels its results `hash_not_checked` (`read_side_contract.md` section 3). [UR-011]
-   [UR-032]
+6. **The hash.** Every reader compares `vesalius:content_hash` with the hash a region, a background or a path
+   pins, and refuses a difference (`pin_mismatch`, sections 5 and 7). A reader with the hash profile also
+   recomputes the reassembled record's hash as `record_format.md` section 9 says, and refuses the material
+   when it differs from `vesalius:content_hash` (`hash_mismatch`). So a field edited in a stronger layer
+   without rewriting `vesalius:content_hash` is refused; a stronger layer that edits both composes a
+   consistent, different record, which only a pin catches. A reader that does not claim the hash profile
+   labels its results `hash_not_checked` (`read_side_contract.md` section 3). [UR-011] [UR-032]
 7. **Prim names carry no identity.** A reader identifies a material by `vesalius:id`, never by its prim's name
    or path; `VES-MAT-0001` is not a valid prim name (checked). [UR-012]
 8. A material prim whose `vesalius:record_type` is a type the reader cannot read is skipped when listing
@@ -115,7 +115,7 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    - a prim inside the region that is not itself a region carries a `physics` binding to a different material
      from the region's own (`binding_refused`). [UR-021]
 
-   A region whose only binding is all-purpose matches the first and fourth cases, and both codes are reported.
+   A region whose only binding is all-purpose matches the first and third cases, and both codes are reported.
    The reason codes are those of `read_side_contract.md` section 4.
 5. A region's binding applies to its own geometry (item 2) and never across into a nested region; a nested
    region carries its own binding. [UR-022]
@@ -136,13 +136,13 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
 1. An overlay record is a `VesaliusOverlay` prim carrying the envelope attributes of section 3.3,
    `vesalius:overlay:purpose` (`token`), the relationship `vesalius:overlay:base` to its base material prim
    for navigation, `vesalius:overlay:baseRecord` (the base's `{"id", "version", "content_hash"}` as JSON),
-   `vesalius:overlay:scope` (the scope as JSON, `model` included), and the replaced fields as
+   `vesalius:overlay:scope` (the scope as JSON), and the replaced fields as
    `vesalius:<section>:<field>` string attributes, each with its own `specimen` inside it. The plain overlay
    is reassembled from these as section 3.5 says, and its hash checked as section 3.6 says. [UR-026]
 2. A reader applies an overlay only when the consumer declares it, and refuses it by `record_format.md`
-   section 4.4: a base whose envelope differs from `vesalius:overlay:baseRecord` (`overlay_base_mismatch`), a
-   scope naming another model or configuration (`overlay_scope_mismatch`), two declared overlays on one field
-   (`overlay_conflict`). [UR-027] [UR-028]
+   section 4.4: a base whose envelope differs from `vesalius:overlay:baseRecord` (`overlay_base_mismatch`),
+   two declared overlays on one field (`overlay_conflict`). The scope is compared by the build
+   (`declarations.md` section 5). [UR-027] [UR-028]
 3. An overlay never edits its base prim's attributes: the base's own hash still verifies with the overlay on
    the stage. [UR-029]
 4. **The material input sheet.** A consumer that saves its run on a stage writes the material input sheet
@@ -234,7 +234,7 @@ covered]
 | UR-025 | USD read | the scene cases of `geometry.md` in USD form, except those section 8 lists |
 | UR-026 | USD read | an overlay prim reassembled into its plain form, hash verified |
 | UR-027 | USD read | an undeclared overlay is not applied |
-| UR-028 | USD read | an overlay whose base differs is refused; one scoped to another model gives `overlay_scope_mismatch` |
+| UR-028 | USD read | an overlay whose base differs from `vesalius:overlay:baseRecord` is refused |
 | UR-029 | USD read | the base prim's hash still verifies with an overlay on the stage |
 | UR-030 | USD read | the material input sheet read back from the stage equals the one written |
 | UR-031 | USD read | each optional attribute's absence means what section 1 item 4 says |

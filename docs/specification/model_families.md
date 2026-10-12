@@ -151,7 +151,11 @@ version; this section says what it MUST fix. [RC-065]
    that contains that mode's check points. A consumer that evaluates a parameter set at a state outside the
    span of the mode it evaluates gets `unknown` (`outside_check_points`): its own evaluator is unverified
    there (what accepts it: `declarations.md` section 4.2). [FE-005]
-5. Check points show only that a consumer evaluates the parameters as the reference implementation does, at
+5. **The result of a family evaluation** is a read result (`read_side_contract.md` section 2) with two members
+   added: `check_points`, one entry per check point `{"input", "expected", "got", "passed"}`, and `witness`,
+   `{"result": "passed"}`, `{"result": "failed"}` or `{"status": "not_checked"}`. A failed check point gives
+   `check_point_failed`. [FE-012]
+6. Check points show only that a consumer evaluates the parameters as the reference implementation does, at
    the states checked. They are never reported as evidence about the values (AD 4.6). [not yet covered]
 6. A reference-only parameter set ships no check points, because they would publish its parameters
    (section 9). [RC-076]
@@ -198,7 +202,8 @@ version; this section says what it MUST fix. [RC-065]
 | FE-006 | family evaluation | a witness is reproduced within its tolerance; a misread axis fails it |
 | FE-007 | family evaluation | `no_independent_witness` is reported, never shown as a pass; a withheld witness datum is `not_checked` |
 | FE-008 | family evaluation | a state outside coverage, in mode or in mode-independent measures, gives `unknown` (`outside_coverage`) |
-| FE-011 | family evaluation | the Langevin check point: 98403.58693485391 at H = 2.0e4; `x = 3H/a` fails it |
+| FE-012 | family evaluation | the result lists every check point's outcome and the witness's |
+| FE-011 | family evaluation | the Langevin check points at H = 2.0e4, 3.6e5 and 1.6e6 A/m; `x = 3H/a` fails them |
 | RC-060 | record checks | a family identifier not matching the grammar is flagged |
 | RC-061 | record checks | the family hash over the sorted file list, `family.json` without its own hash; a changed definition with an unchanged version is flagged |
 | RC-062 | record checks | a `vesalius.` family that no in-scope record uses is flagged |

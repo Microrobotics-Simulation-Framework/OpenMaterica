@@ -339,7 +339,7 @@ version. [PR-032]
 | Case | Profile | Tests |
 |---|---|---|
 | PR-001 | plain read | a record in another serialisation is not read as a record |
-| PR-002 | plain read | invalid JSON and a record invalid against the reader schema give `malformed` for every read, never a crash |
+| PR-002 | plain read | invalid JSON and an envelope invalid against the reader schema give `malformed` for every read, never a crash |
 | PR-003 | plain read | an absent field has no value |
 | PR-004 | plain read | every record type carries the envelope |
 | PR-005 | plain read | an unknown top-level member is ignored |

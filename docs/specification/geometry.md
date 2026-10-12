@@ -15,8 +15,9 @@ Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Ration
    version gives `other_version`. Unknown members and tokens follow `record_format.md` section 10. [SC-002]
 3. A scene document refers to a record by a **material reference**: `{"id": "<namespace>/<local id>",
    "version": "1.2.0", "content_hash": "sha256:..."}`. A reader resolves it against the records it was given
-   (a case file supplies them; `read_side_contract.md` section 1), recomputes the resolved record's hash, and
-   refuses when it differs from the reference's (`pin_mismatch`), when no record with that identifier and
+   (a case file supplies them; `read_side_contract.md` section 1), compares the resolved record's stated hash
+   (and, with the hash profile, its recomputed hash) with the reference's, and refuses a difference
+   (`pin_mismatch`), when no record with that identifier and
    version was given (`absent`), or when the record is of a type it cannot read (`unknown_type`). [SC-003]
 4. Lengths and coordinates in plain scene documents are in metres, in the scene's frame, right-handed.
    [SC-004]
@@ -150,6 +151,7 @@ instead. [SC-018] Their planned shapes:
 {
   "scene_schema_version": "0.1.0",
   "document_type": "layered_path",
+  "name": "needle_path",
   "entry_point": [0.0, 0.0, 0.0],
   "direction": [0.0, 0.0, 1.0],
   "intervals": [
@@ -170,7 +172,8 @@ instead. [SC-018] Their planned shapes:
 
 The five intervals are skin, fat, muscle, fat and skin: 2, 10, 15, 3 and 2 mm.
 
-1. A layered path has an `entry_point` and either a unit `direction` or a `curve` (an external reference, as
+1. A layered path has a `name` matching `[a-z0-9_]+`, an `entry_point` and either a unit `direction` or a
+   `curve` (an external reference, as
    in section 3.1, to the curve it was derived along). Thicknesses are positive, in metres in the plain form;
    on a USD stage, in the units of the layer that holds them, converted to metres before any sum
    (`usd_binding.md` sections 2 and 7). [RC-096]

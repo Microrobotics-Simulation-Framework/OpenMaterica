@@ -56,12 +56,13 @@ far; a step that gives `unknown` does not.
 1. **Parse** the file as JSON (`malformed`). [PR-002]
 2. **Version.** Read `schema_version` and refuse another version (`record_format.md` section 8:
    `other_version`). [PR-026]
-3. **Validate** against the reader schema of the reader's version (`malformed`).
+3. **Validate** the envelope against the reader schema of the reader's version (`malformed`); a shape error
+   inside one field is left to step 8.
 4. **Hash.** Every reader compares the record's stated `content_hash` with any hash the request or a
    reference pins, and refuses a difference (`pin_mismatch`). A reader that claims the HS profile also
    recomputes the hash (`record_format.md` section 9) and refuses a record whose recomputed hash differs from
    its stated one (`hash_mismatch`); one that does not labels every result `hash_not_checked`. [HS-010]
-   [HS-011] [HS-012]
+   [HS-011] [PR-327]
 5. **Type.** Refuse a referenced record of a type the reader cannot read (`unknown_type`).
 6. **Overlays.** Apply the overlays the acceptances name, and refuse a base mismatch or a conflict, by
    `record_format.md` section 4.4. The overlay's scope is compared by the build, not here (`declarations.md`
@@ -90,10 +91,10 @@ Every reason a read can give. A document that defines a new reason adds it here.
 
 | Code | Status | Meaning | Defined in |
 |---|---|---|---|
-| `malformed` | not_met | invalid JSON, or invalid against the reader schema | `record_format.md` 1 |
+| `malformed` | not_met | invalid JSON, or an envelope invalid against the reader schema | `record_format.md` 1 |
 | `other_version` | not_met | another schema version | `record_format.md` 8 |
 | `hash_mismatch` | not_met | the recomputed hash differs from the record's own | `record_format.md` 9 |
-| `pin_mismatch` | not_met | the recomputed hash differs from a pin | this document 3 |
+| `pin_mismatch` | not_met | the stated hash, or with HS the recomputed hash, differs from a pin | this document 3 |
 | `unknown_type` | not_met | a referenced record of a type the reader cannot read | `record_format.md` 3 |
 | `absent` | not_met | the section or field is absent, or a referenced record is not among the records supplied | `record_format.md` 1, 4 |
 | `no_pick` | unknown | alternatives remain and no pick is declared | `record_format.md` 5 |
@@ -154,8 +155,9 @@ ones the request carries (section 1). [PR-310]
 ## 5. How a condition is checked
 
 The conditions checked are those the record holds, those the field's row requires (`record_format.md` section
-4.1), and those the request names. Each gives one entry in the result's `conditions`, and the field's status
-takes the worst. A record condition is compared with the request as follows. [PR-311]
+4.1), and those the request's `requirement.conditions` names. Each gives one entry in the result's
+`conditions`, and the field's status takes the worst. A record condition is compared with the request as
+follows. [PR-311]
 
 | Record holds | Request gives | Entry |
 |---|---|---|
@@ -252,9 +254,10 @@ of 1e-12, taken from the case file.
 | PR-324 | plain read | one measured value against an operating range: met only when the whole range lies within its tolerance |
 | PR-325 | plain read | a record range against an operating range, widened by the tolerance |
 | PR-326 | plain read | `want: fit` and `want: coverage` on fields with and without them |
+| PR-327 | plain read | a reader without HS labels its results `hash_not_checked` and still refuses a stated hash that differs from a pin |
 | HS-010 | hash | a record whose recomputed hash differs from its own is refused (`hash_mismatch`) |
 | HS-011 | hash | a record whose stated hash differs from a pin is refused (`pin_mismatch`), by every reader |
-| HS-012 | hash | a reader without HS labels its results `hash_not_checked` and still compares pins |
+
 | TE-002 | table evaluation | `in_range` is reported beside the value, inside and outside the range |
 | TE-003 | table evaluation | an evaluator that only clamps fails |
 | TE-004 | table evaluation | linear and log-log values match the stated formulas |
