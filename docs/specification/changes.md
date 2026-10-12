@@ -12,4 +12,6 @@ versions and the content hash), provenance, uncertainty, model families, fits an
 documents, the USD binding, mixing rules, declarations and the read-side contract. Its cases are those listed
 at the end of each document. Scene documents and the USD binding are built in 0.1.0, last; families, fits
 and reference data, and mixing are specified but their profiles are optional until the minor version that
-brings their first consumer (`README.md`).
+brings their first consumer (`README.md`). In USD a region binds its material with the purpose `vesalius`;
+the `physics` purpose is left to engines, whose materials an adapter writes (`usd_binding.md` sections 2 and
+5). Attenuation is registered in `/m`.

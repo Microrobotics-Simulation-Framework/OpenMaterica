@@ -133,8 +133,8 @@ Every reason a read can give. A document that defines a new reason adds it here.
 | `unauthored_attribute` | not_met | a value-bearing Vesalius attribute nobody authored | `usd_binding.md` |
 | `stage_units_unauthored` | not_met | a stage with no authored `metersPerUnit` | `usd_binding.md` |
 | `units_uncompensated` | not_met | geometry in other units with no compensating transform | `usd_binding.md` |
-| `binding_missing` | not_met | a region with no physics binding | `usd_binding.md` |
-| `binding_refused` | not_met | an all-purpose, purpose-less, collection or conflicting binding, or one to a prim with no `vesalius:id` | `usd_binding.md` |
+| `binding_missing` | not_met | a region with no `vesalius`-purpose binding | `usd_binding.md` |
+| `binding_refused` | not_met | an all-purpose binding to a Vesalius material, a `vesalius`-purpose collection binding, a conflicting `vesalius` binding inside a region, or one to a prim with no `vesalius:id` | `usd_binding.md` |
 | `path_arrays_mismatch` | not_met | a layered path whose arrays differ in length, or an index out of range | `usd_binding.md` |
 | `no_requirement` | unknown | a field a model reads with no requirement declared for it | `declarations.md` |
 | `label_mismatch` | not_met | a required label differs or is absent | `declarations.md` |

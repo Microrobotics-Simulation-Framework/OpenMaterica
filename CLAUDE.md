@@ -89,6 +89,11 @@ USD, with `usd-core` 0.26.5:
   reads back as three. Never encode a sequence as repeated targets.
 - A schema fallback reads exactly like a value; only `HasAuthoredValue` tells them apart.
 - Applying `UsdPhysics.MaterialAPI` exposes friction and restitution with fallbacks of 0.0.
+- `ComputeBoundMaterial(purpose)` falls back to the all-purpose binding, usually a display material, when no
+  binding of that purpose is authored. A binding authored without `MaterialBindingAPI` applied still
+  resolves, with a warning.
+- Engines never read a Vesalius field. The `physics` binding purpose is the engines' (Isaac Lab and SimReady
+  write it); Vesalius binds with `vesalius`, and adapters write engine materials of their own (AD 5.4).
 - Dictionary metadata merges key by key across layers, so provenance written as a dictionary can be read with
   another layer's keys mixed in.
 - `VES-MAT-0001` is not a valid prim name. A schema plug-in entry needs `schemaIdentifier`; a second
@@ -103,7 +108,10 @@ Sibling tools:
 Data:
 - Attenuation comes in decibels or nepers, per centimetre or per metre, per megahertz or not, and as an
   amplitude or an intensity coefficient (a factor of two). Isaac for Healthcare's water value is water's
-  frequency-squared coefficient applied as linear. Store only the amplitude coefficient in `Np/m`.
+  frequency-squared coefficient applied as linear. Store only the amplitude coefficient, in nepers per metre,
+  registered as `/m`: `Np/m` is not valid UCUM, because the neper cannot be part of a quotient.
+- A segmenter's clinical code for an organ and UBERON's cross-reference for it can differ; join label
+  mappings by name or number within one vocabulary, never by code across vocabularies.
 - A preprint and its version of record need not carry the same numbers; record which one was read.
 - A citation found in code is a lead, not provenance: in one real code base all ten checkable citations
   carried an error.

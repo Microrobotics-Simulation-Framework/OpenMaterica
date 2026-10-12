@@ -101,6 +101,11 @@ condition MUST be present, holding `{"status": "unstated"}` if the source does n
 
 - `density_kind` is `apparent` (the whole specimen, pores included) or `matrix` (the solid phase only).
   [PR-315]
+- Every unit registered here, for a field or a condition, is a valid UCUM 2.2 expression in which no special
+  unit (the neper, the bel, the degree Celsius) is part of a product or quotient; the registry's tests check
+  each with a UCUM validator. [RC-120]
+- `magnetic.volume_susceptibility` is the SI volume susceptibility. A CGS value is 4π times smaller and is
+  converted on the write side. [not yet covered]
 - `specimen_shape` and `specimen_size` are conditions, not specimen facts: they change what a value means (a
   sphere's demagnetisation, AD 4.8), so a consumer matches them by requirement (`provenance.md` section 6).
   [PR-315]
@@ -235,9 +240,11 @@ and against a declared extrapolation, is in `read_side_contract.md` section 5. [
    `unknown` with the reason `range_unstated`, which only a declared extrapolation accepts
    (`declarations.md`). [PR-021] (planned with the acoustic section)
 3. `exponent_basis` is `fitted`, `assumed` or `theoretical`. [not yet covered]
-4. Attenuation, in any section, is stored as an amplitude coefficient in `Np/m` with `x` in hertz; decibels,
-   per-centimetre and per-megahertz units and intensity coefficients are converted on the write side and
-   recorded as extraction facts. No 0.1.0 field takes a power law; the first arrives with the acoustic
+4. Attenuation, in any section, is stored as an amplitude coefficient in nepers per metre, registered as `/m`,
+   with `x` in hertz. The neper is dimensionless, and UCUM does not allow a special unit in a quotient, so
+   `Np/m` is not a valid UCUM expression (UCUM 2.2, sections 22 and 46). Decibels, nepers, per-centimetre and
+   per-megahertz units and intensity coefficients are converted on the write side and recorded as extraction
+   facts. No 0.1.0 field takes a power law; the first arrives with the acoustic
    section, and its cases with it. [not yet covered]
 
 **Interval.**
@@ -403,3 +410,4 @@ version. [PR-032]
 | RC-017 | record checks | a released record whose alternatives were reordered or dropped is flagged |
 | RC-018 | record checks | a table with fewer than two distinct x values is flagged |
 | RC-019 | record checks | a log-log table with a non-positive x or y is flagged |
+| RC-120 | record checks | every registered unit passes a UCUM validator; `Np/m` fails |

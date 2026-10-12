@@ -43,10 +43,34 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    a rotation (each column's norm within 1e-9 relative of `k`, the columns orthogonal within 1e-9), and `k`
    equals that layer's `metersPerUnit` divided by the stage's within 1e-9 relative. Otherwise it refuses the
    region or path, with the reason `units_uncompensated`. [UR-005]
-5. **Copies an engine reads in stage units are written by a scene adapter, never shipped.** An adapter that
-   authors `UsdPhysics.MaterialAPI` density for an engine writes ρ × `metersPerUnit`³ / `kilogramsPerUnit`,
-   with ρ the bulk density in kg/m³, and refuses if either stage unit is unauthored. In a stage in centimetres
-   and kilograms, 1050 kg/m³ is written as 1.05e-3, within 1e-12 relative. [RC-110]
+5. **Copies an engine reads in stage units are written by a scene adapter, never shipped.** An engine reads
+   typed attributes in its own schema and in the stage's units, never a Vesalius field, so a Vesalius value
+   reaches an engine only through an adapter. The adapter reads each region's material through a reader, so
+   every rule of `read_side_contract.md` applies, and refuses if either stage unit is unauthored. With `mpu`
+   the stage's `metersPerUnit` and `kpu` its `kilogramsPerUnit`, it writes:
+
+   | Quantity | Registered unit | Value written |
+   |---|---|---|
+   | density | `kg/m3` | ρ × mpu³ / kpu |
+   | a modulus or a stress (Young's, shear, the Lamé parameters) | `Pa` | E × mpu / kpu |
+   | dynamic viscosity | `Pa.s` | η × mpu / kpu |
+   | a length | `m` | L / mpu |
+   | a rate | `/s` | unchanged |
+   | a dimensionless value (Poisson's ratio) | `1` | unchanged |
+
+   In a stage in centimetres and kilograms, 1050 kg/m³ is written as 1.05e-3 and 5000 Pa as 50, each within
+   1e-12 relative. [RC-110]
+6. **An adapter's engine materials** are prims of their own in a scene layer, never attributes on a Vesalius
+   material prim, where a converted copy would sit beside the field's JSON string (section 3 item 2). Each:
+   - authors every attribute of every engine API applied to it, because an engine's fallback reads like a
+     value (PhysX's deformable Young's modulus falls back to 5e7 Pa); an attribute with no Vesalius source (a
+     friction coefficient until interfaces arrive, a position-based solver's viscosity or compliance, a
+     contact stiffness) takes its value from the consumer's declared engine configuration and is labelled as
+     such, or the adapter refuses;
+   - carries `vesalius:convertedFrom`, the `{"id", "version", "content_hash"}` of the Vesalius material it was
+     converted from, as JSON;
+   - is bound with the `physics` purpose to the region's prims, or to whichever prims and subsets the engine
+     needs (section 5 item 9). [RC-113]
 
 ## 3. Material prims
 
@@ -89,7 +113,9 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
 2. Library materials live under a scope of their own (`/VesaliusLibrary/...`), never under
    `/Materials/<name>`, where they would merge with display materials of the same name. [RC-102]
 3. Shipped layers do not apply `UsdPhysics.MaterialAPI` (section 2, item 5). [RC-103]
-4. A generated layer authors `metersPerUnit = 1` and `kilogramsPerUnit = 1` as layer metadata. [RC-104]
+4. A generated layer authors `metersPerUnit = 1`, `kilogramsPerUnit = 1` and `upAxis = "Z"` as layer
+   metadata. Isaac Sim and SimReady's validators expect Z-up; a library layer holds no geometry, so the axis
+   changes nothing a reader reads. [RC-104]
 
 ## 5. Regions, bindings and scenes
 
@@ -101,21 +127,26 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    `UsdGeom.Gprim`s, whose computed purpose (`UsdGeom.Imageable.ComputePurpose()`) is `default`. The walk
    stops at a nested region: its prims belong to it. Prims with computed purpose `render`, `proxy` or `guide`
    add nothing. [UR-015]
-3. **Binding.** A region's material is the target of the `physics`-purpose binding authored on the region's
-   prim (`UsdShade.MaterialBindingAPI`, relationship `material:binding:physics`). A reader never calls
-   `ComputeBoundMaterial`, so `bindingStrength` has no effect on it. The target's envelope must match
-   `vesalius:region:material`, or the region is refused (`pin_mismatch`). [UR-016]
+3. **Binding.** A region's material is the target of the `vesalius`-purpose binding authored on the region's
+   prim (`UsdShade.MaterialBindingAPI`, relationship `material:binding:vesalius`), and a writer applies
+   `MaterialBindingAPI` to that prim. The `physics` purpose is the engines' (item 9). A reader never calls
+   `ComputeBoundMaterial`: where no `vesalius` binding is authored it falls back to the all-purpose binding,
+   usually a display material (checked with USD 0.26.5), and `bindingStrength` would decide what a reader
+   reads. The target's envelope must match `vesalius:region:material`, or the region is refused
+   (`pin_mismatch`). [UR-016]
 4. **Refused bindings.** A reader refuses the region, with every read that resolves to it, in each of these
    cases; the stage and the other regions stay readable:
-   - the region's prim has no authored `physics`-purpose binding (`binding_missing`); [UR-017]
+   - the region's prim has no authored `vesalius`-purpose binding (`binding_missing`); [UR-017]
    - the binding's target carries no `vesalius:id` (`binding_refused`); [UR-018]
    - any prim inside the region, the region's own prim included, carries an all-purpose binding to a Vesalius
-     material, or a collection binding (`material:binding:collection:...`) of any purpose
-     (`binding_refused`); [UR-020]
-   - a prim inside the region that is not itself a region carries a `physics` binding to a different material
-     from the region's own (`binding_refused`). [UR-021]
+     material, or a `vesalius`-purpose collection binding (`material:binding:collection:vesalius:<name>`,
+     checked) (`binding_refused`); [UR-020]
+   - a prim inside the region that is not itself a region, a `UsdGeom.Subset` included, carries a
+     `vesalius`-purpose binding to a different material from the region's own (`binding_refused`): there are
+     no per-element Vesalius materials in 0.1.0. [UR-021]
 
-   A region whose only binding is all-purpose matches the first and third cases, and both codes are reported.
+   A region whose only binding is an all-purpose one to a Vesalius material matches the first and third
+   cases, and both codes are reported.
    The reason codes are those of `read_side_contract.md` section 4.
 5. A region's binding applies to its own geometry (item 2) and never across into a nested region; a nested
    region carries its own binding. [UR-022]
@@ -130,6 +161,11 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    prim, so a scene referenced into another keeps its domains. [UR-024]
 8. The rules on owning a point, the background, domains and orientation are those of `geometry.md` section 3,
    applied to the composed stage; its scene cases exist in USD form, except those section 8 lists. [UR-025]
+9. **Engine bindings are the engines'.** A `physics`-purpose binding, direct or through a collection, of any
+   strength, on the region's prim, on a prim or subset inside it, or above it, belongs to an engine: a reader
+   neither reads it nor refuses on it, and the region stays readable. NVIDIA's tools write that slot, and a
+   mesh may need a rigid and a deformable engine material, or one per subset, which a slot shared with
+   Vesalius could not hold (AD 5.4). The stage check sets the two side by side (section 9). [UR-037]
 
 ## 6. Overlays and the input sheet
 
@@ -187,24 +223,43 @@ def VesaliusLayeredPath "NeedlePath"
 Label mappings and label volumes, field overrides and `precedence` (`geometry.md` sections 3.6 and 5),
 interface bindings (`geometry.md` section 3.5), and external geometry references (`geometry.md` section 3.1:
 on a stage, geometry is on the stage) have no USD form in 0.1.0. Label volumes and field overrides will use
-`UsdVol` (`OpenVDBAsset`, `Field3DAsset`), specified with their first consumer (AD 12.1, A1). [not yet
+`UsdVol` (`OpenVDBAsset`, `Field3DAsset`), specified with their first consumer (AD 12.1, A1), under three
+constraints known now: a volume prim is a `Gprim` that renderers draw, so it sits outside region geometry
+(outside every region, or with purpose `guide`); its fields are named in Vesalius's namespace, never
+`field:density`, which a renderer reads as smoke; and its asset paths are allowed in scene layers, never in
+shipped ones (section 4). Label mappings will name their structures with `UsdSemantics` labels. [not yet
 covered]
 
 ## 9. The stage check
 
-`vesalius check --stage` reports, without changing the stage:
+`vesalius check --stage` reports, without changing the stage, the items below. A prim's **engine material** is
+the material `ComputeBoundMaterial("physics")` resolves for it, when that material has an engine's material
+API applied (`UsdPhysics.MaterialAPI`, a PhysX or deformable material API, `NewtonMaterialAPI`); the fall-back
+to an all-purpose display material is not one.
 
 1. a stage with no authored `metersPerUnit`, or with no authored `kilogramsPerUnit` where a `physics:density`
    is authored; [RC-105]
-2. a `physics:density` on a prim whose Vesalius material's bulk density is a constant and differs from it,
-   converted as section 2 item 5 says, by more than 1e-6 relative; a table-valued density is not compared;
-   [RC-106]
+2. a region whose engine material (resolved as an engine resolves it, honouring binding strength) has a
+   `physics:density` that differs from the region's Vesalius bulk density, converted
+   as section 2 item 5 says, by more than 1e-6 relative, when that density is a constant; a table-valued
+   density is not compared; [RC-106]
 3. a layer holding geometry whose `metersPerUnit` differs from the stage's with no compensating transform
    (section 2 item 4); [RC-107]
 4. a material prim whose content hash does not verify, or a region, background or path whose pinned reference
    does not match its target (section 3.6); [RC-108]
-5. a `strongerThanDescendants` binding strength on a `physics` binding above a region, which other tools would
-   honour and a reader ignores. [RC-112]
+5. per region, its engine material, and that of each subset inside it with a `physics` binding of its own,
+   beside the region's Vesalius material; [RC-112]
+6. a region's engine material whose `vesalius:convertedFrom` is absent, or names another
+   material, version or hash than the region's: an engine would simulate one material while a reader reads
+   another; [RC-115]
+7. a region whose geometry an engine simulates (a prim with `UsdPhysics.CollisionAPI` or a deformable-body
+   API) and has no engine material, so that the engine would use its own defaults; [RC-116]
+8. a `vesalius`-purpose binding on a prim without `MaterialBindingAPI` applied (USD resolves it, with a
+   warning; checked), or on a prim that is neither a region nor inside one; [RC-117]
+9. an engine API, or an attribute in an engine's namespace (`physics:`, `physx`, `newton:`), on a prim that
+   carries `vesalius:id` (section 2 item 6). [RC-114]
+
+A consumer's build may refuse a run on items 6 and 7.
 
 ## Cases
 
@@ -224,10 +279,10 @@ covered]
 | UR-014 | USD read | a region marker with material reference, priority and orientation |
 | UR-015 | USD read | region geometry by computed purpose; the region prim included; a nested region's prims excluded |
 | UR-016 | USD read | a binding whose target does not match `vesalius:region:material` is refused (`pin_mismatch`) |
-| UR-017 | USD read | a region with no physics binding is refused (`binding_missing`); other regions stay readable |
+| UR-017 | USD read | a region with no `vesalius`-purpose binding is refused (`binding_missing`); other regions stay readable |
 | UR-018 | USD read | a binding to a prim with no `vesalius:id` is refused |
-| UR-020 | USD read | an all-purpose or collection binding inside a region is refused |
-| UR-021 | USD read | a different physics binding on a non-region prim inside a region is refused |
+| UR-020 | USD read | an all-purpose binding to a Vesalius material, or a `vesalius`-purpose collection binding, inside a region is refused |
+| UR-021 | USD read | a different `vesalius`-purpose binding on a non-region prim or a subset inside a region is refused |
 | UR-022 | USD read | a binding never crosses into a nested region |
 | UR-023 | USD read | the scene's background, with its pinned reference, and background inclusion per domain |
 | UR-024 | USD read | a domain collection named `vesalius_domain_<name>`; membership counts only region prims |
@@ -243,16 +298,22 @@ covered]
 | UR-034 | USD read | mismatched array lengths, or an index out of range, refused (`path_arrays_mismatch`) |
 | UR-035 | USD read | a layered path in a centimetre stage |
 | UR-036 | USD read | a layered path with no homogeneity declaration refused |
+| UR-037 | USD read | a `physics` binding on the region's prim, a stronger one on an ancestor, and one on a subset: the region reads its Vesalius material in each |
 | RC-100 | record checks | a value attribute beside a field's JSON string is flagged |
 | RC-101 | record checks | a shipped layer with a composition arc or an asset path is flagged |
 | RC-102 | record checks | a library material under `/Materials/` is flagged |
 | RC-103 | record checks | `UsdPhysics.MaterialAPI` in a shipped layer is flagged |
-| RC-104 | record checks | a generated layer without authored units is flagged |
+| RC-104 | record checks | a generated layer without authored units or `upAxis = "Z"` is flagged |
 | RC-105 | record checks | the stage check reports unauthored stage units |
-| RC-106 | record checks | the stage check reports a physics density that disagrees with a constant bulk density |
+| RC-106 | record checks | the stage check reports an engine material's density that disagrees with a constant bulk density |
 | RC-107 | record checks | the stage check reports a layer in other units with no compensating transform |
 | RC-108 | record checks | the stage check reports a hash that does not verify, or a pin that does not match |
 | RC-109 | record checks | the plug-in registers with `schemaIdentifier`; the API schemas apply by name |
-| RC-110 | record checks | an adapter writes 1.05e-3 for 1050 kg/m³ in centimetres and kilograms, within 1e-12; refuses without units |
+| RC-110 | record checks | an adapter writes 1.05e-3 for 1050 kg/m³ and 50 for 5000 Pa in centimetres and kilograms, within 1e-12; refuses without units |
 | RC-111 | record checks | a section named with a reserved word is flagged |
-| RC-112 | record checks | a `strongerThanDescendants` physics binding above a region is flagged |
+| RC-112 | record checks | the stage check lists each region's engine materials, subsets included, beside its Vesalius material |
+| RC-113 | record checks | an adapter's engine material authors every attribute of its APIs and carries `vesalius:convertedFrom`; an attribute with no source and no declared configuration makes the adapter refuse |
+| RC-114 | record checks | an engine attribute on a Vesalius material prim is flagged |
+| RC-115 | record checks | an engine material converted from another material, version or hash than its region's is flagged |
+| RC-116 | record checks | a simulated region with no engine material is flagged |
+| RC-117 | record checks | a `vesalius` binding without `MaterialBindingAPI` applied, or outside every region, is flagged |

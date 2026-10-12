@@ -22,8 +22,8 @@ live in a repository of its own; until it exists, its rules are kept here.
    consumer declared, and evaluate model families with their own implementations after verifying check
    points.
 5. **SI units in stored values.** Convert in importers and adapters, never in the stored data. Store
-   attenuation as an amplitude coefficient in Np/m per Hz^b; convert a source's decibels or intensity
-   coefficient on import, and record the source's unit and basis. Store parameter sets only in their
+   attenuation as an amplitude coefficient in nepers per metre (UCUM `/m`); convert a source's decibels or
+   intensity coefficient on import, and record the source's unit and basis. Store parameter sets only in their
    family's convention; conversion to a solver's convention belongs in an adapter or exporter, with vectors.
 6. **No value without provenance** (see "Adding or changing a library material").
 7. **The specification is normative.** A change to it needs conformance cases in the same pull request.
@@ -206,10 +206,10 @@ Every value needs (the full standard is `DOCUMENTATION_ARCHITECTURE.md` section 
   magnetic values; the
   test method and specimen geometry for failure values; the kind of density (apparent, or of the tissue
   itself);
-- for a table or a power law, the **range** it covers, and the range the source says it holds over where
-  that differs; for a table, its **interpolation scheme**, **edges** and evidence per point; for a power
-  law, the basis of its exponent. Attenuation is stored as an amplitude coefficient in Np/m per Hz^b, with
-  a solid's shear attenuation beside its longitudinal one; record the unit the source used and whether it
+- for a table or a power law, the **range** it covers, and the range the source says it holds over where that
+  differs; for a table, its **interpolation scheme**, **edges** and evidence per point; for a power law, the
+  basis of its exponent. Attenuation is stored as an amplitude coefficient in nepers per metre (UCUM `/m`),
+  with a solid's shear attenuation beside its longitudinal one; record the unit the source used and whether it
   reported an amplitude or an intensity coefficient;
 - a **composition** with its components, basis (mass, volume or mole), sum rule, and the sum the source
   states, kept as a fact even when it is not 100 %;
