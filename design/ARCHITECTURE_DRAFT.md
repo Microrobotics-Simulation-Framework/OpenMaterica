@@ -2,7 +2,8 @@
 
 **Status: a concept draft for iteration.** Written 2026-10-11 in the shared planning directory (first as
 `plans/MIME_MATERIAL_MODEL_DRAFT.md`), moved here the same day, and revised the same day after a design
-review, and on 2026-10-12 after a review against principles 9 and 10 (section 15). Referenced from
+review, on 2026-10-12 after a review against principles 9 and 10, and again on 2026-10-12 after five
+prototypes and the maintainer's decisions on their findings (section 15). Referenced from
 `plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) and used there by direction, not decision: MIME
 0.3.0 aims between the realistic and ambitious sets of section 12.
 
@@ -16,6 +17,18 @@ review, and on 2026-10-12 after a review against principles 9 and 10 (section 15
 - Commits carry a sign-off from the first code commit (`CONTRIBUTING.md`).
 - Photoacoustic imaging in MIME: good to have in 0.3.0 but not necessary; expected by MIME 0.5.0 to 0.6.0
   (Appendix A).
+
+**Decided (maintainer, 2026-10-12, after the prototypes):**
+
+- **Scope: substances, not systems** (section 1). Vesalius describes substances in and around the human body;
+  it never describes systems.
+- **Records have a type.** Vesalius defines material and interface records; other namespaces may define
+  their own types on the same machinery (section 4.1).
+- Plain records are the source of truth, and USD is generated from them (section 3.4).
+- The library's data licence is **CC0-1.0** (section 6.4).
+- The core never runs inside a consumer's computation: consumers write their own readers, evaluators and
+  mixing rules, and verify them against conformance data (sections 4.12, 7.6).
+- The answers to the open questions of the earlier drafts are in section 13.
 
 Everything else here is a proposal.
 
@@ -36,11 +49,36 @@ its uncertainty. Records are plain files that any language can read. OpenUSD is 
 them to scene geometry, but a consumer without USD (a one-dimensional layered model, a finite-element code,
 a MATLAB script) uses the same records.
 
+**Scope.** Vesalius describes substances in and around the human body: tissues and body fluids, the media and
+phantoms that stand in for them, agents introduced into them, and the materials of devices that enter or touch
+them. It does not describe systems: an apparatus or its calibration, the quantities of one object (its moment,
+inertia or mean density), a drive, a procedure, or a simulator's tuning. Five rules apply it:
+
+- **The transfer test.** A value belongs in Vesalius if it would hold for another object made of the same
+  substance under the same conditions. If it changes with an object's shape, size or assembly (a capsule's
+  effective susceptibility, a robot's mean density), the consumer computes or records it.
+- **Pairs.** A property of two substances in contact (friction, slip, a solute's diffusivity) is in, as an
+  interface record (section 4.13), when the source states the surface conditions and the test method. A number
+  measured with one tool or device is reference data for checking a model.
+- **Geometry is scene data.** Vesalius defines how geometry binds to materials, and ships only small test
+  phantoms and label mappings from reference anatomies, never anatomy itself.
+- **Behaviour.** A behaviour computed from geometry and materials (an implant's heating in MRI, a puncture
+  force) is the consumer's output. A measured one is reference data in the consumer's namespace.
+- **Entry.** Content enters when a named consumer needs it, and the curated library starts with the body.
+  Other publishers may use the same machinery in their own namespaces, including for data Vesalius does not
+  curate (section 4.1).
+
+The test was run over 64 real cases (the prototypes' records, MIME's material constants, Isaac for
+Healthcare's tissues and the edge cases raised in review) before this statement was adopted; no case gave a
+clearly wrong answer.
+
 Design principles:
 
 1. **The read side needs no Vesalius code.** A C++ renderer, a JAX solver and a PyTorch policy trainer read
    the same records with nothing but a JSON parser, or with USD.
-2. **No solver dependency.** Vesalius knows nothing of MIME, MADDENING, JAX, Warp or Isaac.
+2. **No solver dependency.** Vesalius knows nothing of MIME, MADDENING, JAX, Warp or Isaac, and its code
+   never runs inside a consumer's computation. Consumers write their own readers, evaluators and mixing
+   rules, and verify them against Vesalius's conformance data, golden vectors and check points.
 3. **Provenance and uncertainty on every value**, stated, never implied.
 4. **Fail closed.** An unknown model family or version, an undeclared uncertainty structure, or a check
    point that disagrees makes a reader refuse, never guess.
@@ -70,6 +108,9 @@ What Vesalius is not:
 - not a constitutive-model library for production use: reference implementations exist to define and
   verify, not to run in loops;
 - not a judge of whether a value applies to a use, a patient's included (principle 9);
+- not a description of systems: apparatus and their calibrations, one object's derived quantities, drives
+  and procedures stay with their consumers (scope, above);
+- not a source of anatomy: geometry is scene data;
 - not a store of patient data;
 - not a source of safety or biocompatibility claims (MICROROBOTICA's rule carries over: biocompatibility
   fields are information, never a safety claim);
@@ -109,9 +150,9 @@ vesalius core          mechanism                                   Apache-2.0   
 
 family packages        content: model-family definitions            Apache-2.0
   one namespaced, separately versioned definition per family: equations, golden test vectors,
-  reference implementation, admissibility
+  reference implementation, admissibility; shipped together as `vesalius-families`
 
-library repository     content: curated materials                   a data licence (section 6.4)
+library repository     content: curated materials                   CC0-1.0 (section 6.4)
   its own review process; static releases with a DOI, no hosted service (section 6.7)
 ```
 
@@ -121,8 +162,14 @@ library repository     content: curated materials                   a data licen
   project's review.
 - A manufacturer assesses the core plus only the families and materials it uses, each with its own version
   and content hash (`DOCUMENTATION_ARCHITECTURE.md` section 10).
-- Whether families start as subpackages of this repository or as separate distributions, and whether
-  reference implementations sit in the core or with their families, are open questions 4 and 5.
+- **Families** live in one directory of the main repository, outside the core package, and ship as one
+  separate distribution, `vesalius-families`; each family version has its own content hash, so a
+  manufacturer assesses only the families it uses. They move into repositories of their own when a second
+  publisher of families appears.
+- **Reference implementations sit with their families**, not in the core. Consumers evaluate families with
+  their own code (principle 2), so a reference implementation runs only on the write side, to define the
+  family and bake check points. The core keeps a generic runner that compares numbers against golden
+  vectors and check points.
 
 ### 3.2 Layers inside the core
 
@@ -130,16 +177,18 @@ library repository     content: curated materials                   a data licen
  L6  Adapters and tools   MIME adapter (in MIME); exporters, importers, Isaac adapters (vesalius.integrations);
                           the record checks as a command (`python -m vesalius check`); the MCP server (section 8)
        ^
- L5  Sampling (optional)  volume fractions on a consumer's grid; layered paths derived from 3-D geometry
+ L5  Sampling (optional)  volume fractions from label volumes; layered paths derived from 3-D geometry
        ^
  L4  I/O                  plain records (required); USD (optional extra)
        ^
- L3  Authoring            composition to spectra, derived values, fit bookkeeping, check-point baking
+ L3  Authoring            composition to spectra, derived values, fit bookkeeping, check-point baking;
+                          the curation tools (section 8.2)
        ^
  L2  Core (numpy)         records, values, provenance, statistics, uncertainty structures, units,
-                          mixing rules, validation
+                          reference forms of the mixing rules, validation
        ^
- L1  Data                 conformance cases, family golden vectors, spectra tables              (no code)
+ L1  Data                 conformance cases, family golden vectors, spectra tables, analytic test
+                          phantoms                                                              (no code)
  L0  Schema               record JSON Schema; schema.usda, generatedSchema.usda, plugInfo.json  (no code)
 ```
 
@@ -165,11 +214,13 @@ first class (section 7.5).
 
 ### 3.4 One source of truth
 
-Library materials are authored in one form and the other is generated from it, never edited. The lean is plain
-records as the source, with USD layers generated (open question 1). A round-trip check in CI keeps the two
-forms equal. Scene-level overrides, such as a fit for one scene, may be authored as USD layers or as plain
-overlay records; both name the base record by identifier, version and content hash. A fit's overlay is scoped
-to the model that produced it (section 5.5).
+Library materials are authored as plain records, and USD layers are generated from them, never edited (decided
+2026-10-12). Every prototype wrote plain records first; the first outside consumer needed a C++ table
+generated from records, not a stage; and USD's own physics material stores density as float32, so a stage
+cannot be the source of every value at full precision. A round-trip check in CI keeps the two forms equal.
+Scene-level overrides, such as a fit for one scene, may be authored as USD layers or as plain overlay records;
+both name the base record by identifier, version and content hash. A fit's overlay is scoped to the model that
+produced it (section 5.5).
 
 ### 3.5 Facts, declarations and the build
 
@@ -189,28 +240,35 @@ Four rules:
 2. **Check where declared, and report the rest.** Requirements are checked over what the consumer declared:
    the regions of a domain, a family version, a range of states. A check has three results: met, not met
    and unknown. Unknown (a condition the source does not state, a field a model reads that nobody declared)
-   is refused unless the consumer waives it, and every waiver is recorded. Nothing undeclared passes
-   silently.
+   is refused unless the consumer waives it, and every waiver is recorded. An unknown result still carries
+   the value the record holds, so a waiver has something to use. Nothing undeclared passes silently.
 3. **An edge of applicability hands over to other physics.** At the edge of a domain a node gets geometry
    (a distance function for a wall) and, where it needs one, an interface record (section 4.13), not an
-   average of the materials on either side. At the edge of a model's range of states the next model takes
-   over (evolution families, section 4.5). The library never averages, interpolates or extrapolates across
-   an edge. A consumer's grid may still smooth one (a soft boundary, an immersed boundary): that is the
-   consumer's declared discretisation, tested for convergence.
+   average of the materials on either side. At the edge of a model's range of states, the model the consumer
+   declared next takes over (evolution families, section 4.5). A family never names its successor: which
+   model follows is a choice about applicability. The library never averages, interpolates or extrapolates
+   across an edge. A consumer's grid may still smooth one (a soft boundary, an immersed boundary): that is
+   the consumer's declared discretisation, tested for convergence.
 4. **Competing values coexist, and the consumer picks.** Where sources disagree, or one source supports two
-   fits, a record keeps both if a named consumer's result is sensitive to the choice. The consumer picks,
-   and the run records the pick. Validation may later show which was right; recording the pick is the
-   obligation, validating it is not.
+   fits, a record keeps them as a list of alternatives, each with its full provenance and none marked as the
+   default, if a named consumer's result is sensitive to the choice. The consumer picks, and the run records
+   the pick. Validation may later show which was right; recording the pick is the obligation, validating it
+   is not.
 
 Three limits keep this usable:
 
 - **Tolerances.** Most literature values were measured at room temperature, or the source does not say,
-  while MIME runs at 37 °C. A requirement states how far a condition may differ and why (a sensitivity, a
-  temperature coefficient), or the consumer waives it.
+  while MIME runs at 37 °C. A requirement states how far a condition may differ, why (a sensitivity, a
+  temperature coefficient) and what the difference costs (in one prototype, a 15 K tolerance on water's
+  temperature passed a 29 % error in drag), or the consumer waives it. A consumer may also declare once that
+  a specimen fact implies a condition ("values measured in vivo are at body temperature"), with a reason;
+  the declaration is recorded and replaces a waiver per field.
 - **Only a model that reads a field declares anything about it.** A Stokes-drag run declares nothing about
-  the fluid's density.
+  the fluid's density. A requirement belongs to the model that reads the field, and the operating conditions
+  it is checked at (a temperature, a frequency band) are declared once per experiment.
 - **What changes during a run** (heating, a Reynolds number that depends on velocity) cannot be refused at
-  build. It is watched at run time, and the results are marked (section 9.6).
+  build. It is watched at run time, and the results are marked (section 9.6). A condition that an optimiser
+  moves is such a quantity: a fit that moves a temperature can leave a table's range mid-run.
 
 This is the positive form of a non-goal the draft has had from the start: Vesalius makes no judgement of
 applicability (section 7.6). The review of section 15 found the draft making that judgement in at least
@@ -220,14 +278,30 @@ eight places; the sections below no longer do.
 
 ### 4.1 Material, section, value
 
-- A **material** has an identity (a namespaced identifier, a human-readable name, a version), the
-  record-schema version it was written against, a content hash (section 5.6), and any subset of sections.
+- **Every record has a type**, in an envelope that every record shares: identity (a namespaced identifier, a
+  human-readable name, a version), `record_type`, the record-schema version it was written against, a
+  content hash (section 5.6), provenance, and the value machinery of this section (value forms, conditions,
+  statistics, families, check points). The body depends on the type.
+  - Vesalius defines two types: `material` (a substance, with any subset of sections) and `interface` (a
+    pair, section 4.13). It curates, cards and lists only these.
+  - Another namespace may define its own type on the same machinery, for data that is not a substance: a
+    calibration of MIME's electromagnet, for example, as `mime:emns_calibration`. Its body's meaning belongs
+    to that namespace; the core validates its envelope and value machinery, and the conformance suite tests
+    only the envelope.
+  - A reader skips a type it does not know, so a new type is an additive change (section 5.6).
+  - The field is `record_type`, not `kind`, because a family definition already has a kind (static or
+    evolution) and one name with two meanings is the trap section 4.5 warns about.
+  - The risk is that Vesalius drifts into a general data format. The guards are a small envelope and a
+    curated scope of substances (section 1).
+- A material may carry sections in another namespace in an **`extensions`** block keyed by namespace, using
+  the core's value forms and provenance; the namespace owns their meaning. It carries, for example, a
+  renderer's settings in plain records, as namespaced attributes do on a USD prim (section 4.14).
 - **Identifiers are namespaced**: `<namespace>/<local id>`. A namespace belongs to one publisher and is
-  shared by its materials and its families (section 4.5). `vesalius` is reserved for this project; in it,
-  local identifiers are the catalogue numbers `VES-MAT-XXXX` (for example `vesalius/VES-MAT-0001`). Other
-  publishers choose their own. Namespaces from the start let anyone publish records without a central
-  authority (section 6.7); adding them later would be a breaking schema change. Their form is open
-  question 15.
+  shared by its records and its families (section 4.5). Namespaces are short names, registered first come
+  first served in the publishers file (section 6.7); CI refuses a collision. `vesalius` and `mime` are
+  reserved. In `vesalius`, local identifiers are the catalogue numbers `VES-MAT-XXXX` (for example
+  `vesalius/VES-MAT-0001`). Other publishers choose their own. Namespaces from the start let anyone publish
+  records without a central authority (section 6.7); adding them later would be a breaking schema change.
 - A **section** is one physics. A consumer checks only the sections it needs. A section's presence says
   what is known about a material, not where that physics applies (section 3.5).
 - A **value** takes one of five forms (section 4.4), in fixed SI units, with provenance (section 4.7),
@@ -237,23 +311,24 @@ eight places; the sections below no longer do.
 
 | Section | Example contents (SI) | Typical consumers |
 |---|---|---|
-| Fluid | density, viscosity, rheology model | fluid solvers |
-| Mechanical | parameter sets by model family: linear elastic, hyperelastic, viscoelastic, rate-dependent forms; failure properties (below) | soft tissue, compliant walls, rods, needle and tool insertion, contact, tearing |
-| Acoustic | density; sound speed, longitudinal and, for solids, shear; attenuation as a power law over a stated frequency band; nonlinearity B/A | ultrasound, acoustic actuation, photoacoustics |
+| Bulk | mass density; elemental composition by mass fraction | every section that needs them: fluid, acoustic, radiological, mechanical dynamics |
+| Fluid | viscosity, rheology model | fluid solvers |
+| Mechanical | parameter sets by model family: linear elastic (isotropic, or anisotropic with a declared symmetry class, such as bone's stiffness tensor), hyperelastic, viscoelastic, rate-dependent forms; failure properties (below) | soft tissue, bone, compliant walls, rods, needle and tool insertion, contact, tearing |
+| Acoustic | sound speed, longitudinal and, for solids, shear, each with its propagation direction where the material is anisotropic; attenuation as a power law over a stated frequency band; nonlinearity B/A | ultrasound, acoustic actuation, photoacoustics |
 | Optical | absorption and scattering spectra, scattering anisotropy, refractive index | photoacoustics, fluorescence, photothermal, optical coherence tomography |
 | Thermal | conductivity, heat capacity, perfusion, thermal expansion, Grüneisen parameter | bioheat, photoacoustics |
 | Dielectric | conductivity and permittivity, as tables over frequency or as Debye or Cole-Cole parameter sets | capacitive and impedance sensing, MRI RF heating, electromagnetic tracking, ablation |
-| Radiological | attenuation against photon energy, or elemental composition | X-ray, CT |
+| Radiological | mass attenuation against photon energy (or derived from the bulk section's composition) | X-ray, CT |
 | Magnetic | susceptibility, remanence, saturation, each with the shape of the specimen it was measured on (section 4.8) | robots, implants, coils |
 | Biocompatibility | test evidence reported for a material: endpoint, standard and part, contact category and duration tested, material form and processing | asset cards, registries |
 
 Mechanics is organised by model family, not by Young's modulus and Poisson's ratio: linear elasticity is one
 family among several, and most soft tissue needs another.
 
-**Which sections are specified first.** Fluid, mechanical (with failure), acoustic, radiological, magnetic
-and biocompatibility have consumers now (section 12). Optical, thermal and dielectric are described here so
-that the design accounts for them, and are specified when a consumer needs them; adding a section later is
-a minor schema change (section 5.6). Two of the deferrals need a word:
+**Which sections are specified first.** Bulk, fluid, mechanical (with failure), acoustic, radiological,
+magnetic and biocompatibility have consumers now (section 12). Optical, thermal and dielectric are described
+here so that the design accounts for them, and are specified when a consumer needs them; adding a section
+later is a minor schema change (section 5.6). Two of the deferrals need a word:
 
 - **Radiological now, optical later.** Both describe how photons interact with matter, in different
   regimes. At X-ray energies attenuation follows from elemental composition (photoelectric absorption and
@@ -274,6 +349,19 @@ it depends on the tool and on friction between tool and tissue, which is an inte
 reference data for checking a model, never a stored property. Failure is specified with mechanics: its
 properties are static data, and a failure criterion that depends only on the current state is a static
 family. Models of how failure develops in time (damage, crack growth) are evolution families (section 4.5).
+
+**Bulk** holds what describes the substance rather than one physics. The X-ray projector needs density in
+every region, solids had no section for it, and a density under both fluid and acoustic would be two copies
+of one fact (prototype P1c). Elemental composition sits beside it for the same reason: the radiological
+section derives from it, and optical composition (by named component) is added later beside it.
+
+**Anisotropic solids.** Bone is the first case. A measured sound speed is a fact with its propagation
+direction (a categorical condition, section 4.8). The complete form is the stiffness tensor: a linear elastic
+family with a declared symmetry class (isotropic, transversely isotropic, orthotropic or general), its
+constants in Voigt form, stated in the material's principal axes. How those axes lie in a scene (along a
+bone's long axis, say) is scene data on the region, not material data (section 5.1). Speeds in any direction
+then follow from the tensor and the density; a tensor derived from measured speeds is a derivation with
+those speeds as its inputs (section 4.3).
 
 **Solids in acoustics** need both wave speeds. A solid's compressibility depends on both; taken from the
 longitudinal speed alone, it is underestimated by about a third at a Poisson's ratio of 0.33 (my
@@ -303,6 +391,9 @@ derived from the device's materials.
 - **A conversion that needs another quantity is a derivation.** Per mass to per volume, or emu per gram to
   amperes per metre, needs a density, and is recorded as a derivation with that density's provenance.
   Rescaling, such as millimetres to metres, is a unit conversion.
+- **A value evaluated from a reference formulation** (water's density and viscosity from the IAPWS
+  formulations, recalled) has that origin, with the formulation, its version and the evaluation as evidence
+  in place of a quote (section 4.7).
 
 ### 4.4 Five value forms
 
@@ -325,7 +416,27 @@ extrapolate (principle 10). A table also declares:
   photon energy is interpolated on log-log axes (recalled: the practice for NIST's tables);
 - **its edges**, where the quantity jumps and nothing may be interpolated across: absorption edges (iodine's
   K-edge at 33.2 keV and neodymium's at 43.6 keV, recalled, both inside the diagnostic X-ray band), phase
-  changes.
+  changes;
+- **the source's own validity range**, where it differs from the range tabulated (a formulation valid more
+  widely than the points written out, or a table whose source warns about its ends);
+- **evidence per point** where points come from different places in a source.
+
+A power law also states the basis of its exponent (fitted, assumed or theoretical), and the convention of its
+units where two exist (nepers or decibels). A power law whose band the source does not state is read as
+unknown, never as valid everywhere. A value measured at several conditions is several values, each with its
+conditions; there is no power law whose coefficient varies with a second condition.
+
+**Reference data** have a defined payload: points, each with its own origin and status; or curves, flagged
+as digitised where they were, with the digitiser's axis calibration and its estimated error.
+
+**Evaluating a table in a consumer's own code.** A consumer's evaluator gives the same values as the
+reference reader, but a derivative at a table's knots and ends depends on a convention: a linear table has a
+kink at every interior knot. The conformance cases give, at every knot and end, the value and the derivative
+from each side, and a consumer's evaluator states which side it returns (JAX's `jnp.interp`, for example,
+returns the right-hand derivative at interior knots and at the lower end, and the left-hand one at the upper
+end; prototype P5). An evaluator also returns whether its condition was in range, because an evaluator that
+only clamps turns "outside the record" into a value with a zero derivative: a fit then stalls silently at the
+table's end (P5).
 
 A constant can make a model claim without saying so: one viscosity means a Newtonian fluid, one
 susceptibility a linear response with no saturation. Such a constant names its trivial family as a label
@@ -333,7 +444,9 @@ susceptibility a linear response with no saturation. Such a constant names its t
 was measured over, so a consumer can check its operating point: blood's viscosity is close to Newtonian
 only at high shear rates (recalled).
 
-A field override (section 5.1) is a sampled table over space and follows the same rules.
+A field override (section 5.1) is a sampled table over space and follows the same rules. It also declares its
+frame: the world, or a region's reference configuration. A reader refuses to move a world-frame field with a
+deforming body; a property that depends on deformation is a family with a deformation input (section 4.5).
 
 ### 4.5 Model families
 
@@ -341,19 +454,21 @@ A model family is identified by a namespaced, versioned identifier, for example
 `vesalius.mechanical.ogden_incompressible.v1` or `<org>.dielectric.cole_cole_4term.v1`, never by a common
 name alone. The same name hides different formulas in different solvers and papers (as I recall, Ogden's
 strain energy appears with different factors on its coefficients and with different volumetric terms), so
-a name alone lets one parameter set give different stresses in two solvers with no error anywhere.
+a name alone lets one parameter set give different stresses in two solvers with no error anywhere. The
+trap is wider than formulas: one name can cover two output measures (nominal and Cauchy stress), and one
+symbol two quantities, so the definition states every measure and symbol it uses.
 
 A family definition (a document and its data files) fixes:
 
 | Item | Contents |
 |---|---|
-| Kind | `static`, a response to the current input; or `evolution`, with internal state and a time axis, and optionally events. Both are admitted (below) |
-| Kinematics and outputs | the deformation or input measure (stretch, Green-Lagrange strain, frequency), the output measure (Cauchy or first Piola-Kirchhoff stress, complex permittivity), the loading modes covered |
-| Equations | the energy or response function, normatively; the treatment of incompressibility |
+| Kind | per loading control: `static`, a response to the current input; or `evolution`, with internal state and a time axis, and optionally events. One model can be both: a spring and dashpot in parallel (Kelvin-Voigt) is static under strain control and an ODE under stress control (prototype P3). Every rate the family takes is marked an input (a history the consumer supplies) or a test condition (the rate the parameters were measured at); one fed as the other gave a 2.2-fold jump in stress at fixed stretch in a real code base. Both kinds are admitted (below) |
+| Kinematics and outputs | the deformation or input measure (stretch, Green-Lagrange strain, frequency) and the output measure (Cauchy or first Piola-Kirchhoff stress, complex permittivity), both required, with conversion vectors between the measures a consumer may use; the loading modes covered |
+| Equations | the energy or response function, normatively; the treatment of incompressibility; the domain of each term, where a definition switches between forms |
 | Parameters | names, units, meaning, order |
 | Admissibility | constraints a parameter set must satisfy, for example stability conditions |
-| Golden test vectors | inputs and expected outputs at a stated precision, as data files; edge cases; admissibility cases |
-| Reference implementation | plain numpy, written for clarity: the executable form of the definition |
+| Golden test vectors | inputs and expected outputs at a stated precision, as data files; edge cases; admissibility cases; vectors on both sides of every switch between forms; consistency vectors wherever continuity fixes a derived constant |
+| Reference implementation | plain numpy, written for clarity: the executable form of the definition. It ships with the family, not in the core (section 3.1) |
 | References | `[@Key]` citations |
 
 Rules:
@@ -363,7 +478,8 @@ Rules:
 - Records hold parameters only in the family's own convention. Conversion to a particular solver's
   convention happens in an adapter or exporter (L6), and each conversion has its own vectors showing that
   the solver's form reproduces the family's outputs.
-- A family under `vesalius.` is admitted with a definition, golden vectors, a reference implementation and a
+- Only reviewed pull requests to this project's repositories publish under `vesalius.`. A family there is
+  admitted with a definition, golden vectors, a reference implementation and a
   named consumer (`DOCUMENTATION_ARCHITECTURE.md` section 6.4); a family with no consumer for two releases
   is deprecated. A consumer that cannot be named publicly may be attested instead, on conditions
   (`CONTRIBUTING.md`). A family in a publisher's own namespace needs no admission.
@@ -380,8 +496,11 @@ reaches a threshold), magnetic hysteresis. They are supported from the start, at
   and the rates a fit covered are part of its coverage (section 4.10). Viscoelastic and rate-dependent
   mechanics need nothing more.
 - **Events.** A family may also declare events: a condition on state and input that crosses zero in a
-  stated direction, and what follows (the state changes, or the family's range of states ends and the next
-  model takes over: section 3.5, rule 3). An event's time is computed, never given.
+  stated direction, and what follows: the state changes, or the family's range of states ends. An event's
+  time is computed, never given. A family never names the model that takes over when its range ends; that
+  is a choice about applicability (section 3.5, rule 3). The consumer declares the chain (family A, on
+  event E, hands over to family B, with a stated mapping of state), the build records the chain in the
+  material input sheet, and the run records each hand-over and its time.
 
 Linear history dependence also has a static form in the frequency domain, a complex modulus against
 frequency, as Cole-Cole is for permittivity. A linear viscoelastic family can be stored in either form, and
@@ -415,6 +534,10 @@ implementation at the same states and compares. A mismatch is a refusal.
 - A convention mismatch then fails loudly even for a consumer that never ran the conformance suite.
 - Check points travel with the record into overlays, USD layers and private copies.
 - They are required for model parameter sets and optional for the other forms, where they add little.
+- Their tolerance is set by what they must tell apart (a convention error, a wrong branch) and by the
+  precision consumers declare, never by habit. A check point at a state where every candidate convention
+  gives zero (an undeformed state) checks nothing and is not written. Evolution families state tolerances
+  that allow for the integrator's discretisation.
 
 **Check points cannot catch an extraction error.** They are baked from the stored parameters, so a parameter
 set assigned to the wrong family, or transcribed in another convention, is self-consistent and passes.
@@ -434,7 +557,11 @@ tolerance.
   reproduction (section 4.10) cannot fail on a misread axis, and a nominal-stress curve read as Cauchy
   stress is fitted perfectly by the wrong parameters. A fit needs a held-out datum the source states (a
   modulus in the text, a second loading mode, a point left out of the fit), and its curves need their axis
-  quantities quoted.
+  quantities quoted. A witness record says which fit it is independent of.
+- **A witness's tolerance comes from the fit's residual and from how precisely the source states the
+  state** (a stretch given to two digits), never from the spread between specimens, which says nothing
+  about whether these parameters reproduce this source. Where a source reports the same quantity twice (a
+  table and a figure), the two are checked against each other first.
 - **A witness may test the family alone, or only through a model of the test.** A relaxation curve from a
   uniform test witnesses a viscoelastic family directly. A force-time trace from a puncture depends also on
   the tool's geometry and on friction; the witness record says so, and the model of the test and its
@@ -446,6 +573,17 @@ tolerance.
 - Witness data are reference data (section 4.4) and follow the same tiers. Where a witness cannot be
   shipped, the curator's check at review is recorded and the public check reports "not checked", as for
   fit reproduction.
+- **Reference-only parameter sets ship no check points**, because a few check points determine a family's
+  few parameters, which would publish them (section 6.2). The fill-in is checked by the witness instead: the
+  record ships the witness's locator and an extraction recipe; the user fills in the parameters and the
+  witness datum from their own copy; `vesalius check` runs the witness locally. A mistyped parameter then
+  fails against the source itself, independently of the curator, whose own witness result at review is
+  recorded beside it. Check points computed locally after a fill-in verify only the consumer's evaluator,
+  which is all check points ever verify.
+- On real data, independent witnesses are scarce: in the importer prototype, 1 of 20 parameter sets had a
+  passing one, 9 were behind paywalls and 6 had none. The rule stands for the curated library (maintainer,
+  2026-10-12), and a figure digitiser with axis calibration is the first curation tool (section 8.2),
+  because a published figure is often the only witness available.
 - `vesalius check` runs the witness checks.
 
 ### 4.7 Provenance
@@ -454,18 +592,32 @@ Each value carries:
 
 | Field | Contents |
 |---|---|
-| origin | what established the value: measured by the source, measured by the contributor, fitted, derived, or stated without an origin (a number found in code or a datasheet with nothing behind it) |
-| source | a key in the source registry (section 6.1) with a locator: table, figure, page or equation |
-| extraction | the method: a table; the text; digitised from a figure (with the tool and an estimate of digitising error); a supplementary dataset (with its licence); an own measurement; a derivation (with a method identifier); a fit (with its fit record, section 4.10) |
+| origin | what established the value: measured by the source, measured by the contributor, fitted, derived, evaluated from a reference formulation, or stated without an origin (a number found in code or a datasheet with nothing behind it) |
+| source | a key in the source registry (section 6.1), with the document's identifier and version, and a locator that holds for that version: table (quoting the column header with its index), figure, page or equation |
+| extraction | the method: a table; the text; digitised from a figure (with the tool, its axis calibration and an estimate of digitising error); a supplementary dataset (with its licence); an own measurement; a derivation (with a method identifier); a fit (with its fit record, section 4.10); and, for text, which text extraction of the document matched |
 | conditions | section 4.8 |
 | statistics or uncertainty structure | section 4.9 |
 | specimen | species, anatomical site, state, preparation, shape (sections 4.8 and 4.11) |
 | review | who checked the value against the source, and when; the curator's ORCID; whether the reviewer is independent of the person or tool that extracted it |
 | tier | shipped, reference-only or private (section 6.2) |
-| evidence | for a value drafted from a document: the verbatim quote, its locator, and the SHA-256 of the document copy it was read from; for a digitised figure, the locator and the document hash. Required when a model assisted. Quotes are not published for reference-only values, because a quote contains the value |
+| evidence | for a value extracted from text or a table: the verbatim quote (with the conditions and, for a power law, the exponent quoted too), its locator, and the SHA-256 of the document copy it was read from; for a digitised figure, the locator and the copy's hash; for a reference formulation, the formulation, its version and the evaluation. Quotes are required for every such value in the curated library, whoever drafted it, and optional in other namespaces. Quotes are not published for reference-only values, because a quote contains the value |
 | assistance | when a model helped draft the value: tool, model and provider as reported, prompt version, date (section 8.5). The value's origin does not change |
 | search record | for a statistic pooled across sources: the queries, databases, date and inclusion criteria that found the sources |
 | witness | for a parameter set: its convention witness (section 4.6) |
+
+Rules the prototypes added:
+
+- **A hash identifies a copy, not a document.** Publishers stamp downloaded copies (with the downloader's
+  address, in one case), so two people's copies of one paper hash differently. The record keeps the
+  document's identifier and version beside the copy's hash, and re-verification means "the quote occurs in
+  your copy". Stamped copies hold personal data and never ship.
+- **Every status is explicit.** "Not checked" and "none" are values; a missing field is not one of them.
+  Fields filled when a record is imported are kept apart from fields filled when it is curated, and a
+  parameter set may carry provenance per parameter.
+- **A citation found in code is a lead, not provenance.** In the importer prototype, all 10 checkable
+  citations in a real code base were wrong. The value is traced to its source and extracted again.
+- **The tier follows from the source registry** (section 6.1), not from a field written per value, and a
+  record drafted with a model's help stays reference-only until a person sets its status.
 
 MIME's rule that "a number in a config file is a declaration until something fits it" (`MIME:CLAUDE.md`)
 applies to values stated without an origin. A measurement a source reports is evidence, within the limits
@@ -473,15 +625,24 @@ its conditions and statistics state; it is not a declaration in that sense.
 
 ### 4.8 Conditions
 
-A controlled vocabulary with an extension mechanism: temperature, frequency, wavelength, strain rate, shear
-rate, loading mode, test method, specimen geometry and shape, measurement geometry (a bulk rheometer; a tube
-of stated diameter), specimen orientation, donor age, preservation and post-mortem interval, species,
-anatomical site, tissue state (in vivo, ex vivo, phantom recipe). Anatomical site and species would use
-existing ontology identifiers (recalled: UBERON and the NCBI Taxonomy), so records link to other biomedical
-data.
+Two kinds of fact describe a measurement, and the record keeps them apart:
 
-Conditions record what a value was **measured at**, not where it holds. A condition the source does not
-state is recorded as unstated, and a check against it returns unknown, never met (section 3.5). Some
+- **Conditions describe the test**: temperature, frequency, wavelength, strain rate, shear rate, loading
+  mode, test method, measurement geometry (a bulk rheometer; a tube of stated diameter), propagation
+  direction. Numeric conditions have a value or a range; categorical ones (loading mode, test method,
+  propagation direction, specimen orientation) take values from a vocabulary.
+- **Specimen facts describe the thing tested**: species, anatomical site, tissue state, preparation,
+  preservation and post-mortem interval, donor age, specimen shape (section 4.11).
+
+Both use a controlled vocabulary with an extension mechanism. From the start it has three parts, because
+free-text specimen facts in the prototypes never matched a consumer's target: species as NCBI Taxonomy
+identifiers, anatomical site as UBERON identifiers (recalled), and a short list of tissue states (in vivo, ex
+vivo fresh, frozen and thawed, fixed, phantom). Each condition and fact also states its basis: stated by the
+source, or inferred (from a figure's caption, say).
+
+Conditions record what a value was **measured at**, not where it holds. A condition or fact the source does
+not state is recorded as a structured "unstated", and a check against it returns unknown, never met
+(section 3.5). Some
 conditions change what a value means, not only how far it can be trusted:
 
 - a magnetic moment per volume measured on a sphere includes the sphere's demagnetisation, so it describes
@@ -500,7 +661,9 @@ without its spread is not honest.
 - **Scalar values** carry a statistics block, not just a range: number of specimens and donors, mean,
   standard deviation, minimum, maximum, the distribution if the source states one, and the basis
   (reported standard deviation, reported range, spread across sources, digitising error). Where a source
-  gives only a range, the range is recorded with that basis.
+  gives only a range, the range is recorded with that basis. An uncertainty may be stated as relative, or
+  as expanded with its coverage factor, as metrology reports it. A datasheet's minimum and maximum have the
+  basis "specification limits": a promise about a product, not a measured spread.
 - **Every spread says what it represents**: variation between specimens or donors (a population), the
   uncertainty of an estimate (a standard error, a fit's covariance), measurement error, or spread across
   sources. They answer different questions, and the first two differ by about the square root of the
@@ -508,7 +671,8 @@ without its spread is not honest.
   first, the uncertainty of a mean the second.
 - **A source that reports no spread** is recorded as `dispersion: not_reported`, which is not the same as
   exact.
-- **A value known only as an interval** (bounds with their basis, no nominal) is recorded as such. A reader
+- **A value known only as an interval** (bounds with their basis, no nominal; or one bound only, such as
+  "below 0.1") is recorded as such. A reader
   gives its bounds and refuses a nominal value, which would be a number the source never gave; sampling
   refuses too, because an interval is not a uniform distribution. A consumer that wants either declares it,
   and the run records it as the consumer's assumption. A range taken from other tissues for an unmeasured
@@ -537,8 +701,12 @@ production uncertainty quantification belongs to the consumer (for MIME, to MADD
 A fitted parameter set records what it was fitted to: the reference data (by identifier, or by DOI and content
 hash where the data are not shipped), the fit procedure, the loading modes and ranges covered, and the
 residual. That coverage is a fact about the fit, kept as a set of loading modes and ranges, not as a box:
-modes fitted separately do not make a joint range. It is never a validated or verified regime; whether a fit
-applies at an operating point is the consumer's declaration, checked against the coverage (section 3.5).
+modes fitted separately do not make a joint range. For an evolution family it includes the histories fitted
+(the rates, the hold times), and a consumer's requirement can be stated as a history ("strain rates up to 1
+per second") and checked against them. A fit with no more data than parameters is recorded as exactly
+determined: its residual is zero by construction and shows nothing. It is never a validated or verified
+regime; whether a fit applies at an operating point is the consumer's declaration, checked against the
+coverage (section 3.5).
 
 Fitted parameters are not intrinsic material properties. They belong to a material, a model, a test protocol
 and a fitting procedure together, and several parameter sets can fit one curve equally well. So sources are
@@ -561,6 +729,12 @@ in one declaration per experiment and section if it likes ("accept porcine data 
 acceptance is recorded in the material input sheet. Most tissue data comes from stand-ins, so refusing them
 by default would refuse nearly everything; requiring acceptance makes the choice visible instead.
 
+The facts compared are those of the vocabulary of section 4.8: species, anatomical site, tissue state,
+preparation and preservation, and the specimen's shape where a section requires it. A difference is reported
+as facts ("species: *Sus scrofa* against *Homo sapiens*"), with the ontology's relation where one exists (a
+part of the target site; a sibling of it). It is never graded into a score, which would be a judgement of
+adequacy (principle 9). An acceptance names the section and the fact, with a reason.
+
 A record may still say what a phantom or substitute was made to mimic, as its maker states it. That is a
 fact about the phantom's design, not a judgement that it is adequate for anything.
 
@@ -580,21 +754,34 @@ and on the regime, so no field has one right rule:
 So the specification fixes only the identities and offers named rules, each with its assumptions
 (arrangement, wavelength regime). The consumer picks a rule per node and field, and the material input
 sheet records the pick; a field with no general rule refuses to mix. Mixing happens inside a domain only:
-at a domain's edge a node gets geometry, not an average (section 3.5, rule 3). The rules live in L2, written
-against the Python array API standard, so numpy, JAX and PyTorch callers share one implementation
-(recalled: jax.numpy follows that standard). They are simple elementwise averages; this is the one place
-the core's code runs inside a consumer's computation.
+at a domain's edge a node gets geometry, not an average (section 3.5, rule 3).
+
+The specification defines each rule, L2 holds a numpy reference form, and the conformance suite tests each
+rule at a single cell, with known fractions and values, rather than through a projector or a solver, where a
+wrong rule can pass unnoticed (prototype P1c). Consumers write the rules in their own framework, as they write
+evaluators: each is an elementwise average, and the differentiable-use prototype (P5) wrote the identity rule
+in one line of JAX. An earlier draft shared one array-API implementation with consumers; dropping it means no
+Vesalius code runs inside a consumer's computation (principle 2).
 
 ### 4.13 Interfaces between materials
 
 Some properties belong to a pair, not to one material: friction and lubrication between a catheter or needle
-and tissue, thermal contact resistance, a slip condition. These would sit on an **interface** record that
-names two materials. USD's own physics material puts friction on single materials and leaves the
-combination to the engine (recalled), which loses the pair. Open question 11.
+and tissue, thermal contact resistance, a slip condition. They sit on an **interface** record, a record type
+of its own (section 4.1) that names its two members. A pair property belongs to neither material; putting a
+fact on the wrong owner is an error the prototypes met more than once (an object's moment of inertia and a
+drive's field strength were both offered as material values). USD's own physics material
+puts friction on single materials and leaves the combination to the engine (recalled), which loses the
+pair.
 
 Properties at the edge of a domain belong here too: a slip length, a wall's permeability to a species. So
-does a species' diffusivity in a medium, which names a solute and a medium as an interface names two
-materials; whether it shares the interface record type is part of open question 11.
+does a species' diffusivity in a medium: a solute and a medium are a pair, and share the type.
+
+An interface record carries specimen facts per member and its own conditions (the lubrication state, for
+example), and follows every other rule of records. Friction is an interface property only when the source
+states the surface conditions and the test method, which become required conditions, as failure's test
+method already is. Most published friction coefficients were measured with one tool or one device; such a
+number is reference data for checking a model of that system, not a property of the pair (section 1). A
+puncture or cutting force stays reference data too (section 4.2).
 
 ### 4.14 Appearance is not physics
 
@@ -624,7 +811,10 @@ geometry and not the materials.
 - **Nested regions** (a vessel inside an organ inside the abdomen): an explicit integer priority on the
   binding, defaulting to depth in the hierarchy, decides which material owns a point. A default taken from
   the hierarchy is reported as a default, because a hierarchy is how a scene is organised, not proof that
-  one region contains another.
+  one region contains another. A region is marked explicitly, by an applied schema on its prim that carries
+  the priority, because a collection's membership includes descendants and cannot say on its own which
+  prims are regions (prototype P1c). A binding applies within its region and never across regions: a nested
+  region carries its own physics binding (maintainer, 2026-10-12).
 - **Background**: a default material for points no region claims (water, air, agar), declared by the
   scene's author. Without one, such a point has no material, and a consumer that needs one there refuses.
 - **Domains.** A domain is a named set of regions in which a consumer's model computes, declared by the
@@ -632,13 +822,21 @@ geometry and not the materials.
   materials have. A flow solver's domain may be the lumen of a vessel while an X-ray projector's is the
   whole scene. Requirements are checked over a domain's regions; mixing happens inside a domain; at its
   edge a node gets geometry and interface records. In plain records a domain is a list of region names; in
-  USD it would be a collection (recalled: `UsdCollectionAPI`). A medium that is one region is its own
-  default domain.
-- A **layered path** is a geometry of its own, read by one-dimensional consumers. A sampling helper (L5)
-  would derive a layered path from 3-D geometry along a trajectory, which is also how a project checks a
-  hand-authored path against anatomy once it has the anatomy.
-- Thicknesses and other geometry are scene data, not material data. They may carry their own provenance (an
-  anatomical atlas, an image), recorded in the scene.
+  USD it is a collection (`UsdCollectionAPI`, checked in prototype P1c), named relative to the prim that
+  declares it, so a scene can be referenced into another without breaking its domains. A medium that is one
+  region is its own default domain. A domain that changes during a run (a failure that opens a path) is a
+  consumer's run-time event, recorded in its run log; it waits for the mechanics track and for MADDENING's
+  differentiable events.
+- A **layered path** is a geometry of its own, read by one-dimensional consumers, and nodes planned for MIME
+  0.3.0 need it (maintainer, 2026-10-12), so its plain and USD forms are specified now (section 5.4). A
+  sampling helper (L5) derives a layered path from 3-D geometry along a trajectory, which is also how a
+  project checks a hand-authored path against anatomy once it has the anatomy.
+- **Thin structures** (a vessel wall, a membrane, a skin layer) thinner than a voxel have no representation
+  on the ladder yet. A shell with a thickness, the 3-D analogue of a layered path, is a candidate, added when
+  a consumer needs one.
+- Thicknesses, the orientation of an anisotropic material's principal axes, and other geometry are scene
+  data, not material data. They may carry their own provenance (an anatomical atlas, an image), recorded in
+  the scene.
 
 ### 5.2 Plain records
 
@@ -651,7 +849,7 @@ The conformance suite covers the plain form completely; a consumer never needs U
 Checked on 2026-10-11 with USD 0.26.5 and a one-schema prototype in a scratch directory; nothing in a
 repository.
 
-- One **single-apply API schema per section**: `VesaliusFluidAPI`, `VesaliusMechanicalAPI`,
+- One **single-apply API schema per section**: `VesaliusBulkAPI`, `VesaliusFluidAPI`, `VesaliusMechanicalAPI`,
   `VesaliusAcousticAPI`, `VesaliusOpticalAPI`, `VesaliusThermalAPI`, `VesaliusDielectricAPI`,
   `VesaliusRadiologicalAPI`, `VesaliusMagneticAPI`, `VesaliusBiocompatibilityAPI`. Attributes are
   namespaced `vesalius:<section>:<field>`.
@@ -665,9 +863,15 @@ repository.
 - **Resource-only**: `schema.usda` as the source, `generatedSchema.usda` and `plugInfo.json` as the
   registered form, no compiled library. MADDENING already ships its graph schema this way
   (`MADD:src/maddening/usd/__init__.py:29`).
-- Model parameter sets, statistics, uncertainty structures and check points have no USD encoding yet:
-  structured attributes, dictionary metadata on the field, or a reference to the plain record (open
-  question 7).
+- **Rich data as one JSON string per field.** A field's complete plain form (value, conditions,
+  statistics, uncertainty structure, provenance, check points) is written as one generated string attribute
+  holding its canonical JSON, beside a typed attribute holding the value for USD-native engines. `vesalius
+  check` verifies that the two agree. One reader serves both forms, a JSON parser. A string composes as a
+  whole value, so a stronger layer replaces a field's provenance entirely, and the dictionary-merge trap of
+  section 5.5 cannot arise. USD tools see the rich data only as text, and the values as typed attributes,
+  which is what engines read. Prototype P1c already carried the consumer's declarations as one JSON string.
+- A region is marked by an applied `VesaliusRegionAPI` carrying its priority (section 5.1); the material
+  input sheet is a JSON string on the experiment's prim, beside MADDENING's graph (section 9.1).
 
 Checked in the prototype:
 
@@ -682,26 +886,35 @@ typed access (recalled).
 ### 5.4 Materials and binding in USD
 
 - A material is a `UsdShade.Material` prim with the section APIs it needs, plus `UsdPhysics.MaterialAPI` for
-  density, so physics engines that read only that still see something.
-- Geometry binds it with `UsdShade.MaterialBindingAPI` and a purpose. Checked: binding with purpose
-  `"physics"` writes `material:binding:physics`, and `ComputeBoundMaterial("physics")` resolves it; a
-  purpose of our own resolves only to its own binding or the all-purpose one.
-
-| Binding purpose | For | Against |
-|---|---|---|
-| Reuse `physics` (lean) | one binding per mesh; engines that read physics materials see the same prim | other tools meet our schemas on that prim |
-| A purpose of our own | no interference | a second binding to keep consistent; physics engines miss it |
-
+  density, so physics engines that read only that still see something. That copy is a convenience:
+  `UsdPhysics.MaterialAPI` stores density as float32 (prototype P1c), so the bulk section's value is the
+  one Vesalius readers use.
+- Library materials live under a scope of their own, never under `/Materials/<name>`, where they would merge
+  silently with MADDENING's display materials of the same name (prototype P1c).
+- **Geometry binds a material with `UsdShade.MaterialBindingAPI` and the purpose `physics`** (decided
+  2026-10-12, after prototype P1c). Checked: binding with purpose `"physics"` writes
+  `material:binding:physics`, and `ComputeBoundMaterial("physics")` resolves it; a purpose of our own would
+  resolve only to its own binding or the all-purpose one, and physics engines would miss it. One binding per
+  mesh serves both engines that read physics materials and Vesalius; the cost is that other tools meet our
+  schemas on that prim.
+- **Readers take a region's material only from a physics-purpose binding authored on the region's prim.**
+  `ComputeBoundMaterial("physics")` falls back to an all-purpose binding, which is usually a display
+  material, and a binding with no purpose is ambiguous; readers refuse both (prototype P1c). Within a
+  region a binding applies to the region's descendants; a nested region carries its own (section 5.1).
 - **Field overrides and label volumes** use `UsdVol` (checked: `UsdVol` has `OpenVDBAsset` and
   `Field3DAsset`).
-- **Layered paths** need a USD form, so a project can move from one dimension to a full scene without
-  changing representation. Two candidates: a typed prim of our own (a path plus ordered interval arrays and
-  a relationship per interval), or a `BasisCurves` prim with one `GeomSubset` per interval bound to its
-  material. Open question 3.
-- Geometry units follow the stage's `metersPerUnit`; property values are SI whatever the stage says. The
-  density written for `UsdPhysics.MaterialAPI` is in the stage's mass and length units (recalled; to check),
-  so that copy is converted, and applying that API exposes its friction and restitution fallbacks to
-  engines.
+- **Layered paths** have a typed prim of our own, `VesaliusLayeredPath`: an entry point and a direction (or a
+  relationship to a curve it was derived along), ordered arrays of interval thicknesses in metres, one
+  material relationship per interval, and the declared assumption of lateral homogeneity. A project then
+  moves from one dimension to a full scene without changing representation. A curve prim with one subset
+  per interval was the alternative; a typed prim keeps the intervals' thicknesses and the homogeneity
+  assumption as data, where a curve would invite renderers to draw it. Whether relationship targets keep
+  their authored order is recalled, not checked, and is the first thing the schema's prototype tests.
+- Geometry units follow the stage's `metersPerUnit`; property values are SI whatever the stage says. Readers
+  refuse a stage with no authored `metersPerUnit`, and check the units of the layer that defines the
+  geometry, which can differ from the root layer's (prototype P1c). The density written for
+  `UsdPhysics.MaterialAPI` is in the stage's mass and length units (recalled; to check), so that copy is
+  converted, and applying that API exposes its friction and restitution fallbacks to engines.
 - **Shipped layers are self-contained.** Every USD layer generated for a release has no composition arcs
   (sublayers, references, payloads) and no asset paths; an aggregate layer, if one is shipped, is
   flattened. A scene that uses the library adds its own arcs. Reading a library layer therefore reads that
@@ -731,14 +944,10 @@ provenance.
 
 **A trap the prototype found.** USD merges dictionary metadata key by key across layers. When the fitted
 layer wrote its provenance without a range, the composed provenance read "fitted" with the declared value's
-range. So:
-
-- readers take provenance from the layer that supplies the value, not from the composed dictionary.
-  Checked: the first spec in `GetPropertyStack()` with a default value gave the fitted provenance alone;
-- writers write every provenance key;
-- a plain overlay replaces a value's provenance whole, never key by key.
-
-The conformance suite (section 7.4) contains this case.
+range. The encoding of section 5.3 removes the trap: a field's value and provenance travel in one string,
+which a stronger layer replaces whole, so they always come from the same layer, and a writer writes them
+together. A plain overlay likewise replaces a value's provenance whole, never key by key. The conformance
+suite (section 7.4) keeps the case, so a reader that reads provenance from merged metadata fails it.
 
 ### 5.6 Versions and hashes
 
@@ -746,17 +955,20 @@ The conformance suite (section 7.4) contains this case.
   changes are minor; removals, renames and changes of meaning are major, with a deprecation period.
 - Every material records the schema version it was written against.
 - Each family version is frozen (section 4.5).
-- Each material has its own version and a **content hash**: SHA-256 of a canonical serialisation of its
+- Each record has its own version and a **content hash**: SHA-256 of a canonical serialisation of its
   values, provenance, statistics and check points, and of the schema and family versions they are read
-  under, since a field's meaning can change with the schema while its numbers do not. A simulation that
+  under, since a field's meaning can change with the schema while its numbers do not. The serialisation
+  fixes number types and formatting, which prototype P1c found a hash must do; it uses an existing scheme
+  rather than one of our own (recalled: RFC 8785's JSON canonicalisation). A simulation that
   records the hashes of the materials it read can show which records it read. What its nodes received
   after overlays, unit conversion, mixing and derivation is shown by the derivation chain in the material
   input sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9.1), not by the hash.
 - **Adding without breaking.** Any section or field can be added later as a minor schema change if three
   rules hold. Sections are optional, and a reader ignores sections it does not use. An added field never
   changes the meaning of an existing one; a change that would is major. Conditions a reader does not know
-  are not dropped silently: the material input sheet reports them as present and unchecked. A reader that
-  knows schema 1.2 therefore reads a 1.3 record, and refuses a 2.0 record. USD follows: a new section is a
+  are not dropped silently: the material input sheet reports them as present and unchecked. A reader skips
+  a record type it does not know (section 4.1). A reader that knows schema 1.2 therefore reads a 1.3 record,
+  and refuses a 2.0 record. USD follows: a new section is a
   new API schema, and an older plug-in still reads its attributes as plain attributes (recalled; to check).
 - **Advisories** (a note for later: built at the first retraction, or before the first release a regulated
   consumer takes). A pinned hash cannot learn that its source was later corrected, retracted or contested.
@@ -777,7 +989,10 @@ nothing.
 
 One entry per source: citation key and BibTeX, DOI or URL, the licence of the publication, the licence of
 any dataset, a **redistribution status** (permitted; values only; not permitted; unknown) with its reason,
-who judged it and when, and the source's role. Values point at registry keys.
+who judged it and when, and the source's role. Values point at registry keys. Because one source can exist
+in several versions and copies (a preprint and a version of record; a publisher's copy and an archive's),
+the entry also records, per copy, how it was retrieved, which version it is, and the licence that copy came
+under (prototypes P2 and P4).
 
 ### 6.2 Three tiers
 
@@ -795,7 +1010,7 @@ The tools treat the tiers identically in mechanism, not in evidence. A value a u
 copy was not reviewed by the curator whose review the record carries, so it is labelled user-extracted and
 unreviewed, gets its own hash, and the material input sheet shows its review status. Shipping the check points
 of a reference-only parameter set would publish its parameters, since two points determine a two-parameter
-family (open question 19).
+family, so none are shipped; the witness checks the fill-in instead (section 4.6).
 
 ### 6.3 Extraction
 
@@ -805,8 +1020,20 @@ family (open question 19).
 
 ### 6.4 Licences
 
-Code is Apache-2.0. The library's data would be under a data licence (CC-BY-4.0, CDLA-Permissive-2.0, or
-CC0 for the widest reuse; open question 8), and each record states the licence it is distributed under.
+Code is Apache-2.0. The curated library's data is **CC0-1.0** (decided 2026-10-12), and each record states
+the licence it is distributed under.
+
+- The aim is a standard others adopt and recombine, including in regulated products. CC0 removes attribution
+  stacking in databases built from several sources (recalled: the reason Wikidata chose CC0), and an adopter
+  needs no legal reading of it.
+- Credit does not depend on the licence: every value carries its source and its curator's ORCID, and each
+  release has a DOI (section 10).
+- Values whose sources restrict them stay reference-only whatever the library's licence says (section 6.2).
+  The IT'IS database's archive terms forbid redistribution (read in prototype P2), so it is a lead to
+  primary sources, never a source to copy.
+- Short quotes kept as evidence are third-party text and are not relicensed. Whether a shipped record may
+  carry them is one of the legal review's four questions (section 6.5).
+- Publishers in other namespaces choose their own licence.
 
 ### 6.5 Process
 
@@ -876,8 +1103,9 @@ records in git ── pull request + review ──> vesalius check ──> build
     pull request registers the namespace.
 - **MIME is the first other publisher.** Its `mime` namespace, published from the MIME repository, holds
   the records that do not belong in the curated library: a parameter set with no independent witness, MIME's
-  fit overlays (which are scoped to MIME's models, section 5.5), and calibrations of MIME's own devices.
-  Federation is then tested from the start on a real case.
+  fit overlays (which are scoped to MIME's models, section 5.5), and calibrations of MIME's own devices as
+  record types of MIME's own (`mime:emns_calibration`, section 4.1), since a calibration is a system, not a
+  substance. Federation and record types are then tested from the start on a real case.
 - **Data too big for git** goes on Zenodo. A record points to it by DOI and SHA-256, and a tool fetches it
   only on explicit request, never when a record is read (`DOCUMENTATION_ARCHITECTURE.md` section 15,
   constraint 11), as Homebrew and Spack pin downloads by checksum.
@@ -903,20 +1131,21 @@ outside Vesalius's scope.
 ```
 vesalius/
   schema/          record.schema.json; schema.usda, generatedSchema.usda, plugInfo.json      (L0)
-  data/            conformance/, vectors/, spectra/                                          (L1)
+  data/            conformance/, spectra/, phantoms/                                         (L1)
   core/            record.py, values.py, provenance.py, statistics.py, uncertainty.py,
-                   units.py, mixing.py, validate.py, checkpoints.py                          (L2, numpy)
-  authoring/       compose.py, derive.py, fit_record.py, bake.py                             (L3)
+                   units.py, mixing.py (reference forms), validate.py, checkpoints.py        (L2, numpy)
+  authoring/       compose.py, derive.py, fit_record.py, bake.py; curation tools (8.2)       (L3)
   io/              plain.py (required); usd/ (needs pxr)                                     (L4)
-  sample/          fractions.py, layered_path.py, reference_sampler.py                       (L5)
+  sample/          label_fractions.py, layered_path.py, reference_sampler.py                 (L5)
   integrations/    exporters/, importers/, i4h/                                              (L6, lazy imports)
   tools/           check.py: python -m vesalius check                                        (L6)
 ```
 
 The MCP server is a separate distribution, `vesalius-mcp` (section 8), so nothing in the core depends on it.
 
-Family packages and the library repository have their own layouts (`DOCUMENTATION_ARCHITECTURE.md`
-section 2).
+Families, with their golden vectors and reference implementations, sit beside the core in the same
+repository and ship as `vesalius-families` (section 3.1). The library repository has its own layout
+(`DOCUMENTATION_ARCHITECTURE.md` section 2).
 
 ### 7.2 Dependencies and distribution
 
@@ -943,9 +1172,15 @@ an overridden value (including the dictionary-merge trap); equality of the plain
 unknown family version; refusal on a failed check point; refusal to sample an undeclared structure; refusal of
 an attribute that was not authored; refusal to interpolate across a declared edge or outside a range; unknown,
 not met, for an unstated condition; refusal of a nominal value for an interval or an ensemble; refusal to mix
-a field with no general rule; a requirement checked over a domain's regions only. Any implementation, in any
-language, checks itself against them. That is what makes a second reader trustworthy without a second
-implementation of everything.
+a field with no general rule; a requirement checked over a domain's regions only. The prototypes added: the
+value and the derivative from each side at every table knot and end; an evaluator reporting whether its
+condition was in range; each mixing rule at a single cell; an unknown result that still carries the value; a
+malformed record that gives "not met", not a crash; a power law's own axis exempt from the condition check; a
+tolerance with its reason; volume fractions of the canonical test phantoms (a sphere, a cylinder, a layered
+slab), computed analytically; a reader skipping a record type it does not know; a field's JSON string equal to
+its typed attribute; a stage with no authored `metersPerUnit`; an all-purpose or purpose-less physics binding.
+Any implementation, in any language, checks itself against them. That is what makes a second reader
+trustworthy without a second implementation of everything.
 
 ### 7.5 The read side in another language
 
@@ -969,9 +1204,11 @@ Everything else (composition, unit conversion, derivation, fitting) was done whe
 - **Admission.** A section, family or library material enters when a named consumer needs it, with its
   evidence (`DOCUMENTATION_ARCHITECTURE.md` section 6.4 for families, `CONTRIBUTING.md` for materials).
 - **Non-goals.** No solver, no mesher, no query service, no hosting of large datasets, no judgement of
-  applicability (the consumer declares it: section 3.5), no fast or differentiable model evaluation. Consumers
-  write their own evaluators (MIME's would be JAX) and verify them against the golden vectors and check
-  points.
+  applicability (the consumer declares it: section 3.5), no fast or differentiable model evaluation, and no
+  code that runs inside a consumer's computation (principle 2). Consumers write their own evaluators and
+  mixing rules (MIME's are JAX) and verify them against the conformance cases, golden vectors and check
+  points. Prototype P5 found this enough for gradients: a ten-line JAX evaluator matched the reference reader
+  exactly and gave exact gradients with respect to the condition and every table entry.
 
 ### 7.7 Governance
 
@@ -1003,7 +1240,8 @@ drafted or on running any model again.
   request (`DOCUMENTATION_ARCHITECTURE.md` section 15, constraint 19).
 - **MCP sampling** would let the server request completions from the client's model, keeping
   bring-your-own-key while letting Vesalius sequence the steps. Client support was uneven when last
-  recalled; the design assumes an agent-driven loop and keeps sampling as an option (open question 16).
+  recalled; the design assumes an agent-driven loop and does not use sampling at first (decided
+  2026-10-12).
 - **Nothing a model touches is on the read side.** No model runs in a reader, in `vesalius check`, in a
   release build, or in any consumer's build. MIME's build binds materials by identifier and content hash
   and never calls a model.
@@ -1019,6 +1257,14 @@ building):
 | Tools (deterministic) | query the index; get a record (values bundled with conditions, specimen facts, tier and hash); compare sources on curves; gap analysis against a consumer's required properties; create a draft; attach and verify a quote; parse a unit string; run the convention checker; digitise with a stated axis calibration; run a fit; bake check points; run `vesalius check` |
 | Prompts | the extraction procedures and review checklists (section 8.3), versioned, so any MCP client gets them; the same text ships as agent skills |
 
+- **Tools first, MCP second.** Every tool is first a plain library function in L3 and a command, usable by a
+  person with no model at all; the MCP server only exposes them. Prototype P4's estimate of full provenance by
+  hand (a model's estimate, not a timing) was 36 to 109 minutes per value, well above the 15 minutes assumed,
+  and the maintainer chose tooling over deleting fields. So five tools are prerequisites of the first library
+  release, in this order: draft templates that mark fields "not applicable" by the value's type and record
+  "unstated" in structure; quote attach-and-verify, per copy; registry drafting from DOI, Crossref and licence
+  pages; a digitiser with axis calibration and an overlay (the witness bottleneck of section 4.6); formulation
+  evaluators and check-point bakers. The MCP server stays a later item (section 12).
 - **Capability scoping.** Draft tools write only to a drafts area of the user's working tree. No tool can
   merge, push or open a pull request on its own, set a tier to shipped, set or change a redistribution
   status, write a check point other than by baking it, or edit a released record. A person opens and
@@ -1054,6 +1300,11 @@ model proposes ──> grounded in quotes ──> deterministic checks ──> h
 
 Equations are never extracted: a parameter set's meaning comes from its family definition. Values in
 reference-only records are drafted the same way, but their quotes are not published (section 4.7).
+
+What the prototypes' agents contributed most was not extraction but flags: contradictions inside a source,
+values swapped between rows, implausible spreads, specimen states mislabelled. No deterministic check
+produces these. The review checklist asks for them by name, and a pass told to refute a draft, not to
+confirm it, is part of the pipeline: in the prototypes, such passes found more than the primary work did.
 
 ### 8.4 The query layer
 
@@ -1142,10 +1393,14 @@ USD stage (or plain records): geometry + bindings + Vesalius materials     (Vesa
     -> each effect or observation model declares required properties (section, field or family, unit,
        conditions and tolerances), its domain, its target and its picks (mixing rule, competing values)
     -> Experiment.build(): requirements checked over each domain (met, not met, unknown; waivers recorded);
-       Vesalius L5 gives volume fractions inside each node's domain;
-       MIME's JAX evaluators of model families, verified against each record's check points;
-       the declared mixing rules applied in JAX
+       volume fractions inside each node's domain (Vesalius L5 for label volumes; MIME's own for meshes
+       and moving bodies);
+       MIME's JAX evaluators of value forms and model families, verified against the conformance cases
+       and each record's check points;
+       the declared mixing rules, written by MIME in JAX
     -> gm.params (differentiable) or static data (scope doc class P3)
+    -> the material input sheet, with the derivation of every node parameter, written onto the stage
+       beside MADDENING's graph and into the run's provenance
 ```
 
 ### 9.2 What changes in MIME
@@ -1158,7 +1413,7 @@ USD stage (or plain records): geometry + bindings + Vesalius materials     (Vesa
 | 5.5 Saved form (scope doc D2) | the stage holds things and materials; the experiment file holds models, controller and run settings |
 | 8 Metadata | provenance moves to the material; biocompatibility is declared on the `Body`, citing its materials' test evidence (section 4.2); open question 8.8 is answered by one record; `MimeAssetSchema` refers to materials by identifier |
 | 3.8, 3.10 New nodes | Vesalius is a prerequisite for every new family: acoustics, X-ray, transport, photoacoustics |
-| 7.4 N3 | shared parameters become more pressing (9.3) |
+| 7.4 N3 | shared parameters become more pressing (9.3); MADDENING has taken this up as O.2, second in its 0.5.0 order |
 
 ### 9.3 Differentiability
 
@@ -1169,13 +1424,22 @@ The split that keeps gradients:
   in JAX, as for the X-ray rung (structure draft 3.9). Soft fractions are MIME's discretisation at an edge:
   declared, and tested for convergence (section 3.5, rule 3).
 - **What the material's values are** become MIME parameters. A node's property field is the mixing rule
-  applied to fractions and values, in JAX, through Vesalius's array-API mixing functions. Model-family
-  parameters go through MIME's own JAX implementation of the family.
+  applied to fractions and values, in JAX, in MIME's own code. Model-family parameters go through MIME's own
+  JAX implementation of the family.
 
 So gradients reach material values (fitting an absorption map, a sound-speed map, a viscosity, a
-hyperelastic parameter set) and, for moving bodies, poses. One material value usually feeds several nodes;
-until MADDENING can tie a parameter across nodes (structure draft N3), MIME keeps one value per material and
-copies it out.
+hyperelastic parameter set) and, for moving bodies, poses. Prototype P5 measured what that takes:
+
+- **Mix in the step whenever values or poses are differentiated.** Mixed in the step, gradients with respect
+  to region values were exact and those with respect to a moving body's pose agreed with finite differences.
+  A field baked at build from the initial pose had a gradient of exactly zero, and nothing warned.
+- **A soft fraction needs a form that keeps its precision in the tail.** Written as `0.5 (1 + tanh x)` it lost
+  relative precision on rays that barely touch a body; the equivalent logistic form did not. Derivative
+  checks on soft fields use an absolute floor as well as a relative tolerance.
+- **One material value usually feeds several nodes.** MADDENING cannot yet tie a parameter across nodes
+  (its O.2, structure draft N3): two copies fitted together drifted 2.88 % apart in ten steps, and nothing
+  flagged it. Until the tie exists, MIME feeds one value to every node that reads it from a single adapter
+  node, which kept the readers identical through a fit, and holds no constant copies elsewhere.
 
 ### 9.4 Uncertainty
 
@@ -1211,6 +1475,15 @@ docstring reads "within which the node has been verified": a fit's range is not 
 Quantities that change during a run (a Reynolds number from a velocity, heating) are watched by runtime
 monitors, which mark the results; they cannot be refused at build.
 
+A condition that an optimiser moves is one of them, and the watch sits on the condition, never on the value
+derived from it. In prototype P5 a fit moved water's temperature out of its table's range at the third step;
+the clamped evaluator then gave a zero gradient, and the fit stalled silently for 197 steps. Re-running the
+build's check after each step, an in-range flag from the adapter node, and bounds declared on the temperature
+all caught it at the third step. A bound on the viscosity never fired, because the clamp kept the viscosity
+inside the table, and a transform that keeps the temperature in range only turned the problem into a stall
+at the table's edge. So MIME's evaluators return their in-range result (section 4.4), and its monitors read
+it. MADDENING has agreed that MIME builds such monitors first and that it generalises from them later.
+
 ### 9.7 Beside MADDENING and MICROROBOTICA
 
 - MADDENING's USD live stage and graph schema describe the simulation; Vesalius describes the scene's
@@ -1244,10 +1517,10 @@ Wider adoption is the upside, pursued as follows.
 - **Existing ecosystems.** OpenUSD for scenes and the Python scientific stack, not a new container format.
 - **Credit for curation.** The library is a citable dataset with a DOI per release; each curated value
   records its curator's ORCID.
-- **Criteria.** For example, within a year of the library's first release: two consumers outside the founding projects, a stated number
-  of curated materials, and one outside contributor or publisher. Measured from Zenodo, PyPI and GitHub
-  release downloads and, once it exists, the index. If they are not met, Vesalius narrows to an internal
-  tool, which is still worth having.
+- **Criteria.** For example, within a year of the library's first release: two consumers outside the founding
+  projects, a stated number of curated materials, and one outside contributor or publisher. Measured from
+  Zenodo, PyPI and GitHub release downloads and, once it exists, the index. If they are not met, Vesalius
+  narrows to an internal tool, which is still worth having.
 
 An earlier materials-data exchange format, MatML, went from NIST to an OASIS technical committee in
 2003-2004. How widely it was adopted was not established here.
@@ -1259,7 +1532,7 @@ them.
 
 | Their component | Today | Vesalius touchpoint | Adapter |
 |---|---|---|---|
-| Ultrasound simulator | six materials hard-coded in C++ | fill its material table from a stage's materials | Python, in their Python layer or in `vesalius.integrations.i4h`; no C++ change |
+| Ultrasound simulator | six materials hard-coded in C++ | fill its material table from records | a build-time generator in `vesalius.integrations.i4h` that writes a drop-in `material.cpp`; their Python API cannot replace the table, so a change of materials needs a rebuild (prototype P2, at their commit `8bb07d9`; their values round-tripped bit for bit) |
 | Patient twin | CT to labels to meshes and USD, no properties | a step that binds a library material to each label | a mapping file from their label names to library materials, plus a binding function |
 | X-ray simulator | linear map from CT number to attenuation | per-material attenuation from a label volume, computed by the adapter for a stated spectrum (an effective value depends on path length and filtration, so it is the adapter's model, labelled) | builds an attenuation volume; whether their API accepts one directly was not checked |
 | Physics (Newton, the XPBD catheter, soft tissue) | engine materials | mechanical families to engine parameters; interfaces (4.13) for catheter-wall friction | per engine; position-based solvers use compliance, which depends on the discretisation, so the adapter converts |
@@ -1271,8 +1544,11 @@ them.
   impedance times 1e6 over sound speed (`material.cpp:36-38`), so impedance is in MRayl. The attenuation
   values (water 0.0022, liver 0.7, bone 5.0) look like dB per cm per MHz; inferred from the values, not
   from their documentation.
-- From Vesalius's acoustic section: impedance as density times sound speed, sound speed directly,
-  attenuation converted from SI to their units.
+- From Vesalius's bulk and acoustic sections: impedance as density times sound speed, sound speed
+  directly, attenuation converted from SI to their units. A unit linear in frequency (dB per cm per MHz)
+  assumes attenuation is linear in frequency, which holds only approximately for tissue and not at all for
+  water (recalled: water's rises with the square of frequency), so each converted value carries a label
+  with its error over the band used.
 - Their four speckle parameters are renderer settings. They would sit on the same material prim in their
   own namespace (for example `i4h:ultrasound:mu0`), outside Vesalius's schema.
 
@@ -1280,7 +1556,8 @@ them.
 
 - One patient twin would feed their ultrasound, X-ray and physics simulators, and other people's solvers.
 - It is framework-neutral, Apache-2.0, and competes with nothing of theirs.
-- The first adapter needs no change to their C++.
+- The first adapter needs no change to their code: it generates a drop-in replacement for the one file
+  that holds the table, and their build compiles it.
 
 I would rank this above the physics bridges of structure draft 7.7 as a first contribution.
 
@@ -1315,15 +1592,15 @@ Each set includes the one before it. A MIME row is done first as the spike named
 
 | # | Feature | Where | Ties to |
 |---|---|---|---|
-| M1 | Plain records and their JSON Schema; namespaced identifiers; a schema version; content hashes | Vesalius | AD 4.1 *Material, section, value*; AD 5.2 *Plain records*; AD 5.6 *Versions and hashes* |
-| M2 | Sections for what MIME's experiments use today: fluid (density; viscosity with its trivial family and shear-rate range), magnetic (remanence, saturation, susceptibility, with the specimen's shape), biocompatibility (test evidence, never a device's status) | Vesalius | AD 4.2 *Sections*; AD 4.8 *Conditions*; SD 8.4 *Where each piece would go* (the `BiocompatibilityMeta` row) |
+| M1 | Plain records and their JSON Schema: the envelope every record shares, with `record_type` (material and interface defined; other types skipped by readers) and a reserved `extensions` block; namespaced identifiers; a schema version; content hashes over a canonical serialisation | Vesalius | AD 4.1 *Material, section, value*; AD 5.2 *Plain records*; AD 5.6 *Versions and hashes* |
+| M2 | Sections for what MIME's experiments use today: bulk (density, elemental composition), fluid (viscosity with its trivial family and shear-rate range), magnetic (remanence, saturation, susceptibility, with the specimen's shape), biocompatibility (test evidence, never a device's status) | Vesalius | AD 4.2 *Sections*; AD 4.8 *Conditions*; SD 8.4 *Where each piece would go* (the `BiocompatibilityMeta` row) |
 | M3 | Three value forms: constant, table, power law, each with its range; tables with an interpolation scheme and edges. No model families yet | Vesalius | AD 4.4 *Five value forms* |
 | M4 | Provenance per value (origin, source, extraction, review with the reviewer's independence); conditions, starting with temperature, with unstated conditions recorded as such; scalar statistics with what they represent, `not_reported` and interval-only values; specimen facts | Vesalius | AD 4.7 *Provenance*; AD 4.8 *Conditions*; AD 4.9 *Statistics and uncertainty structures*; AD 4.11 *Proxies*; SD 8.3 *Principle: metadata sits on what it describes* |
 | M5 | A deterministic reader for plain records: a value in SI, with its provenance, at stated conditions. A refusal comes back as a structured result, never as a guess: no value that was not authored, nothing outside a range or across an edge, no nominal for an interval | Vesalius | AD 3.2 *Layers inside the core* (L2, L4); AD 7.5 *The read side in another language*; DA 15 *Project Constraints* (nos. 13, 24) |
 | M6 | Required properties as a type (section, field, unit, conditions with tolerances), declared with a domain and a target; a check over the domain's regions with three results (met, not met, unknown) and recorded waivers | Vesalius | AD 3.5 *Facts, declarations and the build*; AD 9.1 *Where it attaches*; SD 5.1 *Build order*; RS H1 *What the layer does today* (presence-only checks) |
 | M7 | Conformance cases as data files | Vesalius | AD 7.4 *Conformance*; DA 6.1 *Conformance suite (the read side)* |
 | M8 | `vesalius check`: schema, provenance, plausibility | Vesalius | DA 6.5 *CI checks* |
-| M9 | A seed library from primary sources (water as a table over temperature, SU-8, NdFeB grades, the tube materials); its source registry; the data licence decided. MIME's current constants are not transcribed into it: they stay inline in MIME (M11) | library | AD 6.1 *Source registry*; AD 6.2 *Three tiers*; AD 6.4 *Licences*; AD 13 *Open questions* (no. 8) |
+| M9 | A seed library from primary sources (water as a table over temperature, evaluated from its reference formulation; SU-8, NdFeB grades, the tube materials); its source registry, per copy; the data licence (CC0-1.0, decided). MIME's current constants are not transcribed into it: they stay inline in MIME (M11) | library | AD 6.1 *Source registry*; AD 6.2 *Three tiers*; AD 6.4 *Licences*; AD 13 *Open questions* (no. 8) |
 | M10 | Tagged releases of the package and the library, which MIME pins exactly | Vesalius | AD 6.7 *Distribution and hosting*; DA 7.1 *Four version lines* |
 | M11 | The seam: `Body` and `Medium` hold a material reference (identifier and hash) or an inline value labelled "declared in the experiment", with the origin "stated without an origin"; an adapter resolves either into what the nodes take today | MIME (S1) | SD 4.1 *Things*; AD 9.2 *What changes in MIME*; AD 4.7 *Provenance* |
 | M12 | Migration control: experiments built through the seam, from inline values, reproduce today's outputs exactly. Library values then replace inline ones one at a time, each a separate change with its measured effect | MIME (S1) | SD 8.2 *What is wrong with it* (point 4); RS *TODO: what it takes* (item 56, "results reproduce") |
@@ -1333,25 +1610,28 @@ Each set includes the one before it. A MIME row is done first as the spike named
 | # | Feature | Where | Ties to |
 |---|---|---|---|
 | R1 | USD schemas, read and write, for the sections in use, with no fallback values on physical attributes; region binding; domains as collections; self-contained shipped layers | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
-| R2 | Acoustic section (density; longitudinal and, for solids, shear sound speed; attenuation as a power law over a stated band; B/A), for both body and medium | Vesalius | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
+| R2 | Acoustic section (longitudinal and, for solids, shear sound speed, with propagation direction where the material is anisotropic; attenuation as a power law over a stated band, with its exponent's basis; B/A), for both body and medium; density from the bulk section | Vesalius | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
 | R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, and elemental composition; the spectral axis and composition built generally, so that the optical section adds fields later; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | AD 4.2 *Sections*; AD 4.4 *Five value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
-| R4 | Mixing rules in the array API: the identities fixed, named rules with their assumptions, the consumer's pick recorded | Vesalius | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
-| R5 | The family machinery, with both kinds: static, and evolution with state and history and optional events (section 4.5). The first family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points; its named consumer is MIME's superparamagnetic response node. Its first parameter set comes from a source that publishes a full magnetisation curve, so that held-out points witness the fit; a source whose quoted numbers were all used in the fit goes to MIME's namespace, flagged "no independent witness" (section 6.7). Rate-dependent families follow as soon as a consumer names one. The importer of section 12.5 exercises the same machinery on mechanics families and real papers | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 6.7 *Distribution and hosting*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
+| R4 | Mixing rules specified: the identities fixed, named rules with their assumptions, numpy reference forms and conformance cases at a single cell; the consumer implements its pick and the pick is recorded | Vesalius | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
+| R5 | The family machinery, with both kinds: static, and evolution with state and history and optional events (section 4.5), shipped as `vesalius-families` with each reference implementation beside its family. The first family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points; its named consumer is MIME's superparamagnetic response node. Its first parameter set comes from a source that publishes a full magnetisation curve, so that held-out points witness the fit; a source whose quoted numbers were all used in the fit goes to MIME's namespace, flagged "no independent witness" (section 6.7). Rate-dependent families follow as soon as a consumer names one. The importer of section 12.5 exercises the same machinery on mechanics families and real papers | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 6.7 *Distribution and hosting*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
 | R6 | Uncertainty structures, each saying what it represents, and the reference sampler. MIME maps the spread its question needs onto MADDENING's UQ types where they can carry it; a mean and a standard deviation need a MADDENING change (section 9.4) | Vesalius, MIME (S5) | AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling*; AD 9.4 *Uncertainty* |
 | R7 | `vesalius.compliance`: `collect_material_inputs` and the material input sheet, written into each MIME run's provenance, with the derivation chain of every node parameter, review status, and the consumer's declarations, picks and waivers | Vesalius, MIME (S5) | DA 9.1 *Where it fits*; DA 9.3 *What this would add to Vesalius*; AD 3.5 *Facts, declarations and the build* |
 | R8 | Material cards; the legal review; the library's first archived release, with a DOI | library | AD 6.5 *Process*; AD 6.6 *Material cards*; AD 6.7 *Distribution and hosting* |
 | R9 | A decided record shape for properties of a pair: a species' diffusivity in a medium, and interfaces. Design only | Vesalius | AD 4.13 *Interfaces between materials*; AD 13 *Open questions* (no. 11); SD 3.8 *Nodes planned for 0.3.0* (row 9); SD 9 *Open decisions* (no. 10) |
 | R10 | Typed required properties on MIME's effect and observation models, with domains, targets and tolerances, checked at build against the records and a computed operating point; unknown refused unless waived | MIME (S2) | SD 8.5 *One validity declaration, checked against a computed operating point*; AD 3.5 *Facts, declarations and the build*; AD 9.6 *Validity*; RS H1 *What the layer does today* |
-| R11 | MIME's JAX evaluators of value forms, mixing rules and the Langevin family, with gradients through tables and mixing rules, tested against Vesalius's conformance cases and golden vectors in MIME's default test lane | MIME (S3) | AD 9.3 *Differentiability*; AD 7.6 *Scope rules* (consumers write their own evaluators); DA 6.1 *Conformance suite (the read side)* |
+| R11 | MIME's JAX evaluators of value forms, mixing rules and the Langevin family, with gradients through tables and mixing rules, each stating its derivative convention at table knots and ends and returning whether its condition is in range, tested against Vesalius's conformance cases and golden vectors in MIME's default test lane | MIME (S3) | AD 9.3 *Differentiability*; AD 7.6 *Scope rules* (consumers write their own evaluators); DA 6.1 *Conformance suite (the read side)* |
 | R12 | Inputs derived where nothing better exists, with each derivation recorded: a magnet's dipole moment from remanence and volume, unless the moment was measured on the magnet, which then outranks the derivation and is checked against it; a density difference from two materials; a composite body's mass and buoyancy from its regions' materials, not its inertia or centre of mass. Biocompatibility is not derived: a device's status is declared on the `Body` | MIME (S6) | SD 8.2 *What is wrong with it* (point 1); SD 8.4 *Where each piece would go*; AD 4.2 *Sections* (biocompatibility); AD 4.3 *Laws, tables and composition* |
 | R13 | The saved form on a USD stage: MIME's things and Vesalius's layers composed with MADDENING's graph | MIME (S4) | RS *TODO: what it takes* (decision D2); RS H5 *The `Experiment`: what stays, what moves, where the other sides attach (a proposal)*; SD 5.5 *The saved form*; AD 9.7 *Beside MADDENING and MICROROBOTICA* |
+| R14 | Layered paths: the plain form and the USD typed prim `VesaliusLayeredPath`; the L5 helper that derives one from 3-D geometry along a trajectory. Needed by nodes planned for MIME 0.3.0 (maintainer, 2026-10-12) | Vesalius | AD 5.1 *The geometry ladder*; AD 5.4 *Materials and binding in USD*; SD 3.8 *Nodes planned for 0.3.0* (the nodes are still to be named there) |
+| R15 | Anisotropic solids: a linear elastic family with a declared symmetry class, its constants in Voigt form in the material's principal axes, orientation as scene data; bone as its first material, with measured speeds kept beside it as facts with their propagation direction | Vesalius, library | AD 4.2 *Sections* (anisotropic solids); AD 4.5 *Model families*; AD 4.8 *Conditions* |
+| R16 | The curation tools, before the first library release (R8): draft templates by value type; quote attach-and-verify per copy; registry drafting; a digitiser with axis calibration; formulation evaluators and check-point bakers. Library functions and commands first; the MCP server later (A9) | Vesalius | AD 8.2 *The deterministic toolset*; AD 4.6 *Check points and convention witnesses* (the witness bottleneck); AD 6.1 *Source registry* |
 
 **Ambitious: images from materials, fits written back, and the pair properties.**
 
 | # | Feature | Where | Ties to |
 |---|---|---|---|
 | A1 | Label volumes, and field overrides that carry provenance like any value | Vesalius | AD 5.1 *The geometry ladder*; SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* (the voxel-grid source of attenuation) |
-| A2 | Sampling helpers (L5): volume fractions inside a node's domain. MIME's soft-distance fractions for moving bodies, its declared discretisation, are checked against them | Vesalius, MIME (S7) | AD 3.2 *Layers inside the core* (L5); AD 9.3 *Differentiability*; AD 13 *Open questions* (no. 10) |
+| A2 | Sampling helpers (L5): volume fractions from label volumes inside a node's domain, and the analytic fractions of the canonical test phantoms as conformance data. MIME's soft-distance fractions for meshes and moving bodies, its declared discretisation, are checked against them | Vesalius, MIME (S7) | AD 3.2 *Layers inside the core* (L5); AD 9.3 *Differentiability*; AD 13 *Open questions* (no. 10) |
 | A3 | Joint uncertainty structures used in MIME's UQ through the reference sampler, before MADDENING supports them, with the results labelled | MIME (S5) | AD 9.4 *Uncertainty*; AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling* |
 | A4 | Fit write-back: a MIME fit stored as an overlay scoped to its field, the MIME model and the run, with check points and a covariance, published in MIME's namespace; never the material's value | Vesalius, MIME (S8) | AD 4.10 *Fits and reference data*; AD 5.5 *Declared, then fitted*; AD 6.7 *Distribution and hosting*; AD 9.5 *Round trip* |
 | A5 | X-ray from materials: the analytic and ray-marched rungs take mass attenuation against energy from records and a stated spectrum, polychromatically, with gradients to pose and to attenuation values | MIME (S7) | SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks*; AD 4.4 *Five value forms* |
@@ -1376,10 +1656,10 @@ Vesalius; an experiment whose materials are not ready keeps declaring its values
 | Vesalius | Set | Contents | Proven in MIME by | Consumers |
 |---|---|---|---|---|
 | 0.1 | minimal | M1 to M10 | S1 | the MIME spikes |
-| 0.2 | realistic | R1 to R9 | S2 to S6 | MIME 0.3.0: the release it is expected to pin |
+| 0.2 | realistic | R1 to R9, R14 to R16 | S2 to S6 | MIME 0.3.0: the release it is expected to pin |
 | 0.3 | target | A1, A2 and A4 (the Vesalius side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A9; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
-| with 0.2 | the mechanics track: not a priority, but progressing | mechanics with linear elasticity, one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; layered paths; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
+| with 0.2 | the mechanics track: not a priority, but progressing | mechanics with linear elasticity, one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
 | with a consumer | | the optical, thermal and dielectric sections, added without breaking the schema (section 5.6); further families, of either kind | | |
 | beside 0.2 or 0.3 | | the ultrasound adapter and the label mapping for the patient twin | | Isaac for Healthcare, if they want it |
 
@@ -1397,9 +1677,9 @@ The controls were rewritten on 2026-10-12, because several of the first set coul
 
 | Spike | Does | Passes when | Control | Features |
 |---|---|---|---|---|
-| S1 Seam and migration | resolves inline values, declared in the experiment, through the seam into today's node parameters, for two experiments that run on MADDENING 0.4.0 | outputs are bitwise equal to today's, at the same precision settings | a reach matrix: perturb each resolved field in turn, and assert that every node parameter that should depend on it changes and nothing else does; viscosity at least, since it enters drag in every backend. It also finds values that still come from node constructor defaults and bypass the seam. Density is not a usable control: with a Stokeslet backend it reaches no node, and in a lattice-Boltzmann setup it only rescales the time step | M11, M12 |
+| S1 Seam and migration | resolves inline values, declared in the experiment, through the seam into today's node parameters, for two experiments that run on MADDENING 0.4.0 | outputs are bitwise equal to today's, at the same precision settings | a reach matrix: perturb each resolved field in turn, and assert that every node parameter that should depend on it changes and nothing else does; viscosity at least, since it enters drag in every backend. It also finds values that still come from node constructor defaults and bypass the seam. Density is not a usable control: with a Stokeslet backend it reaches no node, and in umr's lattice-Boltzmann setup it only rescales the time step at umr's operating point, where the body sits at its angular-velocity clamp for the whole run; beyond the clamp its effect is untested | M11, M12 |
 | S2 Requirements and validity | typed requirements with domains, targets and tolerances for the drag, magnetic and gravity effects, and for the planned radiation-force node (acoustic sections of body and medium) | the build refuses a missing field, a wrong unit and a temperature outside a table's range; returns unknown for an unstated condition and refuses it unless waived, recording the waiver; a valid experiment builds the same graph as S1 | two materials with every field present, one measured at the wrong temperature and one whose temperature is unstated. A presence-only check passes both; the typed check must refuse the first and return unknown for the second | M6, R10 |
-| S3 Differentiable evaluation | runs MIME's JAX evaluators against the conformance cases and the Langevin vectors and check points, in float32 and float64; takes gradients through a table's interpolation and a mixing rule | agreement within the tolerances the cases state; gradients match finite differences, including near a table's breakpoints | on the read side, a MIME evaluator with a deliberately wrong convention (the field in millitesla, not tesla) must fail the check points. On the write side, a parameter set extracted in the wrong convention passes its own check points, as section 4.6 says, and must fail its independent witness or be reported "no independent witness" | R4, R5, R11 |
+| S3 Differentiable evaluation | runs MIME's JAX evaluators against the conformance cases and the Langevin vectors and check points, in float32 and float64; takes gradients through a table's interpolation and a mixing rule | agreement within the tolerances the cases state; gradients match finite differences, with the derivative convention at table knots and ends that the conformance cases state | on the read side, a MIME evaluator with a deliberately wrong convention (the field in millitesla, not tesla) must fail the check points. On the write side, a parameter set extracted in the wrong convention passes its own check points, as section 4.6 says, and must fail its independent witness or be reported "no independent witness" | R4, R5, R11 |
 | S4 Saved form on USD | writes a stage with things, Vesalius layers, domains and MADDENING's graph; reloads and builds | `gm.to_dict()`, every material hash and every declaration are equal after the round trip, with a value other than the default in every field type | delete one authored attribute: the build must refuse, not read a fallback. A library layer with a composition arc is refused | R1, R13 |
 | S5 Provenance and UQ | writes the material input sheet into `SimulationProvenance.custom`; maps the spreads MIME's questions need; samples a joint structure with the reference sampler | the sheet's derivation chain explains every node parameter: base record and hash, overlays, conversions, mixing, defaults | compare the sheet with node parameters read independently from the built graph, not with the values the sheet was written from; a node default planted to bypass the seam must show as unexplained | R6, R7, A3 |
 | S6 Derived inputs | derives a dipole moment, a density difference and a composite body's mass, and compares each with today's typed value | each derived value matches, or both are kept as competing values and the test fails until a pick is recorded | each typed value is compared with its derivation before anything replaces it; SD 4.1 names two that may not match | R12 |
@@ -1444,52 +1724,61 @@ rewritten shorter from it.
 
 Fields that are always unstated, or never filled, in prototypes 3 and 4 are candidates for deletion.
 
+All four ran on 2026-10-11 and 12, with a fifth on differentiable use in MIME (P5), each pre-registered and
+checked by a pass told to refute it. No field was deleted: the fields P4 flagged depend on the value's type,
+and "unstated" turned out to be information, so the maintainer chose type-dependent templates and tooling
+instead (section 8.2). This revision carries the rest of what they found (section 15).
+
 ## 13. Open questions
 
-1. Source of truth for library materials: plain records with generated USD (lean), or USD with generated
-   plain records.
-2. Binding purpose: reuse `physics` (lean) or define one (section 5.4).
-3. The USD form of a layered path: a typed prim of our own, or `BasisCurves` with `GeomSubset`s.
-4. Family registry scope: which families Vesalius defines and maintains itself, how third-party namespaces
-   are listed, who may publish under `vesalius.`, and whether families ship as subpackages or as separate
-   distributions.
-5. Whether reference implementations sit in the core or with their families. In the core, they are SOUP
-   for every user; with their families, the core only runs vectors.
-6. Where the mixing rules and family equations are documented normatively: the specification only, or also
-   the schema's `doc` strings.
-7. The USD encoding of parameter sets, statistics, uncertainty structures and check points.
-8. The data licence: CC-BY-4.0, CDLA-Permissive-2.0 or CC0.
-9. Which spectra, tissue sources and ontologies to start from, and their terms (IT'IS database: recalled,
-   terms not checked).
-10. How much sampling (L5) belongs in Vesalius. Inside-tests against meshes are a geometry problem with
-    libraries of their own; label volumes, fields and layered paths are easy.
-11. Interfaces (4.13): a record or prim type of their own, or a relationship on one of the two materials?
-12. Deforming tissue: properties that move with a deforming mesh.
-13. Temperature coupling: properties that change with a simulated temperature field.
-14. Who maintains Vesalius beyond the first version.
-15. The form of namespaces: short names, unique by first-come registration in the publishers file (lean), or
-    reverse-DNS names that need no registry.
-16. The MCP server's packaging (a separate distribution, lean, or an extra of the core), and whether to use
-    MCP sampling once clients support it.
-17. Whether quotes should be required for every value extracted from text or tables, not only for
-    model-assisted ones. It would help every review, at a cost to manual curation.
-18. Events in evolution families (section 4.5): how a family names the model that takes over when its range of
-    states ends, and how a chain of families is recorded in a run's material input sheet.
-19. Check points for reference-only parameter sets: shipping them publishes the parameters; computing them
-    locally after a fill-in checks only the consumer's evaluator, not the fill-in.
-20. Sections in another namespace. Families can live in another namespace, but sections cannot yet, because
-    the record schema defines them in the core. Records may need an extension block keyed by namespace, as
-    USD already allows attributes in another namespace on the same prim (section 11.1).
-21. The form of domains: USD collections, or relationships on the model's prim; and domains that change
-    during a run, such as a failure that opens a path, which joins question 12.
-22. Which specimen facts are compared with a consumer's target (section 4.11), how differences are graded,
-    and how an acceptance is stated per section.
+The 22 questions of the earlier drafts were answered on 2026-10-12 by the maintainer, after the prototypes.
+Each answer is written into the section named.
+
+| # | Question | Answer |
+|---|---|---|
+| 1 | Source of truth for library materials | plain records; USD generated from them (3.4) |
+| 2 | Binding purpose | reuse `physics`; readers take only a physics-purpose binding authored on the region's prim (5.4) |
+| 3 | The USD form of a layered path | a typed prim of our own, specified now because MIME 0.3.0 needs it (5.1, 5.4) |
+| 4 | Family registry scope | families only for a named consumer; only reviewed pull requests publish under `vesalius.`; third-party families in their publishers' namespaces; one `vesalius-families` distribution with a hash per family version (3.1, 4.5) |
+| 5 | Where reference implementations sit | with their families; the core only runs vectors and check points (3.1) |
+| 6 | Where the rules are normative | the specification only; schema doc strings are short and point to it |
+| 7 | USD encoding of parameter sets, statistics, uncertainty structures and check points | one generated JSON string per field, beside a typed attribute for the value (5.3) |
+| 8 | The data licence | CC0-1.0 for the curated library (6.4) |
+| 9 | Sources and ontologies to start from | NCBI Taxonomy, UBERON and a short state list (4.8); water from its reference formulation (4.3); NIST's attenuation tables (12.1, R3; terms to check); tissues from primary literature, with the IT'IS database as a lead only (6.4) |
+| 10 | How much sampling belongs in Vesalius | label volumes and layered paths; mesh inside-tests stay with consumers; analytic test phantoms as conformance data (3.2, 7.4) |
+| 11 | Interfaces | a record type of their own (4.13) |
+| 12 | Deforming tissue | values belong to the material, so a binding moves with its mesh; a field override declares its frame (4.4) |
+| 13 | Temperature coupling | no new mechanism: a consumer evaluates a table over temperature at its simulated temperature, its evaluator returns whether the temperature is in range, and its monitors read that (4.4, 9.6); irreversible change is an evolution family with an event (4.5) |
+| 14 | Maintenance beyond the first version | one maintainer for now; reviewed at the first library release against the adoption criteria of section 10, with a co-maintainer sought from the first outside publisher |
+| 15 | The form of namespaces | short names, first come first served in the publishers file (4.1, 6.7) |
+| 16 | The MCP server's packaging | a separate distribution, no sampling at first; the tools exist first as library functions and commands (8.1, 8.2) |
+| 17 | Quotes for every extracted value | required for values extracted from text or tables in the curated library; optional elsewhere (4.7) |
+| 18 | Events: what takes over, and how a chain is recorded | the consumer declares the chain; a family never names its successor; the sheet and the run record it (3.5, 4.5) |
+| 19 | Check points for reference-only parameter sets | none shipped; the fill-in is checked against the witness locally (4.6) |
+| 20 | Sections in another namespace | an `extensions` block keyed by namespace; data that is not a material uses a record type of its own (4.1) |
+| 21 | The form of domains | collections in USD, lists in plain records, named relative to their prim; domains that change during a run are deferred (5.1) |
+| 22 | Which specimen facts are compared, and how | the vocabulary's facts, reported as facts with their ontology relation, never as a score; acceptance per section and fact, with a reason (4.11) |
+
+Still open:
+
+1. The record envelope's exact fields, and how a namespace publishes the schema of a record type of its own
+   (4.1).
+2. Whether USD relationship targets keep their authored order, which the layered-path prim relies on (5.4).
+3. Thin structures: a shell with a thickness, when a consumer needs one (5.1).
+4. Domains that change during a run, with the mechanics track (5.1).
+5. What Isaac for Healthcare's speckle parameters describe: a renderer's tuning, or physical scatterers that
+   would belong in the acoustic section (4.14). A question for a first contact.
+6. The legal review's four questions (6.5).
 
 ## 14. Not examined
 
 - Nothing was built in a repository. The USD checks of section 5 ran in a scratch directory against
-  USD 0.26.5, with one prototype schema. Plain records, family definitions, check points and the sampler
-  are unprototyped.
+  USD 0.26.5, with one prototype schema. Five throwaway prototypes (section 12.5) then ran outside any
+  repository, with hand-written records and a throwaway reader: plain records, domains and bindings on a
+  multi-region stage, Isaac for Healthcare's ultrasound table, families with check points and witnesses on
+  real papers, the cost of curation (a model's estimate, not a timing) and differentiable use in MIME. They
+  cover parts of spikes S1, S2 and S3. The record envelope, the encoding of section 5.3, the layered-path
+  prim, the stiffness-tensor family and the sampler are unprototyped.
 - No legal review has been done. Section 6 rests on a short search and is not legal advice.
 - Isaac for Healthcare was read at its main branches on 2026-10-09 to 2026-10-11 by documentation and file
   search; their asset catalogue, SimReady specifications and Newton material model were not read.
@@ -1558,6 +1847,28 @@ standardising) added the last three rows.
 | an index repository once a second publisher exists | a publishers file and a template repository from the first library release, with MIME's namespace as the first entry | waiting for a second publisher made one less likely |
 | every section specified together | sections specified when a consumer needs them; three rules make adding one later a minor schema change | a section added later must never break a reader |
 | MIME spikes after the first release | prototypes first: a multi-region MIME stage, the ultrasound table, the importer, timed hand-written records (section 12.5) | a schema should meet real data and real consumers before it is frozen |
+
+Later on 2026-10-12 the prototypes ran (section 12.5), and the maintainer decided on their findings and on
+every open question (section 13). The rows below record what changed.
+
+| Before | After | Why |
+|---|---|---|
+| bodies, tissues, phantoms and devices, with the boundary open | substances in and around the human body, never systems; five rules, including the transfer test (section 1) | a test over 64 real cases gave no clearly wrong answer (7 needed a closer look); systems (a calibration, one object's inertia, a drive) had been offered as material values |
+| every record a material | an envelope every record shares, with a record type; materials and interfaces are Vesalius's; other namespaces may define types readers skip (4.1) | MIME's device calibrations need the machinery but are not materials |
+| density under fluid and acoustic | a bulk section with density and elemental composition (4.2) | the X-ray projector needs density everywhere, and solids had no section for it |
+| the stiffness tensor deferred | anisotropic linear elasticity with a symmetry class, and propagation direction on speeds (4.2) | bone, for ultrasound and mechanics (maintainer) |
+| layered paths with the mechanics track, USD form open | specified now, plain and as a typed prim (5.1, 5.4; R14) | nodes planned for MIME 0.3.0 need them (maintainer) |
+| shared array-API mixing functions | rules specified, numpy references and conformance at a single cell; consumers implement them (4.12) | the core then never runs inside a consumer's computation; P5 wrote the identity rule in one line |
+| derivatives of tables undefined | conformance gives both one-sided derivatives at knots and ends; evaluators return whether they are in range (4.4) | P5: a clamping evaluator stalled a fit silently |
+| guards on the run in general | guards on the condition an optimiser moves, never on the derived value (3.5, 9.6) | P5: a bound on viscosity never fired |
+| USD dictionaries for rich data, with a rule for readers | one JSON string per field beside a typed value (5.3, 5.5) | the dictionary-merge trap cannot arise; one reader for both forms |
+| reuse `physics` as a lean | decided, with readers refusing all-purpose and purpose-less bindings and an explicit region marker (5.1, 5.4) | P1c: a naive reader accepted the all-purpose fallback and a purpose-less binding; collections include descendants |
+| a successor named by the event | the consumer declares the chain (3.5, 4.5) | which model follows is a choice about applicability |
+| check points for every parameter set | none for reference-only sets; the witness checks the fill-in locally (4.6) | check points would publish the parameters |
+| quotes when a model assisted | quotes for every value extracted from text or tables in the curated library (4.7) | which values a model touched cannot be audited |
+| a data licence open | CC0-1.0 (6.4) | a standard others recombine; credit travels with provenance |
+| curation tools with the MCP layer | five tools before the first library release; MCP later (8.2; R16) | P4's estimate was 2 to 7 times the threshold, and tooling replaced deleting fields |
+| an Isaac adapter in Python with no C++ change | a build-time generator of their table (11) | P2: their Python API cannot replace it |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

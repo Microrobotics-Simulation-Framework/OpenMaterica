@@ -44,6 +44,17 @@ recorded in that repository's CHANGELOG.
   the advisory index and Hugging Face items as notes for later.
 - Evolution families in the core from the start: state and history (viscoelastic and rate-dependent
   models), with optional events defined independently of any solver.
+- Decisions after the prototypes (2026-10-12): the scope is substances in and around the human body, never
+  systems, with five rules (a transfer test, pairs, geometry as scene data, behaviour, entry); every record
+  has a record type, `material` and `interface` being Vesalius's, so other namespaces can use the machinery
+  for data that is not a material; the curated library under CC0-1.0; reference implementations live with
+  their families, shipped as `vesalius-families`; consumers write their own readers, mixing rules and
+  evaluators, verified against conformance data; quotes for every value extracted from text or a table in
+  the curated library; curation tools before the first library release; a `bulk` section for density and
+  elemental composition; the layered path's USD form as a typed prim, needed by MIME 0.3.0; an anisotropic
+  linear elastic family for bone; conditions separated from specimen facts, with a starting vocabulary;
+  new conformance cases (derivatives at table knots and ends, in-range reports, mixing at the cell, record
+  types, the stage's units, physics bindings). Constraints 26 and 27; constraints 17 and 21 revised.
 
 ### Schema
 ### Families

@@ -1,16 +1,20 @@
 # Vesalius Documentation Architecture Plan
 
 **Status: a plan.** Written 2026-10-11, before any code exists, and revised the same day with the
-architecture draft. Appendix B says what is in place. The architecture of the library itself is in
+architecture draft, and again on 2026-10-12 with the decisions taken after the prototypes. Appendix B says
+what is in place. The architecture of the library itself is in
 [`design/ARCHITECTURE_DRAFT.md`](design/ARCHITECTURE_DRAFT.md) (the **architecture draft**).
 
 ## Executive Summary
 
 **Vesalius** is an open material schema with an OpenUSD binding, and a small Python toolkit. It describes
-what tissues, phantoms and devices are made of (fluid, mechanical, acoustic, optical, thermal, dielectric,
-radiological and magnetic properties), with the provenance and uncertainty of every value, binds those
-descriptions to anatomical and device geometry, and lets any simulator read them. Its code is licensed
-Apache-2.0; its material library would carry a data licence of its own.
+substances in and around the human body: tissues and body fluids, the media and phantoms that stand in for
+them, agents introduced into them, and the materials of devices that enter or touch them. For each it holds
+fluid, mechanical, acoustic, optical, thermal, dielectric, radiological and magnetic properties, with the
+provenance and uncertainty of every value; it binds those descriptions to anatomical and device geometry, and
+lets any simulator read them. It does not describe systems: an apparatus or its calibration, the quantities
+of one object, a drive, a procedure, or a simulator's tuning (section 3.1). Its code is licensed Apache-2.0;
+its curated material library is released under CC0-1.0.
 
 Where it sits:
 
@@ -32,8 +36,8 @@ Vesalius has three components with their own versions (architecture draft sectio
 | Component | What it is | Licence |
 |---|---|---|
 | Core | the specification, the record and USD schemas, the reader and writer, the verification machinery | Apache-2.0 |
-| Family packages | model-family definitions: equations, golden test vectors, reference implementations | Apache-2.0 |
-| Library | curated material records, in a repository of its own, released as static archives with a DOI; no hosted service | a data licence |
+| Families | model-family definitions: equations, golden test vectors, reference implementations; shipped as one distribution, `vesalius-families`, separate from the core, with a content hash per family version | Apache-2.0 |
+| Library | curated material records, in a repository of its own, released as static archives with a DOI; no hosted service | CC0-1.0 |
 
 **Why it is likely to become SOUP.** The values Vesalius ships and resolves feed simulations. When a
 regulated product is built on MIME, Vesalius is SOUP of SOUP, beside MADDENING. When a product built on
@@ -53,7 +57,10 @@ architecture is built around.
    model-family definitions (sections 4 and 5).
 3. **The read side must work without Vesalius code.** A C++ simulator reading a record or a stage is a
    consumer too. So the specification, not the Python package, is the primary artefact, and its
-   conformance suite is the primary verification evidence (section 6).
+   conformance suite is the primary verification evidence (section 6). Vesalius code never runs inside a
+   consumer's computation: a consumer writes its own reader, mixing rules and model evaluators in its own
+   language or framework, and verifies them against conformance data, golden vectors and check points
+   (constraint 26).
 4. **Records carry their own verification.** A model parameter set carries check points that any consumer
    evaluates before using it, so a reader that never ran the conformance suite still fails loudly on a
    convention mismatch. A convention witness from the source does the same for extraction: the parameters must
@@ -92,11 +99,13 @@ This plan is informed by IEC 62304:2006+AMD1:2015, ISO 14971:2019, ASME V&V 40-2
 2. [Documentation Structure](#2-documentation-structure)
 3. [Regulatory Boundary Language](#3-regulatory-boundary-language)
 4. [The Specification](#4-the-specification)
-5. [The Method Guide, Model Families and the Material Library](#5-the-method-guide-model-families-and-the-material-library)
+5. [The Method Guide, Model Families and the Material
+   Library](#5-the-method-guide-model-families-and-the-material-library)
 6. [Verification](#6-verification)
 7. [Versioning and Stability](#7-versioning-and-stability)
 8. [Anomaly Management](#8-anomaly-management)
-9. [Compliance as a Feature: Working with MADDENING and MIME Metadata](#9-compliance-as-a-feature-working-with-maddening-and-mime-metadata)
+9. [Compliance as a Feature: Working with MADDENING and MIME
+   Metadata](#9-compliance-as-a-feature-working-with-maddening-and-mime-metadata)
 10. [SOUP Package](#10-soup-package)
 11. [IEC 62304 Lifecycle Mapping](#11-iec-62304-lifecycle-mapping)
 12. [Configuration Management](#12-configuration-management)
@@ -153,7 +162,7 @@ on it.
 
 ## 2. Documentation Structure
 
-This repository holds the core and, at first, the family packages:
+This repository holds the core and, at first, the families, released as their own distribution:
 
 ```
 Vesalius/
@@ -209,7 +218,7 @@ Vesalius/
 │
 ├── src/vesalius/                      # core, including `python -m vesalius check`; layout in the architecture draft, section 7.1
 ├── mcp/                               # vesalius-mcp, the MCP server: a separate distribution (architecture draft section 8)
-├── families/                          # family packages, one directory per namespace and family (section 5.2)
+├── families/                          # vesalius-families, its own distribution: one directory per family (section 5.2)
 │   └── vesalius/mechanical/<family>/
 │       ├── definition.md              # NORMATIVE for that family version
 │       ├── vectors/                   # golden test vectors, frozen per version
@@ -221,13 +230,13 @@ Vesalius/
 └── scripts/                           # CI checks (section 6.5)
 ```
 
-The library lives in a repository of its own (name to be chosen), with its own data licence. Its releases
+The library lives in a repository of its own (name to be chosen), under CC0-1.0. Its releases
 are static archives, published on GitHub and archived on Zenodo with a DOI; there is no hosted service
 (architecture draft section 6.7):
 
 ```
 <library repository>/
-├── README.md, LICENSE (data licence), CHANGELOG.md, CITATION.cff
+├── README.md, LICENSE (CC0-1.0), CHANGELOG.md, CITATION.cff
 ├── sources.yaml                       # the source registry (architecture draft section 6.1)
 ├── publishers.yaml                    # other namespaces: repository URLs, release hashes (section 6.7 there)
 ├── bibliography.bib
@@ -250,7 +259,7 @@ Rules for both trees:
 - **A folder is created when its first real document arrives.** Empty folders are not committed. The trees
   above are the target, not the current state.
 - **Generated files are never hand-edited.** The plain records are the single source of truth (architecture
-  draft open question 1); CI regenerates the USD layers, cards and index and fails if they differ, as
+  draft section 3.4); CI regenerates the USD layers, cards and index and fails if they differ, as
   MADDENING does for its stability report.
 - **Tooling** follows MADDENING and MIME: Markdown with MyST, Sphinx once a site is worth building,
   Pandoc-style `[@Key]` citations against the repository's `bibliography.bib`.
@@ -262,8 +271,8 @@ Rules for both trees:
 ### 3.1 Platform positioning statement (`docs/regulatory/intended_use.md`)
 
 > Vesalius is an open material schema and a software toolkit for describing the physical properties of
-> tissues, phantoms and devices for simulation. It is research software distributed under the Apache
-> License 2.0.
+> substances in and around the human body for simulation. It is research software distributed under the
+> Apache License 2.0.
 >
 > **Vesalius is not a medical device** as defined by EU MDR (EU 2017/745) Article 2(1). It has no medical
 > purpose. It does not diagnose, monitor, predict, treat or alleviate disease, and it makes no clinical
@@ -272,6 +281,28 @@ Rules for both trees:
 >
 > When incorporated into a regulated medical device, Vesalius is classified as SOUP under IEC 62304. The
 > device manufacturer bears full responsibility for assessing its suitability for their context of use.
+
+The scope statement sits beside it in `intended_use.md`:
+
+> Vesalius describes substances in and around the human body: tissues and body fluids, the media and
+> phantoms that stand in for them, agents introduced into them, and the materials of devices that enter or
+> touch them. It does not describe systems: an apparatus or its calibration, the quantities of one object
+> (its moment, inertia or mean density), a drive, a procedure, or a simulator's tuning.
+>
+> - **The transfer test.** A value belongs in Vesalius if it would hold for another object made of the same
+>   substance under the same conditions. If it changes with an object's shape, size or assembly, the
+>   consumer computes or records it.
+> - **Pairs.** A property of two substances in contact (friction, slip, a solute's diffusivity) is in, as an
+>   interface record, when the source states the surface conditions and the test method, which become
+>   required conditions. A number measured with one tool or device is reference data for checking a model.
+> - **Geometry is scene data.** Vesalius defines how geometry binds to materials, and ships only small test
+>   phantoms and label mappings from reference anatomies, never anatomy.
+> - **Behaviour.** Behaviour computed from geometry and materials (an implant's heating in MRI, a puncture
+>   force) is the consumer's output; measured behaviour is reference data in the consumer's namespace.
+> - **Entry.** Content enters when a named consumer needs it, and the curated library starts with the
+>   body. Other publishers may use the same machinery in their own namespaces, including for data Vesalius
+>   does not curate: a record of a type of their own (an apparatus's calibration, say) is checked like any
+>   other record but is never a material and is never curated (constraint 27).
 
 ### 3.2 Data statement
 
@@ -292,8 +323,9 @@ This is the statement MADDENING does not need and Vesalius does:
 > values are whatever the user fills in from their own copy of the source, and the curator has not
 > reviewed them.
 >
-> Some values are drafted with the help of a language model. Each such value says so, with the quote and
-> the document it was read from, and every value, assisted or not, is checked against its source by a
+> Every value in the curated library that was extracted from text or a table carries the verbatim quote it
+> was read from, with the identity and version of the document. Some values are drafted with the help of a
+> language model; each such value says so. Every value, assisted or not, is checked against its source by a
 > named reviewer before release.
 >
 > Biocompatibility fields record test evidence reported for a material. They are never a biocompatibility
@@ -302,22 +334,26 @@ This is the statement MADDENING does not need and Vesalius does:
 
 ### 3.3 Cybersecurity boundary statement (MDCG 2019-16)
 
-> Vesalius assumes trusted input files. It performs no authentication, authorisation or sanitisation
-> beyond validating records against the record schema. A USD stage can pull in other files through its
-> composition (sublayers, references, payloads) and through the host's asset resolver, so reading a stage
-> may read any file that stage names. Every USD layer Vesalius ships is self-contained (no composition arcs,
-> no asset paths), so reading a library layer reads that file alone. Vesalius itself makes no network requests and runs no code from the
-> files it reads: records and family vectors are data, and family reference implementations are code
-> shipped in the package, never loaded from a record. Loading third-party records and stages, and the
-> security of the asset resolver, are the responsibility of the integrating application.
+> Vesalius assumes trusted input files. It performs no authentication, authorisation or sanitisation beyond
+> validating records against the record schema. A USD stage can pull in other files through its composition
+> (sublayers, references, payloads) and through the host's asset resolver, so reading a stage may read any
+> file that stage names. Every USD layer Vesalius ships is self-contained (no composition arcs, no asset
+> paths), so reading a library layer reads that file alone. Vesalius itself makes no network requests and
+> runs no code from the files it reads: records and family vectors are data, and family reference
+> implementations are code shipped in the `vesalius-families` distribution, never loaded from a record.
+> Loading third-party records and stages, and the security of the asset resolver, are the responsibility of
+> the integrating application.
 
 ### 3.4 Licence note
 
 Apache-2.0 is permissive: no copyleft obligation follows a product that incorporates Vesalius's code, and
 the licence includes an express patent grant. It is compatible with use from MIME and MADDENING
-(LGPL-3.0-or-later) and with contributions to Isaac for Healthcare. The library's data is under its own
-data licence, stated on each record (architecture draft section 6.4). This is a description, not legal
-advice.
+(LGPL-3.0-or-later) and with contributions to Isaac for Healthcare. The curated library's data is released
+under CC0-1.0, stated on each record (architecture draft section 6.4), so that anyone may recombine it with
+other data without attribution conditions; credit travels instead in each value's source, its curator's
+ORCID and each release's DOI. Two things CC0 does not change: a value whose source restricts redistribution
+stays reference-only, and a short quote kept as evidence is the source's text, not relicensed. Other
+publishers choose their own licences. This is a description, not legal advice.
 
 ### 3.5 Layered responsibility model
 
@@ -326,8 +362,9 @@ advice.
 | Specification and read-side correctness | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite |
 | Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden vectors (section 6.4) |
 | Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
-| A consumer's own implementation of a family | downstream user | IEC 62304 Clause 5.6 (their own) | the record's check points; the family's golden vectors |
+| A consumer's own reader, mixing rules and family evaluators | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance cases; the record's check points; the family's golden vectors |
 | Choosing a material; declaring its domain, target, mixing rule and picks; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
+| Watching, during a run, a condition that the run or an optimiser moves | downstream user | ASME V&V 40 | the evaluator's in-range output, recorded with the results |
 | Measuring the language model an agent uses for extraction, before relying on it | the curator using it | none: curation tooling is outside the SOUP package | gold-set score; review of every value |
 | Calculation verification of a simulation | downstream user | ASME V&V 40 | the simulator's own evidence |
 | SOUP assessment of Vesalius | device manufacturer | IEC 62304 Clauses 5.3.3, 5.3.4, 7.1.3 | Vesalius SOUP package and anomaly registry |
@@ -338,7 +375,10 @@ temperature, frequency, wavelength, species or tissue state), using a stand-in w
 across the edge of a domain, and reading a parameter set in another convention. Vesalius makes conditions
 and specimen facts machine-readable and the consumer's declarations explicit, so a build can check them
 (architecture draft section 3.5). A consumer's convention mismatch fails at the check points; an
-extraction in the wrong convention fails at the independent witness.
+extraction in the wrong convention fails at the independent witness. A condition that moves during a run
+(a temperature an optimiser adjusts) cannot be checked at build: an evaluator reports whether its condition is
+in range, and the consumer watches that condition, not a parameter derived from it, because an evaluator
+that clamps at a table's end keeps the derived parameter inside its range while the condition leaves it.
 
 ---
 
@@ -350,16 +390,16 @@ binding and everything a reader must do, in prose and tables, independently of t
 
 | Document | Defines |
 |---|---|
-| `record_format.md` | the plain record: identity, schema version, content hash, sections; every field with its SI unit, value form, range, interpolation scheme and edges, allowed tokens and stability level; the five value forms; no fallback values |
-| `provenance.md` | provenance fields, including origin; the extraction methods; the conditions vocabulary, unstated conditions and the ontology identifiers; specimen facts; the three tiers and user fill-ins; the source registry's fields and redistribution statuses; evidence, assistance and search records |
-| `uncertainty.md` | the statistics block; what each spread represents; `dispersion: not_reported`; interval-only values; the five uncertainty structures; admissibility; the sampling rules, including refusal |
-| `model_families.md` | the identifier form; the `kind` field; the evolution form (state variables, input histories, events); what a family definition must fix (architecture draft section 4.5); check points in records, their coverage and the tolerance rule; independent convention witnesses; refusal on an unknown family or version or a failed check point |
-| `fits_and_reference_data.md` | the fit record; reference data and its link to a fit; the fit-reproduction rule and "not checked" |
-| `geometry.md` | layered paths; region binding; label volumes; field overrides and their provenance; precedence declared by the scene; nested regions; background; domains |
-| `usd_binding.md` | the API schemas; attribute names; the binding purpose; the USD forms of layered paths and of parameter sets, statistics and check points; taking provenance from the layer that supplies the value |
-| `read_side_contract.md` | the read procedure (architecture draft section 7.5), in order, and every case in which a reader must refuse |
-| `mixing_rules.md` | the identities; the named rules, each with its equation and assumptions; fields with no general rule |
-| `declarations.md` | what a consumer declares (domains, targets, family versions, mixing rules, picks, tolerances, waivers); the three results of a check (met, not met, unknown); how declarations are recorded (architecture draft section 3.5) |
+| `record_format.md` | the envelope every record shares (identifier, version, record type, schema version, content hash, provenance and the value machinery) and its body; the record types `material` and `interface`, and the rule that a reader skips a type it does not know; for a material, its sections, including `bulk` (density and elemental composition, which no other section duplicates); the `extensions` block for another namespace's sections; every field with its SI unit, value form, range, interpolation scheme and edges, allowed tokens and stability level; the five value forms, with a table's tabulated range kept apart from the range its source says it holds over, and power laws with the basis of their exponent and their decibel or neper convention; no fallback values |
+| `provenance.md` | provenance fields, including origin (with "evaluated from a reference formulation"); the extraction methods; document identity and version beside the hash of the copy read; locators per document version; explicit statuses ("not checked", "none") in place of empty fields; fields filled at import kept apart from those filled at curation; per-parameter provenance in a parameter set; the conditions vocabulary, categorical conditions included, the basis of each condition, and unstated conditions; specimen facts, with the division between the two (conditions describe the test, specimen facts the thing tested) and the starting vocabulary (NCBI Taxonomy, UBERON and a short list of tissue states); the three tiers, derived from the source registry, and user fill-ins; the source registry's fields and redistribution statuses; evidence, assistance and search records |
+| `uncertainty.md` | the statistics block; what each spread represents; `dispersion: not_reported`; relative and expanded uncertainty with a coverage factor; the basis "specification limits"; interval-only values, one-sided ones included; the five uncertainty structures; admissibility; the sampling rules, including refusal |
+| `model_families.md` | the identifier form; the `kind` field, stated per loading control, with every rate marked as an input or a test condition; input and output measures with conversion vectors; the domain of each term; the evolution form (state variables, input histories, events); events that say only where a family's range of states ends, never which model takes over; what a family definition must fix (architecture draft section 4.5); check points in records, their coverage and the tolerance rule; independent convention witnesses and their tolerance; refusal on an unknown family or version or a failed check point |
+| `fits_and_reference_data.md` | the fit record, including "exactly determined"; coverage as a set of loading modes and ranges, with histories; the reference-data payload (points with their own origin and status; curves with a digitised flag and the digitiser's axis calibration); the fit-reproduction rule and "not checked" |
+| `geometry.md` | layered paths; region binding and the region marker; label volumes; field overrides, their provenance and their frame (world, or the region's reference configuration); precedence declared by the scene; nested regions; background; domains, named relative to the prim that declares them |
+| `usd_binding.md` | the API schemas; attribute names; the physics binding purpose, authored on the region prim, and the bindings a reader refuses; the USD form of a layered path (a typed prim of our own); each field's full plain form as one generated JSON string beside its typed scalar; library materials under a scope of their own, never `/Materials/<name>`; the stage's authored `metersPerUnit`; taking provenance from the layer that supplies the value |
+| `read_side_contract.md` | the read procedure (architecture draft section 7.5), in order, and every case in which a reader must refuse; what an evaluator reports (whether its condition is in range, and which side's derivative it gives at a table's knots and ends) |
+| `mixing_rules.md` | the identities; the named rules, each with its equation, its assumptions and a numpy reference; fields with no general rule. Consumers write the rules in their own code (constraint 26) |
+| `declarations.md` | what a consumer declares (domains, targets, family versions, mixing rules, picks, tolerances with their reason and consequence, waivers, a specimen fact that implies a condition, chains of families across events); the three results of a check (met, not met, unknown), an unknown carrying its value; how declarations are recorded (architecture draft section 3.5) |
 | `changes.md` | each schema version, what changed, and the conformance cases that came with it |
 
 Rules:
@@ -414,6 +454,14 @@ The Implementation Mapping is mandatory and checked in CI, as in MADDENING (`scr
 draft section 8) is a versioned `VES-MTH-` entry. Its Verification Evidence is its gold-set score, per field
 and per model tested (section 6.2).
 
+**Curation tools come before the library.** Draft templates (with "not applicable" driven by the value's type,
+and a structured "unstated"), quote attach-and-verify, registry drafting from a DOI and licence pages, a
+digitiser with a stated axis calibration and an overlay, formulation evaluators (a reference formulation such
+as water's) and check-point bakers are a prerequisite of the first library release. Each is a method entry
+built first as a library function with a command line; the MCP server only exposes them (architecture draft
+section 8). A prototype estimated (it did not measure) full provenance at two to seven times the time
+first assumed per value; tooling, not fewer fields, is the answer chosen.
+
 ### 5.2 Model-family definitions
 
 Each family version has a `definition.md`, normative for that version, with these sections:
@@ -424,9 +472,10 @@ Each family version has a `definition.md`, normative for that version, with thes
 **Status**: [admitted | deprecated]
 **Named consumer**: [who needed it, and for what]
 
-## Kind and state                # static or evolution; state variables, initial state, events
-## Kinematics and outputs        # input measure, output measure, loading modes covered
-## Equations                      # normative
+## Kind and state                # static or evolution, per loading control; each rate an input
+                                 # or a test condition; state variables, initial state, events
+## Kinematics and outputs        # input and output measures, with conversion vectors; loading modes covered
+## Equations                      # normative; the domain of each term
 ## Parameters                     # name, unit, meaning, order
 ## Admissibility                  # constraints on a parameter set
 ## Golden test vectors            # files in vectors/, precision, what each case exercises
@@ -438,6 +487,16 @@ Each family version has a `definition.md`, normative for that version, with thes
 A definition never changes once released. A correction is a new version, and the old one is deprecated
 with a pointer to it. "Known conventions elsewhere" is informative: it is what an exporter's conversion and
 the convention checker (architecture draft section 10) are built from.
+
+- **Reference implementations live with their families**, not in the core. They run on the write side, to
+  bake check points; consumers evaluate parameter sets with their own code (constraint 26). The families
+  ship as one distribution, `vesalius-families`, separate from the core, and each family version has its
+  own content hash, so a manufacturer assesses only the families it uses.
+- **An event never names its successor.** A family's event says only that its range of states ends, and
+  under which condition. Which model takes over is the consumer's choice: the consumer declares the chain,
+  the build records it in the material input sheet, and the run records each hand-over and its time.
+- **Golden vectors cover both sides of every switch** in the equations, and consistency vectors cover any
+  constant that continuity fixes.
 
 ### 5.3 The material library
 
@@ -451,20 +510,21 @@ fields.
 
 | Field | Required | Notes |
 |---|---|---|
-| value | yes, unless the tier is reference-only | one of the five forms (architecture draft section 4.4), with the range it was measured or fitted over; a table with its interpolation scheme and edges; a constitutive constant with its trivial family |
+| value | yes, unless the tier is reference-only | one of the five forms (architecture draft section 4.4), with the range it was measured or fitted over; a table with its interpolation scheme and edges, the range its source says it holds over where that differs from the tabulated range, and evidence per point; a power law with the basis of its exponent (fitted, assumed or theoretical) and its decibel or neper convention; a constitutive constant with its trivial family |
 | unit | implied | always the SI unit the specification fixes for the field |
-| origin | yes | measured by the source, measured by the contributor, fitted, derived, or stated without an origin |
-| source | yes | a key in `sources.yaml`, with a locator: table, figure, page or equation |
-| extraction | yes | table, text, digitised figure (tool and digitising error), supplementary dataset (licence), own measurement, derivation (method ID) or fit (fit record) |
-| conditions | yes | as the source states them, from the conditions vocabulary; a condition the source does not state is recorded as unstated; anatomical site and species as ontology identifiers; specimen shape for magnetic values; test method and specimen geometry for failure values |
-| statistics | yes for scalars | number of specimens and donors, mean, standard deviation, minimum, maximum, distribution, basis, and what the spread represents (population, estimate, measurement, across sources); `dispersion: not_reported` where the source gives none; an interval-only value with its basis |
+| origin | yes | measured by the source, measured by the contributor, fitted, derived, evaluated from a reference formulation (with derivation evidence instead of a quote), or stated without an origin |
+| source | yes | a key in `sources.yaml`, with a locator for the version of the document read: table (with the column header quoted and its index), figure, page or equation |
+| extraction | yes | table, text, digitised figure (tool, axis calibration and digitising error), supplementary dataset (licence), own measurement, derivation (method ID) or fit (fit record); for text, which text extraction of the document matched the quote |
+| conditions | yes | the conditions of the test, as the source states them, from the conditions vocabulary: temperature, frequency, rate, loading mode, test method, measurement geometry, propagation direction (for speeds in anisotropic tissue), categorical ones included; each with its basis (stated, or inferred from a figure); a condition the source does not state is recorded as unstated; specimen shape for magnetic values; test method and specimen geometry for failure values |
+| statistics | yes for scalars | number of specimens and donors, mean, standard deviation, minimum, maximum, distribution, basis, and what the spread represents (population, estimate, measurement, across sources); relative or expanded uncertainty with its coverage factor where the source gives one; the basis "specification limits" for a datasheet's minimum and maximum; `dispersion: not_reported` where the source gives none; an interval-only value with its basis, one-sided where only one bound is known |
 | uncertainty structure | yes for parameter sets | `ensemble`, `multivariate_normal`, `independent` (with a justification), `interval` or `none`, and what it represents |
-| check points | yes for parameter sets | computed by the family's reference implementation, never typed in; spanning the fit's coverage and the family's branch points |
+| check points | yes for shipped parameter sets | computed by the family's reference implementation, never typed in; spanning the fit's coverage and the family's branch points. None for a reference-only set, since they would publish its parameters; its fill-in is checked against the witness (section 6.3) |
 | fit record | yes for fitted values | reference data (identifier, or DOI and hash), procedure, coverage, residual |
-| convention witness | yes for parameter sets taken from a source | a response the source reports, with its locator, that the parameters must reproduce, independent of how they were obtained (for a fit, a held-out datum); whether it tests the family alone or through a model of the test (architecture draft section 4.6); without one, "no independent witness" and not admitted |
-| specimen | yes | species, site, state, preparation and shape, per section or field; for a phantom or substitute, what its maker says it mimics |
-| tier | yes | shipped, reference-only or private |
-| evidence | yes when a model assisted; recommended otherwise | the verbatim quote, its locator and the SHA-256 of the document copy; for a digitised figure, the locator and the hash. Quotes are not published for reference-only values |
+| convention witness | yes for parameter sets taken from a source | a response the source reports, with its locator, that the parameters must reproduce, independent of how they were obtained (for a fit, a held-out datum), and which fit it is independent of; its tolerance taken from the fit's residual and the precision of the stated state, never from the spread between specimens; whether it tests the family alone or through a model of the test (architecture draft section 4.6); without one, "no independent witness" and not admitted |
+| specimen | yes | the facts of the thing tested, per section or field: species and anatomical site as ontology identifiers (NCBI Taxonomy, UBERON), tissue state from a short list (in vivo, ex vivo fresh, frozen and thawed, fixed, phantom), preparation, preservation, donor age and shape; a fact the source does not state is recorded as a structured "unstated"; for a phantom or substitute, what its maker says it mimics |
+| tier | yes | shipped, reference-only or private, derived from the source's redistribution status in the registry, not written per value. A record a model drafted stays reference-only until a person sets the status |
+| evidence | yes for every value extracted from text or a table, in the curated library; optional in other namespaces | the verbatim quote, including any conditions and exponents it states, its locator, the identifier and version of the document, and the SHA-256 of the copy read. A hash identifies a copy, not a document: re-verifying means the quote occurs in your own copy. Copies stamped with personal data (a downloader's name or address) never ship. For a digitised figure, the locator and the hash. Quotes are not published for reference-only values |
+| statuses | yes | an explicit status ("not checked", "none") wherever a check or a field has no result, never an empty field; fields filled at import kept apart from fields filled at curation; per-parameter provenance where a parameter set's parameters come from different places |
 | assistance | yes when a model assisted | tool, model and provider as reported, prompt version (`VES-MTH-` entry and version), date |
 | search record | yes for statistics pooled across sources | queries, databases, date, inclusion criteria |
 | reviewer, date and ORCID | yes | who checked the value against the source, whether they are independent of whoever or whatever extracted it, and which checklist items: value, unit, conditions, specimen, statistic, primary or cited, family and witness |
@@ -473,11 +533,18 @@ fields.
 source at the locator and confirms the value, the unit conversion, the conditions and the specimen facts.
 The record of that check is part of the evidence (section 6.3). Agreement with another database is not a
 review. For a model-assisted value, the reviewer reads the rendered page at the locator, not only the
-quote, and confirms the quote is visible there; hidden text in a document can pass a text-layer check.
+quote, and confirms the quote is visible there; hidden text in a document can pass a text-layer check. The
+review checklist also asks for what drafting agents flagged most usefully in the prototypes: contradictions
+inside a source, swapped values, implausible spreads and mislabelled specimen states. Before review, a pass
+told to refute the draft (a person, or an agent with a person reading its findings) is part of the pipeline.
+
+**A citation found in code is a lead, not provenance.** A number in someone's code with a reference beside it
+is traced to the source and checked there; the reference alone is never the value's source.
 
 **Source registry.** `sources.yaml` holds one entry per source: citation key, DOI or URL, the licence of
 the publication and of any dataset, a redistribution status (permitted; values only; not permitted;
-unknown) with its reason, who judged it and when, and the source's role. A value from a source whose
+unknown) with its reason, who judged it and when, and the source's role; and, for each copy a curator
+holds, its retrieval route, its version identity and the licence it came under. A value from a source whose
 status is not permitted or unknown is reference-only.
 
 **Plausibility and consistency checks** run in CI on the whole library: physical bounds per field (density and
@@ -507,8 +574,25 @@ uncertainty structure; a record of a newer minor schema version, with a section 
 read for the sections the reader knows; refusal of an attribute that was not authored; refusal to interpolate
 across an edge or outside a range; unknown, not met, for an unstated condition; refusal of a nominal for an
 interval or an ensemble; refusal to mix a field with no general rule; a requirement checked over a domain's
-regions only. The cases and expected answers are data files, so a C++ or other reader can run them without
-Python. The Python reader runs them in CI.
+regions only. Added after the prototypes:
+
+- at every knot and end of a table, the value and the derivative from each side; an evaluator's test states
+  which side's derivative it returns (implementations differ, and a gradient check near a knot needs to know);
+- an evaluator reports whether its condition is in range, beside the value, instead of only clamping;
+- mixing rules tested at the cell, on stated fractions and values, not through a projector or a solver;
+- the throwaway reader's four defects, each as a case: an unknown or waived result still carries its value;
+  a malformed record gives "not met", never a crash; a power law's own axis is not checked again as a
+  condition; a tolerance carries its reason;
+- the analytic volume fractions of the canonical example phantoms (a sphere, a cylinder, a layered slab) on
+  stated grids, which also serve as the example phantoms;
+- a record of a type the reader does not know, skipped; a namespaced record type, its envelope checked;
+- each field's JSON string in USD equal to its typed scalar;
+- refusal of a stage with no authored `metersPerUnit`; refusal of a physics material reached through an
+  all-purpose binding or a binding with no purpose; a binding that applies within its region and never
+  across into a nested one.
+
+The cases and expected answers are data files, so a C++ or other reader can run them without Python. The
+Python reader runs them in CI.
 
 ### 6.2 Method verification
 
@@ -530,12 +614,17 @@ licence allows (architecture draft section 8.6).
   its stated residual. Where the reference data are not shipped, the result is "not checked", reported as
   such, never as a pass;
 - **convention witnesses**: every parameter set taken from a source reproduces its witness under its
-  family version, and the witness is independent of how the parameters were obtained. A record without an
-  independent witness is counted and reported, never shown as a pass. Where the witness cannot be shipped,
-  the curator's check at review is recorded and the public check reports "not checked";
-- **evidence**: every model-assisted value has a quote, a locator and a document hash. The quote is checked
-  against the document when the draft is made, and again by the reviewer against their own copy, whose hash
-  must match;
+  family version, within a tolerance taken from the fit's residual and the stated state's precision, and the
+  witness is independent of how the parameters were obtained. A record without an independent witness is
+  counted and reported, never shown as a pass. Where the witness cannot be shipped, the curator's check at
+  review is recorded and the public check reports "not checked";
+- **reference-only parameter sets** ship no check points, which would publish the parameters. A user who
+  fills in the parameters and the witness datum from their own copy runs the witness locally with `vesalius
+  check`; a mistyped parameter fails against the source itself, and the curator's own result at review is
+  recorded beside it;
+- **evidence**: every value extracted from text or a table carries a quote, a locator, the document's
+  identity and version, and the hash of the copy read. The quote is checked against the document when the
+  draft is made, and again by the reviewer, who checks that it occurs in their own copy;
 - a round trip: write a record, read it back, generate its USD form, read that back, compare every value,
   provenance field and check point.
 
@@ -547,7 +636,13 @@ licence allows (architecture draft section 8.6).
   the admissibility cases.
 - Golden vectors are frozen per family version. CI fails if a released version's vectors change.
 - Each conversion an exporter offers to a solver's convention has its own vectors showing the converted
-  parameters reproduce the family's outputs.
+  parameters reproduce the family's outputs; so does each conversion between a family's input and output
+  measures.
+- Golden vectors sit on both sides of every switch in the equations; consistency vectors check every
+  constant that continuity fixes.
+- A check point's tolerance is set by what it must tell apart and by the precision consumers declare; no
+  check point sits where every arm of the family gives zero; an evolution family's tolerances allow for
+  discretisation.
 - **Admission.** A family enters with a definition (section 5.2), golden vectors, a reference
   implementation, and a named consumer. A family with no consumer for two releases is deprecated. The same
   rules bind third-party namespaces that want to be listed.
@@ -559,17 +654,17 @@ library and any other publisher run exactly the same checks (architecture draft 
 
 | Check | Verifies |
 |---|---|
-| schema | records validate against the record schema; identifiers are namespaced |
-| provenance | the fields of section 5.3 are complete |
+| schema | records validate against the record schema; identifiers are namespaced; every record states its record type, and a namespaced type's envelope validates |
+| provenance | the fields of section 5.3 are complete, with explicit statuses where a field has no result |
 | plausibility | physical bounds; consistency between related fields; admissibility of every parameter set and ensemble member; units |
 | check points | stored check points equal the reference implementation's |
 | fit reproduction | every fit reaches its stated residual; "not checked" is counted and reported |
-| generated | USD layers, cards and the index equal what the records produce |
+| generated | USD layers, cards and the index equal what the records produce; each field's JSON string equals its typed scalar |
 | self-contained | shipped USD layers have no composition arcs and no asset paths |
 | witness | parameter sets reproduce an independent convention witness; "no independent witness" and "not checked" are counted and reported |
 | fallbacks | physical attributes in the USD schema have no fallback values |
 | tables | every table declares its interpolation scheme, its range and its edges; every form states its range |
-| evidence | model-assisted values carry a quote, a locator, a document hash and an assistance record; with the document present, the quote exists at the locator and contains the value's numbers |
+| evidence | every value extracted from text or a table carries a quote, a locator, the document's identity and version, and a copy hash; model-assisted values also an assistance record; with the document present, the quote exists at the locator and contains the value's numbers |
 | release (`--release`) | fails on any value without a review record, and on any draft |
 
 In this repository:
@@ -579,7 +674,7 @@ In this repository:
 | `scripts/check_anomalies.py` | the registry against the schema of section 8, prefix `VES-ANO-`, by delegating to MADDENING's validator (section 8.1) |
 | `scripts/check_citations.py` | every `[@Key]` in the specification, methods and families exists in `bibliography.bib` |
 | `scripts/check_impl_mapping.py` | every function named in a method guide or family definition exists |
-| `scripts/check_families.py` | reference implementations reproduce their vectors; released vectors are unchanged; every family has a named consumer |
+| `scripts/check_families.py` | reference implementations reproduce their vectors; released vectors are unchanged; every family version's content hash matches; every family has a named consumer |
 | `scripts/check_signoff.py` | every commit in a pull request carries a sign-off (section 15) |
 
 In the library repository, CI runs `vesalius check` on every pull request and adds the curated library's
@@ -588,7 +683,7 @@ policy checks:
 | Script | Checks |
 |---|---|
 | `scripts/check_publishers.py` | every namespace in `publishers.yaml` is unique, and every registered release passes `vesalius check` |
-| `scripts/check_sources.py` | every source key exists; no shipped value comes from a source whose redistribution status is not permitted or unknown; every record states its licence |
+| `scripts/check_sources.py` | every source key exists; every value's tier is the one its source's redistribution status gives; no shipped value comes from a source whose status is not permitted or unknown; no record a model drafted is shipped before a person set its status; every record states its licence |
 | `scripts/check_signoff.py` | sign-off and data attestation on every pull request |
 
 ### 6.6 What this verification does not provide
@@ -606,9 +701,9 @@ section, as MADDENING's do.
 
 | Version | Tracks | Where it appears |
 |---|---|---|
-| Package version (SemVer) | the Python package | `pyproject.toml`, CHANGELOG, SOUP package |
-| Schema version (SemVer) | the specification, the record schema and the USD schema | `docs/specification/changes.md`; recorded on every material |
-| Family version | one model family's definition and vectors; frozen once released | the family identifier (`...v1`); recorded on every parameter set |
+| Package version (SemVer) | each Python distribution: the core, `vesalius-families` and `vesalius-mcp` | `pyproject.toml`, CHANGELOG, SOUP package |
+| Schema version (SemVer) | the specification, the record schema and the USD schema | `docs/specification/changes.md`; recorded on every record |
+| Family version | one model family's definition, vectors and reference implementation; frozen once released, with its own content hash | the family identifier (`...v1`); recorded on every parameter set |
 | Material version | one library material's values | the record; its card; its content hash (section 12); the library release that carries it |
 
 Schema: **major** for a removed or renamed field, a changed unit or a changed meaning; **minor** for a new
@@ -627,7 +722,9 @@ Any section or field can be added later as a minor change, because three rules h
 section 5.6): sections are optional and a reader ignores those it does not use; an added field never changes
 the meaning of an existing one, and a change that would is major; conditions a reader does not know are
 reported as present and unchecked, never dropped. A reader reads a record of a newer minor version and
-refuses one of a newer major version.
+refuses one of a newer major version. A new record type is additive in the same way: a reader skips a type
+it does not know. This works only because every record states its type from the first schema version
+(constraint 27).
 
 ### 7.3 Stability levels
 
@@ -755,9 +852,9 @@ exactly that information, so it can fill the gap. This section says where that f
 
 | Fit | What Vesalius provides | What uses it | Who translates |
 |---|---|---|---|
-| **Input provenance for a run** (clear) | `collect_material_inputs(...)`: every property value a set of prims or path intervals resolves to, with material identifier and version, content hash, origin, source, statistics and what they represent, conditions, specimen facts, tier and review status (including user fill-ins), family version, fit-reproduction and witness status, whether a model assisted, and the layer or overlay it came from; the consumer's declarations (domains, targets, picks, tolerances, waivers) and the three-valued results; and the derivation chain from each record to each node parameter (overlays, unit conversion, mixing, defaults). Exported as JSON and as a Markdown "material input sheet" | MADDENING's `SimulationProvenance.custom` (`MADD:src/maddening/core/compliance/provenance.py`); a credibility assessment's model-input evidence; MADDENING's context-of-use template | MIME writes the record into the run's provenance |
+| **Input provenance for a run** (clear) | `collect_material_inputs(...)`: every property value a set of prims or path intervals resolves to, with material identifier and version, content hash, origin, source, statistics and what they represent, conditions, specimen facts, tier and review status (including user fill-ins), family version, fit-reproduction and witness status, whether a model assisted, and the layer or overlay it came from; the consumer's declarations (domains, targets, picks, tolerances, waivers) and the three-valued results; and the derivation chain from each record to each node parameter (overlays, unit conversion, mixing, defaults), with the derivation log saying which node parameter each value fed. Stored on the stage beside the simulation graph it describes, and exported as JSON and as a Markdown "material input sheet" | MADDENING's `SimulationProvenance.custom` (`MADD:src/maddening/core/compliance/provenance.py`); a credibility assessment's model-input evidence; MADDENING's context-of-use template | MIME writes the record into the run's provenance |
 | **Uncertainty inputs** (partial) | statistics for scalars and uncertainty structures for parameter sets, each saying what it represents | MADDENING's `UncertainParameter` (a nominal, bounds and a distribution that defaults to uniform; no standard deviation), which describes one parameter at a time | MIME maps the spread its question needs where `UncertainParameter` can carry it; a mean and standard deviation, interval-only values and joint structures need MADDENING changes (architecture draft section 9.4). Until then MIME samples joint structures with Vesalius's reference sampler and labels the results |
-| **Operating-point checks** (clear) | conditions, material values and fit coverage | MIME's checks against computed operating points (Reynolds number, Mach number). Fit coverage is not mapped onto MADDENING's `ValidatedRegime`, which records regimes in which a node was verified | MIME |
+| **Operating-point checks** (clear) | conditions, material values and fit coverage; evaluators that report whether their condition is in range | MIME's checks against computed operating points (Reynolds number, Mach number), and run-time watches on any condition a run or an optimiser moves, placed on the condition, not on a parameter derived from it. Fit coverage is not mapped onto MADDENING's `ValidatedRegime`, which records regimes in which a node was verified | MIME |
 | **One anomaly schema** (clear) | `VES-ANO-` entries in MADDENING's format | one combined risk file; MIME entries can cite `VES-ANO-` entries as they cite `MADD-ANO-` ones | none needed |
 | **Biocompatibility** (partial) | a material's reported test evidence | MIME's `BiocompatibilityMeta`, declared on the device's `Body` and citing that evidence; never derived from the materials | MIME |
 | **References** (clear) | source registry keys | MADDENING's `Reference(key, description)` | MIME |
@@ -790,19 +887,20 @@ manufacturer assesses only the components it uses, so the package is organised p
 | Component | Licence | Assessed when |
 |---|---|---|
 | Core | Apache-2.0 | always |
-| Each family version | Apache-2.0 | when a product evaluates parameter sets of that family |
-| Each library release | its data licence | when a product uses its materials; otherwise only the product's own records |
+| Each family version, in `vesalius-families` | Apache-2.0 | when a product evaluates parameter sets of that family (its own evaluator is the product's code; the family's definition, vectors and check points are what it verifies against) |
+| Each library release | CC0-1.0 | when a product uses its materials; otherwise only the product's own records |
 
 Contents, with the Vesalius-specific additions:
 
 1. **Software identification**: name, version, release date, Apache-2.0, repository, PyPI hashes, Python
    versions; **plus** the schema version and the hash of the schema archive; the family versions included
-   and the hash of their vectors; the library release, its DOI, its data licence and the hash of its
+   and the content hash of each; the library release, its DOI, its licence (CC0-1.0) and the hash of its
    archive.
 2. **Functional description**: the reader, the writer, the methods, the families, the reference sampler, the
    library; **capabilities not provided**: no clinical interpretation; no assurance that a value applies to a
    use, a patient's included; no validation of files from third parties; no production-grade or differentiable
-   evaluation of model families.
+   evaluation of model families, and no code that runs inside a consumer's computation (constraint 26); no
+   description of systems (section 3.1).
 3. **Known anomalies**: summary counts, split into code, schema, family and data anomalies (by
    `affected_components`).
 4. **Verification evidence**: the conformance suite, method, family and data verification, with pass counts
@@ -851,10 +949,12 @@ the first release; a CycloneDX SBOM per release, generated from a clean install,
 
 Vesalius adds:
 
-- **a content hash per material**: SHA-256 of a canonical serialisation of its values, provenance,
-  statistics, uncertainty structures and check points. A simulation that records the hashes of the
-  materials it used can show it used exactly those values, even if a later library version changes them;
-- **frozen family versions**, each with a hash of its definition and vectors;
+- **a content hash per record**: SHA-256 of a canonical serialisation of its values, provenance,
+  statistics, uncertainty structures and check points, using an existing canonical JSON scheme that fixes
+  how numbers are written (recalled: RFC 8785), so that two writers of the same record produce the same
+  hash. A simulation that records the hashes of the materials it used can show it used exactly those values,
+  even if a later library version changes them;
+- **frozen family versions**, each with a hash of its definition, vectors and reference implementation;
 - **the schema archive** (the L0 files, conformance cases and golden vectors) released with its own hash,
   so a project in another language can vendor exactly the version it was built against;
 - **static release archives**: each library release is one archive (records, generated layers, cards,
@@ -895,9 +995,9 @@ Chain 1                                        Chain 2
 (MADDENING section 16): the pinned Vesalius version, the schema version, the family versions and library
 release it uses, links to Vesalius's version-tagged SOUP package and anomaly registry, the PyPI hash, the
 SBOM, a table of Vesalius anomalies relevant to MIME, the library materials MIME's experiments use with
-their content hashes, how MIME's own JAX implementations of families are verified (the golden vectors and
-check points), and the update policy (review the CHANGELOG's Schema, Families, Data and Known Anomalies
-sections; rerun MIME's tests; update the pin).
+their content hashes, how MIME's own JAX implementations of the value forms, mixing rules and families are
+verified (the conformance cases, golden vectors and check points), and the update policy (review the
+CHANGELOG's Schema, Families, Data and Known Anomalies sections; rerun MIME's tests; update the pin).
 
 **For a product on Isaac for Healthcare**: the same items, plus which reader they use (Vesalius's Python
 reader, or their own against the specification). An independent reader must pass the conformance suite to
@@ -937,16 +1037,17 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 13. **Fail closed.** A reader refuses an unknown family or version, a failed check point, a request to
     sample an undeclared uncertainty structure, an attribute that was not authored, and interpolation across
     an edge or outside a range. It never guesses.
-14. **Check points and a convention witness on every model parameter set.** Check points are computed by
-    the family's reference implementation, never typed in. The witness is a response the source itself
-    reports, independent of how the parameters were obtained, which they must reproduce; a parameter set
-    without one is not admitted to the curated library.
+14. **Check points and a convention witness on every model parameter set.** Check points are computed by the
+    family's reference implementation, never typed in; a reference-only set ships none, because they would
+    publish its parameters, and its fill-in is checked against the witness instead. The witness is a response
+    the source itself reports, independent of how the parameters were obtained, which they must reproduce; a
+    parameter set without one is not admitted to the curated library.
 15. **Family versions are frozen.** A family is admitted with a definition, golden vectors, a reference
     implementation and a named consumer; any change is a new version.
 16. **Nothing non-redistributable is shipped.** A value from a source whose redistribution status is not
     permitted or unknown is reference-only. Every pull request that adds data carries a data attestation.
-17. **The library's data licence is separate from the code licence**, and every record states the licence
-    it is distributed under.
+17. **The curated library's data is CC0-1.0, separate from the code licence**, and every record states the
+    licence it is distributed under. A quote kept as evidence is the source's text and is not relicensed.
 18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths. `vesalius check`
     enforces it.
 19. **Static releases.** Everything needed to use a release is in its archived artefacts. No Vesalius
@@ -954,9 +1055,10 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 20. **No model on the read side.** No language model runs in a reader, in `vesalius check`, in a release
     build, or in any consumer's build. Vesalius calls no model and holds no keys; the user's agent brings
     both (architecture draft section 8.1).
-21. **Quotes and human review.** Every value a model helped draft carries its verbatim quote, locator and
-    document hash, and an assistance record. No value of any kind enters a release without a human review
-    record; the release build fails closed.
+21. **Quotes and human review.** Every value in the curated library that was extracted from text or a table
+    carries its verbatim quote, locator, document identity and copy hash, whoever or whatever extracted it;
+    a value a model helped draft also carries an assistance record. No value of any kind enters a release
+    without a human review record; the release build fails closed.
 22. **A model never decides.** A model never sets a tier or a redistribution status, converts a unit,
     writes a check point or a witness, or produces a fit result. The MCP tools are scoped so that it
     cannot.
@@ -970,6 +1072,13 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 25. **A check is reported for what it can show.** A witness is independent of how the parameters were
     obtained, or the record says "no independent witness". Check points are not presented as evidence about
     a value. An attestation by an interested party says that it is one.
+26. **The core never runs inside a consumer's computation.** Readers, mixing rules and model evaluators are
+    written by consumers and verified against conformance data, golden vectors and check points. The core's
+    numpy references define behaviour and bake check points on the write side; nothing of Vesalius's runs in
+    a consumer's step, loop or gradient.
+27. **Every record has a record type.** A reader skips types it does not know. Vesalius curates only
+    `material` and `interface` records; other namespaces may define types of their own, which share the
+    envelope and its checks but are never curated.
 
 ---
 
@@ -982,20 +1091,23 @@ anomaly registry and its issue template; the pull-request template; `docs/regula
 README disclaimer.
 
 **Phase 1, with the first code:** the specification for each release's contents as it is built (architecture
-draft section 12.2): first the record format with namespaced identifiers, values, provenance and required
-properties (Vesalius 0.1), then uncertainty, model families, geometry and the USD binding (0.2); the
-conformance suite; the first family definition (architecture draft section 12.1, R5) with golden vectors and a
-reference implementation; `python -m vesalius check`; `scripts/check_anomalies.py`, `check_families.py` and
+draft section 12.2): first the record format with namespaced identifiers, record types, values, provenance
+and required properties (Vesalius 0.1), then uncertainty, model families, geometry (layered paths and their
+USD form included) and the USD binding (0.2); the conformance suite; the first family definition
+(architecture draft section 12.1, R5) with golden vectors and a reference implementation, in
+`vesalius-families`; `python -m vesalius check`; `scripts/check_anomalies.py`, `check_families.py` and
 the sign-off check; GitHub labels as MADDENING's (`anomaly:critical`, `anomaly:major`, `anomaly:minor`,
 `safety-relevant`, `soup-assessment`, `known-anomaly`).
 
-**Phase 2, with the first library material:** the library repository with its data licence; the source
-registry; the data entry standard, review process and takedown procedure; `bibliography.bib`; the library
-checks of section 6.5; generated USD layers, cards and index; the legal review of the architecture draft,
-section 6.5. The publishers file and a template repository for other publishers come with the first library
-release; other hosting items (a data wheel, a viewer) follow their triggers in the architecture draft, section
-6.7. Once the seed library exists: the MCP server, the extraction procedures as method entries, and the gold
-set (architecture draft section 8).
+**Phase 2, with the first library material:** the curation tools of section 5.1 (templates, quote attach-
+and-verify, registry drafting, the digitiser, formulation evaluators and check-point bakers), as library
+functions with a command line, before the first value is curated; the library repository under CC0-1.0; the
+source registry; the data entry standard, review process and takedown procedure; `bibliography.bib`; the
+library checks of section 6.5; generated USD layers, cards and index; the legal review of the architecture
+draft, section 6.5. The publishers file and a template repository for other publishers come with the first
+library release; other hosting items (a data wheel, a viewer) follow their triggers in the architecture
+draft, section 6.7. Once the seed library exists: the MCP server, the extraction procedures as method
+entries, and the gold set (architecture draft section 8).
 
 **Phase 3, at the first release:** `CITATION.cff`; the SOUP package; the SBOM; `iec62304_mapping.md`;
 `downstream_integration.md`; signed tags; the library's first DOI.
@@ -1029,7 +1141,8 @@ Status at 2026-10-11.
 
 - [ ] `docs/specification/` for each release's contents, every normative statement with a conformance case
 - [ ] `tests/conformance/` with cases and expected answers as data files, for plain records and USD
-- [ ] the first family definitions under `families/`, with golden vectors and reference implementations
+- [ ] the first family definitions under `families/`, with golden vectors and reference implementations,
+  released as the separate distribution `vesalius-families`
 - [ ] `python -m vesalius check`, including the namespaced-identifier, self-contained-layer, fallback, table,
   witness, evidence and `--release` checks
 - [ ] `scripts/check_anomalies.py`, delegating to MADDENING's validator, run in CI on every push
@@ -1039,7 +1152,8 @@ Status at 2026-10-11.
 
 **Phase 2**
 
-- [ ] the library repository, with its data licence chosen (architecture draft open question 8)
+- [ ] the curation tools of section 5.1, before the first value is curated
+- [ ] the library repository, under CC0-1.0 (decided 2026-10-12)
 - [ ] `sources.yaml` with redistribution statuses
 - [ ] `publishers.yaml` and a template repository for other publishers, with MIME's namespace as the first
   entry

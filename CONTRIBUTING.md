@@ -39,23 +39,26 @@ live in a repository of its own; until it exists, its rules are kept here.
 13. **Fail closed.** Readers refuse an unknown family or version, a failed check point, a request to
     sample an undeclared uncertainty structure, an attribute that was not authored, and interpolation across
     an edge or outside a range. Never add a fallback that guesses.
-14. **Check points and a convention witness on every model parameter set.** Check points are computed by
-    the family's reference implementation; never type them in. The witness is a response the source itself
-    reports, independent of how the parameters were obtained (for a fit, a held-out datum); without one, a
-    parameter set is not admitted to the curated library.
+14. **Check points and a convention witness on every model parameter set.** Check points are computed by the
+    family's reference implementation; never type them in. A reference-only set ships none (they would publish
+    its parameters); its fill-in is checked against the witness instead. The witness is a response the source
+    itself reports, independent of how the parameters were obtained (for a fit, a held-out datum); without
+    one, a parameter set is not admitted to the curated library.
 15. **Family versions are frozen.** Any change to a released definition or its vectors is a new version.
 16. **Ship nothing non-redistributable.** A value from a source whose redistribution status is not
     permitted, or is unknown, is reference-only. Every pull request that adds data carries the data
     attestation.
-17. **Data and code licences are separate.** Library records are under the library's data licence, stated
-    on each record.
+17. **Data and code licences are separate.** Curated library records are under CC0-1.0, stated on each
+    record. A quote kept as evidence is the source's text and is not relicensed.
 18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths.
 19. **Static releases.** No feature may require a hosted service, and nothing is fetched from the network
     unless the user asks.
 20. **No model on the read side.** No language model in a reader, in `vesalius check`, in a release build
     or in any consumer's build. Vesalius calls no model and holds no keys.
-21. **Quotes and human review.** A value a model helped draft carries its quote, locator, document hash and
-    assistance record. No value enters a release without a human review record.
+21. **Quotes and human review.** Every value in the curated library that was extracted from text or a
+    table carries its quote, locator, document identity and copy hash, whoever or whatever extracted it. A
+    value a model helped draft also carries an assistance record. No value enters a release without a human
+    review record.
 22. **A model never decides** a tier, a redistribution status, a unit conversion, a check point, a witness
     or a fit result.
 23. **Records hold facts; consumers declare choices.** No record, card, check or default says where, in what
@@ -67,6 +70,11 @@ live in a repository of its own; until it exists, its rules are kept here.
 25. **A check is reported for what it can show.** A witness is independent of how the parameters were
     obtained, or the record says "no independent witness". Check points are not presented as evidence about
     a value. An attestation by an interested party says that it is one.
+26. **The core never runs inside a consumer's computation.** Readers, mixing rules and model evaluators are
+    written by consumers and verified against conformance data, golden vectors and check points. Do not add
+    core code meant to run in a consumer's step, loop or gradient.
+27. **Every record has a record type.** A reader skips types it does not know. Vesalius curates only
+    `material` and `interface` records; a type of your own lives in your namespace.
 
 ## Identifier prefixes
 
@@ -75,6 +83,7 @@ live in a repository of its own; until it exists, its rules are kept here.
 | Anomalies | `VES-ANO-XXX` | `VES-ANO-001` |
 | Verification items | `VES-VER-XXX` | `VES-VER-001` |
 | Materials | `<namespace>/<local id>`; in the curated library `vesalius/VES-MAT-XXXX` | `vesalius/VES-MAT-0001` |
+| Record types | `material` and `interface` (Vesalius's); `<namespace>:<type>` for another namespace's | `mime:emns_calibration` |
 | Methods | `VES-MTH-XXX` | `VES-MTH-001` |
 | Model families | `<namespace>.<section>.<name>.v<N>` | `vesalius.mechanical.ogden_incompressible.v1` |
 
@@ -111,12 +120,20 @@ a CHANGELOG entry under **Schema**. The version rules are in `DOCUMENTATION_ARCH
 A family is admitted with all of the following, in one pull request:
 
 - a `definition.md` following `DOCUMENTATION_ARCHITECTURE.md` section 5.2: its kind (`static`, or
-  `evolution` with its state variables, initial state and any events), kinematics and outputs, equations,
-  parameters with units, admissibility, references, and the known conventions elsewhere;
-- golden test vectors as data files, including edge cases and admissibility cases, with their precision
-  (for an evolution family: input histories, with tolerances, and analytic cases that pin the integrator);
-- a reference implementation in plain numpy, written for clarity, that reproduces the vectors;
+  `evolution` with its state variables, initial state and any events), stated per loading control, with
+  every rate marked as an input or a test condition; its input and output measures, with conversion vectors
+  between them; equations, with the domain of each term; parameters with units, admissibility, references,
+  and the known conventions elsewhere;
+- golden test vectors as data files, including edge cases and admissibility cases, with their precision;
+  vectors on both sides of every switch in the equations; consistency vectors for any constant continuity
+  fixes (for an evolution family: input histories, with tolerances, and analytic cases that pin the
+  integrator);
+- a reference implementation in plain numpy, written for clarity, that reproduces the vectors. It lives
+  with the family in `families/` and ships in `vesalius-families`, never in the core;
 - a **named consumer**: who needs the family, and for what.
+
+An event says only that the family's range of states ends, and under which condition. Never name the model
+that takes over: the consumer declares that chain, and the build records it.
 
 The identifier is namespaced and versioned. Publishing under `vesalius.` is for families this project
 maintains; anyone may publish families in their own namespace with the same checks, and needs no admission
@@ -135,35 +152,67 @@ project's own namespace, which needs no admission.
 
 ## Adding or changing a library material
 
+**First, the scope.** Vesalius describes substances in and around the human body: tissues and body fluids,
+the media and phantoms that stand in for them, agents introduced into them, and the materials of devices
+that enter or touch them. It does not describe systems: an apparatus or its calibration, the quantities of
+one object (its moment, inertia or mean density), a drive, a procedure, or a simulator's tuning. Before
+adding a value, ask whether it would hold for another object made of the same substance under the same
+conditions. If it changes with an object's shape, size or assembly, it belongs to its consumer. A friction
+coefficient is a pair property (an interface record) only if the source states the surface conditions and
+the test method; one measured with a single tool is reference data. Data about a system can still use the
+same machinery in your own namespace, as a record type of your own
+(`DOCUMENTATION_ARCHITECTURE.md` section 3.1).
+
 Every value needs (the full standard is `DOCUMENTATION_ARCHITECTURE.md` section 5.3):
 
-- its **origin**: measured by the source, measured by you, fitted, derived, or stated without an origin;
-- a **source** as a key in the source registry, with a locator (table, figure, page or equation);
-- the **extraction** method: table, text, digitised figure (with the tool and an estimate of digitising
-  error), supplementary dataset (with its licence), own measurement, derivation or fit;
-- the **conditions** as the source states them, from the conditions vocabulary, with any it does not state
-  recorded as unstated; the specimen's shape for magnetic values; the test method and specimen geometry
-  for failure values;
-- for a table or a power law, the **range** it covers; for a table, its **interpolation scheme** and
-  **edges**;
+- its **origin**: measured by the source, measured by you, fitted, derived, evaluated from a reference
+  formulation (with the derivation as evidence), or stated without an origin;
+- a **source** as a key in the source registry, with a locator for the version of the document you read
+  (table, figure, page or equation); for a table, quote the column header and give its index;
+- the **extraction** method: table, text, digitised figure (with the tool, the axis calibration and an
+  estimate of digitising error), supplementary dataset (with its licence), own measurement, derivation or
+  fit;
+- the **quote** for every value extracted from text or a table: verbatim, with any conditions and exponents
+  it states, the document's identifier and version, and the SHA-256 of your copy. Record which text
+  extraction of the document matched. Never commit a copy stamped with personal data;
+- the **conditions** of the test as the source states them, from the conditions vocabulary (temperature,
+  frequency, rate, loading mode, test method, measurement geometry, propagation direction for speeds in
+  anisotropic tissue; categorical ones included), each with its basis (stated, or inferred from a figure),
+  and any the source does not state recorded as unstated; the specimen's shape for magnetic values; the
+  test method and specimen geometry for failure values;
+- for a table or a power law, the **range** it covers, and the range the source says it holds over where
+  that differs; for a table, its **interpolation scheme**, **edges** and evidence per point; for a power
+  law, the basis of its exponent and its decibel or neper convention;
 - **statistics** for a scalar: specimens and donors, mean, standard deviation, minimum, maximum, basis, and
-  what the spread represents (a population, an estimate, measurement error or spread across sources); at
-  least a range with its basis; `dispersion: not_reported` if the source gives none; an interval with its
-  basis if that is all that is known. For a parameter set, an **uncertainty structure** (`ensemble`,
+  what the spread represents (a population, an estimate, measurement error or spread across sources); a
+  relative or expanded uncertainty with its coverage factor where that is what the source gives; the basis
+  "specification limits" for a datasheet's minimum and maximum; at least a range with its basis;
+  `dispersion: not_reported` if the source gives none; an interval with its basis if that is all that is
+  known, one-sided if only one bound is. For a parameter set, an **uncertainty structure** (`ensemble`,
   `multivariate_normal`, `independent` with a justification, `interval` or `none`) and what it represents;
 - for a parameter set, **check points** baked by the family's reference implementation, spanning the fit's
-  coverage and the family's branch points, and an **independent witness**: a response the source reports
-  that was not used to obtain the parameters, or the flag "no independent witness". For a fit, the **fit
-  record** (reference data, procedure, coverage, residual);
-- **specimen facts**, per section or field: species, site, state, preparation, shape; for a phantom or a
-  substitute, what its maker says it mimics. Do not write what the data is a proxy for: that depends on
-  each consumer's target;
+  coverage and the family's branch points (none for a reference-only set: they would publish its
+  parameters), and an **independent witness**: a response the source reports
+  that was not used to obtain the parameters, with the fit it is independent of and a tolerance taken from
+  the fit's residual and the stated state's precision (never the spread between specimens), or the flag "no
+  independent witness". For a fit, the **fit record** (reference data, procedure, coverage, residual; or
+  "exactly determined"). Provenance may be given per parameter;
+- **specimen facts**, per section or field, describing the thing tested: species and anatomical site as
+  ontology identifiers (NCBI Taxonomy, UBERON), tissue state from the short list (in vivo, ex vivo fresh,
+  frozen and thawed, fixed, phantom), preparation, preservation, donor age, shape; a fact the source does
+  not state recorded as unstated; for a phantom or a substitute, what its maker says it mimics. Do not write
+  what the data is a proxy for: that depends on each consumer's target;
+- density and elemental composition in the **bulk** section, once, never repeated in another section;
 - for biocompatibility, the **test evidence** only: endpoint, standard and part, contact category and
   duration tested, material form and processing; never a status;
-- a **tier**: shipped, reference-only or private;
+- an explicit **status** ("not checked", "none") wherever a check or field has no result; never leave it
+  empty;
 - a **review record**: who checked the value against the source, when, and their ORCID, and whether the
   reviewer is independent of whoever, or whatever, extracted it. Agreement with another database is not a
   review.
+
+The **tier** (shipped, reference-only or private) is not written per value: it follows from the source's
+redistribution status in the registry.
 
 Every material also needs the prose its card shows (architecture draft section 6.6): why it was curated and
 for which consumer, what was measured and what was not, and who maintains it. Do not write that it suits a
@@ -173,7 +222,10 @@ Rules for data:
 
 - Extract from primary literature. Never copy a secondary database in bulk.
 - Do not enter numbers found in code or datasheets with nothing behind them as library values. They stay in
-  their consumer as declared values until a source replaces them.
+  their consumer as declared values until a source replaces them. A citation found beside a number in code
+  is a lead, not provenance: follow it to the source and take the value from there.
+- In the source registry, record for each copy you hold its retrieval route, its version identity and the
+  licence it came under.
 - Keep competing values where sources disagree and a consumer's result depends on the choice; do not pick
   one. The consumer picks.
 - Check the source's redistribution status in the source registry before shipping a value. If there is no
@@ -196,13 +248,19 @@ version learn of it from the advisory index (architecture draft section 5.6).
 
 ### Model-assisted extraction
 
-You may draft values with a language model through the MCP tools (architecture draft section 8), using your
-own agent and key. Then:
+You may draft values with a language model through the curation tools (architecture draft section 8),
+using your own agent and key. The tools are library functions with a command line; the MCP server only
+exposes them to an agent. Then:
 
 - record the assistance: tool, model and provider as reported, the procedure's `VES-MTH-` entry and
   version, and the date;
-- keep the evidence for every value: the verbatim quote, its locator and the SHA-256 of the document copy.
-  Do not publish quotes for reference-only values; a quote contains the value;
+- keep the evidence for every value, as for any value: the verbatim quote, its locator, the document's
+  identity and version, and the SHA-256 of your copy. Do not publish quotes for reference-only values; a
+  quote contains the value;
+- a record a model drafted stays reference-only until you set its status;
+- ask the agent to flag contradictions inside a source, swapped values, implausible spreads and
+  mislabelled specimen states; the review checklist asks for these. Before review, run a pass told to
+  refute the draft, and read what it finds;
 - let deterministic tools convert units, bake check points and run fits. Never accept a model's number for
   any of them;
 - for a parameter set, attach its independent witness and run the convention checker; the model's guess at
@@ -219,11 +277,12 @@ Every pull request that adds or changes library data includes this statement, ti
 template:
 
 > I attest that each value in this pull request was extracted from the cited source by the method recorded
-> for it, or comes from a measurement or fit I describe; that every value a language model helped draft is
-> recorded as such and was checked by a named reviewer against the source at its locator; that nothing was
-> copied in bulk from a secondary database; that each value's tier matches its source's redistribution
-> status in the source registry; and that I have the right to contribute the shipped values under the
-> library's data licence.
+> for it, or comes from a measurement or fit I describe; that every value extracted from text or a table
+> carries its quote; that every value a language model helped draft is recorded as such and was checked by a
+> named reviewer against the source at its locator; that nothing was copied in bulk from a secondary
+> database; that each value's tier matches its source's redistribution status in the source registry; and
+> that I have the right to contribute the shipped values under CC0-1.0. Quotes kept as evidence remain the
+> source's text.
 
 ### Takedown
 
