@@ -32,7 +32,8 @@ prototypes and the maintainer's decisions on their findings (section 15). Refere
   path): consumers write their own evaluators and mixing rules there, and verify them against conformance
   data. The core does run at a consumer's build (sections 4.12, 7.2, 7.6).
 - A consumer may declare an extrapolation, with its basis; the build records it (principle 10, section 3.5).
-- Layered paths are specified now, for MIME 0.3.0's acoustics and X-ray; the anisotropic stiffness tensor is
+- Layered paths are specified now, for MIME 0.3.0's acoustics and X-ray, and are built in Vesalius 0.1 with
+  the USD binding, as its last step; the anisotropic stiffness tensor is
   stretch (section 12).
 - The prototypes' findings the maintainer approved are written into the sections that carry them (section 15),
   and the answers to the open questions of the earlier drafts are in section 13.
@@ -1818,7 +1819,7 @@ Each set includes the one before it. A MIME row is done first as the spike named
 
 | # | Feature | Where | Ties to |
 |---|---|---|---|
-| R1 | USD schemas, read and write, for the sections in use, with no fallback values on physical attributes; region binding; domains as collections; self-contained shipped layers | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
+| R1 | Scene documents in plain form (the scene manifest, regions, domains) and the USD binding: schemas for the sections in use, read and write, with no fallback values on physical attributes; region binding; domains as collections; overlays; self-contained shipped layers. Built in 0.1, as its last step (section 12.2) | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
 | R2 | Acoustic section (longitudinal and, for solids, shear sound speed, with propagation direction where the material is anisotropic; attenuation as an amplitude coefficient, a power law over a stated band with its exponent's basis, for each wave type, so shear attenuation too; B/A), for both body and medium; density from the bulk section | Vesalius | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
 | R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, derived where needed from the bulk section's composition; the spectral axis built generally, so that the optical section adds fields later; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | AD 4.2 *Sections*; AD 4.4 *Seven value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
 | R4 | Mixing rules specified: the identities fixed, named rules with their assumptions, numpy reference forms and conformance cases at a single cell; the consumer implements its pick and the pick is recorded | Vesalius | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
@@ -1831,7 +1832,7 @@ Each set includes the one before it. A MIME row is done first as the spike named
 | R11 | MIME's JAX evaluators of value forms, mixing rules and the Langevin family, with gradients through tables and mixing rules, each stating its derivative convention at table knots and ends and returning whether its condition is in range, tested against Vesalius's conformance cases and golden vectors in MIME's default test lane | MIME (S3) | AD 9.3 *Differentiability*; AD 7.6 *Scope rules* (consumers write their own evaluators); DA 6.1 *Conformance suite (the read side)* |
 | R12 | Inputs derived where nothing better exists, with each derivation recorded: a magnet's dipole moment from remanence and volume, and, where the moment was also measured on the magnet, both kept as competing values with MIME's pick recorded; a density difference from two materials; a composite body's mass and buoyancy from its regions' materials, not its inertia or centre of mass. Biocompatibility is not derived: a device's status is declared on the `Body` | MIME (S6) | SD 8.2 *What is wrong with it* (point 1); SD 8.4 *Where each piece would go*; AD 4.2 *Sections* (biocompatibility); AD 4.3 *Laws, tables and composition* |
 | R13 | The saved form on a USD stage: MIME's things and Vesalius's layers composed with MADDENING's graph | MIME (S4) | RS *TODO: what it takes* (decision D2); RS H5 *The `Experiment`: what stays, what moves, where the other sides attach (a proposal)*; SD 5.5 *The saved form*; AD 9.7 *Beside MADDENING and MICROROBOTICA* |
-| R14 | Layered paths: the plain form and the USD typed prim `VesaliusLayeredPath`; the L5 helper that derives one from 3-D geometry along a trajectory. Needed by MIME 0.3.0's imaging physics, acoustics and X-ray (maintainer, 2026-10-12) | Vesalius | AD 5.1 *The geometry ladder*; AD 5.4 *Materials and binding in USD*; SD 3.8 *Nodes planned for 0.3.0* (rows 6 to 8) |
+| R14 | Layered paths: the plain form and the USD typed prim `VesaliusLayeredPath`; the L5 helper that derives one from 3-D geometry along a trajectory. Needed by MIME 0.3.0's imaging physics, acoustics and X-ray (maintainer, 2026-10-12). Built in 0.1, with R1 | Vesalius | AD 5.1 *The geometry ladder*; AD 5.4 *Materials and binding in USD*; SD 3.8 *Nodes planned for 0.3.0* (rows 6 to 8) |
 | R15 | The curation tools, before the first library release (R8), in `vesalius-authoring`: a digitiser with axis calibration and an overlay first; then draft templates by value type; quote attach-and-verify per copy; registry drafting; formulation evaluators and check-point bakers. Library functions and commands first; the MCP server later (A9) | Vesalius | AD 8.2 *The deterministic toolset*; AD 4.6 *Check points and convention witnesses* (the witness bottleneck); AD 6.1 *Source registry* |
 
 **Ambitious: images from materials, fits written back, and the pair properties.**
@@ -1862,10 +1863,19 @@ fits it (section 5.5). A6 to A9 are stretch: none of them blocks a 0.3.0 node.
 **Floor:** the minimal set. Because the seam (M11) also accepts inline values, MIME 0.3.0 never waits for
 Vesalius; an experiment whose materials are not ready keeps declaring its values inline.
 
+**USD and layered paths in 0.1** (maintainer, 2026-10-12). The core read path depends on scenes (a read's
+target can be a region, and requirements are checked over a domain or a path), so the code is designed with
+them from the start. They are built last in 0.1, in this order: plain records, the reader and the hash;
+declarations, build checks and the sheet; plain scene documents; the USD binding. USD stays an optional extra,
+so if the last step slips it moves to 0.2 without touching the others. USD is how MIME saves scenes and how
+the patient twin of Isaac for Healthcare would carry Vesalius materials; its novel parts (the layered-path
+prim, overlay prims, region markers, binding refusals, the units rules) are found only by implementing them.
+Label volumes, field overrides and the label mapping's USD form stay with A1.
+
 | Vesalius | Set | Contents | Proven in MIME by | Consumers |
 |---|---|---|---|---|
-| 0.1 | minimal | M1 to M10 | S1 | the MIME spikes |
-| 0.2 | realistic | R1 to R9, R14 and R15 | S2 to S6 | MIME 0.3.0: the release it is expected to pin |
+| 0.1 | minimal, and R1 and R14 | M1 to M10; then, as the last step, R1 and R14 | S1, and S4 once R1 is in | the MIME spikes; the patient-twin binding for Isaac for Healthcare |
+| 0.2 | realistic | R2 to R9 and R15 | S2, S3, S5, S6 | MIME 0.3.0: the release it is expected to pin |
 | 0.3 | target | A1, A2 and A4 (the Vesalius side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A10; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
 | with 0.2 | the mechanics track: not a priority, but progressing | mechanics with isotropic linear elasticity (A10 adds the anisotropic form), one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
@@ -2122,6 +2132,7 @@ fixed within the decisions. The rows below record what the design gained.
 | a reader validates against the record's schema | a closed writer schema and an open reader schema; an unknown token refuses its field, not the record | a validating reader would refuse every newer record whole |
 | conditions checked against what the consumer declared | every condition the field holds is checked: by tolerance, accept list or waiver, else unknown | an unstated condition the consumer never mentioned passed as met |
 | overlays scoped by configuration | scoped by model and configuration, base by identifier, version and hash; conflicts refused | another model in the same experiment would apply a fit |
+| USD binding and layered paths in Vesalius 0.2 | in 0.1, built last behind a cut line (12.2) | the read path depends on scenes; MIME saves scenes in USD and Isaac for Healthcare's patient twin is USD (maintainer) |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

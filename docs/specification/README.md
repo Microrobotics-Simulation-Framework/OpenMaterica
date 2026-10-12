@@ -127,11 +127,13 @@ a constant of exactly 0.000692 Pa·s measured at 310.15 K, with its shear rate u
 
 ## What 0.1.0 covers
 
-Schema 0.1.0 is the minimal set of the AD's phasing (section 12.1, M1 to M10): plain records with the
-envelope, the bulk, fluid, magnetic and biocompatibility sections, the constant, table, interval, composition
-and evidence forms in use, provenance, conditions, statistics, the reader and its reasons, declarations and
-the three results, and `vesalius check`. The other forms (the power law, whose first field arrives with the
-acoustic section; the model parameter set; reference data), families, the USD binding, scene documents and
-mixing are specified here so that 0.1.0's records do not have to change when they arrive. Their profiles are
-optional until the minor version that brings their first consumer (AD 12.2), and their cases are planned for
-it. The HS profile is optional too, but every case of it can run in 0.1.0.
+Schema 0.1.0 is the minimal set of the AD's phasing (section 12.1, M1 to M10) and, built last, the scene
+documents and the USD binding (R1 and R14): plain records with the envelope, the bulk, fluid, magnetic and
+biocompatibility sections, the constant, table, interval, composition and evidence forms in use, provenance,
+conditions, statistics, the reader and its reasons, declarations and the three results, `vesalius check`, the
+plain scene manifest with regions, domains and layered paths, and their USD form. Their cases are planned for
+0.1.0. Label volumes, field overrides and the label mapping's USD form wait for the minor version that brings
+their first consumer. The other forms (the power law, whose first field arrives with the acoustic section; the
+model parameter set; reference data), families and mixing are specified here so that 0.1.0's records do not
+have to change when they arrive; their profiles are optional until that version (AD 12.2). Every profile is a
+claim a reader chooses to make: a reader of plain records need not claim USD read.

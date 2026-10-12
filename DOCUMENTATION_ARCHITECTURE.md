@@ -1212,14 +1212,14 @@ anomaly registry and its issue template; the pull-request template; `docs/regula
 README disclaimer.
 
 **Phase 1, with the first code:** the specification for each release's contents as it is built (architecture
-draft section 12.2): first the record format with namespaced identifiers, record types, values, provenance
-and required properties (Vesalius 0.1; library tags made then are unpublished pins for MIME's spikes, not a
-library release), then uncertainty, model families, geometry (the plain scene manifest and layered paths,
-with their USD forms) and the USD binding (0.2); the conformance suite; the first family definition
-(architecture draft section 12.1, R5) with golden vectors and a reference implementation, in
-`vesalius-families`; `python -m vesalius check`; `scripts/check_anomalies.py`, `check_families.py` and
-the sign-off check; GitHub labels as MADDENING's (`anomaly:critical`, `anomaly:major`, `anomaly:minor`,
-`safety-relevant`, `soup-assessment`, `known-anomaly`).
+draft section 12.2): first the record format with namespaced identifiers, record types, values, provenance and
+required properties, then, as 0.1's last step, geometry (the plain scene manifest and layered paths, with
+their USD forms) and the USD binding (Vesalius 0.1; library tags made then are unpublished pins for MIME's
+spikes, not a library release); then uncertainty structures and model families (0.2); the conformance suite;
+the first family definition (architecture draft section 12.1, R5) with golden vectors and a reference
+implementation, in `vesalius-families`; `python -m vesalius check`; `scripts/check_anomalies.py`,
+`check_families.py` and the sign-off check; GitHub labels as MADDENING's (`anomaly:critical`, `anomaly:major`,
+`anomaly:minor`, `safety-relevant`, `soup-assessment`, `known-anomaly`).
 
 **Phase 2, towards the first library release** (the first archived release with a DOI, architecture draft
 section 12.1, R8): the curation tools of section 5.1 (the digitiser first, then templates, quote attach-and-
