@@ -95,6 +95,12 @@ recorded in that repository's CHANGELOG.
   files.
 
 ### Schema
+- Schema 0.1.0 (draft), settled before the first code: what a reader refuses as malformed JSON, numbers read
+  as doubles, `null` read by where it is, one schema-version pattern, the reader schema's scope, how a
+  material reference resolves among the records supplied, the request checked first, reason multiplicity,
+  case-file claims, variants, exact comparison and operations, and the namespace `conformance` reserved for
+  conformance fixtures (`docs/specification/changes.md`).
+
 ### Families
 ### Data
 ### Verification

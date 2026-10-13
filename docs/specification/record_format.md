@@ -7,21 +7,72 @@ and 5.6. What a reader does with a record, in order, and every reason it returns
 
 1. A record is one JSON object in one file. Records are JSON only; no other serialisation is a record.
    [PR-001]
-2. Each schema version has two JSON Schemas, published with the specification in `schema/` (README):
+2. Each schema version has two JSON Schemas, in the dialect of JSON Schema 2020-12, published with the
+   specification in `schema/` (README):
    - the **writer schema** is closed: no member it does not define, and every enumerated member limited to its
      listed tokens. A record check validates against it. [RC-003]
-   - the **reader schema** is open: it checks the structure a reader relies on (the envelope's members and
-     their JSON types, the shape of each value form) and allows members it does not define and any string in
-     an enumerated member. A reader validates against the reader schema of the version it knows. [PR-002]
-3. A record is **malformed** when it is not valid JSON, or its envelope is not valid against that reader
-   schema. A reader never stops with an error on a malformed record: every read from it gives `not_met` with
-   the reason `malformed`. A shape error inside one field (a table whose structure breaks section 6, a member
-   of the wrong JSON type) refuses only that field, with the reason `form_invalid`; a token the reader does
-   not know refuses only its field (section 10). [PR-002] [PR-033] [PR-045]
+   - the **reader schema** is open. It checks the envelope: every member section 2 marks required is present
+     and every member is of its JSON type; `id`, `version` and `content_hash` match their patterns (sections
+     7, 8 and 9); `licence` is an object whose `values` and `evidence` (both required) are strings. It checks
+     the body's structure as far as the reader's version knows it: in a material body, `sections` (required)
+     and `extensions` are objects, and each member of `sections` named as a section of that version is an
+     object whose `fields` (required) is an object; a section of another name, and everything inside
+     `extensions`, is not checked (section 4 items 1 and 4); in an overlay body (section 4.4), whose four
+     members are all required, `purpose` is a string, `base` an object whose `id`, `version` and
+     `content_hash` (all required) are strings, `scope` an object whose `consumer` (required) is a string,
+     whose `model`, where present, is an object with a string `name` and `version` (both required), and whose
+     `model_configuration_hash` and `run`, where present, are strings, and `replaces` an object. It allows
+     members it does not define and any string in an enumerated member. No subschema reachable from its root
+     describes a value field (the members of a known section's `fields`, and of `replaces`), a form or a
+     section's `specimen`, so a reader that validates a record against it never applies their shapes: they are
+     checked when a field is read, and a field that is not an object is refused then (`read_side_contract.md`
+     section 3, step 8). The reader schema MAY define those shapes for that use. Where a schema and this
+     specification's text differ, the text holds. [PR-002] [PR-045]
+3. A record is **malformed** when it is not valid JSON under item 6, when its `schema_version` is absent, is
+   not a string, or does not match section 8's pattern, or when its envelope or body structure is not valid
+   against the reader schema of the version the reader knows. A reader never stops with an error on a
+   malformed record: a read whose reference may be that record gives `not_met` with the reason `malformed`
+   (`read_side_contract.md` section 3, steps 1 to 3), unless an earlier step ends the read first (a record of
+   another version gives `other_version` at step 2). [PR-002] [PR-048] A shape error inside one value field (a
+   table whose structure breaks section 6, a member missing or of the wrong JSON type) refuses only that
+   field, with the reason `form_invalid`; one in a section's `specimen` refuses, with the same reason, each
+   field read from that section; a token the reader does not know refuses only its field (section 10).
+   [PR-033] [PR-045]
 4. A field that is absent has no value. There are no default or fallback values anywhere in a record, and a
    writer MUST NOT write a placeholder in place of an unknown value. [PR-003] [RC-001]
 5. `null` appears nowhere in a record. A member with no ordinary value holds a status object (README); an
-   optional member with nothing to say is omitted. [RC-015]
+   optional member with nothing to say is omitted. [RC-015] `null` is nevertheless valid JSON (item 6), so a
+   reader that meets it reads it by where it is. Anywhere inside a member the reader does not know, wherever
+   that member sits, it is ignored. Otherwise: in the envelope or the body's structure (item 2), where another
+   type is required, the record is malformed; inside a value field, or a section's `specimen`, that a field
+   the reader reads depends on, that field is refused (`form_invalid`). The content hash covers it as RFC 8785
+   writes it (section 9). [PR-049] [HS-003]
+6. **Strict JSON.** Records follow I-JSON (RFC 7493), with the one difference below on noncharacters. A reader
+   refuses as not valid JSON, so that the record is malformed, exactly: text that is not a JSON text by RFC
+   8259's grammar (a trailing comma, a comment, an unescaped control character in a string, among others);
+   and the following, which that grammar allows or does not decide:
+   - bytes that are not well-formed UTF-8: an overlong form, a surrogate code point encoded in UTF-8, a
+     truncated sequence (text in UTF-16 or UTF-32 is refused by this rule or by the grammar);
+   - a byte-order mark at the start;
+   - a member name repeated within one object, names compared after their escapes are decoded and without
+     Unicode normalisation;
+   - the tokens `NaN`, `Infinity` and `-Infinity`;
+   - a string escape that leaves a surrogate unpaired;
+   - a number that rounds to an infinity: under IEEE 754 rounding to nearest, ties to even, one whose
+     magnitude is at least 2^1024 − 2^970 (so `1.7976931348623158e308` reads as the largest double and
+     `1.7976931348623159e308` is refused);
+   - arrays and objects nested more than 64 deep, the top-level value having depth 1 and each array or object
+     inside another adding 1 (scalars do not count).
+
+   Every number is the IEEE 754 double nearest it, ties to even, integers included: `9007199254740993` reads
+   as `9007199254740992`, a number too small for a normal double reads as the nearest subnormal or zero (so
+   `3e-324` reads as `5e-324`, `1e-400` as `0` and `-1e-400` as `-0`), as JavaScript reads them. A member that
+   must be an integer is a double with no fractional part; whether it is whole is a check of its value, made
+   where the member is used, not of its JSON type. An escaped U+0000 is a legal character. Noncharacters
+   (U+FFFE, U+FFFF, U+FDD0 to U+FDEF and the like), which I-JSON forbids, are legal here, because common
+   parsers accept them and they make no reading ambiguous. These rules apply also to scene documents, engine
+   crosswalks, read requests and conformance case files. Most JSON libraries need configuring to keep them: a
+   stock parser call accepts some of what this list refuses (README, "Conventions"). [PR-002] [PR-047]
 
 ## 2. The envelope
 
@@ -40,8 +91,9 @@ members are settled with the first namespaced record type (AD 13). [PR-004]
 | `card` | no | prose for the record's card (AD 6.6); informative, excluded from the hash |
 | `body` | yes | the type's body (sections 4 and 4.4) |
 
-A writer MUST NOT add other top-level members (the writer schema refuses them). A reader ignores a top-level
-member it does not know, and keeps it for hashing (section 9). [RC-003] [PR-005]
+`licence` and `body` are objects; every other member is a string. A writer MUST NOT add other top-level
+members (the writer schema refuses them). A reader ignores a top-level member it does not know, and keeps it
+for hashing (section 9). [RC-003] [PR-005]
 
 ## 3. Record types
 
@@ -52,10 +104,15 @@ member it does not know, and keeps it for hashing (section 9). [RC-003] [PR-005]
 | `interface` | a property of a pair (AD 4.13) | name reserved; body specified in a later minor version |
 
 1. A reader that meets a record of a type it cannot read (an unknown type, a namespaced type, or `interface`
-   in 0.1.0) MUST skip it when listing records, and MUST refuse it, with the reason `unknown_type`, when the
-   record is referenced: by a binding, an overlay's base, a pin, a layered-path interval or an interface
-   member. [PR-006] [PR-007]
-2. Other namespaces may later define their own record types (`<namespace>:<type>`, AD 4.1). The first is
+   in 0.1.0) MUST skip it when listing records, and MUST refuse it, with the reason `unknown_type`
+   (`read_side_contract.md` section 3, step 5, unless an earlier step refuses it first), when the record is
+   referenced: by a request's target, a binding, a pin, a layered-path interval or an interface member.
+   [PR-006] [PR-007]
+2. An object with a `document_type` member and no `record_type` member is a scene document (`geometry.md`), an
+   engine crosswalk (`usd_binding.md` section 10.1) or another Vesalius document, not a record: a reader that
+   lists records never lists it, and sets it aside before resolving a reference (`read_side_contract.md`
+   section 3, step 1), so a reference never resolves to it. [PR-006] [PR-328]
+3. Other namespaces may later define their own record types (`<namespace>:<type>`, AD 4.1). The first is
    specified only after a consumer has prototyped one, so a 0.1.0 writer MUST NOT write a record of a
    namespaced type. [RC-004]
 
@@ -71,16 +128,18 @@ member it does not know, and keeps it for hashing (section 9). [RC-003] [PR-005]
 }
 ```
 
-1. `sections` maps a section name to a section. Every section is optional. A reader ignores a section it does
-   not use, and reads the sections it knows from a record that also holds sections it does not know. [PR-008]
+1. `sections` maps a section name to a section. Every section is optional. A reader skips a section it does
+   not know, whatever it holds, and reads the sections it knows from a record that also holds sections it does
+   not know; a known section it does not read is still checked as structure (section 1 item 2). [PR-008]
 2. A section holds `fields`, a map from a field name to a value field (section 5), and optionally `specimen`,
    the specimen facts shared by its fields (`provenance.md`). A field's own `specimen` overrides the
    section's, fact by fact. [PR-009]
 3. A section's presence says what is known about a material. It never says where that physics applies; a
    consumer declares that (`declarations.md`).
 4. `extensions` maps a registered namespace to sections in that namespace, using the same value fields. Their
-   meaning belongs to that namespace. A reader ignores `extensions`, and no requirement can name a field in
-   it. Records in the curated library carry none. [PR-034] [RC-005]
+   meaning belongs to that namespace. A reader ignores what `extensions` holds (it checks only that
+   `extensions` is an object, section 1 item 2), and no requirement can name a field in it. Records in the
+   curated library carry none. [PR-034] [RC-005]
 
 ### 4.1 Sections and fields of schema 0.1.0
 
@@ -291,12 +350,17 @@ returns reference data as a property's value; it is read only by a request for r
 
 ## 7. Identifiers
 
-Every pattern below is anchored at both ends.
+Every pattern below must match in full: a full match, not a search, so a trailing newline does not match.
 
 1. A namespace matches `[a-z0-9_]+`. Namespaces are registered first come first served in the library's
    `publishers.yaml`, whose format is outside this specification; an unregistered namespace is not unique, so
-   a consumer pins records by content hash, not by identifier alone. `vesalius` and `mime` are reserved.
-   [RC-012]
+   a consumer pins records by content hash, not by identifier alone. `vesalius`, `mime` and `conformance` are
+   reserved. `conformance` names only conformance fixtures, the records and documents case files supply
+   (`README.md`, "Case files"): their values, provenance and sources are illustrative, chosen to exercise a
+   rule, and state nothing about any material, whatever their tokens say. A conformance tree is a directory
+   named `conformance` whose parent directory is named `data`. A record check flags a record or document in
+   `conformance` unless the path it is given for it lies in a conformance tree; a check of a whole library or
+   repository leaves its conformance trees out, since their files break rules on purpose. [RC-012] [RC-121]
 2. A record identifier is `<namespace>/<local id>`, the local id matching `[A-Za-z0-9_.-]+`. In `vesalius`,
    local ids are `VES-MAT-NNNN` for materials and `VES-INT-NNNN` for interfaces. [RC-013]
 3. A family identifier is `<namespace>.<segment>(.<segment>)*.v<N>`, each segment matching `[a-z0-9_]+` and
@@ -304,11 +368,17 @@ Every pattern below is anchored at both ends.
 
 ## 8. Versions
 
-1. `schema_version` and a record's `version` are `MAJOR.MINOR.PATCH`, each a non-negative integer without
-   leading zeros, with no pre-release or build part. [RC-014]
-2. **Before 1.0.0**, a reader reads only records of its own `MAJOR.MINOR` and refuses every other, with the
-   reason `other_version`. From 1.0.0, a reader of `M.m` reads a record of `M.n` for any `n` by the rules of
-   section 10, and refuses another major version. [PR-026] [PR-027]
+1. `schema_version` and a record's `version` are `MAJOR.MINOR.PATCH`: a string that matches in full, in ASCII
+   (a full match, so `"0.1.0\n"` does not match, although a regular-expression search with `$` would accept
+   it), `^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`, with no pre-release or build part. Components
+   are compared as numbers; with no leading zeros, comparing their lengths and then their digits gives the
+   same order with no overflow. The same rule holds for the schema versions of other Vesalius documents: a
+   scene document's `scene_schema_version` and an engine crosswalk's `crosswalk_schema_version`. Other
+   versions a document names (a consumer's, a model's, an engine's, a source's) are not bound by it. [RC-014]
+   [PR-048]
+2. **Before 1.0.0**, a reader reads only records of its own `MAJOR.MINOR`, whatever their patch, and refuses
+   every other, with the reason `other_version`. From 1.0.0, a reader of `M.m` reads a record of `M.n` for any
+   `n` by the rules of section 10, and refuses another major version. [PR-026] [PR-027]
 3. A record's `version` changes **major** when a value changes by more than the uncertainty its record states
    for that value (a population's spread is not that measure; where the record states none, any change of
    value), a condition changes, or a parameter set moves to another family version; **minor** for a new value
@@ -319,10 +389,15 @@ Every pattern below is anchored at both ends.
 
 1. `content_hash` is computed over the record as stored, every member a reader does not know included, with
    these removed: the top-level `content_hash` and `card`; and every member named `review` or `copy` at any
-   depth inside any object that is the value of a member named `provenance`. [HS-001]
+   depth inside any object that is the value of a member named `provenance`, through the objects and arrays it
+   holds; a `provenance` whose value is not an object has nothing removed for its own sake, though an object
+   that is the value of another member named `provenance` inside it is treated as above. [HS-001]
 2. The remaining JSON is serialised by the JSON Canonicalization Scheme, RFC 8785 (recalled), and hashed with
-   SHA-256. `content_hash` is `sha256:` followed by the 64 lowercase hexadecimal digits of the digest.
-   [HS-002]
+   SHA-256. Strings, member names included, are serialised as they are, with no Unicode normalisation.
+   `content_hash` is `sha256:` followed by the 64 lowercase hexadecimal digits of the digest. Each number is
+   serialised as the double it was read as (section 1 item 6), so an integer beyond 2^53 is hashed as its
+   nearest double and an integer written as `1000000000000000000000` is serialised as `1e+21`. [HS-002]
+   [HS-003]
 3. So a second review, or a reworded card, does not change a record's hash, and changing anything else, its
    type and licence included, does.
 4. The conformance suite has hash test vectors, including numbers whose canonical form differs from their
@@ -348,13 +423,13 @@ version. [PR-032]
 | Case | Suite | Tests |
 |---|---|---|
 | PR-001 | plain read | a record in another serialisation is not read as a record |
-| PR-002 | plain read | invalid JSON and an envelope invalid against the reader schema give `malformed` for every read, never a crash |
+| PR-002 | plain read | each of these, in the record a read's target names, gives `malformed`, never a crash: invalid JSON; a trailing comma; UTF-16 and UTF-32 text; an overlong form (`C0 80`); an encoded surrogate (`ED A0 80`); a byte-order mark before valid JSON; a member name repeated after unescaping (`{"a":1,"\u0061":2}`); `NaN`; `Infinity`; an unpaired surrogate escape; `1.7976931348623159e308`; nesting 65 deep, and 100000 deep without a crash; an envelope member missing or of the wrong JSON type; a `content_hash` that is not `sha256:` and 64 lowercase hexadecimal digits; a record `version` off the pattern (`"1.0"`, the target naming that same string); a known section whose `fields` is an array; and, when a read applies it (section 3, step 6), an overlay whose `base` has no `content_hash`. A record with nesting 64 deep, an escaped U+0000 or a noncharacter is read |
 | PR-003 | plain read | an absent field has no value |
 | PR-004 | plain read | every record type carries the envelope |
 | PR-005 | plain read | an unknown top-level member is ignored |
-| PR-006 | plain read | an unknown record type is skipped when listing |
+| PR-006 | plain read | an unknown record type is skipped when listing; so is an object with `document_type` and no `record_type` |
 | PR-007 | plain read | a referenced record of an unknown type is refused (`unknown_type`) |
-| PR-008 | plain read | a record with an unknown section is read for the sections the reader knows |
+| PR-008 | plain read | a record with an unknown section is read for the sections the reader knows, whatever the unknown section holds (`null`, a number, an object) |
 | PR-009 | plain read | a field's specimen fact overrides its section's |
 | PR-010 | plain read | a field whose unit differs from the registered one is refused (`unit_mismatch`) |
 | PR-011 | plain read | an overlay replaces a whole field, provenance included, with its own specimen |
@@ -378,7 +453,7 @@ version. [PR-032]
 | PR-031 | plain read | an unknown condition name gives `unknown` |
 | PR-032 | plain read | an unknown token in an enumerated member refuses the field only (`unknown_token`) |
 | PR-033 | plain read | a record with one unknown token is not malformed; its other fields are read |
-| PR-034 | plain read | `extensions` is ignored |
+| PR-034 | plain read | `extensions` is ignored, whatever its members hold |
 | PR-035 | plain read | a label is returned with the value and never refused as an unknown family |
 | PR-036 | plain read | a form the field's row does not allow is refused (`form_not_registered`) |
 | PR-037 | plain read | an `axis_unit` or condition unit other than the registered one is refused (`unit_mismatch`) |
@@ -388,11 +463,14 @@ version. [PR-032]
 | PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted` |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
 | PR-044 | plain read | alternatives whose conditions are not met are set aside; all set aside gives `not_met` |
-| PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read |
+| PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
 | PR-046 | plain read | an overlay replacing a field its base lacks is refused (`absent`) |
+| PR-047 | plain read | numbers read as the nearest double, ties to even, compared exactly: `9007199254740993` as `9007199254740992`; `1e-400` as `0`; `-1e-400` as `-0`, not `0`; `3e-324` as `5e-324`; `2.4703282292062327e-324` as `0`; `1.7976931348623158e308` as the largest double |
+| PR-048 | plain read | a record whose `schema_version` is absent, not a string, or does not match the pattern (`"0.1"`, `"0.1.0-rc1"`, `"00.1.0"`, `"0.1.0 "`, `"0.1.0\n"`, Arabic-Indic digits) is malformed; a major or minor component of a hundred digits gives `other_version`, not a crash; `0.1.7` is read by a 0.1 reader |
+| PR-049 | plain read | `null` in the envelope (`"card": null`) makes the record malformed; inside a value field (`"unit": null`) it refuses that field (`form_invalid`); inside a member the reader does not know, at the top level or inside a value field, it is ignored |
 | HS-001 | hash | the hash excludes exactly the listed members, at any depth |
 | HS-002 | hash | the content hash verifies (RFC 8785, SHA-256, lowercase hexadecimal) |
-| HS-003 | hash | hash vectors: numbers whose canonical form differs; members the reader does not know are hashed |
+| HS-003 | hash | hash vectors: numbers whose canonical form differs (`1.0`, `1e2`, `0.0000001`, `-0`, an integer written as `1000000000000000000000`, 9007199254740993); `true` beside `1`; `null` in a member the reader does not know; member order by UTF-16 code units; members the reader does not know are hashed; `review` and `copy` removed at any depth inside a provenance object and kept outside one |
 | RC-001 | record checks | a placeholder written for an unknown value is flagged |
 | RC-002 | record checks | the licence member names the values' licence and excludes evidence |
 | RC-003 | record checks | a record invalid against the closed writer schema is flagged |
@@ -413,3 +491,4 @@ version. [PR-032]
 | RC-018 | record checks | a table with fewer than two distinct x values is flagged |
 | RC-019 | record checks | a log-log table with a non-positive x or y is flagged |
 | RC-120 | record checks | every registered unit code, for fields and conditions, parses as UCUM 2.2 with no special unit in a product or quotient; `Np/m` is refused by that rule; `/m` passes |
+| RC-121 | record checks | a record or document in the `conformance` namespace given from a path outside a conformance tree (a directory `conformance` whose parent is `data`) is flagged, and one given from inside it is not; a check of a whole library leaves conformance trees out |

@@ -33,9 +33,14 @@ Read them in this order.
   conformance case that tests the statement; `[not yet covered]` marks a statement with no case yet. Each
   document ends with a table of its cases. Until its data file exists, a case is planned, not run: the files
   are written with the first implementation (section "Case files").
-- **JSON.** Records and scene documents are JSON (RFC 8259), UTF-8, with no duplicate member names and no
-  NaN or infinity, as I-JSON requires (RFC 7493, recalled). Numbers are IEEE 754 double precision. `null` is
-  never used.
+- **JSON.** Records and scene documents are JSON (RFC 8259), UTF-8, with no duplicate member names and no NaN
+  or infinity, as I-JSON requires (RFC 7493, recalled). Numbers are IEEE 754 double precision, integers
+  included. A reader refuses what breaks these rules as malformed, by the exact list of `record_format.md`
+  section 1 item 6. Most JSON libraries need configuring for it: a stock parser call accepts a byte-order
+  mark, other encodings, repeated member names or `NaN`, or replaces bad bytes; Python's `json` keeps
+  `9007199254740993` exact and reads `-0` as the integer 0; C++'s `strtod` reports a range error on `3e-324`
+  although its result is right, and `std::from_chars` reports one on `1e-400` and leaves its output unwritten.
+  `null` is never written; how a reader treats one it meets is in `record_format.md` section 1 item 5.
 - **Units.** Every stored value is in SI. A field, and a condition, registers exactly one unit, written as a
   UCUM case-sensitive code (for example `kg/m3`, `Pa.s`, `/m`, `1` for a dimensionless value), or
   `{"status": "not_applicable"}` for a field with no unit (`biocompatibility.evidence`).
@@ -68,8 +73,9 @@ Read them in this order.
 A reader claims conformance by naming the schema version and the suites it passes. Plain read needs a JSON
 parser and the reader schema's checks, which are structural and can be written by hand; every reader compares
 a record's stated hash with any pin. Recomputing content hashes also needs an RFC 8785 serialiser and SHA-256
-(suite HS). No read suite requires another, but a reader without HS labels its results `hash_not_checked`.
-The EA suite, and the build checks of an engine model (BC-039), also need USD read and the stage check.
+(suite HS). No read suite requires another, but a reader without HS labels `hash_not_checked` every result
+that reaches the hash step. The EA suite, and the build checks of an engine model (BC-039), also need USD read
+and the stage check.
 
 | Prefix | Suite | Who needs it |
 |---|---|---|
@@ -103,12 +109,17 @@ Numbers are reserved by document, so each document can add cases without collidi
 
 ## Case files
 
-A case is one JSON file, `data/conformance/<suite>/<case id>.json`:
+A case is one JSON file, `data/conformance/<suite>/cases/<case id>.json`, or one file per variant,
+`cases/<case id>.<variant>.json`, where a case has several arms (below); the files cases supply sit in
+`data/conformance/<suite>/inputs/`, each once, however many cases use it. Inputs are byte-exact: a repository
+that holds them must not convert their line endings or encodings. Case files themselves follow
+`record_format.md` section 1 item 6. The records and documents cases supply are conformance fixtures, in the
+namespace `conformance`, and illustrative only (`record_format.md` section 7 item 1).
 
 ```json
 {"case": "PR-305", "suite": "plain_read", "schema_version": "0.1.0",
- "inputs": {"records": ["water.json"]},
- "request": {"target": {"record": {"id": "vesalius/VES-MAT-0002", "version": "1.0.0",
+ "inputs": {"records": ["water_fixture.json"]},
+ "request": {"target": {"record": {"id": "conformance/water_fixture", "version": "1.0.0",
                                    "content_hash": "sha256:..."},
                         "field": "fluid.dynamic_viscosity"},
              "operating_conditions": {"temperature": {"value": 310.15, "unit": "K"}},
@@ -116,16 +127,53 @@ A case is one JSON file, `data/conformance/<suite>/<case id>.json`:
                              "conditions": {"temperature": {"tolerance": {"value": 1.0, "unit": "K"}}}}},
  "expected": {"status": "unknown", "reasons": [{"code": "condition_unstated", "condition": "shear_rate"}],
               "value": 0.000692},
- "compare": {"members": ["status", "reasons.code", "value"], "relative_tolerance": 1e-12}}
+ "compare": {"members": ["status", "reasons", "value"], "relative_tolerance": 1e-12}}
 ```
 
-`inputs` names the files the case supplies, relative to its directory; `request` is the read request of
-`read_side_contract.md` section 1; `expected` holds the members to compare, and `compare` says which, and the
-relative tolerance for numbers (absolute where an expected number is zero). Reason codes are compared, reason
-texts never. An input the case does not need is omitted. In this example, `water.json` holds the viscosity as
-a constant of exactly 0.000692 Pa·s measured at 310.15 K, with its shear rate unstated. `suite` is one of
-`plain_read`, `hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`, `table_evaluation`, `mixing`,
+`inputs` names the files the case supplies, relative to the suite's `inputs/`; `request` is the read request
+of `read_side_contract.md` section 1, unless it names an `operation` (below); `expected` holds the members to
+compare, and `compare` says which, and the relative tolerance for numbers (absolute where an expected number
+is zero), or `"exact": true`, under which numbers are compared as doubles bit for bit, so that `-0` differs
+from `0` (case files are read by `record_format.md` section 1 item 6, so `-0` in one is negative zero).
+Reasons are compared as a multiset of their `code` and `condition`: never their order, `detail` or text.
+`labels` are compared as a set, an absent `labels` counting as empty, and without `hash_not_checked` unless
+the case's `claims` has a `hash` member. A member `compare` names and `expected` omits must be absent from the
+result (an operation's `value` on `not_met`, say). A case that compares a number gives `relative_tolerance` or
+`exact`; there is no default. A case whose request must itself break `record_format.md` section 1 item 6
+(PR-330) names a file holding it in `inputs.request`, in place of `request`. An input the case does not need
+is omitted. In this example, `water_fixture.json` holds, as an illustrative fixture, the viscosity as a
+constant of exactly 0.000692 Pa·s at 310.15 K, with its shear rate unstated. `suite` is one of `plain_read`,
+`hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`, `table_evaluation`, `mixing`,
 `family_evaluation`, `sampling`, `build_checks`, `record_checks` and `engine_adapter`.
+
+**Variants.** A case with several arms (PR-002 has one per fault) is given as variants, one file per arm, each
+with a `variant` member, matching `[a-z0-9_]+` in full, that names its file: `PR-002.bom.json`,
+`PR-002.trailing_comma.json`. A variant is a case in every other respect, with its own inputs, request,
+expected answer and claims.
+
+**Claims.** A runner is given the suites the implementation under test claims, and runs the cases of those
+suites only. Where a case's expected answer depends on them, the case says so in `claims`, mapping a suite to
+whether the reader claims it (`{"hash": false}`), and holds only for a reader with those claims; a case with
+no `claims` holds for any reader that claims the case's own suite. A case whose answer differs by claim has a
+variant per claim: PR-327's label arm is `PR-327.label_hs.json` and `PR-327.label_no_hs.json`; its pin arm,
+whose answer is the same under both, is `PR-327.pin.json`, with `PR-327.pin_no_hs.json` to show that the
+refusal carries no `hash_not_checked`, which only a `hash` claim makes compared. A runner runs only the
+variants whose `claims` agree with the suites it is given, and reports the others as not run, separately from
+those that passed or failed. A case passes when at least one of its variants ran, every variant that ran
+passed, and none failed; a case none of whose variants ran is not run, and never counts as passed.
+
+**Operations.** Two kinds of plain-read and hash case are not reads, and name an `operation` in `request`.
+Both give a result shaped as `read_side_contract.md` section 2 defines:
+- `{"operation": "content_hash"}` takes the JSON file `inputs.value` names (one file name), reads it by
+  `record_format.md` section 1 item 6, checks no envelope, and gives the content hash of its value, whatever
+  that value's JSON type (top-level members are removed only from an object) (`record_format.md` section 9) as
+  `value`, with the status `met`; a file that breaks item 6 gives `not_met` and `malformed`, and no value. The
+  hash vectors are given this way (HS-001 to HS-003);
+- `{"operation": "list_records"}` takes `inputs.records` and gives the status `met`, no reasons, and in
+  `value` the `{"id", "version"}` of exactly those sources that are candidates (`read_side_contract.md`
+  section 3, step 1) and pass steps 2, 3 and 5 on their own, compared as a set. It says nothing of the other
+  sources: sources that did not parse, are not candidates or fail those steps, set-aside documents and records
+  of a type the reader cannot read among them, are not listed (`record_format.md` section 3) (PR-006).
 
 Three kinds of case take other inputs. Each names the schema files it passes in `inputs.schemas`
 (`usd_binding.md` section 10.1 item 8); a case that names none has none.

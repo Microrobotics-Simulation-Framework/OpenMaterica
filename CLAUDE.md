@@ -36,6 +36,10 @@ This repository is public. Everything in it, this file and commit messages inclu
   maintainer's decisions, one is told to break the design by walking concrete consumers through it. The
   passes told to refute have repeatedly found more than the primary work. Verify a reviewer's factual claims
   before acting on them.
+- **Cases check a specification better than more prose review.** On the S1 text (2026-10-13), four prose
+  review passes found 44, 24, 18 and 16 points, falling in severity but not in number; writing the conformance
+  cases from the text, with an independent reference model checking them, then found ambiguities those passes
+  had missed. Once prose passes stop finding high-severity points, write the cases.
 - **The maintainer decides; the record says so.** Anything that changes an answer the maintainer approved goes
   back to the maintainer, with a recommendation. A decision the maintainer made is recorded where it lands
   ("maintainer, date"), and a lost decision is a defect: check new revisions against every earlier decision

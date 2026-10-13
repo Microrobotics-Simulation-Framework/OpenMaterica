@@ -11,14 +11,16 @@ Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Rational
 2. Every scene document is one JSON object with `scene_schema_version` (`MAJOR.MINOR.PATCH`, read under the
    version rules of `record_format.md` section 8: before 1.0.0 a reader reads only its own minor version) and
    `document_type`: `scene_manifest`, `layered_path` or `label_crosswalk`. A scene document that is not valid
-   JSON, or not valid against the reader schema, gives `malformed` for every operation on it; one of another
-   version gives `other_version`. Unknown members and tokens follow `record_format.md` section 10. [SC-002]
+   JSON (by `record_format.md` section 1 item 6), or not valid against the reader schema, gives `malformed`
+   for every operation on it, and so does one whose `scene_schema_version` is absent, not a string, or does
+   not match `record_format.md` section 8's pattern; one of another version gives `other_version`. Unknown
+   members and tokens follow `record_format.md` section 10. [SC-002]
 3. A scene document refers to a record by a **material reference**: `{"id": "<namespace>/<local id>",
-   "version": "1.2.0", "content_hash": "sha256:..."}`. A reader resolves it against the records it was given
-   (a case file supplies them; `read_side_contract.md` section 1), compares the resolved record's stated hash
-   (and, with the hash suite, its recomputed hash) with the reference's, and refuses a difference
-   (`pin_mismatch`), when no record with that identifier and
-   version was given (`absent`), or when the record is of a type it cannot read (`unknown_type`). [SC-003]
+   "version": "1.2.0", "content_hash": "sha256:..."}`. A reader resolves it among the records it was given (a
+   case file supplies them) and reads the record through `read_side_contract.md` section 3, steps 1 to 5, with
+   their reasons: `absent`, `malformed`, `pin_mismatch` (the stated hash, or with the hash suite the
+   recomputed one, differing from the reference's), `hash_mismatch`, `other_version` and `unknown_type`.
+   [SC-003]
 4. Lengths and coordinates in plain scene documents are in metres, in the scene's frame, right-handed.
    [SC-004]
 5. Scene documents carry no content hash member. A consumer that records one serialises the whole document by
@@ -220,7 +222,7 @@ and the representations of section 3.6 have no USD form in 0.1.0 (`usd_binding.m
 |---|---|---|
 | SC-001 | scene documents | a scene document is never listed as a record |
 | SC-002 | scene documents | `scene_schema_version` under the version rules; a malformed document gives `malformed` |
-| SC-003 | scene documents | a material reference whose resolved hash differs is refused (`pin_mismatch`); a missing record gives `absent` |
+| SC-003 | scene documents | a material reference resolves as `read_side_contract.md` section 3 steps 1 to 5 say: a hash that differs gives `pin_mismatch`; a missing record gives `absent`, or `malformed` when a supplied source did not parse |
 | SC-004 | scene documents | plain lengths are metres in the scene frame |
 | SC-005 | scene documents | a read at a point resolves its material through `owner` |
 | SC-006 | scene documents | the three primitives' inside tests, points inside, outside and on each surface |

@@ -78,10 +78,12 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
 6. **The hash.** Every reader compares `vesalius:content_hash` with the hash a region, a background or a path
    pins, and refuses a difference (`pin_mismatch`, sections 5 and 7). A reader with the hash suite also
    recomputes the reassembled record's hash as `record_format.md` section 9 says, and refuses the material
-   when it differs from `vesalius:content_hash` (`hash_mismatch`). So a field edited in a stronger layer
-   without rewriting `vesalius:content_hash` is refused; a stronger layer that edits both composes a
-   consistent, different record, which only a pin catches. A reader that does not claim the hash suite
-   labels its results `hash_not_checked` (`read_side_contract.md` section 3). [UR-011] [UR-032]
+   when it differs from `vesalius:content_hash` (`hash_mismatch`), and compares that recomputed hash with the
+   pin too (`pin_mismatch`, given once, `read_side_contract.md` section 3, step 4). So a field edited in a
+   stronger layer without rewriting `vesalius:content_hash` is refused; a stronger layer that edits both
+   composes a consistent, different record, which only a pin catches. A reader that does not claim the hash
+   suite labels `hash_not_checked` the results that reach the hash step (`read_side_contract.md` section 3,
+   step 4). [UR-011] [UR-032]
 7. **Prim names carry no identity.** A reader identifies a material by `vesalius:id`, never by its prim's name
    or path; `VES-MAT-0001` is not a valid prim name (checked). [UR-012]
 8. A material prim whose `vesalius:record_type` is a type the reader cannot read is skipped when listing
@@ -334,10 +336,13 @@ holds it (AD 7.1). Adapters claim the suite EA.
    "engine_crosswalk", "id": "<namespace>/<name>", "version", "engine": {"name", "version"}, "units":
    {"convention", "source"}, "material_apis": [{"name", "schema", "attributes": [...]}], "body_apis":
    [{"name", "schema", "material_prim"}], "namespaces": [...]}`. Its `id` is in its writer's namespace, as a
-   record's identifier is; only crosswalks Vesalius ships use `vesalius/`. `schema` pins the schema file that
-   defines the API (item 8). A multiple-apply API, whose class in its schema file has `__INSTANCE_NAME__` in
-   its property names (checked), cannot be described in 0.1.0, nor can an API one of whose built-ins is
-   multiple-apply. [RC-140]
+   record's identifier is; only crosswalks Vesalius ships use `vesalius/`. Its `crosswalk_schema_version`
+   follows `record_format.md` section 8's pattern. A crosswalk that is not valid JSON by `record_format.md`
+   section 1 item 6, whose `crosswalk_schema_version` is absent or ill-formed, or whose
+   `crosswalk_schema_version` has another `MAJOR.MINOR` than the reader's (before 1.0.0) is invalid
+   (`engine_crosswalk_invalid`). `schema` pins the schema file that defines the API (item 8). A multiple-apply
+   API, whose class in its schema file has `__INSTANCE_NAME__` in its property names (checked), cannot be
+   described in 0.1.0, nor can an API one of whose built-ins is multiple-apply. [RC-140]
 2. `material_apis` lists every attribute of each API as that engine version defines it, because the adapter
    authors them all (section 10.4 item 1). Each attribute is `{"name", "type", "dimension", "source",
    "allowed_tokens"?, "doc"}`: `type`, its USD value type; `dimension`, the exponents of its SI dimension over
@@ -553,7 +558,7 @@ holds it (AD 7.1). Adapters claim the suite EA.
 | RC-117 | record checks | a `vesalius` binding without `MaterialBindingAPI` applied, or outside every region, is flagged |
 | RC-118 | record checks | a stamped engine material with a stamped attribute missing, retuned in a stronger layer, of another type, or re-read to another value, with a stamped API deleted, with a stamped dimension that disagrees with its unit, and a centimetre scene layer referenced into a metre stage, are flagged, with the crosswalk held and without it; an attribute the crosswalk does not list, an attribute the crosswalk lists that the stamp omits, and a stamp whose convention and value were edited together are flagged with the crosswalk held, and listed as not checked without it |
 | RC-119 | record checks | a time-sampled engine attribute is flagged |
-| RC-140 | record checks | an engine crosswalk validates; one with an attribute missing its source or locator, a field-sourced attribute whose dimension differs from its field's unit, a `float` with a `null` dimension, a token with a dimension, or a consumer's id in `vesalius/` is flagged; a magnetic attribute's dimension in amperes validates |
+| RC-140 | record checks | an engine crosswalk validates; one with an attribute missing its source or locator, a field-sourced attribute whose dimension differs from its field's unit, a `float` with a `null` dimension, a token with a dimension, or a consumer's id in `vesalius/` is flagged; so is one that is not valid JSON by `record_format.md` section 1 item 6, or whose `crosswalk_schema_version` is absent, ill-formed or of another `MAJOR.MINOR`; a magnetic attribute's dimension in amperes validates |
 | RC-141 | record checks | engine schemas are found by name in the composed `apiSchemas` with their plug-ins not registered |
 | RC-142 | record checks | Vesalius's `UsdPhysics` crosswalk validates and compares clean with usd-core 0.26.5's `usdPhysics` schema file, passed; a stage-check arm lists every version Vesalius released as held |
 | RC-143 | record checks | a crosswalk compared with its pinned schema file: an omitted attribute, an attribute the file does not define, a wrong type, different allowed tokens, an unlisted built-in API, a multiple-apply API and a body API whose named relationship the class lacks are flagged; a built-in's override is not required in the crosswalk; a body API's attributes are not compared; with no passed file of the pinned hash, the API is listed as not compared, whatever is registered |
