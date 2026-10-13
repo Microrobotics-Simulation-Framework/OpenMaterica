@@ -3,10 +3,10 @@
 **Status: a concept draft for iteration.** Written 2026-10-11 in the shared planning directory (first as
 `plans/MIME_MATERIAL_MODEL_DRAFT.md`), moved here the same day, and revised the same day after a design
 review, on 2026-10-12 after a review against principles 9 and 10, again on 2026-10-12 after five prototypes
-and the maintainer's decisions on their findings, and on 2026-10-12 and 2026-10-13 after an ecosystem survey,
-the maintainer's decisions on it and their reviews (section 15). Referenced from
-`plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) and used there by direction, not decision: MIME
-0.3.0 aims between the realistic and ambitious sets of section 12.
+and the maintainer's decisions on their findings, on 2026-10-12 and 2026-10-13 after an ecosystem survey, the
+maintainer's decisions on it and their reviews, and on 2026-10-13 after the decisions taken before the first
+code (section 15). Referenced from `plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) and used
+there by direction, not decision: MIME 0.3.0 aims between the realistic and ambitious sets of section 12.
 
 **Decided (maintainer, 2026-10-11):**
 
@@ -58,6 +58,21 @@ the maintainer's decisions on it and their reviews (section 15). Referenced from
   (section 5.4).
 - Names, to avoid clashes: conformance suites (not profiles), engine crosswalks (not engine profiles or maps)
   and label crosswalks (not label mappings); "field" stays (section 13, item 8).
+
+**Decided (maintainer, 2026-10-13), before the first code:**
+
+- The core distribution, `vesalius`, has no run-time dependency beyond Python's standard library; `jsonschema`
+  comes with the `[check]` extra, `usd-core` with `[usd]` and numpy with `[sample]` (section 7.2).
+- Engine results are computed in `vesalius[usd]`; only the engine adapter and the crosswalk scaffold are in
+  `vesalius-authoring` (section 7.2).
+- 0.1 builds the plain scene documents before declarations and build checks (section 12.2).
+- The package is typed (`py.typed`), and the JSON shapes of its public API are generated from the writer JSON
+  Schemas, which are the single hand-edited source of structure; the specification's tables stay the source of
+  tokens (section 7.1).
+- Python 3.11 is the floor, under a standing rule: every Python that is not at end of life and that a named
+  consumer or engine needs in-process (section 7.2).
+- Record checks that need the source registry, a source copy, the previous release or the repository's history
+  run in the library's tooling, not in `vesalius check` (`DOCUMENTATION_ARCHITECTURE.md` section 6.5).
 
 Everything else here is a proposal.
 
@@ -205,9 +220,10 @@ library repository     content: curated materials                   CC0-1.0 (sec
 - Anyone can publish families and records in their own namespace, in their own repository, under the
   same rules and the same checks (sections 4.1, 4.5 and 6.7). Only the curated library carries this
   project's review.
-- A manufacturer assesses `vesalius` plus only the families and records it uses, each with its own version
-  and content hash (`DOCUMENTATION_ARCHITECTURE.md` section 10). `vesalius-authoring` runs only where records
-  are written and is curation tooling, not part of a consumer's product (section 8.5).
+- A manufacturer assesses `vesalius` plus only the families and records it uses, each with its own version and
+  content hash (`DOCUMENTATION_ARCHITECTURE.md` section 10). `vesalius-authoring` is curation tooling, and
+  part of a consumer's product only when the consumer's build runs it, as a build that runs the engine adapter
+  does (section 7.2).
 - **Families** live in one directory of the main repository, outside the core package, and ship as one
   separate distribution, `vesalius-families`; each family version has its own content hash, so a
   manufacturer assesses only the families it uses. They move into repositories of their own when a second
@@ -230,8 +246,7 @@ library repository     content: curated materials                   CC0-1.0 (sec
        ^
  L3  Authoring            composition to spectra, derived values, fit bookkeeping, check-point baking;
                           the curation tools (section 8.2). Shipped as vesalius-authoring
-       ^
- L2  Core (numpy)         records, values, provenance, statistics, uncertainty structures, units,
+       ^ L2  Core (stdlib only)   records, values, provenance, statistics, uncertainty structures, units,
                           reference forms of the mixing rules, validation
        ^
  L1  Data                 conformance cases, spectra tables, analytic test phantoms             (no code)
@@ -245,7 +260,8 @@ Rules:
   choose: MIME's adapter in MIME; exporters, importers and Isaac adapters in `vesalius-authoring` until
   someone upstream wants them.
 - `vesalius` holds L0 to L2, L4, L5 and the `check` command; `vesalius-authoring` holds L3 and L6's
-  integrations. A consumer's product depends on the first only (section 7.2).
+  integrations. A consumer's product depends on the first, and on the second only when its build runs it, as
+  one that runs the engine adapter does (section 7.2).
 - USD is an optional extra (section 7.2).
 
 ### 3.3 Two kinds of user
@@ -881,13 +897,13 @@ So the specification fixes only the identities and offers named rules, each with
 sheet records the pick; a field with no general rule refuses to mix. Mixing happens inside a domain only:
 at a domain's edge a node gets geometry, not an average (section 3.5, rule 3).
 
-The specification defines each rule, L2 holds a numpy reference form, and the conformance suite tests each
-rule at a single cell, with known fractions and values, rather than through a projector or a solver, where a
-wrong rule can pass unnoticed (prototype P1c). Consumers write the rules in their own framework, as they write
-evaluators: each is an elementwise average, and the differentiable-use prototype (P5) wrote the identity rule
-in one line of JAX. An earlier draft shared one array-API implementation with consumers; dropping it means no
-Vesalius code runs inside a consumer's computation (principle 2). P5 has no evidence either way about the
-non-identity rules; this rests on simplicity, not on a measurement.
+The specification defines each rule, with a numpy reference form (`mixing_rules.md`), and the conformance
+suite tests each rule at a single cell, with known fractions and values, rather than through a projector or a
+solver, where a wrong rule can pass unnoticed (prototype P1c). Consumers write the rules in their own
+framework, as they write evaluators: each is an elementwise average, and the differentiable-use prototype (P5)
+wrote the identity rule in one line of JAX. An earlier draft shared one array-API implementation with
+consumers; dropping it means no Vesalius code runs inside a consumer's computation (principle 2). P5 has no
+evidence either way about the non-identity rules; this rests on simplicity, not on a measurement.
 
 ### 4.13 Interfaces between materials
 
@@ -1388,25 +1404,34 @@ outside Vesalius's scope.
 
 ## 7. The core package
 
-### 7.1 Layout (proposal)
+### 7.1 Layout (the 0.1 module list, agreed by the maintainer, 2026-10-13)
 
 ```
-vesalius/                       the distribution a consumer's product depends on
-  schema/          record and scene-document JSON Schemas; schema.usda, generatedSchema.usda,
-                   plugInfo.json                                                             (L0)
-  data/            conformance/, spectra/, phantoms/, engine_crosswalks/ (UsdPhysics)        (L1)
-  core/            record.py, values.py, provenance.py, statistics.py, uncertainty.py,
-                   units.py, mixing.py (reference forms), validate.py, checkpoints.py        (L2, numpy)
-  io/              plain.py (required); usd/ (needs pxr)                                     (L4)
-  sample/          label_fractions.py, layered_path.py, reference_sampler.py                 (L5)
-  tools/           check.py: python -m vesalius check, and --stage                           (L6)
+vesalius/                 the distribution a consumer's product depends on; ships py.typed
+  schema/0.1/             writer JSON Schemas (the source of structure); reader schemas generated
+                          from them; schema.usda, generatedSchema.usda, plugInfo.json             (L0)
+  data/                   conformance/ (cases and inputs), vocabulary/ (generated from the
+                          specification's tables), engine_crosswalks/ (UsdPhysics)              (L1)
+  shapes.py, shapes.pyi   the public API's JSON shapes as TypedDicts, generated from the schemas
+  core/                   strict JSON, the canonical form and the hash, identifiers, vocabulary,
+                          records and the store, the reader and its forms, conditions, overlays,
+                          units, scenes and locations, declarations and the build, crosswalks,
+                          record checks                                                (L2, stdlib only)
+  io/                     plain.py; usd/ (needs pxr; every pxr call behind usd/_pxr.py)         (L4)
+  sample/                 layered_path_helper.py (0.1); label fractions and the reference
+                          sampler later                                                  (L5, numpy)
+  tools/                  check.py: python -m vesalius check, --stage, --crosswalk, --schema    (L6)
 
-vesalius_authoring/             curation tooling, where records are written
-  authoring/       compose.py, derive.py, fit_record.py, bake.py; curation tools (8.2)       (L3)
-  integrations/    exporters/, importers/, i4h/, engines/ (adapter, crosswalk scaffold)      (L6, lazy imports)
+vesalius_authoring/       curation tooling, where records are written
+  integrations/engines/   the engine adapter and the crosswalk scaffold (0.1)          (L6, lazy imports)
+  authoring/              compose, derive, fit records, bake check points; curation tools (8.2),
+                          after 0.1                                                             (L3)
 ```
 
 The MCP server is a separate distribution, `vesalius-mcp` (section 8), so nothing in the core depends on it.
+The 0.1 module list was agreed before the first code (maintainer, 2026-10-13), together with making the writer
+JSON Schemas the single hand-edited source of structure: the reader schemas and the TypedDict shapes are
+generated from them, and the specification's member tables are checked against them.
 
 Families, with their golden vectors and reference implementations, sit beside the core in the same
 repository and ship as `vesalius-families` (section 3.1). The library repository has its own layout
@@ -1414,18 +1439,29 @@ repository and ship as `vesalius-families` (section 3.1). The library repository
 
 ### 7.2 Dependencies and distribution
 
-- `vesalius`: numpy and a JSON Schema validator. Extras: `[usd]` for `usd-core`, `[sample]` for whatever L5
-  needs. `vesalius-authoring` carries the curation tools' heavier dependencies (PDF text extraction, the
+- `vesalius`: no run-time dependency beyond Python's standard library (maintainer, 2026-10-13): the reader's
+  envelope checks are written by hand, which the specification's README allows
+  (`docs/specification/README.md`, "Suites and case numbers"), so the core adds nothing to a consumer's SOUP
+  list but Vesalius itself; each extra adds its own. Extras: `[check]` for `jsonschema` (`vesalius check` and
+  the writer schema), `[usd]` for `usd-core`, `[sample]` for numpy and whatever else L5 needs. Type checkers
+  read `typing_extensions` through the `.pyi` files and `TYPE_CHECKING` imports; nothing imports it at run
+  time. `vesalius-authoring` carries the curation tools' heavier dependencies (PDF text extraction, the
   digitiser) and the only network access in the project (registry drafting from DOI and Crossref).
 - **What runs where.** The core never runs inside a consumer's computation (its simulation step, compiled
   program and gradient path; principle 2). It does run at a consumer's build: MIME's build calls the reader,
   the requirement checks over domains, the material input sheet, L5's label fractions and, where it samples,
   the reference sampler, and their outputs become node data. So `vesalius` is third-party software in a
   product built on MIME and is assessed as such (`DOCUMENTATION_ARCHITECTURE.md` section 10);
-  `vesalius-authoring` is not part of any consumer's product.
+  `vesalius-authoring` is not part of a consumer's product unless the consumer's build runs it, as a build
+  that runs the engine adapter does; engine results themselves are computed in `vesalius[usd]` (maintainer,
+  2026-10-13).
 - `pxr` is imported from whatever USD is installed. Isaac Sim ships its own USD build, and `usd-core` 26.8
   publishes wheels for macOS, Linux x86_64 and Windows only (checked 2026-10-11), while Isaac for
   Healthcare also supports Linux on aarch64. So `usd-core` must never be a hard requirement.
+- **Python versions** (maintainer, 2026-10-13): a floor of 3.11, and every Python that is not at end of life
+  and that a named consumer or engine needs in-process. Vesalius need not share an interpreter with an engine:
+  it runs at the build and hands over data (JSON results and USD layers), so it can run in its own environment
+  while the engine opens the files.
 - Release artifacts: the wheels on PyPI, and the schemas (L0) and conformance data (L1) as a separate
   archive for projects in other languages to vendor. Golden vectors live only with their families; the
   archive cites each family version's hash. Library releases are separate (section 6.7).
@@ -1627,13 +1663,12 @@ stays an option.
   conditions, statistic, primary or cited, family and witness.
 - **The release fails closed.** `vesalius check --release` refuses any value without a review record.
   Drafts may exist in a working tree; they cannot enter a release.
-- **The MCP server and `vesalius-authoring` are curation tooling, outside the SOUP package**, like the CI
-  scripts. Every value they
-  helps draft is independently verified before release, which is the usual argument for light validation
-  of a tool used in a quality system (recalled: ISO 13485:2016 clause 4.1.6). Vesalius operates under no
-  QMS, but a manufacturer reasoning about it will look for exactly this argument. The SOUP package states
-  how many library values were model-assisted and which procedure versions drafted them
-  (`DOCUMENTATION_ARCHITECTURE.md` section 10).
+- **The MCP server and the curation tools in `vesalius-authoring` are curation tooling, outside the SOUP
+  package**, like the CI scripts. Every value they helps draft is independently verified before release, which
+  is the usual argument for light validation of a tool used in a quality system (recalled: ISO 13485:2016
+  clause 4.1.6). Vesalius operates under no QMS, but a manufacturer reasoning about it will look for exactly
+  this argument. The SOUP package states how many library values were model-assisted and which procedure
+  versions drafted them (`DOCUMENTATION_ARCHITECTURE.md` section 10).
 
 ### 8.6 Measuring it
 
@@ -1673,8 +1708,9 @@ on this literature. Three mechanisms measure them:
 
 ### 9.1 Where it attaches
 
-MIME depends on the Vesalius core (with the USD extra) and the families it uses. The adapter lives in MIME,
-beside the things of structure draft 4.1. Vesalius knows nothing of nodes, graphs or JAX.
+MIME depends on the Vesalius core (with the `[usd]` and `[sample]` extras) and the families it uses. The
+adapter lives in MIME, beside the things of structure draft 4.1. Vesalius knows nothing of nodes, graphs or
+JAX.
 
 ```
 USD stage (or plain records): geometry + bindings + Vesalius materials     (Vesalius L0, L1, L4)
@@ -1956,13 +1992,15 @@ Vesalius; an experiment whose materials are not ready keeps declaring its values
 
 **USD and layered paths in 0.1** (maintainer, 2026-10-12). The core read path depends on scenes (a read's
 target can be a region, and requirements are checked over a domain or a path), so the code is designed with
-them from the start. 0.1 is built in this order: plain records, the reader and the hash; declarations and
-build checks; plain scene documents (regions, domains, layered paths with the L5 helper, label crosswalks);
-the USD binding, the stage check, the engine crosswalk and the engine adapter. Nothing slips: the maintainer
-ruled out a cut line. USD is how MIME saves scenes and how the patient twin of Isaac for Healthcare would
-carry Vesalius materials; its novel parts (the layered-path prim, overlay prims, region markers, binding
-refusals, the units rules, engine materials) are found only by implementing them. The material input sheet
-stays R7, in 0.2. Label volumes, field overrides and the label crosswalk's USD form stay with A1.
+them from the start. 0.1 is built in this order: plain records, the reader and the hash; record checks; plain
+scene documents (regions, domains, layered paths with the L5 helper, label crosswalks); declarations and build
+checks; the USD binding, the stage check, the engine crosswalk and the engine adapter. Scenes come before
+declarations because the build checks requirements over domains and paths (maintainer, 2026-10-13, reordering
+the 2026-10-12 order). Nothing slips: the maintainer ruled out a cut line. USD is how MIME saves scenes and
+how the patient twin of Isaac for Healthcare would carry Vesalius materials; its novel parts (the layered-path
+prim, overlay prims, region markers, binding refusals, the units rules, engine materials) are found only by
+implementing them. The material input sheet stays R7, in 0.2. Label volumes, field overrides and the label
+crosswalk's USD form stay with A1.
 
 | Vesalius | Set | Contents | Proven in MIME by | Consumers |
 |---|---|---|---|---|
@@ -2078,7 +2116,8 @@ Still open:
 1. The record envelope's exact fields, and how a namespace publishes the schema of a record type of its own;
    settled with MIME's prototype of the Navion's calibration, which also needs a value form for arrays of
    vectors (4.1).
-2. The overlay record's exact fields and its USD prim (4.1, 5.5).
+2. (Closed by the maintainer, 2026-10-13: settled by the specification.) The overlay record's exact fields and
+   its USD prim, now specified in `record_format.md` section 4.4 and `usd_binding.md` section 6 (4.1, 5.5).
 3. Thin structures: a shell with a thickness, when a consumer needs one (5.1).
 4. Domains that change during a run, with the mechanics track, including event chains whose successor is
    another record (4.5, 5.1).
@@ -2087,14 +2126,15 @@ Still open:
 6. The legal review's four questions (6.5).
 7. Whether a Vesalius material prim carries a semantic label (`SemanticsLabelsAPI:material`), which
    SimReady's validators require of every material prim. A label is not a field value, so the one-string
-   rule allows it. With the USD binding (R1).
+   rule allows it. Decided before material prims are built (maintainer, 2026-10-13).
 8. Names that clash, settled by the maintainer on 2026-10-13: conformance profiles are
    **conformance suites** (OpenUSD 26.08's `UsdProfiles` and MADDENING's profiler use "profile"); engine
    profiles, briefly engine maps, are **engine crosswalks**, and label mappings are **label crosswalks**
    (MADDENING's coupling class is `Mapping`); "field" stays, written `RecordField` in code, though MIME and
    MADDENING use the word for spatial fields.
 9. Whether `vesalius check --stage` is built as validators in OpenUSD's `usdValidation` framework (26.08),
-   which already flags a binding without `MaterialBindingAPI` applied.
+   which already flags a binding without `MaterialBindingAPI` applied. Decided before the stage check is built
+   (maintainer, 2026-10-13).
 10. Whether Vesalius hosts consumers' engine crosswalks for others to reuse, unreviewed (a directory or a
     separate repository), once two consumers write crosswalks for the same engine (5.4).
 
@@ -2267,6 +2307,20 @@ rows below.
 | the stamp names its profile, and the check needs the profile to re-derive; engine materials as the reference parser reports them | the stamp carries the APIs applied and each attribute's type and dimension and the unit convention, so the check re-derives every value without the crosswalk and checks the stamp against its units, and against the crosswalk when held; engine materials are those bound `physics`; unrecognised APIs are listed | a stand-alone check would otherwise flag every consumer's material it has no crosswalk for, or trust a stamp it cannot see past; the parser drops any material without `PhysicsMaterialAPI` (review) |
 | an engine fallback per attribute; dimensions in M, L and T | no fallback member, since the adapter authors every attribute; dimensions over the seven SI base units; one engine model per region | `UsdPhysics` uses water's density, not its schema fallback, for an unauthored density; magnetic quantities need the ampere; two adapters would overwrite each other's bindings (review) |
 | "engine profile" (then "engine map", proposed); "conformance profile"; "label mapping" | "engine crosswalk"; "conformance suite"; "label crosswalk" (maintainer, 2026-10-13) | "profile" clashed with OpenUSD's `UsdProfiles` and MADDENING's profiler, "map" and "mapping" with MADDENING's `Mapping` and Python's `map` (13, item 8) |
+
+The maintainer's decisions before the first code (2026-10-13) gave the rows below.
+
+| Before | After | Why |
+|---|---|---|
+| the core depends on numpy and a JSON Schema validator | no run-time dependency beyond the standard library; `[check]`, `[usd]` and `[sample]` extras (7.2) | four or five more packages (by Python version), one a compiled Rust extension, would enter every consumer's build; the specification's README allows the envelope checks to be written by hand |
+| `vesalius-authoring` never in a consumer's product; engine results unplaced | engine results in `vesalius[usd]`; authoring part of a product whose build runs the adapter (7.2) | the build gives engine results; a build that runs the adapter runs authoring |
+| declarations before scene documents | scene documents before declarations (12.2) | the build checks requirements over domains and paths |
+| record and scene shapes defined in Markdown tables and JSON Schemas separately | the writer JSON Schemas are the single source of structure; reader schemas and typed shapes generated; Markdown tables checked (7.1) | one hand-edited home for every fact |
+| Python versions unstated | a floor of 3.11 and a standing rule (7.2) | 3.10 reached end of life on 2026-10-01; Isaac Sim 5.x runs 3.11 |
+| a proposed layout | the 0.1 module list, with versioned schemas (`schema/0.1/`) and generated vocabulary files (7.1) | agreed before the first code |
+| typing unstated | the package typed (`py.typed`), checked by mypy and pyright; no public function returns a `pxr` object, and every `pxr` call goes through one module (7.1; DA 15) | consumers type-check their declarations; a returned `pxr` object would spread an unchecked type through their code |
+| every record check in `vesalius check` | the checks that need the source registry, a source copy, the previous release or the history in the library's tooling (DA 6.5) | they need inputs a record does not carry |
+| AD 13 items 2, 7 and 9 open | item 2 closed; items 7 and 9 decided before the code that needs them (13) | the specification settled item 2 |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

@@ -47,7 +47,7 @@ Design stage. There is no code or release yet. The architecture concept is in
 |---|---|
 | [design/ARCHITECTURE_DRAFT.md](design/ARCHITECTURE_DRAFT.md) | Architecture concept: components, data model, model families, geometry and USD binding, library and licensing, MIME and Isaac for Healthcare interfaces |
 | [DOCUMENTATION_ARCHITECTURE.md](DOCUMENTATION_ARCHITECTURE.md) | How Vesalius is documented and verified, and its SOUP readiness |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Project constraints (including commit sign-off), identifiers, family and data rules, data attestation, takedown, anomaly lifecycle |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Project constraints (including commit sign-off), code rules, identifiers, family and data rules, data attestation, takedown, anomaly lifecycle |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [docs/regulatory/](docs/regulatory/) | Intended use and regulatory boundary |

@@ -13,8 +13,9 @@ This repository is public. Everything in it, this file and commit messages inclu
   list (section 6.1) and the project constraints (section 15, mirrored in `CONTRIBUTING.md`).
 - **Private, unversioned working files** are in the sibling directory `../plans/`: the prototypes, their
   findings, the maintainer's decision tables and the reviews are under `../plans/spikes/vesalius_prototypes/`.
-  Nothing from there is copied into this repository without checking it against the confidentiality rules
-  below.
+  The code design for 0.1, agreed before any code and detailed step by step, is
+  `../plans/VESALIUS_0.1_CODE_DESIGN.md` (its reviews in `../plans/vesalius_code_design_review/`). Nothing
+  from there is copied into this repository without checking it against the confidentiality rules below.
 - Sibling repositories: `../MIME` (Vesalius's first consumer), `../MADDENING` (the simulation framework MIME
   runs on). The shared Python environment is `../.venv` (it has `usd-core` 0.26.5 for USD checks).
 
@@ -81,6 +82,11 @@ This repository is public. Everything in it, this file and commit messages inclu
 - **Engine knowledge is the consumer's.** Vesalius ships one engine crosswalk, for `UsdPhysics`; a crosswalk
   for any other engine is written and pinned by the consumer that runs it (maintainer, 2026-10-13, AD 5.4). Do
   not add crosswalks for other engines to `vesalius`; improve the scaffold and the checks instead.
+- **The core has no run-time dependency** (maintainer, 2026-10-13, AD 7.1 and 7.2): Python's standard library
+  only; `typing_extensions` is for type checkers only; `jsonschema`, `usd-core` and numpy come with the
+  `[check]`, `[usd]` and `[sample]` extras. Structure is edited in the writer JSON Schemas and tokens in the
+  specification's tables; the reader schemas, the vocabulary and the typed shapes are generated from them, and
+  the specification's member tables are checked against the schemas.
 - **Names that clash are settled** (maintainer, 2026-10-13, AD 13 item 8): conformance *suites*, engine
   *crosswalks*, label *crosswalks*. Do not reintroduce "profile" (OpenUSD's `UsdProfiles`, MADDENING's
   profiler) or "map"/"mapping" (MADDENING's `Mapping`, Python's `map`) for these. "Field" stays; in code it is

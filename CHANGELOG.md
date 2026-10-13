@@ -87,6 +87,12 @@ recorded in that repository's CHANGELOG.
 - Names settled (maintainer, 2026-10-13): conformance suites, engine crosswalks and label crosswalks replace
   conformance profiles, engine maps and label mappings; identifiers renamed to match
   (`engine_crosswalk_invalid`, `family_suite_absent`, `--crosswalk`, `"suite"` in case files).
+- Decisions before the first code (maintainer, 2026-10-13): the core depends on Python's standard library
+  only, with `[check]`, `[usd]` and `[sample]` extras; engine results in `vesalius[usd]`; scene documents
+  built before declarations; the writer JSON Schemas the single source of structure, with typed shapes
+  generated from them; the package typed (`py.typed`); a Python 3.11 floor under a standing rule; record
+  checks that need a registry, a copy or the history moved to the library's tooling; SPDX headers on source
+  files.
 
 ### Schema
 ### Families

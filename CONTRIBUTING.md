@@ -13,9 +13,9 @@ live in a repository of its own; until it exists, its rules are kept here.
 2. **Apache-2.0 for code.** Every code contribution is licensed Apache-2.0. Do not add a runtime dependency
    under a copyleft licence.
 3. **No simulator or ML-framework dependency at runtime.** Not MIME, MADDENING, JAX, PyTorch, Warp or Isaac.
-   The core depends on numpy and a JSON Schema validator only. USD is an optional extra
-   (`pip install vesalius[usd]`), and code must work with whatever USD build is installed, including the one
-   Isaac Sim ships.
+   The core depends on Python's standard library only. `jsonschema`, USD and numpy are optional extras
+   (`vesalius[check]`, `vesalius[usd]`, `vesalius[sample]`), and code must work with whatever USD build is
+   installed, including the one Isaac Sim ships.
 4. **Keep the read side implementable without Vesalius code**, with a JSON parser or with USD; verifying a
    content hash also needs an RFC 8785 serialiser and SHA-256. Compute on the write side and store the
    result. Readers only read numbers, interpolate tables, evaluate power laws, apply the mixing rules their
@@ -90,6 +90,19 @@ live in a repository of its own; until it exists, its rules are kept here.
     envelope and value machinery are checked, never its body, and the first such type is specified only after
     a consumer has prototyped one.
 
+## Code
+
+- Every source file starts with an SPDX licence header (`# SPDX-License-Identifier: Apache-2.0`); JSON data
+  files are covered by the repository's licence.
+- The package is typed and ships `py.typed`. `mypy --strict` and pyright both pass over `src/vesalius`. No
+  public function returns an object from `pxr`, and every `pxr` call in `vesalius` goes through
+  `io/usd/_pxr.py`.
+- `pyproject.toml` states the licence as an SPDX expression with its licence files (PEP 639) and keeps
+  development tools in `[dependency-groups]` (PEP 735); releases are published with attestations (PEP 740).
+- These rules are `DOCUMENTATION_ARCHITECTURE.md` section 15, constraints 28 to 30.
+- Supported Python versions: 3.11 and later, and every Python that is not at end of life and that a named
+  consumer or engine needs in-process. CI runs each one.
+
 ## Identifier prefixes
 
 | Category | Format | Example |
@@ -125,9 +138,12 @@ Prefixes as in MADDENING and MIME, plus three:
 
 ## Changing the schema
 
-One pull request carries all of: the specification text in `docs/specification/`, the conformance cases,
-the record schema and USD schema files, the reader change, an entry in `docs/specification/changes.md`, and
-a CHANGELOG entry under **Schema**. The version rules are in `DOCUMENTATION_ARCHITECTURE.md` section 7.
+One pull request carries all of: the specification text in `docs/specification/`, the conformance cases, the
+writer JSON Schemas and USD schema files, the generated files (the reader schemas and typed shapes from the
+writer schemas, the vocabulary from the specification's tables), the reader change, an entry in
+`docs/specification/changes.md`, and a CHANGELOG entry under **Schema**. Edit structure in the writer schemas
+and tokens in the specification's tables, then regenerate; CI fails if a generated file or a specification
+member table differs from its source. The version rules are in `DOCUMENTATION_ARCHITECTURE.md` section 7.
 
 ## Adding a model family
 

@@ -153,14 +153,14 @@ Three kinds of case take other inputs. Each names the schema files it passes in 
 Schema 0.1.0 is the minimal set of the AD's phasing (section 12.1, M1 to M10) with the scene documents,
 layered paths and the USD binding (R1 and R14), built in that order: plain records with the envelope, the
 bulk, fluid, magnetic and biocompatibility sections, the constant, table, interval, composition and evidence
-forms in use, provenance, conditions, statistics, the reader and its reasons, declarations and the three
-results, `vesalius check`; then the plain scene manifest with regions, domains, layered paths and label
-crosswalks, with the helper that derives a layered path from 3-D geometry (AD 12.1, R14); then their USD form,
-the stage check, the engine crosswalk with Vesalius's one crosswalk (`UsdPhysics`), and the engine adapter.
-Their cases are planned for 0.1.0, except the material input sheet's (R7, 0.2); the scaffold that drafts
-engine crosswalks is a `vesalius-authoring` tool, tested there. Label volumes, field overrides and the label
-crosswalk's USD form wait for the minor version that brings their first consumer. The other forms (the power
-law, whose first field arrives with the acoustic section; the model parameter set; reference data), families
-and mixing are specified here so that 0.1.0's records do not have to change when they arrive; their suites are
-optional until that version (AD 12.2). Every suite is a claim a reader chooses to make: a reader of plain
-records need not claim USD read.
+forms in use, provenance, conditions, statistics, the reader and its reasons, `vesalius check`; then the plain
+scene manifest with regions, domains, layered paths and label crosswalks, with the helper that derives a
+layered path from 3-D geometry (AD 12.1, R14); then declarations and the three results; then the scene
+documents' USD form, the stage check, the engine crosswalk with Vesalius's one crosswalk (`UsdPhysics`), and
+the engine adapter. Their cases are planned for 0.1.0, except the material input sheet's (R7, 0.2); the
+scaffold that drafts engine crosswalks is a `vesalius-authoring` tool, tested there. Label volumes, field
+overrides and the label crosswalk's USD form wait for the minor version that brings their first consumer. The
+other forms (the power law, whose first field arrives with the acoustic section; the model parameter set;
+reference data), families and mixing are specified here so that 0.1.0's records do not have to change when
+they arrive; their suites are optional until that version (AD 12.2). Every suite is a claim a reader chooses
+to make: a reader of plain records need not claim USD read.

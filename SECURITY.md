@@ -30,9 +30,10 @@ Vesalius reads and writes files; it opens no network sockets and runs no code fr
   baking them. An agent acting on instructions injected through a document can at worst produce a bad
   draft, which review and `vesalius check` exist to stop. The MCP server makes no network requests and
   holds no keys.
-- **Silent data errors.** A wrong value, unit, convention or resolution is a correctness defect and is tracked in
-  `docs/validation/known_anomalies.yaml`, not here, unless it can be triggered deliberately by a crafted
+- **Silent data errors.** A wrong value, unit, convention or resolution is a correctness defect and is tracked
+  in `docs/validation/known_anomalies.yaml`, not here, unless it can be triggered deliberately by a crafted
   file.
-- **Supply chain.** Dependencies are kept minimal (numpy, a JSON Schema validator, and optionally
-  OpenUSD). Security-relevant
-  dependency updates are recorded in the **Security** section of `CHANGELOG.md`.
+- **Supply chain.** The core has no run-time dependency beyond Python's standard library; `jsonschema` comes
+  only with the `[check]` extra and numpy with `[sample]`; OpenUSD with `[usd]` (`usd-core`) or from the host
+  application's own build. Security-relevant dependency updates are recorded in the **Security** section of
+  `CHANGELOG.md`.

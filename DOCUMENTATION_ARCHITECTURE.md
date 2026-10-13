@@ -134,7 +134,7 @@ Vesalius adopts conventions, not code. Section numbers refer to MADDENING's `DOC
 | 4. V&V documentation hooks | Adapted (section 6) | conformance, golden vectors, check points, transcription and fit-reproduction evidence in place of analytical benchmarks |
 | 5. Versioning and API stability | Extended (section 7) | four version lines: package, schema, family, record |
 | 6. UQ documentation | Adapted (section 9) | material statistics and uncertainty structures become UQ inputs downstream |
-| 7. Contributor documentation | Extended (`CONTRIBUTING.md`) | data entry, data attestation, takedown, family admission, schema changes, sign-off |
+| 7. Contributor documentation | Extended (`CONTRIBUTING.md`) | data entry, data attestation, takedown, family admission, schema changes, sign-off, code rules |
 | 8. README | Adopted | |
 | 9.1 NodeMeta | Not applicable | no nodes; material provenance, family definitions and method metadata take its place |
 | 9.2 Provenance | New role (section 9) | Vesalius supplies input provenance to MADDENING's run provenance |
@@ -143,7 +143,7 @@ Vesalius adopts conventions, not code. Section numbers refer to MADDENING's `DOC
 | 9.7 Anomaly management | Adopted (section 8) | same schema, fields, enums, lifecycle and gate; data and family anomalies defined |
 | 9.8 ISO 14971 hooks | Adapted (section 8.4) | quantitative conditions, structured specimen facts and qualitative known gaps on materials |
 | 9.9 Usability | Adapted (section 3.5) | the main use errors are applying a value outside its conditions, using a stand-in unknowingly, and reading parameters in the wrong convention |
-| 10. SOUP package | Adapted (section 10) | per component: core, families, library (and authoring, when a product runs it); SOUP of SOUP is numpy, a JSON Schema validator and OpenUSD |
+| 10. SOUP package | Adapted (section 10) | per component: core, families, library (and authoring, when a product runs it); SOUP of SOUP: none at run time for the core; `jsonschema` with `[check]`, numpy with `[sample]`, OpenUSD with `[usd]` |
 | 11. IEC 62304 mapping | Adapted (section 11) | |
 | 12, 13. EU MDR, MDCG 2019-11 | Referenced (section 13) | |
 | 14. Configuration management | Extended (section 12) | a content hash per record; frozen family versions; a DOI per library release |
@@ -229,7 +229,7 @@ Vesalius/
 │       ├── vectors/                   # golden test vectors, frozen per version
 │       └── reference.py               # reference implementation (numpy)
 ├── tests/
-│   ├── conformance/                   # VES-VER-* read-side cases (language-neutral data + Python runner)
+│   ├── conformance/                   # the Python runner; the cases are package data in src/vesalius/data/conformance/
 │   ├── families/                      # vectors against reference implementations
 │   └── methods/                       # method verification
 └── scripts/                           # CI checks (section 6.5)
@@ -257,7 +257,7 @@ are static archives, published on GitHub and archived on Zenodo with a DOI; ther
 │   ├── data_entry_standard.md
 │   ├── review_process.md
 │   └── takedown.md
-└── scripts/                           # policy checks; record checks come from `vesalius check` (section 6.5)
+└── scripts/                           # policy checks, and the record checks that need the registry, a copy, the previous release or the history; the rest come from `vesalius check` (section 6.5)
 ```
 
 Rules for both trees:
@@ -760,8 +760,8 @@ coefficient (whose value in nepers is twice the amplitude one).
 ### 6.5 CI checks
 
 **Record checks are a command in the core**, `python -m vesalius check <directory>`, so that the curated
-library and any other publisher run the same record checks (architecture draft section 6.7); the library adds
-its own policy checks below:
+library and any other publisher run the same record checks (architecture draft section 6.7), apart from those
+that need inputs beyond the records (below); the library adds its own policy checks below:
 
 | Check | Verifies |
 |---|---|
@@ -778,8 +778,12 @@ its own policy checks below:
 | witness | parameter sets reproduce an independent convention witness; "no independent witness" and "not checked" are counted and reported; a witness through a model of a test, and a witness of a family outside `vesalius.`, are reported "not checked" |
 | fallbacks | physical attributes in the USD schema have no fallback values; shipped layers do not apply `UsdPhysics.MaterialAPI` |
 | tables | every table declares its interpolation scheme, its range and its edges; every form states its range |
-| evidence | where a quote is present, with the document present, it occurs at its locator and contains the value's numbers; model-assisted values carry an assistance record. Requiring a quote for every extracted value is the curated library's policy, checked there |
+| evidence | model-assisted values carry an assistance record. Whether a quote occurs at its locator and contains the value's numbers (RC-030, RC-032) needs the source copy, so that check runs in the library's tooling (below); requiring a quote for every extracted value is the curated library's policy, checked there |
 | release (`--release`) | fails on any value without a review record, and on any draft |
+
+Checks that need more than the records themselves (the source registry, a source copy, the previous release or
+the repository's history: RC-017, 030, 032, 034, 040, 042 and 048) run in the library's tooling, which is
+given those inputs explicitly, and not in `vesalius check` (maintainer, 2026-10-13).
 
 In this repository:
 
@@ -1007,7 +1011,7 @@ manufacturer assesses only the components it uses, so the package is organised p
 | Component | Licence | Assessed when |
 |---|---|---|
 | Core, `vesalius` | Apache-2.0 | always. Its code runs at a consumer's build or setup (the reader, the requirement checks over domains, the material input sheet, label-volume fractions, the reference sampler) and never in a consumer's simulation step, compiled program or gradient path |
-| `vesalius-authoring` | Apache-2.0 | only when a product runs it, for instance a product that generates Isaac for Healthcare's material table at build; otherwise it is curation and write-side tooling, outside the package |
+| `vesalius-authoring` | Apache-2.0 | only when a product runs it, for instance a product whose build runs the engine adapter, or one that generates Isaac for Healthcare's material table at build; otherwise it is curation and write-side tooling, outside the package |
 | Each family version, in `vesalius-families` | Apache-2.0 | when a product evaluates parameter sets of that family (its own evaluator is the product's code; the family's definition, vectors and check points are what it verifies against) |
 | Each library release | CC0-1.0 | when a product uses its materials; otherwise only the product's own records |
 
@@ -1031,9 +1035,11 @@ Contents, with the Vesalius-specific additions:
 5. **Lifecycle activities**: section 11, and the number of maintainers (one at the time of writing).
 6. **Configuration management**: section 12.
 7. **Anomaly management policy**: section 8.
-8. **Dependencies (SOUP of SOUP)**: numpy; a JSON Schema validator; OpenUSD, either `usd-core` from PyPI or
-   the host application's own build (Isaac Sim ships its own), only with the `[usd]` extra. OpenUSD's
-   licence is a modified Apache 2.0 (recalled; check the exact text before the first release).
+8. **Dependencies (SOUP of SOUP)**: none at run time for the core, which uses Python's standard library only
+   (maintainer, 2026-10-13); `jsonschema` and its dependencies only with the `[check]` extra; numpy only with
+   `[sample]`; OpenUSD, either `usd-core` from PyPI or the host application's own build (Isaac Sim ships its
+   own), only with the `[usd]` extra. OpenUSD's licence is a modified Apache 2.0 (recalled; check the exact
+   text before the first release).
 
 **Material library contents table**: every material with identifier, version, content hash, sections present,
 tier, licence, specimen facts per section, family versions used, number of reviewed values, number of
@@ -1137,9 +1143,9 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 1. **Sign-off on every commit** (Developer Certificate of Origin), from the first code commit. The design
    commits that precede the first code are exempt. CI enforces it once code exists.
 2. **Apache-2.0** for all code contributions. No runtime dependency under a copyleft licence.
-3. **No runtime dependency on a simulator or ML framework**: not MIME, MADDENING, JAX, PyTorch, Warp or
-   Isaac. Core: numpy and a JSON Schema validator. USD is an optional extra and is imported from whatever
-   build is installed.
+3. **No runtime dependency on a simulator or ML framework**: not MIME, MADDENING, JAX, PyTorch, Warp or Isaac.
+   Core: Python's standard library only (maintainer, 2026-10-13); `jsonschema`, numpy and USD come with the
+   `[check]`, `[sample]` and `[usd]` extras, and USD is imported from whatever build is installed.
 4. **The read side stays implementable without Vesalius code**, with a JSON parser or with USD; verifying a
    content hash also needs an RFC 8785 serialiser and SHA-256. Anything that needs computing is baked when a
    record is written. A change that would require reader code beyond the specification is a major schema
@@ -1214,6 +1220,14 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
     Vesalius curates only material and interface records. Another namespace's type has its envelope and value
     machinery checked, never its body, and the first such type is specified only after a consumer has
     prototyped one.
+28. **Typed.** The package ships `py.typed`; `mypy --strict` and pyright pass over it. The JSON shapes of its
+    public API are generated from the writer JSON Schemas, which, with the specification's tables, are the
+    only hand-edited sources of structure and tokens (maintainer, 2026-10-13).
+29. **The USD seam.** No public function returns an object from `pxr`, and every `pxr` call in `vesalius` goes
+    through one module (maintainer, 2026-10-13).
+30. **Packaging.** Every source file carries an SPDX licence header; the package metadata states the licence
+    as an SPDX expression with its licence files (PEP 639); development tools sit in dependency groups (PEP
+    735); releases are published with attestations (PEP 740) (maintainer, 2026-10-13).
 
 ---
 
@@ -1226,15 +1240,15 @@ anomaly registry and its issue template; the pull-request template; `docs/regula
 README disclaimer.
 
 **Phase 1, with the first code:** the specification for each release's contents as it is built (architecture
-draft section 12.2): first the record format with namespaced identifiers, record types, values, provenance and
-required properties, then geometry (the plain scene manifest, layered paths with the helper that derives one
-from 3-D geometry, and label crosswalks; the first two with their USD forms), the USD binding, the stage check
-and the engine adapter (all Vesalius 0.1, with no cut line; library tags made then are unpublished pins for
-MIME's spikes, not a library release); then uncertainty structures and model families (0.2); the conformance
-suite; the first family definition (architecture draft section 12.1, R5) with golden vectors and a reference
-implementation, in `vesalius-families`; `python -m vesalius check`; `scripts/check_anomalies.py`,
-`check_families.py` and the sign-off check; GitHub labels as MADDENING's (`anomaly:critical`, `anomaly:major`,
-`anomaly:minor`, `safety-relevant`, `soup-assessment`, `known-anomaly`).
+draft section 12.2): first the record format with namespaced identifiers, record types, values and provenance,
+then geometry (the plain scene manifest, layered paths with the helper that derives one from 3-D geometry, and
+label crosswalks; the first two with their USD forms), then required properties (declarations), the USD
+binding, the stage check and the engine adapter (all Vesalius 0.1, with no cut line; library tags made then
+are unpublished pins for MIME's spikes, not a library release); then uncertainty structures and model families
+(0.2); the conformance suite; the first family definition (architecture draft section 12.1, R5) with golden
+vectors and a reference implementation, in `vesalius-families`; `python -m vesalius check`;
+`scripts/check_anomalies.py`, `check_families.py` and the sign-off check; GitHub labels as MADDENING's
+(`anomaly:critical`, `anomaly:major`, `anomaly:minor`, `safety-relevant`, `soup-assessment`, `known-anomaly`).
 
 **Phase 2, towards the first library release** (the first archived release with a DOI, architecture draft
 section 12.1, R8): the curation tools of section 5.1 (the digitiser first, then templates, quote attach-and-
@@ -1257,7 +1271,7 @@ entries, and the gold set (architecture draft section 8).
 
 ## Appendix B: Bootstrap Checklist
 
-Status at 2026-10-12.
+Status at 2026-10-13.
 
 **Phase 0**
 
@@ -1278,7 +1292,8 @@ Status at 2026-10-12.
 **Phase 1**
 
 - [ ] `docs/specification/` for each release's contents, every normative statement with a conformance case
-- [ ] `tests/conformance/` with cases and expected answers as data files, for plain records and USD
+- [ ] `src/vesalius/data/conformance/` with cases and expected answers as data files, for plain records and
+  USD, and the Python runner in `tests/conformance/`
 - [ ] the first family definitions under `families/`, with golden vectors and reference implementations,
   released as the separate distribution `vesalius-families`
 - [ ] `python -m vesalius check`, including the namespaced-identifier, self-contained-layer, fallback, table,
