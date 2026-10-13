@@ -18,7 +18,7 @@ Read them in this order.
 | `uncertainty.md` | statistics and what a spread represents; uncertainty structures; sampling |
 | `model_families.md` | what a family definition fixes; parameter sets; check points; witnesses; events |
 | `fits_and_reference_data.md` | fit records; reference data; fit reproduction |
-| `geometry.md` | scene documents: the scene manifest, layered paths, label mappings; regions, domains, precedence |
+| `geometry.md` | scene documents: the scene manifest, layered paths, label crosswalks; regions, domains, precedence |
 | `usd_binding.md` | the same in USD: API schemas, envelope attributes, bindings, overlays, layered paths, units |
 | `mixing_rules.md` | identities and named rules for cells holding more than one material |
 | `declarations.md` | what a consumer declares, the three results of a check, and the material input sheet |
@@ -63,19 +63,19 @@ Read them in this order.
   (`record_format.md` section 1). They are written with the first implementation; until then the tables of
   this specification define the shapes.
 
-## Profiles and case numbers
+## Suites and case numbers
 
-A reader claims conformance by naming the schema version and the profiles it passes. Plain read needs a JSON
+A reader claims conformance by naming the schema version and the suites it passes. Plain read needs a JSON
 parser and the reader schema's checks, which are structural and can be written by hand; every reader compares
 a record's stated hash with any pin. Recomputing content hashes also needs an RFC 8785 serialiser and SHA-256
-(profile HS). No read profile requires another, but a reader without HS labels its results `hash_not_checked`.
-The EA profile, and the build checks of an engine model (BC-039), also need USD read and the stage check.
+(suite HS). No read suite requires another, but a reader without HS labels its results `hash_not_checked`.
+The EA suite, and the build checks of an engine model (BC-039), also need USD read and the stage check.
 
-| Prefix | Profile | Who needs it |
+| Prefix | Suite | Who needs it |
 |---|---|---|
 | PR | plain read | every reader |
 | HS | hash | readers that verify the content hashes of records, and of families (an RFC 8785 serialiser and SHA-256) |
-| SC | scene documents | readers of plain scene manifests, layered paths and label mappings |
+| SC | scene documents | readers of plain scene manifests, layered paths and label crosswalks |
 | FD | fits and reference data | readers of fit records, coverage and reference data |
 | UR | USD read | readers that take records from a USD stage |
 | TE | table evaluation | consumers that evaluate tables or power laws in their own code and report derivatives |
@@ -84,7 +84,7 @@ The EA profile, and the build checks of an engine model (BC-039), also need USD 
 | SA | sampling | consumers that sample uncertainty |
 | BC | build checks | consumers that check declarations at build (`declarations.md`) |
 | RC | record checks | `vesalius check` and any other checker of records, on the write side; `vesalius check --stage` |
-| EA | engine adapters | writers of engine materials from a declared engine model, by an engine map (`usd_binding.md` section 10) |
+| EA | engine adapters | writers of engine materials from a declared engine model, by an engine crosswalk (`usd_binding.md` section 10) |
 
 Numbers are reserved by document, so each document can add cases without colliding:
 
@@ -103,10 +103,10 @@ Numbers are reserved by document, so each document can add cases without collidi
 
 ## Case files
 
-A case is one JSON file, `data/conformance/<profile>/<case id>.json`:
+A case is one JSON file, `data/conformance/<suite>/<case id>.json`:
 
 ```json
-{"case": "PR-305", "profile": "plain_read", "schema_version": "0.1.0",
+{"case": "PR-305", "suite": "plain_read", "schema_version": "0.1.0",
  "inputs": {"records": ["water.json"]},
  "request": {"target": {"record": {"id": "vesalius/VES-MAT-0002", "version": "1.0.0",
                                    "content_hash": "sha256:..."},
@@ -123,27 +123,27 @@ A case is one JSON file, `data/conformance/<profile>/<case id>.json`:
 `read_side_contract.md` section 1; `expected` holds the members to compare, and `compare` says which, and the
 relative tolerance for numbers (absolute where an expected number is zero). Reason codes are compared, reason
 texts never. An input the case does not need is omitted. In this example, `water.json` holds the viscosity as
-a constant of exactly 0.000692 Pa·s measured at 310.15 K, with its shear rate unstated. `profile` is one of
+a constant of exactly 0.000692 Pa·s measured at 310.15 K, with its shear rate unstated. `suite` is one of
 `plain_read`, `hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`, `table_evaluation`, `mixing`,
 `family_evaluation`, `sampling`, `build_checks`, `record_checks` and `engine_adapter`.
 
 Three kinds of case take other inputs. Each names the schema files it passes in `inputs.schemas`
 (`usd_binding.md` section 10.1 item 8); a case that names none has none.
 
-- A **stage-check case** (`usd_binding.md` section 9) names its stage in `inputs.stage` and the engine maps it
-  passes in `inputs.maps`, and has no `request`. `expected.items` lists what the check reports, each as
-  `{"item": "<the rule's case id>", "prim": "<path>", "detail"?}`. `expected.listing` gives, per shape,
-  `{"shape", "region", "material", "engine_materials", "effective_density"}`: each engine material as
-  `{"material", "maps", "map_status"}`, with `maps` the stamped pin, or the pins of the held maps whose APIs
-  an unstamped material carries, and `map_status` one of `held`, `not_held` (stamped), `matched` (they agree
-  on the density attribute), `ambiguous` (they do not) and `unmatched` (none); the density a number, or
-  `{"status": "not_checked", "reason"}` where it is not compared. `expected.maps_held` lists the pins held,
-  `expected.unrecognised_apis` lists `{"prim", "api"}`, and `expected.not_compared` lists `{"map", "api",
-  "reason"}`.
-- A **map-validation case** (RC-140, RC-142, RC-143) names a map in `inputs.map` and has no stage and no
-  `request`; `expected.items` lists what the check reports, each as `{"item", "pointer", "detail"?}`, with
-  `pointer` a JSON pointer into the map, and `expected.not_compared` as above.
-- An **engine-adapter case** names a stage, a declaration and the engine maps it passes in `inputs`; its
+- A **stage-check case** (`usd_binding.md` section 9) names its stage in `inputs.stage` and the engine
+  crosswalks it passes in `inputs.crosswalks`, and has no `request`. `expected.items` lists what the check
+  reports, each as `{"item": "<the rule's case id>", "prim": "<path>", "detail"?}`. `expected.listing` gives,
+  per shape, `{"shape", "region", "material", "engine_materials", "effective_density"}`: each engine material
+  as `{"material", "crosswalks", "crosswalk_status"}`, with `crosswalks` the stamped pin, or the pins of the
+  held crosswalks whose APIs an unstamped material carries, and `crosswalk_status` one of `held`, `not_held`
+  (stamped), `matched` (they agree on the density attribute), `ambiguous` (they do not) and `unmatched`
+  (none); the density a number, or `{"status": "not_checked", "reason"}` where it is not compared.
+  `expected.crosswalks_held` lists the pins held, `expected.unrecognised_apis` lists `{"prim", "api"}`, and
+  `expected.not_compared` lists `{"crosswalk", "api", "reason"}`.
+- A **crosswalk-validation case** (RC-140, RC-142, RC-143) names a crosswalk in `inputs.crosswalk` and has no
+  stage and no `request`; `expected.items` lists what the check reports, each as `{"item", "pointer",
+  "detail"?}`, with `pointer` a JSON pointer into the crosswalk, and `expected.not_compared` as above.
+- An **engine-adapter case** names a stage, a declaration and the engine crosswalks it passes in `inputs`; its
   `request` is `{"model": "<the engine model's name>"}`; and `expected` holds, per shape, the attributes
   written and their values, or the reasons the adapter refused. A build-check case of an engine model
   (BC-039 to BC-041) names the same inputs and expects the build's results.
@@ -155,12 +155,12 @@ layered paths and the USD binding (R1 and R14), built in that order: plain recor
 bulk, fluid, magnetic and biocompatibility sections, the constant, table, interval, composition and evidence
 forms in use, provenance, conditions, statistics, the reader and its reasons, declarations and the three
 results, `vesalius check`; then the plain scene manifest with regions, domains, layered paths and label
-mappings, with the helper that derives a layered path from 3-D geometry (AD 12.1, R14); then their USD form,
-the stage check, the engine map with Vesalius's one map (`UsdPhysics`), and the engine adapter. Their cases
-are planned for 0.1.0, except the material input sheet's (R7, 0.2); the scaffold that drafts engine maps is a
-`vesalius-authoring` tool, tested there. Label volumes, field overrides and the label mapping's USD form wait
-for the minor version that brings their first consumer. The other forms (the power law, whose first field
-arrives with the acoustic section; the model parameter set; reference data), families and mixing are specified
-here so that 0.1.0's records do not have to change when they arrive; their profiles are optional until that
-version (AD 12.2). Every profile is a claim a reader chooses to make: a reader of plain records need not claim
-USD read.
+crosswalks, with the helper that derives a layered path from 3-D geometry (AD 12.1, R14); then their USD form,
+the stage check, the engine crosswalk with Vesalius's one crosswalk (`UsdPhysics`), and the engine adapter.
+Their cases are planned for 0.1.0, except the material input sheet's (R7, 0.2); the scaffold that drafts
+engine crosswalks is a `vesalius-authoring` tool, tested there. Label volumes, field overrides and the label
+crosswalk's USD form wait for the minor version that brings their first consumer. The other forms (the power
+law, whose first field arrives with the acoustic section; the model parameter set; reference data), families
+and mixing are specified here so that 0.1.0's records do not have to change when they arrive; their suites are
+optional until that version (AD 12.2). Every suite is a claim a reader chooses to make: a reader of plain
+records need not claim USD read.

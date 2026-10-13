@@ -1,7 +1,7 @@
 # Fits and reference data
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Member names: `record_format.md`.
-Reason codes: `read_side_contract.md` section 4. Rationale: AD 4.4, 4.6, 4.10 and 5.5. Profile: FD, optional
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Member names: `record_format.md`.
+Reason codes: `read_side_contract.md` section 4. Rationale: AD 4.4, 4.6, 4.10 and 5.5. Suite: FD, optional
 until the minor version that brings its first consumer (README).
 
 A fitted value is not an intrinsic property of a material. It belongs to a material, a model, a test protocol
@@ -133,7 +133,7 @@ data, and never says that the model holds there.
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | FD-001 | fits and reference data | reference data of both shapes are read whole by `want: reference_data`, never as a property |
 | FD-002 | fits and reference data | each point and curve is returned with its own origin and use |

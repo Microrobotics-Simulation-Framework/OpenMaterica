@@ -1,7 +1,7 @@
 # Model families
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Rationale: AD 4.5, 4.6, 4.10 and
-7.6. The family evaluation profile (FE) is optional in 0.1.0; its first consumer arrives with Vesalius 0.2
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Rationale: AD 4.5, 4.6, 4.10 and
+7.6. The family evaluation suite (FE) is optional in 0.1.0; its first consumer arrives with Vesalius 0.2
 (AD 12.1, R5).
 
 ## 1. What a family is
@@ -192,7 +192,7 @@ version; this section says what it MUST fix. [RC-065]
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | FE-001 | family evaluation | an unknown family identifier or version is refused (`unknown_family`); a label is never refused as a family |
 | FE-002 | family evaluation | a parameter set with a missing or extra parameter is refused |

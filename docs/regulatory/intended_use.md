@@ -35,7 +35,7 @@ inertia or mean density), a drive, a procedure, or a simulator's tuning.
   interface record, when the source states the surface conditions and the test method, which become
   required conditions. A number measured with one tool or device is reference data for checking a model.
 - **Geometry is scene data.** Vesalius defines how geometry binds to materials, and ships only small test
-  phantoms and label mappings from reference anatomies, never anatomy.
+  phantoms and label crosswalks from reference anatomies, never anatomy.
 - **Behaviour.** Behaviour computed from geometry and materials (an implant's heating in MRI, a puncture
   force) is the consumer's output; measured behaviour is reference data in the consumer's namespace.
 - **Entry.** Content enters when a named consumer needs it, and the curated library starts with the body
@@ -110,7 +110,7 @@ publishers choose their own licences. This is a description, not legal advice.
 | Specification and read-side correctness | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite |
 | Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden test vectors |
 | Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
-| A consumer's own code inside its computation (readers, mixing rules and family evaluators in its step, compiled program or gradient path) | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance profiles it passes; the record's check points; the family's golden vectors |
+| A consumer's own code inside its computation (readers, mixing rules and family evaluators in its step, compiled program or gradient path) | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance suites it passes; the record's check points; the family's golden vectors |
 | Vesalius code a consumer runs at build (the reader, requirement checks, the material input sheet, label-volume fractions, the reference sampler) | Vesalius, assessed by the manufacturer as SOUP | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite; the SOUP package |
 | Choosing a material; declaring its domain, target, mixing rule, picks and any extrapolation; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
 | Watching, during a run, every declared condition that the run or an optimiser moves | downstream user | ASME V&V 40 | the run-time watches the build emits, and the evaluators' in-range outputs, recorded with the results |

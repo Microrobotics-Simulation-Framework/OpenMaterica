@@ -1,7 +1,7 @@
 # Mixing rules
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Rationale: AD 3.5 (rule 3) and 4.12.
-The mixing profile (MX) is optional in 0.1.0.
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Rationale: AD 3.5 (rule 3) and 4.12.
+The mixing suite (MX) is optional in 0.1.0.
 
 A cell that holds more than one material needs one value per property for a consumer whose grid cannot
 resolve them. Some rules are identities, fixed by physics; the rest depend on how the materials are arranged
@@ -105,7 +105,7 @@ def wood(phi, rho, c):
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | MX-001 | mixing | a cell across a domain's edge is not averaged |
 | MX-002 | mixing | fractions that do not sum to one within the declared tolerance are refused; a listed background counts |

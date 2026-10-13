@@ -1,6 +1,6 @@
 # Read-side contract
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Rationale: AD 3.5, 4.4 and 7.5. This
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Rationale: AD 3.5, 4.4 and 7.5. This
 document defines what a read takes and gives, the order of its steps, how a condition is checked, and every
 reason a read can give. The shapes it reads are defined in the other documents.
 
@@ -59,7 +59,7 @@ far; a step that gives `unknown` does not.
 3. **Validate** the envelope against the reader schema of the reader's version (`malformed`); a shape error
    inside one field is left to step 8.
 4. **Hash.** Every reader compares the record's stated `content_hash` with any hash the request or a
-   reference pins, and refuses a difference (`pin_mismatch`). A reader that claims the HS profile also
+   reference pins, and refuses a difference (`pin_mismatch`). A reader that claims the HS suite also
    recomputes the hash (`record_format.md` section 9) and refuses a record whose recomputed hash differs from
    its stated one (`hash_mismatch`); one that does not labels every result `hash_not_checked`. [HS-010]
    [HS-011] [PR-327]
@@ -82,8 +82,8 @@ far; a step that gives `unknown` does not.
     a fill-in from another version of the document (`fill_in_version_mismatch`); add the labels of section 2.
 13. **Want.** Shape the value by `want` (section 6).
 
-A parameter set needs the family evaluation profile (`model_families.md`); sampling, the sampling profile
-(`uncertainty.md`); a scene, the scene profile (`geometry.md`).
+A parameter set needs the family evaluation suite (`model_families.md`); sampling, the sampling suite
+(`uncertainty.md`); a scene, the scene suite (`geometry.md`).
 
 ## 4. Reason codes
 
@@ -114,7 +114,7 @@ Every reason a read can give. A document that defines a new reason adds it here.
 | `range_unstated` | unknown | a power law with no stated range; only an extrapolation accepts it | `record_format.md` 6 |
 | `want_mismatch` | not_met | a `want` the form cannot give | section 6 |
 | `stated_without_origin` | unknown | a value with nothing behind it | section 2 |
-| `family_profile_absent` | not_met | a parameter set, read without family evaluation | `record_format.md` 6 |
+| `family_suite_absent` | not_met | a parameter set, read without family evaluation | `record_format.md` 6 |
 | `overlay_base_mismatch` | not_met | an overlay whose base differs from the record in use; never accepted | `record_format.md` 4.4 |
 | `overlay_scope_mismatch` | not_met | an overlay scoped to another consumer, model or configuration (a build check) | `declarations.md` 5 |
 | `overlay_conflict` | not_met | two declared overlays replace one field | `record_format.md` 4.4 |
@@ -129,8 +129,8 @@ Every reason a read can give. A document that defines a new reason adds it here.
 | `representation_unsupported` | not_met | a 0.1.0 manifest holding precedence, a label volume or a field override | `geometry.md` |
 | `homogeneity_undeclared` | not_met | a layered path without its lateral-homogeneity declaration | `geometry.md` |
 | `outside_path` | not_met | a layered path read before its start or at or beyond its end | `geometry.md` |
-| `label_unmapped` | not_met | a label with no material in the label mapping | `geometry.md` |
-| `anatomy_mismatch` | not_met | a label read with another anatomy than the mapping's | `geometry.md` |
+| `label_unmapped` | not_met | a label with no material in the label crosswalk | `geometry.md` |
+| `anatomy_mismatch` | not_met | a label read with another anatomy than the crosswalk's | `geometry.md` |
 | `unauthored_attribute` | not_met | a value-bearing Vesalius attribute nobody authored | `usd_binding.md` |
 | `stage_units_unauthored` | not_met | a stage with no authored `metersPerUnit` | `usd_binding.md` |
 | `units_uncompensated` | not_met | geometry in other units with no compensating transform | `usd_binding.md` |
@@ -139,10 +139,10 @@ Every reason a read can give. A document that defines a new reason adds it here.
 | `payload_unloaded` | not_met | a point, domain or region read that reaches an unloaded payload | `usd_binding.md` |
 | `region_in_prototype` | not_met | a region under a point instancer's prototype | `usd_binding.md` |
 | `time_sampled` | not_met | a Vesalius attribute with time samples | `usd_binding.md` |
-| `engine_map_invalid` | not_met | an engine map not passed, with no source for its units, whose hash differs from its pin, that does not validate, that differs from its pinned schema file, in `vesalius/` but not shipped by Vesalius, or with a held map's id and version and another hash | `usd_binding.md` |
+| `engine_crosswalk_invalid` | not_met | an engine crosswalk not passed, with no source for its units, whose hash differs from its pin, that does not validate, that differs from its pinned schema file, in `vesalius/` but not shipped by Vesalius, or with a held crosswalk's id and version and another hash | `usd_binding.md` |
 | `engine_value_invalid` | not_met | a declared engine value of another type than its attribute's, or a token outside the attribute's allowed tokens | `usd_binding.md` |
 | `engine_attribute_unset` | not_met | an engine attribute with neither a Vesalius field nor a declared value | `usd_binding.md` |
-| `engine_value_sourced` | not_met | a declared engine value for an attribute the map sources from a field | `usd_binding.md` |
+| `engine_value_sourced` | not_met | a declared engine value for an attribute the crosswalk sources from a field | `usd_binding.md` |
 | `engine_binding_overridden` | not_met | a region whose engine binding a foreign stronger or subset `physics` binding would override | `usd_binding.md` |
 | `engine_region_instanced` | not_met | a region inside an instance, which the adapter cannot bind per region | `usd_binding.md` |
 | `engine_material_missing` | not_met | a simulated shape with no engine material, or only the physics scene's | `declarations.md` |
@@ -206,9 +206,9 @@ computes the extrapolated value by its declared method (`declarations.md`). [PR-
 | `evidence` | `not_met` (`want_mismatch`) | `not_met` (`want_mismatch`) | `not_met` (`want_mismatch`) | the list of reports [PR-038] |
 
 `want: reference_data` returns the whole reference-data payload, and only for the reference-data form (the
-fits and reference data profile, `fits_and_reference_data.md`); on any other form it gives `want_mismatch`.
+fits and reference data suite, `fits_and_reference_data.md`); on any other form it gives `want_mismatch`.
 [PR-319] `want: fit` returns a fitted field's `fit` record and `want: coverage` a parameter set's `coverage`,
-in the same profile; on a field without one they give `want_mismatch`. [PR-326] A read that wants a parameter
+in the same suite; on a field without one they give `want_mismatch`. [PR-326] A read that wants a parameter
 set is a family evaluation (`model_families.md`), whose result adds the outcome of each check point. A read of
 a whole table over a band, for a consumer that integrates over it, is planned for the minor version that
 brings such a consumer. [not yet covered]
@@ -237,11 +237,11 @@ of 1e-12, taken from the case file.
 6. For a power law, the derivative is `a * b * x^(b - 1)`, inside its range. [TE-009]
 7. At a declared edge, an evaluator refuses, as the reader does. [TE-010]
 8. An evaluator that cannot report `in_range` or its derivative side does not claim the table evaluation
-   profile.
+   suite.
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | PR-300 | plain read | no read raises; every read returns a result |
 | PR-301 | plain read | every reason is reported; the status is the worst |

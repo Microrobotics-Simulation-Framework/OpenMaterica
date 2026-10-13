@@ -1,6 +1,6 @@
 # Statistics and uncertainty
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Member names: `record_format.md`.
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Member names: `record_format.md`.
 Reason codes: `read_side_contract.md` section 4. Rationale: AD 4.9, 7.3 and 9.4.
 
 A spread is a fact about a source, and what it represents is part of that fact. Which spread a question needs,
@@ -147,7 +147,7 @@ A token a reader does not know refuses the field (`unknown_token`). [PR-154]
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | PR-150 | plain read | `represents` is returned with the spread; a population spread is never offered as an estimate's |
 | PR-151 | plain read | `dispersion: not_reported` is returned as stated, never as zero spread |

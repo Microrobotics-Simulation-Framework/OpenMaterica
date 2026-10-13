@@ -1,6 +1,6 @@
 # Record format
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Rationale: AD 4.1 to 4.4, 5.2, 5.5
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Rationale: AD 4.1 to 4.4, 5.2, 5.5
 and 5.6. What a reader does with a record, in order, and every reason it returns: `read_side_contract.md`.
 
 ## 1. Records and validity
@@ -281,10 +281,10 @@ and against a declared extrapolation, is in `read_side_contract.md` section 5. [
 4. A reader returns the components as stored. [PR-023]
 
 **Model parameter set.** `"parameter_set": {...}`, specified in `model_families.md`. A reader that does not
-claim the family evaluation profile refuses it, with the reason `family_profile_absent`. [PR-024]
+claim the family evaluation suite refuses it, with the reason `family_suite_absent`. [PR-024]
 
 **Reference data.** `"reference_data": {...}`, specified in `fits_and_reference_data.md`. A reader never
-returns reference data as a property's value; it is read only by a request for reference data (FD profile).
+returns reference data as a property's value; it is read only by a request for reference data (FD suite).
 [PR-025]
 
 **Evidence.** Section 4.3.
@@ -345,7 +345,7 @@ version. [PR-032]
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | PR-001 | plain read | a record in another serialisation is not read as a record |
 | PR-002 | plain read | invalid JSON and an envelope invalid against the reader schema give `malformed` for every read, never a crash |

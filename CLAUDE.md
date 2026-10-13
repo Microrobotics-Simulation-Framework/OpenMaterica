@@ -78,9 +78,13 @@ This repository is public. Everything in it, this file and commit messages inclu
   data. The core may run at a consumer's build, and is then third-party software in that consumer's product.
 - **Small.** A section, family or library material enters when a named consumer needs it. A later addition
   must be possible as a minor schema change (AD 5.6); if it is not, decide it before 0.1.
-- **Engine knowledge is the consumer's.** Vesalius ships one engine map, for `UsdPhysics`; a map for any
-  other engine is written and pinned by the consumer that runs it (maintainer, 2026-10-13, AD 5.4). Do not add
-  maps for other engines to `vesalius`; improve the scaffold and the checks instead.
+- **Engine knowledge is the consumer's.** Vesalius ships one engine crosswalk, for `UsdPhysics`; a crosswalk
+  for any other engine is written and pinned by the consumer that runs it (maintainer, 2026-10-13, AD 5.4). Do
+  not add crosswalks for other engines to `vesalius`; improve the scaffold and the checks instead.
+- **Names that clash are settled** (maintainer, 2026-10-13, AD 13 item 8): conformance *suites*, engine
+  *crosswalks*, label *crosswalks*. Do not reintroduce "profile" (OpenUSD's `UsdProfiles`, MADDENING's
+  profiler) or "map"/"mapping" (MADDENING's `Mapping`, Python's `map`) for these. "Field" stays; in code it is
+  `RecordField`.
 
 ## Gotchas, checked
 
@@ -113,7 +117,7 @@ USD, with `usd-core` 0.26.5:
   one-line `userDocBrief`. An API whose plug-in is not registered gives `None`. A plug-in's
   `generatedSchema.usda` reads with Sdf without registering it, and composed `apiSchemas` never lists an API's
   built-in APIs. The file differs between usd-core versions (usdPhysics: 0.25.5 against 0.26.5), so never
-  compare a map with an installed one.
+  compare a crosswalk with an installed one.
 - `UsdPhysics` mass computation ignores a `MassAPI` density or mass of 0, and uses 1000 kg/m³ where a
   material's density is unauthored or 0.
 
@@ -135,7 +139,7 @@ Data:
   frequency-squared coefficient applied as linear. Store only the amplitude coefficient, in nepers per metre,
   registered as `/m`: `Np/m` is not valid UCUM, because the neper cannot be part of a quotient.
 - A segmenter's clinical code for an organ and UBERON's cross-reference for it can differ; join label
-  mappings by name or number within one vocabulary, never by code across vocabularies.
+  crosswalks by name or number within one vocabulary, never by code across vocabularies.
 - A preprint and its version of record need not carry the same numbers; record which one was read.
 - A citation found in code is a lead, not provenance: in one real code base all ten checkable citations
   carried an error.

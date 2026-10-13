@@ -1,6 +1,6 @@
 # Provenance, conditions and specimen facts
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Member names: `record_format.md`.
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Member names: `record_format.md`.
 Reason codes: `read_side_contract.md` section 4. Rationale: AD 4.3, 4.7, 4.8, 4.11, 6.1 and 6.2.
 
 ## 1. Status objects
@@ -246,7 +246,7 @@ A model never sets a redistribution state or a review (AD 8.2). [not yet covered
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | PR-100 | plain read | a status is returned as a status, never as a value or a pass |
 | PR-101 | plain read | an `import` lead is never reported as the source |

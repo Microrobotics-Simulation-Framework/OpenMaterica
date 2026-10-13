@@ -1,6 +1,6 @@
 # USD binding
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Rationale: AD 5.3 to 5.5. The plain
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Rationale: AD 5.3 to 5.5. The plain
 forms this binds are in `record_format.md` and `geometry.md`; section 8 lists the plain cases with no USD form
 in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
 
@@ -76,11 +76,11 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    `vesalius:<section>:specimen` parsed into `body.sections.<section>.specimen`; `vesalius:extensions` into
    `body.extensions`. Sections it does not know are kept, so that the hash covers them. [UR-010]
 6. **The hash.** Every reader compares `vesalius:content_hash` with the hash a region, a background or a path
-   pins, and refuses a difference (`pin_mismatch`, sections 5 and 7). A reader with the hash profile also
+   pins, and refuses a difference (`pin_mismatch`, sections 5 and 7). A reader with the hash suite also
    recomputes the reassembled record's hash as `record_format.md` section 9 says, and refuses the material
    when it differs from `vesalius:content_hash` (`hash_mismatch`). So a field edited in a stronger layer
    without rewriting `vesalius:content_hash` is refused; a stronger layer that edits both composes a
-   consistent, different record, which only a pin catches. A reader that does not claim the hash profile
+   consistent, different record, which only a pin catches. A reader that does not claim the hash suite
    labels its results `hash_not_checked` (`read_side_contract.md` section 3). [UR-011] [UR-032]
 7. **Prim names carry no identity.** A reader identifies a material by `vesalius:id`, never by its prim's name
    or path; `VES-MAT-0001` is not a valid prim name (checked). [UR-012]
@@ -221,7 +221,7 @@ def VesaliusLayeredPath "NeedlePath"
 
 ## 8. Plain cases with no USD form in 0.1.0
 
-Label mappings and label volumes, field overrides and `precedence` (`geometry.md` sections 3.6 and 5),
+Label crosswalks and label volumes, field overrides and `precedence` (`geometry.md` sections 3.6 and 5),
 interface bindings (`geometry.md` section 3.5), and external geometry references (`geometry.md` section 3.1:
 on a stage, geometry is on the stage) have no USD form in 0.1.0. Label volumes and field overrides will use
 `UsdVol` (`OpenVDBAsset`, `Field3DAsset`), specified with their first consumer (AD 12.1, A1), under three
@@ -234,32 +234,33 @@ shipped ones (section 4). [not yet covered]
 ## 9. The stage check
 
 `vesalius check --stage` reports, without changing the stage, the items below. It **holds** every version of
-Vesalius's engine map for `UsdPhysics` and every valid engine map passed to it (`--map`); a build passes the
-maps its declaration pins (section 10.1 items 5 and 7). It knows an engine's schemas through the maps it holds
-and the stamps on the stage, and lists what it does not recognise (item 4).
+Vesalius's engine crosswalk for `UsdPhysics` and every valid engine crosswalk passed to it (`--crosswalk`); a
+build passes the crosswalks its declaration pins (section 10.1 items 5 and 7). It knows an engine's schemas
+through the crosswalks it holds and the stamps on the stage, and lists what it does not recognise (item 4).
 
 A **shape** is a prim an engine simulates: a prim with `UsdPhysics.CollisionAPI`, or with a body API a held
-map lists, found with instance proxies traversed. A body API no held map lists is not recognised as one, and
-is listed as an unrecognised API (item 4). A shape belongs to the innermost region whose prim is the shape or
-one of its ancestors, whatever the shape's purpose: a collider with purpose `guide` still collides.
+crosswalk lists, found with instance proxies traversed. A body API no held crosswalk lists is not recognised
+as one, and is listed as an unrecognised API (item 4). A shape belongs to the innermost region whose prim is
+the shape or one of its ancestors, whatever the shape's purpose: a collider with purpose `guide` still
+collides.
 
 A shape's **engine materials** are the materials `ComputeBoundMaterial("physics")` resolves on the shape, on
-each of its `GeomSubset`s of family `materialBind`, and, for a body API, on the prim its map names, through a
-binding of purpose `physics`, or through the all-purpose fall-back when the material it reaches carries
-`PhysicsMaterialAPI` or an API a held map lists; a fall-back to a display material, which carries neither, is
-not one. The purpose is read from the name of the relationship the call returns (checked). A binding, authored
-on the prim or inherited from an ancestor, counts only where the prim it is resolved for has
-`MaterialBindingAPI` applied: OpenUSD's reference physics parser ignores it otherwise, on shapes and on
+each of its `GeomSubset`s of family `materialBind`, and, for a body API, on the prim its crosswalk names,
+through a binding of purpose `physics`, or through the all-purpose fall-back when the material it reaches
+carries `PhysicsMaterialAPI` or an API a held crosswalk lists; a fall-back to a display material, which
+carries neither, is not one. The purpose is read from the name of the relationship the call returns (checked).
+A binding, authored on the prim or inherited from an ancestor, counts only where the prim it is resolved for
+has `MaterialBindingAPI` applied: OpenUSD's reference physics parser ignores it otherwise, on shapes and on
 subsets, and reports an all-purpose binding to a material with `PhysicsMaterialAPI` (checked in the review of
 2026-10-13), and engines built on the parser behave the same. The check does not take materials from the
 parser itself, which reports only materials that carry `PhysicsMaterialAPI` (checked), so a consumer's engine
 whose material API is another would be reported as having none. A material reached so is an engine material
 whatever its APIs; one with no stamp is foreign (item 6). For an engine material with no stamp, the check
-compares the density attribute that every held map whose material APIs it carries sources from
-`bulk.density`; where no held map matches, or the matching maps name different attributes, its attributes are
-listed and its density is not compared. The check judges each shape, never the region prim, because engines
-bind colliders and simulation meshes, not regions (checked with the reference parser in the review of
-2026-10-12).
+compares the density attribute that every held crosswalk whose material APIs it carries sources from
+`bulk.density`; where no held crosswalk matches, or the matching crosswalks name different attributes, its
+attributes are listed and its density is not compared. The check judges each shape, never the region prim,
+because engines bind colliders and simulation meshes, not regions (checked with the reference parser in the
+review of 2026-10-12).
 
 1. a stage with no authored `metersPerUnit`, or with no authored `kilogramsPerUnit` where an engine attribute
    whose dimension includes mass is authored on an engine material of the `stage` convention; [RC-105]
@@ -267,49 +268,50 @@ bind colliders and simulation meshes, not regions (checked with the reference pa
    (section 2 item 4); [RC-107]
 3. a material prim whose content hash does not verify, or a region, background or path whose pinned reference
    does not match its target (section 3.6); [RC-108]
-4. per shape, its region, the region's Vesalius material and its engine materials, each with the map it was
-   checked against and whether that map was held, matched by its APIs, matched ambiguously or not matched; the
-   maps held; and every **unrecognised API**: an applied API schema on a prim in a region, or on a material
-   bound there, that is not Vesalius's, not one of the API schemas usd-core 0.26.5 defines (a list the check
-   holds; an instance of a multiple-apply API, such as `SemanticsLabelsAPI:tag`, is matched by the name before
-   its colon), not listed by a held map and not named by the stamp of the material it is on; [RC-112]
+4. per shape, its region, the region's Vesalius material and its engine materials, each with the crosswalk it
+   was checked against and whether that crosswalk was held, matched by its APIs, matched ambiguously or not
+   matched; the crosswalks held; and every **unrecognised API**: an applied API schema on a prim in a region,
+   or on a material bound there, that is not Vesalius's, not one of the API schemas usd-core 0.26.5 defines (a
+   list the check holds; an instance of a multiple-apply API, such as `SemanticsLabelsAPI:tag`, is matched by
+   the name before its colon), not listed by a held crosswalk and not named by the stamp of the material it is
+   on; [RC-112]
 5. a shape whose **effective density** differs, by more than 1e-6 relative after conversion (section 10.3),
    from the stamped read's value where its engine material is stamped, else from its region's Vesalius bulk
    density when that is a constant; a table-valued density is not compared. The effective density follows
    `UsdPhysics`'s precedence: an authored, non-zero `physics:density` from `UsdPhysics.MassAPI` on the shape
    or its nearest ancestor that has one, in stage units, else the authored, non-zero density attribute on the
-   engine material, in its stamp's or its map's convention: the attribute whose stamped read is of
+   engine material, in its stamp's or its crosswalk's convention: the attribute whose stamped read is of
    `bulk.density`, or, with no stamp, the one chosen as above. `UsdPhysics` ignores a `MassAPI` density or
    mass of 0 (checked in the review of 2026-10-13). An authored, non-zero `physics:mass` makes the shape "not
    comparable", which is reported, not flagged; [RC-106]
 6. a shape inside a region whose engine material, or a subset's, has no `vesalius:engineSource` (a foreign
    material, such as one Isaac Lab bound), names another material than the region's, compared by envelope, or
    was stamped with the `stage` convention for other stage units than the stage's; [RC-115]
-7. a stamped engine material that does not re-derive. With no map needed: an API the stamp names that is not
-   in the material's composed `apiSchemas`; an attribute the stamp names that is not authored, or whose
+7. a stamped engine material that does not re-derive. With no crosswalk needed: an API the stamp names that is
+   not in the material's composed `apiSchemas`; an attribute the stamp names that is not authored, or whose
    authored type differs from the stamped type; a stamped dimension that differs from the dimension of the
    stamped unit, which for a field read is its field's registered unit; a stamped read request that, re-run
    against the stage's material prims, gives another value or a result that is neither `met` nor accepted; and
    a written value that differs from its stamped SI value converted by its stamped dimension and convention to
-   the stage's units (section 10.3) at its type's precision. Where the check holds the stamped map, also: a
-   stamped convention, or an attribute's stamped type, dimension or source (the field it reads, or declared),
-   that differs from the map's; an attribute the map lists that the stamp does not name or that is not
-   authored; and an authored attribute in the map's namespaces that the map does not list. A stamped map the
-   check does not hold is listed (item 4), not flagged: without it, the convention and a declared attribute's
-   dimension, beyond agreeing with its unit, are the stamp's own claims, and completeness is not checked;
-   [RC-118]
+   the stage's units (section 10.3) at its type's precision. Where the check holds the stamped crosswalk,
+   also: a stamped convention, or an attribute's stamped type, dimension or source (the field it reads, or
+   declared), that differs from the crosswalk's; an attribute the crosswalk lists that the stamp does not name
+   or that is not authored; and an authored attribute in the crosswalk's namespaces that the crosswalk does
+   not list. A stamped crosswalk the check does not hold is listed (item 4), not flagged: without it, the
+   convention and a declared attribute's dimension, beyond agreeing with its unit, are the stamp's own claims,
+   and completeness is not checked; [RC-118]
 8. a shape inside a region with no engine material, which includes one whose only binding is on a prim without
    `MaterialBindingAPI`, or only a material bound to the physics scene prim, which PhysX uses as its default
    (recalled), so that the engine uses a material nobody converted from the region's; [RC-116]
 9. a `vesalius`-purpose binding on a prim without `MaterialBindingAPI` applied (USD resolves it, with a
    warning; checked), or on a prim that is neither a region nor inside one; [RC-117]
 10. on a prim that carries `vesalius:id`, an API schema that is not Vesalius's and is either listed by a held
-    map or not one of usd-core 0.26.5's own, or an attribute in `physics:` or in a namespace a held map lists
-    (section 10.4); [RC-114]
+    crosswalk or not one of usd-core 0.26.5's own, or an attribute in `physics:` or in a namespace a held
+    crosswalk lists (section 10.4); [RC-114]
 11. a time-sampled attribute on an engine material; [RC-119]
-12. a map passed to the check that does not validate (section 10.1), which is reported and not held; and, for
-    each API of every held map, whether it was compared with its pinned schema file, or why not. [RC-140]
-    [RC-143]
+12. a crosswalk passed to the check that does not validate (section 10.1), which is reported and not held;
+    and, for each API of every held crosswalk, whether it was compared with its pinned schema file, or why
+    not. [RC-140] [RC-143]
 
 Items 5 to 8 also give a declared engine model's engine results, one per shape, after its adapter has
 written (`declarations.md` section 2 item 6).
@@ -318,23 +320,24 @@ written (`declarations.md` section 2 item 6).
 
 An engine never reads a Vesalius field: it reads typed attributes in its own schemas, in the units it
 documents. A Vesalius value reaches an engine only through an **engine adapter**, which writes engine
-materials for a model the consumer declares, by an **engine map**: a data document stating what one engine
-version reads and where each value comes from. Vesalius specifies the map's format, the conversion, the stamp
-and the stage check, none of them written for one engine's schema, and ships one map, for OpenUSD's
-`UsdPhysics`. A map for any other engine is written and pinned by the consumer that runs it (section 10.1 item
-7; AD 5.4). The adapter is in `vesalius-authoring`, with a scaffold that drafts maps (section 10.1 item 9);
-the shipped map is data in `vesalius`, because the stage check holds it (AD 7.1). Adapters claim the profile
-EA.
+materials for a model the consumer declares, by an **engine crosswalk**: a data document stating what one
+engine version reads and where each value comes from. Vesalius specifies the crosswalk's format, the
+conversion, the stamp and the stage check, none of them written for one engine's schema, and ships one
+crosswalk, for OpenUSD's `UsdPhysics`. A crosswalk for any other engine is written and pinned by the consumer
+that runs it (section 10.1 item 7; AD 5.4). The adapter is in `vesalius-authoring`, with a scaffold that
+drafts crosswalks (section 10.1 item 9); the shipped crosswalk is data in `vesalius`, because the stage check
+holds it (AD 7.1). Adapters claim the suite EA.
 
-### 10.1 Engine maps
+### 10.1 Engine crosswalks
 
-1. An engine map describes one engine version: `{"map_schema_version": "0.1.0", "document_type": "engine_map",
-   "id": "<namespace>/<name>", "version", "engine": {"name", "version"}, "units": {"convention", "source"},
-   "material_apis": [{"name", "schema", "attributes": [...]}], "body_apis": [{"name", "schema",
-   "material_prim"}], "namespaces": [...]}`. Its `id` is in its writer's namespace, as a record's identifier
-   is; only maps Vesalius ships use `vesalius/`. `schema` pins the schema file that defines the API (item 8).
-   A multiple-apply API, whose class in its schema file has `__INSTANCE_NAME__` in its property names
-   (checked), cannot be described in 0.1.0, nor can an API one of whose built-ins is multiple-apply. [RC-140]
+1. An engine crosswalk describes one engine version: `{"crosswalk_schema_version": "0.1.0", "document_type":
+   "engine_crosswalk", "id": "<namespace>/<name>", "version", "engine": {"name", "version"}, "units":
+   {"convention", "source"}, "material_apis": [{"name", "schema", "attributes": [...]}], "body_apis":
+   [{"name", "schema", "material_prim"}], "namespaces": [...]}`. Its `id` is in its writer's namespace, as a
+   record's identifier is; only crosswalks Vesalius ships use `vesalius/`. `schema` pins the schema file that
+   defines the API (item 8). A multiple-apply API, whose class in its schema file has `__INSTANCE_NAME__` in
+   its property names (checked), cannot be described in 0.1.0, nor can an API one of whose built-ins is
+   multiple-apply. [RC-140]
 2. `material_apis` lists every attribute of each API as that engine version defines it, because the adapter
    authors them all (section 10.4 item 1). Each attribute is `{"name", "type", "dimension", "source",
    "allowed_tokens"?, "doc"}`: `type`, its USD value type; `dimension`, the exponents of its SI dimension over
@@ -345,91 +348,95 @@ EA.
    component) has a dimension; a token, string, boolean or asset has `dimension: null`, and is written as
    declared, never converted. An attribute sourced from a field has the dimension of that field's registered
    unit (`record_format.md` section 4.2). An attribute in a unit that is not coherent SI, such as an angle in
-   degrees, or in another convention than the map's, cannot be described in 0.1.0. [RC-140]
+   degrees, or in another convention than the crosswalk's, cannot be described in 0.1.0. [RC-140]
 3. `units.convention` is `stage` (the engine reads lengths and masses in the stage's `metersPerUnit` and
    `kilogramsPerUnit`, and every other base unit as SI) or `si`; `units.source` is a locator to the engine's
-   documentation of it. A map without one is invalid and the adapter refuses it (`engine_map_invalid`): an
-   engine whose mass unit is undocumented cannot be written to. [EA-001]
+   documentation of it. A crosswalk without one is invalid and the adapter refuses it
+   (`engine_crosswalk_invalid`): an engine whose mass unit is undocumented cannot be written to. [EA-001]
 4. `material_prim` names, for a body API, the prim whose `physics` binding the engine reads for that body:
    `self`, or a relationship on the body prim that targets it, such as a simulation mesh. [RC-140]
-5. A map is pinned by `{"id", "version", "sha256"}`, the SHA-256 of its RFC 8785 serialisation. A map whose
-   hash differs from its pin, a map in `vesalius/` that Vesalius did not ship, and a map with a held map's id
-   and version but another hash are refused (`engine_map_invalid`). [EA-002]
+5. A crosswalk is pinned by `{"id", "version", "sha256"}`, the SHA-256 of its RFC 8785 serialisation. A
+   crosswalk whose hash differs from its pin, a crosswalk in `vesalius/` that Vesalius did not ship, and a
+   crosswalk with a held crosswalk's id and version but another hash are refused (`engine_crosswalk_invalid`).
+   [EA-002]
 6. Engine schemas are detected by name in the composed `apiSchemas` (section 1 item 2), because they are
    rarely registered where Vesalius runs: PhysX's deformable material API is invisible to `HasAPI` without its
    plug-in (checked with USD 0.26.5). Composed `apiSchemas` never lists an API's built-in APIs (checked in the
-   review of 2026-10-13), so the adapter applies every API a map lists by name, built-ins included. [RC-141]
-7. **Who writes maps.** Vesalius ships one map, `vesalius/usdphysics`, for `UsdPhysics` as USD 0.26.5 defines
-   it: engine `{"name": "OpenUSD", "version": "0.26.5"}`; convention `stage`, with its source in OpenUSD's
-   `UsdPhysics` documentation; one material API, `PhysicsMaterialAPI`, pinned to usd-core 0.26.5's
-   `usdPhysics/resources/generatedSchema.usda` (SHA-256
+   review of 2026-10-13), so the adapter applies every API a crosswalk lists by name, built-ins included.
+   [RC-141]
+7. **Who writes crosswalks.** Vesalius ships one crosswalk, `vesalius/usdphysics`, for `UsdPhysics` as USD
+   0.26.5 defines it: engine `{"name": "OpenUSD", "version": "0.26.5"}`; convention `stage`, with its source
+   in OpenUSD's `UsdPhysics` documentation; one material API, `PhysicsMaterialAPI`, pinned to usd-core
+   0.26.5's `usdPhysics/resources/generatedSchema.usda` (SHA-256
    `681cac0463546c032ba903ae77e0dd245265bbb75d2db4719fe6696debe9bf47`, checked), whose four `float` attributes
    are `physics:density`, sourced from `bulk.density`, and `physics:staticFriction`, `physics:dynamicFriction`
    and `physics:restitution`, declared until interfaces arrive (AD 4.13); no body APIs; and the namespace
    `physics`. Every version of it that Vesalius releases keeps shipping and is always held. Vesalius will add
    a version as `UsdPhysics` grows; NVIDIA's deformable schema is written to become part of it (ecosystem
-   survey, 2026-10-12). A map for any other engine, such as Isaac Sim's deformable materials or Newton, is
-   written by the consumer that runs the engine, pinned in its declaration (`declarations.md` section 1) and
-   passed to the build with it; the build resolves each pin against the maps passed to it and Vesalius's own.
-   Vesalius does not ship, review or update consumers' maps. [RC-142]
+   survey, 2026-10-12). A crosswalk for any other engine, such as Isaac Sim's deformable materials or Newton,
+   is written by the consumer that runs the engine, pinned in its declaration (`declarations.md` section 1)
+   and passed to the build with it; the build resolves each pin against the crosswalks passed to it and
+   Vesalius's own. Vesalius does not ship, review or update consumers' crosswalks. [RC-142]
 8. **Compared with a pinned schema file, never with what is installed.** Each API's `schema` is `{"sha256",
    "doc"}`: the SHA-256 of the bytes of the `generatedSchema.usda` that defines it, and a locator naming the
    plug-in and version it comes from. Only a file passed explicitly counts: with `--schema`, in the build's
    inputs, or in a case's `inputs.schemas`. A registered plug-in's file is never consulted, because it changes
    with the install (checked: usd-core's `usdPhysics` file has the pinned hash in 0.26.5 and another in
    0.25.5). Where a passed file has the pinned hash, the API's class is read from it with Sdf, without
-   registering it. For a material API the class is compared with the map: every attribute the class defines
-   locally, apart from the built-ins' overrides its `customData` names in `apiSchemaOverridePropertyNames`, is
-   listed, and every listed attribute is defined there, with the same type and, for a token, the same allowed
-   tokens; and every built-in API of the class is itself listed by the map. For a body API, whose attributes
-   the adapter never writes, the class must exist, be single-apply and, where `material_prim` names a
-   relationship, define it. Relationships of a material API are not compared, since the adapter writes none on
-   a material. A difference makes the map invalid (`engine_map_invalid`). Where no passed file has the pinned
-   hash, the API is listed as not compared (section 9 item 12), and its completeness is its writer's claim.
-   So a result depends on the map and the files passed, never on what is installed. Schema files hold no
-   units, so a map's dimensions and convention are always its writer's claim, backed by its `doc` and
-   `units.source` locators. `vesalius check --map <file>` validates a map on its own. [RC-143] [EA-011]
-9. **The scaffold.** `vesalius-authoring` drafts a map from a schema file, read with Sdf without registering
-   it: for each API named, the file's hash, its locally defined attributes' names and types (built-ins'
-   overrides apart), their allowed tokens, and its built-in APIs; `dimension`, `source`, `doc` and `units` are
-   left for the writer, since the file holds none of them (checked with USD 0.26.5: `PhysicsMaterialAPI`'s
-   four `float` attributes have an empty documentation and only a one-line `userDocBrief` in their custom
-   data, with no unit). A draft is not a map until every member is filled and it validates. The scaffold
-   refuses an API the file does not define. It is a tool, tested in `vesalius-authoring`, not a conformance
-   case.
+   registering it. For a material API the class is compared with the crosswalk: every attribute the class
+   defines locally, apart from the built-ins' overrides its `customData` names in
+   `apiSchemaOverridePropertyNames`, is listed, and every listed attribute is defined there, with the same
+   type and, for a token, the same allowed tokens; and every built-in API of the class is itself listed by the
+   crosswalk. For a body API, whose attributes the adapter never writes, the class must exist, be single-apply
+   and, where `material_prim` names a relationship, define it. Relationships of a material API are not
+   compared, since the adapter writes none on a material. A difference makes the crosswalk invalid
+   (`engine_crosswalk_invalid`). Where no passed file has the pinned hash, the API is listed as not compared
+   (section 9 item 12), and its completeness is its writer's claim. So a result depends on the crosswalk and
+   the files passed, never on what is installed. Schema files hold no units, so a crosswalk's dimensions and
+   convention are always its writer's claim, backed by its `doc` and `units.source` locators. `vesalius check
+   --crosswalk <file>` validates a crosswalk on its own. [RC-143] [EA-011]
+9. **The scaffold.** `vesalius-authoring` drafts a crosswalk from a schema file, read with Sdf without
+   registering it: for each API named, the file's hash, its locally defined attributes' names and types
+   (built-ins' overrides apart), their allowed tokens, and its built-in APIs; `dimension`, `source`, `doc` and
+   `units` are left for the writer, since the file holds none of them (checked with USD 0.26.5:
+   `PhysicsMaterialAPI`'s four `float` attributes have an empty documentation and only a one-line
+   `userDocBrief` in their custom data, with no unit). A draft is not a crosswalk until every member is filled
+   and it validates. The scaffold refuses an API the file does not define. It is a tool, tested in
+   `vesalius-authoring`, not a conformance case.
 10. **One engine model per region.** Two engine models whose domains share a region are refused at build,
     since each adapter binds every shape of its regions directly and the second would replace the first's
     bindings. A consumer whose engine reads two material APIs on one shape, a rigid and a deformable one,
-    writes one map that lists both. [BC-040]
+    writes one crosswalk that lists both. [BC-040]
 
 ### 10.2 What the adapter reads
 
 1. The adapter writes for one model of a consumer's declaration that carries `engine` (`declarations.md`
-   section 1), by the map its `engine.map` pins, for the regions of its `checked_over` domain and nothing
-   else. The model's `reads` are the fields its map sources; its requirements, operating conditions, region
-   conditions and acceptances apply as for any model. A pinned map that is not passed, or that does not
-   validate (section 10.1), is refused (`engine_map_invalid`). [EA-003] [EA-011]
+   section 1), by the crosswalk its `engine.crosswalk` pins, for the regions of its `checked_over` domain and
+   nothing else. The model's `reads` are the fields its crosswalk sources; its requirements, operating
+   conditions, region conditions and acceptances apply as for any model. A pinned crosswalk that is not
+   passed, or that does not validate (section 10.1), is refused (`engine_crosswalk_invalid`). [EA-003]
+   [EA-011]
 2. For each region and each attribute sourced from a field, the adapter makes the model's read request and
    writes the value only where the build result is `met` or accepted (`declarations.md` section 4.2);
    otherwise it refuses that region, with the result's reasons. A table read over an operating range of its
    axis gives `want_mismatch`, as any read does, so an engine, which takes one number, gets a value at an
    operating value. [EA-004]
-3. Every other attribute the map lists takes its value from the model's `engine.values`, with `reason` and
-   `basis`. A numeric value's `unit` is a UCUM code for a coherent SI unit (no prefix, the kilogram's apart)
-   whose dimension is the attribute's, such as `Pa`, `N/m`, `W/(m.K)` or `1`; another unit is refused
-   (`request_unit_mismatch`). An attribute with no dimension takes a value of its type and no unit; a value
-   of another type, or a token outside the attribute's `allowed_tokens`, is refused (`engine_value_invalid`).
-   An attribute with neither a field nor a declared value is refused (`engine_attribute_unset`); a declared
-   value for an attribute the map sources from a field is refused (`engine_value_sourced`), so a value
+3. Every other attribute the crosswalk lists takes its value from the model's `engine.values`, with `reason`
+   and `basis`. A numeric value's `unit` is a UCUM code for a coherent SI unit (no prefix, the kilogram's
+   apart) whose dimension is the attribute's, such as `Pa`, `N/m`, `W/(m.K)` or `1`; another unit is refused
+   (`request_unit_mismatch`). An attribute with no dimension takes a value of its type and no unit; a value of
+   another type, or a token outside the attribute's `allowed_tokens`, is refused (`engine_value_invalid`). An
+   attribute with neither a field nor a declared value is refused (`engine_attribute_unset`); a declared value
+   for an attribute the crosswalk sources from a field is refused (`engine_value_sourced`), so a value
    Vesalius holds is never replaced by a number in a configuration. [EA-005]
-4. For a map whose convention is `stage`, the adapter refuses a stage with no authored `metersPerUnit`, or no
-   authored `kilogramsPerUnit` where an attribute's dimension includes mass (`stage_units_unauthored`).
+4. For a crosswalk whose convention is `stage`, the adapter refuses a stage with no authored `metersPerUnit`,
+   or no authored `kilogramsPerUnit` where an attribute's dimension includes mass (`stage_units_unauthored`).
    [EA-006]
 
 ### 10.3 Conversion
 
-1. For a map whose convention is `stage`, a value whose dimension has the exponent a for `kg` and b for `m`
-   is written as v × mpu^(−b) × kpu^(−a), with `mpu` the stage's `metersPerUnit` and `kpu` its
+1. For a crosswalk whose convention is `stage`, a value whose dimension has the exponent a for `kg` and b for
+   `m` is written as v × mpu^(−b) × kpu^(−a), with `mpu` the stage's `metersPerUnit` and `kpu` its
    `kilogramsPerUnit`; the other base units are unchanged. For `si`, the value is written as it is. An
    attribute with no dimension is written as declared. [RC-110]
 
@@ -449,44 +456,44 @@ EA.
 
 ### 10.4 Engine materials and the stamp
 
-1. The adapter writes one engine material per region and map, under a scope of its own
+1. The adapter writes one engine material per region and crosswalk, under a scope of its own
    (`/VesaliusEngine/...`), never under `/Materials/<name>` (section 4 item 2) and never as attributes on a
-   Vesalius material prim, where a converted copy would sit beside the field's JSON string (section 3 item
-   2). It applies by name every material API its map lists for that material, and authors every attribute of
+   Vesalius material prim, where a converted copy would sit beside the field's JSON string (section 3 item 2).
+   It applies by name every material API its crosswalk lists for that material, and authors every attribute of
    each, so that no fallback stands in for a value: PhysX's deformable Young's modulus falls back to 5e7 in
    stage units (ecosystem survey, 2026-10-12), and `UsdPhysics` computes mass with 1000 kg/m³ where a
    material's density is unauthored or 0 (checked in the review of 2026-10-13). [EA-007]
 2. It binds the engine material directly, with the `physics` purpose and the default strength, on every shape
-   of the region (section 9) and, for a body API, on the prim its map names, applying `MaterialBindingAPI`
-   there. One region has one material, so a mesh whose elements hold several tissues needs a region per
-   tissue, on separate meshes, in 0.1.0. [EA-008]
+   of the region (section 9) and, for a body API, on the prim its crosswalk names, applying
+   `MaterialBindingAPI` there. One region has one material, so a mesh whose elements hold several tissues
+   needs a region per tissue, on separate meshes, in 0.1.0. [EA-008]
 3. It refuses a region where its binding would not be the one an engine reads: a shape under a foreign
    `physics` binding of strength `strongerThanDescendants`, or with a foreign `physics` binding on one of its
    subsets (`engine_binding_overridden`); and a region inside an instance (`engine_region_instanced`), since a
    binding cannot be authored on an instance proxy and a per-region binding cannot be expressed from the
    instance's root (checked: USD refuses the edit). A scene that needs one makes the region's prims not
    instanceable. [EA-010]
-4. Each engine material carries `vesalius:engineSource`, a JSON string: `{"map": {"id", "version",
+4. Each engine material carries `vesalius:engineSource`, a JSON string: `{"crosswalk": {"id", "version",
    "sha256"}, "convention", "stage_units": {"metersPerUnit", "kilogramsPerUnit"}, "region": "<path>",
    "material": {"id", "version", "content_hash"}, "apis": [...], "attributes": {"<name>": ...}}`. `apis` names
-   every API the adapter applied. Each attribute holds its `type` and `dimension` as the map gives them, and
-   either `{"source": "field", "request", "accepted_by", "value", "unit"}`, with the complete read request of
-   `read_side_contract.md` section 1 and, in `accepted_by`, the acceptances themselves (waivers and accepted
-   differences included) that made its build result accepted; or `{"source": "declared", "value", "unit",
-   "reason", "basis"}`. Values are SI. The stamp describes itself: with the stage's units it gives every
-   written value without the map, and the check verifies what it can of it without the map (section 9 item
-   7). [EA-009]
+   every API the adapter applied. Each attribute holds its `type` and `dimension` as the crosswalk gives them,
+   and either `{"source": "field", "request", "accepted_by", "value", "unit"}`, with the complete read request
+   of `read_side_contract.md` section 1 and, in `accepted_by`, the acceptances themselves (waivers and
+   accepted differences included) that made its build result accepted; or `{"source": "declared", "value",
+   "unit", "reason", "basis"}`. Values are SI. The stamp describes itself: with the stage's units it gives
+   every written value without the crosswalk, and the check verifies what it can of it without the crosswalk
+   (section 9 item 7). [EA-009]
 5. The stage check re-derives every stamped engine material (section 9 item 7): it re-runs each request,
    judges the result with the stamped acceptances by `declarations.md` section 4.2, and recomputes each
    written value from the stamp. A stronger layer that retunes an attribute or deletes an API, an overlay or a
    pick the stamp does not name, a scene layer written for other units and referenced into this stage, and a
-   stamp edited by hand so that its dimensions no longer agree with its units are reported with or without
-   the map; a stamp whose convention or dimensions were edited consistently is reported only with the map
-   held. [RC-118]
+   stamp edited by hand so that its dimensions no longer agree with its units are reported with or without the
+   crosswalk; a stamp whose convention or dimensions were edited consistently is reported only with the
+   crosswalk held. [RC-118]
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | UR-002 | USD read | an unauthored value-bearing attribute is refused, never read as its fallback |
 | UR-003 | USD read | an SI library layer referenced into a centimetre stage gives the same SI value |
@@ -539,25 +546,25 @@ EA.
 | RC-109 | record checks | the plug-in registers with `schemaIdentifier`; the API schemas apply by name |
 | RC-110 | record checks | the conversion rule gives every value of section 10.3's table in both unit systems within 1e-12; a written `float` equals the value rounded to single precision |
 | RC-111 | record checks | a section named with a reserved word is flagged |
-| RC-112 | record checks | the stage check lists each shape, with its region, its Vesalius material and its engine materials, each with its map and that map's status, for a region on an Xform whose colliders are its child meshes; the maps held; and as unrecognised APIs a deformable body whose map is not held and a foreign material's PhysX API; `SemanticsLabelsAPI` is not listed |
-| RC-114 | record checks | on a Vesalius material prim, `PhysicsMaterialAPI`, a PhysX API with no map held, an attribute in a held map's namespaces, or a `physics:` attribute is flagged; `MaterialBindingAPI` and `SemanticsLabelsAPI` are not |
-| RC-115 | record checks | a shape's engine material that is foreign (one Isaac Lab bound, no stamp; one of an engine with no map held, on a collider and on a subset), stamped for another material, or stamped `stage` for other stage units is flagged, a subset's included; an `si` stamp is not flagged for stage units; an unstamped material that both a consumer's PhysX map and Vesalius's map match has its density compared |
+| RC-112 | record checks | the stage check lists each shape, with its region, its Vesalius material and its engine materials, each with its crosswalk and that crosswalk's status, for a region on an Xform whose colliders are its child meshes; the crosswalks held; and as unrecognised APIs a deformable body whose crosswalk is not held and a foreign material's PhysX API; `SemanticsLabelsAPI` is not listed |
+| RC-114 | record checks | on a Vesalius material prim, `PhysicsMaterialAPI`, a PhysX API with no crosswalk held, an attribute in a held crosswalk's namespaces, or a `physics:` attribute is flagged; `MaterialBindingAPI` and `SemanticsLabelsAPI` are not |
+| RC-115 | record checks | a shape's engine material that is foreign (one Isaac Lab bound, no stamp; one of an engine with no crosswalk held, on a collider and on a subset), stamped for another material, or stamped `stage` for other stage units is flagged, a subset's included; an `si` stamp is not flagged for stage units; an unstamped material that both a consumer's PhysX crosswalk and Vesalius's crosswalk match has its density compared |
 | RC-116 | record checks | a simulated shape in a region with no engine material, or only the physics scene's, is flagged; so is the adapter's collider after a stronger layer deletes its `MaterialBindingAPI` |
 | RC-117 | record checks | a `vesalius` binding without `MaterialBindingAPI` applied, or outside every region, is flagged |
-| RC-118 | record checks | a stamped engine material with a stamped attribute missing, retuned in a stronger layer, of another type, or re-read to another value, with a stamped API deleted, with a stamped dimension that disagrees with its unit, and a centimetre scene layer referenced into a metre stage, are flagged, with the map held and without it; an attribute the map does not list, an attribute the map lists that the stamp omits, and a stamp whose convention and value were edited together are flagged with the map held, and listed as not checked without it |
+| RC-118 | record checks | a stamped engine material with a stamped attribute missing, retuned in a stronger layer, of another type, or re-read to another value, with a stamped API deleted, with a stamped dimension that disagrees with its unit, and a centimetre scene layer referenced into a metre stage, are flagged, with the crosswalk held and without it; an attribute the crosswalk does not list, an attribute the crosswalk lists that the stamp omits, and a stamp whose convention and value were edited together are flagged with the crosswalk held, and listed as not checked without it |
 | RC-119 | record checks | a time-sampled engine attribute is flagged |
-| RC-140 | record checks | an engine map validates; one with an attribute missing its source or locator, a field-sourced attribute whose dimension differs from its field's unit, a `float` with a `null` dimension, a token with a dimension, or a consumer's id in `vesalius/` is flagged; a magnetic attribute's dimension in amperes validates |
+| RC-140 | record checks | an engine crosswalk validates; one with an attribute missing its source or locator, a field-sourced attribute whose dimension differs from its field's unit, a `float` with a `null` dimension, a token with a dimension, or a consumer's id in `vesalius/` is flagged; a magnetic attribute's dimension in amperes validates |
 | RC-141 | record checks | engine schemas are found by name in the composed `apiSchemas` with their plug-ins not registered |
-| RC-142 | record checks | Vesalius's `UsdPhysics` map validates and compares clean with usd-core 0.26.5's `usdPhysics` schema file, passed; a stage-check arm lists every version Vesalius released as held |
-| RC-143 | record checks | a map compared with its pinned schema file: an omitted attribute, an attribute the file does not define, a wrong type, different allowed tokens, an unlisted built-in API, a multiple-apply API and a body API whose named relationship the class lacks are flagged; a built-in's override is not required in the map; a body API's attributes are not compared; with no passed file of the pinned hash, the API is listed as not compared, whatever is registered |
-| EA-001 | engine adapters | a map with no unit source is refused (`engine_map_invalid`) |
-| EA-002 | engine adapters | a map whose SHA-256 differs from its pin is refused |
+| RC-142 | record checks | Vesalius's `UsdPhysics` crosswalk validates and compares clean with usd-core 0.26.5's `usdPhysics` schema file, passed; a stage-check arm lists every version Vesalius released as held |
+| RC-143 | record checks | a crosswalk compared with its pinned schema file: an omitted attribute, an attribute the file does not define, a wrong type, different allowed tokens, an unlisted built-in API, a multiple-apply API and a body API whose named relationship the class lacks are flagged; a built-in's override is not required in the crosswalk; a body API's attributes are not compared; with no passed file of the pinned hash, the API is listed as not compared, whatever is registered |
+| EA-001 | engine adapters | a crosswalk with no unit source is refused (`engine_crosswalk_invalid`) |
+| EA-002 | engine adapters | a crosswalk whose SHA-256 differs from its pin is refused |
 | EA-003 | engine adapters | the adapter writes for every region of the model's `checked_over` domain, and for nothing else |
 | EA-004 | engine adapters | an `unknown` read not accepted refuses its region with its reasons; one accepted by a waiver is written; a table over an operating range gives `want_mismatch` |
 | EA-005 | engine adapters | an attribute with neither source is refused (`engine_attribute_unset`); a declared value for a sourced attribute is refused (`engine_value_sourced`); a declared `kPa` is refused (`request_unit_mismatch`); a token attribute takes its declared token, unconverted; a token outside `allowed_tokens` is refused (`engine_value_invalid`) |
-| EA-006 | engine adapters | a stage without `kilogramsPerUnit` is refused when an attribute's dimension includes mass, for a `stage` map and not for an `si` one |
-| EA-007 | engine adapters | the engine material is outside `/Materials/`, never on a Vesalius prim, applies every API its map lists by name, a built-in included, and authors every attribute of each |
+| EA-006 | engine adapters | a stage without `kilogramsPerUnit` is refused when an attribute's dimension includes mass, for a `stage` crosswalk and not for an `si` one |
+| EA-007 | engine adapters | the engine material is outside `/Materials/`, never on a Vesalius prim, applies every API its crosswalk lists by name, a built-in included, and authors every attribute of each |
 | EA-008 | engine adapters | every collider of a region is bound `physics` directly, with `MaterialBindingAPI` applied, and a body's named simulation prim |
-| EA-009 | engine adapters | the adapter's own output, a density read accepted by a waiver of its unstated temperature included, gives no item 5 to 8 report from the stage check, with its map held and with it not held |
+| EA-009 | engine adapters | the adapter's own output, a density read accepted by a waiver of its unstated temperature included, gives no item 5 to 8 report from the stage check, with its crosswalk held and with it not held |
 | EA-010 | engine adapters | a region under a foreign stronger `physics` binding, or with a foreign subset binding, is refused (`engine_binding_overridden`); a region inside an instance is refused (`engine_region_instanced`) |
-| EA-011 | engine adapters | a consumer's map that is not passed, that RC-140 flags, or that differs from its pinned schema file (RC-143) is refused (`engine_map_invalid`); with no passed file of the pinned hash it is written, whatever is registered |
+| EA-011 | engine adapters | a consumer's crosswalk that is not passed, that RC-140 flags, or that differs from its pinned schema file (RC-143) is refused (`engine_crosswalk_invalid`); with no passed file of the pinned hash it is written, whatever is registered |

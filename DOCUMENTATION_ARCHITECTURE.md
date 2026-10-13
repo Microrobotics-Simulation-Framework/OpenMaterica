@@ -191,7 +191,7 @@ Vesalius/
 │   │   ├── uncertainty.md             # statistics and what they represent; six structures; sampling
 │   │   ├── model_families.md          # what a family definition must fix; kind; check points; witnesses
 │   │   ├── fits_and_reference_data.md # fit records, reference data, the fit-reproduction rule
-│   │   ├── geometry.md                # scene documents: the plain scene manifest, layered paths, label mappings; regions, domains
+│   │   ├── geometry.md                # scene documents: the plain scene manifest, layered paths, label crosswalks; regions, domains
 │   │   ├── usd_binding.md             # USD schemas, envelope attributes, binding purpose, overlays, layered-path form, layers
 │   │   ├── read_side_contract.md      # what any reader must do, including when to refuse
 │   │   ├── mixing_rules.md            # identities; named rules picked by the consumer
@@ -304,7 +304,7 @@ The scope statement sits beside it in `intended_use.md`:
 >   interface record, when the source states the surface conditions and the test method, which become
 >   required conditions. A number measured with one tool or device is reference data for checking a model.
 > - **Geometry is scene data.** Vesalius defines how geometry binds to materials, and ships only small test
->   phantoms and label mappings from reference anatomies, never anatomy.
+>   phantoms and label crosswalks from reference anatomies, never anatomy.
 > - **Behaviour.** Behaviour computed from geometry and materials (an implant's heating in MRI, a puncture
 >   force) is the consumer's output; measured behaviour is reference data in the consumer's namespace.
 > - **Entry.** Content enters when a named consumer needs it, and the curated library starts with the
@@ -378,7 +378,7 @@ grant. Other publishers choose their own licences. This is a description, not le
 | Specification and read-side correctness | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite |
 | Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden vectors (section 6.4) |
 | Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
-| A consumer's own code inside its computation (readers, mixing rules and family evaluators in its step, compiled program or gradient path) | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance profiles it passes; the record's check points; the family's golden vectors |
+| A consumer's own code inside its computation (readers, mixing rules and family evaluators in its step, compiled program or gradient path) | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance suites it passes; the record's check points; the family's golden vectors |
 | Vesalius code a consumer runs at build (the reader, requirement checks, the material input sheet, label-volume fractions, the reference sampler) | Vesalius, assessed by the manufacturer as SOUP | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite; section 10 |
 | Choosing a material; declaring its domain, target, mixing rule, picks and any extrapolation; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
 | Watching, during a run, every declared condition that the run or an optimiser moves | downstream user | ASME V&V 40 | the run-time watches the build emits, and the evaluators' in-range outputs, recorded with the results |
@@ -414,8 +414,8 @@ binding and everything a reader must do, in prose and tables, independently of t
 | `uncertainty.md` | the statistics block; what each spread represents; `dispersion: not_reported`; relative and expanded uncertainty with a coverage factor; the basis "specification limits"; interval-only values, one-sided ones included; the six uncertainty structures, `marginals` among them (statistics per parameter, dependence not reported, never sampled jointly); admissibility; the sampling rules, including refusal |
 | `model_families.md` | the identifier form; the rule that a family enters `vesalius.` only when an in-scope record uses it; the `kind` field, stated per loading control, with every rate marked as an input or a test condition; input and output measures with conversion vectors; the domain of each term; the evolution form (state variables, input histories, events); events that say only where a family's range of states ends, never which model takes over, with chains declared by the consumer as pairs of family and record; what a family definition must fix (architecture draft section 4.5); coverage stated in measures that do not depend on the loading mode (principal stretches or invariants, and rate); check points in records, their coverage and the tolerance rule; independent convention witnesses and their tolerance, and a witness through a model of a test, which `vesalius check` reports as not checked; refusal on an unknown family or version or a failed check point |
 | `fits_and_reference_data.md` | the fit record, including "exactly determined"; coverage as a set of loading modes and ranges, with histories; a parameter set that is a mean of per-specimen fits, witnessed against per-specimen data or recorded "no independent witness"; the reference-data payload (points with their own origin and status; curves with a digitised flag and the digitiser's axis calibration); the fit-reproduction rule and "not checked" |
-| `geometry.md` | scene documents, which are scene data with their own schemas, not records: the plain scene manifest (regions with a material identifier, version and hash, a priority, an orientation and an opaque reference to their geometry; the background; domains as lists of region names; interface records bound to pairs of regions), layered paths (an entry point, a direction or curve, intervals with their thickness and material, the declared lateral homogeneity) and label mappings; a region's geometry; precedence declared by the scene, with no priority taken from hierarchy depth (two regions with no authored priority that claim one point are refused); a background that is inside every domain that requires it; every domain declared, none by default; an orientation wherever a direction-dependent value is used; label volumes; field overrides, their provenance and their frame (world, or the region's reference configuration) |
-| `usd_binding.md` | the API schemas; attribute names; a material prim's envelope as attributes (identifier, version, record type, content hash), since prim names carry no identity; each field's full plain form as one generated JSON string and nothing beside it; overlays as prims of their own (a relationship to the base material and the scope as a JSON string), applied only when a consumer declares them; no `UsdPhysics.MaterialAPI` on shipped layers; schemas detected by name in the composed `apiSchemas`, with no plug-in; instance proxies traversed, and unloaded payloads, point-instancer prototypes and time samples refused; the `vesalius` binding purpose, authored on the region prim, and the bindings a reader refuses (an all-purpose binding to a Vesalius material, a `vesalius` collection binding, a different `vesalius` binding on a non-region prim inside a region, a binding on a prim that is not a region); `physics` bindings left to engines; the region marker; the layered path's typed prim (one relationship to its distinct materials and an integer index per interval; thicknesses in the units of the layer that holds them); the stage check, per shape; the engine map, with Vesalius's one map (`UsdPhysics`), consumers' maps for other engines, each API pinned to its schema file, and the scaffold that drafts them; the engine adapter and the self-describing stamp it writes; library materials under a scope of their own, never `/Materials/<name>`; the stage's authored `metersPerUnit` |
+| `geometry.md` | scene documents, which are scene data with their own schemas, not records: the plain scene manifest (regions with a material identifier, version and hash, a priority, an orientation and an opaque reference to their geometry; the background; domains as lists of region names; interface records bound to pairs of regions), layered paths (an entry point, a direction or curve, intervals with their thickness and material, the declared lateral homogeneity) and label crosswalks; a region's geometry; precedence declared by the scene, with no priority taken from hierarchy depth (two regions with no authored priority that claim one point are refused); a background that is inside every domain that requires it; every domain declared, none by default; an orientation wherever a direction-dependent value is used; label volumes; field overrides, their provenance and their frame (world, or the region's reference configuration) |
+| `usd_binding.md` | the API schemas; attribute names; a material prim's envelope as attributes (identifier, version, record type, content hash), since prim names carry no identity; each field's full plain form as one generated JSON string and nothing beside it; overlays as prims of their own (a relationship to the base material and the scope as a JSON string), applied only when a consumer declares them; no `UsdPhysics.MaterialAPI` on shipped layers; schemas detected by name in the composed `apiSchemas`, with no plug-in; instance proxies traversed, and unloaded payloads, point-instancer prototypes and time samples refused; the `vesalius` binding purpose, authored on the region prim, and the bindings a reader refuses (an all-purpose binding to a Vesalius material, a `vesalius` collection binding, a different `vesalius` binding on a non-region prim inside a region, a binding on a prim that is not a region); `physics` bindings left to engines; the region marker; the layered path's typed prim (one relationship to its distinct materials and an integer index per interval; thicknesses in the units of the layer that holds them); the stage check, per shape; the engine crosswalk, with Vesalius's one crosswalk (`UsdPhysics`), consumers' crosswalks for other engines, each API pinned to its schema file, and the scaffold that drafts them; the engine adapter and the self-describing stamp it writes; library materials under a scope of their own, never `/Materials/<name>`; the stage's authored `metersPerUnit` |
 | `read_side_contract.md` | the read procedure (architecture draft section 7.5), in order, and every case in which a reader must refuse (an unknown token, a referenced record of an unknown type, an unauthored attribute, a value outside its range unless an extrapolation is declared); an unknown condition gives "unknown", never "present and unchecked"; what an evaluator reports (whether its condition is in range, and which side's derivative it gives at a table's interior knots; at a table's ends, the inside derivative only); verifying a content hash, which needs an RFC 8785 serialiser and SHA-256 beside the JSON parser |
 | `mixing_rules.md` | the identities, with the volume-fraction identity for density holding for spatial mixing only, not for solutions; the named rules, each with its equation, its assumptions and a numpy reference; fields with no general rule. Consumers write the rules in their own code (constraint 26) |
 | `declarations.md` | what a consumer declares (domains, targets, family versions, mixing rules, picks, tolerances with their reason and consequence, waivers, a specimen fact that implies a condition, an extrapolation with its basis, overlays it accepts, chains of families across events as pairs of family and record); the three results of a check (met, not met, unknown), an unknown carrying its value; the run-time watch emitted for every declared condition with its tolerance; an overlay's scope key (a hash of the consumer's whole model configuration), any difference being "not met" unless accepted; a field made trainable, marked "record value used only as the initial value"; a clamping evaluator, which needs a declared extrapolation or stops the run when its in-range flag falls; how declarations are recorded (architecture draft section 3.5) |
@@ -555,7 +555,7 @@ fields.
 | convention witness | yes for parameter sets taken from a source | a response the source reports, with its locator, that the parameters must reproduce, independent of how they were obtained (for a fit, a held-out datum), and which fit it is independent of; its tolerance taken from the fit's residual and the precision of the stated state, never from the spread between specimens; whether it tests the family alone or through a model of the test (architecture draft section 4.6; a witness through a model of a test counts for admission only if that model is itself a family with vectors); a parameter set that is a mean of per-specimen fits is witnessed against per-specimen data; without one, "no independent witness" and not admitted |
 | specimen | yes | the facts of the thing tested, per section or field: species and anatomical site as ontology identifiers (NCBI Taxonomy, UBERON), tissue state from a short list (in vivo, ex vivo fresh, frozen and thawed, fixed, phantom), disease and treatment state, preparation, preservation, donor age and shape; a fact the source does not state is recorded as a structured "unstated"; for a phantom or substitute, what its maker says it mimics |
 | tier | computed | shipped, reference-only or private, computed from the source's redistribution status in the registry, never written per value. A person sets the source's redistribution status and the record's review status; a record a model drafted stays reference-only until a person sets its review status |
-| evidence | yes for every value extracted from text or a table, in the curated library (its policy, checked by its own profile); optional in other namespaces | the verbatim quote, including any conditions and exponents it states, its locator, the identifier and version of the document, and the SHA-256 of the copy read. A hash identifies a copy, not a document: re-verifying means the quote occurs in your own copy. Copies stamped with personal data (a downloader's name or address) never ship. For a digitised figure, the locator and the hash. Quotes are not published for reference-only values. If the legal review rules that quotes may not ship, the record ships the SHA-256 of the normalised quote with its locator, the text stays in the curator's private store, and re-verifying compares hashes |
+| evidence | yes for every value extracted from text or a table, in the curated library (its policy, checked by its own CI, section 6.5); optional in other namespaces | the verbatim quote, including any conditions and exponents it states, its locator, the identifier and version of the document, and the SHA-256 of the copy read. A hash identifies a copy, not a document: re-verifying means the quote occurs in your own copy. Copies stamped with personal data (a downloader's name or address) never ship. For a digitised figure, the locator and the hash. Quotes are not published for reference-only values. If the legal review rules that quotes may not ship, the record ships the SHA-256 of the normalised quote with its locator, the text stays in the curator's private store, and re-verifying compares hashes |
 | statuses | yes | an explicit status ("not checked", "none") wherever a check or a field has no result, never an empty field; fields filled at import kept apart from fields filled at curation; per-parameter provenance where a parameter set's parameters come from different places |
 | assistance | yes when a model assisted | tool, model and provider as reported, prompt version (`VES-MTH-` entry and version), date |
 | search record | yes for statistics pooled across sources | queries, databases, date, inclusion criteria |
@@ -600,14 +600,13 @@ an identifier `VES-VER-[XXX]`.
 
 ### 6.1 Conformance suite (the read side)
 
-The cases are enumerated, one row each with its identifier, in the case table at the end of each
-specification document (`docs/specification/`, numbering in its `README.md`); that enumeration is the
-authoritative list. This section describes the suite by profile, and the architecture draft (section 7.4)
-refers to it. Each case is
-a data file with its expected answer, so a C++ or other reader can run it without Python; the Python reader
-runs them in CI. The cases are grouped into **profiles**, because no single reader needs all of them. A claim
-of conformance names the schema version and the profiles passed: a reader with only a JSON parser can claim
-"plain read" without running the USD cases.
+The cases are enumerated, one row each with its identifier, in the case table at the end of each specification
+document (`docs/specification/`, numbering in its `README.md`); that enumeration is the authoritative list.
+This section describes the cases suite by suite, and the architecture draft (section 7.4)
+refers to it. Each case is a data file with its expected answer, so a C++ or other reader can run it without
+Python; the Python reader runs them in CI. The cases are grouped into **suites**, because no single reader
+needs all of them. A claim of conformance names the schema version and the suites passed: a reader with only a
+JSON parser can claim "plain read" without running the USD cases.
 
 **Plain read**
 - a property at a point, a wavelength or a frequency; refusal to interpolate across an edge or outside a
@@ -682,12 +681,12 @@ of conformance names the schema version and the profiles passed: a reader with o
   stated grids, which also serve as the example phantoms.
 
 **Engine adapters**
-- engine maps pinned by hash and refused when not passed, without a source for their units, or when they
-  differ from the schema file they pin; Vesalius's `UsdPhysics` map equal to usd-core 0.26.5's schema file;
-  one conversion rule by SI dimension, with vectors in two unit systems; every API a map lists applied by name
-  and every attribute authored, from a read that is met or accepted or from a declared value; the stamp, which
-  re-derives without the map and is checked against its units; refusal of overridden bindings and instanced
-  regions.
+- engine crosswalks pinned by hash and refused when not passed, without a source for their units, or when they
+  differ from the schema file they pin; Vesalius's `UsdPhysics` crosswalk equal to usd-core 0.26.5's schema
+  file; one conversion rule by SI dimension, with vectors in two unit systems; every API a crosswalk lists
+  applied by name and every attribute authored, from a read that is met or accepted or from a declared value;
+  the stamp, which re-derives without the crosswalk and is checked against its units; refusal of overridden
+  bindings and instanced regions.
 
 **Build checks**
 - an engine model's engine results per shape: missing, foreign, stale and overridden engine materials refused,
@@ -774,8 +773,8 @@ its own policy checks below:
 | generated | USD layers, cards and the index equal what the records produce |
 | self-contained | shipped USD layers have no composition arcs and no asset paths |
 | units | every registered unit code parses as UCUM 2.2 with no special unit in a product or quotient |
-| stage (`--stage`) | on a scene: units, hashes and pins, and per engine shape its engine materials, effective density and stamp, re-derived and checked against its units, with the engine maps (`--map`) and schema files (`--schema`) passed to it and Vesalius's own maps; unrecognised APIs listed (`usd_binding.md` section 9) |
-| engine maps (`--map`) | a map document on its own: its shape, dimensions against its fields' units, and a comparison with the schema file it pins where a file of that hash is passed (`--schema`), else "not compared" (`usd_binding.md` section 10.1) |
+| stage (`--stage`) | on a scene: units, hashes and pins, and per engine shape its engine materials, effective density and stamp, re-derived and checked against its units, with the engine crosswalks (`--crosswalk`) and schema files (`--schema`) passed to it and Vesalius's own crosswalks; unrecognised APIs listed (`usd_binding.md` section 9) |
+| engine crosswalks (`--crosswalk`) | a crosswalk document on its own: its shape, dimensions against its fields' units, and a comparison with the schema file it pins where a file of that hash is passed (`--schema`), else "not compared" (`usd_binding.md` section 10.1) |
 | witness | parameter sets reproduce an independent convention witness; "no independent witness" and "not checked" are counted and reported; a witness through a model of a test, and a witness of a family outside `vesalius.`, are reported "not checked" |
 | fallbacks | physical attributes in the USD schema have no fallback values; shipped layers do not apply `UsdPhysics.MaterialAPI` |
 | tables | every table declares its interpolation scheme, its range and its edges; every form states its range |
@@ -1127,7 +1126,7 @@ CHANGELOG's Schema, Families, Data and Known Anomalies sections; rerun MIME's te
 
 **For a product on Isaac for Healthcare**: the same items, plus which reader they use (Vesalius's Python
 reader, or their own against the specification). An independent reader claims conformance to a schema
-version by naming the profiles of the conformance suite it passes (section 6.1).
+version by naming the conformance suites it passes (section 6.1).
 
 ---
 
@@ -1229,7 +1228,7 @@ README disclaimer.
 **Phase 1, with the first code:** the specification for each release's contents as it is built (architecture
 draft section 12.2): first the record format with namespaced identifiers, record types, values, provenance and
 required properties, then geometry (the plain scene manifest, layered paths with the helper that derives one
-from 3-D geometry, and label mappings; the first two with their USD forms), the USD binding, the stage check
+from 3-D geometry, and label crosswalks; the first two with their USD forms), the USD binding, the stage check
 and the engine adapter (all Vesalius 0.1, with no cut line; library tags made then are unpublished pins for
 MIME's spikes, not a library release); then uncertainty structures and model families (0.2); the conformance
 suite; the first family definition (architecture draft section 12.1, R5) with golden vectors and a reference

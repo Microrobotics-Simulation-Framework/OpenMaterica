@@ -1,7 +1,7 @@
 # Geometry
 
-Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Rationale: AD 3.5 (rule 3), 5.1 and
-5.2. The USD form of everything here is in `usd_binding.md`. A reader that claims the scene documents profile
+Schema 0.1.0, draft. Conventions, suites and case numbers: `README.md`. Rationale: AD 3.5 (rule 3), 5.1 and
+5.2. The USD form of everything here is in `usd_binding.md`. A reader that claims the scene documents suite
 (SC) offers the operations of section 2.
 
 ## 1. Scene documents
@@ -10,13 +10,13 @@ Schema 0.1.0, draft. Conventions, profiles and case numbers: `README.md`. Ration
    reader that lists records never lists it. [SC-001]
 2. Every scene document is one JSON object with `scene_schema_version` (`MAJOR.MINOR.PATCH`, read under the
    version rules of `record_format.md` section 8: before 1.0.0 a reader reads only its own minor version) and
-   `document_type`: `scene_manifest`, `layered_path` or `label_mapping`. A scene document that is not valid
+   `document_type`: `scene_manifest`, `layered_path` or `label_crosswalk`. A scene document that is not valid
    JSON, or not valid against the reader schema, gives `malformed` for every operation on it; one of another
    version gives `other_version`. Unknown members and tokens follow `record_format.md` section 10. [SC-002]
 3. A scene document refers to a record by a **material reference**: `{"id": "<namespace>/<local id>",
    "version": "1.2.0", "content_hash": "sha256:..."}`. A reader resolves it against the records it was given
    (a case file supplies them; `read_side_contract.md` section 1), compares the resolved record's stated hash
-   (and, with the hash profile, its recomputed hash) with the reference's, and refuses a difference
+   (and, with the hash suite, its recomputed hash) with the reference's, and refuses a difference
    (`pin_mismatch`), when no record with that identifier and
    version was given (`absent`), or when the record is of a type it cannot read (`unknown_type`). [SC-003]
 4. Lengths and coordinates in plain scene documents are in metres, in the scene's frame, right-handed.
@@ -37,7 +37,7 @@ Every operation returns a result as `read_side_contract.md` section 2 defines it
 | `in_domain(point, name)` | `true` or `false` (section 3.3) |
 | `intervals(path)` | the layered path's intervals in order, each with its start, end, thickness and material reference (section 4) |
 | `material_at(path, s)` | the material reference at distance `s` along the path (section 4) |
-| `label_material(mapping, number or name, anatomy)` | the material reference for a label (section 5) |
+| `label_material(crosswalk, number or name, anatomy)` | the material reference for a label (section 5) |
 
 A read of a field at a point resolves the point's material through `owner`, then reads the field as
 `read_side_contract.md` says. [SC-005]
@@ -135,7 +135,7 @@ their first consumer (AD 12.1, A1); a 0.1.0 reader gives `not_met` (`representat
 operation on a manifest that holds any of them, so a point they would claim is never read from a region
 instead. [SC-018] Their planned shapes:
 
-- a label volume is `{"name", "volume": <external reference>, "mapping": <label mapping, inline or as an
+- a label volume is `{"name", "volume": <external reference>, "crosswalk": <label crosswalk, inline or as an
   external reference>}`; [not yet covered]
 - a field override is a sampled table over space for one field: `{"field": "<section>.<field>", "unit",
   "volume": <external reference>, "frame", "conditions", "provenance", "statistics"}`, following the rules of
@@ -191,18 +191,18 @@ The five intervals are skin, fat, muscle, fat and skin: 2, 10, 15, 3 and 2 mm.
 5. A layered path may carry `provenance` for its thicknesses (an anatomical atlas, an image), under the rules
    of `provenance.md`. [not yet covered]
 
-## 5. Label mappings
+## 5. Label crosswalks
 
-1. A label mapping maps the labels of a reference anatomy to material references:
-   `{"scene_schema_version": "0.1.0", "document_type": "label_mapping", "anatomy": {"name", "version"},
-   "labels": {"5": {"material": {...}}, "6": {"material": {...}}}}`. `anatomy` names the segmenter or atlas,
-   and its version, whose label numbers the mapping uses. A label MAY also carry `name`, that vocabulary's own
-   name for it, and an `uberon` identifier. Names are unique within a mapping after Unicode case folding, and
-   never consist of digits only. [RC-097]
-2. `label_material` gives `not_met` (`label_unmapped`) for a label the mapping does not map. [SC-023]
+1. A label crosswalk maps the labels of a reference anatomy to material references: `{"scene_schema_version":
+   "0.1.0", "document_type": "label_crosswalk", "anatomy": {"name", "version"}, "labels": {"5": {"material":
+   {...}}, "6": {"material": {...}}}}`. `anatomy` names the segmenter or atlas, and its version, whose label
+   numbers the crosswalk uses. A label MAY also carry `name`, that vocabulary's own name for it, and an
+   `uberon` identifier. Names are unique within a crosswalk after Unicode case folding, and never consist of
+   digits only. [RC-097]
+2. `label_material` gives `not_met` (`label_unmapped`) for a label the crosswalk does not map. [SC-023]
 3. `label_material` takes a label's `number` or its `name`, never both (`request_incomplete`), and the
    `anatomy` (`{"name", "version"}`) the caller's labels come from. A name is matched exactly. An anatomy
-   other than the mapping's gives `not_met` (`anatomy_mismatch`), because label numbers and names belong to
+   other than the crosswalk's gives `not_met` (`anatomy_mismatch`), because label numbers and names belong to
    one segmenter or atlas. Tools such as Isaac for Healthcare's patient twin identify a structure by its
    segmenter's name, hence the name. Codes are never joined across vocabularies: TotalSegmentator's SNOMED
    mapping codes the liver 10200004, while UBERON's cross-reference for the liver is 181268008 (ecosystem
@@ -211,12 +211,12 @@ The five intervals are skin, fat, muscle, fat and skin: 2, 10, 15, 3 and 2 mm.
 ## 6. What is not represented in 0.1.0
 
 Thin structures thinner than a voxel (a shell with a thickness), orientation fields that vary in space, and
-domains that change during a run have no representation yet (AD 5.1, 13). Label mappings, interface bindings
+domains that change during a run have no representation yet (AD 5.1, 13). Label crosswalks, interface bindings
 and the representations of section 3.6 have no USD form in 0.1.0 (`usd_binding.md` section 8).
 
 ## Cases
 
-| Case | Profile | Tests |
+| Case | Suite | Tests |
 |---|---|---|
 | SC-001 | scene documents | a scene document is never listed as a record |
 | SC-002 | scene documents | `scene_schema_version` under the version rules; a malformed document gives `malformed` |
@@ -250,4 +250,4 @@ and the representations of section 3.6 have no USD form in 0.1.0 (`usd_binding.m
 | RC-094 | record checks | a non-unit quaternion or an unknown frame token flagged |
 | RC-095 | record checks | an interface binding that does not name two distinct regions flagged |
 | RC-096 | record checks | a non-unit direction or a non-positive thickness flagged |
-| RC-097 | record checks | a label mapping with malformed material references, two names that fold to one, or an all-digit name, flagged |
+| RC-097 | record checks | a label crosswalk with malformed material references, two names that fold to one, or an all-digit name, flagged |
