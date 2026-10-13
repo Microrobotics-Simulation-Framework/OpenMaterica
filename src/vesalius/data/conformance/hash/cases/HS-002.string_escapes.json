@@ -1,0 +1,24 @@
+{
+  "case": "HS-002",
+  "variant": "string_escapes",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "strings_canonical.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:3b690cd7eac1a5524ce7278e4ee2a6b12a1d0eb49f69fe4d69769bddc62b08f2"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

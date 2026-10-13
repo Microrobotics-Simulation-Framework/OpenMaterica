@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "provenance_arrays",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_provenance_arrays.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:5a250db2d3a246e941d5f4d01275bb7e6aa14f5bc94247c5837c8b57f6ca502e"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

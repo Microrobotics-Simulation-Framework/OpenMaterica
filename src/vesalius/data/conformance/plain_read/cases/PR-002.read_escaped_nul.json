@@ -1,0 +1,31 @@
+{
+  "case": "PR-002",
+  "variant": "read_escaped_nul",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_escaped_nul.json"
+    ]
+  },
+  "request": {
+    "operation": "list_records"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

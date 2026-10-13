@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/water_fixture",
+  "version": "1.0.0",
+  "name": "Water (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:f91ded117a6f372b65c8bb8ac0b5643cceb0e9948d229f50f27a643124a1457a",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": []
+}

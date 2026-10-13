@@ -1,0 +1,12 @@
+{
+  "field": {
+    "provenance": {
+      "origin": "measured_by_source",
+      "evidence": {"quote": "kept", "copy": {"sha256": "removed", "retrieved": "2026-10-13"}},
+      "per_parameter": {
+        "mu": {"origin": "fitted", "review": {"status": "not_checked"},
+               "nested": {"deeper": {"copy": 1, "review": 2, "kept": 3}}}
+      }
+    }
+  }
+}

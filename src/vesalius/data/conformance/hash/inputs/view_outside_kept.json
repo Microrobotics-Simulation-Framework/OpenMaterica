@@ -1,0 +1,7 @@
+{
+  "review": 1,
+  "copy": 2,
+  "field": {"review": 3, "copy": 4, "provenance": {"origin": "measured_by_source"}},
+  "evidence": {"copy": 5},
+  "list": [{"review": 6}]
+}

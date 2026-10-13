@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "names_exact",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_names_exact.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:a10dbe23fb7f12ca064dfe751eae1cbe71b01626d2551e3167420338c6eccb85"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

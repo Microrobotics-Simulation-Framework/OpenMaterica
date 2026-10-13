@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "provenance_members",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_provenance_members.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:1453fecaedf3e1be665f48583bd620a1c380b639f5c13ca4940152e6f5fd3786"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

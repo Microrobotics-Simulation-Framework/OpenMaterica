@@ -1,0 +1,31 @@
+{
+  "case": "PR-006",
+  "variant": "record_with_document_type_member_listed",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_with_document_type_member.json"
+    ]
+  },
+  "request": {
+    "operation": "list_records"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

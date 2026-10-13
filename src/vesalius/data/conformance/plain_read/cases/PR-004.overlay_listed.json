@@ -1,0 +1,31 @@
+{
+  "case": "PR-004",
+  "variant": "overlay_listed",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_overlay_fixture.json"
+    ]
+  },
+  "request": {
+    "operation": "list_records"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "id": "conformance/water_overlay_fixture",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

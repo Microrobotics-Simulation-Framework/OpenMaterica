@@ -1,0 +1,7 @@
+{
+  "\ue000": "U+E000, private use",
+  "\ud83d\ude00": "U+1F600, outside the BMP",
+  "\u00e9": "U+00E9",
+  "z": "ASCII",
+  "nested": {"\ue000": 1, "\ud83d\ude00": 2}
+}

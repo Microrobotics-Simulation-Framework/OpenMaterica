@@ -1,0 +1,53 @@
+{
+  "case": "PR-004",
+  "variant": "unknown_type_missing_body",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "unknown_type_missing_body.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/unknown_type_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:5ef858d7a581ea8063be38a868ad45d227a933e1778999998bbbd30a82175277"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "malformed"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

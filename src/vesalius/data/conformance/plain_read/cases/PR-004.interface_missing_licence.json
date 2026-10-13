@@ -1,0 +1,53 @@
+{
+  "case": "PR-004",
+  "variant": "interface_missing_licence",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "interface_missing_licence.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/interface_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:93559dbc919eab47fcc3f1711c3dd3cd087f8f86e79b5de678d3f6c6be57e6f1"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "malformed"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

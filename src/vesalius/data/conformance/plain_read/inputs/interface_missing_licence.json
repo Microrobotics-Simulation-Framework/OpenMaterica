@@ -1,0 +1,10 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "interface",
+  "id": "conformance/interface_fixture",
+  "version": "1.0.0",
+  "name": "Interface (conformance fixture)",
+  "content_hash": "sha256:93559dbc919eab47fcc3f1711c3dd3cd087f8f86e79b5de678d3f6c6be57e6f1",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {}
+}

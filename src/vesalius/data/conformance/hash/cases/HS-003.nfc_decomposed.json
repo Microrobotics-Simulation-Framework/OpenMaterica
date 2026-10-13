@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "nfc_decomposed",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "nfc_decomposed.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:87c4703f49335bbeed98ee5ee233a6d4d6bc7a5a99b45f081116dad2e1727c75"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

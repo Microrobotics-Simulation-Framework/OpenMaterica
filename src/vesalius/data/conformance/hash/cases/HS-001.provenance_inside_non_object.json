@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "provenance_inside_non_object",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_provenance_inside_non_object.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:85db855e7188e14789e3a457526cbdd8040a40891f38e3592b4ef95245ab21d4"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

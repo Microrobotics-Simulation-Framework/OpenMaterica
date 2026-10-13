@@ -1,0 +1,32 @@
+{
+  "case": "PR-006",
+  "variant": "id_only_object_not_listed",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "glycerol_fixture.json",
+      "source_id_only.json"
+    ]
+  },
+  "request": {
+    "operation": "list_records"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "id": "conformance/glycerol_fixture",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

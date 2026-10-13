@@ -1,0 +1,27 @@
+{
+  "case": "HS-003",
+  "variant": "malformed_depth_65",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "malformed_depth_65.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "malformed"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

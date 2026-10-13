@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "number_0_0000001",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "number_0_0000001.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:3a28f15de586a90e5f896f27e39cd7d7e4022dcccc3a795c373d64a52661987f"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/water_fixture_unknown_members",
+  "version": "1.0.0",
+  "name": "Water, members no 0.1.0 reader knows (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:739cebf66f04331be2e318c496f9f6cddc43223de8e02411ef26ca7db2ea51c8",
+  "card": "Conformance fixture: illustrative values, not a measurement.",
+  "body": {
+    "sections": {
+      "fluid": {
+        "fields": {
+          "dynamic_viscosity": {
+            "form": "constant",
+            "unit": "Pa.s",
+            "value": 0.000692,
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "shear_rate": {
+                "status": "unstated"
+              }
+            },
+            "statistics": {
+              "central": "stated",
+              "n_specimens": {
+                "status": "unstated"
+              },
+              "n_donors": {
+                "status": "not_applicable"
+              },
+              "mean": {
+                "status": "unstated"
+              },
+              "sd": {
+                "status": "unstated"
+              },
+              "min": {
+                "status": "unstated"
+              },
+              "max": {
+                "status": "unstated"
+              },
+              "distribution": {
+                "status": "unstated"
+              },
+              "basis": {
+                "status": "not_applicable"
+              },
+              "represents": {
+                "status": "unstated"
+              },
+              "dispersion": "not_reported",
+              "relative_uncertainty": {
+                "status": "unstated"
+              },
+              "expanded_uncertainty": {
+                "status": "unstated"
+              },
+              "fixture_unknown": 0.5
+            },
+            "provenance": {
+              "origin": "measured_by_source",
+              "source": {
+                "key": "conformance_fixture",
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture",
+                  "version": "version_of_record"
+                },
+                "locator": {
+                  "type": "text",
+                  "label": "Section 2"
+                }
+              },
+              "extraction": {
+                "method": "text",
+                "text_extraction": "pdftotext 24.02.0"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              },
+              "fixture_unknown": "kept: not review or copy"
+            },
+            "label": "vesalius.fluid.newtonian.v1",
+            "fixture_unknown": "kept"
+          }
+        },
+        "fixture_unknown": {
+          "a": 1
+        }
+      },
+      "fixture_section": {
+        "anything": {
+          "nested": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    "extensions": {
+      "conformance": {
+        "sections": {
+          "fixture": {
+            "fields": {}
+          }
+        }
+      }
+    },
+    "fixture_unknown": [
+      1,
+      2.5,
+      "three"
+    ]
+  },
+  "fixture_unknown": "a top-level member no reader of 0.1.0 knows"
+}

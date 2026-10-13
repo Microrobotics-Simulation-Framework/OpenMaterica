@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "interface",
+  "id": "conformance/water_fixture",
+  "version": "1.0.0",
+  "name": "Water id on an interface record (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:9340c67ad35068df5a3e08c057b24c2ffa0d2b5fdd7ad3a7ab555392086af233",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {}
+}

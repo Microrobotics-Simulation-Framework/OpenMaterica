@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "integer_1e20",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "number_integer_1e20.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:8e85c1241e1aebc42bf95fcc16c0fef8b6d1de48d57f31096b9a7be664c2cebb"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

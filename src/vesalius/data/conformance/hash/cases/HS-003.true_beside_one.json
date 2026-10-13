@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "true_beside_one",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "true_beside_one.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:337156436b49a0acd05e31dd0af372fdc4469efa3b818074d34bad70fe641a4a"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

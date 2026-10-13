@@ -1,0 +1,30 @@
+{
+  "case": "PR-330",
+  "variant": "not_object_array",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ]
+  },
+  "request": [
+    "target",
+    "requirement"
+  ],
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "request_incomplete"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

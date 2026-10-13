@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "overlay",
+  "id": "conformance/water_overlay_fixture",
+  "version": "1.0.0",
+  "name": "Water viscosity overlay (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:4db25d7a190d5a825d02f3003dfae47a0660cc77ec592b4050ebe080cf46987d",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "purpose": "measurement",
+    "base": {
+      "id": "conformance/water_fixture",
+      "version": "1.0.0",
+      "content_hash": "sha256:f0216df7e6d753390e2f8a185f3aa553ec5c9435c2a97fa70de5a82388dde5d6"
+    },
+    "scope": {
+      "consumer": "conformance"
+    }
+  }
+}

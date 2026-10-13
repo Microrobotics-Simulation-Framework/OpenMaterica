@@ -1,0 +1,7 @@
+{
+  "c\u0061rd": "removed: this name is card",
+  "content_h\u0061sh": "removed: this name is content_hash",
+  "provenance": {"rev\u0069ew": 1, "\u0063opy": 2, "origin": "measured_by_source"},
+  "field": {"pr\u006fvenance": {"review": 3, "origin": "measured_by_source"}},
+  "kept": "kept"
+}

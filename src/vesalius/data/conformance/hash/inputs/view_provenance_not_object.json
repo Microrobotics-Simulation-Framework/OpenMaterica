@@ -1,0 +1,7 @@
+{
+  "a": {"provenance": [{"review": 1, "copy": 2}]},
+  "b": {"provenance": "review"},
+  "c": {"provenance": 0},
+  "d": {"provenance": true},
+  "e": {"provenance": null}
+}

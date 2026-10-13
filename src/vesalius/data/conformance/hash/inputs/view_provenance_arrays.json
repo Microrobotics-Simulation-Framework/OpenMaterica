@@ -1,0 +1,11 @@
+{
+  "provenance": {
+    "points": [
+      {"review": 1, "kept": 1},
+      [{"copy": 2, "kept": 2}],
+      [[{"review": 3, "copy": 3}]],
+      "review",
+      {"inner": [{"review": 4, "kept": 4}]}
+    ]
+  }
+}

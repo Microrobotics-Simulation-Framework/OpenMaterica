@@ -1,0 +1,5 @@
+{
+  "provenance": {"review": 1, "kept": 1},
+  "items": [{"provenance": {"copy": 2, "kept": 2}}],
+  "unknown_member": {"deeper": {"provenance": {"review": 3, "kept": 3}}}
+}

@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "outside_kept",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_outside_kept.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:d463dc0de0a85655f41f5807daa170cb25652e94c8fc18b0102dad356ffdcf4f"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

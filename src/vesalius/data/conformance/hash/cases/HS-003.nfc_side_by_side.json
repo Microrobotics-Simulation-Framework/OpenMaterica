@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "nfc_side_by_side",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "nfc_side_by_side.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:1bfd06eec903f697df01906d44f11684909e43e3051377ec9d5b05cce890e2b4"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

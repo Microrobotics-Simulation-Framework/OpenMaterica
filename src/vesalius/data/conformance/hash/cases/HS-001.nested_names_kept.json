@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "nested_names_kept",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_nested_names_kept.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:3aa89daf675dbb26469e5125ee502878a1fdcc058bc9fa0db9d9afb1fe27a3d2"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

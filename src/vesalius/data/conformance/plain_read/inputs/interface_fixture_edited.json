@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "interface",
+  "id": "conformance/interface_fixture",
+  "version": "1.0.0",
+  "name": "Interface, edited (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:0e3447fa8fc26a6f664b0d52e6a36b7f77af5459f3bbb756bfa18be89d58342c",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {}
+}

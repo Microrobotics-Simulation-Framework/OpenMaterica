@@ -1,0 +1,62 @@
+{
+  "crosswalk_schema_version": "0.1.0",
+  "document_type": "engine_crosswalk",
+  "id": "conformance/fixture_engine",
+  "version": "1.0.0",
+  "engine": {
+    "name": "conformance fixture engine",
+    "version": "1.0.0"
+  },
+  "units": {
+    "convention": "si",
+    "source": {
+      "type": "text",
+      "label": "Section 1",
+      "document": {
+        "identifier": "https://example.org/conformance-fixture-engine/docs",
+        "version": "1.0.0"
+      }
+    }
+  },
+  "material_apis": [
+    {
+      "name": "FixtureMaterialAPI",
+      "schema": {
+        "sha256": "0a0b5fddecb60ca4763aa4f3cf03053cff6f85c1efbfcdb84a9ae49b83418df5",
+        "doc": {
+          "type": "text",
+          "label": "generatedSchema.usda",
+          "document": {
+            "identifier": "https://example.org/conformance-fixture-engine/plugin",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "attributes": [
+        {
+          "name": "fixture:density",
+          "type": "double",
+          "dimension": {
+            "kg": 1,
+            "m": -3
+          },
+          "source": {
+            "field": "bulk.density"
+          },
+          "doc": {
+            "type": "text",
+            "label": "Section 2",
+            "document": {
+              "identifier": "https://example.org/conformance-fixture-engine/docs",
+              "version": "1.0.0"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "body_apis": [],
+  "namespaces": [
+    "fixture"
+  ]
+}

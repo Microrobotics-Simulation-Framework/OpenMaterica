@@ -1,0 +1,24 @@
+{
+  "case": "HS-002",
+  "variant": "material_table",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "water_density_fixture.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:665355a1e06ec452cea266c3b264ba6321a35ffd0d7ad09943bc3fe94e1d06e1"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

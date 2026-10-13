@@ -1,0 +1,56 @@
+{
+  "case": "PR-301",
+  "variant": "want_suite_and_incomplete_with_fd",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "fits_and_reference_data": true
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:f0216df7e6d753390e2f8a185f3aa553ec5c9435c2a97fa70de5a82388dde5d6"
+      },
+      "field": "a.b.c"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "fit",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "request_incomplete"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

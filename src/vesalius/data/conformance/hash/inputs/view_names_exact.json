@@ -1,0 +1,8 @@
+{
+  "Card": 1,
+  "content-hash": 2,
+  "Content_Hash": 3,
+  "provenance": {"Review": 4, "COPY": 5, "reviews": 6, "copy_": 7, "review ": 8,
+                 "origin": "measured_by_source"},
+  "Provenance": {"review": 9, "copy": 10}
+}

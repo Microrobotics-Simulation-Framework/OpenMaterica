@@ -1,0 +1,61 @@
+{
+  "case": "HS-010",
+  "variant": "member_added",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "claims": {
+    "hash": true
+  },
+  "inputs": {
+    "records": [
+      "water_fixture_member_added.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:fc78d4e93238ba60696509d0ff8ddf27997b21185cfe75505b01dea15076c5f7"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "hash_mismatch"
+      },
+      {
+        "code": "pin_mismatch"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "labels"
+    ]
+  }
+}

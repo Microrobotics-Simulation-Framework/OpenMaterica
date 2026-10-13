@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "sample_batch",
+  "id": "conformance/unknown_type_fixture",
+  "version": "1.0.0",
+  "name": "Unknown type (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:5ef858d7a581ea8063be38a868ad45d227a933e1778999998bbbd30a82175277",
+  "card": "conformance fixture: illustrative values, not a measurement"
+}

@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "provenance_anywhere",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_provenance_anywhere.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:1ea5b6abcd4743c0ebf5a4373b52a2ad16b64ce4769d1cc9b73243a4f9361939"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

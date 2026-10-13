@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "conformance:sample_batch",
+  "id": "conformance/namespaced_type_fixture",
+  "version": "1.0.0",
+  "name": "Namespaced type (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:958f0368b2d19ca5b9ceed68a665e35fa54e9d4b4680cc60039457971f87b550",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {}
+}

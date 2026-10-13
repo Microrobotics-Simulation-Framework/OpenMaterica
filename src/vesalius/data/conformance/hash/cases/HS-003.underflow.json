@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "underflow",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "number_underflow.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:9bd107cb8de199bc878203f422a52808d013cb67b5fd8b57abad79f22b4d4007"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

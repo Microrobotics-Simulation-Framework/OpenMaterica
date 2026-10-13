@@ -1,0 +1,2 @@
+# Conformance inputs are byte-exact (docs/specification/README.md, "Case files"): never convert them.
+src/vesalius/data/conformance/** -text

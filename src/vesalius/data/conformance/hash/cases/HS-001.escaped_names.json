@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "escaped_names",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_escaped_names.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:33ebe517a2ab5572c9acb780c65825ea305e1233f4d1b06fe2bac8bdde7f8a93"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

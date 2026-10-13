@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "top_level_array",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_top_level_array.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:1a6b81a1584352ef69f510d270b2e5727aae82c291710e8304a51095e352969f"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

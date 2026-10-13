@@ -1,0 +1,46 @@
+{
+  "case": "PR-006",
+  "variant": "all_sources",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_fixture.json",
+      "glycerol_fixture.json",
+      "water_overlay_fixture.json",
+      "interface_fixture.json",
+      "unknown_type_fixture.json",
+      "namespaced_type_fixture.json",
+      "scene_manifest_fixture.json",
+      "engine_crosswalk_fixture.json"
+    ]
+  },
+  "request": {
+    "operation": "list_records"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0"
+      },
+      {
+        "id": "conformance/glycerol_fixture",
+        "version": "1.0.0"
+      },
+      {
+        "id": "conformance/water_overlay_fixture",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

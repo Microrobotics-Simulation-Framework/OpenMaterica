@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "largest_double",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "number_largest_double.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:f32207f77b481f587ac6ba1a5d229c7f99769a2fc0ca1ce8a636b6c6358dae4b"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

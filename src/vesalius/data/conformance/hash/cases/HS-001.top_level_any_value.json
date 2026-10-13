@@ -1,0 +1,24 @@
+{
+  "case": "HS-001",
+  "variant": "top_level_any_value",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "view_top_level_any_value.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:e1f0e2072252f6ba7e4afcf0bdb43c78cf4db448a9aa762d57d48de1f2105999"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

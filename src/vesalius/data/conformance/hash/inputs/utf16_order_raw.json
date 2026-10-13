@@ -1,0 +1,7 @@
+{
+  "": "U+E000, private use",
+  "😀": "U+1F600, outside the BMP",
+  "é": "U+00E9",
+  "z": "ASCII",
+  "nested": {"": 1, "😀": 2}
+}

@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "depth_64",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "depth_64.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:0b0418289037b5470b55e9358deab336516ca80767a7c02c602a4b518c6f1b2b"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

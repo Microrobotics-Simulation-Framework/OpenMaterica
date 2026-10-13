@@ -1,0 +1,53 @@
+{
+  "case": "PR-331",
+  "variant": "malformed_once_step3",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "unknown_type_two_envelope_faults.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/unknown_type_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:4bad4e97f30058f38ef3dec41cc2ef94fa4bbb025f35e06f396507b848d877b5"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "malformed"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}
