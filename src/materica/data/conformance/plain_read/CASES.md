@@ -401,7 +401,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-330
 
-`read_side_contract.md`: `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list)
+`read_side_contract.md`: `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list)
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -425,6 +425,7 @@ See `README.md` beside this file for how to read a case.
 | `not_object_array` | step 0 refuses: the request is an array | 0 | not_met; `request_incomplete` |
 | `not_object_string` | step 0 refuses: the request is a string | 0 | not_met; `request_incomplete` |
 | `operating_conditions_not_object` | step 0 refuses: operating_conditions an array (and no requirement conditions, so no tolerance lacks its operating condition) | 0 | not_met; `request_incomplete` |
+| `operating_conditions_not_object_beside_tolerance` | step 0 refuses: operating_conditions an array, beside a temperature tolerance: the member's own `request_incomplete`, and one with the condition temperature, which has no operating entry | 0 | not_met; `request_incomplete`, `request_incomplete (temperature)` |
 | `operating_entry_not_object` | step 0 refuses: operating temperature the number 310.15 | 0 | not_met; `request_incomplete (temperature)` |
 | `operating_unit_missing` | step 0 refuses: operating temperature without `unit` | 0 | not_met; `request_incomplete (temperature)` |
 | `operating_value_and_range` | step 0 refuses: operating temperature with both value and range (unit K) | 0 | not_met; `request_incomplete (temperature)` |
