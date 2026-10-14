@@ -1,0 +1,48 @@
+{
+  "case": "PR-036",
+  "variant": "reference_data_on_magnetic_saturation_magnetisation",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "form_reference_data_on_magnetic_saturation_magnetisation.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:64bbba636ff2eb818411d142c04d209b9fe33d5863ea6373616aeeeb23334e12"
+      },
+      "field": "magnetic.saturation_magnetisation"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

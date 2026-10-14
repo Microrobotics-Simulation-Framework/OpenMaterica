@@ -1,0 +1,49 @@
+{
+  "case": "PR-318",
+  "variant": "value_on_evidence",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:2a12336d06de71e00dfc1071b55b2d11e43caac0885570e2bdde35af97ab72e3"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "want_mismatch"
+      }
+    ],
+    "conditions": [],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "case": "PR-301",
+  "variant": "two_refusals_step_8",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_unknown_token_and_negative_sd.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:cb6d1aa23db1b4c734438345f2bc30ab63ed4f11777915fa67cf7123bebf61f4"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "unknown_token"
+      },
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/water_fixture",
+  "version": "1.0.0",
+  "name": "Water (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:9a72bdb6399bce004716214d233142a29226effb1be6fdae21198d08cf888764",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "fluid": {
+        "fields": {
+          "dynamic_viscosity": {
+            "alternatives": []
+          }
+        }
+      }
+    }
+  }
+}

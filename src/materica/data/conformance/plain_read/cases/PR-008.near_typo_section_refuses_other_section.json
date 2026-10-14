@@ -1,0 +1,67 @@
+{
+  "case": "PR-008",
+  "variant": "near_typo_section_refuses_other_section",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_near_typo_section_fluids_with_bulk.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:e70847fadce9747bf7952b8976848a52ed6ffb503e59947ab1f9e4b671b66ec4"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

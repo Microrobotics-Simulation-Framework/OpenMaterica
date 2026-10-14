@@ -1,0 +1,48 @@
+{
+  "case": "PR-036",
+  "variant": "composition_basis_volume_fraction",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "composition_composition_basis_volume_fraction.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/composition_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:7d51eb5bb02a96d84c4bb48cba679a94d302ec376993d948f9447fc2516eb089"
+      },
+      "field": "bulk.elemental_composition"
+    },
+    "requirement": {
+      "want": "components"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

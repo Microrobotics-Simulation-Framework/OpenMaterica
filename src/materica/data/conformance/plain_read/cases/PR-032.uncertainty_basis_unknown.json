@@ -1,0 +1,62 @@
+{
+  "case": "PR-032",
+  "variant": "uncertainty_basis_unknown",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_token_uncertainty_basis_unknown.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:6b2400ee4c89c7f79c2c8afbf93ff00817b9765ff16ac12f0e9f2576ce23703b"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "unknown_token"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

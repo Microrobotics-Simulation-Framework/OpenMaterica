@@ -99,6 +99,10 @@ See `README.md` beside this file for how to read a case.
 | `read_nesting_64` | a record nested exactly 64 deep is listed | listing | met; lists `conformance/water_fixture` 1.0.0 |
 | `read_noncharacter` | a record whose name holds U+FFFE, raw, is listed | listing | met; lists `conformance/water_fixture` 1.0.0 |
 | `read_noncharacter_escaped` | a record whose name holds the escape \ufdd0 is listed | listing | met; lists `conformance/water_fixture` 1.0.0 |
+| `read_value_escaped_nul` | the water record whose name holds an escaped U+0000 is read to the value: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `read_value_nesting_64` | the water record with an unknown top-level member nested exactly 64 deep is read to the value: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `read_value_noncharacter` | the water record whose name holds U+FFFE, raw is read to the value: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `read_value_noncharacter_escaped` | the water record whose name holds the escape \ufdd0 is read to the value: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `record_type_not_string` | target's record with `record_type` a number | 3 | not_met; `malformed` |
 | `sections_missing` | target's record with a material body without `sections` | 3 | not_met; `malformed` |
 | `sections_not_object` | target's record with `sections` an array | 3 | not_met; `malformed` |
@@ -116,6 +120,15 @@ See `README.md` beside this file for how to read a case.
 | `version_leading_zero` | target's record with `version` "01.0.0", the target naming the same | 3 | not_met; `malformed` |
 | `version_not_string` | target's record with `version` a number | 1 | not_met; `malformed` |
 | `version_off_pattern` | target's record with `version` "1.0", the target naming "1.0" | 3 | not_met; `malformed` |
+
+## PR-003
+
+`record_format.md`: an absent field has no value
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `field_absent_from_section` | the glycerol record holds `bulk` without `elemental_composition`; that field is read: `absent` | 7 | not_met; `absent`; labels none |
+| `section_absent` | the glycerol record holds no `fluid` section; `fluid.dynamic_viscosity` is read: `absent` | 7 | not_met; `absent`; labels none |
 
 ## PR-004
 
@@ -138,6 +151,15 @@ See `README.md` beside this file for how to read a case.
 | `overlay_missing_schema_version` | target's record of type 'overlay' without `schema_version` | 2 | not_met; `malformed` |
 | `overlay_scope_model_complete_listed` | control: a `fit` overlay whose `scope.model` has a string `name` and `version` (and a member no document defines), with a string `model_configuration_hash`, passes step 3 and is listed | listing | met; lists `conformance/water_overlay_fixture` 1.0.0 |
 | `unknown_type_missing_body` | target's record of type 'sample_batch' without `body` (refused before step 5's type check) | 3 | not_met; `malformed` |
+
+## PR-005
+
+`record_format.md`: an unknown top-level member is ignored; one that is one slip from an envelope member (`crad`) refuses every field read from the record (`form_invalid`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `near_typo_crad` | `crad`, one slip from `card`, in place of it: every field read from the record is refused (`form_invalid`, at step 8) | 8 | not_met; `form_invalid`; labels none |
+| `unknown_top_level_member_read` | an unknown top-level member, `curation_note`, more than one slip from every envelope member, is ignored: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 
 ## PR-006
 
@@ -170,6 +192,91 @@ See `README.md` beside this file for how to read a case.
 | `record_type_capitalised` | target's record has record_type "Material" (not `material`): unknown_type | 5 | not_met; `unknown_type` |
 | `unknown_type` | target's record has record_type "sample_batch": unknown_type | 5 | not_met; `unknown_type` |
 
+## PR-008
+
+`record_format.md`: a record with an unknown section is read for the sections the reader knows, whatever the unknown section holds (`null`, a number, an object); a section whose name is one slip from a known section's (`fluids`) refuses every field read from the record (`form_invalid`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `near_typo_section_fluids` | a section `fluids`, one slip from `fluid`, beside it: `fluid.dynamic_viscosity` is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_section_refuses_other_section` | a section `fluids` beside `fluid` and a good `bulk`: `bulk.density` is refused too (`form_invalid`), since the slip refuses every field read from the record | 8 | not_met; `form_invalid`; labels none |
+| `unknown_section_null` | an unknown section, `rheology`, holding `null`, is skipped and `fluid` is read: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `unknown_section_number` | an unknown section, `rheology`, holding a number, is skipped and `fluid` is read: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `unknown_section_object` | an unknown section, `rheology`, holding an object holding a field of an unknown form, is skipped and `fluid` is read: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-009
+
+`record_format.md`: a field's specimen fact overrides its section's
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `field_fact_overrides_section` | the section states `preparation` and `lot`, the field `preparation` and `supply_form`: the field's `preparation` wins, and `lot` and `supply_form`, each stated on one side only, are both returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `field_status_overrides_section_fact` | the section states a `lot`, the field holds `lot` as `{"status": "not_applicable"}`: the field's status object is returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-010
+
+`record_format.md`: a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `evidence_unit_status_with_reason` | evidence whose unit holds `not_applicable` with a `reason`: equal to the registered unit, `met` | 13 | met; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}, {"endpoint": "sensitisation", "standard": {"designation": "ISO 10993-10", "year": 2010.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable", "reason": "a list of reports has no unit"}`; labels none |
+| `evidence_unit_string` | evidence whose `unit` is the string `1` where a status object is registered: `unit_mismatch` at step 9 | 9 | not_met; `unit_mismatch`; labels none |
+| `field_unit_escaped` | the viscosity's unit written `\u0050a.s`, which decodes to `Pa.s`: the water answer, unit `Pa.s` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `field_unit_kg_m_minus_3` | the density's unit `kg.m-3` for `kg/m3`: `unit_mismatch`, no condition, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
+| `field_unit_lowercase` | the viscosity's unit `pa.s`: `unit_mismatch`, no condition, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
+| `field_unit_number` | the viscosity's unit is the number 1, neither a string nor a status object: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `field_unit_space` | the viscosity's unit `Pa s`: `unit_mismatch`, no condition, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
+| `field_unit_status_object` | the viscosity's unit a status object (`not_applicable`) where `Pa.s` is registered: `unit_mismatch`, no condition, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
+| `field_unit_unknown_status_token` | the viscosity's unit a status object whose token the reader does not know: `unit_mismatch`, no condition, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
+
+## PR-013
+
+`record_format.md`: alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `grade_interval_and_lot_constant_bounds` | a grade's specification limits beside a lot's constant, both met, under `want: bounds` and no pick: `no_pick`, neither set aside for its form; each entry holds its form's member as stored | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"status": "not_applicable"}}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "specification_limits", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": 1210.0, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"text": "conformance fixture lot 1", "basis": "stated"}}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
+| `grade_interval_and_lot_constant_components` | the same under `want: components`, which neither form gives: `not_met` (`want_mismatch`) in place of `no_pick` (`conditions` not compared: whether the result holds them is open) | 7 | not_met; `want_mismatch`; labels none |
+| `grade_interval_and_lot_constant_value` | a grade's specification limits beside a lot's constant, both met, under `want: value` and no pick: `no_pick`, neither set aside for its form; each entry holds its form's member as stored | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"status": "not_applicable"}}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "specification_limits", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": 1210.0, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"text": "conformance fixture lot 1", "basis": "stated"}}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
+| `two_constants_no_pick` | two constant alternatives whose conditions are both met, and no pick: `unknown` (`no_pick`), one `alternative_values` entry each, in stored order, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own | 13 | unknown; `no_pick`; unit `"Pa.s"`; alternative_values `[{"alternative": 0.0, "value": 0.000692, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.15, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}, {"alternative": 1.0, "value": 0.000695, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.65, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}]`; labels none |
+
+## PR-014
+
+`record_format.md`: every form carries its range
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `constant_range_is_conditions_met` | a constant whose conditions are met is read: `met`, and no range reason from step 11 | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `constant_range_is_conditions_outside` | a constant read at 330 K, its stated temperature 310.15 K with a 1 K tolerance: its range is its conditions, so `condition_outside` (temperature), and step 11 adds nothing | 10 | not_met; `condition_outside (temperature)`; labels none |
+
+## PR-015
+
+`record_format.md`: a constant is returned with its conditions
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `constant_with_conditions` | a constant is returned with its conditions: the value, and one entry each for temperature and shear rate, with the record's entry and the operating condition | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-022
+
+`record_format.md`: an interval returns its bounds with their basis, a one-sided one included
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `bounds_one_sided_lower_none` | `want: bounds` on a one-sided interval, `lower` `{"status": "none"}` and upper 1250 kg/m3: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": {"status": "none"}, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+| `bounds_one_sided_upper_none` | `want: bounds` on a one-sided interval, lower 1150 kg/m3 and `upper` `{"status": "none"}`: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": 1150.0, "upper": {"status": "none"}, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+| `bounds_reported_range` | `want: bounds` on a reported range [1180, 1220]: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": 1180.0, "upper": 1220.0, "basis": "reported_range"}`; unit `"kg/m3"`; labels none |
+| `bounds_specification_limits` | `want: bounds` on the specification limits [1150, 1250] kg/m3: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+
+## PR-023
+
+`record_format.md`: a composition is returned as stored, its basis, sum rule and stated sum included, never normalised
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `components_partial` | `want: components` on a partial mass-fraction composition of three elements: `met`, returned as stored, never normalised | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "partial", "components": [{"component": "element:H", "fraction": 0.11}, {"component": "element:O", "fraction": 0.75}, {"component": "element:C", "fraction": 0.12}]}`; unit `"1"`; labels none |
+| `components_stated_sum` | `want: components` on a composition stated to sum to one whose fractions sum to 1.02, with `stated_sum` 1.02: `met`, returned as stored, never normalised | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "sums_to_one", "components": [{"component": "element:H", "fraction": 0.12}, {"component": "element:O", "fraction": 0.78}, {"component": "element:C", "fraction": 0.12}], "stated_sum": 1.02}`; unit `"1"`; labels none |
+
 ## PR-026
 
 `record_format.md`: before 1.0.0, a record of another minor version is refused (`other_version`)
@@ -191,6 +298,176 @@ See `README.md` beside this file for how to read a case.
 | `major_1_1_0` | target's record of schema "1.1.0" | 2 | not_met; `other_version` |
 | `major_2_0_0` | target's record of schema "2.0.0" | 2 | not_met; `other_version` |
 
+## PR-030
+
+`record_format.md`: an unknown member inside a field is ignored; one that is one slip from a member named at its place refuses the field (`form_invalid`): a field's `specimne`, and in a section's `specimen` a fact `tissue_stat`, which refuses each field read from the section; one inside a `review` reads it as `{"status": "not_checked"}`, and one inside `extraction` refuses nothing
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `near_typo_field_specimne` | the field holds `specimne`, one slip from `specimen`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_in_extraction` | `extraction` holds `source_units`, one slip from `source_unit`; step 8 does not check `extraction`, so nothing is refused: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `near_typo_in_review` | the review holds `reasons` beside `reason`, one slip from it: the review reads as `{"status": "not_checked"}`, and the field is read | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `near_typo_section_fact_tissue_stat` | the section's `specimen` holds a fact `tissue_stat`, one slip from `tissue_state`: each field read from the section is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `unknown_member_in_condition` | an unknown member, `curation_note`, in the temperature condition is ignored and not returned: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `unknown_member_in_fact` | an unknown member, `curation_note`, in a specimen fact is ignored and not returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `unknown_member_in_field` | an unknown member, `curation_note`, in the value field is ignored and not returned: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `unknown_member_in_statistics` | an unknown member, `curation_note`, in the statistics block is ignored and not returned: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-031
+
+`record_format.md`: an unknown condition name gives `unknown`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `condition_name_one_slip_unknown` | the record holds a condition `temprature`, one slip from `temperature`, beside it; a condition name is never ignored, so the slip rule does not refuse it: `unknown` (`condition_unknown_name`), with the value; its entry has no `record` | 13 | unknown; `condition_unknown_name (temprature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `unknown_condition_name` | the record holds a condition `humidity`, a name the reader does not know: `unknown` (`condition_unknown_name`), with the value; its entry has no `record` | 13 | unknown; `condition_unknown_name (humidity)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-032
+
+`record_format.md`: an unknown token in an enumerated member refuses the field only (`unknown_token`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `central_unknown` | the statistics block's `central` holds `mode`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `composition_basis_unknown` | a composition with the basis `weight_fraction`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `condition_token_unknown` | the condition `density_kind` holds `porous`, a token the reader does not know: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `dispersion_unknown` | the statistics block's `dispersion` holds `estimated`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `distribution_unknown` | the statistics block's `distribution` holds `weibull`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `fact_token_unknown` | a field fact `tissue_state` holds `cultured`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `interval_basis_unknown` | the interval's `basis` `measured_range`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `origin_unknown` | the provenance's `origin` holds `estimated`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `represents_unknown` | the statistics block's `represents` holds `sample`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `set_or_measured_unknown` | the temperature's `set_or_measured` holds `nominal`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `stated_as_unknown` | a `plus_minus` entry's `stated_as` holds `half_range`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `statistics_basis_unknown` | the statistics block's `basis` holds `reported_iqr`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `status_token_unknown` | the statistics block's `sd` holds the status token `pending`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `sum_rule_unknown` | a composition with the sum rule `approximate`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `uncertainty_basis_unknown` | a relative uncertainty's `basis` holds `vendor_claim`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+
+## PR-033
+
+`record_format.md`: a record with one unknown token is not malformed; its other fields are read
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `field_with_unknown_token_refused` | the same record's `bulk.density`, holding the unknown token, is refused (`unknown_token`) | 8 | not_met; `unknown_token`; labels none |
+| `other_field_unknown_token_read` | the record's `bulk.density` holds an unknown token; `fluid.dynamic_viscosity` is read: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-034
+
+`record_format.md`: `extensions` is ignored, whatever its members hold
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `extensions_ignored` | `extensions` holds a field of an unknown form and a `null` unit; nothing inside it is checked: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `extensions_near_typo_ignored` | `extensions` holds a section `fluids` and a member `specimne`, each one slip from a known name; nothing inside it is checked: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-035
+
+`record_format.md`: a label is returned with the value and never refused as an unknown family
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `label_returned_with_value` | the Newtonian label is returned with the value, and never refused as an unknown family | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `linear_label_returned` | a volume susceptibility constant with the linear magnetic label: `met`, the label returned with the value | 13 | met; value `0.0005`; unit `"1"`; labels `materica.magnetic.linear.v1` |
+
+## PR-036
+
+`record_format.md`: a form the field's row does not allow is refused (`form_not_registered`): a power law, a parameter set and reference data on every 0.1.0 field, a parameter set also `family_suite_absent` without the family evaluation suite; a composition basis the row does not allow
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `composition_basis_mole_fraction` | a composition with the basis `mole_fraction`, which the row does not allow: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `composition_basis_volume_fraction` | a composition with the basis `volume_fraction`, which the row does not allow: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `composition_on_density` | a well-formed composition on `bulk.density`, whose row allows a constant, a table or an interval: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `interval_on_elemental_composition` | a well-formed interval on `bulk.elemental_composition`, whose row allows only a composition: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `parameter_set_on_biocompatibility_evidence` | a well-formed `parameter_set` on `biocompatibility.evidence`, whose row does not allow it: `form_not_registered`, and `family_suite_absent` for a reader without the family evaluation suite | 8 | not_met; `form_not_registered`, `family_suite_absent`; labels none; claims `family_evaluation: false` |
+| `parameter_set_on_bulk_density` | a well-formed `parameter_set` on `bulk.density`, whose row does not allow it: `form_not_registered`, and `family_suite_absent` for a reader without the family evaluation suite | 8 | not_met; `form_not_registered`, `family_suite_absent`; labels none; claims `family_evaluation: false` |
+| `parameter_set_on_bulk_elemental_composition` | a well-formed `parameter_set` on `bulk.elemental_composition`, whose row does not allow it: `form_not_registered`, and `family_suite_absent` for a reader without the family evaluation suite | 8 | not_met; `form_not_registered`, `family_suite_absent`; labels none; claims `family_evaluation: false` |
+| `parameter_set_on_fluid_dynamic_viscosity` | a well-formed `parameter_set` on `fluid.dynamic_viscosity`, whose row does not allow it: `form_not_registered`, and `family_suite_absent` for a reader without the family evaluation suite | 8 | not_met; `form_not_registered`, `family_suite_absent`; labels none; claims `family_evaluation: false` |
+| `parameter_set_on_magnetic_remanence` | a well-formed `parameter_set` on `magnetic.remanence`, whose row does not allow it: `form_not_registered`, and `family_suite_absent` for a reader without the family evaluation suite | 8 | not_met; `form_not_registered`, `family_suite_absent`; labels none; claims `family_evaluation: false` |
+| `parameter_set_on_magnetic_saturation_magnetisation` | a well-formed `parameter_set` on `magnetic.saturation_magnetisation`, whose row does not allow it: `form_not_registered`, and `family_suite_absent` for a reader without the family evaluation suite | 8 | not_met; `form_not_registered`, `family_suite_absent`; labels none; claims `family_evaluation: false` |
+| `parameter_set_on_magnetic_volume_susceptibility` | a well-formed `parameter_set` on `magnetic.volume_susceptibility`, whose row does not allow it: `form_not_registered`, and `family_suite_absent` for a reader without the family evaluation suite | 8 | not_met; `form_not_registered`, `family_suite_absent`; labels none; claims `family_evaluation: false` |
+| `power_law_on_biocompatibility_evidence` | a well-formed `power_law` on `biocompatibility.evidence`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `power_law_on_bulk_density` | a well-formed `power_law` on `bulk.density`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `power_law_on_bulk_elemental_composition` | a well-formed `power_law` on `bulk.elemental_composition`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `power_law_on_fluid_dynamic_viscosity` | a well-formed `power_law` on `fluid.dynamic_viscosity`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `power_law_on_magnetic_remanence` | a well-formed `power_law` on `magnetic.remanence`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `power_law_on_magnetic_saturation_magnetisation` | a well-formed `power_law` on `magnetic.saturation_magnetisation`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `power_law_on_magnetic_volume_susceptibility` | a well-formed `power_law` on `magnetic.volume_susceptibility`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `reference_data_on_biocompatibility_evidence` | a well-formed `reference_data` on `biocompatibility.evidence`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `reference_data_on_bulk_density` | a well-formed `reference_data` on `bulk.density`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `reference_data_on_bulk_elemental_composition` | a well-formed `reference_data` on `bulk.elemental_composition`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `reference_data_on_fluid_dynamic_viscosity` | a well-formed `reference_data` on `fluid.dynamic_viscosity`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `reference_data_on_magnetic_remanence` | a well-formed `reference_data` on `magnetic.remanence`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `reference_data_on_magnetic_saturation_magnetisation` | a well-formed `reference_data` on `magnetic.saturation_magnetisation`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `reference_data_on_magnetic_volume_susceptibility` | a well-formed `reference_data` on `magnetic.volume_susceptibility`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+
+## PR-037
+
+`record_format.md`: an `axis_unit`, condition unit or `plus_minus` unit other than the registered one is refused (`unit_mismatch`), compared code point for code point, and so is a `unit` on a token condition
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `condition_unit_celsius` | the temperature is 37 `Cel`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `condition_unit_escaped_k` | the temperature's unit written `\u004B`, which decodes to `K`: read, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `condition_unit_kelvin_sign` | the temperature's unit is U+212A KELVIN SIGN, not the letter `K`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `condition_unit_s_minus_1` | the shear rate's unit is `s-1`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (shear_rate)`; labels none |
+| `condition_unit_status_object` | the temperature's unit is a status object where `K` is registered: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `plus_minus_unit` | the temperature's `plus_minus` entry is in `Cel`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `unit_on_token_condition` | the token condition `density_kind` carries a `unit`; a token condition registers none: `unit_mismatch` (density_kind) | 9 | not_met; `unit_mismatch (density_kind)`; labels none |
+
+## PR-038
+
+`record_format.md`: biocompatibility evidence is returned as a list of reports
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `evidence_list` | `want: evidence` on a list of two reports: `met`, the list as stored | 13 | met; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}, {"endpoint": "sensitisation", "standard": {"designation": "ISO 10993-10", "year": 2010.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+
+## PR-043
+
+`record_format.md`: the form tokens are exactly the eight listed
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `form_token_of_another_member` | the field's `form` is `normal`, a token the reader knows for `distribution` only: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `ninth_form_token` | the field's `form` is `spline`, a ninth form token: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+
+## PR-044
+
+`record_format.md`: alternatives whose conditions are not met are set aside; all set aside gives `not_met`; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `alternatives_beside_form` | `alternatives` sits beside `form`: the field is refused (`form_invalid`, at step 7) | 7 | not_met; `form_invalid`; labels none |
+| `alternatives_empty` | `alternatives` is an empty list: the field is refused (`form_invalid`, at step 7) | 7 | not_met; `form_invalid`; labels none |
+| `alternatives_not_list` | `alternatives` is a value field, not a list: the field is refused (`form_invalid`, at step 7) | 7 | not_met; `form_invalid`; labels none |
+
+## PR-045
+
+`record_format.md`: a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `field_fault_other_field_read` | the record's `bulk.density` holds its value as a string; `fluid.dynamic_viscosity` is read: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `field_fault_refuses_that_field` | the same record's `bulk.density`, whose value is a string, is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `section_specimen_fault_other_section_read` | the same record's `bulk.density`, in a section whose `specimen` is sound, is read: `met` | 13 | met; value `1261.0`; unit `"kg/m3"`; labels none |
+| `section_specimen_fault_refuses_section` | the `fluid` section's `specimen` holds `preparation` as a string, not its object: `fluid.dynamic_viscosity` is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+
+## PR-047
+
+`record_format.md`: numbers read as the nearest double, ties to even, compared exactly: `9007199254740993` as `9007199254740992`; `1e-400` as `0`; `-1e-400` as `-0`, not `0`; `3e-324` as `5e-324`; `2.4703282292062327e-324` as `0`; `1.7976931348623158e308` as the largest double
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `half_smallest_subnormal_to_zero` | the value written `2.4703282292062327e-324` is read as the double nearest it, `0.0`, compared bit for bit | 13 | unknown; `condition_unstated (shear_rate)`; value `0.0`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `integer_beyond_2_53` | the value written `9007199254740993` is read as the double nearest it, `9007199254740992`, compared bit for bit | 13 | unknown; `condition_unstated (shear_rate)`; value `9007199254740992.0`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `largest_double` | the value written `1.7976931348623158e308` is read as the double nearest it, `1.7976931348623157e+308`, compared bit for bit | 13 | unknown; `condition_unstated (shear_rate)`; value `1.7976931348623157e+308`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `negative_underflow_to_minus_zero` | the value written `-1e-400` is read as the double nearest it, `-0.0`, compared bit for bit | 13 | unknown; `condition_unstated (shear_rate)`; value `-0.0`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `subnormal_rounds_up` | the value written `3e-324` is read as the double nearest it, `5e-324`, compared bit for bit | 13 | unknown; `condition_unstated (shear_rate)`; value `5e-324`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `underflow_to_zero` | the value written `1e-400` is read as the double nearest it, `0.0`, compared bit for bit | 13 | unknown; `condition_unstated (shear_rate)`; value `0.0`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
 ## PR-048
 
 `record_format.md`: a record whose `schema_version` is absent, not a string, or does not match the pattern (`"0.1"`, `"0.1.0-rc1"`, `"00.1.0"`, `"0.1.0 "`, `"0.1.0\n"`, Arabic-Indic digits) is malformed; a major or minor component of a hundred digits gives `other_version`, not a crash; `0.1.7` is read by a 0.1 reader
@@ -208,6 +485,7 @@ See `README.md` beside this file for how to read a case.
 | `not_string_number` | target's record with `schema_version` the number 0.1: malformed | 2 | not_met; `malformed` |
 | `other_version_before_envelope` | target's record of schema 0.2.0 that also lacks `name`: other_version at step 2, not malformed | 2 | not_met; `other_version` |
 | `patch_0_1_7_listed` | a record of schema 0.1.7 is listed by a 0.1 reader | listing | met; lists `conformance/water_fixture` 1.0.0 |
+| `patch_0_1_7_read` | a record of schema 0.1.7 is read by a 0.1 reader, to the value: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `patch_100_digits_listed` | a record of schema 0.1.<100-digit patch> is listed (any patch is read) | listing | met; lists `conformance/water_fixture` 1.0.0 |
 | `pre_release` | target's record with "0.1.0-rc1": malformed | 2 | not_met; `malformed` |
 | `trailing_newline` | target's record with "0.1.0\n": malformed | 2 | not_met; `malformed` |
@@ -222,7 +500,9 @@ See `README.md` beside this file for how to read a case.
 |---|---|---|---|
 | `body_null` | target's record with "body": null in the envelope or body structure | 3 | not_met; `malformed` |
 | `card_null` | target's record with "card": null in the envelope or body structure | 3 | not_met; `malformed` |
+| `condition_value_null` | the temperature's `"value": null` inside the value field, in a member step 8 checks: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `extensions_null` | target's record with "extensions": null in the envelope or body structure | 3 | not_met; `malformed` |
+| `extraction_null` | `"extraction": null`, a member step 8 does not check: nothing is refused, the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `fields_null` | target's record with fluid "fields": null in the envelope or body structure | 3 | not_met; `malformed` |
 | `known_section_null` | target's record with the known section "fluid": null in the envelope or body structure | 3 | not_met; `malformed` |
 | `licence_evidence_null` | target's record with licence "evidence": null | 3 | not_met; `malformed` |
@@ -242,7 +522,262 @@ See `README.md` beside this file for how to read a case.
 | `overlay_scope_run_null` | target's record is the overlay with purpose `fit` and `scope.run`: null: its body structure is refused (step 3) | 3 | not_met; `malformed` |
 | `record_type_null` | target's record with "record_type": null in the envelope or body structure | 3 | not_met; `malformed` |
 | `sections_null` | target's record with "sections": null in the envelope or body structure | 3 | not_met; `malformed` |
+| `statistics_sd_null` | the statistics block's `"sd": null` inside the value field, in a member step 8 checks: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `unit_null` | `"unit": null` inside the value field, in a member step 8 checks: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `unknown_member_in_field_null` | an unknown member `curation_note` holding `null` inside the field: nothing is refused, the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_top_level_member_null_listed` | a record holding null in a top-level member the reader does not know passes step 3 and is listed | listing | met; lists `conformance/water_fixture` 1.0.0 |
+| `unknown_top_level_member_null_read` | an unknown top-level member holding `null` is ignored, to the value: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-050
+
+`record_format.md`: an interval with `lower` above `upper` is refused (`form_invalid`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `both_none` | both bounds `{"status": "none"}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `lower_above_upper` | `lower` 1250 above `upper` 1150: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `lower_equals_upper` | `lower` equal to `upper`, [1200, 1200]: in order, read, `met` | 13 | met; value `{"lower": 1200.0, "upper": 1200.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+
+## PR-051
+
+`record_format.md`: a composition with a repeated component, a fraction outside [0, 1] or no component is refused (`form_invalid`); `element:Xx` is refused (`unknown_token`); a component's own statistics block is checked and returned as the field's is
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `component_of_another_kind` | a composition with the component `water`, of another kind than `element:`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `component_statistics_broken` | a composition with a component whose statistics block holds a negative `sd`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `component_statistics_returned` | a component carrying its own statistics block: checked and returned with the components, `met` | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "partial", "components": [{"component": "element:H", "fraction": 0.11, "statistics": {"central": "mean", "n_specimens": 3.0, "n_donors": {"status": "not_applicable"}, "mean": 0.11, "sd": 0.01, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": "reported_sd", "represents": "measurement", "dispersion": "reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}, "precision_conditions": "repeatability"}}, {"component": "element:O", "fraction": 0.75}]}`; unit `"1"`; labels none |
+| `element_xx` | a composition with `element:Xx`, a symbol not in the table: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `fraction_above_one` | a composition with a fraction of 1.5: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `fraction_below_zero` | a composition with a fraction of -0.1: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `fractions_zero_and_one` | fractions of exactly 1 and 0: checked and returned with the components, `met` | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "sums_to_one", "components": [{"component": "element:Fe", "fraction": 1.0}, {"component": "element:C", "fraction": 0.0}]}`; unit `"1"`; labels none |
+| `no_component` | a composition with no component: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `repeated_component` | a composition with `element:H` twice: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+
+## PR-052
+
+`record_format.md`: an evidence list with some entries withheld gives `unknown` (`entries_withheld`), each withheld entry returned with its statuses; with every entry withheld, `withheld`; an empty list, a registered condition in its `conditions`, an entry withholding some of its members but not every one but `provenance`, `form_invalid`; an entry member holding `unstated` or `not_applicable` is returned with its status
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `empty_list` | evidence with an empty list: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `entry_member_missing` | evidence with a report without `processing`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `entry_member_not_applicable` | a report whose `processing` holds `not_applicable`: `met`, the member returned with its status | 13 | met; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": {"status": "not_applicable"}, "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+| `entry_member_unstated` | a report whose `contact_duration` holds `unstated`: `met`, the member returned with its status | 13 | met; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": {"status": "unstated"}, "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+| `entry_partly_withheld` | evidence with a report withholding `reported_result` and nothing else: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `every_entry_withheld` | every report withheld: `withheld`, at step 8 | 8 | not_met; `withheld`; labels none |
+| `evidence_status_object` | evidence with `evidence` holding `{"status": "withheld"}` in place of the list: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `registered_condition_in_conditions` | evidence with a registered condition, `temperature`, in its `conditions`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `some_entries_withheld` | one of two reports withheld whole, its provenance kept: `unknown` (`entries_withheld`), the list returned with the withheld report's statuses | 13 | unknown; `entries_withheld`; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}, {"endpoint": {"status": "withheld"}, "standard": {"status": "withheld"}, "contact_category": {"status": "withheld"}, "contact_duration": {"status": "withheld"}, "material_form": {"status": "withheld"}, "processing": {"status": "withheld"}, "reported_result": {"status": "withheld"}, "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}, "recipe": {"locator": {"type": "table", "label": "Table 3"}, "steps": "conformance fixture: illustrative extraction steps"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+| `standard_year_not_whole` | evidence with a report whose `standard.year` is 2009.5: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `unknown_condition_name` | the evidence's `conditions` hold `humidity`, a name the reader does not know: `unknown` (`condition_unknown_name`), with the list | 13 | unknown; `condition_unknown_name (humidity)`; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}, {"endpoint": "sensitisation", "standard": {"designation": "ISO 10993-10", "year": 2010.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+
+## PR-053
+
+`record_format.md`: a missing label is not refused; a label the reader knows that the row does not name for the field and its form refuses the field (`form_invalid`), and one it does not know refuses it too (`unknown_token`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `label_not_named_for_field` | the density carries the Newtonian label, which the reader knows and the density's row does not name: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `linear_label_on_viscosity` | the viscosity constant carries the linear magnetic label, which the reader knows and the viscosity's row does not name: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `missing_label_not_refused` | the viscosity constant carries no label: not refused at read; the water answer with no label | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels none |
+| `newtonian_label_on_interval` | a viscosity interval carries the Newtonian label, which the row names only on a constant or a table: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `unknown_label` | the viscosity constant carries `materica.fluid.bingham.v1`, a label the reader does not know: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+
+## PR-100
+
+`provenance.md`: a status is returned as a status, never as a value or a pass
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `interval_none_returned` | an interval's `upper` holding `{"status": "none"}` is returned as that status object | 13 | met; value `{"lower": 1150.0, "upper": {"status": "none"}, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+| `statuses_returned` | the statistics block holds `n_specimens` as `unstated`, with a reason, and `sd` as `none`: both are returned as status objects, as stored | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-101
+
+`provenance.md`: an `import` lead is never reported as the source
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `import_beside_source` | the provenance holds a `source` and an `import` lead: the result's `source` is the source's key, never the lead | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `import_never_source` | the provenance holds an `import` lead and no `source`: the result's provenance names no source | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-102
+
+`provenance.md`: a derived value returns its derivation's `method`, `inputs` and `assumptions`, its inputs' specimen facts and its mixed-conditions flag, with the label `mixed_conditions` where the flag is true; a derivation that breaks the shapes of section 5 refuses the field (`form_invalid`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `derivation_assumptions_not_list` | a derived viscosity with `assumptions` a string: the derivation breaks section 5's shapes (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `derivation_input_field_not_string` | a derived viscosity with an input whose `field` is a number: the derivation breaks section 5's shapes (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `derivation_input_specimen_index_out_of_range` | a derived viscosity with an `input_specimens` entry whose `input` is 2, with two inputs: the derivation breaks section 5's shapes (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `derivation_inputs_empty` | a derived viscosity with `inputs` an empty list: the derivation breaks section 5's shapes (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `derivation_missing` | a derived viscosity with origin `derived` with no `derivation`: the derivation breaks section 5's shapes (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `derivation_mixed_not_boolean` | a derived viscosity with `mixed_conditions` the string `yes`: the derivation breaks section 5's shapes (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `derived_mixed_false` | a derived viscosity whose derivation holds its method, two inputs, an assumption and the inputs' specimens, with `mixed_conditions` false: returned, and no `mixed_conditions` label | 13 | unknown; `condition_unstated (shear_rate)`; value `0.0011`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `derived_returns_derivation` | a derived viscosity whose derivation holds its method, two inputs, an assumption and the inputs' specimens, with `mixed_conditions` true: the derivation is returned whole, and the label `mixed_conditions` added | 13 | unknown; `condition_unstated (shear_rate)`; value `0.0011`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1`, `mixed_conditions` |
+| `derived_without_mixed` | a derived viscosity whose derivation holds its method, two inputs, an assumption and the inputs' specimens, without `mixed_conditions`: returned without it, and no `mixed_conditions` label | 13 | unknown; `condition_unstated (shear_rate)`; value `0.0011`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-103
+
+`provenance.md`: an unknown condition name gives `unknown`; an unknown condition token refuses the field
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `unknown_condition_name` | the density holds a condition `pressure`, a name the reader does not know: `unknown` (`condition_unknown_name`), with the value | 13 | unknown; `condition_unknown_name (pressure)`; value `1261.0`; unit `"kg/m3"`; labels none |
+| `unknown_condition_token` | the condition `density_kind` holds `porous`, a token the reader does not know: the field is refused (`unknown_token`) | 8 | not_met; `unknown_token`; labels none |
+
+## PR-104
+
+`provenance.md`: a check against an unstated condition gives `unknown`, carrying the value
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `unstated_condition_carries_value` | the shear rate is `unstated`: `unknown` (`condition_unstated`), carrying the value | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-105
+
+`provenance.md`: a withheld value is refused (`withheld`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `withheld_value` | a reference-only value: its `value` and `statistics` hold `withheld`: `withheld` | 8 | not_met; `withheld`; labels none |
+| `withheld_value_with_reason` | a reference-only value: its `value` and `statistics` hold `withheld`, the value's status object with a `reason`: `withheld` | 8 | not_met; `withheld`; labels none |
+
+## PR-108
+
+`provenance.md`: `plus_minus` and `set_or_measured` are returned with the condition; a list with two entries of one kind, an unstated entry beside another, a negative value or an empty list refuses the field (`form_invalid`), and so does `plus_minsu` beside a condition's `value`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `empty_list` | the temperature's `plus_minus` holds an empty list: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_plus_minsu` | the temperature holds `plus_minsu`, one slip from `plus_minus`, beside its `value`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `negative_value` | the temperature's `plus_minus` holds a bound of -0.25 K: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `plus_minus_and_set_or_measured_returned` | the temperature holds `plus_minus` (a bound of 0.25 K, within the 1 K tolerance) and `set_or_measured` `set_point`: `met`, both returned in the entry's `record` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `two_entries_one_kind` | the temperature's `plus_minus` holds two `bound` entries: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `unstated_beside_another` | the temperature's `plus_minus` holds an entry of unstated kind beside an `sd` entry: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+
+## PR-109
+
+`provenance.md`: a provenance member a read does not check, broken or `null` (`"extraction": null`), does not refuse the field, nor does a `source` broken beyond its `key`, while a `source` missing where the origin is `measured_by_source` does (`form_invalid`); a `review` that is `null`, absent or not an object, holds both `status` and `result`, holds a status token other than `not_checked`, holds an unknown `result` token, or holds a member one slip from one a review names (`reviewr`) reads as `{"status": "not_checked"}`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `extraction_broken` | `extraction` is a string, not its object; a read does not check it: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_absent` | the `review` is absent: never refused; it reads as `{"status": "not_checked"}` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_near_typo_reviewr` | the `review` is `reviewr`, one slip from `reviewer`: never refused; it reads as `{"status": "not_checked"}` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_not_object` | the `review` is a string: never refused; it reads as `{"status": "not_checked"}` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_null` | the `review` is `null`: never refused; it reads as `{"status": "not_checked"}` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_reviewed_not_refused` | the `review` holds the known `result` `reviewed`: not refused (the result's `provenance` is not compared: whether it holds the token or the review as found is open) | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_status_and_result` | the `review` is both `status` and `result`: never refused; it reads as `{"status": "not_checked"}` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_status_none` | the `review` is the status token `none`: never refused; it reads as `{"status": "not_checked"}` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `review_unknown_result` | the `review` is a `result` token the reader does not know (`approved`): never refused; it reads as `{"status": "not_checked"}` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `source_broken_beyond_key` | the `source` holds a string `key`, but its `document` is a string and its `locator` a number: not refused; the result's `source` is the key | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `source_key_not_string` | a `source` whose `key` is a number: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `source_missing_measured_by_source` | origin `measured_by_source` with no `source`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `source_not_object` | a `source` that is a string: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+
+## PR-110
+
+`provenance.md`: an object holding `status` beside a member of the shape it stands in for refuses the field (a condition's `unit` or `basis`), and so does one beside any member but `reason` where that shape is a number, string or token (an interval's `upper`, a statistics `sd`, a `unit` on evidence); beside an unknown member of an object shape it is a status object; a status token its row does not allow refuses the field (`form_invalid`: a constant's `value` holding `unstated`, an `interval` holding `none`), and so does a `status` or `reason` that is not a string; none of these refuses in a member step 8 does not check (`assistance` holding `unstated`); a `status` member where no status object is allowed is a member the reader does not know; a `status` key in `conditions` names a condition (`condition_unknown_name`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `assistance_unstated_not_refused` | `assistance` holds `unstated`, a token its row does not allow, in a member step 8 does not check: nothing is refused | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `condition_status_beside_basis` | the shear rate holds `{"status": "unstated", "basis": "stated"}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `condition_status_beside_unit` | the shear rate holds `{"status": "unstated", "unit": "1/s"}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `constant_value_unstated` | the constant's `value` holds `{"status": "unstated"}`, a token its row does not allow: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `evidence_unit_status_beside_other_member` | evidence with the unit `{"status": "not_applicable", "note": ...}`, a status object beside another member: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `interval_member_none` | the form's member `interval` holding `{"status": "none"}`, a token its row does not allow: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `interval_upper_status_beside_other_member` | `upper` holding `{"status": "none", "note": ...}`, a status object beside a member where a number belongs: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `reason_not_string` | the shear rate holds `{"status": "unstated", "reason": 5}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `sd_status_beside_other_member` | the statistics `sd` holds `{"status": "none", "note": ...}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `status_beside_unknown_member_of_object` | the shear rate holds `status` `unstated` beside an unknown member, `curation_note`: a status object, so `condition_unstated`, its entry's `record` without the unknown member | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `status_key_in_conditions` | `conditions` holds a key `status`: it names a condition the reader does not know (`condition_unknown_name`), never a status | 13 | unknown; `condition_unknown_name (status)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `status_member_where_none_allowed` | the `source` object, where no status object may stand, holds a member `status` beside its `key`: a member the reader does not know, so the source is read and its key returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `status_not_string` | `n_specimens` holds `{"status": 3}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+
+## PR-150
+
+`uncertainty.md`: `represents` is returned with the spread; a population spread is never offered as an estimate's
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `represents_population_returned` | a block whose `sd` is a population spread (`represents: population`, between specimens) is returned with its `represents` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-151
+
+`uncertainty.md`: `dispersion: not_reported` is returned as stated, never as zero spread
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `not_reported_returned` | the water block's `dispersion: not_reported` is returned as stated | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-152
+
+`uncertainty.md`: specification limits are returned with their basis, never as a population spread
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `specification_limits_returned` | a block whose `min` and `max` are specification limits (`basis: specification_limits`) is returned with that basis | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-153
+
+`uncertainty.md`: relative and expanded uncertainties are returned as stored, every member unconverted
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `uncertainties_unconverted` | a relative uncertainty (k = 2, normal) and an expanded one (p = 0.95, Student t with 8 degrees of freedom) are returned as stored, unconverted | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-154
+
+`uncertainty.md`: an unknown distribution token refuses the field (`unknown_token`), in the block or in an uncertainty, and so does a token known only for another member (`bulk`); a known one the member does not allow (`student_t` or `uniform` in the block) refuses it as `form_invalid`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `distribution_token_of_another_member` | the block's `distribution` holds `bulk`, a token known only for another member: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `distribution_unknown_in_block` | the block's `distribution` holds `weibull`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `distribution_unknown_in_uncertainty` | a relative uncertainty's `distribution` holds `weibull`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `student_t_in_block` | the block's `distribution` holds `student_t`, which only an uncertainty's allows: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `uniform_in_block` | the block's `distribution` holds `uniform`, a token the reader knows for a declared distribution: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+
+## PR-155
+
+`uncertainty.md`: each uncertainty's `represents`, `basis` and `precision_conditions` are returned with it; a block with a population `sd` and a measurement uncertainty returns both meanings; an unknown token in an uncertainty refuses the field
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `population_sd_and_measurement_uncertainty` | a block with a population `sd` and a relative uncertainty that `represents` a measurement, with its `basis` and `precision_conditions`: both meanings are returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `uncertainty_represents_unknown` | a relative uncertainty's `represents` holds `sample`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+
+## PR-156
+
+`uncertainty.md`: `population_level` and `n_sources` are returned with the block
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `n_sources_returned` | a block pooled across five sources (`represents: across_sources`) returns `n_sources` as stored | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `population_level_returned` | a population block taken over specimens within one donor returns `population_level` as stored | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-158
+
+`uncertainty.md`: a statistics member missing or of the wrong shape, an uncertainty with neither coverage factor nor probability a number, a conditional member present where its `represents` does not call for it, or missing where it does, a known token the member does not allow (`reported_uncertainty` in the block's `basis`), a negative `sd`, a coverage factor of 0, a coverage probability of 1.5, and a count that is not whole, each refuse the field (`form_invalid`); a `dof` of 7.5 does not
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `conditional_member_missing` | `represents: population` with no `population_level`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `conditional_member_present_elsewhere` | `population_level` beside `represents` `unstated`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `count_negative` | `n_specimens` of -1: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `count_not_whole` | `n_specimens` of 12.5: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `coverage_factor_zero` | a coverage factor of 0: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `coverage_probability_above_one` | a coverage probability of 1.5: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `dof_beside_normal` | a `dof` of 8 under `distribution: normal`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `dof_not_whole_read` | an expanded uncertainty under `student_t` with a `dof` of 7.5, not whole: not refused | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `member_missing` | the block has no `dispersion`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `member_wrong_shape` | the block's `sd` is a string: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `reported_uncertainty_in_block_basis` | the block's `basis` holds `reported_uncertainty`, which only an uncertainty's allows: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `sd_negative` | a negative `sd`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `uncertainty_no_coverage_number` | a relative uncertainty with neither `coverage_factor` nor `coverage_probability` a number: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 
 ## PR-300
 
@@ -250,11 +785,16 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `conditions_not_object` | `conditions` is an array: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
+| `field_array` | the field is an array, not an object: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
+| `field_not_object` | the field is a number, not an object: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
+| `field_null` | the field is `null`, not an object: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
 | `no_records` | no records supplied at all: a result (absent), no error | 1 | not_met; `absent` |
 | `record_binary_bytes` | the only source is binary bytes: a result (malformed), no error | 1 | not_met; `malformed` |
 | `record_empty_file` | the only source is an empty file: a result (malformed), no error | 1 | not_met; `malformed` |
 | `request_empty_file` | the request file is empty: a result (request_incomplete), no error | 0 | not_met; `request_incomplete` |
 | `request_nesting_100000` | a request nested 100000 deep: a result (request_incomplete), no error | 0 | not_met; `request_incomplete` |
+| `statistics_string` | `statistics` is a string: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
 
 ## PR-301
 
@@ -270,8 +810,41 @@ See `README.md` beside this file for how to read a case.
 | `step2_ends_read` | the same record pinned by its own hash: only other_version (step 2), not malformed | 2 | not_met; `other_version` |
 | `three_codes_step0` | want coverage without the suite, a negative tolerance, shear_rate in 1/min: all three reported | 0 | not_met; `want_mismatch`, `request_incomplete (temperature)`, `request_unit_mismatch (shear_rate)`; claims `fits_and_reference_data: false` |
 | `three_codes_step0_with_fd` | as `three_codes_step0`, the suite claimed: no want_mismatch, the other two reported | 0 | not_met; `request_incomplete (temperature)`, `request_unit_mismatch (shear_rate)`; claims `fits_and_reference_data: true` |
+| `two_refusals_step_8` | an unknown `central` token and a negative `sd`: step 8 makes all its checks, `unknown_token` and `form_invalid` | 8 | not_met; `unknown_token`, `form_invalid`; labels none |
+| `unknown_beside_condition_outside` | the water constant read at 330 K: `condition_unstated` (shear rate) beside `condition_outside` (temperature), both at step 10; `not_met` | 10 | not_met; `condition_unstated (shear_rate)`, `condition_outside (temperature)`; labels none |
+| `unknown_beside_want_mismatch` | `want: bounds` on the water constant: `condition_unstated` (shear rate) from step 10 beside `want_mismatch` from step 13; the status is the worst, `not_met`, and there is no value | 13 | not_met; `condition_unstated (shear_rate)`, `want_mismatch`; labels `materica.fluid.newtonian.v1` |
 | `want_suite_and_incomplete` | want fit without the suite, and field off the pattern: both reported | 0 | not_met; `want_mismatch`, `request_incomplete`; claims `fits_and_reference_data: false` |
 | `want_suite_and_incomplete_with_fd` | as `want_suite_and_incomplete`, the suite claimed: want fit passes, the field still fails | 0 | not_met; `request_incomplete`; claims `fits_and_reference_data: true` |
+
+## PR-302
+
+`read_side_contract.md`: an `unknown` result carries the value; `not_met` carries none, except under a declared nominal inside an interval's bounds, which supplies the value and `assumption`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `nominal_value_under_not_met` | `want: value` on the interval with a nominal of 1200 kg/m3, inside the limits: `not_met` (`want_mismatch`), the nominal as `value`, and `assumption` naming it without its `basis` | 13 | not_met; `want_mismatch`; value `1200.0`; unit `"kg/m3"`; assumption `{"acceptance": "nominal", "value": 1200.0}`; labels none |
+| `not_met_carries_none` | a `not_met` read (330 K against 310.15 K with 1 K) carries no value | 10 | not_met; `condition_outside (temperature)`; labels none |
+| `unknown_carries_value` | an `unknown` read (shear rate unstated) carries the value | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-305
+
+`read_side_contract.md`: an unstated or absent condition gives `unknown`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `condition_unstated` | the shear rate, which the row requires, holds `unstated`: `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `requested_condition_absent` | the request accepts `measurement_geometry` `bulk`, which the record does not hold: `unknown` (`condition_unstated`), its entry with no `record` and no `operating` | 13 | unknown; `condition_unstated (measurement_geometry)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `required_condition_absent` | the shear rate, which the row requires, is absent: `unknown` (`condition_unstated`); its entry has the request's operating condition and no `record` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-306
+
+`read_side_contract.md`: a stated value outside the tolerance gives `not_met`; at exactly the tolerance, in doubles, `met`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `at_tolerance_met` | 310 K stated, 311 K operating, tolerance 1 K: exactly at the tolerance, in doubles: `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `one_ulp_outside` | 310 K stated, 311 K operating, tolerance the double just below 1 K: `not_met` (`condition_outside`) | 10 | not_met; `condition_outside (temperature)`; labels none |
+| `value_outside` | 310.15 K stated, 312 K operating, tolerance 1 K: `not_met` (`condition_outside`) | 10 | not_met; `condition_outside (temperature)`; labels none |
 
 ## PR-308
 
@@ -283,6 +856,14 @@ See `README.md` beside this file for how to read a case.
 | `tolerance_with_other_operating_condition` | a temperature tolerance, operating conditions giving only shear_rate | 0 | not_met; `request_incomplete (temperature)` |
 | `tolerance_without_operating_conditions` | a temperature tolerance and no operating_conditions member | 0 | not_met; `request_incomplete (temperature)` |
 
+## PR-309
+
+`read_side_contract.md`: a value stated without origin gives `unknown`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `stated_without_origin` | a met value whose origin is `stated_without_origin`: `unknown` (`stated_without_origin`), with the value | 13 | unknown; `stated_without_origin`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
 ## PR-310
 
 `read_side_contract.md`: every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete`
@@ -291,13 +872,92 @@ See `README.md` beside this file for how to read a case.
 |---|---|---|---|
 | `absent` | the code `absent` is spelled as the reason table gives it | 1 | not_met; `absent` |
 | `hash_mismatch` | a reader with HS: a record edited after pinning, its stated hash still the pin: `hash_mismatch` and one `pin_mismatch`, spelled as the table gives them | 4 | not_met; `hash_mismatch`, `pin_mismatch`; claims `hash: true` |
+| `hash_mismatch_no_hs` | the water record edited after pinning, its stated hash still the pin, read without HS: step 4 recomputes nothing, so the edited value is read, labelled `hash_not_checked` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000693`; unit `"Pa.s"`; labels `hash_not_checked`, `materica.fluid.newtonian.v1`; claims `hash: false` |
 | `malformed` | the code `malformed` is spelled as the reason table gives it | 1 | not_met; `malformed` |
 | `other_version` | the code `other_version` is spelled as the reason table gives it | 2 | not_met; `other_version` |
 | `pin_mismatch` | the code `pin_mismatch` is spelled as the reason table gives it | 1 | not_met; `pin_mismatch` |
 | `request_incomplete` | the code `request_incomplete` is spelled as the reason table gives it | 0 | not_met; `request_incomplete` |
 | `request_unit_mismatch` | the code `request_unit_mismatch` is spelled as the reason table gives it | 0 | not_met; `request_unit_mismatch (temperature)` |
 | `unknown_type` | the code `unknown_type` is spelled as the reason table gives it | 5 | not_met; `unknown_type` |
+| `waiver_refused` | a `waiver` for the water read's `condition_unstated` (shear rate) in the request: a read takes no waiver, `request_incomplete` at step 0, and never applies it | 0 | not_met; `request_incomplete`; labels none |
 | `want_mismatch` | the code `want_mismatch` is spelled as the reason table gives it | 0 | not_met; `want_mismatch`; claims `fits_and_reference_data: false` |
+| `want_mismatch_with_fd` | `want: fit` from a reader that claims the fits and reference data suite passes step 0 and reaches step 13 on the water constant, which has no `fit`: `want_mismatch`, beside `condition_unstated` | 13 | not_met; `condition_unstated (shear_rate)`, `want_mismatch`; labels `materica.fluid.newtonian.v1`; claims `fits_and_reference_data: true` |
+
+## PR-311
+
+`read_side_contract.md`: the conditions the record holds, an implied condition fills, the row requires, another condition requires and the request names all appear in `conditions` (`measurement_dimension` with a tube, the record's or an implied one; `test_method` on remanence)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `bulk_geometry_no_dimension` | `measurement_geometry` `bulk`, which requires no dimension: no `measurement_dimension` entry, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `dimension_with_tube` | a tube with its `measurement_dimension`, both accepted: `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_tube_requires_dimension` | an implied condition supplies `measurement_geometry` `tube` (the field states `supply_form` `stock`): the dimension a tube requires gets an entry, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (measurement_dimension)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `record_row_and_request_entries` | the record holds `measurement_geometry` `tube` and no `measurement_dimension`, which a tube requires: entries for the record's, the row's and the request's conditions and for the dimension, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (measurement_dimension)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `test_method_absent_on_remanence` | a remanence without `test_method`, which its row requires: an entry for it, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (test_method)`; value `1.2`; unit `"T"`; labels none |
+| `test_method_on_remanence` | a remanence with its `test_method` (`hysteresigraph`), accepted: `met`, one entry per condition the row requires | 13 | met; value `1.2`; unit `"T"`; labels none |
+
+## PR-313
+
+`read_side_contract.md`: a stated condition with no tolerance or accept list gives `unknown` (`condition_unchecked`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `condition_unchecked_with_operating` | the stated shear rate has an operating value but no tolerance: `unknown` (`condition_unchecked`) | 13 | unknown; `condition_unchecked (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `condition_unchecked_without_operating` | the stated shear rate has neither an operating value nor a tolerance: `unknown` (`condition_unchecked`), its entry with no `operating` | 13 | unknown; `condition_unchecked (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-314
+
+`read_side_contract.md`: a record range against an operating value, widened by the tolerance
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `range_value_above` | 1000.75 1/s against [10, 1000] with 0.5: above `b + t`, `not_met` | 10 | not_met; `condition_outside (shear_rate)`; labels none |
+| `range_value_lower_boundary` | 9.5 1/s against [10, 1000] with 0.5: exactly `a - t`, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `range_value_upper_boundary` | 1000.5 1/s against the stated range [10, 1000] with 0.5: exactly `b + t`, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-315
+
+`read_side_contract.md`: a token condition against an accept list
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `closed_circuit_accepted` | the closed-circuit `test_method` `hysteresigraph` against the accept list [hysteresigraph]: `met` | 13 | met; value `1.2`; unit `"T"`; labels none |
+| `closed_circuit_not_accepted` | `hysteresigraph` against the accept list [vibrating_sample_magnetometer]: `not_met` (`condition_not_accepted`) | 10 | not_met; `condition_not_accepted (test_method)`; labels none |
+| `token_accepted` | `density_kind` `apparent` against the accept list [apparent]: `met` | 13 | met; value `1261.0`; unit `"kg/m3"`; labels none |
+| `token_not_accepted` | `density_kind` `apparent` against the accept list [matrix]: `not_met` (`condition_not_accepted`) | 10 | not_met; `condition_not_accepted (density_kind)`; labels none |
+
+## PR-316
+
+`read_side_contract.md`: an implied condition is checked like a stated one; it fills an unstated or absent condition, never one holding another status object; one naming another field, or located at another record or region, at an interval or nowhere, is not applied; a condition it fills is checked even where nothing else names it (`condition_unchecked` with no tolerance); two that apply and disagree give `request_incomplete`, even where the record states that condition, and in one alternative end the read rather than set it aside
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `implied_fact_token_not_stated` | the section states `tissue_state` `ex_vivo_fresh`; an implied condition for `in_vivo` does not apply: `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_fills_absent` | the temperature is absent; the implied condition fills it: `met`, with basis `implied` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_fills_unchecked` | an implied condition supplies `measurement_geometry` `bulk`, which the record does not hold and nothing else names: it gets an entry, `unknown` (`condition_unchecked`), since the request gives no accept list | 13 | unknown; `condition_unchecked (measurement_geometry)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_fills_unstated` | the temperature holds `unstated` and the section states `tissue_state` `in_vivo`; an implied condition for that fact and token supplies 310.15 K: checked as stated, with basis `implied`, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_never_overrides_stated` | the record states 310.15 K; an implied condition supplies 296.15 K, the operating temperature: it never overrides a stated condition, so `not_met` (`condition_outside`) | 10 | not_met; `condition_outside (temperature)`; labels none |
+| `implied_no_location` | an implied condition that would fill the unstated temperature names no location: checked and not applied, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_not_over_other_status` | the temperature holds `not_checked`, a status object other than `unstated`: the implied condition does not fill it, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_other_field` | an implied condition that would fill the unstated temperature names `bulk.density`, another field: checked and not applied, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_other_record` | an implied condition that would fill the unstated temperature is located at another record (the glycerol record's pin): checked and not applied, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_two_disagree` | two implied conditions that both apply (the specimen states `in_vivo` and `normal`) supply 310.15 and 309.15 K, the temperature unstated: `request_incomplete` (temperature) at step 10 (`conditions` not compared: the entry's `record` is open) | 10 | not_met; `request_incomplete (temperature)`; labels none |
+| `implied_two_disagree_in_alternative` | the same two implied conditions apply in the first of two alternatives: the request's fault ends the read, `request_incomplete` (temperature), and the alternative is not set aside (`conditions` not compared) | 10 | not_met; `request_incomplete (temperature)`; labels none |
+| `implied_two_disagree_record_states` | two implied conditions that both apply (the specimen states `in_vivo` and `normal`) supply 310.15 and 309.15 K, the record stating 310.15 K: `request_incomplete` (temperature) at step 10 (`conditions` not compared: the entry's `record` is open) | 10 | not_met; `request_incomplete (temperature)`; labels none |
+
+## PR-318
+
+`read_side_contract.md`: `want: value` on each form
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `bounds_on_constant` | `want: bounds` on a met constant: `not_met` (`want_mismatch`) at step 13, no value, the conditions and the label kept | 13 | not_met; `want_mismatch`; labels `materica.fluid.newtonian.v1` |
+| `components_on_constant` | `want: components` on a met constant: `not_met` (`want_mismatch`) at step 13, no value, the conditions and the label kept | 13 | not_met; `want_mismatch`; labels `materica.fluid.newtonian.v1` |
+| `evidence_on_constant` | `want: evidence` on a met constant: `not_met` (`want_mismatch`) at step 13, no value, the conditions and the label kept | 13 | not_met; `want_mismatch`; labels `materica.fluid.newtonian.v1` |
+| `value_on_composition` | `want: value` on a composition: `not_met` (`want_mismatch`), no value | 13 | not_met; `want_mismatch`; labels none |
+| `value_on_constant` | `want: value` on a constant: the number | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `value_on_evidence` | `want: value` on evidence: `not_met` (`want_mismatch`), no value | 13 | not_met; `want_mismatch`; labels none |
+| `value_on_interval` | `want: value` on an interval, with no nominal: `not_met` (`want_mismatch`), no value | 13 | not_met; `want_mismatch`; labels none |
 
 ## PR-320
 
@@ -306,6 +966,7 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `accept_entry_with_unit_accepted` | control: density_kind requirement {"accept": ["apparent"], "unit": "K"}: the `unit` member, which the accept shape does not name, is ignored and, on a token condition, compared with nothing, so step 0 gives no reason; the reference has no candidate (water 2.0.0 not supplied): `absent` | 1 | not_met; `absent` |
+| `implied_value_in_other_unit` | an implied condition supplies the temperature as 37 `Cel`: checked as an operating condition is, `request_unit_mismatch` (temperature) at step 0 | 0 | not_met; `request_unit_mismatch (temperature)`; labels none |
 | `operating_range_lo_above_hi_wrong_unit` | operating shear_rate range [30000, 3000], unit 1/min: both `request_incomplete` and `request_unit_mismatch` for shear_rate | 0 | not_met; `request_incomplete (shear_rate)`, `request_unit_mismatch (shear_rate)` |
 | `operating_range_per_minute` | operating shear_rate range in 1/min (registered 1/s) | 0 | not_met; `request_unit_mismatch (shear_rate)` |
 | `operating_range_three_numbers_wrong_unit` | operating shear_rate range of three numbers, unit 1/min: both `request_incomplete` and `request_unit_mismatch` for shear_rate | 0 | not_met; `request_incomplete (shear_rate)`, `request_unit_mismatch (shear_rate)` |
@@ -340,6 +1001,35 @@ See `README.md` beside this file for how to read a case.
 | `tolerance_value_not_number_wrong_unit` | temperature tolerance value the string "1.0", unit Cel: both `request_incomplete` and `request_unit_mismatch` for temperature | 0 | not_met; `request_incomplete (temperature)`, `request_unit_mismatch (temperature)` |
 | `tolerance_without_operating_condition_wrong_unit` | a shear_rate tolerance of 60 in 1/min and no shear_rate operating condition: both `request_incomplete` and `request_unit_mismatch` for shear_rate | 0 | not_met; `request_incomplete (shear_rate)`, `request_unit_mismatch (shear_rate)` |
 
+## PR-323
+
+`read_side_contract.md`: a condition holding `withheld`, `none`, `not_checked`, or `not_applicable` off the axis, gives `unknown`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `condition_none` | the temperature holds `none`: `unknown` (`condition_unstated`), with the value | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `condition_not_applicable` | the temperature holds `not_applicable` on a constant, which has no axis: `unknown` (`condition_unstated`), with the value | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `condition_not_checked` | the temperature holds `not_checked`: `unknown` (`condition_unstated`), with the value | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `condition_withheld` | the temperature holds `withheld`: `unknown` (`condition_unstated`), with the value | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-324
+
+`read_side_contract.md`: one measured value against an operating range: met only when the whole range lies within its tolerance
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `value_against_range_met` | 310 K stated against the operating range [309.5, 310.5] with 0.5: the whole range within, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `value_against_range_not_met` | 310 K stated against [309.5, 310.75] with 0.5: the range's high end outside, `not_met` | 10 | not_met; `condition_outside (temperature)`; labels none |
+
+## PR-325
+
+`read_side_contract.md`: a record range against an operating range, widened by the tolerance
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `range_against_range_met` | the operating range [9.5, 1000.5] against the stated [10, 1000] with 0.5: `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `range_against_range_not_met` | the operating range [9.25, 1000] against [10, 1000] with 0.5: its low end below `a - t`, `not_met` | 10 | not_met; `condition_outside (shear_rate)`; labels none |
+
 ## PR-327
 
 `read_side_contract.md`: a reader without HS labels `hash_not_checked` the results that reach step 4, and still refuses, at step 1 and without that label, a stated hash that differs from a pin
@@ -347,6 +1037,8 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `label_hs` | a reader with HS: the same read, hash verified, no hash_not_checked | 5 | not_met; `unknown_type`; labels none; claims `hash: true` |
+| `label_met_hs` | a `met` read with HS: the field's label only | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1`; claims `hash: true` |
+| `label_met_no_hs` | a `met` read without HS: `hash_not_checked` beside the field's label | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `hash_not_checked`, `materica.fluid.newtonian.v1`; claims `hash: false` |
 | `label_no_hs` | a reader without HS: a read refused at step 5 (unknown_type) reached step 4, so hash_not_checked | 5 | not_met; `unknown_type`; labels `hash_not_checked`; claims `hash: false` |
 | `pin` | stated hash differs from the pin: pin_mismatch at step 1, no labels | 1 | not_met; `pin_mismatch`; labels none |
 | `pin_no_hs` | as `pin`, for a reader without HS: the result ends at step 1, so no hash_not_checked | 1 | not_met; `pin_mismatch`; labels none; claims `hash: false` |
@@ -381,6 +1073,7 @@ See `README.md` beside this file for how to read a case.
 | `hash_selects_other_version_copy` | two candidates of water 1.0.0; the pin selects the schema 0.2.0 one, refused at step 2 | 2 | not_met; `other_version` |
 | `hash_selects_unknown_type_copy` | two candidates of water 1.0.0; the pin selects the interface one, refused at step 5 | 5 | not_met; `unknown_type` |
 | `identical_copies_read_once` | two byte-identical copies with the pinned hash are read once: unknown_type, not malformed | 5 | not_met; `unknown_type` |
+| `identical_copies_read_value` | two byte-identical copies of the water record: read once, to the value | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `match_beside_ill_formed_copy` | one candidate has the pin, another an ill-formed hash: the match is read (unknown_type at step 5) | 5 | not_met; `unknown_type` |
 | `match_beside_ill_formed_hash_other_version` | the one candidate with the pinned hash (an interface record carrying water's id and version 1.0.0) beside water 2.0.0 with an uppercase content_hash: the read goes on, and ends at step 5 (`unknown_type`) | 5 | not_met; `unknown_type` |
 | `match_beside_unparsed_source` | the one candidate with the pinned hash (an interface record carrying water's id and version) beside a source that did not parse: the read goes on, and ends at step 5 (`unknown_type`) | 5 | not_met; `unknown_type` |
@@ -411,14 +1104,37 @@ See `README.md` beside this file for how to read a case.
 | `accept_list_accepted` | control: a well-formed accept list for the token condition density_kind ({"accept": ["apparent"]}) passes step 0; the reference has no candidate (water 2.0.0 not supplied): `absent` | 1 | not_met; `absent` |
 | `accept_list_non_string` | step 0 refuses: density_kind accept list holding a number | 0 | not_met; `request_incomplete (density_kind)` |
 | `accept_not_list` | step 0 refuses: density_kind accept a string, not a list | 0 | not_met; `request_incomplete (density_kind)` |
+| `acceptance_kind_unknown` | an acceptance of the kind `assumption`: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `acceptance_not_object` | an acceptance that is a string: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `acceptances_not_list` | `acceptances` holding one nominal as an object, not a list: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `condition_not_registered` | step 0 refuses: a requirement naming the unregistered condition pressure (an accept list, no unit) | 0 | not_met; `request_incomplete (pressure)` |
 | `field_empty_part` | step 0 refuses: field "fluid." | 0 | not_met; `request_incomplete` |
 | `field_missing` | step 0 refuses: target without field | 0 | not_met; `request_incomplete` |
 | `field_no_dot` | step 0 refuses: field "fluid" | 0 | not_met; `request_incomplete` |
+| `field_not_registered_reserved_section` | the target's field is `acoustic.sound_speed`, in a reserved section, which no 0.1.0 row registers: `request_incomplete` at step 0, whatever the record holds | 0 | not_met; `request_incomplete`; labels none |
+| `field_not_registered_specimen` | the target's field is `fluid.specimen`, a reserved field name, which no 0.1.0 row registers: `request_incomplete` at step 0, whatever the record holds | 0 | not_met; `request_incomplete`; labels none |
+| `field_not_registered_surface_tension` | the target's field is `fluid.surface_tension`, which no 0.1.0 row registers: `request_incomplete` at step 0, whatever the record holds | 0 | not_met; `request_incomplete`; labels none |
 | `field_not_string` | step 0 refuses: field a number | 0 | not_met; `request_incomplete` |
 | `field_three_parts` | step 0 refuses: field "a.b.c" | 0 | not_met; `request_incomplete` |
 | `field_trailing_newline` | step 0 refuses: field "fluid.dynamic_viscosity\n" | 0 | not_met; `request_incomplete` |
 | `field_uppercase` | step 0 refuses: field "Fluid.x" | 0 | not_met; `request_incomplete` |
+| `ignored_members_read` | a top-level `comment` and a requirement `note`, each more than one slip from every member named there, are ignored: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_basis_ignored` | the implied condition's value carries `basis: stated`, which is ignored: applied, its entry with basis `implied`, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `implied_condition_not_registered` | an implied condition whose `implies` names `pressure`, a condition that is not registered: it breaks its shape, `request_incomplete` (pressure) at step 0 | 0 | not_met; `request_incomplete (pressure)`; labels none |
+| `implied_fact_without_tokens` | an implied condition whose its `fact` is `preparation`, a fact with no tokens: it breaks its shape, `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `implied_field_not_registered` | an implied condition whose it names `fluid.surface_tension`, a field that is not registered: it breaks its shape, `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `implied_plus_minus` | an implied condition whose `implies` gives the temperature a `plus_minus`: it breaks its shape, `request_incomplete` (temperature) at step 0 | 0 | not_met; `request_incomplete (temperature)`; labels none |
+| `implied_set_or_measured` | an implied condition whose `implies` gives the temperature `set_or_measured`: it breaks its shape, `request_incomplete` (temperature) at step 0 | 0 | not_met; `request_incomplete (temperature)`; labels none |
+| `implied_status_object` | an implied condition whose `implies` gives the temperature a status object: it breaks its shape, `request_incomplete` (temperature) at step 0 | 0 | not_met; `request_incomplete (temperature)`; labels none |
+| `implied_token_not_of_fact` | an implied condition whose its `token` `stock` is not one of `tissue_state`'s: it breaks its shape, `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `implied_token_outside_row` | an implied condition whose `implies` gives `density_kind` `porous`, outside its row: it breaks its shape, `request_incomplete` (density_kind) at step 0 | 0 | not_met; `request_incomplete (density_kind)`; labels none |
+| `near_typo_acceptance` | `acceptance`, one slip from `acceptances`, beside `target`, holding an implied condition that would apply: `request_incomplete`, never the read without it | 0 | not_met; `request_incomplete`; labels none |
+| `near_typo_conditons` | the requirement holds `conditons`, one slip from `conditions`: `request_incomplete` | 0 | not_met; `request_incomplete`; labels none |
+| `near_typo_in_nominal` | a nominal holding `vaule`, one slip from `value`, beside it: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `near_typo_in_operating_condition` | the operating temperature holds `units` beside `unit`, one slip from it: `request_incomplete` (temperature) | 0 | not_met; `request_incomplete (temperature)`; labels none |
+| `nominal_field_not_registered` | a nominal naming `bulk.porosity`, a field that is not registered: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `nominal_value_missing` | a nominal without its `value`: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `nominal_value_not_number` | a nominal whose `value` is a string: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `not_json_bom` | the request is not valid JSON: a byte-order mark | 0 | not_met; `request_incomplete` |
 | `not_json_duplicate_member` | the request is not valid JSON: a top-level member name repeated | 0 | not_met; `request_incomplete` |
 | `not_json_nan` | the request is not valid JSON: NaN in a top-level member no document defines | 0 | not_met; `request_incomplete` |
@@ -447,8 +1163,11 @@ See `README.md` beside this file for how to read a case.
 | `requirement_condition_empty` | step 0 refuses: temperature requirement an empty object (neither tolerance nor accept) | 0 | not_met; `request_incomplete (temperature)` |
 | `requirement_condition_not_object` | step 0 refuses: temperature requirement the string "x" | 0 | not_met; `request_incomplete (temperature)` |
 | `requirement_conditions_not_object` | step 0 refuses: requirement.conditions an array | 0 | not_met; `request_incomplete` |
+| `requirement_label` | the requirement holds `label`, as a declaration's does: `request_incomplete` | 0 | not_met; `request_incomplete`; labels none |
 | `requirement_missing` | step 0 refuses: no requirement | 0 | not_met; `request_incomplete` |
 | `requirement_not_object` | step 0 refuses: requirement a string | 0 | not_met; `request_incomplete` |
+| `requirement_population_level` | the requirement holds `population_level`, as a declaration's does: `request_incomplete` | 0 | not_met; `request_incomplete`; labels none |
+| `requirement_represents` | the requirement holds `represents`, as a declaration's does: `request_incomplete` | 0 | not_met; `request_incomplete`; labels none |
 | `target_missing` | step 0 refuses: no target | 0 | not_met; `request_incomplete` |
 | `target_neither_record_nor_region` | step 0 refuses: target with neither record nor region | 0 | not_met; `request_incomplete` |
 | `target_not_object` | step 0 refuses: target a string | 0 | not_met; `request_incomplete` |
@@ -457,10 +1176,12 @@ See `README.md` beside this file for how to read a case.
 | `tolerance_beside_accept_for_token_condition` | density_kind requirement {"accept": ["apparent"], "tolerance": {"value": 0, "unit": "1"}}: a tolerance for a token condition beside a well-formed accept list gives `request_incomplete` (the unit is compared with nothing) | 0 | not_met; `request_incomplete (density_kind)` |
 | `tolerance_for_token_condition_without_unit` | step 0 refuses: a tolerance, with no unit, for the token condition density_kind | 0 | not_met; `request_incomplete (density_kind)` |
 | `tolerance_negative_zero_accepted` | a temperature tolerance of -0 passes step 0; the read ends at step 5 on the interface record (unknown_type) | 5 | not_met; `unknown_type` |
+| `tolerance_negative_zero_read` | a tolerance of `-0` K is accepted, and the stated 310.15 K against the operating 310.15 K meets it: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `tolerance_not_object` | step 0 refuses: temperature tolerance the number 1.0 | 0 | not_met; `request_incomplete (temperature)` |
 | `tolerance_unit_missing` | step 0 refuses: temperature tolerance without `unit` | 0 | not_met; `request_incomplete (temperature)` |
 | `tolerance_value_missing` | step 0 refuses: temperature tolerance without value (unit K) | 0 | not_met; `request_incomplete (temperature)` |
 | `tolerance_value_not_number` | step 0 refuses: temperature tolerance value the string "1.0" (unit K) | 0 | not_met; `request_incomplete (temperature)` |
+| `two_nominals_one_field` | two nominals naming `bulk.density`, both inside the limits: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `unknown_member_in_operating_condition` | a member inside an operating condition entry no document defines is ignored; the read ends at step 5 on the interface record (unknown_type) | 5 | not_met; `unknown_type` |
 | `unknown_member_in_reference` | a member inside the record reference no document defines is ignored; the read ends at step 5 on the interface record (unknown_type) | 5 | not_met; `unknown_type` |
 | `unknown_member_in_requirement` | a member inside requirement no document defines is ignored; the read ends at step 5 on the interface record (unknown_type) | 5 | not_met; `unknown_type` |
@@ -477,6 +1198,9 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `condition_reasons_carry_condition` | `condition_unstated` (shear rate) beside `condition_unknown_name` (humidity): each carries its `condition` | 13 | unknown; `condition_unstated (shear_rate)`, `condition_unknown_name (humidity)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `condition_unit_mismatch_once` | the temperature's unit and its `plus_minus` unit are both `Cel`: one `unit_mismatch` (temperature) | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `field_and_condition_unit_mismatch` | the field's unit `Pa s` and the temperature's `Cel`: `unit_mismatch` twice, once without a condition (the field's) and once with `temperature` | 9 | not_met; `unit_mismatch`, `unit_mismatch (temperature)`; labels none |
 | `incomplete_and_unit_mismatch_once_each` | temperature's operating value the string "37.0" and its tolerance -1.0, both in Cel: one `request_incomplete` and one `request_unit_mismatch` for temperature | 0 | not_met; `request_incomplete (temperature)`, `request_unit_mismatch (temperature)` |
 | `malformed_once_step1` | no candidate, and two supplied sources did not parse: one malformed | 1 | not_met; `malformed` |
 | `malformed_once_step1_pin` | no candidate holds the pin; one has an ill-formed (uppercase) content_hash and another source did not parse: one `malformed` | 1 | not_met; `malformed` |
@@ -487,6 +1211,7 @@ See `README.md` beside this file for how to read a case.
 | `request_incomplete_with_and_without_condition` | a field off the pattern and a negative temperature tolerance: two reasons, one without condition | 0 | not_met; `request_incomplete`, `request_incomplete (temperature)` |
 | `request_unit_mismatch_once` | temperature operating value and tolerance both in Cel: one reason | 0 | not_met; `request_unit_mismatch (temperature)` |
 | `request_unit_mismatch_two_conditions` | temperature in Cel and shear_rate in 1/min: one reason each | 0 | not_met; `request_unit_mismatch (temperature)`, `request_unit_mismatch (shear_rate)` |
+| `unknown_token_once` | three unknown tokens in the statistics block: one `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `unregistered_condition_once` | pressure unregistered and its accept list holding a number: one reason for pressure | 0 | not_met; `request_incomplete (pressure)` |
 
 ## PR-332
@@ -504,3 +1229,77 @@ See `README.md` beside this file for how to read a case.
 | `fit_without_fd` | want 'fit', fits and reference data suite not claimed | 0 | not_met; `want_mismatch`; claims `fits_and_reference_data: false` |
 | `reference_data_with_fd_absent` | want 'reference_data' with the suite claimed passes step 0; the reference has no candidate (water 2.0.0 not supplied): absent | 1 | not_met; `absent`; claims `fits_and_reference_data: true` |
 | `reference_data_without_fd` | want 'reference_data', fits and reference data suite not claimed | 0 | not_met; `want_mismatch`; claims `fits_and_reference_data: false` |
+
+## PR-334
+
+`read_side_contract.md`: a stated ± as a bound keeps `met` only where the test holds across it; an `sd` or unstated ± turns `met` into `unknown` (`condition_uncertain`); a bound beside an `sd` decides; a ± never makes `not_met`; one of zero changes nothing
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `bound_against_operating_range` | a bound of 0.5 K, 310 K against the range [309.75, 310.25] with 1 K: `r + u - t <= lo` and `hi <= r - u + t`, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `bound_beside_sd_decides` | a bound of 0.5 K beside an `sd` of 2 K: the bound decides, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `bound_narrows_operating_range` | a bound of 0.5 K, 310 K against the range [309.25, 310.25] with 1 K: met without it; `r + u - t` is above `lo`, so `unknown` (`condition_uncertain`) | 13 | unknown; `condition_uncertain (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `bound_too_wide_uncertain` | a bound of 1.5 K, 310 K against 310 K with 1 K: met without it, `unknown` (`condition_uncertain`) with it | 13 | unknown; `condition_uncertain (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `bound_within_met` | a bound of 0.5 K, 310 K against 310 K with 1 K: `abs(r - v) + u <= t`, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `never_not_met` | a bound of 0.5 K, 310 K against 311 K with 1 K: met without it; with it `unknown` (`condition_uncertain`), never `not_met` | 13 | unknown; `condition_uncertain (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `not_met_stands` | a bound of 0.5 K, 310 K against 312 K with 1 K: the `not_met` entry stands (`condition_outside`), no `condition_uncertain` | 10 | not_met; `condition_outside (temperature)`; labels none |
+| `range_bound_against_value` | the stated shear-rate range [10, 1000] with a bound of 0.5 1/s, against 1000 with 0.5: `a + u - t <= v <= b - u + t`, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `range_bound_narrows` | the same range and bound against 1000.25 with 0.5: met without the bound, `unknown` (`condition_uncertain`) with it | 13 | unknown; `condition_uncertain (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `sd_uncertain` | an `sd` of 0.25 K on a met entry: `unknown` (`condition_uncertain`) | 13 | unknown; `condition_uncertain (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `unstated_kind_uncertain` | a ± of unstated kind, 0.25 K, on a met entry: `unknown` (`condition_uncertain`) | 13 | unknown; `condition_uncertain (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `zero_changes_nothing` | an `sd` of 0: a ± of zero changes nothing, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-335
+
+`read_side_contract.md`: comparisons are exact: 1674.0, 0.2 and 1673.8 (and 1.123, 0.175 and 0.948, as a range) give `not_met` though floating point says `met`; 310.15 against 310.25 with 0.1 gives `not_met`; 310.0 against 311.0 with 1.0 gives `met`; a record of 884.6932011558738 with a bound of 3.0631529961759725, against -334.3066259741603 with 1222.06298012621, gives `met`, its exact sum equal to the tolerance, though floating point gives `condition_uncertain`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `compound_sum_equals_tolerance` | 884.6932011558738 1/s stated with a bound of 3.0631529961759725, against -334.3066259741603 with 1222.06298012621: the exact sum equals the tolerance, `met`; floating point would give `condition_uncertain` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `decimal_310_15` | 310.15 K stated, 310.25 operating, tolerance 0.1: as doubles they differ by more than 0.1, `not_met` | 10 | not_met; `condition_outside (temperature)`; labels none |
+| `exact_1674` | 1674.0 1/s stated, 0.2 operating, tolerance 1673.8: floating point says met; exactly the difference exceeds the tolerance, `not_met` | 10 | not_met; `condition_outside (shear_rate)`; labels none |
+| `exact_310_311` | 310.0 K stated, 311.0 operating, tolerance 1.0: `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `exact_range_1_123` | the stated range [1.123, 2.0] 1/s, 0.948 operating, tolerance 0.175: `a - t <= v` holds in floating point, not exactly, `not_met` | 10 | not_met; `condition_outside (shear_rate)`; labels none |
+| `range_1000_1` | the stated range [100, 1000] 1/s against 1000.1 with 0.1: floating point says met; exactly `not_met` | 10 | not_met; `condition_outside (shear_rate)`; labels none |
+
+## PR-336
+
+`read_side_contract.md`: the members present on a result by the step the read reached; a condition entry without `record` where neither the record holds the condition nor an implied condition the read applies supplies it, without `operating` where the request gives none
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `entry_without_record_or_operating` | the shear rate is absent and the request gives no operating shear rate: its entry holds only `name` and `status` | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `members_at_step_10` | a read refused at step 10 holds `conditions`, and no `value`, `unit`, `specimen`, `statistics` or `provenance` | 10 | not_met; `condition_outside (temperature)`; labels none |
+| `members_at_step_13_want_mismatch` | a read refused at step 13 holds `conditions` and its labels, and no `value`, `unit`, `specimen`, `statistics` or `provenance` | 13 | not_met; `want_mismatch`; labels `materica.fluid.newtonian.v1` |
+| `members_at_step_9` | a read refused at step 9 holds `status`, `reasons` and `labels` only: no `conditions`, since step 10 has not run | 9 | not_met; `unit_mismatch`; labels none |
+| `members_of_evidence` | a read of evidence holds `unit`, `specimen` and `provenance` with the value, and no `statistics` | 13 | met; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}, {"endpoint": "sensitisation", "standard": {"designation": "ISO 10993-10", "year": 2010.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+| `members_under_no_pick` | under `no_pick` the result holds `alternative_values` and `unit`, and none of `value`, `conditions`, `specimen`, `statistics` and `provenance`; each entry holds its alternative's | 13 | unknown; `no_pick`; unit `"Pa.s"`; alternative_values `[{"alternative": 0.0, "value": 0.000692, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.15, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}, {"alternative": 1.0, "value": 0.000695, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.65, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}]`; labels none |
+
+## PR-337
+
+`read_side_contract.md`: a member the reader does not know is not returned, in a value, the statistics block, a condition entry, a specimen fact or a derivation
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `unknown_member_in_bounds` | the `interval` holds an unknown member beside `lower`, `upper` and `basis`: the bounds are returned without it | 13 | met; value `{"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+| `unknown_member_in_evidence_entry` | a report holding an unknown member: the list is returned without it | 13 | met; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+| `unknown_members_in_derivation` | unknown members in a `derivation`, in one of its inputs and in that input's `record` (a number among them): the derivation is read, and none of them is returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.0011`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1`, `mixed_conditions` |
+| `unknown_members_not_returned` | an unknown member in the statistics block, in the temperature condition and in a specimen fact: none is returned | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-338
+
+`read_side_contract.md`: a nominal inside or on an interval's bounds supplies the value, and one outside them gives `nominal_invalid`; a nominal under `bounds`, and one naming another field; `assumption` without `basis`; under `no_pick`, a nominal outside the interval alternative's bounds is neither applied nor reported; two intervals left under `want: value`, with a nominal that applies, give `no_pick`, not `want_mismatch`
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `no_pick_nominal_outside_not_reported` | the grade's limits beside a lot's constant under `want: value`, with a nominal of 1300 outside the limits: `no_pick`; the nominal is neither applied nor compared, so no `nominal_invalid` | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"status": "not_applicable"}}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "specification_limits", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": 1210.0, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"text": "conformance fixture lot 1", "basis": "stated"}}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
+| `no_pick_two_intervals_nominal` | two interval alternatives under `want: value`, with a nominal of 1200 that applies to the read: `no_pick`, not `want_mismatch`, and no nominal applied in either entry | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"status": "not_applicable"}}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "specification_limits", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": {"lower": 1180.0, "upper": 1220.0, "basis": "reported_range"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"status": "not_applicable"}}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "reported_range", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
+| `nominal_inside` | `want: value` on the interval with a nominal of 1200 kg/m3, inside the limits [1150, 1250]: `not_met` (`want_mismatch`), the nominal as `value`, and `assumption` naming it without its `basis` | 13 | not_met; `want_mismatch`; value `1200.0`; unit `"kg/m3"`; assumption `{"acceptance": "nominal", "value": 1200.0}`; labels none |
+| `nominal_no_location` | `want: value` on the interval with a nominal that names no location: checked and not applied, `want_mismatch`, no value | 13 | not_met; `want_mismatch`; labels none |
+| `nominal_on_bound` | `want: value` on the interval with a nominal of 1250 kg/m3, on the upper limit: `not_met` (`want_mismatch`), the nominal as `value`, and `assumption` naming it without its `basis` | 13 | not_met; `want_mismatch`; value `1250.0`; unit `"kg/m3"`; assumption `{"acceptance": "nominal", "value": 1250.0}`; labels none |
+| `nominal_one_sided_inside` | a one-sided interval (lower 1150, no upper) with a nominal of 1200: on its bounded side, applied | 13 | not_met; `want_mismatch`; value `1200.0`; unit `"kg/m3"`; assumption `{"acceptance": "nominal", "value": 1200.0}`; labels none |
+| `nominal_one_sided_outside` | the same one-sided interval with a nominal of 1100, below its lower bound: `nominal_invalid` | 13 | not_met; `nominal_invalid`; labels none |
+| `nominal_other_field` | `want: value` on the interval with a nominal that names another field: checked and not applied, `want_mismatch`, no value | 13 | not_met; `want_mismatch`; labels none |
+| `nominal_other_record` | `want: value` on the interval with a nominal that is located at another record (the water record's pin): checked and not applied, `want_mismatch`, no value | 13 | not_met; `want_mismatch`; labels none |
+| `nominal_outside` | `want: value` on the interval with a nominal of 1300 kg/m3, outside the limits: `nominal_invalid` in place of `want_mismatch`, no value | 13 | not_met; `nominal_invalid`; labels none |
+| `nominal_under_bounds` | `want: bounds` with a nominal of 1200 kg/m3: the nominal is not applied; `met`, the bounds | 13 | met; value `{"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |

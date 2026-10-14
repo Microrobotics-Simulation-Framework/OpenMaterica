@@ -1,0 +1,54 @@
+{
+  "case": "PR-036",
+  "variant": "parameter_set_on_magnetic_remanence",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "family_evaluation": false
+  },
+  "inputs": {
+    "records": [
+      "form_parameter_set_on_magnetic_remanence.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:2ea76d7ab1f2197ce6d701006c89fa68c9aa87c245127d95b101578078df51e9"
+      },
+      "field": "magnetic.remanence"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      },
+      {
+        "code": "family_suite_absent"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

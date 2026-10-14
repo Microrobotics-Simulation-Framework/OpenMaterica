@@ -1,0 +1,48 @@
+{
+  "case": "PR-036",
+  "variant": "power_law_on_biocompatibility_evidence",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "form_power_law_on_biocompatibility_evidence.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:9ca7d48d841b47f9dc36ef42d75d9fedd39e5daa6414a3c810d9961c80244ef5"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

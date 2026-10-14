@@ -1,0 +1,109 @@
+{
+  "case": "PR-038",
+  "variant": "evidence_list",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:2a12336d06de71e00dfc1071b55b2d11e43caac0885570e2bdde35af97ab72e3"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "evidence"
+    }
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "endpoint": "cytotoxicity",
+        "standard": {
+          "designation": "ISO 10993-5",
+          "year": 2009
+        },
+        "contact_category": "conformance fixture: the source's words",
+        "contact_duration": "conformance fixture: the source's words",
+        "material_form": "conformance fixture: the source's words",
+        "processing": "conformance fixture: the source's words",
+        "reported_result": "conformance fixture: illustrative report text",
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        }
+      },
+      {
+        "endpoint": "sensitisation",
+        "standard": {
+          "designation": "ISO 10993-10",
+          "year": 2010
+        },
+        "contact_category": "conformance fixture: the source's words",
+        "contact_duration": "conformance fixture: the source's words",
+        "material_form": "conformance fixture: the source's words",
+        "processing": "conformance fixture: the source's words",
+        "reported_result": "conformance fixture: illustrative report text",
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        }
+      }
+    ],
+    "unit": {
+      "status": "not_applicable"
+    },
+    "conditions": [],
+    "specimen": {},
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/form_fixture",
+  "version": "1.0.0",
+  "name": "Form fixture (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:64bbba636ff2eb818411d142c04d209b9fe33d5863ea6373616aeeeb23334e12",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "magnetic": {
+        "fields": {
+          "saturation_magnetisation": {
+            "form": "reference_data",
+            "unit": "A/m",
+            "reference_data": {
+              "shape": "curves",
+              "axes": [
+                {
+                  "quantity": "temperature",
+                  "measure": "temperature",
+                  "unit": "K"
+                },
+                {
+                  "quantity": "magnetic.saturation_magnetisation",
+                  "measure": "as stored",
+                  "unit": "A/m"
+                }
+              ],
+              "curves": [
+                {
+                  "label": "specimen 1",
+                  "x": [
+                    293.15,
+                    303.15
+                  ],
+                  "y": [
+                    1.0,
+                    2.0
+                  ],
+                  "use": "not_used",
+                  "provenance": {
+                    "origin": "measured_by_contributor",
+                    "extraction": {
+                      "method": "own_measurement"
+                    },
+                    "assistance": {
+                      "status": "none"
+                    },
+                    "review": {
+                      "status": "not_checked",
+                      "reason": "conformance fixture: illustrative values, not a measurement"
+                    }
+                  }
+                }
+              ]
+            },
+            "conditions": {},
+            "statistics": {
+              "status": "not_applicable"
+            },
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

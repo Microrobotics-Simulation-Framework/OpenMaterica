@@ -1,0 +1,94 @@
+{
+  "case": "PR-310",
+  "variant": "want_mismatch_with_fd",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "fits_and_reference_data": true
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "fit",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "condition_unstated",
+        "condition": "shear_rate"
+      },
+      {
+        "code": "want_mismatch"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 310.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 310.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "shear_rate",
+        "status": "unknown",
+        "record": {
+          "status": "unstated"
+        }
+      }
+    ],
+    "labels": [
+      "materica.fluid.newtonian.v1"
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

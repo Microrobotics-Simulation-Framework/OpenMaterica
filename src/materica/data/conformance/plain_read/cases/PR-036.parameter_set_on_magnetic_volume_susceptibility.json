@@ -1,0 +1,54 @@
+{
+  "case": "PR-036",
+  "variant": "parameter_set_on_magnetic_volume_susceptibility",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "family_evaluation": false
+  },
+  "inputs": {
+    "records": [
+      "form_parameter_set_on_magnetic_volume_susceptibility.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:710f0f3c3dce45afc6997fcfa89d2ad392a2191ff46d714cd9f1f023f4bde14d"
+      },
+      "field": "magnetic.volume_susceptibility"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      },
+      {
+        "code": "family_suite_absent"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

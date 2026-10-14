@@ -1,0 +1,48 @@
+{
+  "case": "PR-051",
+  "variant": "fraction_below_zero",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "composition_fraction_below_zero.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/composition_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:9e1531568f137eec2c424034430ed076dc2c72f008b96f79b3b0fbc19062e468"
+      },
+      "field": "bulk.elemental_composition"
+    },
+    "requirement": {
+      "want": "components"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

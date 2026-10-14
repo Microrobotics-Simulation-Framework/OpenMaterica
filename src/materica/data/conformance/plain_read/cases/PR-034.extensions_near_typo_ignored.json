@@ -1,0 +1,135 @@
+{
+  "case": "PR-034",
+  "variant": "extensions_near_typo_ignored",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_extensions_near_typo_ignored.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:dde45560c3fa7d849843817d72a5e1e64b9e0ec95b739d429edd4edb08207ccf"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "condition_unstated",
+        "condition": "shear_rate"
+      }
+    ],
+    "value": 0.000692,
+    "unit": "Pa.s",
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 310.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 310.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "shear_rate",
+        "status": "unknown",
+        "record": {
+          "status": "unstated"
+        }
+      }
+    ],
+    "specimen": {},
+    "statistics": {
+      "central": "stated",
+      "n_specimens": {
+        "status": "unstated"
+      },
+      "n_donors": {
+        "status": "not_applicable"
+      },
+      "mean": {
+        "status": "unstated"
+      },
+      "sd": {
+        "status": "unstated"
+      },
+      "min": {
+        "status": "unstated"
+      },
+      "max": {
+        "status": "unstated"
+      },
+      "distribution": {
+        "status": "unstated"
+      },
+      "basis": {
+        "status": "not_applicable"
+      },
+      "represents": {
+        "status": "unstated"
+      },
+      "dispersion": "not_reported",
+      "relative_uncertainty": {
+        "status": "none"
+      },
+      "expanded_uncertainty": {
+        "status": "none"
+      }
+    },
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": [
+      "materica.fluid.newtonian.v1"
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

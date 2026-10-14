@@ -1,0 +1,48 @@
+{
+  "case": "PR-051",
+  "variant": "repeated_component",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "composition_repeated_component.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/composition_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:dca08000fb77ea8a2a169b20a4d8e6ecc712ab3ed64836f389f8e1662e61e90e"
+      },
+      "field": "bulk.elemental_composition"
+    },
+    "requirement": {
+      "want": "components"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

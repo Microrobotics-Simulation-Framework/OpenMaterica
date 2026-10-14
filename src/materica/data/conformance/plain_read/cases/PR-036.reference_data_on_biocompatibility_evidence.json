@@ -1,0 +1,48 @@
+{
+  "case": "PR-036",
+  "variant": "reference_data_on_biocompatibility_evidence",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "form_reference_data_on_biocompatibility_evidence.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:5b17fe5c0a334ae7f753f576be9b1963cf8f55ba4a6bcf0fbf9739601f7b14f5"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

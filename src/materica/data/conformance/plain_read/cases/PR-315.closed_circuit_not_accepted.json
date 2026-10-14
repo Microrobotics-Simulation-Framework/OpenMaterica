@@ -1,0 +1,105 @@
+{
+  "case": "PR-315",
+  "variant": "closed_circuit_not_accepted",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "magnet_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/magnet_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:365e1ef5a9cade6009425b954733d15b475f1536888a4df87082761ac994ec6a"
+      },
+      "field": "magnetic.remanence"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "specimen_shape": {
+          "accept": [
+            "cylinder"
+          ]
+        },
+        "test_method": {
+          "accept": [
+            "vibrating_sample_magnetometer"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "condition_not_accepted",
+        "condition": "test_method"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 293.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 293.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "specimen_shape",
+        "status": "met",
+        "record": {
+          "token": "cylinder",
+          "basis": "stated"
+        }
+      },
+      {
+        "name": "test_method",
+        "status": "not_met",
+        "record": {
+          "token": "hysteresigraph",
+          "basis": "stated"
+        }
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

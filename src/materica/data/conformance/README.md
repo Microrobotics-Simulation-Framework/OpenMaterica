@@ -8,11 +8,14 @@ file or the ones beside it differ. These files only help you find your way.
 
 | Directory | Suite | Specification | What its cases check |
 |---|---|---|---|
-| `plain_read/` | plain read | `read_side_contract.md`, `record_format.md` | a read of one field of one record: the request's own check, then steps 1 to 5 of the read (resolve, version, validate, hash, type); and `list_records` |
+| `plain_read/` | plain read | `read_side_contract.md`, `record_format.md`, `provenance.md`, `uncertainty.md` | a read of one field of one record: the request's own check; steps 1 to 5 of the read (resolve, version, validate, hash, type); steps 6 to 13, which read the value (field, form and tokens, units, conditions, origin, `want`); and `list_records` |
 | `hash/` | hash (HS) | `record_format.md` section 9; `read_side_contract.md` steps 1 and 4 | the content hash, as an operation on any JSON value, and the reads of a reader that recomputes it |
 
-The tree grows with the implementation. The plain-read cases cover the read up to step 5. Cases for the later
-steps, and the specification's other suites, are added with the code that implements them.
+The tree grows with the implementation. The plain-read cases cover the read through step 13 for the forms
+0.1.0's fields use without tables: constant, interval, composition and evidence. Tables, overlays, picks and
+the specification's other suites come later. A case file may arrive before the code that runs it:
+`tests/spec_sync/case_steps.json` names the implementation step each one needs, and until that step is done
+the tests report the file as not yet runnable, never as passed.
 
 Each suite directory holds:
 - `cases/<case id>.<variant>.json`: one file per arm of a case (a "variant"). For example,
@@ -83,13 +86,19 @@ are strict JSON (`record_format.md` section 1 item 6).
 ## How the cases were made and checked
 
 The cases were drafted with AI assistance (Claude, Anthropic) from the specification text alone, by passes
-that saw no implementation; none existed. They were then checked by separate passes:
+that saw no implementation; none existed. The cases that end by step 5 were then checked by separate passes:
 - every content hash computed by two independent RFC 8785 implementations (Python `rfc8785` 0.1.4, Node
   `canonicalize` 2.0.0) and recomputed by a third, written for the check;
 - every expected answer compared with an independent reference model of the read procedure, written from the
   text;
 - each suite run against deliberately faulty readers, one fault each, to show that every rule a case tests can
   fail. The few that cannot are named in each suite's README.
+
+The cases that read values (steps 6 to 13) were written the same way, from the text alone, before any code
+for those steps existed. Their content hashes and pins are checked by the two implementations above, and the
+specification sentences each answer rests on were checked against the text; no independent model and no
+faulty reader has checked their answers yet. Where the text leaves one member of an answer open, that member
+is left out of the case's `compare` (the suite's `README.md` lists them).
 
 The scripts that first generated these files are not part of the repository. The files are the source.
 

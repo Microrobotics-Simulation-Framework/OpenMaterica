@@ -1,0 +1,92 @@
+{
+  "case": "PR-315",
+  "variant": "token_not_accepted",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "glycerol_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/glycerol_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:53c34b5a18568f0ad10a1bf0be0ecef258a7f26048cf37c0fe8077c39af12b43"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "matrix"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "condition_not_accepted",
+        "condition": "density_kind"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 293.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 293.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "density_kind",
+        "status": "not_met",
+        "record": {
+          "token": "apparent",
+          "basis": "stated"
+        }
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}
