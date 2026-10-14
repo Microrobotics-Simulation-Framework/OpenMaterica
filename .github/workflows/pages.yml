@@ -1,7 +1,8 @@
 # Deploys site/, as it is, to GitHub Pages at https://openmaterica.org, with everything under src/materica/schema/
-# at /schema/. There is no build step. The custom domain is set in the repository's Pages settings: a site deployed
-# by a workflow needs no CNAME file, and GitHub ignores one ("Managing a custom domain for your GitHub Pages site",
-# GitHub Docs).
+# at /schema/. The only build step writes an index page into /schema/ and each directory under it
+# (scripts/schema_index.py, standard library only), since Pages lists no directory itself. The custom domain is
+# set in the repository's Pages settings: a site deployed by a workflow needs no CNAME file, and GitHub ignores
+# one ("Managing a custom domain for your GitHub Pages site", GitHub Docs).
 #
 # ci.yml needs no change for this workflow. Its gate counts as code only src/, tests/, scripts/,
 # docs/specification/, pyproject.toml, uv.lock and ci.yml, so a change to site/ or to this file runs the gate
@@ -15,6 +16,7 @@ on:
     paths:
       - "site/**"
       - "src/materica/schema/**"
+      - "scripts/schema_index.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -55,6 +57,7 @@ jobs:
           if [ -d src/materica/schema ]; then
             mkdir "$RUNNER_TEMP/site/schema"
             cp -R src/materica/schema/. "$RUNNER_TEMP/site/schema/"
+            python3 scripts/schema_index.py "$RUNNER_TEMP/site/schema"
           fi
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
