@@ -1,13 +1,11 @@
-# Why CI is shaped this way. The repository is private, on GitHub Team: 3,000 Actions minutes a month, each
-# Linux job billed rounded up to a whole minute. So there are few jobs, and a first job (gate) finds what a
-# change touched; the other jobs skip at job level, because a skipped job counts as passed for a required check
-# while a workflow skipped by `paths` would leave the check pending. A docs-only change runs the gate alone,
-# which also checks sign-offs. Pull requests test the oldest and newest Python; main, the weekly run and a
-# manual run test every supported one. Hypothesis is never cut to save minutes: the `ci` profile runs whenever
-# the core, the property tests or their configuration change and on every code change to main, and the `deep`
-# profile weekly and on manual runs. Atheris fuzzes weekly and on manual runs only, for a fixed time a target.
-# When the repository goes public (Actions minutes are then free): set the pull-request Python list in `tests`
-# to all five, and the path filter may go.
+# Why CI is shaped this way. The repository is public, so GitHub's standard runners cost nothing; what matters is
+# how fast a change gets its answer. So a first job (gate) finds what a change touched, and the other jobs skip
+# at job level when nothing relevant changed: a skipped job counts as passed for a required check, while a
+# workflow skipped by `paths` would leave the check pending. A docs-only change runs the gate alone, which also
+# checks sign-offs. Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
+# per-push critical path is the Hypothesis job at the `ci` profile, which runs whenever the core, the property
+# tests or their configuration change; keep it short, and split work across parallel jobs rather than lengthen
+# one. The `deep` profile and Atheris fuzzing, slow by design, run weekly and on manual runs only.
 
 name: CI
 
@@ -147,8 +145,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Pull requests: the oldest and newest Python. Main, the weekly run and a manual run: all five.
-        python: ${{ fromJSON(github.event_name == 'pull_request' && '["3.11", "3.15"]' || '["3.11", "3.12", "3.13", "3.14", "3.15"]') }}
+        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
