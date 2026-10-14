@@ -1,4 +1,4 @@
-# Vesalius — working notes for Claude
+# OpenMaterica — working notes for Claude
 
 This repository is public. Everything in it, this file and commit messages included, is public once pushed.
 
@@ -16,8 +16,8 @@ This repository is public. Everything in it, this file and commit messages inclu
   The code design for 0.1, agreed before any code and detailed step by step, is
   `../plans/VESALIUS_0.1_CODE_DESIGN.md` (its reviews in `../plans/vesalius_code_design_review/`). Nothing
   from there is copied into this repository without checking it against the confidentiality rules below.
-- Sibling repositories: `../MIME` (Vesalius's first consumer), `../MADDENING` (the simulation framework MIME
-  runs on). The shared Python environment is `../.venv` (it has `usd-core` 0.26.5 for USD checks).
+- Sibling repositories: `../MIME` (OpenMaterica's first consumer), `../MADDENING` (the simulation framework
+  MIME runs on). The shared Python environment is `../.venv` (it has `usd-core` 0.26.5 for USD checks).
 
 ## How work proceeds
 
@@ -44,8 +44,8 @@ This repository is public. Everything in it, this file and commit messages inclu
   back to the maintainer, with a recommendation. A decision the maintainer made is recorded where it lands
   ("maintainer, date"), and a lost decision is a defect: check new revisions against every earlier decision
   table, not only the latest.
-- Vesalius work never edits MIME or MADDENING. Anything that tests Vesalius against MIME runs as a read-only
-  spike that imports MIME and changes nothing. Requests of MADDENING go into
+- OpenMaterica work never edits MIME or MADDENING. Anything that tests OpenMaterica against MIME runs as a
+  read-only spike that imports MIME and changes nothing. Requests of MADDENING go into
   `../plans/MIME_MADDENING_050_ASKS.md`, never into MADDENING itself.
 - Commits: design and documentation commits so far carry no sign-off; **every code commit carries a DCO
   sign-off from the first one** (constraint in `CONTRIBUTING.md`). Push only when the maintainer asks. Design
@@ -83,9 +83,9 @@ This repository is public. Everything in it, this file and commit messages inclu
   data. The core may run at a consumer's build, and is then third-party software in that consumer's product.
 - **Small.** A section, family or library material enters when a named consumer needs it. A later addition
   must be possible as a minor schema change (AD 5.6); if it is not, decide it before 0.1.
-- **Engine knowledge is the consumer's.** Vesalius ships one engine crosswalk, for `UsdPhysics`; a crosswalk
-  for any other engine is written and pinned by the consumer that runs it (maintainer, 2026-10-13, AD 5.4). Do
-  not add crosswalks for other engines to `vesalius`; improve the scaffold and the checks instead.
+- **Engine knowledge is the consumer's.** OpenMaterica ships one engine crosswalk, for `UsdPhysics`; a
+  crosswalk for any other engine is written and pinned by the consumer that runs it (maintainer, 2026-10-13,
+  AD 5.4). Do not add crosswalks for other engines to `materica`; improve the scaffold and the checks instead.
 - **The core has no run-time dependency** (maintainer, 2026-10-13, AD 7.1 and 7.2): Python's standard library
   only; `typing_extensions` is for type checkers only; `jsonschema`, `usd-core` and numpy come with the
   `[check]`, `[usd]` and `[sample]` extras. Structure is edited in the writer JSON Schemas and tokens in the
@@ -110,13 +110,13 @@ USD, with `usd-core` 0.26.5:
   binding of that purpose is authored. A binding authored without `MaterialBindingAPI` applied still
   resolves, with a warning.
 - Without its plug-in, an applied API schema is missing from `HasAPI` and `GetAppliedSchemas()`; only
-  `GetPrimTypeInfo().GetAppliedAPISchemas()` lists it. Detect Vesalius and engine schemas by name there.
+  `GetPrimTypeInfo().GetAppliedAPISchemas()` lists it. Detect OpenMaterica and engine schemas by name there.
 - The default traversal skips prims inside instances; use `Usd.TraverseInstanceProxies()`. An unloaded
   payload's prims are simply absent.
 - A `float` attribute is single precision: 1.05e-3 reads back about 4e-8 relative off.
 - Dictionary metadata merges key by key across layers, so provenance written as a dictionary can be read with
   another layer's keys mixed in.
-- `VES-MAT-0001` is not a valid prim name. A schema plug-in entry needs `schemaIdentifier`; a second
+- `MAT-0001` is not a valid prim name. A schema plug-in entry needs `schemaIdentifier`; a second
   codeless-schema plug-in must register before `import maddening.usd`, or use `PXR_PLUGINPATH_NAME`.
 - A material under `/Materials/<name>` merges silently with MADDENING's display material of the same name.
 - OpenUSD's reference physics parser ignores a `physics` binding, direct or inherited, on a prim without
@@ -133,14 +133,14 @@ USD, with `usd-core` 0.26.5:
 
 From the ecosystem survey of 2026-10-12 and its review (sources in their private reports, not re-checked
 here):
-- Engines never read a Vesalius field. The `physics` binding purpose is the engines' (Isaac Lab and SimReady
-  write it); Vesalius binds with `vesalius`, and the engine adapter writes engine materials of its own (AD
-  5.4). Engines bind colliders and simulation meshes, not regions, and `UsdPhysics.MassAPI` overrides a
-  material's density.
+- Engines never read an OpenMaterica field. The `physics` binding purpose is the engines' (Isaac Lab and
+  SimReady write it); OpenMaterica binds with `materica`, and the engine adapter writes engine materials of
+  its own (AD 5.4). Engines bind colliders and simulation meshes, not regions, and `UsdPhysics.MassAPI`
+  overrides a material's density.
 
 Sibling tools:
 - MADDENING's anomaly validator (read at `f2aa830e`) accepts only `maddening_version` as a registry's version
-  field, so it refuses Vesalius's anomaly registry (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
+  field, so it refuses OpenMaterica's anomaly registry (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
 - MADDENING's USD live stage authors `metersPerUnit` 1.0 by default; a stage from elsewhere may author none.
 
 Data:

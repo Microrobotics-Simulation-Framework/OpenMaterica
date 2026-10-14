@@ -1,4 +1,4 @@
-# Vesalius Documentation Architecture Plan
+# OpenMaterica Documentation Architecture Plan
 
 **Status: a plan.** Written 2026-10-11, before any code exists, and revised the same day with the
 architecture draft, and again on 2026-10-12 with the decisions taken after the prototypes. Appendix B says
@@ -7,7 +7,7 @@ what is in place. The architecture of the library itself is in
 
 ## Executive Summary
 
-**Vesalius** is an open material schema with an OpenUSD binding, and a small Python toolkit. It describes
+**OpenMaterica** is an open material schema with an OpenUSD binding, and a small Python toolkit. It describes
 substances in and around the human body: tissues and body fluids, the media and phantoms that stand in for
 them, agents introduced into them, and the materials of devices that enter or touch them. For each it holds
 fluid, mechanical, acoustic, optical, thermal, dielectric, radiological and magnetic properties, with the
@@ -20,46 +20,46 @@ Where it sits:
 
 ```
 Layer 1  MADDENING      differentiable multiphysics framework       LGPL-3.0-or-later
-Layer 1  Vesalius       material schema, library and toolkit        Apache-2.0      <- THIS PROJECT
+Layer 1  OpenMaterica   material schema, library and toolkit        Apache-2.0      <- THIS PROJECT
 Layer 2  MIME           microrobotics physics engine                LGPL-3.0-or-later   (uses both)
 Layer 3  MICROROBOTICA  research simulator and registry             AGPL-3.0
 Layer 4  [Commercial product]                                       regulated, CE-marked
 
-Elsewhere: products built on NVIDIA Isaac for Healthcare may read Vesalius materials directly.
+Elsewhere: products built on NVIDIA Isaac for Healthcare may read OpenMaterica materials directly.
 ```
 
-Vesalius sits beside MADDENING, not on top of it: it has no code dependency on MADDENING or MIME, and it
+OpenMaterica sits beside MADDENING, not on top of it: it has no code dependency on MADDENING or MIME, and it
 must stay readable by simulators that use neither (design principle 1 of the architecture draft).
 
-Vesalius has these components, each with its own version (architecture draft sections 3.1 and 7.2):
+OpenMaterica has these components, each with its own version (architecture draft sections 3.1 and 7.2):
 
 | Component | What it is | Licence |
 |---|---|---|
-| Core, `vesalius` | the specification, the record and USD schemas (L0), conformance data (L1), the reader and writer (L2, L4), label-volume fractions and the reference sampler (L5), and `vesalius check` | Apache-2.0 |
-| Authoring, `vesalius-authoring` | write-side tooling: authoring and the curation tools, check-point baking (L3), and the integrations (L6), including the generator of Isaac for Healthcare's material table | Apache-2.0 |
-| Families, `vesalius-families` | model-family definitions: equations, golden test vectors, reference implementations; a content hash per family version | Apache-2.0 |
-| MCP server, `vesalius-mcp` | exposes the curation tools to a user's own agent (architecture draft section 8) | Apache-2.0 |
+| Core, `openmaterica` | the specification, the record and USD schemas (L0), conformance data (L1), the reader and writer (L2, L4), label-volume fractions and the reference sampler (L5), and `materica check` | Apache-2.0 |
+| Authoring, `openmaterica-authoring` | write-side tooling: authoring and the curation tools, check-point baking (L3), and the integrations (L6), including the generator of Isaac for Healthcare's material table | Apache-2.0 |
+| Families, `openmaterica-families` | model-family definitions: equations, golden test vectors, reference implementations; a content hash per family version | Apache-2.0 |
+| MCP server, `openmaterica-mcp` | exposes the curation tools to a user's own agent (architecture draft section 8) | Apache-2.0 |
 | Library | curated material and interface records, in a repository of its own, released as static archives with a DOI; no hosted service | CC0-1.0 |
 
-**Why it is likely to become SOUP.** The values Vesalius ships and resolves feed simulations. When a
-regulated product is built on MIME, Vesalius is SOUP of SOUP, beside MADDENING. When a product built on
-Isaac for Healthcare reads Vesalius materials, Vesalius is SOUP directly. In both cases a wrong value (a
-transcription error, a wrong unit, a parameter set read in the wrong convention, a material resolved to
+**Why it is likely to become SOUP.** The values OpenMaterica ships and resolves feed simulations. When a
+regulated product is built on MIME, OpenMaterica is SOUP of SOUP, beside MADDENING. When a product built on
+Isaac for Healthcare reads OpenMaterica materials, OpenMaterica is SOUP directly. In both cases a wrong value
+(a transcription error, a wrong unit, a parameter set read in the wrong convention, a material resolved to
 the wrong region) reaches the device's computation silently. That is the failure this documentation
 architecture is built around.
 
 **What is different from MADDENING and MIME.** Five things.
 
-1. **Vesalius ships data as well as code.** Its library of materials is part of what a manufacturer would
+1. **OpenMaterica ships data as well as code.** Its library of materials is part of what a manufacturer would
    assess. The question for the data is not "does the solver converge" but "is this the value the cited
    source gives, in the stated units, under the stated conditions".
 2. **There is no physics solver.** The code computes little: unit conversion, mixing rules, interpolation,
    composition into spectra, resolution of which material owns a point, check points and sampling. Its
    documentation replaces the algorithm guide with a normative specification, a short method guide and
    model-family definitions (sections 4 and 5).
-3. **The read side must work without Vesalius code.** A C++ simulator reading a record or a stage is a
+3. **The read side must work without OpenMaterica code.** A C++ simulator reading a record or a stage is a
    consumer too. So the specification, not the Python package, is the primary artefact, and its
-   conformance suite is the primary verification evidence (section 6). Vesalius code never runs inside a
+   conformance suite is the primary verification evidence (section 6). OpenMaterica code never runs inside a
    consumer's computation, meaning its simulation step, compiled program and gradient path: a consumer that
    reads, interpolates, mixes or evaluates there writes its own code in its own language or framework, and
    verifies it against conformance data, golden vectors and check points. At build or setup a Python
@@ -86,10 +86,10 @@ the evidence is small; the rigour per item is not lower.
 
 **Relationship to MADDENING's and MIME's plans.** This plan adopts their conventions wherever they apply:
 the regulatory boundary language, the anomaly schema and severity definitions, the CHANGELOG format, the
-commit prefixes, the SOUP package template, configuration management and the QMS model. Where Vesalius
-adopts something unchanged, this document says so and points to the MADDENING section. Where Vesalius
+commit prefixes, the SOUP package template, configuration management and the QMS model. Where OpenMaterica
+adopts something unchanged, this document says so and points to the MADDENING section. Where OpenMaterica
 differs, the difference and its reason are written here. The definitions a reader needs to assess
-Vesalius (severity, the anomaly schema, what Vesalius states about its data) are repeated here, so the
+OpenMaterica (severity, the anomaly schema, what OpenMaterica states about its data) are repeated here, so the
 document can be read on its own.
 
 This plan is informed by IEC 62304:2006+AMD1:2015, ISO 14971:2019, ASME V&V 40-2018, EU MDR
@@ -124,9 +124,10 @@ Appendices: [A: Implementation Priority](#appendix-a-implementation-priority),
 
 ## 1. Inheritance from MADDENING and MIME
 
-Vesalius adopts conventions, not code. Section numbers refer to MADDENING's `DOCUMENTATION_ARCHITECTURE.md`.
+OpenMaterica adopts conventions, not code. Section numbers refer to MADDENING's
+`DOCUMENTATION_ARCHITECTURE.md`.
 
-| MADDENING section | Vesalius treatment | Difference |
+| MADDENING section | OpenMaterica treatment | Difference |
 |---|---|---|
 | 1. Documentation structure | Adapted (section 2) | smaller; a specification, family definitions and a data guide in place of the algorithm guide |
 | 2. Regulatory boundary language | Adapted (section 3) | Apache-2.0, so no LGPL replaceability statement; a data statement added |
@@ -137,8 +138,8 @@ Vesalius adopts conventions, not code. Section numbers refer to MADDENING's `DOC
 | 7. Contributor documentation | Extended (`CONTRIBUTING.md`) | data entry, data attestation, takedown, family admission, schema changes, sign-off, code rules |
 | 8. README | Adopted | |
 | 9.1 NodeMeta | Not applicable | no nodes; material provenance, family definitions and method metadata take its place |
-| 9.2 Provenance | New role (section 9) | Vesalius supplies input provenance to MADDENING's run provenance |
-| 9.3 Verification registration | Adopted pattern | `VES-VER-` identifiers, registered without a MADDENING import |
+| 9.2 Provenance | New role (section 9) | OpenMaterica supplies input provenance to MADDENING's run provenance |
+| 9.3 Verification registration | Adopted pattern | `OMAT-VER-` identifiers, registered without a MADDENING import |
 | 9.5 Stability machinery | Adopted concept | the same four levels, on schema fields and API surfaces; family versions are frozen |
 | 9.7 Anomaly management | Adopted (section 8) | same schema, fields, enums, lifecycle and gate; data and family anomalies defined |
 | 9.8 ISO 14971 hooks | Adapted (section 8.4) | quantitative conditions, structured specimen facts and qualitative known gaps on materials |
@@ -148,19 +149,19 @@ Vesalius adopts conventions, not code. Section numbers refer to MADDENING's `DOC
 | 12, 13. EU MDR, MDCG 2019-11 | Referenced (section 13) | |
 | 14. Configuration management | Extended (section 12) | a content hash per record; frozen family versions; a DOI per library release |
 | 15. QMS compatibility | Inherited (section 13) | |
-| 16. Downstream inheritance | Reversed (section 14) | Vesalius is upstream of MIME and beside MADDENING |
+| 16. Downstream inheritance | Reversed (section 14) | OpenMaterica is upstream of MIME and beside MADDENING |
 
 **No runtime dependency on MADDENING.** MADDENING's compliance namespace is importable without JAX, but
-installing MADDENING installs JAX, and its licence is LGPL. A Vesalius runtime dependency on it would
-contradict Vesalius's purpose (a neutral, permissive layer that C++ and PyTorch stacks can adopt) and
-would invert the stack. Vesalius therefore keeps its own small compliance module whose records have the
+installing MADDENING installs JAX, and its licence is LGPL. An OpenMaterica runtime dependency on it would
+contradict OpenMaterica's purpose (a neutral, permissive layer that C++ and PyTorch stacks can adopt) and
+would invert the stack. OpenMaterica therefore keeps its own small compliance module whose records have the
 same shape as MADDENING's, and MIME, which depends on both, translates between them (section 9).
 
-**A development-time dependency on MADDENING's validator.** Vesalius's CI validates its anomaly registry
+**A development-time dependency on MADDENING's validator.** OpenMaterica's CI validates its anomaly registry
 with MADDENING's validator (`python -m maddening.compliance check-anomalies`), in a CI job of its own, so
 the three registries are held to one implementation of one schema. This is a development dependency only:
-nothing in the Vesalius package imports MADDENING, and nothing installed by `pip install vesalius` depends
-on it.
+nothing in the OpenMaterica package imports MADDENING, and nothing installed by `pip install openmaterica`
+depends on it.
 
 ---
 
@@ -169,7 +170,7 @@ on it.
 This repository holds the core and, at first, the families, released as their own distribution:
 
 ```
-Vesalius/
+OpenMaterica/
 ├── README.md                          # what it is, status, disclaimer, documentation table
 ├── DOCUMENTATION_ARCHITECTURE.md      # this document
 ├── CONTRIBUTING.md                    # constraints, sign-off, ID prefixes, data and family rules, schema changes
@@ -203,14 +204,14 @@ Vesalius/
 │   ├── user_guide/
 │   │   ├── installation.md
 │   │   ├── quickstart.md
-│   │   └── reading_without_vesalius.md   # the read side with a JSON parser or USD alone
+│   │   └── reading_without_materica.md   # the read side with a JSON parser or USD alone
 │   ├── developer_guide/
 │   │   ├── documentation_standards.md
 │   │   ├── testing_standards.md
 │   │   ├── schema_change_policy.md
 │   │   └── release_process.md
 │   ├── validation/
-│   │   ├── known_anomalies.yaml       # VES-ANO-* registry (section 8)
+│   │   ├── known_anomalies.yaml       # OMAT-ANO-* registry (section 8)
 │   │   ├── verification.md            # what is verified, and how (section 6)
 │   │   ├── soup_package.md            # from the first release (section 10)
 │   │   └── sbom/                      # from the first release (section 12)
@@ -220,16 +221,16 @@ Vesalius/
 │   │   └── iec62304_mapping.md
 │   └── bibliography.bib               # every source the specification, methods or families cite
 │
-├── src/vesalius/                      # the core distribution, including `python -m vesalius check` (architecture draft section 7.1)
-├── authoring/                         # vesalius-authoring: L3 with the curation tools and check-point baking; L6 integrations
-├── mcp/                               # vesalius-mcp, the MCP server: a separate distribution (architecture draft section 8)
-├── families/                          # vesalius-families, its own distribution: one directory per family (section 5.2)
-│   └── vesalius/mechanical/<family>/
+├── src/materica/                      # the core distribution, including `python -m materica check` (architecture draft section 7.1)
+├── authoring/                         # openmaterica-authoring: L3 with the curation tools and check-point baking; L6 integrations
+├── mcp/                               # openmaterica-mcp, the MCP server: a separate distribution (architecture draft section 8)
+├── families/                          # openmaterica-families, its own distribution: one directory per family (section 5.2)
+│   └── materica/mechanical/<family>/
 │       ├── definition.md              # NORMATIVE for that family version
 │       ├── vectors/                   # golden test vectors, frozen per version
 │       └── reference.py               # reference implementation (numpy)
 ├── tests/
-│   ├── conformance/                   # the Python runner; the cases are package data in src/vesalius/data/conformance/
+│   ├── conformance/                   # the Python runner; the cases are package data in src/materica/data/conformance/
 │   ├── families/                      # vectors against reference implementations
 │   └── methods/                       # method verification
 └── scripts/                           # CI checks (section 6.5)
@@ -245,8 +246,8 @@ are static archives, published on GitHub and archived on Zenodo with a DOI; ther
 ├── sources.yaml                       # the source registry (architecture draft section 6.1)
 ├── publishers.yaml                    # other namespaces: repository URLs, release hashes (section 6.7 there)
 ├── bibliography.bib
-├── materials/                         # one plain record per material, `vesalius/VES-MAT-XXXX` (the source of truth)
-├── interfaces/                        # one plain record per interface, `vesalius/VES-INT-XXXX` (from A6 and A7)
+├── materials/                         # one plain record per material, `materica/MAT-XXXX` (the source of truth)
+├── interfaces/                        # one plain record per interface, `materica/INT-XXXX` (from A6 and A7)
 ├── reference_data/                    # shipped reference curves and spectra, with their licences
 ├── gold_set/                          # extraction gold set: DOIs, document hashes, verified extractions (section 6.2)
 ├── generated/                         # GENERATED by the build from the records, never edited
@@ -257,7 +258,7 @@ are static archives, published on GitHub and archived on Zenodo with a DOI; ther
 │   ├── data_entry_standard.md
 │   ├── review_process.md
 │   └── takedown.md
-└── scripts/                           # policy checks, and the record checks that need the registry, a copy, the previous release or the history; the rest come from `vesalius check` (section 6.5)
+└── scripts/                           # policy checks, and the record checks that need the registry, a copy, the previous release or the history; the rest come from `materica check` (section 6.5)
 ```
 
 Rules for both trees:
@@ -276,21 +277,21 @@ Rules for both trees:
 
 ### 3.1 Platform positioning statement (`docs/regulatory/intended_use.md`)
 
-> Vesalius is an open material schema and a software toolkit for describing the physical properties of
+> OpenMaterica is an open material schema and a software toolkit for describing the physical properties of
 > substances in and around the human body for simulation. It is research software distributed under the
 > Apache License 2.0.
 >
-> **Vesalius is not a medical device** as defined by EU MDR (EU 2017/745) Article 2(1). It has no medical
+> **OpenMaterica is not a medical device** as defined by EU MDR (EU 2017/745) Article 2(1). It has no medical
 > purpose. It does not diagnose, monitor, predict, treat or alleviate disease, and it makes no clinical
 > interpretation of anything it stores. Under MDCG 2019-11 it is general-purpose software, comparable to a
 > units library or a materials database.
 >
-> When incorporated into a regulated medical device, Vesalius is classified as SOUP under IEC 62304. The
+> When incorporated into a regulated medical device, OpenMaterica is classified as SOUP under IEC 62304. The
 > device manufacturer bears full responsibility for assessing its suitability for their context of use.
 
 The scope statement sits beside it in `intended_use.md`:
 
-> Vesalius describes substances in and around the human body: tissues and body fluids, the media and
+> OpenMaterica describes substances in and around the human body: tissues and body fluids, the media and
 > phantoms that stand in for them, agents introduced into them, and the materials of devices that enter or
 > touch them. It does not describe systems: an apparatus or its calibration, the quantities of one object
 > (its moment, inertia or mean density), a drive, a procedure, or a simulator's tuning.
@@ -303,28 +304,28 @@ The scope statement sits beside it in `intended_use.md`:
 > - **Pairs.** A property of two substances in contact (friction, slip, a solute's diffusivity) is in, as an
 >   interface record, when the source states the surface conditions and the test method, which become
 >   required conditions. A number measured with one tool or device is reference data for checking a model.
-> - **Geometry is scene data.** Vesalius defines how geometry binds to materials, and ships only small test
->   phantoms and label crosswalks from reference anatomies, never anatomy.
+> - **Geometry is scene data.** OpenMaterica defines how geometry binds to materials, and ships only small
+>   test phantoms and label crosswalks from reference anatomies, never anatomy.
 > - **Behaviour.** Behaviour computed from geometry and materials (an implant's heating in MRI, a puncture
 >   force) is the consumer's output; measured behaviour is reference data in the consumer's namespace.
 > - **Entry.** Content enters when a named consumer needs it, and the curated library starts with the
 >   body and the materials of devices that enter or touch it. An apparatus's materials (a coil's copper, a
 >   detector's scintillator) are published as material records in other namespaces. Other publishers may use
->   the same machinery in their own namespaces, including for data Vesalius does not curate: a record of a
+>   the same machinery in their own namespaces, including for data OpenMaterica does not curate: a record of a
 >   type of their own (an apparatus's calibration, say) has its envelope and value machinery checked as for
->   any record, but Vesalius does not check its body, never treats it as a material and never curates it
+>   any record, but OpenMaterica does not check its body, never treats it as a material and never curates it
 >   (constraint 27).
 
 ### 3.2 Data statement
 
-This is the statement MADDENING does not need and Vesalius does:
+This is the statement MADDENING does not need and OpenMaterica does:
 
-> The values in the Vesalius material library are **taken from cited sources**, or are fits to cited data,
+> The values in the OpenMaterica material library are **taken from cited sources**, or are fits to cited data,
 > labelled by origin. For each value, the library states what its source gives (or what its recorded fit
 > produces), converted to SI, with the specimen, conditions and statistics the record states; and that each
 > shipped model parameter set reproduces its check points under the family definition it names, and its
 > independent convention witness where the record has one. Section 6 says how each of these statements is
-> checked; nothing more is claimed. Vesalius does **not** state or check that a value describes any
+> checked; nothing more is claimed. OpenMaterica does **not** state or check that a value describes any
 > particular patient, tissue sample, phantom batch or device, nor that a source is itself correct or
 > current. Whether a library value is applicable to a given use is the user's and the manufacturer's
 > judgement.
@@ -349,19 +350,19 @@ This is the statement MADDENING does not need and Vesalius does:
 
 ### 3.3 Cybersecurity boundary statement (MDCG 2019-16)
 
-> Vesalius assumes trusted input files. It performs no authentication, authorisation or sanitisation beyond
-> validating records against the record schema. A USD stage can pull in other files through its composition
-> (sublayers, references, payloads) and through the host's asset resolver, so reading a stage may read any
-> file that stage names. Every USD layer Vesalius ships is self-contained (no composition arcs, no asset
-> paths), so reading a library layer reads that file alone. Vesalius itself makes no network requests and
-> runs no code from the files it reads: records and family vectors are data, and family reference
-> implementations are code shipped in the `vesalius-families` distribution, never loaded from a record.
+> OpenMaterica assumes trusted input files. It performs no authentication, authorisation or sanitisation
+> beyond validating records against the record schema. A USD stage can pull in other files through its
+> composition (sublayers, references, payloads) and through the host's asset resolver, so reading a stage may
+> read any file that stage names. Every USD layer OpenMaterica ships is self-contained (no composition arcs,
+> no asset paths), so reading a library layer reads that file alone. OpenMaterica itself makes no network
+> requests and runs no code from the files it reads: records and family vectors are data, and family reference
+> implementations are code shipped in the `openmaterica-families` distribution, never loaded from a record.
 > Loading third-party records and stages, and the security of the asset resolver, are the responsibility of
 > the integrating application.
 
 ### 3.4 Licence note
 
-Apache-2.0 is permissive: no copyleft obligation follows a product that incorporates Vesalius's code, and
+Apache-2.0 is permissive: no copyleft obligation follows a product that incorporates OpenMaterica's code, and
 the licence includes an express patent grant. It is compatible with use from MIME and MADDENING
 (LGPL-3.0-or-later) and with contributions to Isaac for Healthcare. The curated library's data is released
 under CC0-1.0, stated on each record (architecture draft section 6.4), so that anyone may recombine it with
@@ -375,21 +376,21 @@ grant. Other publishers choose their own licences. This is a description, not le
 
 | Responsibility | Owner | Standard | Evidence |
 |---|---|---|---|
-| Specification and read-side correctness | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite |
-| Family definitions and reference implementations agree | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | golden vectors (section 6.4) |
-| Fidelity of library values to their sources, and their units | Vesalius | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
+| Specification and read-side correctness | OpenMaterica | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite |
+| Family definitions and reference implementations agree | OpenMaterica | IEC 62304 Clause 5.6 (via SOUP assessment) | golden vectors (section 6.4) |
+| Fidelity of library values to their sources, and their units | OpenMaterica | IEC 62304 Clause 5.6 (via SOUP assessment) | transcription review records, fit reproduction, data checks |
 | A consumer's own code inside its computation (readers, mixing rules and family evaluators in its step, compiled program or gradient path) | downstream user | IEC 62304 Clause 5.6 (their own) | the conformance suites it passes; the record's check points; the family's golden vectors |
-| Vesalius code a consumer runs at build (the reader, requirement checks, the material input sheet, label-volume fractions, the reference sampler) | Vesalius, assessed by the manufacturer as SOUP | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite; section 10 |
+| OpenMaterica code a consumer runs at build (the reader, requirement checks, the material input sheet, label-volume fractions, the reference sampler) | OpenMaterica, assessed by the manufacturer as SOUP | IEC 62304 Clause 5.6 (via SOUP assessment) | conformance suite; section 10 |
 | Choosing a material; declaring its domain, target, mixing rule, picks and any extrapolation; accepting differences between specimen and target | downstream user | ASME V&V 40 (model inputs) | the user's input justification and the material input sheet |
 | Watching, during a run, every declared condition that the run or an optimiser moves | downstream user | ASME V&V 40 | the run-time watches the build emits, and the evaluators' in-range outputs, recorded with the results |
 | Measuring the language model an agent uses for extraction, before relying on it | the curator using it | none: curation tooling is outside the SOUP package | gold-set score; review of every value |
 | Calculation verification of a simulation | downstream user | ASME V&V 40 | the simulator's own evidence |
-| SOUP assessment of Vesalius | device manufacturer | IEC 62304 Clauses 5.3.3, 5.3.4, 7.1.3 | Vesalius SOUP package and anomaly registry |
+| SOUP assessment of OpenMaterica | device manufacturer | IEC 62304 Clauses 5.3.3, 5.3.4, 7.1.3 | OpenMaterica SOUP package and anomaly registry |
 | Risk management, clinical evidence, submission | device manufacturer | ISO 14971, EU MDR | the manufacturer's files |
 
-The use errors Vesalius can make less likely are applying a value outside its conditions (a different
+The use errors OpenMaterica can make less likely are applying a value outside its conditions (a different
 temperature, frequency, wavelength, species or tissue state), using a stand-in without knowing it, mixing
-across the edge of a domain, and reading a parameter set in another convention. Vesalius makes conditions
+across the edge of a domain, and reading a parameter set in another convention. OpenMaterica makes conditions
 and specimen facts machine-readable and the consumer's declarations explicit, so a build can check them
 (architecture draft section 3.5). A consumer's convention mismatch fails at the check points; an
 extraction in the wrong convention fails at the independent witness. A condition that moves during a run
@@ -409,13 +410,13 @@ binding and everything a reader must do, in prose and tables, independently of t
 
 | Document | Defines |
 |---|---|
-| `record_format.md` | records are JSON only; the envelope every record shares (identifier, version, record type, schema version, content hash, provenance and the value machinery) and its body; Vesalius's record types: `material`, `interface` (the name reserved from the first schema version; its body specified with the interface design) and `overlay` (its base record's identifier and hash, its scope, and the fields it replaces); a reader skips a type it does not know when listing records and refuses it when a record of that type is referenced; how a namespace's own type uses the envelope (the first is specified only after a consumer has prototyped one); for a material, its sections, including `bulk` (density, with the kind of density as a condition, and elemental composition, which no other section duplicates); the `extensions` block for another namespace's sections, which is that namespace's responsibility and which curated records do not carry; every field with its SI unit, value form, range, interpolation scheme and edges, allowed tokens (an unknown token refuses the field) and stability level; the seven value forms (constant, sampled table, power law, interval, composition, model parameter set, reference data), with a table's tabulated range kept apart from the range its source says it holds over, power laws with the basis of their exponent, and attenuation stored as an amplitude coefficient in nepers per metre (UCUM `/m`); a composition's components, basis, sum rule and the source's stated sum; a constant naming its trivial family, which is a scalar for the witness and statistics rules; no fallback values |
+| `record_format.md` | records are JSON only; the envelope every record shares (identifier, version, record type, schema version, content hash, provenance and the value machinery) and its body; OpenMaterica's record types: `material`, `interface` (the name reserved from the first schema version; its body specified with the interface design) and `overlay` (its base record's identifier and hash, its scope, and the fields it replaces); a reader skips a type it does not know when listing records and refuses it when a record of that type is referenced; how a namespace's own type uses the envelope (the first is specified only after a consumer has prototyped one); for a material, its sections, including `bulk` (density, with the kind of density as a condition, and elemental composition, which no other section duplicates); the `extensions` block for another namespace's sections, which is that namespace's responsibility and which curated records do not carry; every field with its SI unit, value form, range, interpolation scheme and edges, allowed tokens (an unknown token refuses the field) and stability level; the seven value forms (constant, sampled table, power law, interval, composition, model parameter set, reference data), with a table's tabulated range kept apart from the range its source says it holds over, power laws with the basis of their exponent, and attenuation stored as an amplitude coefficient in nepers per metre (UCUM `/m`); a composition's components, basis, sum rule and the source's stated sum; a constant naming its trivial family, which is a scalar for the witness and statistics rules; no fallback values |
 | `provenance.md` | provenance fields, including origin (with "evaluated from a reference formulation"); the extraction methods, with the source's own unit and, for attenuation, whether it reported an amplitude or an intensity coefficient; document identity and version beside the hash of the copy read; locators per document version; explicit statuses ("not checked", "none") in place of empty fields; fields filled at import kept apart from those filled at curation; per-parameter provenance in a parameter set; the conditions vocabulary, categorical conditions included, the basis of each condition, and unstated conditions; specimen facts, with the division between the two (conditions describe the test, specimen facts the thing tested) and the starting vocabulary (NCBI Taxonomy, UBERON, a short list of tissue states, and disease and treatment state, each with a structured "unstated"); the three tiers, computed from the source registry, and user fill-ins checked against the identity and version of the user's copy; the source registry's fields and redistribution statuses; evidence (a quote, or the quote's hash if the legal review rules that quotes may not ship), assistance and search records |
 | `uncertainty.md` | the statistics block; what each spread represents; `dispersion: not_reported`; relative and expanded uncertainty with a coverage factor; the basis "specification limits"; interval-only values, one-sided ones included; the six uncertainty structures, `marginals` among them (statistics per parameter, dependence not reported, never sampled jointly); admissibility; the sampling rules, including refusal |
-| `model_families.md` | the identifier form; the rule that a family enters `vesalius.` only when an in-scope record uses it; the `kind` field, stated per loading control, with every rate marked as an input or a test condition; input and output measures with conversion vectors; the domain of each term; the evolution form (state variables, input histories, events); events that say only where a family's range of states ends, never which model takes over, with chains declared by the consumer as pairs of family and record; what a family definition must fix (architecture draft section 4.5); coverage stated in measures that do not depend on the loading mode (principal stretches or invariants, and rate); check points in records, their coverage and the tolerance rule; independent convention witnesses and their tolerance, and a witness through a model of a test, which `vesalius check` reports as not checked; refusal on an unknown family or version or a failed check point |
+| `model_families.md` | the identifier form; the rule that a family enters `materica.` only when an in-scope record uses it; the `kind` field, stated per loading control, with every rate marked as an input or a test condition; input and output measures with conversion vectors; the domain of each term; the evolution form (state variables, input histories, events); events that say only where a family's range of states ends, never which model takes over, with chains declared by the consumer as pairs of family and record; what a family definition must fix (architecture draft section 4.5); coverage stated in measures that do not depend on the loading mode (principal stretches or invariants, and rate); check points in records, their coverage and the tolerance rule; independent convention witnesses and their tolerance, and a witness through a model of a test, which `materica check` reports as not checked; refusal on an unknown family or version or a failed check point |
 | `fits_and_reference_data.md` | the fit record, including "exactly determined"; coverage as a set of loading modes and ranges, with histories; a parameter set that is a mean of per-specimen fits, witnessed against per-specimen data or recorded "no independent witness"; the reference-data payload (points with their own origin and status; curves with a digitised flag and the digitiser's axis calibration); the fit-reproduction rule and "not checked" |
 | `geometry.md` | scene documents, which are scene data with their own schemas, not records: the plain scene manifest (regions with a material identifier, version and hash, a priority, an orientation and an opaque reference to their geometry; the background; domains as lists of region names; interface records bound to pairs of regions), layered paths (an entry point, a direction or curve, intervals with their thickness and material, the declared lateral homogeneity) and label crosswalks; a region's geometry; precedence declared by the scene, with no priority taken from hierarchy depth (two regions with no authored priority that claim one point are refused); a background that is inside every domain that requires it; every domain declared, none by default; an orientation wherever a direction-dependent value is used; label volumes; field overrides, their provenance and their frame (world, or the region's reference configuration) |
-| `usd_binding.md` | the API schemas; attribute names; a material prim's envelope as attributes (identifier, version, record type, content hash), since prim names carry no identity; each field's full plain form as one generated JSON string and nothing beside it; overlays as prims of their own (a relationship to the base material and the scope as a JSON string), applied only when a consumer declares them; no `UsdPhysics.MaterialAPI` on shipped layers; schemas detected by name in the composed `apiSchemas`, with no plug-in; instance proxies traversed, and unloaded payloads, point-instancer prototypes and time samples refused; the `vesalius` binding purpose, authored on the region prim, and the bindings a reader refuses (an all-purpose binding to a Vesalius material, a `vesalius` collection binding, a different `vesalius` binding on a non-region prim inside a region, a binding on a prim that is not a region); `physics` bindings left to engines; the region marker; the layered path's typed prim (one relationship to its distinct materials and an integer index per interval; thicknesses in the units of the layer that holds them); the stage check, per shape; the engine crosswalk, with Vesalius's one crosswalk (`UsdPhysics`), consumers' crosswalks for other engines, each API pinned to its schema file, and the scaffold that drafts them; the engine adapter and the self-describing stamp it writes; library materials under a scope of their own, never `/Materials/<name>`; the stage's authored `metersPerUnit` |
+| `usd_binding.md` | the API schemas; attribute names; a material prim's envelope as attributes (identifier, version, record type, content hash), since prim names carry no identity; each field's full plain form as one generated JSON string and nothing beside it; overlays as prims of their own (a relationship to the base material and the scope as a JSON string), applied only when a consumer declares them; no `UsdPhysics.MaterialAPI` on shipped layers; schemas detected by name in the composed `apiSchemas`, with no plug-in; instance proxies traversed, and unloaded payloads, point-instancer prototypes and time samples refused; the `materica` binding purpose, authored on the region prim, and the bindings a reader refuses (an all-purpose binding to an OpenMaterica material, a `materica` collection binding, a different `materica` binding on a non-region prim inside a region, a binding on a prim that is not a region); `physics` bindings left to engines; the region marker; the layered path's typed prim (one relationship to its distinct materials and an integer index per interval; thicknesses in the units of the layer that holds them); the stage check, per shape; the engine crosswalk, with OpenMaterica's one crosswalk (`UsdPhysics`), consumers' crosswalks for other engines, each API pinned to its schema file, and the scaffold that drafts them; the engine adapter and the self-describing stamp it writes; library materials under a scope of their own, never `/Materials/<name>`; the stage's authored `metersPerUnit` |
 | `read_side_contract.md` | the read procedure (architecture draft section 7.5), in order, and every case in which a reader must refuse (an unknown token, a referenced record of an unknown type, an unauthored attribute, a value outside its range unless an extrapolation is declared); an unknown condition gives "unknown", never "present and unchecked"; what an evaluator reports (whether its condition is in range, and which side's derivative it gives at a table's interior knots; at a table's ends, the inside derivative only); verifying a content hash, which needs an RFC 8785 serialiser and SHA-256 beside the JSON parser |
 | `mixing_rules.md` | the identities, with the volume-fraction identity for density holding for spatial mixing only, not for solutions; the named rules, each with its equation, its assumptions and a numpy reference; fields with no general rule. Consumers write the rules in their own code (constraint 26) |
 | `declarations.md` | what a consumer declares (domains, targets, family versions, mixing rules, picks, tolerances with their reason and consequence, waivers, a specimen fact that implies a condition, an extrapolation with its basis, overlays it accepts, chains of families across events as pairs of family and record); the three results of a check (met, not met, unknown), an unknown carrying its value; the run-time watch emitted for every declared condition with its tolerance; an overlay's scope key (a hash of the consumer's whole model configuration), any difference being "not met" unless accepted; a field made trainable, marked "record value used only as the initial value"; a clamping evaluator, which needs a declared extrapolation or stops the run when its in-range flag falls; how declarations are recorded (architecture draft section 3.5) |
@@ -452,7 +453,7 @@ bibliography: ../bibliography.bib
 
 # [Method name]
 
-**Method ID**: `VES-MTH-[XXX]`
+**Method ID**: `OMAT-MTH-[XXX]`
 **Stability**: [experimental | provisional | stable | deprecated]
 **Version**: [semantic version of this method]
 
@@ -472,7 +473,7 @@ bibliography: ../bibliography.bib
 The Implementation Mapping is mandatory and checked in CI, as in MADDENING (`scripts/check_impl_mapping.py`).
 
 **Extraction procedures are method entries too.** Each prompt for model-assisted extraction (architecture
-draft section 8) is a versioned `VES-MTH-` entry. Its Verification Evidence is its gold-set score, per field
+draft section 8) is a versioned `OMAT-MTH-` entry. Its Verification Evidence is its gold-set score, per field
 and per model tested (section 6.2).
 
 **Curation tools come before the first library release** (the first archived release with a DOI,
@@ -481,16 +482,16 @@ overlay, first because a published figure is often the only independent witness 
 (with "not applicable" driven by the value's type, and a structured "unstated"); quote attach-and-verify;
 registry drafting from a DOI and licence pages; formulation evaluators (a reference formulation such as
 water's) and check-point bakers. Each is a method entry built first as a library function with a command
-line, in `vesalius-authoring`; the MCP server only exposes them (architecture draft section 8). A prototype
-estimated (it did not measure) full provenance at two to seven times the time first assumed per value;
-tooling, not fewer fields, is the answer chosen.
+line, in `openmaterica-authoring`; the MCP server only exposes them (architecture draft section 8). A
+prototype estimated (it did not measure) full provenance at two to seven times the time first assumed per
+value; tooling, not fewer fields, is the answer chosen.
 
 ### 5.2 Model-family definitions
 
 Each family version has a `definition.md`, normative for that version, with these sections:
 
 ```markdown
-# [Family identifier, e.g. vesalius.mechanical.ogden_incompressible.v1]
+# [Family identifier, e.g. materica.mechanical.ogden_incompressible.v1]
 
 **Status**: [admitted | deprecated]
 **Named consumer**: [who needed it, and for what]
@@ -511,12 +512,12 @@ A definition never changes once released. A correction is a new version, and the
 with a pointer to it. "Known conventions elsewhere" is informative: it is what an exporter's conversion and
 the convention checker (architecture draft section 10) are built from.
 
-- **A family enters `vesalius.` only when an in-scope record uses it.** Until then it lives with its
+- **A family enters `materica.` only when an in-scope record uses it.** Until then it lives with its
   consumer, in the consumer's namespace.
 - **Reference implementations and golden vectors live with their families**, not in the core. The
-  implementations run on the write side, to bake check points: the baker, in `vesalius-authoring`, imports
-  `vesalius-families` there and nowhere else. Consumers evaluate parameter sets with their own code
-  (constraint 26). The families ship as one distribution, `vesalius-families`, and each family version has
+  implementations run on the write side, to bake check points: the baker, in `openmaterica-authoring`, imports
+  `openmaterica-families` there and nowhere else. Consumers evaluate parameter sets with their own code
+  (constraint 26). The families ship as one distribution, `openmaterica-families`, and each family version has
   its own content hash, so a manufacturer assesses only the families it uses.
 - **An event never names its successor.** A family's event says only that its range of states ends, and
   under which condition. Which model takes over is the consumer's choice: the consumer declares the chain as
@@ -531,9 +532,9 @@ the convention checker (architecture draft section 10) are built from.
 
 ### 5.3 The material library
 
-Each library material has an identifier `vesalius/VES-MAT-[XXXX]` (architecture draft section 4.1) and one
+Each library material has an identifier `materica/MAT-[XXXX]` (architecture draft section 4.1) and one
 plain record, in JSON, in the library repository; an interface record, once interfaces ship, has
-`vesalius/VES-INT-[XXXX]`. Its USD layer and its **material card** (architecture draft section
+`materica/INT-[XXXX]`. Its USD layer and its **material card** (architecture draft section
 6.6) are generated from that record. The card's prose sections are fields of the record: motivation, what was
 measured and what was not, and maintenance are written by the curator; the rest is assembled from the other
 fields.
@@ -557,7 +558,7 @@ fields.
 | tier | computed | shipped, reference-only or private, computed from the source's redistribution status in the registry, never written per value. A person sets the source's redistribution status and the record's review status; a record a model drafted stays reference-only until a person sets its review status |
 | evidence | yes for every value extracted from text or a table, in the curated library (its policy, checked by its own CI, section 6.5); optional in other namespaces | the verbatim quote, including any conditions and exponents it states, its locator, the identifier and version of the document, and the SHA-256 of the copy read. A hash identifies a copy, not a document: re-verifying means the quote occurs in your own copy. Copies stamped with personal data (a downloader's name or address) never ship. For a digitised figure, the locator and the hash. Quotes are not published for reference-only values. If the legal review rules that quotes may not ship, the record ships the SHA-256 of the normalised quote with its locator, the text stays in the curator's private store, and re-verifying compares hashes |
 | statuses | yes | an explicit status ("not checked", "none") wherever a check or a field has no result, never an empty field; fields filled at import kept apart from fields filled at curation; per-parameter provenance where a parameter set's parameters come from different places |
-| assistance | yes when a model assisted | tool, model and provider as reported, prompt version (`VES-MTH-` entry and version), date |
+| assistance | yes when a model assisted | tool, model and provider as reported, prompt version (`OMAT-MTH-` entry and version), date |
 | search record | yes for statistics pooled across sources | queries, databases, date, inclusion criteria |
 | reviewer, date and ORCID | yes | who checked the value against the source, whether they are independent of whoever or whatever extracted it, and which checklist items: value, unit, conditions, specimen, statistic, primary or cited, family and witness |
 
@@ -595,8 +596,8 @@ consumer needs it, with the sources that consumer relies on.
 
 ## 6. Verification
 
-Vesalius has no physics to converge, so its verification is of five other kinds. Each verification item has
-an identifier `VES-VER-[XXX]`.
+OpenMaterica has no physics to converge, so its verification is of five other kinds. Each verification item
+has an identifier `OMAT-VER-[XXX]`.
 
 ### 6.1 Conformance suite (the read side)
 
@@ -644,10 +645,10 @@ JSON parser can claim "plain read" without running the USD cases.
   read only as reference data, never as a property.
 
 **USD read**
-- the material bound to a prim or a path interval, from a `vesalius`-purpose binding authored on the region
-  prim; refusal of a Vesalius material reached through an all-purpose binding; refusal of a different
-  Vesalius binding on a non-region prim inside a region; `physics` bindings left to engines; a binding that
-  applies within its region and never across into a nested one;
+- the material bound to a prim or a path interval, from a `materica`-purpose binding authored on the region
+  prim; refusal of an OpenMaterica material reached through an all-purpose binding; refusal of a different
+  OpenMaterica binding on a non-region prim inside a region; `physics` bindings left to engines; a binding
+  that applies within its region and never across into a nested one;
 - schemas found with no plug-in registered; regions inside instances found; refusal of reads that reach an
   unloaded payload, of regions in a point instancer's prototype, and of time-sampled attributes;
 - refusal of an attribute that was not authored; refusal of a stage with no authored `metersPerUnit`;
@@ -682,11 +683,11 @@ JSON parser can claim "plain read" without running the USD cases.
 
 **Engine adapters**
 - engine crosswalks pinned by hash and refused when not passed, without a source for their units, or when they
-  differ from the schema file they pin; Vesalius's `UsdPhysics` crosswalk equal to usd-core 0.26.5's schema
-  file; one conversion rule by SI dimension, with vectors in two unit systems; every API a crosswalk lists
-  applied by name and every attribute authored, from a read that is met or accepted or from a declared value;
-  the stamp, which re-derives without the crosswalk and is checked against its units; refusal of overridden
-  bindings and instanced regions.
+  differ from the schema file they pin; OpenMaterica's `UsdPhysics` crosswalk equal to usd-core 0.26.5's
+  schema file; one conversion rule by SI dimension, with vectors in two unit systems; every API a crosswalk
+  lists applied by name and every attribute authored, from a read that is met or accepted or from a declared
+  value; the stamp, which re-derives without the crosswalk and is checked against its units; refusal of
+  overridden bindings and instanced regions.
 
 **Build checks**
 - an engine model's engine results per shape: missing, foreign, stale and overridden engine materials refused,
@@ -724,7 +725,7 @@ coefficient (whose value in nepers is twice the amplitude one).
   review is recorded and the public check reports "not checked";
 - **reference-only parameter sets** ship no check points, which would publish the parameters. A user who fills
   in the parameters and the witness datum from their own copy, as an overlay in their own namespace, runs the
-  witness locally with `vesalius check`. The fill-in tool records the identifier and version of the user's
+  witness locally with `materica check`. The fill-in tool records the identifier and version of the user's
   copy and compares them with the record's; a mismatch is "unknown". The result is reported as "fill-in
   consistent with the user's copy", which is all it shows: parameters and witness typed from the same wrong
   row, or the wrong version, can agree. The curator's own result at review is recorded beside it. A consumer's
@@ -751,7 +752,7 @@ coefficient (whose value in nepers is twice the amplitude one).
 - A check point's tolerance is set by what it must tell apart and by the precision consumers declare; no
   check point sits where every arm of the family gives zero; an evolution family's tolerances allow for
   discretisation.
-- **Admission.** A family enters `vesalius.` with a definition (section 5.2), golden vectors, a reference
+- **Admission.** A family enters `materica.` with a definition (section 5.2), golden vectors, a reference
   implementation, a named consumer, and an in-scope record that uses it. A family with no consumer for two
   releases is deprecated. Third-party namespaces get the same checks, not the same admission: a family in a
   publisher's own namespace needs none, and listing its namespace in `publishers.yaml` is first come first
@@ -759,7 +760,7 @@ coefficient (whose value in nepers is twice the amplitude one).
 
 ### 6.5 CI checks
 
-**Record checks are a command in the core**, `python -m vesalius check <directory>`, so that the curated
+**Record checks are a command in the core**, `python -m materica check <directory>`, so that the curated
 library and any other publisher run the same record checks (architecture draft section 6.7), apart from those
 that need inputs beyond the records (below); the library adds its own policy checks below:
 
@@ -768,14 +769,14 @@ that need inputs beyond the records (below); the library adds its own policy che
 | schema | records are JSON and validate against the record schema; identifiers are namespaced; every record states its record type; a namespaced type's envelope and value machinery validate, its body is not checked; a referenced record of an unknown type is refused; an unknown token refuses its field |
 | provenance | the fields of section 5.3 are complete, with explicit statuses where a field has no result |
 | plausibility | physical bounds; consistency between related fields; admissibility of every parameter set and ensemble member; units |
-| check points | stored check points equal the reference implementation's; for a family outside `vesalius.`, "not checked (third-party family)", since no third-party code is run |
+| check points | stored check points equal the reference implementation's; for a family outside `materica.`, "not checked (third-party family)", since no third-party code is run |
 | fit reproduction | every fit reaches its stated residual; "not checked" is counted and reported |
 | generated | USD layers, cards and the index equal what the records produce |
 | self-contained | shipped USD layers have no composition arcs and no asset paths |
 | units | every registered unit code parses as UCUM 2.2 with no special unit in a product or quotient |
-| stage (`--stage`) | on a scene: units, hashes and pins, and per engine shape its engine materials, effective density and stamp, re-derived and checked against its units, with the engine crosswalks (`--crosswalk`) and schema files (`--schema`) passed to it and Vesalius's own crosswalks; unrecognised APIs listed (`usd_binding.md` section 9) |
+| stage (`--stage`) | on a scene: units, hashes and pins, and per engine shape its engine materials, effective density and stamp, re-derived and checked against its units, with the engine crosswalks (`--crosswalk`) and schema files (`--schema`) passed to it and OpenMaterica's own crosswalks; unrecognised APIs listed (`usd_binding.md` section 9) |
 | engine crosswalks (`--crosswalk`) | a crosswalk document on its own: its shape, dimensions against its fields' units, and a comparison with the schema file it pins where a file of that hash is passed (`--schema`), else "not compared" (`usd_binding.md` section 10.1) |
-| witness | parameter sets reproduce an independent convention witness; "no independent witness" and "not checked" are counted and reported; a witness through a model of a test, and a witness of a family outside `vesalius.`, are reported "not checked" |
+| witness | parameter sets reproduce an independent convention witness; "no independent witness" and "not checked" are counted and reported; a witness through a model of a test, and a witness of a family outside `materica.`, are reported "not checked" |
 | fallbacks | physical attributes in the USD schema have no fallback values; shipped layers do not apply `UsdPhysics.MaterialAPI` |
 | tables | every table declares its interpolation scheme, its range and its edges; every form states its range |
 | evidence | model-assisted values carry an assistance record. Whether a quote occurs at its locator and contains the value's numbers (RC-030, RC-032) needs the source copy, so that check runs in the library's tooling (below); requiring a quote for every extracted value is the curated library's policy, checked there |
@@ -783,24 +784,24 @@ that need inputs beyond the records (below); the library adds its own policy che
 
 Checks that need more than the records themselves (the source registry, a source copy, the previous release or
 the repository's history: RC-017, 030, 032, 034, 040, 042 and 048) run in the library's tooling, which is
-given those inputs explicitly, and not in `vesalius check` (maintainer, 2026-10-13).
+given those inputs explicitly, and not in `materica check` (maintainer, 2026-10-13).
 
 In this repository:
 
 | Script | Checks |
 |---|---|
-| `scripts/check_anomalies.py` | the registry against the schema of section 8, prefix `VES-ANO-`, by delegating to MADDENING's validator (section 8.1) |
+| `scripts/check_anomalies.py` | the registry against the schema of section 8, prefix `OMAT-ANO-`, by delegating to MADDENING's validator (section 8.1) |
 | `scripts/check_citations.py` | every `[@Key]` in the specification, methods and families exists in `bibliography.bib` |
 | `scripts/check_impl_mapping.py` | every function named in a method guide or family definition exists |
 | `scripts/check_families.py` | reference implementations reproduce their vectors; released vectors are unchanged; every family version's content hash matches; every family has a named consumer |
 | `scripts/check_signoff.py` | every commit in a pull request carries a sign-off (section 15) |
 
-In the library repository, CI runs `vesalius check` on every pull request and adds the curated library's
+In the library repository, CI runs `materica check` on every pull request and adds the curated library's
 policy checks:
 
 | Script | Checks |
 |---|---|
-| `scripts/check_publishers.py` | every namespace in `publishers.yaml` is unique and uses the characters `[a-z0-9_]`, and every registered release passes the data-only checks of `vesalius check`; no third-party code runs in the library's CI |
+| `scripts/check_publishers.py` | every namespace in `publishers.yaml` is unique and uses the characters `[a-z0-9_]`, and every registered release passes the data-only checks of `materica check`; no third-party code runs in the library's CI |
 | `scripts/check_sources.py` | every source key exists; every value's tier is the one its source's redistribution status gives; no shipped value comes from a source whose status is not permitted or unknown; no record a model drafted is shipped before a person set its review status; every value extracted from text or a table carries a quote, or its hash if the legal review rules that quotes may not ship; every record states its licence, with evidence text excluded from the CC0 grant |
 | `scripts/check_signoff.py` | sign-off and data attestation on every pull request |
 
@@ -819,7 +820,7 @@ section, as MADDENING's do.
 
 | Version | Tracks | Where it appears |
 |---|---|---|
-| Package version (SemVer) | each Python distribution: the core, `vesalius-authoring`, `vesalius-families` and `vesalius-mcp` | `pyproject.toml`, CHANGELOG, SOUP package |
+| Package version (SemVer) | each Python distribution: the core, `openmaterica-authoring`, `openmaterica-families` and `openmaterica-mcp` | `pyproject.toml`, CHANGELOG, SOUP package |
 | Schema version (SemVer) | the specification, the record schema and the USD schema | `docs/specification/changes.md`; recorded on every record |
 | Family version | one model family's definition, vectors and reference implementation; frozen once released, with its own content hash | the family identifier (`...v1`); recorded on every parameter set |
 | Record version | one record's values | the record; its card; its content hash (section 12); the library release that carries it |
@@ -859,7 +860,7 @@ deprecated.
 ### 7.4 CHANGELOG and commit prefixes
 
 `CHANGELOG.md` follows Keep a Changelog with MADDENING's extra sections **Verification**, **Security** and
-**Known Anomalies**, plus Vesalius's own: **Schema**, **Families** and **Data**. The library repository
+**Known Anomalies**, plus OpenMaterica's own: **Schema**, **Families** and **Data**. The library repository
 keeps its own CHANGELOG with **Data** and **Known Anomalies**.
 
 Commit prefixes are MADDENING's (`feat`, `fix`, `refactor`, `docs`, `test`, `perf`, `verify`, `break`,
@@ -872,27 +873,27 @@ and `data:` for a library change.
 
 ### 8.1 Adopted unchanged
 
-Vesalius adopts MADDENING's anomaly management (MADDENING section 9.7) unchanged: the registry at
+OpenMaterica adopts MADDENING's anomaly management (MADDENING section 9.7) unchanged: the registry at
 `docs/validation/known_anomalies.yaml`; the record fields `anomaly_id`, `title`, `description`, `severity`,
 `safety_relevance`, `safety_relevance_rationale`, `affected_components`, `affected_versions`,
 `workaround`, `resolution_status`, `resolution_version`, `github_issue`, and the optional `verification`
 and `residual_risk`; the enums; the PEP 440 convention for `affected_versions`; the three-phase lifecycle
 (issue, then a manual registry entry, then CI checks); the three-tier release gate; and the rule that
-entries are never deleted. The registry's version field is `vesalius_version`. Library anomalies are
+entries are never deleted. The registry's version field is `materica_version`. Library anomalies are
 recorded in the same registry, naming the library release in their description and the material in
 `affected_components`.
 
-The schema is kept identical on purpose, so that a manufacturer can collect MADDENING, MIME and Vesalius
+The schema is kept identical on purpose, so that a manufacturer can collect MADDENING, MIME and OpenMaterica
 entries into one risk file, and so that one validator can check all three. The one difference is the
-version field, which MADDENING's Appendix F says each project names after itself: `vesalius_version`.
+version field, which MADDENING's Appendix F says each project names after itself: `materica_version`.
 
-Vesalius's CI checks the registry with MADDENING's validator:
-`python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix VES-ANO-`
+OpenMaterica's CI checks the registry with MADDENING's validator:
+`python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix OMAT-ANO-`
 (section 1).
 
 **This depends on a MADDENING change.** Checked 2026-10-11 against MADDENING `f2aa830e`: the validator
 accepts no top-level version field except `maddening_version`
-(`MADD:src/maddening/compliance/_validate.py`, `_KNOWN_TOPLEVEL_FIELDS`), so it refuses `vesalius_version`,
+(`MADD:src/maddening/compliance/_validate.py`, `_KNOWN_TOPLEVEL_FIELDS`), so it refuses `materica_version`,
 and MIME's registry fails it for the same reason. That contradicts MADDENING's own Appendix F, which has
 downstream registries carry their own version field and pass the validator. Accepting a project version
 field has been requested of MADDENING and is to be prioritised there; until it lands, the CI job is
@@ -901,18 +902,18 @@ expected to fail on this one field.
 ### 8.2 Severity, applied to data and families
 
 The definitions are MADDENING's (section 9.7, "Severity"), repeated here so this document stands alone. A
-**wrong result** is a value the library returns, stores or resolves that differs from what Vesalius
-documents for it. For data, "what Vesalius documents" is: the cited source, at the stated locator,
+**wrong result** is a value the library returns, stores or resolves that differs from what OpenMaterica
+documents for it. For data, "what OpenMaterica documents" is: the cited source, at the stated locator,
 converted to the specification's SI unit, under the stated conditions, resolved as the specification
 says. For a family, it is the family's definition. A result is **silent** when no exception and no warning
 accompanied it. **A silent wrong result is never minor.**
 
 | Severity | Definition, with examples |
 |---|---|
-| `critical` | A silent wrong result that a default configuration reaches, that a user cannot detect from anything Vesalius returns, and that no workaround avoids short of not using the feature. Examples: the reader resolves the wrong material for nested regions in every stage; a reference implementation disagrees with its definition and the check points baked from it carry the error into every record. |
+| `critical` | A silent wrong result that a default configuration reaches, that a user cannot detect from anything OpenMaterica returns, and that no workaround avoids short of not using the feature. Examples: the reader resolves the wrong material for nested regions in every stage; a reference implementation disagrees with its definition and the check points baked from it carry the error into every record. |
 | `major` | Any other silent wrong result. Examples: a library value that differs from its source; a wrong unit conversion; conditions or specimen facts recorded wrongly; provenance attributed to the wrong layer; a sampler that ignores a declared structure; a model-assisted value its quote does not support. A loud failure whose only workaround is not to use the feature. |
 | `minor` | A loud failure with a workaround. A wrong statement in documentation where stored values are still right. A defect in performance. A cosmetic defect. |
-| `enhancement` | Not a defect: a request for behaviour Vesalius never claimed. |
+| `enhancement` | Not a defect: a request for behaviour OpenMaterica never claimed. |
 
 **Not an anomaly:**
 
@@ -929,27 +930,27 @@ specification working, not a defect, unless the refusal is itself wrong.
 
 | Category | Prefix | Example |
 |---|---|---|
-| Anomalies | `VES-ANO-` | `VES-ANO-001` |
-| Verification items | `VES-VER-` | `VES-VER-001` |
-| Library materials | `VES-MAT-` | `VES-MAT-0001` |
-| Library interfaces | `VES-INT-` | `VES-INT-0001` |
-| Methods | `VES-MTH-` | `VES-MTH-001` |
+| Anomalies | `OMAT-ANO-` | `OMAT-ANO-001` |
+| Verification items | `OMAT-VER-` | `OMAT-VER-001` |
+| Library materials | `MAT-` | `MAT-0001` |
+| Library interfaces | `INT-` | `INT-0001` |
+| Methods | `OMAT-MTH-` | `OMAT-MTH-001` |
 
 Record identifiers are namespaced, `<namespace>/<local id>`; in the curated library the local identifier is
-the `VES-MAT-` or `VES-INT-` catalogue number (`vesalius/VES-MAT-0001`). A namespace uses the characters
+the `MAT-` or `INT-` catalogue number (`materica/MAT-0001`). A namespace uses the characters
 `[a-z0-9_]` and is unique only once registered in `publishers.yaml`, so a consumer pins records by hash. This
-registry covers Vesalius's own components, so `data:VES-MAT-0003` is unambiguous; another publisher tracks
+registry covers OpenMaterica's own components, so `data:MAT-0003` is unambiguous; another publisher tracks
 anomalies in its own records. Model families are named by their own identifiers
-(`vesalius.mechanical.ogden_incompressible.v1`) and need no prefix.
+(`materica.mechanical.ogden_incompressible.v1`) and need no prefix.
 
 `affected_components` names what is affected without new fields (which would break schema compatibility):
-`schema:VesaliusAcousticAPI`, `reader:resolve`, `method:VES-MTH-002`,
-`model:vesalius.mechanical.ogden_incompressible.v1`, `data:VES-MAT-0003`.
+`schema:MatericaAcousticAPI`, `reader:resolve`, `method:OMAT-MTH-002`,
+`model:materica.mechanical.ogden_incompressible.v1`, `data:MAT-0003`.
 
 ### 8.4 ISO 14971 inputs
 
-MADDENING separates quantitative regimes from qualitative hazard hints (its section 9.1). Vesalius keeps the
-same split on materials, and adds specimen facts, which are structured rather than free text:
+MADDENING separates quantitative regimes from qualitative hazard hints (its section 9.1). OpenMaterica keeps
+the same split on materials, and adds specimen facts, which are structured rather than free text:
 
 | On a material | Nature | Example |
 |---|---|---|
@@ -969,30 +970,30 @@ statements that it applies to a use, and not clinical risk assessments; that bou
 MADDENING's and MIME's compliance architecture documents **code**: what each node computes, how it was
 verified, where it is known to fail. Nothing in it documents the **inputs**: where the physical parameter
 values a simulation used came from, how uncertain they are, and whether they apply. ASME V&V 40 treats model
-inputs as a credibility factor of their own (recalled; check the clause before citing). Vesalius carries
+inputs as a credibility factor of their own (recalled; check the clause before citing). OpenMaterica carries
 exactly that information, so it can fill the gap. This section says where that fits and where it does not.
 
 ### 9.1 Where it fits
 
-| Fit | What Vesalius provides | What uses it | Who translates |
+| Fit | What OpenMaterica provides | What uses it | Who translates |
 |---|---|---|---|
 | **Input provenance for a run** (clear) | `collect_material_inputs(...)`: every property value a set of prims or path intervals resolves to, with material identifier and version, content hash, origin, source, statistics and what they represent, conditions, specimen facts, tier and review status (including user fill-ins), family version, fit-reproduction and witness status, whether a model assisted, and the layer or overlay it came from; the consumer's declarations (domains, targets, picks, tolerances, waivers) and the three-valued results; and the derivation chain from each record to each node parameter (overlays, unit conversion, mixing, defaults), with the derivation log saying which node parameter each value fed; declared extrapolations; and, for a field made trainable, the mark "record value used only as the initial value". Stored on the stage beside the simulation graph it describes, and exported as JSON and as a Markdown "material input sheet" | MADDENING's `SimulationProvenance.custom` (`MADD:src/maddening/core/compliance/provenance.py`); a credibility assessment's model-input evidence; MADDENING's context-of-use template | MIME writes the record into the run's provenance |
-| **Uncertainty inputs** (partial) | statistics for scalars and uncertainty structures for parameter sets, each saying what it represents | MADDENING's `UncertainParameter` (a nominal, bounds and a distribution that defaults to uniform; no standard deviation), which describes one parameter at a time | MIME maps the spread its question needs where `UncertainParameter` can carry it; a mean and standard deviation, interval-only values and joint structures need MADDENING changes (architecture draft section 9.4). Until then MIME samples joint structures with Vesalius's reference sampler and labels the results |
+| **Uncertainty inputs** (partial) | statistics for scalars and uncertainty structures for parameter sets, each saying what it represents | MADDENING's `UncertainParameter` (a nominal, bounds and a distribution that defaults to uniform; no standard deviation), which describes one parameter at a time | MIME maps the spread its question needs where `UncertainParameter` can carry it; a mean and standard deviation, interval-only values and joint structures need MADDENING changes (architecture draft section 9.4). Until then MIME samples joint structures with OpenMaterica's reference sampler and labels the results |
 | **Operating-point checks** (clear) | conditions, material values and fit coverage; evaluators that report whether their condition is in range | MIME's checks against computed operating points (Reynolds number, Mach number), and the run-time watches the build emits for every declared condition a run or an optimiser moves, placed on the condition, not only on a parameter derived from it. Fit coverage is not mapped onto MADDENING's `ValidatedRegime`, which records regimes in which a node was verified | MIME |
-| **One anomaly schema** (clear) | `VES-ANO-` entries in MADDENING's format | one combined risk file; MIME entries can cite `VES-ANO-` entries as they cite `MADD-ANO-` ones | none needed |
+| **One anomaly schema** (clear) | `OMAT-ANO-` entries in MADDENING's format | one combined risk file; MIME entries can cite `OMAT-ANO-` entries as they cite `MADD-ANO-` ones | none needed |
 | **Biocompatibility** (partial) | a material's reported test evidence | MIME's `BiocompatibilityMeta`, declared on the device's `Body` and citing that evidence; never derived from the materials | MIME |
 | **References** (clear) | source registry keys | MADDENING's `Reference(key, description)` | MIME |
 
 ### 9.2 Where it does not fit
 
-- **A Vesalius dependency on `maddening.compliance`**: ruled out in section 1.
-- **Vesalius nodes or benchmarks**: Vesalius simulates nothing.
-- **Clinical applicability**: Vesalius can record conditions, specimen facts and known gaps; deciding that a
-  value applies to a patient stays with the user and the manufacturer (section 3.2).
+- **An OpenMaterica dependency on `maddening.compliance`**: ruled out in section 1.
+- **OpenMaterica nodes or benchmarks**: OpenMaterica simulates nothing.
+- **Clinical applicability**: OpenMaterica can record conditions, specimen facts and known gaps; deciding that
+  a value applies to a patient stays with the user and the manufacturer (section 3.2).
 
-### 9.3 What this would add to Vesalius
+### 9.3 What this would add to OpenMaterica
 
-A small `vesalius.compliance` module, pure Python, with no dependency beyond the core:
+A small `materica.compliance` module, pure Python, with no dependency beyond the core:
 
 - the anomaly record and registry check in MADDENING's shape (section 8);
 - `collect_material_inputs` and the material input sheet;
@@ -1010,12 +1011,12 @@ manufacturer assesses only the components it uses, so the package is organised p
 
 | Component | Licence | Assessed when |
 |---|---|---|
-| Core, `vesalius` | Apache-2.0 | always. Its code runs at a consumer's build or setup (the reader, the requirement checks over domains, the material input sheet, label-volume fractions, the reference sampler) and never in a consumer's simulation step, compiled program or gradient path |
-| `vesalius-authoring` | Apache-2.0 | only when a product runs it, for instance a product whose build runs the engine adapter, or one that generates Isaac for Healthcare's material table at build; otherwise it is curation and write-side tooling, outside the package |
-| Each family version, in `vesalius-families` | Apache-2.0 | when a product evaluates parameter sets of that family (its own evaluator is the product's code; the family's definition, vectors and check points are what it verifies against) |
+| Core, `openmaterica` | Apache-2.0 | always. Its code runs at a consumer's build or setup (the reader, the requirement checks over domains, the material input sheet, label-volume fractions, the reference sampler) and never in a consumer's simulation step, compiled program or gradient path |
+| `openmaterica-authoring` | Apache-2.0 | only when a product runs it, for instance a product whose build runs the engine adapter, or one that generates Isaac for Healthcare's material table at build; otherwise it is curation and write-side tooling, outside the package |
+| Each family version, in `openmaterica-families` | Apache-2.0 | when a product evaluates parameter sets of that family (its own evaluator is the product's code; the family's definition, vectors and check points are what it verifies against) |
 | Each library release | CC0-1.0 | when a product uses its materials; otherwise only the product's own records |
 
-Contents, with the Vesalius-specific additions:
+Contents, with the OpenMaterica-specific additions:
 
 1. **Software identification**: name, version, release date, Apache-2.0, repository, PyPI hashes, Python
    versions; **plus** the schema version and the hash of the schema archive; the family versions included
@@ -1045,7 +1046,7 @@ Contents, with the Vesalius-specific additions:
 tier, licence, specimen facts per section, family versions used, number of reviewed values, number of
 model-assisted values, and fit-reproduction and witness status (independent witness, or none).
 
-**Not in the package:** the MCP server, the curation tools in `vesalius-authoring` and the extraction
+**Not in the package:** the MCP server, the curation tools in `openmaterica-authoring` and the extraction
 procedures are curation tooling (architecture draft section 8.5). Every value they help draft is reviewed
 against its source before release. The package states how many library values were model-assisted, which
 procedure versions drafted them, and those procedures' gold-set scores.
@@ -1054,13 +1055,13 @@ procedure versions drafted them, and those procedures' gold-set scores.
 
 ## 11. IEC 62304 Lifecycle Mapping
 
-Vesalius is not subject to IEC 62304. This mapping is voluntary, as MADDENING's is (section 11).
+OpenMaterica is not subject to IEC 62304. This mapping is voluntary, as MADDENING's is (section 11).
 
-| Phase | Clause | What Vesalius provides |
+| Phase | Clause | What OpenMaterica provides |
 |---|---|---|
 | Development planning | 5.1 | the architecture draft, this document, `CONTRIBUTING.md`, Git and CI |
 | Requirements | 5.2 | `docs/specification/` (normative); family definitions |
-| Architectural design | 5.3 | the architecture draft's components and layers; no shared mutable state; the read side needs no Vesalius code |
+| Architectural design | 5.3 | the architecture draft's components and layers; no shared mutable state; the read side needs no OpenMaterica code |
 | Detailed design | 5.4 | the specification, the method guide and family definitions, with Implementation Mappings |
 | Unit implementation | 5.5 | source code, NumPy-style docstrings |
 | Unit verification | 5.6 | conformance, method, family and data verification (section 6) |
@@ -1075,7 +1076,7 @@ Vesalius is not subject to IEC 62304. This mapping is voluntary, as MADDENING's 
 Adopted from MADDENING section 14: Git with full history; tagged releases; PyPI hashes; `CITATION.cff` from
 the first release; a CycloneDX SBOM per release, generated from a clean install, as MADDENING does.
 
-Vesalius adds:
+OpenMaterica adds:
 
 - **a content hash per record**: SHA-256 over an RFC 8785 serialisation (an existing canonical JSON scheme
   that fixes how numbers are written; recalled) of the whole record, minus an explicit exclusion list: the
@@ -1098,8 +1099,8 @@ Vesalius adds:
 ## 13. EU MDR, MDCG 2019-11 and QMS
 
 Referenced, not repeated: MADDENING sections 12 (EU MDR Annex I and II), 13 (MDCG 2019-11) and 15 (QMS
-compatibility) apply to Vesalius unchanged in principle. Vesalius is general-purpose software with no
-medical purpose; a commercial manufacturer assesses it as SOUP within their ISO 13485 QMS; Vesalius
+compatibility) apply to OpenMaterica unchanged in principle. OpenMaterica is general-purpose software with no
+medical purpose; a commercial manufacturer assesses it as SOUP within their ISO 13485 QMS; OpenMaterica
 operates under no QMS and says so.
 
 One addition for a manufacturer's design inputs: library values are inputs to their simulation, so the
@@ -1117,20 +1118,20 @@ manufacturer's own measurements fit the same format as a private overlay, with t
 Chain 1                                        Chain 2
 [Commercial product]                           [Commercial product on Isaac for Healthcare]
   └── MICROROBOTICA                              ├── Isaac for Healthcare components
-       └── MIME                                  └── Vesalius   (SOUP)
-            ├── MADDENING  (SOUP of SOUP)
-            └── Vesalius   (SOUP of SOUP)
+       └── MIME                                  └── OpenMaterica  (SOUP)
+            ├── MADDENING     (SOUP of SOUP)
+            └── OpenMaterica  (SOUP of SOUP)
 ```
 
-**What MIME's SOUP package section 8 must list for Vesalius**, following MADDENING's pattern for itself
-(MADDENING section 16): the pinned Vesalius version, the schema version, the family versions and library
-release it uses, links to Vesalius's version-tagged SOUP package and anomaly registry, the PyPI hash, the
-SBOM, a table of Vesalius anomalies relevant to MIME, the library materials MIME's experiments use with
+**What MIME's SOUP package section 8 must list for OpenMaterica**, following MADDENING's pattern for itself
+(MADDENING section 16): the pinned OpenMaterica version, the schema version, the family versions and library
+release it uses, links to OpenMaterica's version-tagged SOUP package and anomaly registry, the PyPI hash, the
+SBOM, a table of OpenMaterica anomalies relevant to MIME, the library materials MIME's experiments use with
 their content hashes, how MIME's own JAX implementations of the value forms, mixing rules and families are
 verified (the conformance cases, golden vectors and check points), and the update policy (review the
 CHANGELOG's Schema, Families, Data and Known Anomalies sections; rerun MIME's tests; update the pin).
 
-**For a product on Isaac for Healthcare**: the same items, plus which reader they use (Vesalius's Python
+**For a product on Isaac for Healthcare**: the same items, plus which reader they use (OpenMaterica's Python
 reader, or their own against the specification). An independent reader claims conformance to a schema
 version by naming the conformance suites it passes (section 6.1).
 
@@ -1146,8 +1147,8 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 3. **No runtime dependency on a simulator or ML framework**: not MIME, MADDENING, JAX, PyTorch, Warp or Isaac.
    Core: Python's standard library only (maintainer, 2026-10-13); `jsonschema`, numpy and USD come with the
    `[check]`, `[sample]` and `[usd]` extras, and USD is imported from whatever build is installed.
-4. **The read side stays implementable without Vesalius code**, with a JSON parser or with USD; verifying a
-   content hash also needs an RFC 8785 serialiser and SHA-256. Anything that needs computing is baked when a
+4. **The read side stays implementable without OpenMaterica code**, with a JSON parser or with USD; verifying
+   a content hash also needs an RFC 8785 serialiser and SHA-256. Anything that needs computing is baked when a
    record is written. A change that would require reader code beyond the specification is a major schema
    change.
 5. **SI units in stored values, always.** Conversion happens in importers and adapters. Attenuation is stored
@@ -1183,12 +1184,12 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
     permitted or unknown is reference-only. Every pull request that adds data carries a data attestation.
 17. **The curated library's data is CC0-1.0, separate from the code licence**, and every record states the
     licence it is distributed under. A quote kept as evidence is the source's text and is not relicensed.
-18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths. `vesalius check`
+18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths. `materica check`
     enforces it.
-19. **Static releases.** Everything needed to use a release is in its archived artefacts. No Vesalius
+19. **Static releases.** Everything needed to use a release is in its archived artefacts. No OpenMaterica
     feature requires a hosted service, and nothing is fetched from the network unless the user asks.
-20. **No model on the read side.** No language model runs in a reader, in `vesalius check`, in a release
-    build, or in any consumer's build. Vesalius calls no model and holds no keys; the user's agent brings
+20. **No model on the read side.** No language model runs in a reader, in `materica check`, in a release
+    build, or in any consumer's build. OpenMaterica calls no model and holds no keys; the user's agent brings
     both (architecture draft section 8.1).
 21. **Quotes and human review.** Every value in the curated library that was extracted from text or a table
     carries its verbatim quote (or, if the legal review rules that quotes may not ship, the quote's hash, the
@@ -1214,16 +1215,16 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
     there, and verifies it against conformance data, golden vectors and check points. The core does run at a
     consumer's build or setup (the reader, the requirement checks, the material input sheet, label-volume
     fractions, the reference sampler), and that code is SOUP in a product that uses it. Check points are
-    baked on the write side, in `vesalius-authoring`.
-27. **Every record has a record type.** Vesalius defines `material`, `interface` and `overlay`. A reader skips
-    a type it does not know when listing records, and refuses it when a record of that type is referenced.
-    Vesalius curates only material and interface records. Another namespace's type has its envelope and value
-    machinery checked, never its body, and the first such type is specified only after a consumer has
-    prototyped one.
+    baked on the write side, in `openmaterica-authoring`.
+27. **Every record has a record type.** OpenMaterica defines `material`, `interface` and `overlay`. A reader
+    skips a type it does not know when listing records, and refuses it when a record of that type is
+    referenced. OpenMaterica curates only material and interface records. Another namespace's type has its
+    envelope and value machinery checked, never its body, and the first such type is specified only after a
+    consumer has prototyped one.
 28. **Typed.** The package ships `py.typed`; `mypy --strict` and pyright pass over it. The JSON shapes of its
     public API are generated from the writer JSON Schemas, which, with the specification's tables, are the
     only hand-edited sources of structure and tokens (maintainer, 2026-10-13).
-29. **The USD seam.** No public function returns an object from `pxr`, and every `pxr` call in `vesalius` goes
+29. **The USD seam.** No public function returns an object from `pxr`, and every `pxr` call in `materica` goes
     through one module (maintainer, 2026-10-13).
 30. **Packaging.** Every source file carries an SPDX licence header; the package metadata states the licence
     as an SPDX expression with its licence files (PEP 639); development tools sit in dependency groups (PEP
@@ -1243,17 +1244,17 @@ README disclaimer.
 draft section 12.2): first the record format with namespaced identifiers, record types, values and provenance,
 then geometry (the plain scene manifest, layered paths with the helper that derives one from 3-D geometry, and
 label crosswalks; the first two with their USD forms), then required properties (declarations), the USD
-binding, the stage check and the engine adapter (all Vesalius 0.1, with no cut line; library tags made then
-are unpublished pins for MIME's spikes, not a library release); then uncertainty structures and model families
-(0.2); the conformance suite; the first family definition (architecture draft section 12.1, R5) with golden
-vectors and a reference implementation, in `vesalius-families`; `python -m vesalius check`;
+binding, the stage check and the engine adapter (all OpenMaterica 0.1, with no cut line; library tags made
+then are unpublished pins for MIME's spikes, not a library release); then uncertainty structures and model
+families (0.2); the conformance suite; the first family definition (architecture draft section 12.1, R5) with
+golden vectors and a reference implementation, in `openmaterica-families`; `python -m materica check`;
 `scripts/check_anomalies.py`, `check_families.py` and the sign-off check; GitHub labels as MADDENING's
 (`anomaly:critical`, `anomaly:major`, `anomaly:minor`, `safety-relevant`, `soup-assessment`, `known-anomaly`).
 
 **Phase 2, towards the first library release** (the first archived release with a DOI, architecture draft
 section 12.1, R8): the curation tools of section 5.1 (the digitiser first, then templates, quote attach-and-
 verify, registry drafting, formulation evaluators and check-point bakers), as library functions with a command
-line in `vesalius-authoring`, before the first library release; the library repository under CC0-1.0; the
+line in `openmaterica-authoring`, before the first library release; the library repository under CC0-1.0; the
 source registry; the data entry standard, review process and takedown procedure; `bibliography.bib`; the
 library checks of section 6.5; generated USD layers, cards and index; the legal review of the architecture
 draft, section 6.5. The publishers file and a template repository for other publishers come with the first
@@ -1264,8 +1265,8 @@ entries, and the gold set (architecture draft section 8).
 **Phase 3, at the first release:** `CITATION.cff`; the SOUP package; the SBOM; `iec62304_mapping.md`;
 `downstream_integration.md`; signed tags; the library's first DOI.
 
-**Phase 4, when MIME adopts it** (planned with Vesalius 0.2, architecture draft section 12.2):
-`vesalius.compliance` (section 9); MIME's SOUP package section 8 entry for Vesalius.
+**Phase 4, when MIME adopts it** (planned with OpenMaterica 0.2, architecture draft section 12.2):
+`materica.compliance` (section 9); MIME's SOUP package section 8 entry for OpenMaterica.
 
 ---
 
@@ -1282,7 +1283,7 @@ Status at 2026-10-13.
 - [x] `SECURITY.md` with a reporting contact, response times, and the trusted-input boundary of section 3.3
 - [x] `CHANGELOG.md` in Keep a Changelog format with Schema, Families, Data, Verification, Security and
   Known Anomalies
-- [x] `docs/validation/known_anomalies.yaml` with `schema_version`, `vesalius_version`, `generated_date`
+- [x] `docs/validation/known_anomalies.yaml` with `schema_version`, `materica_version`, `generated_date`
   and an empty `anomalies` list
 - [x] `.github/ISSUE_TEMPLATE/anomaly.yml` with MADDENING's mandatory fields
 - [x] `.github/pull_request_template.md` with the sign-off and the data attestation
@@ -1292,14 +1293,14 @@ Status at 2026-10-13.
 **Phase 1**
 
 - [ ] `docs/specification/` for each release's contents, every normative statement with a conformance case
-- [ ] `src/vesalius/data/conformance/` with cases and expected answers as data files, for plain records and
+- [ ] `src/materica/data/conformance/` with cases and expected answers as data files, for plain records and
   USD, and the Python runner in `tests/conformance/`
 - [ ] the first family definitions under `families/`, with golden vectors and reference implementations,
-  released as the separate distribution `vesalius-families`
-- [ ] `python -m vesalius check`, including the namespaced-identifier, self-contained-layer, fallback, table,
+  released as the separate distribution `openmaterica-families`
+- [ ] `python -m materica check`, including the namespaced-identifier, self-contained-layer, fallback, table,
   witness, evidence and `--release` checks
 - [ ] `scripts/check_anomalies.py`, delegating to MADDENING's validator, run in CI on every push
-- [ ] MADDENING's validator accepts a project version field (`vesalius_version`); requested of MADDENING
+- [ ] MADDENING's validator accepts a project version field (`materica_version`); requested of MADDENING
 - [ ] `scripts/check_families.py` and `scripts/check_signoff.py`, run in CI on every pull request
 - [ ] GitHub labels as in Appendix A
 
@@ -1316,7 +1317,7 @@ Status at 2026-10-13.
 - [ ] the legal review, before the first library release
 - [ ] the first library material with a complete review record
 - [ ] the gold set and its deterministic scorer
-- [ ] `vesalius-mcp` with capability-scoped tools; extraction procedures as `VES-MTH-` entries with
+- [ ] `openmaterica-mcp` with capability-scoped tools; extraction procedures as `OMAT-MTH-` entries with
   gold-set scores
 
 **Phase 3**
@@ -1329,5 +1330,5 @@ Status at 2026-10-13.
 
 **Phase 4**
 
-- [ ] `vesalius.compliance` with `collect_material_inputs` and content hashes
-- [ ] MIME's SOUP package lists Vesalius in its section 8
+- [ ] `materica.compliance` with `collect_material_inputs` and content hashes
+- [ ] MIME's SOUP package lists OpenMaterica in its section 8

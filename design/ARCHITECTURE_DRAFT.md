@@ -1,19 +1,21 @@
-# Vesalius: an architecture concept
+# OpenMaterica: an architecture concept
 
 **Status: a concept draft for iteration.** Written 2026-10-11 in the shared planning directory (first as
 `plans/MIME_MATERIAL_MODEL_DRAFT.md`), moved here the same day, and revised the same day after a design
 review, on 2026-10-12 after a review against principles 9 and 10, again on 2026-10-12 after five prototypes
 and the maintainer's decisions on their findings, on 2026-10-12 and 2026-10-13 after an ecosystem survey, the
-maintainer's decisions on it and their reviews, and on 2026-10-13 after the decisions taken before the first
-code (section 15). Referenced from `plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) and used
-there by direction, not decision: MIME 0.3.0 aims between the realistic and ambitious sets of section 12.
+maintainer's decisions on it and their reviews, on 2026-10-13 after the decisions taken before the first
+code, and on 2026-10-14 for the project's name (section 15). Referenced from
+`plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) and used there by direction, not decision: MIME
+0.3.0 aims between the realistic and ambitious sets of section 12.
 
 **Decided (maintainer, 2026-10-11):**
 
-- Materials for multiphysics simulation become a standalone package, **Vesalius**, not part of MIME. The
-  name was free on PyPI when checked on 2026-10-11. FLESH was considered and dropped.
+- Materials for multiphysics simulation become a standalone package, **OpenMaterica**, not part of MIME. The
+  name was settled on 2026-10-14 (section 15), and `openmaterica` was free on PyPI when checked that day.
+  FLESH was considered and dropped.
 - Code licence: **Apache-2.0**.
-- **OpenUSD is the primary binding**, and the expected long-term one for scenes. Vesalius must still never
+- **OpenUSD is the primary binding**, and the expected long-term one for scenes. OpenMaterica must still never
   require it: plain records are a complete form of their own (section 5).
 - Commits carry a sign-off from the first code commit (`CONTRIBUTING.md`).
 - Photoacoustic imaging in MIME: good to have in 0.3.0 but not necessary; expected by MIME 0.5.0 to 0.6.0
@@ -21,9 +23,9 @@ there by direction, not decision: MIME 0.3.0 aims between the realistic and ambi
 
 **Decided (maintainer, 2026-10-12, after the prototypes):**
 
-- **Scope: substances, not systems** (section 1). Vesalius describes substances in and around the human body;
-  it never describes systems.
-- **Records have a type.** Vesalius defines material, interface and overlay records. Other namespaces may
+- **Scope: substances, not systems** (section 1). OpenMaterica describes substances in and around the human
+  body; it never describes systems.
+- **Records have a type.** OpenMaterica defines material, interface and overlay records. Other namespaces may
   define their own types on the same machinery; the first is specified only after MIME prototypes one
   (section 4.1).
 - Plain records are the source of truth, and USD is generated from them, one JSON string per field
@@ -40,19 +42,19 @@ there by direction, not decision: MIME 0.3.0 aims between the realistic and ambi
 
 **Decided (maintainer, 2026-10-12, after the ecosystem survey and its review):**
 
-- Vesalius 0.1 carries the plain scene documents, layered paths, label crosswalks and the USD binding (R1,
+- OpenMaterica 0.1 carries the plain scene documents, layered paths, label crosswalks and the USD binding (R1,
   R14), with no cut line: none of them slips to 0.2 (section 12.2).
-- A region binds its material with a purpose of Vesalius's own, `vesalius`; the `physics` purpose is left to
-  engines (section 5.4).
+- A region binds its material with a purpose of OpenMaterica's own, `materica`; the `physics` purpose is left
+  to engines (section 5.4).
 - The engine adapter, its engine crosswalks (then called engine profiles) and the stage check are specified
   and built in 0.1 (section 5.4).
 
 **Decided (maintainer, 2026-10-13):**
 
-- Vesalius specifies the engine crosswalk and ships one crosswalk, for OpenUSD's `UsdPhysics`; a crosswalk for
-  any other engine is written and pinned by the consumer that runs it, drafted by a scaffold from the engine's
-  registered schema (section 5.4). Applied as: the engine's schema file, read without registering it and
-  pinned by hash in the crosswalk (review of 2026-10-13).
+- OpenMaterica specifies the engine crosswalk and ships one crosswalk, for OpenUSD's `UsdPhysics`; a crosswalk
+  for any other engine is written and pinned by the consumer that runs it, drafted by a scaffold from the
+  engine's registered schema (section 5.4). Applied as: the engine's schema file, read without registering it
+  and pinned by hash in the crosswalk (review of 2026-10-13).
 - The review's four changes beyond that decision are approved: no engine fallback member; dimensions over the
   seven SI base units; no dimension for a token, string, boolean or asset; and one engine model per region
   (section 5.4).
@@ -61,10 +63,11 @@ there by direction, not decision: MIME 0.3.0 aims between the realistic and ambi
 
 **Decided (maintainer, 2026-10-13), before the first code:**
 
-- The core distribution, `vesalius`, has no run-time dependency beyond Python's standard library; `jsonschema`
-  comes with the `[check]` extra, `usd-core` with `[usd]` and numpy with `[sample]` (section 7.2).
-- Engine results are computed in `vesalius[usd]`; only the engine adapter and the crosswalk scaffold are in
-  `vesalius-authoring` (section 7.2).
+- The core distribution, `openmaterica`, has no run-time dependency beyond Python's standard library;
+  `jsonschema` comes with the `[check]` extra, `usd-core` with `[usd]` and numpy with `[sample]` (section
+  7.2).
+- Engine results are computed in `openmaterica[usd]`; only the engine adapter and the crosswalk scaffold are
+  in `openmaterica-authoring` (section 7.2).
 - 0.1 builds the plain scene documents before declarations and build checks (section 12.2).
 - The package is typed (`py.typed`), and the JSON shapes of its public API are generated from the writer JSON
   Schemas, which are the single hand-edited source of structure; the specification's tables stay the source of
@@ -72,7 +75,7 @@ there by direction, not decision: MIME 0.3.0 aims between the realistic and ambi
 - Python 3.11 is the floor, under a standing rule: every Python that is not at end of life and that a named
   consumer or engine needs in-process (section 7.2).
 - Record checks that need the source registry, a source copy, the previous release or the repository's history
-  run in the library's tooling, not in `vesalius check` (`DOCUMENTATION_ARCHITECTURE.md` section 6.5).
+  run in the library's tooling, not in `materica check` (`DOCUMENTATION_ARCHITECTURE.md` section 6.5).
 
 Everything else here is a proposal.
 
@@ -85,7 +88,7 @@ How to read it: a statement with a file path was read in the tree or checked by 
 to the workspace that holds the sibling repositories: `MIME:` marks a MIME path, `MADD:` a MADDENING path,
 `plans/` the shared planning directory (not versioned), and `i4h:` an Isaac for Healthcare repository.
 
-## 1. What Vesalius is
+## 1. What OpenMaterica is
 
 An open description of what bodies, tissues, phantoms and devices are made of, for simulation: one
 **material record** per substance, with a section per physics, every value in SI with its provenance and
@@ -93,10 +96,10 @@ its uncertainty. Records are plain files that any language can read. OpenUSD is 
 them to scene geometry, but a consumer without USD (a one-dimensional layered model, a finite-element code,
 a MATLAB script) uses the same records.
 
-**Scope.** Vesalius describes substances in and around the human body: tissues and body fluids, the media and
-phantoms that stand in for them, agents introduced into them, and the materials of devices that enter or touch
-them. It does not describe systems: an apparatus or its calibration, the quantities of one object (its moment,
-inertia or mean density), a drive, a procedure, or a simulator's tuning. Five rules apply it:
+**Scope.** OpenMaterica describes substances in and around the human body: tissues and body fluids, the media
+and phantoms that stand in for them, agents introduced into them, and the materials of devices that enter or
+touch them. It does not describe systems: an apparatus or its calibration, the quantities of one object (its
+moment, inertia or mean density), a drive, a procedure, or a simulator's tuning. Five rules apply it:
 
 - **Specimen or object.** A value of a substance, or of a mixture given by its composition, measured on a test
   specimen whose shape and size are recorded as conditions, is in. A value of a made object as built (a
@@ -108,14 +111,14 @@ inertia or mean density), a drive, a procedure, or a simulator's tuning. Five ru
   4.13), when the source states the surface conditions and the test method. A number measured with one tool
   or device is reference data for checking a model. A solute's diffusivity in a medium is a pair too, of its
   own kind, with no surface.
-- **Geometry is scene data.** Vesalius defines how geometry binds to materials, and ships only small test
+- **Geometry is scene data.** OpenMaterica defines how geometry binds to materials, and ships only small test
   phantoms and label crosswalks from reference anatomies, never anatomy itself.
 - **Behaviour.** A behaviour computed from geometry and materials (an implant's heating in MRI, a puncture
   force) is the consumer's output. A measured one is reference data in the consumer's namespace.
 - **Entry.** Content enters when a named consumer needs it, and the curated library starts with the body and
   the materials of devices that enter or touch it. An apparatus's materials (a coil's copper, a detector's
   scintillator) go in other namespaces as material records. Other publishers may use the same machinery in
-  their own namespaces, including for data Vesalius does not curate (section 4.1).
+  their own namespaces, including for data OpenMaterica does not curate (section 4.1).
 
 An earlier wording of the first rule, a transfer test ("would the value hold for another object of the same
 substance?"), was tried over 64 cases: 47 values and records from the prototypes, MIME's constants and Isaac
@@ -125,15 +128,15 @@ the line is now drawn between a specimen and a made object.
 
 Design principles:
 
-1. **The read side needs no Vesalius code.** A C++ renderer, a JAX solver and a PyTorch policy trainer read
-   the same records with nothing but a JSON parser, or with USD. Verifying a record's content hash also needs
-   a canonical JSON serialiser (RFC 8785) and SHA-256, both standard and available in most languages
+1. **The read side needs no OpenMaterica code.** A C++ renderer, a JAX solver and a PyTorch policy trainer
+   read the same records with nothing but a JSON parser, or with USD. Verifying a record's content hash also
+   needs a canonical JSON serialiser (RFC 8785) and SHA-256, both standard and available in most languages
    (recalled).
-2. **No solver dependency.** Vesalius knows nothing of MIME, MADDENING, JAX, Warp or Isaac, and its code
+2. **No solver dependency.** OpenMaterica knows nothing of MIME, MADDENING, JAX, Warp or Isaac, and its code
    never runs inside a consumer's computation: its simulation step, compiled program and gradient path. A
    consumer that reads, interpolates, evaluates or mixes there writes its own code and verifies it against
-   Vesalius's conformance data, golden vectors and check points. Vesalius's code may run at a consumer's
-   build, outside that computation (section 7.2).
+   OpenMaterica's conformance data, golden vectors and check points. OpenMaterica's code may run at a
+   consumer's build, outside that computation (section 7.2).
 3. **Provenance and uncertainty on every value**, stated, never implied.
 4. **Fail closed.** An unknown model family or version, an undeclared uncertainty structure, or a check
    point that disagrees makes a reader refuse, never guess.
@@ -157,7 +160,7 @@ Design principles:
     these for its own use, with its basis; the build records the declaration and labels the results. A spread
     says what it represents. Nothing unchecked is reported as passed.
 
-What Vesalius is not:
+What OpenMaterica is not:
 
 - not a solver, a mesher, a segmenter or a renderer;
 - not a database service, and not a host for large datasets;
@@ -200,17 +203,17 @@ acoustic, dielectric and optical parameters to one record.
 ### 3.1 Mechanism and content
 
 ```
-vesalius               mechanism: read and check                   Apache-2.0          SOUP-relevant
+openmaterica           mechanism: read and check                   Apache-2.0          SOUP-relevant
   specification; record JSON Schema; USD schema; record model and I/O; verification machinery
   (check points, conformance, uncertainty structures); label fractions; a reference sampler
 
-vesalius-authoring     tools: write and curate                     Apache-2.0          curation tooling
+openmaterica-authoring tools: write and curate                     Apache-2.0          curation tooling
   authoring (composition, derivation, fit records, check-point baking); the curation tools;
   integrations (exporters, importers, the Isaac generator)
 
 family packages        content: model-family definitions            Apache-2.0
   one namespaced, separately versioned definition per family: equations, golden test vectors,
-  reference implementation, admissibility; shipped together as `vesalius-families`
+  reference implementation, admissibility; shipped together as `openmaterica-families`
 
 library repository     content: curated materials                   CC0-1.0 (section 6.4)
   its own review process; static releases with a DOI, no hosted service (section 6.7)
@@ -220,32 +223,33 @@ library repository     content: curated materials                   CC0-1.0 (sec
 - Anyone can publish families and records in their own namespace, in their own repository, under the
   same rules and the same checks (sections 4.1, 4.5 and 6.7). Only the curated library carries this
   project's review.
-- A manufacturer assesses `vesalius` plus only the families and records it uses, each with its own version and
-  content hash (`DOCUMENTATION_ARCHITECTURE.md` section 10). `vesalius-authoring` is curation tooling, and
-  part of a consumer's product only when the consumer's build runs it, as a build that runs the engine adapter
-  does (section 7.2).
+- A manufacturer assesses `openmaterica` plus only the families and records it uses, each with its own version
+  and content hash (`DOCUMENTATION_ARCHITECTURE.md` section 10). `openmaterica-authoring` is curation tooling,
+  and part of a consumer's product only when the consumer's build runs it, as a build that runs the engine
+  adapter does (section 7.2).
 - **Families** live in one directory of the main repository, outside the core package, and ship as one
-  separate distribution, `vesalius-families`; each family version has its own content hash, so a
+  separate distribution, `openmaterica-families`; each family version has its own content hash, so a
   manufacturer assesses only the families it uses. They move into repositories of their own when a second
   publisher of families appears.
 - **Reference implementations sit with their families**, not in the core. Consumers evaluate families with
   their own code (principle 2), so a reference implementation runs only on the write side, to define the
   family and bake check points. Golden vectors live only with their families, and check-point baking (in
-  `vesalius-authoring`) imports `vesalius-families` on the write side only. The core keeps a generic runner
-  that compares numbers against golden vectors and check points.
+  `openmaterica-authoring`) imports `openmaterica-families` on the write side only. The core keeps a generic
+  runner that compares numbers against golden vectors and check points.
 
 ### 3.2 Layers inside the core
 
 ```
- L6  Adapters and tools   MIME adapter (in MIME); exporters, importers, Isaac adapters (vesalius-authoring);
-                          the record checks as a command (`python -m vesalius check`); the MCP server (section 8)
+ L6  Adapters and tools   MIME adapter (in MIME); exporters, importers, Isaac adapters
+                          (openmaterica-authoring); the record checks as a command
+                          (`python -m materica check`); the MCP server (section 8)
        ^
  L5  Sampling (optional)  volume fractions from label volumes; layered paths derived from 3-D geometry
        ^
  L4  I/O                  plain records (required); USD (optional extra)
        ^
  L3  Authoring            composition to spectra, derived values, fit bookkeeping, check-point baking;
-                          the curation tools (section 8.2). Shipped as vesalius-authoring
+                          the curation tools (section 8.2). Shipped as openmaterica-authoring
        ^ L2  Core (stdlib only)   records, values, provenance, statistics, uncertainty structures, units,
                           reference forms of the mixing rules, validation
        ^
@@ -257,9 +261,9 @@ Rules:
 
 - A layer imports only layers below it. L0 and L1 need nothing at all.
 - Nothing imports a simulator. Adapters for a simulator import it lazily and live where their owners
-  choose: MIME's adapter in MIME; exporters, importers and Isaac adapters in `vesalius-authoring` until
+  choose: MIME's adapter in MIME; exporters, importers and Isaac adapters in `openmaterica-authoring` until
   someone upstream wants them.
-- `vesalius` holds L0 to L2, L4, L5 and the `check` command; `vesalius-authoring` holds L3 and L6's
+- `openmaterica` holds L0 to L2, L4, L5 and the `check` command; `openmaterica-authoring` holds L3 and L6's
   integrations. A consumer's product depends on the first, and on the second only when its build runs it, as
   one that runs the engine adapter does (section 7.2).
 - USD is an optional extra (section 7.2).
@@ -346,7 +350,7 @@ Four limits keep this usable:
   evaluator that clamps outside its range is extrapolating by a constant, so it needs this declaration, or
   its in-range flag stops the run.
 
-This is the positive form of a non-goal the draft has had from the start: Vesalius makes no judgement of
+This is the positive form of a non-goal the draft has had from the start: OpenMaterica makes no judgement of
 applicability (section 7.6). The review of section 15 found the draft making that judgement in at least
 eight places; the sections below no longer do.
 
@@ -358,8 +362,8 @@ eight places; the sections below no longer do.
   human-readable name, a version), `record_type`, the record-schema version it was written against, a
   content hash (section 5.6), provenance, and the value machinery of this section (value forms, conditions,
   statistics, families, check points). The body depends on the type.
-  - Vesalius defines three types: `material` (a substance, with any subset of sections); `interface` (a pair,
-    section 4.13; the name is reserved from the first schema, its body is specified in 0.2, R9); and
+  - OpenMaterica defines three types: `material` (a substance, with any subset of sections); `interface` (a
+    pair, section 4.13; the name is reserved from the first schema, its body is specified in 0.2, R9); and
     `overlay` (a scene-level or private replacement of some of a material's fields, a consumer's fit, or a
     user's fill-in of a reference-only value: it names its base record's identifier, version and hash, its
     scope, and the fields it replaces; sections 5.5 and 6.2). The curated library
@@ -375,7 +379,7 @@ eight places; the sections below no longer do.
     arrays of vectors, which none of section 4.4's forms holds yet.
   - The field is `record_type`, not `kind`, because a family definition already has a kind (static or
     evolution) and one name with two meanings is the trap section 4.5 warns about.
-  - The risk is that Vesalius drifts into a general data format. The guards are a small envelope and a
+  - The risk is that OpenMaterica drifts into a general data format. The guards are a small envelope and a
     curated scope of substances (section 1).
 - A material may carry sections in another namespace in an **`extensions`** block keyed by namespace, using
   the core's value forms and provenance; the namespace owns their meaning. It carries, for example, a
@@ -389,8 +393,8 @@ eight places; the sections below no longer do.
   shared by its records and its families (section 4.5). Namespaces are short names of the characters
   `[a-z0-9_]`, registered first come first served in the publishers file (section 6.7); CI refuses a
   collision. A namespace is unique only once registered, so consumers pin records by hash, not by name.
-  `vesalius` and `mime` are reserved. In `vesalius`, local identifiers are the catalogue numbers
-  `VES-MAT-XXXX` for materials and `VES-INT-XXXX` for interfaces (for example `vesalius/VES-MAT-0001`). Other
+  `materica` and `mime` are reserved. In `materica`, local identifiers are the catalogue numbers
+  `MAT-XXXX` for materials and `INT-XXXX` for interfaces (for example `materica/MAT-0001`). Other
   publishers choose their own. Namespaces from the start let anyone publish records without a central
   authority (section 6.7); adding them later would be a breaking schema change.
 - A **section** is one physics. A consumer checks only the sections it needs. A section's presence says
@@ -552,7 +556,7 @@ run.
 
 A constant can make a model claim without saying so: one viscosity means a Newtonian fluid, one
 susceptibility a linear response with no saturation. Such a constant names its trivial family as a label
-(for example `vesalius.fluid.newtonian.v1`; a one-parameter family needs no check points) and the range it
+(for example `materica.fluid.newtonian.v1`; a one-parameter family needs no check points) and the range it
 was measured over, so a consumer can check its operating point: blood's viscosity is close to Newtonian
 only at high shear rates (recalled). Such a constant is a scalar for the rules on witnesses and statistics
 (sections 4.6 and 4.9), not a model parameter set.
@@ -564,7 +568,7 @@ deforming body; a property that depends on deformation is a family with a deform
 ### 4.5 Model families
 
 A model family is identified by a namespaced, versioned identifier, for example
-`vesalius.mechanical.ogden_incompressible.v1` or `<org>.dielectric.cole_cole_4term.v1`, never by a common
+`materica.mechanical.ogden_incompressible.v1` or `<org>.dielectric.cole_cole_4term.v1`, never by a common
 name alone. The same name hides different formulas in different solvers and papers (as I recall, Ogden's
 strain energy appears with different factors on its coefficients and with different volumetric terms), so
 a name alone lets one parameter set give different stresses in two solvers with no error anywhere. The
@@ -591,7 +595,7 @@ Rules:
 - Records hold parameters only in the family's own convention. Conversion to a particular solver's
   convention happens in an adapter or exporter (L6), and each conversion has its own vectors showing that
   the solver's form reproduces the family's outputs.
-- Only reviewed pull requests to this project's repositories publish under `vesalius.`. A family enters that
+- Only reviewed pull requests to this project's repositories publish under `materica.`. A family enters that
   namespace when an in-scope record uses it (section 1); until then it lives in its consumer's namespace. It
   is admitted with a definition, golden vectors, a reference implementation and a
   named consumer (`DOCUMENTATION_ARCHITECTURE.md` section 6.4); a family with no consumer for two releases
@@ -684,9 +688,9 @@ tolerance.
 - **A witness may test the family alone, or only through a model of the test.** A relaxation curve from a
   uniform test witnesses a viscoelastic family directly. A force-time trace from a puncture depends also on
   the tool's geometry and on friction; the witness record says so, and the model of the test and its
-  inputs become part of the witness and its uncertainty. Vesalius has no solver, so `vesalius check` reports
-  such a witness "not checked by `vesalius check`", and it counts towards admission only if the model of the
-  test is itself a family with golden vectors.
+  inputs become part of the witness and its uncertainty. OpenMaterica has no solver, so `materica check`
+  reports such a witness "not checked by `materica check`", and it counts towards admission only if the model
+  of the test is itself a family with golden vectors.
 - **A parameter set that is the mean of per-specimen fits** may describe no specimen (section 4.9). It is
   witnessed against per-specimen data, or recorded "no independent witness"; its residual against the
   source's mean curve gives no tolerance.
@@ -700,7 +704,7 @@ tolerance.
 - **Reference-only parameter sets ship no check points**, because a few check points determine a family's few
   parameters, which would publish them (section 6.2). The fill-in is checked by the witness instead: the
   record ships the witness's locator and an extraction recipe; the user fills in the parameters and the
-  witness datum from their own copy, as an overlay in the user's own namespace (section 6.2); `vesalius
+  witness datum from their own copy, as an overlay in the user's own namespace (section 6.2); `materica
   check` runs the witness locally. The fill-in tool also records
   the identifier and version of the user's copy and compares them with the record's; a mismatch gives
   "unknown", because a preprint and its version of record need not carry the same numbers (in prototype P4, a
@@ -713,7 +717,7 @@ tolerance.
   passing one, 9 were behind paywalls and 6 had none. The rule stands for the curated library (maintainer,
   2026-10-12), and a figure digitiser with axis calibration is the first curation tool (section 8.2),
   because a published figure is often the only witness available.
-- `vesalius check` runs the witness checks.
+- `materica check` runs the witness checks.
 
 ### 4.7 Provenance
 
@@ -729,7 +733,7 @@ Each value carries:
 | specimen | species, anatomical site, state, preparation, shape (sections 4.8 and 4.11) |
 | review | who checked the value against the source, and when; the curator's ORCID; whether the reviewer is independent of the person or tool that extracted it |
 | tier | shipped, reference-only or private (section 6.2), computed from the source registry, never written by hand |
-| evidence | for a value extracted from text or a table: the verbatim quote (with the conditions and, for a power law, the exponent quoted too), its locator, and the SHA-256 of the document copy it was read from; for a digitised figure, the locator and the copy's hash; for a reference formulation, the formulation, its version and the evaluation. Quotes are required for every such value in the curated library, whoever drafted it, and optional in other namespaces; where one exists, `vesalius check` verifies it in every namespace. If the legal review rules that quotes may not ship (section 6.5), a record ships the SHA-256 of the normalised quote with its locator, the text stays in the curator's private store, and re-verification compares hashes. Quotes are not published for reference-only values, because a quote contains the value |
+| evidence | for a value extracted from text or a table: the verbatim quote (with the conditions and, for a power law, the exponent quoted too), its locator, and the SHA-256 of the document copy it was read from; for a digitised figure, the locator and the copy's hash; for a reference formulation, the formulation, its version and the evaluation. Quotes are required for every such value in the curated library, whoever drafted it, and optional in other namespaces; where one exists, `materica check` verifies it in every namespace. If the legal review rules that quotes may not ship (section 6.5), a record ships the SHA-256 of the normalised quote with its locator, the text stays in the curator's private store, and re-verification compares hashes. Quotes are not published for reference-only values, because a quote contains the value |
 | assistance | when a model helped draft the value: tool, model and provider as reported, prompt version, date (section 8.5). The value's origin does not change |
 | search record | for a statistic pooled across sources: the queries, databases, date and inclusion criteria that found the sources |
 | witness | for a parameter set: its convention witness (section 4.6) |
@@ -902,8 +906,8 @@ suite tests each rule at a single cell, with known fractions and values, rather 
 solver, where a wrong rule can pass unnoticed (prototype P1c). Consumers write the rules in their own
 framework, as they write evaluators: each is an elementwise average, and the differentiable-use prototype (P5)
 wrote the identity rule in one line of JAX. An earlier draft shared one array-API implementation with
-consumers; dropping it means no Vesalius code runs inside a consumer's computation (principle 2). P5 has no
-evidence either way about the non-identity rules; this rests on simplicity, not on a measurement.
+consumers; dropping it means no OpenMaterica code runs inside a consumer's computation (principle 2). P5 has
+no evidence either way about the non-identity rules; this rests on simplicity, not on a measurement.
 
 ### 4.13 Interfaces between materials
 
@@ -934,7 +938,7 @@ minor revision of a member does not break the interface and a major one does.
 ### 4.14 Appearance is not physics
 
 Isaac for Healthcare's ultrasound table mixes physical properties (impedance, attenuation, sound speed) with
-renderer settings (speckle parameters). Vesalius holds the physical ones. A renderer's settings sit on the
+renderer settings (speckle parameters). OpenMaterica holds the physical ones. A renderer's settings sit on the
 same material in the renderer's own namespace (section 11.1). The speckle parameters are treated as renderer
 settings until a first contact settles what they describe; if they describe physical scatterers (their number
 density, size and impedance contrast), those are acoustic properties and belong in the acoustic section
@@ -969,11 +973,11 @@ geometry and not the materials.
   stated), because a collection's membership includes descendants and cannot say on its own which prims are
   regions (prototype P1c). A region's geometry is its descendant geometry prims with purpose `default`, so a
   visualisation child adds no volume. A binding applies within its region and never across regions: a nested
-  region carries its own binding (maintainer, 2026-10-12). A Vesalius binding on a prim inside a region that
-  is not itself a region is refused when it differs from the region's own: its author meant another material
-  there (a calcified plaque in a vessel wall), which needs a region of its own with a priority, or a reader
-  would read it as vessel wall. Orientation fields, for axes that vary along a curved bone, come with the
-  anisotropic family (section 12.1, A10).
+  region carries its own binding (maintainer, 2026-10-12). An OpenMaterica binding on a prim inside a region
+  that is not itself a region is refused when it differs from the region's own: its author meant another
+  material there (a calcified plaque in a vessel wall), which needs a region of its own with a priority, or a
+  reader would read it as vessel wall. Orientation fields, for axes that vary along a curved bone, come with
+  the anisotropic family (section 12.1, A10).
 - **Background**: a default material for points no region claims (water, air, agar), declared by the
   scene's author. Without one, such a point has no material, and a consumer that needs one there refuses.
   A declared background is inside every domain that needs it, so mixing where tissue meets the background
@@ -1021,19 +1025,19 @@ A scene without USD is described by plain **scene documents**, which are scene d
   the ecosystem survey; with A1).
 
 The conformance suite has every scene case (nested ownership, domain checks, binding refusals) in both the
-plain and the USD form, so a consumer never needs USD to use Vesalius.
+plain and the USD form, so a consumer never needs USD to use OpenMaterica.
 
 ### 5.3 USD schemas
 
 Checked on 2026-10-11 with USD 0.26.5 and a one-schema prototype in a scratch directory; nothing in a
 repository.
 
-- One **single-apply API schema per section**: `VesaliusBulkAPI`, `VesaliusFluidAPI`, `VesaliusMechanicalAPI`,
-  `VesaliusAcousticAPI`, `VesaliusOpticalAPI`, `VesaliusThermalAPI`, `VesaliusDielectricAPI`,
-  `VesaliusRadiologicalAPI`, `VesaliusMagneticAPI`, `VesaliusBiocompatibilityAPI`. Attributes are
-  namespaced `vesalius:<section>:<field>`.
+- One **single-apply API schema per section**: `MatericaBulkAPI`, `MatericaFluidAPI`, `MatericaMechanicalAPI`,
+  `MatericaAcousticAPI`, `MatericaOpticalAPI`, `MatericaThermalAPI`, `MatericaDielectricAPI`,
+  `MatericaRadiologicalAPI`, `MatericaMagneticAPI`, `MatericaBiocompatibilityAPI`. Attributes are
+  namespaced `materica:<section>:<field>`.
 - **No mixing rule on a field.** An earlier draft put one beside each field
-  (`vesalius:acoustic:soundSpeed:mixing = "harmonic"`, with a default in the schema). The consumer now
+  (`materica:acoustic:soundSpeed:mixing = "harmonic"`, with a default in the schema). The consumer now
   picks the rule (section 4.12); only the identities are fixed, in the specification.
 - **No fallback values on physical attributes.** USD returns a schema's fallback for an attribute nobody
   authored, and it looks exactly like a value. Physical attributes are declared without fallbacks, and
@@ -1048,20 +1052,20 @@ repository.
   whole value, so a stronger layer replaces a field's value and provenance together, and the dictionary-merge
   trap of section 5.5 cannot arise. Prototype P1c already carried the consumer's declarations as one JSON
   string. An earlier revision also wrote a typed attribute holding "the value" beside each string, for
-  USD-native engines; it was dropped (maintainer, 2026-10-12), because no engine reads Vesalius attributes
+  USD-native engines; it was dropped (maintainer, 2026-10-12), because no engine reads OpenMaterica attributes
   today, the two copies could disagree with nothing to notice, and for an interval, competing values, a table
   or a parameter set there is no single value to write without inventing a nominal. It can be added later as
   an additive change, for single constants only, if an engine asks.
 - **The envelope on the prim.** A material prim carries its record's identifier, version, `record_type` and
-  content hash as attributes. Prim names carry no identity: a record identifier such as `VES-MAT-0001` is
+  content hash as attributes. Prim names carry no identity: a record identifier such as `MAT-0001` is
   not a valid prim name (checked), and a lossy mapping could make two records collide.
-- A region is marked by an applied `VesaliusRegionAPI` carrying its priority and any orientation (section
-  5.1). An overlay record is a `VesaliusOverlay` prim of its own (section 5.5). The material input sheet is a
+- A region is marked by an applied `MatericaRegionAPI` carrying its priority and any orientation (section
+  5.1). An overlay record is a `MatericaOverlay` prim of its own (section 5.5). The material input sheet is a
   JSON string on the experiment's prim, beside MADDENING's graph (section 9.1).
 
 Checked in the prototype:
 
-- the plug-in registers at run time; `ApplyAPI("VesaliusAcousticAPI")` and `HasAPI` work by name;
+- the plug-in registers at run time; `ApplyAPI("MatericaAcousticAPI")` and `HasAPI` work by name;
 - schema fallbacks are visible on a material before anything is authored (sound speed read 1540, the
   schema's fallback): the reason for the rule above;
 - the plug-in entry must carry `schemaIdentifier`. An `alias` equal to the type's name is refused.
@@ -1080,42 +1084,43 @@ typed access (recalled).
   states (below).
 - Library materials live under a scope of their own, never under `/Materials/<name>`, where they would merge
   silently with MADDENING's display materials of the same name (prototype P1c).
-- **Geometry binds a Vesalius material with `UsdShade.MaterialBindingAPI` and a purpose of our own,
-  `vesalius`; the `physics` purpose is the engines'** (maintainer, 2026-10-12, reversing the reuse of
-  `physics` decided after prototype P1c). An engine never reads a Vesalius field: it reads typed attributes in
-  its own schemas and in the units it documents, which shipped layers do not carry. Sharing the slot
-  therefore gave engines nothing: given a `physics` binding to a Vesalius material, OpenUSD's reference
-  physics parser reports no material for the shape, so the engine uses its defaults (checked in the review of
-  2026-10-12). Meanwhile the slot is contested. Isaac Lab binds its own physics materials there, by default
-  stronger than descendants; SimReady requires every collider's physics binding to target a physics material;
-  and NVIDIA's deformable schema binds materials per mesh subset and advises separate rigid and deformable
-  materials, more than one target per prim can hold (ecosystem survey, 2026-10-12). Checked with USD 0.26.5:
-  binding with purpose `"vesalius"` writes `material:binding:vesalius`, which `ComputeBoundMaterial` resolves
-  for none of the purposes `physics`, `full`, `preview` and all-purpose, and OpenUSD's validators raise
-  nothing for it. Whether NVIDIA's own tools strip unknown purposes was not checked.
-- **A Vesalius value reaches an engine only through an engine adapter** (`usd_binding.md` section 10). An
+- **Geometry binds an OpenMaterica material with `UsdShade.MaterialBindingAPI` and a purpose of our own,
+  `materica`; the `physics` purpose is the engines'** (maintainer, 2026-10-12, reversing the reuse of
+  `physics` decided after prototype P1c). An engine never reads an OpenMaterica field: it reads typed
+  attributes in its own schemas and in the units it documents, which shipped layers do not carry. Sharing the
+  slot therefore gave engines nothing: given a `physics` binding to an OpenMaterica material, OpenUSD's
+  reference physics parser reports no material for the shape, so the engine uses its defaults (checked in the
+  review of 2026-10-12). Meanwhile the slot is contested. Isaac Lab binds its own physics materials there, by
+  default stronger than descendants; SimReady requires every collider's physics binding to target a physics
+  material; and NVIDIA's deformable schema binds materials per mesh subset and advises separate rigid and
+  deformable materials, more than one target per prim can hold (ecosystem survey, 2026-10-12). Checked with
+  USD 0.26.5: binding with purpose `"materica"` writes `material:binding:materica`, which
+  `ComputeBoundMaterial` resolves for none of the purposes `physics`, `full`, `preview` and all-purpose, and
+  OpenUSD's validators raise nothing for it. Whether NVIDIA's own tools strip unknown purposes was not
+  checked.
+- **An OpenMaterica value reaches an engine only through an engine adapter** (`usd_binding.md` section 10). An
   engine is declared as a model: its reads, requirements, operating conditions and acceptances work as any
   model's, and an **engine crosswalk**, a pinned data document, lists every attribute of the engine's material
-  APIs, with its SI dimension, whether a Vesalius field or the consumer's declaration supplies it and a
+  APIs, with its SI dimension, whether an OpenMaterica field or the consumer's declaration supplies it and a
   locator to the engine's documentation, the schema file that defines each API, pinned by its hash, and the
   engine's unit convention with its source. The adapter writes a value only where the build result is met or
   accepted; converts by one rule from the SI dimension and the stage's units; applies every API the crosswalk
   lists by name and authors every attribute, since a fallback reads like a value (PhysX's deformable Young's
   modulus falls back to 5e7 in stage units, and `UsdPhysics` computes mass with water's density where a
-  material's is 0); writes engine materials under a scope of its own, never on a Vesalius prim; and stamps
-  each with the read requests and declared values it came from, the APIs it applied, each attribute's type and
-  dimension, the unit convention and the stage units it was written for, so that the stage check re-derives
-  every value from the stamp alone and checks each stamped dimension against its unit. In 0.1.0 the only
-  Vesalius field an engine receives is `bulk.density`; the rest is declared, with reason and basis, until the
-  mechanical section and interfaces arrive.
-- **Vesalius ships one engine crosswalk, for `UsdPhysics`; a crosswalk for any other engine is the
+  material's is 0); writes engine materials under a scope of its own, never on an OpenMaterica prim; and
+  stamps each with the read requests and declared values it came from, the APIs it applied, each attribute's
+  type and dimension, the unit convention and the stage units it was written for, so that the stage check
+  re-derives every value from the stamp alone and checks each stamped dimension against its unit. In 0.1.0 the
+  only OpenMaterica field an engine receives is `bulk.density`; the rest is declared, with reason and basis,
+  until the mechanical section and interfaces arrive.
+- **OpenMaterica ships one engine crosswalk, for `UsdPhysics`; a crosswalk for any other engine is the
   consumer's** (maintainer, 2026-10-13). A crosswalk per engine version is adapter upkeep, not a standard: it
   follows each engine's schema changes (NVIDIA's deformable schema is replacing PhysX's and is written to
   become part of `UsdPhysics`; ecosystem survey, 2026-10-12), and needs answers only an engine's users can
   check, such as which mass unit Newton reads. What has to be common is written for no one engine's schema:
   the crosswalk's format, the conversion, the stamp, the check and the engine as a declared model. The
   consumer knows which engine version it runs, and its build fails on whatever the checks can see of a wrong
-  crosswalk. To make a crosswalk cheap to write, a scaffold in `vesalius-authoring` drafts one from the
+  crosswalk. To make a crosswalk cheap to write, a scaffold in `openmaterica-authoring` drafts one from the
   engine's schema file (`generatedSchema.usda`, read without registering it), which gives each attribute's
   name and type, and the writer adds what the file does not hold: dimensions, sources, units and the locators
   behind them (checked with USD 0.26.5). Each API in a crosswalk pins its schema file by hash; where that file
@@ -1126,8 +1131,8 @@ typed access (recalled).
   The cost: where no schema file is passed a crosswalk's completeness, and everywhere its dimensions and unit
   convention, are its writer's claims; Newton's mass unit is a question for whoever writes a Newton crosswalk;
   and two consumers of one engine each write the same crosswalk (section 13, item 10). A consumer whose own
-  code sets its engine's parameters, as MIME does for MADDENING, needs no crosswalk: it reads Vesalius through
-  the read contract at its build. The document was called an engine profile, then an engine map; the
+  code sets its engine's parameters, as MIME does for MADDENING, needs no crosswalk: it reads OpenMaterica
+  through the read contract at its build. The document was called an engine profile, then an engine map; the
   maintainer chose "engine crosswalk", the data-standards term for a table that maps one vocabulary onto
   another, on 2026-10-13, to avoid clashes with MADDENING's `Mapping`, Python's `map` and OpenUSD's
   `UsdProfiles` (section 13, item 8).
@@ -1137,22 +1142,22 @@ typed access (recalled).
   bound to it with the `physics` purpose (not only those OpenUSD's reference physics parser reports, since it
   drops any material without `PhysicsMaterialAPI`), maps the shape to the innermost region above it, and
   re-derives its engine material from the stamp: a foreign material, a stale or hand-edited one, a scene layer
-  written for other units, or a missing one is reported. It holds Vesalius's `UsdPhysics` crosswalk and the
-  crosswalks passed to it; a build passes the crosswalks its declaration pins, and a stand-alone check lists
-  what it could not check without a crosswalk, including every API it does not recognise, rather than flag it.
-  The density it compares is the effective one, since `UsdPhysics.MassAPI` overrides a material's density. A
-  declared engine model is met only when the check reports none of these for its shapes. The cost of leaving
-  `physics` to engines is that the two materials can now disagree, where the shared slot made them one prim;
-  the check is what keeps that from being silent.
-- **Readers take a region's material only from a `vesalius`-purpose binding authored on the region's
+  written for other units, or a missing one is reported. It holds OpenMaterica's `UsdPhysics` crosswalk and
+  the crosswalks passed to it; a build passes the crosswalks its declaration pins, and a stand-alone check
+  lists what it could not check without a crosswalk, including every API it does not recognise, rather than
+  flag it. The density it compares is the effective one, since `UsdPhysics.MassAPI` overrides a material's
+  density. A declared engine model is met only when the check reports none of these for its shapes. The cost
+  of leaving `physics` to engines is that the two materials can now disagree, where the shared slot made them
+  one prim; the check is what keeps that from being silent.
+- **Readers take a region's material only from a `materica`-purpose binding authored on the region's
   prim.** `ComputeBoundMaterial` falls back to an all-purpose binding, usually a display material, for a
   purpose with no binding authored (checked), so readers never call it, and they refuse an all-purpose
-  binding to a Vesalius material (prototype P1c). Within a region a binding applies to the region's
+  binding to an OpenMaterica material (prototype P1c). Within a region a binding applies to the region's
   descendants; a nested region carries its own (section 5.1). Engine bindings are neither read nor refused.
 - **Field overrides and label volumes** use `UsdVol` (checked: `UsdVol` has `OpenVDBAsset` and
   `Field3DAsset`). A volume is a `Gprim` that renderers draw, so it sits outside region geometry, and its
   fields take names a renderer will not bind (to a renderer, `field:density` is smoke).
-- **Layered paths** have a typed prim of our own, `VesaliusLayeredPath`: an entry point and a direction (or a
+- **Layered paths** have a typed prim of our own, `MatericaLayeredPath`: an entry point and a direction (or a
   relationship to a curve it was derived along), an array of interval thicknesses, one relationship to the
   distinct materials the path uses, an integer array giving each interval's index into that relationship, and
   the declared assumption of lateral homogeneity. USD keeps a relationship's targets in order only when they
@@ -1168,14 +1173,14 @@ typed access (recalled).
 - **Shipped layers are self-contained.** Every USD layer generated for a release has no composition arcs
   (sublayers, references, payloads) and no asset paths; an aggregate layer, if one is shipped, is
   flattened. A scene that uses the library adds its own arcs. Reading a library layer therefore reads that
-  one file and nothing else, whoever published it. `vesalius check` enforces this.
+  one file and nothing else, whoever published it. `materica check` enforces this.
 
 ### 5.5 Declared, then fitted
 
 USD composition could hold a declared-then-fitted history: a library layer holds declared values, a scene
 references it, a fit writes a stronger layer with fitted values, and the declared values stay intact
 underneath (checked: a fitted 1555 m/s in a stronger layer composed over a declared 1570 m/s, and the root
-layer still held 1570). Vesalius does not use it that way, for the reason below.
+layer still held 1570). OpenMaterica does not use it that way, for the reason below.
 
 **A consumer's fit is not the material's value.** A viscosity fitted to a trajectory absorbs every error of
 the model that produced the trajectory (its drag model, its wall treatment, its resolution), so it is a
@@ -1185,7 +1190,7 @@ models it was never fitted with. So a fit, like any scene-level or private repla
 record** (section 4.1):
 
 - it names its base record by identifier and hash, the fields it replaces, and its scope;
-- in USD it is a `VesaliusOverlay` prim of its own, with a relationship to its base material and its scope
+- in USD it is a `MatericaOverlay` prim of its own, with a relationship to its base material and its scope
   as a JSON string, never an edit of the material's attributes, so composing layers cannot apply it;
 - a consumer applies it only by declaring it, and the material input sheet records the declaration; whether
   the fitted or the library's value is used is the consumer's pick, not an order of layers;
@@ -1268,7 +1273,7 @@ under (prototypes P2 and P4).
 | Private | nothing; an organisation's own overlay in the same format | proprietary or unpublished measurements |
 
 The tools treat the three tiers identically, so the public library can be conservative without making
-Vesalius weaker. Fits the curator makes from published curves are the curator's own work and can often be
+OpenMaterica weaker. Fits the curator makes from published curves are the curator's own work and can often be
 shipped where the curves themselves stay reference-only. So can a shipped fit's check points.
 
 The tools treat the tiers identically in mechanism, not in evidence. A user fills in a reference-only value
@@ -1348,12 +1353,12 @@ only assembles it. Cards replace the data sheets of earlier drafts.
   configuration management and can be assessed as SOUP. A live database that changes under its users
   cannot, and a hosted service would add uptime, access control and a cybersecurity boundary of its own.
 - **The closest model needs no hosting to copy.** The Hugging Face Hub is git repositories plus an index,
-  metadata cards and viewers, plus hosting for everyone. Vesalius can build the first three statically.
+  metadata cards and viewers, plus hosting for everyone. OpenMaterica can build the first three statically.
 
 The repository is the database:
 
 ```
-records in git ── pull request + review ──> vesalius check ──> build ──────────────> release
+records in git ── pull request + review ──> materica check ──> build ──────────────> release
 (source of truth)  (curation)                 (ingestion)       cards, USD layers,    GitHub release, archived on
                                                                 index.json, plots     Zenodo with a DOI; a static
                                                                                       site on GitHub Pages
@@ -1367,7 +1372,7 @@ records in git ── pull request + review ──> vesalius check ──> build
   prerequisites are the curation tools (R15), the legal review (section 6.5), and the publishers file with
   its template. Earlier tags of the library (M10) are unpublished pins for MIME's spikes, not releases.
 - **Federation without hosting, from the first library release.** Any publisher keeps records in their own
-  repository, under their own namespace (section 4.1), and runs the same `vesalius check`. Nothing needs
+  repository, under their own namespace (section 4.1), and runs the same `materica check`. Nothing needs
   this project's permission. Waiting for a second publisher before building the way to publish would make
   one less likely, so the first library release carries both pieces:
   - **a publishers file** (`publishers.yaml`) in the library repository: namespace, repository URL and the
@@ -1375,7 +1380,7 @@ records in git ── pull request + review ──> vesalius check ──> build
     data checks on each registered release. It hosts no data. Julia's package registry works this way
     (recalled), folded here into a repository that exists anyway. The file labels the curated namespace
     apart from community ones, and lists third-party families as well as records. The library's CI runs
-    no third-party code: check points and witnesses of families outside `vesalius.` are reported "not
+    no third-party code: check points and witnesses of families outside `materica.` are reported "not
     checked (third-party family)", and a namespaced record type's body is never checked;
   - **a template repository**: a publisher uses it, adds records and pushes, CI checks them, and a one-line
     pull request registers the namespace.
@@ -1400,14 +1405,14 @@ Later, each when its trigger arrives:
 
 Not planned unless the scope changes: a hosted database, a query API, accounts, an upload portal. Their
 triggers would be large imaging data, or many writers who cannot work through pull requests; both are
-outside Vesalius's scope.
+outside OpenMaterica's scope.
 
 ## 7. The core package
 
 ### 7.1 Layout (the 0.1 module list, agreed by the maintainer, 2026-10-13)
 
 ```
-vesalius/                 the distribution a consumer's product depends on; ships py.typed
+materica/                 the package a consumer's product depends on (distribution `openmaterica`); py.typed
   schema/0.1/             writer JSON Schemas (the source of structure); reader schemas generated
                           from them; schema.usda, generatedSchema.usda, plugInfo.json             (L0)
   data/                   conformance/ (cases and inputs), vocabulary/ (generated from the
@@ -1420,48 +1425,48 @@ vesalius/                 the distribution a consumer's product depends on; ship
   io/                     plain.py; usd/ (needs pxr; every pxr call behind usd/_pxr.py)         (L4)
   sample/                 layered_path_helper.py (0.1); label fractions and the reference
                           sampler later                                                  (L5, numpy)
-  tools/                  check.py: python -m vesalius check, --stage, --crosswalk, --schema    (L6)
+  tools/                  check.py: python -m materica check, --stage, --crosswalk, --schema    (L6)
 
-vesalius_authoring/       curation tooling, where records are written
+materica_authoring/       curation tooling, where records are written
   integrations/engines/   the engine adapter and the crosswalk scaffold (0.1)          (L6, lazy imports)
   authoring/              compose, derive, fit records, bake check points; curation tools (8.2),
                           after 0.1                                                             (L3)
 ```
 
-The MCP server is a separate distribution, `vesalius-mcp` (section 8), so nothing in the core depends on it.
-The 0.1 module list was agreed before the first code (maintainer, 2026-10-13), together with making the writer
-JSON Schemas the single hand-edited source of structure: the reader schemas and the TypedDict shapes are
-generated from them, and the specification's member tables are checked against them.
+The MCP server is a separate distribution, `openmaterica-mcp` (section 8), so nothing in the core depends on
+it. The 0.1 module list was agreed before the first code (maintainer, 2026-10-13), together with making the
+writer JSON Schemas the single hand-edited source of structure: the reader schemas and the TypedDict shapes
+are generated from them, and the specification's member tables are checked against them.
 
 Families, with their golden vectors and reference implementations, sit beside the core in the same
-repository and ship as `vesalius-families` (section 3.1). The library repository has its own layout
+repository and ship as `openmaterica-families` (section 3.1). The library repository has its own layout
 (`DOCUMENTATION_ARCHITECTURE.md` section 2).
 
 ### 7.2 Dependencies and distribution
 
-- `vesalius`: no run-time dependency beyond Python's standard library (maintainer, 2026-10-13): the reader's
-  envelope checks are written by hand, which the specification's README allows
+- `openmaterica`: no run-time dependency beyond Python's standard library (maintainer, 2026-10-13): the
+  reader's envelope checks are written by hand, which the specification's README allows
   (`docs/specification/README.md`, "Suites and case numbers"), so the core adds nothing to a consumer's SOUP
-  list but Vesalius itself; each extra adds its own. Extras: `[check]` for `jsonschema` (`vesalius check` and
-  the writer schema), `[usd]` for `usd-core`, `[sample]` for numpy and whatever else L5 needs. Type checkers
-  read `typing_extensions` through the `.pyi` files and `TYPE_CHECKING` imports; nothing imports it at run
-  time. `vesalius-authoring` carries the curation tools' heavier dependencies (PDF text extraction, the
-  digitiser) and the only network access in the project (registry drafting from DOI and Crossref).
+  list but OpenMaterica itself; each extra adds its own. Extras: `[check]` for `jsonschema` (`materica check`
+  and the writer schema), `[usd]` for `usd-core`, `[sample]` for numpy and whatever else L5 needs. Type
+  checkers read `typing_extensions` through the `.pyi` files and `TYPE_CHECKING` imports; nothing imports it
+  at run time. `openmaterica-authoring` carries the curation tools' heavier dependencies (PDF text extraction,
+  the digitiser) and the only network access in the project (registry drafting from DOI and Crossref).
 - **What runs where.** The core never runs inside a consumer's computation (its simulation step, compiled
   program and gradient path; principle 2). It does run at a consumer's build: MIME's build calls the reader,
   the requirement checks over domains, the material input sheet, L5's label fractions and, where it samples,
-  the reference sampler, and their outputs become node data. So `vesalius` is third-party software in a
+  the reference sampler, and their outputs become node data. So `openmaterica` is third-party software in a
   product built on MIME and is assessed as such (`DOCUMENTATION_ARCHITECTURE.md` section 10);
-  `vesalius-authoring` is not part of a consumer's product unless the consumer's build runs it, as a build
-  that runs the engine adapter does; engine results themselves are computed in `vesalius[usd]` (maintainer,
-  2026-10-13).
+  `openmaterica-authoring` is not part of a consumer's product unless the consumer's build runs it, as a build
+  that runs the engine adapter does; engine results themselves are computed in `openmaterica[usd]`
+  (maintainer, 2026-10-13).
 - `pxr` is imported from whatever USD is installed. Isaac Sim ships its own USD build, and `usd-core` 26.8
   publishes wheels for macOS, Linux x86_64 and Windows only (checked 2026-10-11), while Isaac for
   Healthcare also supports Linux on aarch64. So `usd-core` must never be a hard requirement.
 - **Python versions** (maintainer, 2026-10-13): a floor of 3.11, and every Python that is not at end of life
-  and that a named consumer or engine needs in-process. Vesalius need not share an interpreter with an engine:
-  it runs at the build and hands over data (JSON results and USD layers), so it can run in its own environment
-  while the engine opens the files.
+  and that a named consumer or engine needs in-process. OpenMaterica need not share an interpreter with an
+  engine: it runs at the build and hands over data (JSON results and USD layers), so it can run in its own
+  environment while the engine opens the files.
 - Release artifacts: the wheels on PyPI, and the schemas (L0) and conformance data (L1) as a separate
   archive for projects in other languages to vendor. Golden vectors live only with their families; the
   archive cites each family version's hash. Library releases are separate (section 6.7).
@@ -1498,11 +1503,11 @@ fractions of the canonical test phantoms, and hash test vectors.
 
 ### 7.5 The read side in another language
 
-What a consumer does, with no Vesalius code:
+What a consumer does, with no OpenMaterica code:
 
-1. Read a record with a JSON parser; or, with no plug-in needed, detect Vesalius schemas by name in each
+1. Read a record with a JSON parser; or, with no plug-in needed, detect OpenMaterica schemas by name in each
    prim's composed `apiSchemas` and take each
-   region's material from the `vesalius`-purpose binding authored on the region's prim, never from
+   region's material from the `materica`-purpose binding authored on the region's prim, never from
    `ComputeBoundMaterial`'s fall-back to an all-purpose binding, and leave `physics` bindings to engines
    (section 5.4). Skip record types
    you do not know when listing; refuse them when referenced.
@@ -1524,7 +1529,7 @@ Everything else (composition, unit conversion, derivation, fitting) was done whe
 
 - **Admission.** A section, family or library material enters when a named consumer needs it, with its
   evidence (`DOCUMENTATION_ARCHITECTURE.md` section 6.4 for families, `CONTRIBUTING.md` for materials). A
-  family enters `vesalius.` when an in-scope record uses it (section 4.5).
+  family enters `materica.` when an in-scope record uses it (section 4.5).
 - **Non-goals.** No solver, no mesher, no query service, no hosting of large datasets, no description of
   systems (section 1), no judgement of applicability (the consumer declares it: section 3.5), no fast or
   differentiable model evaluation, and no code that runs inside a consumer's computation (principle 2).
@@ -1553,31 +1558,31 @@ drafted or on running any model again.
 
 ### 8.1 The BYOK boundary
 
-- **Vesalius calls no model and holds no keys.** It exposes deterministic tools over the Model Context
+- **OpenMaterica calls no model and holds no keys.** It exposes deterministic tools over the Model Context
   Protocol (MCP). The researcher's own agent (any MCP client: a coding agent, an IDE assistant, a custom
   command-line tool) brings the model and the key. Bring-your-own-key holds by construction, not by
   configuration.
-- **The MCP server** (`vesalius-mcp`, an optional separate distribution in L6) depends on the core and an
+- **The MCP server** (`openmaterica-mcp`, an optional separate distribution in L6) depends on the core and an
   MCP server library only, with no model SDK. It makes no network requests and reads only files the user
   points it at, such as their own copies of papers. Fetching papers is the agent's business, on the user's
   request (`DOCUMENTATION_ARCHITECTURE.md` section 15, constraint 19).
 - **MCP sampling** would let the server request completions from the client's model, keeping
-  bring-your-own-key while letting Vesalius sequence the steps. Client support was uneven when last
+  bring-your-own-key while letting OpenMaterica sequence the steps. Client support was uneven when last
   recalled; the design assumes an agent-driven loop and does not use sampling at first (decided
   2026-10-12).
-- **Nothing a model touches is on the read side.** No model runs in a reader, in `vesalius check`, in a
+- **Nothing a model touches is on the read side.** No model runs in a reader, in `materica check`, in a
   release build, or in any consumer's build. MIME's build binds materials by identifier and content hash
   and never calls a model.
 
 ### 8.2 The deterministic toolset
 
-MCP's three primitives map onto Vesalius as follows (recalled from the MCP specification; check before
+MCP's three primitives map onto OpenMaterica as follows (recalled from the MCP specification; check before
 building):
 
 | Primitive | Exposes |
 |---|---|
 | Resources (read-only) | records, cards, `index.json`, family definitions, the source registry |
-| Tools (deterministic) | query the index; get a record (values bundled with conditions, specimen facts, tier and hash); compare sources on curves; gap analysis against a consumer's required properties; create a draft; attach and verify a quote; parse a unit string; run the convention checker; digitise with a stated axis calibration; run a fit; bake check points; run `vesalius check` |
+| Tools (deterministic) | query the index; get a record (values bundled with conditions, specimen facts, tier and hash); compare sources on curves; gap analysis against a consumer's required properties; create a draft; attach and verify a quote; parse a unit string; run the convention checker; digitise with a stated axis calibration; run a fit; bake check points; run `materica check` |
 | Prompts | the extraction procedures and review checklists (section 8.3), versioned, so any MCP client gets them; the same text ships as agent skills |
 
 - **Tools first, MCP second.** Every tool is first a plain library function in L3 and a command, usable by a
@@ -1588,7 +1593,7 @@ building):
   section 4.6, chosen first by the maintainer); draft templates that mark fields "not applicable" by the
   value's type and record "unstated" in structure; quote attach-and-verify, per copy; registry drafting from
   DOI, Crossref and licence pages; formulation evaluators and check-point bakers. They ship in
-  `vesalius-authoring` (section 7.2). The MCP server stays a later item (section 12).
+  `openmaterica-authoring` (section 7.2). The MCP server stays a later item (section 12).
 - **Capability scoping.** Draft tools write only to a drafts area of the user's working tree. No tool can
   merge, push or open a pull request on its own, set a record's review status, set or change a redistribution
   status, write a check point other than by baking it, or edit a released record. A person opens and
@@ -1661,14 +1666,14 @@ stays an option.
   reproducible and need not be.
 - **Accountability is human.** The review record names who checked what against a checklist: value, unit,
   conditions, statistic, primary or cited, family and witness.
-- **The release fails closed.** `vesalius check --release` refuses any value without a review record.
+- **The release fails closed.** `materica check --release` refuses any value without a review record.
   Drafts may exist in a working tree; they cannot enter a release.
-- **The MCP server and the curation tools in `vesalius-authoring` are curation tooling, outside the SOUP
+- **The MCP server and the curation tools in `openmaterica-authoring` are curation tooling, outside the SOUP
   package**, like the CI scripts. Every value they helps draft is independently verified before release, which
   is the usual argument for light validation of a tool used in a quality system (recalled: ISO 13485:2016
-  clause 4.1.6). Vesalius operates under no QMS, but a manufacturer reasoning about it will look for exactly
-  this argument. The SOUP package states how many library values were model-assisted and which procedure
-  versions drafted them (`DOCUMENTATION_ARCHITECTURE.md` section 10).
+  clause 4.1.6). OpenMaterica operates under no QMS, but a manufacturer reasoning about it will look for
+  exactly this argument. The SOUP package states how many library values were model-assisted and which
+  procedure versions drafted them (`DOCUMENTATION_ARCHITECTURE.md` section 10).
 
 ### 8.6 Measuring it
 
@@ -1708,17 +1713,17 @@ on this literature. Three mechanisms measure them:
 
 ### 9.1 Where it attaches
 
-MIME depends on the Vesalius core (with the `[usd]` and `[sample]` extras) and the families it uses. The
-adapter lives in MIME, beside the things of structure draft 4.1. Vesalius knows nothing of nodes, graphs or
-JAX.
+MIME depends on the OpenMaterica core (with the `[usd]` and `[sample]` extras) and the families it uses. The
+adapter lives in MIME, beside the things of structure draft 4.1. OpenMaterica knows nothing of nodes, graphs
+or JAX.
 
 ```
-USD stage (or plain records): geometry + bindings + Vesalius materials     (Vesalius L0, L1, L4)
+USD stage (or plain records): geometry + bindings + OpenMaterica materials     (OpenMaterica L0, L1, L4)
     -> MIME things: Body, Medium, Apparatus                       plain views of prims and records
     -> each effect or observation model declares required properties (section, field or family, unit,
        conditions and tolerances), its domain, its target and its picks (mixing rule, competing values)
     -> Experiment.build(): requirements checked over each domain (met, not met, unknown; waivers recorded);
-       volume fractions inside each node's domain (Vesalius L5 for label volumes; MIME's own for meshes
+       volume fractions inside each node's domain (OpenMaterica L5 for label volumes; MIME's own for meshes
        and moving bodies);
        MIME's JAX evaluators of value forms and model families, verified against the conformance cases
        and each record's check points;
@@ -1732,19 +1737,19 @@ USD stage (or plain records): geometry + bindings + Vesalius materials     (Vesa
 
 | Structure draft | Change |
 |---|---|
-| 4.1 Things | bodies and media hold Vesalius materials; apparatus may hold material records from MIME's own namespace (a coil's copper, a detector's scintillator), since an apparatus's materials are outside the curated scope (section 1) |
+| 4.1 Things | bodies and media hold OpenMaterica materials; apparatus may hold material records from MIME's own namespace (a coil's copper, a detector's scintillator), since an apparatus's materials are outside the curated scope (section 1) |
 | 4.2, 4.3 Models | required properties become typed: section, field or family, unit, conditions and tolerances, declared with a domain and a target; results are met, not met or unknown; replaces presence-only checks (scope doc H1) |
 | 5.1 Build order | a step after the things: resolve materials, verify check points, check required properties over each model's domain, compute validity. The structure draft lists the property check as step 1, before the things exist; it belongs after them |
 | 5.5 Saved form (scope doc D2) | the stage holds things and materials; the experiment file holds models, controller and run settings |
 | 8 Metadata | provenance moves to the material; biocompatibility is declared on the `Body`, citing its materials' test evidence (section 4.2); open question 8.8 is answered by one record; `MimeAssetSchema` refers to materials by identifier |
-| 3.8, 3.10 New nodes | Vesalius is a prerequisite for every new family: acoustics, X-ray, transport, photoacoustics |
+| 3.8, 3.10 New nodes | OpenMaterica is a prerequisite for every new family: acoustics, X-ray, transport, photoacoustics |
 | 7.4 N3 | shared parameters become more pressing (9.3); MADDENING has taken this up as O.2, second in its 0.5.0 order |
 
 ### 9.3 Differentiability
 
 The split that keeps gradients:
 
-- **Which material is where** is geometry. Vesalius L5 computes volume fractions from label volumes on a
+- **Which material is where** is geometry. OpenMaterica L5 computes volume fractions from label volumes on a
   node's grid once (static data); MIME computes them for meshes, and for a moving body recomputes them per
   frame from a soft distance function in JAX, as for the X-ray rung (structure draft 3.9). Soft fractions are
   MIME's discretisation at an edge: declared, and tested for convergence (section 3.5, rule 3).
@@ -1784,8 +1789,8 @@ nominal value, bounds and a distribution that defaults to uniform, and has no st
   declares a nominal itself;
 - joint distributions (a covariance in a declared space, an ensemble, admissibility constraints) have been
   requested of MADDENING for a later release. Until then MIME samples `ensemble` and `multivariate_normal`
-  structures with Vesalius's reference sampler and labels the results as such (section 7.3), or uses values
-  it declares.
+  structures with OpenMaterica's reference sampler and labels the results as such (section 7.3), or uses
+  values it declares.
 
 ### 9.5 Round trip
 
@@ -1816,7 +1821,7 @@ it. MADDENING has agreed that MIME builds such monitors first and that it genera
 
 ### 9.7 Beside MADDENING and MICROROBOTICA
 
-- MADDENING's USD live stage and graph schema describe the simulation; Vesalius describes the scene's
+- MADDENING's USD live stage and graph schema describe the simulation; OpenMaterica describes the scene's
   materials. They would be separate layers composed into one stage.
 - MICROROBOTICA would read materials for display and keep its rule that biocompatibility is never shown as
   a safety claim.
@@ -1849,7 +1854,7 @@ Wider adoption is the upside, pursued as follows.
   records its curator's ORCID.
 - **Criteria.** For example, within a year of the library's first release: two consumers outside the founding
   projects, a stated number of curated materials, and one outside contributor or publisher. Measured from
-  Zenodo, PyPI and GitHub release downloads and, once it exists, the index. If they are not met, Vesalius
+  Zenodo, PyPI and GitHub release downloads and, once it exists, the index. If they are not met, OpenMaterica
   narrows to an internal tool, which is still worth having.
 
 An earlier materials-data exchange format, MatML, went from NIST to an OASIS technical committee in
@@ -1860,12 +1865,12 @@ An earlier materials-data exchange format, MatML, went from NIST to an OASIS tec
 None of this exists or has been proposed to them. Each row is a possible adapter, in the order I would try
 them.
 
-| Their component | Today | Vesalius touchpoint | Adapter |
+| Their component | Today | OpenMaterica touchpoint | Adapter |
 |---|---|---|---|
-| Ultrasound simulator | six materials hard-coded in C++ | fill its material table from records | a build-time generator in `vesalius-authoring` that writes a drop-in `material.cpp`; their Python API cannot replace the table, so a change of materials needs a rebuild (prototype P2, at their commit `8bb07d9`; their own values round-tripped bit for bit, a test that covers 12 of the table's 48 fields) |
-| Patient twin | CT to labels to meshes and USD, no properties | a step that binds a library material to each label | a label crosswalk from their label names to library materials, plus a binding function that applies `VesaliusRegionAPI`, with the material reference and a priority, and a `vesalius`-purpose binding beside their all-purpose display binding. They identify a structure by the segmenter's name (`anatomy:name`), not its path, and attach CT in millimetre stages (read at their commit `9a779a4` by the ecosystem survey, 2026-10-12) |
+| Ultrasound simulator | six materials hard-coded in C++ | fill its material table from records | a build-time generator in `openmaterica-authoring` that writes a drop-in `material.cpp`; their Python API cannot replace the table, so a change of materials needs a rebuild (prototype P2, at their commit `8bb07d9`; their own values round-tripped bit for bit, a test that covers 12 of the table's 48 fields) |
+| Patient twin | CT to labels to meshes and USD, no properties | a step that binds a library material to each label | a label crosswalk from their label names to library materials, plus a binding function that applies `MatericaRegionAPI`, with the material reference and a priority, and a `materica`-purpose binding beside their all-purpose display binding. They identify a structure by the segmenter's name (`anatomy:name`), not its path, and attach CT in millimetre stages (read at their commit `9a779a4` by the ecosystem survey, 2026-10-12) |
 | X-ray simulator | linear map from CT number to attenuation | per-material attenuation from a label volume, computed by the adapter for a stated spectrum (an effective value depends on path length and filtration, so it is the adapter's model, labelled) | builds an attenuation volume; their renderer takes one in mm⁻¹, mapped from CT number, and models no tube voltage, spectrum or filtration (their preset documentation, read by the ecosystem survey, 2026-10-12; not run) |
-| Physics (Newton, the XPBD catheter, soft tissue) | engine materials | mechanical families to engine parameters; interfaces (4.13) for catheter-wall friction | the engine adapter, by an engine crosswalk the consumer writes (Vesalius ships only `UsdPhysics`'s), writing engine materials of its own bound `physics` (5.4); position-based solvers use compliance, which depends on the discretisation, so it is a declared engine value, not a conversion |
+| Physics (Newton, the XPBD catheter, soft tissue) | engine materials | mechanical families to engine parameters; interfaces (4.13) for catheter-wall friction | the engine adapter, by an engine crosswalk the consumer writes (OpenMaterica ships only `UsdPhysics`'s), writing engine materials of its own bound `physics` (5.4); position-based solvers use compliance, which depends on the discretisation, so it is a declared engine value, not a conversion |
 | Workflows and scenes | USD scenes | scenes reference library layers | none: plain USD composition |
 
 ### 11.1 The ultrasound adapter in more detail
@@ -1876,14 +1881,14 @@ them.
   survey and checked against prototype P2's copy of the header, 2026-10-12; an earlier draft inferred the
   attenuation unit from the values), and calls `mu0` a scattering density and `sigma` a scattering
   coefficient, which bears on open question 5 of section 13.
-- From Vesalius's bulk and acoustic sections: impedance as density times sound speed, sound speed
+- From OpenMaterica's bulk and acoustic sections: impedance as density times sound speed, sound speed
   directly, attenuation converted from SI to their units. A unit linear in frequency (dB per cm per MHz)
   assumes attenuation is linear in frequency, which holds only approximately for tissue and not at all for
   water (recalled: water's rises with the square of frequency), so each converted value carries a label
   with its error over the band used.
 - Their four speckle parameters are treated as renderer settings until a first contact settles what they
   describe (section 4.14). As settings, they would sit on the same material prim in their own namespace (for
-  example `i4h:ultrasound:mu0`), outside Vesalius's schema.
+  example `i4h:ultrasound:mu0`), outside OpenMaterica's schema.
 
 ### 11.2 Why this could interest them
 
@@ -1899,10 +1904,11 @@ I would rank this above the physics bridges of structure draft 7.7 as a first co
 - NVIDIA's schemas were surveyed on 2026-10-12, with citations, in a private report. SimReady's non-visual
   sensor materials are category tokens with no quantities, carried on visual materials, and `skin` is their
   only tissue. PhysX's deformable materials are being replaced by a deformable schema written to become part
-  of `UsdPhysics`, in stage units. Neither carries what Vesalius does, so Vesalius stays compatible with both
-  and maps onto them through adapters, and leaves them the `physics` binding slot (5.4). The Alliance for
-  OpenUSD's Physics working group has physical material properties in its charter, deformable bodies after
-  rigid ones; an engine-facing tissue material would be standardised there, so it is worth following.
+  of `UsdPhysics`, in stage units. Neither carries what OpenMaterica does, so OpenMaterica stays compatible
+  with both and maps onto them through adapters, and leaves them the `physics` binding slot (5.4). The
+  Alliance for OpenUSD's Physics working group has physical material properties in its charter, deformable
+  bodies after rigid ones; an engine-facing tissue material would be standardised there, so it is worth
+  following.
 - A standard succeeds by adoption. Round-tripping their patient twin's output matters more than a complete
   schema.
 
@@ -1929,16 +1935,16 @@ Each set includes the one before it. A MIME row is done first as the spike named
 
 | # | Feature | Where | Ties to |
 |---|---|---|---|
-| M1 | Plain records and their JSON Schema, JSON only: the envelope every record shares, with `record_type` (material and overlay defined, interface reserved; unknown types skipped when listing and refused when referenced) and an `extensions` block; namespaced identifiers; a schema version; content hashes over the whole record minus a stated exclusion list, with hash test vectors | Vesalius | AD 4.1 *Material, section, value*; AD 5.2 *Plain records and scene documents*; AD 5.6 *Versions and hashes* |
-| M2 | Sections for what MIME's experiments use today: bulk (density, elemental composition), fluid (viscosity with its trivial family and shear-rate range), magnetic (remanence, saturation, susceptibility, with the specimen's shape), biocompatibility (test evidence, never a device's status) | Vesalius | AD 4.2 *Sections*; AD 4.8 *Conditions*; SD 8.4 *Where each piece would go* (the `BiocompatibilityMeta` row) |
-| M3 | Five value forms: constant, table, power law, interval and composition, each with its range; tables with an interpolation scheme and edges; attenuation stored as an amplitude coefficient. No model families yet | Vesalius | AD 4.4 *Seven value forms* |
-| M4 | Provenance per value (origin, source, extraction, review with the reviewer's independence); conditions, starting with temperature, with unstated conditions recorded as such; scalar statistics with what they represent, `not_reported` and interval-only values; specimen facts | Vesalius | AD 4.7 *Provenance*; AD 4.8 *Conditions*; AD 4.9 *Statistics and uncertainty structures*; AD 4.11 *Proxies*; SD 8.3 *Principle: metadata sits on what it describes* |
-| M5 | A deterministic reader for plain records: a value in SI, with its provenance, at stated conditions. A refusal comes back as a structured result, never as a guess: no value that was not authored, nothing outside a range or across an edge, no nominal for an interval | Vesalius | AD 3.2 *Layers inside the core* (L2, L4); AD 7.5 *The read side in another language*; DA 15 *Project Constraints* (nos. 13, 24) |
-| M6 | Required properties as a type (section, field, unit, conditions with tolerances), declared with a domain and a target; a check over the domain's regions with three results (met, not met, unknown) and recorded waivers | Vesalius | AD 3.5 *Facts, declarations and the build*; AD 9.1 *Where it attaches*; SD 5.1 *Build order*; RS H1 *What the layer does today* (presence-only checks) |
-| M7 | Conformance cases as data files | Vesalius | AD 7.4 *Conformance*; DA 6.1 *Conformance suite (the read side)* |
-| M8 | `vesalius check`: schema, provenance, plausibility | Vesalius | DA 6.5 *CI checks* |
+| M1 | Plain records and their JSON Schema, JSON only: the envelope every record shares, with `record_type` (material and overlay defined, interface reserved; unknown types skipped when listing and refused when referenced) and an `extensions` block; namespaced identifiers; a schema version; content hashes over the whole record minus a stated exclusion list, with hash test vectors | OpenMaterica | AD 4.1 *Material, section, value*; AD 5.2 *Plain records and scene documents*; AD 5.6 *Versions and hashes* |
+| M2 | Sections for what MIME's experiments use today: bulk (density, elemental composition), fluid (viscosity with its trivial family and shear-rate range), magnetic (remanence, saturation, susceptibility, with the specimen's shape), biocompatibility (test evidence, never a device's status) | OpenMaterica | AD 4.2 *Sections*; AD 4.8 *Conditions*; SD 8.4 *Where each piece would go* (the `BiocompatibilityMeta` row) |
+| M3 | Five value forms: constant, table, power law, interval and composition, each with its range; tables with an interpolation scheme and edges; attenuation stored as an amplitude coefficient. No model families yet | OpenMaterica | AD 4.4 *Seven value forms* |
+| M4 | Provenance per value (origin, source, extraction, review with the reviewer's independence); conditions, starting with temperature, with unstated conditions recorded as such; scalar statistics with what they represent, `not_reported` and interval-only values; specimen facts | OpenMaterica | AD 4.7 *Provenance*; AD 4.8 *Conditions*; AD 4.9 *Statistics and uncertainty structures*; AD 4.11 *Proxies*; SD 8.3 *Principle: metadata sits on what it describes* |
+| M5 | A deterministic reader for plain records: a value in SI, with its provenance, at stated conditions. A refusal comes back as a structured result, never as a guess: no value that was not authored, nothing outside a range or across an edge, no nominal for an interval | OpenMaterica | AD 3.2 *Layers inside the core* (L2, L4); AD 7.5 *The read side in another language*; DA 15 *Project Constraints* (nos. 13, 24) |
+| M6 | Required properties as a type (section, field, unit, conditions with tolerances), declared with a domain and a target; a check over the domain's regions with three results (met, not met, unknown) and recorded waivers | OpenMaterica | AD 3.5 *Facts, declarations and the build*; AD 9.1 *Where it attaches*; SD 5.1 *Build order*; RS H1 *What the layer does today* (presence-only checks) |
+| M7 | Conformance cases as data files | OpenMaterica | AD 7.4 *Conformance*; DA 6.1 *Conformance suite (the read side)* |
+| M8 | `materica check`: schema, provenance, plausibility | OpenMaterica | DA 6.5 *CI checks* |
 | M9 | A seed library from primary sources (water as a table over temperature, evaluated from its reference formulation; SU-8, NdFeB grades, the tube materials); its source registry, per copy; the data licence (CC0-1.0, decided). MIME's current constants are not transcribed into it: they stay inline in MIME (M11) | library | AD 6.1 *Source registry*; AD 6.2 *Three tiers*; AD 6.4 *Licences*; AD 13 *Open questions* (no. 8) |
-| M10 | Tagged releases of the package, and tags of the library that MIME pins exactly: unpublished pins for MIME's spikes, not the first library release (R8; section 6.7) | Vesalius | AD 6.7 *Distribution and hosting*; DA 7.1 *Four version lines* |
+| M10 | Tagged releases of the package, and tags of the library that MIME pins exactly: unpublished pins for MIME's spikes, not the first library release (R8; section 6.7) | OpenMaterica | AD 6.7 *Distribution and hosting*; DA 7.1 *Four version lines* |
 | M11 | The seam: `Body` and `Medium` hold a material reference (identifier and hash) or an inline value labelled "declared in the experiment", with the origin "stated without an origin"; an adapter resolves either into what the nodes take today | MIME (S1) | SD 4.1 *Things*; AD 9.2 *What changes in MIME*; AD 4.7 *Provenance* |
 | M12 | Migration control: experiments built through the seam, from inline values, reproduce today's outputs exactly. Library values then replace inline ones one at a time, each a separate change with its measured effect | MIME (S1) | SD 8.2 *What is wrong with it* (point 4); RS *TODO: what it takes* (item 56, "results reproduce") |
 
@@ -1946,36 +1952,36 @@ Each set includes the one before it. A MIME row is done first as the spike named
 
 | # | Feature | Where | Ties to |
 |---|---|---|---|
-| R1 | Scene documents in plain form (the scene manifest, regions, domains) and the USD binding: schemas for the sections in use, read and write, with no fallback values on physical attributes; region binding; domains as collections; overlays; self-contained shipped layers; the stage check (`vesalius check --stage`); the engine crosswalk, with Vesalius's one crosswalk (OpenUSD's `UsdPhysics` rigid materials) and a scaffold for consumers' crosswalks; the engine adapter. Crosswalks for Isaac Sim's deformable materials, Newton or any other engine are their consumers' (maintainer, 2026-10-13), and each needs a source for its engine's units. Built in 0.1 (section 12.2) | Vesalius | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
-| R2 | Acoustic section (longitudinal and, for solids, shear sound speed, with propagation direction where the material is anisotropic; attenuation as an amplitude coefficient, a power law over a stated band with its exponent's basis, for each wave type, so shear attenuation too; B/A), for both body and medium; density from the bulk section | Vesalius | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
-| R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, derived where needed from the bulk section's composition; the spectral axis built generally, so that the optical section adds fields later; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | Vesalius, library | AD 4.2 *Sections*; AD 4.4 *Seven value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
-| R4 | Mixing rules specified: the identities fixed, named rules with their assumptions, numpy reference forms and conformance cases at a single cell; the consumer implements its pick and the pick is recorded | Vesalius | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
-| R5 | The family machinery, with both kinds: static, and evolution with state and history and optional events (section 4.5), shipped as `vesalius-families` with each reference implementation beside its family. The first family, `vesalius.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points; its named consumer is MIME's superparamagnetic response node. Its first parameter set is a substance record: the composite of the Landers capsule, measured as a sphere, with the sphere as a condition (section 1). It enters `vesalius` only with an independent witness (the preprint's full magnetisation curve, digitised, can supply one); otherwise it goes to MIME's namespace flagged "no independent witness", and the family lives in `mime.` until an in-scope record uses it (sections 4.5, 6.7). The capsule's own as-built quantities stay MIME's. Rate-dependent families follow as soon as a consumer names one. The importer of section 12.5 exercises the same machinery on mechanics families and real papers | Vesalius | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 6.7 *Distribution and hosting*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
-| R6 | Uncertainty structures, each saying what it represents, and the reference sampler. MIME maps the spread its question needs onto MADDENING's UQ types where they can carry it; a mean and a standard deviation need a MADDENING change (section 9.4) | Vesalius, MIME (S5) | AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling*; AD 9.4 *Uncertainty* |
-| R7 | `vesalius.compliance`: `collect_material_inputs` and the material input sheet, written into each MIME run's provenance, with the derivation chain of every node parameter, review status, and the consumer's declarations, picks and waivers | Vesalius, MIME (S5) | DA 9.1 *Where it fits*; DA 9.3 *What this would add to Vesalius*; AD 3.5 *Facts, declarations and the build* |
+| R1 | Scene documents in plain form (the scene manifest, regions, domains) and the USD binding: schemas for the sections in use, read and write, with no fallback values on physical attributes; region binding; domains as collections; overlays; self-contained shipped layers; the stage check (`materica check --stage`); the engine crosswalk, with OpenMaterica's one crosswalk (OpenUSD's `UsdPhysics` rigid materials) and a scaffold for consumers' crosswalks; the engine adapter. Crosswalks for Isaac Sim's deformable materials, Newton or any other engine are their consumers' (maintainer, 2026-10-13), and each needs a source for its engine's units. Built in 0.1 (section 12.2) | OpenMaterica | AD 5.1 *The geometry ladder*; AD 5.3 *USD schemas*; AD 5.4 *Materials and binding in USD*; DA 15 *Project Constraints* (no. 18) |
+| R2 | Acoustic section (longitudinal and, for solids, shear sound speed, with propagation direction where the material is anisotropic; attenuation as an amplitude coefficient, a power law over a stated band with its exponent's basis, for each wave type, so shear attenuation too; B/A), for both body and medium; density from the bulk section | OpenMaterica | AD 4.2 *Sections*; SD 3.5 *Acoustics with MIME's own kernels (decided)*; SD 3.8 *Nodes planned for 0.3.0* (row 6) |
+| R3 | Radiological section: mass attenuation against photon energy, interpolated log-log, with its absorption edges declared, derived where needed from the bulk section's composition; the spectral axis built generally, so that the optical section adds fields later; the consumer computes any effective value for its own spectrum; seed materials water, soft tissue, bone, NdFeB and iodine, from a public-domain table (recalled: NIST's; terms to check) | OpenMaterica, library | AD 4.2 *Sections*; AD 4.4 *Seven value forms*; SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* |
+| R4 | Mixing rules specified: the identities fixed, named rules with their assumptions, numpy reference forms and conformance cases at a single cell; the consumer implements its pick and the pick is recorded | OpenMaterica | AD 4.12 *Mixing rules*; AD 3.5 *Facts, declarations and the build*; AD 9.3 *Differentiability* |
+| R5 | The family machinery, with both kinds: static, and evolution with state and history and optional events (section 4.5), shipped as `openmaterica-families` with each reference implementation beside its family. The first family, `materica.magnetic.langevin.v1`, with golden vectors, a reference implementation and check points that span its branch points; its named consumer is MIME's superparamagnetic response node. Its first parameter set is a substance record: the composite of the Landers capsule, measured as a sphere, with the sphere as a condition (section 1). It enters `materica` only with an independent witness (the preprint's full magnetisation curve, digitised, can supply one); otherwise it goes to MIME's namespace flagged "no independent witness", and the family lives in `mime.` until an in-scope record uses it (sections 4.5, 6.7). The capsule's own as-built quantities stay MIME's. Rate-dependent families follow as soon as a consumer names one. The importer of section 12.5 exercises the same machinery on mechanics families and real papers | OpenMaterica | AD 4.5 *Model families*; AD 4.6 *Check points and convention witnesses*; AD 6.7 *Distribution and hosting*; AD 7.6 *Scope rules*; SD 3.8 *Nodes planned for 0.3.0* (the eMNS pair) |
+| R6 | Uncertainty structures, each saying what it represents, and the reference sampler. MIME maps the spread its question needs onto MADDENING's UQ types where they can carry it; a mean and a standard deviation need a MADDENING change (section 9.4) | OpenMaterica, MIME (S5) | AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling*; AD 9.4 *Uncertainty* |
+| R7 | `materica.compliance`: `collect_material_inputs` and the material input sheet, written into each MIME run's provenance, with the derivation chain of every node parameter, review status, and the consumer's declarations, picks and waivers | OpenMaterica, MIME (S5) | DA 9.1 *Where it fits*; DA 9.3 *What this would add to OpenMaterica*; AD 3.5 *Facts, declarations and the build* |
 | R8 | Material cards; the legal review; the library's first archived release, with a DOI | library | AD 6.5 *Process*; AD 6.6 *Material cards*; AD 6.7 *Distribution and hosting* |
-| R9 | The interface record's body: contact pairs apart from solutes in media; how an interface binds to a pair of regions (manifest and USD); members named by identifier and major version. Design only; records ship with A6 and A7 | Vesalius | AD 4.13 *Interfaces between materials*; AD 13 *Open questions* (no. 11); SD 3.8 *Nodes planned for 0.3.0* (row 9); SD 9 *Open decisions* (no. 10) |
+| R9 | The interface record's body: contact pairs apart from solutes in media; how an interface binds to a pair of regions (manifest and USD); members named by identifier and major version. Design only; records ship with A6 and A7 | OpenMaterica | AD 4.13 *Interfaces between materials*; AD 13 *Open questions* (no. 11); SD 3.8 *Nodes planned for 0.3.0* (row 9); SD 9 *Open decisions* (no. 10) |
 | R10 | Typed required properties on MIME's effect and observation models, with domains, targets and tolerances, checked at build against the records and a computed operating point; unknown refused unless waived | MIME (S2) | SD 8.5 *One validity declaration, checked against a computed operating point*; AD 3.5 *Facts, declarations and the build*; AD 9.6 *Validity*; RS H1 *What the layer does today* |
-| R11 | MIME's JAX evaluators of value forms, mixing rules and the Langevin family, with gradients through tables and mixing rules, each stating its derivative convention at table knots and ends and returning whether its condition is in range, tested against Vesalius's conformance cases and golden vectors in MIME's default test lane | MIME (S3) | AD 9.3 *Differentiability*; AD 7.6 *Scope rules* (consumers write their own evaluators); DA 6.1 *Conformance suite (the read side)* |
+| R11 | MIME's JAX evaluators of value forms, mixing rules and the Langevin family, with gradients through tables and mixing rules, each stating its derivative convention at table knots and ends and returning whether its condition is in range, tested against OpenMaterica's conformance cases and golden vectors in MIME's default test lane | MIME (S3) | AD 9.3 *Differentiability*; AD 7.6 *Scope rules* (consumers write their own evaluators); DA 6.1 *Conformance suite (the read side)* |
 | R12 | Inputs derived where nothing better exists, with each derivation recorded: a magnet's dipole moment from remanence and volume, and, where the moment was also measured on the magnet, both kept as competing values with MIME's pick recorded; a density difference from two materials; a composite body's mass and buoyancy from its regions' materials, not its inertia or centre of mass. Biocompatibility is not derived: a device's status is declared on the `Body` | MIME (S6) | SD 8.2 *What is wrong with it* (point 1); SD 8.4 *Where each piece would go*; AD 4.2 *Sections* (biocompatibility); AD 4.3 *Laws, tables and composition* |
-| R13 | The saved form on a USD stage: MIME's things and Vesalius's layers composed with MADDENING's graph | MIME (S4) | RS *TODO: what it takes* (decision D2); RS H5 *The `Experiment`: what stays, what moves, where the other sides attach (a proposal)*; SD 5.5 *The saved form*; AD 9.7 *Beside MADDENING and MICROROBOTICA* |
-| R14 | Layered paths: the plain form and the USD typed prim `VesaliusLayeredPath`; the L5 helper that derives one from 3-D geometry along a trajectory. Needed by MIME 0.3.0's imaging physics, acoustics and X-ray (maintainer, 2026-10-12). Built in 0.1, with R1 | Vesalius | AD 5.1 *The geometry ladder*; AD 5.4 *Materials and binding in USD*; SD 3.8 *Nodes planned for 0.3.0* (rows 6 to 8) |
-| R15 | The curation tools, before the first library release (R8), in `vesalius-authoring`: a digitiser with axis calibration and an overlay first; then draft templates by value type; quote attach-and-verify per copy; registry drafting; formulation evaluators and check-point bakers. Library functions and commands first; the MCP server later (A9) | Vesalius | AD 8.2 *The deterministic toolset*; AD 4.6 *Check points and convention witnesses* (the witness bottleneck); AD 6.1 *Source registry* |
+| R13 | The saved form on a USD stage: MIME's things and OpenMaterica's layers composed with MADDENING's graph | MIME (S4) | RS *TODO: what it takes* (decision D2); RS H5 *The `Experiment`: what stays, what moves, where the other sides attach (a proposal)*; SD 5.5 *The saved form*; AD 9.7 *Beside MADDENING and MICROROBOTICA* |
+| R14 | Layered paths: the plain form and the USD typed prim `MatericaLayeredPath`; the L5 helper that derives one from 3-D geometry along a trajectory. Needed by MIME 0.3.0's imaging physics, acoustics and X-ray (maintainer, 2026-10-12). Built in 0.1, with R1 | OpenMaterica | AD 5.1 *The geometry ladder*; AD 5.4 *Materials and binding in USD*; SD 3.8 *Nodes planned for 0.3.0* (rows 6 to 8) |
+| R15 | The curation tools, before the first library release (R8), in `openmaterica-authoring`: a digitiser with axis calibration and an overlay first; then draft templates by value type; quote attach-and-verify per copy; registry drafting; formulation evaluators and check-point bakers. Library functions and commands first; the MCP server later (A9) | OpenMaterica | AD 8.2 *The deterministic toolset*; AD 4.6 *Check points and convention witnesses* (the witness bottleneck); AD 6.1 *Source registry* |
 
 **Ambitious: images from materials, fits written back, and the pair properties.**
 
 | # | Feature | Where | Ties to |
 |---|---|---|---|
-| A1 | Label volumes, and field overrides that carry provenance like any value | Vesalius | AD 5.1 *The geometry ladder*; SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* (the voxel-grid source of attenuation) |
-| A2 | Sampling helpers (L5): volume fractions from label volumes inside a node's domain, and the analytic fractions of the canonical test phantoms as conformance data. MIME's soft-distance fractions for meshes and moving bodies, its declared discretisation, are checked against them | Vesalius, MIME (S7) | AD 3.2 *Layers inside the core* (L5); AD 9.3 *Differentiability*; AD 13 *Open questions* (no. 10) |
+| A1 | Label volumes, and field overrides that carry provenance like any value | OpenMaterica | AD 5.1 *The geometry ladder*; SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks* (the voxel-grid source of attenuation) |
+| A2 | Sampling helpers (L5): volume fractions from label volumes inside a node's domain, and the analytic fractions of the canonical test phantoms as conformance data. MIME's soft-distance fractions for meshes and moving bodies, its declared discretisation, are checked against them | OpenMaterica, MIME (S7) | AD 3.2 *Layers inside the core* (L5); AD 9.3 *Differentiability*; AD 13 *Open questions* (no. 10) |
 | A3 | Joint uncertainty structures used in MIME's UQ through the reference sampler, before MADDENING supports them, with the results labelled | MIME (S5) | AD 9.4 *Uncertainty*; AD 4.9 *Statistics and uncertainty structures*; AD 7.3 *Uncertainty and sampling* |
-| A4 | Fit write-back: a MIME fit stored as an overlay scoped to its field, the MIME model and the run, with check points and a covariance, published in MIME's namespace; never the material's value | Vesalius, MIME (S8) | AD 4.10 *Fits and reference data*; AD 5.5 *Declared, then fitted*; AD 6.7 *Distribution and hosting*; AD 9.5 *Round trip* |
+| A4 | Fit write-back: a MIME fit stored as an overlay scoped to its field, the MIME model and the run, with check points and a covariance, published in MIME's namespace; never the material's value | OpenMaterica, MIME (S8) | AD 4.10 *Fits and reference data*; AD 5.5 *Declared, then fitted*; AD 6.7 *Distribution and hosting*; AD 9.5 *Round trip* |
 | A5 | X-ray from materials: the analytic and ray-marched rungs take mass attenuation against energy from records and a stated spectrum, polychromatically, with gradients to pose and to attenuation values | MIME (S7) | SD 3.8 *Nodes planned for 0.3.0* (rows 7, 8); SD 3.9 *The ray-marched X-ray projector: what it is and what it unlocks*; AD 4.4 *Seven value forms* |
-| A6 | Interface records for friction | Vesalius | AD 4.13 *Interfaces between materials*; SD 3.8 *Nodes planned for 0.3.0* (existing nodes: surface contact, the contact-friction stub) |
-| A7 | Transport records: a species' diffusivity in a medium; contrast agents | Vesalius | SD 3.8 *Nodes planned for 0.3.0* (row 9); AD A.4 *Prerequisites, in order* (item 2) |
-| A8 | Optical and thermal sections, for photoacoustics' cheap rungs: optical fields added to the radiological section's spectral machinery, optical composition by named component added to the bulk section, without breaking the schema | Vesalius | AD 4.2 *Sections*; AD 5.6 *Versions and hashes*; AD A.3 *A fidelity ladder (proposal)*; AD A.4 *Prerequisites, in order* (item 1) |
-| A9 | The MCP server, the extraction prompts and the gold set | `vesalius-mcp` | AD 8 *Layer 6: MCP tooling and curation* |
-| A10 | Anisotropic solids: a linear elastic family with a declared symmetry class, its constants in Voigt form in the material's principal axes; orientation fields for axes that vary in space; bone as its first material. Its consumer is MIME's acoustics through bone; stretch (maintainer, 2026-10-12). Measured speeds with their propagation direction come earlier, with R2 | Vesalius, library | AD 4.2 *Sections* (anisotropic solids); AD 4.5 *Model families*; AD 5.1 *The geometry ladder* (orientation) |
+| A6 | Interface records for friction | OpenMaterica | AD 4.13 *Interfaces between materials*; SD 3.8 *Nodes planned for 0.3.0* (existing nodes: surface contact, the contact-friction stub) |
+| A7 | Transport records: a species' diffusivity in a medium; contrast agents | OpenMaterica | SD 3.8 *Nodes planned for 0.3.0* (row 9); AD A.4 *Prerequisites, in order* (item 2) |
+| A8 | Optical and thermal sections, for photoacoustics' cheap rungs: optical fields added to the radiological section's spectral machinery, optical composition by named component added to the bulk section, without breaking the schema | OpenMaterica | AD 4.2 *Sections*; AD 5.6 *Versions and hashes*; AD A.3 *A fidelity ladder (proposal)*; AD A.4 *Prerequisites, in order* (item 1) |
+| A9 | The MCP server, the extraction prompts and the gold set | `openmaterica-mcp` | AD 8 *Layer 6: MCP tooling and curation* |
+| A10 | Anisotropic solids: a linear elastic family with a declared symmetry class, its constants in Voigt form in the material's principal axes; orientation fields for axes that vary in space; bone as its first material. Its consumer is MIME's acoustics through bone; stretch (maintainer, 2026-10-12). Measured speeds with their propagation direction come earlier, with R2 | OpenMaterica, library | AD 4.2 *Sections* (anisotropic solids); AD 4.5 *Model families*; AD 5.1 *The geometry ladder* (orientation) |
 
 Not in any set, for want of a MIME consumer (section 7.6): the dielectric section and a non-Newtonian blood
 family. The evolution form of families is part of R5, so that a rate-dependent family can be admitted as soon
@@ -1988,7 +1994,7 @@ MIME 0.3.0 plans (the X-ray rungs) or MIME's rule that a declared value stays a 
 fits it (section 5.5). A6 to A9 are stretch: none of them blocks a 0.3.0 node.
 
 **Floor:** the minimal set. Because the seam (M11) also accepts inline values, MIME 0.3.0 never waits for
-Vesalius; an experiment whose materials are not ready keeps declaring its values inline.
+OpenMaterica; an experiment whose materials are not ready keeps declaring its values inline.
 
 **USD and layered paths in 0.1** (maintainer, 2026-10-12). The core read path depends on scenes (a read's
 target can be a region, and requirements are checked over a domain or a path), so the code is designed with
@@ -1997,16 +2003,16 @@ scene documents (regions, domains, layered paths with the L5 helper, label cross
 checks; the USD binding, the stage check, the engine crosswalk and the engine adapter. Scenes come before
 declarations because the build checks requirements over domains and paths (maintainer, 2026-10-13, reordering
 the 2026-10-12 order). Nothing slips: the maintainer ruled out a cut line. USD is how MIME saves scenes and
-how the patient twin of Isaac for Healthcare would carry Vesalius materials; its novel parts (the layered-path
-prim, overlay prims, region markers, binding refusals, the units rules, engine materials) are found only by
-implementing them. The material input sheet stays R7, in 0.2. Label volumes, field overrides and the label
-crosswalk's USD form stay with A1.
+how the patient twin of Isaac for Healthcare would carry OpenMaterica materials; its novel parts (the
+layered-path prim, overlay prims, region markers, binding refusals, the units rules, engine materials) are
+found only by implementing them. The material input sheet stays R7, in 0.2. Label volumes, field overrides and
+the label crosswalk's USD form stay with A1.
 
-| Vesalius | Set | Contents | Proven in MIME by | Consumers |
+| OpenMaterica | Set | Contents | Proven in MIME by | Consumers |
 |---|---|---|---|---|
 | 0.1 | minimal, and R1 and R14 | M1 to M10, R1 and R14 | S1 and S4 | the MIME spikes |
 | 0.2 | realistic | R2 to R9 and R15 | S2, S3, S5, S6 | MIME 0.3.0: the release it is expected to pin |
-| 0.3 | target | A1, A2 and A4 (the Vesalius side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
+| 0.3 | target | A1, A2 and A4 (the OpenMaterica side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A10; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
 | with 0.2 | the mechanics track: not a priority, but progressing | mechanics with isotropic linear elasticity (A10 adds the anisotropic form), one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
 | with a consumer | | the optical, thermal and dielectric sections, added without breaking the schema (section 5.6); further families, of either kind | | |
@@ -2030,7 +2036,7 @@ The controls were rewritten on 2026-10-12, because several of the first set coul
 | S1 Seam and migration | resolves inline values, declared in the experiment, through the seam into today's node parameters, for two experiments that run on MADDENING 0.4.0 | outputs are bitwise equal to today's, at the same precision settings | a reach matrix: perturb each resolved field in turn, and assert that every node parameter that should depend on it changes and nothing else does; viscosity at least, since it enters drag in every backend. It also finds values that still come from node constructor defaults and bypass the seam. Density is not a usable control: with a Stokeslet backend it reaches no node, and in umr's lattice-Boltzmann setup it only rescales the time step at umr's operating point, where the body sits at its angular-velocity clamp for the whole run; beyond the clamp its effect is untested | M11, M12 |
 | S2 Requirements and validity | typed requirements with domains, targets and tolerances for the drag, magnetic and gravity effects, and for the planned radiation-force node (acoustic sections of body and medium) | the build refuses a missing field, a wrong unit and a temperature outside a table's range; returns unknown for an unstated condition and refuses it unless waived, recording the waiver; a valid experiment builds the same graph as S1 | two materials with every field present, one measured at the wrong temperature and one whose temperature is unstated. A presence-only check passes both; the typed check must refuse the first and return unknown for the second | M6, R10 |
 | S3 Differentiable evaluation | runs MIME's JAX evaluators against the conformance cases and the Langevin vectors and check points, in float32 and float64; takes gradients through a table's interpolation and a mixing rule | agreement within the tolerances the cases state; gradients match finite differences, with the derivative convention at table knots and ends that the conformance cases state | on the read side, a MIME evaluator with a deliberately wrong convention (the field in millitesla, not tesla) must fail the check points. On the write side, a parameter set extracted in the wrong convention passes its own check points, as section 4.6 says, and must fail its independent witness or be reported "no independent witness" | R4, R5, R11 |
-| S4 Saved form on USD | writes a stage with things, Vesalius layers, domains and MADDENING's graph; reloads and builds | `gm.to_dict()`, every material hash and every declaration are equal after the round trip, with a value other than the default in every field type | delete one authored attribute: the build must refuse, not read a fallback. A library layer with a composition arc is refused | R1, R13 |
+| S4 Saved form on USD | writes a stage with things, OpenMaterica layers, domains and MADDENING's graph; reloads and builds | `gm.to_dict()`, every material hash and every declaration are equal after the round trip, with a value other than the default in every field type | delete one authored attribute: the build must refuse, not read a fallback. A library layer with a composition arc is refused | R1, R13 |
 | S5 Provenance and UQ | writes the material input sheet into `SimulationProvenance.custom`; maps the spreads MIME's questions need; samples a joint structure with the reference sampler | the sheet's derivation chain explains every node parameter: base record and hash, overlays, conversions, mixing, defaults | compare the sheet with node parameters read independently from the built graph, not with the values the sheet was written from; a node default planted to bypass the seam must show as unexplained | R6, R7, A3 |
 | S6 Derived inputs | derives a dipole moment, a density difference and a composite body's mass, and compares each with today's typed value | each derived value matches, or both are kept as competing values and the test fails until a pick is recorded | each typed value is compared with its derivation before anything replaces it; SD 4.1 names two that may not match | R12 |
 | S7 X-ray from materials | the analytic and ray-marched rungs, polychromatic, from mass attenuation against energy, a stated spectrum, a label volume and soft-distance fractions | the ray-marched image of a sphere matches the analytic chord, computed polychromatically, to a stated tolerance; gradients to pose and to an attenuation value match finite differences | a series of thicknesses where one effective attenuation must disagree with the polychromatic result: beam hardening shows that an effective value is the consumer's model | A1, A2, A5 |
@@ -2056,19 +2062,19 @@ From MADDENING, nothing blocks. Shared parameters across nodes (MADDENING's O.2,
 SD 7.4, N3) would replace MIME's single adapter node that feeds one material value to every node that reads
 it (section 9.3). Joint uncertainty, and a
 stated parameterisation for `UncertainParameter`, are requested for a later release (section 9.4). The anomaly
-validator's version field affects only Vesalius's own CI (DA 8.1 *Adopted unchanged*).
+validator's version field affects only OpenMaterica's own CI (DA 8.1 *Adopted unchanged*).
 
 ### 12.5 Prototypes before the package
 
 Added 2026-10-12, from a simplification pass (section 15): the design had been elaborated on paper, and
 every problem found so far was found by reading text. Before the package exists, each consumer's critical
 path gets the cheapest prototype that could show the design wrong, in `plans/spikes/`, with hand-written
-JSON records and a throwaway reader. What survives shapes Vesalius 0.1, and the specification is then
+JSON records and a throwaway reader. What survives shapes OpenMaterica 0.1, and the specification is then
 rewritten shorter from it.
 
 | Order | Prototype | Shows | Could show wrong |
 |---|---|---|---|
-| 1 | MIME, one multi-region stage: a vessel in tissue; the FVM in the lumen's domain; the X-ray projector over the whole scene; Vesalius material bindings composed with `maddening.usd`'s graph layers; S1's reach matrix and S2's three-valued checks run here, early | domains, the USD binding, mixing inside a domain, the seam | whether domains and bindings are the right shapes for a real scene |
+| 1 | MIME, one multi-region stage: a vessel in tissue; the FVM in the lumen's domain; the X-ray projector over the whole scene; OpenMaterica material bindings composed with `maddening.usd`'s graph layers; S1's reach matrix and S2's three-valued checks run here, early | domains, the USD binding, mixing inside a domain, the seam | whether domains and bindings are the right shapes for a real scene |
 | 2 | Isaac for Healthcare's ultrasound material table (water, blood, fat, liver, muscle, bone), built offline from records and compared with their hard-coded values | the acoustic section; derivations such as attenuation in dB per cm per MHz, which assumes attenuation linear in frequency | whether the standard serves its first outside consumer without a change on their side |
 | 3 | The importer: an existing per-paper calibration code base's parameter sets as records with one mechanics family; a differential test of the original code against the reference implementation; witnesses on real papers | families, check points, independent witnesses, provenance on real data | whether the family machinery survives real conventions |
 | 4 | Five records with full provenance (water, an NdFeB grade from a datasheet, SU-8, a tissue acoustic value from a paper, the Landers capsule with both fits), with the cost of curation per value estimated. As run: model-assisted drafts, and a model's estimate of the time a person would take, not a timing | the cost of curation per value | whether one maintainer can afford the provenance schema; the trigger for the MCP layer (section 8) |
@@ -2089,15 +2095,15 @@ Each answer is written into the section named.
 | # | Question | Answer |
 |---|---|---|
 | 1 | Source of truth for library materials | plain records; USD generated from them (3.4) |
-| 2 | Binding purpose | a purpose of our own, `vesalius`, with `physics` left to engines; readers take only a `vesalius`-purpose binding authored on the region's prim; an engine adapter writes engine materials from a declared engine model, by a pinned engine crosswalk (Vesalius's for `UsdPhysics`, the consumer's for any other engine), stamped with their reads; the stage check re-derives them per shape (5.4). Reversed on 2026-10-12 from reusing `physics`, after the ecosystem survey |
+| 2 | Binding purpose | a purpose of our own, `materica`, with `physics` left to engines; readers take only a `materica`-purpose binding authored on the region's prim; an engine adapter writes engine materials from a declared engine model, by a pinned engine crosswalk (OpenMaterica's for `UsdPhysics`, the consumer's for any other engine), stamped with their reads; the stage check re-derives them per shape (5.4). Reversed on 2026-10-12 from reusing `physics`, after the ecosystem survey |
 | 3 | The USD form of a layered path | a typed prim of our own, with one relationship to its distinct materials and an index per interval (USD removes repeated targets), specified now because MIME 0.3.0's acoustics and X-ray need it (5.1, 5.4) |
-| 4 | Family registry scope | families only for a named consumer; only reviewed pull requests publish under `vesalius.`; third-party families in their publishers' namespaces; one `vesalius-families` distribution with a hash per family version (3.1, 4.5) |
+| 4 | Family registry scope | families only for a named consumer; only reviewed pull requests publish under `materica.`; third-party families in their publishers' namespaces; one `openmaterica-families` distribution with a hash per family version (3.1, 4.5) |
 | 5 | Where reference implementations sit | with their families; the core only runs vectors and check points (3.1) |
 | 6 | Where the rules are normative | the specification only; schema doc strings are short and point to it |
 | 7 | USD encoding of parameter sets, statistics, uncertainty structures and check points | one generated JSON string per field and nothing beside it; the typed value first proposed beside it was dropped after review (5.3) |
 | 8 | The data licence | CC0-1.0 for the curated library (6.4) |
 | 9 | Sources and ontologies to start from | NCBI Taxonomy, UBERON and a short state list (4.8); water from its reference formulation (4.3); NIST's attenuation tables (12.1, R3; terms to check); tissues from primary literature, with the IT'IS database as a lead only (6.4) |
-| 10 | How much sampling belongs in Vesalius | label volumes and layered paths; mesh inside-tests stay with consumers; analytic test phantoms as conformance data (3.2, 7.4) |
+| 10 | How much sampling belongs in OpenMaterica | label volumes and layered paths; mesh inside-tests stay with consumers; analytic test phantoms as conformance data (3.2, 7.4) |
 | 11 | Interfaces | a record type of their own (4.13) |
 | 12 | Deforming tissue | values belong to the material, so a binding moves with its mesh; a field override declares its frame (4.4) |
 | 13 | Temperature coupling | no new mechanism: a consumer evaluates a table over temperature at its simulated temperature, its evaluator returns whether the temperature is in range, and its monitors read that (4.4, 9.6); irreversible change is an evolution family with an event (4.5) |
@@ -2124,7 +2130,7 @@ Still open:
 5. What Isaac for Healthcare's speckle parameters describe: a renderer's tuning, or physical scatterers that
    would belong in the acoustic section (4.14). A question for a first contact.
 6. The legal review's four questions (6.5).
-7. Whether a Vesalius material prim carries a semantic label (`SemanticsLabelsAPI:material`), which
+7. Whether an OpenMaterica material prim carries a semantic label (`SemanticsLabelsAPI:material`), which
    SimReady's validators require of every material prim. A label is not a field value, so the one-string
    rule allows it. Decided before material prims are built (maintainer, 2026-10-13).
 8. Names that clash, settled by the maintainer on 2026-10-13: conformance profiles are
@@ -2132,10 +2138,10 @@ Still open:
    profiles, briefly engine maps, are **engine crosswalks**, and label mappings are **label crosswalks**
    (MADDENING's coupling class is `Mapping`); "field" stays, written `RecordField` in code, though MIME and
    MADDENING use the word for spatial fields.
-9. Whether `vesalius check --stage` is built as validators in OpenUSD's `usdValidation` framework (26.08),
+9. Whether `materica check --stage` is built as validators in OpenUSD's `usdValidation` framework (26.08),
    which already flags a binding without `MaterialBindingAPI` applied. Decided before the stage check is built
    (maintainer, 2026-10-13).
-10. Whether Vesalius hosts consumers' engine crosswalks for others to reuse, unreviewed (a directory or a
+10. Whether OpenMaterica hosts consumers' engine crosswalks for others to reuse, unreviewed (a directory or a
     separate repository), once two consumers write crosswalks for the same engine (5.4).
 
 ## 14. Not examined
@@ -2175,7 +2181,7 @@ Still open:
   my arithmetic. The absorption edges, the Fåhræus-Lindqvist effect, ISO 10993-1's scope, USD's fallback
   behaviour and the units of `UsdPhysics` density are recalled.
 
-## 15. Revisions of 2026-10-11 to 2026-10-13
+## 15. Revisions of 2026-10-11 to 2026-10-14
 
 A design review, using an existing per-paper tissue calibration code base as a case study, changed the
 draft as follows. A follow-up the same day on distribution, drawing on the Hugging Face Hub, added four rows
@@ -2232,7 +2238,7 @@ every open question (section 13). The rows below record what changed.
 | Before | After | Why |
 |---|---|---|
 | bodies, tissues, phantoms and devices, with the boundary open | substances in and around the human body, never systems; five rules, including the transfer test (section 1) | a test over 64 real cases gave no clearly wrong answer (7 needed a closer look); systems (a calibration, one object's inertia, a drive) had been offered as material values |
-| every record a material | an envelope every record shares, with a record type; materials and interfaces are Vesalius's; other namespaces may define types readers skip (4.1) | MIME's device calibrations need the machinery but are not materials |
+| every record a material | an envelope every record shares, with a record type; materials and interfaces are OpenMaterica's; other namespaces may define types readers skip (4.1) | MIME's device calibrations need the machinery but are not materials |
 | density under fluid and acoustic | a bulk section with density and elemental composition (4.2) | the X-ray projector needs density everywhere, and solids had no section for it |
 | the stiffness tensor deferred | anisotropic linear elasticity with a symmetry class, and propagation direction on speeds (4.2) | bone, for ultrasound and mechanics (maintainer) |
 | layered paths with the mechanics track, USD form open | specified now, plain and as a typed prim (5.1, 5.4; R14) | MIME 0.3.0's acoustics and X-ray need them (maintainer) |
@@ -2269,7 +2275,7 @@ decisions. The rows below record what changed.
 | a run-time watch on an evaluator's own axis | a watch for every declared condition and tolerance (3.5) | a constant has no axis |
 | five uncertainty structures | plus `marginals`, never sampled jointly (4.9) | mean and standard deviation per parameter, the commonest literature form, had no honest home |
 | a hash over listed parts of a record | the whole record minus a stated exclusion list, with test vectors (5.6) | a retyped record kept its hash; a second review broke every pin |
-| "the core never runs inside a consumer's computation", undefined | defined as the step, compiled program and gradient path; the core runs at build; `vesalius` and `vesalius-authoring` split (2, 7.2) | MIME's build runs the reader and the checks, and the core bundled tools with network access |
+| "the core never runs inside a consumer's computation", undefined | defined as the step, compiled program and gradient path; the core runs at build; `openmaterica` and `openmaterica-authoring` split (2, 7.2) | MIME's build runs the reader and the checks, and the core bundled tools with network access |
 | priority defaulting to depth; a one-region default domain | refused or declared (5.1) | hierarchy is not containment |
 | the stiffness tensor in 0.2 | stretch, A10 (12.1) | the maintainer's call; for the skull, porosity and shear matter more (12.2) |
 
@@ -2291,8 +2297,8 @@ The ecosystem survey of 2026-10-12, the maintainer's decisions on it, and a two-
 
 | Before | After | Why |
 |---|---|---|
-| USD binding and layered paths in Vesalius 0.2 | in 0.1, with no cut line (12.2) | the read path depends on scenes; MIME saves scenes in USD and Isaac for Healthcare's patient twin is USD (maintainer) |
-| reuse the `physics` binding purpose | a purpose of our own, `vesalius`; engine materials written by adapters, stamped with their source, bound `physics`; the stage check flags a mismatch or a simulated region with none (5.4) | NVIDIA's tools write the `physics` slot, and an engine reads nothing from a Vesalius material (ecosystem survey; maintainer) |
+| USD binding and layered paths in OpenMaterica 0.2 | in 0.1, with no cut line (12.2) | the read path depends on scenes; MIME saves scenes in USD and Isaac for Healthcare's patient twin is USD (maintainer) |
+| reuse the `physics` binding purpose | a purpose of our own, `materica`; engine materials written by adapters, stamped with their source, bound `physics`; the stage check flags a mismatch or a simulated region with none (5.4) | NVIDIA's tools write the `physics` slot, and an engine reads nothing from an OpenMaterica material (ecosystem survey; maintainer) |
 | attenuation in `Np/m` | registered as `/m`, nepers stated in the field's definition | `Np/m` is not valid UCUM (survey) |
 | an adapter configured by an undefined "engine configuration", checked per region by a label | an engine is a declared model; a pinned engine profile per engine version; one conversion rule by SI dimension; a stamp of the reads; a per-shape stage check that re-derives values, with `MassAPI` and instance proxies (5.4) | engines bind colliders, not regions; a label is never compared with values; `MassAPI` overrides a material's density (review) |
 | schemas found with `HasAPI` | by name in the composed `apiSchemas` | without a plug-in, USD omits unregistered schemas, so a reader found no regions (review, checked) |
@@ -2303,7 +2309,7 @@ rows below.
 
 | Before | After | Why |
 |---|---|---|
-| Vesalius ships an engine profile per engine version (proposed: `UsdPhysics` rigid materials, Isaac Sim's deformables, Newton later) | Vesalius specifies the engine crosswalk and ships one, for `UsdPhysics`; the consumer that runs any other engine writes and pins its crosswalk, drafted by a scaffold from the engine's schema file and compared with the schema file it pins by hash, never with what is installed (5.4) | a crosswalk per engine version is adapter upkeep, not a standard; the consumer knows the engine version it runs (maintainer) |
+| OpenMaterica ships an engine profile per engine version (proposed: `UsdPhysics` rigid materials, Isaac Sim's deformables, Newton later) | OpenMaterica specifies the engine crosswalk and ships one, for `UsdPhysics`; the consumer that runs any other engine writes and pins its crosswalk, drafted by a scaffold from the engine's schema file and compared with the schema file it pins by hash, never with what is installed (5.4) | a crosswalk per engine version is adapter upkeep, not a standard; the consumer knows the engine version it runs (maintainer) |
 | the stamp names its profile, and the check needs the profile to re-derive; engine materials as the reference parser reports them | the stamp carries the APIs applied and each attribute's type and dimension and the unit convention, so the check re-derives every value without the crosswalk and checks the stamp against its units, and against the crosswalk when held; engine materials are those bound `physics`; unrecognised APIs are listed | a stand-alone check would otherwise flag every consumer's material it has no crosswalk for, or trust a stamp it cannot see past; the parser drops any material without `PhysicsMaterialAPI` (review) |
 | an engine fallback per attribute; dimensions in M, L and T | no fallback member, since the adapter authors every attribute; dimensions over the seven SI base units; one engine model per region | `UsdPhysics` uses water's density, not its schema fallback, for an unauthored density; magnetic quantities need the ampere; two adapters would overwrite each other's bindings (review) |
 | "engine profile" (then "engine map", proposed); "conformance profile"; "label mapping" | "engine crosswalk"; "conformance suite"; "label crosswalk" (maintainer, 2026-10-13) | "profile" clashed with OpenUSD's `UsdProfiles` and MADDENING's profiler, "map" and "mapping" with MADDENING's `Mapping` and Python's `map` (13, item 8) |
@@ -2313,14 +2319,20 @@ The maintainer's decisions before the first code (2026-10-13) gave the rows belo
 | Before | After | Why |
 |---|---|---|
 | the core depends on numpy and a JSON Schema validator | no run-time dependency beyond the standard library; `[check]`, `[usd]` and `[sample]` extras (7.2) | four or five more packages (by Python version), one a compiled Rust extension, would enter every consumer's build; the specification's README allows the envelope checks to be written by hand |
-| `vesalius-authoring` never in a consumer's product; engine results unplaced | engine results in `vesalius[usd]`; authoring part of a product whose build runs the adapter (7.2) | the build gives engine results; a build that runs the adapter runs authoring |
+| `openmaterica-authoring` never in a consumer's product; engine results unplaced | engine results in `openmaterica[usd]`; authoring part of a product whose build runs the adapter (7.2) | the build gives engine results; a build that runs the adapter runs authoring |
 | declarations before scene documents | scene documents before declarations (12.2) | the build checks requirements over domains and paths |
 | record and scene shapes defined in Markdown tables and JSON Schemas separately | the writer JSON Schemas are the single source of structure; reader schemas and typed shapes generated; Markdown tables checked (7.1) | one hand-edited home for every fact |
 | Python versions unstated | a floor of 3.11 and a standing rule (7.2) | 3.10 reached end of life on 2026-10-01; Isaac Sim 5.x runs 3.11 |
 | a proposed layout | the 0.1 module list, with versioned schemas (`schema/0.1/`) and generated vocabulary files (7.1) | agreed before the first code |
 | typing unstated | the package typed (`py.typed`), checked by mypy and pyright; no public function returns a `pxr` object, and every `pxr` call goes through one module (7.1; DA 15) | consumers type-check their declarations; a returned `pxr` object would spread an unchecked type through their code |
-| every record check in `vesalius check` | the checks that need the source registry, a source copy, the previous release or the history in the library's tooling (DA 6.5) | they need inputs a record does not carry |
+| every record check in `materica check` | the checks that need the source registry, a source copy, the previous release or the history in the library's tooling (DA 6.5) | they need inputs a record does not carry |
 | AD 13 items 2, 7 and 9 open | item 2 closed; items 7 and 9 decided before the code that needs them (13) | the specification settled item 2 |
+
+The maintainer's decision of 2026-10-14 on the project's name gave the row below.
+
+| Before | After | Why |
+|---|---|---|
+| the working name Vesalius: distribution, package, reserved namespace, family namespace, binding purpose, attribute namespace and command `vesalius`; schema classes `Vesalius…`; local ids `VES-MAT-NNNN` and `VES-INT-NNNN`; registry prefixes `VES-ANO-`, `VES-VER-` and `VES-MTH-` | OpenMaterica: distribution `openmaterica`, package `materica`, and `materica` for each of the others; schema classes `Materica…`; local ids `MAT-NNNN` and `INT-NNNN`; registry prefixes `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-` (4.1, 5.3, 5.4, 7.1; DA 8.3) | a name cleared for the project's use, chosen before any release, while no identifier was yet frozen (maintainer, 2026-10-14) |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 
@@ -2332,7 +2344,7 @@ Why it matters for MIME:
 - It images microrobots in tissue. As I recall, PA tomography has guided microrobots in the intestine (Wu et
   al., Science Robotics 2019), and optoacoustics has tracked magnetic microrobots in mouse brain
   vasculature (Wrede et al., Science Advances 2022, Razansky's group). Recalled, not checked.
-- It chains three physics (light, heat, sound) through one material, so it tests Vesalius.
+- It chains three physics (light, heat, sound) through one material, so it tests OpenMaterica.
 - Quantitative PA, recovering an absorption map from images, is a recognised inverse problem. With section
   9.3 it becomes an ordinary fit of material values.
 
@@ -2378,7 +2390,7 @@ boundaries, and where absorption is not small against reduced scattering: a comp
 
 ### A.4 Prerequisites, in order
 
-1. Vesalius's optical and thermal sections, with composition (section 12.1, A8).
+1. OpenMaterica's optical and thermal sections, with composition (section 12.1, A8).
 2. Scalar transport in MIME.
 3. The time-domain acoustic kernel.
 4. Observation models that run per frame.

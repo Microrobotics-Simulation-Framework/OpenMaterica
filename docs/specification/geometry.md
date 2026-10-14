@@ -52,22 +52,22 @@ A read of a field at a point resolves the point's material through `owner`, then
   "document_type": "scene_manifest",
   "regions": [
     {"name": "tissue",
-     "material": {"id": "vesalius/VES-MAT-0003", "version": "1.0.0", "content_hash": "sha256:..."},
+     "material": {"id": "materica/MAT-0003", "version": "1.0.0", "content_hash": "sha256:..."},
      "priority": 10,
      "geometry": {"primitive": "cylinder", "centre": [0, 0, 0], "axis": [0, 0, 1],
                   "radius": 0.01, "length": 0.05}},
     {"name": "lumen",
-     "material": {"id": "vesalius/VES-MAT-0004", "version": "1.0.0", "content_hash": "sha256:..."},
+     "material": {"id": "materica/MAT-0004", "version": "1.0.0", "content_hash": "sha256:..."},
      "priority": 20,
      "geometry": {"uri": "lumen.stl", "format": "stl", "metres_per_unit": 0.001,
                   "sha256": "9f2c..."}}
   ],
   "background": {
-    "material": {"id": "vesalius/VES-MAT-0001", "version": "1.0.0", "content_hash": "sha256:..."}},
+    "material": {"id": "materica/MAT-0001", "version": "1.0.0", "content_hash": "sha256:..."}},
   "domains": {"flow": ["lumen"], "xray": ["tissue", "lumen", "background"]},
   "interfaces": [
     {"regions": ["lumen", "tissue"],
-     "record": {"id": "vesalius/VES-INT-0001", "version": "1.0.0", "content_hash": "sha256:..."}}]
+     "record": {"id": "materica/INT-0001", "version": "1.0.0", "content_hash": "sha256:..."}}]
 }
 ```
 
@@ -85,10 +85,10 @@ A read of a field at a point resolves the point's material through `owner`, then
    A point on a surface is inside. The tests use squared distances and no square roots, in IEEE 754 double
    precision, in the order written; case points are exactly representable. [SC-006] [SC-007] [RC-092]
 3. An external reference is `{"uri", "format", "metres_per_unit"}`, with an optional `sha256` of the file's
-   bytes. Vesalius never parses an external geometry file: its inside test is supplied by the consumer, and a
-   reader with none gives `not_met` (`geometry_unresolved`). Where `sha256` is present, whoever opens the file
-   checks its bytes and refuses a mismatch (`geometry_hash_mismatch`). `metres_per_unit` states the file's
-   length unit and is required. [SC-008] [RC-093]
+   bytes. OpenMaterica never parses an external geometry file: its inside test is supplied by the consumer,
+   and a reader with none gives `not_met` (`geometry_unresolved`). Where `sha256` is present, whoever opens
+   the file checks its bytes and refuses a mismatch (`geometry_hash_mismatch`). `metres_per_unit` states the
+   file's length unit and is required. [SC-008] [RC-093]
 
 ### 3.2 Who owns a point
 
@@ -158,15 +158,15 @@ instead. [SC-018] Their planned shapes:
   "direction": [0.0, 0.0, 1.0],
   "intervals": [
     {"thickness": 0.002,
-     "material": {"id": "vesalius/VES-MAT-0010", "version": "1.0.0", "content_hash": "sha256:..."}},
+     "material": {"id": "materica/MAT-0010", "version": "1.0.0", "content_hash": "sha256:..."}},
     {"thickness": 0.010,
-     "material": {"id": "vesalius/VES-MAT-0011", "version": "1.0.0", "content_hash": "sha256:..."}},
+     "material": {"id": "materica/MAT-0011", "version": "1.0.0", "content_hash": "sha256:..."}},
     {"thickness": 0.015,
-     "material": {"id": "vesalius/VES-MAT-0012", "version": "1.0.0", "content_hash": "sha256:..."}},
+     "material": {"id": "materica/MAT-0012", "version": "1.0.0", "content_hash": "sha256:..."}},
     {"thickness": 0.003,
-     "material": {"id": "vesalius/VES-MAT-0011", "version": "1.0.0", "content_hash": "sha256:..."}},
+     "material": {"id": "materica/MAT-0011", "version": "1.0.0", "content_hash": "sha256:..."}},
     {"thickness": 0.002,
-     "material": {"id": "vesalius/VES-MAT-0010", "version": "1.0.0", "content_hash": "sha256:..."}}
+     "material": {"id": "materica/MAT-0010", "version": "1.0.0", "content_hash": "sha256:..."}}
   ],
   "lateral_homogeneity": "assumed"
 }

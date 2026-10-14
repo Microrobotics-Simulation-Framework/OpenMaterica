@@ -54,7 +54,7 @@ back as an overlay (`record_format.md` section 4.4). [FD-006]
 
 ```json
 "fit": {
-  "data": [{"record": {"id": "vesalius/VES-MAT-0007", "version": "1.0.0", "content_hash": "sha256:..."},
+  "data": [{"record": {"id": "materica/MAT-0007", "version": "1.0.0", "content_hash": "sha256:..."},
             "field": "mechanical.uniaxial_response"},
            {"external": {"document": {"identifier": "doi:10.1000/xyz123", "version": "version_of_record"},
                          "sha256": "...",

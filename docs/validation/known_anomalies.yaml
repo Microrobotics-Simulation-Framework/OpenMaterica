@@ -1,11 +1,11 @@
-# Vesalius Known Anomalies Registry
+# OpenMaterica Known Anomalies Registry
 #
 # Schema: the anomaly records are identical to MADDENING's (MADDENING DOCUMENTATION_ARCHITECTURE.md
 # section 9.7). Do not add fields; name affected components as schema:<API>, reader:<function>,
-# method:<VES-MTH id>, model:<family identifier> or data:<VES-MAT id> (CONTRIBUTING.md).
+# method:<OMAT-MTH id>, model:<family identifier> or data:<MAT id> (CONTRIBUTING.md).
 # Checked in CI with MADDENING's validator (a development-time dependency only):
-#   python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix VES-ANO-
-# The version field is vesalius_version. MADDENING's validator (at f2aa830e) accepts only
+#   python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix OMAT-ANO-
+# The version field is materica_version. MADDENING's validator (at f2aa830e) accepts only
 # maddening_version; accepting a project version field has been requested of MADDENING
 # (DOCUMENTATION_ARCHITECTURE.md section 8.1).
 #
@@ -13,10 +13,10 @@
 # affected_versions: a PEP 440 specifier set, as in MADDENING (">=FIRST" while reachable,
 # ">=FIRST, <FIX" once fixed, "none" for a defect no release carried).
 #
-# No version has been released; vesalius_version names the development line.
+# No version has been released; materica_version names the development line.
 
 schema_version: "1.0"
-vesalius_version: "0.1.0.dev0"
+materica_version: "0.1.0.dev0"
 generated_date: "2026-10-11"
 
 anomalies: []

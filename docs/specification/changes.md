@@ -13,11 +13,11 @@ documents, the USD binding, mixing rules, declarations and the read-side contrac
 at the end of each document. Scene documents, layered paths, label crosswalks, the USD binding, the stage
 check and the engine adapter are in 0.1.0; families, fits and reference data, and mixing are specified but
 their suites are optional until the minor version that brings their first consumer (`README.md`). In USD a
-region binds its material with the purpose `vesalius`; the `physics` purpose is left to engines, whose
+region binds its material with the purpose `materica`; the `physics` purpose is left to engines, whose
 materials an engine adapter writes from a declared engine model by an engine crosswalk, stamped with the reads
 they came from, and which the stage check re-derives per shape (`usd_binding.md` sections 5, 9 and 10).
-Vesalius ships one engine crosswalk, for `UsdPhysics`; a consumer writes the crosswalk for any other engine it
-runs, drafted by a scaffold. Acoustic attenuation is registered in `/m`.
+OpenMaterica ships one engine crosswalk, for `UsdPhysics`; a consumer writes the crosswalk for any other
+engine it runs, drafted by a scaffold. Acoustic attenuation is registered in `/m`.
 
 Settled before the first code (maintainer, 2026-10-13): a reader refuses as malformed exactly what RFC 8259's
 grammar refuses and a listed set of further faults, follows I-JSON except that noncharacters are legal, and
@@ -52,4 +52,7 @@ that place is ignored (PR-320, PR-330); a reference with no candidate holding it
 normalisation (`record_format.md` section 9 item 2; HS-003); and the namespace `conformance` is reserved for
 conformance fixtures, whose contents are illustrative: a record check flags one given from outside a
 conformance tree, and a check of a whole library leaves conformance trees out (`record_format.md` section 7;
-RC-121).
+RC-121). Names (maintainer, 2026-10-14): the project, formerly Vesalius, is OpenMaterica; the reserved
+namespace, the family namespace, the USD binding purpose and the attribute namespace are `materica`, where
+drafts before that date used `vesalius`; the schema class prefix is `Materica`; and the local ids in
+`materica` are `MAT-NNNN` and `INT-NNNN` (`record_format.md` section 7; RC-012, RC-013).

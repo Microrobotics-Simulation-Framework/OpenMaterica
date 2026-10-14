@@ -27,7 +27,7 @@ model that reads material fields.
     "reads": ["fluid.dynamic_viscosity"],
     "parameters": ["fluid.mu"],
     "requirements": [{
-      "field": "fluid.dynamic_viscosity", "want": "value", "label": "vesalius.fluid.newtonian.v1",
+      "field": "fluid.dynamic_viscosity", "want": "value", "label": "materica.fluid.newtonian.v1",
       "conditions": {
         "temperature": {"tolerance": {"value": 1.0, "unit": "K"},
                         "reason": "viscosity falls about 2 % per kelvin near 37 °C",
@@ -67,7 +67,7 @@ model that reads material fields.
 | `acceptances` | every pick, waiver, implied condition, accepted difference, extrapolation, nominal, distribution and overlay (section 4) |
 | `chains` | hand-overs at events, as pairs of family and record (section 6) |
 | `trainable` | fields the model fits, each with its region, interval or record (section 7) |
-| `engine` | for a model that is a physics engine: `crosswalk`, the pin of its engine crosswalk (`usd_binding.md` section 10.1), Vesalius's or one the consumer writes and passes to the build with the declaration; `values`, per crosswalk attribute with no Vesalius field, `{"value", "unit", "reason", "basis"}` in SI, with no `unit` for an attribute with no dimension; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
+| `engine` | for a model that is a physics engine: `crosswalk`, the pin of its engine crosswalk (`usd_binding.md` section 10.1), OpenMaterica's or one the consumer writes and passes to the build with the declaration; `values`, per crosswalk attribute with no OpenMaterica field, `{"value", "unit", "reason", "basis"}` in SI, with no `unit` for an attribute with no dimension; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
 
 1. Only a model that reads a field declares anything about it. A field in `reads` with no requirement gives
    `unknown` with the reason `no_requirement`. [BC-003]
@@ -98,7 +98,7 @@ added.
 
 ```json
 {"model": "stokes_drag", "region": "lumen", "field": "fluid.dynamic_viscosity",
- "record": {"id": "vesalius/VES-MAT-0002", "version": "1.0.0", "content_hash": "sha256:..."},
+ "record": {"id": "materica/MAT-0002", "version": "1.0.0", "content_hash": "sha256:..."},
  "status": "unknown", "reasons": [{"code": "condition_unstated", "condition": "shear_rate"}],
  "value": 0.000692, "unit": "Pa.s",
  "conditions": [{"name": "temperature", "status": "met",
@@ -108,7 +108,7 @@ added.
                  "operating": {"range": [50.0, 500.0], "unit": "1/s"}}],
  "specimen_differences": [{"section": "fluid", "fact": "species",
                            "record": {"status": "not_applicable"}, "target": {"ncbi_taxon": 9606}}],
- "labels": ["vesalius.fluid.newtonian.v1"],
+ "labels": ["materica.fluid.newtonian.v1"],
  "accepted": true, "accepted_by": [0, 1]}
 ```
 

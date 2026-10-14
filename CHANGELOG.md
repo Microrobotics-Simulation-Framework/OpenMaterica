@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Vesalius will be documented in this file.
+All notable changes to OpenMaterica will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -24,7 +24,7 @@ recorded in that repository's CHANGELOG.
   section; layered paths. Constraints 13 to 17 and the pull-request template with the data attestation.
 - Distribution design: namespaced material identifiers; material cards in place of data sheets; static,
   archived releases with federation through an index and no hosted service; self-contained shipped USD
-  layers; record checks as a core command (`python -m vesalius check`). Constraints 18 and 19.
+  layers; record checks as a core command (`python -m materica check`). Constraints 18 and 19.
 - Model-assisted curation design: an MCP tooling layer (bring-your-own-key, deterministic tools, quotes,
   human review, fail-closed release, a gold set); convention witnesses for parameter sets; evidence,
   assistance and search-record provenance fields. Constraints 20 to 22; constraint 14 extended.
@@ -46,9 +46,9 @@ recorded in that repository's CHANGELOG.
   models), with optional events defined independently of any solver.
 - Decisions after the prototypes (2026-10-12): the scope is substances in and around the human body, never
   systems, with five rules (a transfer test, pairs, geometry as scene data, behaviour, entry); every record
-  has a record type, `material` and `interface` being Vesalius's, so other namespaces can use the machinery
-  for data that is not a material; the curated library under CC0-1.0; reference implementations live with
-  their families, shipped as `vesalius-families`; consumers write their own readers, mixing rules and
+  has a record type, `material` and `interface` being OpenMaterica's, so other namespaces can use the
+  machinery for data that is not a material; the curated library under CC0-1.0; reference implementations live
+  with their families, shipped as `openmaterica-families`; consumers write their own readers, mixing rules and
   evaluators, verified against conformance data; quotes for every value extracted from text or a table in
   the curated library; curation tools before the first library release; a `bulk` section for density and
   elemental composition; the layered path's USD form as a typed prim, needed by MIME 0.3.0; an anisotropic
@@ -69,30 +69,37 @@ recorded in that repository's CHANGELOG.
   present, with a hash fallback if the legal review rules quotes may not ship, and evidence excluded from
   the CC0 grant; the content hash over the whole record minus an exclusion list, with test vectors;
   "a consumer's computation" defined as its step, compiled program and gradient path, the core running at
-  build, and the write-side tooling split into `vesalius-authoring`; the first library release defined as
+  build, and the write-side tooling split into `openmaterica-authoring`; the first library release defined as
   the first archived release with a DOI; conformance suites; disease and treatment state as specimen
   facts; records in JSON only. The stiffness tensor for bone moved to stretch. Constraints 4, 5, 13, 14, 21,
   24, 26 and 27 revised.
 - After an ecosystem survey of NVIDIA's schemas and the wider ecosystem, and its review: the USD binding,
-  layered paths, label crosswalks and scene documents move into Vesalius 0.1, with no cut line; a region binds
-  its material with the purpose `vesalius`, and `physics` is left to engines; an engine is declared as a
-  model, written by an engine adapter from pinned engine crosswalks and checked per shape by `vesalius check
+  layered paths, label crosswalks and scene documents move into OpenMaterica 0.1, with no cut line; a region
+  binds its material with the purpose `materica`, and `physics` is left to engines; an engine is declared as a
+  model, written by an engine adapter from pinned engine crosswalks and checked per shape by `materica check
   --stage`; readers detect schemas by name, traverse instances, and refuse unloaded payloads, point-instancer
   prototypes and time samples; acoustic attenuation is registered as `/m`; label crosswalks read by name.
-- Vesalius ships one engine crosswalk, for OpenUSD's `UsdPhysics`; a consumer writes and pins the crosswalk
-  for any other engine it runs, drafted by a scaffold from the engine's schema file and compared with the
-  schema file it pins by hash. The stamp on an engine material carries the APIs applied, each attribute's type
-  and dimension and the unit convention, so the stage check re-derives values without the crosswalk and checks
-  the stamp against its units.
+- OpenMaterica ships one engine crosswalk, for OpenUSD's `UsdPhysics`; a consumer writes and pins the
+  crosswalk for any other engine it runs, drafted by a scaffold from the engine's schema file and compared
+  with the schema file it pins by hash. The stamp on an engine material carries the APIs applied, each
+  attribute's type and dimension and the unit convention, so the stage check re-derives values without the
+  crosswalk and checks the stamp against its units.
 - Names settled (maintainer, 2026-10-13): conformance suites, engine crosswalks and label crosswalks replace
   conformance profiles, engine maps and label mappings; identifiers renamed to match
   (`engine_crosswalk_invalid`, `family_suite_absent`, `--crosswalk`, `"suite"` in case files).
 - Decisions before the first code (maintainer, 2026-10-13): the core depends on Python's standard library
-  only, with `[check]`, `[usd]` and `[sample]` extras; engine results in `vesalius[usd]`; scene documents
+  only, with `[check]`, `[usd]` and `[sample]` extras; engine results in `openmaterica[usd]`; scene documents
   built before declarations; the writer JSON Schemas the single source of structure, with typed shapes
   generated from them; the package typed (`py.typed`); a Python 3.11 floor under a standing rule; record
   checks that need a registry, a copy or the history moved to the library's tooling; SPDX headers on source
   files.
+
+### Changed
+- Renamed before the first release (maintainer, 2026-10-14): the project is OpenMaterica, formerly developed
+  under the working name Vesalius. The distribution is `openmaterica` and the package `materica`. The record
+  namespace, family identifiers, USD binding purpose, attribute namespace and command are `materica`, and the
+  USD schema classes take the prefix `Materica`. Library records are `materica/MAT-NNNN` and
+  `materica/INT-NNNN`, and the registry prefixes are `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-`.
 
 ### Schema
 - Schema 0.1.0 (draft), settled before the first code: what a reader refuses as malformed JSON, numbers read

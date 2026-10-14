@@ -109,8 +109,8 @@ for hashing (section 9). [RC-003] [PR-005]
    referenced: by a request's target, a binding, a pin, a layered-path interval or an interface member.
    [PR-006] [PR-007]
 2. An object with a `document_type` member and no `record_type` member is a scene document (`geometry.md`), an
-   engine crosswalk (`usd_binding.md` section 10.1) or another Vesalius document, not a record: a reader that
-   lists records never lists it, and sets it aside before resolving a reference (`read_side_contract.md`
+   engine crosswalk (`usd_binding.md` section 10.1) or another OpenMaterica document, not a record: a reader
+   that lists records never lists it, and sets it aside before resolving a reference (`read_side_contract.md`
    section 3, step 1), so a reference never resolves to it. [PR-006] [PR-328]
 3. Other namespaces may later define their own record types (`<namespace>:<type>`, AD 4.1). The first is
    specified only after a consumer has prototyped one, so a 0.1.0 writer MUST NOT write a record of a
@@ -152,10 +152,10 @@ condition MUST be present, holding `{"status": "unstated"}` if the source does n
 |---|---|---|---|---|
 | `bulk.density` | `kg/m3` | constant, table, interval | `temperature`, `density_kind` | none |
 | `bulk.elemental_composition` | `1` | composition (basis `mass_fraction`) | none | none |
-| `fluid.dynamic_viscosity` | `Pa.s` | constant, table, interval | `temperature`, `shear_rate` | `vesalius.fluid.newtonian.v1` on a constant, or on a table whose axis is not `shear_rate` |
+| `fluid.dynamic_viscosity` | `Pa.s` | constant, table, interval | `temperature`, `shear_rate` | `materica.fluid.newtonian.v1` on a constant, or on a table whose axis is not `shear_rate` |
 | `magnetic.remanence` | `T` | constant, interval | `temperature`, `specimen_shape` | none |
 | `magnetic.saturation_magnetisation` | `A/m` | constant, interval | `temperature`, `specimen_shape` | none |
-| `magnetic.volume_susceptibility` | `1` | constant, table, interval | `temperature`, `specimen_shape`, `magnetic_flux_density` | `vesalius.magnetic.linear.v1` on a constant, or on a table whose axis is not `magnetic_flux_density` |
+| `magnetic.volume_susceptibility` | `1` | constant, table, interval | `temperature`, `specimen_shape`, `magnetic_flux_density` | `materica.magnetic.linear.v1` on a constant, or on a table whose axis is not `magnetic_flux_density` |
 | `biocompatibility.evidence` | `{"status": "not_applicable"}` | evidence (section 4.3) | none | none |
 
 - `density_kind` is `apparent` (the whole specimen, pores included) or `matrix` (the solid phase only).
@@ -169,9 +169,9 @@ condition MUST be present, holding `{"status": "unstated"}` if the source does n
 - `specimen_shape` and `specimen_size` are conditions, not specimen facts: they change what a value means (a
   sphere's demagnetisation, AD 4.8), so a consumer matches them by requirement (`provenance.md` section 6).
   [PR-315]
-- **Labels.** A label names the trivial model a single value implies (AD 4.4). `vesalius.fluid.newtonian.v1`:
+- **Labels.** A label names the trivial model a single value implies (AD 4.4). `materica.fluid.newtonian.v1`:
   the viscosity does not depend on shear rate over the stated `shear_rate` condition.
-  `vesalius.magnetic.linear.v1`: the magnetisation is proportional to the field over the stated
+  `materica.magnetic.linear.v1`: the magnetisation is proportional to the field over the stated
   `magnetic_flux_density` condition, with no saturation. A label is not a family: `model_families.md`'s
   refusal of an unknown family does not apply to it, and a reader returns it with the value. A consumer may
   require a label (`declarations.md`). [PR-035]
@@ -204,7 +204,7 @@ lists of `contact_category`, `contact_duration` and `material_form` will follow 
 ```json
 {
   "purpose": "fit",
-  "base": {"id": "vesalius/VES-MAT-0002", "version": "1.0.0", "content_hash": "sha256:..."},
+  "base": {"id": "materica/MAT-0002", "version": "1.0.0", "content_hash": "sha256:..."},
   "scope": {"consumer": "mime", "model": {"name": "stokes_drag", "version": "0.3.0"},
             "model_configuration_hash": "sha256:...", "run": "run-2026-10-12-01"},
   "replaces": {"fluid.dynamic_viscosity": {}}
@@ -354,15 +354,15 @@ Every pattern below must match in full: a full match, not a search, so a trailin
 
 1. A namespace matches `[a-z0-9_]+`. Namespaces are registered first come first served in the library's
    `publishers.yaml`, whose format is outside this specification; an unregistered namespace is not unique, so
-   a consumer pins records by content hash, not by identifier alone. `vesalius`, `mime` and `conformance` are
+   a consumer pins records by content hash, not by identifier alone. `materica`, `mime` and `conformance` are
    reserved. `conformance` names only conformance fixtures, the records and documents case files supply
    (`README.md`, "Case files"): their values, provenance and sources are illustrative, chosen to exercise a
    rule, and state nothing about any material, whatever their tokens say. A conformance tree is a directory
    named `conformance` whose parent directory is named `data`. A record check flags a record or document in
    `conformance` unless the path it is given for it lies in a conformance tree; a check of a whole library or
    repository leaves its conformance trees out, since their files break rules on purpose. [RC-012] [RC-121]
-2. A record identifier is `<namespace>/<local id>`, the local id matching `[A-Za-z0-9_.-]+`. In `vesalius`,
-   local ids are `VES-MAT-NNNN` for materials and `VES-INT-NNNN` for interfaces. [RC-013]
+2. A record identifier is `<namespace>/<local id>`, the local id matching `[A-Za-z0-9_.-]+`. In `materica`,
+   local ids are `MAT-NNNN` for materials and `INT-NNNN` for interfaces. [RC-013]
 3. A family identifier is `<namespace>.<segment>(.<segment>)*.v<N>`, each segment matching `[a-z0-9_]+` and
    `N` a positive integer without leading zeros. [not yet covered]
 
@@ -372,7 +372,7 @@ Every pattern below must match in full: a full match, not a search, so a trailin
    (a full match, so `"0.1.0\n"` does not match, although a regular-expression search with `$` would accept
    it), `^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`, with no pre-release or build part. Components
    are compared as numbers; with no leading zeros, comparing their lengths and then their digits gives the
-   same order with no overflow. The same rule holds for the schema versions of other Vesalius documents: a
+   same order with no overflow. The same rule holds for the schema versions of other OpenMaterica documents: a
    scene document's `scene_schema_version` and an engine crosswalk's `crosswalk_schema_version`. Other
    versions a document names (a consumer's, a model's, an engine's, a source's) are not bound by it. [RC-014]
    [PR-048]

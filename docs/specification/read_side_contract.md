@@ -198,17 +198,17 @@ Every reason a read can give. A document that defines a new reason adds it here.
 | `outside_path` | not_met | a layered path read before its start or at or beyond its end | `geometry.md` |
 | `label_unmapped` | not_met | a label with no material in the label crosswalk | `geometry.md` |
 | `anatomy_mismatch` | not_met | a label read with another anatomy than the crosswalk's | `geometry.md` |
-| `unauthored_attribute` | not_met | a value-bearing Vesalius attribute nobody authored | `usd_binding.md` |
+| `unauthored_attribute` | not_met | a value-bearing OpenMaterica attribute nobody authored | `usd_binding.md` |
 | `stage_units_unauthored` | not_met | a stage with no authored `metersPerUnit` | `usd_binding.md` |
 | `units_uncompensated` | not_met | geometry in other units with no compensating transform | `usd_binding.md` |
-| `binding_missing` | not_met | a region with no `vesalius`-purpose binding | `usd_binding.md` |
-| `binding_refused` | not_met | an all-purpose binding to a Vesalius material, a `vesalius`-purpose collection binding, a `vesalius` binding with more than one target, a conflicting `vesalius` binding inside a region, one to a prim with no `vesalius:id`, or a prim with `vesalius:region:` attributes that is not a region | `usd_binding.md` |
+| `binding_missing` | not_met | a region with no `materica`-purpose binding | `usd_binding.md` |
+| `binding_refused` | not_met | an all-purpose binding to an OpenMaterica material, a `materica`-purpose collection binding, a `materica` binding with more than one target, a conflicting `materica` binding inside a region, one to a prim with no `materica:id`, or a prim with `materica:region:` attributes that is not a region | `usd_binding.md` |
 | `payload_unloaded` | not_met | a point, domain or region read that reaches an unloaded payload | `usd_binding.md` |
 | `region_in_prototype` | not_met | a region under a point instancer's prototype | `usd_binding.md` |
-| `time_sampled` | not_met | a Vesalius attribute with time samples | `usd_binding.md` |
-| `engine_crosswalk_invalid` | not_met | an engine crosswalk not passed, with no source for its units, whose hash differs from its pin, that does not validate, that differs from its pinned schema file, in `vesalius/` but not shipped by Vesalius, or with a held crosswalk's id and version and another hash | `usd_binding.md` |
+| `time_sampled` | not_met | an OpenMaterica attribute with time samples | `usd_binding.md` |
+| `engine_crosswalk_invalid` | not_met | an engine crosswalk not passed, with no source for its units, whose hash differs from its pin, that does not validate, that differs from its pinned schema file, in `materica/` but not shipped by OpenMaterica, or with a held crosswalk's id and version and another hash | `usd_binding.md` |
 | `engine_value_invalid` | not_met | a declared engine value of another type than its attribute's, or a token outside the attribute's allowed tokens | `usd_binding.md` |
-| `engine_attribute_unset` | not_met | an engine attribute with neither a Vesalius field nor a declared value | `usd_binding.md` |
+| `engine_attribute_unset` | not_met | an engine attribute with neither an OpenMaterica field nor a declared value | `usd_binding.md` |
 | `engine_value_sourced` | not_met | a declared engine value for an attribute the crosswalk sources from a field | `usd_binding.md` |
 | `engine_binding_overridden` | not_met | a region whose engine binding a foreign stronger or subset `physics` binding would override | `usd_binding.md` |
 | `engine_region_instanced` | not_met | a region inside an instance, which the adapter cannot bind per region | `usd_binding.md` |
@@ -284,9 +284,9 @@ that brings such a consumer. [not yet covered]
 ## 7. Evaluating a table or power law in a consumer's own code
 
 A consumer that evaluates a value form in its own code (for example in JAX, to take gradients) is an
-evaluator. Vesalius's code never runs inside a consumer's computation (AD principle 2), so the consumer writes
-the evaluator and checks it against the table evaluation cases. Numbers are compared with a relative tolerance
-of 1e-12, taken from the case file.
+evaluator. OpenMaterica's code never runs inside a consumer's computation (AD principle 2), so the consumer
+writes the evaluator and checks it against the table evaluation cases. Numbers are compared with a relative
+tolerance of 1e-12, taken from the case file.
 
 1. An evaluator returns, beside the value, `in_range`: whether its condition lies inside the form's range
    (`false` for a power law whose range is unstated). It MUST NOT only clamp: a clamped value outside the

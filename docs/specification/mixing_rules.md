@@ -22,7 +22,7 @@ and on the regime, so the consumer picks one and the material input sheet record
    (`mixing_refused`). [MX-003]
 4. A field with no general rule refuses to mix whatever is declared (section 4). [MX-004]
 5. Consumers write the rules in their own code (constraint 26 of `DOCUMENTATION_ARCHITECTURE.md`); the numpy
-   forms below are the reference against which they are verified. Vesalius's code never runs inside a
+   forms below are the reference against which they are verified. OpenMaterica's code never runs inside a
    consumer's computation. [not yet covered]
 6. A consumer's soft fractions at a moving body's edge are its own declared discretisation, tested for
    convergence (AD 3.5, rule 3); they are not a mixing rule. [not yet covered]

@@ -103,7 +103,7 @@ There is no default structure. A power law MAY carry one over its `a` and `b`, b
 
 ## 3. Sampling
 
-These rules bind every sampler: Vesalius's reference sampler and a consumer's own (AD 7.3). A sampler that
+These rules bind every sampler: OpenMaterica's reference sampler and a consumer's own (AD 7.3). A sampler that
 cannot honour a declared structure refuses to sample. [SA-001]
 
 1. A sampler samples only the spread whose `represents` matches the one the consumer's requirement names

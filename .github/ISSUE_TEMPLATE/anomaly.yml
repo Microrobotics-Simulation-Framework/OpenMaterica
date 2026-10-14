@@ -51,8 +51,8 @@ body:
     attributes:
       label: Affected components
       description: >
-        Comma-separated, e.g. schema:VesaliusAcousticAPI, reader:resolve, method:VES-MTH-002,
-        model:vesalius.mechanical.ogden_incompressible.v1, data:VES-MAT-0003
+        Comma-separated, e.g. schema:MatericaAcousticAPI, reader:resolve, method:OMAT-MTH-002,
+        model:materica.mechanical.ogden_incompressible.v1, data:MAT-0003
     validations:
       required: true
   - type: input

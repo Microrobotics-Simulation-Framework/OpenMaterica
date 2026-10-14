@@ -1,6 +1,6 @@
-# Contributing to Vesalius
+# Contributing to OpenMaterica
 
-Vesalius is at the design stage. These rules apply from the first code commit; the reasons for them are in
+OpenMaterica is at the design stage. These rules apply from the first code commit; the reasons for them are in
 [`DOCUMENTATION_ARCHITECTURE.md`](DOCUMENTATION_ARCHITECTURE.md), section 15. The material library will
 live in a repository of its own; until it exists, its rules are kept here.
 
@@ -14,9 +14,9 @@ live in a repository of its own; until it exists, its rules are kept here.
    under a copyleft licence.
 3. **No simulator or ML-framework dependency at runtime.** Not MIME, MADDENING, JAX, PyTorch, Warp or Isaac.
    The core depends on Python's standard library only. `jsonschema`, USD and numpy are optional extras
-   (`vesalius[check]`, `vesalius[usd]`, `vesalius[sample]`), and code must work with whatever USD build is
-   installed, including the one Isaac Sim ships.
-4. **Keep the read side implementable without Vesalius code**, with a JSON parser or with USD; verifying a
+   (`openmaterica[check]`, `openmaterica[usd]`, `openmaterica[sample]`), and code must work with whatever USD
+   build is installed, including the one Isaac Sim ships.
+4. **Keep the read side implementable without OpenMaterica code**, with a JSON parser or with USD; verifying a
    content hash also needs an RFC 8785 serialiser and SHA-256. Compute on the write side and store the
    result. Readers only read numbers, interpolate tables, evaluate power laws, apply the mixing rules their
    consumer declared, and evaluate model families with their own implementations after verifying check
@@ -36,7 +36,7 @@ live in a repository of its own; until it exists, its rules are kept here.
 11. **No network access and no code execution from data**, at import or when reading files.
 12. **Keep the anomaly registry in MADDENING's schema.** Do not add fields. CI checks it with MADDENING's
     validator, which is a development-time dependency only; nothing in the package imports MADDENING. The
-    registry's version field is `vesalius_version`, which MADDENING's validator does not accept yet
+    registry's version field is `materica_version`, which MADDENING's validator does not accept yet
     (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
 13. **Fail closed.** Readers refuse an unknown family or version, a failed check point, a request to
     sample an undeclared uncertainty structure, an attribute that was not authored, an unknown token in an
@@ -58,8 +58,8 @@ live in a repository of its own; until it exists, its rules are kept here.
 18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths.
 19. **Static releases.** No feature may require a hosted service, and nothing is fetched from the network
     unless the user asks.
-20. **No model on the read side.** No language model in a reader, in `vesalius check`, in a release build
-    or in any consumer's build. Vesalius calls no model and holds no keys.
+20. **No model on the read side.** No language model in a reader, in `materica check`, in a release build
+    or in any consumer's build. OpenMaterica calls no model and holds no keys.
 21. **Quotes and human review.** Every value in the curated library that was extracted from text or a
     table carries its quote (or, if the legal review rules that quotes may not ship, the quote's hash, the
     text staying with the curator), locator, document identity and copy hash, whoever or whatever extracted
@@ -84,18 +84,18 @@ live in a repository of its own; until it exists, its rules are kept here.
     consumer's build or setup (the reader, the requirement checks, the material input sheet, label-volume
     fractions, the reference sampler), and is SOUP in a product that does so. Do not add core code meant to
     run in a consumer's step, loop or gradient.
-27. **Every record has a record type.** Vesalius defines `material`, `interface` and `overlay`. A reader skips
-    a type it does not know when listing records, and refuses it when a record of that type is referenced.
-    Vesalius curates only material and interface records. A type of your own lives in your namespace; its
-    envelope and value machinery are checked, never its body, and the first such type is specified only after
-    a consumer has prototyped one.
+27. **Every record has a record type.** OpenMaterica defines `material`, `interface` and `overlay`. A reader
+    skips a type it does not know when listing records, and refuses it when a record of that type is
+    referenced. OpenMaterica curates only material and interface records. A type of your own lives in your
+    namespace; its envelope and value machinery are checked, never its body, and the first such type is
+    specified only after a consumer has prototyped one.
 
 ## Code
 
 - Every source file starts with an SPDX licence header (`# SPDX-License-Identifier: Apache-2.0`); JSON data
   files are covered by the repository's licence.
-- The package is typed and ships `py.typed`. `mypy --strict` and pyright both pass over `src/vesalius`. No
-  public function returns an object from `pxr`, and every `pxr` call in `vesalius` goes through
+- The package is typed and ships `py.typed`. `mypy --strict` and pyright both pass over `src/materica`. No
+  public function returns an object from `pxr`, and every `pxr` call in `materica` goes through
   `io/usd/_pxr.py`.
 - `pyproject.toml` states the licence as an SPDX expression with its licence files (PEP 639) and keeps
   development tools in `[dependency-groups]` (PEP 735); releases are published with attestations (PEP 740).
@@ -107,14 +107,14 @@ live in a repository of its own; until it exists, its rules are kept here.
 
 | Category | Format | Example |
 |---|---|---|
-| Anomalies | `VES-ANO-XXX` | `VES-ANO-001` |
-| Verification items | `VES-VER-XXX` | `VES-VER-001` |
-| Records | `<namespace>/<local id>`; in the curated library `vesalius/VES-MAT-XXXX` for materials and `vesalius/VES-INT-XXXX` for interfaces. A namespace uses the characters `[a-z0-9_]` and is unique only once registered | `vesalius/VES-MAT-0001` |
-| Record types | `material`, `interface` and `overlay` (Vesalius's); `<namespace>:<type>` for another namespace's, once a consumer has prototyped one | `mime:emns_calibration` (planned) |
-| Methods | `VES-MTH-XXX` | `VES-MTH-001` |
-| Model families | `<namespace>.<section>.<name>.v<N>` | `vesalius.mechanical.ogden_incompressible.v1` |
+| Anomalies | `OMAT-ANO-XXX` | `OMAT-ANO-001` |
+| Verification items | `OMAT-VER-XXX` | `OMAT-VER-001` |
+| Records | `<namespace>/<local id>`; in the curated library `materica/MAT-XXXX` for materials and `materica/INT-XXXX` for interfaces. A namespace uses the characters `[a-z0-9_]` and is unique only once registered | `materica/MAT-0001` |
+| Record types | `material`, `interface` and `overlay` (OpenMaterica's); `<namespace>:<type>` for another namespace's, once a consumer has prototyped one | `mime:emns_calibration` (planned) |
+| Methods | `OMAT-MTH-XXX` | `OMAT-MTH-001` |
+| Model families | `<namespace>.<section>.<name>.v<N>` | `materica.mechanical.ogden_incompressible.v1` |
 
-The prefix `VES` is distinct from `MADD` (MADDENING), `MIME` and `MBOT` (MICROROBOTICA).
+The prefix `OMAT` is distinct from `MADD` (MADDENING), `MIME` and `MBOT` (MICROROBOTICA).
 
 ## Commit messages
 
@@ -159,7 +159,7 @@ A family is admitted with all of the following, in one pull request:
   fixes (for an evolution family: input histories, with tolerances, and analytic cases that pin the
   integrator);
 - a reference implementation in plain numpy, written for clarity, that reproduces the vectors. It lives
-  with the family in `families/` and ships in `vesalius-families`, never in the core;
+  with the family in `families/` and ships in `openmaterica-families`, never in the core;
 - a **named consumer**: who needs the family, and for what.
 
 An event says only that the family's range of states ends, and under which condition. Never name the model
@@ -168,7 +168,7 @@ State the family's coverage in measures that do not depend on the loading mode (
 invariants, and rate). A witness that works only through a model of a test (a puncture force through a model
 of the puncture) counts for admission only if that model is itself a family with vectors.
 
-The identifier is namespaced and versioned. Publishing under `vesalius.` is for families this project
+The identifier is namespaced and versioned. Publishing under `materica.` is for families this project
 maintains, and a family enters it only when an in-scope record uses it; until then it lives in its consumer's
 namespace. Anyone may publish families in their own namespace with the same checks, and needs no admission
 from this project; the library's CI runs no code of yours, so your family's check points are reported there as
@@ -176,7 +176,7 @@ from this project; the library's CI runs no code of yours, so your family's chec
 old one is deprecated with a pointer to it. A family with no consumer for two releases is deprecated. Record
 the change under **Families** in the CHANGELOG.
 
-**A consumer that cannot be named.** A family under `vesalius.` may be admitted for a consumer that cannot
+**A consumer that cannot be named.** A family under `materica.` may be admitted for a consumer that cannot
 be named publicly, on three conditions. The maintainer attests that the consumer exists and says nothing
 else about it. Where the maintainer also owns that consumer, the attestation certifies itself, and the
 admission record says so in those words. And the family reproduces a published dataset end to end (its
@@ -187,7 +187,7 @@ project's own namespace, which needs no admission.
 
 ## Adding or changing a library material
 
-**First, the scope.** Vesalius describes substances in and around the human body: tissues and body fluids,
+**First, the scope.** OpenMaterica describes substances in and around the human body: tissues and body fluids,
 the media and phantoms that stand in for them, agents introduced into them, and the materials of devices
 that enter or touch them. It does not describe systems: an apparatus or its calibration, the quantities of
 one object (its moment, inertia or mean density), a drive, a procedure, or a simulator's tuning. Before
@@ -287,10 +287,10 @@ Rules for data:
 - Own measurements published under an open licence are welcome and are the cleanest data the library can
   hold.
 
-Run `python -m vesalius check` before opening a pull request; CI runs it too.
+Run `python -m materica check` before opening a pull request; CI runs it too.
 
 You do not need the curated library to publish records. Keep them in your own repository under your own
-namespace and run the same `vesalius check`. The template repository sets that up. To list your namespace,
+namespace and run the same `materica check`. The template repository sets that up. To list your namespace,
 open a pull request adding one line to the library's `publishers.yaml` (architecture draft section 6.7).
 
 A change is recorded under **Data** in the library's CHANGELOG with a new record version. A value that
@@ -303,7 +303,7 @@ You may draft values with a language model through the curation tools (architect
 using your own agent and key. The tools are library functions with a command line; the MCP server only
 exposes them to an agent. Then:
 
-- record the assistance: tool, model and provider as reported, the procedure's `VES-MTH-` entry and
+- record the assistance: tool, model and provider as reported, the procedure's `OMAT-MTH-` entry and
   version, and the date;
 - keep the evidence for every value, as for any value: the verbatim quote, its locator, the document's
   identity and version, and the SHA-256 of your copy. Do not publish quotes for reference-only values; a
@@ -359,7 +359,7 @@ and families. **A silent wrong result is never `minor`.** A library value that d
 silent wrong result; so is a reference implementation that differs from its family definition.
 
 Name affected components without adding fields: `schema:<API name>`, `reader:<function>`,
-`method:<VES-MTH id>`, `model:<family identifier>`, `data:<VES-MAT or VES-INT id>`.
+`method:<OMAT-MTH id>`, `model:<family identifier>`, `data:<MAT or INT id>`.
 
 Every defect a release carried gets an entry. Every `critical` or `major` defect found during a development
 cycle gets one, even if no release carried it.
