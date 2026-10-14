@@ -10,7 +10,7 @@
     "status": {"$ref": "#/$defs/read_status"},
     "reasons": {"type": "array", "items": {"$ref": "#/$defs/reason"}},
     "value": {"$ref": "record.writer.json#/$defs/json_value"},
-    "values": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
+    "alternative_values": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
     "unit": {"$ref": "record.writer.json#/$defs/json_value"},
     "conditions": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_object"}},
     "specimen": {"$ref": "record.writer.json#/$defs/json_object"},

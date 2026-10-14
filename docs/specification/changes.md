@@ -62,3 +62,105 @@ review (maintainer, 2026-10-14): a tolerance whose condition has no operating en
 `operating_conditions` is not an object gives `request_incomplete` with that `condition`, beside the member's
 own `request_incomplete` (`read_side_contract.md` section 1; PR-330); and the vocabulary files are published
 with the schemas, under `schema/0.1/vocabulary/` (`provenance.md` section 6).
+
+Settled for the read of values (maintainer, 2026-10-14). The read: a record's units are compared with the
+registered unit code point for code point, a unit held as a status object by its token, at step 9 alone, step
+8 checking only that a unit is a string or a status object (`record_format.md` section 4.2; PR-010, PR-037); a
+request for a field the reader does not know is `request_incomplete` (PR-330); step 8 checks the members a
+read uses or returns, the statistics block among them, a composition component's included, and lists the
+values it checks: counts whole and not negative, ranges and bounds in order, a ± and a standard deviation not
+below zero, and coverage factors, coverage probabilities and degrees of freedom in range (PR-051, PR-158);
+`family_suite_absent` is given at step 8 (PR-036); `source` is required for origin `measured_by_source` and
+checked for its `key` only, and `derivation` by the shapes `provenance.md` section 5 now gives; `review` never
+refuses a read, and a review that is `null`, absent or not an object, holds both `status` and `result`, or
+holds a status token other than `not_checked` or an unknown `result` token reads as `{"status":
+"not_checked"}` (PR-109); `null` refuses a field only in a member step 8 checks (PR-049); `provenance.md`
+section 1 lists every member that may hold a status object, with its tokens, and an object holding `status`
+there is a status object, one that also holds a member of the shape it stands for, or any member but `reason`
+where that shape is a number, a string or a token (which amends, for those positions only, the earlier ruling
+that other members beside it are ignored), being a shape error, as is a token its row does not allow, each
+refusing at read only in a member step 8 checks, and a key `status` in `conditions` or `specimen` naming a
+condition or a fact (PR-110); a token the reader knows for a member of that name, in a member whose row does
+not allow it, is `form_invalid`, and one it knows for no member of that name `unknown_token`, labels included
+(PR-053, PR-154, PR-158); a result holds only the members the reader's version defines, in every member it
+returns from a record, with its members present by the step the read reached and its condition entries
+compared by name (PR-336, PR-337); a derived value's derivation, its assumptions included, is returned, with
+the label `mixed_conditions` (PR-102); a label the row does not name for the field refuses it, and a missing
+one is not refused at read (PR-035, PR-053; RC-122); alternatives may differ in form, and none is set aside
+for its form, so a grade's specification limits beside a lot's constant give `no_pick` until a pick, while a
+`want` that no remaining alternative's form can give is `want_mismatch`; under `no_pick`, `alternative_values`
+holds one entry per remaining alternative, with its index, its value or its form's member as stored, and its
+own conditions, specimen, statistics, provenance and labels, the result holding no conditions, specimen,
+statistics or provenance of its own, and no nominal is applied (PR-013, PR-338). Conditions: every comparison
+is exact on the numbers as read, so "exactly at the tolerance" holds for the doubles (PR-306, PR-335); a
+numeric condition may carry `plus_minus`, a bound, a standard deviation, both, or one of unstated kind, and
+`set_or_measured`, and a bound narrows a met condition while any other ± alone turns it into `unknown`
+(`condition_uncertain`), never `not_met` (PR-108, PR-334); a run-time watch is narrowed by a stated bound, its
+ends rounded inward, and a waived `condition_uncertain` gets the tolerance's interval (BC-030); a condition
+another requires is checked like a required one, an implied token included (`provenance.md` section 6.1,
+"Required with"; PR-311); `test_method` gains `hysteresigraph` and is required on remanence and saturation
+magnetisation, `specimen_shape` staying required beside it (PR-305, PR-311, PR-315); a test method that probes
+a length below the specimen's enters only with a condition stating that length. The forms: `want: bounds`
+returns the interval's basis, and bounds are in order (PR-022, PR-050); `want: components` returns the
+composition's basis and sum rule, its element symbols come from a table, and a repeated component, a fraction
+outside [0, 1] or an empty list is refused (PR-023, PR-051); evidence entries are withheld one by one, each
+whole, every member but provenance, or not at all, an entry withheld in part being refused, a partly withheld
+list giving `unknown` (`entries_withheld`) and a wholly withheld one `withheld`, while an entry's members may
+hold any other status object; an empty evidence list, an entry missing a member and a registered condition
+under evidence are refused (PR-038, PR-052). Acceptances: a read takes only `pick`, `overlay`,
+`extrapolation`, `nominal` and `implied_condition`, any other kind being `request_incomplete`; each is checked
+at step 0 whatever field it names, that field registered, and applies only to its own; an implied condition
+names a token fact and one of its tokens, and supplies values of a record condition's shapes without `basis`,
+`plus_minus` or `set_or_measured`, and never a status object; two nominals naming one field, and two implied
+conditions that apply and disagree, whether or not the record states that condition, are `request_incomplete`,
+which ends the read even where they disagree in one alternative; an implied condition fills only an unstated
+or absent condition, which is then checked, its unit checked like an operating condition's; a nominal inside
+or on an interval's bounds supplies the value, one outside them gives `nominal_invalid`, and `assumption`
+holds no `basis` (PR-302, PR-316, PR-318, PR-320, PR-330, PR-338). Statistics: each relative or expanded
+uncertainty carries its own `represents`, `basis`, `distribution` (`normal` or `student_t`, by scale),
+`coverage_factor` or `coverage_probability`, and `dof`, and `reported_uncertainty` leaves the block's `basis`;
+`population_level`, `n_sources` and `precision_conditions` are present exactly where `represents` calls for
+them; `student_t` and `beta` are registered distribution tokens; a record check lists, without failing, a
+coverage factor and probability that disagree (`uncertainty.md` section 1; PR-153, PR-155, PR-156, PR-158,
+RC-051, RC-162). Provenance and vocabulary: the specimen facts `supply_form` and `lot`, with one record per
+grade or product and measurements on particular lots as alternatives naming their `lot`; a record fact holding
+any status object differs from a target's fact (BC-012); `use` gains `used_in_selection`, never a witness
+(RC-077); a database source names its release and entry (RC-200); the search record gains `weighting` and
+`inputs` (RC-201); and schema 0.1.0 has no origin for a value predicted by a model. Specified, with suites
+optional until their minor version (`README.md`): `params` per uncertainty structure, check points without a
+vector, and the label `mean_of_specimen_fits` (PR-333, FE-014, RC-184); the space of a `multivariate_normal`
+and `covariance_space` (RC-059, RC-083); named admissibility constraints (FE-013, RC-180 to RC-183); ensemble
+levels and groups, with members that are fits to distinct units (RC-160, SA-016, SA-017); ensemble members and
+interval corners listed, not flagged (RC-057, SA-019); nominal vectors (BC-042, SA-020); the sampling
+contract, with the `transform_draws` operation and exact regions (SA-015, SA-018, SA-021 to SA-025); the
+declaration's `sampling` (BC-044, BC-046), `population_level` (BC-043) and `precision` (BC-047); and the table
+evaluation suite's tolerance per precision (TE-012). Record checks gain a listing that never fails
+(`README.md`, "Case files"), and case ranges RC-160 to RC-179 (`uncertainty.md`), RC-180 to RC-199
+(`model_families.md`) and RC-200 to RC-219 (`provenance.md`).
+
+Settled after two checks of this text, one for names a slip could swap and one for reads that give `met` where
+doubt remains. Names (maintainer, 2026-10-14): a population level's `unit` is `level` (`uncertainty.md`
+sections 1 and 3, `declarations.md` section 1; PR-156, SA-016, BC-043), a `marginals` structure's `statistics`
+is `parameter_statistics` (FE-042), the read result's `values` is `alternative_values` (PR-013), and a
+digitised curve's or figure's `digitiser` is `digitisation` (FD-003, RC-029); an overlay scope's `consumer` is
+compared with the declaring consumer's `name`, its version not compared, and a fill-in's scope names its user
+there (BC-023); a chain's records are pinned material references (BC-026); `reported_sd` never stands beside
+`represents: estimate` (RC-052); and where a member the reader does not know is ignored, one that is one slip
+from a member named at its place (a character inserted, deleted or substituted, two adjacent ones swapped, a
+plural or singular, an underscore added or removed) is refused, `form_invalid` in a record and
+`request_incomplete` in a request, the names valid at one place being kept more than one slip apart
+(`record_format.md` section 10; PR-005, PR-008, PR-030, PR-108, PR-109, PR-330). The read: an overlay whose
+`purpose` is none of the four is `unknown_token`, and one of another purpose than `fill_in` that replaces a
+withheld value is `withheld` (PR-042); `alternatives` is a list of at least one value field and stands alone
+(PR-044); a fill-in whose document, or whose base's, does not state a string identifier and version gives
+`fill_in_version_mismatch` (PR-107); an interval left beside other alternatives counts as a form `want: value`
+can give where a nominal applies, so the read gives `no_pick` (PR-338); a requirement holding `label`,
+`represents` or `population_level` is `request_incomplete` (PR-330); an acceptance applies only at the record
+or region it names, never at an interval or with no location (PR-316); step 11's `request_incomplete` ends the
+read as step 10's does (PR-308); a status object whose `status` or `reason` is not a string, and a `unit` on a
+token condition, are refused (PR-110, PR-037); and what a pick naming no stored alternative gives is not yet
+specified, but it is never another alternative. The build: a nominal covers `want_mismatch` only on a result
+whose `assumption` names it (BC-020); a fact the target names that the record lacks is a difference (BC-012);
+a `fit` or `scene_override` scope without a model or configuration hash differs (BC-023); and an interval's
+acceptances reach the read of its record. `read_side_contract.md` section 4 names the step or procedure that
+gives each reason.

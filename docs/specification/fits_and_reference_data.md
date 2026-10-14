@@ -22,10 +22,10 @@ form of their own (`record_format.md` section 6). A reader returns them only to 
            {"quantity": "stress", "measure": "nominal_stress", "unit": "Pa"}],
   "curves": [{"label": "specimen 3", "x": [1.0, 1.05, 1.10], "y": [0.0, 1.2e3, 3.1e3],
               "use": "used_in_fit", "digitised": true,
-              "digitiser": {"tool": "...", "axis_calibration": {"x": [[1.0, 112], [1.2, 498]],
-                                                                "y": [[0.0, 610], [1.0e4, 87]],
-                                                                "scale": ["linear", "linear"]},
-                            "digitising_error": {"x": 0.002, "y": 50.0}},
+              "digitisation": {"tool": "...", "axis_calibration": {"x": [[1.0, 112], [1.2, 498]],
+                                                                   "y": [[0.0, 610], [1.0e4, 87]],
+                                                                   "scale": ["linear", "linear"]},
+                               "digitising_error": {"x": 0.002, "y": 50.0}},
               "provenance": {}}]
 }
 ```
@@ -36,10 +36,12 @@ form of their own (`record_format.md` section 6). A reader returns them only to 
    the wrong measure is fitted perfectly by the wrong parameters (AD 4.6). The value field's `unit` is the
    last axis's unit. [RC-080]
 3. Each point or curve carries its own `provenance`, with its own origin, and a `use`: `used_in_fit`,
-   `held_out` (left out of every fit, so it can witness one), or `not_used`. [FD-002] [RC-081]
-4. A digitised curve carries `"digitised": true` and the digitiser's tool, axis calibration (two known points
-   per axis, in data and pixel coordinates, and each axis's scale) and digitising error. A reader returns
-   these with the curve. [FD-003] [RC-082]
+   `held_out` (left out of every fit, so it can witness one), `used_in_selection` (used to choose the model
+   among candidates, not in its fit; never a witness, `model_families.md` section 8), or `not_used`. [FD-002]
+   [RC-081]
+4. A digitised curve carries `"digitised": true` and `digitisation`: the tool, axis calibration (two known
+   points per axis, in data and pixel coordinates, and each axis's scale) and digitising error. A reader
+   returns these with the curve. [FD-003] [RC-082]
 5. `points` is a list of `{"x": [<one number per axis but the last>], "y": <number>, "use", "provenance"}`;
    `curves` is a list of `{"label", "x": [...], "y": [...], "use", "provenance"}`, `x` and `y` of equal
    length, for two axes. [FD-004]
@@ -72,7 +74,10 @@ back as an overlay (`record_format.md` section 4.4). [FD-006]
 1. `data` names every dataset the fit used: reference data in a record, by identifier, version, content hash
    and field; or data not shipped, by the `document` and `locator` shapes of `provenance.md` section 2 and the
    SHA-256 of the file used. [RC-083]
-2. `procedure` states the method, objective, weights, bounds, initial values and software. [RC-083]
+2. `procedure` states the method, objective, weights, bounds, initial values and software. Where the fit
+   gives a covariance, `procedure.covariance_space` states the space it is given in: `{"space": {<name>:
+   "identity" or "log"}, "chosen_by": "source" or "producer"}`, the space the source states it in, or the one
+   the fit's producer chose (`uncertainty.md` section 2 rule 2). [RC-083]
 3. `determination` is `overdetermined` where `n_data > n_params`, `exactly_determined` where they are equal,
    and `underdetermined` where `n_data < n_params`. An exactly determined fit's residual is zero by
    construction and shows nothing, and an underdetermined fit's parameters are not determined by its data: a
@@ -149,9 +154,9 @@ data, and never says that the model holds there.
 | FD-012 | fits and reference data | a history-valued requirement is checked against the histories |
 | FD-013 | fits and reference data | fit reproduction is never reported as evidence about a value |
 | RC-080 | record checks | an axis without its quantity, measure and unit, or a measure not quoted, is flagged |
-| RC-081 | record checks | a point or curve without its origin or use is flagged |
+| RC-081 | record checks | a point or curve without its origin or use is flagged, `used_in_selection` among the uses |
 | RC-082 | record checks | a digitised curve without calibration or digitising error is flagged |
-| RC-083 | record checks | a fit record without its data, procedure, counts or residual, or on a value not `fitted`, is flagged |
+| RC-083 | record checks | a fit record without its data, procedure, counts or residual, or on a value not `fitted`, or a fit with a covariance and no `covariance_space`, is flagged |
 | RC-084 | record checks | a determination that does not match the counts is flagged |
 | RC-085 | record checks | a mean of specimen fits witnessed by its mean curve is flagged |
 | RC-086 | record checks | coverage written as one box across modes fitted separately is flagged |

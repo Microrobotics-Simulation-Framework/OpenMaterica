@@ -42,7 +42,8 @@
       ],
       "requires": [
         "temperature",
-        "specimen_shape"
+        "specimen_shape",
+        "test_method"
       ]
     },
     "magnetic.saturation_magnetisation": {
@@ -53,7 +54,8 @@
       ],
       "requires": [
         "temperature",
-        "specimen_shape"
+        "specimen_shape",
+        "test_method"
       ]
     },
     "magnetic.volume_susceptibility": {
