@@ -1,6 +1,7 @@
-# Deploys site/, as it is, to GitHub Pages at https://openmaterica.org. There is no build step. The custom domain
-# is set in the repository's Pages settings: a site deployed by a workflow needs no CNAME file, and GitHub ignores
-# one ("Managing a custom domain for your GitHub Pages site", GitHub Docs).
+# Deploys site/, as it is, to GitHub Pages at https://openmaterica.org, with everything under src/materica/schema/
+# at /schema/. There is no build step. The custom domain is set in the repository's Pages settings: a site deployed
+# by a workflow needs no CNAME file, and GitHub ignores one ("Managing a custom domain for your GitHub Pages site",
+# GitHub Docs).
 #
 # ci.yml needs no change for this workflow. Its gate counts as code only src/, tests/, scripts/,
 # docs/specification/, pyproject.toml, uv.lock and ci.yml, so a change to site/ or to this file runs the gate
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "src/materica/schema/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -31,7 +33,7 @@ jobs:
     # deploy-pages stops waiting for the deployment after 10 minutes on its own.
     timeout-minutes: 15
     permissions:
-      contents: read # to check out site/
+      contents: read # to check out site/ and the schemas
       pages: write # to create the deployment
       id-token: write # for the OIDC token deploy-pages presents
     # Its deployment branch rule should allow main only, so that a manual run from another branch cannot publish.
@@ -43,8 +45,19 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      # Each deploy replaces the whole site, so every released schema version must stay in the artifact: the whole
+      # directory is copied, never only the newest version. Released schemas never change, and their permanent
+      # identifiers, https://w3id.org/materica/schema/<version>/..., redirect to these copies. The directory is
+      # absent until the first schema lands; mkdir fails if site/ ever holds a schema/ of its own.
+      - name: Stage site/, with the schemas at /schema/
+        run: |
+          cp -R site "$RUNNER_TEMP/site"
+          if [ -d src/materica/schema ]; then
+            mkdir "$RUNNER_TEMP/site/schema"
+            cp -R src/materica/schema/. "$RUNNER_TEMP/site/schema/"
+          fi
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: site
+          path: ${{ runner.temp }}/site
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
