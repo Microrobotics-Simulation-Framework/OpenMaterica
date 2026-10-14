@@ -13,7 +13,9 @@ from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import Enum
+from functools import cache
 from pathlib import Path
+from typing import TypedDict
 
 import materica
 from materica.core import hashing, jsonio
@@ -24,6 +26,8 @@ from materica.io.plain import load_records
 from materica.shapes import Suite
 
 CONFORMANCE = Path(materica.__file__).parent / "data" / "conformance"
+# Each case file's implementation step, and the steps done (`tests/spec_sync/test_case_steps.py`).
+CASE_STEPS = Path(__file__).resolve().parent.parent / "spec_sync" / "case_steps.json"
 
 JsonObject = dict[str, JsonValue]
 
@@ -36,7 +40,7 @@ class Outcome(Enum):
     PASSED = "passed"
     FAILED = "failed"
     NOT_RUN = "not run: its suite or claims disagree with every configuration of claims"
-    NOT_YET_RUNNABLE = "not yet runnable: no executor for its operation"
+    NOT_YET_RUNNABLE = "not yet runnable: no executor for its operation, or its step not done"
 
 
 @dataclass(frozen=True, eq=False)
@@ -138,10 +142,36 @@ def agreeing(case_file: CaseFile, configurations: Iterable[frozenset[Suite]]) ->
     ]
 
 
+def steps(case_file: CaseFile, case_steps: Path = CASE_STEPS) -> tuple[str, ...]:
+    """The implementation steps whose code the case file needs: one, or several whose order is not fixed.
+
+    A case file the map does not name needs none here, so a missing entry never hides a case; the map's own
+    test finds it.
+    """
+    entry = _case_steps(case_steps)["case_files"].get(case_file.path.name, ())
+    return (entry,) if isinstance(entry, str) else tuple(entry)
+
+
+def step_done(case_file: CaseFile, case_steps: Path = CASE_STEPS) -> bool:
+    done = _case_steps(case_steps)["done"]
+    return all(step in done for step in steps(case_file, case_steps))
+
+
+class _CaseSteps(TypedDict):
+    done: list[str]
+    case_files: dict[str, str | list[str]]
+
+
+@cache
+def _case_steps(path: Path) -> _CaseSteps:
+    loaded: _CaseSteps = json.loads(path.read_text(encoding="utf-8"))
+    return loaded
+
+
 def not_run_because(
     case_file: CaseFile, *, configurations: Iterable[frozenset[Suite]], executors: Mapping[str, Executor]
 ) -> Outcome | None:
-    if case_file.operation not in executors:
+    if case_file.operation not in executors or not step_done(case_file):
         return Outcome.NOT_YET_RUNNABLE
     if not agreeing(case_file, configurations):
         return Outcome.NOT_RUN
@@ -213,7 +243,7 @@ def compare(case_file: CaseFile, result: Mapping[str, JsonValue]) -> list[str]:
     differences: list[str] = []
     for member in case_file.members:
         if member == "labels":
-            difference = _labels_differ(case_file, result.get("labels"))
+            difference = _labels_differ(case_file, case_file.expected.get("labels"), result.get("labels"))
         elif member not in case_file.expected:
             difference = f"must be absent, got {result[member]!r}" if member in result else None
         elif member not in result:
@@ -222,6 +252,10 @@ def compare(case_file: CaseFile, result: Mapping[str, JsonValue]) -> list[str]:
             difference = _reasons_differ(case_file.expected[member], result[member])
         elif member == "value" and case_file.operation == "list_records":
             difference = _sets_differ(case_file.expected[member], result[member])
+        elif member == "conditions":
+            difference = _conditions_differ(case_file, case_file.expected[member], result[member])
+        elif member == "alternative_values":
+            difference = _alternative_values_differ(case_file, case_file.expected[member], result[member])
         else:
             difference = _values_differ(case_file, case_file.expected[member], result[member])
         if difference is not None:
@@ -229,8 +263,8 @@ def compare(case_file: CaseFile, result: Mapping[str, JsonValue]) -> list[str]:
     return differences
 
 
-def _labels_differ(case_file: CaseFile, labels: JsonValue) -> str | None:
-    expected = _label_set(case_file.expected.get("labels"))
+def _labels_differ(case_file: CaseFile, expected_labels: JsonValue, labels: JsonValue) -> str | None:
+    expected = _label_set(expected_labels)
     if labels is not None and not (
         isinstance(labels, list) and all(isinstance(label, str) for label in labels)
     ):
@@ -266,6 +300,56 @@ def _reason_key(reason: JsonValue) -> tuple[str, str | None]:
     condition = reason.get("condition")
     code = _string(reason.get("code"), "a reason's code")
     return (code, None if condition is None else _string(condition, "a reason's condition"))
+
+
+def _conditions_differ(case_file: CaseFile, expected: JsonValue, actual: JsonValue) -> str | None:
+    """Condition entries as a set keyed by `name`: each name once, in no set order."""
+    wanted: dict[str, JsonValue] = {}
+    for entry in _list(expected, "expected conditions"):
+        name = _string(_object(entry, "an expected condition entry").get("name"), "a condition entry's name")
+        if name in wanted:
+            raise CaseFileError(f"{case_file.path.name} expects the condition {name!r} twice")
+        wanted[name] = entry
+    if not isinstance(actual, list):
+        return f"not a list: {actual!r}"
+    found: dict[str, JsonValue] = {}
+    for entry in actual:
+        key = entry.get("name") if isinstance(entry, dict) else None
+        if not isinstance(key, str):
+            return f"an entry without a string name: {entry!r}"
+        if key in found:
+            return f"{key!r} twice"
+        found[key] = entry
+    missing, unexpected = sorted(wanted.keys() - found.keys()), sorted(found.keys() - wanted.keys())
+    if missing or unexpected:
+        return f"missing {missing}, unexpected {unexpected}"
+    differing = ((name, _values_differ(case_file, wanted[name], found[name])) for name in sorted(wanted))
+    return next((f"{name}: {difference}" for name, difference in differing if difference is not None), None)
+
+
+def _alternative_values_differ(case_file: CaseFile, expected: JsonValue, actual: JsonValue) -> str | None:
+    """Entries in stored order, member by member, each entry's `labels` and `conditions` as the result's."""
+    entries = _list(expected, "expected alternative_values")
+    if not isinstance(actual, list) or len(actual) != len(entries):
+        return f"expected {len(entries)} entries, got {actual!r}"
+    for index, (expected_entry, found) in enumerate(zip(entries, actual, strict=True)):
+        wanted = _object(expected_entry, "an expected alternative_values entry")
+        if not isinstance(found, dict):
+            return f"entry {index} is not an object: {found!r}"
+        for name in sorted(wanted.keys() | found.keys()):
+            if name == "labels":
+                difference = _labels_differ(case_file, wanted.get(name), found.get(name))
+            elif name not in found:
+                difference = "missing"
+            elif name not in wanted:
+                difference = f"must be absent, got {found[name]!r}"
+            elif name == "conditions":
+                difference = _conditions_differ(case_file, wanted[name], found[name])
+            else:
+                difference = _values_differ(case_file, wanted[name], found[name])
+            if difference is not None:
+                return f"entry {index}, {name}: {difference}"
+    return None
 
 
 def _sets_differ(expected: JsonValue, actual: JsonValue) -> str | None:

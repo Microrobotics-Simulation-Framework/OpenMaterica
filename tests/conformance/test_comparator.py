@@ -161,6 +161,87 @@ def test_a_listing_is_a_set() -> None:
     assert differences(listing, {"status": "met", "reasons": [], "value": [water, glycerol, {"id": "x"}]})
 
 
+TEMPERATURE: JsonObject = {
+    "name": "temperature",
+    "status": "met",
+    "record": {"value": 310.15, "unit": "K", "basis": "stated"},
+    "operating": {"value": 310.15, "unit": "K"},
+}
+SHEAR_RATE: JsonObject = {"name": "shear_rate", "status": "unknown", "record": {"status": "unstated"}}
+HUMIDITY: JsonObject = {"name": "humidity", "status": "unknown"}
+CONDITIONS = ("status", "reasons", "conditions")
+
+
+def test_conditions_are_a_set_keyed_by_name() -> None:
+    expected: JsonObject = {
+        "status": "unknown",
+        "reasons": [UNSTATED],
+        "conditions": [TEMPERATURE, SHEAR_RATE],
+    }
+    compared = case(expected, CONDITIONS, exact=True)
+    by_name: list[JsonValue] = [
+        entry for entry in sorted((TEMPERATURE, SHEAR_RATE), key=lambda entry: str(entry["name"]))
+    ]
+    assert differences(compared, {**expected, "conditions": by_name}) == []
+    assert differences(compared, {**expected, "conditions": [SHEAR_RATE, TEMPERATURE]}) == []
+    wrong: list[list[JsonValue]] = [
+        [TEMPERATURE],
+        [TEMPERATURE, SHEAR_RATE, HUMIDITY],
+        [TEMPERATURE, SHEAR_RATE, SHEAR_RATE],
+        [TEMPERATURE, {**SHEAR_RATE, "status": "met"}],
+        [TEMPERATURE, {"status": "unknown", "record": {"status": "unstated"}}],
+    ]
+    for entries in wrong:
+        assert differences(compared, {**expected, "conditions": entries}), entries
+
+
+def test_a_case_that_expects_a_condition_twice_is_a_defect() -> None:
+    expected: JsonObject = {
+        "status": "unknown",
+        "reasons": [UNSTATED],
+        "conditions": [SHEAR_RATE, SHEAR_RATE],
+    }
+    with pytest.raises(CaseFileError):
+        differences(case(expected, CONDITIONS, exact=True), {**expected, "conditions": [SHEAR_RATE]})
+
+
+def test_an_alternative_entry_compares_its_conditions_and_labels_as_the_results() -> None:
+    first: JsonObject = {
+        "alternative": 0.0,
+        "value": 0.000692,
+        "conditions": [TEMPERATURE, SHEAR_RATE],
+        "labels": ["materica.fluid.newtonian.v1", "mixed_conditions"],
+    }
+    second: JsonObject = {"alternative": 1.0, "value": 0.000695, "conditions": [TEMPERATURE], "labels": []}
+    expected: JsonObject = {
+        "status": "unknown",
+        "reasons": [{"code": "no_pick"}],
+        "alternative_values": [first, second],
+    }
+    no_pick = case(expected, ("status", "reasons", "alternative_values"), exact=True)
+    permuted: JsonObject = {
+        **first,
+        "conditions": [SHEAR_RATE, TEMPERATURE],
+        "labels": ["mixed_conditions", "hash_not_checked", "materica.fluid.newtonian.v1"],
+    }
+    unlabelled: JsonObject = {key: value for key, value in second.items() if key != "labels"}
+    assert differences(no_pick, {**expected, "alternative_values": [permuted, second]}) == []
+    assert differences(no_pick, {**expected, "alternative_values": [first, unlabelled]}) == []
+    wrong: list[list[JsonValue]] = [
+        [second, first],
+        [first],
+        [{**first, "conditions": [TEMPERATURE]}, second],
+        [{**first, "conditions": [TEMPERATURE, SHEAR_RATE, HUMIDITY]}, second],
+        [{**first, "labels": ["materica.fluid.newtonian.v1"]}, second],
+        [{**first, "specimen": {}}, second],
+        [{key: value for key, value in first.items() if key != "value"}, second],
+    ]
+    for entries in wrong:
+        assert differences(no_pick, {**expected, "alternative_values": entries}), entries
+    hashed = case(expected, ("status", "reasons", "alternative_values"), exact=True, claims={"hash": True})
+    assert differences(hashed, {**expected, "alternative_values": [permuted, second]})
+
+
 @pytest.mark.parametrize(
     ("variants", "outcome"),
     [

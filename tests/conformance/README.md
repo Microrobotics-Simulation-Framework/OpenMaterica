@@ -13,7 +13,10 @@ step 5 or raises, so that claim gives no answer a step not built yet could chang
 every configuration that claims its suite and agrees with every claim it states, and gets one outcome, decided
 in this order:
 
-1. **not yet runnable**: no executor exists for its operation (`EXECUTORS` in `runner.py`);
+1. **not yet runnable**: no executor exists for its operation (`EXECUTORS` in `runner.py`), or a step of the
+   implementation its arm needs is not done: `tests/spec_sync/case_steps.json` maps each case file to the step
+   whose code first runs it (S2 in its pieces, `S2a-1` to `S2b-2`, or a list of pieces where their order is
+   not fixed), and lists the steps done;
 2. **not run**: no configuration claims its suite and agrees with its `claims`;
 3. **passed** or **failed**: each result compared with `expected`; it fails if one run fails, and says under
    which claims. An executor that raises fails the case, as no read may raise (PR-300).
@@ -42,7 +45,9 @@ names (`materica.load_records`), and passes its result through JSON text, as a c
 `hash_not_checked` compared only when the case's `claims` names `hash`. A member named but not expected must be
 absent from the result. Numbers compare by `relative_tolerance` or bit for bit under `exact`; a case that
 compares a number with neither is a defect in the case (`CaseFileError`), never a pass. A `list_records` value
-is a set.
+is a set. `conditions` is a set keyed by `name`: each name once, in any order, so a reader that sorts its
+entries passes, and a missing, extra or repeated entry fails. `alternative_values` is compared in stored order,
+entry by entry, each entry's `labels` and `conditions` as the result's.
 
 ## The case files themselves
 
@@ -56,6 +61,7 @@ against `schema/0.1/case.json`.
 
 Add the case file and its inputs by the conformance tree's own `README.md` ("Changing a case"), its row in the
 suite's `CASES.md`, and its step in `tests/spec_sync/case_steps.json`; the runner finds it. If its operation has
-an executor, it runs; if not, it is not yet runnable, and the counts in `test_cases.py` change with it. A new
-operation needs an executor in `EXECUTORS`, and a broken implementation in `test_runner_can_fail.py` that one
-of its cases catches.
+an executor and its step is done, it runs; if not, it is not yet runnable, and the counts in `test_cases.py`
+change with it. When a step is done, add it to `done`: its case files then run and must pass. A new operation
+needs an executor in `EXECUTORS`, and a broken implementation in `test_runner_can_fail.py` that one of its cases
+catches.

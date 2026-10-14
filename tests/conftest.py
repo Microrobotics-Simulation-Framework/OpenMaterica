@@ -89,3 +89,12 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
         if operations:
             line += " (" + ", ".join(f"{name} {count}" for name, count in sorted(operations.items())) + ")"
         terminalreporter.write_line(line)
+        if outcome is runner.Outcome.NOT_YET_RUNNABLE and outcomes[outcome]:
+            steps = Counter(
+                "+".join(runner.steps(case_run.case_file)) or "no executor"
+                for case_run in runs
+                if case_run.outcome is outcome
+            )
+            terminalreporter.write_line(
+                "       by step: " + ", ".join(f"{step} {count}" for step, count in sorted(steps.items()))
+            )
