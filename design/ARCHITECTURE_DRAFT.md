@@ -1368,6 +1368,83 @@ records in git ── pull request + review ──> materica check ──> build
   (every record's identifier, version, content hash, sections, tier and licence), and the shipped reference
   data. It is published as a GitHub release and archived on Zenodo with a DOI. A consumer pins a release by
   DOI or hash and needs nothing online afterwards.
+- **Two linked Zenodo records, a third later** (proposal, 2026-10-13; revised the same day after a survey of
+  the tools that index Zenodo, below). OpenMaterica looks like a blend of software and data, but the project
+  already splits it along the lines Zenodo's resource types draw, so each part is archived as what it is:
+  - **Software:** the OpenMaterica repository (the core, the specification, the conformance cases, the
+    families), Apache-2.0, one Zenodo record with a new version on each GitHub release.
+  - **Dataset:** each library release, CC0-1.0, its description stating that quoted evidence is excluded from
+    that licence (section 6.4), one record with a new version per release. The archive itself is uploaded, not
+    a link to it: Web of Science's Data Citation Index excludes data that is only referenced (Clarivate's
+    selection policy, undated).
+  - **Both are published through Zenodo's API by the release workflows**, not the software through Zenodo's
+    GitHub integration as first proposed. An affiliation's ROR identifier and a funder's identifier reach
+    DataCite only when chosen from Zenodo's own vocabularies, which the API can do; on the records observed on
+    2026-10-13, a GitHub-integration release carried them only when someone added them on Zenodo afterwards
+    (whether `.zenodo.json` can carry a ROR identifier was not verified). The cost is a Zenodo token held by
+    the release workflow; the alternative was the GitHub integration plus editing each software version on
+    Zenodo by hand. The API route is decided (maintainer, 2026-10-13); the rest of this item is a proposal.
+  - **Links**, with DataCite relation types Zenodo offers (checked against its vocabulary, 2026-10-13): the
+    dataset *is compiled by* the software version that checked it and generated its layers, cards and index,
+    and *is documented by* that version, whose specification defines its format; the software carries the
+    inverses, *compiles* and *documents*. These links are for navigation. DataCite counts as citations only
+    *cites*, *references* and *is supplement to* and their inverses (DataCite support, 20 August 2026), and
+    OpenMaterica's own records never cite one another, so no count is raised by self-citation.
+  - **The dataset references its sources:** every source with a DOI that a release's records cite is listed as
+    *references*, which DataCite records as a reference (same page), so that the measurements' authors are
+    credited wherever those links are counted.
+  - **One record would not do:** the licences differ by design (Apache-2.0 for code, CC0-1.0 for data), the
+    two are released on different schedules (new values need no code release, a fix needs no data release),
+    and they are cited for different things (implementers cite the software, curators and users the data).
+  - **Later, a Standard record for the specification** (Zenodo's "Publication: Standard" type), so that an
+    implementer in another language can cite the format without citing the Python package. It *documents* the
+    software and the dataset, and from then on the dataset *is documented by* it. (The first proposal linked
+    it as *is supplement to* the software, which DataCite would count as the software citing itself.) It is
+    deposited as a Standard, under its lasting title, from its first version, because OpenAlex takes a
+    record's type and title from its first version: one specification deposited as a Standard at 1.3.0 shows
+    in OpenAlex as a report, titled as its 0.2 version was (RO-Crate, observed 2026-10-13). Before 1.0.0 the
+    specification changes with every release and is already in the software archive, so its trigger is the
+    first stable schema version or a second implementation. Zenodo now marks a Standard's page with a
+    schema.org type that does not exist (`https://schema.org/other`), so search engines get no type for it.
+    It comes from InvenioRDM's resource-type vocabulary, on which Zenodo runs; the maintainer reports it there
+    before the first Standard deposit (decided 2026-10-13). The fault stays on Zenodo's own pages: DataCite's
+    metadata for the same record gives `Standard`, mapped to schema.org `CreativeWork`, as does the DOI's
+    content negotiation, so the indexes that read DataCite (OpenAlex, OpenAIRE, ORCID) and every citation
+    count are unaffected (checked 2026-10-13), and the specification is deposited as a Standard whether or not
+    it is fixed.
+  - **Optionally a Zenodo community** grouping the records, and later the releases of other publishers'
+    namespaces (whether the name is free was not confirmed).
+  - **Pinning and citing:** each record has a concept DOI (every version) and a DOI per version. A consumer
+    pins by version DOI and archive hash, as MIME's material input sheet records them; the concept DOI is for
+    citing OpenMaterica in general, and the README gives its reference ready to paste.
+- **Who finds and counts which record** (survey of 2026-10-13; what was not verified is marked):
+  - **Google Scholar indexes no Zenodo record**, of any type (Zenodo's FAQ, 2024); Scopus indexes none either
+    (its content coverage guide, 2023); Web of Science reaches Zenodo only through its Data Citation Index,
+    whose current coverage of Zenodo was not verified. A paper is the only route into them (the table below).
+  - **Google Dataset Search** reads only schema.org `Dataset` markup, which Zenodo writes for a dataset and
+    not for software, so it finds the library and not the software. It needs a description of 50 to 5,000
+    characters (Google Search Central, 8 September 2026).
+  - **DataCite Commons and ORCID** see all three. DataCite counts citations per DOI without adding up
+    versions, and shows no views or downloads for any Zenodo record, because Zenodo reports none to it; the
+    usage figures to quote are Zenodo's and OpenAIRE's. An author's ORCID record is updated only once the
+    author has enabled DataCite's auto-update, and only for versions published or changed after that (DataCite
+    support, 7 August 2026), so each author enables it before the first release.
+  - **OpenAlex and OpenAIRE** see all three, as software, dataset and standard (OpenAIRE: "other literature"),
+    with ORCID, ROR and funder identifiers. OpenAlex merges all versions of a Zenodo record into one work,
+    titled and typed by the first, so each record's title is chosen once, before its first deposit, and kept.
+  - **Software Heritage** archives the software's source from Zenodo and shows its identifier on the record
+    (Zenodo, 21 October 2024); some recent releases lacked one, so each release is checked. Its indexer reads
+    `CITATION.cff`, as GitHub's "Cite this repository" does, so `CITATION.cff` stays in the repository, and
+    the release tooling checks it against the deposit's metadata.
+  - **Registries**, applied to by hand: an RRID (SciCrunch) for the software and the library (its scope read
+    only in a search excerpt); FAIRsharing for the library as a knowledgebase and, once others use it, for the
+    specification as a format. re3data does not fit (it lists repositories with an operating legal entity, and
+    Zenodo is already listed), nor does bio.tools (it excludes programming libraries).
+  - **Counts disagree by counter, and each is a lower bound.** On 2026-10-13 the IT'IS tissue database's
+    version 4.0, the nearest published analogue, had 64 citations in DataCite, 98 in OpenAIRE and 134 in
+    OpenAlex. A count OpenMaterica quotes names its counter and its date.
+  - Not verified: whether BASE, Dimensions or the Data Citation Index cover Zenodo today; whether Zenodo
+    passes DataCite relation types outside its vocabulary.
 - **"The first library release" means the first such archived release with a DOI** (section 12.1, R8). Its
   prerequisites are the curation tools (R15), the legal review (section 6.5), and the publishers file with
   its template. Earlier tags of the library (M10) are unpublished pins for MIME's spikes, not releases.
@@ -1402,6 +1479,8 @@ Later, each when its trigger arrives:
 | a viewer on the static site (fits plotted over their reference data); a SQLite build queryable in the browser (recalled: Datasette Lite, sql.js) | a library big enough to browse |
 | an issue form that a bot turns into a draft record pull request | contributors who do not use git |
 | a mirror of each release on the Hugging Face Hub, for discoverability only | adoption work (section 10) |
+| a software paper (JOSS: no charge, a Crossref DOI, not indexed by Scopus or Web of Science's core collection) | the repository public for six months, with evidence of research use (JOSS's requirements) |
+| a data paper (Scientific Data, Data in Brief; an article charge) | a library big enough to describe |
 
 Not planned unless the scope changes: a hosted database, a query API, accounts, an upload portal. Their
 triggers would be large imaging data, or many writers who cannot work through pull requests; both are
