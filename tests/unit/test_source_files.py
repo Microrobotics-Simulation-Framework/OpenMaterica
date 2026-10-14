@@ -20,7 +20,9 @@ from tests.conftest import SHARDS
 REPOSITORY = Path(__file__).resolve().parents[2]
 PACKAGE = Path(materica.__file__).parent
 CORE = Path(materica.core.__file__).parent
+# REUSE-IgnoreStart
 SPDX = "# SPDX-License-Identifier: Apache-2.0"
+# REUSE-IgnoreEnd
 
 # The layers that hold Python modules: the shapes, generated from the schemas (L0), the core (L2) and the
 # readers of files (L4). `materica/__init__.py`, the public API, imports from every layer.

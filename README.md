@@ -1,4 +1,9 @@
 # OpenMaterica
+
+[![CI](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml?query=branch%3Amain)
+[![PyPI](https://img.shields.io/pypi/v/openmaterica?include_prereleases)](https://pypi.org/project/openmaterica/)
+[![Code licence: Apache-2.0](https://img.shields.io/github/license/Microrobotics-Simulation-Framework/OpenMaterica?label=code%20licence)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/blob/main/LICENSE)
+
 > *OpenMaterica* is an open material schema, with an OpenUSD binding, and a Python toolkit for biomedical
 > digital twins. It describes substances in and around the human body (tissues and body fluids, the media
 > and phantoms that stand in for them, agents introduced into them, and the materials of devices that enter
@@ -25,8 +30,27 @@ not curate. The full statement is in [`docs/regulatory/intended_use.md`](docs/re
 
 ## Status
 
-Design stage. There is no code or release yet. The architecture concept is in
-[`design/ARCHITECTURE_DRAFT.md`](design/ARCHITECTURE_DRAFT.md).
+Pre-release. `0.1.0.dev1` is on [PyPI](https://pypi.org/project/openmaterica/). It holds strict JSON, the
+content hash, records and the read up to step 5, and the schemas and vocabulary of 0.1. Reading values arrives
+in later steps, and the schema 0.1 files may change until 0.1.0 is released. The curated material library does
+not exist yet. The architecture concept is in [`design/ARCHITECTURE_DRAFT.md`](design/ARCHITECTURE_DRAFT.md).
+
+## Install
+
+```sh
+pip install openmaterica==0.1.0.dev1
+```
+
+It needs Python 3.11 or later. To check where a release came from, verify its PyPI attestation (PEP 740), which
+names the repository that built it:
+
+```sh
+uvx pypi-attestations verify pypi \
+  --repository https://github.com/Microrobotics-Simulation-Framework/OpenMaterica \
+  pypi:openmaterica-0.1.0.dev1-py3-none-any.whl
+```
+
+The command prints `OK` for a file built from this repository, and fails for any other repository.
 
 ## Intended use and disclaimers
 

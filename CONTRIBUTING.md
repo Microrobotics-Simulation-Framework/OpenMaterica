@@ -92,8 +92,10 @@ live in a repository of its own; until it exists, its rules are kept here.
 
 ## Code
 
+<!-- REUSE-IgnoreStart -->
 - Every source file starts with an SPDX licence header (`# SPDX-License-Identifier: Apache-2.0`); JSON data
   files are covered by the repository's licence.
+  <!-- REUSE-IgnoreEnd -->
 - The package is typed and ships `py.typed`. `mypy --strict` and pyright both pass over `src/materica`. No
   public function returns an object from `pxr`, and every `pxr` call in `materica` goes through
   `io/usd/_pxr.py`.

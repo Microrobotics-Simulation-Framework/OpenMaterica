@@ -10,7 +10,7 @@ Tests by example, for what the conformance cases and the properties do not reach
 - the read's API: the forms a request may be given in, the misuses that raise, and the steps not built yet,
   which raise rather than answer (`test_read.py`);
 - rules over the source files: what each layer may import, what `materica.core` and `materica.shapes` may
-  import, relative imports included, the SPDX header on every Python file, and that each property module is in
-  one shard;
+  import, relative imports included, the SPDX header on every Python file, that each property module is in
+  one shard, and that the classifiers and `requires-python` name the Pythons the `tests` job runs;
 - the scripts in `scripts/`, the generators included, and the audits of `tests/property/`, each against
   inputs it must refuse.
