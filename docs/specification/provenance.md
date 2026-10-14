@@ -142,8 +142,8 @@ say). [RC-037]
 }
 ```
 
-The tables below are the vocabulary of schema 0.1.0. Vocabulary files under `data/vocabulary/` are generated
-from them; where the two differ, these tables hold. The vocabulary grows by minor versions. [not yet covered]
+The tables below are the vocabulary of schema 0.1.0. The files in `schema/0.1/vocabulary/` are generated from
+them; where the two differ, these tables hold. The vocabulary grows by minor versions. [not yet covered]
 
 ### 6.1 Conditions of schema 0.1.0
 
