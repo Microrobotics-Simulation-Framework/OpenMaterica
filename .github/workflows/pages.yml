@@ -48,9 +48,10 @@ jobs:
           persist-credentials: false
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       # Each deploy replaces the whole site, so every released schema version must stay in the artifact: the whole
-      # directory is copied, never only the newest version. Released schemas never change, and their permanent
-      # identifiers, https://w3id.org/materica/schema/<version>/..., redirect to these copies. The directory is
-      # absent until the first schema lands; mkdir fails if site/ ever holds a schema/ of its own.
+      # directory is copied, never only the newest version. Released schemas never change (CI fails where one
+      # does: tests/spec_sync/test_released_schemas.py), and their permanent identifiers,
+      # https://w3id.org/materica/schema/<version>/..., redirect to these copies. The directory is absent until
+      # the first schema lands; mkdir fails if site/ ever holds a schema/ of its own.
       - name: Stage site/, with the schemas at /schema/
         run: |
           cp -R site "$RUNNER_TEMP/site"

@@ -1,0 +1,4 @@
+{
+  "$comment": "Each released schema version, with every file under src/materica/schema/<version>/ and the SHA-256 of its bytes. Written by scripts/freeze_schema.py at release. A released version's files never change (tests/spec_sync/test_released_schemas.py).",
+  "released": {}
+}

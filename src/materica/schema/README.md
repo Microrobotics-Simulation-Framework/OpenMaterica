@@ -22,6 +22,15 @@ not resolve.
 CI regenerates every derived file and fails where one differs (CONTRIBUTING, "Changing the schema"). Every
 pattern starts with `^` and ends with `(?![\s\S])`: a validator's `$` also matches before a final newline.
 
+## Released versions
+
+Until a schema version is released its files may change; once it is released they never change, and a change
+is a new minor version in a new directory (maintainer, 2026-10-14). At the release, `scripts/freeze_schema.py`
+lists the version, with every file under its directory and the SHA-256 of its bytes, in
+`tests/spec_sync/released_schemas.json`. From then on `tests/spec_sync/test_released_schemas.py` fails where
+one of those files is added, removed or changed, or an `$id` is no longer its path. The list lies outside this
+tree, so the wheel and the published site hold the schemas alone.
+
 ## Who reads them
 
 The Python reader checks envelopes with `core/envelope.py`, which tests hold to agreement with the reader schema;
