@@ -9,18 +9,25 @@ The package is built in layers (AD 7.1), and a module imports only from its own 
 
 | Layer | Directory | What it holds |
 |---|---|---|
-| L1, data | `data/conformance/` | the specification's conformance cases and the inputs they supply; their own `README.md` says how to read them |
-| L2, core | `core/` | strict JSON, the canonical form and the content hash; Python's standard library only (`core/README.md`) |
+| L0, schemas | `schema/`, `shapes.py` | the JSON Schemas (`schema/README.md`), and the JSON shapes as TypedDicts generated from them |
+| L1, data | `data/`, `schema/0.1/vocabulary/` | the specification's conformance cases and the inputs they supply (`data/conformance/`, with their own `README.md`), and its vocabulary, published with the schemas |
+| L2, core | `core/` | strict JSON, the canonical form and the content hash; identifiers, the envelope checks and the read up to step 5; Python's standard library only (`core/README.md`) |
+| L4, readers | `io/` | files into the core's types (`io/README.md`) |
 
-The schemas (L0), the readers of files and USD stages (`io/`, L4), the sampling helpers (`sample/`, L5) and
-the command line (`tools/`, L6) arrive in later steps. Until they do, the layer rule comes down to one check:
-`core/` imports nothing but the standard library and itself (`tests/unit/test_source_files.py`).
+The authoring tools (L3), the sampling helpers (`sample/`, L5) and the command line (`tools/`, L6) arrive in
+later steps. `tests/unit/test_source_files.py` walks every module's imports: a module imports only its own
+layer or a lower one; `core/` imports only the standard library, itself and `shapes.py`, which imports only the
+standard library; and nothing imports `materica_authoring`.
 
 ## What holds across the package
 
 - No run-time dependency (AD 7.2): the built wheel declares none (`scripts/check_wheel.py`).
 - It is typed (PEP 561) and ships `py.typed`. `mypy --strict` and pyright in strict mode pass over it, and a
-  consumer's code type-checks against the installed wheel (`tests/typing/`).
-- The conformance data ships in the wheel byte for byte, since its inputs are byte-exact
-  (`docs/specification/README.md`, "Case files"; `scripts/check_wheel.py`).
-- `__init__.py` holds the public API built so far: `content_hash`.
+  consumer's code type-checks against the installed wheel (`tests/typing/`). `shapes.pyi`, which type checkers
+  read in place of `shapes.py`, marks what a read returns read-only (PEP 705).
+- Everything under `data/` and `schema/` ships in the wheel byte for byte, since the conformance inputs are
+  byte-exact and the reader loads the vocabulary (`scripts/check_wheel.py`).
+- Generated files are never edited by hand. `scripts/` regenerates them and CI fails on any difference: the
+  vocabulary from the specification's tables, the reader schema and the shapes from the writer schemas
+  (CONTRIBUTING, "Changing the schema").
+- `__init__.py` holds the public API built so far: `content_hash`, `load_records` and `read`.

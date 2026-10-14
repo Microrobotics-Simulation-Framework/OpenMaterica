@@ -9,6 +9,9 @@ import pytest
 from scripts import check_wheel
 
 CASE = "materica/data/conformance/hash/cases/HS-001.arm.json"
+VOCABULARY = "materica/schema/0.1/vocabulary/reasons.json"
+SCHEMA = "materica/schema/0.1/record.reader.json"
+SHIPPED = {CASE: b'{"case": "HS-001"}\n', VOCABULARY: b"{}\n", SCHEMA: b'{"type": "object"}\n'}
 METADATA = "openmaterica-0.1.0.dist-info/METADATA"
 LICENCE = b"Apache License\n"
 
@@ -17,7 +20,7 @@ def wheel_contents() -> dict[str, bytes]:
     return {
         "materica/__init__.py": b"",
         "materica/py.typed": b"",
-        CASE: b'{"case": "HS-001"}\n',
+        **SHIPPED,
         METADATA: b"Metadata-Version: 2.4\nLicense-Expression: Apache-2.0\nLicense-File: LICENSE\n",
         "openmaterica-0.1.0.dist-info/licenses/LICENSE": LICENCE,
     }
@@ -25,9 +28,9 @@ def wheel_contents() -> dict[str, bytes]:
 
 def problems(tmp_path: Path, contents: dict[str, bytes]) -> list[str]:
     package = tmp_path / "src" / "materica"
-    case = package.parent / CASE
-    case.parent.mkdir(parents=True)
-    case.write_bytes(wheel_contents()[CASE])
+    for name, data in SHIPPED.items():
+        (package.parent / name).parent.mkdir(parents=True, exist_ok=True)
+        (package.parent / name).write_bytes(data)
     licence = tmp_path / "LICENSE"
     licence.write_bytes(LICENCE)
     wheel = tmp_path / "openmaterica-0.1.0-py3-none-any.whl"
@@ -48,6 +51,9 @@ def test_a_complete_wheel_passes(tmp_path: Path) -> None:
         pytest.param(CASE, None, id="case_missing"),
         pytest.param(CASE, b'{"case": "HS-002"}\n', id="case_differs"),
         pytest.param("materica/data/conformance/hash/cases/extra.json", b"{}", id="case_added"),
+        pytest.param(VOCABULARY, None, id="vocabulary_missing"),
+        pytest.param(SCHEMA, b"{}", id="schema_differs"),
+        pytest.param("materica/schema/0.1/extra.json", b"{}", id="schema_added"),
         pytest.param(METADATA, b"Metadata-Version: 2.4\nLicense-File: LICENSE\n", id="no_licence_expression"),
         pytest.param("openmaterica-0.1.0.dist-info/licenses/LICENSE", b"other", id="licence_differs"),
         pytest.param(

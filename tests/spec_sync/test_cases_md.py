@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Each suite's `CASES.md`, the source for what each arm tests, matches the case files and the specification:
+one row per case file, its expected column what the file states, and each heading the specification's row.
+"""
+
+import json
+
+import pytest
+
+from materica.core.jsonio import JsonValue
+from scripts.gen_vocabulary import SPECIFICATION, Row, only_code, table
+from tests.conformance import runner
+from tests.conformance.runner import CONFORMANCE, CaseFile
+
+CASE_FILES = runner.discover()
+SUITES = sorted(path.name for path in CONFORMANCE.iterdir() if path.is_dir())
+
+
+def sections(suite: str) -> dict[str, tuple[str, str, list[Row]]]:
+    """Per case heading in the suite's CASES.md: the document and row it quotes, and its table."""
+    text = (CONFORMANCE / suite / "CASES.md").read_text(encoding="utf-8")
+    lines = text.splitlines()
+    found: dict[str, tuple[str, str, list[Row]]] = {}
+    for index, line in enumerate(lines):
+        if line.startswith("## "):
+            document, _, quoted = lines[index + 2].partition(": ")
+            found[line.removeprefix("## ")] = (only_code(document), quoted, table(text, line))
+    return found
+
+
+def specification_rows(document: str) -> dict[str, str]:
+    rows = table((SPECIFICATION / document).read_text(encoding="utf-8"), "## Cases")
+    return {row["Case"]: row["Tests"] for row in rows}
+
+
+def code(value: JsonValue) -> str:
+    return f"`{value}`"
+
+
+def expected_column(case_file: CaseFile) -> str:
+    """The column as `CASES.md` writes it, from the case file: status, reasons with their condition, or the
+    listing or shortened hash; then labels and claims where the case states them."""
+    expected = case_file.expected
+    parts = [str(expected["status"])]
+    if case_file.operation == "list_records":
+        listed = expected["value"]
+        assert isinstance(listed, list)
+        entries = [f"{code(entry['id'])} {entry['version']}" for entry in listed if isinstance(entry, dict)]
+        parts.append("lists " + (", ".join(entries) or "nothing"))
+    elif "value" in expected:
+        parts.append(code(str(expected["value"])[: len("sha256:") + 8] + "\u2026"))
+    else:
+        reasons = expected["reasons"]
+        assert isinstance(reasons, list)
+        parts.append(
+            ", ".join(
+                code(f"{reason['code']} ({reason['condition']})" if "condition" in reason else reason["code"])
+                for reason in reasons
+                if isinstance(reason, dict)
+            )
+        )
+    labels = expected.get("labels")
+    if isinstance(labels, list):
+        parts.append("labels " + (", ".join(code(label) for label in labels) or "none"))
+    if case_file.claims:
+        parts.append(
+            "claims "
+            + ", ".join(code(f"{suite}: {str(claim).lower()}") for suite, claim in case_file.claims.items())
+        )
+    return "; ".join(parts)
+
+
+@pytest.mark.parametrize("suite", SUITES)
+def test_one_row_per_case_file(suite: str) -> None:
+    rows = [
+        f"{case}.{only_code(row['Variant'])}.json"
+        for case, (_, _, table_rows) in sections(suite).items()
+        for row in table_rows
+    ]
+    assert sorted(rows) == sorted(path.name for path in (CONFORMANCE / suite / "cases").glob("*.json"))
+
+
+@pytest.mark.parametrize("case_file", CASE_FILES, ids=[case_file.path.name for case_file in CASE_FILES])
+def test_the_expected_column_is_the_case_files(case_file: CaseFile) -> None:
+    _, _, rows = sections(case_file.suite)[case_file.case]
+    (row,) = [row for row in rows if only_code(row["Variant"]) == case_file.variant]
+    assert row["Expected"] == expected_column(case_file)
+
+
+@pytest.mark.parametrize("suite", SUITES)
+def test_each_heading_quotes_the_specifications_row(suite: str) -> None:
+    for case, (document, quoted, _) in sections(suite).items():
+        assert specification_rows(document).get(case) == quoted, case
+
+
+def test_a_case_file_that_disagrees_with_its_row_is_found() -> None:
+    case_file = next(
+        case_file for case_file in CASE_FILES if case_file.path.name == "PR-301.three_codes_step0.json"
+    )
+    document = json.loads(case_file.path.read_bytes())
+    document["expected"]["reasons"].pop()
+    _, _, rows = sections("plain_read")["PR-301"]
+    (row,) = [row for row in rows if only_code(row["Variant"]) == "three_codes_step0"]
+    assert row["Expected"] == expected_column(case_file)
+    assert row["Expected"] != expected_column(CaseFile.from_document(case_file.path, document))

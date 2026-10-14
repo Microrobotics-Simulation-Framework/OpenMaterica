@@ -1,9 +1,33 @@
 # Property tests
 
-Hypothesis properties of the core: the JSON reader (`docs/specification/record_format.md` section 1 item 6),
-RFC 8785 (section 9 item 2) and the content hash (section 9). `strategies.py` builds what they draw: JSON
-values, texts that write a value in many valid ways, and texts holding exactly one fault the specification
-lists. Trees are drawn top-down within a leaf budget, so no draw is thrown away.
+Hypothesis properties of the core, in two groups.
+
+- **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
+  2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
+  value in many valid ways, and texts holding exactly one fault the specification lists. Trees are drawn
+  top-down within a leaf budget, so no draw is thrown away.
+- **Records:** (4) the envelope checks agree with the generated reader schema (section 1 item 2); (5) versions
+  order as their integers, for components hundreds of digits long, and a text is a version exactly when it
+  matches section 8's pattern; (6) the laws of a read up to step 5 (`read_side_contract.md` sections 1 to 3):
+  it never raises but where a step not built yet would decide it, or for claims without plain read, a misuse;
+  a reason appears once per code and condition; the order of the sources, identical copies of them, and records
+  of another identity (another id, or another version of the target's) change nothing; an unreadable source
+  turns only `absent` or `pin_mismatch` into `malformed`; a request member the shape does not name changes
+  nothing; and every listed record, read under its own hash, passes steps 1 to 3 and 5. `records.py` builds
+  records and versions, `stores.py` stores and requests.
+
+  The first law is checked against the specification only where the read refuses. Where the implementation's
+  own `resolve_record` resolves the target, a `NotImplementedError` is allowed, so a resolution that wrongly
+  succeeds is invisible to it; the case files and the other laws are the oracle there.
+
+The record strategies draw each case the specification tells apart as often as another. An example of (4) is
+a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
+one near miss in each pattern, one other record type, one place left unchecked, and one record changed at
+random. Drawn one change at a time, the rarer boundaries came up in under 1% of examples, and a mutant's
+search took up to 1,900 examples to meet them. An example of (6) is a store built for one of the cases step 1
+tells apart (no copy of the target; one, or two identical or differing, that state the pin; none that does,
+beside an ill-formed hash or not), with sources of other identities, unreadable ones and documents beside it,
+and claims with plain read or, in one world in four, without it.
 
 ## Profiles and sizes
 
@@ -13,26 +37,37 @@ lists. Trees are drawn top-down within a leaf budget, so no draw is thrown away.
 | Profile | Examples per property | Trees | Where it runs |
 |---|---|---|---|
 | `dev` | 200 | small: 10 scalars, 3 members, depth 5 | the default: locally, and on every Python in CI's test matrix |
-| `ci` | 2,000 | small | CI's Hypothesis job, when the core, these tests or their configuration change, and on every code change to main |
+| `ci` | 2,000 | small | CI's Hypothesis job, when the core, its schemas and vocabulary, these tests or their configuration change, and on every code change to main |
 | `deep` | 20,000 | original: 30 scalars, 5 members, depth 6 | the same job, weekly and on a manual run |
 
 The original size is the one the properties were first written with, or larger. Content is never narrowed:
 text is full Unicode half the time and built from the characters the specification treats apart the other
 half, and numbers cover every double. Shapes that small trees cannot reach are explicit examples, run under
-every profile: nesting 64, 65 and 100,000 deep, and objects and records with many members.
+every profile: nesting 64, 65 and 100,000 deep, objects and records with many members, and a record with every
+section and null in each place the envelope checks leave alone. A record with a change planned in a sweep
+varies in its structure, its unchecked places holding a few values of each JSON type; the record changed at
+random, and every change into a place left unchecked, draw full trees.
 
 Every profile keeps its examples in `.hypothesis/examples` at the repository root (git-ignored, cached by CI),
 so an example that failed once, under `deep` or any other profile, is tried first on every later run; a
 failure prints a blob that replays it anywhere.
 
+## Shards
+
+CI runs the two groups side by side, each in a job of its own: `pytest tests/property --shard json` and
+`--shard records` (`SHARDS` in `tests/conftest.py`). Each module is in exactly one shard
+(`tests/unit/test_source_files.py`), and each shard keeps its own example database in CI.
+
 ## Mutants
 
-`test_mutants.py` gives the core one fault at a time and requires the property aimed at it to find the fault
-within the examples of the `ci` profile, at the small size and at the original one. The faults include those
-the conformance runner's self-tests use, and faults that only some sizes or contents could show: a nesting
-limit off by one, removal that stops at depth 2 or at the first array item, sorting by one pass of exchanges,
-non-ASCII escaped. Each test records the examples its kill took as `examples_to_kill`, which `--junitxml`
-writes out. A fault that died only at the original size would mean the small size misses it.
+`test_mutants.py` (JSON) and `test_record_mutants.py` (records) give the core one fault at a time and require
+the property aimed at it to find the fault within the examples of the `ci` profile, at the small size and at
+the original one. The faults include those the conformance runner's self-tests use, and faults that only some
+sizes or contents could show: a nesting limit off by one, removal that stops at depth 2, sorting by one pass of
+exchanges, a pattern searched where it must match in full, versions ordered as strings or as doubles, an
+unreadable source ignored, the first of two differing copies read. Each test records the examples its kill
+took as `examples_to_kill`, which `--junitxml` writes out. A fault that died only at the original size would
+mean the small size misses it.
 
 ## Audits
 
@@ -51,6 +86,7 @@ writes out. A fault that died only at the original size would mean the small siz
 
 Write the check as a function of the implementation and the example, and the property as a `test_...`
 function that records its features and calls the check. Declare the features with their least shares,
-measured. Add a mutant to `test_mutants.py` that the property must kill. Never set `max_examples` on a
-property: the profile decides it. Build strategies so that they draw what they need rather than filter it,
-and take their size from `strategies.SIZE`.
+measured. Add a mutant that the property must kill, to the mutant file of its group, and the module to a shard.
+Never set `max_examples` on a property: the profile decides it. Build strategies so that they draw what they
+need rather than filter it, take their size from `strategies.SIZE`, and build each strategy once rather than
+in every draw: Hypothesis spends more building and checking a strategy than drawing from it.

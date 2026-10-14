@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from materica.core.jsonio import JsonValue
+from materica.shapes import Suite
 from tests.conformance import runner
 from tests.conformance.runner import CaseFile, CaseFileError, JsonObject, Outcome
 
@@ -186,16 +187,38 @@ def test_a_case_that_did_not_run_never_passes(variants: list[Outcome], outcome: 
         pytest.param({"fits_and_reference_data": False}, {"hash"}, Outcome.PASSED, id="control_claims_agree"),
     ],
 )
-def test_claims_decide_which_variants_run(claims: JsonObject, claimed: set[str], outcome: Outcome) -> None:
+def test_claims_decide_which_variants_run(claims: JsonObject, claimed: set[Suite], outcome: Outcome) -> None:
     ran: list[CaseFile] = []
 
-    def execute(case_file: CaseFile) -> JsonObject:
+    def execute(case_file: CaseFile, claims: frozenset[Suite]) -> JsonObject:
         ran.append(case_file)
         return {"status": "met", "reasons": []}
 
     case_file = case({"status": "met", "reasons": []}, claims=claims)
-    assert (
-        runner.run(case_file, claimed=frozenset(claimed), executors={"content_hash": execute}).outcome
-        is outcome
-    )
+    run = runner.run(case_file, configurations=[frozenset(claimed)], executors={"content_hash": execute})
+    assert run.outcome is outcome
     assert bool(ran) is (outcome is Outcome.PASSED)
+
+
+def test_a_case_runs_under_every_configuration_that_agrees_and_fails_if_one_fails() -> None:
+    without_fd: frozenset[Suite] = frozenset({"hash"})
+    with_fd: frozenset[Suite] = frozenset({"hash", "fits_and_reference_data"})
+    with_plain_read: frozenset[Suite] = frozenset({"plain_read", "hash", "fits_and_reference_data"})
+    given: list[frozenset[Suite]] = []
+
+    def execute(case_file: CaseFile, claims: frozenset[Suite]) -> JsonObject:
+        given.append(claims)
+        return {"status": "met" if claims == with_fd else "unknown", "reasons": []}
+
+    case_file = case({"status": "met", "reasons": []}, claims={"fits_and_reference_data": True})
+    run = runner.run(
+        case_file,
+        configurations=[without_fd, with_fd, with_plain_read],
+        executors={"content_hash": execute},
+    )
+    assert given == [with_fd, with_plain_read]
+    assert run.claimed == (with_fd, with_plain_read)
+    assert run.outcome is Outcome.FAILED
+    assert [difference.partition(":")[0] for difference in run.differences] == [
+        "claiming fits_and_reference_data, hash, plain_read"
+    ]

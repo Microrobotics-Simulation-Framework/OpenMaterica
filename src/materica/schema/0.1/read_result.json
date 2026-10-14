@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3id.org/materica/schema/0.1/read_result.json",
+  "$comment": "Hand-edited. The members after status, reasons and labels are placeholders until the steps that give them are written.",
+  "title": "ReadResult",
+  "description": "read_side_contract.md section 2.",
+  "type": "object",
+  "required": ["status", "reasons"],
+  "properties": {
+    "status": {"$ref": "#/$defs/read_status"},
+    "reasons": {"type": "array", "items": {"$ref": "#/$defs/reason"}},
+    "value": {"$ref": "record.writer.json#/$defs/json_value"},
+    "values": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
+    "unit": {"$ref": "record.writer.json#/$defs/json_value"},
+    "conditions": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_object"}},
+    "specimen": {"$ref": "record.writer.json#/$defs/json_object"},
+    "statistics": {"$ref": "record.writer.json#/$defs/json_object"},
+    "provenance": {"$ref": "record.writer.json#/$defs/json_object"},
+    "labels": {"type": "array", "items": {"type": "string"}},
+    "assumption": {"$ref": "record.writer.json#/$defs/json_object"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "read_status": {"enum": ["met", "not_met", "unknown"]},
+    "reason": {
+      "description": "read_side_contract.md section 2; a reason is identified by its code and condition, and detail is for people.",
+      "type": "object",
+      "required": ["code"],
+      "properties": {
+        "code": {"$ref": "vocabulary/reasons.json#/$defs/reason_code"},
+        "condition": {"type": "string"},
+        "detail": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

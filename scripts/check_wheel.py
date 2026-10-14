@@ -3,9 +3,10 @@
 
     python scripts/check_wheel.py dist/openmaterica-<version>-py3-none-any.whl
 
-It checks `materica/py.typed` (PEP 561); every file under `src/materica/data/conformance/`, byte for byte,
-and no other there; the licence as an SPDX expression with its file (PEP 639); no run-time dependency; and
-nothing outside the package and its metadata.
+It checks `materica/py.typed` (PEP 561); every file under `src/materica/data/` and `src/materica/schema/`,
+byte for byte, and no other there: the conformance cases, the vocabulary the reader loads and the schemas; the
+licence as an SPDX expression with its file (PEP 639); no run-time dependency; and nothing outside the package
+and its metadata.
 """
 
 import sys
@@ -32,23 +33,23 @@ def wheel_problems(wheel: Path, package: Path = PACKAGE, licence: Path = REPOSIT
         if f"{package.name}/py.typed" not in names:
             problems.append(f"{package.name}/py.typed is missing")
 
-        conformance = package / "data" / "conformance"
-        shipped = {
-            path.relative_to(package.parent).as_posix(): path
-            for path in conformance.rglob("*")
-            if path.is_file()
-        }
-        for name, path in sorted(shipped.items()):
-            if name not in names:
-                problems.append(f"{name} is missing")
-            elif archive.read(name) != path.read_bytes():
-                problems.append(f"{name} differs from the source tree")
-        prefix = conformance.relative_to(package.parent).as_posix() + "/"
-        problems += [
-            f"{name} is not in the source tree"
-            for name in sorted(names)
-            if name.startswith(prefix) and name not in shipped
-        ]
+        for tree in (package / "data", package / "schema"):
+            shipped = {
+                path.relative_to(package.parent).as_posix(): path
+                for path in tree.rglob("*")
+                if path.is_file()
+            }
+            for name, path in sorted(shipped.items()):
+                if name not in names:
+                    problems.append(f"{name} is missing")
+                elif archive.read(name) != path.read_bytes():
+                    problems.append(f"{name} differs from the source tree")
+            prefix = tree.relative_to(package.parent).as_posix() + "/"
+            problems += [
+                f"{name} is not in the source tree"
+                for name in sorted(names)
+                if name.startswith(prefix) and name not in shipped
+            ]
 
         metadata = HeaderParser().parsestr(archive.read(f"{dist_info_name}/METADATA").decode("utf-8"))
         if metadata["License-Expression"] != "Apache-2.0":

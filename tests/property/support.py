@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Strict equality of JSON values, the features an example records, and the search that kills a mutant."""
+"""Strict equality of JSON values, the features an example records, the search that kills a mutant, and a
+pattern searched where it must match in full."""
 
+import re
 import struct
 from collections.abc import Callable
 from typing import TypeVar
@@ -79,3 +81,14 @@ def examples_to_kill(
     except error:
         return killed_at
     raise AssertionError(f"the mutant survived {tried} examples")
+
+
+class Searched:
+    """A pattern searched with `^` and `$`, as a regular-expression search would be: a mutant of a full match,
+    which a trailing newline gets past."""
+
+    def __init__(self, pattern: re.Pattern[str]) -> None:
+        self.pattern = re.compile(f"^(?:{pattern.pattern})$")
+
+    def fullmatch(self, text: str) -> re.Match[str] | None:
+        return self.pattern.search(text)

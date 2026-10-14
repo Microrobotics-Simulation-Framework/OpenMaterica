@@ -1,14 +1,17 @@
 # Workflows
 
-`ci.yml` is the one workflow. Its opening comment says why it is shaped as it is; this table says what runs.
+`ci.yml` checks every change. Its opening comment says why it is shaped as it is; this table says what runs.
+`pages.yml` deploys `site/` to openmaterica.org on a push to main that touches it.
 
 | Job | Runs | When |
 |---|---|---|
 | `gate` | the sign-off check (`scripts/check_signoff.py`) on a pull request; finds the paths a change touched | always |
 | `static` | ruff, mypy and pyright; `uv build` and the wheel check; the consumer snippet against the installed wheel, and its control | a change to code: `src/`, `tests/`, `scripts/`, `docs/specification/`, `pyproject.toml`, `uv.lock`, `ci.yml` |
-| `tests` | `uv run pytest`, property tests at the `dev` profile | as `static`; pull requests on Python 3.11 and 3.15, otherwise 3.11 to 3.15 |
-| `fuzz` | after `hypothesis`, from the example database it saved: the Atheris targets of `tests/fuzz/`, after a control with a seeded fault, for `fuzz_seconds` each; then the property tests, to replay and shrink what was found; on Python 3.14 | weekly; manual, alone with `fuzz_only` |
-| `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run; on Python 3.15, a worker per vCPU | a change to `src/materica/core/`, `tests/property/`, `tests/conftest.py` or the configuration; every code change to main; weekly; manual |
+| `generated` | every generator of `scripts/` with `--check`: the vocabulary, the reader schema, the typed shapes; on Python 3.11 | as `static` |
+| `tests` | `uv run pytest -n auto`, property tests at the `dev` profile | as `static`; Python 3.11 to 3.15, in parallel |
+| `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run, in two shards side by side (`json`, `records`), each with its own example database; on Python 3.15, a worker per vCPU | a change to `src/materica/core/`, `schema/` (the vocabulary included), the shapes, `tests/property/`, `tests/conftest.py`, `tests/spec_sync/schemas.py` or the configuration; every code change to main; weekly; manual |
+| `fuzz` | after `hypothesis`, from the union of the shards' example databases: the Atheris targets of `tests/fuzz/`, after a control with seeded faults, for `fuzz_seconds` each; then the property tests, to replay and shrink what was found; on Python 3.14 | weekly; manual, alone with `fuzz_only` |
+| `result` | fails when a job it needs failed or was cancelled: the one check the ruleset on main requires | always |
 
 Every action is pinned to a commit, and uv to one version (`UV_VERSION`); `uv sync --locked` fails on a lock
 file out of date with `pyproject.toml`.

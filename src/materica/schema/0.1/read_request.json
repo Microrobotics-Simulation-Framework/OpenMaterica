@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3id.org/materica/schema/0.1/read_request.json",
+  "$comment": "Hand-edited. The package's typed shapes are generated from it.",
+  "title": "ReadRequest",
+  "description": "read_side_contract.md section 1. A reader checks a request member by member at step 0, refusing with reasons, and ignores a member not named here, at any depth.",
+  "type": "object",
+  "required": ["target", "requirement"],
+  "properties": {
+    "target": {"$ref": "#/$defs/target"},
+    "operating_conditions": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/operating_condition"}
+    },
+    "requirement": {"$ref": "#/$defs/requirement"},
+    "acceptances": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_object"}}
+  },
+  "$defs": {
+    "target": {"oneOf": [{"$ref": "#/$defs/record_target"}, {"$ref": "#/$defs/region_target"}]},
+    "record_target": {
+      "type": "object",
+      "required": ["record", "field"],
+      "properties": {"record": {"$ref": "#/$defs/material_ref"}, "field": {"$ref": "#/$defs/field_name"}},
+      "not": {"required": ["region"]}
+    },
+    "region_target": {
+      "description": "A region of a scene (geometry.md).",
+      "type": "object",
+      "required": ["region", "field"],
+      "properties": {"region": {"type": "string"}, "field": {"$ref": "#/$defs/field_name"}},
+      "not": {"required": ["record"]}
+    },
+    "material_ref": {
+      "description": "A material reference: a record's id and version, and its content hash as the pin.",
+      "type": "object",
+      "required": ["id", "version", "content_hash"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "content_hash": {"type": "string"}
+      }
+    },
+    "field_name": {"type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+(?![\\s\\S])"},
+    "operating_condition": {"oneOf": [{"$ref": "#/$defs/operating_value"}, {"$ref": "#/$defs/operating_range"}]},
+    "operating_value": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {"value": {"type": "number"}, "unit": {"type": "string"}},
+      "not": {"required": ["range"]}
+    },
+    "operating_range": {
+      "description": "[lo, hi], lo not above hi.",
+      "type": "object",
+      "required": ["range", "unit"],
+      "properties": {
+        "range": {
+          "type": "array",
+          "prefixItems": [{"type": "number"}, {"type": "number"}],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "unit": {"type": "string"}
+      },
+      "not": {"required": ["value"]}
+    },
+    "requirement": {
+      "type": "object",
+      "required": ["want"],
+      "properties": {
+        "want": {"$ref": "#/$defs/want"},
+        "conditions": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/requirement_condition"}
+        }
+      }
+    },
+    "want": {
+      "description": "read_side_contract.md section 6. reference_data, fit and coverage belong to the fits and reference data suite.",
+      "enum": ["value", "bounds", "components", "evidence", "reference_data", "fit", "coverage"]
+    },
+    "requirement_condition": {
+      "description": "A tolerance for a numeric condition, an accept list for a token condition (provenance.md section 6.1).",
+      "oneOf": [{"$ref": "#/$defs/tolerance_requirement"}, {"$ref": "#/$defs/accept_requirement"}]
+    },
+    "tolerance_requirement": {
+      "type": "object",
+      "required": ["tolerance"],
+      "properties": {"tolerance": {"$ref": "#/$defs/tolerance"}},
+      "not": {"required": ["accept"]}
+    },
+    "tolerance": {
+      "description": "Absolute, in the condition's registered unit.",
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {"value": {"type": "number", "minimum": 0}, "unit": {"type": "string"}}
+    },
+    "accept_requirement": {
+      "type": "object",
+      "required": ["accept"],
+      "properties": {"accept": {"type": "array", "items": {"type": "string"}}},
+      "not": {"required": ["tolerance"]}
+    }
+  }
+}
