@@ -20,8 +20,8 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    `MatericaDielectricAPI` are reserved. [not yet covered]
 3. No attribute in these schemas has a fallback value a reader may use. A reader refuses a **value-bearing**
    attribute that has no authored value (USD's `HasAuthoredValue`), with the reason `unauthored_attribute`:
-   every field attribute (section 3.2), every required envelope attribute (section 3.3), and every attribute
-   this document marks required. [UR-002]
+   every field attribute (section 3 item 2), every required envelope attribute (section 3 item 3), and every
+   attribute this document marks required. [UR-002]
 4. These attributes may be absent, and their absence has a stated meaning: `materica:card` and
    `materica:extensions` (none); `materica:region:priority` (no priority); `materica:region:orientation`
    (no orientation; `materica:region:orientationFrame` is required when it is present);
@@ -171,12 +171,12 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
 
 ## 6. Overlays and the input sheet
 
-1. An overlay record is a `MatericaOverlay` prim carrying the envelope attributes of section 3.3,
+1. An overlay record is a `MatericaOverlay` prim carrying the envelope attributes of section 3 item 3,
    `materica:overlay:purpose` (`token`), the relationship `materica:overlay:base` to its base material prim
    for navigation, `materica:overlay:baseRecord` (the base's `{"id", "version", "content_hash"}` as JSON),
    `materica:overlay:scope` (the scope as JSON), and the replaced fields as
    `materica:<section>:<field>` string attributes, each with its own `specimen` inside it. The plain overlay
-   is reassembled from these as section 3.5 says, and its hash checked as section 3.6 says. [UR-026]
+   is reassembled from these as section 3 item 5 says, and its hash checked as section 3 item 6 says. [UR-026]
 2. A reader applies an overlay only when the consumer declares it, and refuses it by `record_format.md`
    section 4.4: a base whose envelope differs from `materica:overlay:baseRecord` (`overlay_base_mismatch`),
    two declared overlays on one field (`overlay_conflict`). The scope is compared by the build
@@ -270,7 +270,7 @@ review of 2026-10-12).
 2. a layer holding geometry whose `metersPerUnit` differs from the stage's with no compensating transform
    (section 2 item 4); [RC-107]
 3. a material prim whose content hash does not verify, or a region, background or path whose pinned reference
-   does not match its target (section 3.6); [RC-108]
+   does not match its target (section 3 item 6); [RC-108]
 4. per shape, its region, the region's OpenMaterica material and its engine materials, each with the crosswalk
    it was checked against and whether that crosswalk was held, matched by its APIs, matched ambiguously or not
    matched; the crosswalks held; and every **unrecognised API**: an applied API schema on a prim in a region,

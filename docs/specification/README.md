@@ -198,7 +198,7 @@ Three kinds of case take other inputs. Each names the schema files it passes in 
 
 ## What 0.1.0 covers
 
-Schema 0.1.0 is the minimal set of the AD's phasing (section 12.1, M1 to M10) with the scene documents,
+Schema 0.1.0 is the minimal set of the AD's phasing (AD 12.1, M1 to M10) with the scene documents,
 layered paths and the USD binding (R1 and R14), built in that order: plain records with the envelope, the
 bulk, fluid, magnetic and biocompatibility sections, the constant, table, interval, composition and evidence
 forms in use, provenance, conditions, statistics, the reader and its reasons, `materica check`; then the plain

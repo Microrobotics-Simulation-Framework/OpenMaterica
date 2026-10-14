@@ -69,7 +69,9 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
           PUSH_AFTER: ${{ github.sha }}
         run: |
-          code='^(src/|tests/|scripts/|docs/specification/|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
+          # The architecture draft and the documentation plan count as code too:
+          # tests/spec_sync/test_references.py checks the specification's references into them.
+          code='^(src/|tests/|scripts/|docs/specification/|design/ARCHITECTURE_DRAFT\.md$|DOCUMENTATION_ARCHITECTURE\.md$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
           hypothesis='^(src/materica/(core/|schema/|shapes\.pyi?$)|tests/property/|tests/conftest\.py$|tests/spec_sync/schemas\.py$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
           case "$EVENT" in
             pull_request) changed=$(git diff --name-only "$PR_BASE...$PR_HEAD") ;;

@@ -9,6 +9,7 @@ check here fails, the specification holds and the other copy is wrong.
 | `test_envelope.py` | `core/envelope.py` and the generated reader schema, which accept and refuse the same conformance inputs |
 | `test_cases_md.py` | each suite's `CASES.md` and its case files: one row per file, the expected column as the file states it, and each heading the specification's row for its case |
 | `test_case_steps.py` | `case_steps.json` and the case files: every case file mapped to the implementation step whose code first runs it, and every case file of a step done passing |
+| `test_references.py` | each reference in the specification, the architecture draft and the documentation plan, in the forms its docstring lists, and the section, item or title it names; each case tag and a row of a Cases table, and each row and a tag; and the items of each numbered list, no two with one number. References that are right but that the forms read wrongly are allowed by name, each with its reason |
 
 The vocabulary and the generated schemas and shapes are checked by their generators' `--check`, which CI runs
 (`scripts/README.md`). `schemas.py` gives jsonschema validators for the package's schemas, each reference

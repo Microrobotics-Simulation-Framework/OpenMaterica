@@ -157,7 +157,7 @@ version; this section says what it MUST fix. [RC-065]
    `check_point_failed`. [FE-012]
 6. Check points show only that a consumer evaluates the parameters as the reference implementation does, at
    the states checked. They are never reported as evidence about the values (AD 4.6). [not yet covered]
-6. A reference-only parameter set ships no check points, because they would publish its parameters
+7. A reference-only parameter set ships no check points, because they would publish its parameters
    (section 9). [RC-076]
 
 ## 8. Witnesses and coverage
