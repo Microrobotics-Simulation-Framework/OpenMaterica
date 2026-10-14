@@ -4,7 +4,9 @@ One row per file in `cases/`, grouped by case id; each heading quotes the case's
 specification, which holds where the two differ. **Ends at** is the step of
 `docs/specification/read_side_contract.md` section 3 at which the read ends (0 is the request's own
 check); `listing` is a `list_records` operation. **Expected** is read from the case file: status,
-reasons (with their condition), and the listing, value, labels or claims where the case states them.
+reasons (with their condition), and the listing, or a read's value, unit, alternative values and
+assumption as JSON (numbers as the doubles a reader reads), then labels and claims, where the case
+states them.
 See `README.md` beside this file for how to read a case.
 
 

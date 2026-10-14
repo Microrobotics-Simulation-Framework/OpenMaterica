@@ -38,20 +38,14 @@ def code(value: JsonValue) -> str:
 
 
 def expected_column(case_file: CaseFile) -> str:
-    """The column as `CASES.md` writes it, from the case file: status, reasons with their condition, or the
-    listing or shortened hash; then labels and claims where the case states them."""
+    """The column as `CASES.md` writes it, from the case file: status and reasons with their condition; the
+    listing, the shortened hash, or a read's value, unit, alternative values and assumption, as JSON; then
+    labels and claims (sorted) where the case states them."""
     expected = case_file.expected
     parts = [str(expected["status"])]
-    if case_file.operation == "list_records":
-        listed = expected["value"]
-        assert isinstance(listed, list)
-        entries = [f"{code(entry['id'])} {entry['version']}" for entry in listed if isinstance(entry, dict)]
-        parts.append("lists " + (", ".join(entries) or "nothing"))
-    elif "value" in expected:
-        parts.append(code(str(expected["value"])[: len("sha256:") + 8] + "\u2026"))
-    else:
-        reasons = expected["reasons"]
-        assert isinstance(reasons, list)
+    reasons = expected["reasons"]
+    assert isinstance(reasons, list)
+    if reasons:
         parts.append(
             ", ".join(
                 code(f"{reason['code']} ({reason['condition']})" if "condition" in reason else reason["code"])
@@ -59,13 +53,27 @@ def expected_column(case_file: CaseFile) -> str:
                 if isinstance(reason, dict)
             )
         )
+    if case_file.operation == "list_records":
+        listed = expected["value"]
+        assert isinstance(listed, list)
+        entries = [f"{code(entry['id'])} {entry['version']}" for entry in listed if isinstance(entry, dict)]
+        parts.append("lists " + (", ".join(entries) or "nothing"))
+    elif case_file.operation == "content_hash":
+        if "value" in expected:
+            parts.append(code(str(expected["value"])[: len("sha256:") + 8] + "\u2026"))
+    else:
+        for member in ("value", "unit", "alternative_values", "assumption"):
+            if member in expected:
+                parts.append(f"{member} {code(json.dumps(expected[member]))}")
     labels = expected.get("labels")
     if isinstance(labels, list):
         parts.append("labels " + (", ".join(code(label) for label in labels) or "none"))
     if case_file.claims:
         parts.append(
             "claims "
-            + ", ".join(code(f"{suite}: {str(claim).lower()}") for suite, claim in case_file.claims.items())
+            + ", ".join(
+                code(f"{suite}: {str(claim).lower()}") for suite, claim in sorted(case_file.claims.items())
+            )
         )
     return "; ".join(parts)
 
@@ -103,3 +111,20 @@ def test_a_case_file_that_disagrees_with_its_row_is_found() -> None:
     (row,) = [row for row in rows if only_code(row["Variant"]) == "three_codes_step0"]
     assert row["Expected"] == expected_column(case_file)
     assert row["Expected"] != expected_column(CaseFile.from_document(case_file.path, document))
+
+
+def test_a_read_that_expects_a_value_shows_it_with_its_unit() -> None:
+    case_file = next(case_file for case_file in CASE_FILES if case_file.path.name == "PR-310.absent.json")
+    document = json.loads(case_file.path.read_bytes())
+    document["expected"] = {
+        "status": "unknown",
+        "reasons": [{"code": "condition_unstated", "condition": "shear_rate"}],
+        "value": 0.000692,
+        "unit": "Pa.s",
+        "labels": ["materica.fluid.newtonian.v1"],
+    }
+    document["compare"] = {"members": ["status", "reasons", "value", "unit", "labels"], "exact": True}
+    assert expected_column(CaseFile.from_document(case_file.path, document)) == (
+        'unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; '
+        "labels `materica.fluid.newtonian.v1`"
+    )
