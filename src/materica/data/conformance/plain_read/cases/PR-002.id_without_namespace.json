@@ -1,0 +1,53 @@
+{
+  "case": "PR-002",
+  "variant": "id_without_namespace",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_id_without_namespace.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:545cf4831bf2a33065877217db644102726c4a1e6cdb080d760f217b890bcfce"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "malformed"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

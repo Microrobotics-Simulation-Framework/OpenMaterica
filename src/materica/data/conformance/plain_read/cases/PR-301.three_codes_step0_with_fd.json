@@ -1,0 +1,65 @@
+{
+  "case": "PR-301",
+  "variant": "three_codes_step0_with_fd",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "fits_and_reference_data": true
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 6000.0,
+        "unit": "1/min"
+      }
+    },
+    "requirement": {
+      "want": "coverage",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": -1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "request_incomplete",
+        "condition": "temperature"
+      },
+      {
+        "code": "request_unit_mismatch",
+        "condition": "shear_rate"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

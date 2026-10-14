@@ -1,0 +1,24 @@
+{
+  "case": "HS-003",
+  "variant": "null_in_unknown_member",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "water_fixture_null_unknown.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:fd23b86b90c981a7cb52c5bb750aeec68185bb78f2648f3903212cce10655428"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

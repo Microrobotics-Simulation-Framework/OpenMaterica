@@ -1,0 +1,36 @@
+{
+  "scene_schema_version": "0.1.0",
+  "document_type": "scene_manifest",
+  "regions": [
+    {
+      "name": "fluid_region",
+      "material": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d"
+      },
+      "priority": 10,
+      "geometry": {
+        "primitive": "sphere",
+        "centre": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "radius": 0.001
+      }
+    }
+  ],
+  "background": {
+    "material": {
+      "id": "conformance/glycerol_fixture",
+      "version": "1.0.0",
+      "content_hash": "sha256:53c34b5a18568f0ad10a1bf0be0ecef258a7f26048cf37c0fe8077c39af12b43"
+    }
+  },
+  "domains": {
+    "flow": [
+      "fluid_region"
+    ]
+  }
+}

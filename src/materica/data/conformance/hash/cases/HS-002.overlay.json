@@ -1,0 +1,24 @@
+{
+  "case": "HS-002",
+  "variant": "overlay",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "water_overlay_fixture.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:9d2599e344014c05f45cc9dc3efbd99e6e85eb5d31ea102c4a30ed406f37de3f"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

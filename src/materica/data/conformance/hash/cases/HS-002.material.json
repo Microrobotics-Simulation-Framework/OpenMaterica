@@ -1,0 +1,24 @@
+{
+  "case": "HS-002",
+  "variant": "material",
+  "suite": "hash",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "value": "water_fixture.json"
+  },
+  "request": {
+    "operation": "content_hash"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:b5c462ab83b39fa3623d5b64789dbcf794d8cfd9acf4a4d4f34c9a79e90b1854"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

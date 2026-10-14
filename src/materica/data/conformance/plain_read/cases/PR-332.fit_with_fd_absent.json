@@ -1,0 +1,56 @@
+{
+  "case": "PR-332",
+  "variant": "fit_with_fd_absent",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "fits_and_reference_data": true
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "2.0.0",
+        "content_hash": "sha256:644c3185c37efeb342d00eadd6a1e41be84382335065838f3efa6396af82ebdb"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "fit",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "absent"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}
