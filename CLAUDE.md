@@ -47,9 +47,11 @@ This repository is public. Everything in it, this file and commit messages inclu
 - OpenMaterica work never edits MIME or MADDENING. Anything that tests OpenMaterica against MIME runs as a
   read-only spike that imports MIME and changes nothing. Requests of MADDENING go into
   `../plans/MIME_MADDENING_050_ASKS.md`, never into MADDENING itself.
-- Commits: design and documentation commits so far carry no sign-off; **every code commit carries a DCO
-  sign-off from the first one** (constraint in `CONTRIBUTING.md`). Push only when the maintainer asks. Design
-  work happens on `docs/design-foundation`, not `main`.
+- Commits: **every commit carries a DCO sign-off** (constraint in `CONTRIBUTING.md`); only the design commits
+  made before the first code commit are exempt. Push only when the maintainer asks. Every change reaches
+  `main` through a pull request: since 2026-10-14 a ruleset requires linear history, rebase merges and the
+  check "CI result", which fails on a commit without a sign-off. `docs/design-foundation` was squashed into
+  `main` in pull request #4.
 
 ## Confidentiality and licences
 
