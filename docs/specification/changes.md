@@ -164,3 +164,8 @@ whose `assumption` names it (BC-020); a fact the target names that the record la
 a `fit` or `scene_override` scope without a model or configuration hash differs (BC-023); and an interval's
 acceptances reach the read of its record. `read_side_contract.md` section 4 names the step or procedure that
 gives each reason.
+
+Settled for the schema files (maintainer, 2026-10-14): until a schema version is released, its files under
+`schema/<MAJOR.MINOR>/` may change; once released they never change, and a later minor version gets a
+directory of its own; a reader validates against the schema files shipped with it and never fetches a schema
+by its `$id` (`README.md`, "Versions and stability").

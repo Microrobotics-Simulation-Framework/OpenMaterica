@@ -68,6 +68,10 @@ Read them in this order.
 - Each version has a closed **writer schema** and an open **reader schema**, as JSON Schema files in `schema/`
   (`record_format.md` section 1). They are written with the first implementation; until then the tables of
   this specification define the shapes.
+- Until a schema version is released, its files under `schema/<MAJOR.MINOR>/` may change; once it is released
+  they never change, and a later minor version gets a directory of its own. A reader validates against the
+  schema files shipped with it and never fetches a schema by its `$id`, which is an identifier and need not
+  resolve. [not yet covered]
 
 ## Suites and case numbers
 
