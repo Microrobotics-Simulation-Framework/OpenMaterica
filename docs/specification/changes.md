@@ -55,4 +55,8 @@ conformance tree, and a check of a whole library leaves conformance trees out (`
 RC-121). Names (maintainer, 2026-10-14): the project, formerly Vesalius, is OpenMaterica; the reserved
 namespace, the family namespace, the USD binding purpose and the attribute namespace are `materica`, where
 drafts before that date used `vesalius`; the schema class prefix is `Materica`; and the local ids in
-`materica` are `MAT-NNNN` and `INT-NNNN` (`record_format.md` section 7; RC-012, RC-013).
+`materica` are `MAT-NNNN` and `INT-NNNN` (`record_format.md` section 7; RC-012, RC-013). Settled with S1's
+review (maintainer, 2026-10-14): a tolerance whose condition has no operating entry because
+`operating_conditions` is not an object gives `request_incomplete` with that `condition`, beside the member's
+own `request_incomplete` (`read_side_contract.md` section 1; PR-330); and the vocabulary files are published
+with the schemas, under `schema/0.1/vocabulary/` (`provenance.md` section 6).

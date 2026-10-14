@@ -36,18 +36,20 @@ for a numeric condition or `{"accept": [<strings>]}` for a token condition (`pro
   an operating range whose `lo` is greater than its `hi`. [PR-308] [PR-330]
 
 Where the fault concerns one condition (it lies inside that condition's entry, names a condition that is not
-registered, or is one of the last item's checks), the reason carries that `condition`. A request whose `want`
-belongs to a suite the reader does not claim is refused at the same step, with the reason `want_mismatch`
-(section 6). [PR-332] A request is refused, with the reason `request_unit_mismatch` and that `condition`,
-where an operating condition or tolerance of a registered numeric condition has a string `unit` other than the
-condition's registered unit, whatever else is wrong with that entry. Units are compared as strings, after JSON
-escapes are decoded, code point for code point; none is parsed or converted, so `"Cel"` is not `"K"`, and nor
-is `"K"` written with U+212A KELVIN SIGN. An operating condition's or tolerance's `unit` that is not a string
-is a fault of shape only (`request_incomplete`), and one on an entry for a token condition or a condition that
-is not registered is compared with nothing, since neither has a registered unit. [PR-320] A member that the
-shape above, or for `acceptances` `declarations.md`, does not name at that place is ignored, at any depth (a
-`unit` beside an `accept` list, say), except a `tolerance` or an `accept` list given for the other kind of
-condition, which is refused as above. [PR-330]
+registered, or is one of the last item's checks), the reason carries that `condition`. A tolerance whose
+condition has no operating entry because `operating_conditions` is not an object gives `request_incomplete`
+with that `condition`, beside the member's own `request_incomplete`, which carries none. [PR-330] A request
+whose `want` belongs to a suite the reader does not claim is refused at the same step, with the reason
+`want_mismatch` (section 6). [PR-332] A request is refused, with the reason `request_unit_mismatch` and that
+`condition`, where an operating condition or tolerance of a registered numeric condition has a string `unit`
+other than the condition's registered unit, whatever else is wrong with that entry. Units are compared as
+strings, after JSON escapes are decoded, code point for code point; none is parsed or converted, so `"Cel"` is
+not `"K"`, and nor is `"K"` written with U+212A KELVIN SIGN. An operating condition's or tolerance's `unit`
+that is not a string is a fault of shape only (`request_incomplete`), and one on an entry for a token
+condition or a condition that is not registered is compared with nothing, since neither has a registered unit.
+[PR-320] A member that the shape above, or for `acceptances` `declarations.md`, does not name at that place is
+ignored, at any depth (a `unit` beside an `accept` list, say), except a `tolerance` or an `accept` list given
+for the other kind of condition, which is refused as above. [PR-330]
 
 Two checks need the form, so they are made when the form is evaluated (section 3, step 11): a table or power
 law read with no operating value for its axis is refused with `request_incomplete` [PR-308], and one read over
@@ -340,7 +342,7 @@ tolerance of 1e-12, taken from the case file.
 | PR-327 | plain read | a reader without HS labels `hash_not_checked` the results that reach step 4, and still refuses, at step 1 and without that label, a stated hash that differs from a pin |
 | PR-328 | plain read | a reference with no candidate gives `malformed` when a supplied source did not parse, or parsed to a value that is neither a set-aside document nor an object with a string `id` and `version` (an array, an object with only an `id`); otherwise `absent`; a scene manifest or an engine crosswalk among the sources is set aside and never resolved |
 | PR-329 | plain read | candidates of one `id` and `version`: the one with the reference's hash is read, and identical copies are read once; none with the hash gives `pin_mismatch`, whether there is one candidate or several, unless one has an absent, `null` or ill-formed `content_hash`, or a supplied source is unreadable, which gives `malformed`; two with the hash whose bytes differ give `malformed` |
-| PR-330 | plain read | `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list) |
+| PR-330 | plain read | `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list) |
 | PR-331 | plain read | a reason appears once per code and condition, however many times its check fails; `condition` is present exactly on the codes section 2 lists |
 | PR-332 | plain read | a `want` of a suite the reader does not claim (`fit`, `coverage`, `reference_data` without the fits and reference data suite) gives `want_mismatch` at step 0 |
 | HS-010 | hash | a record whose recomputed hash differs from its own is refused (`hash_mismatch`), with one `pin_mismatch`, since its stated hash equals the pin |
