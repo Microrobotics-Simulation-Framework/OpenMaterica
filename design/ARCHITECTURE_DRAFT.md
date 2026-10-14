@@ -1,12 +1,12 @@
 # OpenMaterica: an architecture concept
 
-**Status: a concept draft for iteration.** Written 2026-10-11 in the shared planning directory (first as
-`plans/MIME_MATERIAL_MODEL_DRAFT.md`), moved here the same day, and revised the same day after a design
+**Status: a concept draft for iteration.** Written 2026-10-11 in the maintainer's private planning notes,
+moved here the same day, and revised the same day after a design
 review, on 2026-10-12 after a review against principles 9 and 10, again on 2026-10-12 after five prototypes
 and the maintainer's decisions on their findings, on 2026-10-12 and 2026-10-13 after an ecosystem survey, the
 maintainer's decisions on it and their reviews, on 2026-10-13 after the decisions taken before the first
 code, and on 2026-10-14 for the project's name (section 15). Referenced from
-`plans/MIME_030_STRUCTURE_DRAFT.md` (the **structure draft**) and used there by direction, not decision: MIME
+MIME's private 0.3.0 structure draft (the **structure draft**) and used there by direction, not decision: MIME
 0.3.0 aims between the realistic and ambitious sets of section 12.
 
 **Decided (maintainer, 2026-10-11):**
@@ -86,7 +86,7 @@ phantom or device has to feed many physics, and many simulators.
 How to read it: a statement with a file path was read in the tree or checked by running something;
 "recalled" marks something from memory that was not checked; "would" marks a proposal. Paths are relative
 to the workspace that holds the sibling repositories: `MIME:` marks a MIME path, `MADD:` a MADDENING path,
-`plans/` the shared planning directory (not versioned), and `i4h:` an Isaac for Healthcare repository.
+and `i4h:` an Isaac for Healthcare repository. Private planning documents are named, never linked.
 
 ## 1. What OpenMaterica is
 
@@ -2003,8 +2003,8 @@ Each feature names what it serves, as document, section number and *heading*:
 
 - **AD**: this architecture draft;
 - **DA**: `DOCUMENTATION_ARCHITECTURE.md`;
-- **SD**: the structure draft, `plans/MIME_030_STRUCTURE_DRAFT.md`;
-- **RS**: the scope doc, `plans/MIME_040_REFACTOR_SCOPE.md`.
+- **SD**: the structure draft, MIME's private 0.3.0 planning document;
+- **RS**: the scope doc, MIME's private refactor scope.
 
 ### 12.1 Three sets
 
@@ -2105,7 +2105,7 @@ their triggers in section 6.7. The prototypes of section 12.5 come before all of
 
 ### 12.3 MIME spikes
 
-The spikes live in `plans/spikes/`, as the Warp spike before them did. They import MIME without changing it
+The spikes live in the maintainer's private planning directory, as the Warp spike before them did. They import MIME without changing it
 and run on MADDENING `release/0.4.0`. Each records its result in a README; the experiments each uses are named
 in SD 4.1 *Things*. Each has a control: a run that must come out differently if the spike's claim is false.
 The controls were rewritten on 2026-10-12, because several of the first set could not fail (section 15).
@@ -2147,7 +2147,7 @@ validator's version field affects only OpenMaterica's own CI (DA 8.1 *Adopted un
 
 Added 2026-10-12, from a simplification pass (section 15): the design had been elaborated on paper, and
 every problem found so far was found by reading text. Before the package exists, each consumer's critical
-path gets the cheapest prototype that could show the design wrong, in `plans/spikes/`, with hand-written
+path gets the cheapest prototype that could show the design wrong, as a private spike, with hand-written
 JSON records and a throwaway reader. What survives shapes OpenMaterica 0.1, and the specification is then
 rewritten shorter from it.
 
