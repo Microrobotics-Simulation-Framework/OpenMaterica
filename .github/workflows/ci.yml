@@ -2,7 +2,8 @@
 # how fast a change gets its answer. So a first job (gate) finds what a change touched, and the other jobs skip
 # at job level when nothing relevant changed: a skipped job counts as passed for a required check, while a
 # workflow skipped by `paths` would leave the check pending. A docs-only change runs the gate alone, which also
-# checks sign-offs. Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
+# checks sign-offs and that nothing private is named.
+# Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
 # per-push critical path is the Hypothesis job at the `ci` profile, which runs whenever the core, its schemas
 # and vocabulary, the property tests or their configuration change. Keep it short: work that would lengthen the
 # longest job runs beside it as a job of its own (the generated files) or a shard (the property tests), so that
@@ -59,6 +60,30 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: python3 scripts/check_signoff.py "$BASE" "$HEAD"
+
+      # The tracked files, and the messages of the commits this event brings (on a push, all of main's when the
+      # commit before it is unknown). Without the secret, as on a fork, the private paths are still checked and
+      # the names are not, with a warning (CONTRIBUTING, "Confidentiality").
+      - name: No private name or path in the tracked files or the commit messages
+        env:
+          CONFIDENTIAL_SCAN_KEY: ${{ secrets.CONFIDENTIAL_SCAN_KEY }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          if [ -z "$CONFIDENTIAL_SCAN_KEY" ]; then
+            echo "::warning::CONFIDENTIAL_SCAN_KEY is not set, so the private names were not checked; the private paths were"
+          fi
+          case "$EVENT" in
+            pull_request) range="$PR_BASE..$PR_HEAD" ;;
+            push)
+              range="$PUSH_AFTER"
+              if git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then range="$PUSH_BEFORE..$PUSH_AFTER"; fi ;;
+            *) range="" ;;
+          esac
+          python3 scripts/check_confidential.py ${range:+--messages "$range"}
 
       - name: Changed paths
         id: paths
