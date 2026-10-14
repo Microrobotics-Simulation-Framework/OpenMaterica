@@ -832,6 +832,11 @@ changes by more than the uncertainty its record states for that value (a populat
 measure), a condition or specimen fact changes, or a parameter set moves to another family version; **minor**
 for a new value or section; **patch** for provenance wording. A family: any change is a new version.
 
+A released schema version's files, under `schema/<MAJOR.MINOR>/`, never change, not even their descriptions
+or READMEs, and CI enforces it (`tests/spec_sync/test_released_schemas.py`). So a patch version changes the
+specification's wording only; a fix inside a schema file waits for the next minor version and its own
+directory (maintainer, 2026-10-15).
+
 ### 7.2 Changes to the schema
 
 A schema change needs, in one pull request: the specification text, the conformance cases, the record
