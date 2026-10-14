@@ -1,0 +1,216 @@
+# Why CI is shaped this way. The repository is private, on GitHub Team: 3,000 Actions minutes a month, each
+# Linux job billed rounded up to a whole minute. So there are few jobs, and a first job (gate) finds what a
+# change touched; the other jobs skip at job level, because a skipped job counts as passed for a required check
+# while a workflow skipped by `paths` would leave the check pending. A docs-only change runs the gate alone,
+# which also checks sign-offs. Pull requests test the oldest and newest Python; main, the weekly run and a
+# manual run test every supported one. Hypothesis is never cut to save minutes: the `ci` profile runs whenever
+# the core, the property tests or their configuration change and on every code change to main, and the `deep`
+# profile weekly and on manual runs.
+# When the repository goes public (Actions minutes are then free): set the pull-request Python list in `tests`
+# to all five, and the path filter may go.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1" # Mondays, 04:23 UTC
+  workflow_dispatch:
+
+# One group per ref and event, so that a push to main never cancels the weekly run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.13.0"
+
+jobs:
+  gate:
+    name: sign-off and changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.paths.outputs.code }}
+      hypothesis: ${{ steps.paths.outputs.hypothesis }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Every commit signed off (CONTRIBUTING constraint 1)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/check_signoff.py "$BASE" "$HEAD"
+
+      - name: Changed paths
+        id: paths
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          code='^(src/|tests/|scripts/|docs/specification/|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
+          hypothesis='^(src/materica/core/|tests/property/|tests/conftest\.py$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
+          case "$EVENT" in
+            pull_request) changed=$(git diff --name-only "$PR_BASE...$PR_HEAD") ;;
+            push) changed=$(git diff --name-only "$PUSH_BEFORE" "$PUSH_AFTER" 2>/dev/null) || changed=everything ;;
+            *) changed=everything ;;
+          esac
+          if [ "$changed" = everything ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "hypothesis=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s\n' "$changed"
+          grep -qE "$code" <<< "$changed" && touched_code=true || touched_code=false
+          grep -qE "$hypothesis" <<< "$changed" && touched_core=true || touched_core=false
+          echo "code=$touched_code" >> "$GITHUB_OUTPUT"
+          # On main, every code change runs the Hypothesis job.
+          if [ "$EVENT" = push ]; then touched_core=$touched_code; fi
+          echo "hypothesis=$touched_core" >> "$GITHUB_OUTPUT"
+
+  static:
+    name: lint, types, wheel
+    needs: gate
+    if: needs.gate.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - name: Cache pyright's Node package
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pyright-python
+          key: pyright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run mypy
+      - run: uv run pyright
+
+      - run: uv build
+      - name: The wheel holds py.typed, the conformance data byte for byte, and its PEP 639 licence
+        run: uv run python scripts/check_wheel.py dist/*.whl
+      - name: A consumer's code type-checks against the installed wheel
+        run: |
+          uv venv "$RUNNER_TEMP/consumer"
+          uv pip install --python "$RUNNER_TEMP/consumer/bin/python" dist/*.whl
+          mkdir "$RUNNER_TEMP/snippet"
+          cp tests/typing/consumer_snippet.py "$RUNNER_TEMP/snippet/"
+          cd "$RUNNER_TEMP/snippet"
+          uv run --project "$GITHUB_WORKSPACE" mypy --strict --python-executable "$RUNNER_TEMP/consumer/bin/python" consumer_snippet.py
+          uv run --project "$GITHUB_WORKSPACE" pyright --pythonpath "$RUNNER_TEMP/consumer/bin/python" consumer_snippet.py
+      - name: Control, the same check fails once py.typed is gone
+        run: |
+          rm "$("$RUNNER_TEMP/consumer/bin/python" -c 'import materica, pathlib; print(pathlib.Path(materica.__file__).parent / "py.typed")')"
+          cd "$RUNNER_TEMP/snippet"
+          if uv run --project "$GITHUB_WORKSPACE" mypy --strict --python-executable "$RUNNER_TEMP/consumer/bin/python" consumer_snippet.py; then
+            echo "::error::the snippet type-checked without py.typed, so the check above cannot fail"
+            exit 1
+          fi
+
+  tests:
+    name: tests (Python ${{ matrix.python }})
+    needs: gate
+    if: needs.gate.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # Pull requests: the oldest and newest Python. Main, the weekly run and a manual run: all five.
+        python: ${{ fromJSON(github.event_name == 'pull_request' && '["3.11", "3.15"]' || '["3.11", "3.12", "3.13", "3.14", "3.15"]') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # Every test, the property tests at the `dev` profile: Python's json differs between versions, so the
+      # properties run on each; their depth is the Hypothesis job's.
+      - run: uv run pytest
+        env:
+          MATERICA_HYPOTHESIS_PROFILE: dev
+
+  hypothesis:
+    name: hypothesis (${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }})
+    needs: gate
+    if: needs.gate.outputs.hypothesis == 'true'
+    runs-on: ubuntu-latest
+    # `deep` took 14.5 minutes and `ci` under a minute, on two workers locally (2026-10-14): about three times that.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 45 || 10 }}
+    env:
+      MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The newest Python, because it runs this suite fastest: the `ci` profile took 47 to 49 s on 3.15 and 63
+      # to 66 s on 3.11, two workers each (measured 2026-10-14). Every Python runs the properties at `dev`.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.15"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # The example database, so that an example that failed once is replayed first. Cache entries are
+      # immutable, so each run saves under its own key and restores the latest; it saves even when the run
+      # fails, since a failing example is what most needs keeping.
+      - name: Restore the example database
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: hypothesis-${{ runner.os }}-
+      # A worker per vCPU: minutes are billed by wall time. Work stealing keeps the long properties from finishing
+      # last on one worker.
+      - name: Property tests and mutants, with the draw-rejection and feature audits (tests/property/conftest.py)
+        run: uv run pytest tests/property -n auto --dist worksteal --hypothesis-show-statistics
+      - name: Save the example database
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-${{ github.run_id }}
+
+  result:
+    name: CI result
+    # The one check the ruleset on main requires. A matrix job skipped by its `if` reports under another name, so
+    # requiring the jobs by name would leave docs-only pull requests waiting; a skipped job passes this one.
+    needs: [gate, static, tests, hypothesis]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: No needed job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

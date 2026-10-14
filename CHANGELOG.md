@@ -93,6 +93,10 @@ recorded in that repository's CHANGELOG.
   generated from them; the package typed (`py.typed`); a Python 3.11 floor under a standing rule; record
   checks that need a registry, a copy or the history moved to the library's tooling; SPDX headers on source
   files.
+- The first code: the package (`pyproject.toml` with uv's build backend, `uv.lock`, `py.typed`, no run-time
+  dependency, the licence as an SPDX expression); strict JSON reading (`materica.core.jsonio`), RFC 8785
+  serialisation (`materica.core.canonical`) and the content hash (`materica.core.hashing`, exported as
+  `materica.content_hash`); CI, with a sign-off check on every commit of a pull request.
 
 ### Changed
 - Renamed before the first release (maintainer, 2026-10-14): the project is OpenMaterica, formerly developed
@@ -111,6 +115,13 @@ recorded in that repository's CHANGELOG.
 ### Families
 ### Data
 ### Verification
+- The conformance-case runner. Of the 416 case files, the 51 `content_hash` cases (HS-001 to HS-003) run and
+  pass; the 365 reads and listings are reported as not yet runnable, never as passed. Nine broken
+  implementations, one fault each, each fail a real case.
+- Property tests of the JSON reader, the RFC 8785 serialisation and the content hash, under a draw-rejection
+  audit and a feature audit; 32 mutants of the core, each killed by its property within the `ci` profile's
+  examples at both tree sizes; Hypothesis profiles `dev`, `ci` and `deep`, the last at the original sizes.
+
 ### Security
 ### Known Anomalies
 - Registry created, with no entries.

@@ -103,6 +103,22 @@ live in a repository of its own; until it exists, its rules are kept here.
 - Supported Python versions: 3.11 and later, and every Python that is not at end of life and that a named
   consumer or engine needs in-process. CI runs each one.
 
+## Development
+
+The project uses [uv](https://docs.astral.sh/uv/). `uv.lock` pins the development tools, and CI installs them
+with `uv sync --locked`, so a lock file out of date with `pyproject.toml` fails it.
+
+```sh
+uv sync                                  # .venv with the package, editable, and the dev group
+uv run pytest                            # every test; the summary counts the conformance cases
+uv run ruff check && uv run ruff format --check
+uv run mypy && uv run pyright
+```
+
+Property tests take their depth from `MATERICA_HYPOTHESIS_PROFILE`: `dev` (the default), `ci` or `deep`
+(`tests/README.md`). Without uv, `pip install --group dev -e .` (pip 25.1 or later) installs the same tools,
+unpinned.
+
 ## Identifier prefixes
 
 | Category | Format | Example |

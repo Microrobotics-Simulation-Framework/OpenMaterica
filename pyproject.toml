@@ -1,0 +1,63 @@
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"
+
+[project]
+name = "openmaterica"
+version = "0.1.0.dev0"
+description = "Material records for simulation, and the reader of their specification"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = []
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.140",
+    "mypy>=1.18",
+    # The release MADDENING's CI pins.
+    "pyright==1.1.414",
+    "pytest>=8.4",
+    "pytest-xdist>=3.8",
+    "rfc8785>=0.1.4",
+    "ruff>=0.13",
+]
+
+# The distribution is `openmaterica` and the package it installs `materica`; without this, uv_build looks for
+# `src/openmaterica`.
+[tool.uv.build-backend]
+module-name = "materica"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+xfail_strict = true
+markers = [
+    "features: the least share of a property's examples that must show each feature (tests/property/audits.py)",
+]
+filterwarnings = ["error"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src/materica", "tests", "scripts"]
+
+[tool.pyright]
+include = ["src/materica", "tests", "scripts"]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+
+[tool.ruff]
+# Python only: ruff also formats code blocks in Markdown, which would rewrite the specification's examples.
+include = ["*.py", "*.pyi"]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "RUF", "PT"]
