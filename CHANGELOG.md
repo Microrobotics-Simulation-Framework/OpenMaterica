@@ -12,6 +12,13 @@ recorded in that repository's CHANGELOG.
 
 ## [Unreleased]
 
+## [0.1.0.dev1] - 2026-10-14
+
+A development pre-release, published to rehearse the release workflow and to hold the name on PyPI. It holds
+S1: strict JSON, RFC 8785 and the content hash; records, their store and the read up to step 5; and the
+schemas and vocabulary of 0.1, whose files may still change before 0.1.0. The entries below are everything
+up to this release.
+
 ### Added
 - Architecture concept (`design/ARCHITECTURE_DRAFT.md`).
 - Documentation architecture plan (`DOCUMENTATION_ARCHITECTURE.md`), contribution rules (`CONTRIBUTING.md`),
