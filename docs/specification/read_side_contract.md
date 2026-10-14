@@ -84,9 +84,11 @@ an operating range of its axis gives `want_mismatch` until a read over a band is
 [PR-321] One check needs the field's specimen facts, so it is made when the conditions are checked (section 3,
 step 10): two implied conditions that both apply to the field (its specimen states each one's fact and token)
 and supply different values for one condition give `request_incomplete` with that `condition`, whether or not
-the record states that condition. This fault, like step 11's `request_incomplete`, is the request's, so where
-either arises in one alternative it ends the read, and the alternative is not set aside (section 3, step 7).
-[PR-316] [PR-308]
+the record states that condition. Step 10 makes this check first, and where it fails it checks no condition,
+an exception to section 2 item 2: neither value fills that condition, and the result holds no `conditions`
+(section 2 item 6). This fault, like step 11's `request_incomplete`, is the request's, so where either arises
+in one alternative it ends the read, and the alternative is not set aside (section 3, step 7). [PR-316]
+[PR-308]
 
 ## 2. The read result
 
@@ -96,11 +98,11 @@ either arises in one alternative it ends the read, and the alternative is not se
 | `reasons` | a list of `{"code", "condition"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
 | `value` | present unless `not_met` without an assumption; its shape follows `want` (section 6) |
 | `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`: its index among the stored alternatives; its value as `want` shapes it, or, where `want` cannot give its form, its form's member as stored, with no nominal applied (section 6); and the other members as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
-| `unit` | the field's unit |
+| `unit` | the field's unit, as stored: a unit held as a status object keeps its `reason` [PR-010] |
 | `conditions` | one entry per condition checked (section 5): `{"name", "status", "record"?, "operating"?}` (item 6) |
 | `specimen` | the field's specimen facts, the section's merged with the field's |
 | `statistics` | as stored |
-| `provenance` | `{"origin", "review", "source", "derivation"}`: the origin token; the review's `result`, or its status object (`provenance.md` section 2 item 6); the source key, where there is one; and for origin `derived` the `derivation`'s `method`, `inputs`, `assumptions`, `input_specimens` and `mixed_conditions` (`provenance.md` section 5) |
+| `provenance` | `{"origin", "review", "source", "derivation"}`: the origin token; the review as `provenance.md` section 2 item 6 reads it: as found, a known `result` included, or `{"status": "not_checked"}` [PR-109]; the source key, where there is one; and for origin `derived` the `derivation`'s `method`, `inputs`, `assumptions`, `input_specimens` and `mixed_conditions` (`provenance.md` section 5) |
 | `labels` | the result's labels, from this list only: `user_extracted` (read through a fill-in), `no_independent_witness` (a parameter set), `mean_of_specimen_fits` (a parameter set whose fit is the mean of per-specimen fits, `fits_and_reference_data.md` section 2) [PR-333], `mixed_conditions` (a derived value whose inputs' conditions differ), `hash_not_checked` (section 3), `initial_value_only` (a trainable field, `declarations.md`), and the field's `label`; under `no_pick`, `hash_not_checked` alone, each alternative's other labels sitting in its `alternative_values` entry |
 | `assumption` | where the value rests on a declared extrapolation or nominal: the declaration it rests on, as `{"acceptance"}` with its kind's own members as the request gives them, `basis` aside |
 
@@ -126,15 +128,16 @@ either arises in one alternative it ends the read, and the alternative is not se
    specimen facts and a `derivation`. A member the reader does not know is left out (`record_format.md`
    section 10). [PR-337]
 6. `reasons` and `labels` are always present, `labels` perhaps empty. `conditions` is present once step 10 has
-   run, with each name once and in no set order. An entry's `record` is the record's entry, or the value an
-   implied condition supplies with basis `implied`, and is omitted where neither the record holds the
-   condition nor an implied condition the read applies supplies it, or where the reader does not know its
-   name; its `operating` is the request's operating condition, omitted where the request gives none. `unit` is
-   present exactly when `value` or `alternative_values` is; `specimen` (an empty object where no fact is
-   stated) and `provenance` exactly when `value` is, and so is `statistics`, except for evidence, which has
-   none. Under `no_pick` the result holds none of `conditions`, `specimen`, `statistics` and `provenance`:
-   each `alternative_values` entry holds its alternative's, by these rules. `assumption` is present only as
-   item 3 says. [PR-336] [PR-311] [PR-013]
+   run to its end, and only then, with each name once and in no set order: a read that two disagreeing
+   implied conditions end at step 10 (section 1), or that step 7 ends with `want_mismatch` over alternatives,
+   holds none. An entry's `record` is the record's entry, or the value an implied condition supplies with
+   basis `implied`, and is omitted where neither the record holds the condition nor an implied condition the
+   read applies supplies it, or where the reader does not know its name; its `operating` is the request's
+   operating condition, omitted where the request gives none. `unit` is present exactly when `value` or
+   `alternative_values` is; `specimen` (an empty object where no fact is stated) and `provenance` exactly when
+   `value` is, and so is `statistics`, except for evidence, which has none. Under `no_pick` the result holds
+   none of `conditions`, `specimen`, `statistics` and `provenance`: each `alternative_values` entry holds its
+   alternative's, by these rules. `assumption` is present only as item 3 says. [PR-336] [PR-311] [PR-013]
 
 ## 3. The read procedure
 
@@ -194,10 +197,11 @@ far; a step that gives `unknown` does not.
    would let it apply. Otherwise `want` refuses only the alternative a pick names, or the
    one left. So a grade's specification limits beside a lot's measured constant give `no_pick` until the
    consumer picks (`provenance.md` section 6.2 item 5). A pick's index counts the stored alternatives,
-   set-aside ones included. [PR-304] [PR-013] [PR-044] [PR-338] What a pick gives whose `index` is not a
-   whole number, is negative or lies past the last stored alternative, or that names a field holding no
-   alternatives, is not yet specified; a reader never reads another alternative in its place. [not yet
-   covered]
+   set-aside ones included. [PR-304] [PR-013] [PR-044] [PR-338] Whether a `no_pick` result also reports an
+   alternative's own reasons (its `condition_unstated`, say) is not yet specified. [not yet covered]
+   What a pick gives whose `index` is not a whole number, is negative or lies past the last stored
+   alternative, or that names a field holding no alternatives, is not yet specified; a reader never reads
+   another alternative in its place. [not yet covered]
 8. **Form and tokens.** Refuse a form the field's row does not allow (`form_not_registered`), a value field,
    form or section `specimen` that breaks its shape (`record_format.md` sections 5 and 6, `provenance.md`),
    such as a member missing, of the wrong JSON type or `null`, a member one slip from a member named at its
@@ -467,7 +471,7 @@ the file states for `binary32`. An evaluator claims the suite at the precision i
 | PR-313 | plain read | a stated condition with no tolerance or accept list gives `unknown` (`condition_unchecked`) |
 | PR-314 | plain read | a record range against an operating value, widened by the tolerance |
 | PR-315 | plain read | a token condition against an accept list |
-| PR-316 | plain read | an implied condition is checked like a stated one; it fills an unstated or absent condition, never one holding another status object; one naming another field, or located at another record or region, at an interval or nowhere, is not applied; a condition it fills is checked even where nothing else names it (`condition_unchecked` with no tolerance); two that apply and disagree give `request_incomplete`, even where the record states that condition, and in one alternative end the read rather than set it aside |
+| PR-316 | plain read | an implied condition is checked like a stated one; it fills an unstated or absent condition, never one holding another status object; one naming another field, or located at another record or region, at an interval or nowhere, is not applied; a condition it fills is checked even where nothing else names it (`condition_unchecked` with no tolerance); two that apply and disagree give `request_incomplete`, even where the record states that condition, and in one alternative end the read rather than set it aside, neither value filling the condition and the result holding no `conditions` |
 | PR-317 | plain read | a constant's range is its conditions; a table's tolerance never widens the table |
 | PR-318 | plain read | `want: value` on each form |
 | PR-319 | plain read | `want: reference_data` on reference data and on another form |

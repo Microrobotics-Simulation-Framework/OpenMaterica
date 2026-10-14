@@ -230,8 +230,9 @@ lists of `contact_category`, `contact_duration` and `material_form` will follow 
    kept, or not at all: one holding `withheld` in some of those members and not in every one breaks its
    shape (`form_invalid`). Any other status stands in an entry's member as in any required member
    (`provenance.md` section 1), `unstated` for a contact duration the source does not give, say. A reader
-   returns an entry with its statuses. A read gives `withheld` when every entry is withheld, and `unknown`
-   with the reason `entries_withheld` when some are (`read_side_contract.md` section 3, step 8). [PR-052]
+   returns an entry with its statuses and its `provenance` whole, never cut to the members a result's own
+   `provenance` holds. [PR-038] A read gives `withheld` when every entry is withheld, and `unknown` with the
+   reason `entries_withheld` when some are (`read_side_contract.md` section 3, step 8). [PR-052]
 3. `conditions` holds no registered condition: one there is a shape error (`form_invalid`), while a name the
    reader does not know gives `unknown`, as anywhere (section 10). [PR-052] [PR-031]
 
@@ -518,10 +519,10 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-007 | plain read | a referenced record of an unknown type is refused (`unknown_type`) |
 | PR-008 | plain read | a record with an unknown section is read for the sections the reader knows, whatever the unknown section holds (`null`, a number, an object); a section whose name is one slip from a known section's (`fluids`) refuses every field read from the record (`form_invalid`) |
 | PR-009 | plain read | a field's specimen fact overrides its section's |
-| PR-010 | plain read | a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8 |
+| PR-010 | plain read | a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8; a unit held as a status object is returned as stored, its `reason` included |
 | PR-011 | plain read | an overlay replaces a whole field, provenance included, with its own specimen |
 | PR-012 | plain read | an undeclared overlay is not applied |
-| PR-013 | plain read | alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`) |
+| PR-013 | plain read | alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions` |
 | PR-014 | plain read | every form carries its range |
 | PR-015 | plain read | a constant is returned with its conditions |
 | PR-016 | plain read | linear and log-log tables interpolate by their scheme |
@@ -544,7 +545,7 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-035 | plain read | a label is returned with the value and never refused as an unknown family |
 | PR-036 | plain read | a form the field's row does not allow is refused (`form_not_registered`): a power law, a parameter set and reference data on every 0.1.0 field, a parameter set also `family_suite_absent` without the family evaluation suite; a composition basis the row does not allow |
 | PR-037 | plain read | an `axis_unit`, condition unit or `plus_minus` unit other than the registered one is refused (`unit_mismatch`), compared code point for code point, and so is a `unit` on a token condition |
-| PR-038 | plain read | biocompatibility evidence is returned as a list of reports |
+| PR-038 | plain read | biocompatibility evidence is returned as a list of reports, each with its `provenance` whole |
 | PR-039 | plain read | an overlay whose base differs from the record in use is refused (`overlay_base_mismatch`) |
 | PR-041 | plain read | two declared overlays replacing one field are refused (`overlay_conflict`) |
 | PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`) |

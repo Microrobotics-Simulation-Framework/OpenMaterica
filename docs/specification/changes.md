@@ -169,3 +169,13 @@ Settled for the schema files (maintainer, 2026-10-14): until a schema version is
 `schema/<MAJOR.MINOR>/` may change; once released they never change, and a later minor version gets a
 directory of its own; a reader validates against the schema files shipped with it and never fetches a schema
 by its `$id` (`README.md`, "Versions and stability").
+
+Settled with S2's conformance cases (maintainer, 2026-10-15), six points the cases raised: two implied
+conditions that apply and disagree are checked first at step 10, and where they do, neither value fills the
+condition, no condition is checked and the read ends, its result holding no `conditions` (PR-316);
+`conditions` is present only once step 10 has run to its end, so not after a step-7 `want_mismatch` over
+alternatives (PR-013); a review holding a known `result` is returned as found, as `provenance.md` section 2
+item 6 already said, and `read_side_contract.md` section 2 now says so too (PR-109); a unit held as a status
+object, the evidence field's included, is returned as stored, its `reason` with it (PR-010); an evidence entry
+is returned with its `provenance` whole (PR-038); and which of an alternative's own reasons a `no_pick` result
+reports is not yet specified.
