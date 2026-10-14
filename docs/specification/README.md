@@ -47,7 +47,8 @@ Read them in this order.
 - **Status objects.** Where a member has no ordinary value it holds a status object: an object whose only
   members are `status`, with one of five tokens, and optionally `reason`, a text. The tokens are `unstated`,
   `not_checked`, `none`, `not_applicable` and `withheld` (`provenance.md` section 1). A member named `status`
-  in any other object is not a status object and has its own tokens, and every other object avoids the name.
+  in any other object is not a status object and has its own tokens (a read result's, say), and in a record
+  every other object avoids the name.
 - **Results.** A read gives `met`, `not_met` or `unknown`, with a list of reason codes
   (`read_side_contract.md`). "Refuse" means the result `not_met`, never an error. "Unknown" carries the value
   where the record holds one. Under a declared extrapolation or nominal, the status stays `not_met`, the value
@@ -97,12 +98,12 @@ Numbers are reserved by document, so each document can add cases without collidi
 | Document | Ranges |
 |---|---|
 | `record_format.md` | PR-001 to PR-099; HS-001 to HS-009; RC-001 to RC-019; RC-120 to RC-139 |
-| `provenance.md` | PR-100 to PR-149; RC-020 to RC-049 |
-| `uncertainty.md` | PR-150 to PR-199; SA-001 to SA-049; FE-040 to FE-049; RC-050 to RC-059 |
+| `provenance.md` | PR-100 to PR-149; RC-020 to RC-049; RC-200 to RC-219 |
+| `uncertainty.md` | PR-150 to PR-199; SA-001 to SA-049; FE-040 to FE-049; RC-050 to RC-059; RC-160 to RC-179 |
 | `fits_and_reference_data.md` | FD-001 to FD-049; RC-080 to RC-089 |
 | `geometry.md` | SC-001 to SC-049; RC-090 to RC-099 |
 | `read_side_contract.md` | PR-300 to PR-349; HS-010 to HS-019; TE-001 to TE-049 |
-| `model_families.md` | FE-001 to FE-039; RC-060 to RC-079 |
+| `model_families.md` | FE-001 to FE-039; RC-060 to RC-079; RC-180 to RC-199 |
 | `usd_binding.md` | UR-001 to UR-099; RC-100 to RC-119; RC-140 to RC-159; EA-001 to EA-049 |
 | `mixing_rules.md` | MX-001 to MX-049 |
 | `declarations.md` | BC-001 to BC-049 |
@@ -145,6 +146,11 @@ is omitted. In this example, `water_fixture.json` holds, as an illustrative fixt
 constant of exactly 0.000692 Pa·s at 310.15 K, with its shear rate unstated. `suite` is one of `plain_read`,
 `hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`, `table_evaluation`, `mixing`,
 `family_evaluation`, `sampling`, `build_checks`, `record_checks` and `engine_adapter`.
+
+An object in a compared member is compared member by member, both ways, so a member the result holds and
+`expected` lacks fails. Strings are compared code point for code point; `reasons` and `labels` as above;
+`conditions` as a set keyed by `name`; an `alternative_values` entry's `labels` and `conditions` as the
+result's; and every other list in order, unless this section compares it as a set.
 
 **Variants.** A case with several arms (PR-002 has one per fault) is given as variants, one file per arm, each
 with a `variant` member, matching `[a-z0-9_]+` in full, that names its file: `PR-002.bom.json`,
@@ -196,6 +202,23 @@ Three kinds of case take other inputs. Each names the schema files it passes in 
   written and their values, or the reasons the adapter refused. A build-check case of an engine model
   (BC-039 to BC-041) names the same inputs and expects the build's results.
 
+A **record-check case** names its records in `inputs.records`, with the path each is given from where a rule
+needs one (RC-121), and has no `request`. `expected.items` lists the findings and `expected.listing` the facts
+the check lists without failing (an inadmissible ensemble member, say: `uncertainty.md` section 2), each as
+`{"item": "<the rule's case id>", "document", "pointer"}`, both compared as sets. A finding fails the check; a
+listing never does.
+
+A **sampling case** may name `{"operation": "transform_draws", "normals": [...], "uniforms": [...]}` in
+`request`. The runner maps the given standard normals and uniforms through the record's structure (a
+`multivariate_normal` through the lower Cholesky factor of its covariance in `covariance.order`, then back
+from its space; a lognormal through matched moments; an ensemble member by index `floor(u * K)` in stored
+order; a balanced draw by group `floor(u1 * G)` in order of first appearance, then member `floor(u2 * n_g)`),
+and its result holds, per draw, `{"params", "verdicts", "accepted"}`, compared at the case's relative
+tolerance. A statistical arm instead compares a count with an exact region, `"compare": {"region": {"member",
+"kind": "binomial" or "negative_binomial", "p", "n", "false_failure"}}`, passing when the count lies in the
+binomial or negative-binomial region whose false-failure rate is `false_failure`; `p` is always analytic, and
+no case compares one sampler's draws with another's. [SA-022] [SA-024]
+
 ## What 0.1.0 covers
 
 Schema 0.1.0 is the minimal set of the AD's phasing (AD 12.1, M1 to M10) with the scene documents,
@@ -210,5 +233,8 @@ scaffold that drafts engine crosswalks is an `openmaterica-authoring` tool, test
 overrides and the label crosswalk's USD form wait for the minor version that brings their first consumer. The
 other forms (the power law, whose first field arrives with the acoustic section; the model parameter set;
 reference data), families and mixing are specified here so that 0.1.0's records do not have to change when
-they arrive; their suites are optional until that version (AD 12.2). Every suite is a claim a reader chooses
-to make: a reader of plain records need not claim USD read.
+they arrive; their suites are optional until that version (AD 12.2). So are sampling (the sampling suite and
+BC-021), direction-dependent values (SC-016), and what the uncertainty structures, families and declarations
+specify for them: `params` per structure, the admissibility manifest, ensembles' levels and groups, nominal
+vectors, the sampling contract, the declaration's `sampling` and `population_level`, and `precision`. Every
+suite is a claim a reader chooses to make: a reader of plain records need not claim USD read.

@@ -54,6 +54,10 @@ version; this section says what it MUST fix. [RC-065]
                    "vectors": "vectors/convert_cauchy.json"}],
   "parameters": [{"name": "E", "unit": "Pa", "meaning": "spring modulus"},
                  {"name": "eta", "unit": "Pa.s", "meaning": "dashpot viscosity"}],
+  "admissibility": [{"name": "E_positive", "kind": "bound", "parameter": "E",
+                     "lower": 0.0, "upper": {"status": "none"}, "inclusive": [false, false]},
+                    {"name": "eta_positive", "kind": "bound", "parameter": "eta",
+                     "lower": 0.0, "upper": {"status": "none"}, "inclusive": [false, false]}],
   "modes": ["uniaxial_tension", "uniaxial_compression"],
   "state": [],
   "events": [],
@@ -69,18 +73,36 @@ version; this section says what it MUST fix. [RC-065]
 | Measures | the input measure and the output measure, both required, with conversion vectors between the measures a consumer may use; every measure and symbol named, since one name can cover two measures (AD 4.5) [RC-068] |
 | Equations | the energy or response function, normatively; the treatment of incompressibility; the domain of each term, where the definition switches between forms [not yet covered] |
 | Parameters | names, units, meaning, order; `parameters` in the manifest [RC-065] |
-| Admissibility | the constraints a parameter set MUST satisfy, with admissibility vectors on both sides of each constraint [RC-070] |
+| Admissibility | the constraints a parameter set MUST satisfy, as functions of its parameters alone, each named, in `admissibility`, in the family's order: `bound` (one parameter between `lower` and `upper`, either of which may be `{"status": "none"}`, with `inclusive` saying for each end whether it is admissible); `linear` (`sum(c_i * u_i) <= upper`, or `<` where not inclusive, with `c_i` in `coefficients` and `u_i` the parameter in `space`, `identity` or `log`); `defined` (named here, and defined in the definition document). No equalities and no expression language. Admissibility vectors on both sides of each constraint [RC-070] [RC-180] |
 | Golden vectors | section 4 |
 | Reference implementation | plain numpy, written for clarity, shipped with the family, never in the core; for an evolution family, its integrator and its event location [RC-065] |
 | Modes | the loading modes the family covers, as tokens of its own (`modes` in the manifest); a parameter set's coverage and check points name only these, since coverage has no global vocabulary of modes (`fits_and_reference_data.md` section 3) [RC-068] |
 | Coverage measures | the measures in which a parameter set's coverage is stated independently of the mode (`principal_stretches`, `invariants`, `strain_rate`, `field_magnitude`, `frequency`) (section 8) [RC-068] |
+
+The manifest's `admissibility` follows these rules. [RC-180] [RC-183]
+1. Constraints are listed in the family's order, each with a unique `name`.
+2. Every constraint fails a value that is not finite.
+3. A `linear` constraint in `log` space follows `bound`s requiring each of its parameters to be positive, and
+   fails where any of them is not.
+4. No constraint is an equality.
+5. Admissibility depends on the parameters only; a condition over a range of states is a matter of
+   evaluation and coverage (section 8).
+
+A checker evaluates the `bound` and `linear` constraints of any family from its manifest, running none of its
+code, and reports the `defined` constraints of a family outside `materica.` "not checked (third-party
+family)". [RC-181]
 
 ## 4. Golden vectors
 
 1. Golden vectors are data files in `vectors/`, each case with its inputs, expected outputs and the precision
    they are stated to. They are frozen with the family version. [RC-069]
 2. They include edge cases and admissibility cases; cases on both sides of every switch between forms of a
-   function; and consistency cases wherever continuity fixes a derived constant. [RC-070]
+   function; and consistency cases wherever continuity fixes a derived constant. [RC-070] An admissibility
+   vector is `{"params", "verdicts": {<constraint name>: true or false}}`. Vectors on a boundary use values
+   whose partial sums are exact in binary32 in any order; vectors off it lie at least the margin the file
+   states from it; the file states the precisions it holds for. A consumer that evaluates or samples the
+   family's parameter sets reproduces every verdict at the precision it declares (`declarations.md` section
+   1), and the manifest's own `bound` and `linear` constraints reproduce them too. [FE-013] [RC-182]
 3. For an evolution family, a case is an initial state and an input history, with the state, the outputs and
    the event times expected at stated times, and tolerances that allow for the integrator's discretisation.
    Analytic cases pin the integrator and the event location: relaxation after a step, creep under constant
@@ -125,13 +147,21 @@ version; this section says what it MUST fix. [RC-065]
 }
 ```
 
-1. `params` holds every parameter the family names, in the family's convention and units. A missing or extra
-   parameter refuses the value (`parameters_mismatch`). [FE-002]
+1. `params` holds every parameter the family names, in its convention and units, where the source reports one
+   vector: a reported set, a single fit, or the mean of per-specimen fits (`method_type:
+   mean_of_specimen_fits`, `fits_and_reference_data.md` section 2), which under `marginals` is the vector of
+   the parameters' means. It holds `{"status": "not_applicable"}` under `ensemble` and `interval`, and under
+   `independent` where the source reports no vector. A vector is never assembled from members or bounds. A
+   missing or extra parameter refuses the value (`parameters_mismatch`), in a vector and in each member's
+   `params`. [FE-002] [RC-184]
 2. Before using `params`, a consumer evaluates its own implementation at every check point and compares
    within the stated tolerance: a point passes when `abs(actual - expected) <= absolute + relative *
    abs(expected)`. A mismatch refuses the value (`check_point_failed`). [FE-003]
 3. `uncertainty` is specified in `uncertainty.md`; `fit` and `coverage` in `fits_and_reference_data.md`.
-4. A parameter set that fails the family's admissibility constraints is refused (`inadmissible`). [FE-004]
+4. A parameter set whose `params` vector, or a declared nominal vector (`declarations.md` section 4.1), fails
+   the family's admissibility constraints is refused (`inadmissible`). This does not apply to ensemble members
+   or interval corners, which samplers reject draw by draw (`uncertainty.md` section 3). [FE-004] A reader
+   SHOULD name the failed constraints in `detail`, which no case compares. [not yet covered]
 5. The Langevin example (`M = M_s * L(H / a)`, `L(x) = coth(x) - 1/x`) gives 98403.58693485391 A/m at
    H = 2.0e4 A/m; a convention with `x = 3H/a` would give 112800.0, so the check point tells the two apart.
    [FE-011]
@@ -141,7 +171,11 @@ version; this section says what it MUST fix. [RC-065]
 1. Check points are input-output pairs (for an evolution family, a standard history with its outputs and
    event times) computed by the family's reference implementation from the stored parameters, with the
    family's content hash recorded in `baked_with`. They are required for every shipped parameter set.
-   [RC-073]
+   Where `params` is not applicable, an ensemble's check points are baked per member, each naming its member's
+   index, and an interval set's at an admissible corner whose every bound is finite, naming the corner by its
+   bounds; where no such corner exists, or for an `independent` set with no vector, there are none, and this
+   rule's requirement does not apply. A check point never carries a vector the source did not give. [RC-073]
+   [FE-014]
 2. Each check point names its coverage `mode`. Together they span the parameter set's coverage and the
    family's branch points: a change of loading mode, a switch between two forms of a function. [RC-074]
 3. Their tolerance is set by what they must tell apart (a convention error, a wrong branch) and by the
@@ -165,7 +199,8 @@ version; this section says what it MUST fix. [RC-065]
 1. Every parameter set taken from a source has a convention witness: a response the source itself reports,
    which the parameters MUST reproduce under their family version within a stated tolerance. [FE-006]
 2. A witness MUST be independent of how the parameters were obtained: for a fit, data used in the fit cannot
-   witness it. The witness records which fit it is independent of. [RC-077]
+   witness it, nor can data used to choose the model among candidates (`use: used_in_selection`,
+   `fits_and_reference_data.md` section 1). The witness records which fit it is independent of. [RC-077]
 3. A witness's tolerance comes from the fit's residual and from the precision to which the source states the
    state, never from the spread between specimens. [RC-078]
 4. A parameter set that is the mean of per-specimen fits is witnessed against per-specimen data, or recorded
@@ -181,6 +216,9 @@ version; this section says what it MUST fix. [RC-065]
    joint range. It is also stated in one of the family's `coverage_measures`, with the rate, so a general
    state can be checked. Its shape is `fits_and_reference_data.md` section 3's. A state outside the coverage
    gives `unknown` (`outside_coverage`; what accepts it: `declarations.md` section 4.2). [FE-008]
+8. An ensemble is witnessed member by member, against each specimen's data. [FE-006]
+9. An `interval` set, or an `independent` set with no vector, has no independent witness: it is not admitted
+   to the curated library (AD 4.6), and elsewhere it is read with `no_independent_witness`. [FE-007]
 
 ## 9. Reference-only parameter sets
 
@@ -195,15 +233,17 @@ version; this section says what it MUST fix. [RC-065]
 | Case | Suite | Tests |
 |---|---|---|
 | FE-001 | family evaluation | an unknown family identifier or version is refused (`unknown_family`); a label is never refused as a family |
-| FE-002 | family evaluation | a parameter set with a missing or extra parameter is refused |
+| FE-002 | family evaluation | a parameter set with a missing or extra parameter is refused, in a vector and in each member's `params` |
 | FE-003 | family evaluation | the tolerance rule `abs(d) <= absolute + relative * abs(expected)`; a wrong-convention evaluator fails |
-| FE-004 | family evaluation | an inadmissible parameter set is refused |
+| FE-004 | family evaluation | an inadmissible `params` vector or declared nominal vector is refused; an inadmissible member or corner is not refused by it |
 | FE-005 | family evaluation | evaluation outside a mode's check-point span gives `unknown` (`outside_check_points`) |
-| FE-006 | family evaluation | a witness is reproduced within its tolerance; a misread axis fails it |
-| FE-007 | family evaluation | `no_independent_witness` is reported, never shown as a pass; a withheld witness datum is `not_checked` |
+| FE-006 | family evaluation | a witness is reproduced within its tolerance, an ensemble's member by member; a misread axis fails it |
+| FE-007 | family evaluation | `no_independent_witness` is reported, never shown as a pass, an `interval` set's and an `independent` set's with no vector included; a withheld witness datum is `not_checked` |
 | FE-008 | family evaluation | a state outside coverage, in mode or in mode-independent measures, gives `unknown` (`outside_coverage`) |
 | FE-012 | family evaluation | the result lists every check point's outcome and the witness's |
 | FE-011 | family evaluation | the Langevin check points at H = 2.0e4, 3.6e5 and 1.6e6 A/m; `x = 3H/a` fails them |
+| FE-013 | family evaluation | a consumer's predicate gives every verdict on both sides and on dyadic boundaries; NaN and ±∞ fail every constraint; a wrong inclusiveness, or a predicate NaN lets through, fails |
+| FE-014 | family evaluation | a set with no vector: `want: value` gives `want_mismatch`, covered by a nominal; check points are evaluated per member or at their corner |
 | RC-060 | record checks | a family identifier not matching the grammar is flagged |
 | RC-061 | record checks | the family hash over the sorted file list, `family.json` without its own hash; a changed definition with an unchanged version is flagged |
 | RC-062 | record checks | a `materica.` family that no in-scope record uses is flagged |
@@ -217,10 +257,15 @@ version; this section says what it MUST fix. [RC-065]
 | RC-070 | record checks | a switch without vectors on both sides is flagged |
 | RC-071 | record checks | an evolution family without analytic history cases is flagged |
 | RC-072 | record checks | an event naming a successor model is flagged |
-| RC-073 | record checks | a shipped parameter set without check points, or without `baked_with`, is flagged |
+| RC-073 | record checks | a shipped parameter set without check points, or without `baked_with`, is flagged; a set with no vector, check points per member or at an admissible finite corner, or none where no such corner exists |
 | RC-074 | record checks | check points that do not span coverage and branch points are flagged |
 | RC-075 | record checks | a check point where every candidate convention agrees, or a tolerance without a reason, is flagged |
 | RC-076 | record checks | a reference-only parameter set shipping check points is flagged |
-| RC-077 | record checks | a witness drawn from the fitted data is flagged |
+| RC-077 | record checks | a witness drawn from the fitted data, or from data marked `used_in_selection`, is flagged |
 | RC-078 | record checks | a witness tolerance based on between-specimen spread is flagged |
 | RC-079 | record checks | a witness through a model of a test is reported "not checked by `materica check`" |
+| RC-180 | record checks | flagged in a manifest: a constraint without a name, a kind or inclusiveness; a duplicate name; an unknown parameter; a constraint without vectors on both sides |
+| RC-181 | record checks | a third-party family's `bound` and `linear` constraints are evaluated from its manifest; its `defined` ones are reported "not checked (third-party family)" |
+| RC-182 | record checks | a manifest whose `bound` and `linear` constraints, evaluated at its vectors, disagree with their verdicts is flagged, for any family |
+| RC-183 | record checks | flagged: a `log` linear constraint without positivity bounds before it; a boundary vector not exact in binary32; a vector file without precisions |
+| RC-184 | record checks | flagged: a `params` vector under `ensemble` or `interval`, or one assembled where the source reports none |

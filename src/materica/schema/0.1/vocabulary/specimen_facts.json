@@ -44,6 +44,16 @@
     },
     "mimics": {
       "tokens": []
+    },
+    "supply_form": {
+      "tokens": [
+        "stock",
+        "coupon",
+        "finished_component"
+      ]
+    },
+    "lot": {
+      "tokens": []
     }
   }
 }

@@ -214,7 +214,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-049
 
-`record_format.md`: `null` in the envelope (`"card": null`) makes the record malformed; inside a value field (`"unit": null`) it refuses that field (`form_invalid`); inside a member the reader does not know, at the top level or inside a value field, it is ignored
+`record_format.md`: `null` in the envelope (`"card": null`) makes the record malformed; inside a value field (`"unit": null`) it refuses that field (`form_invalid`); inside a member the reader does not know, at the top level or inside a value field, it is ignored; in a member step 8 does not check (`"extraction": null`), it does not refuse the field
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -273,7 +273,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-308
 
-`read_side_contract.md`: no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`
+`read_side_contract.md`: no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -283,7 +283,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-310
 
-`read_side_contract.md`: every reason code a read gives is one of the table's
+`read_side_contract.md`: every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete`
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -299,7 +299,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-320
 
-`read_side_contract.md`: an operating condition or tolerance of a numeric condition with a string unit other than the registered one is refused (`request_unit_mismatch`, with that `condition`), whatever else is wrong with the entry; units are compared code point for code point (`Cel`, `k`, `K` with U+212A); an operating condition's or tolerance's unit that is not a string gives only `request_incomplete`; a unit on a token or unregistered condition is compared with nothing, and the entry gives `request_incomplete` only where its own shape is wrong or its condition is not registered
+`read_side_contract.md`: an operating condition or tolerance of a numeric condition with a string unit other than the registered one is refused (`request_unit_mismatch`, with that `condition`), whatever else is wrong with the entry; units are compared code point for code point (`Cel`, `k`, `K` with U+212A); an operating condition's or tolerance's unit that is not a string gives only `request_incomplete`; a unit on a token or unregistered condition is compared with nothing, and the entry gives `request_incomplete` only where its own shape is wrong or its condition is not registered; a value an implied condition supplies in another unit is refused alike
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -401,7 +401,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-330
 
-`read_side_contract.md`: `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list)
+`read_side_contract.md`: `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`)
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|

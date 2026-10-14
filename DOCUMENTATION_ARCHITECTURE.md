@@ -584,10 +584,11 @@ status is not permitted or unknown is reference-only.
 sound speed positive and within broad bounds for condensed matter); consistency between related fields within
 one record (impedance against density times sound speed, only where the density's and the speed's specimen
 facts agree; a derived Grüneisen parameter against one given directly); a composition's fractions against its
-sum rule, with the source's own stated sum kept as a fact; admissibility of every parameter set and every
-ensemble member; completeness of provenance. A
-failure blocks the merge. Disagreement between sources is reported and kept, not blocked: every alternative
-found is kept, and which one a simulation uses is the consumer's pick (architecture draft section 3.5).
+sum rule, with the source's own stated sum kept as a fact; admissibility of every parameter set's `params`
+vector; completeness of provenance. Inadmissible ensemble members and interval corners are listed, not
+failures: they are the source's own fits and bounds. A failure blocks the merge; a listing does not.
+Disagreement between sources is reported and kept, not blocked: every alternative found is kept, and which one
+a simulation uses is the consumer's pick (architecture draft section 3.5).
 
 **What the library is not.** It is not a database of everything published. A material is added when a
 consumer needs it, with the sources that consumer relies on.
@@ -768,7 +769,7 @@ that need inputs beyond the records (below); the library adds its own policy che
 |---|---|
 | schema | records are JSON and validate against the record schema; identifiers are namespaced; every record states its record type; a namespaced type's envelope and value machinery validate, its body is not checked; a referenced record of an unknown type is refused; an unknown token refuses its field |
 | provenance | the fields of section 5.3 are complete, with explicit statuses where a field has no result |
-| plausibility | physical bounds; consistency between related fields; admissibility of every parameter set and ensemble member; units |
+| plausibility | physical bounds; consistency between related fields; admissibility of every parameter set's `params` vector; units. Inadmissible ensemble members and interval corners are listed in the check's listing, which reports facts that are not defects and never fails the check |
 | check points | stored check points equal the reference implementation's; for a family outside `materica.`, "not checked (third-party family)", since no third-party code is run |
 | fit reproduction | every fit reaches its stated residual; "not checked" is counted and reported |
 | generated | USD layers, cards and the index equal what the records produce |
@@ -837,9 +838,11 @@ A schema change needs, in one pull request: the specification text, the conforma
 schema and USD schema files, the reader change, a `changes.md` entry, and a CHANGELOG entry under
 **Schema**. Removal follows the stability levels below.
 
-Any section or field can be added later as a minor change, because three rules hold (architecture draft
+Any section or field can be added later as a minor change, because four rules hold (architecture draft
 section 5.6): sections are optional and a reader ignores those it does not use; an added field never changes
-the meaning of an existing one, and a change that would is major; a condition a reader does not know gives
+the meaning of an existing one, and a change that would is major; an added member is never one slip from a
+member valid at its place (specification `record_format.md` section 10), since a reader refuses such a
+near-typo (maintainer, 2026-10-14); a condition a reader does not know gives
 "unknown", refused unless the consumer waives it, never "present and unchecked". An added token in an
 enumerated field (an interpolation scheme, a statistics basis) refuses that field in an older reader instead
 of being read as something it knows. From 1.0.0 a reader reads a record of a newer minor version and refuses

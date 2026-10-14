@@ -126,6 +126,15 @@ for Healthcare's tissues, and 17 edge cases raised in review. It gave no clearly
 then showed it put a capsule's effective susceptibility in while the statement's own example put it out, so
 the line is now drawn between a specimen and a made object.
 
+**Relation to materiomics.** OpenMaterica is adjacent to materiomics, not infrastructure for it. Materiomics,
+in both its senses, studies a material system across its hierarchical levels (Cranford and Buehler 2010) or
+screens biomaterial libraries against cell response (Cranford et al. 2013), and defines no record of
+property values. OpenMaterica records measured properties of specimens, with their test conditions, specimen
+facts and provenance, at the scale where a simulation consumes them; it does not represent the structure,
+process, hierarchical level or cell response whose relations materiomics studies. Materiomics studies could
+publish the property values they measure into it, and multiscale models could take their top-level inputs
+from it, once each value states the level and the length scale at which it was measured (section 4.8).
+
 Design principles:
 
 1. **The read side needs no OpenMaterica code.** A C++ renderer, a JAX solver and a PyTorch policy trainer
@@ -298,7 +307,7 @@ Principle 9 in practice. A record, a consumer and the build each make a differen
 | | States | Examples |
 |---|---|---|
 | A record | facts about a measurement, and how they are known | the specimen (species, site, state, preparation); the conditions it was measured at; the range covered; statistics and what they represent; competing values where sources disagree |
-| A consumer | choices, declared when it attaches a model | the domain (which regions); the target (species, site, state); the family version; the mixing rule; which competing value; tolerances; waivers; any extrapolation or nominal it assumes, with its basis; the overlays it applies |
+| A consumer | choices, declared when it attaches a model | the domain (which regions); the target (species, site, state); the family version; the mixing rule; which competing value; tolerances; waivers; any extrapolation or nominal it assumes, with its basis; the overlays it applies; the independence it assumes between fields it samples together |
 | The build | the relation between the two | per region and field: met, not met or unknown; how the specimen differs from the target; the picks and waivers, all recorded in the material input sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9.1) |
 
 Four rules:
@@ -352,7 +361,10 @@ Four limits keep this usable:
 
 This is the positive form of a non-goal the draft has had from the start: OpenMaterica makes no judgement of
 applicability (section 7.6). The review of section 15 found the draft making that judgement in at least
-eight places; the sections below no longer do.
+eight places; the sections below no longer do. Nor does OpenMaterica grade data. The pedigree matrix of
+life-cycle assessment scores a datum's reliability, completeness and correlation to its use and turns the
+scores into uncertainty factors (Weidema and Wesnæs 1996); that is the road not taken here. The facts such a
+score would rest on are recorded, and judging them is the consumer's.
 
 ## 4. The data model
 
@@ -583,7 +595,7 @@ A family definition (a document and its data files) fixes:
 | Kinematics and outputs | the deformation or input measure (stretch, Green-Lagrange strain, frequency) and the output measure (Cauchy or first Piola-Kirchhoff stress, complex permittivity), both required, with conversion vectors between the measures a consumer may use; the loading modes covered |
 | Equations | the energy or response function, normatively; the treatment of incompressibility; the domain of each term, where a definition switches between forms |
 | Parameters | names, units, meaning, order |
-| Admissibility | constraints a parameter set must satisfy, for example stability conditions |
+| Admissibility | constraints a parameter set must satisfy, as functions of its parameters alone, for example stability conditions; a condition over a range of states is a matter of evaluation and coverage. Each constraint has a name and states whether its boundary is admissible, and each fails a value that is not finite. Bounds on one parameter and linear inequalities over parameters are written as data in the manifest, so a consumer builds its own vectorised predicate and `materica check` evaluates them for any family without running its code; any other constraint is defined in the document and named in the manifest. There are no equalities and no expression language |
 | Golden test vectors | inputs and expected outputs at a stated precision, as data files; edge cases; admissibility cases; vectors on both sides of every switch between forms; consistency vectors wherever continuity fixes a derived constant |
 | Reference implementation | plain numpy, written for clarity: the executable form of the definition. It ships with the family, not in the core (section 3.1) |
 | References | `[@Key]` citations |
@@ -649,8 +661,10 @@ nothing from MADDENING beyond what it already offers.
 ### 4.6 Check points and convention witnesses
 
 When a model parameter set is written, the reference implementation of its family version computes the
-response at a handful of states (stated deformations, rates, frequencies, loading modes), and the record
-stores those input-output pairs with a tolerance. Before using the parameters, a consumer evaluates its own
+response at a handful of states (stated deformations, rates, frequencies, loading modes), from the stored
+parameters, or, where a set has no single vector, from each member or from a corner made of the source's
+bounds, and the record stores those input-output pairs with a tolerance. A check point never carries a vector
+the source did not give. Before using the parameters, a consumer evaluates its own
 implementation at the same states and compares. A mismatch is a refusal.
 
 - A convention mismatch then fails loudly even for a consumer that never ran the conformance suite.
@@ -791,6 +805,16 @@ conditions change what a value means, not only how far it can be trusted:
   measurements;
 - failure values depend on the test method and the specimen's geometry (section 4.2).
 
+Conditions and specimen facts together specify what a value measures: in metrology's terms, the measurand,
+which needs the kind of quantity and the state of what carries it (VIM 2.3). What they leave unspecified is
+definitional uncertainty (VIM 2.27), and scale is part of it. On one cartilage specimen a 20 nm tip measured a
+modulus about a hundred times lower than a 2.5 µm tip did, while an agarose gel gave the same with both (Stolz
+et al. 2004); particles of 200 to 500 nm move through mucus almost as through water, although its bulk
+viscosity is 10⁴ to 10⁶ times water's (Lai et al. 2009); yet in vitreous a micropropeller met the bulk value
+(Wu et al. 2018). So the gap between scales depends on the substance and is never assumed either way: a test
+method that probes a length below the specimen's enters the vocabulary only together with a condition stating
+the length it probes.
+
 ### 4.9 Statistics and uncertainty structures
 
 Literature tissue properties often vary by a factor of two or more between sources (recalled), so a value
@@ -800,13 +824,18 @@ without its spread is not honest.
   standard deviation, minimum, maximum, the distribution if the source states one, and the basis
   (reported standard deviation, reported range, spread across sources, digitising error). Where a source
   gives only a range, the range is recorded with that basis. An uncertainty may be stated as relative, or
-  as expanded with its coverage factor, as metrology reports it. A datasheet's minimum and maximum have the
-  basis "specification limits": a promise about a product, not a measured spread.
+  as expanded with a coverage factor or a coverage probability, as metrology reports it, with the
+  distribution, degrees of freedom, basis and meaning the source gives. The coverage factor divides out by
+  definition; a distribution the source does not state is the consumer's declaration. A datasheet's minimum
+  and maximum have the basis "specification limits": a promise about a product, not a measured spread.
 - **Every spread says what it represents**: variation between specimens or donors (a population), the
   uncertainty of an estimate (a standard error, a fit's covariance), measurement error, or spread across
   sources. They answer different questions, and the first two differ by about the square root of the
   number of specimens. A consumer declares which its question needs: a population of patients needs the
-  first, the uncertainty of a mean the second.
+  first, the uncertainty of a mean the second. Modellers of patient-specific credibility draw the same line
+  between population variability and measurement error (Galappaththige et al. 2022). A measurement's spread
+  also says the conditions it was obtained under, repeatability, intermediate or reproducibility (VIM 2.20 to
+  2.24), because laboratories can disagree by far more than one laboratory repeats itself.
 - **A source that reports no spread** is recorded as `dispersion: not_reported`, which is not the same as
   exact.
 - **A value known only as an interval** (bounds with their basis, no nominal; or one bound only, such as
@@ -820,20 +849,30 @@ without its spread is not honest.
 
 | Structure | Contents | Note |
 |---|---|---|
-| `ensemble` | one fitted parameter vector per specimen or donor | preferred: keeps the dependence between parameters without assuming a distribution |
-| `multivariate_normal` | mean and covariance in a declared space (identity or log, per parameter) | the form a fit's covariance arrives in; it assumes the family is right, so it excludes model-form error |
+| `ensemble` | one fitted parameter vector per member, with the levels the source nests its members in (donor, lot, specimen, repeat test) and each member's group at every level where the source gives it; every member equally likely | preferred: keeps the dependence between parameters without assuming a distribution. Specimens of one donor are not independent draws from a population of donors: a draw at the members' own level, or balanced over an outer level, says which it is, and a draw at an outer level needs one member per group. Restarts and posterior draws are not members |
+| `multivariate_normal` | mean and covariance in the space in which the source states its normal approximation, or, for a fit a consumer writes back, the space its producer chose and records as chosen (identity or log, per parameter); a curator never re-expresses a source's covariance in another space | the form a fit's covariance arrives in; it assumes the family is right, so it excludes model-form error |
 | `independent` | one marginal per parameter | only with a stated justification for independence |
 | `marginals` | statistics per parameter, with "dependence not reported" | the commonest literature form (mean and standard deviation per parameter over n specimens); never sampled jointly; usable for sensitivity one parameter at a time |
-| `interval` | bounds per parameter, with their basis | for corner and sweep analyses; every corner must pass the family's admissibility constraints, because the corner of a box can describe a material that does not exist |
+| `interval` | bounds per parameter, with their basis, as the source gives them | for corner and sweep analyses. The box is not a claim that every combination exists. A consumer checks every corner, lists those that fail, and takes a worst case from corners only where every corner is admissible, every constraint is a bound or a linear inequality, and it has declared the quantity monotone in each parameter |
 | `none` | nominal values only | must not be sampled |
+
+A weighted ensemble or a mixture, if a source ever gives one, is a structure of its own. Where the source
+separates anatomical sites, specimens from different sites are alternatives, each with its specimen; where it
+pools them, the field's specimen states what the source states, and the build reports the difference.
 
 Fitted parameters are strongly correlated as a rule, so sampling each from its own range produces combinations
 that describe no real material, and some that the family's admissibility constraints forbid. Sampling
-therefore happens in the declared space, maps back, and rejects draws that violate admissibility, reporting
-how many it rejected. A consumer that cannot honour the declared structure refuses to sample. An ensemble has
-no nominal member, and its mean may describe no specimen or be inadmissible, so any nominal value the consumer
-then uses is its own declaration, recorded. The core ships a reference sampler for tests and simple consumers;
-production uncertainty quantification belongs to the consumer (for MIME, to MADDENING: section 9.4).
+therefore happens in the space the record states, maps back, and rejects draws that violate admissibility,
+counting them per constraint and reporting the acceptance rate. The accepted draws follow the stated
+distribution conditioned on admissibility: in total variation they are one minus the acceptance rate from it,
+and no map of the inputs moves the output further than that. So a consumer declares, once per sampled run, the
+lowest joint acceptance it accepts, and below it the sampler refuses. Bounds a consumer adds of its own (an
+optimiser's, say) are its declaration, counted apart from the family's. A consumer that wants the covariance
+in another space declares that distribution, and the run records it as its assumption. A consumer that cannot
+honour the declared structure refuses to sample. An ensemble has no nominal member, and its mean may describe
+no specimen or be inadmissible, so any nominal value the consumer then uses is its own declaration, recorded.
+The core ships a reference sampler for tests and simple consumers; production uncertainty quantification
+belongs to the consumer (for MIME, to MADDENING: section 9.4).
 
 ### 4.10 Fits and reference data
 
@@ -1229,8 +1268,10 @@ key.
   the derivation chain in the material input sheet (`DOCUMENTATION_ARCHITECTURE.md` section 9.1), not by the
   hash.
 - **Adding without breaking.** Any section, field, record type or extension can be added later as a minor
-  schema change if four rules hold. Sections are optional, and a reader ignores sections it does not use. An
-  added field never changes the meaning of an existing one; a change that would is major. A condition a reader
+  schema change if five rules hold. Sections are optional, and a reader ignores sections it does not use. An
+  added field never changes the meaning of an existing one; a change that would is major. An added member is
+  never one slip from a member valid at its place (specification `record_format.md` section 10), since a
+  reader refuses such a near-typo (maintainer, 2026-10-14). A condition a reader
   does not know gives "unknown", refused unless waived, because some conditions change what a value means
   (section 4.8); and an unknown token in an enumerated field (a new interpolation scheme, statistics basis or
   uncertainty structure) refuses that field, so an old reader never falls back to a default it does know. A
@@ -1552,11 +1593,14 @@ repository and ship as `openmaterica-families` (section 3.1). The library reposi
 
 ### 7.3 Uncertainty and sampling
 
-The reference sampler honours the structures of section 4.9 (it refuses to sample `marginals` jointly, and
-`none` at all), rejects inadmissible draws and reports the
-rejection count. It is there to define the behaviour and to test consumers against; it is not a UQ engine. A
-consumer that uses it in an analysis, as MIME would until MADDENING supports joint structures (section 9.4),
-labels its results so.
+The reference sampler honours the structures of section 4.9. Where a requirement samples a field, it never
+samples `marginals` jointly, samples an `interval` or a spread with no stated distribution only from one the
+consumer declares, and never samples `none`; a field no requirement samples is held. It rejects inadmissible
+draws and reports the acceptance rate and the rejections per named constraint. It defines the behaviour and
+tests consumers through the sampling suite, whose core arms map given normals exactly and whose statistical
+arms compare with analytic values in exact regions, never with another sampler's draws. It is not a UQ engine.
+A consumer that uses it in an analysis labels its results so. MIME moves to MADDENING's joint sampling once
+its mapping passes the suite (section 9.4).
 
 ### 7.4 Conformance
 
@@ -1578,7 +1622,8 @@ plain and the USD form (the owner of a point inside nested regions; a binding in
 from the region's own; a layered path whose arrays differ in length), values at the edges of tables (both
 one-sided derivatives at interior knots, the inside one at ends; the in-range output), unit conversions (an
 intensity attenuation coefficient converted to an amplitude one), mixing at a single cell, analytic volume
-fractions of the canonical test phantoms, and hash test vectors.
+fractions of the canonical test phantoms, and hash test vectors. Sampling cases map given normals exactly, or
+compare with analytic values in exact regions; none compares one sampler's draws with another's.
 
 ### 7.5 The read side in another language
 
@@ -1866,10 +1911,10 @@ nominal value, bounds and a distribution that defaults to uniform, and has no st
   distribution and a record of what each spread represents;
 - an interval-only value has no nominal, so it goes to a sweep over its bounds, not to UQ, unless MIME
   declares a nominal itself;
-- joint distributions (a covariance in a declared space, an ensemble, admissibility constraints) have been
-  requested of MADDENING for a later release. Until then MIME samples `ensemble` and `multivariate_normal`
-  structures with OpenMaterica's reference sampler and labels the results as such (section 7.3), or uses
-  values it declares.
+- joint distributions (a covariance in the space its record states, an ensemble, admissibility constraints)
+  have been requested of MADDENING for a later release. Until then MIME samples `ensemble` and
+  `multivariate_normal` structures with OpenMaterica's reference sampler and labels the results as such
+  (section 7.3), or uses values it declares.
 
 ### 9.5 Round trip
 
@@ -1937,7 +1982,12 @@ Wider adoption is the upside, pursued as follows.
   narrows to an internal tool, which is still worth having.
 
 An earlier materials-data exchange format, MatML, went from NIST to an OASIS technical committee in
-2003-2004. How widely it was adopted was not established here.
+2003-2004; the committee is listed as completed. How widely it was adopted is still unknown. What a literature
+review of October 2026 found about adoption: the standards that spread gave authors a validator through a
+gatekeeper already in their path (ThermoML through journals and NIST's data centre; STRENDA DB before
+publication); importers are maintained products, which took NOMAD some ten to twenty person-years; and domain
+experts contributed to dictionaries rather than to data models (ISO 13399). The only reasons given in primary
+sources for stalled efforts were that barrier and a general lack of incentive and tools.
 
 ## 11. Interface with Isaac for Healthcare
 
@@ -2244,7 +2294,8 @@ Still open:
   `usdPhysics` schema file were read for the scaffold (names, types and fallbacks given; no units), and the
   review that day ran the reference parser, built-in APIs and `MassAPI` zeros; nothing of the scaffold was
   built.
-- The adoption history of earlier materials-data formats was not researched.
+- The adoption history of earlier materials-data formats was partly researched in October 2026 (section 10);
+  why ASTM E49 and CODATA's task group ended was not found.
 - The hosting and registry examples of section 6.7 (Zenodo, PyPI, Julia's registry, Datasette Lite, the
   Hugging Face Hub) are recalled; none was checked for limits or terms.
 - No MCP server was prototyped. MCP's primitives and client support are recalled. The failure modes of
@@ -2412,6 +2463,41 @@ The maintainer's decision of 2026-10-14 on the project's name gave the row below
 | Before | After | Why |
 |---|---|---|
 | the working name Vesalius: distribution, package, reserved namespace, family namespace, binding purpose, attribute namespace and command `vesalius`; schema classes `Vesalius…`; local ids `VES-MAT-NNNN` and `VES-INT-NNNN`; registry prefixes `VES-ANO-`, `VES-VER-` and `VES-MTH-` | OpenMaterica: distribution `openmaterica`, package `materica`, and `materica` for each of the others; schema classes `Materica…`; local ids `MAT-NNNN` and `INT-NNNN`; registry prefixes `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-` (4.1, 5.3, 5.4, 7.1; DA 8.3) | a name cleared for the project's use, chosen before any release, while no identifier was yet frozen (maintainer, 2026-10-14) |
+
+The maintainer's decisions of 2026-10-14 on the questions on the read of values (specification `changes.md`,
+entry of that date), gave the rows below, each written as its question was ruled. They take in a
+review of the uncertainty data MADDENING 0.5.0's consumers need, and a literature review of materials-data
+practice; both are private working files.
+
+| Before | After | Why |
+|---|---|---|
+| one meaning and basis per statistics block; an expanded uncertainty with its coverage factor | each relative or expanded uncertainty carries its own meaning, basis, distribution, coverage factor or probability and degrees of freedom, and its precision conditions where it is a measurement's; Student t by scale and beta registered (4.9) | a block could not hold a population spread beside a measurement uncertainty; a t's scale is not its standard deviation |
+| a spread with no level, and counts that could count publications as specimens | `population_level`, `n_sources` and `precision_conditions` present where the spread's meaning calls for them; the search record's weighting and inputs | a pooled specimen spread was drawn as a spread between donors, and five publications read as five specimens |
+| record checks report findings only | findings, and a listing that never fails | a faithful record of a source's bounds or fits could not pass |
+| `params` always a vector | a vector where the source reports one, the mean of per-specimen fits included and labelled; check points per member or at a corner made of the source's bounds (4.6) | ensembles and intervals forced a vector the source never gave |
+| mean and covariance in "a declared space" | in the space the source states, or the one a fit's producer recorded; never re-expressed (4.9, 9.4) | the word did not say whose choice it was |
+| the rejection count reported | the acceptance rate per run and per block, counted per constraint, with a minimum declared once per run (4.9) | the run's joint acceptance bounds how far the output can move |
+| admissibility as prose and a numpy reference | named constraints, bounds and linear inequalities as data, every constraint failing a non-finite value (4.5) | vectorised consumers re-implemented constraints, and could drift |
+| one-level ensembles of specimens or donors | ordered levels and groups, equal weights; draws named for what they are; restarts and posterior draws are not members (4.9) | specimens of one donor were drawn as donors |
+| every corner and member must pass admissibility | members and corners listed; a worst case from corners only under three conditions (4.9) | curators would have had to drop the source's own fits and bounds |
+| a nominal only for an interval's value | nominal vectors for parameter sets | a parameter set with no vector had no declared nominal |
+| sampler behaviour defined by the reference sampler's draws | the sampling suite as the contract, its core arms from given normals (7.3, 7.4) | samplers built on different generators cannot be compared draw by draw |
+| independence ruled within a parameter set only | declared between fields too (3.5) | sampling fields jointly assumed independence silently |
+| precision undeclared | declared per model, with the sheet; the table evaluation suite's tolerance given per precision | tolerances and conformance assumed it |
+| a condition's ± lost, or stored as a covered range | a numeric condition may carry the source's ± (a bound, a standard deviation, both, or one of unstated kind) and whether it was a set-point; a bound narrows a met condition, and any other ± alone turns it into unknown | a range read as covered passed a value measured 2 K away against a 1 K tolerance |
+| condition checks written as floating-point expressions | made on the exact values of the numbers read | for the check's four comparisons, floating point as written can err only towards met |
+| a consumer that accepted a tube read its value without the tube's diameter | a condition another requires is checked like a required one | the diameter changes what a narrow-tube viscosity means |
+| what a read checks named only by document | the members a read uses or returns, the statistics block included; a review never refuses a read, and an unreadable one reads as not checked | a reader refused, or passed, what it never read; a review lies outside the hash |
+| a status object beside other members undefined | a closed table of the members that may hold a status object, each with the tokens it may hold; there an object holding `status` is a status object, refused where it also holds a member of the shape it stands for, where that shape is a number, a string or a token and it holds any member but `reason`, or where its token is one its row does not allow; a read refuses only in the members it checks | two conforming readers could read one record two ways (in a number, a string or a token, refusing other members amends the first ruling, which ignored them: maintainer, 2026-10-14) |
+| biocompatibility evidence never withheld | withheld entry by entry, every member but provenance; a partly withheld list reads unknown | one reference-only report withheld every other, and its words would have shipped |
+| device materials described by free text; a commercial product a record by product and lot | `supply_form` and `lot` as specimen facts; one record per grade or product, with measurements on particular lots as alternatives naming their lot | a lot's measurement and a grade's datasheet could not be told apart by a target |
+| remanence read without its magnetic circuit | a closed-circuit test method, and the method required on remanence and saturation | a closed-circuit remanence and an open-circuit one on a cylinder read alike |
+| probe test methods unconstrained | a probe method enters only with a condition stating the length it probes (4.8) | values probed at 20 nm and at 2.5 µm differed a hundredfold on one specimen |
+| data used to choose a model could witness it | `used_in_selection`, never a witness | a curve that chose the model was reported as its held-out check |
+| computed and predicted values unaddressed | no 0.1.0 origin for them; a database source pinned by release and entry | a value with no release re-extracts to another number |
+| acceptances in a read scheduled with alternatives and overlays | each step brings the acceptances it applies; a nominal outside the bounds is `nominal_invalid`; implied conditions that disagree are a fault of the request | the read of values applies implied conditions and nominals before overlays exist (maintainer, changing the schedule decided 2026-10-13) |
+| OpenMaterica's relation to materiomics unstated; the adoption history of earlier formats not researched | adjacent to materiomics, not its infrastructure (1); adoption evidence recorded (10, 14) | neither school of materiomics defines a record; the standards that spread had a gatekeeper and a validator |
+| a member the reader does not know ignored wherever it stands | ignored unless it is one slip from a member named at its place, which is refused; the names valid at one place kept more than one slip apart, now and in later minor versions (5.6) | a misspelt `plus_minus`, a field's `specimen` or a request's `acceptances` dropped what it held, and the read gave `met` (maintainer, 2026-10-14) |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 

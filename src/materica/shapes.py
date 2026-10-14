@@ -118,6 +118,7 @@ ReasonCode: TypeAlias = Literal[
     "form_invalid",
     "unknown_token",
     "withheld",
+    "entries_withheld",
     "fill_in_version_mismatch",
     "unit_mismatch",
     "condition_unstated",
@@ -125,10 +126,12 @@ ReasonCode: TypeAlias = Literal[
     "condition_unchecked",
     "condition_outside",
     "condition_not_accepted",
+    "condition_uncertain",
     "outside_range",
     "at_edge",
     "range_unstated",
     "want_mismatch",
+    "nominal_invalid",
     "stated_without_origin",
     "family_suite_absent",
     "overlay_base_mismatch",
@@ -399,7 +402,7 @@ class ReadResult(TypedDict):
     status: ReadStatus
     reasons: list[Reason]
     value: NotRequired[JsonValue]
-    values: NotRequired[list[JsonValue]]
+    alternative_values: NotRequired[list[JsonValue]]
     unit: NotRequired[JsonValue]
     conditions: NotRequired[list[JsonObject]]
     specimen: NotRequired[JsonObject]
