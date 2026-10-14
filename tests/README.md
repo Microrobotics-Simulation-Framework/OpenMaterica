@@ -6,6 +6,7 @@
 | `property/` | Hypothesis properties of the reader, the canonical form and the hash, and the mutants they kill | the profiles and sizes, the mutants, the audits; adding a property |
 | `unit/` | examples at the edges, the rules over source files, and the checks in `scripts/` | what belongs there |
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
+| `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
 
 `conftest.py` here registers the Hypothesis profiles for every test, and prints the count of conformance case
 files after a run that included them.

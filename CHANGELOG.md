@@ -121,6 +121,9 @@ recorded in that repository's CHANGELOG.
 - Property tests of the JSON reader, the RFC 8785 serialisation and the content hash, under a draw-rejection
   audit and a feature audit; 32 mutants of the core, each killed by its property within the `ci` profile's
   examples at both tree sizes; Hypothesis profiles `dev`, `ci` and `deep`, the last at the original sizes.
+- Atheris fuzzing, weekly: raw bytes into the JSON reader, checked against a reference reader built from the
+  standard library; and the Hypothesis properties driven by Atheris, whose findings the property tests replay
+  and shrink. Each run first shows that both find a fault seeded in the reader.
 
 ### Security
 ### Known Anomalies

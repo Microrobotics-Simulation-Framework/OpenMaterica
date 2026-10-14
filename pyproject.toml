@@ -28,6 +28,11 @@ dev = [
     "rfc8785>=0.1.4",
     "ruff>=0.13",
 ]
+# Atheris 3.1.0 publishes wheels for CPython 3.12 to 3.14 on Linux x86_64 only, and no source distribution, so
+# it installs only there; `uv sync` and `uv sync --group fuzz` work everywhere else without it.
+fuzz = [
+    "atheris==3.1.0; sys_platform == 'linux' and platform_machine == 'x86_64' and platform_python_implementation == 'CPython' and python_version >= '3.12' and python_version < '3.15'",
+]
 
 # The distribution is `openmaterica` and the package it installs `materica`; without this, uv_build looks for
 # `src/openmaterica`.
@@ -47,6 +52,8 @@ filterwarnings = ["error"]
 python_version = "3.11"
 strict = true
 files = ["src/materica", "tests", "scripts"]
+# Development-only stubs for libraries that ship no types (pyright reads the same directory by default).
+mypy_path = "typings"
 
 [tool.pyright]
 include = ["src/materica", "tests", "scripts"]

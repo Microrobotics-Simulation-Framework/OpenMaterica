@@ -116,8 +116,9 @@ uv run mypy && uv run pyright
 ```
 
 Property tests take their depth from `MATERICA_HYPOTHESIS_PROFILE`: `dev` (the default), `ci` or `deep`
-(`tests/README.md`). Without uv, `pip install --group dev -e .` (pip 25.1 or later) installs the same tools,
-unpinned.
+(`tests/README.md`). Fuzzing needs Linux x86_64 and Python 3.12 to 3.14: `uv sync --group fuzz`, then
+`tests/fuzz/README.md`. Without uv, `pip install --group dev -e .` (pip 25.1 or later) installs the same
+tools, unpinned.
 
 ## Identifier prefixes
 

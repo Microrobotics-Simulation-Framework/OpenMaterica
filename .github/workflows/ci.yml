@@ -5,7 +5,7 @@
 # which also checks sign-offs. Pull requests test the oldest and newest Python; main, the weekly run and a
 # manual run test every supported one. Hypothesis is never cut to save minutes: the `ci` profile runs whenever
 # the core, the property tests or their configuration change and on every code change to main, and the `deep`
-# profile weekly and on manual runs.
+# profile weekly and on manual runs. Atheris fuzzes weekly and on manual runs only, for a fixed time a target.
 # When the repository goes public (Actions minutes are then free): set the pull-request Python list in `tests`
 # to all five, and the path filter may go.
 
@@ -18,6 +18,15 @@ on:
   schedule:
     - cron: "23 4 * * 1" # Mondays, 04:23 UTC
   workflow_dispatch:
+    inputs:
+      fuzz_seconds:
+        description: Seconds of fuzzing for each of the two Atheris targets
+        type: number
+        default: 300
+      fuzz_only:
+        description: Run the fuzz job alone
+        type: boolean
+        default: false
 
 # One group per ref and event, so that a push to main never cancels the weekly run.
 concurrency:
@@ -83,7 +92,7 @@ jobs:
   static:
     name: lint, types, wheel
     needs: gate
-    if: needs.gate.outputs.code == 'true'
+    if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -132,7 +141,7 @@ jobs:
   tests:
     name: tests (Python ${{ matrix.python }})
     needs: gate
-    if: needs.gate.outputs.code == 'true'
+    if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -160,7 +169,7 @@ jobs:
   hypothesis:
     name: hypothesis (${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }})
     needs: gate
-    if: needs.gate.outputs.hypothesis == 'true'
+    if: needs.gate.outputs.hypothesis == 'true' && !inputs.fuzz_only
     runs-on: ubuntu-latest
     # `deep` took 14.5 minutes and `ci` under a minute, on two workers locally (2026-10-14): about three times that.
     timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 45 || 10 }}
@@ -214,3 +223,130 @@ jobs:
         run: |
           echo "$RESULTS"
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
+
+  fuzz:
+    name: fuzz (Atheris)
+    # After the Hypothesis job, so that it starts from the example database that job just saved, and saves the
+    # two jobs' finds together; it runs whether that job passed, failed or was skipped.
+    needs: hypothesis
+    # Weekly and on a manual run only: every second of fuzzing is a second billed.
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    # Two targets at the default 300 s, the control (at most 3 minutes a target) and the replay: about 15
+    # minutes. A manual run longer than about 900 s a target needs this raised.
+    timeout-minutes: 45
+    env:
+      FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
+      # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
+      # replays only under the profile it was found with.
+      MATERICA_HYPOTHESIS_PROFILE: ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Atheris 3.1.0 publishes wheels for Python 3.12 to 3.14 only.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --group fuzz
+
+      # Before the example database is restored, and with it removed after: both targets must find a fault
+      # seeded in `parse` (tests/fuzz/seeded_fault.py), and the replay must find it again and shrink it.
+      - name: Control, a fault seeded in parse is found, replayed and shrunk
+        env:
+          MATERICA_FUZZ_SEEDED_FAULT: "1"
+        run: |
+          control="$RUNNER_TEMP/control"
+          mkdir -p "$control/findings"
+          uv run python -m tests.fuzz.jsonio_bytes --seed "$control/corpus"
+          uv run python -m tests.fuzz.jsonio_bytes "$control/corpus" -dict=tests/fuzz/json.dict -max_len=4096 \
+            -max_total_time=180 -artifact_prefix="$control/findings/" > "$control/bytes.log" 2>&1 || true
+          uv run python -m tests.fuzz.properties -max_total_time=180 -artifact_prefix="$control/findings/" \
+            > "$control/properties.log" 2>&1 || true
+          uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
+            tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
+            tests/property/test_hashing_properties.py > "$control/replay.log" 2>&1 || true
+          for log in bytes properties replay; do
+            if ! grep -q "IndexError: the seeded fault" "$control/$log.log"; then
+              tail -40 "$control/$log.log"
+              echo "::error::the $log step did not find the seeded fault, so it could not find a real one"
+              exit 1
+            fi
+          done
+          # Only a stored example can fail in the reuse phase: the replay found what the fuzzing saved.
+          if ! grep -A3 "during reuse phase" "$control/replay.log" | grep -qE " [1-9][0-9]* failing"; then
+            echo "::error::the replay did not find the failure the fuzzing saved"
+            exit 1
+          fi
+          grep -B2 -A3 -E "document=|data=" "$control/replay.log" | head -40
+          rm -rf .hypothesis
+
+      # The database the Hypothesis job saved in this run; the latest saved, where that job did not run.
+      - name: Restore the example database
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: hypothesis-${{ runner.os }}-
+      # Target 1's corpus from earlier runs, so that its coverage builds up; it is seeded afresh as well.
+      - name: Restore the raw-bytes corpus
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/corpus-kept
+          key: fuzz-corpus-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ runner.os }}-
+      - name: Fuzz raw bytes into parse (tests/fuzz/jsonio_bytes.py)
+        run: |
+          mkdir -p "$RUNNER_TEMP/findings" "$RUNNER_TEMP/corpus-kept"
+          uv run python -m tests.fuzz.jsonio_bytes --seed "$RUNNER_TEMP/corpus"
+          find "$RUNNER_TEMP/corpus-kept" -type f -exec cp -t "$RUNNER_TEMP/corpus" {} +
+          uv run python -m tests.fuzz.jsonio_bytes "$RUNNER_TEMP/corpus" -dict=tests/fuzz/json.dict -max_len=4096 \
+            -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
+      # libFuzzer keeps, in a fresh directory, only the inputs that add coverage, so the cache stays small. A
+      # merge that went wrong keeps nothing, and must not replace the corpus.
+      - name: Minimise the raw-bytes corpus
+        id: merge
+        if: success() || failure()
+        run: |
+          mkdir "$RUNNER_TEMP/corpus-next"
+          uv run python -m tests.fuzz.jsonio_bytes -merge=1 "$RUNNER_TEMP/corpus-next" "$RUNNER_TEMP/corpus"
+          if [ -z "$(ls -A "$RUNNER_TEMP/corpus-next")" ]; then
+            echo "::error::the merge kept no input"
+            exit 1
+          fi
+          echo "kept $(ls "$RUNNER_TEMP/corpus-next" | wc -l) of $(ls "$RUNNER_TEMP/corpus" | wc -l) inputs"
+          rm -rf "$RUNNER_TEMP/corpus-kept"
+          mv "$RUNNER_TEMP/corpus-next" "$RUNNER_TEMP/corpus-kept"
+      # Saved from the path it is restored to: a cache entry is versioned by its path.
+      - name: Save the raw-bytes corpus
+        if: steps.merge.outcome == 'success'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/corpus-kept
+          key: fuzz-corpus-${{ runner.os }}-${{ github.run_id }}
+      - name: Fuzz the properties (tests/fuzz/properties.py)
+        if: success() || failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/findings"
+          uv run python -m tests.fuzz.properties -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
+      # What the property target found is in the example database: replayed first here, and shrunk.
+      - name: Replay and shrink what was found
+        if: success() || failure()
+        run: uv run pytest tests/property -n auto --dist worksteal
+      - name: Keep the inputs that failed
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-findings
+          path: ${{ runner.temp }}/findings/
+          if-no-files-found: ignore
+      # Both jobs' finds, under the shared prefix: the next run of either job restores them.
+      - name: Save the example database
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-${{ github.run_id }}-fuzz
