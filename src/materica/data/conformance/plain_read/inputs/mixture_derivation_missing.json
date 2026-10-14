@@ -1,0 +1,87 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/mixture_fixture",
+  "version": "1.0.0",
+  "name": "Water and glycerol mixture (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:436d2657e78bec9149bd796209e1b2e913a524b8c91c5384c27fd93546ad70a9",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "fluid": {
+        "fields": {
+          "dynamic_viscosity": {
+            "form": "constant",
+            "unit": "Pa.s",
+            "value": 0.0011,
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "shear_rate": {
+                "status": "unstated"
+              }
+            },
+            "statistics": {
+              "central": "stated",
+              "n_specimens": {
+                "status": "unstated"
+              },
+              "n_donors": {
+                "status": "not_applicable"
+              },
+              "mean": {
+                "status": "unstated"
+              },
+              "sd": {
+                "status": "unstated"
+              },
+              "min": {
+                "status": "unstated"
+              },
+              "max": {
+                "status": "unstated"
+              },
+              "distribution": {
+                "status": "unstated"
+              },
+              "basis": {
+                "status": "not_applicable"
+              },
+              "represents": {
+                "status": "unstated"
+              },
+              "dispersion": "not_reported",
+              "relative_uncertainty": {
+                "status": "none"
+              },
+              "expanded_uncertainty": {
+                "status": "none"
+              }
+            },
+            "provenance": {
+              "origin": "derived",
+              "extraction": {
+                "method": "derivation"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            },
+            "label": "materica.fluid.newtonian.v1"
+          }
+        }
+      }
+    }
+  }
+}

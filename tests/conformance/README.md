@@ -29,10 +29,11 @@ after every run that includes these tests:
 | Operation | Case files | Outcome today |
 |---|---|---|
 | `content_hash` (HS-001 to HS-003) | 51 | run, passed |
-| reads (plain read, HS-010, HS-011) | 341 | run, passed |
+| reads that end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
+| reads of values, through steps 6 to 13 (plain read) | 365 | not yet runnable: the step that runs each is not done |
 
-Of the 417 case files, 409 run under plain read and the hash suite, 347 under plain read alone, and 408 with
+Of the 782 case files, 771 agree with plain read and the hash suite, 710 with plain read alone, and 771 with
 the fits and reference data suite too.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`

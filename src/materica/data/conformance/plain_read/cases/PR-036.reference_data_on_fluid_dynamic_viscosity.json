@@ -1,0 +1,48 @@
+{
+  "case": "PR-036",
+  "variant": "reference_data_on_fluid_dynamic_viscosity",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "form_reference_data_on_fluid_dynamic_viscosity.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:cf984047d824d5ed842cd36987f14b2dea4cca90b2ffe57c60676b63c2ceed3e"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

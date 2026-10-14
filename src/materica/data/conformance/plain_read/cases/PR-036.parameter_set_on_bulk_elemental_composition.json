@@ -1,0 +1,54 @@
+{
+  "case": "PR-036",
+  "variant": "parameter_set_on_bulk_elemental_composition",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "family_evaluation": false
+  },
+  "inputs": {
+    "records": [
+      "form_parameter_set_on_bulk_elemental_composition.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:513b4d4728da2409314af3cbd1e91c0f8fd3e36632cc4450722fe62d08a00a1f"
+      },
+      "field": "bulk.elemental_composition"
+    },
+    "requirement": {
+      "want": "value"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      },
+      {
+        "code": "family_suite_absent"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

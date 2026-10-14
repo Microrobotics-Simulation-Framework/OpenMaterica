@@ -1,0 +1,44 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/evidence_fixture",
+  "version": "1.0.0",
+  "name": "Evidence (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:667182787a809b19e7e977cb6150d8ff527558d908e3ebb826e60f09513c0967",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "biocompatibility": {
+        "fields": {
+          "evidence": {
+            "form": "evidence",
+            "unit": {
+              "status": "not_applicable"
+            },
+            "conditions": {},
+            "evidence": {
+              "status": "withheld"
+            },
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

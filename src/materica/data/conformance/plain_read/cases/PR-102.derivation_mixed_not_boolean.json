@@ -1,0 +1,62 @@
+{
+  "case": "PR-102",
+  "variant": "derivation_mixed_not_boolean",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "mixture_derivation_mixed_not_boolean.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/mixture_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:e0bdf6531ae88cb8942475f5e21eaa18d4f36ba2b9fbb6a588226ec904a70f34"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "case": "PR-334",
+  "variant": "not_met_stands",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_plus_minus_bound_0_5.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:8bffdca4ccbc8b8f29923247ed7f514d117f68763f48606c5ffd05cdb92a1767"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 312.0,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "condition_outside",
+        "condition": "temperature"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "not_met",
+        "record": {
+          "value": 310.0,
+          "unit": "K",
+          "basis": "stated",
+          "plus_minus": [
+            {
+              "stated_as": "bound",
+              "value": 0.5,
+              "unit": "K"
+            }
+          ]
+        },
+        "operating": {
+          "value": 312.0,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "shear_rate",
+        "status": "met",
+        "record": {
+          "range": [
+            10.0,
+            1000.0
+          ],
+          "unit": "1/s",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 100.0,
+          "unit": "1/s"
+        }
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

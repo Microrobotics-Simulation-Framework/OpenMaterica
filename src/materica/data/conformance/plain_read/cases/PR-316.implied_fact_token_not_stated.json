@@ -1,0 +1,177 @@
+{
+  "case": "PR-316",
+  "variant": "implied_fact_token_not_stated",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_ex_vivo_temperature_unstated.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:cbe9968d701994cc90b5ba4512c9ca5f54a4a4dd96da9396bca42ef4d9a09bca"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "implied_condition",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:cbe9968d701994cc90b5ba4512c9ca5f54a4a4dd96da9396bca42ef4d9a09bca"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "fact": "tissue_state",
+        "token": "in_vivo",
+        "implies": {
+          "temperature": {
+            "value": 310.15,
+            "unit": "K"
+          }
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "condition_unstated",
+        "condition": "temperature"
+      }
+    ],
+    "value": 0.000692,
+    "unit": "Pa.s",
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "unknown",
+        "record": {
+          "status": "unstated"
+        },
+        "operating": {
+          "value": 310.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "shear_rate",
+        "status": "met",
+        "record": {
+          "range": [
+            10.0,
+            1000.0
+          ],
+          "unit": "1/s",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 100.0,
+          "unit": "1/s"
+        }
+      }
+    ],
+    "specimen": {
+      "tissue_state": {
+        "token": "ex_vivo_fresh",
+        "basis": "stated"
+      }
+    },
+    "statistics": {
+      "central": "stated",
+      "n_specimens": {
+        "status": "unstated"
+      },
+      "n_donors": {
+        "status": "not_applicable"
+      },
+      "mean": {
+        "status": "unstated"
+      },
+      "sd": {
+        "status": "unstated"
+      },
+      "min": {
+        "status": "unstated"
+      },
+      "max": {
+        "status": "unstated"
+      },
+      "distribution": {
+        "status": "unstated"
+      },
+      "basis": {
+        "status": "not_applicable"
+      },
+      "represents": {
+        "status": "unstated"
+      },
+      "dispersion": "not_reported",
+      "relative_uncertainty": {
+        "status": "none"
+      },
+      "expanded_uncertainty": {
+        "status": "none"
+      }
+    },
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": [
+      "materica.fluid.newtonian.v1"
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}
