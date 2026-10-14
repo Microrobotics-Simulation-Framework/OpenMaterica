@@ -14,7 +14,7 @@ This repository is public. Everything in it, this file and commit messages inclu
 - **Private, unversioned working files** are in the sibling directory `../plans/`: the prototypes, their
   findings, the maintainer's decision tables and the reviews are under `../plans/spikes/vesalius_prototypes/`.
   The code design for 0.1, agreed before any code and detailed step by step, is
-  `../plans/VESALIUS_0.1_CODE_DESIGN.md` (its reviews in `../plans/vesalius_code_design_review/`). Nothing
+  `../plans/OPENMATERICA_0.1_CODE_DESIGN.md` (its reviews in `../plans/vesalius_code_design_review/`). Nothing
   from there is copied into this repository without checking it against the confidentiality rules below.
 - Sibling repositories: `../MIME` (OpenMaterica's first consumer), `../MADDENING` (the simulation framework
   MIME runs on). The shared Python environment is `../.venv` (it has `usd-core` 0.26.5 for USD checks).
