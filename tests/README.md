@@ -3,7 +3,7 @@
 | Directory | What it checks | Its README says |
 |---|---|---|
 | `conformance/` | the specification's conformance cases, run by a runner that counts what it cannot run; the case files themselves | how cases are counted and compared; adding a case |
-| `spec_sync/` | what is written in two places: the specification's tables and the schemas, the envelope checks and the reader schema, `CASES.md` and the case files, the cases and the steps that run them | what each test holds together |
+| `spec_sync/` | what is written in two places: the specification's tables and the schemas, the envelope checks and the reader schema, `CASES.md` and the case files, the cases and the steps that run them, the specification's references and what they name | what each test holds together |
 | `property/` | Hypothesis properties of the reader, the canonical form, the hash, the envelope checks, versions and the read, and the mutants they kill | the profiles and sizes, the shards, the mutants, the audits; adding a property |
 | `unit/` | examples at the edges, the rules over source files, and the scripts in `scripts/` | what belongs there |
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
@@ -30,6 +30,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   (`property/test_mutants.py`, `property/test_record_mutants.py`), and a feature audit that fails when its
   examples stop reaching what the specification distinguishes;
 - the `CASES.md` check: a case file changed after its row (`spec_sync/test_cases_md.py`);
+- the reference, case-tag and list-number checks: a broken reference of each form, an uncited row, a tag with
+  no row and a repeated item (`spec_sync/test_references.py`);
 - the draw-rejection audit, the import, layer and SPDX rules and the scripts, generators included: inputs they
   must refuse (`unit/`);
 - the consumer snippet: CI deletes `py.typed` from the installed wheel and requires the snippet then to fail;

@@ -125,7 +125,7 @@ data, and never says that the model holds there.
 
 1. A checker evaluates the fitted value, with its family's reference implementation where it is a parameter
    set, against every dataset in `data` that it can read, and requires the recomputed residual to match the
-   stated one within `reproduction_tolerance` (section 2.6). [RC-087]
+   stated one within `reproduction_tolerance` (section 2 item 6). [RC-087]
 2. Where any dataset is not shipped, the result is `{"status": "not_checked"}`, reported as such and never as
    a pass. [RC-088]
 3. Fit reproduction cannot fail on a misread axis or the wrong measure, so it is never shown as evidence that

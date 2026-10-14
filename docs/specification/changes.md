@@ -24,11 +24,13 @@ grammar refuses and a listed set of further faults, follows I-JSON except that n
 reads every number as the nearest double, ties to even (`record_format.md` section 1 item 6; PR-002, PR-047);
 `null` is read by where it is, and ignored inside a member the reader does not know (PR-049); records' and
 other documents' schema versions match one pattern, and a missing or ill-formed `schema_version` is malformed
-(section 8; PR-048), as is a scene document's `scene_schema_version` (SC-002), while an engine crosswalk with
+(`record_format.md` section 8; PR-048), as is a scene document's `scene_schema_version` (SC-002), while an
+engine crosswalk with
 an ill-formed or other `crosswalk_schema_version` is invalid (RC-140); the reader schema, in JSON Schema
 2020-12, checks the envelope with the patterns of `id`, `version` and `content_hash`, and the body's structure
 as far as the reader's version knows it, never a value field, form or section `specimen`, whose shape errors
-refuse only the fields they affect, nor an unknown section or anything inside `extensions` (section 1 items 2
+refuse only the fields they affect, nor an unknown section or anything inside `extensions`
+(`record_format.md` section 1 items 2
 and 3; PR-008, PR-034, PR-045); an object with `document_type` and no `record_type` is not a record (PR-006);
 a material reference resolves among the records supplied by hash, giving `malformed` where the record may be a
 source that did not parse, one without a string `id` and `version`, or a candidate with an ill-formed
