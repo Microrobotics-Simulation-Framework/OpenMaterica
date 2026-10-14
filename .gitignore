@@ -166,8 +166,7 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs/Zensical documentation
-/site
+# mkdocs/Zensical documentation: not used; site/ holds the landing page for openmaterica.org
 
 # mypy
 .mypy_cache/

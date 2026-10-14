@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>Page not found · OpenMaterica</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --bg: #fdfdfc; --fg: #1f2328; --muted: #4d5761; --link: #0a55b0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121417; --fg: #e8eaed; --muted: #adb5bf; --link: #8cbcff; }
+  }
+  body {
+    margin: 0;
+    padding: 0 1rem;
+    background: var(--bg);
+    color: var(--fg);
+    font: 1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 40rem; margin: 0 auto; padding: 3rem 0; }
+  h1 { font-size: 1.875rem; line-height: 1.2; margin: 0 0 0.75rem; }
+  p { margin: 0 0 1rem; }
+  .muted { color: var(--muted); }
+  a { color: var(--link); text-underline-offset: 0.15em; }
+  a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 0.125rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Page not found</h1>
+  <p>There is no page at this address. The OpenMaterica site is a single page for now.</p>
+  <!-- An absolute path: GitHub Pages serves this file for a missing page at any depth. -->
+  <p><a href="/">Go to the OpenMaterica home page</a></p>
+  <p class="muted">The specification and the source code are on
+    <a href="https://github.com/Microrobotics-Simulation-Framework/OpenMaterica">GitHub</a>.</p>
+</main>
+</body>
+</html>
