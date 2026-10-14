@@ -1,0 +1,89 @@
+# Publishes openmaterica to PyPI when a tag openmaterica-v<version> is pushed. Tags carry their package's name,
+# since more packages are planned, and the version in the tag must be pyproject.toml's, exactly.
+#
+# Publishing is trusted: PyPI accepts an OIDC token for this repository, this file and the environment `pypi`, and
+# no API token exists anywhere. Only the publish job can request that token; the build runs in a job of its own,
+# so nothing the build installs can request one. The barrier is the environment: a required reviewer approves
+# every publish, and only openmaterica-v* tags may deploy to it. The checks in the build job catch mistakes, not
+# attacks, since a tag on any commit runs that commit's copy of this file.
+
+name: Release
+
+on:
+  push:
+    tags: ["openmaterica-v*"]
+
+# No concurrency group: in one, a newer run replaces any run still pending, which here would drop a release.
+
+permissions: {}
+
+env:
+  UV_VERSION: "0.13.0"
+
+jobs:
+  build:
+    name: build and check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # for origin/main
+          persist-credentials: false
+
+      - name: The tag names pyproject.toml's version
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          if [ "$TAG" != "openmaterica-v$version" ]; then
+            echo "::error::the tag $TAG does not name pyproject.toml's version, $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # Every change reaches main through a pull request, so a release is cut from main.
+      - name: The tagged commit is on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::the tagged commit, $(git rev-parse HEAD), is not on main"
+            exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.11"
+          enable-cache: false # a release restores nothing an earlier run saved
+      - run: uv build
+      - name: The wheel holds py.typed, the conformance data byte for byte, and its PEP 639 licence
+        run: uv run --no-project python scripts/check_wheel.py dist/*.whl
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/openmaterica/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write # for trusted publishing and the attestations
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+      # PEP 740 attestations are the action's default; stated, so that a change of default cannot drop them.
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          attestations: true
