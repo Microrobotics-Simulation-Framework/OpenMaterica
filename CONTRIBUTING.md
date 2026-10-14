@@ -120,6 +120,39 @@ Property tests take their depth from `MATERICA_HYPOTHESIS_PROFILE`: `dev` (the d
 `tests/fuzz/README.md`. Without uv, `pip install --group dev -e .` (pip 25.1 or later) installs the same
 tools, unpinned.
 
+## Confidentiality
+
+This repository is public. It never names the maintainer's private projects, and never carries a private path:
+an absolute home directory, a session scratchpad, Claude Code's temporary directory, or the private planning
+directory beside the repository, which only `CLAUDE.md` names. `scripts/check_confidential.py` checks every
+tracked file, and CI also checks the message of every commit a pull request or a push brings.
+
+The names cannot be listed here, and plain hashes of them would not hide them, since hashing a word list
+recovers short words. So `scripts/confidential_digests.txt` holds their HMAC-SHA256 under a secret key, 64
+hexadecimal digits, which CI reads from the repository secret `CONFIDENTIAL_SCAN_KEY`. Without the key, as on a
+fork, the paths are checked and the names are not, with a warning. A key the digests were not made with is
+refused. A finding gives its file and line, and a term's first letter and length, never the term.
+
+- **Run it**, from the repository's root, with the key in a file or in `CONFIDENTIAL_SCAN_KEY`:
+  ```sh
+  python3 scripts/check_confidential.py --key-file /path/to/confidential_scan.key --messages origin/main..HEAD
+  ```
+  Without a key, it checks the paths only.
+- **Add a term** (this needs the key): add it to the private list of terms, one a line, and write the digests
+  again from the whole list. A term is found as a word, a pair of adjacent words or a hyphenated run, whatever
+  the case and separators: `a-b` finds `A B`, `a_b` and `a-b`.
+  ```sh
+  python3 scripts/check_confidential.py --key-file /path/to/confidential_scan.key --digest \
+    < /path/to/confidential_terms.txt > scripts/confidential_digests.txt
+  ```
+- **A new key** (`python3 -c "import secrets; print(secrets.token_hex(32))"`) needs the digests written again,
+  and the secret set again: `gh secret set CONFIDENTIAL_SCAN_KEY < /path/to/confidential_scan.key`.
+- **As a pre-commit hook**, which checks the tracked files of the working tree before each commit (CI checks
+  the messages):
+  ```sh
+  key=/path/to/confidential_scan.key; hook="$(git rev-parse --git-path hooks/pre-commit)"; printf '#!/bin/sh\nexec python3 scripts/check_confidential.py --key-file %s\n' "$key" > "$hook" && chmod +x "$hook"
+  ```
+
 ## Identifier prefixes
 
 | Category | Format | Example |
