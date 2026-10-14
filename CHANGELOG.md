@@ -97,6 +97,17 @@ recorded in that repository's CHANGELOG.
   dependency, the licence as an SPDX expression); strict JSON reading (`materica.core.jsonio`), RFC 8785
   serialisation (`materica.core.canonical`) and the content hash (`materica.core.hashing`, exported as
   `materica.content_hash`); CI, with a sign-off check on every commit of a pull request.
+- The read up to step 5: identifiers and versions matched in full, versions ordered by their components'
+  lengths and digits (`materica.core.identifiers`); the vocabulary of schema 0.1, generated from the
+  specification's tables (`schema/0.1/vocabulary/`, `materica.core.vocabulary`); the reader schema's checks by hand
+  (`materica.core.envelope`); the record store, and steps 1 to 5 of a read (`materica.core.record`,
+  `materica.core.resolve`); the request's own check and the read, which raises `NotImplementedError` where a
+  step not built yet would decide it (`materica.core.read`); plain records from files (`materica.io.plain`).
+  `materica.read` and `materica.load_records` join `materica.content_hash` as the public API.
+- The JSON shapes of records, read requests and results, and case files, as TypedDicts generated from the
+  schemas (`materica.shapes`); a read's results are read-only to a type checker (PEP 705, in `shapes.pyi`).
+- Generators, which CI runs with `--check` in a job of its own: the vocabulary from the specification's tables,
+  the reader schema and the typed shapes from the writer schemas (`scripts/gen_*.py`).
 
 ### Changed
 - Renamed before the first release (maintainer, 2026-10-14): the project is OpenMaterica, formerly developed
@@ -111,6 +122,11 @@ recorded in that repository's CHANGELOG.
   material reference resolves among the records supplied, the request checked first, reason multiplicity,
   case-file claims, variants, exact comparison and operations, and the namespace `conformance` reserved for
   conformance fixtures (`docs/specification/changes.md`).
+- The JSON Schemas of 0.1, each `$id` its path under `https://w3id.org/materica/schema/0.1/`: the writer
+  schema's envelope and body structure, edited by hand (`record.writer.json`); the reader schema, generated
+  from it (`record.reader.json`); the read request and result (`read_request.json`, `read_result.json`); the
+  schema of case files (`case.json`); and the vocabulary, generated from the specification's tables
+  (`vocabulary/`). The specification's member tables are checked against them.
 
 ### Families
 ### Data
@@ -124,6 +140,20 @@ recorded in that repository's CHANGELOG.
 - Atheris fuzzing, weekly: raw bytes into the JSON reader, checked against a reference reader built from the
   standard library; and the Hypothesis properties driven by Atheris, whose findings the property tests replay
   and shrink. Each run first shows that both find a fault seeded in the reader.
+- All 417 case files run and pass, each under every configuration of claims it holds for: with the hash suite
+  (409), without it (347), and with the fits and reference data suite (408). PR-330 gains an arm: a tolerance
+  beside `operating_conditions` that is not an object (`read_side_contract.md` section 1). Fifteen more broken
+  implementations, of the read and the listing, each fail a real case. Every case file reads alike through the
+  reader under test and a reference reader that shares no code with it, and is valid against `case.json`.
+- Checks that what is written twice agrees: the specification's member tables and the schemas, and the token
+  lists the schemas write by hand; the envelope checks and the reader schema on every conformance input; each
+  `CASES.md` and its case files; and the map of case files to the steps that run them (`tests/spec_sync/`).
+  Each module's imports, relative ones included, against the layers, and the shapes' against the standard
+  library.
+- Property tests of the envelope checks against the reader schema, of versions, and of the laws of a read up to
+  step 5; 35 more mutants, each killed within the `ci` profile's examples at both sizes. CI runs the property
+  tests in two shards side by side. A third Atheris target drives these properties, and first shows that it
+  finds a fault seeded in the read.
 
 ### Security
 ### Known Anomalies

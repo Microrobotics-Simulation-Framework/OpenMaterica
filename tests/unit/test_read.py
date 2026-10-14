@@ -1,0 +1,211 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Examples at the edges of the read up to step 5, which the cases and properties reach rarely or not at
+all: versions longer than `int` reads, the forms a request may be given in, the misuses that raise, and the
+steps not built yet, which raise rather than answer."""
+
+import json
+from pathlib import Path
+
+import pytest
+
+import materica
+from materica import shapes
+from materica.core.identifiers import FAMILY_ID, RECORD_ID, MaterialRef, Version, parse_version
+from materica.core.jsonio import JsonValue
+from materica.core.read import ReadRequest, ReadResult, read
+from materica.core.reasons import Reason, merged
+from materica.core.record import RecordStore
+from materica.core.status import worst
+from materica.core.vocabulary import VOCABULARY
+
+WATER = (
+    Path(materica.__file__).parent / "data" / "conformance" / "plain_read" / "inputs" / "water_fixture.json"
+)
+PIN = "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d"
+REQUEST: shapes.ReadRequest = {
+    "target": {
+        "record": {"id": "conformance/water_fixture", "version": "2.0.0", "content_hash": PIN},
+        "field": "fluid.dynamic_viscosity",
+    },
+    "operating_conditions": {"temperature": {"value": 310.15, "unit": "K"}},
+    "requirement": {"want": "value", "conditions": {"temperature": {"tolerance": {"value": 1, "unit": "K"}}}},
+}
+ABSENT = ReadResult("not_met", (Reason("absent"),))
+
+
+def with_members(**members: JsonValue) -> dict[str, JsonValue]:
+    """REQUEST as parsed JSON, with `members` set at its top."""
+    value: dict[str, JsonValue] = json.loads(json.dumps(REQUEST))
+    return value | members
+
+
+def store() -> RecordStore:
+    return materica.load_records([WATER])
+
+
+def test_components_beyond_ints_digit_limit_order_by_length_then_digits() -> None:
+    longer = parse_version("1" + "0" * 5000 + ".0.0")
+    shorter = parse_version("9" * 4999 + ".0.0")
+    assert longer is not None
+    assert shorter is not None
+    assert shorter < longer
+    ten = parse_version("0.10.0")
+    assert ten is not None
+    assert ten == Version("0", "10", "0")
+    assert ten > Version("0", "9", "0")
+
+
+@pytest.mark.parametrize(
+    "components", [("01", "0", "0"), ("1", "00", "0"), ("1", "0", ""), ("\u0661", "0", "0"), ("1", "0", "1 ")]
+)
+def test_a_version_is_built_only_from_components_without_leading_zeros(
+    components: tuple[str, str, str],
+) -> None:
+    # Ordering by length, then digits, holds only without them.
+    with pytest.raises(ValueError, match="version component"):
+        Version(*components)
+
+
+def test_a_version_compares_only_with_a_version() -> None:
+    version = Version("1", "0", "0")
+    assert version.__lt__("1.0.0") is NotImplemented  # the method itself, as total_ordering calls it
+    assert version != "1.0.0"  # type: ignore[comparison-overlap]  # the misuse under test
+    with pytest.raises(TypeError):
+        _ = version < "2.0.0"
+
+
+@pytest.mark.parametrize("text", ["0.1.0\n", "01.0.0", "1.0", "\u0661.0.0", "1.0.0-rc1", " 1.0.0"])
+def test_a_version_off_the_pattern_is_none(text: str) -> None:
+    assert parse_version(text) is None
+
+
+def test_identifiers_match_in_full() -> None:
+    assert RECORD_ID.fullmatch("conformance/water_fixture")
+    assert not RECORD_ID.fullmatch("conformance/water_fixture\n")
+    assert FAMILY_ID.fullmatch("materica.fluid.newtonian.v1")
+    assert not FAMILY_ID.fullmatch("materica.v1")
+    assert not FAMILY_ID.fullmatch("materica.fluid.v01")
+
+
+def test_a_request_reads_the_same_as_text_as_a_value_and_as_a_shape() -> None:
+    text = json.dumps(REQUEST)
+    for given in (text, text.encode(), bytearray(text.encode()), memoryview(text.encode())):
+        assert read(given, store()) == ABSENT, type(given)
+    assert read(json.loads(text), store()) == ABSENT
+    assert read(REQUEST, store()) == ABSENT
+
+
+@pytest.mark.parametrize(
+    "request_value",
+    [
+        pytest.param({**REQUEST, "x": {1, 2}}, id="a_set"),
+        pytest.param({**REQUEST, "x": float("nan")}, id="nan"),
+        pytest.param(b"\xef\xbb\xbf{}", id="a_byte_order_mark"),
+        pytest.param("\ufeff{}", id="a_byte_order_mark_in_text"),
+        pytest.param('{"x": "\ud800"}', id="a_lone_surrogate_in_text"),
+        pytest.param(json.dumps("a string"), id="a_json_string"),
+    ],
+)
+def test_a_request_that_is_not_json_is_incomplete(request_value: object) -> None:
+    result = read(request_value, store())  # type: ignore[arg-type]  # a misuse a consumer may still make
+    assert result.status == "not_met"
+    assert [reason.code for reason in result.reasons] == ["request_incomplete"]
+
+
+def test_unknown_claims_are_a_misuse() -> None:
+    with pytest.raises(ValueError, match="not suites"):
+        read(REQUEST, store(), claims={"plain_read", "hashes"})  # type: ignore[arg-type]  # the misuse
+
+
+WITHOUT_PLAIN_READ: list[set[shapes.Suite]] = [
+    set(),
+    {"hash"},
+    {"fits_and_reference_data"},
+    {"scene_documents", "hash"},
+]
+
+
+@pytest.mark.parametrize("claims", WITHOUT_PLAIN_READ)
+def test_claims_without_plain_read_are_a_misuse(claims: set[shapes.Suite]) -> None:
+    with pytest.raises(ValueError, match="plain_read"):
+        read(REQUEST, store(), claims=claims)
+    with pytest.raises(ValueError, match="plain_read"):
+        ReadRequest.from_json(REQUEST, claims)
+
+
+def test_steps_not_built_yet_raise_rather_than_answer() -> None:
+    region = with_members(target={"region": "lumen", "field": "fluid.dynamic_viscosity"})
+    with pytest.raises(NotImplementedError):
+        read(region, store())
+    # Whatever else is wrong with it: scenes may add reasons of their own.
+    faults: list[dict[str, JsonValue]] = [
+        {"operating_conditions": {"temperature": {"value": 310.15, "unit": "Cel"}}},
+        {"requirement": {"want": "fit"}},
+        {"target": {"region": 1.0, "record": {}, "field": "x"}},
+    ]
+    for fault in faults:
+        with pytest.raises(NotImplementedError):
+            read(region | fault, store())
+    with pytest.raises(NotImplementedError):
+        read(with_members(acceptances=[{"acceptance": "pick", "index": 0.0}]), store())
+    with pytest.raises(NotImplementedError):
+        read(with_members(acceptances=[1.0], target=None), store())
+    refused = read(with_members(acceptances={"acceptance": "pick"}), store())
+    assert refused.reasons == (Reason("request_incomplete"),)
+    resolved = with_members(
+        target={
+            "record": {"id": "conformance/water_fixture", "version": "1.0.0", "content_hash": PIN},
+            "field": "fluid.dynamic_viscosity",
+        }
+    )
+    with pytest.raises(NotImplementedError):
+        read(resolved, store())
+
+
+def test_a_request_keeps_only_the_members_its_shape_names() -> None:
+    checked = ReadRequest.from_json(with_members(x_note=1.0, records=["a.json"]))
+    assert isinstance(checked, ReadRequest)
+    assert checked.target == MaterialRef("conformance/water_fixture", "2.0.0", PIN)
+    expected = json.loads(json.dumps(REQUEST))
+    expected["requirement"]["conditions"]["temperature"]["tolerance"]["value"] = 1.0
+    assert checked.to_json() == expected
+
+
+def test_a_result_reads_back_from_its_json() -> None:
+    result = ReadResult(
+        "not_met", (Reason("request_incomplete", "temperature", "below zero"),), ("hash_not_checked",)
+    )
+    assert ReadResult.from_json(result.to_json()) == result
+    written = json.loads(json.dumps(result.to_json()))
+    assert written["reasons"] == [
+        {"code": "request_incomplete", "condition": "temperature", "detail": "below zero"}
+    ]
+
+
+def test_a_reason_given_twice_is_merged_with_both_details() -> None:
+    (reason,) = merged(
+        [Reason("request_incomplete", "temperature", "a"), Reason("request_incomplete", "temperature", "b")]
+    )
+    assert reason.detail == "a; b"
+
+
+def test_the_worst_status_wins_and_none_is_met() -> None:
+    assert worst([]) == "met"
+    assert worst(["met", "unknown"]) == "unknown"
+    assert worst(["unknown", "not_met", "met"]) == "not_met"
+    assert VOCABULARY.reasons["no_pick"].status == "unknown"
+    assert VOCABULARY.sections == {"bulk", "fluid", "magnetic", "biocompatibility"}
+
+
+def test_a_store_sets_documents_aside_and_keeps_unreadable_sources_apart() -> None:
+    records = RecordStore()
+    records.add("manifest", b'{"document_type": "scene", "id": "conformance/a", "version": "1.0.0"}')
+    records.add(
+        "record",
+        b'{"document_type": "x", "record_type": "material", "id": "conformance/a", "version": "1.0.0"}',
+    )
+    records.add("array", b"[]")
+    records.add("bytes", b"\xff")
+    assert [record.source for record in records.get("conformance/a", "1.0.0")] == ["record"]
+    assert [source for source, _ in records.unparsed()] == ["array", "bytes"]
+    assert records.list_records() == []

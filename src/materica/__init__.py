@@ -2,5 +2,7 @@
 """OpenMaterica: material records and the reader of their specification (`docs/specification/`)."""
 
 from materica.core.hashing import content_hash
+from materica.core.read import read
+from materica.io.plain import load_records
 
-__all__ = ["content_hash"]
+__all__ = ["content_hash", "load_records", "read"]

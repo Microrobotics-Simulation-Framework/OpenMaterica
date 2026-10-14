@@ -1,18 +1,30 @@
 # SPDX-License-Identifier: Apache-2.0
-"""A fault seeded in `jsonio.parse`, which shows that the fuzz targets find a fault and that the replay
-shrinks it: an exception escapes when the bytes read as an array whose first item is an empty object.
+"""Faults seeded in the core, which show that the fuzz targets find a fault and that the replay shrinks it.
 
-The fuzz targets seed it when `MATERICA_FUZZ_SEEDED_FAULT` is set; pytest seeds it when loaded as a plugin,
-`python -m pytest -p tests.fuzz.seeded_fault`. No seed input holds the shape, so a fuzzer has to build it.
+- In `jsonio.parse`, for the first two targets: an exception escapes when the bytes read as an array whose
+  first item is an empty object. No seed input holds the shape, so a fuzzer has to build it.
+- In the read, for the third: an exception escapes when two copies of the target state its pin and are
+  identical byte for byte, which a read must take as one record (`read_side_contract.md` section 3, step 1),
+  beside an unreadable source, by a reader without the hash suite: a conjunction of three draws, which a
+  fuzzer has to explore to meet.
+
+Each raises its own message, so that CI can tell which fault a run found.
+
+The fuzz targets seed both when `MATERICA_FUZZ_SEEDED_FAULT` is set; pytest seeds them when loaded as a
+plugin, `python -m pytest -p tests.fuzz.seeded_fault`.
 """
 
 import os
+from collections.abc import Collection
 
 import pytest
 
-from materica.core import jsonio
+from materica.core import jsonio, read
+from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
+from materica.core.record import RecordStore
+from materica.core.resolve import Refused, ResolvedRecord, resolve_record
 
 _parse = jsonio.parse
 
@@ -20,12 +32,25 @@ _parse = jsonio.parse
 def faulty_parse(data: bytes) -> JsonValue | Reason:
     value = _parse(data)
     if isinstance(value, list) and value and value[0] == {}:
-        raise IndexError("the seeded fault")
+        raise IndexError("the seeded fault in parse")
     return value
+
+
+def faulty_resolve_record(
+    ref: MaterialRef, store: RecordStore, claims: Collection[str]
+) -> ResolvedRecord | Refused:
+    pinned = [
+        copy for copy in store.get(ref.id, ref.version) if copy.value.get("content_hash") == ref.content_hash
+    ]
+    identical = len(pinned) > 1 and all(copy.data == pinned[0].data for copy in pinned)
+    if identical and store.unparsed() and "hash" not in claims:
+        raise IndexError("the seeded fault in the read")
+    return resolve_record(ref, store, claims)
 
 
 def seed() -> None:
     jsonio.parse = faulty_parse
+    read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
 
 
 def seed_if_asked() -> None:

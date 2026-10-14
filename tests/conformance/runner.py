@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """The conformance-case runner, by `docs/specification/README.md`, "Case files" to "Operations".
 
-It finds every case file, runs those whose operation has an executor and whose claims agree with the suites
-claimed, compares each result with the case's expected answer, and folds a case's variants into the case's
-outcome. Later steps add executors; the rest stays as it is.
+It finds every case file, runs those whose operation has an executor under every configuration of claims that
+agrees with the case's suite and claims, compares each result with the case's expected answer, and folds a
+case's variants into the case's outcome. Later steps add executors; the rest stays as it is.
 """
 
 import json
@@ -18,7 +18,10 @@ from pathlib import Path
 import materica
 from materica.core import hashing, jsonio
 from materica.core.jsonio import JsonValue
+from materica.core.read import read
 from materica.core.reasons import Reason
+from materica.io.plain import load_records
+from materica.shapes import Suite
 
 CONFORMANCE = Path(materica.__file__).parent / "data" / "conformance"
 
@@ -32,7 +35,7 @@ class CaseFileError(Exception):
 class Outcome(Enum):
     PASSED = "passed"
     FAILED = "failed"
-    NOT_RUN = "not run: its suite or claims disagree with the suites claimed"
+    NOT_RUN = "not run: its suite or claims disagree with every configuration of claims"
     NOT_YET_RUNNABLE = "not yet runnable: no executor for its operation"
 
 
@@ -45,6 +48,7 @@ class CaseFile:
     operation: str
     claims: dict[str, bool]
     inputs: JsonObject
+    request: JsonValue
     expected: JsonObject
     members: tuple[str, ...]
     relative_tolerance: float | None
@@ -84,6 +88,7 @@ class CaseFile:
             operation=_string(operation, "request.operation"),
             claims={suite: claimed is True for suite, claimed in claims.items()},
             inputs=_object(document.get("inputs"), "inputs"),
+            request=request,
             expected=expected,
             members=members,
             relative_tolerance=tolerance,
@@ -93,8 +98,13 @@ class CaseFile:
     def input_bytes(self, member: str) -> bytes:
         return (self.path.parent.parent / "inputs" / _string(self.inputs.get(member), member)).read_bytes()
 
+    def input_paths(self, member: str) -> list[Path]:
+        names = _list(self.inputs.get(member), member)
+        return [self.path.parent.parent / "inputs" / _string(name, member) for name in names]
 
-Executor = Callable[[CaseFile], JsonObject]
+
+# An executor runs one case file's operation as a reader claiming the given suites.
+Executor = Callable[[CaseFile, frozenset[Suite]], JsonObject]
 
 
 @dataclass(frozen=True)
@@ -102,6 +112,7 @@ class CaseRun:
     case_file: CaseFile
     outcome: Outcome
     differences: tuple[str, ...] = ()
+    claimed: tuple[frozenset[Suite], ...] = ()  # the configurations it ran under
 
 
 def discover(root: Path = CONFORMANCE) -> list[CaseFile]:
@@ -117,30 +128,62 @@ def discover(root: Path = CONFORMANCE) -> list[CaseFile]:
     return case_files
 
 
+def agreeing(case_file: CaseFile, configurations: Iterable[frozenset[Suite]]) -> list[frozenset[Suite]]:
+    """The configurations that claim the case's suite and agree with every claim the case states."""
+    return [
+        claimed
+        for claimed in configurations
+        if case_file.suite in claimed
+        and all((suite in claimed) == claims for suite, claims in case_file.claims.items())
+    ]
+
+
 def not_run_because(
-    case_file: CaseFile, *, claimed: frozenset[str], executors: Mapping[str, Executor]
+    case_file: CaseFile, *, configurations: Iterable[frozenset[Suite]], executors: Mapping[str, Executor]
 ) -> Outcome | None:
     if case_file.operation not in executors:
         return Outcome.NOT_YET_RUNNABLE
-    if case_file.suite not in claimed or any(
-        (suite in claimed) != claims for suite, claims in case_file.claims.items()
-    ):
+    if not agreeing(case_file, configurations):
         return Outcome.NOT_RUN
     return None
 
 
-def run(case_file: CaseFile, *, claimed: frozenset[str], executors: Mapping[str, Executor]) -> CaseRun:
-    not_run = not_run_because(case_file, claimed=claimed, executors=executors)
+def run(
+    case_file: CaseFile, *, configurations: Iterable[frozenset[Suite]], executors: Mapping[str, Executor]
+) -> CaseRun:
+    """The case file run under every configuration that agrees with it; it fails if any run fails."""
+    configurations = tuple(configurations)
+    not_run = not_run_because(case_file, configurations=configurations, executors=executors)
     if not_run is not None:
         return CaseRun(case_file, not_run)
-    differences = tuple(compare(case_file, executors[case_file.operation](case_file)))
-    return CaseRun(case_file, Outcome.FAILED if differences else Outcome.PASSED, differences)
+    claimed = tuple(agreeing(case_file, configurations))
+    differences = [
+        f"claiming {', '.join(sorted(claims))}: {difference}"
+        for claims in claimed
+        for difference in _run_once(case_file, claims, executors[case_file.operation])
+    ]
+    return CaseRun(case_file, Outcome.FAILED if differences else Outcome.PASSED, tuple(differences), claimed)
+
+
+def _run_once(case_file: CaseFile, claims: frozenset[Suite], executor: Executor) -> list[str]:
+    try:
+        result = executor(case_file, claims)
+    except CaseFileError:
+        raise
+    except Exception as error:
+        # An implementation that raises for a case's content fails it: no read raises (PR-300).
+        return [f"raised {type(error).__name__}: {error}"]
+    return compare(case_file, result)
 
 
 def run_all(
-    case_files: Iterable[CaseFile], *, claimed: frozenset[str], executors: Mapping[str, Executor]
+    case_files: Iterable[CaseFile],
+    *,
+    configurations: Iterable[frozenset[Suite]],
+    executors: Mapping[str, Executor],
 ) -> list[CaseRun]:
-    return [run(case_file, claimed=claimed, executors=executors) for case_file in case_files]
+    configurations = tuple(configurations)
+    return [run(case_file, configurations=configurations, executors=executors) for case_file in case_files]
 
 
 def case_outcome(variants: Iterable[Outcome]) -> Outcome:
@@ -307,7 +350,7 @@ def content_hash_executor(
 ) -> Executor:
     """The `content_hash` operation (README, "Operations"), from the given parser and hash."""
 
-    def execute(case_file: CaseFile) -> JsonObject:
+    def execute(case_file: CaseFile, claims: frozenset[Suite]) -> JsonObject:
         value = parse(case_file.input_bytes("value"))
         if isinstance(value, Reason):
             return {"status": "not_met", "reasons": [reason_json(value)]}
@@ -316,6 +359,48 @@ def content_hash_executor(
     return execute
 
 
-# What this implementation runs today. The Python implementation claims the hash suite (HS) beside plain read.
-CLAIMED = frozenset({"plain_read", "hash"})
-EXECUTORS: dict[str, Executor] = {"content_hash": content_hash_executor()}
+def read_executor() -> Executor:
+    """A read of the case's request, or of the file `inputs.request` names, among `inputs.records`. The result
+    goes through JSON text, as a consumer would receive it."""
+
+    def execute(case_file: CaseFile, claims: frozenset[Suite]) -> JsonObject:
+        store = load_records(case_file.input_paths("records"))
+        request = case_file.input_bytes("request") if "request" in case_file.inputs else case_file.request
+        written = jsonio.parse(json.dumps(read(request, store, claims=claims).to_json()).encode())
+        assert not isinstance(written, Reason), written
+        return _object(written, "the result")
+
+    return execute
+
+
+def list_records_executor() -> Executor:
+    """The `list_records` operation (README, "Operations"): always `met`, listing the good records."""
+
+    def execute(case_file: CaseFile, claims: frozenset[Suite]) -> JsonObject:
+        listed = {
+            (record.id, record.version)
+            for record in load_records(case_file.input_paths("records")).list_records()
+        }
+        return {
+            "status": "met",
+            "reasons": [],
+            "value": [{"id": id_, "version": version} for id_, version in sorted(listed)],
+        }
+
+    return execute
+
+
+# The claims this implementation runs under, each case file under every one that agrees with it: plain read
+# and HS, as by default; plain read alone, a reader without HS; and with the fits and reference data suite
+# too, whose `want`s step 0 then accepts. A read under it ends by step 5 or raises, so claiming that suite
+# gives no answer a step not built could change.
+CONFIGURATIONS: tuple[frozenset[Suite], ...] = (
+    frozenset({"plain_read", "hash"}),
+    frozenset({"plain_read"}),
+    frozenset({"plain_read", "hash", "fits_and_reference_data"}),
+)
+EXECUTORS: dict[str, Executor] = {
+    "content_hash": content_hash_executor(),
+    "read": read_executor(),
+    "list_records": list_records_executor(),
+}

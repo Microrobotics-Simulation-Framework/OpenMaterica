@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3id.org/materica/schema/0.1/record.writer.json",
+  "$comment": "Hand-edited: the one source of a record's structure. record.reader.json and the package's typed shapes are generated from it. So far it holds the envelope and the body's structure; value fields, forms and specimen facts are placeholders until their shapes are written.",
+  "title": "Record",
+  "description": "A record as a writer writes it (record_format.md sections 2 to 4.4): its envelope and body structure closed, with no member they do not define and every enumerated member limited to its tokens. Value fields, specimen facts and extensions are open placeholders until their shapes are written.",
+  "type": "object",
+  "required": ["schema_version", "record_type", "id", "version", "name", "licence", "content_hash", "body"],
+  "properties": {
+    "schema_version": {"$ref": "#/$defs/version"},
+    "record_type": {"$ref": "#/$defs/record_type"},
+    "id": {"$ref": "#/$defs/record_id"},
+    "version": {"$ref": "#/$defs/version"},
+    "name": {"type": "string"},
+    "licence": {"$ref": "#/$defs/licence"},
+    "content_hash": {"$ref": "#/$defs/content_hash"},
+    "card": {"type": "string"},
+    "body": {"$ref": "#/$defs/json_object"}
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"required": ["record_type"], "properties": {"record_type": {"const": "material"}}},
+      "then": {"properties": {"body": {"$ref": "#/$defs/material_body"}}}
+    },
+    {
+      "if": {"required": ["record_type"], "properties": {"record_type": {"const": "overlay"}}},
+      "then": {"properties": {"body": {"$ref": "#/$defs/overlay_body"}}}
+    }
+  ],
+  "$defs": {
+    "record_type": {
+      "description": "record_format.md section 3. An interface record's body is specified in a later minor version.",
+      "enum": ["material", "interface", "overlay"]
+    },
+    "record_id": {
+      "description": "<namespace>/<local id> (record_format.md section 7 item 2).",
+      "type": "string",
+      "pattern": "^[a-z0-9_]+/[A-Za-z0-9_.-]+(?![\\s\\S])"
+    },
+    "version": {
+      "description": "MAJOR.MINOR.PATCH (record_format.md section 8).",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?![\\s\\S])"
+    },
+    "content_hash": {
+      "description": "record_format.md section 9.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "licence": {
+      "description": "The licence of the values, an SPDX expression; quoted evidence is never covered by it (record_format.md section 2).",
+      "type": "object",
+      "required": ["values", "evidence"],
+      "properties": {
+        "values": {"type": "string"},
+        "evidence": {"enum": ["excluded"]}
+      },
+      "additionalProperties": false
+    },
+    "material_body": {
+      "description": "record_format.md section 4.",
+      "type": "object",
+      "required": ["sections"],
+      "properties": {
+        "sections": {"$ref": "#/$defs/sections"},
+        "extensions": {"$ref": "#/$defs/extensions"}
+      },
+      "additionalProperties": false
+    },
+    "sections": {
+      "description": "The sections of schema 0.1, every one optional (record_format.md section 4.1).",
+      "type": "object",
+      "properties": {
+        "bulk": {"$ref": "#/$defs/section"},
+        "fluid": {"$ref": "#/$defs/section"},
+        "magnetic": {"$ref": "#/$defs/section"},
+        "biocompatibility": {"$ref": "#/$defs/section"}
+      },
+      "additionalProperties": false
+    },
+    "section": {
+      "description": "record_format.md section 4 item 2.",
+      "type": "object",
+      "required": ["fields"],
+      "properties": {
+        "specimen": {"$ref": "#/$defs/specimen"},
+        "fields": {"$ref": "#/$defs/fields"}
+      },
+      "additionalProperties": false
+    },
+    "fields": {
+      "description": "A field's name to its value field.",
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/value_field"}
+    },
+    "extensions": {
+      "description": "A registered namespace to its sections; a reader ignores what it holds (record_format.md section 4 item 4).",
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z0-9_]+(?![\\s\\S])"},
+      "additionalProperties": {"$ref": "#/$defs/extension"}
+    },
+    "overlay_body": {
+      "description": "record_format.md section 4.4.",
+      "type": "object",
+      "required": ["purpose", "base", "scope", "replaces"],
+      "properties": {
+        "purpose": {"enum": ["fit", "fill_in", "measurement", "scene_override"]},
+        "base": {"$ref": "#/$defs/overlay_base"},
+        "scope": {"$ref": "#/$defs/overlay_scope"},
+        "replaces": {"$ref": "#/$defs/replaces"}
+      },
+      "additionalProperties": false
+    },
+    "overlay_base": {
+      "description": "The one material an overlay replaces fields of (record_format.md section 4.4 item 2).",
+      "type": "object",
+      "required": ["id", "version", "content_hash"],
+      "properties": {
+        "id": {"$ref": "#/$defs/record_id"},
+        "version": {"$ref": "#/$defs/version"},
+        "content_hash": {"$ref": "#/$defs/content_hash"}
+      },
+      "additionalProperties": false
+    },
+    "overlay_scope": {
+      "description": "record_format.md section 4.4 item 3.",
+      "type": "object",
+      "required": ["consumer"],
+      "properties": {
+        "consumer": {"type": "string"},
+        "model": {"$ref": "#/$defs/scope_model"},
+        "model_configuration_hash": {"type": "string"},
+        "run": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "scope_model": {
+      "description": "A consumer's model, by name and version; the version is the consumer's, not bound by record_format.md section 8.",
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string"},
+        "version": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "replaces": {
+      "description": "<section>.<field> to the whole value field that replaces the base's (record_format.md section 4.4 item 2).",
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z0-9_]+\\.[a-z0-9_]+(?![\\s\\S])"},
+      "additionalProperties": {"$ref": "#/$defs/value_field"}
+    },
+    "value_field": {
+      "description": "record_format.md section 5. A placeholder until its shape is written; a reader checks it only when it reads the field.",
+      "$ref": "#/$defs/json_object"
+    },
+    "specimen": {
+      "description": "Specimen facts (provenance.md section 6.2). A placeholder until their shapes are written; a reader checks them only when it reads a field of the section.",
+      "$ref": "#/$defs/json_object"
+    },
+    "extension": {
+      "description": "A namespace's sections, using the same value fields. A placeholder until their shape is written; a reader never checks it.",
+      "$ref": "#/$defs/json_object"
+    },
+    "status_object": {
+      "description": "A member's status where it has no ordinary value (provenance.md section 1).",
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["unstated", "not_checked", "none", "not_applicable", "withheld"]},
+        "reason": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "json_value": {
+      "description": "Any JSON value: every number a double (record_format.md section 1 item 6).",
+      "anyOf": [
+        {"type": "boolean"},
+        {"type": "number"},
+        {"type": "string"},
+        {"type": "array", "items": {"$ref": "#/$defs/json_value"}},
+        {"$ref": "#/$defs/json_object"},
+        {"type": "null"}
+      ]
+    },
+    "json_object": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/json_value"}
+    }
+  }
+}

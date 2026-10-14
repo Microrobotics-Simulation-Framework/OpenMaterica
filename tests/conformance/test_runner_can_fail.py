@@ -6,23 +6,27 @@ implementation stays the one under test.
 """
 
 import hashlib
+import math
 import unicodedata
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 
 import pytest
 
-from materica.core import canonical, hashing, jsonio
+from materica.core import canonical, envelope, hashing, jsonio, read, record, resolve
+from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
+from materica.core.record import Record, RecordStore
+from materica.core.resolve import Refused, ResolvedRecord
+from materica.core.vocabulary import ConditionSpec
+from materica.shapes import Suite
 from tests.conformance import runner
-from tests.conformance.runner import CLAIMED, EXECUTORS, Executor, JsonObject, Outcome
+from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, Executor, JsonObject, Outcome
+from tests.property.support import Searched
 
-RUN = [
-    case_file
-    for case_file in runner.discover()
-    if runner.not_run_because(case_file, claimed=CLAIMED, executors=EXECUTORS) is None
-]
+CASE_FILES = {case_file.path.name: case_file for case_file in runner.discover()}
 
+# A broken implementation: the executor of the operation its catcher runs, after any faults are injected.
 Fault = Callable[[pytest.MonkeyPatch], Executor]
 
 
@@ -81,10 +85,165 @@ def counts_scalars_in_depth(monkeypatch: pytest.MonkeyPatch) -> Executor:
 
 
 def answers_a_constant(monkeypatch: pytest.MonkeyPatch) -> Executor:
-    def execute(case_file: runner.CaseFile) -> JsonObject:
+    def execute(case_file: runner.CaseFile, claims: frozenset[Suite]) -> JsonObject:
         return {"status": "met", "reasons": [], "value": "sha256:" + "0" * 64}
 
     return execute
+
+
+# Reads and listings with one fault: the core's own code, with one function replaced.
+
+
+def ignores_unreadable_sources(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def no_unreadable_source(self: RecordStore) -> list[tuple[str, Reason]]:
+        return []
+
+    monkeypatch.setattr(RecordStore, "unparsed", no_unreadable_source)
+    return EXECUTORS["read"]
+
+
+def counts_documents_as_unreadable(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    add = RecordStore.add
+
+    def add_document_as_unreadable(self: RecordStore, source: str, data: bytes) -> None:
+        value = jsonio.parse(data)
+        if isinstance(value, dict) and "document_type" in value and "record_type" not in value:
+            data = b"[]"  # parses to no record, so the source is unreadable
+        add(self, source, data)
+
+    monkeypatch.setattr(RecordStore, "add", add_document_as_unreadable)
+    return EXECUTORS["read"]
+
+
+def reads_the_first_of_copies_that_differ(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    candidate = resolve._candidate  # pyright: ignore[reportPrivateUsage]  # the function the fault replaces
+
+    def first_pinned(ref: MaterialRef, store: RecordStore) -> Record | Reason:
+        pinned = [
+            copy
+            for copy in store.get(ref.id, ref.version)
+            if copy.value.get("content_hash") == ref.content_hash
+        ]
+        return pinned[0] if pinned else candidate(ref, store)
+
+    monkeypatch.setattr(resolve, "_candidate", first_pinned)
+    return EXECUTORS["read"]
+
+
+def searches_the_id_pattern(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    patterns = envelope._PATTERNS  # pyright: ignore[reportPrivateUsage]  # the table the fault changes
+    monkeypatch.setitem(patterns, "id", Searched(patterns["id"]))  # pyright: ignore[reportArgumentType]  # a duck-typed pattern
+    return EXECUTORS["read"]
+
+
+def refuses_another_patch(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    refusal = vars(Record)["version_refusal"].func  # the cached_property's own function
+
+    def same_patch_only(self: Record) -> Reason | None:
+        found = refusal(self)
+        return Reason("other_version") if found is None and self.value["schema_version"] != "0.1.0" else found
+
+    monkeypatch.setattr(Record, "version_refusal", property(same_patch_only))
+    return EXECUTORS["list_records"]
+
+
+def lists_interfaces(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    monkeypatch.setattr(record, "READABLE_TYPES", ("material", "overlay", "interface"))
+    return EXECUTORS["list_records"]
+
+
+def lists_broken_envelopes(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def no_refusal(self: Record) -> Reason | None:
+        return None
+
+    monkeypatch.setattr(Record, "envelope_refusal", property(no_refusal))
+    return EXECUTORS["list_records"]
+
+
+def hash_not_recomputed(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def stated_hash(value: JsonValue) -> str:
+        assert isinstance(value, dict)
+        return str(value["content_hash"])
+
+    monkeypatch.setattr(resolve, "content_hash", stated_hash)
+    return EXECUTORS["read"]
+
+
+def checks_the_type_before_the_hash(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    resolve_record = resolve.resolve_record
+
+    def type_first(ref: MaterialRef, store: RecordStore, claims: Collection[str]) -> ResolvedRecord | Refused:
+        resolved = resolve_record(ref, store, ())
+        if isinstance(resolved, Refused) and resolved.reasons[0].code == "unknown_type":
+            return Refused(resolved.reasons)
+        return resolve_record(ref, store, claims)
+
+    monkeypatch.setattr(read, "resolve_record", type_first)
+    return EXECUTORS["read"]
+
+
+def labels_every_result_without_the_hash_suite(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    resolve_record = resolve.resolve_record
+
+    def labelled(ref: MaterialRef, store: RecordStore, claims: Collection[str]) -> ResolvedRecord | Refused:
+        resolved = resolve_record(ref, store, claims)
+        if isinstance(resolved, Refused) and "hash" not in claims:
+            return Refused(resolved.reasons, ("hash_not_checked",))
+        return resolved
+
+    monkeypatch.setattr(read, "resolve_record", labelled)
+    return EXECUTORS["read"]
+
+
+def normalises_units(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    unit = read._unit  # pyright: ignore[reportPrivateUsage]  # the function the fault replaces
+
+    def normalised(
+        spec: ConditionSpec, entry: dict[str, JsonValue], where: str, found: list[Reason]
+    ) -> str | None:
+        written = entry.get("unit")
+        if isinstance(written, str):
+            entry = {**entry, "unit": unicodedata.normalize("NFKC", written)}
+        return unit(spec, entry, where, found)
+
+    monkeypatch.setattr(read, "_unit", normalised)
+    return EXECUTORS["read"]
+
+
+def refuses_unnamed_members(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    target = read._target  # pyright: ignore[reportPrivateUsage]  # the function the fault replaces
+
+    def strict(value: JsonValue, found: list[Reason]) -> tuple[MaterialRef, str] | None:
+        if isinstance(value, dict) and set(value) - {"record", "field"}:
+            found.append(Reason("request_incomplete", detail="a member the shape does not name"))
+        return target(value, found)
+
+    monkeypatch.setattr(read, "_target", strict)
+    return EXECUTORS["read"]
+
+
+def repeats_reasons(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    monkeypatch.setattr(read, "merged", tuple)
+    return EXECUTORS["read"]
+
+
+def ignores_the_suite_of_a_want(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    monkeypatch.setattr(read, "_WANT_SUITES", {})
+    return EXECUTORS["read"]
+
+
+def refuses_a_tolerance_of_minus_zero(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    condition = read._requirement_condition  # pyright: ignore[reportPrivateUsage]  # the function the fault replaces
+
+    def signed(name: str, entry: JsonValue, operated: bool, found: list[Reason]) -> object:
+        tolerance = entry.get("tolerance") if isinstance(entry, dict) else None
+        value = tolerance.get("value") if isinstance(tolerance, dict) else None
+        if isinstance(value, float) and math.copysign(1.0, value) < 0:
+            found.append(Reason("request_incomplete", name, "below zero"))
+        return condition(name, entry, operated, found)
+
+    monkeypatch.setattr(read, "_requirement_condition", signed)
+    return EXECUTORS["read"]
 
 
 def _without(value: JsonValue, removed: str) -> JsonValue:
@@ -123,12 +282,28 @@ FAULTS: list[tuple[Fault, str]] = [
     (accepts_repeated_names, "HS-003.malformed_duplicate_name.json"),
     (counts_scalars_in_depth, "HS-003.depth_64_scalar.json"),
     (answers_a_constant, "HS-003.malformed_bom.json"),
+    (ignores_unreadable_sources, "PR-328.unparsed_source_malformed.json"),
+    (counts_documents_as_unreadable, "PR-328.scene_manifest_absent.json"),
+    (reads_the_first_of_copies_that_differ, "PR-329.two_with_hash_card_differs.json"),
+    (searches_the_id_pattern, "PR-002.local_id_trailing_newline.json"),
+    (refuses_another_patch, "PR-048.patch_0_1_7_listed.json"),
+    (lists_interfaces, "PR-006.interface_skipped.json"),
+    (lists_broken_envelopes, "PR-004.overlay_missing_name_not_listed.json"),
+    (hash_not_recomputed, "HS-010.value_edited.json"),
+    (checks_the_type_before_the_hash, "HS-010.type_edited.json"),
+    (labels_every_result_without_the_hash_suite, "PR-327.pin_no_hs.json"),
+    (normalises_units, "PR-320.operating_unit_kelvin_sign.json"),
+    (refuses_unnamed_members, "PR-330.unknown_member_in_target.json"),
+    (repeats_reasons, "PR-331.request_incomplete_once_per_condition.json"),
+    (ignores_the_suite_of_a_want, "PR-332.fit_without_fd.json"),
+    (refuses_a_tolerance_of_minus_zero, "PR-330.tolerance_negative_zero_accepted.json"),
 ]
 
 
-def failed_cases(executor: Executor) -> set[str]:
-    executors = {"content_hash": executor}
-    runs = runner.run_all(RUN, claimed=CLAIMED, executors=executors)
+def failed_cases(operation: str, executor: Executor) -> set[str]:
+    runs = runner.run_all(
+        CASE_FILES.values(), configurations=CONFIGURATIONS, executors={**EXECUTORS, operation: executor}
+    )
     return {case_run.case_file.path.name for case_run in runs if case_run.outcome is Outcome.FAILED}
 
 
@@ -136,8 +311,11 @@ def failed_cases(executor: Executor) -> set[str]:
 def test_a_broken_implementation_fails_a_real_case(
     fault: Fault, catcher: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    assert catcher in failed_cases(fault(monkeypatch))
+    case_file = CASE_FILES[catcher]
+    executors = {**EXECUTORS, case_file.operation: fault(monkeypatch)}
+    assert runner.run(case_file, configurations=CONFIGURATIONS, executors=executors).outcome is Outcome.FAILED
 
 
-def test_the_implementation_itself_fails_none() -> None:
-    assert failed_cases(EXECUTORS["content_hash"]) == set()
+@pytest.mark.parametrize("operation", sorted(EXECUTORS))
+def test_the_implementation_itself_fails_none(operation: str) -> None:
+    assert failed_cases(operation, EXECUTORS[operation]) == set()

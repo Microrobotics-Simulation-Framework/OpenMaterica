@@ -1,0 +1,29 @@
+# Schemas
+
+The JSON Schemas (layer L0, AD 7.1), in the dialect of JSON Schema 2020-12, one directory per schema version.
+Each version has a closed writer schema and an open reader schema for records (`record_format.md` section 1
+item 2), schemas for the read request and result, a schema for conformance case files, and the vocabulary.
+Every file's `$id` is its path under `https://w3id.org/materica/schema/`; an `$id` is an identifier and need
+not resolve.
+
+## Where each fact is edited
+
+- **Structure** is edited in the writer schemas, by hand. The specification's member tables (the envelope, the
+  read request and result) are checked against them, not generated from them, so the specification keeps its
+  prose (`tests/spec_sync/test_schemas.py`).
+- **Tokens** are edited in the specification's tables. The vocabulary is generated from them
+  (`0.1/vocabulary/`), and a schema takes a token list from it by `$ref`: a reason's code in `read_result.json`.
+- **The reader schema** is generated from the writer schema by `scripts/gen_reader_schema.py`, which opens it
+  where a reader is open: unknown members and tokens pass, a pattern stays only on `id`, `version` and
+  `content_hash`, and the shapes of value fields, forms and a section's `specimen` are never applied.
+- **The typed shapes** (`materica/shapes.py`, `shapes.pyi`) are generated from the writer schema,
+  `case.json` and the request and result it refers to, by `scripts/gen_shapes.py`.
+
+CI regenerates every derived file and fails where one differs (CONTRIBUTING, "Changing the schema"). Every
+pattern starts with `^` and ends with `(?![\s\S])`: a validator's `$` also matches before a final newline.
+
+## Who reads them
+
+The Python reader checks envelopes with `core/envelope.py`, which tests hold to agreement with the reader schema;
+it never runs a JSON Schema validator. The schemas are for readers in other languages, for record checks, and
+for the tests, which validate with jsonschema, a development dependency.

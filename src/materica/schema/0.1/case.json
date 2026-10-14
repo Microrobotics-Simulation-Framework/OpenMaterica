@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3id.org/materica/schema/0.1/case.json",
+  "$comment": "Hand-edited. The read request and the read result are read_request.json and read_result.json; the package's typed shapes are generated from them.",
+  "title": "Case",
+  "description": "A conformance case file, one per arm of a case (README.md, \"Case files\").",
+  "type": "object",
+  "required": ["case", "suite", "schema_version", "inputs", "expected", "compare"],
+  "properties": {
+    "case": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{3}(?![\\s\\S])"},
+    "variant": {"type": "string", "pattern": "^[a-z0-9_]+(?![\\s\\S])"},
+    "suite": {"$ref": "#/$defs/suite"},
+    "schema_version": {"$ref": "record.writer.json#/$defs/version"},
+    "claims": {
+      "description": "Each suite the case's answer depends on, and whether the reader claims it.",
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/suite"},
+      "additionalProperties": {"type": "boolean"}
+    },
+    "inputs": {"$ref": "#/$defs/case_inputs"},
+    "request": {
+      "description": "A read request, an operation, or, where a case tests the request's own check, any JSON value.",
+      "anyOf": [
+        {"$ref": "read_request.json"},
+        {"$ref": "#/$defs/case_operation"},
+        {"$ref": "record.writer.json#/$defs/json_value"}
+      ]
+    },
+    "expected": {"$ref": "read_result.json"},
+    "compare": {"$ref": "#/$defs/case_compare"}
+  },
+  "additionalProperties": false,
+  "if": {"required": ["inputs"], "properties": {"inputs": {"required": ["request"]}}},
+  "then": {"not": {"required": ["request"]}},
+  "else": {"required": ["request"]},
+  "$defs": {
+    "suite": {
+      "enum": [
+        "plain_read",
+        "hash",
+        "scene_documents",
+        "fits_and_reference_data",
+        "usd_read",
+        "table_evaluation",
+        "mixing",
+        "family_evaluation",
+        "sampling",
+        "build_checks",
+        "record_checks",
+        "engine_adapter"
+      ]
+    },
+    "case_inputs": {
+      "description": "The files a case supplies, by name in its suite's inputs/.",
+      "type": "object",
+      "properties": {
+        "records": {"type": "array", "items": {"type": "string"}},
+        "value": {"type": "string"},
+        "request": {"description": "A request that breaks the JSON rules, in place of request.", "type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "case_compare": {
+      "description": "The result's members compared, and how numbers are: relative_tolerance or exact, never both.",
+      "type": "object",
+      "required": ["members"],
+      "properties": {
+        "members": {"type": "array", "items": {"type": "string"}},
+        "relative_tolerance": {"type": "number", "minimum": 0},
+        "exact": {"type": "boolean"}
+      },
+      "additionalProperties": false,
+      "not": {"required": ["relative_tolerance", "exact"]}
+    },
+    "case_operation": {
+      "description": "A case that is not a read (README.md, \"Operations\").",
+      "type": "object",
+      "required": ["operation"],
+      "properties": {"operation": {"enum": ["content_hash", "list_records"]}}
+    }
+  }
+}

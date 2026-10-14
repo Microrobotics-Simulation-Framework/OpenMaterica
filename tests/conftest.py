@@ -39,6 +39,36 @@ if PROFILE not in EXAMPLES:
 settings.load_profile(PROFILE)
 
 
+# CI's Hypothesis job runs the property modules in two shards side by side, `--shard json` and `--shard
+# records`; `tests/unit/test_source_files.py` checks that each module is in exactly one.
+SHARDS = {
+    "json": (
+        "test_jsonio_properties",
+        "test_canonical_properties",
+        "test_hashing_properties",
+        "test_mutants",
+    ),
+    "records": (
+        "test_envelope_properties",
+        "test_version_properties",
+        "test_read_properties",
+        "test_record_mutants",
+    ),
+}
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--shard", choices=sorted(SHARDS), help="run only the property modules of this shard")
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    shard = config.getoption("--shard")
+    if shard is not None:
+        dropped = [item for item in items if item.path.stem not in SHARDS[shard]]
+        config.hook.pytest_deselected(items=dropped)
+        items[:] = [item for item in items if item.path.stem in SHARDS[shard]]
+
+
 # Here rather than in `conformance/`, so that it runs where pytest-xdist's controller, which collects nothing,
 # writes the summary.
 def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
@@ -46,10 +76,13 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
     reports = [report for key in ("passed", "failed") for report in terminalreporter.stats.get(key, [])]
     if not any(str(getattr(report, "nodeid", "")).startswith("tests/conformance/") for report in reports):
         return
-    runs = runner.run_all(runner.discover(), claimed=runner.CLAIMED, executors=runner.EXECUTORS)
+    runs = runner.run_all(runner.discover(), configurations=runner.CONFIGURATIONS, executors=runner.EXECUTORS)
     outcomes = Counter(case_run.outcome for case_run in runs)
     terminalreporter.section("conformance cases")
-    terminalreporter.write_line(f"{len(runs)} case files, claiming {', '.join(sorted(runner.CLAIMED))}")
+    claims = "; ".join(", ".join(sorted(claimed)) for claimed in runner.CONFIGURATIONS)
+    terminalreporter.write_line(
+        f"{len(runs)} case files, each under every one of these claims it agrees with: {claims}"
+    )
     for outcome in runner.Outcome:
         line = f"  {outcomes[outcome]:4d} {outcome.value}"
         operations = Counter(case_run.case_file.operation for case_run in runs if case_run.outcome is outcome)
