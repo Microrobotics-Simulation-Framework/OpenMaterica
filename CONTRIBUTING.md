@@ -195,6 +195,10 @@ writer schemas, the vocabulary from the specification's tables), the reader chan
 and tokens in the specification's tables, then regenerate; CI fails if a generated file or a specification
 member table differs from its source. The version rules are in `DOCUMENTATION_ARCHITECTURE.md` section 7.
 
+A released schema version's files never change: a change is a new minor version in a new directory beside it
+(maintainer, 2026-10-14). CI fails where a file of a released version is added, removed or changed
+(`tests/spec_sync/test_released_schemas.py`). Until its release, a version's files may change.
+
 ## Adding a model family
 
 A family is admitted with all of the following, in one pull request:
@@ -418,3 +422,14 @@ cycle gets one, even if no release carried it.
 
 As MADDENING's: a `safety-relevant`, `critical` or `major` anomaly closed in a release must be in the
 registry before that release is tagged; a `minor` one within two release cycles.
+
+A release that releases a schema version (schema 0.1 at the 0.1.0 release; a development pre-release releases
+none) freezes it in the release's pull request, before the tag:
+
+```sh
+python3 scripts/freeze_schema.py 0.1       # adds 0.1 to tests/spec_sync/released_schemas.json
+python3 scripts/freeze_schema.py --check   # fails where a released version differs from it
+```
+
+It refuses a version whose `$id`s are not their paths, and never rewrites a version already listed. Commit the
+manifest with the release; from then on CI fails where a file of that version changes.

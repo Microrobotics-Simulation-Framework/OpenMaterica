@@ -1,2 +1,5 @@
 # Conformance inputs are byte-exact (docs/specification/README.md, "Case files"): never convert them.
 src/materica/data/conformance/** -text
+# A released schema version is frozen byte for byte (tests/spec_sync/test_released_schemas.py), so a checkout
+# converts no schema file.
+src/materica/schema/** -text

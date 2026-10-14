@@ -30,6 +30,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   (`property/test_mutants.py`, `property/test_record_mutants.py`), and a feature audit that fails when its
   examples stop reaching what the specification distinguishes;
 - the `CASES.md` check: a case file changed after its row (`spec_sync/test_cases_md.py`);
+- the released-schema check, on a copy of the tree with 0.1 frozen: a file changed, added or removed, the
+  directory gone, and an `$id` frozen wrong (`spec_sync/test_released_schemas.py`);
 - the reference, case-tag and list-number checks: a broken reference of each form, an uncited row, a tag with
   no row and a repeated item (`spec_sync/test_references.py`);
 - the draw-rejection audit, the import, layer and SPDX rules and the scripts, generators included: inputs they

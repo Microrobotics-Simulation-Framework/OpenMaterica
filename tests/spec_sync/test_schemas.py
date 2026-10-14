@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from materica.core.vocabulary import VOCABULARY
+from scripts.freeze_schema import misplaced_ids
 from scripts.gen_vocabulary import SPECIFICATION, codes, only_code, outside_parentheses, table
 from tests.spec_sync.schemas import BASE, SCHEMA
 
@@ -134,17 +135,6 @@ def test_the_token_checks_can_fail(
     monkeypatch.setattr(sys.modules[__name__], "document", changed_document)
     with pytest.raises(AssertionError):
         check()
-
-
-def misplaced_ids(root: Path, base: str) -> list[str]:
-    """Each JSON file under `root` whose `$id` is not `base` followed by its path under `root`."""
-    misplaced: list[str] = []
-    for path in sorted(root.rglob("*.json")):
-        name = path.relative_to(root).as_posix()
-        stated = json.loads(path.read_text(encoding="utf-8")).get("$id")
-        if stated != base + name:
-            misplaced.append(f"{name}: {stated}")
-    return misplaced
 
 
 def test_every_schema_files_id_is_where_it_is_published() -> None:
