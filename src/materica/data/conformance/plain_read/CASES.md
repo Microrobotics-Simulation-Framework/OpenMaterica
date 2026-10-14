@@ -215,7 +215,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-010
 
-`record_format.md`: a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8
+`record_format.md`: a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8; a unit held as a status object is returned as stored, its `reason` included
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -231,7 +231,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-013
 
-`record_format.md`: alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`)
+`record_format.md`: alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -419,7 +419,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-038
 
-`record_format.md`: biocompatibility evidence is returned as a list of reports
+`record_format.md`: biocompatibility evidence is returned as a list of reports, each with its `provenance` whole
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -659,7 +659,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-109
 
-`provenance.md`: a provenance member a read does not check, broken or `null` (`"extraction": null`), does not refuse the field, nor does a `source` broken beyond its `key`, while a `source` missing where the origin is `measured_by_source` does (`form_invalid`); a `review` that is `null`, absent or not an object, holds both `status` and `result`, holds a status token other than `not_checked`, holds an unknown `result` token, or holds a member one slip from one a review names (`reviewr`) reads as `{"status": "not_checked"}`
+`provenance.md`: a provenance member a read does not check, broken or `null` (`"extraction": null`), does not refuse the field, nor does a `source` broken beyond its `key`, while a `source` missing where the origin is `measured_by_source` does (`form_invalid`); a `review` that is `null`, absent or not an object, holds both `status` and `result`, holds a status token other than `not_checked`, holds an unknown `result` token, or holds a member one slip from one a review names (`reviewr`) reads as `{"status": "not_checked"}`, and one holding the known `result` `reviewed` is returned as found
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -928,7 +928,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-316
 
-`read_side_contract.md`: an implied condition is checked like a stated one; it fills an unstated or absent condition, never one holding another status object; one naming another field, or located at another record or region, at an interval or nowhere, is not applied; a condition it fills is checked even where nothing else names it (`condition_unchecked` with no tolerance); two that apply and disagree give `request_incomplete`, even where the record states that condition, and in one alternative end the read rather than set it aside
+`read_side_contract.md`: an implied condition is checked like a stated one; it fills an unstated or absent condition, never one holding another status object; one naming another field, or located at another record or region, at an interval or nowhere, is not applied; a condition it fills is checked even where nothing else names it (`condition_unchecked` with no tolerance); two that apply and disagree give `request_incomplete`, even where the record states that condition, and in one alternative end the read rather than set it aside, neither value filling the condition and the result holding no `conditions`
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
