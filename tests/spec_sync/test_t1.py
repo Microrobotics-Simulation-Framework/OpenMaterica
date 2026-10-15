@@ -1,18 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 """T1 (the S2 design, section 1.7): step 8's shapes, written by hand in `core/value_shapes.py` and
 `core/fields.py`, against the writer schema's value-field `$defs` and the reader `$defs` generated from them.
+Where a form's own member waits for a step not built yet (an interval, a composition, evidence, a table, which
+`form_problems` will not answer), the "step 8 verdict" is not the code's: it is what the case files reading
+that field expect, and with no such case file there is none. So for 51 of the 409 conformance examples, and
+for every variant of a drawn base of those forms, T1 holds the data to the schemas, not step 8; it holds step
+8 itself on the constants and on the forms a row does not allow.
 
 It runs on every value field a registered field's row reads, with its section's `specimen`, in every material
-record among the conformance inputs, and on one-fault variants of the full fields of
-`tests/property/full_fields.py`: each member and list item removed, made `null` or given another JSON type,
-and each member renamed by one slip. Each example gets three verdicts:
+record among the conformance inputs, and on one-fault variants of its bases: the full fields of
+`tests/property/full_fields.py`, and one field of each row and each form it allows, drawn by the writer's
+strategies (`tests/property/value_fields.py`), derandomised, so that every row's binding is varied. A variant
+removes each member and list item, makes it `null` or gives it another JSON type, or renames a member by one
+slip; a path two bases share is changed in the first. Each example gets three verdicts:
 - the writer schema's, which accepts where it accepts the field and the section's specimen;
 - the reader `$defs`', alike;
 - step 8's, read in the field's own record (so a slip in its envelope or section counts), which accepts where
   it gives none of `form_invalid`, `unknown_token` and `form_not_registered`. A `withheld` value is a refusal
   to read, not of a shape, and `family_suite_absent` follows the claims. Where a form's own member waits for a
-  step not built yet, the verdict is the one the case files reading that field expect: their step-8 reasons
-  where they end at step 8, acceptance where they end later; with no such case file, there is none.
+  step not built yet, the verdict is as above: the case files' step-8 reasons where they end at step 8,
+  acceptance where they end later.
 Three relations hold, each but for listed exceptions:
 1. what the writer schema accepts, step 8 accepts;
 2. what step 8 refuses with `form_invalid`, the reader `$defs` refuse;
@@ -20,13 +27,16 @@ Three relations hold, each but for listed exceptions:
 The design states the first two; the third is their converse, without which a step 8 that checks too little
 would pass. The writer's verdict includes the binding of the field to its row (`vocabulary/fields.json`),
 which the reader `$defs` leave out. The exceptions are grouped by kind (`EXCEPTIONS`), each with the reason no
-JSON Schema states its rule here and, by relation, the case files whose read field breaks it; a field no case
-file reads, and a variant, is named instead. Everything is computed from the generated files when the test
-runs: a relation broken with no exception fails, and so does an exception whose relation holds, as stale.
+JSON Schema states its rule here, a mark that shows a refusal is of the kind, and, by relation, the case files
+whose read field breaks it; a field no case file reads, and a variant, is named instead. A variant renamed by
+one slip is excepted from relation 2 by its change, since no schema sees a slip. Everything is computed from
+the generated files when the test runs: a relation broken with no exception fails, and so do an exception
+whose relation holds, as stale, and one whose refusal does not show its kind's mark.
 """
 
 import copy
 import json
+import re
 from collections.abc import Callable, Iterator, Mapping
 from functools import cache
 from pathlib import Path
@@ -34,6 +44,7 @@ from types import MappingProxyType
 from typing import NamedTuple
 
 import pytest
+from hypothesis import Phase, given, settings
 
 from materica.core import jsonio
 from materica.core.fields import RecordField, form_problems
@@ -42,7 +53,9 @@ from materica.core.reasons import Reason
 from materica.core.value_shapes import BOUND
 from materica.core.vocabulary import VOCABULARY
 from tests.conformance import runner
+from tests.property import value_fields
 from tests.property.full_fields import full_fields, record_of
+from tests.property.strategies import SMALL
 from tests.spec_sync.schemas import SCHEMA, validator
 from tests.spec_sync.test_cases_md import sections
 
@@ -53,11 +66,14 @@ REFUSALS = frozenset({"form_invalid", "unknown_token", "form_not_registered"})
 
 class Kind(NamedTuple):
     """A kind of exception: why no JSON Schema states its rule here, and, by relation, the case files whose
-    read field breaks it and the examples no case file reads that do."""
+    read field breaks it and the examples no case file reads that do; and `mark`, what shows a refusal is of
+    this kind, in the details of step 8's reasons, or, where step 8 does not read the field yet, in the arm
+    of the case file that reads it (`CASES.md`)."""
 
     reason: str
     case_files: Mapping[int, tuple[str, ...]]
     examples: Mapping[int, tuple[str, ...]] = MappingProxyType({})
+    mark: str = ""  # a regular expression
 
 
 # For relation 2, S2a-1's 48 case files the reader `$defs` cannot refuse; for relation 1, the 12 of the
@@ -112,6 +128,7 @@ EXCEPTIONS: dict[str, Kind] = {
             1: ("water_near_typo_section_fluids_with_bulk fluid.dynamic_viscosity",),
             2: ("water_near_typo_section_fluids_with_bulk fluid.dynamic_viscosity",),
         },
+        mark=r"one slip from",
     ),
     "range_order": Kind(
         "a range's or an interval's lower end above its upper: a schema does not compare members",
@@ -119,6 +136,7 @@ EXCEPTIONS: dict[str, Kind] = {
             1: ("PR-045.condition_range_reversed", "PR-045.fact_range_reversed", "PR-050.lower_above_upper"),
             2: ("PR-045.condition_range_reversed", "PR-045.fact_range_reversed", "PR-050.lower_above_upper"),
         },
+        mark=r"lo above hi|`lower` \d+ above `upper`",
     ),
     "input_index": Kind(
         "an `input_specimens` entry's `input` past the last input: a schema does not compare a member with "
@@ -137,10 +155,12 @@ EXCEPTIONS: dict[str, Kind] = {
                 "across_sources removed provenance.derivation.inputs.1",
             ),
         },
+        mark=r"past the last input",
     ),
     "repeated_component": Kind(
         "a composition naming one component twice: a schema does not compare list items' members",
         {1: ("PR-051.repeated_component",), 2: ("PR-051.repeated_component",)},
+        mark=r"twice",
     ),
     "row_label": Kind(
         "a label the field's row does not name for the field and its form: the reader `$defs` leave the "
@@ -153,6 +173,7 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-053.newtonian_label_on_interval",
             ),
         },
+        mark=r"does not name for|names only on",
     ),
     "row_token": Kind(
         "a token the reader knows, in a member whose row does not allow it: the reader `$defs` take any "
@@ -166,11 +187,13 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-158.uncertainty_represents_population",
             ),
         },
+        mark=r"holds '[^']*', a token its row does not allow",
     ),
     "row_condition": Kind(
         "a registered condition under evidence: the reader `$defs` take any member of `conditions` there, "
         "where step 8 refuses a registered name and gives `unknown` for another",
         {2: ("PR-052.registered_condition_in_conditions",)},
+        mark=r"a registered condition",
     ),
     "status_beside": Kind(
         "an object holding `status` beside a member of the shape it stands for, or beside any member where "
@@ -185,15 +208,21 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-110.sd_status_beside_other_member",
             ),
         },
+        mark=r"beside its status|a status object beside",
     ),
     "status_token": Kind(
         "a status token the member's row does not allow: the reader `$defs` take any string as a status",
         {2: ("PR-110.constant_value_unstated", "PR-110.interval_member_none")},
+        mark=(
+            r"holds the status '[a-z_]+', which its row does not allow"
+            r'|`\{"status": "[a-z_]+"\}`, a token its row does not allow'
+        ),
     ),
     "withheld_in_part": Kind(
         "an evidence entry withholding some of its members but not every one: the reader `$defs` take any "
         "status there",
         {2: ("PR-052.entry_partly_withheld",)},
+        mark=r"withholding",
     ),
 }
 
@@ -330,6 +359,50 @@ def problems(examples: list[Example], verdict: Verdict, exceptions: dict[str, Ki
     ]
 
 
+@cache
+def arms() -> dict[str, str]:
+    """Each plain-read case file's arm, as its `CASES.md` row states it."""
+    return {
+        f"{case}.{row['Variant'].strip('`')}": row["Arm"]
+        for case, (_, _, rows) in sections("plain_read").items()
+        for row in rows
+    }
+
+
+def refusal(example: Example, case: str | None) -> str:
+    """What says why step 8 refuses `example`: the details of its reasons, or, where step 8 does not read the
+    field yet, the arm of `case`, the case file that reads it."""
+    spec = VOCABULARY.fields[example.field]
+    try:
+        found = form_problems(
+            RecordField(spec, example.value, example.section), example.record, {"plain_read"}
+        )
+    except NotImplementedError:
+        return arms()[case] if case is not None else ""
+    return "; ".join(str(reason.detail) for reason in found)
+
+
+def misplaced(examples: list[Example], exceptions: dict[str, Kind]) -> list[str]:
+    """Each case file or example a kind lists whose refusal does not show the kind's mark: an exception
+    listed under a kind whose reason does not explain it (the maintainer's ruling 3, "grouped by kind, each
+    kind with its reason")."""
+    by_name = {example.name: example for example in examples}
+    found: list[str] = []
+    for name, kind in exceptions.items():
+        listed: set[tuple[str | None, str | None]] = {
+            (case, None) for cases in kind.case_files.values() for case in cases
+        }
+        listed |= {(None, example) for named in kind.examples.values() for example in named}
+        for case, named in sorted(listed, key=str):
+            reading = [example for example, cases in readers().items() if case in {c for c, _ in cases}]
+            for example in [named] if named is not None else reading:
+                if example in by_name and not re.search(kind.mark, refusal(by_name[example], case)):
+                    found.append(
+                        f"{case or example}: listed under {name}, but its refusal is not of that kind"
+                    )
+    return found
+
+
 def stale(examples: list[Example], verdict: Verdict, exceptions: dict[str, Kind]) -> list[str]:
     """Each kind without a reason, and each case file or example a kind lists that is listed twice, reads no
     example, or keeps its relation; an example is listed by name only where no case file reads it."""
@@ -462,25 +535,59 @@ def changed(field: JsonValue, path: tuple[str | int, ...], change: str) -> JsonV
 
 
 CHANGES = ("removed", "null", "retyped", SLIPPED)
+# Every part of a field the writer's strategies draw in full where a plan names it.
+RICH = frozenset(
+    {"block", "uncertainty", "conditions", "specimen", "provenance", "composition", "evidence", "label"}
+)
+
+
+def drawn(name: str, form: str) -> JsonObject:
+    """A field of `name`'s row and of `form`, each part in full, as the writer's strategies
+    (`tests/property/value_fields.py`, written from the text for the writer schema's properties) draw it:
+    derandomised, so the same on every run of one Hypothesis version."""
+    found: list[JsonObject] = []
+    plan = value_fields.Plan(registered=name, form=form, withheld=False, rich=RICH)
+
+    @settings(derandomize=True, database=None, max_examples=1, phases=[Phase.generate], deadline=None)
+    @given(value_fields.form_fields(plan, SMALL))
+    def first(field: JsonObject) -> None:
+        found.append(field)
+
+    first()
+    return found[0]
+
+
+@cache
+def bases() -> dict[str, tuple[str, JsonObject]]:
+    """The fields varied, by name: the full fields, then one field of each row and each form it allows,
+    drawn (S2a-2's review, L2: S2's inputs vary every row's binding, not one field's)."""
+    found = {name: ("fluid.dynamic_viscosity", field) for name, field in full_fields().items()}
+    for name, spec in VOCABULARY.fields.items():
+        for form in spec.forms:
+            found[f"{name} {form}"] = (name, drawn(name, form))
+    return found
 
 
 @cache
 def variant_examples() -> list[Example]:
-    """Each change at each path of the full fields, once: a path two full fields share is changed in the
-    first."""
+    """Each change at each path of the bases, once: a path two bases share is changed in the first."""
     seen: set[tuple[str, tuple[str | int, ...]]] = set()
     found: list[Example] = []
-    for base, field in full_fields().items():
+    for base, (registered, field) in bases().items():
+        section_name, _, field_name = registered.partition(".")
         for path in paths(field):
             for change in CHANGES:
                 variant = changed(field, path, change)
                 if variant is None or (change, path) in seen:
                     continue
                 seen.add((change, path))
-                section: JsonObject = {"fields": {"dynamic_viscosity": variant}}
-                record: JsonObject = {"record_type": "material", "body": {"sections": {"fluid": section}}}
+                section: JsonObject = {"fields": {field_name: variant}}
+                record: JsonObject = {
+                    "record_type": "material",
+                    "body": {"sections": {section_name: section}},
+                }
                 name = f"{base} {change} {'.'.join(map(str, path))}"
-                found.append(Example(name, "fluid.dynamic_viscosity", variant, section, record, change))
+                found.append(Example(name, registered, variant, section, record, change))
     return found
 
 
@@ -502,6 +609,35 @@ def test_every_exception_is_still_one() -> None:
     assert stale(all_examples(), step_8, EXCEPTIONS) == []
 
 
+def test_every_exception_is_of_its_kind() -> None:
+    assert misplaced(all_examples(), EXCEPTIONS) == []
+
+
+def test_an_exception_under_another_kind_is_found() -> None:
+    """S2a-2's review, L1: `PR-050.lower_above_upper` moved from `range_order` to `status_token` passed both
+    the relations and the stale check."""
+    order, token = EXCEPTIONS["range_order"], EXCEPTIONS["status_token"]
+    moved = {
+        **EXCEPTIONS,
+        "range_order": order._replace(
+            case_files={
+                relation: tuple(case for case in cases if case != "PR-050.lower_above_upper")
+                for relation, cases in order.case_files.items()
+            }
+        ),
+        "status_token": token._replace(case_files={2: (*token.case_files[2], "PR-050.lower_above_upper")}),
+    }
+    assert misplaced(all_examples(), moved) == [
+        "PR-050.lower_above_upper: listed under status_token, but its refusal is not of that kind"
+    ]
+    a_slip_under_input_index = {
+        "input_index": EXCEPTIONS["input_index"]._replace(case_files={2: ("PR-005.near_typo_crad",)})
+    }
+    assert misplaced(all_examples(), a_slip_under_input_index) == [
+        "PR-005.near_typo_crad: listed under input_index, but its refusal is not of that kind"
+    ]
+
+
 def full_examples() -> list[Example]:
     found: list[Example] = []
     for name, field in full_fields().items():
@@ -511,11 +647,26 @@ def full_examples() -> list[Example]:
     return found
 
 
-def test_the_full_fields_are_valid_and_pass_step_8() -> None:
-    for example in full_examples():
+def base_examples() -> list[Example]:
+    found: list[Example] = []
+    for name, (registered, field) in bases().items():
+        record = record_of(field, registered)
+        section_name = registered.partition(".")[0]
+        section = child(child(child(record, "body"), "sections"), section_name)
+        assert isinstance(section, dict)
+        found.append(Example(name, registered, field, section, record))
+    return found
+
+
+def test_the_bases_are_valid_and_pass_step_8() -> None:
+    """Each base the variants change, the full fields and the drawn ones; a drawn field of a form whose own
+    member waits for S2b or S3 has no step-8 verdict yet."""
+    for example in base_examples():
         assert WRITER["value_field"](example.value) == [], example.name
         assert ROW[example.field](example.value) == [], example.name
-        assert step_8(example) in (frozenset(), frozenset({"withheld"})), example.name
+        assert step_8(example) in (frozenset(), frozenset({"withheld"}), None), example.name
+    forms = {str(example.value["form"]) for example in base_examples() if isinstance(example.value, dict)}
+    assert forms == {"constant", "table", "interval", "composition", "evidence"}
 
 
 Validators = dict[str, Callable[[JsonValue], list[str]]]
@@ -523,30 +674,30 @@ Validators = dict[str, Callable[[JsonValue], list[str]]]
 
 def disagreements(
     schemas: Validators, examples: list[Example], shape_of: Callable[[JsonValue], str]
-) -> list[str]:
+) -> Iterator[str]:
     """The examples a field's form definition, as `shape_of` picks it, and `value_field` judge apart."""
-    return [
-        example.name
-        for example in examples
-        if (not schemas[shape_of(example.value)](example.value))
-        != (not schemas["value_field"](example.value))
-    ]
+    for example in examples:
+        if (not schemas[shape_of(example.value)](example.value)) != (
+            not schemas["value_field"](example.value)
+        ):
+            yield example.name
 
 
-def sampled() -> list[Example]:
-    return input_examples()[::14] + variant_examples()[::14]
-
-
+# Every example, in the shares the relations take (S2a-2's review, M5: the shortcut had been checked on every
+# 14th example, from every 7th before).
+@pytest.mark.parametrize("share", range(SHARES))
 @pytest.mark.parametrize("schemas", [WRITER, READER], ids=["writer", "reader"])
-def test_a_form_definition_accepts_what_value_field_accepts(schemas: Validators) -> None:
-    assert disagreements(schemas, sampled(), field_shape) == []
+def test_a_form_definition_accepts_what_value_field_accepts(schemas: Validators, share: int) -> None:
+    assert list(disagreements(schemas, all_examples()[share::SHARES], field_shape)) == []
 
 
 def test_a_form_definition_picked_wrongly_disagrees() -> None:
+    """Over every example, to the first disagreement."""
+
     def interval(field: JsonValue) -> str:
         return "interval_field" if field_shape(field) != "value_field" else "value_field"
 
-    assert disagreements(WRITER, sampled()[:20], interval) != []
+    assert next(disagreements(WRITER, all_examples(), interval), None) is not None
 
 
 def test_every_kind_lists_an_exception_and_every_change_is_made() -> None:
