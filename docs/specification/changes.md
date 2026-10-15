@@ -263,7 +263,8 @@ version adds no member one slip from one of them (`record_format.md` section 10)
 every value the table gives. The text no longer says that a knot's own block replaces it (`record_format.md`
 sections 5 and 6, `uncertainty.md` section 1 rule 2). Where the source's spread varies along the axis, a
 writer SHOULD state the largest in the table's terms in the table's single block, and SHOULD say in the
-record's `card` that it was derived so (`uncertainty.md` section 1 rule 2; a default awaiting the maintainer).
+record's `card` that it was derived so. The rule does not apply to a population spread on a `loglog` table,
+which 0.1.0 cannot state relative to its value (`uncertainty.md` section 1 rule 2; maintainer, 2026-10-15).
 From 1.0.0, an older reader ignores a member it does not know. So a later minor version adds a member that
 changes how existing members are read only under a name reserved in advance, which every earlier reader of the
 same major version refuses, or with a new token in an enumerated member such a reader checks (maintainer,
