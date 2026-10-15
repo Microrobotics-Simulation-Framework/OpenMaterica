@@ -288,7 +288,7 @@ A value field is an object with these members, or an `alternatives` object (belo
 | the form's member | yes | `value` for a constant; otherwise the member named like the form (`table`, `power_law`, `interval`, `composition`, `parameter_set`, `reference_data`, `evidence`). In a reference-only value it holds `{"status": "withheld"}` (`provenance.md` section 7) |
 | `conditions` | yes | the conditions the value was measured at (`provenance.md`) |
 | `specimen` | no | specimen facts, overriding the section's |
-| `statistics` | yes, except for `evidence` | the statistics block (`uncertainty.md`). For a table or a power law it applies to every value the form gives, unless table entries carry their own. In a reference-only value it holds `{"status": "withheld"}` |
+| `statistics` | yes, except for `evidence` | the statistics block (`uncertainty.md`). For a table or a power law it applies to every value the form gives (`uncertainty.md` section 1 rule 2). In a reference-only value it holds `{"status": "withheld"}` |
 | `provenance` | yes | origin, source, extraction, evidence, review (`provenance.md`) |
 | `label` | where the field's row names one; a reader does not refuse its absence (section 4.1) | the field's label (section 4.1) |
 | `fit` | where `provenance.origin` is `fitted` | the fit record (`fits_and_reference_data.md` section 2) |
@@ -358,11 +358,12 @@ section 5. [PR-014]
    table's `axis_unit`, the first not greater than the second, sharing with `[x[0], x[-1]]` at least one value
    that is no edge. A reader refuses one that is not (`form_invalid`). It never extends the readable range,
    and narrows it where it is narrower (item 3). [PR-019] [RC-008]
-5. A table MAY carry `points`: a list as long as `x`, each entry holding that knot's own `provenance` and
-   optionally `statistics`, where entries came from different places in a source. How a read uses them is
-   planned with their first consumer. Until then a 0.1.0 reader refuses a table with a `points` member,
-   whatever it holds, `null` and `[]` included, with the reason `points_unsupported`, so that a knot's own
-   spread or origin is never replaced by the table's. [PR-157]
+5. `points` is a reserved member name in a table, kept for what each knot carries of its own, such as its
+   provenance or its spread, where knots come from different places in a source or carry different spreads.
+   Its shape, and how a read uses it, are specified with its first consumer. A 0.1.0 writer MUST NOT write
+   it, and the closed writer schema refuses it (section 1 item 2). [RC-003] A 0.1.0 reader refuses a table
+   with a `points` member, whatever it holds, `null` and `[]` included, with the reason `points_unsupported`,
+   so that a knot's own spread or origin is never replaced by the table's. [PR-157]
 
 **Power law.**
 
