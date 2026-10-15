@@ -236,7 +236,9 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
      where its `distribution` is `student_t`;
    - a table's `axis`, `axis_unit` (as a string or a status object), `x`, `y`, `scheme`, `edges` and
      `source_range`, and its axis condition, by `record_format.md` section 6 table items 1, 2 and 4; a table
-     that holds `points` gives `points_unsupported` (item 5);
+     with a `points` member, whatever it holds, `null` and `[]` included, gives `points_unsupported` (item 5);
+     step 8 checks nothing inside it, and `null` there is also `form_invalid` (`record_format.md` section 1
+     item 5);
    - a status object stands only in a member that allows it, with a token its row allows (`provenance.md`
      section 1 item 5). [PR-050] [PR-051] [PR-052] [PR-108] [PR-110] [PR-158]
 
@@ -517,7 +519,7 @@ value's derivative with respect to the axis. [TE-012]
 | PR-319 | plain read | `want: reference_data` on reference data and on another form |
 | PR-320 | plain read | an operating condition or tolerance of a numeric condition with a string unit other than the registered one is refused (`request_unit_mismatch`, with that `condition`), whatever else is wrong with the entry; units are compared code point for code point (`Cel`, `k`, `K` with U+212A); an operating condition's or tolerance's unit that is not a string gives only `request_incomplete`; a unit on a token or unregistered condition is compared with nothing, and the entry gives `request_incomplete` only where its own shape is wrong or its condition is not registered; a value an implied condition supplies in another unit is refused alike |
 | PR-321 | plain read | a table read over an operating range of its axis gives `want_mismatch`, and no other reason of step 11 |
-| PR-322 | plain read | a table breaking a structural rule gives `form_invalid` for that field only: lengths, order, an edge at an end, listed twice, not repeated or repeated thrice, a repeated x that is no edge, a non-positive log-log value, an axis condition absent or not `not_applicable`, a `source_range` out of order, disjoint from `x`, or meeting `x`'s range only at an edge |
+| PR-322 | plain read | a table breaking a structural rule gives `form_invalid` for that field only: `edges` absent, lengths, order, an edge at an end, listed twice, not repeated or repeated thrice, a repeated x that is no edge, a non-positive log-log value, an axis condition absent or not `not_applicable` (a malformed `source_range` is PR-019's) |
 | PR-323 | plain read | a condition holding `withheld`, `none`, `not_checked`, or `not_applicable` off the axis, gives `unknown` |
 | PR-324 | plain read | one measured value against an operating range: met only when the whole range lies within its tolerance |
 | PR-325 | plain read | a record range against an operating range, widened by the tolerance |
