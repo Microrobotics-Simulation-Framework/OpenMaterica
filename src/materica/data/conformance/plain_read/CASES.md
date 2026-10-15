@@ -919,6 +919,11 @@ See `README.md` beside this file for how to read a case.
 | `numeric_min_max_returned` | a table whose block holds a numeric `min` and `max`, 986 and 1000 kg/m3, which rule 2 says holds `not_applicable`: not refused at read; returned as stored | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
 | `points_empty` | a table holding `points` `[]`: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
 | `points_list` | a table holding a `points` list as long as `x`, each entry a provenance: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
+| `points_list_shorter` | a table holding a `points` list one shorter than `x`, each entry a provenance: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
+| `points_number` | a table holding a `points` number, `0.5`: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
+| `points_object` | a table holding a `points` object, `{"sd": [...]}`: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
+| `points_status_object` | a table holding `points` as `{"status": "withheld"}`, which is no status object there (no `withheld`): `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
+| `points_string` | a table holding a `points` string, `"per knot"`: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
 
 ## PR-158
 

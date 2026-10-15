@@ -34,10 +34,10 @@ after every run that includes these tests:
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
 | S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, or steps 9 to 13 (plain read) | 299 | not yet runnable: the step that runs each is not done |
-| reads of tables, and reads under an extrapolation (plain read) | 179 | not yet runnable: the step that runs each is not done |
+| reads of tables, and reads under an extrapolation (plain read) | 184 | not yet runnable: the step that runs each is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | not yet runnable: no executor; S3-te adds one, which runs a test-only reference evaluator |
 
-Of the 1092 case files, 1045 agree with plain read and the hash suite, 985 with plain read alone, and 1045 with
+Of the 1097 case files, 1050 agree with plain read and the hash suite, 990 with plain read alone, and 1050 with
 the fits and reference data suite too; the 35 of the table evaluation suite agree with none, since this
 implementation claims no evaluator.
 
