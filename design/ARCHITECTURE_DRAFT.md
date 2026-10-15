@@ -580,7 +580,8 @@ that a reader does not know) refuses that field. A table also declares:
   changes;
 - **the source's own validity range**, where it differs from the range tabulated (a formulation valid more
   widely than the points written out, or a table whose source warns about its ends);
-- **evidence per point** where points come from different places in a source.
+- **evidence per point** where points come from different places in a source (until a consumer needs them
+  read, a 0.1.0 reader refuses a table that holds them).
 
 A power law also states the basis of its exponent (fitted, assumed or theoretical). Attenuation is stored as
 an amplitude coefficient in nepers per metre per hertz to the power b, always. The source's own unit (decibels
@@ -593,20 +594,21 @@ conditions; there is no power law whose coefficient varies with a second conditi
 **Reference data** have a defined payload: points, each with its own origin and status; or curves, flagged
 as digitised where they were, with the digitiser's axis calibration and its estimated error.
 
-**Evaluating a table in a consumer's own code.** A consumer's evaluator gives the same values as the
-reference reader, but a derivative at a table's knots and ends depends on a convention: a linear table has a
-kink at every interior knot. The conformance cases give, at every interior knot, the value and the derivative
-from each side, and at each end the derivative from inside only; a consumer's evaluator states which side it
-returns at a knot (JAX's `jnp.interp`, for example, returns the right-hand derivative at interior knots and at
-the lower end, and the left-hand one at the upper end; prototype P5). The build reports when a declared
-operating condition sits exactly on a knot: in P5 the water table had a knot at 310.15 K, where the two
-one-sided slopes of viscosity differ by 1.6 %, so a sensitivity taken there depends on the evaluator's side.
-An evaluator also returns whether its condition was in range, because an evaluator that only clamps turns
-"outside the record" into a value with a zero derivative: a fit then stalls silently at the table's end (P5).
-Clamping at the ends of the readable range (the tabulated range, narrowed by the source's own validity range
-where that is narrower) is a constant extrapolation, so it needs a declaration (section 3.5), or the in-range
-flag stops the run. Clamping at the table's own ends inside a narrower validity range would return values the
-source disclaims, so outside the readable range an evaluator returns the end value or nothing.
+**Evaluating a table in a consumer's own code.** A consumer's evaluator gives the same values as the reference
+reader, but a derivative at a table's knots and ends depends on a convention: a linear table has a kink at
+every interior knot. The conformance cases give, at every interior knot, the value and the derivative from
+each side, and at each end of the readable range (the tabulated range, narrowed by the source's own validity
+range where that is narrower), an interior knot included, the derivative from inside only; a consumer's
+evaluator states which side it returns at a knot (JAX's `jnp.interp`, for example, returns the right-hand
+derivative at interior knots and at the lower end, and the left-hand one at the upper end; prototype P5). The
+build reports when a declared operating condition sits exactly on a knot: in P5 the water table had a knot at
+310.15 K, where the two one-sided slopes of viscosity differ by 1.6 %, so a sensitivity taken there depends on
+the evaluator's side. An evaluator also returns whether its condition was in range, because an evaluator that
+only clamps turns "outside the record" into a value with a zero derivative: a fit then stalls silently at the
+table's end (P5). Clamping at the ends of the readable range is a constant extrapolation, so it needs a
+declaration (section 3.5), or the in-range flag stops the run. Clamping at the table's own ends inside a
+narrower validity range would return values the source disclaims, so outside the readable range an evaluator
+returns the end value or nothing.
 
 A constant can make a model claim without saying so: one viscosity means a Newtonian fluid, one
 susceptibility a linear response with no saturation. Such a constant names its trivial family as a label
@@ -2629,6 +2631,7 @@ re-check of its revision (20 more), gave the rows below (specification `changes.
 | a read under an extrapolation ended at the form's range | it goes on to the origin and labels, under `want: value` only (S3Q9) | a value stated without origin passed on the extrapolation alone |
 | `source_range` never narrowed the readable range | it narrows it where it is narrower (S3Q8) | a read returned `met` where the source disclaimed the value |
 | a table's `points` were readable with no rule for spread or origin | a 0.1.0 reader refuses a table that holds them (S3Q6) | a knot's own spread or origin was replaced by the table's |
+| at a table's ends, the derivative from inside | at every end of the readable range, an interior knot included, the inside derivative, whatever side the evaluator declares (S3Q8) | the other side's slope rests on values outside the range, which the source disclaims |
 
 An independent check of the specification text written from that design (25 findings: 1 High, 3 Medium, 13
 Low, 8 Info) gave the rows below. The maintainer has ruled on none of them.
