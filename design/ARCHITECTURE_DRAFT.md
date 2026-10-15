@@ -2648,11 +2648,11 @@ of this section makes `points` a reserved name.
 
 An independent check of the specification text written from that design (25 findings: 1 High, 3 Medium, 13
 Low, 8 Info) gave the rows below. The maintainer approved rows 2 to 4 with S3's defaults (2026-10-15). Row 1
-is settled by S4's decision 1 (maintainer, 2026-10-15), to be written in S4's text.
+is settled by S4's decision 1 (maintainer, 2026-10-15), written in S4's first row at the end of this section.
 
 | Before | After | Why |
 |---|---|---|
-| step 7 could set a table alternative aside on its own axis entry | it never does; under `no_pick` a kept table's entry holds the table as stored (settled by S4's decision 1, to be written in S4's text) | at an edge, another alternative's value came back as `met` where the table marks the value as two-sided |
+| step 7 could set a table alternative aside on its own axis entry | it never does; under `no_pick` a kept table's entry holds the table as stored (settled by S4's decision 1, in S4's first row below) | at an edge, another alternative's value came back as `met` where the table marks the value as two-sided |
 | outside the range, a case compared only an evaluator's `in_range`, and clamping counted as a constant extrapolation | the value is the readable range's end value, from inside, with a zero derivative, or no number; clamping is a constant extrapolation only at the readable range's ends | an evaluator clamping at the table's ends returned values a narrower `source_range` disclaims, and passed every case |
 | an extrapolation applied wherever the read lay outside the range, off an edge | never across a declared edge: where an edge lies between the operating value and the readable range, or on its end, `outside_range` and no value, and an evaluator refuses (maintainer, 2026-10-15) | the end value came from the far side of an edge, where the table says the value jumps (principle 10: no interpolation across an edge) |
 | the build counted any declared extrapolation as covering `outside_range` | only on a result whose `assumption` names it, so only where the read applied it (BC-019) | a model wanting bounds from a table was refused inside the table's range and accepted outside it, with no value |
@@ -2670,6 +2670,17 @@ proposed, awaiting the maintainer's review of the pull request.
 | a knot's own block replaced the table's for that knot | the text states no rule for a spread that varies along the axis | the rule the spike found safe never returns a knot's own block alone: on a knot it takes the larger spread of both intervals |
 | AD 5.6 and DOCUMENTATION_ARCHITECTURE.md 7.2 said only that an added field never changes the meaning of an existing one, though its section 7.1 made any changed meaning major | from 1.0.0, such a member comes only under a name reserved in advance, or with a new token in an enumerated member older readers check, and the newer version requires it wherever the member appears; any other waits for a new major schema version (5.6; maintainer, 2026-10-15) | an older reader ignores a member it does not know, so where a newer version let a per-knot or regional block widen a table's block, it would read the narrower one |
 | a writer whose source's spread varies along a table's axis had no rule for the table's one block, nor a way to say it was derived | the writer SHOULD state the largest spread in the table's terms, as the source gives it on a `linear` table and relative on a `loglog` table, and SHOULD say so in the record's `card`, a sentence there being enough in 0.1.0; not for a population spread on a `loglog` table, which 0.1.0 cannot state relatively (maintainer, 2026-10-15) | with `points` closed, a block written from the rule that it applies to every value could state a spread narrower than the source's, and the maintainer asked for the derived block to be stated as such |
+
+S4's decisions on alternatives, picks, overlays and fill-ins (maintainer, 2026-10-15), the first of them
+amended after the check of S3's design, gave the rows below (specification `changes.md`, entry of that date).
+
+| Before | After | Why |
+|---|---|---|
+| a table alternative outside its readable range, or at a declared edge, stayed beside the others | outside its readable range it is set aside, unless a declared extrapolation would cover it; at a declared edge it refuses the field; any other `not_met` in an alternative refuses the field too | a table that does not cover the operating point drops out, as a constant at another temperature does; at an edge, setting it aside returned another alternative's value as met; a broken or withheld alternative must never drop out unseen |
+| a reason identified by its code and condition | by its code, condition and the alternative it was found reading | two alternatives' reasons for one condition collapsed into one, so "the reasons of each" was lost |
+| what a pick naming no stored alternative gives, unspecified | `pick_invalid`, which nothing accepts; an index that is not a whole number at or above zero refused with the request | a wrong pick must block the build, and a malformed index needs only the request to refuse |
+| a read applied each overlay the request named | every overlay an acceptance names for the read's field must apply, or the read is refused; the build selects overlays by base `id` | read literally, an overlay declared for another field refused this read; a read that skipped an overlay with a mistyped base would return the base's value, which the consumer had not declared |
+| a record of a known type in the wrong role, undecided | refused (`unknown_type`): a target that is not a material, an overlay acceptance naming a record that is not an overlay | nothing decided it, and either reading could return a value nothing declared |
 
 The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.
 
