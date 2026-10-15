@@ -256,7 +256,9 @@ def conditions(rows: list[Row]) -> Vocabulary:
         entries[only_code(row["Name"])]["required_with"] = required_with(
             row["Required with"], token_conditions
         )
-    return {"conditions": entries}
+    # Each token condition's tokens again as an enumeration, which the writer schema binds its `token` to.
+    tokens = {f"{name}_token": enumeration(found) for name, found in token_conditions.items()}
+    return {"$defs": tokens, "conditions": entries}
 
 
 def required_with(cell: str, token_conditions: dict[str, list[str]]) -> dict[str, list[str]]:

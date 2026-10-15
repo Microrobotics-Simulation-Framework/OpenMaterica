@@ -11,7 +11,7 @@ generator finds between two pieces of the text and reads in full or not at all.
 |---|---|---|
 | `reasons.json` | `read_side_contract.md` section 4 | each reason code, the status it gives, and the steps of section 3 that give it or, for a code no step gives, the procedures that do; the codes again as an enumeration in `$defs`, which `read_result.json` refers to |
 | `fields.json` | `record_format.md` section 4.1 | each field's unit, forms, the bases its row allows a form, required conditions and label; the labels as an enumeration in `$defs` |
-| `conditions.json` | `provenance.md` section 6.1 | each condition, numeric with its unit or token with its tokens, and the other conditions and tokens it is required with |
+| `conditions.json` | `provenance.md` section 6.1 | each condition, numeric with its unit or token with its tokens, and the other conditions and tokens it is required with; each token condition's tokens again as an enumeration in `$defs`, which the writer schema binds that condition's `token` to |
 | `specimen_facts.json` | `provenance.md` section 6.2 | each specimen fact, and the tokens of its `token` member, again as enumerations in `$defs`; its members are structure, the writer schema's |
 | `acceptances.json` | `declarations.md` section 4.1 | the acceptance kinds |
 | `forms.json` | `record_format.md` sections 5 and 6 | the form tokens, an interval's basis, a composition's basis and sum rule, and the components, `element:<symbol>` for each symbol of the element table |

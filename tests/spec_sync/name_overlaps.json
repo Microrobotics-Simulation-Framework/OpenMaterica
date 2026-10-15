@@ -49,12 +49,12 @@
     {
       "rule": "A",
       "names": ["token"],
-      "meanings": 4,
-      "reason": "A specimen fact's token takes its own row's tokens: a tissue state, a disease and treatment state, a preservation, a supply form.",
+      "meanings": 8,
+      "reason": "A token condition's or a specimen fact's token takes its own row's tokens: a density kind, a specimen shape, a measurement geometry, a test method; a tissue state, a disease and treatment state, a preservation, a supply form.",
       "safeguard": {
         "document": "docs/specification/read_side_contract.md",
         "quote": "a token the reader knows for a member of that name in a member whose row does not allow it (`form_invalid`), a token the reader knows for no member of that name (`unknown_token`)",
-        "what": "Section 3, step 8: a token moved from one fact to another is refused."
+        "what": "Section 3, step 8: a token moved from one condition or fact to another is refused."
       }
     },
     {

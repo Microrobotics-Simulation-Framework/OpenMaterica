@@ -940,7 +940,7 @@
       }
     },
     "conditions": {
-      "description": "The conditions the value was measured at, by name (provenance.md section 6.1). The registered unit or tokens of each are the vocabulary's.",
+      "description": "The conditions the value was measured at, by name (provenance.md section 6.1): a token condition holds a token of its own row's list, and a numeric one's registered unit is compared at step 9.",
       "type": "object",
       "properties": {
         "temperature": {
@@ -976,7 +976,7 @@
         "density_kind": {
           "anyOf": [
             {
-              "$ref": "#/$defs/token_condition"
+              "$ref": "#/$defs/condition_density_kind"
             },
             {
               "$ref": "#/$defs/status_object"
@@ -986,7 +986,7 @@
         "specimen_shape": {
           "anyOf": [
             {
-              "$ref": "#/$defs/token_condition"
+              "$ref": "#/$defs/condition_specimen_shape"
             },
             {
               "$ref": "#/$defs/status_object"
@@ -1006,7 +1006,7 @@
         "measurement_geometry": {
           "anyOf": [
             {
-              "$ref": "#/$defs/token_condition"
+              "$ref": "#/$defs/condition_measurement_geometry"
             },
             {
               "$ref": "#/$defs/status_object"
@@ -1026,7 +1026,7 @@
         "test_method": {
           "anyOf": [
             {
-              "$ref": "#/$defs/token_condition"
+              "$ref": "#/$defs/condition_test_method"
             },
             {
               "$ref": "#/$defs/status_object"
@@ -1111,8 +1111,59 @@
         ]
       }
     },
-    "token_condition": {
-      "description": "A token of the condition's row (provenance.md section 6.1 item 1); it registers no unit.",
+    "condition_density_kind": {
+      "description": "The token condition density_kind: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/based"
+        }
+      ],
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "condition_specimen_shape": {
+      "description": "The token condition specimen_shape: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/based"
+        }
+      ],
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "condition_measurement_geometry": {
+      "description": "The token condition measurement_geometry: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/based"
+        }
+      ],
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "condition_test_method": {
+      "description": "The token condition test_method: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
       "type": "object",
       "allOf": [
         {
