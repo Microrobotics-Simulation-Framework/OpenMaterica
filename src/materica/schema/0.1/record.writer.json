@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://w3id.org/materica/schema/0.1/record.writer.json",
-  "$comment": "Hand-edited: the one source of a record's structure. record.reader.json and the package's typed shapes are generated from it. A member marked x-materica-write-only is one a read does not check (read_side_contract.md section 3, step 8), so a fault in it never refuses a field at read, although a read may return it (a review, as found). Tokens come from vocabulary/, a token condition's own list included; what binds one field to its unit, forms and label, and a numeric condition to its unit, is the vocabulary's alone. The table, power-law, parameter-set and reference-data forms, the fit record, extensions and the provenance members not yet named are placeholders until their shapes are written.",
+  "$comment": "Hand-edited: the one source of a record's structure. record.reader.json and the package's typed shapes are generated from it. A member marked x-materica-write-only is one a read does not check (read_side_contract.md section 3, step 8), so a fault in it never refuses a field at read, although a read may return it (a review, as found); a rule that tests such a member, or requires only such members, is the record checks' alone, and the reader's $defs leave it out. Tokens come from vocabulary/, a token condition's own list included; what binds one field to its unit, forms and label, and a numeric condition to its unit, is the vocabulary's alone. The table, power-law, parameter-set and reference-data forms, the fit record, extensions and the provenance members not yet named are placeholders until their shapes are written.",
   "title": "Record",
   "description": "A record as a writer writes it (record_format.md, provenance.md and uncertainty.md): closed, with no member it does not define and every enumerated member limited to its tokens. Extensions are placeholders, which a reader never checks.",
   "type": "object",
@@ -198,7 +198,7 @@
       }
     },
     "field_members": {
-      "description": "The members of a value field that do not depend on its form (record_format.md section 5).",
+      "description": "The members of a value field that do not depend on its form (record_format.md section 5), with the rules that join them to the form: a fit record where the origin is fitted or the extraction a fit (provenance.md section 3), a search where the statistics represent a spread across sources, and a recipe where the form's member is withheld (provenance.md sections 2 and 7).",
       "type": "object",
       "required": ["unit", "provenance"],
       "properties": {
@@ -212,11 +212,50 @@
           "$ref": "#/$defs/json_object"
         }
       },
-      "if": {
-        "required": ["provenance"],
-        "properties": {"provenance": {"required": ["origin"], "properties": {"origin": {"const": "fitted"}}}}
-      },
-      "then": {"required": ["fit"]}
+      "allOf": [
+        {
+          "if": {
+            "required": ["provenance"],
+            "properties": {"provenance": {"required": ["origin"], "properties": {"origin": {"const": "fitted"}}}}
+          },
+          "then": {"required": ["fit"]}
+        },
+        {
+          "if": {
+            "required": ["provenance"],
+            "properties": {
+              "provenance": {
+                "required": ["extraction"],
+                "properties": {"extraction": {"required": ["method"], "properties": {"method": {"const": "fit"}}}}
+              }
+            }
+          },
+          "then": {"required": ["fit"]}
+        },
+        {
+          "if": {
+            "required": ["statistics"],
+            "properties": {
+              "statistics": {"required": ["represents"], "properties": {"represents": {"const": "across_sources"}}}
+            }
+          },
+          "then": {"properties": {"provenance": {"required": ["search"]}}}
+        },
+        {
+          "if": {
+            "anyOf": [
+              {"required": ["value"], "properties": {"value": {"type": "object", "required": ["status"], "properties": {"status": {"const": "withheld"}}}}},
+              {"required": ["table"], "properties": {"table": {"type": "object", "required": ["status"], "properties": {"status": {"const": "withheld"}}}}},
+              {"required": ["power_law"], "properties": {"power_law": {"type": "object", "required": ["status"], "properties": {"status": {"const": "withheld"}}}}},
+              {"required": ["interval"], "properties": {"interval": {"type": "object", "required": ["status"], "properties": {"status": {"const": "withheld"}}}}},
+              {"required": ["composition"], "properties": {"composition": {"type": "object", "required": ["status"], "properties": {"status": {"const": "withheld"}}}}},
+              {"required": ["parameter_set"], "properties": {"parameter_set": {"type": "object", "required": ["status"], "properties": {"status": {"const": "withheld"}}}}},
+              {"required": ["reference_data"], "properties": {"reference_data": {"type": "object", "required": ["status"], "properties": {"status": {"const": "withheld"}}}}}
+            ]
+          },
+          "then": {"properties": {"provenance": {"required": ["recipe"]}}}
+        }
+      ]
     },
     "constant_field": {
       "description": "A constant: one number, whose range is its conditions (record_format.md section 6).",
@@ -397,7 +436,7 @@
       "additionalProperties": false
     },
     "withheld_evidence_entry": {
-      "description": "A test report from a reference-only source: withheld whole, its provenance kept (record_format.md section 4.3 item 2).",
+      "description": "A test report from a reference-only source: withheld whole, its provenance kept and carrying the recipe (record_format.md section 4.3 item 2, provenance.md section 7 item 2).",
       "type": "object",
       "required": [
         "endpoint",
@@ -419,7 +458,9 @@
         "reported_result": {"$ref": "#/$defs/status_withheld"},
         "provenance": {"$ref": "#/$defs/provenance"}
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": {"required": ["provenance"]},
+      "then": {"properties": {"provenance": {"required": ["recipe"]}}}
     },
     "report_text": {
       "description": "The source's words, until the member's tokens are listed (record_format.md section 4.3).",
@@ -850,6 +891,20 @@
         },
         {
           "if": {"required": ["origin"], "properties": {"origin": {"const": "evaluated_from_formulation"}}},
+          "then": {"required": ["formulation"]}
+        },
+        {
+          "if": {
+            "required": ["extraction"],
+            "properties": {"extraction": {"required": ["method"], "properties": {"method": {"const": "derivation"}}}}
+          },
+          "then": {"required": ["derivation"]}
+        },
+        {
+          "if": {
+            "required": ["extraction"],
+            "properties": {"extraction": {"required": ["method"], "properties": {"method": {"const": "formulation"}}}}
+          },
           "then": {"required": ["formulation"]}
         }
       ]

@@ -20,7 +20,8 @@ not resolve.
   `content_hash`, and the shapes of value fields, forms and a section's `specimen` are never applied. Its
   `$defs` hold those shapes as step 8 of a read checks them, opened alike, for a reader that checks one field
   with them: a member the writer schema marks `x-materica-write-only`, one a read does not check (its
-  `extraction`, a `review`), accepts anything there and is required nowhere. Cross-member rules (a range in
+  `extraction`, a `review`), accepts anything there and is required nowhere, and a rule that tests one or
+  requires only such members (a recipe where the value is withheld) is left out. Cross-member rules (a range in
   order, no component twice), a member one slip from a named one, and a token or status token where its row
   does not allow it are step 8's but no JSON Schema's.
 - **The typed shapes** (`materica/shapes.py`, `shapes.pyi`) are generated from the writer schema,

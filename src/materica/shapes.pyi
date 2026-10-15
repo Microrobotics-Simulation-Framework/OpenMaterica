@@ -1006,7 +1006,10 @@ class Alternatives(TypedDict):
 
 class FieldMembers(TypedDict):
     """
-    The members of a value field that do not depend on its form (record_format.md section 5).
+    The members of a value field that do not depend on its form (record_format.md section 5), with the rules
+    that join them to the form: a fit record where the origin is fitted or the extraction a fit (provenance.md
+    section 3), a search where the statistics represent a spread across sources, and a recipe where the form's
+    member is withheld (provenance.md sections 2 and 7).
     """
 
     unit: Unit
@@ -1032,8 +1035,8 @@ class EvidenceEntry(TypedDict):
 
 class WithheldEvidenceEntry(TypedDict):
     """
-    A test report from a reference-only source: withheld whole, its provenance kept (record_format.md section
-    4.3 item 2).
+    A test report from a reference-only source: withheld whole, its provenance kept and carrying the recipe
+    (record_format.md section 4.3 item 2, provenance.md section 7 item 2).
     """
 
     endpoint: StatusWithheld

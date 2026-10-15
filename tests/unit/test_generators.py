@@ -612,11 +612,6 @@ def changed(place: str, value: Json) -> dict[str, Json]:
             id="vocabulary_reference_to_no_file",
         ),
         pytest.param(
-            "$defs/value_field/if",
-            {"properties": {"basis": {"enum": ["stated"]}}},
-            id="enumeration_under_if",
-        ),
-        pytest.param(
             "$defs/value_field/not",
             {"properties": {"basis": {"enum": ["stated"]}}},
             id="enumeration_under_not",
@@ -652,6 +647,10 @@ def changes(*places: tuple[str, Json]) -> dict[str, Json]:
 @pytest.mark.parametrize(
     "places",
     [
+        pytest.param(
+            [("$defs/value_field/if", {"properties": {"basis": {"enum": ["stated"]}}})],
+            id="an_enumeration_under_if",
+        ),
         pytest.param(
             [
                 (
@@ -715,9 +714,104 @@ def changes(*places: tuple[str, Json]) -> dict[str, Json]:
 )
 def test_what_opening_would_turn_around_or_copy_unopened_is_refused(places: list[tuple[str, Json]]) -> None:
     """The review's probes: a `$ref` under `if` that reaches an enumeration was opened, turning the condition
-    around, and a keyword the script does not open was copied, closed lists and `$ref`s with it."""
+    around, and a keyword the script does not open was copied, closed lists and `$ref`s with it. Each `if`
+    here has a `then` requiring a member a read checks, so that the reader keeps the condition."""
     with pytest.raises(SchemaError):
-        reader_schema(changes(*places), VOCABULARY)
+        reader_schema(changes(*places, ("$defs/value_field/then", {"required": ["basis"]})), VOCABULARY)
+
+
+# A member of the value field that refers to a definition with a member a read does not check.
+PART: tuple[tuple[str, Json], ...] = (
+    ("$defs/value_field/properties/part", {"$ref": "#/$defs/part"}),
+    (
+        "$defs/part",
+        {
+            "type": "object",
+            "properties": {
+                "secret": {"x-materica-write-only": True, "type": "string"},
+                "open": {"type": "string"},
+            },
+        },
+    ),
+)
+WHEN_ZERO: Json = {"required": ["value"], "properties": {"value": {"const": 0}}}
+COMMON: Json = {"$ref": "#/$defs/common"}
+
+
+def reader_value_field(*places: tuple[str, Json]) -> dict[str, Json]:
+    definitions = reader_schema(changes(*PART, *places), VOCABULARY)["$defs"]
+    assert isinstance(definitions, dict)
+    value_field = definitions["value_field"]
+    assert isinstance(value_field, dict)
+    return value_field
+
+
+@pytest.mark.parametrize(
+    "places",
+    [
+        pytest.param(
+            [
+                (
+                    "$defs/value_field/if",
+                    {"properties": {"part": {"properties": {"secret": {"const": "x"}}}}},
+                ),
+                ("$defs/value_field/then", {"required": ["basis"]}),
+            ],
+            id="an_if_testing_an_unchecked_member",
+        ),
+        pytest.param(
+            [
+                ("$defs/value_field/if", WHEN_ZERO),
+                ("$defs/value_field/then", {"properties": {"part": {"required": ["secret"]}}}),
+            ],
+            id="a_then_requiring_only_an_unchecked_member",
+        ),
+        pytest.param(
+            [("$defs/value_field/allOf", [COMMON, {"properties": {"part": {"required": ["secret"]}}}])],
+            id="a_conjunct_requiring_only_an_unchecked_member",
+        ),
+    ],
+)
+def test_a_rule_a_read_cannot_apply_is_left_out_of_the_reader(places: list[tuple[str, Json]]) -> None:
+    """A read does not check a member marked write-only, however deep, so it applies no rule that tests one or
+    reaches only such members (provenance.md section 2 item 6: the record checks')."""
+    value_field = reader_value_field(*places)
+    assert "if" not in value_field
+    assert value_field["allOf"] == [{"$ref": "#/$defs/common"}]
+
+
+@pytest.mark.parametrize(
+    "places",
+    [
+        pytest.param(
+            [
+                ("$defs/value_field/if", WHEN_ZERO),
+                ("$defs/value_field/then", {"properties": {"part": {"required": ["secret", "open"]}}}),
+            ],
+            id="a_then",
+        ),
+        pytest.param(
+            [
+                (
+                    "$defs/value_field/allOf",
+                    [COMMON, {"properties": {"part": {"required": ["secret", "open"]}}}],
+                )
+            ],
+            id="a_conjunct",
+        ),
+    ],
+)
+def test_a_rule_reaching_checked_and_unchecked_members_is_refused(places: list[tuple[str, Json]]) -> None:
+    """Keeping it would apply the unchecked part, and leaving it out would drop the checked one."""
+    with pytest.raises(SchemaError, match="reaches members a read checks and others"):
+        reader_value_field(*places)
+
+
+def test_a_rule_reaching_a_checked_member_through_a_definition_is_kept() -> None:
+    """The control: `open` is checked, so the condition stands in the reader."""
+    then: Json = {"properties": {"part": {"required": ["open"]}}}
+    value_field = reader_value_field(("$defs/value_field/if", WHEN_ZERO), ("$defs/value_field/then", then))
+    assert (value_field["if"], value_field["then"]) == (WHEN_ZERO, then)
 
 
 def test_a_condition_on_a_constant_is_kept_as_written() -> None:
