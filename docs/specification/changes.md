@@ -281,30 +281,51 @@ power law's uncertainty structure sits beside its statistics block, as the `powe
 power law, so no read changes. A structure changes how `a` and `b` are read, so the name `uncertainty` on a
 power law is reserved before 1.0.0 (`DOCUMENTATION_ARCHITECTURE.md` section 7.2).
 
-Settled for alternatives, picks, overlays and fill-ins (maintainer, 2026-10-15), S4's twelve decisions.
+Settled for alternatives, picks, overlays and fill-ins (maintainer, 2026-10-15), S4's twelve decisions. An
+independent check of the text (1 High, 10 Medium, 12 Low and 7 Info findings) led to its present wording. The
+maintainer ruled on four points it raised (2026-10-15), each marked below.
+
 Without a pick, a reader reads each alternative alone, and the outcome does not depend on the order of
-reading. An alternative is set aside where its conditions, the form's own axis entry aside, give `not_met`, or
-where a table is read outside its readable range, off every edge, and no extrapolation the request carries
-would cover it (PR-044). A table an extrapolation would cover stays, and so does one read over an operating
-range of its axis; under `no_pick` each holds its table as stored (PR-013). A table read exactly at a declared
-edge refuses the field, wherever the edge lies. These rules settle the S3 entry's clauses on PR-044 and
-PR-013, replacing the one under which a table outside its readable range or at an edge stayed. Every other
-`not_met` in an alternative refuses the field, and so does a fault of the request (PR-044, PR-308). A refused
-field, or one whose alternatives are all set aside, reports every alternative's reasons. Beside `no_pick` or
-`want_mismatch`, each remaining alternative's `unknown` reasons stand (PR-013). A result that rests on no
-single alternative holds no value, `assumption` or `conditions` (PR-336). A reason gains the member
+reading. Each alternative is set aside, stays, or refuses the field (PR-044). An alternative is set aside
+where its conditions, the form's own axis entry aside, give `not_met`. It is also set aside where its read
+lies outside its form's range, not exactly at a declared edge, and no extrapolation the request carries would
+cover it. This holds for any form with a range, not for tables only (maintainer, 2026-10-15). These rules
+settle the S3 entry's clauses on PR-044 and PR-013, replacing the one under which a table outside its readable
+range or at an edge stayed. An alternative an extrapolation would cover stays, and is read on through steps 12
+and 13. One whose form `want` cannot give stays too, a table read over an operating range of its axis included
+(PR-013). Any other `not_met` in an alternative's read refuses the field. So does a table read exactly at a
+declared edge, wherever the edge lies. So does a fault of the request: an alternative that reaches step 11
+with no operating value for its axis refuses the field, rather than ending the read (maintainer, 2026-10-15;
+PR-044, PR-308, PR-316).
+
+The result is the first outcome that applies, a refusal first (PR-044). A refused field, or one whose
+alternatives are all set aside, reports every alternative's reasons, the `not_met` ones that wait in an
+alternative that stays included. Beside `no_pick` or `want_mismatch`, each remaining alternative's `unknown`
+reasons stand, and its `not_met` reasons wait for a pick (maintainer, 2026-10-15; PR-013). This settles the S2
+entry's open point on an alternative's own reasons beside `no_pick`. Where every alternative that stays is a
+table read over an operating range, the read gives `want_mismatch`, not `no_pick` (PR-013). A result that
+rests on no single alternative holds no value, `assumption` or `conditions` (PR-336). `alternatives` is a
+non-empty list of objects, none holding `alternatives` of its own (PR-044). A reason gains the member
 `alternative`, the stored index of the alternative it was found reading. A reason is identified by code,
-condition and alternative, and cases compare the three (`README.md`, "Case files"; PR-331). A pick reads only
-its alternative. A pick past the last stored alternative, on a field holding no alternatives, or on a field an
-applied overlay replaces gives the new reason `pick_invalid`, which nothing accepts (PR-304). A pick's index
-is a whole number not below zero, `1.0` being 1 and `-0` being 0, and two picks naming one field are
-`request_incomplete` (PR-330). Every overlay an acceptance names for the read's field must apply; the build's
-selection of overlays by base `id` comes with the build. An overlay that does not replace the read's field is
-refused (`absent`), and the checks on `replaces` cover every key (PR-042, PR-046). One overlay named twice for
-one field is `request_incomplete` (PR-041, PR-330). A base differs in `id`, `version` or `content_hash`,
-compared as strings, an ill-formed base hash included (PR-039). A record of a known type in the wrong role is
-refused as `unknown_type`: a target that is not a `material`, and an overlay acceptance naming a record that
-is not an `overlay` (PR-007). A field an overlay replaces is refused by the base's envelope and body faults,
-not by the base section's specimen or the replaced field (PR-011). A fill-in over a base field holding
-alternatives gives `fill_in_version_mismatch`, and a fill-in's own alternatives are compared one by one
-(PR-107). A withheld alternative of the base refuses an overlay that is not a fill-in (PR-042).
+condition and alternative, and cases compare the three (`README.md`, "Case files"; PR-331).
+
+A pick reads only its alternative. A pick past the last stored alternative, or on a field holding no
+alternatives, gives the new reason `pick_invalid`, which nothing accepts (PR-304). This settles the S2 entry's
+open point on a pick naming no stored alternative. A pick may be located at an overlay the read applies, and
+then names one of that overlay's alternatives. One located at the base of a field an applied overlay replaces
+gives `pick_invalid` (maintainer, 2026-10-15; PR-304). A pick's index is a whole number not below zero, `1.0`
+being 1 and `-0` being 0. Two picks naming one field are `request_incomplete`, as two nominals are, whatever
+their location (PR-330).
+
+Every overlay an acceptance names for the read's field must apply; the build's selection of overlays by base
+`id` comes with the build. An overlay that does not replace the read's field is refused (`absent`), and the
+checks on `replaces` cover every key (PR-042, PR-046). One overlay named twice for one field is
+`request_incomplete` (PR-041, PR-330). Two overlays named for the field read that both replace it conflict
+(PR-041). A base differs in `id`, `version` or `content_hash`, compared as strings, an ill-formed base hash
+included (PR-039). A record of a known type in the wrong role is refused as `unknown_type`: a target that is
+not a `material`, however it is named, and an overlay acceptance naming a record that is not an `overlay`
+(PR-007). A field an overlay replaces is refused by the base's envelope and body faults, not by the base's
+section or the replaced field (PR-011). A fill-in over a base field holding alternatives gives
+`fill_in_version_mismatch`. A fill-in's own alternatives are compared one by one, each mismatch with its index
+(PR-107). A withheld value of the base, in any alternative, refuses an overlay that is not a fill-in, whether
+or not its marker breaks its shape (PR-042).
