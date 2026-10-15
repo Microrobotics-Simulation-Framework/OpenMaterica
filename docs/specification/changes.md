@@ -333,4 +333,6 @@ read even where it also names the read's `record`, and a pick is no exception: i
 its location, never members ignored (a default for the maintainer, 2026-10-15; PR-304, PR-307, PR-316,
 PR-338). Only a pick may be located at an applied overlay: an extrapolation, a nominal or an implied condition
 located there is not applied, and one located at the target's record applies to a field an overlay replaces (a
-default for the maintainer, 2026-10-15; PR-307).
+default for the maintainer, 2026-10-15; PR-307). A `no_pick` entry carries the labels step 12 gives its
+alternative even where that alternative's read ended at step 11, so a table read over an operating range of
+its axis keeps `user_extracted` and the field's `label` (a default for the maintainer, 2026-10-15; PR-013).
