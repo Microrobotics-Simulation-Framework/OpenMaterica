@@ -4,7 +4,8 @@
 A reader ignores a member it does not know (`record_format.md` section 10), so a slip that lands on another
 valid name passes every check and means something else. Section 10 keeps the names valid at one place more
 than one slip apart, and this check holds the schema to it. A namespace is the names valid together at one
-place: the members of one object, or one token list. Names come from:
+place: the members of one object, those of the definitions its `allOf` refers to included, or one token list.
+Names come from:
 - every schema file but the generated reader schema, `$ref`s followed across files, and the vocabulary;
 - the specification's fenced JSON examples, and its tables of members and of tokens (member names only);
 - its name-keyed sentences: "`x`, wherever it sits", "a member named `x`".
@@ -234,6 +235,17 @@ class Schemas:
             else UNKNOWN
         )
 
+    def members(self, node: dict[str, JsonValue], current: str) -> dict[str, tuple[JsonValue, str]]:
+        """The members valid at `node`: its own, and those of each definition its `allOf` refers to, which
+        the same object holds (a value field's `unit` beside its form's `form`), each with its file."""
+        found: dict[str, tuple[JsonValue, str]] = {}
+        for conjunct in listing(node.get("allOf", [])):
+            if isinstance(conjunct, dict) and "$ref" in conjunct:
+                base, file = self.resolve(str(conjunct["$ref"]), current)
+                found |= self.members(mapping(base), file)
+        properties = node.get("properties", {})
+        return found | {name: (subschema, current) for name, subschema in mapping(properties).items()}
+
     def walk(self, node: JsonValue, current: str, pointer: str, owner: str) -> None:
         if isinstance(node, list):
             for index, item in enumerate(node):
@@ -242,12 +254,12 @@ class Schemas:
         if not isinstance(node, dict):
             return
         origin = f"{SCHEMA / current}#{pointer}"
-        if isinstance(properties := node.get("properties"), dict) and properties:
+        if isinstance(node.get("properties", {}), dict) and (valid := self.members(node, current)):
             members = self.corpus.new("members", owner, origin)
-            if set(properties) <= set(self.corpus.registered):
+            if set(valid) <= set(self.corpus.registered):
                 self.corpus.registries.add(id(members))
-            for member, subschema in properties.items():
-                members.add(member, self.shape(subschema, current))
+            for member, (subschema, file) in valid.items():
+                members.add(member, self.shape(subschema, file))
                 if members.shapes[member].kind == "map":
                     self.corpus.maps.add(member)
         if isinstance(tokens := node.get("enum"), list):
