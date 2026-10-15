@@ -315,26 +315,37 @@ field: an empty list, one that is not a list, or `alternatives` beside `form`, a
 member of the table above breaks the field's shape (`form_invalid`, at `read_side_contract.md` section 3,
 step 7). [PR-044]
 Alternatives may differ in form. Writers MUST NOT reorder or drop alternatives once a record is released; a
-new alternative is appended. [RC-017] A consumer's pick names one alternative by its index among the stored
-alternatives (`declarations.md`), and a reader then reads that alternative only. Without a pick, a reader
-reads each alternative alone. It first sets aside every alternative whose conditions, the form's own axis
-aside, give `not_met`, and every table alternative whose read gives `outside_range` without `at_edge`, except
-one whose `outside_range` an extrapolation the request carries would cover (`read_side_contract.md` section
-5), since a pick would let it apply. It sets aside no other: never one whose form `want` cannot give, a table
-read over an operating range of its axis included. A table alternative read exactly at a declared edge
-(`at_edge`) refuses the field, wherever the edge lies, even where `outside_range` stands beside it. A table
-alternative whose read reaches step 11 with no operating value for its axis refuses the field too, with
-`request_incomplete` (`read_side_contract.md` section 1); one set aside for its conditions never reaches step
-11, so it refuses nothing. Any other `not_met` in an alternative's read refuses the field as well. If more
-than one remains, the reader gives `unknown` with the reason `no_pick`, carrying each remaining alternative in
-stored order, with its own conditions, specimen, statistics and provenance (`read_side_contract.md` section
-2); each one's `unknown` reasons stand beside `no_pick`, each naming it by index. Under `no_pick` no
-extrapolation is applied: the entry of a table alternative kept outside its readable range holds its table as
-stored. Where no remaining alternative's form can give what `want` asks, the reader gives `not_met`
-(`want_mismatch`) instead. If the field is refused, or every alternative is set aside, the result is `not_met`
-with the reasons of each, each reason naming its alternative by index, a fault of the request aside.
-`read_side_contract.md` section 3, step 7, gives every outcome. A waiver never accepts a `no_pick`; only a
-pick does. [PR-013] [PR-044]
+new alternative is appended. [RC-017] A reader reads alternatives as follows. `read_side_contract.md` section
+3, step 7, gives every outcome with its reasons and members. [PR-013] [PR-044]
+
+1. **A pick.** A consumer's pick names one alternative by its index among the stored alternatives
+   (`declarations.md`). A reader then reads that alternative only, as a field. [PR-304]
+2. **Set aside.** Without a pick, a reader reads each alternative alone, as a field. It sets aside an
+   alternative whose conditions, the form's own axis aside, give `not_met`. It sets aside a table alternative
+   whose read gives `outside_range` without `at_edge`, unless an extrapolation the request carries would cover
+   it (`read_side_contract.md` section 5). [PR-044]
+3. **Stay.** It sets aside no other. An alternative whose read gives no `not_met` stays. So does a table that
+   an extrapolation the request carries would cover, since a pick would let it apply. So does one whose form
+   `want` cannot give, a table read over an operating range of its axis included. The `not_met` reasons of an
+   alternative that stays are reported only once a pick names it, once it is the one left, or once the field
+   is refused. [PR-013] [PR-338]
+4. **Refuse.** Any other `not_met` in an alternative's read refuses the field. A table alternative read
+   exactly at a declared edge (`at_edge`) refuses the field, wherever the edge lies, even where
+   `outside_range` stands beside it. A table alternative whose read reaches step 11 with no operating value
+   for its axis refuses the field too, with `request_incomplete` (`read_side_contract.md` section 1). One set
+   aside for its conditions never reaches step 11, so it refuses nothing. [PR-044] [PR-308]
+5. **The outcome** is the first of these that applies. [PR-013] [PR-044]
+   - Where an alternative refuses the field, or every alternative is set aside, the result is `not_met`, with
+     the reasons of each, those that wait included. Each reason names its alternative by index, a fault of the
+     request aside.
+   - Where one alternative stays, the result is that alternative's read.
+   - Where more than one stays and none has a form `want` can give, the result is `not_met` (`want_mismatch`).
+     A table read over an operating range of its axis counts as a form `want` cannot give.
+   - Otherwise the result is `unknown`, with the reason `no_pick`. It carries each alternative that stays, in
+     stored order, with its own conditions, specimen, statistics and provenance (`read_side_contract.md`
+     section 2). Each one's `unknown` reasons stand beside `no_pick`, each naming it by index. No
+     extrapolation is applied: the entry of a table alternative kept outside its readable range holds its
+     table as stored. A waiver never accepts a `no_pick`; only a pick does.
 
 ## 6. The value forms
 
@@ -588,7 +599,7 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-010 | plain read | a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8; a unit held as a status object is returned as stored, its `reason` included |
 | PR-011 | plain read | an overlay replaces a whole field, provenance included, with its own specimen; a slip in the base's envelope or body (`crad`, `fluids`) refuses the field read through it, as one in the overlay's does, while a fault in the base section's `specimen` or in the replaced base field does not |
 | PR-012 | plain read | an undeclared overlay, or one an acceptance names for another field, is not applied |
-| PR-013 | plain read | alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; an entry's index counts set-aside alternatives, one stored past a set-aside alternative included; each remaining alternative's own `unknown` reasons stand beside `no_pick`, each with its `alternative` (`condition_unstated`), a set-aside one's not; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`; a table alternative kept outside its readable range, since an extrapolation the request carries would cover it, or read over an operating range of its axis has its table as stored in its entry, with no extrapolation applied |
+| PR-013 | plain read | alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; an entry's index counts set-aside alternatives, one stored past a set-aside alternative included; each remaining alternative's own `unknown` reasons stand beside `no_pick`, each with its `alternative` (`condition_unstated`), a set-aside one's not; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`; a table alternative kept outside its readable range, since an extrapolation the request carries would cover it, or read over an operating range of its axis has its table as stored in its entry, with no extrapolation applied; a kept table's step-12 `unknown` reasons stand beside `no_pick` (`stated_without_origin`), its `outside_range` not; two tables both read over an operating range of their axis give `not_met` (`want_mismatch`), not `no_pick` |
 | PR-014 | plain read | every form carries its range |
 | PR-015 | plain read | a constant is returned with its conditions |
 | PR-016 | plain read | linear and log-log tables interpolate by their scheme |
@@ -616,7 +627,7 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-041 | plain read | two different declared overlays replacing one field are refused (`overlay_conflict`); one overlay named twice for one field gives `request_incomplete` |
 | PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another, and where one alternative of the base's field is withheld |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
-| PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; a table alternative outside its readable range is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
+| PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; a table alternative outside its readable range is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative, `want`'s and that of a table kept for an extrapolation aside (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, those that wait in an alternative that stays included, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported, unless its read refuses the field, which then reports every alternative's reasons, with no `conditions`; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
 | PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
 | PR-046 | plain read | an overlay replacing a field its base lacks is refused (`absent`), whichever key of `replaces` that is; so is one named for the field read that does not replace it |
 | PR-047 | plain read | numbers read as the nearest double, ties to even, compared exactly: `9007199254740993` as `9007199254740992`; `1e-400` as `0`; `-1e-400` as `-0`, not `0`; `3e-324` as `5e-324`; `2.4703282292062327e-324` as `0`; `1.7976931348623158e308` as the largest double |
