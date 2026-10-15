@@ -98,7 +98,6 @@ def outcome_features(outcome: Outcome, world: World) -> None:
 OUTCOMES = {
     "past_step_5": 0.027,
     "absent": 0.017,
-    "malformed": 0.12,
     "pin_mismatch": 0.024,
     "hash_mismatch": 0.004,
     "other_version": 0.002,
@@ -107,6 +106,11 @@ OUTCOMES = {
     "request_unit_mismatch": 0.008,
     "want_mismatch": 0.03,
 }
+# `malformed` is declared by its chance: the least of its shares at `ci` in the five laws that declare it,
+# over 64 runs each (2026-10-15), rounded down to two places. From the measured clusters, the least share it
+# had failed a `dev` run of a law with a probability of about 2.4e-4 to 1.3e-3 (at most 1.8e-3 to 6.8e-3); it
+# is not judged at `dev` now, and at `ci` falls below its draw floor with a probability below 1e-20.
+OUTCOME_CHANCES = {"malformed": 0.32}
 
 
 # (a, f) A read never raises, and gives each reason once.
@@ -116,6 +120,7 @@ def check_one_read(world: World) -> None:
     check_read(world)
 
 
+@pytest.mark.chances(**OUTCOME_CHANCES)
 @pytest.mark.features(
     **OUTCOMES, **{f"case_{case}": 0.047 for case in stores.CASES}, hash_not_checked=0.003, misuse=0.04
 )
@@ -166,6 +171,7 @@ def differing_copies(sources: Sequence[bytes]) -> bool:
     )
 
 
+@pytest.mark.chances(**OUTCOME_CHANCES)
 @pytest.mark.features(**OUTCOMES, differing_copies=0.06, copies_added=0.14, reordered=0.16)
 @given(shuffled())
 def test_the_order_and_identical_copies_of_the_sources_change_nothing(shuffled: Shuffled) -> None:
@@ -206,6 +212,7 @@ def check_other_identity(with_other: WithOther) -> None:
     assert check_read(world._replace(sources=(*world.sources, with_other.other.data))) == check_read(world)
 
 
+@pytest.mark.chances(**OUTCOME_CHANCES)
 @pytest.mark.features(
     **OUTCOMES,
     **{f"other_{variant}": 0.018 for variant in stores.VARIANTS},
@@ -243,6 +250,7 @@ def with_unreadables() -> st.SearchStrategy[WithUnreadable]:
     return st.builds(WithUnreadable, stores.worlds(), st.sampled_from(stores.UNREADABLE))
 
 
+@pytest.mark.chances(**OUTCOME_CHANCES)
 @pytest.mark.features(**OUTCOMES)
 @given(with_unreadables())
 def test_an_unreadable_source_turns_only_absent_or_pin_mismatch_into_malformed(
@@ -287,6 +295,7 @@ def unnamed_requests() -> st.SearchStrategy[Unnamed]:
     return st.builds(Unnamed, stores.worlds(), st.lists(ADDITIONS, min_size=1, max_size=4).map(tuple))
 
 
+@pytest.mark.chances(**OUTCOME_CHANCES)
 @pytest.mark.features(**OUTCOMES, **{f"added_at_{'.'.join(place) or 'top'}": 0.06 for place in OBJECTS})
 @given(unnamed_requests())
 def test_a_request_member_the_shape_does_not_name_changes_nothing(unnamed: Unnamed) -> None:

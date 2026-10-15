@@ -260,9 +260,12 @@ def check_ignored(unknowns: Unknowns) -> None:
     assert outcome(record, example.field) == outcome(example.record, example.field)
 
 
-@pytest.mark.features(
-    structure=0.25, field=0.045, inside_the_field=0.11, unchecked=0.065, two_slips=0.23, faulty_base=0.11
-)
+# `faulty_base` is declared by its chance: its share at `ci` over 64 runs (2026-10-15), rounded down to two
+# places. From the measured clusters, its least share failed a `dev` run with a probability of about 1.9e-3
+# (at most 4.5e-3); it is not judged at `dev` now, and at `ci` falls below its draw floor with a probability
+# below 1e-15.
+@pytest.mark.chances(faulty_base=0.33)
+@pytest.mark.features(structure=0.25, field=0.045, inside_the_field=0.11, unchecked=0.065, two_slips=0.23)
 @given(with_unknowns())
 def test_members_the_reader_does_not_know_change_nothing(unknowns: Unknowns) -> None:
     for place, name, _ in unknowns.additions:
