@@ -1,0 +1,80 @@
+{
+  "case": "PR-044",
+  "variant": "entry_not_object_with_pick",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_alternatives_entry_not_object.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:0540b2a1282111455ae6db3e952180c4c92d5060896b249afd6bdb67db43459e"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "pick",
+        "record": {
+          "id": "conformance/density_alternatives_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:0540b2a1282111455ae6db3e952180c4c92d5060896b249afd6bdb67db43459e"
+        },
+        "field": "bulk.density",
+        "index": 1,
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

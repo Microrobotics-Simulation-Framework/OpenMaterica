@@ -1,0 +1,62 @@
+{
+  "case": "PR-308",
+  "variant": "no_operating_value_beside_unchecked_constant",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_alternatives_constant_and_table.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:7e70723d527dfc77f87dabaa8305a8c31de5fc2d9ac4057b81d7aa92e6cf02c7"
+      },
+      "field": "bulk.density"
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "request_incomplete",
+        "condition": "temperature"
+      },
+      {
+        "code": "condition_unchecked",
+        "condition": "temperature",
+        "alternative": 0
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

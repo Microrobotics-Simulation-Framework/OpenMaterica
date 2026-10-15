@@ -1,0 +1,89 @@
+{
+  "case": "PR-044",
+  "variant": "refused_reports_waiting_outside_range",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_alternatives_table_and_unit_350.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:f28ca01bacdb4b61dfcc7ea5e9cfda99983723692ac03ca31525a460b916b71f"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 350.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "extrapolation",
+        "record": {
+          "id": "conformance/density_alternatives_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:f28ca01bacdb4b61dfcc7ea5e9cfda99983723692ac03ca31525a460b916b71f"
+        },
+        "field": "bulk.density",
+        "method": "constant",
+        "law": "conformance fixture: the end value held constant",
+        "basis": "conformance fixture: an illustrative basis",
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "outside_range",
+        "condition": "temperature",
+        "alternative": 0
+      },
+      {
+        "code": "unit_mismatch",
+        "alternative": 1
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

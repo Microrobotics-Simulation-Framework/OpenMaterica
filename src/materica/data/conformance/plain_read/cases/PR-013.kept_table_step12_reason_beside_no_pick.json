@@ -1,0 +1,253 @@
+{
+  "case": "PR-013",
+  "variant": "kept_table_step12_reason_beside_no_pick",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_alternatives_unoriginated_table_and_constant_350.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:79fbea03e51f6a3e50157fe234fd1e64da2dad1da0d38258c3d25c3b5dd86f69"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 350.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "extrapolation",
+        "record": {
+          "id": "conformance/density_alternatives_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:79fbea03e51f6a3e50157fe234fd1e64da2dad1da0d38258c3d25c3b5dd86f69"
+        },
+        "field": "bulk.density",
+        "method": "constant",
+        "law": "conformance fixture: the end value held constant",
+        "basis": "conformance fixture: an illustrative basis",
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "no_pick"
+      },
+      {
+        "code": "stated_without_origin",
+        "alternative": 0
+      }
+    ],
+    "alternative_values": [
+      {
+        "alternative": 0,
+        "value": {
+          "axis": "temperature",
+          "axis_unit": "K",
+          "x": [
+            280.0,
+            300.0,
+            320.0,
+            340.0
+          ],
+          "y": [
+            1000.0,
+            996.0,
+            990.0,
+            986.0
+          ],
+          "scheme": "linear",
+          "edges": []
+        },
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "not_met",
+            "record": {
+              "status": "not_applicable"
+            },
+            "operating": {
+              "value": 350.0,
+              "unit": "K"
+            }
+          },
+          {
+            "name": "density_kind",
+            "status": "met",
+            "record": {
+              "token": "apparent",
+              "basis": "stated"
+            }
+          }
+        ],
+        "specimen": {},
+        "statistics": {
+          "central": {
+            "status": "not_applicable"
+          },
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "not_applicable"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "not_applicable"
+          },
+          "max": {
+            "status": "not_applicable"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "stated_without_origin",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      },
+      {
+        "alternative": 1,
+        "value": 984.0,
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "met",
+            "record": {
+              "value": 350.0,
+              "unit": "K",
+              "basis": "stated"
+            },
+            "operating": {
+              "value": 350.0,
+              "unit": "K"
+            }
+          },
+          {
+            "name": "density_kind",
+            "status": "met",
+            "record": {
+              "token": "apparent",
+              "basis": "stated"
+            }
+          }
+        ],
+        "specimen": {},
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      }
+    ],
+    "unit": "kg/m3",
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

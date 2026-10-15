@@ -1,0 +1,117 @@
+{
+  "case": "PR-316",
+  "variant": "implied_two_disagree_in_alternative_beside_reasons",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_alternatives_in_vivo_normal_and_outside.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:0a70cb9b16ba1e1e5b1298a41a8b5d933ce2c44daac81618bfb10aafc979881f"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "implied_condition",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:0a70cb9b16ba1e1e5b1298a41a8b5d933ce2c44daac81618bfb10aafc979881f"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "fact": "tissue_state",
+        "token": "in_vivo",
+        "implies": {
+          "temperature": {
+            "value": 310.15,
+            "unit": "K"
+          }
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      },
+      {
+        "acceptance": "implied_condition",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:0a70cb9b16ba1e1e5b1298a41a8b5d933ce2c44daac81618bfb10aafc979881f"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "fact": "disease_and_treatment_state",
+        "token": "normal",
+        "implies": {
+          "temperature": {
+            "value": 309.15,
+            "unit": "K"
+          }
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "request_incomplete",
+        "condition": "temperature"
+      },
+      {
+        "code": "condition_outside",
+        "condition": "temperature",
+        "alternative": 1
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

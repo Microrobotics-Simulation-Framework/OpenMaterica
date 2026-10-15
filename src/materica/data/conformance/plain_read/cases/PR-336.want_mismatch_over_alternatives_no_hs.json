@@ -1,0 +1,77 @@
+{
+  "case": "PR-336",
+  "variant": "want_mismatch_over_alternatives_no_hs",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "hash": false
+  },
+  "inputs": {
+    "records": [
+      "water_two_constant_alternatives.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:51895f5ad03d80773e5374fd118e028653a1bf665edf7cfdb8dbcdbd758aeb38"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "bounds",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "want_mismatch"
+      }
+    ],
+    "labels": [
+      "hash_not_checked"
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}
