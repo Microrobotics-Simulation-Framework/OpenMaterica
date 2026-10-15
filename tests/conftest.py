@@ -39,8 +39,9 @@ if PROFILE not in EXAMPLES:
 settings.load_profile(PROFILE)
 
 
-# CI's Hypothesis job runs the property modules in three shards side by side, `--shard json`, `--shard
-# records` and `--shard writer`; `tests/unit/test_source_files.py` checks that each module is in exactly one.
+# CI's Hypothesis job runs the property modules in four shards side by side, `--shard json`, `--shard
+# records`, `--shard writer` and `--shard step8_mutants`; `tests/unit/test_source_files.py` checks that each
+# module is in exactly one.
 SHARDS = {
     "json": (
         "test_jsonio_properties",
@@ -55,9 +56,10 @@ SHARDS = {
         "test_read_properties",
         "test_record_mutants",
         "test_value_field_properties",
-        "test_value_field_mutants",
     ),
     "writer": ("test_writer_properties", "test_writer_mutants"),
+    # Step 8's mutant searches, the longest part of the records shard; they keep no example database.
+    "step8_mutants": ("test_value_field_mutants",),
 }
 
 

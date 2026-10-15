@@ -86,12 +86,13 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the groups in three shards side by side, each in a job of its own: `pytest tests/property --shard json`,
-`--shard records`, which holds the record and step-8 groups, and `--shard writer` (`SHARDS` in
-`tests/conftest.py`). The writer schema's properties validate each field with `jsonschema` against the writer's
+CI runs the groups in four shards side by side, each in a job of its own: `pytest tests/property --shard json`,
+`--shard records`, which holds the record and step-8 groups, `--shard writer`, and `--shard step8_mutants`,
+step 8's mutant searches, which keep no example database and were most of the records shard's time (`SHARDS`
+in `tests/conftest.py`). The writer schema's properties validate each field with `jsonschema` against the writer's
 value field, a choice among eight forms, which costs about 30 ms a field: so each family of faults is a
 property of its own, run in parallel. Each module is in exactly one shard (`tests/unit/test_source_files.py`),
-and each shard keeps its own example database in CI.
+and each shard but the mutant searches' keeps its own example database in CI.
 
 ## Mutants
 

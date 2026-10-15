@@ -205,3 +205,16 @@ def test_every_python_file_starts_with_its_spdx_header(path: Path) -> None:
 def test_every_property_module_is_in_one_shard() -> None:
     modules = sorted(path.stem for path in (REPOSITORY / "tests" / "property").glob("test_*.py"))
     assert sorted(module for shard in SHARDS.values() for module in shard) == modules
+
+
+def hypothesis_shards(workflow: str) -> list[str]:
+    """The shards CI's Hypothesis job runs, from its matrix line `shard: [a, b]`."""
+    found = [line.strip() for line in workflow.splitlines() if line.strip().startswith("shard: [")]
+    return [shard.strip() for line in found for shard in line.removeprefix("shard: [").rstrip("]").split(",")]
+
+
+def test_ci_runs_every_shard() -> None:
+    """A shard CI's matrix left out would never run there (the S2a-2 fix round's `step8_mutants`)."""
+    workflow = (REPOSITORY / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert sorted(hypothesis_shards(workflow)) == sorted(SHARDS)
+    assert sorted(hypothesis_shards("        shard: [json, records, writer]\n")) != sorted(SHARDS)
