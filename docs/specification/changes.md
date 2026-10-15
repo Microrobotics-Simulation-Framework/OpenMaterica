@@ -222,7 +222,9 @@ aside, which the clauses below on PR-044 and PR-013 state, is settled by S4's de
 operating value's included, are compared by value; a table's axis condition holds `not_applicable`; an axis
 the reader does not know, or a token condition's name, is `unknown_token`, and so is a `scheme` the reader
 does not know, not `form_invalid` (PR-322, PR-032); step 8 checks every member of a table that the reader's
-version defines, so a table returned as stored holds only checked members (PR-322); `source_range` never
+version defines, so a table returned as stored holds only checked members (PR-322), and checks a form's member
+only where the field's row allows the form, so a form it does not allow, a composition basis included, gives
+`form_not_registered` and no reason of its member (maintainer, 2026-10-15; PR-036); `source_range` never
 extends the readable range and narrows it where it is narrower, for the read, an evaluator's `in_range` and
 the form-range watch, and one that is not two ordered numbers sharing with `[x[0], x[-1]]` a value that is no
 edge is `form_invalid` (PR-019, TE-003, BC-031); the axis entry is `met` exactly when the operating value lies
