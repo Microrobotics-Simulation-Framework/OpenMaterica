@@ -660,3 +660,18 @@ def test_a_label_on_a_table_follows_its_rows_axis(axis: str, allowed: bool) -> N
     field: dict[str, JsonValue] = {**water_field(), "form": "table", "table": {"axis": axis}}
     found = value_shapes.field_problems(field, VOCABULARY.fields["fluid.dynamic_viscosity"], "table")
     assert [reason.code for reason in found] == ([] if allowed else ["form_invalid"])
+
+
+def test_withheld_is_given_beside_a_shared_refusal() -> None:
+    """Each step makes all its checks (`read_side_contract.md` section 2 item 2): a withheld value beside a
+    broken unit gives both. HP3 meets the pair only on its rarer two-fault draws, so the review's mutant that
+    drops `withheld` there survived it in one run of six."""
+    withheld: dict[str, JsonValue] = {
+        **water_field(),
+        "value": {"status": "withheld"},
+        "statistics": {"status": "withheld"},
+    }
+    alone = read(*stored(with_field("fluid.dynamic_viscosity", withheld)))
+    assert {reason.code for reason in alone.reasons} == {"withheld"}
+    both = read(*stored(with_field("fluid.dynamic_viscosity", {**withheld, "unit": None})))
+    assert {reason.code for reason in both.reasons} == {"withheld", "form_invalid"}
