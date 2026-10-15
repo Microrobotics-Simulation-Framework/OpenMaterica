@@ -361,7 +361,7 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `unknown_token` | not_met | 6, 8 | a token the reader knows for no member of that name (section 3, step 8), or an overlay's `purpose` that is none of the four (step 6) | `record_format.md` 10, 4.4 |
 | `withheld` | not_met | 6, 8 | a reference-only value, not filled in (an overlay of any purpose but `fill_in` fills in none); an evidence list whose every entry is withheld | `provenance.md` 7; `record_format.md` 4.4 |
 | `entries_withheld` | unknown | 8 | an evidence list some of whose entries are withheld | `record_format.md` 4.3 |
-| `fill_in_version_mismatch` | unknown | 12 | a fill-in's document identifier or version differs from its base's, or either document does not state both as strings | `provenance.md` 7 |
+| `fill_in_version_mismatch` | unknown | 12 | a fill-in's document identifier or version differs from its base's, or either document does not state both as strings; or a fill-in over a base field holding alternatives | `provenance.md` 7 |
 | `unit_mismatch` | not_met | 9 | a unit other than the registered one, or a unit on a token condition, which registers none | `record_format.md` 4.2 |
 | `condition_unstated` | unknown | 10 | the source does not state the condition | section 5 |
 | `condition_unknown_name` | unknown | 10 | a condition name the reader does not know | `record_format.md` 10 |
