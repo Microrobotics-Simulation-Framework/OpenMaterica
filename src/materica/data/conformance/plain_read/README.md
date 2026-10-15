@@ -33,7 +33,11 @@ compared only where a case claims `hash`.
   reads `met`. Most arms are one of them with one thing changed, so the reason or member that differs shows
   the rule.
 - **Boundaries are exact.** Each arm at a tolerance's edge was checked with exact rationals, not decimals or
-  floating point: PR-335's arms are those where floating point and the exact comparison disagree.
+  floating point. PR-335's arms are those where floating point as written and the exact comparison disagree,
+  at least one for each row of section 5, with and without a stated ±, and `decimal_310_15`, where the two
+  agree and the decimals written are not the doubles read.
+- **Each side fails somewhere.** Every row of section 5, with and without a stated ±, has an arm that fails on
+  its lower side and one that fails on its upper side, so a reader that checks one inequality is refused.
 - **They wait for their code.** `tests/spec_sync/case_steps.json` names the implementation step that first
   runs each; until it is done the tests report the file as not yet runnable, never as passed.
 
@@ -73,7 +77,7 @@ The inputs come in families, named by what they break:
 | `unknown_type_*`, `namespaced_type_*` | the unknown-type records, also with envelope faults (refused at step 3 before the type is checked) |
 | `source_*`, `empty_file.json`, `record_binary_bytes.json` | sources that are not records: a number, a string, an array, an object with only an `id`, an empty file, bytes that are not text |
 | `request_*` | requests that are not valid JSON, used through `inputs.request` (PR-330) |
-| `water_*`, read to the value | the water record with one change a read of the value checks: units (`water_field_unit_*`, `water_condition_unit_*`), tokens (`water_token_*`, `water_form_*`), statistics (`water_statistics_*`), status objects (`water_status_*`, `water_temperature_*`), reviews (`water_review_*`), a ± (`water_plus_minus_*`), conditions (`water_shear_*`, `water_tube_*`), specimen facts for implied conditions (`water_in_vivo*`, `water_ex_vivo*`), alternatives (`water_alternatives_*`, `water_two_constant_alternatives.json`), near-typos (`water_near_typo_*`) |
+| `water_*`, read to the value | the water record with one change a read of the value checks: units (`water_field_unit_*`, `water_condition_unit_*`), tokens (`water_token_*`, `water_form_*`), statistics (`water_statistics_*`), status objects (`water_status_*`, `water_temperature_*`), reviews (`water_review_*`), a ± (`water_plus_minus_*`), conditions (`water_shear_*`, `water_tube_*`, `water_gap_*`, `water_condition_*`), specimen facts (`water_fact_*`, and for implied conditions `water_in_vivo*`, `water_ex_vivo*`), alternatives (`water_alternatives_*`, `water_two_constant_alternatives.json`), near-typos (`water_near_typo_*`), `null` in a value field's member (`water_plus_minus_null.json` and the like), unknown members (`water_unknown_*`) |
 | `glycerol_*`, `magnet_test_method_absent.json` | the density and the remanence with one such change |
 
 ## What the cases cannot show
@@ -84,18 +88,18 @@ The inputs come in families, named by what they break:
   fail on that rule alone.
 - **PR-006's set-aside arms.** A document set aside at step 1 and a source that is simply not the target give
   the same answer. PR-328 holds the arms where setting aside changes the answer.
-- **Members the text leaves open.** Each is left out of `compare` in the arms that meet it, and the rest of
-  the answer is compared:
-  - the `conditions` of a read that two disagreeing implied conditions end at step 10
-    (`PR-316.implied_two_disagree`, `implied_two_disagree_record_states` and
-    `implied_two_disagree_in_alternative`): which value an entry's `record` holds is not written;
-  - the `conditions` of a read that alternatives end at step 7 with `want_mismatch`
-    (`PR-013.grade_interval_and_lot_constant_components`);
-  - the `provenance` of a read whose review holds a known `result` (`PR-109.review_reviewed_not_refused`):
-    `read_side_contract.md` section 2 returns "the review's `result`", `provenance.md` section 2 item 6 the
-    review "as found".
-- **An alternative's own `unknown` reasons beside `no_pick`.** Every `no_pick` arm uses alternatives each of
-  which, read alone, would be `met`.
-- **Acceptances located at an interval or a region.** No text gives an `interval` location's shape in a
-  request, and regions belong to the scene suite.
+- **Answers the text leaves open.** No arm meets them; each waits for the text:
+  - an alternative's own reasons beside `no_pick`, which `read_side_contract.md` section 3, step 7 leaves
+    unspecified. So every `no_pick` arm uses alternatives whose conditions are all met, none is set aside, and
+    no arm shows that an entry's `alternative` counts the stored alternatives rather than the remaining ones;
+  - whether an alternative refused at step 8 or 9, which stays because alternatives are set aside for their
+    conditions only, turns `no_pick` into `not_met`;
+  - whether a member the reader does not know is left out (`read_side_contract.md` section 2 item 5) inside a
+    review returned as found, and inside an evidence entry's `provenance`, returned whole: no fixture holds
+    one there;
+  - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
+    is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
+    both readings agree.
+- **Acceptances located at a region.** Regions belong to the scene suite. An acceptance located at an
+  `interval` is checked and not applied (`PR-316.implied_at_interval`, `PR-338.nominal_at_interval`).
 - **Tables, overlays and picks:** later steps, with their cases.

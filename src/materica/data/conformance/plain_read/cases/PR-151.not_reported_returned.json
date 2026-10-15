@@ -5,7 +5,7 @@
   "schema_version": "0.1.0",
   "inputs": {
     "records": [
-      "water_fixture.json"
+      "water_statistics_mean_not_reported.json"
     ]
   },
   "request": {
@@ -13,7 +13,7 @@
       "record": {
         "id": "conformance/water_fixture",
         "version": "1.0.0",
-        "content_hash": "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d"
+        "content_hash": "sha256:9eac19c6e7288f0ecafca380fea0a17237da1a9f3a3a4e6668ab7c9b071b5bfe"
       },
       "field": "fluid.dynamic_viscosity"
     },
@@ -69,16 +69,12 @@
     ],
     "specimen": {},
     "statistics": {
-      "central": "stated",
-      "n_specimens": {
-        "status": "unstated"
-      },
+      "central": "mean",
+      "n_specimens": 3.0,
       "n_donors": {
         "status": "not_applicable"
       },
-      "mean": {
-        "status": "unstated"
-      },
+      "mean": 0.000692,
       "sd": {
         "status": "unstated"
       },

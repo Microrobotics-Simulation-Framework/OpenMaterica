@@ -1,0 +1,62 @@
+{
+  "case": "PR-030",
+  "variant": "near_typo_derivation_input_specimen",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "mixture_near_typo_derivation_input_specimen.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/mixture_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:aa2d1876c27b727a2ab5165b85e2c5c740a773b8d1c6e761271c138f78ec5481"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

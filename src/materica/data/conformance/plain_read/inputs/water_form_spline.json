@@ -8,7 +8,7 @@
     "values": "CC0-1.0",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:d5c262fedd0fea24a82304ee6d72744e1a760c85b6ca796998d6bb096f495368",
+  "content_hash": "sha256:173bab912678529622b42d33818128cd1dd2d9f3f7f67c995731df506247e8c8",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "sections": {
@@ -77,8 +77,7 @@
                 "status": "not_checked",
                 "reason": "conformance fixture: illustrative values, not a measurement"
               }
-            },
-            "label": "materica.fluid.newtonian.v1"
+            }
           }
         }
       }

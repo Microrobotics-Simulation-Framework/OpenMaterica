@@ -1,0 +1,67 @@
+{
+  "case": "PR-030",
+  "variant": "near_typo_in_interval",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "grade_density_near_typo_in_interval.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/polymer_grade_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:7f920d2ef872478970bb478e27d4a91f2350cd60cc44fc6e2054c1c46bcf210c"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "bounds",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

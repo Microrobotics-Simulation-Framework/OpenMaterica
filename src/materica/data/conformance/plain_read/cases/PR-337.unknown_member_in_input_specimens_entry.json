@@ -1,0 +1,171 @@
+{
+  "case": "PR-337",
+  "variant": "unknown_member_in_input_specimens_entry",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "mixture_unknown_member_in_input_specimens_entry.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/mixture_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:02030456b245a0c415f56ade348b44253785acf2e7c5ff96d892ce501e73ef64"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "condition_unstated",
+        "condition": "shear_rate"
+      }
+    ],
+    "value": 0.0011,
+    "unit": "Pa.s",
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 310.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 310.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "shear_rate",
+        "status": "unknown",
+        "record": {
+          "status": "unstated"
+        }
+      }
+    ],
+    "specimen": {},
+    "statistics": {
+      "central": "stated",
+      "n_specimens": {
+        "status": "unstated"
+      },
+      "n_donors": {
+        "status": "not_applicable"
+      },
+      "mean": {
+        "status": "unstated"
+      },
+      "sd": {
+        "status": "unstated"
+      },
+      "min": {
+        "status": "unstated"
+      },
+      "max": {
+        "status": "unstated"
+      },
+      "distribution": {
+        "status": "unstated"
+      },
+      "basis": {
+        "status": "not_applicable"
+      },
+      "represents": {
+        "status": "unstated"
+      },
+      "dispersion": "not_reported",
+      "relative_uncertainty": {
+        "status": "none"
+      },
+      "expanded_uncertainty": {
+        "status": "none"
+      }
+    },
+    "provenance": {
+      "origin": "derived",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      },
+      "derivation": {
+        "method": "conformance_fixture_mixing_rule",
+        "inputs": [
+          {
+            "record": {
+              "id": "conformance/water_fixture",
+              "version": "1.0.0",
+              "content_hash": "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d"
+            },
+            "field": "fluid.dynamic_viscosity"
+          },
+          {
+            "record": {
+              "id": "conformance/glycerol_fixture",
+              "version": "1.0.0",
+              "content_hash": "sha256:53c34b5a18568f0ad10a1bf0be0ecef258a7f26048cf37c0fe8077c39af12b43"
+            },
+            "field": "bulk.density"
+          }
+        ],
+        "assumptions": [
+          "conformance fixture: an illustrative assumption"
+        ],
+        "input_specimens": [
+          {
+            "input": 0,
+            "specimen": {}
+          },
+          {
+            "input": 1,
+            "specimen": {}
+          }
+        ],
+        "mixed_conditions": true
+      }
+    },
+    "labels": [
+      "materica.fluid.newtonian.v1",
+      "mixed_conditions"
+    ]
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

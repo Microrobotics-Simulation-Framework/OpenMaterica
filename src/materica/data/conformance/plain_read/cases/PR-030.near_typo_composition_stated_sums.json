@@ -1,0 +1,48 @@
+{
+  "case": "PR-030",
+  "variant": "near_typo_composition_stated_sums",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "composition_near_typo_composition_stated_sums.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/composition_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:7dbf6c39879e0f792ff020f8c3619f0ad2251ae104b25d34d9899f59da7fb690"
+      },
+      "field": "bulk.elemental_composition"
+    },
+    "requirement": {
+      "want": "components"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

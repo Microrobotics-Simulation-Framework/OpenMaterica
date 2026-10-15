@@ -56,6 +56,7 @@
       "value",
       "alternative_values",
       "unit",
+      "conditions",
       "specimen",
       "statistics",
       "provenance",
