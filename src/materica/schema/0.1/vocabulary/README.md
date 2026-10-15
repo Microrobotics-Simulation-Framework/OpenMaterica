@@ -23,5 +23,6 @@ and reads in full or not at all.
 The writer schema takes its token lists from these files' `$defs` by `$ref`, and applies the bindings by
 `allOf` (maintainer, 2026-10-15), so that it writes no list of names, forms, units or labels of its own. The
 reader schema and the typed shapes leave the bindings out: a read checks a field against its row in its own
-steps. `core/vocabulary.py` reads the
-first five when it is first imported; a file of another shape is a broken installation, and loading it raises.
+steps. `core/vocabulary.py` reads the first five, and every token list a file's `$defs` holds (each
+definition with an `enum`), by its name there, when it is first imported; a file of another shape, or two
+lists of one name, is a broken installation, and loading it raises.
