@@ -321,18 +321,18 @@ new alternative is appended. [RC-017] A reader reads alternatives as follows. `r
 1. **A pick.** A consumer's pick names one alternative by its index among the stored alternatives
    (`declarations.md`). A reader then reads that alternative only, as a field. [PR-304]
 2. **Set aside.** Without a pick, a reader reads each alternative alone, as a field. It sets aside an
-   alternative whose conditions, the form's own axis aside, give `not_met`. It sets aside a table alternative
-   whose read gives `outside_range` without `at_edge`, unless an extrapolation the request carries would cover
-   it (`read_side_contract.md` section 5). [PR-044]
-3. **Stay.** It sets aside no other. An alternative whose read gives no `not_met` stays. So does a table that
-   an extrapolation the request carries would cover, since a pick would let it apply. So does one whose form
+   alternative whose conditions, the form's own axis aside, give `not_met`. It sets aside an alternative read
+   outside its form's range, a table's or a power law's (`outside_range` without `at_edge`), unless an
+   extrapolation the request carries would cover it (`read_side_contract.md` section 5). [PR-044]
+3. **Stay.** It sets aside no other. An alternative whose read gives no `not_met` stays. So does one that an
+   extrapolation the request carries would cover, since a pick would let it apply. So does one whose form
    `want` cannot give, a table read over an operating range of its axis included. The `not_met` reasons of an
    alternative that stays are reported only once a pick names it, once it is the one left, or once the field
    is refused. [PR-013] [PR-338]
 4. **Refuse.** Any other `not_met` in an alternative's read refuses the field. A table alternative read
    exactly at a declared edge (`at_edge`) refuses the field, wherever the edge lies, even where
-   `outside_range` stands beside it. A table alternative whose read reaches step 11 with no operating value
-   for its axis refuses the field too, with `request_incomplete` (`read_side_contract.md` section 1). One set
+   `outside_range` stands beside it. An alternative whose read reaches step 11 with no operating value for its
+   form's axis refuses the field too, with `request_incomplete` (`read_side_contract.md` section 1). One set
    aside for its conditions never reaches step 11, so it refuses nothing. [PR-044] [PR-308]
 5. **The outcome** is the first of these that applies. [PR-013] [PR-044]
    - Where an alternative refuses the field, or every alternative is set aside, the result is `not_met`, with
@@ -344,8 +344,8 @@ new alternative is appended. [RC-017] A reader reads alternatives as follows. `r
    - Otherwise the result is `unknown`, with the reason `no_pick`. It carries each alternative that stays, in
      stored order, with its own conditions, specimen, statistics and provenance (`read_side_contract.md`
      section 2). Each one's `unknown` reasons stand beside `no_pick`, each naming it by index. No
-     extrapolation is applied: the entry of a table alternative kept outside its readable range holds its
-     table as stored. A waiver never accepts a `no_pick`; only a pick does.
+     extrapolation is applied: the entry of an alternative kept outside its form's range holds its form's
+     member as stored. A waiver never accepts a `no_pick`; only a pick does.
 
 ## 6. The value forms
 
@@ -627,7 +627,7 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-041 | plain read | two different declared overlays replacing one field are refused (`overlay_conflict`); one overlay named twice for one field gives `request_incomplete` |
 | PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another, and where one alternative of the base's field is withheld |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
-| PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; a table alternative outside its readable range is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative, `want`'s and that of a table kept for an extrapolation aside (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, those that wait in an alternative that stays included, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported, unless its read refuses the field, which then reports every alternative's reasons, with no `conditions`; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
+| PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; an alternative outside its form's range (a table's readable range) is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative, `want`'s and that of an alternative kept for an extrapolation aside (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, those that wait in an alternative that stays included, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported, unless its read refuses the field, which then reports every alternative's reasons, with no `conditions`; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
 | PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
 | PR-046 | plain read | an overlay replacing a field its base lacks is refused (`absent`), whichever key of `replaces` that is; so is one named for the field read that does not replace it |
 | PR-047 | plain read | numbers read as the nearest double, ties to even, compared exactly: `9007199254740993` as `9007199254740992`; `1e-400` as `0`; `-1e-400` as `-0`, not `0`; `3e-324` as `5e-324`; `2.4703282292062327e-324` as `0`; `1.7976931348623158e308` as the largest double |
