@@ -2628,6 +2628,13 @@ re-check of its revision (20 more), gave the rows below (specification `changes.
 | `source_range` never narrowed the readable range | it narrows it where it is narrower (S3Q8) | a read returned `met` where the source disclaimed the value |
 | a table's `points` were readable with no rule for spread or origin | a 0.1.0 reader refuses a table that holds them (S3Q6) | a knot's own spread or origin was replaced by the table's |
 
+An independent check of the specification text written from that design (25 findings: 1 High, 3 Medium, 13
+Low, 8 Info) gave the rows below. The maintainer has ruled on none of them.
+
+| Before | After | Why |
+|---|---|---|
+| the build counted any declared extrapolation as covering `outside_range` | only on a result whose `assumption` names it, so only where the read applied it (BC-019) | a model wanting bounds from a table was refused inside the table's range and accepted outside it, with no value |
+
 The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.
 
 | Before | After | Why |

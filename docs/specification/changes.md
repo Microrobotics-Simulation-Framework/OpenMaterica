@@ -226,9 +226,11 @@ numbers sharing with `[x[0], x[-1]]` a value that is no edge is `form_invalid` (
 axis entry is `met` exactly when the operating value lies in the readable range off every edge, and step 11,
 not step 10, gives its reason (PR-312); a read over a range of the axis gives `want_mismatch` alone (PR-321);
 a read returns the table's statistics block (PR-157); an extrapolation covers `outside_range` only under
-`want: value`, after which the read goes on to steps 12 and 13, and two extrapolations naming one field are
-`request_incomplete`, as is an empty `law` (PR-307, PR-330); a read exactly at an edge is refused wherever the
-edge lies, outside the readable range included (PR-018); a 0.1.0 reader refuses a table that holds `points`
-with the new reason `points_unsupported` (PR-157); the table evaluation cases take the `evaluate` operation, a
-tolerance per precision, a refusal at an edge that returns no number, absent or NaN, and stops the run, and
-the inside derivative at every end of the readable range (TE-007, TE-010, TE-012).
+`want: value`, after which the read goes on to steps 12 and 13, and the build counts it only on a result whose
+`assumption` names it, so that a table read under `want: bounds` outside its range is refused (PR-307,
+BC-019); two extrapolations naming one field are `request_incomplete`, as is an empty `law` (PR-330); a read
+exactly at an edge is refused wherever the edge lies, outside the readable range included (PR-018); a 0.1.0
+reader refuses a table that holds `points` with the new reason `points_unsupported` (PR-157); the table
+evaluation cases take the `evaluate` operation, a tolerance per precision, a refusal at an edge that returns
+no number, absent or NaN, and stops the run, and the inside derivative at every end of the readable range
+(TE-007, TE-010, TE-012).
