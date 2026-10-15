@@ -327,13 +327,14 @@ alternative whose read reaches step 11 with no operating value for its axis refu
 `request_incomplete` (`read_side_contract.md` section 1); one set aside for its conditions never reaches step
 11, so it refuses nothing. Any other `not_met` in an alternative's read refuses the field as well. If more
 than one remains, the reader gives `unknown` with the reason `no_pick`, carrying each remaining alternative in
-stored order, with its own conditions, specimen, statistics, provenance and `unknown` reasons
-(`read_side_contract.md` section 2). Under `no_pick` no extrapolation is applied: the entry of a table
-alternative kept outside its readable range holds its table as stored. Where no remaining alternative's form
-can give what `want` asks, the reader gives `not_met` (`want_mismatch`) instead. If the field is refused, or
-every alternative is set aside, the result is `not_met` with the reasons of each, each reason naming its
-alternative by index. `read_side_contract.md` section 3, step 7, gives every outcome. A waiver never accepts a
-`no_pick`; only a pick does. [PR-013] [PR-044]
+stored order, with its own conditions, specimen, statistics and provenance (`read_side_contract.md` section
+2); each one's `unknown` reasons stand beside `no_pick`, each naming it by index. Under `no_pick` no
+extrapolation is applied: the entry of a table alternative kept outside its readable range holds its table as
+stored. Where no remaining alternative's form can give what `want` asks, the reader gives `not_met`
+(`want_mismatch`) instead. If the field is refused, or every alternative is set aside, the result is `not_met`
+with the reasons of each, each reason naming its alternative by index, a fault of the request aside.
+`read_side_contract.md` section 3, step 7, gives every outcome. A waiver never accepts a `no_pick`; only a
+pick does. [PR-013] [PR-044]
 
 ## 6. The value forms
 
