@@ -179,6 +179,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("fields.py", "_form"): 8,
     ("fields.py", "_basis_allowed"): 8,
     ("fields.py", "_constant"): 8,
+    ("fields.py", "_mismatch"): 9,
     ("value_shapes.py", "invalid"): 8,
     ("value_shapes.py", "unknown_token"): 8,
 }

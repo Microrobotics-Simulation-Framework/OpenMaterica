@@ -21,7 +21,7 @@
 The hosts are the full fields of `tests/property/full_fields.py`, each in a record with a section specimen
 and extensions, and a request for one of them; three of them also hold a unit as a status object in a token
 condition, a field's, a section's and a derivation input's fact, which the writer refuses. A read that passes
-step 8 raises `NotImplementedError` until steps 9 to 13 are built: the outcome "past step 8".
+steps 8 and 9 raises `NotImplementedError` until steps 10 to 13 are built: the outcome "past step 8".
 """
 
 import copy

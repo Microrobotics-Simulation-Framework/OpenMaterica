@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """A record's value fields (`record_format.md` sections 5 and 6): finding the field a read names (step 7 of
-`read_side_contract.md` section 3) and checking its form and shape (step 8).
+`read_side_contract.md` section 3), checking its form and shape (step 8) and its units (step 9).
 
 Step 8 checks the form token against the field's row, a composition's basis included, then the members every
 form shares (`value_shapes.py`), then the form's own member, where the row allows the form. Only a constant's
@@ -8,6 +8,10 @@ is read so far: a table, an interval, a composition or evidence the row allows r
 whatever the other members hold, rather than give an answer its own member could add a reason to (every reason
 found is reported, `read_side_contract.md` section 2 item 2). A form the row does not allow is refused
 whatever its own member holds, which the read neither uses nor returns.
+
+Step 9 compares each unit the field states with the one registered for it, code point for code point, as
+step 0 does a request's, and a unit registered as a status object by its token (`record_format.md` section
+4.2): none is parsed or converted.
 """
 
 from collections.abc import Collection
@@ -22,6 +26,7 @@ from materica.core.value_shapes import (
     JsonObject,
     field_problems,
     invalid,
+    is_status_object,
     number,
     or_status,
     record_problems,
@@ -43,6 +48,12 @@ class RecordField:
     spec: RecordFieldSpec
     value: JsonValue
     section: JsonObject
+
+    def specimen(self) -> JsonObject:
+        """The specimen facts of a field that passed step 8: the section's, each overridden by the field's
+        fact of that name (`record_format.md` section 4 item 2)."""
+        value = _object(self.value)
+        return {**_object(self.section.get("specimen", {})), **_object(value.get("specimen", {}))}
 
 
 def find_field(record: JsonObject, spec: RecordFieldSpec) -> RecordField | Reason:
@@ -120,9 +131,92 @@ def _constant(field: JsonObject, name: str, found: Found) -> None:
         found.append(Reason("withheld", detail=f"{name} is a reference-only value"))
 
 
+def same_unit(stored: JsonValue, registered: JsonValue) -> bool:
+    """`record_format.md` section 4.2: a string equal to the registered one code point for code point, or,
+    where a status object is registered, a status object holding its `status` token, whatever its `reason`."""
+    if isinstance(registered, dict):
+        return is_status_object(stored) and _object(stored)["status"] == registered["status"]
+    return isinstance(stored, str) and stored == registered
+
+
+def unit_problems(field: RecordField) -> Found:
+    """Step 9, for a field that passed step 8 (`read_side_contract.md` section 3): `unit_mismatch` for each
+    unit other than the one registered for it: the field's; a known numeric condition's and its `plus_minus`
+    entries', with that condition; a `unit` on a token condition, which registers none, with that condition;
+    and a specimen fact's, against the unit its row fixes, wherever step 8 checks the fact (the section's
+    specimen, the field's, and a derived value's inputs')."""
+    value = _object(field.value)
+    found: Found = []
+    _compare_unit(value["unit"], field.spec.unit, f"{field.spec.name}.unit", None, found)
+    for name, condition in _object(value["conditions"]).items():
+        spec = VOCABULARY.conditions.get(name)
+        if spec is None or is_status_object(condition):
+            continue
+        held = _object(condition)
+        where = f"{field.spec.name}.conditions.{name}"
+        if spec.unit is None:
+            if "unit" in held:
+                found.append(
+                    _mismatch(f"{where} holds a unit, which a token condition does not register", name)
+                )
+            continue
+        _compare_unit(held["unit"], spec.unit, f"{where}.unit", name, found)
+        for index, entry in enumerate(_list(held.get("plus_minus", []))):
+            _compare_unit(_object(entry)["unit"], spec.unit, f"{where}.plus_minus[{index}].unit", name, found)
+    for where, specimen in _specimens(field):
+        for name, fact in specimen.items():
+            unit = VOCABULARY.facts[name].fixed.get("unit") if name in VOCABULARY.facts else None
+            if unit is not None and not is_status_object(fact):
+                _compare_unit(_object(fact)["unit"], unit, f"{where}.{name}.unit", None, found)
+    return found
+
+
+def _compare_unit(
+    stored: JsonValue, registered: JsonValue, where: str, condition: str | None, found: Found
+) -> None:
+    if not same_unit(stored, registered):
+        found.append(_mismatch(f"{where} is {stored!a}, not the registered {registered!a}", condition))
+
+
+def _mismatch(detail: str, condition: str | None) -> Reason:
+    return Reason("unit_mismatch", condition, detail)
+
+
+def _specimens(field: RecordField) -> list[tuple[str, JsonObject]]:
+    """Each specimen step 8 checks for `field`, and where it is: the section's, the field's, and a derived
+    value's inputs'."""
+    value = _object(field.value)
+    section = field.spec.section
+    found = [
+        (where, _object(holder["specimen"]))
+        for where, holder in (
+            (f"body.sections.{section}.specimen", field.section),
+            (f"{field.spec.name}.specimen", value),
+        )
+        if "specimen" in holder
+    ]
+    provenance = _object(value["provenance"])
+    if provenance["origin"] == "derived":
+        inputs = _list(_object(provenance["derivation"])["input_specimens"])
+        found += [
+            (
+                f"{field.spec.name}.provenance.derivation.input_specimens[{index}].specimen",
+                _object(_object(item)["specimen"]),
+            )
+            for index, item in enumerate(inputs)
+        ]
+    return found
+
+
+def _list(value: JsonValue) -> list[JsonValue]:
+    if not isinstance(value, list):
+        raise TypeError(f"step 8 lets through no {type(value).__name__} here")
+    return value
+
+
 def _object(value: JsonValue) -> JsonObject:
-    """`value`, which step 3 found to be an object: the body of a material, its `sections`, a known section
-    and its `fields`."""
+    """`value`, which step 3 or step 8 found to be an object: the body of a material, its `sections`, a known
+    section and its `fields`; a field that passed step 8 and the objects in it."""
     if not isinstance(value, dict):
-        raise TypeError(f"step 3 lets through no {type(value).__name__} here")
+        raise TypeError(f"steps 3 and 8 let through no {type(value).__name__} here")
     return value

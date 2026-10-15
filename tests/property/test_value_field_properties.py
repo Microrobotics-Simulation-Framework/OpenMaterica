@@ -16,8 +16,8 @@
   its place is ignored, two slips off included. The pin is recomputed. As the S2 design says, no member is
   added to a `conditions` map, where a new name is a condition, nor to a status object.
 
-A read that passes step 8 raises `NotImplementedError` until steps 9 to 13 are built: that is the outcome
-"past step 8".
+A read that passes step 8 is refused at step 9 or 10, which a drawn field's units and conditions decide, or
+raises `NotImplementedError` until steps 11 to 13 are built: either is the outcome "past step 8".
 """
 
 import copy
@@ -39,6 +39,7 @@ from tests.property import records
 from tests.property.strategies import SIZE, Size
 from tests.property.support import feature
 from tests.property.value_field_strategies import (
+    AFTER_STEP_8,
     REGIONS,
     Example,
     JsonObject,
@@ -67,7 +68,8 @@ def outcome(record: JsonObject, field: str) -> Outcome:
         result = read(request, store)
     except NotImplementedError:
         return Outcome(PAST_STEP_8, frozenset())
-    return Outcome(result.status, frozenset(reason.code for reason in result.reasons))
+    codes = frozenset(reason.code for reason in result.reasons)
+    return Outcome(PAST_STEP_8, frozenset()) if codes <= AFTER_STEP_8 else Outcome(result.status, codes)
 
 
 # HP3: one fault, one refusal.
