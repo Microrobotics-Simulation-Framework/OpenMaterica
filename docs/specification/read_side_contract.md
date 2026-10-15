@@ -111,23 +111,23 @@ in one alternative it ends that alternative's read and refuses the field: the al
 | `assumption` | where the value rests on a declared extrapolation or nominal: the declaration it rests on, as `{"acceptance"}` with its kind's own members as the request gives them, `basis` aside |
 
 1. A read never stops with an error for anything a record or request contains. [PR-300]
-2. Every reason found is reported, not only the first. The status is the worst of them: `not_met` over
-   `unknown` over `met`. Each step makes all its checks before the read stops. A reason, identified by its
-   `code`, its `condition` and its `alternative`, appears at most once in a result; where a check fails more
-   than once, its `detail` SHOULD say so. `detail` is text for people: a reader SHOULD say there what failed
-   (for a field that is not registered, that the reader's version does not know it; for a reason step 6
-   gives, which overlay), and no case compares it.
+2. Every reason found is reported, not only the first, except as section 3, step 7 says for a field that holds
+   alternatives. The status is the worst of them: `not_met` over `unknown` over `met`. Each step makes all its
+   checks before the read stops. A reason, identified by its `code`, its `condition` and its `alternative`,
+   appears at most once in a result; where a check fails more than once, its `detail` SHOULD say so. `detail`
+   is text for people: a reader SHOULD say there what failed (for a field that is not registered, that the
+   reader's version does not know it; for a reason step 6 gives, which overlay), and no case compares it.
    [not yet covered] A reason carries `condition` exactly when it concerns one condition or a form's axis:
    every `condition_*` reason; `request_incomplete`, `request_unit_mismatch` and `unit_mismatch` where they
    concern one condition (an unregistered condition name included) or an axis; `outside_range`, `at_edge` and
    `range_unstated`; and `want_mismatch` for a read over a range of an axis. [PR-301] [PR-331] A reason
-   carries `alternative` exactly when it was found reading one alternative of a field that holds alternatives
-   (section 3, step 7), at steps 8 to 13, the alternative a pick names and the one left included. It holds
-   that alternative's index among the stored alternatives, as an `alternative_values` entry does. A fault of
-   the request carries none, even where it arises in one alternative (section 1). Nor does a reason step 7
+   carries `alternative` exactly when it was found at steps 8 to 13 while reading one alternative (section 3,
+   step 7), a fault of the request aside. This holds for a picked alternative and for the one left.
+   `alternative` is that alternative's index among the stored alternatives, as in `alternative_values`. A
+   fault of the request carries none, even one found in an alternative (section 1). Nor does a reason step 7
    gives of its own: `absent`, `form_invalid` for the `alternatives` list, `no_pick`, `pick_invalid`, and
-   `want_mismatch` over two or more alternatives. So two alternatives' `condition_outside` for one condition are two reasons.
-   [PR-331]
+   `want_mismatch` over two or more alternatives. So two alternatives' `condition_outside` for one condition
+   are two reasons. [PR-331]
 3. An `unknown` result carries the value the record holds, so that a waiver has something to use. A `not_met`
    result carries no value, except where a declared extrapolation or nominal covers it: the status stays
    `not_met`, the value is present, and `assumption` names the declaration. [PR-302] [PR-307] A result that
@@ -219,18 +219,19 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    set-aside ones included. It is read as a field, by steps 8 to 13, and the result is its read. No other
    alternative is read, so a fault in one refuses nothing. [PR-304] [PR-013]
 
-   Without a pick that applies, each alternative is read alone, as a field, by steps 8 to 13, and its read ends
-   where a field's would (above). The outcome is decided once every alternative is read, so it does not depend
-   on the order of reading. [PR-044]
+   Without a pick that applies, each alternative is read alone, as a field, by steps 8 to 13, and its read
+   ends where a field's would (above). The outcome is decided once every alternative is read, so it does not
+   depend on the order of reading. Each alternative is set aside, stays, or refuses the field. [PR-044]
    - An alternative is set aside where its conditions, the form's own axis entry aside (section 5), give
      `not_met` at step 10. [PR-044]
    - A table alternative is set aside where its read lies outside its readable range at step 11, not exactly
      at a declared edge, and no extrapolation the request carries would cover it (section 5). [PR-044]
-   - Nothing else sets an alternative aside. A table alternative that an extrapolation the request carries
-     would cover stays, since a pick would let the extrapolation apply. One whose form `want` cannot give
-     stays: an interval under `want: value`, a constant under `want: bounds`, or a table read over an
-     operating range of its axis. Their `not_met` reasons, and the one a nominal outside an interval's bounds
-     gives (section 6), wait for a pick or for the one alternative left. [PR-013] [PR-338]
+   - Nothing else sets an alternative aside. These stay: one whose read gives no `not_met`; a table
+     alternative that an extrapolation the request carries would cover, since a pick would let the
+     extrapolation apply; and one whose form `want` cannot give (an interval under `want: value`, a constant
+     under `want: bounds`, or a table read over an operating range of its axis, say). A table kept for an
+     extrapolation is read on through steps 12 and 13, as a field is (above). The extrapolation is applied
+     only where that table is the one left. [PR-013] [PR-338]
    - Every other `not_met` in an alternative's read refuses the field: a value field that breaks its shape, a
      unit other than the registered one or a withheld value, say. A table alternative read exactly at a
      declared edge refuses the field, wherever the edge lies, outside the readable range included. So does a
@@ -238,25 +239,30 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
      for its axis refuses the field, while one set aside at step 10 never reaches step 11 and refuses nothing.
      [PR-044] [PR-308] [PR-316]
 
-   The result is then:
-   - where the field is refused, or every alternative is set aside, `not_met`, with every alternative's
-     reasons; [PR-044]
+   An alternative that stays may give `not_met` reasons, a nominal's outside an interval's bounds among them
+   (section 6). These wait: they are reported once a pick names that alternative, once it is the one left, or
+   once the field is refused. [PR-013] [PR-338] [PR-044]
+
+   The result is the first of these that applies:
+   - where an alternative refuses the field, or every alternative is set aside, `not_met`, with every
+     alternative's reasons, those that wait included; [PR-044]
    - where one alternative stays, that alternative's read, `want` included; the set-aside ones' reasons are
      not reported, since they would refuse a sound value; [PR-044]
-   - where two or more stay and `want` can give none of their forms, `not_met`, with `want_mismatch`, since no
-     pick could help; an interval counts as a form `want: value` can give where a nominal the request carries
-     applies to the read (section 1), since a pick would let it apply; [PR-013] [PR-338]
+   - where two or more stay and none has a form `want` can give, `not_met`, with `want_mismatch`, since no
+     pick could help. A table read over an operating range of its axis counts as a form `want` cannot give.
+     An interval counts as one `want: value` can give where a nominal the request carries applies to the read
+     (section 1), since a pick would let it apply; [PR-013] [PR-338]
    - otherwise `unknown`, with `no_pick`; each alternative that stays appears in `alternative_values` as
-     section 2 says, with no nominal or extrapolation applied. [PR-304] [PR-013]
+     section 2 says, with no nominal or extrapolation applied. So a grade's specification limits beside a
+     lot's measured constant give `no_pick` until the consumer picks (`provenance.md` section 6.2 item 5).
+     [PR-304] [PR-013]
 
-   Where two or more stay, each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`. Its
-   `not_met` reasons wait for a pick, so under `no_pick` no `want_mismatch` is reported. A set-aside
-   alternative's reasons are not reported there. Every reason found reading one alternative carries its
-   `alternative`; a fault of the request carries none (section 2). A result that rests on no single
-   alternative, every outcome but one alternative left or picked, holds no `value`, `assumption` or
-   `conditions`, and its `labels` holds at most `hash_not_checked`. So a grade's specification limits beside a
-   lot's measured constant give `no_pick` until the consumer picks (`provenance.md` section 6.2 item 5).
-   [PR-013] [PR-336]
+   Where two or more stay, each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`, and its
+   `not_met` reasons wait: under `no_pick` no `want_mismatch` is reported. A set-aside alternative's reasons
+   are not reported there. Every reason found reading one alternative carries its `alternative`; a fault of
+   the request carries none (section 2). A result that rests on no single alternative, every outcome but one
+   alternative left or picked, holds no `value`, `assumption` or `conditions`, and its `labels` holds at most
+   `hash_not_checked`. [PR-013] [PR-336]
 8. **Form and tokens.** Refuse a form the field's row does not allow (`form_not_registered`), a value field,
    form or section `specimen` that breaks its shape (`record_format.md` sections 5 and 6, `provenance.md`),
    such as a member missing, of the wrong JSON type or `null`, a member one slip from a member named at its
