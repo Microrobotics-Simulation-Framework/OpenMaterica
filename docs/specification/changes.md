@@ -254,10 +254,12 @@ radiological sections that need them. The schema leaves them open. The text that
 awaits the maintainer's review. `points` is a reserved member name in a table. Its shape and its reading come
 with its first consumer. A 0.1.0 writer writes none, and the closed writer schema refuses it (RC-003). A 0.1.0
 reader refuses a table that holds `points`, as before (`points_unsupported`, PR-157). With no shape left to
-break, that is the only reason, whatever `points` holds. `null` there also gives `form_invalid` (PR-049). The
-reserved name is a member the table's shape names, so `point` is still refused as one slip from it (PR-030). A
-table's block applies to every value the table gives. The text no longer says that a knot's own block replaces
-it (`record_format.md` sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, an older reader
-ignores a member it does not know. So a later minor version adds no member that changes how an earlier one's
-members are read, unless every older reader refuses each field the member would change; otherwise the change
-is major (`record_format.md` section 10).
+break, that is the only reason, whatever `points` holds. `null` there also gives `form_invalid` (PR-049). For
+the slip rule, `points` counts as a member named at a table's place, so `point` is still refused (PR-030). The
+members named at one place, refused ones included, are kept more than one slip apart, and a later minor
+version adds no member one slip from one of them (`record_format.md` section 10). A table's block applies to
+every value the table gives. The text no longer says that a knot's own block replaces it (`record_format.md`
+sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, an older reader ignores a member it does not
+know. So a later minor version adds no member that changes how an earlier one's members are read, unless every
+older reader refuses each field the member would change; otherwise the change is major (`record_format.md`
+section 10).

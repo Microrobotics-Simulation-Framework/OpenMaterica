@@ -358,14 +358,14 @@ section 5. [PR-014]
    table's `axis_unit`, the first not greater than the second, sharing with `[x[0], x[-1]]` at least one value
    that is no edge. A reader refuses one that is not (`form_invalid`). It never extends the readable range,
    and narrows it where it is narrower (item 3). [PR-019] [RC-008]
-5. `points` is a reserved member name in a table, kept for what each knot carries of its own, such as its
+5. `points` is a reserved member name in a table. It is kept for what a knot carries of its own, such as its
    provenance or its spread, where knots come from different places in a source or carry different spreads.
-   Its shape, and how a read uses it, are specified with its first consumer. A 0.1.0 writer MUST NOT write
-   it, and the closed writer schema refuses it (section 1 item 2). [RC-003] A 0.1.0 reader refuses a table
-   with a `points` member, whatever it holds, `null` and `[]` included, with the reason `points_unsupported`,
-   so that a knot's own spread or origin is never replaced by the table's. [PR-157] The reserved name is a
-   member the table's shape names, so a member one slip from it (`point`) is refused (section 10 item 5).
-   [PR-030]
+   Its shape, and how a read uses it, will be specified with its first consumer. A 0.1.0 writer MUST NOT write
+   it; the closed writer schema refuses it (section 1 item 2). [RC-003] A 0.1.0 reader refuses a table that
+   holds `points`, whatever it holds (`null` and `[]` included), with the reason `points_unsupported`, so that
+   a knot's own spread or origin is never replaced by the table's. [PR-157] `null` there also gives
+   `form_invalid` (section 1 item 5). [PR-049] For section 10 item 5, `points` counts as a member named at a
+   table's place, so a member one slip from it, such as `point`, is refused. [PR-030]
 
 **Power law.**
 
@@ -529,11 +529,11 @@ Two names are **one slip** apart when one becomes the other by inserting, deleti
 character, an underscore included, or by swapping two adjacent characters, counting code points; or by making
 one of its `_`-separated words plural or singular: `s` or `es` added at its end or taken off it, a final `y`
 exchanged with `ies`, or `datum` with `data`, `index` with `indices` or `matrix` with `matrices`. A member
-more than one slip from every member named at its place is ignored, as item 1 says. The names valid at one
-place are kept more than one slip apart, single letters aside (`x` and `y`, a power law's `a` and `b`, a beta
-distribution's `p` and `q`), which every reader of the version knows; and a later minor version adds no
-member one slip from one already valid at its place. So item 5 never refuses a member that a version defines.
-[not yet covered]
+more than one slip from every member named at its place is ignored, as item 1 says. The members named at one
+place, refused ones included, are kept more than one slip apart, single letters aside (`x` and `y`, a power
+law's `a` and `b`, a beta distribution's `p` and `q`), which every reader of the version knows. A later minor
+version adds no member one slip from one already named at its place, refused ones included. So item 5 never
+refuses a member that a version names at its place. [not yet covered]
 
 From 1.0.0, a later minor version adds no member that changes how an earlier one's members are read, unless
 every reader of the earlier versions refuses each field the member would change: such a reader would
