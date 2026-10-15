@@ -7,7 +7,9 @@ one of the faults it names, searched among those faults: the family's property d
 least a third as often as another (its feature audit), so it meets them too. One that tightens the schema dies
 when the acceptance property finds it refusing a field the text allows. The table is the S2a-1 review's 29
 mutants and its two controls (M1 to M31, its numbering kept), then one per constraint added since and a few
-that tighten. Each test records the examples its kill took as `examples_to_kill`.
+that tighten, then those of the bindings the writer applies from the vocabulary (B1 to B12, TB1 to TB4,
+maintainer 2026-10-15), which change the writer or a vocabulary file. Each test records the examples its kill
+took as `examples_to_kill`.
 """
 
 import copy
@@ -24,20 +26,27 @@ from materica.core.jsonio import JsonValue
 from tests.property import value_fields
 from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.support import MUTANT_SEARCH
-from tests.property.test_writer_properties import Writer, check_refuses, check_takes
+from tests.property.test_writer_properties import BODY, VALUE_FIELD, Writer, check_refuses, check_takes
 from tests.property.value_fields import Json, Plan, listing, mapping
 from tests.spec_sync.schemas import SCHEMA
 
-ORIGINAL_WRITER: Json = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
+WRITER_FILE = "record.writer.json"
+FIELDS_FILE = "vocabulary/fields.json"
+CONDITIONS_FILE = "vocabulary/conditions.json"
+ORIGINALS: dict[str, Json] = {
+    name: json.loads((SCHEMA / name).read_text(encoding="utf-8"))
+    for name in (WRITER_FILE, FIELDS_FILE, CONDITIONS_FILE)
+}
 TAKES = "takes"
 REFUSED = "refused a field the text allows"
 
 
 class WriterMutant(NamedTuple):
     name: str
-    change: Callable[[Json], None]  # changes a copy of the writer schema in place
+    change: Callable[[Json], None]  # changes a copy of `file` in place
     killer: str  # TAKES, or the family of faults whose refusal property kills it
     intended: tuple[str, ...]  # the faults, one of which the kill must be, or REFUSED for TAKES
+    file: str = WRITER_FILE  # the writer schema, or a vocabulary file whose bindings it applies
 
 
 def node(schema: Json, path: tuple[str | int, ...]) -> JsonValue:
@@ -77,6 +86,11 @@ D = "$defs"
 P = "properties"
 STATUS: Json = {"$ref": "#/$defs/status_object"}
 RECIPE = tuple(f"withheld_{form}_without_recipe" for form in value_fields.FORMS if form != "evidence")
+UNBOUND = tuple(
+    f"{prefix}{name}"
+    for prefix in ("", "alternative_")
+    for name in ("form_not_registered", "unit_not_registered", "label_not_registered")
+)
 
 MUTANTS = [
     WriterMutant(
@@ -488,6 +502,96 @@ MUTANTS = [
         "conditions",
         ("token_condition_unit",),
     ),
+    # The bindings (maintainer, 2026-10-15): a field's name, form, unit or label, a composition's basis, or a
+    # numeric condition's unit, left unbound in the vocabulary or not applied by the writer.
+    WriterMutant(
+        "B1 a section's field names unbound",
+        deleting(D, "sections", P, "bulk", P, "fields", "propertyNames"),
+        "binding",
+        ("field_unregistered",),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B2 the writer applies no binding to the sections",
+        deleting(D, "sections", "allOf"),
+        "binding",
+        ("field_unregistered", "composition_basis_not_allowed", *UNBOUND),
+    ),
+    WriterMutant(
+        "B3 a field's forms unbound",
+        deleting(D, "bulk.density", P, "form"),
+        "binding",
+        ("form_not_registered", "alternative_form_not_registered"),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B4 a field's unit unbound",
+        deleting(D, "fluid.dynamic_viscosity", P, "unit"),
+        "binding",
+        ("unit_not_registered", "alternative_unit_not_registered"),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B5 a field with no label in its row takes one",
+        deleting(D, "magnetic.remanence", P, "label"),
+        "binding",
+        ("label_not_registered", "alternative_label_not_registered"),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B5b a field's label takes either label",
+        setting(D, "magnetic.volume_susceptibility", P, "label", to={"$ref": "#/$defs/label"}),
+        "binding",
+        ("label_not_registered", "alternative_label_not_registered"),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B6 a composition's basis unbound",
+        deleting(D, "bulk.elemental_composition", P, "composition"),
+        "binding",
+        ("composition_basis_not_allowed",),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B7 a field's alternatives unbound",
+        deleting(D, "biocompatibility.evidence", P, "alternatives"),
+        "binding",
+        tuple(name for name in UNBOUND if name.startswith("alternative_")),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B8 the writer applies no binding to replaces",
+        deleting(D, "replaces", "allOf"),
+        "binding",
+        ("replaced_field_unregistered", *UNBOUND),
+    ),
+    WriterMutant(
+        "B9 the replaced fields' names unbound",
+        deleting(D, "replaces", "propertyNames"),
+        "binding",
+        ("replaced_field_unregistered",),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B10 a numeric condition's unit unbound",
+        deleting(D, "units", P, "temperature", P, "unit"),
+        "conditions",
+        ("condition_unit_not_registered",),
+        CONDITIONS_FILE,
+    ),
+    WriterMutant(
+        "B11 the writer applies no binding to the conditions",
+        deleting(D, "conditions", "allOf"),
+        "conditions",
+        ("condition_unit_not_registered", "plus_minus_unit_not_registered"),
+    ),
+    WriterMutant(
+        "B12 a plus_minus entry's unit unbound",
+        deleting(D, "units", P, "temperature", P, "plus_minus"),
+        "conditions",
+        ("plus_minus_unit_not_registered",),
+        CONDITIONS_FILE,
+    ),
     # Tightened: each refuses a field the text allows.
     WriterMutant(
         "T1 an interval's basis without stated_bound",
@@ -530,6 +634,34 @@ MUTANTS = [
     WriterMutant(
         "T8 a basis stated only", setting(D, "based", P, "basis", to={"const": "stated"}), TAKES, (REFUSED,)
     ),
+    WriterMutant(
+        "TB1 a field bound to another unit",
+        setting(D, "bulk.density", P, "unit", to={"const": "g/cm3"}),
+        TAKES,
+        (REFUSED,),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "TB2 a form dropped from a field's row",
+        setting(D, "bulk.density", P, "form", to={"enum": ["constant", "interval"]}),
+        TAKES,
+        (REFUSED,),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "TB3 a section's names short of one",
+        setting(D, "sections", P, "bulk", P, "fields", "propertyNames", to={"enum": ["density"]}),
+        TAKES,
+        (REFUSED,),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "TB4 a numeric condition bound to another unit",
+        setting(D, "units", P, "temperature", P, "unit", to={"const": "Cel"}),
+        TAKES,
+        (REFUSED,),
+        CONDITIONS_FILE,
+    ),
 ]
 
 
@@ -554,6 +686,10 @@ SEARCHED_ON = {
     "T6": replace(CONSTANT, rich=frozenset({"conditions"})),
     "T7": replace(CONSTANT, rich=frozenset({"block"})),
     "T8": replace(CONSTANT, rich=frozenset({"conditions"})),
+    "TB1": Plan(registered="bulk.density"),
+    "TB2": Plan(registered="bulk.density", form="table"),
+    "TB3": Plan(registered="bulk.elemental_composition", place="fields"),
+    "TB4": replace(CONSTANT, rich=frozenset({"conditions"})),
 }
 
 
@@ -593,13 +729,15 @@ def kill(examples: st.SearchStrategy[Example], check: Callable[[Example], None])
 def test_the_writer_mutant_is_killed_at_its_assertion(
     mutant: WriterMutant, size: Size, record_property: Callable[[str, object], None]
 ) -> None:
-    schema = copy.deepcopy(ORIGINAL_WRITER)
+    schema = copy.deepcopy(ORIGINALS[mutant.file])
     mutant.change(schema)
-    writer = Writer(schema)
     if mutant.killer == TAKES:
-        fields = value_fields.form_fields(SEARCHED_ON[identifier(mutant)], size)
+        plan = SEARCHED_ON[identifier(mutant)]
+        writer = Writer(BODY if plan.registered else VALUE_FIELD, [schema])
+        fields = value_fields.bodies(plan, size) if plan.registered else value_fields.form_fields(plan, size)
         tried, message = kill(fields, lambda field: check_takes(writer, field))
     else:
+        writer = Writer(BODY if mutant.killer == "binding" else VALUE_FIELD, [schema])
         faulty = value_fields.faulty_fields(mutant.killer, size, mutant.intended)
         tried, message = kill(faulty, lambda drawn: check_refuses(writer, drawn))
     record_property("examples_to_kill", tried)
@@ -611,8 +749,8 @@ def test_each_mutant_changes_the_schema() -> None:
     fault no family draws could never die at it."""
     names = {fault.name for fault in value_fields.FAULTS}
     for mutant in MUTANTS:
-        schema = copy.deepcopy(ORIGINAL_WRITER)
+        schema = copy.deepcopy(ORIGINALS[mutant.file])
         mutant.change(schema)
-        assert schema != ORIGINAL_WRITER, mutant.name
+        assert schema != ORIGINALS[mutant.file], mutant.name
         assert mutant.killer == TAKES or set(mutant.intended) <= names, mutant.name
         assert (mutant.killer == TAKES) == (identifier(mutant) in SEARCHED_ON), mutant.name

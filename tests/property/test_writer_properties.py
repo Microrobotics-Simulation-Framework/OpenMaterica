@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """(7) The writer schema takes every value field the specification allows, and refuses each field it
 forbids by one fault (`record_format.md` section 1 item 2: the writer schema is closed, every enumerated
-member limited to its listed tokens). The fields come from `value_fields.py`, built from the text and the
-vocabulary, never from the schema. Each refusal is checked on a field the schema takes, the same field but
-for the fault, so that it is the fault's. The mutants they kill are in `test_writer_mutants.py`."""
+member limited to its listed tokens). It takes every registered field in its place, a section's `fields` or
+an overlay's `replaces`, bound to its row of section 4.1, and refuses one under a name its section does not
+register or holding what its row does not give (maintainer, 2026-10-15). The fields come from
+`value_fields.py`, built from the text and the vocabulary's rows, never from the schema or the bindings it
+applies. Each refusal is checked on a field the schema takes, the same field but for the fault, so that it is
+the fault's. The mutants they kill are in `test_writer_mutants.py`."""
 
+from collections.abc import Iterable
 from urllib.parse import urljoin
 
 import pytest
@@ -19,16 +23,25 @@ from tests.property.support import feature
 from tests.property.value_fields import FAMILIES, FAULTS, Faulty, Json, listing, mapping
 from tests.spec_sync.schemas import BASE, REGISTRY
 
+VALUE_FIELD: Json = {"$ref": urljoin(BASE, "record.writer.json#/$defs/value_field")}
+# A record body: a material's, holding registered fields in their sections, or an overlay's, replacing them.
+BODY: Json = {
+    "anyOf": [
+        {"$ref": urljoin(BASE, "record.writer.json#/$defs/material_body")},
+        {"$ref": urljoin(BASE, "record.writer.json#/$defs/overlay_body")},
+    ]
+}
+
 
 class Writer:
-    """The writer schema's value field, or that of `schema` in its place (a mutant of it)."""
+    """The writer schema at `place`, a value field or a record body, with each of `files` (a schema file, the
+    writer's or the vocabulary's, a mutant of it) in place of the tree's."""
 
-    def __init__(self, schema: Json | None = None) -> None:
+    def __init__(self, place: Json = VALUE_FIELD, files: Iterable[Json] = ()) -> None:
         registry = REGISTRY
-        if schema is not None:
-            registry = REGISTRY.with_resource(str(schema["$id"]), DRAFT202012.create_resource(schema))
-        reference = {"$ref": urljoin(BASE, "record.writer.json#/$defs/value_field")}
-        self.checker = Draft202012Validator(reference, registry=registry)
+        for schema in files:
+            registry = registry.with_resource(str(schema["$id"]), DRAFT202012.create_resource(schema))
+        self.checker = Draft202012Validator(place, registry=registry)
 
     def takes(self, field: JsonValue) -> bool:
         # types-jsonschema types its second overload's instance as unknown.
@@ -41,6 +54,9 @@ class Writer:
 
 
 WRITER = Writer()
+PLACED = Writer(BODY)
+# The writer each family's faults are checked against: a binding's in a body, the others' in a value field.
+WRITERS = {"binding": PLACED}
 
 
 def check_takes(writer: Writer, field: JsonValue) -> None:
@@ -92,6 +108,22 @@ def test_the_writer_schema_takes_every_field_the_text_allows(field: JsonValue) -
     check_takes(WRITER, field)
 
 
+def record_body_features(body: Json) -> None:
+    container, name, registered = value_fields.placed(body)
+    feature(f"field_{registered}")
+    feature("place_fields", "sections" in body)
+    feature("alternatives", "alternatives" in mapping(container[name]))
+
+
+@pytest.mark.features(
+    **{f"field_{name}": 0.04 for name in value_fields.FIELDS}, place_fields=0.15, alternatives=0.05
+)
+@given(value_fields.bodies())
+def test_the_writer_schema_takes_every_registered_field_in_its_place(body: Json) -> None:
+    record_body_features(body)
+    check_takes(PLACED, body)
+
+
 def shares(family: str) -> dict[str, float]:
     """A third of each fault's share of its family's draws: each is drawn as often as another."""
     names = [fault.name for fault in FAULTS if fault.family == family]
@@ -105,4 +137,4 @@ def shares(family: str) -> dict[str, float]:
 def test_the_writer_schema_refuses_each_fault_the_text_names(family: str, data: st.DataObject) -> None:
     faulty = data.draw(value_fields.faulty_fields(family))
     feature(faulty.fault)
-    check_refuses(WRITER, faulty)
+    check_refuses(WRITERS.get(family, WRITER), faulty)
