@@ -113,9 +113,12 @@ def _numbers(value: JsonValue) -> list[float]:
 MANY_MEMBERS: JsonValue = {f"\U0001f600 {index}": [float(index), str(index)] for index in range(100)}
 
 
-@pytest.mark.features(
-    astral_character=0.15, control_character=0.10, integral_number=0.06, three_deep=0.10, three_members=0.10
-)
+# Each feature whose least share failed a `dev` run too often is declared by its chance: its share at `ci`
+# over 64 runs (2026-10-15), rounded down to two places. From the measured clusters, those least shares failed
+# a `dev` run with a probability of about 1.3e-3 (at most 3.6e-2; `audits.JUDGED_FROM`); none is judged at
+# `dev` now, and at `ci` each falls below its draw floor with a probability below 1e-16.
+@pytest.mark.chances(astral_character=0.45, control_character=0.38, three_deep=0.32, three_members=0.38)
+@pytest.mark.features(integral_number=0.06)
 @example((MANY_MEMBERS, strategies.render(random.Random(0), MANY_MEMBERS)))
 @given(strategies.documents())
 def test_written_values_read_back(document: tuple[JsonValue, str]) -> None:

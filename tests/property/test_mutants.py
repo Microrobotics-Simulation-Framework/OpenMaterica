@@ -192,7 +192,7 @@ READER_MUTANTS = [
 
 
 def values(size: Size) -> st.SearchStrategy[JsonValue]:
-    return strategies.json_values(size=size)
+    return canonical_properties.rfc8785_values(size)
 
 
 def doubles(size: Size) -> st.SearchStrategy[float]:

@@ -243,11 +243,14 @@ def check_invariance(
     assert digest(variants.reviewed) == expected, "review or copy added inside a provenance object changed it"
 
 
+# Each feature whose least share failed a `dev` run too often is declared by its chance: its share at `ci`
+# over 64 runs (2026-10-15), rounded down to two places. From the measured clusters, those least shares failed
+# a `dev` run with a probability of about 6.5e-5 (at most 6e-3; `audits.JUDGED_FROM`); neither is judged at
+# `dev` now, and at `ci` each falls below its draw floor with a probability below 1e-20.
+@pytest.mark.chances(card_below_the_top=0.44, provenance_in_an_array=0.46)
 @pytest.mark.features(
-    card_below_the_top=0.13,
     near_miss_name=0.20,
     review_inside_and_outside_provenance=0.05,
-    provenance_in_an_array=0.13,
     provenance_in_a_non_object_provenance=0.06,
     three_members_to_sort=0.25,
     review_or_copy_added_three_deep=0.08,
@@ -335,15 +338,18 @@ def check_edit(digest: Digest, edit: Edit) -> None:
     assert digest(edit.original) != digest(edit.edited), f"editing {edit.path} left the hash unchanged"
 
 
+# As above: those least shares failed a `dev` run with a probability of about 1.8e-4 (at most 1e-2).
+@pytest.mark.chances(
+    card_below_the_top=0.46,
+    provenance_in_an_array=0.46,
+    edited_below_a_kept_special_name=0.36,
+    edited_inside_a_provenance_object=0.33,
+)
 @pytest.mark.features(
-    card_below_the_top=0.15,
     near_miss_name=0.20,
     review_inside_and_outside_provenance=0.05,
-    provenance_in_an_array=0.15,
     provenance_in_a_non_object_provenance=0.06,
     three_members_to_sort=0.25,
-    edited_below_a_kept_special_name=0.12,
-    edited_inside_a_provenance_object=0.11,
     edited_below_a_non_object_provenance=0.03,
 )
 @example(edit_at(MANY, ("nested", "card"), "edited"))
