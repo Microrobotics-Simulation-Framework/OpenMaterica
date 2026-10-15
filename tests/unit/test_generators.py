@@ -1103,3 +1103,96 @@ def test_the_shapes_leave_the_bindings_out() -> None:
     assert gen_shapes.as_read(schema) == {"allOf": [{"$ref": "#/$defs/common"}], "type": "number"}
     assert gen_shapes.as_read({"allOf": [BINDING]}) == {}
     assert gen_shapes.without_bindings(BOUND["tokens.json"]) == VOCABULARY["tokens.json"]
+
+
+UBERON = '"uberon": "UBERON:<digits>"'
+
+
+@pytest.mark.parametrize(
+    ("shape", "patterns"),
+    [
+        ('{"uberon": "UBERON:<digits>", "label": <text>, "basis"}', {"uberon": "^UBERON:[0-9]+(?![\\s\\S])"}),
+        ('{"fma": "FMA:<digits>", "basis"}', {"fma": "^FMA:[0-9]+(?![\\s\\S])"}),
+        ('{"value", "unit": "s", "basis"}', {}),
+    ],
+)
+def test_an_identifier_a_facts_shape_writes_is_read_as_its_pattern(
+    shape: str, patterns: dict[str, str]
+) -> None:
+    """The writer's pattern of an identifier comes from the form the text writes (maintainer, 2026-10-15)."""
+    assert gen_vocabulary.identifier_patterns(shape) == patterns
+
+
+@pytest.mark.parametrize(
+    "written",
+    [
+        pytest.param('"UBERON_<digits>"', id="another_separator"),
+        pytest.param('"UBERON:<number>"', id="another_placeholder"),
+        pytest.param('"uberon:<digits>"', id="a_prefix_in_lower_case"),
+        pytest.param('"UBERON:<digits>.<digits>"', id="more_after_the_digits"),
+        pytest.param('"<digits>"', id="no_prefix"),
+    ],
+)
+def test_an_identifier_of_another_form_stops_the_generator(written: str) -> None:
+    """A form the generator would read as another pattern, or drop, stops it."""
+    shape = f'`{{"uberon": {written}, "label": <text>, "basis"}}`'
+    with pytest.raises(TableError, match="<PREFIX>:<digits>"):
+        gen_vocabulary.specimen_facts([{"Name": "`anatomical_site`", "JSON shape": shape}])
+
+
+@pytest.mark.parametrize(
+    ("new", "pattern"),
+    [
+        pytest.param('"uberon": "FMA:<digits>"', "^FMA:[0-9]+(?![\\s\\S])", id="another_prefix_read"),
+        pytest.param('"uberon": "UBERON-<digits>"', None, id="another_form_refused"),
+    ],
+)
+def test_the_identifier_the_text_writes_is_the_pattern_the_writer_takes(
+    tmp_path: Path, new: str, pattern: str | None
+) -> None:
+    """On a copy of the text: a prefix changed changes the pattern in the vocabulary, which the writer
+    schema refers to; a form changed in shape stops the generator."""
+    specification = copy_tree(tmp_path, gen_vocabulary.SPECIFICATION)
+    document = specification / "provenance.md"
+    text = document.read_text(encoding="utf-8")
+    assert text.count(UBERON) == 1
+    document.write_text(text.replace(UBERON, new), encoding="utf-8")
+    if pattern is None:
+        with pytest.raises(TableError):
+            gen_vocabulary.generate(specification)
+        return
+    facts = json.loads(gen_vocabulary.generate(specification)["specimen_facts.json"])
+    assert facts["$defs"]["anatomical_site_uberon"] == {"type": "string", "pattern": pattern}
+
+
+PATTERNED: dict[str, Json] = {
+    "tokens.json": {
+        "$defs": {
+            "basis": {"enum": ["stated", "inferred"]},
+            "identifier": {"type": "string", "pattern": "^ID:[0-9]+(?![\\s\\S])"},
+            "unanchored": {"type": "string", "pattern": "ID:[0-9]+"},
+        }
+    }
+}
+
+
+def test_an_identifiers_pattern_is_any_string_in_the_reader() -> None:
+    """Step 8 does not check an identifier's pattern (a record check's, maintainer 2026-10-15): the reader's
+    `$defs` take any string there, as they took the writer's pattern written in place."""
+    writer = changes(
+        ("$defs/value_field/properties/basis", {"$ref": "vocabulary/tokens.json#/$defs/identifier"})
+    )
+    definitions = reader_schema(writer, PATTERNED)["$defs"]
+    assert isinstance(definitions, dict)
+    value_field = definitions["value_field"]
+    assert isinstance(value_field, dict)
+    assert value_field["properties"] == {
+        "value": {"type": "number"},
+        "basis": {"type": "string"},
+        "note": True,
+    }
+    unanchored = changes(
+        ("$defs/value_field/properties/basis", {"$ref": "vocabulary/tokens.json#/$defs/unanchored"})
+    )
+    with pytest.raises(SchemaError):
+        reader_schema(unanchored, PATTERNED)

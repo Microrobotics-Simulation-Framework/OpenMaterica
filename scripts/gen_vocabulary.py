@@ -42,6 +42,8 @@ _TOKEN_MEMBER = re.compile(r'"token": ("[a-z0-9_]+"(?: \| "[a-z0-9_]+")*)(?=, |\
 # Any member a specimen fact's JSON shape writes with a value, and a quoted value up to the next member.
 _MEMBER_VALUE = re.compile(r'"([a-z_]+)": ')
 _QUOTED = re.compile(r'"([^"]*)"(?=, |\})')
+# An ontology identifier as a fact's shape writes it, `"UBERON:<digits>"`: capitals, a colon, then digits.
+_IDENTIFIER = re.compile(r"([A-Z]+):<digits>")
 _SYMBOLS = re.compile(r"`[A-Z][a-z]?`(?: `[A-Z][a-z]?`)*")
 # A family identifier (`record_format.md` section 7 item 3), the form a label takes.
 _LABEL = re.compile(r"[a-z0-9_]+(?:\.[a-z0-9_]+)+\.v[1-9][0-9]*")
@@ -380,8 +382,9 @@ def required_with(cell: str, token_conditions: dict[str, list[str]]) -> dict[str
 
 def specimen_facts(rows: list[Row]) -> Vocabulary:
     """Each fact's tokens, those its `token` member takes, and the one value of each member its shape fixes
-    (`"unit": "s"`), each again as an enumeration in `$defs`; its other members are structure, the writer
-    schema's."""
+    (`"unit": "s"`), each again as an enumeration in `$defs`; and in `$defs` the pattern of each identifier
+    its shape writes (`"UBERON:<digits>"`, maintainer 2026-10-15), which the writer schema takes from here.
+    Its other members are structure, the writer schema's."""
     entries: dict[str, object] = {}
     definitions: dict[str, object] = {}
     for name, row in zip(names(rows, "Name"), rows, strict=True):
@@ -398,13 +401,16 @@ def specimen_facts(rows: list[Row]) -> Vocabulary:
             definitions[f"{name}_token"] = enumeration(found)
         for member_name, value in fixed.items():
             definitions[f"{name}_{member_name}"] = enumeration([value])
+        for member_name, pattern in identifier_patterns(shape).items():
+            definitions[f"{name}_{member_name}"] = {"type": "string", "pattern": pattern}
     return {"$defs": definitions, "facts": entries}
 
 
 def fixed_members(shape: str) -> dict[str, str]:
     """The members other than `token` that a fact's shape writes with one quoted value, each taking that value
-    alone. A placeholder (`<text>`, `"UBERON:<digits>"`) or a range (`[lo, hi]`) is structure, the writer
-    schema's; any other value, a list of values among them, stops the script."""
+    alone. A placeholder (`<text>`) or a range (`[lo, hi]`) is structure, the writer schema's, and an
+    identifier (`"UBERON:<digits>"`) is `identifier_patterns`'; any other value, a list of values or a quoted
+    placeholder of another form among them, stops the script."""
     fixed: dict[str, str] = {}
     for member in _MEMBER_VALUE.finditer(shape):
         if member[1] == "token" or shape.startswith(("<", "["), member.end()):
@@ -415,10 +421,26 @@ def fixed_members(shape: str) -> dict[str, str]:
                 f"expected a quoted value, a placeholder or a range for {member[1]!r} in {shape!r}"
             )
         if "<" in value[1]:
+            if not _IDENTIFIER.fullmatch(value[1]):
+                raise TableError(
+                    f"expected an identifier written <PREFIX>:<digits> for {member[1]!r} in {shape!r}"
+                )
             continue
         if fixed.setdefault(member[1], value[1]) != value[1]:
             raise TableError(f"two values for {member[1]!r} in {shape!r}")
     return fixed
+
+
+def identifier_patterns(shape: str) -> dict[str, str]:
+    """Each member a fact's shape writes as an identifier, `"UBERON:<digits>"`, and the pattern of that form:
+    its prefix and a colon, one digit or more, and nothing after (a validator's `$` would allow a final
+    newline). `fixed_members` refuses a quoted placeholder of any other form."""
+    found: dict[str, str] = {}
+    for member in _MEMBER_VALUE.finditer(shape):
+        value = _QUOTED.match(shape, member.end())
+        if value is not None and (identifier := _IDENTIFIER.fullmatch(value[1])):
+            found[member[1]] = f"^{identifier[1]}:[0-9]+(?![\\s\\S])"
+    return found
 
 
 def acceptance_kinds(rows: list[Row]) -> Vocabulary:

@@ -267,6 +267,9 @@ Range: TypeAlias = tuple[float, float]
 """
 
 
+AnatomicalSiteUberon: TypeAlias = str
+
+
 TissueStateToken: TypeAlias = Literal["in_vivo", "ex_vivo_fresh", "frozen_thawed", "fixed", "phantom"]
 
 
@@ -733,7 +736,7 @@ class AnatomicalSite(Based):
     A UBERON identifier.
     """
 
-    uberon: str
+    uberon: AnatomicalSiteUberon
     label: str
 
 

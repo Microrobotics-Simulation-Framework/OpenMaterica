@@ -298,8 +298,8 @@ def conditions(draw: st.DrawFn, plan: Plan) -> Json:
 
 class FactMember(NamedTuple):
     name: str
-    kind: str  # value, range, basis, whole, text, uberon, token or fixed
-    fixed: str = ""
+    kind: str  # value, range, basis, whole, text, identifier, token or fixed
+    fixed: str = ""  # a fixed member's value, or an identifier's prefix
     required_for: str = ""  # the token for which a member is required, where the row says so
 
 
@@ -328,8 +328,8 @@ def members_of(sketch: str) -> list[FactMember]:
             found.append(FactMember(name, "range"))
         elif value == "<integer>":
             found.append(FactMember(name, "whole"))
-        elif value.startswith('"UBERON:'):
-            found.append(FactMember(name, "uberon"))
+        elif identifier := re.fullmatch(r'"([A-Z]+):<digits>"', value):
+            found.append(FactMember(name, "identifier", identifier[1]))
         elif " | " in value:
             found.append(FactMember(name, "token"))
         elif value.startswith('"'):
@@ -353,7 +353,6 @@ def fact(draw: st.DrawFn, name: str) -> Json:
         "value": lambda: draw(NUMBERS),
         "range": lambda: draw(ranges()),
         "whole": lambda: draw(st.integers(1, 10**7).map(float)),
-        "uberon": lambda: "UBERON:" + str(draw(st.integers(0, 10**7))),
         "text": lambda: draw(TEXT),
     }
     for member in members:
@@ -361,6 +360,8 @@ def fact(draw: st.DrawFn, name: str) -> Json:
             found |= draw(based())
         elif member.kind == "fixed":
             found[member.name] = member.fixed
+        elif member.kind == "identifier":
+            found[member.name] = f"{member.fixed}:{draw(st.integers(0, 10**7))}"
         elif member.kind in values and (
             not member.required_for or token == member.required_for or draw(st.booleans())
         ):
