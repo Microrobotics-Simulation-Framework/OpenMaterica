@@ -219,6 +219,48 @@ def test_a_form_whose_member_is_not_read_yet_raises_unless_a_shared_member_refus
     assert refused.reasons == (Reason("form_invalid"),)
 
 
+STATED: dict[str, JsonValue] = {"basis": "stated"}
+# Specimen facts that pass step 8 (None) or give these codes, each on the water field as its only fact.
+FACTS: list[tuple[str, dict[str, JsonValue], tuple[str, ...] | None]] = [
+    ("disease_and_treatment_state", {"token": "normal", **STATED}, None),
+    ("disease_and_treatment_state", {"token": "diseased", "text": "fibrosis", **STATED}, None),
+    ("disease_and_treatment_state", {"token": "treated", "text": "dialysis", **STATED}, None),
+    ("disease_and_treatment_state", {"token": "normal", "text": "none", **STATED}, ("form_invalid",)),
+    ("disease_and_treatment_state", {"token": "diseased", **STATED}, ("form_invalid",)),
+    ("disease_and_treatment_state", {"token": "treated", **STATED}, ("form_invalid",)),
+    ("disease_and_treatment_state", {"token": "remission", **STATED}, ("unknown_token",)),
+    (
+        "disease_and_treatment_state",
+        {"token": "remission", "text": "since 2019", **STATED},
+        ("unknown_token", "form_invalid"),
+    ),
+    ("post_mortem_interval", {"value": 60.0, "unit": "s", **STATED}, None),
+    ("post_mortem_interval", {"value": 60.0, "unit": {"status": "unstated"}, **STATED}, None),
+    ("post_mortem_interval", {"value": 1.0, "unit": "min", **STATED}, ("form_invalid",)),
+    ("donor_age", {"range": [1.0, 2.0], "unit": "a", **STATED}, ("form_invalid",)),
+    ("mimics", {"text": "liver", **STATED}, None),
+    ("mimics", {"text": "liver", "inferred_from": "Methods", **STATED}, None),
+    ("mimics", {"text": "liver", "basis": "inferred", "inferred_from": "Methods"}, ("form_invalid",)),
+    ("mimics", {"text": "liver", "basis": "guessed"}, ("unknown_token",)),
+]
+
+
+@pytest.mark.parametrize(("name", "fact", "codes"), FACTS)
+def test_a_specimen_fact_takes_its_rows_shape_and_fixed_members(
+    name: str, fact: dict[str, JsonValue], codes: tuple[str, ...] | None
+) -> None:
+    """A disease or treatment state's text is there exactly for `diseased` and `treated`, and a member its row
+    fixes (`"unit": "s"`, `"basis": "stated"`) takes that value: a unit is no token, so another one is
+    `form_invalid`; a fixed basis leaves no `inferred_from` to name, so one there is ignored."""
+    field: JsonValue = {**water_field(), "specimen": {name: fact}}
+    if codes is None:
+        with pytest.raises(NotImplementedError):
+            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+    else:
+        refused = read(*stored(with_field("fluid.dynamic_viscosity", field)))
+        assert {reason.code for reason in refused.reasons} == set(codes)
+
+
 def test_a_constant_that_passes_step_8_raises_rather_than_answer() -> None:
     with pytest.raises(NotImplementedError):
         read(*stored(water()))

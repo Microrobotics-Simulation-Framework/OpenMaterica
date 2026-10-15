@@ -75,7 +75,14 @@ BOUND: dict[str, tuple[str, ...]] = {
     "form": ("form",),
     "central": ("central",),
     "distribution": ("statistics_distribution", "uncertainty_distribution", "distribution"),
-    "basis": ("statistics_basis", "uncertainty_basis", "interval_basis", "composition_basis", "basis"),
+    "basis": (
+        "statistics_basis",
+        "uncertainty_basis",
+        "interval_basis",
+        "composition_basis",
+        "basis",
+        "mimics_basis",
+    ),
     "represents": ("represents", "uncertainty_represents"),
     "level": ("level",),
     "within": ("level",),
@@ -286,22 +293,25 @@ unit = status_or(string, None, ())
 (`record_format.md` section 4.2)."""
 
 
-def based(required: Members, optional: Members | None = None, rule: Check | None = None) -> Check:
+def based(
+    required: Members,
+    optional: Members | None = None,
+    rule: Check | None = None,
+    *,
+    fixed_basis: str | None = None,
+) -> Check:
     """A condition's or a specimen fact's shape: `required` and `optional` with a `basis`, `stated`, or
     `inferred` with the text `inferred_from` (`provenance.md` section 6); then `rule`, a rule between its
-    members, on an object."""
+    members, on an object. A row that fixes the basis to one token (`mimics`, `stated`) leaves nothing to
+    infer from, so its shape names no `inferred_from`."""
+    basis = listed("basis", "basis") if fixed_basis is None else token("basis", (fixed_basis,))
+    inferred: Members = {"inferred_from": string} if fixed_basis is None else {}
 
     def check(value: JsonValue, where: str, found: Found) -> None:
-        entry = members(
-            value,
-            where,
-            found,
-            {**required, "basis": listed("basis", "basis")},
-            {**(optional or {}), "inferred_from": string},
-        )
+        entry = members(value, where, found, {**required, "basis": basis}, {**(optional or {}), **inferred})
         if entry is None:
             return
-        if entry.get("basis") == "inferred" and "inferred_from" not in entry:
+        if inferred and entry.get("basis") == "inferred" and "inferred_from" not in entry:
             found.append(invalid(f"{where} is inferred and does not say from what"))
         if rule is not None:
             rule(entry, where, found)
@@ -393,8 +403,47 @@ def other_with_text(value: JsonValue, where: str, found: Found) -> None:
         found.append(invalid(f"{where} holds other with no text"))
 
 
+# The states whose text names the disease or the treatment: `text` is present exactly beside one of them,
+# judged against the token as stored, so a text beside a token the reader does not know is refused too.
+NAMED_STATES = ("diseased", "treated")
+
+
+def text_exactly_for_named_states(value: JsonValue, where: str, found: Found) -> None:
+    if not isinstance(value, dict):
+        return
+    named = value.get("token") in NAMED_STATES
+    if named and "text" not in value:
+        found.append(invalid(f"{where} holds {value.get('token')!r} with no text naming it"))
+    elif not named and "text" in value:
+        found.append(invalid(f"{where} holds a text, and its token is neither diseased nor treated"))
+
+
 def fact_token(name: str) -> Check:
     return token("token", VOCABULARY.facts[name].tokens)
+
+
+def fact_shape(name: str) -> type:
+    """The generated shape of the specimen fact `name`, beside the status object that may stand for it."""
+    shape: type = next(
+        alternative
+        for alternative in get_args(get_type_hints(shapes.Specimen)[name])
+        if is_typeddict(alternative) and "status" not in get_type_hints(alternative)
+    )
+    return shape
+
+
+def the_one(expected: str) -> Check:
+    def check(value: JsonValue, where: str, found: Found) -> None:
+        if value != expected:
+            found.append(invalid(f"{where} is not {expected!r}, the one value its row allows"))
+
+    return check
+
+
+def fixed_unit(name: str) -> Check:
+    """A specimen fact's unit, which its row fixes (`"unit": "s"`), or a status object: a unit is no token,
+    so another unit breaks the row's shape (`form_invalid`) and is never `unknown_token`."""
+    return or_status(the_one(VOCABULARY.facts[name].fixed["unit"]), fact_shape(name), "unit")
 
 
 FACT_SHAPES: dict[str, tuple[Members, Members, Check | None]] = {
@@ -402,20 +451,28 @@ FACT_SHAPES: dict[str, tuple[Members, Members, Check | None]] = {
     "anatomical_site": ({"uberon": string, "label": string}, {}, None),
     "tissue_state": ({"token": fact_token("tissue_state")}, {}, None),
     "disease_and_treatment_state": (
-        {"token": fact_token("disease_and_treatment_state"), "text": string},
-        {},
-        None,
+        {"token": fact_token("disease_and_treatment_state")},
+        {"text": string},
+        text_exactly_for_named_states,
     ),
     "preparation": ({"text": string}, {}, None),
     "preservation": ({"token": fact_token("preservation")}, {"text": string}, other_with_text),
-    "post_mortem_interval": ({"value": number, "unit": unit}, {}, None),
-    "donor_age": ({"unit": unit}, {"value": number, "range": in_order}, one_of_value_and_range),
+    "post_mortem_interval": ({"value": number, "unit": fixed_unit("post_mortem_interval")}, {}, None),
+    "donor_age": (
+        {"unit": fixed_unit("donor_age")},
+        {"value": number, "range": in_order},
+        one_of_value_and_range,
+    ),
     "mimics": ({"text": string}, {}, None),
     "supply_form": ({"token": fact_token("supply_form")}, {}, None),
     "lot": ({"text": string}, {}, None),
 }
 FACTS: dict[str, Check] = {
-    name: or_status(based(required, optional, rule), shapes.Specimen, name)
+    name: or_status(
+        based(required, optional, rule, fixed_basis=VOCABULARY.facts[name].fixed.get("basis")),
+        shapes.Specimen,
+        name,
+    )
     for name, (required, optional, rule) in FACT_SHAPES.items()
 }
 
