@@ -65,6 +65,10 @@ interval's bounds (rule 8). [not yet covered]
    that varies along a table's axis, knot by knot or by region, will be specified with its first consumer.
    Until then, a 0.1.0 reader refuses a table with a `points` member (`points_unsupported`, `record_format.md`
    section 6, table item 5). A composition component and a parameter MAY carry a block of their own. [PR-157]
+   Where the source's spread varies along a table's axis, a 0.1.0 writer SHOULD state in the table's block the
+   largest spread in the table's terms, and SHOULD say in the record's `card` that the block was derived so. A
+   spread is in the table's terms as the source gives it, absolute or relative, on a `linear` table, and
+   relative to its own value on a `loglog` table. [not yet covered]
 3. `represents` is required, on the block and on each uncertainty, and each describes only its own spread. A
    population spread and the uncertainty of a mean differ by about the square root of the number of specimens,
    so a reader never substitutes one for the other. [PR-150] [PR-155]
