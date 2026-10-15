@@ -65,11 +65,13 @@ A request's `acceptances` take only the kinds `pick`, `overlay`, `extrapolation`
 `implied_condition` (`declarations.md` section 4.1). Each is checked here, whatever field or location it
 names: its `field` as the target's is (the pattern, and a registered field), and its kind's own members, have
 their shapes; its `reason` and `basis` are ignored. An acceptance of any other kind, or one that breaks its
-shape, gives `request_incomplete`, and so do two `nominal`, or two `extrapolation`, acceptances naming one
-field. An implied condition breaks its shape where its `fact` is not a specimen fact with tokens or its
-`token` is not one of that fact's, and where `implies` names a condition that is not registered, or gives one
-a status object, `plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries
-that `condition` where the fault lies in one. A value an implied condition supplies for a registered numeric
+shape, gives `request_incomplete`, and so do two `nominal`, two `extrapolation`, or two `pick` acceptances
+naming one field, whatever else each names. A pick's `index` breaks its shape unless it is a number with no
+fractional part, not below zero: `1.0` and `1e0` are 1, and `-0` is 0 (`record_format.md` section 1 item 6).
+An implied condition breaks its shape where its `fact` is not a specimen fact with tokens or its `token` is
+not one of that fact's, and where `implies` names a condition that is not registered, or gives one a status
+object, `plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries that
+`condition` where the fault lies in one. A value an implied condition supplies for a registered numeric
 condition is checked as an operating condition is, its `unit` included (`request_unit_mismatch`, with that
 `condition`). An acceptance applies only to a read of the field it names and, an overlay aside (it names no
 location), only at the read's own location: its `record`, its `region` or both, each the read's (the record
@@ -121,8 +123,8 @@ in one alternative it ends that alternative's read and refuses the field: the al
    (section 3, step 7), at steps 8 to 13, the alternative a pick names and the one left included. It holds
    that alternative's index among the stored alternatives, as an `alternative_values` entry does. A fault of
    the request carries none, even where it arises in one alternative (section 1). Nor does a reason step 7
-   gives of its own: `absent`, `form_invalid` for the `alternatives` list, `no_pick`, and `want_mismatch` over
-   two or more alternatives. So two alternatives' `condition_outside` for one condition are two reasons.
+   gives of its own: `absent`, `form_invalid` for the `alternatives` list, `no_pick`, `pick_invalid`, and
+   `want_mismatch` over two or more alternatives. So two alternatives' `condition_outside` for one condition are two reasons.
    [PR-331]
 3. An `unknown` result carries the value the record holds, so that a waiver has something to use. A `not_met`
    result carries no value, except where a declared extrapolation or nominal covers it: the status stays
@@ -196,16 +198,21 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    (`withheld`), a base mismatch or a conflict, by `record_format.md` section 4.4. [PR-042] The overlay's
    scope is compared by the build, not here (`declarations.md` section 5).
 7. **Field.** Find the field (`absent`); one whose `alternatives` breaks its shape is refused (`form_invalid`,
-   `record_format.md` section 5). Under a pick that applies to the read (section 1), only the alternative it
-   names is read, by its index among the stored alternatives, set-aside ones included. It is read as a field,
-   by steps 8 to 13, and the result is its read. No other alternative is read, so a fault in one refuses
-   nothing. [PR-304] [PR-013] What a pick gives whose `index` is not a whole number, is negative or lies past
-   the last stored alternative, or that names a field holding no alternatives, is not yet specified; a reader
-   never reads another alternative in its place. [not yet covered]
+   `record_format.md` section 5). Either ends the read before any pick is checked. [PR-304] [PR-044]
 
-   Without a pick, each alternative is read alone, as a field, by steps 8 to 13, and its read ends where a
-   field's would (above). The outcome is decided once every alternative is read, so it does not depend on the
-   order of reading. [PR-044]
+   A pick that applies to the read (section 1) is checked next. It gives `pick_invalid` where the field holds
+   no `alternatives`, where its `index` lies past the last stored alternative, or where an overlay applied at
+   step 6 replaces the field: its index then names no stored alternative of the field read. `pick_invalid`
+   carries no `condition` and no `alternative`, and ends the read. No alternative is read, and the result
+   holds no `value`, `unit` or other member read from the field; its `labels` holds at most
+   `hash_not_checked`. A reader never reads another alternative in place of the one a pick names. [PR-304]
+   Otherwise only the alternative the pick names is read, by its index among the stored alternatives,
+   set-aside ones included. It is read as a field, by steps 8 to 13, and the result is its read. No other
+   alternative is read, so a fault in one refuses nothing. [PR-304] [PR-013]
+
+   Without a pick that applies, each alternative is read alone, as a field, by steps 8 to 13, and its read ends
+   where a field's would (above). The outcome is decided once every alternative is read, so it does not depend
+   on the order of reading. [PR-044]
    - An alternative is set aside where its conditions, the form's own axis entry aside (section 5), give
      `not_met` at step 10. [PR-044]
    - A table alternative is set aside where its read lies outside its readable range at step 11, off every
@@ -324,6 +331,7 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `unknown_type` | not_met | 5, 6 | a referenced record of a type the reader cannot read | `record_format.md` 3 |
 | `absent` | not_met | 1, 6, 7 | the section or field is absent, or no supplied record has the reference's `id` and `version` (`malformed` instead when a supplied source is unreadable: section 3, step 1) | `record_format.md` 1, 4; this document 3 |
 | `no_pick` | unknown | 7 | alternatives remain and no pick is declared | `record_format.md` 5 |
+| `pick_invalid` | not_met | 7 | a pick whose `index` names no stored alternative of the field read: one past the last, on a field holding no alternatives, or on a field an applied overlay replaces; never accepted | section 3; `declarations.md` 4.1 |
 | `form_not_registered` | not_met | 8 | a form the field's row does not allow, a composition's basis included | `record_format.md` 4.1 |
 | `form_invalid` | not_met | 7, 8 | a value field, form or section `specimen` that breaks its shape (a field that is not an object; an `alternatives` that is not a list of at least one value field, or that sits beside a value field's members; a member missing, of the wrong JSON type or `null`; a member one slip from one named at its place, which in the envelope, the body or a section refuses every field read from it; a token the reader knows for a member of that name, or a status object, where the member's row does not allow it; a value outside step 8's checks; a table's lengths, order, knots or edges; a non-positive log-log value) | `record_format.md` 1, 5, 6, 10; `provenance.md` 1 |
 | `unknown_token` | not_met | 6, 8 | a token the reader knows for no member of that name (section 3, step 8), or an overlay's `purpose` that is none of the four (step 6) | `record_format.md` 10, 4.4 |
@@ -538,13 +546,13 @@ value's derivative with respect to the axis. [TE-012]
 | PR-300 | plain read | no read raises; every read returns a result |
 | PR-301 | plain read | every reason is reported; the status is the worst; each step makes all its checks |
 | PR-302 | plain read | an `unknown` result carries the value; `not_met` carries none, except under a declared nominal inside an interval's bounds, which supplies the value and `assumption` |
-| PR-304 | plain read | an absent field gives `not_met`; alternatives without a pick give `unknown` with `alternative_values` |
+| PR-304 | plain read | an absent field gives `not_met`; alternatives without a pick give `unknown` with `alternative_values`; a pick reads only the alternative it names, by its stored index, set-aside ones counted, as a field, its reasons each with its `alternative` and a fault in another refusing nothing; an index of `1.0` reads as 1, and `-0` as 0; `pick_invalid`, with no value and no member read from the field, for an index past the last stored alternative, on a field holding no alternatives and on a field an applied overlay replaces; an absent field, or a broken `alternatives`, gives its reason with no `pick_invalid` |
 | PR-305 | plain read | an unstated or absent condition gives `unknown` |
 | PR-306 | plain read | a stated value outside the tolerance gives `not_met`; at exactly the tolerance, in doubles, `met` |
 | PR-307 | plain read | outside a form's range under a declared extrapolation and `want: value`: `not_met`, the value at the readable range's nearest end, the assumption, and steps 12 and 13's reasons and labels; not applied under another `want`, at a declared edge, across one (an edge between the operating value and the readable range's nearest end, or on that end: `outside_range`, no value), or naming another field or location |
 | PR-308 | plain read | no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative; a table alternative set aside at step 10 never reaches step 11, so its missing operating value refuses nothing |
 | PR-309 | plain read | a value stated without origin gives `unknown` |
-| PR-310 | plain read | every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete` |
+| PR-310 | plain read | every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete`; `pick_invalid` among the codes reached |
 | PR-311 | plain read | the conditions the record holds, an implied condition fills, the row requires, another condition requires and the request names all appear in `conditions` (`measurement_dimension` with a tube, the record's or an implied one; `test_method` on remanence) |
 | PR-312 | plain read | the form's own axis entry is `met` when the read lies in the form's readable range off every edge, and `not_met` outside it, at an edge, over a range or with no operating value |
 | PR-313 | plain read | a stated condition with no tolerance or accept list gives `unknown` (`condition_unchecked`) |
@@ -564,7 +572,7 @@ value's derivative with respect to the axis. [TE-012]
 | PR-327 | plain read | a reader without HS labels `hash_not_checked` the results that reach step 4, and still refuses, at step 1 and without that label, a stated hash that differs from a pin |
 | PR-328 | plain read | a reference with no candidate gives `malformed` when a supplied source did not parse, or parsed to a value that is neither a set-aside document nor an object with a string `id` and `version` (an array, an object with only an `id`); otherwise `absent`; a scene manifest or an engine crosswalk among the sources is set aside and never resolved |
 | PR-329 | plain read | candidates of one `id` and `version`: the one with the reference's hash is read, and identical copies are read once; none with the hash gives `pin_mismatch`, whether there is one candidate or several, unless one has an absent, `null` or ill-formed `content_hash`, or a supplied source is unreadable, which gives `malformed`; two with the hash whose bytes differ give `malformed` |
-| PR-330 | plain read | `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; two extrapolations naming one field; an extrapolation without `method` or `law`, with an unknown `method`, or with an empty `law`, a `law` of white space being accepted; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`) |
+| PR-330 | plain read | `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; two extrapolations naming one field; two picks naming one field, whatever their record or index; a pick whose `index` is not a number, has a fractional part (`1.5`) or lies below zero (`-1`); an extrapolation without `method` or `law`, with an unknown `method`, or with an empty `law`, a `law` of white space being accepted; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`) |
 | PR-331 | plain read | a reason appears once per code, condition and alternative, however many times its check fails; `condition` is present exactly on the codes section 2 lists; `alternative` exactly on the reasons found reading one alternative, holding its stored index, so two alternatives' `condition_outside` for one condition are two reasons, and a fault of the request in one alternative carries none |
 | PR-332 | plain read | a `want` of a suite the reader does not claim (`fit`, `coverage`, `reference_data` without the fits and reference data suite) gives `want_mismatch` at step 0 |
 | PR-333 | plain read | the `mean_of_specimen_fits` label is returned with a parameter set whose fit says so |
