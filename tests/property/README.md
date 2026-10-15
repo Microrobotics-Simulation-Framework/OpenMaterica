@@ -1,6 +1,6 @@
 # Property tests
 
-Hypothesis properties of the core, in two groups.
+Hypothesis properties of the core, in two groups, and of the writer schema, in a third.
 
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
@@ -19,6 +19,16 @@ Hypothesis properties of the core, in two groups.
   The first law is checked against the specification only where the read refuses. Where the implementation's
   own `resolve_record` resolves the target, a `NotImplementedError` is allowed, so a resolution that wrongly
   succeeds is invisible to it; the case files and the other laws are the oracle there.
+
+- **Writer schema:** (7) the writer schema (`record_format.md` section 1 item 2) takes every value field the
+  specification allows, and refuses each field it forbids by one fault. `value_fields.py` builds the fields
+  from the text alone, never from the schema: tokens from the vocabulary (generated from the specification),
+  a specimen fact's members from `provenance.md` section 6.2's JSON shapes, and the rest from the member
+  tables and rules each builder cites. A fault is one change the text says breaks a field (a member missing,
+  a bound crossed, a token of another member's list or of none, a status token its row does not allow, a rule
+  across objects broken), 153 of them in eight families, each drawn as often as another of its family on a
+  field planned so that its place exists. The refusal is checked on a field the schema takes, the same field
+  but for the fault, so that it is the fault's.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -54,9 +64,11 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the two groups side by side, each in a job of its own: `pytest tests/property --shard json` and
-`--shard records` (`SHARDS` in `tests/conftest.py`). Each module is in exactly one shard
-(`tests/unit/test_source_files.py`), and each shard keeps its own example database in CI.
+CI runs the three groups side by side, each in a job of its own: `pytest tests/property --shard json`,
+`--shard records` and `--shard writer` (`SHARDS` in `tests/conftest.py`). The writer schema's properties
+validate each field with `jsonschema` against the writer's value field, a choice among eight forms, which
+costs about 30 ms a field: so each family of faults is a property of its own, run in parallel. Each module is
+in exactly one shard (`tests/unit/test_source_files.py`), and each shard keeps its own example database in CI.
 
 ## Mutants
 
@@ -68,6 +80,18 @@ exchanges, a pattern searched where it must match in full, versions ordered as s
 unreadable source ignored, the first of two differing copies read. Each test records the examples its kill
 took as `examples_to_kill`, which `--junitxml` writes out. A fault that died only at the original size would
 mean the small size misses it.
+
+`test_writer_mutants.py` gives the writer schema one change at a time: the S2a-1 review's 29 mutants of its
+value-field part and its two controls (M1 to M31, its numbering kept), one for each constraint written since
+(M6b, M14b, M32 to M59), and eight that tighten it (T1 to T8). Each names the property that kills it and the
+assertion it must die at: a loosening mutant dies when the refusal property of its family finds the schema
+taking one of the faults it names, its search drawn among those faults, which the family's property draws as
+often as any other (the feature audit holds it to a third of that share); a tightening one dies when the
+acceptance property finds it refusing a field the text allows, its search drawn on fields of the form and
+with the parts in which it refuses one. Both sizes, as above. Two mutants of the review
+die at a fault besides the one they were written for, both by the rule they break: M13, without `plus_minus`'s
+`then`, also takes an unstated kind beside a stated one, and M48, with `withheld` among an entry's other
+statuses, also takes a withheld entry without its recipe.
 
 ## Audits
 
