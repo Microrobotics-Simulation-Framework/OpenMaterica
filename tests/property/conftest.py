@@ -25,11 +25,14 @@ def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
         pytest.fail(f"rejected {share:.0%} of its draws, over the audit's {audits.MAX_REJECTION:.0%}")
     declared = item.get_closest_marker("features")
     drawn = item.get_closest_marker("drawn")
+    chances = item.get_closest_marker("chances")
     problems = audits.feature_shortfalls(
         counts,
         {} if declared is None else dict(declared.kwargs),
         () if drawn is None else drawn.args,
         by_draws=PROFILE in audits.DRAW_FLOORS,
+        chances={} if chances is None else dict(chances.kwargs),
+        chance_floors=PROFILE in audits.CHANCE_FLOORS,
     )
     if problems:
         pytest.fail("feature audit: " + "; ".join(problems))

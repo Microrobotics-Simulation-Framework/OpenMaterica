@@ -88,6 +88,13 @@ recorded in that repository's CHANGELOG.
   falls below with a probability of at most 1e-6, and never below 10. A family of more than 15 faults is
   drawn in parts, a property each. Each fault is drawn by `st.sampled_from`, no longer by a drawn seed, which
   drew some faults up to 1.27 times as often as others (`tests/property/audits.py`).
+- The writer schema's acceptance properties declare each feature by the chance that a draw shows it, its share
+  measured at `ci` (`@pytest.mark.chances`): at `ci` each is held to the draw floor of its chance, at `dev` to
+  that floor where it is at least 10, and at `deep` to a third of its chance. Their least shares assumed
+  independent examples, which Hypothesis's clusters are not: from the measured clusters, they failed a run
+  with a probability of about 1.5e-6 at `ci` and 1e-3 at `dev`, against about 3e-10 and 7e-7 now. The
+  audit's comment no longer says 1e-9: a least share at its gate fails about one run in a hundred
+  (`tests/property/audits.py`).
 - A check that each member the schemas declare whole admits the float the reader gives
   (`tests/unit/test_shapes.py`).
 - Each new check is shown failing on seeded faults.

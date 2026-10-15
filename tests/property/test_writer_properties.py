@@ -89,20 +89,25 @@ def record_features(field: JsonValue) -> None:
         feature("specimen", "specimen" in one)
 
 
-@pytest.mark.features(
-    alternatives=0.04,
-    withheld=0.07,
-    uncertainty=0.2,
-    status_condition=0.17,
-    specimen=0.14,
-    form_constant=0.05,
-    form_table=0.05,
-    form_power_law=0.04,
-    form_interval=0.03,
-    form_composition=0.04,
-    form_parameter_set=0.04,
-    form_reference_data=0.04,
-    form_evidence=0.02,
+# The acceptance properties declare each feature by the chance that a draw shows it: its share measured at
+# the `ci` profile over 48 runs of 2,000 examples (2026-10-15), rounded down to two places, and each field's
+# at the least of the fields' (0.137 to 0.148). Hypothesis shows a draw in clusters of examples, so at `ci`
+# each feature is held to its draw floor (`audits.draw_floor`), and at `dev` and `deep` to a third of its
+# chance.
+@pytest.mark.chances(
+    alternatives=0.15,
+    withheld=0.2,
+    uncertainty=0.62,
+    status_condition=0.53,
+    specimen=0.47,
+    form_constant=0.15,
+    form_table=0.13,
+    form_power_law=0.13,
+    form_interval=0.14,
+    form_composition=0.14,
+    form_parameter_set=0.13,
+    form_reference_data=0.13,
+    form_evidence=0.12,
 )
 @given(value_fields.fields())
 def test_the_writer_schema_takes_every_field_the_text_allows(field: JsonValue) -> None:
@@ -117,8 +122,10 @@ def record_body_features(body: Json) -> None:
     feature("alternatives", "alternatives" in mapping(container[name]))
 
 
-@pytest.mark.features(
-    **{f"field_{name}": 0.04 for name in value_fields.FIELDS}, place_fields=0.15, alternatives=0.05
+@pytest.mark.chances(
+    **{f"field_{name}": 0.13 for name in value_fields.FIELDS},
+    place_fields=0.66,
+    alternatives=0.16,
 )
 @given(value_fields.bodies())
 def test_the_writer_schema_takes_every_registered_field_in_its_place(body: Json) -> None:

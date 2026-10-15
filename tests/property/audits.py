@@ -9,13 +9,15 @@ at 50 rejected draws before 10 valid ones. At the gate below, as in MADDENING's 
 The feature audit: a property declares, with the `features` marker, the least share of its examples that must
 show each feature the specification distinguishes, and records each example's features with
 `support.feature`. A property that draws one of several features alike as its first choice, as a refusal
-property draws its fault, declares them with the `drawn` marker instead, and at the `ci` profile each is held
-to its draw floor (`draw_floor`).
+property draws its fault, declares them with the `drawn` marker instead; one that declares the chance that a
+draw shows each feature, measured, as the writer schema's acceptance properties do, declares them with the
+`chances` marker. At the `ci` profile, each drawn feature and each feature declared by its chance is held to
+its draw floor (`draw_floor`).
 """
 
 import math
 from collections import Counter
-from collections.abc import Callable, Collection, Generator
+from collections.abc import Callable, Collection, Generator, Mapping
 from contextlib import contextmanager
 from typing import NamedTuple, TypedDict
 
@@ -69,9 +71,17 @@ def rejection(draws: Counter[str]) -> float | None:
 
 
 # A share is judged only where the run's examples make at least this many expected at the least share. Each
-# least share is about a third of the share measured, so a judged share falls below it by chance with a
-# probability of about 1e-9 (Poisson, 60 expected, at most 20 seen). The `ci` and `deep` profiles judge every
-# share declared; `dev`, with 200 examples, judges those of 10% or more.
+# least share is about a third of the share measured. Were the examples independent, a share at this gate
+# would fall below it by chance with a probability of about 1e-9 (Poisson, 60 expected, at most 20 seen). They
+# are not: Hypothesis shows one draw in up to CLUSTER examples (below). With the clusters measured on the
+# writer schema's acceptance properties (2026-10-15: 6.2 examples on average at `ci`, 4.7 at `dev`, a count
+# varying up to 8 times as much as a binomial count), a feature shown by whole clusters at the gate falls
+# below its least share with a probability of about 1e-2 at either profile. Those properties' least shares
+# failed a run with a probability of about 1.5e-6 at `ci` and 1e-3 at `dev`, computed from the measured
+# clusters, so they declare their features by their chances instead (CHANCE_FLOORS). The other properties
+# keep their least shares, their clusters not measured; at `dev`, one of them failed 16 of 2,000 runs
+# (`test_versions_order_as_their_integers`, feature `long`). The `ci` and `deep` profiles judge every share
+# declared; `dev`, with 200 examples, judges those of 10% or more.
 JUDGED_FROM = 20
 
 # The draw floor. A feature drawn as an example's first choice with chance p is not shown in a binomial count
@@ -88,9 +98,14 @@ CLUSTER = 8
 SHOWN = 5
 FALSE_FAILURE = 1e-6
 LEAST_DRAWS = 10
-# The profiles that judge a drawn feature by its draw floor. `deep` holds each to a third of its share, as a
-# declared feature, and `dev`, whose 200 examples leave no drawn feature's floor judged, judges none.
+# The profiles that judge a drawn feature, and one declared by its chance, by its draw floor, a floor below
+# LEAST_DRAWS failing. `deep` holds each to a third of its share or chance, as a declared feature. `dev`,
+# whose 200 examples leave no drawn feature's floor judged, judges none, and holds a feature declared by its
+# chance to its draw floor where that is at least LEAST_DRAWS (CHANCE_FLOORS), judging no other.
+# For the acceptance properties' chances, from the measured clusters: a run of both falls short with a
+# probability of about 3e-10 at `ci` and 7e-7 at `dev`, and at most 2e-22 at `deep` (three runs measured).
 DRAW_FLOORS = frozenset({"ci"})
+CHANCE_FLOORS = frozenset({"ci", "dev"})
 
 
 def binomial_floor(draws: int, chance: float) -> int:
@@ -118,15 +133,25 @@ def draw_floor(examples: int, chance: float) -> int:
 
 
 def feature_shortfalls(
-    counts: Counts, declared: dict[str, float], drawn: Collection[str] = (), *, by_draws: bool = False
+    counts: Counts,
+    declared: dict[str, float],
+    drawn: Collection[str] = (),
+    *,
+    by_draws: bool = False,
+    chances: Mapping[str, float] | None = None,
+    chance_floors: bool = False,
 ) -> list[str]:
     """Each judged feature below its least share or its floor, and each feature recorded but not declared.
-    `drawn` names the features of which each example shows one, drawn alike; `by_draws` holds them to their
-    draw floor, and otherwise to a third of their share as declared features."""
+    `drawn` names the features of which each example shows one, drawn alike; `chances` gives other features
+    each the chance that one draw shows it. `by_draws` holds both to their draw floors, a floor below
+    LEAST_DRAWS failing; `chance_floors` holds those of `chances` to theirs where it is at least LEAST_DRAWS,
+    judging no other; and otherwise each is held to a third of its chance, one over their number for the
+    drawn, as a declared feature."""
     examples = counts.draws["valid"] + counts.draws["interesting"]
+    chances = {} if chances is None else dict(chances)
     problems = [
         f"feature {name!r} recorded but not declared"
-        for name in sorted(counts.features.keys() - declared.keys() - set(drawn))
+        for name in sorted(counts.features.keys() - declared.keys() - set(drawn) - chances.keys())
     ]
     least_shares = dict(declared)
     if drawn and by_draws:
@@ -143,6 +168,21 @@ def feature_shortfalls(
         )
     elif drawn:
         least_shares.update({name: 1 / len(drawn) / 3 for name in drawn})
+    if by_draws or chance_floors:
+        floors = {name: draw_floor(examples, chance) for name, chance in chances.items()}
+        unjudged = sorted(name for name, floor in floors.items() if floor < LEAST_DRAWS)
+        if unjudged and by_draws:
+            problems.append(
+                f"features {unjudged}: each, at its chance, has a floor below {LEAST_DRAWS} in {examples}"
+                " examples: draw it more often, its family in parts"
+            )
+        problems.extend(
+            f"feature {name!r} in {counts.features[name]} of {examples} examples, below its floor of {floor}"
+            for name, floor in sorted(floors.items())
+            if (by_draws or name not in unjudged) and counts.features[name] < floor
+        )
+    else:
+        least_shares.update({name: chance / 3 for name, chance in chances.items()})
     for name, least in sorted(least_shares.items()):
         share = counts.features[name] / examples if examples else 0.0
         if least * examples >= JUDGED_FROM and share < least:
