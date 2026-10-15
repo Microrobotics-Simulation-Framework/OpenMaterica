@@ -1523,7 +1523,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-331
 
-`read_side_contract.md`: a reason appears once per code and condition, however many times its check fails; `condition` is present exactly on the codes section 2 lists
+`read_side_contract.md`: a reason appears once per code, condition and alternative, however many times its check fails; `condition` is present exactly on the codes section 2 lists; `alternative` exactly on the reasons found reading one alternative, holding its stored index, so two alternatives' `condition_outside` for one condition are two reasons, and a fault of the request in one alternative carries none
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|

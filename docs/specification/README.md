@@ -140,16 +140,17 @@ of `read_side_contract.md` section 1, unless it names an `operation` (below); `e
 compare, and `compare` says which, and the relative tolerance for numbers (absolute where an expected number
 is zero), or `"exact": true`, under which numbers are compared as doubles bit for bit, so that `-0` differs
 from `0` (case files are read by `record_format.md` section 1 item 6, so `-0` in one is negative zero).
-Reasons are compared as a multiset of their `code` and `condition`: never their order, `detail` or text.
-`labels` are compared as a set, an absent `labels` counting as empty, and without `hash_not_checked` unless
-the case's `claims` has a `hash` member. A member `compare` names and `expected` omits must be absent from the
-result (an operation's `value` on `not_met`, say). A case that compares a number gives `relative_tolerance` or
-`exact`; there is no default. A case whose request must itself break `record_format.md` section 1 item 6
-(PR-330) names a file holding it in `inputs.request`, in place of `request`. An input the case does not need
-is omitted. In this example, `water_fixture.json` holds, as an illustrative fixture, the viscosity as a
-constant of exactly 0.000692 Pa·s at 310.15 K, with its shear rate unstated. `suite` is one of `plain_read`,
-`hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`, `table_evaluation`, `mixing`,
-`family_evaluation`, `sampling`, `build_checks`, `record_checks` and `engine_adapter`.
+Reasons are compared as a multiset of their `code`, `condition` and `alternative`: never their order, `detail`
+or text. `labels` are compared as a set, an absent `labels` counting as empty, and without `hash_not_checked`
+unless the case's `claims` has a `hash` member. A member `compare` names and `expected` omits must be absent
+from the result (an operation's `value` on `not_met`, say). A case that compares a number gives
+`relative_tolerance` or `exact`; there is no default. A case whose request must itself break
+`record_format.md` section 1 item 6 (PR-330) names a file holding it in `inputs.request`, in place of
+`request`. An input the case does not need is omitted. In this example, `water_fixture.json` holds, as an
+illustrative fixture, the viscosity as a constant of exactly 0.000692 Pa·s at 310.15 K, with its shear rate
+unstated. `suite` is one of `plain_read`, `hash`, `scene_documents`, `fits_and_reference_data`, `usd_read`,
+`table_evaluation`, `mixing`, `family_evaluation`, `sampling`, `build_checks`, `record_checks` and
+`engine_adapter`.
 
 An object in a compared member is compared member by member, both ways, so a member the result holds and
 `expected` lacks fails. Strings are compared code point for code point; `reasons` and `labels` as above;

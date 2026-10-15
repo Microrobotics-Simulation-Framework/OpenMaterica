@@ -96,7 +96,7 @@ in one alternative it ends the read, and the alternative is not set aside (secti
 | Member | Contents |
 |---|---|
 | `status` | `met`, `not_met` or `unknown`. A build result adds the model, the region and what accepted it (`declarations.md`) |
-| `reasons` | a list of `{"code", "condition"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
+| `reasons` | a list of `{"code", "condition"?, "alternative"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
 | `value` | present unless `not_met` without an assumption; its shape follows `want` (section 6) |
 | `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`: its index among the stored alternatives; its value as `want` shapes it, or, where `want` cannot give its form, or where it is a table read outside its readable range, at a declared edge or over an operating range of its axis, its form's member as stored, with no nominal or extrapolation applied (sections 5 and 6) [PR-013]; and the other members as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
 | `unit` | the field's unit, as stored: a unit held as a status object keeps its `reason` [PR-010] |
@@ -110,13 +110,20 @@ in one alternative it ends the read, and the alternative is not set aside (secti
 1. A read never stops with an error for anything a record or request contains. [PR-300]
 2. Every reason found is reported, not only the first. The status is the worst of them: `not_met` over
    `unknown` over `met`. Each step makes all its checks before the read stops. A reason, identified by its
-   `code` and its `condition`, appears at most once in a result; where a check fails more than once, its
-   `detail` SHOULD say so. `detail` is text for people: a reader SHOULD say there what failed (for a field
-   that is not registered, that the reader's version does not know it), and no case compares it.
+   `code`, its `condition` and its `alternative`, appears at most once in a result; where a check fails more
+   than once, its `detail` SHOULD say so. `detail` is text for people: a reader SHOULD say there what failed
+   (for a field that is not registered, that the reader's version does not know it), and no case compares it.
    [not yet covered] A reason carries `condition` exactly when it concerns one condition or a form's axis:
    every `condition_*` reason; `request_incomplete`, `request_unit_mismatch` and `unit_mismatch` where they
    concern one condition (an unregistered condition name included) or an axis; `outside_range`, `at_edge` and
-   `range_unstated`; and `want_mismatch` for a read over a range of an axis. [PR-301] [PR-331]
+   `range_unstated`; and `want_mismatch` for a read over a range of an axis. [PR-301] [PR-331] A reason
+   carries `alternative` exactly when it was found reading one alternative of a field that holds alternatives
+   (section 3, step 7), at steps 8 to 13, the alternative a pick names and the one left included. It holds
+   that alternative's index among the stored alternatives, as an `alternative_values` entry does. A fault of
+   the request carries none, even where it arises in one alternative (section 1). Nor does a reason step 7
+   gives of its own: `absent`, `form_invalid` for the `alternatives` list, `no_pick`, and `want_mismatch` over
+   two or more alternatives. So two alternatives' `condition_outside` for one condition are two reasons.
+   [PR-331]
 3. An `unknown` result carries the value the record holds, so that a waiver has something to use. A `not_met`
    result carries no value, except where a declared extrapolation or nominal covers it: the status stays
    `not_met`, the value is present, and `assumption` names the declaration. [PR-302] [PR-307]
@@ -529,7 +536,7 @@ value's derivative with respect to the axis. [TE-012]
 | PR-328 | plain read | a reference with no candidate gives `malformed` when a supplied source did not parse, or parsed to a value that is neither a set-aside document nor an object with a string `id` and `version` (an array, an object with only an `id`); otherwise `absent`; a scene manifest or an engine crosswalk among the sources is set aside and never resolved |
 | PR-329 | plain read | candidates of one `id` and `version`: the one with the reference's hash is read, and identical copies are read once; none with the hash gives `pin_mismatch`, whether there is one candidate or several, unless one has an absent, `null` or ill-formed `content_hash`, or a supplied source is unreadable, which gives `malformed`; two with the hash whose bytes differ give `malformed` |
 | PR-330 | plain read | `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; two extrapolations naming one field; an extrapolation without `method` or `law`, with an unknown `method`, or with an empty `law`, a `law` of white space being accepted; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`) |
-| PR-331 | plain read | a reason appears once per code and condition, however many times its check fails; `condition` is present exactly on the codes section 2 lists |
+| PR-331 | plain read | a reason appears once per code, condition and alternative, however many times its check fails; `condition` is present exactly on the codes section 2 lists; `alternative` exactly on the reasons found reading one alternative, holding its stored index, so two alternatives' `condition_outside` for one condition are two reasons, and a fault of the request in one alternative carries none |
 | PR-332 | plain read | a `want` of a suite the reader does not claim (`fit`, `coverage`, `reference_data` without the fits and reference data suite) gives `want_mismatch` at step 0 |
 | PR-333 | plain read | the `mean_of_specimen_fits` label is returned with a parameter set whose fit says so |
 | PR-334 | plain read | a stated ± as a bound keeps `met` only where the test holds across it; an `sd` or unstated ± turns `met` into `unknown` (`condition_uncertain`); a bound beside an `sd` decides; a ± never makes `not_met`; one of zero changes nothing |

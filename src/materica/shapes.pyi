@@ -816,12 +816,13 @@ class ToleranceRequirement(TypedDict):
 
 class Reason(TypedDict):
     """
-    read_side_contract.md section 2; a reason is identified by its code and condition, and detail is for
-    people.
+    read_side_contract.md section 2; a reason is identified by its code, condition and alternative, and detail
+    is for people.
     """
 
     code: ReadOnly[ReasonCode]
     condition: ReadOnly[NotRequired[str]]
+    alternative: ReadOnly[NotRequired[float]]
     detail: ReadOnly[NotRequired[str]]
 
 class CaseCompare(TypedDict):
