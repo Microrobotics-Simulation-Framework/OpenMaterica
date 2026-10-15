@@ -4,8 +4,9 @@
     python scripts/gen_shapes.py            # write both files
     python scripts/gen_shapes.py --check    # fail if either differs from what the schemas give
 
-The shapes come from `schema/0.1/record.writer.json` and `case.json`, with the read request and result it
-refers to, through datamodel-code-generator, pinned in the dev group, then ruff. A member the schemas declare
+The shapes come from `schema/0.1/record.writer.json`, `case.json` with the read request it refers to, and
+`read_result.json`, which a case's expected answer no longer names whole, since it may leave members out,
+through datamodel-code-generator, pinned in the dev group, then ruff. A member the schemas declare
 `integer` is typed `float`, since the reader gives every JSON number as a double (`record_format.md` section 1
 item 6): a whole number is a `float` with no fractional part, so a consumer type-checks against what it is
 given. The vocabulary's bindings, which the writer schema applies by `allOf` to bind a name to its row (a
@@ -65,7 +66,11 @@ def generated_text() -> str:
             json.dumps(
                 {
                     "$schema": "https://json-schema.org/draft/2020-12/schema",
-                    "anyOf": [{"$ref": "schema/0.1/record.writer.json"}, {"$ref": "schema/0.1/case.json"}],
+                    "anyOf": [
+                        {"$ref": "schema/0.1/record.writer.json"},
+                        {"$ref": "schema/0.1/case.json"},
+                        {"$ref": "schema/0.1/read_result.json"},
+                    ],
                 }
             ),
             encoding="utf-8",

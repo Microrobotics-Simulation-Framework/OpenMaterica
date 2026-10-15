@@ -1287,7 +1287,7 @@ class Case(TypedDict):
     claims: NotRequired[dict[Suite, bool]]
     inputs: CaseInputs
     request: NotRequired[ReadRequest | CaseOperation | JsonValue]
-    expected: ReadResult | TableEvaluations
+    expected: ComparedResult | TableEvaluations
     compare: CaseCompare
 
 
@@ -1303,13 +1303,17 @@ class ReadRequest(TypedDict):
     acceptances: NotRequired[list[JsonObject]]
 
 
-class ReadResult(TypedDict):
+class ComparedResult(TypedDict):
     """
-    read_side_contract.md section 2.
+    The members of a read result a case compares (README.md, "Case files": expected holds the members to
+    compare), each as read_result.json gives it (tests/spec_sync/test_schemas.py holds the two lists equal). A
+    case leaves out of compare, and so of expected, a member whose answer the specification leaves open, such
+    as the status and reasons of a no_pick result whose alternatives' own reasons are not yet specified;
+    status and reasons are held wherever compare names them.
     """
 
-    status: ReadStatus
-    reasons: list[Reason]
+    status: NotRequired[ReadStatus]
+    reasons: NotRequired[list[Reason]]
     value: NotRequired[JsonValue]
     alternative_values: NotRequired[list[JsonValue]]
     unit: NotRequired[JsonValue]
@@ -1343,6 +1347,24 @@ class EvaluateOperation(TypedDict):
     form: Literal["table"]
     table: JsonObject
     at: list[float]
+
+
+class ReadResult(TypedDict):
+    """
+    read_side_contract.md section 2.
+    """
+
+    status: ReadStatus
+    reasons: list[Reason]
+    value: NotRequired[JsonValue]
+    alternative_values: NotRequired[list[JsonValue]]
+    unit: NotRequired[JsonValue]
+    conditions: NotRequired[list[JsonObject]]
+    specimen: NotRequired[JsonObject]
+    statistics: NotRequired[JsonObject]
+    provenance: NotRequired[JsonObject]
+    labels: NotRequired[list[str]]
+    assumption: NotRequired[JsonObject]
 
 
 class ConstantField(FieldMembers):

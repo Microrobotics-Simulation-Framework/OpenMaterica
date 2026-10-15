@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from scripts.freeze_schema import misplaced_ids
 from scripts.gen_vocabulary import SPECIFICATION, codes, only_code, outside_parentheses, table
@@ -46,6 +47,29 @@ def test_the_request_table_is_the_request_schemas() -> None:
 def test_the_result_table_is_the_result_schemas() -> None:
     rows = table(document("read_side_contract.md"), "## 2. The read result")
     assert [only_code(row["Member"]) for row in rows] == list(RESULT["properties"])
+
+
+def _from_the_result(schema: JsonValue) -> JsonValue:
+    """A part of read_result.json with its own references written from case.json, as case.json gives them."""
+    if isinstance(schema, dict):
+        return {
+            key: f"read_result.json{value}"
+            if key == "$ref" and isinstance(value, str) and value.startswith("#")
+            else _from_the_result(value)
+            for key, value in schema.items()
+        }
+    if isinstance(schema, list):
+        return [_from_the_result(item) for item in schema]
+    return schema
+
+
+def test_a_cases_expected_members_are_the_results() -> None:
+    """A case's `expected` holds the result's members it compares, each shaped as the result holds it, none
+    required by itself (case.json requires `status` and `reasons` wherever `compare` names them)."""
+    compared = CASE["$defs"]["compared_result"]
+    assert compared["properties"] == _from_the_result(RESULT["properties"])
+    assert "required" not in compared
+    assert compared["additionalProperties"] is False
 
 
 def test_the_sections_are_the_field_tables() -> None:
