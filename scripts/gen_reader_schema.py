@@ -13,16 +13,18 @@ The reader schema is the writer's, opened where `record_format.md` section 1 ite
 
 Its `$defs` hold the shapes of a value field and a section's `specimen` as step 8 of a read checks them
 (`read_side_contract.md` section 3), applied from nowhere in the schema, for a reader that checks one field
-with them: opened in the same way, with their `$ref`s kept, a reference to the vocabulary's tokens any
-string, no pattern, and every member marked `x-materica-write-only` any value and required nowhere, since a
-read does not check it. An `allOf` conjunct that refers to one of the vocabulary's bindings (a section's
-field names and each field's row, a numeric condition's unit) is left out wherever it stands: those `$defs`
-hold the shape of a value field whatever its name, and a read checks a field against its row in its own
-steps, a unit at step 9 alone. A binding referred to anywhere else, or a vocabulary definition that is neither
-a binding nor a list of tokens, stops the script. A rule that reaches only such members, at any depth (an
+with them: opened in the same way, with their `$ref`s kept, a reference to the vocabulary's tokens or to an
+identifier's pattern any string, no pattern, and every member marked `x-materica-write-only` any value and
+required nowhere, since a read does not check it. A rule that reaches only such members, at any depth (an
 `allOf` conjunct, or a condition's `then` and `else`), is the record checks' alone and is left out, and so is
 a condition whose `if` tests one: a read cannot tell whether it holds. A conjunct, or a `then` and `else`,
 that reaches members of both kinds stops the script.
+
+An `allOf` conjunct that refers to one of the vocabulary's bindings (a section's field names and each field's
+row, a numeric condition's unit) is left out wherever it stands: those `$defs` hold the shape of a value field
+whatever its name, and a read checks a field against its row in its own steps, a unit at step 9 alone. A
+binding referred to anywhere else, or a vocabulary definition that is neither a binding, a list of tokens nor
+an identifier's pattern, stops the script.
 
 Every pattern in the writer schema must start with `^` and end with `(?![\\s\\S])`: a validator's `$` also
 matches before a final newline, so `"0.1.0\\n"` would match `^...$`. Under `if` or `not`, anything the script
@@ -281,8 +283,11 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
         if vocabulary_ref := VOCABULARY_REF.fullmatch(target):
             if binding(node):
                 raise SchemaError(f"a vocabulary binding applied other than as an allOf conjunct: {target}")
-            if not enumerates(vocabulary, vocabulary_ref[1], vocabulary_ref[2]):
-                raise SchemaError(f"a $ref to the vocabulary that is no enumeration of strings: {target}")
+            if not (
+                enumerates(vocabulary, vocabulary_ref[1], vocabulary_ref[2])
+                or patterns(vocabulary, vocabulary_ref[1], vocabulary_ref[2])
+            ):
+                raise SchemaError(f"a $ref to the vocabulary that is no list of tokens or pattern: {target}")
             return {"type": "string"}
         name = target.removeprefix("#/$defs/")
         if name == "json_value" or (inline and name in NEVER_APPLIED):
@@ -359,6 +364,22 @@ def enumerates(vocabulary: dict[str, Json], name: str, definition: str) -> bool:
     found = definitions.get(definition) if isinstance(definitions, dict) else None
     tokens = found.get("enum") if isinstance(found, dict) and set(found) == {"enum"} else None
     return isinstance(tokens, list) and all(isinstance(token, str) for token in tokens)
+
+
+def patterns(vocabulary: dict[str, Json], name: str, definition: str) -> bool:
+    """Whether the vocabulary file `name` defines `definition` as a string of a pattern that matches in full,
+    and only that: an identifier's form (`"UBERON:<digits>"`), which a read does not check."""
+    contents = vocabulary.get(name)
+    definitions = contents.get("$defs") if isinstance(contents, dict) else None
+    found = definitions.get(definition) if isinstance(definitions, dict) else None
+    pattern = found.get("pattern") if isinstance(found, dict) and set(found) == {"type", "pattern"} else None
+    return (
+        isinstance(found, dict)
+        and found.get("type") == "string"
+        and isinstance(pattern, str)
+        and pattern.startswith("^")
+        and pattern.endswith("(?![\\s\\S])")
+    )
 
 
 def binds(vocabulary: dict[str, Json], name: str, definition: str) -> bool:

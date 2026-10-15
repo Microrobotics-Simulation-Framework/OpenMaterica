@@ -29,6 +29,7 @@ from scripts.gen_vocabulary import (
     between,
     cell_of,
     codes,
+    identifier_patterns,
     only_code,
     prose,
     specimen_facts,
@@ -230,9 +231,9 @@ FACTS_VOCABULARY = "vocabulary/specimen_facts.json#/$defs/"
 
 
 def check_specimen_table(definitions: Definitions, read: Documents) -> None:
-    """Each fact's members; its `token` bound to the vocabulary's list of its row's tokens, and each member
-    its row fixes to one value (`"unit": "s"`) to the list of that value; and no other member bound to a
-    list."""
+    """Each fact's members; its `token` bound to the vocabulary's list of its row's tokens, each member its
+    row fixes to one value (`"unit": "s"`) to the list of that value, and each identifier its row writes
+    (`"UBERON:<digits>"`) to the vocabulary's pattern of that form; and no other member bound to either."""
     rows = table(read("provenance.md"), "### 6.2 Specimen facts of schema 0.1.0")
     facts = members(definitions, "specimen")
     assert [only_code(row["Name"]) for row in rows] == list(facts)
@@ -242,6 +243,8 @@ def check_specimen_table(definitions: Definitions, read: Documents) -> None:
         for name, entry in mapping(entries).items()
         for member, value in mapping(entry).items()
         if value
+    } | {
+        (only_code(row["Name"]), member) for row in rows for member in identifier_patterns(row["JSON shape"])
     }
     bound: set[tuple[str, str]] = set()
     for row in rows:
@@ -903,6 +906,23 @@ def dropping_last(name: str, *path: str) -> Callable[[Definitions], None]:
             document,
             removing("mimics", "properties", "basis"),
             id="fact_basis_unbound",
+        ),
+        pytest.param(
+            check_specimen_table,
+            document,
+            setting(
+                {"type": "string", "pattern": "^UBERON:[0-9]+(?![\\s\\S])"},
+                "anatomical_site",
+                "properties",
+                "uberon",
+            ),
+            id="fact_identifier_written_by_hand",
+        ),
+        pytest.param(
+            check_specimen_table,
+            changed_document("provenance.md", '"uberon": "UBERON:<digits>"', '"uberon": <text>'),
+            None,
+            id="fact_identifier_no_longer_written",
         ),
         pytest.param(
             check_specimen_table,

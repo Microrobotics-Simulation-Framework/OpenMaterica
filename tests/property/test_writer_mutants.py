@@ -471,7 +471,7 @@ MUTANTS = [
     ),
     WriterMutant(
         "M55 an anatomical site of any text",
-        deleting(D, "anatomical_site", P, "uberon", "pattern"),
+        setting(D, "anatomical_site", P, "uberon", to={"type": "string"}),
         "specimen",
         ("uberon_malformed",),
     ),

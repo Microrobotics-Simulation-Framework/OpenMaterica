@@ -617,7 +617,7 @@
       "allOf": [{"$ref": "#/$defs/based"}],
       "required": ["uberon", "label"],
       "properties": {
-        "uberon": {"type": "string", "pattern": "^UBERON:[0-9]+(?![\\s\\S])"},
+        "uberon": {"$ref": "vocabulary/specimen_facts.json#/$defs/anatomical_site_uberon"},
         "label": {"type": "string"}
       },
       "unevaluatedProperties": false
