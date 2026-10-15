@@ -17,7 +17,9 @@ neither uses nor returns is checked. Each check makes all its checks and appends
 """
 
 from collections.abc import Callable, Collection, Mapping
+from typing import get_args, get_type_hints, is_typeddict
 
+from materica import shapes
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.slips import slipped
@@ -219,11 +221,33 @@ def is_status_object(value: JsonValue) -> bool:
     return isinstance(value, dict) and "status" in value
 
 
-def or_status(check: Check, tokens: Collection[str] | None, defines: Collection[str] = ()) -> Check:
-    """A member whose row allows a status object with one of `tokens` (any token, which step 9 compares,
-    where None) in place of its own shape S, which `check` checks. A status object is refused where it also
-    holds a member S defines, `defines`, or, where S is a number, a string or a token (`defines` empty), any
+def status_row(shape: type, member: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The row of `provenance.md` section 1 item 5 for `member` of `shape`, as the writer schema gives it and
+    the generated shapes carry it: the status tokens it may hold, and the members of the shape S a status
+    object stands in for there, none where S is a number, a string or a token."""
+    tokens: tuple[str, ...] = ()
+    defines: list[str] = []
+    for alternative in get_args(get_type_hints(shape)[member]):
+        if is_typeddict(alternative) and set(get_type_hints(alternative)) <= {"status", "reason"}:
+            tokens = get_args(get_type_hints(alternative)["status"])
+        elif is_typeddict(alternative):
+            defines += get_type_hints(alternative)
+    if not tokens:
+        raise ValueError(f"{member} of {shape.__name__} takes no status object")
+    return tokens, tuple(defines)
+
+
+def or_status(check: Check, shape: type, member: str, defines: Collection[str] | None = None) -> Check:
+    """`member` of `shape`, whose row allows a status object in place of its own shape S, which `check`
+    checks. A status object holds a status token its row allows, and is refused where it also holds a member S
+    defines (`defines`, where the row's are not S's own) or, where S is a number, a string or a token, any
     member but `status` and `reason` (`provenance.md` section 1 item 5)."""
+    tokens, own = status_row(shape, member)
+    return status_or(check, tokens, own if defines is None else tuple(defines))
+
+
+def status_or(check: Check, tokens: Collection[str] | None, defines: Collection[str]) -> Check:
+    """A status object with one of `tokens`, any token where None, or what `check` takes."""
 
     def checked(value: JsonValue, where: str, found: Found) -> None:
         if isinstance(value, dict) and "status" in value:
@@ -257,8 +281,9 @@ def status_object(
         slips(value, ("status", "reason", *defines), where, found)
 
 
-unit = or_status(string, None)
-"""A unit: a string, or a status object whose token step 9 compares (`record_format.md` section 4.2)."""
+unit = status_or(string, None, ())
+"""A unit: a string, or a status object whose token, known or not, step 9 alone compares
+(`record_format.md` section 4.2)."""
 
 
 def based(required: Members, optional: Members | None = None, rule: Check | None = None) -> Check:
@@ -291,16 +316,12 @@ def one_of_value_and_range(value: JsonValue, where: str, found: Found) -> None:
 
 # Conditions (`provenance.md` section 6.1).
 
-# The members a condition's shapes define, which a status object standing for one may not hold beside it.
-CONDITION_MEMBERS = (
-    "value",
-    "range",
-    "token",
-    "unit",
-    "basis",
-    "inferred_from",
-    "plus_minus",
-    "set_or_measured",
+# The members a status object standing for a condition may not hold beside it: those of every condition's
+# shape, numeric or token, whatever the condition's own (`provenance.md` section 1 item 5).
+CONDITION_MEMBERS = tuple(
+    dict.fromkeys(
+        member for name in VOCABULARY.conditions for member in status_row(shapes.Conditions, name)[1]
+    )
 )
 
 
@@ -310,7 +331,7 @@ def plus_minus(value: JsonValue, where: str, found: Found) -> None:
     if not (isinstance(value, list) and value):
         found.append(invalid(f"{where} is not a non-empty list"))
         return
-    stated_as = or_status(listed("stated_as", "stated_as"), ("unstated",))
+    stated_as = or_status(listed("stated_as", "stated_as"), shapes.PlusMinusEntry, "stated_as")
     kinds: list[str] = []
     for index, item in enumerate(value):
         entry = members(
@@ -347,7 +368,7 @@ def condition(spec: ConditionSpec) -> Check:
         if spec.shape == "numeric"
         else based({"token": token("token", spec.tokens)}, {"unit": unit})
     )
-    return or_status(own, STATUS_TOKENS, CONDITION_MEMBERS)
+    return or_status(own, shapes.Conditions, spec.name, CONDITION_MEMBERS)
 
 
 CONDITIONS = {name: condition(spec) for name, spec in VOCABULARY.conditions.items()}
@@ -394,9 +415,7 @@ FACT_SHAPES: dict[str, tuple[Members, Members, Check | None]] = {
     "lot": ({"text": string}, {}, None),
 }
 FACTS: dict[str, Check] = {
-    name: or_status(
-        based(required, optional, rule), STATUS_TOKENS, (*required, *optional, "basis", "inferred_from")
-    )
+    name: or_status(based(required, optional, rule), shapes.Specimen, name)
     for name, (required, optional, rule) in FACT_SHAPES.items()
 }
 
@@ -445,16 +464,20 @@ def uncertainty_rules(value: JsonObject, where: str, found: Found) -> None:
 UNCERTAINTY: tuple[Members, Members] = (
     {
         "value": not_below_zero,
-        "coverage_factor": or_status(above_zero, STATUS_TOKENS),
-        "coverage_probability": or_status(probability, STATUS_TOKENS),
-        "distribution": or_status(listed("distribution", "uncertainty_distribution"), ("unstated",)),
-        "dof": or_status(above_zero, STATUS_TOKENS),
+        "coverage_factor": or_status(above_zero, shapes.Uncertainty, "coverage_factor"),
+        "coverage_probability": or_status(probability, shapes.Uncertainty, "coverage_probability"),
+        "distribution": or_status(
+            listed("distribution", "uncertainty_distribution"), shapes.Uncertainty, "distribution"
+        ),
+        "dof": or_status(above_zero, shapes.Uncertainty, "dof"),
         "basis": listed("basis", "uncertainty_basis"),
-        "represents": or_status(listed("represents", "uncertainty_represents"), ("unstated",)),
+        "represents": or_status(
+            listed("represents", "uncertainty_represents"), shapes.Uncertainty, "represents"
+        ),
     },
     {
         "precision_conditions": or_status(
-            listed("precision_conditions", "precision_conditions"), ("unstated",)
+            listed("precision_conditions", "precision_conditions"), shapes.Uncertainty, "precision_conditions"
         )
     },
 )
@@ -467,31 +490,35 @@ def uncertainty(value: JsonValue, where: str, found: Found) -> None:
 
 
 def population_level(value: JsonValue, where: str, found: Found) -> None:
-    within = or_status(listed("within", "level"), ("none",))
+    within = or_status(listed("within", "level"), shapes.PopulationLevel, "within")
     members(value, where, found, {"level": listed("level", "level"), "within": within})
 
 
 STATISTICS: tuple[Members, Members] = (
     {
-        "central": or_status(listed("central", "central"), ("not_applicable",)),
-        "n_specimens": or_status(count, STATUS_TOKENS),
-        "n_donors": or_status(count, STATUS_TOKENS),
-        "mean": or_status(number, STATUS_TOKENS),
-        "sd": or_status(not_below_zero, STATUS_TOKENS),
-        "min": or_status(number, STATUS_TOKENS),
-        "max": or_status(number, STATUS_TOKENS),
-        "distribution": or_status(listed("distribution", "statistics_distribution"), ("unstated",)),
-        "basis": or_status(listed("basis", "statistics_basis"), ("not_applicable",)),
-        "represents": or_status(listed("represents", "represents"), ("unstated", "not_applicable")),
+        "central": or_status(listed("central", "central"), shapes.StatisticsBlock, "central"),
+        "n_specimens": or_status(count, shapes.StatisticsBlock, "n_specimens"),
+        "n_donors": or_status(count, shapes.StatisticsBlock, "n_donors"),
+        "mean": or_status(number, shapes.StatisticsBlock, "mean"),
+        "sd": or_status(not_below_zero, shapes.StatisticsBlock, "sd"),
+        "min": or_status(number, shapes.StatisticsBlock, "min"),
+        "max": or_status(number, shapes.StatisticsBlock, "max"),
+        "distribution": or_status(
+            listed("distribution", "statistics_distribution"), shapes.StatisticsBlock, "distribution"
+        ),
+        "basis": or_status(listed("basis", "statistics_basis"), shapes.StatisticsBlock, "basis"),
+        "represents": or_status(listed("represents", "represents"), shapes.StatisticsBlock, "represents"),
         "dispersion": listed("dispersion", "dispersion"),
-        "relative_uncertainty": or_status(uncertainty, STATUS_TOKENS, (*UNCERTAINTY[0], *UNCERTAINTY[1])),
-        "expanded_uncertainty": or_status(uncertainty, STATUS_TOKENS, (*UNCERTAINTY[0], *UNCERTAINTY[1])),
+        "relative_uncertainty": or_status(uncertainty, shapes.StatisticsBlock, "relative_uncertainty"),
+        "expanded_uncertainty": or_status(uncertainty, shapes.StatisticsBlock, "expanded_uncertainty"),
     },
     {
-        "population_level": or_status(population_level, ("unstated",), ("level", "within")),
-        "n_sources": or_status(count, STATUS_TOKENS),
+        "population_level": or_status(population_level, shapes.StatisticsBlock, "population_level"),
+        "n_sources": or_status(count, shapes.StatisticsBlock, "n_sources"),
         "precision_conditions": or_status(
-            listed("precision_conditions", "precision_conditions"), ("unstated",)
+            listed("precision_conditions", "precision_conditions"),
+            shapes.StatisticsBlock,
+            "precision_conditions",
         ),
     },
 )
@@ -510,9 +537,8 @@ def statistics_block(value: JsonValue, where: str, found: Found) -> None:
 
 # A field's statistics block, or a status object: `withheld` in a reference-only value (`provenance.md`
 # section 7), and on reference data `not_applicable` too (`fits_and_reference_data.md` section 1).
-STATISTICS_MEMBERS = (*STATISTICS[0], *STATISTICS[1])
-FIELD_STATISTICS = or_status(statistics_block, ("withheld",), STATISTICS_MEMBERS)
-REFERENCE_DATA_STATISTICS = or_status(statistics_block, ("withheld", "not_applicable"), STATISTICS_MEMBERS)
+FIELD_STATISTICS = or_status(statistics_block, shapes.ConstantField, "statistics")
+REFERENCE_DATA_STATISTICS = or_status(statistics_block, shapes.ReferenceDataField, "statistics")
 
 
 # The provenance members a read uses (`provenance.md` sections 2 and 5).

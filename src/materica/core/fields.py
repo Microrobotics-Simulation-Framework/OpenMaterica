@@ -11,6 +11,7 @@ could change. A form no row of schema 0.1 allows is refused whatever its member 
 from collections.abc import Collection
 from dataclasses import dataclass
 
+from materica import shapes
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.value_shapes import (
@@ -92,7 +93,7 @@ def _constant(field: JsonObject, name: str, found: Found) -> None:
         return
     value = field["value"]
     before = len(found)
-    or_status(number, ("withheld",))(value, f"{name}.value", found)
+    or_status(number, shapes.ConstantField, "value")(value, f"{name}.value", found)
     if isinstance(value, dict) and value.get("status") == "withheld" and len(found) == before:
         found.append(Reason("withheld", detail=f"{name} is a reference-only value"))
 
