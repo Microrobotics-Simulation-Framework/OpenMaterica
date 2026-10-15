@@ -267,9 +267,14 @@ def readers() -> dict[str, list[tuple[str, frozenset[str] | None]]]:
             continue
         pin, field = target.get("record"), target.get("field")
         end = ends[case_file.path.name]
-        reasons = case_file.expected["reasons"]
-        assert isinstance(reasons, list)
-        codes = frozenset(str(reason["code"]) for reason in reasons if isinstance(reason, dict))
+        # A case leaves its reasons out where the text leaves them open (case.json's `compared_result`):
+        # ending at step 8, it then gives no verdict.
+        reasons = case_file.expected.get("reasons")
+        codes = (
+            frozenset(str(reason["code"]) for reason in reasons if isinstance(reason, dict))
+            if isinstance(reasons, list)
+            else None
+        )
         verdict = codes if end == "8" else frozenset[str]() if end.isdigit() and int(end) > 8 else None
         for path in case_file.input_paths("records"):
             record = parsed(path)

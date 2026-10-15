@@ -52,7 +52,7 @@ read is refused at step 0. Members:
 | `inputs` | the files supplied, by name in the suite's `inputs/`: `records` (the sources a read resolves against), `value` (the one file a `content_hash` operation hashes), `request` (a request file, used only where the request itself must break the JSON rules) |
 | `request` | the read request, or `{"operation": "content_hash"}` / `{"operation": "list_records"}` |
 | `expected` | the members of the result the case compares |
-| `compare.members` | which members are compared. One named here but left out of `expected` must be absent from the result, as `value` is above: a refused read carries no value |
+| `compare.members` | which members are compared. One named here but left out of `expected` must be absent from the result, as `value` is above: a refused read carries no value. A member whose answer the specification leaves open is left out of both (`status` and `reasons` in a few `no_pick` arms) |
 | `claims` | only on cases whose answer depends on which suites the reader claims (`{"hash": true}`) |
 
 Reasons are compared as a multiset of code and condition, so order does not matter and a repeated reason

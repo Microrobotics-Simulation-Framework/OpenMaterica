@@ -130,6 +130,27 @@ def test_only_a_table_evaluation_case_has_a_tolerance_per_precision() -> None:
     assert CASE(read) != []
 
 
+@pytest.mark.parametrize("member", ["status", "reasons"])
+def test_a_read_case_holds_its_status_and_reasons_where_it_compares_them(member: str) -> None:
+    """`expected` holds the members `compare` names (README, "Case files"). A case leaves `status` or
+    `reasons` out of both where the text leaves it open (an alternative's own reasons beside `no_pick`), never
+    out of `expected` alone."""
+    read = jsonio.parse(
+        (CONFORMANCE / "plain_read" / "cases" / "PR-015.constant_with_conditions.json").read_bytes()
+    )
+    assert isinstance(read, dict)
+    expected, compare = read["expected"], read["compare"]
+    assert isinstance(expected, dict)
+    assert isinstance(compare, dict)
+    members = compare["members"]
+    assert isinstance(members, list)
+    assert member in members
+    del expected[member]
+    assert CASE(read) != []
+    compare["members"] = [name for name in members if name != member]
+    assert CASE(read) == []
+
+
 def _nested(depth: int) -> JsonValue:
     value: JsonValue = []
     for _ in range(depth - 1):
