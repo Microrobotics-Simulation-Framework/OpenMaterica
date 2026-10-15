@@ -362,6 +362,14 @@ def _no_form_member_named_beside_an_unknown_form(field: JsonObject, spec: Any, f
     return FIELD_PROBLEMS(stripped, spec, form)
 
 
+def _inputs_may_be_empty(value: JsonValue, where: str, found: Found) -> None:
+    if not isinstance(value, list):
+        found.append(value_shapes.invalid(f"{where} is not a list"))
+        return
+    for index, item in enumerate(value):
+        value_shapes.derivation_input(item, f"{where}[{index}]", found)
+
+
 STATISTICS_BLOCK = value_shapes.statistics_block
 
 
@@ -538,6 +546,12 @@ MUTANTS = [
             for name in strategies.CATALOGUE[region]
             if name != "derivation_missing"
         ),
+    ),
+    Mutant(
+        "derivation_inputs_may_be_empty",
+        ONE_FAULT,
+        setting(value_shapes, "derivation_inputs", _inputs_may_be_empty),
+        ("derivation.inputs_empty",),
     ),
     Mutant(
         "n_sources_any_number",

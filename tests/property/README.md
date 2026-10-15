@@ -138,10 +138,10 @@ entry's other statuses, also takes a withheld entry without its recipe.
 ### Step 8's mutants
 
 `test_value_field_mutants.py`. Each fault is injected where the core looks a name up when it runs, or in the
-tables it builds, rebuilt under the fault. The first 25 are S2a-2's, searched with their property whole; the
-rest are its fix round's: the eleven rules S2a-2's review found no test checked (M1; the fact unit's is
-`fact_unit_judged_at_step_8`) and the parts of the text HP3 had no fault for or could not tell from a missing
-member (M2). Each of those names the faults it must die at, and its search is planned, as the writer's are:
+tables it builds, rebuilt under the fault. The first 25 (S2a-2's 24, and its fix round's
+`fact_unit_judged_at_step_8`) are searched with their property whole; the rest are the fix round's: the eleven
+rules S2a-2's review found no test checked (M1; the fact unit's is `fact_unit_judged_at_step_8`) and the parts
+of the text HP3 had no fault for or could not tell from a missing member (M2). Each of those names the faults it must die at, and its search is planned, as the writer's are:
 HP3 draws its first fault among them, and the kill must hold one. Drawn with the property whole, each died
 within its 2,000 examples at both sizes but two, `within_any_status` and
 `label_beside_an_unknown_form_as_on_a_constant`, which died at the original size alone (884 and 845); so their
@@ -189,6 +189,7 @@ search took, at the small and the original size (measured 2026-10-15, S2a-2's fi
 | `field_level_slips_ignored` | a slip among a field's members is ignored | HP3 | `field_slips_optional.*` | 1, 1 |
 | `status_object_slips_ignored` | a slip inside a status object is ignored | HP3 | `statistics_statuses.status_slip` | 1, 1 |
 | `derivation_unchecked` | a derived value's derivation is not checked | HP3 | `derivation.*` and `derivation_inputs.*` but `derivation_missing` | 1, 1 |
+| `derivation_inputs_may_be_empty` | a derivation's `inputs` may be empty | HP3 | `derivation.inputs_empty`, its input specimens emptied with it, since an index past no input would refuse alone | 1, 1 |
 | `n_sources_any_number` | `n_sources` takes any number | HP3 | `statistics_numbers.n_sources_not_whole`, `.n_sources_negative` | 1, 1 |
 | `dof_of_zero_allowed` | an uncertainty's `dof` may be 0 | HP3 | `uncertainty.dof_zero` | 1, 1 |
 | `coverage_probability_of_zero_allowed` | an uncertainty's `coverage_probability` may be 0 | HP3 | `uncertainty.coverage_probability_zero` | 1, 1 |
