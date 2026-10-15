@@ -189,7 +189,7 @@ the `field`; holds its kind's own members; and carries `reason`.
 | `waiver` | `region`, `interval` or `record` | `code`, and `condition` where the code names one | covers one reason of one result (section 4.2) [BC-016] |
 | `implied_condition` | `region`, `interval` or `record` | `fact`, a specimen fact whose shape has a `token` member, and `token`, one of its tokens (`provenance.md` section 6.2); `implies`, per registered condition `{"value", "unit"}` or `{"range": [lo, hi], "unit"}` for a numeric one and `{"token"}`, with a token of its row, for a token one: a record condition's shapes without `basis` (one there is ignored), `plus_minus` or `set_or_measured`, and never a status object (`provenance.md` section 6.1) | supplies a value for a condition the record leaves unstated, on fields whose specimen states that fact and token; the value is checked like a stated one, with basis `implied` [BC-017] |
 | `accepted_difference` | optional: absent, every location the model is checked over | `section`, `fact`, `value` (in the fact's shape, or `"any"`) | covers specimen differences in that section and fact whose record value equals `value` under section 3 item 1 [BC-018] |
-| `extrapolation` | `region`, `interval` or `record` | `method` (`constant` or `consumer_law`), `law` (text of at least one character, which a reader does not judge), `basis` [PR-330] | the result carries the end value and the operating value; the consumer computes the extrapolated value by its method, and the sheet records it [BC-019] |
+| `extrapolation` | `region`, `interval` or `record` | `method` (`constant` or `consumer_law`), `law` (text of at least one character, which a reader does not judge), `basis` [PR-330] | where the read applies it (under `want: value`, never at a declared edge: `read_side_contract.md` section 5), the result carries the end value and the operating value; the consumer computes the extrapolated value by its method, and the sheet records it [BC-019] |
 | `nominal` | `region`, `interval` or `record` | `value`, `basis`; for a parameter set, `params` in place of `value` | supplies a value for an interval, in the field's registered unit, or the parameter vector held for a parameter set (under any structure, for one-at-a-time variation, or where `params` is not applicable), with exactly the family's parameters and passing its admissibility; refused: a value outside the interval's bounds (in a read, `nominal_invalid`), a vector with a missing or extra parameter or outside an `interval` structure's box, and an inadmissible vector [BC-020] [BC-042] |
 | `distribution` | `region`, `interval` or `record` | `distribution`, `space`, `distribution_parameters`, `basis` | sampling where the record gives no distribution (section 4.3) [BC-021] |
 | `overlay` | none | `overlay` (identifier, version, hash) | applies that overlay (section 5) [BC-022] |
@@ -219,7 +219,7 @@ reason not listed is never accepted. [BC-038]
 | `no_requirement`, `stated_without_origin`, `outside_check_points`, `fill_in_version_mismatch`, `entries_withheld` | unknown | a `waiver` naming that code |
 | `no_pick` | unknown | a `pick` only |
 | `range_unstated`, `outside_coverage` | unknown | an `extrapolation` only |
-| `outside_range` | not_met | an `extrapolation` |
+| `outside_range` | not_met | an `extrapolation`, only on a result whose `assumption` names it |
 | `want_mismatch`, for a value read from an interval, or a vector read from a parameter set with none | not_met | a `nominal`, only on a result whose `assumption` names it |
 | `engine_mass_not_comparable` | unknown | a `waiver` naming that code |
 | `overlay_scope_mismatch` | not_met | an `overlay_scope` naming every member that differs |
@@ -352,7 +352,7 @@ The sheet is one JSON document per build. [BC-033]
 | BC-016 | build checks | a waiver covers only its own location, condition and code |
 | BC-017 | build checks | an implied condition fills only an unstated or absent condition, never one holding another status object, and is checked against the tolerance |
 | BC-018 | build checks | an accepted difference covers only its value, or every value with `any` |
-| BC-019 | build checks | an extrapolation covers `outside_range`, `range_unstated` and `outside_coverage`; undeclared, they stand |
+| BC-019 | build checks | an extrapolation covers `outside_range` only on a result whose `assumption` names it (under `want: value`, never at a declared edge), and `range_unstated` and `outside_coverage`; undeclared, they stand; a table read under `want: bounds` outside its range is refused, though an extrapolation names it |
 | BC-020 | build checks | a nominal covers a value read from an interval; one outside the bounds is refused; it covers `want_mismatch` only on a result whose `assumption` names it, never step 0's or step 7's |
 | BC-021 | build checks | a declared distribution is sampled as declared and recorded as the consumer's assumption |
 | BC-022 | build checks | an overlay is applied only when an acceptance names it |
