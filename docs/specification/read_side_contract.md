@@ -64,20 +64,19 @@ hold (below). [PR-330]
 A request's `acceptances` take only the kinds `pick`, `overlay`, `extrapolation`, `nominal` and
 `implied_condition` (`declarations.md` section 4.1). Each is checked here, whatever field or location it
 names: its `field` as the target's is (the pattern, and a registered field), and its kind's own members, have
-their shapes; its `reason` and `basis` are ignored. An acceptance of any other kind, or one that breaks
-its shape, gives `request_incomplete`, and so do two `nominal`, or two `extrapolation`, acceptances naming
-one field. An implied
-condition breaks its shape where its `fact` is not a specimen fact with tokens or its `token` is not one of
-that fact's, and where `implies` names a condition that is not registered, or gives one a status object,
-`plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries that `condition`
-where the fault lies in one. A value an implied condition supplies for a registered numeric condition is
-checked as an operating condition is, its `unit` included (`request_unit_mismatch`, with that `condition`).
-An acceptance applies only to a read of the field it names and, an overlay aside (it names no location), only
-at the read's own location: its `record`, its `region` or both, each the read's (the record read, by `id`,
-`version` and `content_hash`; the target's region). One naming another field, another record or region, an
-`interval` (a request targets none: `declarations.md` section 2) or no location is checked and not applied,
-so a pick or an implied condition declared for one place never reaches a read of another. [PR-330] [PR-338]
-[PR-320] [PR-316]
+their shapes; its `reason` and `basis` are ignored. An acceptance of any other kind, or one that breaks its
+shape, gives `request_incomplete`, and so do two `nominal`, or two `extrapolation`, acceptances naming one
+field. An implied condition breaks its shape where its `fact` is not a specimen fact with tokens or its
+`token` is not one of that fact's, and where `implies` names a condition that is not registered, or gives one
+a status object, `plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries
+that `condition` where the fault lies in one. A value an implied condition supplies for a registered numeric
+condition is checked as an operating condition is, its `unit` included (`request_unit_mismatch`, with that
+`condition`). An acceptance applies only to a read of the field it names and, an overlay aside (it names no
+location), only at the read's own location: its `record`, its `region` or both, each the read's (the record
+read, by `id`, `version` and `content_hash`; the target's region). One naming another field, another record or
+region, an `interval` (a request targets none: `declarations.md` section 2) or no location is checked and not
+applied, so a pick or an implied condition declared for one place never reaches a read of another. [PR-330]
+[PR-338] [PR-320] [PR-316]
 
 Two checks need the form, so they are made when the form is evaluated (section 3, step 11): a table or power
 law read with no operating value for its axis is refused with `request_incomplete` [PR-308], and one read over
