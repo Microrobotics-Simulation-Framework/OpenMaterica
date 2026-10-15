@@ -59,7 +59,7 @@ condition or a condition that is not registered is compared with nothing, since 
 ignored, at any depth (a `unit` beside an `accept` list, say), except a `tolerance` or an `accept` list given
 for the other kind of condition, a requirement's `label`, `represents` and `population_level`, and a member
 one slip from a named one, which are refused as above, and the members an implied condition's value may not
-hold (below). [PR-330]
+hold (below); an acceptance's location is not ignored either (below). [PR-330]
 
 A request's `acceptances` take only the kinds `pick`, `overlay`, `extrapolation`, `nominal` and
 `implied_condition` (`declarations.md` section 4.1). Each is checked here, whatever field or location it
@@ -82,7 +82,10 @@ that an `overlay` acceptance of the request names for the read's field, equal in
 `content_hash`. It then applies to the read, and names one of that overlay's alternatives (section 3, step 7).
 One naming another field, another record or region, an `interval` (a request targets none: `declarations.md`
 section 2) or no location is checked and not applied, so a pick or an implied condition declared for one place
-never reaches a read of another. [PR-330] [PR-338] [PR-320] [PR-316] [PR-304]
+never reaches a read of another. So one located at an `interval` is not applied in a plain read even where it
+also names the read's `record`. This holds for a pick too: `record`, `region` and `interval` are an
+acceptance's location whatever its kind, and are never ignored as members `declarations.md` does not name for
+that kind. [PR-330] [PR-338] [PR-320] [PR-316] [PR-304] [PR-307]
 
 Two checks need the form, so they are made when the form is evaluated (section 3, step 11): a table or power
 law read with no operating value for its axis is refused with `request_incomplete` [PR-308], and one read over
