@@ -3,6 +3,7 @@
 and fails `--check` when a generated file differs. CI runs each with `--check`."""
 
 import json
+import re
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -867,3 +868,238 @@ def test_a_long_docstring_line_is_wrapped_and_code_is_not() -> None:
     text = gen_shapes.wrapped(f'class A:\n    """\n    {long}\n    """\n\n    member: "{long}"\n')
     assert all(len(line) <= 110 for line in text.splitlines() if not line.startswith("    member"))
     assert f'    member: "{long}"' in text
+
+
+DENSITY = "| `bulk.density` | `kg/m3` | constant, table, interval | `temperature`, `density_kind` | none |"
+REMANENCE = (
+    "| `magnetic.remanence` | `T` | constant, interval "
+    "| `temperature`, `specimen_shape`, `test_method` | none |"
+)
+VISCOSITY_LABEL = (
+    "| `materica.fluid.newtonian.v1` on a constant, or on a table whose axis is not `shear_rate` |"
+)
+SPECIMEN_SIZE = "| `specimen_size` | numeric | `m`: the specimen's characteristic dimension"
+BULK_FIELDS = ("sections", "properties", "bulk", "properties", "fields", "propertyNames", "enum")
+MAGNETIC_FIELDS = ("sections", "properties", "magnetic", "properties", "fields", "propertyNames", "enum")
+
+
+def condition_unit(unit: str) -> dict[str, Json]:
+    return {
+        "properties": {
+            "unit": {"const": unit},
+            "plus_minus": {"items": {"properties": {"unit": {"const": unit}}}},
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    ("document", "old", "new", "file", "expected"),
+    [
+        pytest.param(
+            "record_format.md",
+            DENSITY,
+            DENSITY + "\n| `bulk.porosity` | `1` | constant | `temperature` | none |",
+            "fields.json",
+            {
+                BULK_FIELDS: ["density", "porosity", "elemental_composition"],
+                ("replaces", "properties", "bulk.porosity"): {"$ref": "#/$defs/bulk.porosity"},
+                ("bulk.porosity",): {
+                    "properties": {
+                        "form": {"enum": ["constant"]},
+                        "unit": {"const": "1"},
+                        "label": False,
+                        "alternatives": {"items": {"$ref": "#/$defs/bulk.porosity"}},
+                    }
+                },
+            },
+            id="a_field_row_added",
+        ),
+        pytest.param(
+            "record_format.md",
+            REMANENCE + "\n",
+            "",
+            "fields.json",
+            {
+                MAGNETIC_FIELDS: ["saturation_magnetisation", "volume_susceptibility"],
+                ("replaces", "properties", "magnetic.remanence"): None,
+                ("magnetic.remanence",): None,
+            },
+            id="a_field_row_removed",
+        ),
+        pytest.param(
+            "record_format.md",
+            "| `kg/m3` | constant, table, interval |",
+            "| `kg/m3` | constant, table, interval, power_law |",
+            "fields.json",
+            {
+                ("bulk.density", "properties", "form"): {
+                    "enum": ["constant", "table", "interval", "power_law"]
+                }
+            },
+            id="a_form_added",
+        ),
+        pytest.param(
+            "record_format.md",
+            "| `kg/m3` | constant, table, interval |",
+            "| `kg/m3` | constant, interval |",
+            "fields.json",
+            {("bulk.density", "properties", "form"): {"enum": ["constant", "interval"]}},
+            id="a_form_removed",
+        ),
+        pytest.param(
+            "record_format.md",
+            "| `bulk.density` | `kg/m3` |",
+            "| `bulk.density` | `g/cm3` |",
+            "fields.json",
+            {("bulk.density", "properties", "unit"): {"const": "g/cm3"}},
+            id="a_unit_changed",
+        ),
+        pytest.param(
+            "record_format.md",
+            REMANENCE,
+            REMANENCE.removesuffix(" none |") + " `materica.magnetic.remanent.v1` on a constant |",
+            "fields.json",
+            {("magnetic.remanence", "properties", "label"): {"const": "materica.magnetic.remanent.v1"}},
+            id="a_label_added",
+        ),
+        pytest.param(
+            "record_format.md",
+            VISCOSITY_LABEL,
+            "| none |",
+            "fields.json",
+            {("fluid.dynamic_viscosity", "properties", "label"): False},
+            id="a_label_removed",
+        ),
+        pytest.param(
+            "record_format.md",
+            "composition (basis `mass_fraction`)",
+            "composition (basis `mass_fraction`, `mole_fraction`)",
+            "fields.json",
+            {
+                ("bulk.elemental_composition", "properties", "composition"): {
+                    "properties": {"basis": {"enum": ["mass_fraction", "mole_fraction"]}}
+                }
+            },
+            id="a_basis_added",
+        ),
+        pytest.param(
+            "provenance.md",
+            "| `temperature` | numeric | `K` | — |",
+            "| `temperature` | numeric | `K` | — |\n| `pressure` | numeric | `Pa` | — |",
+            "conditions.json",
+            {("units", "properties", "pressure"): condition_unit("Pa")},
+            id="a_numeric_condition_added",
+        ),
+        pytest.param(
+            "provenance.md",
+            "| `shear_rate` | numeric | `1/s` | \u2014 |\n",
+            "",
+            "conditions.json",
+            {("units", "properties", "shear_rate"): None},
+            id="a_numeric_condition_removed",
+        ),
+        pytest.param(
+            "provenance.md",
+            SPECIMEN_SIZE,
+            "| `specimen_size` | token | `small`, `large`",
+            "conditions.json",
+            {("units", "properties", "specimen_size"): None},
+            id="a_condition_no_longer_numeric",
+        ),
+        pytest.param(
+            "provenance.md",
+            "| `temperature` | numeric | `K` |",
+            "| `temperature` | numeric | `Cel` |",
+            "conditions.json",
+            {("units", "properties", "temperature"): condition_unit("Cel")},
+            id="a_condition_unit_changed",
+        ),
+    ],
+)
+def test_a_row_changed_in_the_text_changes_the_binding_the_writer_applies(
+    tmp_path: Path, document: str, old: str, new: str, file: str, expected: dict[tuple[str, ...], Json]
+) -> None:
+    """Each list a binding holds (a section's field names, the replaced fields, a field's forms, unit, label
+    and bases, a numeric condition's unit) comes from its row: a row added, removed or changed in a copy of
+    the text changes it, and the writer schema, which applies the binding by reference, follows."""
+    specification = copy_tree(tmp_path, gen_vocabulary.SPECIFICATION)
+    path = specification / document
+    text = path.read_text(encoding="utf-8")
+    assert old in text
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    definitions = json.loads(gen_vocabulary.generate(specification)[file])["$defs"]
+    for place, value in expected.items():
+        node = definitions
+        for name in place[:-1]:
+            node = node[name]
+        assert node.get(place[-1]) == value, place
+
+
+@pytest.mark.parametrize(
+    ("row", "problem"),
+    [
+        pytest.param({"Section.field": "`density`"}, "<section>.<field>", id="a_name_with_no_section"),
+        pytest.param(
+            {"Section.field": "`bulk.density.kind`"}, "<section>.<field>", id="a_name_of_three_parts"
+        ),
+        pytest.param(
+            {"Forms": "interval (basis `stated_bound`)"}, "a composition's only", id="a_basis_elsewhere"
+        ),
+        pytest.param({"Unit": '`{"value": 1}`'}, "a unit code or a status object", id="a_unit_of_no_form"),
+    ],
+)
+def test_a_field_row_the_binding_cannot_state_is_refused(row: dict[str, str], problem: str) -> None:
+    base = {"Section.field": "`bulk.density`", "Unit": "`kg/m3`", "Forms": "constant", "Requires": "none"}
+    with pytest.raises(TableError, match=re.escape(problem)):
+        gen_vocabulary.fields([{**base, "Label": "none", **row}])
+
+
+BINDING: Json = {"$ref": "vocabulary/tokens.json#/$defs/bound"}
+BOUND: dict[str, Json] = {
+    "tokens.json": {
+        "$defs": {
+            "basis": {"enum": ["stated", "inferred"]},
+            "count": {"type": "integer"},
+            "bound": {"properties": {"value": {"const": 1}}, "propertyNames": {"enum": ["value"]}},
+        }
+    }
+}
+
+
+def test_a_binding_of_the_vocabulary_is_left_out_of_the_reader() -> None:
+    """A binding binds a field's members to its row, which a read checks in its own steps: the reader schema
+    leaves the conjunct out, at its root and in its `$defs`, and the rest of the `allOf` stands."""
+    writer = changes(
+        ("$defs/value_field/allOf", [COMMON, BINDING]),
+        ("properties/nested/allOf", [BINDING]),
+    )
+    reader = reader_schema(writer, BOUND)
+    assert reader == reader_schema(changes(("$defs/value_field/allOf", [COMMON])), BOUND)
+
+
+@pytest.mark.parametrize(
+    "places",
+    [
+        pytest.param([("properties/kind", BINDING)], id="as_a_members_value"),
+        pytest.param([("$defs/value_field/properties/basis", BINDING)], id="as_a_value_in_the_defs"),
+        pytest.param(
+            [
+                ("$defs/value_field/if", {"allOf": [BINDING]}),
+                ("$defs/value_field/then", {"required": ["basis"]}),
+            ],
+            id="under_if",
+        ),
+    ],
+)
+def test_a_binding_applied_other_than_as_a_conjunct_is_refused(places: list[tuple[str, Json]]) -> None:
+    with pytest.raises(SchemaError):
+        reader_schema(changes(*places), BOUND)
+
+
+def test_the_shapes_leave_the_bindings_out() -> None:
+    """A TypedDict cannot narrow a member by the name it sits under: the conjunct goes, the other conjuncts
+    and the vocabulary's token lists stay."""
+    schema: Json = {"allOf": [{"$ref": "#/$defs/common"}, BINDING], "type": "integer"}
+    assert gen_shapes.as_read(schema) == {"allOf": [{"$ref": "#/$defs/common"}], "type": "number"}
+    assert gen_shapes.as_read({"allOf": [BINDING]}) == {}
+    assert gen_shapes.without_bindings(BOUND["tokens.json"]) == VOCABULARY["tokens.json"]

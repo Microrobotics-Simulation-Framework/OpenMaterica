@@ -46,9 +46,11 @@ def _vocabulary(name: str) -> Json:
 
 
 def _lists(name: str) -> dict[str, list[str]]:
+    """The file's lists of tokens; its other definitions bind names to their rows, and are no oracle."""
     return {
         list_name: [str(token) for token in listing(mapping(definition)["enum"])]
         for list_name, definition in mapping(_vocabulary(name)["$defs"]).items()
+        if "enum" in mapping(definition)
     }
 
 
@@ -220,27 +222,33 @@ def units() -> st.SearchStrategy[JsonValue]:
 
 
 @st.composite
-def plus_minus(draw: st.DrawFn) -> list[JsonValue]:
-    """Item 6: at most one entry of each kind, and one of unstated kind alone."""
+def plus_minus(draw: st.DrawFn, unit: str) -> list[JsonValue]:
+    """Item 6: at most one entry of each kind, one of unstated kind alone, each in the condition's unit."""
     unstated: JsonValue = {"status": "unstated"}
     stated: list[JsonValue] = list(LISTS["stated_as"])
     kinds = draw(st.sampled_from([*([kind] for kind in stated), stated, [unstated]]))
     return [
-        {"stated_as": kind, "value": draw(NOT_NEGATIVE), "unit": draw(units())}
+        {"stated_as": kind, "value": draw(NOT_NEGATIVE), "unit": unit}
         for kind in draw(st.permutations(kinds))
     ]
 
 
+def registered_unit(name: str) -> str:
+    """The unit a numeric condition registers (section 6.1), which its `unit` and its `plus_minus` entries'
+    hold: `record_format.md` section 4.2 holds a condition's unit to it as a field's to the field's."""
+    return str(mapping(CONDITIONS[name])["unit"])
+
+
 @st.composite
-def numeric_condition(draw: st.DrawFn, plan: Plan) -> Json:
+def numeric_condition(draw: st.DrawFn, plan: Plan, name: str) -> Json:
     found: Json = draw(based())
     if draw(st.booleans()):
         found["value"] = draw(NUMBERS)
     else:
         found["range"] = draw(ranges())
-    found["unit"] = draw(units())
+    found["unit"] = registered_unit(name)
     if optional(draw, plan, "conditions"):
-        found["plus_minus"] = draw(plus_minus())
+        found["plus_minus"] = draw(plus_minus(registered_unit(name)))
     if optional(draw, plan, "conditions"):
         found["set_or_measured"] = draw(st.sampled_from(LISTS["set_or_measured"]))
     return found
@@ -259,7 +267,7 @@ def conditions(draw: st.DrawFn, plan: Plan) -> Json:
         names = [] if plan.minimal else draw(st.lists(st.sampled_from(list(CONDITIONS)), unique=True))
     found: Json = {}
     for name in names:
-        shape = numeric_condition(plan) if name in NUMERIC_CONDITIONS else token_condition(name)
+        shape = numeric_condition(plan, name) if name in NUMERIC_CONDITIONS else token_condition(name)
         found[name] = shape_or_status(draw, plan.full("conditions"), shape, ANY_STATUS)
     return found
 
@@ -1187,16 +1195,18 @@ def _range_length(draw: st.DrawFn, found: Json) -> str:
 @fault("plus_minus_two_of_a_kind", "conditions", CONDITIONS_PLAN)
 def _two_of_a_kind(draw: st.DrawFn, found: Json) -> str:
     kind = draw(st.sampled_from(LISTS["stated_as"]))
-    numeric(found)["plus_minus"] = [{"stated_as": kind, "value": 1.0, "unit": "K"} for _ in range(2)]
+    unit = registered_unit(NUMERIC_CONDITIONS[0])
+    numeric(found)["plus_minus"] = [{"stated_as": kind, "value": 1.0, "unit": unit} for _ in range(2)]
     return "plus_minus"
 
 
 @fault("plus_minus_unstated_beside_stated", "conditions", CONDITIONS_PLAN)
 def _unstated_beside(draw: st.DrawFn, found: Json) -> str:
     stated = draw(st.sampled_from(LISTS["stated_as"]))
+    unit = registered_unit(NUMERIC_CONDITIONS[0])
     numeric(found)["plus_minus"] = [
-        {"stated_as": stated, "value": 1.0, "unit": "K"},
-        {"stated_as": {"status": "unstated"}, "value": 1.0, "unit": "K"},
+        {"stated_as": stated, "value": 1.0, "unit": unit},
+        {"stated_as": {"status": "unstated"}, "value": 1.0, "unit": unit},
     ]
     return "plus_minus"
 

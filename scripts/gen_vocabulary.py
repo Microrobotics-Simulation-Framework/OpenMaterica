@@ -19,6 +19,7 @@ import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import NamedTuple
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 SPECIFICATION = REPOSITORY / "docs" / "specification"
@@ -48,6 +49,8 @@ _LABEL = re.compile(r"[a-z0-9_]+(?:\.[a-z0-9_]+)+\.v[1-9][0-9]*")
 _LABEL_CELL = re.compile(r"`([^`]+)` on ([^`]*(?:`[^`]*`[^`]*)*)")
 # A numeric condition's cell: its unit's code span alone, or followed by a parenthetical or `: ` and prose.
 _UNIT_CELL = re.compile(r"`([^`]+)`(?: \([^`()]*\)|: [^`]*)?")
+# A field's name in section 4.1's table, `<section>.<field>`.
+_QUALIFIED = re.compile(r"[a-z0-9_]+\.[a-z0-9_]+")
 # The procedures section 4's `Step` column names for a code no step of the read gives (its paragraph above).
 PROCEDURES = ("scene", "USD read", "engine adapter", "build", "family evaluation", "mixing")
 # The steps of `read_side_contract.md` section 3.
@@ -191,25 +194,104 @@ def given_by(cell: str) -> dict[str, object]:
     raise TableError(f"expected steps of section 3, or procedures, in {cell!r}")
 
 
+class FieldRow(NamedTuple):
+    """A row of `record_format.md` section 4.1, as read: its unit (a code, or a status object), its forms, the
+    bases it allows a form, the conditions it requires, and its label, if any."""
+
+    unit: str | dict[str, str]
+    forms: list[str]
+    bases: dict[str, list[str]]
+    requires: list[str]
+    label: str | None
+
+
 def fields(rows: list[Row]) -> Vocabulary:
-    entries: dict[str, object] = {}
-    labels: list[str] = []
+    read: dict[str, FieldRow] = {}
     for name, row in zip(names(rows, "Section.field"), rows, strict=True):
-        unit = only_code(row["Unit"])
+        if not _QUALIFIED.fullmatch(name):
+            raise TableError(f"expected <section>.<field>, got {name!r}")
         forms, bases = field_forms(row["Forms"])
-        entry: dict[str, object] = {
-            "unit": json.loads(unit) if unit.startswith("{") else unit,
-            "forms": forms,
-            "requires": [] if row["Requires"] == "none" else code_list(row["Requires"], row["Requires"]),
-        }
-        if bases:
-            entry["bases"] = bases
-        if row["Label"] != "none":
-            label = field_label(row["Label"])
-            entry["label"] = label
-            labels += [] if label in labels else [label]
+        read[name] = FieldRow(
+            field_unit(name, only_code(row["Unit"])),
+            forms,
+            bases,
+            [] if row["Requires"] == "none" else code_list(row["Requires"], row["Requires"]),
+            None if row["Label"] == "none" else field_label(row["Label"]),
+        )
+    entries: dict[str, object] = {}
+    for name, field in read.items():
+        entry: dict[str, object] = {"unit": field.unit, "forms": field.forms, "requires": field.requires}
+        if field.bases:
+            entry["bases"] = field.bases
+        if field.label is not None:
+            entry["label"] = field.label
         entries[name] = entry
-    return {"$defs": {"label": {"enum": labels}}, "fields": entries}
+    labels = list(dict.fromkeys(field.label for field in read.values() if field.label is not None))
+    return {"$defs": {"label": {"enum": labels}, **field_bindings(read)}, "fields": entries}
+
+
+def field_bindings(rows: dict[str, FieldRow]) -> dict[str, object]:
+    """What the writer schema binds to the field names (maintainer, 2026-10-15): a material body's `sections`,
+    each section's `fields` closed to the names its rows register, and an overlay's `replaces`, closed to
+    `<section>.<field>`; each field, and each of its alternatives, bound to its row by `field_binding`."""
+    sections: dict[str, list[str]] = {}
+    for qualified in rows:
+        section, _, name = qualified.partition(".")
+        sections.setdefault(section, []).append(name)
+    return {
+        "sections": {
+            "description": "Each section's fields: the names its rows register, each bound to its row.",
+            "properties": {
+                section: {
+                    "properties": {
+                        "fields": {
+                            "propertyNames": enumeration(names),
+                            "properties": {name: {"$ref": f"#/$defs/{section}.{name}"} for name in names},
+                        }
+                    }
+                }
+                for section, names in sections.items()
+            },
+        },
+        "replaces": {
+            "description": "The fields an overlay may replace, each bound to its row.",
+            "propertyNames": enumeration(list(rows)),
+            "properties": {qualified: {"$ref": f"#/$defs/{qualified}"} for qualified in rows},
+        },
+        **{qualified: field_binding(qualified, row) for qualified, row in rows.items()},
+    }
+
+
+def field_unit(name: str, code: str) -> str | dict[str, str]:
+    """A field's unit: a code, or a status object holding its token alone (`{"status": "not_applicable"}`)."""
+    if not code.startswith("{"):
+        return code
+    found = re.fullmatch(r'\{"status": "([a-z_]+)"\}', code)
+    if found is None:
+        raise TableError(f"expected a unit code or a status object for {name}, got {code!r}")
+    return {"status": found[1]}
+
+
+def field_binding(qualified: str, row: FieldRow) -> dict[str, object]:
+    """A field's row as a schema of its members: the forms it takes, the bases it allows a composition, its
+    unit (a code, or a status object holding the registered token, whatever its reason), and its label or
+    none, applied to the field and to each of its alternatives."""
+    if isinstance(row.unit, str):
+        unit: object = {"const": row.unit}
+    else:
+        token = {"const": row.unit["status"]}
+        unit = {"type": "object", "required": ["status"], "properties": {"status": token}}
+    if set(row.bases) - {"composition"}:
+        raise TableError(f"a basis is a composition's only, not {sorted(set(row.bases) - {'composition'})}")
+    return {
+        "properties": {
+            "form": enumeration(row.forms),
+            "unit": unit,
+            "label": False if row.label is None else {"const": row.label},
+            **{form: {"properties": {"basis": enumeration(allowed)}} for form, allowed in row.bases.items()},
+            "alternatives": {"items": {"$ref": f"#/$defs/{qualified}"}},
+        }
+    }
 
 
 def field_label(cell: str) -> str:
@@ -261,7 +343,21 @@ def conditions(rows: list[Row]) -> Vocabulary:
         )
     # Each token condition's tokens again as an enumeration, which the writer schema binds its `token` to.
     tokens = {f"{name}_token": enumeration(found) for name, found in token_conditions.items()}
-    return {"$defs": tokens, "conditions": entries}
+    return {"$defs": {**tokens, "units": condition_units(entries)}, "conditions": entries}
+
+
+def condition_units(entries: dict[str, dict[str, object]]) -> dict[str, object]:
+    """What the writer schema binds to the condition names (maintainer, 2026-10-15): each numeric condition's
+    `unit`, and the `unit` of each entry of its `plus_minus`, which item 6 compares with the same unit, hold
+    its registered unit."""
+    units = {name: {"const": entry["unit"]} for name, entry in entries.items() if entry["shape"] == "numeric"}
+    return {
+        "description": "Each numeric condition's registered unit, in its unit and its plus_minus entries'.",
+        "properties": {
+            name: {"properties": {"unit": unit, "plus_minus": {"items": {"properties": {"unit": unit}}}}}
+            for name, unit in units.items()
+        },
+    }
 
 
 def required_with(cell: str, token_conditions: dict[str, list[str]]) -> dict[str, list[str]]:

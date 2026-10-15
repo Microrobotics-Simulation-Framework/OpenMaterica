@@ -925,14 +925,14 @@ class Record(TypedDict):
     """
     A record as a writer writes it (record_format.md, provenance.md and uncertainty.md): closed in its
     structure, with no member it does not define, and every token list the vocabulary's, but for what is not
-    yet written. Open until written: the names in `fields` and `replaces`, which the vocabulary registers and
-    a read checks, with each field's unit, forms and label, and a numeric condition's unit; the parameter
-    names of `per_parameter`; the namespaces in `extensions`, which a reader never checks; an interface
-    record's `body`; and the placeholders, any object until their members are named: the `table`, `power_law`,
-    `parameter_set` and `reference_data` forms' members, the `fit` record, and in provenance `assistance`,
-    `formulation`, `import`, `recipe`, `search` beside its weighting and inputs, and extraction's
-    `digitisation`. The status-object tokens are written here, by hand, and checked against provenance.md
-    section 1.
+    yet written. Each section's field names, an overlay's replaced fields, each field's forms, unit and label,
+    and a numeric condition's unit are bound to the specification's rows through the vocabulary. Open until
+    written: the parameter names of `per_parameter`; the namespaces in `extensions`, which a reader never
+    checks; an interface record's `body`; and the placeholders, any object until their members are named: the
+    `table`, `power_law`, `parameter_set` and `reference_data` forms' members, the `fit` record, and in
+    provenance `assistance`, `formulation`, `import`, `recipe`, `search` beside its weighting and inputs, and
+    extraction's `digitisation`. The status-object tokens are written here, by hand, and checked against
+    provenance.md section 1.
     """
 
     schema_version: Version

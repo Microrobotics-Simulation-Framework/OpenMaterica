@@ -13,11 +13,17 @@ it reads, so that its controls can give it a changed copy of either.
 import copy
 import json
 import re
+import shutil
 from collections.abc import Callable, Iterator
+from pathlib import Path
+from urllib.parse import urljoin
 
 import pytest
+from jsonschema import Draft202012Validator
+from referencing.jsonschema import DRAFT202012
 
 from materica.core.jsonio import JsonValue
+from scripts import gen_vocabulary
 from scripts.gen_vocabulary import (
     SPECIFICATION,
     between,
@@ -28,7 +34,7 @@ from scripts.gen_vocabulary import (
     specimen_facts,
     table,
 )
-from tests.spec_sync.schemas import SCHEMA, validator
+from tests.spec_sync.schemas import BASE, REGISTRY, SCHEMA, validator
 
 Schema = dict[str, JsonValue]
 Definitions = dict[str, Schema]
@@ -977,6 +983,62 @@ def test_each_value_field_check_can_fail(
 # Where the writer schema leaves a record open: a placeholder holding any JSON, or an object it does not
 # close, such as a map keyed by names it does not bind.
 ANY_JSON = ("json_object", "json_value")
+VOCABULARY = "vocabulary/"
+# A vocabulary file by name, read from this tree; the controls give a changed copy.
+Files = Callable[[str], Schema]
+
+
+def vocabulary_file(name: str) -> Schema:
+    return mapping(json.loads((SCHEMA / "vocabulary" / name).read_text(encoding="utf-8")))
+
+
+def bindings_of(definition: Schema, files: Files) -> list[Schema]:
+    """The bindings of the vocabulary that the `allOf` of `definition` applies."""
+    found: list[Schema] = []
+    for conjunct in listing(definition.get("allOf", [])):
+        target = mapping(conjunct).get("$ref")
+        if isinstance(target, str) and target.startswith(VOCABULARY):
+            name, _, pointer = target.removeprefix(VOCABULARY).partition("#")
+            node: JsonValue = files(name)
+            for step in filter(None, pointer.split("/")):
+                node = mapping(node)[step]
+            found.append(mapping(node))
+    return found
+
+
+def names_closed(binding: JsonValue) -> bool:
+    return isinstance(binding, dict) and "enum" in mapping(binding.get("propertyNames", {}))
+
+
+def is_map(subschema: JsonValue, definitions: Definitions) -> bool:
+    """Whether a member holding `subschema` holds an object keyed by names: one whose `additionalProperties`
+    is a schema."""
+    held = local(subschema)
+    return held is not None and isinstance(definitions[held].get("additionalProperties"), dict)
+
+
+def bound_maps(definitions: Definitions, files: Files) -> set[str]:
+    """The map members whose names a binding of the vocabulary closes wherever the writer reaches them: a
+    binding applied to a map's own definition (`replaces`), or one applied to a definition that gives, under
+    each of its members, the names of each map that member holds (each section's `fields`)."""
+    closed: dict[str, list[bool]] = {}
+    for name, definition in definitions.items():
+        for binding in bindings_of(definition, files):
+            if names_closed(binding):
+                for owner in definitions.values():
+                    for member, subschema in mapping(owner.get("properties", {})).items():
+                        if local(subschema) == name:
+                            closed.setdefault(member, []).append(True)
+            for member, subschema in mapping(definition.get("properties", {})).items():
+                held = local(subschema)
+                bound = mapping(mapping(binding.get("properties", {})).get(member, {}))
+                for inner, inner_schema in mapping(
+                    definitions[held].get("properties", {}) if held else {}
+                ).items():
+                    if is_map(inner_schema, definitions):
+                        inner_binding = mapping(bound.get("properties", {})).get(inner)
+                        closed.setdefault(inner, []).append(names_closed(inner_binding))
+    return {member for member, places in closed.items() if all(places)}
 
 
 def opens(subschema: JsonValue, definitions: Definitions, seen: frozenset[str] = frozenset()) -> bool:
@@ -997,22 +1059,22 @@ def opens(subschema: JsonValue, definitions: Definitions, seen: frozenset[str] =
     return subschema.get("propertyNames") is not False and False not in closing
 
 
-def open_members(writer: Schema, definitions: Definitions) -> set[str]:
+def open_members(writer: Schema, definitions: Definitions, files: Files) -> set[str]:
     owners = [writer, *definitions.values()]
     return {
         member
         for owner in owners
         for member, subschema in mapping(owner.get("properties", {})).items()
         if opens(subschema, definitions)
-    }
+    } - bound_maps(definitions, files)
 
 
-def check_description(writer: Schema, definitions: Definitions) -> None:
+def check_description(writer: Schema, definitions: Definitions, files: Files = vocabulary_file) -> None:
     """The writer's description says it is closed but for the members it names, each in a code span: exactly
-    those that open it."""
+    those that open it, a map whose names a binding of the vocabulary closes being closed."""
     description = str(writer["description"])
     assert "closed in its structure" in description
-    assert set(re.findall(r"`([a-z_]+)`", description)) == open_members(writer, definitions)
+    assert set(re.findall(r"`([a-z_]+)`", description)) == open_members(writer, definitions, files)
 
 
 def test_the_writer_schema_is_closed_but_where_its_description_says() -> None:
@@ -1050,3 +1112,244 @@ def test_the_description_check_fails_on_a_place_left_unnamed() -> None:
     writer["description"] = str(writer["description"]).replace("`digitisation`", "digitisation")
     with pytest.raises(AssertionError):
         check_description(writer, writer["$defs"])
+
+
+def changed_file(name: str, change: Callable[[Schema], None]) -> Files:
+    """The vocabulary files, `name` changed by `change`."""
+    changed = vocabulary_file(name)
+    change(changed)
+    return lambda other: changed if other == name else vocabulary_file(other)
+
+
+def editing(*path: str, to: JsonValue = None) -> Callable[[Schema], None]:
+    """A change of a vocabulary file: the member at `path` of its `$defs` set to `to`, or removed for None."""
+
+    def change(contents: Schema) -> None:
+        *inner, last = path
+        node = mapping(contents["$defs"])
+        for name in inner:
+            node = mapping(node[name])
+        if to is None:
+            del node[last]
+        else:
+            node[last] = to
+
+    return change
+
+
+SECTION_NAMES = ("sections", "properties", "magnetic", "properties", "fields", "propertyNames")
+
+
+@pytest.mark.parametrize(
+    ("change", "files"),
+    [
+        pytest.param(
+            removing("sections", "allOf"), vocabulary_file, id="the_writer_applies_no_section_binding"
+        ),
+        pytest.param(
+            removing("replaces", "allOf"), vocabulary_file, id="the_writer_applies_no_replaces_binding"
+        ),
+        pytest.param(
+            None, changed_file("fields.json", editing(*SECTION_NAMES)), id="one_sections_names_open"
+        ),
+        pytest.param(
+            None, changed_file("fields.json", editing("replaces", "propertyNames")), id="replaced_names_open"
+        ),
+    ],
+)
+def test_the_description_check_fails_where_a_binding_no_longer_closes_a_map(
+    change: Callable[[Definitions], None] | None, files: Files
+) -> None:
+    """The description no longer names `fields` and `replaces`, which the vocabulary's bindings close: a map a
+    binding leaves open, in one section or in the writer, is a place the description must name."""
+    writer = copy.deepcopy(WRITER)
+    if change is not None:
+        change(writer["$defs"])
+    with pytest.raises(AssertionError):
+        check_description(writer, writer["$defs"], files)
+
+
+# The bindings of the rows (maintainer, 2026-10-15): `record_format.md` section 4.1's, which close each
+# section's field names and an overlay's replaced fields and bind each field's forms, bases, unit and label,
+# and `provenance.md` section 6.1's numeric units. The vocabulary generates each from its rows; the writer
+# schema applies each by `allOf`, at the one definition named here, and writes no list of its own.
+APPLIED = {
+    "sections": "vocabulary/fields.json#/$defs/sections",
+    "replaces": "vocabulary/fields.json#/$defs/replaces",
+    "conditions": "vocabulary/conditions.json#/$defs/units",
+}
+
+
+def status_unit(token: str) -> Schema:
+    """A unit registered as a status object: one holding the same token, whatever its reason (section 4.2)."""
+    return {"type": "object", "required": ["status"], "properties": {"status": {"const": token}}}
+
+
+def field_binding(qualified: str, row: Schema) -> Schema:
+    unit = row["unit"]
+    bases = mapping(row.get("bases", {}))
+    label = row.get("label")
+    return {
+        "properties": {
+            "form": {"enum": row["forms"]},
+            "unit": {"const": unit} if isinstance(unit, str) else status_unit(str(mapping(unit)["status"])),
+            "label": False if label is None else {"const": label},
+            **{form: {"properties": {"basis": {"enum": allowed}}} for form, allowed in bases.items()},
+            "alternatives": {"items": {"$ref": f"#/$defs/{qualified}"}},
+        }
+    }
+
+
+def check_bindings(definitions: Definitions, files: Files) -> None:
+    """Each binding applied by the definition named for it and by no other, holding exactly what the
+    vocabulary's rows give: each section's field names, the replaced fields, each field's row, and each
+    numeric condition's unit, in its `unit` and its `plus_minus` entries'."""
+    applied: dict[str, list[str]] = {}
+    for name, definition in definitions.items():
+        for conjunct in listing(definition.get("allOf", [])):
+            if str(target := mapping(conjunct).get("$ref")).startswith(VOCABULARY):
+                applied.setdefault(name, []).append(str(target))
+    assert applied == {name: [target] for name, target in APPLIED.items()}
+    rows = mapping(files("fields.json")["fields"])
+    bound = mapping(files("fields.json")["$defs"])
+    sections: dict[str, list[str]] = {}
+    for qualified in rows:
+        section, _, name = qualified.partition(".")
+        sections.setdefault(section, []).append(name)
+    assert list(members(definitions, "sections")) == list(sections)
+    assert mapping(bound["sections"])["properties"] == {
+        section: {
+            "properties": {
+                "fields": {
+                    "propertyNames": {"enum": names},
+                    "properties": {name: {"$ref": f"#/$defs/{section}.{name}"} for name in names},
+                }
+            }
+        }
+        for section, names in sections.items()
+    }
+    replaces = mapping(bound["replaces"])
+    assert replaces["propertyNames"] == {"enum": list(rows)}
+    assert replaces["properties"] == {qualified: {"$ref": f"#/$defs/{qualified}"} for qualified in rows}
+    for qualified, row in rows.items():
+        assert bound[qualified] == field_binding(qualified, mapping(row)), qualified
+    conditions = mapping(files("conditions.json")["conditions"])
+    units = {
+        name: mapping(row)["unit"] for name, row in conditions.items() if mapping(row)["shape"] == "numeric"
+    }
+    assert mapping(mapping(files("conditions.json")["$defs"])["units"])["properties"] == {
+        name: {
+            "properties": {
+                "unit": {"const": unit},
+                "plus_minus": {"items": {"properties": {"unit": {"const": unit}}}},
+            }
+        }
+        for name, unit in units.items()
+    }
+
+
+def test_the_writer_binds_each_name_to_its_row_through_the_vocabulary() -> None:
+    check_bindings(DEFINITIONS, vocabulary_file)
+
+
+@pytest.mark.parametrize(
+    ("change", "files"),
+    [
+        pytest.param(removing("sections", "allOf"), vocabulary_file, id="sections_unbound"),
+        pytest.param(removing("replaces", "allOf"), vocabulary_file, id="replaces_unbound"),
+        pytest.param(removing("conditions", "allOf"), vocabulary_file, id="condition_units_unbound"),
+        pytest.param(
+            setting([{"$ref": "vocabulary/fields.json#/$defs/sections"}], "section", "allOf"),
+            vocabulary_file,
+            id="a_binding_applied_elsewhere",
+        ),
+        pytest.param(
+            setting({"$ref": "#/$defs/section"}, "sections", "properties", "thermal"),
+            vocabulary_file,
+            id="a_section_with_no_row",
+        ),
+        pytest.param(
+            None,
+            changed_file("fields.json", editing(*SECTION_NAMES)),
+            id="a_sections_names_open",
+        ),
+        pytest.param(
+            None,
+            changed_file(
+                "fields.json", editing("bulk.density", "properties", "form", to={"enum": ["constant"]})
+            ),
+            id="a_form_dropped",
+        ),
+        pytest.param(
+            None,
+            changed_file("fields.json", editing("bulk.density", "properties", "unit", to=None)),
+            id="a_unit_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file("fields.json", editing("magnetic.remanence", "properties", "label", to=None)),
+            id="a_label_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file(
+                "fields.json", editing("bulk.elemental_composition", "properties", "composition", to=None)
+            ),
+            id="a_basis_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file(
+                "fields.json", editing("fluid.dynamic_viscosity", "properties", "alternatives", to=None)
+            ),
+            id="alternatives_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file("conditions.json", editing("units", "properties", "temperature", to=None)),
+            id="a_condition_unit_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file(
+                "conditions.json",
+                editing("units", "properties", "shear_rate", "properties", "plus_minus", to=None),
+            ),
+            id="a_plus_minus_unit_unbound",
+        ),
+    ],
+)
+def test_the_binding_check_can_fail(change: Callable[[Definitions], None] | None, files: Files) -> None:
+    definitions = copy.deepcopy(DEFINITIONS)
+    if change is not None:
+        change(definitions)
+    with pytest.raises(AssertionError):
+        check_bindings(definitions, files)
+
+
+def test_a_field_the_text_adds_is_taken_by_the_writer_as_it_stands(tmp_path: Path) -> None:
+    """The writer schema holds no list of field names, forms or units: a row added to a copy of the text,
+    generated into the vocabulary, is a field the unchanged writer takes, and the vocabulary in this tree,
+    where the row is absent, refuses."""
+    specification = tmp_path / "specification"
+    shutil.copytree(SPECIFICATION, specification)
+    path = specification / "record_format.md"
+    row = "| `bulk.density` | `kg/m3` | constant, table, interval | `temperature`, `density_kind` | none |"
+    text = path.read_text(encoding="utf-8")
+    assert row in text
+    path.write_text(text.replace(row, row + "\n| `bulk.porosity` | `1` | constant | none | none |"), "utf-8")
+    generated = json.loads(gen_vocabulary.generate(specification)["fields.json"])
+    porosity = edited(CONSTANT, (("unit",), "1"))
+    body: JsonValue = {"sections": {"bulk": {"fields": {"porosity": porosity}}}}
+    registry = REGISTRY.with_resource(str(generated["$id"]), DRAFT202012.create_resource(generated))
+    checker = Draft202012Validator(
+        {"$ref": urljoin(BASE, "record.writer.json#/$defs/material_body")}, registry=registry
+    )
+
+    def with_the_row(value: JsonValue) -> list[str]:
+        # types-jsonschema types its second overload's instance as unknown.
+        return [error.message for error in checker.iter_errors(value)]  # pyright: ignore[reportUnknownMemberType]
+
+    assert with_the_row(body) == []
+    assert validator("record.writer.json#/$defs/material_body")(body) != []
+    assert with_the_row(edited(body, (("sections", "bulk", "fields", "porosity", "unit"), "kg/m3"))) != []

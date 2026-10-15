@@ -31,8 +31,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   `property/test_record_mutants.py`, `property/test_writer_mutants.py`), and a feature audit that fails when
   its examples stop reaching what the specification distinguishes;
 - the `CASES.md` check: a case file changed after its row (`spec_sync/test_cases_md.py`);
-- the value-field checks: a member table, a status row or a quote changed, and the schema changed
-  (`spec_sync/test_value_fields.py`);
+- the value-field checks: a member table, a status row or a quote changed, the schema changed, and a binding
+  of the vocabulary changed or no longer applied (`spec_sync/test_value_fields.py`);
 - the name-overlap check: a reused name or a slip seeded into a schema, the vocabulary or an example, and its
   allowlist broken (`spec_sync/test_name_overlaps.py`);
 - the reason-step check: the table given a step its text lacks or lacking one (step 6 for an overlay among
