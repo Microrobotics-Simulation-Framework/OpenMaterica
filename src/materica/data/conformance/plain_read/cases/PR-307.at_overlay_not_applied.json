@@ -1,0 +1,110 @@
+{
+  "case": "PR-307",
+  "variant": "at_overlay_not_applied",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_table.json",
+      "density_table_overlay.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:b9b82cc6c3611f1fef7e12d6ff2f21e663d4984b316b6c1f0f9e02c5f0c202a7"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 350.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "overlay",
+        "field": "bulk.density",
+        "overlay": {
+          "id": "conformance/density_table_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:b25b48ee1abdbeb0a34ad7ba57ad8ed0ca22448a549e4b623320211e90e55c60"
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      },
+      {
+        "acceptance": "extrapolation",
+        "record": {
+          "id": "conformance/density_table_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:b25b48ee1abdbeb0a34ad7ba57ad8ed0ca22448a549e4b623320211e90e55c60"
+        },
+        "field": "bulk.density",
+        "method": "constant",
+        "law": "conformance fixture: the end value held constant",
+        "basis": "conformance fixture: an illustrative basis",
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "outside_range",
+        "condition": "temperature"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "not_met",
+        "record": {
+          "status": "not_applicable"
+        },
+        "operating": {
+          "value": 350.0,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "density_kind",
+        "status": "met",
+        "record": {
+          "token": "apparent",
+          "basis": "stated"
+        }
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

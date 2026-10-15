@@ -1,0 +1,76 @@
+{
+  "case": "PR-044",
+  "variant": "refused_parameter_set_without_family_suite",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "claims": {
+    "family_evaluation": false
+  },
+  "inputs": {
+    "records": [
+      "density_alternatives_parameter_set_and_met.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:8c9fe86c88762229281a5334157d926c18d8c2d9d8a0d19b7832cd8e66c91de0"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered",
+        "alternative": 0
+      },
+      {
+        "code": "family_suite_absent",
+        "alternative": 0
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

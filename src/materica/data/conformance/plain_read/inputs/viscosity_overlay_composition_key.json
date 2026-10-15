@@ -1,0 +1,184 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "overlay",
+  "id": "conformance/viscosity_overlay_fixture",
+  "version": "1.0.0",
+  "name": "Viscosity overlay (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:59a13baa4bf8739bd8503025fcb1800b7c81addb58a9a8392bb02723fa1a271a",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "purpose": "measurement",
+    "base": {
+      "id": "conformance/overlaid_material_fixture",
+      "version": "1.0.0",
+      "content_hash": "sha256:aca3f295927d7646d4620e6dc6f297f284d22b20612cd1505a712842e272b65d"
+    },
+    "scope": {
+      "consumer": "conformance"
+    },
+    "replaces": {
+      "fluid.dynamic_viscosity": {
+        "form": "constant",
+        "unit": "Pa.s",
+        "value": 0.000695,
+        "conditions": {
+          "temperature": {
+            "value": 310.15,
+            "unit": "K",
+            "basis": "stated"
+          },
+          "shear_rate": {
+            "range": [
+              10.0,
+              1000.0
+            ],
+            "unit": "1/s",
+            "basis": "stated"
+          }
+        },
+        "specimen": {
+          "preparation": {
+            "text": "conformance fixture: the overlay's own preparation",
+            "basis": "stated"
+          }
+        },
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: the overlay's own review, not yet done"
+          }
+        },
+        "label": "materica.fluid.newtonian.v1"
+      },
+      "bulk.elemental_composition": {
+        "form": "composition",
+        "unit": "1",
+        "composition": {
+          "basis": "mass_fraction",
+          "sum_rule": "partial",
+          "components": [
+            {
+              "component": "element:H",
+              "fraction": 0.11
+            },
+            {
+              "component": "element:O",
+              "fraction": 0.75
+            },
+            {
+              "component": "element:C",
+              "fraction": 0.12
+            }
+          ]
+        },
+        "conditions": {},
+        "statistics": {
+          "central": {
+            "status": "not_applicable"
+          },
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "not_applicable"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "not_applicable"
+          },
+          "max": {
+            "status": "not_applicable"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: the overlay's own review, not yet done"
+          }
+        },
+        "specimen": {
+          "preparation": {
+            "text": "conformance fixture: the overlay's own preparation",
+            "basis": "stated"
+          }
+        }
+      }
+    }
+  }
+}
