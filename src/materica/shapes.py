@@ -599,14 +599,6 @@ class CaseCompare(TypedDict):
     exact: NotRequired[bool]
 
 
-class CaseOperation(TypedDict):
-    """
-    A case that is not a read (README.md, "Operations").
-    """
-
-    operation: Literal["content_hash", "list_records"]
-
-
 class OverlayScope(TypedDict):
     """
     record_format.md section 4.4 item 3.
@@ -1191,6 +1183,18 @@ class ReadResult(TypedDict):
     provenance: NotRequired[JsonObject]
     labels: NotRequired[list[str]]
     assumption: NotRequired[JsonObject]
+
+
+class CaseOperation(TypedDict):
+    """
+    A case that is not a read (README.md, "Operations"), or a sampling case's draws mapped through a record's
+    structure (README.md, "Case files"): the shape of each normal and uniform drawn, and of the result, are
+    not yet specified.
+    """
+
+    operation: Literal["content_hash", "list_records", "transform_draws"]
+    normals: NotRequired[list[JsonValue]]
+    uniforms: NotRequired[list[JsonValue]]
 
 
 class ConstantField(FieldMembers):

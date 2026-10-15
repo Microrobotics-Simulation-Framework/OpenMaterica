@@ -71,6 +71,11 @@ def test_the_suites_are_the_readmes() -> None:
     assert codes(sentence[1]) == CASE["$defs"]["suite"]["enum"]
 
 
+def test_the_operations_are_the_readmes() -> None:
+    named = re.findall(r'\{"operation": "([a-z_]+)"', document("README.md"))
+    assert sorted(named) == sorted(CASE["$defs"]["case_operation"]["properties"]["operation"]["enum"])
+
+
 def item(document_name: str, start: str) -> str:
     """The text of the numbered item of `document_name` that begins with `start`, up to the next item."""
     found = re.search(rf"^{re.escape(start)}(.*?)(?=^\d+\. |^#|\Z)", document(document_name), re.M | re.S)
@@ -118,8 +123,14 @@ def test_the_read_statuses_are_the_result_tables() -> None:
             "| `met`, `not_met` or `unknown`.",
             "| `met`, `partly_met`, `not_met` or `unknown`.",
         ),
+        (
+            test_the_operations_are_the_readmes,
+            "README.md",
+            '`{"operation": "transform_draws", "normals"',
+            '`{"operation": "map_draws", "normals"',
+        ),
     ],
-    ids=["purpose", "status_object", "read_status"],
+    ids=["purpose", "status_object", "read_status", "operation"],
 )
 def test_the_token_checks_can_fail(
     check: Callable[[], None], name: str, old: str, new: str, monkeypatch: pytest.MonkeyPatch
