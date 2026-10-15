@@ -44,6 +44,12 @@
     }
   },
   "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "no_pick"
+      }
+    ],
     "alternative_values": [
       {
         "alternative": 0,
@@ -220,6 +226,8 @@
   },
   "compare": {
     "members": [
+      "status",
+      "reasons",
       "value",
       "alternative_values",
       "unit",

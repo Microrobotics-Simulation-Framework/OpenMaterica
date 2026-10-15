@@ -392,7 +392,7 @@
     "PR-044.alternatives_empty.json": "S2a-4",
     "PR-044.alternatives_not_list.json": "S2a-4",
     "PR-044.table_at_edge_not_set_aside.json": "S4",
-    "PR-044.table_outside_range_not_set_aside.json": "S4",
+    "PR-044.table_outside_range_set_aside.json": "S4",
     "PR-045.condition_range_reversed.json": "S2a-2",
     "PR-045.condition_token_of_another_row.json": "S2a-2",
     "PR-045.fact_other_without_text.json": "S2a-2",
