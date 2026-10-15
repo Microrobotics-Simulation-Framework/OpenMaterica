@@ -266,7 +266,7 @@ them; where the two differ, these tables hold. The vocabulary grows by minor ver
 | `species` | `{"ncbi_taxon": <integer>, "label": <text>, "basis"}`, an NCBI Taxonomy identifier |
 | `anatomical_site` | `{"uberon": "UBERON:<digits>", "label": <text>, "basis"}` |
 | `tissue_state` | `{"token": "in_vivo" \| "ex_vivo_fresh" \| "frozen_thawed" \| "fixed" \| "phantom", "basis"}` |
-| `disease_and_treatment_state` | `{"token": "normal" \| "diseased" \| "treated", "text": <which>, "basis"}` |
+| `disease_and_treatment_state` | `{"token": "normal" \| "diseased" \| "treated", "text": <which>, "basis"}`: `text` names the disease or the treatment, and is present exactly when `token` is `diseased` or `treated` |
 | `preparation` | `{"text": <text>, "basis"}` |
 | `preservation` | `{"token": "none" \| "refrigerated" \| "frozen" \| "fixed_formalin" \| "other", "text": <text, required for other>, "basis"}` |
 | `post_mortem_interval` | `{"value", "unit": "s", "basis"}` |
