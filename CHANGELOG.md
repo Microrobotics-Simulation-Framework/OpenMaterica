@@ -12,6 +12,28 @@ recorded in that repository's CHANGELOG.
 
 ## [Unreleased]
 
+### Added
+- The read's steps 7 and 8 (S2a-2; `read_side_contract.md` section 3). Step 7 finds the target field, and
+  gives `absent` where the record holds none; a field holding alternatives waits for S2a-3. Step 8 refuses a
+  form the field's row does not allow (`form_not_registered`); a value field, form or section `specimen` that
+  breaks its shape, a member one slip from one named at its place (in the field, or in the envelope, the body
+  or a section, which refuses every field read from it), or a token the reader knows in a member whose row
+  does not allow it (`form_invalid`); a token it knows for no member of that name (`unknown_token`); and a
+  withheld value (`withheld`), each check made and every reason given. Beyond shapes it checks counts, ranges
+  in order, signs and bounds, a composition's components, an evidence entry withheld whole or not at all, a
+  statistics block's conditional members, an uncertainty's rules, and each status object's place and token
+  (`provenance.md` section 1 item 5). A form whose own member waits for S2b or S3 raises
+  `NotImplementedError` unless a shared member refuses the field (`core/fields.py`, `core/value_shapes.py`).
+  Step 8 reads the status tokens each member allows from the generated shapes, and a specimen fact's fixed
+  members, and a disease or treatment state's text, as the maintainer's rulings settle them.
+- Step 0 refuses, as `request_incomplete`, a request member one slip from one the request's shape names, a
+  field the vocabulary does not register, and a requirement holding a declaration's members.
+- `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
+  name-overlap check share. A word made plural or singular must be a word: the empty string between two
+  underscores is none.
+- `Vocabulary.token_lists`, every token list of the vocabulary by its name, a fact's fixed members, and
+  `STATUS_TOKENS`, the status tokens from the generated shapes (`core/vocabulary.py`).
+
 ### Schema
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
   the eight forms, or alternatives; the constant, interval, composition and evidence forms in full; conditions
@@ -101,6 +123,26 @@ recorded in that repository's CHANGELOG.
   removed. Git exports `GIT_DIR` to the commands it runs, `git rebase --exec` among them, so the suite run
   that way re-initialised the outer repository, setting `core.bare` in its shared config, and committed onto
   its HEAD (`tests/unit/throwaway_git.py`, `test_throwaway_git.py`).
+- T1 (S2a-2): step 8 against the writer schema, with each field's binding to its row, and the generated reader
+  `$defs`, on every value field of the conformance inputs and on one-fault variants of five full fields: what
+  the writer accepts step 8 accepts, what step 8 refuses as `form_invalid` the reader refuses, and the
+  converse. The exceptions are grouped by kind, each kind with its reason and the case files whose read field
+  breaks the relation (12 for the first, 48 for the second), computed from the generated files as the test
+  runs, an unlisted or stale one failing it; and the token lists step 8 knows by member name are held to the
+  writer's (`tests/spec_sync/test_t1.py`).
+- Hypothesis properties of step 8, the S2 design's HP3 and HP5: one fault of a 95-fault catalogue written
+  from the text gives exactly the codes its rule gives, two faults in two parts give both, and members the
+  reader does not know never change the outcome; 24 mutants of step 8 each killed at both sizes
+  (`tests/property/test_value_field_properties.py`, `test_value_field_mutants.py`, in the records shard).
+- A property of the one-slip relation against a neighbour generator written from section 10, the oracle the
+  read and the name-overlap check do not share, with 12 mutants (`tests/property/test_slip_properties.py`).
+- A table of every position in a material record and a read request where a member the reader does not know
+  is ignored or refused, held to the text, the schemas and the read
+  (`tests/spec_sync/unknown_member_positions.json`, `test_unknown_member_positions.py`).
+- A fourth fuzz target, raw bytes into step 8, with a fault seeded behind a rare conjunction for CI's control
+  (`tests/fuzz/read_field_bytes.py`).
+- 24 case files that end at step 0 or 8 on checks S2a-2 builds are run at S2a-2; 579 case files pass, and 295
+  wait for a later step (`tests/spec_sync/case_steps.json`).
 - Each new check is shown failing on seeded faults.
 
 ## [0.1.0.dev1] - 2026-10-14
