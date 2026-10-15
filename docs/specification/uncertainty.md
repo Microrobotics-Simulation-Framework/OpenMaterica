@@ -258,7 +258,7 @@ that name, in a member whose row does not allow it (`student_t` in a block's `di
 | FE-040 | family evaluation | an unknown uncertainty-structure token refuses the parameter set |
 | FE-041 | family evaluation | a nominal vector from an ensemble is refused |
 | FE-042 | family evaluation | `marginals` is returned with dependence unstated |
-| PR-157 | plain read | a table's block applies to each value, between knots included; a 0.1.0 reader refuses a table that holds `points` (`points_unsupported`); a numeric `mean` on a table's block is returned as stored |
+| PR-157 | plain read | a table's block applies to each value, between knots included; a 0.1.0 reader refuses a table with a `points` member, whatever it holds, `[]` included (`points_unsupported`); a numeric `mean` on a table's block is returned as stored |
 | SA-001 | sampling | a spread whose `represents` differs from the requirement's, or is unstated, is not sampled |
 | SA-002 | sampling | a constant with no reported spread is not sampled without a declared distribution |
 | SA-003 | sampling | an interval is not sampled without a declared distribution |

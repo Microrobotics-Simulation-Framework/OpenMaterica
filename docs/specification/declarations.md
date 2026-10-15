@@ -365,7 +365,7 @@ The sheet is one JSON document per build. [BC-033]
 | BC-028 | build checks | every result names its model and the region, interval or record it was read for |
 | BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported; its other refusals stand |
 | BC-030 | build checks | a tolerance watch holds the interval, or the accept list, within which the entry stays met, narrowed by a stated bound, each end rounded inward; a waived `condition_uncertain` gets the tolerance's interval |
-| BC-031 | build checks | a form-range watch is emitted for every table or power law, unwidened |
+| BC-031 | build checks | a form-range watch holding the readable range is emitted for every table or power law, unwidened |
 | BC-032 | build checks | an operating condition on a table knot is noted (planned with R7) |
 | BC-033 | build checks | the sheet holds every member of section 9 (planned with R7) |
 | BC-034 | build checks | a parameter with no derivation is reported as unexplained (planned with R7) |

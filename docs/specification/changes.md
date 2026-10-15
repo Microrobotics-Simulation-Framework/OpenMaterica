@@ -235,9 +235,11 @@ bounds` outside its range is refused (PR-307, BC-019); two extrapolations naming
 lies, outside the readable range included, `outside_range` standing beside `at_edge` there (PR-018); no
 extrapolation is applied across a declared edge: where an edge lies between the operating value and the
 readable range's nearest end, or on that end, the read gives `outside_range` and no value, and an evaluator
-refuses as at the edge (PR-307, TE-010); a 0.1.0 reader refuses a table that holds `points` with the new
-reason `points_unsupported` (PR-157); the table evaluation cases take the `evaluate` operation, a tolerance
-per precision, a refusal at an edge that returns no number, absent or NaN, and stops the run, and the inside
-derivative at every end of the readable range, none where it is one point (TE-007, TE-010, TE-012); and
-outside the readable range an evaluator returns the value at its nearest end, from inside, with a zero
-derivative, or no number, so clamping is a constant extrapolation only at the readable range's ends (TE-003).
+refuses as at the edge (PR-307, TE-010); a 0.1.0 reader refuses a table with a `points` member, whatever it
+holds, with the new reason `points_unsupported` (PR-157); the record checks flag a table that breaks its
+structural rules, `source_range`'s included (RC-008); the table evaluation cases take the `evaluate`
+operation, a tolerance per precision, a refusal at an edge that returns no number, absent or NaN, and stops
+the run, and the inside derivative at every end of the readable range, none where it is one point (TE-007,
+TE-010, TE-012); and outside the readable range an evaluator returns the value at its nearest end, from
+inside, with a zero derivative, or no number, so clamping is a constant extrapolation only at the readable
+range's ends (TE-003).
