@@ -207,7 +207,8 @@ class Schemas:
             return UNKNOWN
         if "$ref" in node:
             reference = str(node["$ref"])
-            if reference.endswith(("/json_value", "/json_object")) or "/status_" in reference:
+            # Any value, a placeholder not yet written, or a status object: no meaning of its own.
+            if reference.endswith(("/json_value", "/json_object", "/placeholder")) or "/status_" in reference:
                 return UNKNOWN
             return self.shape(*self.resolve(reference, current), depth + 1)
         if "enum" in node:

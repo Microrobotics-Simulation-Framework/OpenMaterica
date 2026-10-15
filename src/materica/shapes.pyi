@@ -1069,6 +1069,12 @@ class Extraction(TypedDict):
 
 Extension: TypeAlias = "JsonObject"
 
+Placeholder: TypeAlias = dict[str, "JsonValue"]
+"""
+A member whose shape is not yet written, in a member that may hold a status object instead: any object but one
+holding status, which is a status object and holds a token its row allows (provenance.md section 1 item 5).
+"""
+
 JsonValue: TypeAlias = Union[bool, float, str, list["JsonValue"], "JsonObject"] | None
 
 JsonObject: TypeAlias = dict[str, JsonValue]
@@ -1143,7 +1149,7 @@ class TableField(FieldMembers):
     """
 
     form: Literal["table"]
-    table: JsonObject | StatusWithheld
+    table: Placeholder | StatusWithheld
     conditions: Conditions
     statistics: FieldStatistics
 
@@ -1153,7 +1159,7 @@ class PowerLawField(FieldMembers):
     """
 
     form: Literal["power_law"]
-    power_law: JsonObject | StatusWithheld
+    power_law: Placeholder | StatusWithheld
     conditions: Conditions
     statistics: FieldStatistics
 
@@ -1183,7 +1189,7 @@ class ParameterSetField(FieldMembers):
     """
 
     form: Literal["parameter_set"]
-    parameter_set: JsonObject | StatusWithheld
+    parameter_set: Placeholder | StatusWithheld
     conditions: Conditions
     statistics: FieldStatistics
 
@@ -1194,7 +1200,7 @@ class ReferenceDataField(FieldMembers):
     """
 
     form: Literal["reference_data"]
-    reference_data: JsonObject | StatusWithheld
+    reference_data: Placeholder | StatusWithheld
     conditions: Conditions
     statistics: StatisticsBlock | StatusWithheldOrNotApplicable
 
@@ -1215,7 +1221,7 @@ Provenance = TypedDict(
         "source": NotRequired[Source],
         "extraction": Extraction,
         "evidence": NotRequired[Evidence],
-        "assistance": StatusNone | JsonObject,
+        "assistance": StatusNone | Placeholder,
         "review": StatusNotChecked | Review,
         "derivation": NotRequired[Derivation],
         "formulation": NotRequired[JsonObject],

@@ -277,7 +277,7 @@
       "required": ["form", "table", "conditions", "statistics"],
       "properties": {
         "form": {"const": "table"},
-        "table": {"anyOf": [{"$ref": "#/$defs/json_object"}, {"$ref": "#/$defs/status_withheld"}]},
+        "table": {"anyOf": [{"$ref": "#/$defs/placeholder"}, {"$ref": "#/$defs/status_withheld"}]},
         "conditions": {"$ref": "#/$defs/conditions"},
         "statistics": {"$ref": "#/$defs/field_statistics"}
       },
@@ -290,7 +290,7 @@
       "required": ["form", "power_law", "conditions", "statistics"],
       "properties": {
         "form": {"const": "power_law"},
-        "power_law": {"anyOf": [{"$ref": "#/$defs/json_object"}, {"$ref": "#/$defs/status_withheld"}]},
+        "power_law": {"anyOf": [{"$ref": "#/$defs/placeholder"}, {"$ref": "#/$defs/status_withheld"}]},
         "conditions": {"$ref": "#/$defs/conditions"},
         "statistics": {"$ref": "#/$defs/field_statistics"}
       },
@@ -329,7 +329,7 @@
       "required": ["form", "parameter_set", "conditions", "statistics"],
       "properties": {
         "form": {"const": "parameter_set"},
-        "parameter_set": {"anyOf": [{"$ref": "#/$defs/json_object"}, {"$ref": "#/$defs/status_withheld"}]},
+        "parameter_set": {"anyOf": [{"$ref": "#/$defs/placeholder"}, {"$ref": "#/$defs/status_withheld"}]},
         "conditions": {"$ref": "#/$defs/conditions"},
         "statistics": {"$ref": "#/$defs/field_statistics"}
       },
@@ -342,7 +342,7 @@
       "required": ["form", "reference_data", "conditions", "statistics"],
       "properties": {
         "form": {"const": "reference_data"},
-        "reference_data": {"anyOf": [{"$ref": "#/$defs/json_object"}, {"$ref": "#/$defs/status_withheld"}]},
+        "reference_data": {"anyOf": [{"$ref": "#/$defs/placeholder"}, {"$ref": "#/$defs/status_withheld"}]},
         "conditions": {"$ref": "#/$defs/conditions"},
         "statistics": {
           "anyOf": [{"$ref": "#/$defs/statistics_block"}, {"$ref": "#/$defs/status_withheld_or_not_applicable"}]
@@ -848,7 +848,7 @@
         "assistance": {
           "description": "None, or the tool, model and provider as reported, the prompt version and the date: a placeholder until its members are named.",
           "x-materica-write-only": true,
-          "anyOf": [{"$ref": "#/$defs/status_none"}, {"$ref": "#/$defs/json_object"}]
+          "anyOf": [{"$ref": "#/$defs/status_none"}, {"$ref": "#/$defs/placeholder"}]
         },
         "review": {
           "description": "Not checked, or a review. Outside the content hash, so a read never refuses a field for it: one it cannot read reads as not_checked (provenance.md section 2 item 6).",
@@ -1133,6 +1133,12 @@
       "required": ["status"],
       "properties": {"status": {"enum": ["unstated", "not_checked", "none", "not_applicable"]}, "reason": {"type": "string"}},
       "additionalProperties": false
+    },
+    "placeholder": {
+      "description": "A member whose shape is not yet written, in a member that may hold a status object instead: any object but one holding status, which is a status object and holds a token its row allows (provenance.md section 1 item 5).",
+      "type": "object",
+      "not": {"required": ["status"]},
+      "additionalProperties": {"$ref": "#/$defs/json_value"}
     },
     "json_value": {
       "description": "Any JSON value: every number a double (record_format.md section 1 item 6).",
