@@ -14,25 +14,32 @@ recorded in that repository's CHANGELOG.
 
 ### Added
 - The read's steps 7 and 8 (S2a-2; `read_side_contract.md` section 3). Step 7 finds the target field, and
-  gives `absent` where the record holds none; a field holding alternatives waits for S2a-3. Step 8 refuses a
-  form the field's row does not allow (`form_not_registered`); a value field, form or section `specimen` that
-  breaks its shape, a member one slip from one named at its place (in the field, or in the envelope, the body
-  or a section, which refuses every field read from it), or a token the reader knows in a member whose row
-  does not allow it (`form_invalid`); a token it knows for no member of that name (`unknown_token`); and a
-  withheld value (`withheld`), each check made and every reason given. Beyond shapes it checks counts, ranges
-  in order, signs and bounds, a composition's components, an evidence entry withheld whole or not at all, a
-  statistics block's conditional members, an uncertainty's rules, and each status object's place and token
-  (`provenance.md` section 1 item 5). A form whose own member waits for S2b or S3 raises
-  `NotImplementedError` unless a shared member refuses the field (`core/fields.py`, `core/value_shapes.py`).
-  Step 8 reads the status tokens each member allows from the generated shapes, and a specimen fact's fixed
-  members, and a disease or treatment state's text, as the maintainer's rulings settle them.
+  gives `absent` where the record holds none; a field holding alternatives raises `NotImplementedError`, since
+  alternatives are read at step 7, with S2a-4 (`no_pick`) and S4. Step 8 refuses a form the field's row does
+  not allow, a composition's basis included (`form_not_registered`); a value field, form or section
+  `specimen` that breaks its shape, a member one slip from one named at its place (in the field, or in the
+  envelope, the body or a section, which refuses every field read from it), or a token the reader knows in a
+  member whose row does not allow it (`form_invalid`); a token it knows for no member of that name
+  (`unknown_token`); and a withheld value (`withheld`), each check made and every reason given. Beyond shapes
+  it checks counts, ranges in order, signs and bounds, a statistics block's conditional members, an
+  uncertainty's rules, and each status object's place and token (`provenance.md` section 1 item 5). A form
+  the row allows whose own member waits for S2b or S3 (a table, an interval, a composition, evidence) raises
+  `NotImplementedError` whatever its other members hold, since its own member could add a reason: so a
+  composition's components and an evidence entry's withholding wait for S2b-1 and S2b-2. A form the row does
+  not allow is refused with every shared reason, its own member, which a read neither uses nor returns, unread
+  (`core/fields.py`, `core/value_shapes.py`). Step 8 reads the status tokens each member allows from the
+  generated shapes; a specimen fact's unit as it reads every unit, a string or a status object, step 9 alone
+  comparing it; `mimics`'s fixed basis and a disease or treatment state's text as the maintainer's rulings
+  settle them; and where a field's label goes from its row (`vocabulary/fields.json`).
 - Step 0 refuses, as `request_incomplete`, a request member one slip from one the request's shape names, a
   field the vocabulary does not register, and a requirement holding a declaration's members.
 - `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
   name-overlap check share. A word made plural or singular must be a word: the empty string between two
   underscores is none.
-- `Vocabulary.token_lists`, every token list of the vocabulary by its name, a fact's fixed members, and
-  `STATUS_TOKENS`, the status tokens from the generated shapes (`core/vocabulary.py`).
+- `Vocabulary.token_lists`, every token list of the vocabulary by its name, a fact's fixed members, a
+  field's bases and where its label goes, and `STATUS_TOKENS`, the status tokens from the generated shapes
+  (`core/vocabulary.py`). Every `claims` parameter of the core is typed by the suites, so that a misspelt
+  suite name does not type-check.
 
 ### Schema
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
@@ -69,6 +76,16 @@ recorded in that repository's CHANGELOG.
 - `provenance.md` section 6.2: a disease or treatment state's `text` names the disease or the treatment and is
   present exactly when its token is `diseased` or `treated` (maintainer, 2026-10-15). Three plain-read inputs
   that held a text beside `normal` lose it, rehashed, and the PR-316 case files that pin them are repinned.
+- Two defaults that await the maintainer, from S2a-2's review (`docs/specification/changes.md`): step 9 of a
+  read compares a specimen fact's `unit` with the unit its row fixes, wherever step 8 checks the fact, so that
+  another unit, or a status object with any token, gives `unit_mismatch`, and step 8 checks it only as a
+  string or a status object (`read_side_contract.md` section 3, step 9; three PR-037 arms, for S2a-3); and
+  `mimics`, whose row fixes its basis to `stated`, takes no `inferred_from` (`provenance.md` section 6.2).
+- `fields.json` gives, for a field whose Label cell lets its label go on a table, the condition the table's
+  axis must not be (`label_not_on_axis`); the generator reads the cell's prose in its two forms, and any other
+  stops it.
+- `PR-032.interval_basis_unknown`'s input holds a statistics block of a valid basis, so that the arm tests the
+  interval's basis alone; its pin follows.
 - Members that held a name with a second meaning, and no safeguard to keep the two apart, are renamed before
   0.1.0 (maintainer, 2026-10-15; `docs/specification/changes.md`): a scene cylinder's `axis` to `direction`;
   a family conversion's `from` and `to` to `from_measure` and `to_measure`; an admissibility constraint's
@@ -124,25 +141,38 @@ recorded in that repository's CHANGELOG.
   that way re-initialised the outer repository, setting `core.bare` in its shared config, and committed onto
   its HEAD (`tests/unit/throwaway_git.py`, `test_throwaway_git.py`).
 - T1 (S2a-2): step 8 against the writer schema, with each field's binding to its row, and the generated reader
-  `$defs`, on every value field of the conformance inputs and on one-fault variants of five full fields: what
-  the writer accepts step 8 accepts, what step 8 refuses as `form_invalid` the reader refuses, and the
-  converse. The exceptions are grouped by kind, each kind with its reason and the case files whose read field
-  breaks the relation (12 for the first, 48 for the second), computed from the generated files as the test
-  runs, an unlisted or stale one failing it; and the token lists step 8 knows by member name are held to the
-  writer's (`tests/spec_sync/test_t1.py`).
-- Hypothesis properties of step 8, the S2 design's HP3 and HP5: one fault of a 95-fault catalogue written
-  from the text gives exactly the codes its rule gives, two faults in two parts give both, and members the
-  reader does not know never change the outcome; 24 mutants of step 8 each killed at both sizes
-  (`tests/property/test_value_field_properties.py`, `test_value_field_mutants.py`, in the records shard).
+  `$defs`, on every value field of the conformance inputs and on one-fault variants of five full fields and of
+  one field of each row and form, drawn by the writer's strategies: what the writer accepts step 8 accepts,
+  what step 8 refuses as `form_invalid` the reader refuses, and the converse. Where a form's own member waits
+  for S2b or S3, step 8's verdict is the case files' expected reasons, so for those fields T1 holds the data,
+  not step 8. The exceptions are grouped by kind, each kind with its reason, a mark its refusals must show,
+  and the case files whose read field breaks the relation (12 for the first, 48 for the second), computed
+  from the generated files as the test runs, an unlisted, stale or misplaced one failing it; the shortcut of
+  validating a field against its form's definition is checked on every example; and the token lists step 8
+  knows by member name are held to the writer's (`tests/spec_sync/test_t1.py`).
+- Hypothesis properties of step 8, the S2 design's HP3 and HP5: one fault of a 151-fault catalogue in 21
+  regions written from the text (the derivation, `source` and each value step 8 checks among them, and slips
+  that a reader ignoring slips cannot pass) gives exactly the codes its rule gives, two faults in two parts
+  give both, and members the reader does not know never change the outcome; a third law holds a label on a
+  table to the Label column; 43 mutants of step 8 each killed at both sizes, 18 of them at the faults they
+  name, the eleven rules S2a-2's review found untested among them
+  (`tests/property/test_value_field_properties.py` in the records shard, `test_value_field_mutants.py` in a
+  fourth CI shard, `step8_mutants`).
+- Step 8's oracles read status objects from `provenance.md` section 1's table, never from step 8's own status
+  rows, which a check compares with it (`tests/spec_sync/status_rows.py`, `test_status_rows.py`).
 - A property of the one-slip relation against a neighbour generator written from section 10, the oracle the
   read and the name-overlap check do not share, with 12 mutants (`tests/property/test_slip_properties.py`).
 - A table of every position in a material record and a read request where a member the reader does not know
-  is ignored or refused, held to the text, the schemas and the read
-  (`tests/spec_sync/unknown_member_positions.json`, `test_unknown_member_positions.py`).
-- A fourth fuzz target, raw bytes into step 8, with a fault seeded behind a rare conjunction for CI's control
-  (`tests/fuzz/read_field_bytes.py`).
-- 24 case files that end at step 0 or 8 on checks S2a-2 builds are run at S2a-2; 579 case files pass, and 295
-  wait for a later step (`tests/spec_sync/case_steps.json`).
+  is ignored or refused, held to the text, the schemas (every object a read reaches, and every member of one
+  that may hold a status object, has a row, or a deferred row naming the piece that will read it), the hosts'
+  objects and the read (`tests/spec_sync/unknown_member_positions.json`, `test_unknown_member_positions.py`).
+- A fourth fuzz target, raw bytes into step 8, with a fault seeded for CI's control behind two changes to one
+  seed, no seed holding two of its three parts, and an oracle that sees a refusal step 8 misses, T1's third
+  relation, shown failing in the suite (`tests/fuzz/read_field_bytes.py`, `field_oracle.py`). CI's fuzz job
+  gives that control 600 s, and no longer replays the mutant tables.
+- 24 case files that end at step 0 or 8 on checks S2a-2 builds are run at S2a-2, two of them since its fix
+  round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
+  step (`tests/spec_sync/case_steps.json`).
 - Each new check is shown failing on seeded faults.
 
 ## [0.1.0.dev1] - 2026-10-14
