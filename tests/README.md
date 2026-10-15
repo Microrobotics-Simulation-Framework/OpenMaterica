@@ -35,6 +35,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   of the vocabulary changed or no longer applied (`spec_sync/test_value_fields.py`);
 - the name-overlap check: a reused name or a slip seeded into a schema, the vocabulary or an example, and its
   allowlist broken (`spec_sync/test_name_overlaps.py`);
+- the unknown-member positions: an unknown member refused, a slip ignored in a record and in a request, a row's
+  verdict wrong, a dead row, a lost quote and a missing row (`spec_sync/test_unknown_member_positions.py`);
 - T1, step 8 against the writer schema and the reader `$defs`: a step 8 that refuses what the writer accepts,
   what the reader accepts, or accepts what the reader refuses, and an exception missing, stale, listed twice,
   listed by name where a case file reads it, or unreasoned
