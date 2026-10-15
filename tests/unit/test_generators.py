@@ -43,6 +43,93 @@ def test_a_numeric_condition_without_its_unit_first_is_refused() -> None:
         gen_vocabulary.conditions([{"Name": "`t`", "Shape": "numeric", "Unit or tokens": "kelvin, `K`"}])
 
 
+def numeric(cell: str) -> gen_vocabulary.Row:
+    return {"Name": "`t`", "Shape": "numeric", "Unit or tokens": cell, "Required with": "\u2014"}
+
+
+@pytest.mark.parametrize(
+    "cell", ["`K`", "`K` (the thermodynamic temperature)", "`K`: the specimen's temperature, not the bath's"]
+)
+def test_a_numeric_conditions_unit_is_read_beside_an_aside_or_prose(cell: str) -> None:
+    assert gen_vocabulary.conditions([numeric(cell)])["conditions"] == {
+        "t": {"shape": "numeric", "unit": "K", "required_with": {}}
+    }
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        pytest.param("`K` or `Cel`", id="a_second_unit"),
+        pytest.param("`K`, `Cel`", id="a_list_of_units"),
+        pytest.param("`K` (or `Cel`)", id="a_unit_in_the_aside"),
+        pytest.param("`K`: or `Cel` where the source gives it", id="a_unit_in_the_prose"),
+    ],
+)
+def test_a_numeric_conditions_cell_naming_a_second_unit_is_refused(cell: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.conditions([numeric(cell)])
+
+
+def test_a_code_span_in_a_token_cells_parenthetical_is_refused() -> None:
+    """Its token would be dropped with the parenthetical; an aside of plain prose is not."""
+    row = {"Name": "`k`", "Shape": "token", "Required with": "\u2014"}
+    plain = "`apparent` (the whole specimen, pores included), `matrix`"
+    assert gen_vocabulary.conditions([{**row, "Unit or tokens": plain}])["conditions"] == {
+        "k": {"shape": "token", "tokens": ["apparent", "matrix"], "required_with": {}}
+    }
+    with pytest.raises(TableError):
+        gen_vocabulary.conditions(
+            [{**row, "Unit or tokens": "`apparent` (pores included; also `bulk_apparent`), `matrix`"}]
+        )
+
+
+LABEL = "`materica.fluid.newtonian.v1` on a constant, or on a table whose axis is not `shear_rate`"
+
+
+def test_a_label_cell_gives_its_one_label() -> None:
+    assert gen_vocabulary.field_label(LABEL) == "materica.fluid.newtonian.v1"
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        pytest.param(
+            "`materica.fluid.newtonian.v1` or `materica.fluid.power_law.v1` on a constant", id="two_labels"
+        ),
+        pytest.param(
+            "`materica.fluid.newtonian.v1` on a constant, or `materica.fluid.power_law.v1` on a table",
+            id="a_second_label_in_the_prose",
+        ),
+        pytest.param("`Materica Fluid (Newtonian)` on a constant", id="no_family_identifier"),
+        pytest.param("`materica.fluid.newtonian.v01` on a constant", id="a_version_with_a_leading_zero"),
+        pytest.param("`materica.fluid.newtonian.v1`", id="no_prose"),
+        pytest.param("the label `materica.fluid.newtonian.v1` on a constant", id="label_not_first"),
+    ],
+)
+def test_a_label_cell_of_another_form_is_refused(cell: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.field_label(cell)
+
+
+@pytest.mark.parametrize(
+    ("reader", "column"),
+    [
+        (gen_vocabulary.reasons, "Code"),
+        (gen_vocabulary.fields, "Section.field"),
+        (gen_vocabulary.conditions, "Name"),
+        (gen_vocabulary.specimen_facts, "Name"),
+        (gen_vocabulary.acceptance_kinds, "`acceptance`"),
+    ],
+)
+def test_a_name_listed_twice_in_a_table_is_refused(
+    reader: Callable[[list[gen_vocabulary.Row]], gen_vocabulary.Vocabulary], column: str
+) -> None:
+    """A second row would replace the first, its status, steps or shape lost: `names` refuses it before any
+    other cell is read."""
+    with pytest.raises(TableError, match="listed twice"):
+        reader([{column: "`a`"}, {column: "`b`"}, {column: "`a`"}])
+
+
 TISSUE_STATE = (
     '`{"token": "in_vivo" \\| "ex_vivo_fresh" \\| "frozen_thawed" \\| "fixed" \\| "phantom", "basis"}`'
 )
@@ -281,6 +368,42 @@ def test_a_token_listed_twice_is_refused() -> None:
             "read_side_contract.md", "| `at_edge` | not_met | 11 |", "| `at_edge` | not_met | 14 |", id="step"
         ),
         pytest.param("read_side_contract.md", "from this list only: ", "from this list: ", id="labels"),
+        pytest.param(
+            "record_format.md",
+            "| `materica.fluid.newtonian.v1` on a constant,",
+            "| `materica.fluid.newtonian.v1` or `materica.fluid.power_law.v1` on a constant,",
+            id="a_second_label",
+        ),
+        pytest.param(
+            "record_format.md",
+            "| `materica.fluid.newtonian.v1` on a constant,",
+            "| `Materica Fluid (Newtonian)` on a constant,",
+            id="a_label_that_is_no_family_identifier",
+        ),
+        pytest.param(
+            "provenance.md",
+            "| `temperature` | numeric | `K` |",
+            "| `temperature` | numeric | `K` or `Cel` |",
+            id="a_second_unit",
+        ),
+        pytest.param(
+            "provenance.md",
+            "`apparent` (the whole specimen, pores included)",
+            "`apparent` (the whole specimen, pores included; also `bulk_apparent`)",
+            id="a_token_in_a_parenthetical",
+        ),
+        pytest.param(
+            "read_side_contract.md",
+            "| `no_pick` | unknown | 7 |",
+            "| `absent` | not_met | 9 | a second row | this document 3 |\n| `no_pick` | unknown | 7 |",
+            id="a_reason_listed_twice",
+        ),
+        pytest.param(
+            "provenance.md",
+            "| `shear_rate` | numeric | `1/s` | \u2014 |",
+            "| `shear_rate` | numeric | `1/s` | \u2014 |\n| `temperature` | numeric | `Cel` | \u2014 |",
+            id="a_condition_listed_twice",
+        ),
     ],
 )
 def test_a_list_the_specification_rewords_stops_the_generator(
