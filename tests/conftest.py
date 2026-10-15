@@ -46,6 +46,7 @@ SHARDS = {
         "test_jsonio_properties",
         "test_canonical_properties",
         "test_hashing_properties",
+        "test_slip_properties",
         "test_mutants",
     ),
     "records": (

@@ -5,7 +5,12 @@ Hypothesis properties of the core, in three groups, and of the writer schema, in
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
   value in many valid ways, and texts holding exactly one fault the specification lists. Trees are drawn
-  top-down within a leaf budget, so no draw is thrown away.
+  top-down within a leaf budget, so no draw is thrown away. With them, (9) the one-slip relation
+  (`core/slips.py`, section 10), which the read and the name-overlap check share, against a neighbour generator
+  written from section 10's list (`test_slip_properties.py`): two names are one slip apart exactly where the
+  generator reaches one from the other, by a kind it reaches it by. The generator builds names from a name, as
+  the relation compares two, and is the oracle neither shares (the S2a-1 review, verdict 19). Each kind is
+  drawn alike, with two slips, unrelated names and two characters swapped far apart as near misses.
 - **Records:** (4) the envelope checks agree with the generated reader schema (section 1 item 2); (5) versions
   order as their integers, for components hundreds of digits long, and a text is a version exactly when it
   matches section 8's pattern; (6) the laws of a read up to step 5 (`read_side_contract.md` sections 1 to 3):
@@ -94,6 +99,21 @@ exchanges, a pattern searched where it must match in full, versions ordered as s
 unreadable source ignored, the first of two differing copies read. Each test records the examples its kill
 took as `examples_to_kill`, which `--junitxml` writes out. A fault that died only at the original size would
 mean the small size misses it.
+
+`test_mutants.py` also gives the one-slip relation twelve faults, each killed by (9) (its strategy has no size,
+so both sizes take the same examples; measured 2026-10-15):
+
+| Mutant | Fault | Examples |
+|---|---|---|
+| `substitution_missed`, `insertion_missed`, `underscore_missed`, `swap_missed`, `plural_missed` | a kind of slip missed | 19, 1, 28, 3, 23 |
+| `underscore_read_as_a_character` | an underscore added is named a character added | 28 |
+| `two_characters_added_one_slip` | two characters added at the end are one slip | 38 |
+| `swap_of_any_two_characters` | two characters swapped far apart are one slip | 11 |
+| `ies_plural_missed`, `es_plural_missed`, `irregular_plurals_missed` | a plural section 10 lists missed | 155, 38, 114 |
+| `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural | 333 |
+
+The last is the relation as it stood until the property found it: `x__y` and `x_s_y` are one character apart,
+but `x__y` and `x_es_y` two, which it called one plural.
 
 `test_writer_mutants.py` gives the writer schema one change at a time: the S2a-1 review's 29 mutants of its
 value-field part and its two controls (M1 to M31, its numbering kept), one for each constraint written since
