@@ -65,24 +65,24 @@ A request's `acceptances` take only the kinds `pick`, `overlay`, `extrapolation`
 `implied_condition` (`declarations.md` section 4.1). Each is checked here, whatever field or location it
 names: its `field` as the target's is (the pattern, and a registered field), and its kind's own members, have
 their shapes; its `reason` and `basis` are ignored. An acceptance of any other kind, or one that breaks its
-shape, gives `request_incomplete`, and so do two `nominal`, two `extrapolation`, or two `pick` acceptances
-naming one field, whatever else each names. So do two `overlay` acceptances that name one field and one
-overlay, equal in `id`, `version` and `content_hash`; two naming different overlays are each read (section 3,
-step 6). A pick's `index` breaks its shape unless it is a number with no fractional part, not below zero:
-`1.0` and `1e0` are 1, and `-0` is 0 (`record_format.md` section 1 item 6). An implied condition breaks its
-shape where its `fact` is not a specimen fact with tokens or its `token` is not one of that fact's, and where
-`implies` names a condition that is not registered, or gives one a status object, `plus_minus`,
-`set_or_measured` or a token outside the condition's row; the reason carries that `condition` where the fault
-lies in one. A value an implied condition supplies for a registered numeric condition is checked as an
-operating condition is, its `unit` included (`request_unit_mismatch`, with that `condition`). An acceptance
-applies only to a read of the field it names and, an overlay aside (it names no location), only at the read's
-own location: its `record`, its `region` or both, each the read's (the record read, by `id`, `version` and
-`content_hash`; the target's region). A pick may instead be located at an overlay that an `overlay` acceptance
-of the request names for the read's field, equal in `id`, `version` and `content_hash`. It then applies to the
-read, and names one of that overlay's alternatives (section 3, step 7). One naming another field, another
-record or region, an `interval` (a request targets none: `declarations.md` section 2) or no location is
-checked and not applied, so a pick or an implied condition declared for one place never reaches a read of
-another. [PR-330] [PR-338] [PR-320] [PR-316] [PR-304]
+shape, gives `request_incomplete`. So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`,
+that name one field, whatever location or other members each holds. So do two `overlay` acceptances that name
+one field and the same overlay (equal `id`, `version` and `content_hash`); two that name different overlays
+are each resolved (section 3, step 6). A pick's `index` breaks its shape unless it is a number with no
+fractional part, not below zero: `1.0` and `1e0` are 1, and `-0` is 0 (`record_format.md` section 1 item 6).
+An implied condition breaks its shape where its `fact` is not a specimen fact with tokens or its `token` is
+not one of that fact's, and where `implies` names a condition that is not registered, or gives one a status
+object, `plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries that
+`condition` where the fault lies in one. A value an implied condition supplies for a registered numeric
+condition is checked as an operating condition is, its `unit` included (`request_unit_mismatch`, with that
+`condition`). An acceptance applies only to a read of the field it names and, an overlay aside (it names no
+location), only at the read's own location: its `record`, its `region` or both, each the read's (the record
+read, by `id`, `version` and `content_hash`; the target's region). A pick may instead be located at an overlay
+that an `overlay` acceptance of the request names for the read's field, equal in `id`, `version` and
+`content_hash`. It then applies to the read, and names one of that overlay's alternatives (section 3, step 7).
+One naming another field, another record or region, an `interval` (a request targets none: `declarations.md`
+section 2) or no location is checked and not applied, so a pick or an implied condition declared for one place
+never reaches a read of another. [PR-330] [PR-338] [PR-320] [PR-316] [PR-304]
 
 Two checks need the form, so they are made when the form is evaluated (section 3, step 11): a table or power
 law read with no operating value for its axis is refused with `request_incomplete` [PR-308], and one read over
@@ -353,7 +353,7 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `hash_mismatch` | not_met | 4, 6 | the recomputed hash differs from the record's own | `record_format.md` 9 |
 | `pin_mismatch` | not_met | 1, 4, 6 | the stated hash, or with HS the recomputed hash, differs from a pin (where no candidate holds the pin, `malformed` instead when a supplied source is unreadable or a candidate of the reference's `id` and `version` has an ill-formed `content_hash`: section 3, step 1) | this document 3 |
 | `unknown_type` | not_met | 5, 6 | a referenced record of a type the reader cannot read in its role: one of a type it cannot read at all, a target that is not a `material`, however it is named, or a record an `overlay` acceptance names that is not an `overlay` | `record_format.md` 3 |
-| `absent` | not_met | 1, 6, 7 | the section or field is absent, or no supplied record has the reference's `id` and `version` (`malformed` instead when a supplied source is unreadable: section 3, step 1) | `record_format.md` 1, 4; this document 3 |
+| `absent` | not_met | 1, 6, 7 | the section or field is absent, or no supplied record has the reference's `id` and `version` (`malformed` instead when a supplied source is unreadable: section 3, step 1); at step 6, an overlay whose `replaces` names a field its base lacks, or that does not replace the field read | `record_format.md` 1, 4; this document 3 |
 | `no_pick` | unknown | 7 | alternatives remain and no pick is declared | `record_format.md` 5 |
 | `pick_invalid` | not_met | 7 | a pick whose `index` names no stored alternative of the field read (one past the last, or on a field holding no alternatives), or a pick located at the base of a field an applied overlay replaces, whose alternatives no longer describe the field read; never accepted | section 3; `declarations.md` 4.1 |
 | `form_not_registered` | not_met | 8 | a form the field's row does not allow, a composition's basis included | `record_format.md` 4.1 |
@@ -380,7 +380,7 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `overlay_base_mismatch` | not_met | 6 | an overlay whose base differs from the record in use; never accepted | `record_format.md` 4.4 |
 | `overlay_scope_mismatch` | not_met | build | an overlay scoped to another consumer, model or configuration (a build check) | `declarations.md` 5 |
 | `overlay_conflict` | not_met | 6 | two overlays named for the field read both replace it | `record_format.md` 4.4 |
-| `request_incomplete` | not_met | 0, 10, 11 | a request that is not valid JSON or departs from the request's shape (a member missing or of the wrong JSON type, a reference without its `id`, `version` or `content_hash`, a target with both or neither of record and region, a field off the pattern, a member one slip from one named at its place); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a tolerance with no operating condition, or one below zero; an operating range with `lo` above `hi`; a table or power law with no operating value for its axis; a label given by both number and name (`geometry.md`); a field that is not registered; an acceptance of a kind a read does not take, or one that breaks its shape; two nominals, or two extrapolations, for one field; two implied conditions that apply and disagree | section 1 |
+| `request_incomplete` | not_met | 0, 10, 11 | a request that is not valid JSON or departs from the request's shape (a member missing or of the wrong JSON type, a reference without its `id`, `version` or `content_hash`, a target with both or neither of record and region, a field off the pattern, a member one slip from one named at its place); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a tolerance with no operating condition, or one below zero; an operating range with `lo` above `hi`; a table or power law with no operating value for its axis; a label given by both number and name (`geometry.md`); a field that is not registered; an acceptance of a kind a read does not take, or one that breaks its shape; two nominals, two extrapolations or two picks for one field; one overlay named twice for one field; two implied conditions that apply and disagree | section 1 |
 | `request_unit_mismatch` | not_met | 0 | an operating condition or tolerance of a numeric condition whose `unit` is a string other than the registered one, compared code point for code point after JSON escapes are decoded, whatever else is wrong with the entry; or a value an implied condition supplies, alike | section 1 |
 | `owner_ambiguous` | not_met | scene | regions with no or tied priority claim one point | `geometry.md` |
 | `no_material` | not_met | scene | no region claims a point and the scene declares no background | `geometry.md` |
