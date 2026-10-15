@@ -1,0 +1,256 @@
+{
+  "case": "PR-304",
+  "variant": "pick_at_unnamed_overlay_not_applied",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "overlaid_material_alternatives.json",
+      "viscosity_alternatives_overlay.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/overlaid_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:12281d9bc0114879e41b878045197c32124ac65fd1f7e2180bf03971bf65fcab"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "pick",
+        "record": {
+          "id": "conformance/viscosity_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:f3086f91a54b7b963a3e19fae8738c19025b3b81723b461af6099a2c5a702def"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "index": 1,
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "no_pick"
+      }
+    ],
+    "alternative_values": [
+      {
+        "alternative": 0,
+        "value": 0.000692,
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "met",
+            "record": {
+              "value": 310.15,
+              "unit": "K",
+              "basis": "stated"
+            },
+            "operating": {
+              "value": 310.15,
+              "unit": "K"
+            }
+          },
+          {
+            "name": "shear_rate",
+            "status": "met",
+            "record": {
+              "range": [
+                10.0,
+                1000.0
+              ],
+              "unit": "1/s",
+              "basis": "stated"
+            },
+            "operating": {
+              "value": 100.0,
+              "unit": "1/s"
+            }
+          }
+        ],
+        "specimen": {},
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": [
+          "materica.fluid.newtonian.v1"
+        ]
+      },
+      {
+        "alternative": 1,
+        "value": 0.00069,
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "met",
+            "record": {
+              "value": 310.65,
+              "unit": "K",
+              "basis": "stated"
+            },
+            "operating": {
+              "value": 310.15,
+              "unit": "K"
+            }
+          },
+          {
+            "name": "shear_rate",
+            "status": "met",
+            "record": {
+              "range": [
+                10.0,
+                1000.0
+              ],
+              "unit": "1/s",
+              "basis": "stated"
+            },
+            "operating": {
+              "value": 100.0,
+              "unit": "1/s"
+            }
+          }
+        ],
+        "specimen": {},
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": [
+          "materica.fluid.newtonian.v1"
+        ]
+      }
+    ],
+    "unit": "Pa.s",
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

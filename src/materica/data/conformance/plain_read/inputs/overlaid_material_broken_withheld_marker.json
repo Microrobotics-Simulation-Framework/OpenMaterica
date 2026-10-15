@@ -1,0 +1,169 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/overlaid_material_fixture",
+  "version": "1.0.0",
+  "name": "Overlaid material (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:6e5f40d9813851467d65ce0cb4fd7f31fc0ce68413c7381f639e8c3e70c4be1a",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "fluid": {
+        "specimen": {
+          "lot": {
+            "text": "conformance fixture lot 1",
+            "basis": "stated"
+          }
+        },
+        "fields": {
+          "dynamic_viscosity": {
+            "form": "constant",
+            "unit": "Pa.s",
+            "value": {
+              "status": "withheld",
+              "reasn": "licence"
+            },
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "shear_rate": {
+                "range": [
+                  10.0,
+                  1000.0
+                ],
+                "unit": "1/s",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "status": "withheld",
+              "reasn": "licence"
+            },
+            "provenance": {
+              "origin": "measured_by_source",
+              "extraction": {
+                "method": "table",
+                "text_extraction": "conformance fixture: text extraction"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              },
+              "source": {
+                "key": "conformance_fixture_source",
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-source",
+                  "version": "1"
+                },
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "page": 1,
+                  "column": {
+                    "header": "Viscosity (Pa s)",
+                    "index": 2
+                  },
+                  "row": "water"
+                }
+              },
+              "recipe": {
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "page": 1,
+                  "column": {
+                    "header": "Viscosity (Pa s)",
+                    "index": 2
+                  },
+                  "row": "water"
+                },
+                "steps": "conformance fixture: illustrative extraction steps"
+              }
+            },
+            "label": "materica.fluid.newtonian.v1"
+          }
+        }
+      },
+      "bulk": {
+        "fields": {
+          "density": {
+            "form": "constant",
+            "unit": "kg/m3",
+            "value": 993.0,
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "density_kind": {
+                "token": "apparent",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "central": "stated",
+              "n_specimens": {
+                "status": "unstated"
+              },
+              "n_donors": {
+                "status": "not_applicable"
+              },
+              "mean": {
+                "status": "unstated"
+              },
+              "sd": {
+                "status": "unstated"
+              },
+              "min": {
+                "status": "unstated"
+              },
+              "max": {
+                "status": "unstated"
+              },
+              "distribution": {
+                "status": "unstated"
+              },
+              "basis": {
+                "status": "not_applicable"
+              },
+              "represents": {
+                "status": "unstated"
+              },
+              "dispersion": "not_reported",
+              "relative_uncertainty": {
+                "status": "none"
+              },
+              "expanded_uncertainty": {
+                "status": "none"
+              }
+            },
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

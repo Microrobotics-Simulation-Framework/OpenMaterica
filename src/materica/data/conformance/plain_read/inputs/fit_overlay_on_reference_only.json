@@ -1,0 +1,147 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "overlay",
+  "id": "conformance/fit_overlay_fixture",
+  "version": "1.0.0",
+  "name": "Fitted viscosity overlay (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:47ab03a860fbcc403f1b2fbf721d5969557b036bef6b31eef87d177077a7b379",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "purpose": "fit",
+    "base": {
+      "id": "conformance/reference_only_fixture",
+      "version": "1.0.0",
+      "content_hash": "sha256:e53f88128826aaa27aba52a9375269f94b64c0855cba3684c834dbf9a721129b"
+    },
+    "scope": {
+      "consumer": "conformance",
+      "model": {
+        "name": "fixture_model",
+        "version": "1.0.0"
+      },
+      "model_configuration_hash": "sha256:b91c17082ecd730359103de314af04dbb2b93549e9ebc9500d09cc85de66f43b"
+    },
+    "replaces": {
+      "fluid.dynamic_viscosity": {
+        "form": "constant",
+        "unit": "Pa.s",
+        "value": 0.000701,
+        "conditions": {
+          "temperature": {
+            "value": 310.15,
+            "unit": "K",
+            "basis": "stated"
+          },
+          "shear_rate": {
+            "range": [
+              10.0,
+              1000.0
+            ],
+            "unit": "1/s",
+            "basis": "stated"
+          }
+        },
+        "specimen": {
+          "preparation": {
+            "text": "deionised water, degassed before measurement",
+            "basis": "stated"
+          }
+        },
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "fitted",
+          "extraction": {
+            "method": "fit"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: the overlay's own review, not yet done"
+          }
+        },
+        "label": "materica.fluid.newtonian.v1",
+        "fit": {
+          "data": [
+            {
+              "external": {
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-trajectory",
+                  "version": "1"
+                },
+                "sha256": "650c20ff023b69d83b681cb8df323e7900d0ddba1788e551bae2c15267fcd903",
+                "locator": {
+                  "type": "text",
+                  "label": "conformance fixture: the fitted trajectory"
+                }
+              }
+            }
+          ],
+          "method_type": "single_fit",
+          "procedure": {
+            "method": "least_squares",
+            "objective": "conformance fixture: an illustrative objective",
+            "weights": "conformance fixture: uniform weights",
+            "bounds": {},
+            "initial_values": {},
+            "software": "conformance fixture"
+          },
+          "n_data": 20,
+          "n_params": 1,
+          "determination": "overdetermined",
+          "residual": {
+            "metric": "rms",
+            "value": 1e-06,
+            "unit": "Pa.s"
+          },
+          "reproduction_tolerance": {
+            "relative": 0.001,
+            "absolute": 0.0,
+            "reason": "conformance fixture: an illustrative tolerance"
+          }
+        }
+      }
+    }
+  }
+}
