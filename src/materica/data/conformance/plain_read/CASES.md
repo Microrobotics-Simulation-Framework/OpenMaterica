@@ -1059,7 +1059,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-308
 
-`read_side_contract.md`: no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative; a table alternative set aside at step 10 never reaches step 11, so its missing operating value refuses nothing
+`read_side_contract.md`: no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`; at step 11 in one alternative it ends that alternative's read and refuses the field, every alternative's other reasons reported beside it (another alternative's `condition_unchecked`, say); a table alternative set aside at step 10 never reaches step 11, so its missing operating value refuses nothing
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -1155,7 +1155,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-316
 
-`read_side_contract.md`: an implied condition is checked like a stated one; it fills an unstated or absent condition, never one holding another status object; one naming another field, or located at another record or region, at an interval or nowhere, is not applied; a condition it fills is checked even where nothing else names it (`condition_unchecked` with no tolerance); two that apply and disagree give `request_incomplete`, even where the record states that condition, and in one alternative end the read rather than set it aside, neither value filling the condition and the result holding no `conditions`
+`read_side_contract.md`: an implied condition is checked like a stated one; it fills an unstated or absent condition, never one holding another status object; one naming another field, or located at another record or region, at an interval or nowhere, is not applied; a condition it fills is checked even where nothing else names it (`condition_unchecked` with no tolerance); two that apply and disagree give `request_incomplete`, even where the record states that condition, and in one alternative refuse the field rather than set it aside, every alternative's other reasons reported beside it, neither value filling the condition and the result holding no `conditions`
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -1177,7 +1177,7 @@ See `README.md` beside this file for how to read a case.
 | `implied_range_not_met` | an implied condition supplies the range [310, 312] K for the unstated temperature, checked as a stated range: 313.5 K operating with 1 K: above `b + t`, `not_met` (`condition_outside`) | 10 | not_met; `condition_outside (temperature)`; labels none |
 | `implied_two_agree` | two implied conditions that both apply (`in_vivo` and `normal`) supply the same 310.15 K: they do not disagree, and the temperature is filled, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `implied_two_disagree` | two implied conditions that both apply (the specimen states `in_vivo` and `normal`) supply 310.15 and 309.15 K, the temperature unstated: `request_incomplete` (temperature) at step 10, which then checks no condition; neither value fills the temperature, and the result holds no `conditions` | 10 | not_met; `request_incomplete (temperature)`; labels none |
-| `implied_two_disagree_in_alternative` | the same two implied conditions apply in the first of two alternatives: the request's fault ends the read, `request_incomplete` (temperature), and the alternative is not set aside; no condition is checked, and the result holds neither `conditions` nor `alternative_values` | 10 | not_met; `request_incomplete (temperature)`; labels none |
+| `implied_two_disagree_in_alternative` | the same two implied conditions apply in the first of two alternatives: the request's fault ends that alternative's read and refuses the field, `request_incomplete` (temperature), and the alternative is not set aside; the second alternative gives no reason of its own, and the result holds neither `conditions` nor `alternative_values` | 10 | not_met; `request_incomplete (temperature)`; labels none |
 | `implied_two_disagree_record_states` | two implied conditions that both apply (the specimen states `in_vivo` and `normal`) supply 310.15 and 309.15 K, the record stating 310.15 K: `request_incomplete` (temperature) at step 10, which then checks no condition; neither value fills the temperature, and the result holds no `conditions` | 10 | not_met; `request_incomplete (temperature)`; labels none |
 
 ## PR-317
