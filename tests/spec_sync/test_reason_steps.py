@@ -100,10 +100,6 @@ OVERLAY = "step 6 giving an overlay the codes steps 1 to 5 give the target"
 TARGET_STEPS = frozenset(range(1, 6))
 # Codes a step's text names without giving them, each with the sentence that names it.
 MENTIONED = {
-    (7, "condition_unstated"): (
-        "Whether a `no_pick` result also reports an alternative's own reasons (its `condition_unstated`, "
-        "say) is not yet specified."
-    ),
     (13, "no_pick"): "Under `no_pick` no nominal is applied, nor compared with the bounds",
 }
 PROCEDURE_DOCUMENTS = {
@@ -366,8 +362,8 @@ def changed_document(name: str, old: str, new: str) -> Documents:
             TABLE,
             changed_document(
                 "read_side_contract.md",
-                "(its `condition_unstated`, say)",
-                "(its `condition_unknown_name`, say)",
+                "Under `no_pick` no nominal is",
+                "Under no pick no nominal is",
             ),
             id="a_mention_gone",
         ),

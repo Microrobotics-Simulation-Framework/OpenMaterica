@@ -88,8 +88,8 @@ and supply different values for one condition give `request_incomplete` with tha
 the record states that condition. Step 10 makes this check first, and where it fails it checks no condition,
 an exception to section 2 item 2: neither value fills that condition, and the result holds no `conditions`
 (section 2 item 6). This fault, like step 11's `request_incomplete`, is the request's, so where either arises
-in one alternative it ends the read, and the alternative is not set aside (section 3, step 7). [PR-316]
-[PR-308]
+in one alternative it ends that alternative's read and refuses the field: the alternative is not set aside
+(section 3, step 7). [PR-316] [PR-308]
 
 ## 2. The read result
 
@@ -98,13 +98,13 @@ in one alternative it ends the read, and the alternative is not set aside (secti
 | `status` | `met`, `not_met` or `unknown`. A build result adds the model, the region and what accepted it (`declarations.md`) |
 | `reasons` | a list of `{"code", "condition"?, "alternative"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
 | `value` | present unless `not_met` without an assumption; its shape follows `want` (section 6) |
-| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`: its index among the stored alternatives; its value as `want` shapes it, or, where `want` cannot give its form, or where it is a table read outside its readable range, at a declared edge or over an operating range of its axis, its form's member as stored, with no nominal or extrapolation applied (sections 5 and 6) [PR-013]; and the other members as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
+| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`: its index among the stored alternatives; its value as `want` shapes it, or, where `want` cannot give its form, or where it is a table kept outside its readable range or read over an operating range of its axis, its form's member as stored, with no nominal or extrapolation applied (sections 5 and 6) [PR-013]; and the other members as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
 | `unit` | the field's unit, as stored: a unit held as a status object keeps its `reason` [PR-010] |
 | `conditions` | one entry per condition checked (section 5): `{"name", "status", "record"?, "operating"?}` (item 6) |
 | `specimen` | the field's specimen facts, the section's merged with the field's |
 | `statistics` | as stored |
 | `provenance` | `{"origin", "review", "source", "derivation"}`: the origin token; the review as `provenance.md` section 2 item 6 reads it: as found, a known `result` included, holding the members item 5 defines [PR-337], or `{"status": "not_checked"}` [PR-109]; the source key, where there is one; and for origin `derived` the `derivation`'s `method`, `inputs`, `assumptions`, `input_specimens` and `mixed_conditions` (`provenance.md` section 5) |
-| `labels` | the result's labels, from this list only: `user_extracted` (read through a fill-in), `no_independent_witness` (a parameter set), `mean_of_specimen_fits` (a parameter set whose fit is the mean of per-specimen fits, `fits_and_reference_data.md` section 2) [PR-333], `mixed_conditions` (a derived value whose inputs' conditions differ), `hash_not_checked` (section 3), `initial_value_only` (a trainable field, `declarations.md`), and the field's `label`; under `no_pick`, `hash_not_checked` alone, each alternative's other labels sitting in its `alternative_values` entry |
+| `labels` | the result's labels, from this list only: `user_extracted` (read through a fill-in), `no_independent_witness` (a parameter set), `mean_of_specimen_fits` (a parameter set whose fit is the mean of per-specimen fits, `fits_and_reference_data.md` section 2) [PR-333], `mixed_conditions` (a derived value whose inputs' conditions differ), `hash_not_checked` (section 3), `initial_value_only` (a trainable field, `declarations.md`), and the field's `label`; on a result that rests on no single alternative (section 3, step 7), `hash_not_checked` at most, each alternative's other labels sitting, under `no_pick`, in its `alternative_values` entry |
 | `assumption` | where the value rests on a declared extrapolation or nominal: the declaration it rests on, as `{"acceptance"}` with its kind's own members as the request gives them, `basis` aside |
 
 1. A read never stops with an error for anything a record or request contains. [PR-300]
@@ -136,11 +136,11 @@ in one alternative it ends the read, and the alternative is not set aside (secti
    `record`, the specimen facts and a `derivation`. A member the reader does not know is left out
    (`record_format.md` section 10). [PR-337]
 6. `reasons` and `labels` are always present, `labels` perhaps empty. `conditions` is present once step 10 has
-   run to its end, and only then, with each name once and in no set order: a read that two disagreeing
-   implied conditions end at step 10 (section 1), or that step 7 ends with `want_mismatch` over alternatives,
-   holds none. An entry's `record` is the record's entry, or the value an implied condition supplies with
-   basis `implied`, and is omitted where neither the record holds the condition nor an implied condition the
-   read applies supplies it, or where the reader does not know its name; its `operating` is the request's
+   run to its end, and only then, with each name once and in no set order: a read that two disagreeing implied
+   conditions end at step 10 (section 1) holds none, and so does a result that rests on no single alternative
+   (section 3, step 7). An entry's `record` is the record's entry, or the value an implied condition supplies
+   with basis `implied`, and is omitted where neither the record holds the condition nor an implied condition
+   the read applies supplies it, or where the reader does not know its name; its `operating` is the request's
    operating condition, omitted where the request gives none. `unit` is present exactly when `value` or
    `alternative_values` is; `specimen` (an empty object where no fact is stated) and `provenance` exactly when
    `value` is, and so is `statistics`, except for evidence, which has none. Under `no_pick` the result holds
@@ -196,22 +196,51 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    (`withheld`), a base mismatch or a conflict, by `record_format.md` section 4.4. [PR-042] The overlay's
    scope is compared by the build, not here (`declarations.md` section 5).
 7. **Field.** Find the field (`absent`); one whose `alternatives` breaks its shape is refused (`form_invalid`,
-   `record_format.md` section 5). For alternatives, read each, set aside those whose conditions, the form's
-   own axis entry aside (section 5), give `not_met` (step 10), and with more than one left and no pick give
-   `unknown` (`no_pick`); with none left, give `not_met` with the reasons of each. An alternative is set aside
-   for its conditions only, never for its form: one whose form `want` cannot give (an interval under `want:
-   value`, a constant under `want: bounds`) stays. Under `no_pick` it appears in `alternative_values` as
-   section 2 says, and no `want_mismatch` is reported; but where no alternative left has a form `want` can
-   give, the read gives `not_met` (`want_mismatch`) in place of `no_pick`, since no pick could help. An
-   interval counts as a form `want: value` can give where a nominal the request carries applies to the read
-   (section 1), since a pick would let it apply. Otherwise `want` refuses only the alternative a pick names,
-   or the one left. So a grade's specification limits beside a lot's measured constant give `no_pick` until
-   the consumer picks (`provenance.md` section 6.2 item 5). A pick's index counts the stored alternatives,
-   set-aside ones included. [PR-304] [PR-013] [PR-044] [PR-338] Whether a `no_pick` result also reports an
-   alternative's own reasons (its `condition_unstated`, say) is not yet specified. [not yet covered] What a
-   pick gives whose `index` is not a whole number, is negative or lies past the last stored alternative, or
-   that names a field holding no alternatives, is not yet specified; a reader never reads another alternative
-   in its place. [not yet covered]
+   `record_format.md` section 5). Under a pick that applies to the read (section 1), only the alternative it
+   names is read, by its index among the stored alternatives, set-aside ones included. It is read as a field,
+   by steps 8 to 13, and the result is its read. No other alternative is read, so a fault in one refuses
+   nothing. [PR-304] [PR-013] What a pick gives whose `index` is not a whole number, is negative or lies past
+   the last stored alternative, or that names a field holding no alternatives, is not yet specified; a reader
+   never reads another alternative in its place. [not yet covered]
+
+   Without a pick, each alternative is read alone, as a field, by steps 8 to 13, and its read ends where a
+   field's would (above). The outcome is decided once every alternative is read, so it does not depend on the
+   order of reading. [PR-044]
+   - An alternative is set aside where its conditions, the form's own axis entry aside (section 5), give
+     `not_met` at step 10. [PR-044]
+   - A table alternative is set aside where its read lies outside its readable range at step 11, off every
+     declared edge, and no extrapolation the request carries would cover it (section 5). [PR-044]
+   - Nothing else sets an alternative aside. A table alternative that an extrapolation the request carries
+     would cover stays, since a pick would let the extrapolation apply. One whose form `want` cannot give
+     stays: an interval under `want: value`, a constant under `want: bounds`, or a table read over an
+     operating range of its axis. Their `not_met` reasons, and the one a nominal outside an interval's bounds
+     gives (section 6), wait for a pick or for the one alternative left. [PR-013] [PR-338]
+   - Every other `not_met` in an alternative's read refuses the field: a value field that breaks its shape, a
+     unit other than the registered one or a withheld value, say. A table alternative read exactly at a
+     declared edge refuses the field, wherever the edge lies, outside the readable range included. So does a
+     fault of the request (section 1): a table alternative whose read reaches step 11 with no operating value
+     for its axis refuses the field, while one set aside at step 10 never reaches step 11 and refuses nothing.
+     [PR-044] [PR-308] [PR-316]
+
+   The result is then:
+   - where the field is refused, or every alternative is set aside, `not_met`, with every alternative's
+     reasons; [PR-044]
+   - where one alternative stays, that alternative's read, `want` included; the set-aside ones' reasons are
+     not reported, since they would refuse a sound value; [PR-044]
+   - where two or more stay and `want` can give none of their forms, `not_met`, with `want_mismatch`, since no
+     pick could help; an interval counts as a form `want: value` can give where a nominal the request carries
+     applies to the read (section 1), since a pick would let it apply; [PR-013] [PR-338]
+   - otherwise `unknown`, with `no_pick`; each alternative that stays appears in `alternative_values` as
+     section 2 says, with no nominal or extrapolation applied. [PR-304] [PR-013]
+
+   Where two or more stay, each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`. Its
+   `not_met` reasons wait for a pick, so under `no_pick` no `want_mismatch` is reported. A set-aside
+   alternative's reasons are not reported there. Every reason found reading one alternative carries its
+   `alternative`; a fault of the request carries none (section 2). A result that rests on no single
+   alternative, every outcome but one alternative left or picked, holds no `value`, `assumption` or
+   `conditions`, and its `labels` holds at most `hash_not_checked`. So a grade's specification limits beside a
+   lot's measured constant give `no_pick` until the consumer picks (`provenance.md` section 6.2 item 5).
+   [PR-013] [PR-336]
 8. **Form and tokens.** Refuse a form the field's row does not allow (`form_not_registered`), a value field,
    form or section `specimen` that breaks its shape (`record_format.md` sections 5 and 6, `provenance.md`),
    such as a member missing, of the wrong JSON type or `null`, a member one slip from a member named at its
@@ -513,7 +542,7 @@ value's derivative with respect to the axis. [TE-012]
 | PR-305 | plain read | an unstated or absent condition gives `unknown` |
 | PR-306 | plain read | a stated value outside the tolerance gives `not_met`; at exactly the tolerance, in doubles, `met` |
 | PR-307 | plain read | outside a form's range under a declared extrapolation and `want: value`: `not_met`, the value at the readable range's nearest end, the assumption, and steps 12 and 13's reasons and labels; not applied under another `want`, at a declared edge, across one (an edge between the operating value and the readable range's nearest end, or on that end: `outside_range`, no value), or naming another field or location |
-| PR-308 | plain read | no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative |
+| PR-308 | plain read | no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative; a table alternative set aside at step 10 never reaches step 11, so its missing operating value refuses nothing |
 | PR-309 | plain read | a value stated without origin gives `unknown` |
 | PR-310 | plain read | every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete` |
 | PR-311 | plain read | the conditions the record holds, an implied condition fills, the row requires, another condition requires and the request names all appear in `conditions` (`measurement_dimension` with a tube, the record's or an implied one; `test_method` on remanence) |
@@ -541,7 +570,7 @@ value's derivative with respect to the axis. [TE-012]
 | PR-333 | plain read | the `mean_of_specimen_fits` label is returned with a parameter set whose fit says so |
 | PR-334 | plain read | a stated ± as a bound keeps `met` only where the test holds across it; an `sd` or unstated ± turns `met` into `unknown` (`condition_uncertain`); a bound beside an `sd` decides; a ± never makes `not_met`; one of zero changes nothing |
 | PR-335 | plain read | comparisons are exact: 1674.0, 0.2 and 1673.8 (and 1.123, 0.175 and 0.948, as a range) give `not_met` though floating point says `met`; 310.15 against 310.25 with 0.1 gives `not_met`; 310.0 against 311.0 with 1.0 gives `met`; a record of 884.6932011558738 with a bound of 3.0631529961759725, against -334.3066259741603 with 1222.06298012621, gives `met`, its exact sum equal to the tolerance, though floating point gives `condition_uncertain` |
-| PR-336 | plain read | the members present on a result by the step the read reached; a condition entry without `record` where neither the record holds the condition nor an implied condition the read applies supplies it, without `operating` where the request gives none |
+| PR-336 | plain read | the members present on a result by the step the read reached; a condition entry without `record` where neither the record holds the condition nor an implied condition the read applies supplies it, without `operating` where the request gives none; a result over alternatives that rests on no single alternative holds no `value`, `assumption` or `conditions`, and `hash_not_checked` at most in `labels` |
 | PR-337 | plain read | a member the reader does not know is not returned, in a value, the statistics block, a condition entry, a specimen fact, a derivation or a review |
 | PR-338 | plain read | a nominal inside or on an interval's bounds supplies the value, and one outside them gives `nominal_invalid`; a nominal under `bounds`, and one naming another field; `assumption` without `basis`; under `no_pick`, a nominal outside the interval alternative's bounds is neither applied nor reported; two intervals left under `want: value`, with a nominal that applies, give `no_pick`, not `want_mismatch` |
 | HS-010 | hash | a record whose recomputed hash differs from its own is refused (`hash_mismatch`), with one `pin_mismatch`, since its stated hash equals the pin |

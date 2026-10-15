@@ -233,7 +233,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-013
 
-`record_format.md`: alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`; a table alternative left outside its readable range, at a declared edge or over an operating range of its axis has its table as stored in its entry, with no extrapolation applied, even under an extrapolation that names the field
+`record_format.md`: alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; an entry's index counts set-aside alternatives, one stored past a set-aside alternative included; each remaining alternative's own `unknown` reasons stand beside `no_pick`, each with its `alternative` (`condition_unstated`), a set-aside one's not; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`; a table alternative kept outside its readable range, since an extrapolation the request carries would cover it, or read over an operating range of its axis has its table as stored in its entry, with no extrapolation applied
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -549,7 +549,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-044
 
-`record_format.md`: alternatives whose conditions are not met are set aside, a table never for its own axis entry (at a declared edge, or outside its readable range); all set aside gives `not_met`; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`)
+`record_format.md`: alternatives whose conditions are not met are set aside, a table never for its own axis entry; a table alternative outside its readable range is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`)
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -1059,7 +1059,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-308
 
-`read_side_contract.md`: no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative
+`read_side_contract.md`: no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative; a table alternative set aside at step 10 never reaches step 11, so its missing operating value refuses nothing
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -1605,7 +1605,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-336
 
-`read_side_contract.md`: the members present on a result by the step the read reached; a condition entry without `record` where neither the record holds the condition nor an implied condition the read applies supplies it, without `operating` where the request gives none
+`read_side_contract.md`: the members present on a result by the step the read reached; a condition entry without `record` where neither the record holds the condition nor an implied condition the read applies supplies it, without `operating` where the request gives none; a result over alternatives that rests on no single alternative holds no `value`, `assumption` or `conditions`, and `hash_not_checked` at most in `labels`
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
