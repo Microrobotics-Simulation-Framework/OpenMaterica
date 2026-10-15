@@ -31,17 +31,17 @@ def test_case_file(case_file: CaseFile) -> None:
 
 def test_every_case_file_is_counted() -> None:
     runs = runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
-    assert len(runs) == 874
+    assert len(runs) == 877
     assert Counter(case_run.outcome for case_run in runs) == {
         Outcome.PASSED: 579,
-        Outcome.NOT_YET_RUNNABLE: 295,
+        Outcome.NOT_YET_RUNNABLE: 298,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
         (Outcome.PASSED, "content_hash"): 51,
         (Outcome.PASSED, "read"): 503,
         (Outcome.PASSED, "list_records"): 25,
-        (Outcome.NOT_YET_RUNNABLE, "read"): 295,
+        (Outcome.NOT_YET_RUNNABLE, "read"): 298,
     }
 
 
@@ -49,7 +49,7 @@ def test_each_configuration_runs_every_case_file_that_holds_for_it() -> None:
     claims = Counter(
         claimed for case_file in CASE_FILES for claimed in runner.agreeing(case_file, CONFIGURATIONS)
     )
-    assert claims == {CONFIGURATIONS[0]: 862, CONFIGURATIONS[1]: 802, CONFIGURATIONS[2]: 862}
+    assert claims == {CONFIGURATIONS[0]: 865, CONFIGURATIONS[1]: 805, CONFIGURATIONS[2]: 865}
 
 
 def test_a_case_passes_only_where_a_variant_ran() -> None:

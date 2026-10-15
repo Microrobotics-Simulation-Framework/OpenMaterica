@@ -435,7 +435,10 @@ See `README.md` beside this file for how to read a case.
 | `condition_unit_kelvin_sign` | the temperature's unit is U+212A KELVIN SIGN, not the letter `K`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
 | `condition_unit_s_minus_1` | the shear rate's unit is `s-1`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (shear_rate)`; labels none |
 | `condition_unit_status_object` | the temperature's unit is a status object where `K` is registered: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `fact_unit_minutes` | the field's specimen states a `post_mortem_interval` in `min`, where its row fixes `s`: `unit_mismatch`, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
+| `fact_unit_status_token_unknown` | the field's specimen states a `post_mortem_interval` whose unit is a status object holding `approximate`, a token the reader does not know, which step 8 does not judge: `unit_mismatch`, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
 | `plus_minus_unit` | the temperature's `plus_minus` entry is in `Cel`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `section_fact_unit_status_object` | the section's specimen states a `donor_age` whose unit is `{"status": "unstated"}`, where its row fixes `s`: `unit_mismatch`, at step 9 | 9 | not_met; `unit_mismatch`; labels none |
 | `unit_on_token_condition` | the token condition `density_kind` carries a `unit`; a token condition registers none: `unit_mismatch` (density_kind) | 9 | not_met; `unit_mismatch (density_kind)`; labels none |
 
 ## PR-038
