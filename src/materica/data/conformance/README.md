@@ -12,8 +12,8 @@ file or the ones beside it differ. These files only help you find your way.
 | `hash/` | hash (HS) | `record_format.md` section 9; `read_side_contract.md` steps 1 and 4 | the content hash, as an operation on any JSON value, and the reads of a reader that recomputes it |
 
 The tree grows with the implementation. The plain-read cases cover the read through step 13 for the forms
-0.1.0's fields use without tables: constant, interval, composition and evidence. Tables, overlays, picks and
-the specification's other suites come later. A case file may arrive before the code that runs it:
+0.1.0's fields use: constant, table, interval, composition and evidence, and reads under an extrapolation.
+Overlays, picks and the specification's other suites come later. A case file may arrive before the code that runs it:
 `tests/spec_sync/case_steps.json` names the implementation step each one needs, and until that step is done
 the tests report the file as not yet runnable, never as passed.
 
@@ -105,6 +105,10 @@ seventh point their rerun raised, the independent reader agrees with every answe
 is refused by some case: nine that no input can tell from the text, two whose arms wait for answers the text
 leaves open, and one the scratch reader never switched on. Every read compares every member of its result;
 where the text leaves an answer open, no arm is written (the suite's `README.md` lists them).
+
+The cases of tables and extrapolations (S3) were written the same way, from the text alone, before any code
+for tables existed. Their content hashes, pins and quotes are checked as above; no independent pass has
+checked their answers yet.
 
 The scripts that first generated these files are not part of the repository. The files are the source.
 

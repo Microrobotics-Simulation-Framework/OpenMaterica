@@ -1,0 +1,84 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/density_table_fixture",
+  "version": "1.0.0",
+  "name": "Density table (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:dba98f51f6c26a0ed142a4b77a5db25acf6df3129c9f4f3f12ecd6c20f3e25dc",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "bulk": {
+        "fields": {
+          "density": {
+            "form": "table",
+            "unit": "kg/m3",
+            "table": {
+              "status": "withheld"
+            },
+            "conditions": {
+              "temperature": {
+                "status": "not_applicable"
+              },
+              "density_kind": {
+                "token": "apparent",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "status": "withheld"
+            },
+            "provenance": {
+              "origin": "measured_by_source",
+              "extraction": {
+                "method": "table",
+                "text_extraction": "conformance fixture: text extraction"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              },
+              "source": {
+                "key": "conformance_fixture_source",
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-source",
+                  "version": "1"
+                },
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "page": 1,
+                  "column": {
+                    "header": "Viscosity (Pa s)",
+                    "index": 2
+                  },
+                  "row": "water"
+                }
+              },
+              "recipe": {
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "page": 1,
+                  "column": {
+                    "header": "Viscosity (Pa s)",
+                    "index": 2
+                  },
+                  "row": "water"
+                },
+                "steps": "conformance fixture: illustrative extraction steps"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

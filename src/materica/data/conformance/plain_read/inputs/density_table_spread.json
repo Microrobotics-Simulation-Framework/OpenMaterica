@@ -1,0 +1,99 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/density_table_fixture",
+  "version": "1.0.0",
+  "name": "Density table (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:0532437210c104e25482020e5c5b8af9d0451e27f37d4d65d72d8ebe62b55348",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "bulk": {
+        "fields": {
+          "density": {
+            "form": "table",
+            "unit": "kg/m3",
+            "table": {
+              "axis": "temperature",
+              "axis_unit": "K",
+              "x": [
+                280.0,
+                300.0,
+                320.0,
+                340.0
+              ],
+              "y": [
+                1000.0,
+                996.0,
+                990.0,
+                986.0
+              ],
+              "scheme": "linear",
+              "edges": []
+            },
+            "conditions": {
+              "temperature": {
+                "status": "not_applicable"
+              },
+              "density_kind": {
+                "token": "apparent",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "central": {
+                "status": "not_applicable"
+              },
+              "n_specimens": {
+                "status": "unstated"
+              },
+              "n_donors": {
+                "status": "not_applicable"
+              },
+              "mean": {
+                "status": "not_applicable"
+              },
+              "sd": 0.5,
+              "min": {
+                "status": "not_applicable"
+              },
+              "max": {
+                "status": "not_applicable"
+              },
+              "distribution": {
+                "status": "unstated"
+              },
+              "basis": "reported_sd",
+              "represents": "measurement",
+              "dispersion": "reported",
+              "relative_uncertainty": {
+                "status": "none"
+              },
+              "expanded_uncertainty": {
+                "status": "none"
+              },
+              "precision_conditions": "repeatability"
+            },
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

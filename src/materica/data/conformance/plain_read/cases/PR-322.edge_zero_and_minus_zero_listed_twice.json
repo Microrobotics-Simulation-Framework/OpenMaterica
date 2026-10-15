@@ -1,0 +1,71 @@
+{
+  "case": "PR-322",
+  "variant": "edge_zero_and_minus_zero_listed_twice",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "susceptibility_edge_zero_and_minus_zero.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/susceptibility_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:96d93dcf1dcfffc211a4522555888c6016d329023bd79d57778c777dfafc8041"
+      },
+      "field": "magnetic.volume_susceptibility"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      },
+      "magnetic_flux_density": {
+        "value": 0.5,
+        "unit": "T"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "specimen_shape": {
+          "accept": [
+            "sphere"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

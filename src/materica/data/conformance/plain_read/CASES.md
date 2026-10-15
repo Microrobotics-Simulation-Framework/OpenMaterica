@@ -240,6 +240,8 @@ See `README.md` beside this file for how to read a case.
 | `grade_interval_and_lot_constant_bounds` | a grade's specification limits beside a lot's constant, both met, under `want: bounds` and no pick: `no_pick`, neither set aside for its form; each entry holds its form's member as stored | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"status": "not_applicable"}}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "specification_limits", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": 1210.0, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"text": "conformance fixture lot 1", "basis": "stated"}}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
 | `grade_interval_and_lot_constant_components` | the same under `want: components`, which neither form gives: `not_met` (`want_mismatch`) in place of `no_pick`, at step 7, and so no `conditions` | 7 | not_met; `want_mismatch`; labels none |
 | `grade_interval_and_lot_constant_value` | a grade's specification limits beside a lot's constant, both met, under `want: value` and no pick: `no_pick`, neither set aside for its form; each entry holds its form's member as stored | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"status": "not_applicable"}}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "specification_limits", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": 1210.0, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 293.15, "unit": "K", "basis": "stated"}, "operating": {"value": 293.15, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {"lot": {"text": "conformance fixture lot 1", "basis": "stated"}}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
+| `table_and_constant_no_pick` | a table alternative and a constant alternative, both met at 310 K (the table inside its range), and no pick: `unknown` (`no_pick`), the table's entry holding its value at 310 K, 993 kg/m3, and the constant's 993.5 | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": 993.0, "conditions": [{"name": "temperature", "status": "met", "record": {"status": "not_applicable"}, "operating": {"value": 310.0, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "unstated"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": 993.5, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.0, "unit": "K", "basis": "stated"}, "operating": {"value": 310.0, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
+| `table_and_interval_bounds_no_pick` | `want: bounds` on a table alternative and an interval alternative, both met at 310 K, and no pick: neither set aside for its form, `unknown` (`no_pick`), no `want_mismatch`; the table entry holding its `table` as stored, and the interval's entry its bounds | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"axis": "temperature", "axis_unit": "K", "x": [280.0, 300.0, 320.0, 340.0], "y": [1000.0, 996.0, 990.0, 986.0], "scheme": "linear", "edges": []}, "conditions": [{"name": "temperature", "status": "met", "record": {"status": "not_applicable"}, "operating": {"value": 310.0, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "unstated"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": {"lower": 980.0, "upper": 1000.0, "basis": "reported_range"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.0, "unit": "K", "basis": "stated"}, "operating": {"value": 310.0, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "reported_range", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
 | `two_constants_no_pick` | two constant alternatives whose conditions are both met, and no pick: `unknown` (`no_pick`), one `alternative_values` entry each, in stored order, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; it is also PR-336's members under `no_pick`, whose arm was the same file and is kept once | 13 | unknown; `no_pick`; unit `"Pa.s"`; alternative_values `[{"alternative": 0.0, "value": 0.000692, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.15, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}, {"alternative": 1.0, "value": 0.000695, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.65, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}]`; labels none |
 | `two_constants_no_pick_no_hs` | the same, read without HS: the result's `labels` hold `hash_not_checked` alone, and each entry's labels are its alternative's, without `hash_not_checked` | 13 | unknown; `no_pick`; unit `"Pa.s"`; alternative_values `[{"alternative": 0.0, "value": 0.000692, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.15, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}, {"alternative": 1.0, "value": 0.000695, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.65, "unit": "K", "basis": "stated"}, "operating": {"value": 310.15, "unit": "K"}}, {"name": "shear_rate", "status": "met", "record": {"range": [10.0, 1000.0], "unit": "1/s", "basis": "stated"}, "operating": {"value": 100.0, "unit": "1/s"}}], "specimen": {}, "statistics": {"central": "stated", "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "unstated"}, "sd": {"status": "unstated"}, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": ["materica.fluid.newtonian.v1"]}]`; labels `hash_not_checked`; claims `hash: false` |
 
@@ -250,6 +252,9 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `constant_range_is_conditions_outside` | a constant read at 330 K, its stated temperature 310.15 K with a 1 K tolerance: its range is its conditions, so `condition_outside` (temperature), and step 11 adds nothing; `conditions` present, no value, unit, specimen, statistics or provenance; it is also PR-302's `not_met` carrying no value and PR-336's members at step 10, whose arm was the same file and is kept once | 10 | not_met; `condition_outside (temperature)`; labels none |
+| `minus_zero_at_first_knot_zero` | the susceptibility table, x[0] = 0 T, read at an operating value of `-0`: by value at that end, so inside the readable range, `met`, y[0] (numbers compared at the relative tolerance, under which `-0` and `0` agree) | 13 | met; value `0.0005`; unit `"1"`; labels none |
+| `table_at_first_knot` | the density table read at x[0], 280 K, an end of its readable range, inclusive: `met`, that knot's `y`, the axis entry `met` | 13 | met; value `1000.0`; unit `"kg/m3"`; labels none |
+| `table_at_last_knot` | the density table read at x[-1], 340 K, an end of its readable range, inclusive: `met`, that knot's `y`, the axis entry `met` | 13 | met; value `986.0`; unit `"kg/m3"`; labels none |
 
 ## PR-015
 
@@ -258,6 +263,65 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `constant_with_conditions` | a constant is returned with its conditions: the value, and one entry each for temperature and shear rate, with the record's entry and the operating condition; it is also PR-014's met constant (its range is its conditions), PR-035's label returned with the value and PR-318's `want: value` on a constant, whose arm was the same file and is kept once | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+
+## PR-016
+
+`record_format.md`: linear and log-log tables interpolate by their scheme
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `linear_at_interior_knot` | the density table read at its interior knot 300 K (no edge): `met`, that knot's `y`, 996 kg/m3; both intervals that meet there give it | 13 | met; value `996.0`; unit `"kg/m3"`; labels none |
+| `linear_between_knots` | the density table (linear) read at 333.25 K, between the knots 320 and 340: `y0 + (x - x0) * (y1 - y0) / (x1 - x0)` on that interval, 987.35 kg/m3 | 13 | met; value `987.35`; unit `"kg/m3"`; labels none |
+| `loglog_at_interior_knot` | the log-log table read at its interior knot 100 1/s: that knot's `y`, 0.0625 Pa.s | 13 | met; value `0.0625`; unit `"Pa.s"`; labels none |
+| `loglog_between_knots_high` | the log-log table read at 500 1/s, between the knots 100 and 1000: `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) / (ln x1 - ln x0))` on that interval, in natural logarithms | 13 | met; value `0.023716912023294765`; unit `"Pa.s"`; labels none |
+| `loglog_between_knots_low` | the log-log table read at 3 1/s, between the knots 1 and 10: `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) / (ln x1 - ln x0))` on that interval, in natural logarithms | 13 | met; value `0.25805625232768326`; unit `"Pa.s"`; labels none |
+
+## PR-017
+
+`record_format.md`: outside the tabulated range is refused (`outside_range`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `far_above` | the density table read at 1000 K, far above x[-1]: `not_met` (`outside_range`, temperature) at step 11, no value, the axis entry `not_met` | 11 | not_met; `outside_range (temperature)`; labels none |
+| `far_below` | the density table read at 200 K, far below x[0]: `not_met` (`outside_range`, temperature) at step 11, no value, the axis entry `not_met` | 11 | not_met; `outside_range (temperature)`; labels none |
+| `one_double_above_last_knot` | the density table read one double above x[-1] = 340 K: `not_met` (`outside_range`, temperature) at step 11, no value, the axis entry `not_met` | 11 | not_met; `outside_range (temperature)`; labels none |
+| `one_double_below_first_knot` | the density table read one double below x[0] = 280 K: `not_met` (`outside_range`, temperature) at step 11, no value, the axis entry `not_met`; it is also PR-310's `outside_range` with no extrapolation in the request, and PR-336's members after step 11's refusal, whose arm was the same file and is kept once | 11 | not_met; `outside_range (temperature)`; labels none |
+
+## PR-018
+
+`record_format.md`: exactly at an edge is refused, wherever the edge lies; outside the readable range, `at_edge` and `outside_range`, and no value; just below and just above an edge read the correct side; `-0` at an edge at `0` is at it
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `at_edge` | the edge table read exactly at its edge, 273 K, inside the readable range: `at_edge` (temperature), no value, the axis entry `not_met`; it is also PR-310's `at_edge` and PR-312's axis entry at an edge, whose arm was the same file and is kept once | 11 | not_met; `at_edge (temperature)`; labels none |
+| `edge_inside_narrowed_range` | the edge table with `source_range` [265, 281], read at its edge 273 K, inside the narrowed readable range: `at_edge` alone | 11 | not_met; `at_edge (temperature)`; labels none |
+| `edge_on_readable_range_end` | the edge table with `source_range` [273, 283] read at 273 K, its edge and the readable range's end, inclusive: `at_edge` alone, the point being inside the range | 11 | not_met; `at_edge (temperature)`; labels none |
+| `edge_outside_readable_range` | the edge table with `source_range` [275, 283] read at its edge, 273 K, outside the readable range: `at_edge` and `outside_range` (each temperature), the refusal at the edge deciding; no value | 11 | not_met; `at_edge (temperature)`, `outside_range (temperature)`; labels none |
+| `just_above_edge` | the edge table read one double above the edge: the interval above it, [273, 283], so about 1000 kg/m3 | 13 | met; value `1000.0`; unit `"kg/m3"`; labels none |
+| `just_below_edge` | the edge table read one double below the edge: the interval below it, [263, 273], so about 916 kg/m3 | 13 | met; value `916.0`; unit `"kg/m3"`; labels none |
+| `minus_zero_at_edge_at_zero` | the susceptibility table with an edge at 0 T read at an operating value of `-0`: by value at the edge, `at_edge` (magnetic_flux_density), no value (numbers compared at the relative tolerance, under which `-0` and `0` agree) | 11 | not_met; `at_edge (magnetic_flux_density)`; labels none |
+
+## PR-019
+
+`record_format.md`: `source_range` never extends the readable range, and narrows it where it is narrower; one that is not two ordered numbers sharing with `[x[0], x[-1]]` a value that is no edge (out of order, of another length, disjoint from it, or meeting it only at an edge) refuses the field (`form_invalid`)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `narrower_above_range` | the density table with `source_range` [290, 330] read at 335 K, inside x but above the narrowed range: `outside_range` (temperature), the axis entry `not_met`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `narrower_at_lower_end` | the density table with a narrowed `source_range`, read at 290 K, the narrowed range's lower end, inside [280, 300]: `met`, interpolated by the scheme | 13 | met; value `998.0`; unit `"kg/m3"`; labels none |
+| `narrower_at_upper_end` | the density table with a narrowed `source_range`, read at 330 K, the narrowed range's upper end, inside [320, 340]: `met`, interpolated by the scheme | 13 | met; value `988.0`; unit `"kg/m3"`; labels none |
+| `narrower_below_range` | the density table with `source_range` [290, 330] read at 285 K, inside x but below the narrowed range: `outside_range` (temperature), the axis entry `not_met`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `narrower_uses_knot_outside_range` | the density table with a narrowed `source_range`, read at 295 K, whose bracketing knots 280 and 300 include one outside the narrowed range: `met`, interpolated by the scheme | 13 | met; value `997.0`; unit `"kg/m3"`; labels none |
+| `one_point_range_outside` | the density table with `source_range` [250, 280], a readable range of the one point 280 K, read at the knot 300 K: `outside_range` (temperature), the axis entry `not_met`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `one_point_range_read` | the density table with a narrowed `source_range`, read at 280 K, the one point of its readable range: `met`, interpolated by the scheme | 13 | met; value `1000.0`; unit `"kg/m3"`; labels none |
+| `source_range_disjoint` | `source_range` [350, 360], sharing no value with [280, 340]: the field refused (`form_invalid`) at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `source_range_holding_string` | `source_range` [290, "330"], holding a string: the field refused (`form_invalid`) at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `source_range_meets_only_at_edge` | `source_range` [273, 273] on the edge table, meeting [263, 283] only at its edge: the field refused (`form_invalid`) at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `source_range_not_list` | `source_range` a string, not a list: the field refused (`form_invalid`) at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `source_range_one_number` | `source_range` [290], of one number: the field refused (`form_invalid`) at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `source_range_reversed` | `source_range` [330, 290], out of order: the field refused (`form_invalid`) at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `source_range_three_numbers` | `source_range` [290, 310, 330], of three numbers: the field refused (`form_invalid`) at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `wider_does_not_extend` | the density table with `source_range` [270, 350], wider than x, read at 275 K, inside it but below x[0]: `outside_range` (temperature), the axis entry `not_met`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
 
 ## PR-022
 
@@ -306,10 +370,12 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `near_typo_axis_units` | a table holding `axis_units` beside `axis_unit`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_body_extension` | the body holds `extension`, one slip from `extensions`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_composition_stated_sums` | a composition with `stated_sums`, one slip from `stated_sum`, in place of it: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_derivation_input_specimen` | a derived viscosity whose derivation holds `input_specimen`, one slip from `input_specimens`, in place of it: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_derivation_mixed_condition` | a derived viscosity whose derivation holds `mixed_condition`, one slip from `mixed_conditions`, in place of it: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_edgse` | a table holding `edgse` beside `edges`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_field_name_dynamic_viscosty` | the section's `fields` hold `dynamic_viscosty`, one slip from `dynamic_viscosity`, beside it: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_field_specimne` | the field holds `specimne`, one slip from `specimen`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_in_component` | a composition with a component holding `fractions`, one slip from `fraction`, beside it: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
@@ -328,8 +394,12 @@ See `README.md` beside this file for how to read a case.
 | `near_typo_in_statistics_means` | the statistics block holds `means`, one slip from `mean`, beside it: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_in_status_object` | the shear rate's status object holds `reasons`, one slip from `reason`, beside it: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_in_uncertainty` | a relative uncertainty holds `coverage_factors`, one slip from `coverage_factor`, beside it: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_point` | a table holding `point`, one slip from `points`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_section_fact_tissue_stat` | the section's `specimen` holds a fact `tissue_stat`, one slip from `tissue_state`: each field read from the section is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_section_specimens` | the `fluid` section holds `specimens`, one slip from `specimen`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_source_ranges` | a table holding `source_ranges`, one slip from `source_range`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_z` | a table holding `z`, one slip from `x` and from `y`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `table_unknown_member_ignored` | a table holding `curation_note`, a member the reader does not know and more than one slip from every member of a table: ignored; read at 310 K, `met` | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
 | `unknown_member_in_condition` | an unknown member, `curation_note`, in the temperature condition is ignored and not returned: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_member_in_fact` | an unknown member, `curation_note`, in a specimen fact is ignored and not returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_member_in_field` | an unknown member, `curation_note`, in the value field is ignored and not returned: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
@@ -364,6 +434,9 @@ See `README.md` beside this file for how to read a case.
 | `statistics_basis_unknown` | the statistics block's `basis` holds `reported_iqr`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `status_token_unknown` | the statistics block's `sd` holds the status token `pending`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `sum_rule_unknown` | a composition with the sum rule `approximate`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `table_axis_token_condition` | `axis` `density_kind`, a token condition's name: `unknown_token`, and not `form_invalid` for it, at step 8 | 8 | not_met; `unknown_token`; labels none |
+| `table_axis_unknown` | `axis` `frequency`, a condition of a later version: `unknown_token`, and not `form_invalid` for it, at step 8 | 8 | not_met; `unknown_token`; labels none |
+| `table_scheme_unknown` | `scheme` `cubic`: `unknown_token`, and not `form_invalid` for it, at step 8 | 8 | not_met; `unknown_token`; labels none |
 | `uncertainty_basis_unknown` | a relative uncertainty's `basis` holds `vendor_claim`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 
 ## PR-033
@@ -423,6 +496,9 @@ See `README.md` beside this file for how to read a case.
 | `reference_data_on_magnetic_remanence` | a well-formed `reference_data` on `magnetic.remanence`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
 | `reference_data_on_magnetic_saturation_magnetisation` | a well-formed `reference_data` on `magnetic.saturation_magnetisation`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
 | `reference_data_on_magnetic_volume_susceptibility` | a well-formed `reference_data` on `magnetic.volume_susceptibility`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
+| `table_on_bulk_elemental_composition` | a well-formed table on `bulk.elemental_composition`, whose row does not allow one: `form_not_registered` at step 8 | 8 | not_met; `form_not_registered`; labels none |
+| `table_on_magnetic_remanence` | a well-formed table on `magnetic.remanence`, whose row does not allow one: `form_not_registered` at step 8 | 8 | not_met; `form_not_registered`; labels none |
+| `table_on_magnetic_saturation_magnetisation` | a well-formed table on `magnetic.saturation_magnetisation`, whose row does not allow one: `form_not_registered` at step 8 | 8 | not_met; `form_not_registered`; labels none |
 
 ## PR-037
 
@@ -430,6 +506,12 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `axis_unit_celsius` | `axis_unit` `Cel`: `unit_mismatch` with the axis as `condition`, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `axis_unit_escaped_k` | `axis_unit` written as the escape `\u004b`, which decodes to `K`: read at 310 K, `met` | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
+| `axis_unit_kelvin_sign` | `axis_unit` `K` written with U+212A KELVIN SIGN: `unit_mismatch` with the axis as `condition`, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `axis_unit_number` | `axis_unit` a number, neither a string nor a status object: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `axis_unit_status_object` | `axis_unit` `{"status": "not_applicable"}` where `K` is registered: `unit_mismatch` with the axis as `condition`, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
+| `axis_unit_unknown_status_token` | `axis_unit` a status object holding a token no reader knows: `unit_mismatch` with the axis as `condition`, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
 | `condition_unit_celsius` | the temperature is 37 `Cel`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
 | `condition_unit_escaped_k` | the temperature's unit written `\u004B`, which decodes to `K`: read, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `condition_unit_kelvin_sign` | the temperature's unit is U+212A KELVIN SIGN, not the letter `K`: `unit_mismatch` with that condition, at step 9 | 9 | not_met; `unit_mismatch (temperature)`; labels none |
@@ -553,16 +635,19 @@ See `README.md` beside this file for how to read a case.
 | `overlay_scope_null` | target's record is the overlay with `scope`: null: its body structure is refused (step 3) | 3 | not_met; `malformed` |
 | `overlay_scope_run_null` | target's record is the overlay with purpose `fit` and `scope.run`: null: its body structure is refused (step 3) | 3 | not_met; `malformed` |
 | `plus_minus_null` | the temperature's `"plus_minus": null`, an optional member step 8 checks: `form_invalid`, never read as an absent member | 8 | not_met; `form_invalid`; labels none |
+| `points_null` | a table holding `"points": null`: `points_unsupported` for the member, and `form_invalid` for its `null` | 8 | not_met; `form_invalid`, `points_unsupported`; labels none |
 | `record_type_null` | target's record with "record_type": null in the envelope or body structure | 3 | not_met; `malformed` |
 | `section_specimen_null` | the `fluid` section's `"specimen": null`, an optional member step 8 checks: `form_invalid`, never read as an absent member | 8 | not_met; `form_invalid`; labels none |
 | `sections_null` | target's record with "sections": null in the envelope or body structure | 3 | not_met; `malformed` |
 | `set_or_measured_null` | the temperature's `"set_or_measured": null`, an optional member step 8 checks: `form_invalid`, never read as an absent member | 8 | not_met; `form_invalid`; labels none |
+| `source_range_null` | a table holding `"source_range": null`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
 | `stated_sum_null` | a composition with `"stated_sum": null`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `statistics_sd_null` | the statistics block's `"sd": null` inside the value field, in a member step 8 checks: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `unit_null` | `"unit": null` inside the value field, in a member step 8 checks: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `unknown_member_in_field_null` | an unknown member `curation_note` holding `null` inside the field: nothing is refused, the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_top_level_member_null_listed` | a record holding null in a top-level member the reader does not know passes step 3 and is listed | listing | met; lists `conformance/water_fixture` 1.0.0 |
 | `unknown_top_level_member_null_read` | an unknown top-level member holding `null` is ignored, to the value: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `x_null` | a table holding `"x": null`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
 
 ## PR-050
 
@@ -615,9 +700,13 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `label_not_named_for_field` | the density carries the Newtonian label, which the reader knows and the density's row does not name: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `linear_label_on_flux_density_table` | the linear label on a susceptibility table over `magnetic_flux_density`, which the row does not name for that table: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `linear_label_on_temperature_table` | the linear label on a susceptibility table over temperature (axis not `magnetic_flux_density`), read at 290 K: `met`, the label returned | 13 | met; value `0.00049`; unit `"1"`; labels `materica.magnetic.linear.v1` |
 | `linear_label_on_viscosity` | the viscosity constant carries the linear magnetic label, which the reader knows and the viscosity's row does not name: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `missing_label_not_refused` | the viscosity constant carries no label: not refused at read; the water answer with no label | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels none |
 | `newtonian_label_on_interval` | a viscosity interval carries the Newtonian label, which the row names only on a constant or a table: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `newtonian_label_on_shear_rate_table` | the Newtonian label on a viscosity table over `shear_rate`, which the row does not name for that table: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `newtonian_label_on_temperature_table` | the Newtonian label on the viscosity table over temperature (axis not `shear_rate`), read at 290 K: `met`, the label returned | 13 | met; value `0.001125`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_label` | the viscosity constant carries `materica.fluid.bingham.v1`, a label the reader does not know: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 
 ## PR-100
@@ -679,6 +768,7 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `withheld_table` | a reference-only table: its `table` and `statistics` hold `withheld`: `withheld` at step 8 | 8 | not_met; `withheld`; labels none |
 | `withheld_value` | a reference-only value: its `value` and `statistics` hold `withheld`: `withheld` | 8 | not_met; `withheld`; labels none |
 | `withheld_value_with_reason` | a reference-only value: its `value` and `statistics` hold `withheld`, the value's status object with a `reason`: `withheld` | 8 | not_met; `withheld`; labels none |
 
@@ -728,16 +818,21 @@ See `README.md` beside this file for how to read a case.
 | `condition_status_beside_basis` | the shear rate holds `{"status": "unstated", "basis": "stated"}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `condition_status_beside_unit` | the shear rate holds `{"status": "unstated", "unit": "1/s"}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `constant_value_unstated` | the constant's `value` holds `{"status": "unstated"}`, a token its row does not allow: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `edges_status_object` | `edges` holding `{"status": "none"}`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
 | `evidence_unit_status_beside_other_member` | evidence with the unit `{"status": "not_applicable", "note": ...}`, a status object beside another member: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `interval_member_none` | the form's member `interval` holding `{"status": "none"}`, a token its row does not allow: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `interval_upper_status_beside_other_member` | `upper` holding `{"status": "none", "note": ...}`, a status object beside a member where a number belongs: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `reason_not_string` | the shear rate holds `{"status": "unstated", "reason": 5}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `sd_status_beside_other_member` | the statistics `sd` holds `{"status": "none", "note": ...}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `source_range_status_object` | `source_range` holding `{"status": "unstated"}`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
 | `status_beside_unknown_member_of_object` | the shear rate holds `status` `unstated` beside an unknown member, `curation_note`: a status object, so `condition_unstated`, its entry's `record` without the unknown member | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `status_key_in_conditions` | `conditions` holds a key `status`: it names a condition the reader does not know (`condition_unknown_name`), never a status | 13 | unknown; `condition_unknown_name (status)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `status_member_where_none_allowed` | the `source` object, where no status object may stand, holds a member `status` beside its `key`: a member the reader does not know, so the source is read and its key returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `status_not_string` | `n_specimens` holds `{"status": 3}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `status_object_in_dispersion` | the block's `dispersion` holds a status object, which no row lets it hold: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `table_status_beside_members` | `table` holding `"status": "withheld"` beside the table's members: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `x_status_object` | `x` holding `{"status": "unstated"}`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `y_status_object` | `y` holding `{"status": "unstated"}`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
 
 ## PR-150
 
@@ -801,6 +896,19 @@ See `README.md` beside this file for how to read a case.
 | `n_sources_returned` | a block pooled across five sources (`represents: across_sources`) returns `n_sources` as stored | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `population_level_returned` | a population block taken over specimens within one donor returns `population_level` as stored | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 
+## PR-157
+
+`uncertainty.md`: a table's block applies to each value, between knots included; a 0.1.0 reader refuses a table with a `points` member, whatever it holds, `[]` included (`points_unsupported`); a numeric `mean`, or a `central` token, on a table's block is returned as stored
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `block_at_knot` | a table whose block holds a spread (sd 0.5 kg/m3), read at the knot 300 K: the table's block, as stored, applies to the value | 13 | met; value `996.0`; unit `"kg/m3"`; labels none |
+| `block_between_knots` | a table whose block holds a spread (sd 0.5 kg/m3), read at 310 K, between knots: the table's block, as stored, applies to the value | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
+| `central_token_returned` | a table whose block holds `central` `mean`, which rule 2 says holds `not_applicable`: not refused at read; returned as stored | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
+| `numeric_mean_returned` | a table whose block holds a numeric `mean`, 993 kg/m3, which rule 2 says holds `not_applicable`: not refused at read; returned as stored | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
+| `points_empty` | a table holding `points` `[]`: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
+| `points_list` | a table holding a `points` list as long as `x`, each entry a provenance: `points_unsupported` at step 8, and nothing else | 8 | not_met; `points_unsupported`; labels none |
+
 ## PR-158
 
 `uncertainty.md`: a statistics member missing or of the wrong shape, an uncertainty with neither coverage factor nor probability a number, a conditional member present where its `represents` does not call for it, or missing where it does, a known token the member does not allow (`reported_uncertainty` in the block's `basis`), a negative `sd`, a coverage factor of 0, a coverage probability of 1.5, and a count that is not whole, each refuse the field (`form_invalid`); a `dof` of 7.5 does not
@@ -842,12 +950,14 @@ See `README.md` beside this file for how to read a case.
 | `field_array` | the field is an array, not an object: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
 | `field_not_object` | the field is a number, not an object: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
 | `field_null` | the field is `null`, not an object: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
+| `loglog_adjacent_double_knots` | the log-log table on two adjacent doubles, 1e300 and the next, read at x[-1]: a result, `met`, that knot's `y`, 2 Pa.s (in doubles the formula divides 0 by 0 there) | 13 | met; value `2.0`; unit `"Pa.s"`; labels none |
 | `no_records` | no records supplied at all: a result (absent), no error | 1 | not_met; `absent` |
 | `record_binary_bytes` | the only source is binary bytes: a result (malformed), no error | 1 | not_met; `malformed` |
 | `record_empty_file` | the only source is an empty file: a result (malformed), no error | 1 | not_met; `malformed` |
 | `request_empty_file` | the request file is empty: a result (request_incomplete), no error | 0 | not_met; `request_incomplete` |
 | `request_nesting_100000` | a request nested 100000 deep: a result (request_incomplete), no error | 0 | not_met; `request_incomplete` |
 | `statistics_string` | `statistics` is a string: a result, `form_invalid`, never a raise | 8 | not_met; `form_invalid`; labels none |
+| `table_10000_knots` | a density table of 10,000 knots read between knots 5000 and 5001: a result, `met`, 1000 - 5000.5/1024 kg/m3 | 13 | met; value `995.11669921875`; unit `"kg/m3"`; labels none |
 
 ## PR-301
 
@@ -865,6 +975,7 @@ See `README.md` beside this file for how to read a case.
 | `three_codes_step0_with_fd` | as `three_codes_step0`, the suite claimed: no want_mismatch, the other two reported | 0 | not_met; `request_incomplete (temperature)`, `request_unit_mismatch (shear_rate)`; claims `fits_and_reference_data: true` |
 | `two_refusals_step_8` | an unknown `central` token and a negative `sd`: step 8 makes all its checks, `unknown_token` and `form_invalid` | 8 | not_met; `unknown_token`, `form_invalid`; labels none |
 | `unknown_beside_condition_outside` | the water constant read at 330 K: `condition_unstated` (shear rate) beside `condition_outside` (temperature), both at step 10; `not_met` | 10 | not_met; `condition_unstated (shear_rate)`, `condition_outside (temperature)`; labels none |
+| `unknown_beside_outside_range` | the same table read at 350 K: step 10's `condition_unstated` (density_kind) and step 11's `outside_range` (temperature) both reported; the status the worst, `not_met`; no value | 11 | not_met; `condition_unstated (density_kind)`, `outside_range (temperature)`; labels none |
 | `unknown_beside_want_mismatch` | `want: bounds` on the water constant: `condition_unstated` (shear rate) from step 10 beside `want_mismatch` from step 13; the status is the worst, `not_met`, and there is no value | 13 | not_met; `condition_unstated (shear_rate)`, `want_mismatch`; labels `materica.fluid.newtonian.v1` |
 | `want_suite_and_incomplete` | want fit without the suite, and field off the pattern: both reported | 0 | not_met; `want_mismatch`, `request_incomplete`; claims `fits_and_reference_data: false` |
 | `want_suite_and_incomplete_with_fd` | as `want_suite_and_incomplete`, the suite claimed: want fit passes, the field still fails | 0 | not_met; `request_incomplete`; claims `fits_and_reference_data: true` |
@@ -896,13 +1007,44 @@ See `README.md` beside this file for how to read a case.
 | `one_ulp_outside` | 310 K stated, 311 K operating, tolerance the double just below 1 K: `not_met` (`condition_outside`) | 10 | not_met; `condition_outside (temperature)`; labels none |
 | `value_outside` | 310.15 K stated, 312 K operating, tolerance 1 K: `not_met` (`condition_outside`) | 10 | not_met; `condition_outside (temperature)`; labels none |
 
+## PR-307
+
+`read_side_contract.md`: outside a form's range under a declared extrapolation and `want: value`: `not_met`, the value at the readable range's nearest end, the assumption, and steps 12 and 13's reasons and labels; not applied under another `want`, at a declared edge, across one (an edge between the operating value and the readable range's nearest end, or on that end: `outside_range`, no value), or naming another field or location
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `above_consumer_law` | `want: value` with an extrapolation of the read's field at its record, at 350 K, above x[-1], method `consumer_law`: y[-1], 986 kg/m3: `not_met` (`outside_range`, temperature), that value, `assumption` naming the extrapolation without its `basis` | 13 | not_met; `outside_range (temperature)`; value `986.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "consumer_law", "law": "conformance fixture: an illustrative law the consumer computes from the end value"}`; labels none |
+| `above_narrowed_range` | `want: value` with an extrapolation of the read's field at its record, on the table narrowed to [290, 330], at 335 K: the value at 330 K, 988 kg/m3: `not_met` (`outside_range`, temperature), that value, `assumption` naming the extrapolation without its `basis` | 13 | not_met; `outside_range (temperature)`; value `988.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `above_range_edge_inside` | `want: value` with an extrapolation of the read's field at its record, on the edge table narrowed to [265, 281], at 282 K: the value at 281 K, 999.6 kg/m3: `not_met` (`outside_range`, temperature), that value, `assumption` naming the extrapolation without its `basis` | 13 | not_met; `outside_range (temperature)`; value `999.6`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `across_edge` | an extrapolation of the field at its record, on the edge table narrowed to [275, 283], at 272 K, with the edge at 273 K between the point and the range's end: `outside_range` stands, not applied, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `across_edge_on_range_end` | an extrapolation of the field at its record, on the edge table narrowed to [273, 283], at 272 K, the edge lying on the range's end: `outside_range` stands, not applied, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `at_edge` | an extrapolation of the field at its record, on the edge table at its edge, 273 K: `at_edge` stands; not applied | 11 | not_met; `at_edge (temperature)`; labels none |
+| `at_edge_outside_readable_range` | an extrapolation of the field at its record, on the edge table narrowed to [275, 283], at its edge 273 K, outside the readable range: `at_edge` and `outside_range`; not applied | 11 | not_met; `at_edge (temperature)`, `outside_range (temperature)`; labels none |
+| `at_interval` | the density table at 270 K with an extrapolation that is located at an `interval`, index 0, which a request never targets: checked and not applied; `outside_range`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `below_constant` | `want: value` with an extrapolation of the read's field at its record, at 270 K, below x[0], method `constant`: y[0], 1000 kg/m3: `not_met` (`outside_range`, temperature), that value, `assumption` naming the extrapolation without its `basis`; it is also PR-336's members under an extrapolation, whose arm was the same file and is kept once | 13 | not_met; `outside_range (temperature)`; value `1000.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `below_narrowed_range` | `want: value` with an extrapolation of the read's field at its record, on the table narrowed to [290, 330], at 285 K: the value at 290 K, taken from inside, 998 kg/m3, not the table's own value at 285 K: `not_met` (`outside_range`, temperature), that value, `assumption` naming the extrapolation without its `basis` | 13 | not_met; `outside_range (temperature)`; value `998.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `below_range_edge_inside` | `want: value` with an extrapolation of the read's field at its record, on the edge table narrowed to [265, 281] (its edge inside), at 264 K: the value at 265 K, 917.6 kg/m3: `not_met` (`outside_range`, temperature), that value, `assumption` naming the extrapolation without its `basis` | 13 | not_met; `outside_range (temperature)`; value `917.6`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `edge_beyond_point_not_between` | `want: value` with an extrapolation of the read's field at its record, on the edge table narrowed to [275, 283], at 274 K, where the edge at 273 K lies beyond the point, not between it and the range's end: the value at 275 K, 999.9 kg/m3: `not_met` (`outside_range`, temperature), that value, `assumption` naming the extrapolation without its `basis` | 13 | not_met; `outside_range (temperature)`; value `999.9`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `inside_range_not_applied` | an extrapolation of the field at its record, read at 310 K, inside the range: nothing to cover, `met`, 993 kg/m3, no `assumption` | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
+| `no_location` | the density table at 270 K with an extrapolation that names no location: checked and not applied; `outside_range`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `other_field` | the density table at 270 K with an extrapolation that names another field: checked and not applied; `outside_range`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `other_hash` | the density table at 270 K with an extrapolation that is located at the read's id and version but another content hash (the narrowed table's): checked and not applied; `outside_range`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `other_record` | the density table at 270 K with an extrapolation that is located at another record (the glycerol record's pin): checked and not applied; `outside_range`, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `reasons_of_step_10_kept` | the density table whose `density_kind` is `not_applicable`, read at 270 K under an extrapolation: step 10's `condition_unstated` (density_kind) is kept beside `outside_range`; `not_met`, y[0], `assumption` | 13 | not_met; `condition_unstated (density_kind)`, `outside_range (temperature)`; value `1000.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `steps_12_and_13_run` | the viscosity table stated without origin, read at 350 K under an extrapolation: steps 12 and 13 run after step 11, so `stated_without_origin` and the Newtonian label join `outside_range`; `not_met`, y[-1], `assumption` | 13 | not_met; `outside_range (temperature)`, `stated_without_origin`; value `0.00042`; unit `"Pa.s"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels `materica.fluid.newtonian.v1` |
+| `want_bounds` | `want: bounds` on the density table at 270 K with an extrapolation of the field at its record: not applied under another `want`; step 11's `outside_range` ends the read, no value (BC-019's read side: such a read is refused, though an extrapolation names it) | 11 | not_met; `outside_range (temperature)`; labels none |
+| `want_components` | `want: components` on the density table at 270 K with an extrapolation of the field at its record: not applied under another `want`; step 11's `outside_range` ends the read, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+| `want_evidence` | `want: evidence` on the density table at 270 K with an extrapolation of the field at its record: not applied under another `want`; step 11's `outside_range` ends the read, no value | 11 | not_met; `outside_range (temperature)`; labels none |
+
 ## PR-308
 
 `read_side_contract.md`: no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `no_operating_value_for_axis` | the density table read with no `operating_conditions`, so no operating value for its axis: step 10 runs to its end (the axis entry `not_met`, without `operating`, and no reason for it), then step 11 refuses (`request_incomplete`, temperature) | 11 | not_met; `request_incomplete (temperature)`; labels none |
 | `no_want` | requirement without `want` | 0 | not_met; `request_incomplete` |
+| `operating_conditions_without_axis` | the density table read with `operating_conditions` an empty object, so no operating value for its axis: step 10 runs to its end (the axis entry `not_met`, without `operating`, and no reason for it), then step 11 refuses (`request_incomplete`, temperature) | 11 | not_met; `request_incomplete (temperature)`; labels none |
 | `tolerance_with_other_operating_condition` | a temperature tolerance, operating conditions giving only shear_rate | 0 | not_met; `request_incomplete (temperature)` |
 | `tolerance_without_operating_conditions` | a temperature tolerance and no operating_conditions member | 0 | not_met; `request_incomplete (temperature)` |
 
@@ -947,6 +1089,18 @@ See `README.md` beside this file for how to read a case.
 | `record_row_and_request_entries` | the record holds `measurement_geometry` `tube` and no `measurement_dimension`, which a tube requires: entries for the record's, the row's and the request's conditions and for the dimension, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (measurement_dimension)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `test_method_absent_on_remanence` | a remanence without `test_method`, which its row requires: an entry for it, `unknown` (`condition_unstated`) | 13 | unknown; `condition_unstated (test_method)`; value `1.2`; unit `"T"`; labels none |
 | `test_method_on_remanence` | a remanence with its closed-circuit `test_method` (`hysteresigraph`), accepted: `met`, one entry per condition the row requires; it is also PR-315's closed-circuit method accepted, whose arm was the same file and is kept once | 13 | met; value `1.2`; unit `"T"`; labels none |
+
+## PR-312
+
+`read_side_contract.md`: the form's own axis entry is `met` when the read lies in the form's readable range off every edge, and `not_met` outside it, at an edge, over a range or with no operating value
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `axis_entry_when_step_10_ends` | the density table with `density_kind` `matrix`, read at 350 K (outside its range) accepting only `apparent`: step 10 ends the read (`condition_not_accepted`, density_kind); the axis entry stands `not_met`, and no reason names the axis, since step 11 never runs | 10 | not_met; `condition_not_accepted (density_kind)`; labels none |
+| `met_at_first_knot` | the viscosity table read at x[0], 280 K: the axis entry `met` (`record` its `not_applicable` status, `operating` the read's), the field `met`, the Newtonian label (its axis is not `shear_rate`) | 13 | met; value `0.0014`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `met_at_last_knot` | the viscosity table read at x[-1], 340 K: the axis entry `met` (`record` its `not_applicable` status, `operating` the read's), the field `met`, the Newtonian label (its axis is not `shear_rate`) | 13 | met; value `0.00042`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `met_inside` | the viscosity table read at 310 K, inside: the axis entry `met` (`record` its `not_applicable` status, `operating` the read's), the field `met`, the Newtonian label (its axis is not `shear_rate`) | 13 | met; value `0.0007149999999999999`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `not_met_outside` | the viscosity table read at 350 K, outside its range: the axis entry `not_met`, `outside_range` (temperature) from step 11, no value and no label (the read ends before step 12) | 11 | not_met; `outside_range (temperature)`; labels none |
 
 ## PR-313
 
@@ -1004,6 +1158,16 @@ See `README.md` beside this file for how to read a case.
 | `implied_two_disagree_in_alternative` | the same two implied conditions apply in the first of two alternatives: the request's fault ends the read, `request_incomplete` (temperature), and the alternative is not set aside; no condition is checked, and the result holds neither `conditions` nor `alternative_values` | 10 | not_met; `request_incomplete (temperature)`; labels none |
 | `implied_two_disagree_record_states` | two implied conditions that both apply (the specimen states `in_vivo` and `normal`) supply 310.15 and 309.15 K, the record stating 310.15 K: `request_incomplete` (temperature) at step 10, which then checks no condition; neither value fills the temperature, and the result holds no `conditions` | 10 | not_met; `request_incomplete (temperature)`; labels none |
 
+## PR-317
+
+`read_side_contract.md`: a constant's range is its conditions; a table's tolerance never widens the table
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `axis_tolerance_never_widens` | the density table read at 279 K with a temperature tolerance of 5 K, more than the 1 K gap to x[0]: `outside_range` (temperature); the tolerance does not widen the table | 11 | not_met; `outside_range (temperature)`; labels none |
+| `constant_extrapolation_not_applied` | the met water constant read with an extrapolation of its field at its record: a constant's range is its conditions, step 11 adds nothing, and the extrapolation is never applied: `met`, no `assumption` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `constant_outside_conditions_not_extrapolated` | the water constant read at 330 K, its temperature condition (310.15 K, tolerance 1 K) not met, with an extrapolation of its field: `condition_outside` (temperature) at step 10, which no extrapolation covers; no value | 10 | not_met; `condition_outside (temperature)`; labels none |
+
 ## PR-318
 
 `read_side_contract.md`: `want: value` on each form
@@ -1011,11 +1175,16 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `bounds_on_constant` | `want: bounds` on a met constant: `not_met` (`want_mismatch`) at step 13, no value, the conditions and the label kept; it is also PR-336's members at step 13, whose arm was the same file and is kept once | 13 | not_met; `want_mismatch`; labels `materica.fluid.newtonian.v1` |
+| `bounds_on_table` | `want: bounds` on the density table read inside its range (310 K): `not_met` (`want_mismatch`) at step 13, no value; `conditions` present | 13 | not_met; `want_mismatch`; labels none |
+| `bounds_outside_range` | `want: bounds` on the density table at 350 K, outside its range: step 11 ends the read (`outside_range`, temperature) before step 13 could give `want_mismatch` | 11 | not_met; `outside_range (temperature)`; labels none |
 | `components_on_constant` | `want: components` on a met constant: `not_met` (`want_mismatch`) at step 13, no value, the conditions and the label kept | 13 | not_met; `want_mismatch`; labels `materica.fluid.newtonian.v1` |
+| `components_on_table` | `want: components` on the density table read inside its range (310 K): `not_met` (`want_mismatch`) at step 13, no value; `conditions` present | 13 | not_met; `want_mismatch`; labels none |
 | `evidence_on_constant` | `want: evidence` on a met constant: `not_met` (`want_mismatch`) at step 13, no value, the conditions and the label kept | 13 | not_met; `want_mismatch`; labels `materica.fluid.newtonian.v1` |
+| `evidence_on_table` | `want: evidence` on the density table read inside its range (310 K): `not_met` (`want_mismatch`) at step 13, no value; `conditions` present | 13 | not_met; `want_mismatch`; labels none |
 | `value_on_composition` | `want: value` on a composition: `not_met` (`want_mismatch`), no value | 13 | not_met; `want_mismatch`; labels none |
 | `value_on_evidence` | `want: value` on evidence: `not_met` (`want_mismatch`), no value | 13 | not_met; `want_mismatch`; labels none |
 | `value_on_interval` | `want: value` on an interval, with no nominal: `not_met` (`want_mismatch`), no value | 13 | not_met; `want_mismatch`; labels none |
+| `value_on_table` | `want: value` on the density table at 290 K: the number at the operating condition, 998 kg/m3 | 13 | met; value `998.0`; unit `"kg/m3"`; labels none |
 
 ## PR-320
 
@@ -1059,6 +1228,48 @@ See `README.md` beside this file for how to read a case.
 | `tolerance_value_not_number_wrong_unit` | temperature tolerance value the string "1.0", unit Cel: both `request_incomplete` and `request_unit_mismatch` for temperature | 0 | not_met; `request_incomplete (temperature)`, `request_unit_mismatch (temperature)` |
 | `tolerance_without_operating_condition_wrong_unit` | a shear_rate tolerance of 60 in 1/min and no shear_rate operating condition: both `request_incomplete` and `request_unit_mismatch` for shear_rate | 0 | not_met; `request_incomplete (shear_rate)`, `request_unit_mismatch (shear_rate)` |
 
+## PR-321
+
+`read_side_contract.md`: a table read over an operating range of its axis gives `want_mismatch`, and no other reason of step 11
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `range_holding_edge` | a read over the operating range [270, 276] K on the edge table, holding its edge at 273 K: no `at_edge`: `want_mismatch` (temperature) alone at step 11, the axis entry `not_met` with the range as `operating` | 11 | not_met; `want_mismatch (temperature)`; labels none |
+| `range_inside` | a read over the operating range [290, 310] K, inside the readable range: `want_mismatch` (temperature) alone at step 11, the axis entry `not_met` with the range as `operating` | 11 | not_met; `want_mismatch (temperature)`; labels none |
+| `range_outside` | a read over the operating range [350, 360] K, wholly outside: no `outside_range`: `want_mismatch` (temperature) alone at step 11, the axis entry `not_met` with the range as `operating` | 11 | not_met; `want_mismatch (temperature)`; labels none |
+| `range_straddling_end` | a read over the operating range [270, 290] K, straddling x[0]: no `outside_range`: `want_mismatch` (temperature) alone at step 11, the axis entry `not_met` with the range as `operating` | 11 | not_met; `want_mismatch (temperature)`; labels none |
+
+## PR-322
+
+`read_side_contract.md`: a table breaking a structural rule gives `form_invalid` for that field only: `edges` absent, lengths, order, an edge at an end, listed twice, not repeated or repeated thrice, a repeated x that is no edge, a non-positive log-log value, an axis condition absent or not `not_applicable` (a malformed `source_range` is PR-019's)
+
+| Variant | Arm | Ends at | Expected |
+|---|---|---|---|
+| `axis_condition_absent` | `conditions` without the axis condition, temperature: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `axis_condition_stated` | the axis condition holding a stated value: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `axis_condition_unstated` | the axis condition holding `unstated`, not `not_applicable`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `axis_condition_with_reason_read` | the axis condition holding `not_applicable` with a `reason`: read, `met`, the entry's `record` with its `reason` | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
+| `axis_not_string` | `axis` a number, not a string: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `edge_at_end` | an edge at x[0], 263 K, repeated there: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `edge_listed_twice` | the edge 273 listed twice in `edges`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `edge_minus_zero_matches_knot_read` | an edge listed as `-0` beside `x` [-1, 0, 0, 1]: by value it is the repeated knot, so the table is well formed; read at 0.5 T, above it: `met` | 13 | met; value `0.0005499999999999999`; unit `"1"`; labels none |
+| `edge_not_in_x` | an edge at 310 K, which `x` does not hold: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `edge_not_repeated` | an edge at 300 K, which appears once in `x`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `edge_repeated_thrice` | the edge 273 K appearing three times in `x`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `edge_zero_and_minus_zero_listed_twice` | `edges` [0, -0] on the susceptibility table: compared by value, the edge 0 listed twice: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `edges_absent` | a table without `edges`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `edges_in_any_order_read` | two edges listed in descending order, [283, 273] (their order is free), read at 278 K between them: `met` | 13 | met; value `999.75`; unit `"kg/m3"`; labels none |
+| `loglog_negative_x` | a log-log table with an `x` of -1: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `loglog_zero_y` | a log-log table with a `y` of 0: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `other_field_read` | a record whose density table has no `edges`, read for its viscosity constant: the fault refuses only the table's field; the viscosity is `met`; it is also PR-045's table arm, whose arm was the same file and is kept once | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `repeated_x_no_edge` | `x` repeating 300 K, which is no edge: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `x_decreasing` | `x` not non-decreasing: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `x_minus_zero_and_zero_repeated` | `x` [-1, -0, 0, 1] with no edges: compared by value, 0 repeats and is no edge: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `x_one_value` | `x` of one value: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `y_holds_string` | `y` holding a string: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `y_longer` | `y` one longer than `x`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+| `y_shorter` | `y` one shorter than `x`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |
+
 ## PR-323
 
 `read_side_contract.md`: a condition holding `withheld`, `none`, `not_checked`, or `not_applicable` off the axis, gives `unknown`
@@ -1069,6 +1280,7 @@ See `README.md` beside this file for how to read a case.
 | `condition_not_applicable` | the temperature holds `not_applicable` on a constant, which has no axis: `unknown` (`condition_unstated`), with the value | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `condition_not_checked` | the temperature holds `not_checked`: `unknown` (`condition_unstated`), with the value | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `condition_withheld` | the temperature holds `withheld`: `unknown` (`condition_unstated`), with the value | 13 | unknown; `condition_unstated (temperature)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `table_other_condition_not_applicable` | the density table whose `density_kind` holds `not_applicable`, off the axis, read at 310 K: `unknown` (`condition_unstated`, density_kind), with the value 993 kg/m3 | 13 | unknown; `condition_unstated (density_kind)`; value `993.0`; unit `"kg/m3"`; labels none |
 
 ## PR-324
 
@@ -1171,6 +1383,15 @@ See `README.md` beside this file for how to read a case.
 | `accepted_difference_in_request` | an `accepted_difference`, a declaration's kind a read does not take: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `condition_not_registered` | step 0 refuses: a requirement naming the unregistered condition pressure (an accept list, no unit) | 0 | not_met; `request_incomplete (pressure)` |
 | `distribution_in_request` | a `distribution`, a declaration's kind a read does not take: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `extrapolation_basis_absent_read` | an extrapolation without `basis`, which a read ignores: the request passes step 0, and the read at 270 K applies the extrapolation of its field: `not_met`, y[0], `assumption` | 13 | not_met; `outside_range (temperature)`; value `1000.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
+| `extrapolation_field_not_registered` | an extrapolation naming `fluid.surface_tension`, a field that is not registered: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `extrapolation_law_empty` | an extrapolation with an empty `law`: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `extrapolation_law_missing` | an extrapolation without `law`: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `extrapolation_law_not_string` | an extrapolation with a `law` that is a number: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `extrapolation_law_white_space_read` | an extrapolation whose `law` is one space, accepted (a reader does not judge `law`): the request passes step 0, and the read at 270 K applies the extrapolation of its field: `not_met`, y[0], `assumption` | 13 | not_met; `outside_range (temperature)`; value `1000.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": " "}`; labels none |
+| `extrapolation_method_missing` | an extrapolation without `method`: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `extrapolation_method_unknown` | an extrapolation with `method` `linear`, not one of the two: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `extrapolation_near_typo_laws` | an extrapolation holding `laws` beside `law`, one slip from it: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
 | `field_empty_part` | step 0 refuses: field "fluid." | 0 | not_met; `request_incomplete` |
 | `field_missing` | step 0 refuses: target without field | 0 | not_met; `request_incomplete` |
 | `field_no_dot` | step 0 refuses: field "fluid" | 0 | not_met; `request_incomplete` |
@@ -1257,6 +1478,9 @@ See `README.md` beside this file for how to read a case.
 | `tolerance_unit_missing` | step 0 refuses: temperature tolerance without `unit` | 0 | not_met; `request_incomplete (temperature)` |
 | `tolerance_value_missing` | step 0 refuses: temperature tolerance without value (unit K) | 0 | not_met; `request_incomplete (temperature)` |
 | `tolerance_value_not_number` | step 0 refuses: temperature tolerance value the string "1.0" (unit K) | 0 | not_met; `request_incomplete (temperature)` |
+| `two_extrapolations_one_field` | an extrapolation two extrapolations naming the field, both at its record: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `two_extrapolations_one_field_two_locations` | an extrapolation two extrapolations naming the field, one at its record and one with no location: `request_incomplete` at step 0, with no condition | 0 | not_met; `request_incomplete`; labels none |
+| `two_extrapolations_two_fields_read` | an extrapolation beside a second extrapolation naming another field, which does not apply: the request passes step 0, and the read at 270 K applies the extrapolation of its field: `not_met`, y[0], `assumption` | 13 | not_met; `outside_range (temperature)`; value `1000.0`; unit `"kg/m3"`; assumption `{"acceptance": "extrapolation", "method": "constant", "law": "conformance fixture: the end value held constant"}`; labels none |
 | `two_nominals_one_field` | two nominals naming `bulk.density`, both inside the limits: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `unknown_member_in_operating_condition` | a member inside an operating condition entry no document defines is ignored; the read ends at step 5 on the interface record (unknown_type) | 5 | not_met; `unknown_type` |
 | `unknown_member_in_reference` | a member inside the record reference no document defines is ignored; the read ends at step 5 on the interface record (unknown_type) | 5 | not_met; `unknown_type` |
@@ -1371,6 +1595,7 @@ See `README.md` beside this file for how to read a case.
 | `unknown_member_in_plus_minus_entry` | an unknown member in a `plus_minus` entry (a bound of 0.25 K, within the 1 K tolerance): the entry is returned without it, `met` | 13 | met; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_member_in_reviewed_review` | a review holding the known `result` `reviewed` and an unknown member: returned as found, without the unknown member | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_member_in_standard` | a report whose `standard` holds an unknown member: the list is returned without it | 13 | met; value `[{"endpoint": "cytotoxicity", "standard": {"designation": "ISO 10993-5", "year": 2009.0}, "contact_category": "conformance fixture: the source's words", "contact_duration": "conformance fixture: the source's words", "material_form": "conformance fixture: the source's words", "processing": "conformance fixture: the source's words", "reported_result": "conformance fixture: illustrative report text", "provenance": {"origin": "measured_by_contributor", "extraction": {"method": "own_measurement"}, "assistance": {"status": "none"}, "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}}]`; unit `{"status": "not_applicable"}`; labels none |
+| `unknown_member_in_table_as_stored` | `want: bounds` on a table alternative and an interval alternative, both met at 310 K, and no pick: neither set aside for its form, `unknown` (`no_pick`), no `want_mismatch`; the table entry holding its `table` as stored without `curation_note`, which the reader does not know, and the interval's entry its bounds | 13 | unknown; `no_pick`; unit `"kg/m3"`; alternative_values `[{"alternative": 0.0, "value": {"axis": "temperature", "axis_unit": "K", "x": [280.0, 300.0, 320.0, 340.0], "y": [1000.0, 996.0, 990.0, 986.0], "scheme": "linear", "edges": []}, "conditions": [{"name": "temperature", "status": "met", "record": {"status": "not_applicable"}, "operating": {"value": 310.0, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "unstated"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": {"status": "not_applicable"}, "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}, {"alternative": 1.0, "value": {"lower": 980.0, "upper": 1000.0, "basis": "reported_range"}, "conditions": [{"name": "temperature", "status": "met", "record": {"value": 310.0, "unit": "K", "basis": "stated"}, "operating": {"value": 310.0, "unit": "K"}}, {"name": "density_kind", "status": "met", "record": {"token": "apparent", "basis": "stated"}}], "specimen": {}, "statistics": {"central": {"status": "not_applicable"}, "n_specimens": {"status": "unstated"}, "n_donors": {"status": "not_applicable"}, "mean": {"status": "not_applicable"}, "sd": {"status": "not_applicable"}, "min": {"status": "not_applicable"}, "max": {"status": "not_applicable"}, "distribution": {"status": "unstated"}, "basis": "reported_range", "represents": {"status": "unstated"}, "dispersion": "not_reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}}, "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked", "reason": "conformance fixture: illustrative values, not a measurement"}}, "labels": []}]`; labels none |
 | `unknown_member_in_token_condition` | an unknown member in the token condition `density_kind`: its entry's `record` is returned without it, `met` | 13 | met; value `1261.0`; unit `"kg/m3"`; labels none |
 | `unknown_members_in_composition` | unknown members in the composition and in one of its components: returned as stored, without them | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "partial", "components": [{"component": "element:H", "fraction": 0.11}, {"component": "element:O", "fraction": 0.75}]}`; unit `"1"`; labels none |
 | `unknown_members_in_derivation` | unknown members in a `derivation`, in one of its inputs and in that input's `record` (a number among them): the derivation is read, and none of them is returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.0011`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1`, `mixed_conditions` |

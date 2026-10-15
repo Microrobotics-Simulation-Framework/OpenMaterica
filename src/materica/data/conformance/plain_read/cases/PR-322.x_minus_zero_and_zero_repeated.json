@@ -1,0 +1,71 @@
+{
+  "case": "PR-322",
+  "variant": "x_minus_zero_and_zero_repeated",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "susceptibility_x_minus_zero_and_zero.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/susceptibility_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:6268f91c091a5f06cde68967a1b80a4930aa1eeb9c183e886b6118bb3f8a1111"
+      },
+      "field": "magnetic.volume_susceptibility"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      },
+      "magnetic_flux_density": {
+        "value": 0.5,
+        "unit": "T"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "specimen_shape": {
+          "accept": [
+            "sphere"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}
