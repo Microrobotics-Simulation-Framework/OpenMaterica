@@ -290,9 +290,9 @@ Every value needs (the full standard is `DOCUMENTATION_ARCHITECTURE.md` section 
   own spread, and where in the source it was found, in your draft. Where that spread varies along the axis,
   state the largest in the table's block, in the table's terms, and say so in the record's card (specification
   `uncertainty.md` section 1 rule 2). On a log-log table whose spread is a population spread, 0.1.0 cannot
-  state it in those terms: hold the table back until 0.2. Attenuation is stored as an amplitude coefficient in nepers per metre
-  (UCUM `/m`), with a solid's shear attenuation beside its longitudinal one; record the unit the source used
-  and whether it reported an amplitude or an intensity coefficient;
+  state it in those terms: hold the table back until 0.2. Attenuation is stored as an amplitude coefficient in
+  nepers per metre (UCUM `/m`), with a solid's shear attenuation beside its longitudinal one; record the unit
+  the source used and whether it reported an amplitude or an intensity coefficient;
 - a **composition** with its components, basis (mass, volume or mole), sum rule, and the sum the source
   states, kept as a fact even when it is not 100 %;
 - **statistics** for a scalar: specimens and donors, mean, standard deviation, minimum, maximum, basis, and
