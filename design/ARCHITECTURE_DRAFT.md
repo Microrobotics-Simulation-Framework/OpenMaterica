@@ -2618,6 +2618,16 @@ practice; both are private working files.
 | OpenMaterica's relation to materiomics unstated; the adoption history of earlier formats not researched | adjacent to materiomics, not its infrastructure (1); adoption evidence recorded (10, 14) | neither school of materiomics defines a record; the standards that spread had a gatekeeper and a validator |
 | a member the reader does not know ignored wherever it stands | ignored unless it is one slip from a member named at its place, which is refused; the names valid at one place kept more than one slip apart, now and in later minor versions (5.6) | a misspelt `plus_minus`, a field's `specimen` or a request's `acceptances` dropped what it held, and the read gave `met` (maintainer, 2026-10-14) |
 
+S3's design for reading tables and extrapolations (2026-10-15), after an independent check (32 findings) and a
+re-check of its revision (20 more), gave the rows below (specification `changes.md`, entry of that date).
+
+| Before | After | Why |
+|---|---|---|
+| a table's axis condition could be absent, stated or unstated | it holds `not_applicable`, or the table is refused (S3Q3) | an axis was checked twice, or not at all |
+| a read under an extrapolation ended at the form's range | it goes on to the origin and labels, under `want: value` only (S3Q9) | a value stated without origin passed on the extrapolation alone |
+| `source_range` never narrowed the readable range | it narrows it where it is narrower (S3Q8) | a read returned `met` where the source disclaimed the value |
+| a table's `points` were readable with no rule for spread or origin | a 0.1.0 reader refuses a table that holds them (S3Q6) | a knot's own spread or origin was replaced by the table's |
+
 The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.
 
 | Before | After | Why |

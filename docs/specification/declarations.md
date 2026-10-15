@@ -189,7 +189,7 @@ the `field`; holds its kind's own members; and carries `reason`.
 | `waiver` | `region`, `interval` or `record` | `code`, and `condition` where the code names one | covers one reason of one result (section 4.2) [BC-016] |
 | `implied_condition` | `region`, `interval` or `record` | `fact`, a specimen fact whose shape has a `token` member, and `token`, one of its tokens (`provenance.md` section 6.2); `implies`, per registered condition `{"value", "unit"}` or `{"range": [lo, hi], "unit"}` for a numeric one and `{"token"}`, with a token of its row, for a token one: a record condition's shapes without `basis` (one there is ignored), `plus_minus` or `set_or_measured`, and never a status object (`provenance.md` section 6.1) | supplies a value for a condition the record leaves unstated, on fields whose specimen states that fact and token; the value is checked like a stated one, with basis `implied` [BC-017] |
 | `accepted_difference` | optional: absent, every location the model is checked over | `section`, `fact`, `value` (in the fact's shape, or `"any"`) | covers specimen differences in that section and fact whose record value equals `value` under section 3 item 1 [BC-018] |
-| `extrapolation` | `region`, `interval` or `record` | `method` (`constant` or `consumer_law`), `law` (text), `basis` | the result carries the end value and the operating value; the consumer computes the extrapolated value by its method, and the sheet records it [BC-019] |
+| `extrapolation` | `region`, `interval` or `record` | `method` (`constant` or `consumer_law`), `law` (text of at least one character, which a reader does not judge), `basis` [PR-330] | the result carries the end value and the operating value; the consumer computes the extrapolated value by its method, and the sheet records it [BC-019] |
 | `nominal` | `region`, `interval` or `record` | `value`, `basis`; for a parameter set, `params` in place of `value` | supplies a value for an interval, in the field's registered unit, or the parameter vector held for a parameter set (under any structure, for one-at-a-time variation, or where `params` is not applicable), with exactly the family's parameters and passing its admissibility; refused: a value outside the interval's bounds (in a read, `nominal_invalid`), a vector with a missing or extra parameter or outside an `interval` structure's box, and an inadmissible vector [BC-020] [BC-042] |
 | `distribution` | `region`, `interval` or `record` | `distribution`, `space`, `distribution_parameters`, `basis` | sampling where the record gives no distribution (section 4.3) [BC-021] |
 | `overlay` | none | `overlay` (identifier, version, hash) | applies that overlay (section 5) [BC-022] |
@@ -299,8 +299,8 @@ The reader applies a declared overlay and refuses a base mismatch or a conflict 
    accept list. A constant has no axis, but a run that heats it can still leave its tolerance. An entry a
    waiver accepted as `condition_uncertain` gets the interval of a record that states no ±, `[r - t, r + t]`
    or `[a - t, b + t]`, rounded inward too. [BC-030]
-2. For a table or power law, the build emits a watch with `source` `form_range`: the form's own range, never
-   widened. [BC-031]
+2. For a table or power law, the build emits a watch with `source` `form_range`: the form's own range (for a
+   table, its readable range, `record_format.md` section 6, table item 3), never widened. [BC-031]
 3. The consumer checks its watches during the run, on the condition, not only on the value derived from it. A
    model-validity guard on the value itself MAY stay beside them. When a watch fires, the consumer marks the
    results from that point. [not yet covered]

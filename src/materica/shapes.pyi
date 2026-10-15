@@ -490,6 +490,7 @@ ReasonCode: TypeAlias = Literal[
     "nominal_invalid",
     "stated_without_origin",
     "family_suite_absent",
+    "points_unsupported",
     "overlay_base_mismatch",
     "overlay_scope_mismatch",
     "overlay_conflict",
@@ -1132,7 +1133,7 @@ class CaseOperation(TypedDict):
     not yet specified.
     """
 
-    operation: Literal["content_hash", "list_records", "transform_draws"]
+    operation: Literal["content_hash", "list_records", "transform_draws", "evaluate"]
     normals: NotRequired[list[JsonValue]]
     uniforms: NotRequired[list[JsonValue]]
 

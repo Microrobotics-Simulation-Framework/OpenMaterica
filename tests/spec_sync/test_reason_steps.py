@@ -304,12 +304,13 @@ def test_each_reason_a_read_returns_was_constructed_at_a_step_that_gives_it(case
 
 
 # The codes the table gives at a step built in part, which the code of a step not built yet gives: at step 7,
-# those of alternatives; at step 8, an evidence list's.
+# those of alternatives; at step 8, an evidence list's, and the refusal of a table that holds `points`.
 NOT_BUILT = {
     ("no_pick", 7),
     ("form_invalid", 7),
     ("want_mismatch", 7),
     ("entries_withheld", 8),
+    ("points_unsupported", 8),
 }
 BUILT = (0, 1, 2, 3, 4, 5, 7, 8)
 
