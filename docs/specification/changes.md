@@ -227,7 +227,9 @@ edge is `form_invalid` (PR-019, TE-003, BC-031); the axis entry is `met` exactly
 in the readable range off every edge, step 11, not step 10, gives its reason, and it never sets an alternative
 aside (PR-312, PR-044); a table alternative left outside its readable range, at an edge or over a range of its
 axis appears under `no_pick` with its table as stored, no extrapolation applied (PR-013); a read over a range
-of the axis gives `want_mismatch` alone (PR-321); a read returns the table's statistics block (PR-157); an
+of the axis gives `want_mismatch` alone (PR-321); a read returns the table's statistics block, and does not
+refuse a number in its `mean`, `min` or `max`, or a token in its `central` (PR-157); a power law read with its
+range unstated has its axis entry `unknown` (PR-021); a trainable field's `at_edge` still refuses (BC-029); an
 extrapolation covers `outside_range` only under `want: value`, after which the read goes on to steps 12 and
 13, and the build counts it only on a result whose `assumption` names it, so that a table read under `want:
 bounds` outside its range is refused (PR-307, BC-019); two extrapolations naming one field are

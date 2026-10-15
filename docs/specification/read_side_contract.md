@@ -371,7 +371,7 @@ as follows. [PR-311] [PR-316]
 
 | Record holds | Request gives | Entry |
 |---|---|---|
-| `{"status": "not_applicable"}`, on the form's own axis | anything | the entry is `met` when the operating value lies in the form's range and on no declared edge, and otherwise `not_met`, with no operating value or over an operating range included. Step 10 gives no reason for it and does not end the read on it: the form checks it, at step 11, which gives the reason (last rows). Its status never sets an alternative aside (section 3, step 7). Where the read ends before step 11, the entry stands with no reason naming the axis. [PR-312] |
+| `{"status": "not_applicable"}`, on the form's own axis | anything | the entry is `met` when the operating value lies in the form's range and on no declared edge; `unknown` for a power law whose range is unstated, read at an operating value [PR-021]; and otherwise `not_met`, with no operating value or over an operating range included. Step 10 gives no reason for it and does not end the read on it: the form checks it, at step 11, which gives the reason (last rows). Its status never sets an alternative aside (section 3, step 7). Where the read ends before step 11, the entry stands with no reason naming the axis. [PR-312] |
 | any other status object, on any condition; or the condition is absent | anything | `unknown` (`condition_unstated`) [PR-305] [PR-323] |
 | a name the reader does not know | anything | `unknown` (`condition_unknown_name`) [PR-031] |
 | any stated value, range or token | no tolerance and no accept list for it | `unknown` (`condition_unchecked`) [PR-313] |

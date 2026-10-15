@@ -556,7 +556,7 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-018 | plain read | exactly at an edge is refused, wherever the edge lies; outside the readable range, `at_edge` and `outside_range`, and no value; just below and just above an edge read the correct side; `-0` at an edge at `0` is at it |
 | PR-019 | plain read | `source_range` never extends the readable range, and narrows it where it is narrower; one that is not two ordered numbers sharing with `[x[0], x[-1]]` a value that is no edge (out of order, of another length, disjoint from it, or meeting it only at an edge) refuses the field (`form_invalid`) |
 | PR-020 | plain read | a power law evaluates in the field's unit (planned with the acoustic section) |
-| PR-021 | plain read | a power law with an unstated range gives `unknown` (`range_unstated`) |
+| PR-021 | plain read | a power law with an unstated range gives `unknown` (`range_unstated`), its axis entry `unknown` |
 | PR-022 | plain read | an interval returns its bounds with their basis, a one-sided one included |
 | PR-023 | plain read | a composition is returned as stored, its basis, sum rule and stated sum included, never normalised |
 | PR-024 | plain read | a parameter set is refused by a reader without family evaluation |

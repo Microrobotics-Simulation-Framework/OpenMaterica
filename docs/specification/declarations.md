@@ -282,10 +282,10 @@ The reader applies a declared overlay and refuses a base mismatch or a conflict 
 
 1. A field listed in `trainable`, with its region, interval or record, is a parameter the consumer fits. Its
    result carries the label `initial_value_only`: the record's value is used only as the initial value.
-2. For a trainable field, the reasons about conditions, the form's range and specimen differences are
-   reported, not refused, because the consumer will move the value. Every other `not_met` reason (a malformed
-   record, a hash or pin mismatch, a unit mismatch, a withheld value, an overlay's base) still refuses.
-   [BC-029]
+2. For a trainable field, the reasons about conditions, the form's range (`outside_range`, `range_unstated`
+   and `outside_coverage`, never `at_edge`) and specimen differences are reported, not refused, because the
+   consumer will move the value. Every other `not_met` reason (a malformed record, a hash or pin mismatch, a
+   unit mismatch, a withheld value, an overlay's base) still refuses. [BC-029]
 3. A fitted result is written back only as an overlay of purpose `fit` (`record_format.md` section 4.4).
    [not yet covered]
 
@@ -363,7 +363,7 @@ The sheet is one JSON document per build. [BC-033]
 | BC-026 | build checks | a chain is recorded as pairs of family and record (planned with R7) |
 | BC-027 | build checks | a required label that differs or is absent gives `label_mismatch` |
 | BC-028 | build checks | every result names its model and the region, interval or record it was read for |
-| BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported; its other refusals stand |
+| BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported; its other refusals stand, `at_edge` among them |
 | BC-030 | build checks | a tolerance watch holds the interval, or the accept list, within which the entry stays met, narrowed by a stated bound, each end rounded inward; a waived `condition_uncertain` gets the tolerance's interval |
 | BC-031 | build checks | a form-range watch holding the readable range is emitted for every table or power law, unwidened |
 | BC-032 | build checks | an operating condition on a table knot is noted (planned with R7) |
