@@ -480,8 +480,11 @@ Every pattern below must match in full: a full match, not a search, so a trailin
 3. A record's `version` changes **major** when a value changes by more than the uncertainty its record states
    for that value (a population's spread is not that measure; where the record states none, any change of
    value), a condition changes, or a parameter set moves to another family version; **minor** for a new value
-   or section; **patch** for provenance wording (`DOCUMENTATION_ARCHITECTURE.md` section 7.1). [not yet
-   covered]
+   or section; **patch** for provenance wording (`DOCUMENTATION_ARCHITECTURE.md` section 7.1). From 1.0.0, a
+   re-issue that makes a field unreadable to a reader of an earlier minor schema version is **major** too,
+   even where no value changes, so that a consumer that pinned the record is told that the field broke. A
+   spread re-stated under a name reserved in advance (section 10) is such a re-issue. Before 1.0.0 the rule
+   does not arise: a reader reads only records of its own minor version (item 2). [not yet covered]
 
 ## 9. The content hash
 

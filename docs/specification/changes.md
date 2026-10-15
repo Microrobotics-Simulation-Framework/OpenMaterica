@@ -270,3 +270,7 @@ changes how existing members are read only under a name reserved in advance, whi
 same major version refuses, or with a new token in an enumerated member such a reader checks (maintainer,
 2026-10-15). The later version requires that name or token wherever the member appears. Any other such member
 waits for a new major schema version, not a new record version (`record_format.md` section 10).
+
+Settled for 1.0.0 (maintainer, 2026-10-15, as recommended). From 1.0.0, a re-issue that makes a field
+unreadable to a reader of an earlier minor schema version changes the record's `version` major, even where no
+value changes, as when a spread is re-stated under a reserved name (`record_format.md` section 8 item 3).
