@@ -7,9 +7,12 @@ tables and token lists; the specimen facts' members from `provenance.md` section
 rest from the member tables and sentences of `record_format.md` sections 4 to 6, `provenance.md` sections 1 to
 7 and `uncertainty.md` section 1, as each builder cites.
 
-`fields` draws a field the text allows. `faulty_fields` draws, for one family of faults, a field with exactly
-one fault the text names, built on a field planned so that the fault's place exists, and returns that base
-beside it with the fault's name and place, so that a refusal can be traced to the fault.
+`fields` draws a field the text allows, whatever its name, and `bodies` a record body holding a registered
+field in its place, a section's `fields` or an overlay's `replaces`, bound to its row of `record_format.md`
+section 4.1: its forms, the bases it allows, its unit and its label, read from the vocabulary's rows, never
+from the bindings the writer applies. `faulty_fields` draws, for one family of faults, a field or a body with
+exactly one fault the text names, built on one planned so that the fault's place exists, and returns that
+base beside it with the fault's name and place, so that a refusal can be traced to the fault.
 """
 
 import copy
@@ -60,6 +63,8 @@ LISTS: dict[str, list[str]] = {
     list_name: tokens for file in VOCABULARY_FILES for list_name, tokens in _lists(f"{file}.json").items()
 }
 CONDITIONS = mapping(_vocabulary("conditions.json")["conditions"])
+# `record_format.md` section 4.1's rows, by `<section>.<field>`.
+FIELDS = mapping(_vocabulary("fields.json")["fields"])
 FACTS = mapping(_vocabulary("specimen_facts.json")["facts"])
 NUMERIC_CONDITIONS = [name for name in CONDITIONS if mapping(CONDITIONS[name])["shape"] == "numeric"]
 TOKEN_CONDITIONS = [name for name in CONDITIONS if name not in NUMERIC_CONDITIONS]
@@ -130,8 +135,13 @@ class Plan:
     """What a field drawn must hold; None draws it. Each part named in `rich` is drawn with every optional
     member and every member that may hold a status object in its own shape (the parts: block, uncertainty,
     conditions, specimen, provenance, composition, evidence, label), so that each place a fault may change
-    exists. A `minimal` plan leaves out what is optional outside those parts."""
+    exists. A `minimal` plan leaves out what is optional outside those parts. `registered` draws the field
+    for a registered name, bound to its row; `place` and `alternatives` say where a body holds it and whether
+    it is the alternatives of several."""
 
+    registered: str | None = None
+    place: str | None = None
+    alternatives: bool | None = None
     form: str | None = None
     withheld: bool | None = None
     represents: str | None = None
@@ -216,6 +226,17 @@ def ranges(draw: st.DrawFn) -> list[JsonValue]:
 def units() -> st.SearchStrategy[JsonValue]:
     """`record_format.md` section 4.2: a unit is a string or a status object, compared at step 9 alone."""
     return st.one_of(TEXT, status(ANY_STATUS))
+
+
+def row_of(name: str) -> Json:
+    return mapping(FIELDS[name])
+
+
+def field_unit(name: str) -> st.SearchStrategy[JsonValue]:
+    """Section 4.2: a field's unit equals its registered unit; one registered as a status object equals one
+    holding the same token, whatever its reason."""
+    unit = row_of(name)["unit"]
+    return st.just(unit) if isinstance(unit, str) else status((str(mapping(unit)["status"]),))
 
 
 # Conditions: `provenance.md` section 6.1 and its items 1, 6 and 7.
@@ -434,7 +455,9 @@ def interval(draw: st.DrawFn, full: bool) -> Json:
 
 @st.composite
 def composition(draw: st.DrawFn, plan: Plan, size: Size) -> Json:
-    """Items 1 to 5: a basis, a sum rule, a stated sum where given, one or more components, none twice."""
+    """Items 1 to 5: a basis, a sum rule, a stated sum where given, one or more components, none twice; for a
+    registered field, a basis its row allows (`record_format.md` section 4.1)."""
+    bases = mapping(row_of(plan.registered).get("bases", {})).get("composition") if plan.registered else None
     chosen = draw(
         st.lists(st.sampled_from(LISTS["component"]), min_size=1, max_size=size.members, unique=True)
     )
@@ -445,7 +468,9 @@ def composition(draw: st.DrawFn, plan: Plan, size: Size) -> Json:
             entry["statistics"] = draw(statistics_block(replace(plan, represents=None, uncertainty=None)))
         components.append(entry)
     found: Json = {
-        "basis": draw(st.sampled_from(LISTS["composition_basis"])),
+        "basis": draw(
+            st.sampled_from([str(basis) for basis in listing(bases)] if bases else LISTS["composition_basis"])
+        ),
         "sum_rule": draw(st.sampled_from(LISTS["sum_rule"])),
         "components": components,
     }
@@ -638,9 +663,10 @@ def provenances(
 
 @st.composite
 def form_fields(draw: st.DrawFn, plan: Plan = ANY, size: Size = SIZE) -> Json:
-    form = plan.form or draw(st.sampled_from(FORMS))
+    forms = [str(form) for form in listing(row_of(plan.registered)["forms"])] if plan.registered else FORMS
+    form = plan.form or draw(st.sampled_from(forms))
     withheld = plan.withheld if plan.withheld is not None else not draw(st.integers(0, 4))
-    found: Json = {"form": form, "unit": draw(units())}
+    found: Json = {"form": form, "unit": draw(field_unit(plan.registered) if plan.registered else units())}
     across_sources = False
     if form == "evidence":
         found["evidence"] = draw(evidence(plan, size, withheld=withheld))
@@ -675,8 +701,13 @@ def form_fields(draw: st.DrawFn, plan: Plan = ANY, size: Size = SIZE) -> Json:
         found["fit"] = draw(objects(size))
     if plan.full("specimen") or (not plan.minimal and draw(st.booleans())):
         found["specimen"] = draw(specimens(plan.full("specimen")))
-    if optional(draw, plan, "label"):
-        found["label"] = draw(st.sampled_from(LISTS["label"]))
+    labels = (
+        [str(label) for label in [row_of(plan.registered).get("label")] if label]
+        if plan.registered
+        else LISTS["label"]
+    )
+    if labels and optional(draw, plan, "label"):
+        found["label"] = draw(st.sampled_from(labels))
     return found
 
 
@@ -689,6 +720,57 @@ def fields(draw: st.DrawFn, size: Size = SIZE) -> JsonValue:
         draw(st.lists(form_fields(ANY, size), min_size=1, max_size=size.members))
     )
     return {"alternatives": alternatives}
+
+
+# A registered field in its place: `record_format.md` sections 4 and 4.4.
+
+PLACES = ("fields", "replaces")
+PURPOSES = listed(
+    prose((SPECIFICATION / "record_format.md").read_text(encoding="utf-8")), "1. `purpose` is ", "."
+)
+
+
+@st.composite
+def registered_values(draw: st.DrawFn, plan: Plan, size: Size = SIZE) -> JsonValue:
+    """A value field of `plan.registered`: of one form, or the alternatives of one or more, each bound to its
+    row."""
+    if not (plan.alternatives if plan.alternatives is not None else not draw(st.integers(0, 5))):
+        return draw(form_fields(plan, size))
+    alternatives: list[JsonValue] = list(
+        draw(st.lists(form_fields(plan, size), min_size=1, max_size=size.members))
+    )
+    return {"alternatives": alternatives}
+
+
+@st.composite
+def bodies(draw: st.DrawFn, plan: Plan = ANY, size: Size = SIZE) -> Json:
+    """A material body holding a registered field in its section's `fields`, or an overlay body replacing
+    one."""
+    name = plan.registered or draw(st.sampled_from(list(FIELDS)))
+    value = draw(registered_values(replace(plan, registered=name), size))
+    if (plan.place or draw(st.sampled_from(PLACES))) == "fields":
+        section, _, field = name.partition(".")
+        return {"sections": {section: {"fields": {field: value}}}}
+    base: Json = {"id": draw(RECORD_IDS), "version": draw(VERSIONS), "content_hash": draw(HASHES)}
+    scope: Json = {"consumer": draw(TEXT)}
+    return {
+        "purpose": draw(st.sampled_from(PURPOSES)),
+        "base": base,
+        "scope": scope,
+        "replaces": {name: value},
+    }
+
+
+def placed(body: Json) -> tuple[Json, str, str]:
+    """The map holding a body's one field, its name there, and its registered name, `<section>.<field>`."""
+    if "sections" in body:
+        ((section, held),) = mapping(body["sections"]).items()
+        fields = mapping(mapping(held)["fields"])
+        (name,) = fields
+        return fields, name, f"{section}.{name}"
+    replaces = mapping(body["replaces"])
+    (name,) = replaces
+    return replaces, name, name
 
 
 # Faults: each one change the text says breaks a field's shape, on a field planned so that its place exists.
@@ -1574,6 +1656,145 @@ fault("mixed_conditions_not_boolean", "provenance", DERIVED)(
     lambda draw, found: derivation_of(found).update(mixed_conditions="yes") or "derivation.mixed_conditions"
 )
 
+
+# A unit other than the one registered: another registered unit, one a slip away, or a status object, as a
+# writer converting from the source's unit, or not at all, might write it (`record_format.md` section 4.2).
+REGISTERED_UNITS = sorted(
+    {str(row["unit"]) for row in map(mapping, FIELDS.values()) if isinstance(row["unit"], str)}
+    | {registered_unit(name) for name in NUMERIC_CONDITIONS}
+    | {"s"}
+)
+
+
+@st.composite
+def foreign_unit(draw: st.DrawFn, own: JsonValue) -> JsonValue:
+    chooser = draw(CHOOSERS)
+    if isinstance(own, str):
+        slips: list[JsonValue] = [own + " ", own.upper(), own.replace("/", "."), "Cel", "kg/m^3"]
+        statuses: list[JsonValue] = [{"status": token} for token in ANY_STATUS]
+    else:
+        slips = [str(mapping(own)["status"])]
+        statuses = [{"status": token} for token in ANY_STATUS if token != mapping(own)["status"]]
+    others: list[JsonValue] = [unit for unit in REGISTERED_UNITS if unit != own]
+    return chooser.choice(
+        [unit for unit in chooser.choice([others, slips, statuses]) if unit != own] or others
+    )
+
+
+# Conditions: a numeric condition's unit, and its `plus_minus` entries', are its registered unit
+# (`provenance.md` section 6.1 items 1 and 6, `record_format.md` section 4.2).
+
+
+@fault("condition_unit_not_registered", "conditions", CONDITIONS_PLAN)
+def _condition_unit(draw: st.DrawFn, found: Json) -> str:
+    numeric(found)["unit"] = draw(foreign_unit(registered_unit(NUMERIC_CONDITIONS[0])))
+    return f"conditions.{NUMERIC_CONDITIONS[0]}.unit"
+
+
+@fault("plus_minus_unit_not_registered", "conditions", CONDITIONS_PLAN)
+def _plus_minus_unit(draw: st.DrawFn, found: Json) -> str:
+    entry = mapping(listing(numeric(found)["plus_minus"])[0])
+    entry["unit"] = draw(foreign_unit(registered_unit(NUMERIC_CONDITIONS[0])))
+    return f"conditions.{NUMERIC_CONDITIONS[0]}.plus_minus[0].unit"
+
+
+# The binding of a field to its row (`record_format.md` section 4.1, maintainer 2026-10-15): in a body, a
+# field under a name its section does not register, or holding a form, a unit, a label or a composition's
+# basis its row does not give, in the field or in one of its alternatives.
+
+ONE = Plan(alternatives=False)
+SEVERAL = Plan(alternatives=True)
+
+
+def held(found: Json, alternative: bool) -> tuple[Json, str]:
+    """The field a fault changes, the body's field or the first of its alternatives, and its registered
+    name."""
+    container, name, registered = placed(found)
+    value = mapping(container[name])
+    return (mapping(listing(value["alternatives"])[0]) if alternative else value), registered
+
+
+@fault("field_unregistered", "binding", replace(ONE, place="fields"))
+def _field_unregistered(draw: st.DrawFn, found: Json) -> str:
+    container, name, registered = placed(found)
+    section = registered.partition(".")[0]
+    own = [other.partition(".")[2] for other in FIELDS if other.startswith(f"{section}.")]
+    elsewhere = [other.partition(".")[2] for other in FIELDS if not other.startswith(f"{section}.")]
+    slips = [name + "s", name.replace("_", ""), name[1] + name[0] + name[2:], "specimen", "porosity"]
+    chooser = draw(CHOOSERS)
+    unregistered = chooser.choice([other for other in chooser.choice([elsewhere, slips]) if other not in own])
+    container[unregistered] = container.pop(name)
+    return f"sections.{section}.fields.{unregistered}"
+
+
+@fault("replaced_field_unregistered", "binding", replace(ONE, place="replaces"))
+def _replaced_unregistered(draw: st.DrawFn, found: Json) -> str:
+    container, name, _ = placed(found)
+    section, _, field_name = name.partition(".")
+    others = [other for other in FIELDS if other.partition(".")[0] != section]
+    swapped = [f"{other.partition('.')[0]}.{field_name}" for other in others]
+    slips = [f"{section}.{field_name}s", f"{section}s.{field_name}", "thermal.conductivity"]
+    chooser = draw(CHOOSERS)
+    unregistered = chooser.choice(
+        [other for other in chooser.choice([swapped, slips]) if other not in FIELDS]
+    )
+    container[unregistered] = container.pop(name)
+    return f"replaces.{unregistered}"
+
+
+def binding_fault(
+    name: str, plan: Plan, alternative: bool, change: Callable[[st.DrawFn, Json, str], str]
+) -> None:
+    def changed(draw: st.DrawFn, found: Json) -> str:
+        value, registered = held(found, alternative)
+        return ("alternatives[0]." if alternative else "") + change(draw, value, registered)
+
+    FAULTS.append(Fault(f"alternative_{name}" if alternative else name, "binding", plan, changed))
+
+
+def _form_unregistered(draw: st.DrawFn, value: Json, registered: str) -> str:
+    """A field of a form its row does not register, otherwise as the text allows: its unit, no label."""
+    own = [str(form) for form in listing(row_of(registered)["forms"])]
+    other = draw(st.sampled_from([form for form in FORMS if form not in own]))
+    fresh = draw(form_fields(Plan(form=other, withheld=False, minimal=True)))
+    value.clear()
+    value.update(fresh, unit=row_of(registered)["unit"])
+    value.pop("label", None)
+    return "form"
+
+
+def _unit_unregistered(draw: st.DrawFn, value: Json, registered: str) -> str:
+    value["unit"] = draw(foreign_unit(row_of(registered)["unit"]))
+    return "unit"
+
+
+def _label_unregistered(draw: st.DrawFn, value: Json, registered: str) -> str:
+    value["label"] = draw(
+        st.sampled_from([label for label in LISTS["label"] if label != row_of(registered).get("label")])
+    )
+    return "label"
+
+
+for _alternative, _plan in ((False, ONE), (True, SEVERAL)):
+    binding_fault("form_not_registered", _plan, _alternative, _form_unregistered)
+    binding_fault("unit_not_registered", _plan, _alternative, _unit_unregistered)
+    binding_fault("label_not_registered", _plan, _alternative, _label_unregistered)
+
+
+@fault(
+    "composition_basis_not_allowed",
+    "binding",
+    replace(ONE, registered="bulk.elemental_composition", form="composition", withheld=False),
+)
+def _basis(draw: st.DrawFn, found: Json) -> str:
+    value, registered = held(found, False)
+    allowed = listing(mapping(row_of(registered)["bases"])["composition"])
+    mapping(value["composition"])["basis"] = draw(
+        st.sampled_from([basis for basis in LISTS["composition_basis"] if basis not in allowed])
+    )
+    return "composition.basis"
+
+
 FAMILIES = sorted({fault.family for fault in FAULTS})
 
 
@@ -1583,7 +1804,7 @@ def faulty_fields(draw: st.DrawFn, family: str, size: Size = SIZE, only: tuple[s
     among those named in `only`."""
     faults = [fault for fault in FAULTS if fault.family == family and (not only or fault.name in only)]
     chosen = draw(CHOOSERS).choice(faults)
-    base = draw(form_fields(chosen.plan, size))
+    base = draw(bodies(chosen.plan, size) if family == "binding" else form_fields(chosen.plan, size))
     changed = copy.deepcopy(base)
     place = chosen.change(draw, changed)
     return Faulty(chosen.name, place, base, changed)

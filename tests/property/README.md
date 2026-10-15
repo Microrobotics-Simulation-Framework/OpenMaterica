@@ -21,14 +21,18 @@ Hypothesis properties of the core, in two groups, and of the writer schema, in a
   succeeds is invisible to it; the case files and the other laws are the oracle there.
 
 - **Writer schema:** (7) the writer schema (`record_format.md` section 1 item 2) takes every value field the
-  specification allows, and refuses each field it forbids by one fault. `value_fields.py` builds the fields
-  from the text alone, never from the schema: tokens from the vocabulary (generated from the specification),
-  a specimen fact's members from `provenance.md` section 6.2's JSON shapes, and the rest from the member
-  tables and rules each builder cites. A fault is one change the text says breaks a field (a member missing,
-  a bound crossed, a token of another member's list or of none, a status token its row does not allow, a rule
-  across objects broken), 153 of them in eight families, each drawn as often as another of its family on a
-  field planned so that its place exists. The refusal is checked on a field the schema takes, the same field
-  but for the fault, so that it is the fault's.
+  specification allows, and refuses each field it forbids by one fault; and it takes every registered field in
+  its place, a section's `fields` or an overlay's `replaces`, bound to its row of section 4.1, refusing one
+  under a name its section does not register or holding a form, a unit, a label or a composition's basis its
+  row does not give (maintainer, 2026-10-15). `value_fields.py` builds the fields from the text alone, never
+  from the schema or the bindings it applies: tokens and each field's row from the vocabulary (generated from
+  the specification), a specimen fact's members from `provenance.md` section 6.2's JSON shapes, and the rest
+  from the member tables and rules each builder cites. A fault is one change the text says breaks a field (a
+  member missing, a bound crossed, a token of another member's list or of none, a status token its row does
+  not allow, a rule across objects broken, a unit other than the registered one, a field under a name or
+  holding what its row does not give), 164 of them in ten families, each drawn as often as another of its
+  family on a field, or a body, planned so that its place exists. The refusal is checked on one the schema
+  takes, the same but for the fault, so that it is the fault's.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -83,7 +87,10 @@ mean the small size misses it.
 
 `test_writer_mutants.py` gives the writer schema one change at a time: the S2a-1 review's 29 mutants of its
 value-field part and its two controls (M1 to M31, its numbering kept), one for each constraint written since
-(M6b, M14b, M32 to M59), and eight that tighten it (T1 to T8). Each names the property that kills it and the
+(M6b, M14b, M32 to M59), and eight that tighten it (T1 to T8); then the bindings it applies from the
+vocabulary, each changed in the vocabulary file or no longer applied by the writer: a section's field names, a
+field's forms, unit, label or composition basis, its alternatives, the replaced fields, a numeric condition's
+unit and its `plus_minus` entries' (B1 to B12, with B5b), and four that tighten them (TB1 to TB4). Each names the property that kills it and the
 assertion it must die at: a loosening mutant dies when the refusal property of its family finds the schema
 taking one of the faults it names, its search drawn among those faults, which the family's property draws as
 often as any other (the feature audit holds it to a third of that share); a tightening one dies when the
