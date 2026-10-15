@@ -114,8 +114,9 @@ CONDITIONS = {name: condition(spec) for name, spec in VOCABULARY.conditions.item
 
 @st.composite
 def conditions(draw: Draw, size: Size) -> JsonObject:
-    """Some of the registered conditions; and, in one draw in four, a name the reader does not know, holding
-    anything."""
+    """Some of the registered conditions, at most four of nine, and, in one draw in four, a name the reader
+    does not know, holding anything. Step 8 checks each condition apart from the others, so a draw needs no
+    more of them, and the catalogue's faults set the ones they break (S2a-2's review, Info finding I4)."""
     chosen = draw(st.lists(st.sampled_from(sorted(CONDITIONS)), unique=True, max_size=4))
     found: JsonObject = {name: draw(CONDITIONS[name]) for name in chosen}
     if draw(st.integers(0, 3)) == 0:
@@ -163,6 +164,7 @@ FACTS = {name: or_status(fact_shape(name), "specimen", name) for name in VOCABUL
 
 @st.composite
 def specimen(draw: Draw) -> JsonObject:
+    """Some of the specimen facts, at most four of eleven, for the reason `conditions` gives."""
     chosen = draw(st.lists(st.sampled_from(sorted(FACTS)), unique=True, max_size=4))
     return {name: draw(FACTS[name]) for name in chosen}
 
@@ -299,9 +301,9 @@ class Example(NamedTuple):
 
 
 @st.composite
-def fields(draw: Draw, size: Size) -> tuple[str, JsonObject]:
-    """A registered field's name and a constant of it that passes step 8."""
-    name = draw(st.sampled_from(CONSTANT_FIELDS))
+def fields(draw: Draw, size: Size, names: tuple[str, ...] = CONSTANT_FIELDS) -> tuple[str, JsonObject]:
+    """A registered field's name, of `names`, and a constant of it that passes step 8."""
+    name = draw(st.sampled_from(names))
     spec = VOCABULARY.fields[name]
     field: JsonObject = {
         "form": "constant",
@@ -557,8 +559,150 @@ STATISTICS_REQUIRED = (
     "expanded_uncertainty",
 )
 TEMPERATURE: JsonObject = {"value": 310.15, "unit": "K", "basis": "stated"}
+UNSTATED: JsonObject = {"status": "unstated"}
 
-# By region: each fault's name, and the fault.
+
+def represented(
+    represents: str, member_name: str, value: JsonValue, codes: frozenset[str] = INVALID
+) -> Fault:
+    """A block whose `represents` holds `represents`, with the one conditional member it calls for set to
+    `value` (`uncertainty.md` section 1)."""
+
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        found = block(example)
+        for conditional in ("population_level", "n_sources", "precision_conditions"):
+            found.pop(conditional, None)
+        found["represents"] = represents
+        found[member_name] = copy.deepcopy(value)
+        return codes
+
+    return fault
+
+
+def level(within: JsonValue, level_token: JsonValue = "specimen", codes: frozenset[str] = INVALID) -> Fault:
+    return represented("population", "population_level", {"level": level_token, "within": within}, codes)
+
+
+def slipping_beside(place: Callable[[Example], JsonObject], kind: str, among: tuple[str, ...] = ()) -> Fault:
+    """A member one slip of `kind` from a member named at the place `place` finds, of `among` where given,
+    beside it (or alone, for an optional member the place does not hold): it is refused for the slip alone,
+    whatever else the place holds (`record_format.md` section 10 item 5)."""
+
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        found = place(example)
+        name = draw(st.sampled_from(sorted(among or found)))
+        new = slipped(name, kind)
+        found[new if new not in found and new not in among else name + "q"] = copy.deepcopy(
+            found.get(name, {})
+        )
+        return INVALID
+
+    return fault
+
+
+# A derivation valid by `provenance.md` section 5, which a fault of the derivation's regions breaks in one
+# place.
+DERIVATION: JsonObject = {
+    "method": "arrhenius_mixing",
+    "inputs": [
+        {"record": {"id": "conformance/a", "version": "1.0.0", "content_hash": PIN}, "field": "x.y"},
+        {"record": {"id": "conformance/b", "version": "1.0.0", "content_hash": PIN}, "field": "x.y"},
+    ],
+    "assumptions": ["ideal mixing"],
+    "input_specimens": [{"input": 1.0, "specimen": {"lot": {"text": "B-17", "basis": "stated"}}}],
+    "mixed_conditions": True,
+}
+
+
+def deriving(change: Callable[[JsonObject], None], codes: frozenset[str] = INVALID) -> Fault:
+    """A derived value whose derivation is valid but for `change`."""
+
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        found = provenance_of(example)
+        found["origin"] = "derived"
+        derivation = copy.deepcopy(DERIVATION)
+        change(derivation)
+        found["derivation"] = derivation
+        return codes
+
+    return fault
+
+
+def setting_in(*path: str | int, value: JsonValue) -> Callable[[JsonObject], None]:
+    """A change that sets the member or item at `path` inside a derivation to `value`."""
+
+    def change(derivation: JsonObject) -> None:
+        parent: JsonValue = derivation
+        for step in path[:-1]:
+            parent = parent[step] if isinstance(parent, dict) else parent[int(step)]  # type: ignore[index]
+        if isinstance(parent, dict):
+            parent[str(path[-1])] = copy.deepcopy(value)
+        else:
+            assert isinstance(parent, list)
+            parent[int(path[-1])] = copy.deepcopy(value)
+
+    return change
+
+
+def dropping(*path: str) -> Callable[[JsonObject], None]:
+    def change(derivation: JsonObject) -> None:
+        parent: JsonValue = derivation
+        for step in path[:-1]:
+            parent = parent[step] if isinstance(parent, dict) else parent[int(step)]  # type: ignore[index]
+        assert isinstance(parent, dict)
+        del parent[path[-1]]
+
+    return change
+
+
+def derivation_missing(draw: Draw, example: Example) -> frozenset[str]:
+    """A derived value without its derivation, which origin `derived` requires (`provenance.md` section 5)."""
+    found = provenance_of(example)
+    found["origin"] = "derived"
+    found.pop("derivation", None)
+    return INVALID
+
+
+def source_missing_for_its_origin(draw: Draw, example: Example) -> frozenset[str]:
+    """A value measured by its source, without the source (`provenance.md` section 2)."""
+    found = provenance_of(example)
+    found["origin"] = "measured_by_source"
+    found.pop("source", None)
+    return INVALID
+
+
+def form_unknown(draw: Draw, example: Example) -> frozenset[str]:
+    """A form token the reader does not know (`unknown_token`), beside the row's label where the row names
+    one: the row names it for no such form (`form_invalid`, the decision log's literal reading)."""
+    field = field_of(example)
+    field["form"] = "spline"
+    label = VOCABULARY.fields[example.field].label
+    if label is None:
+        field.pop("label", None)
+        return UNKNOWN
+    field["label"] = label
+    return UNKNOWN | INVALID
+
+
+def form_unknown_beside_a_slip(draw: Draw, example: Example) -> frozenset[str]:
+    """A form token the reader does not know, beside a member one slip from another form's own member, which
+    is named at a field's place when the form is unknown."""
+    field = field_of(example)
+    field["form"] = "spline"
+    field.pop("label", None)
+    field[draw(st.sampled_from(["intervals", "compositon", "tabel", "evidences"]))] = {}
+    return UNKNOWN | INVALID
+
+
+def licence_slip(draw: Draw, example: Example) -> frozenset[str]:
+    licence = member(example.record, "licence")
+    name = draw(st.sampled_from(["values", "evidence"]))
+    licence[slipped(name, draw(st.sampled_from(SLIPS)))] = "CC0-1.0"
+    return INVALID
+
+
+# By region: each fault's name, and the fault. Every fault is written from the text: `read_side_contract.md`
+# section 3, step 8, and the sections it names.
 CATALOGUE: dict[str, dict[str, Fault]] = {
     "statistics_tokens": {
         "central_unknown": setting(block, "central", "mode", UNKNOWN),
@@ -568,11 +712,17 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "distribution_unknown": setting(block, "distribution", "weibull", UNKNOWN),
         "basis_of_another_member": setting(block, "basis", "reported_uncertainty", INVALID),
         "dispersion_status": setting(block, "dispersion", {"status": "unstated"}, INVALID),
+        # A population level's tokens (`uncertainty.md` section 1): `level`, and `within`, from the levels.
+        "level_unknown": level({"status": "none"}, "cohort", UNKNOWN),
+        "within_unknown": level("cohort", "specimen", UNKNOWN),
     },
     "statistics_numbers": {
         "sd_negative": setting(block, "sd", -0.5, INVALID),
         "count_not_whole": setting(block, "n_specimens", 12.5, INVALID),
         "count_negative": setting(block, "n_donors", -1.0, INVALID),
+        # `n_sources` is a count too (`read_side_contract.md` section 3, step 8).
+        "n_sources_not_whole": represented("across_sources", "n_sources", 2.5),
+        "n_sources_negative": represented("across_sources", "n_sources", -3.0),
     },
     "statistics_statuses": {
         "status_unknown": setting(block, "sd", {"status": "pending"}, UNKNOWN),
@@ -587,6 +737,12 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "uncertainty_status_beside_an_unknown_member": setting(
             block, "expanded_uncertainty", {"status": "none", "note": "x"}, NOTHING
         ),
+        # ... but not one a slip from `status` or `reason` (`record_format.md` section 10 item 5).
+        "status_slip": setting(block, "expanded_uncertainty", {"status": "none", "reasn": "x"}, INVALID),
+        # A population level's `within` holds `none` alone of the statuses (`provenance.md` section 1).
+        "within_status_not_allowed": level(UNSTATED),
+        # A constant's block holds `withheld` alone of the statuses; `not_applicable` is reference data's.
+        "block_status_not_allowed": setting(field_of, "statistics", {"status": "not_applicable"}, INVALID),
     },
     "statistics_members": {
         "member_missing": removing(block, STATISTICS_REQUIRED),
@@ -597,6 +753,12 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "n_sources_elsewhere": represents_without("n_sources", "population"),
         "precision_conditions_missing": represents_without("precision_conditions", "measurement"),
     },
+    "statistics_slips": {
+        **{f"slip_{kind}": renaming(block, kind) for kind in SLIPS},
+    },
+    "statistics_slips_beside": {
+        **{f"slip_beside_{kind}": slipping_beside(block, kind) for kind in SLIPS},
+    },
     "uncertainty": {
         "dof_under_normal": uncertainty_fault({"dof": 8.0}),
         "dof_status_under_student_t": uncertainty_fault({"distribution": "student_t"}),
@@ -604,12 +766,18 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "coverage_probability_above_one": uncertainty_fault({"coverage_probability": 1.5}),
         "coverage_factor_zero": uncertainty_fault({"coverage_factor": 0.0}),
         "uncertainty_value_negative": uncertainty_fault({"value": -0.02}),
+        "uncertainty_precision_missing": uncertainty_fault({"represents": "measurement"}),
+        "dof_zero": uncertainty_fault({"distribution": "student_t", "dof": 0.0}),
+        "coverage_probability_zero": uncertainty_fault({"coverage_probability": 0.0}),
+    },
+    "uncertainty_tokens": {
         "uncertainty_represents_of_the_block": uncertainty_fault({"represents": "population"}),
         "uncertainty_represents_unknown": uncertainty_fault({"represents": "sample"}, UNKNOWN),
-        "uncertainty_precision_missing": uncertainty_fault({"represents": "measurement"}),
-    },
-    "statistics_slips": {
-        **{f"slip_{kind}": renaming(block, kind) for kind in SLIPS},
+        "uncertainty_precision_unknown": uncertainty_fault(
+            {"represents": "measurement", "precision_conditions": "lab_to_lab"}, UNKNOWN
+        ),
+        "uncertainty_basis_unknown": uncertainty_fault({"basis": "guess"}, UNKNOWN),
+        "uncertainty_basis_of_the_block": uncertainty_fault({"basis": "reported_sd"}),
     },
     "conditions": {
         "range_reversed": setting(
@@ -623,12 +791,6 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         ),
         "value_and_range": setting(
             conditions_of, "temperature", {**TEMPERATURE, "range": [1.0, 2.0]}, INVALID
-        ),
-        "token_of_another_row": setting(
-            conditions_of, "density_kind", {"token": "tube", "basis": "stated"}, INVALID
-        ),
-        "token_unknown": setting(
-            conditions_of, "density_kind", {"token": "porous", "basis": "stated"}, UNKNOWN
         ),
         "plus_minus_empty": setting(conditions_of, "temperature", {**TEMPERATURE, "plus_minus": []}, INVALID),
         "plus_minus_two_bounds": setting(
@@ -661,6 +823,29 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
             {**TEMPERATURE, "plus_minus": [{"stated_as": "bound", "value": -0.5, "unit": "K"}]},
             INVALID,
         ),
+        "plus_minus_unit_not_a_string": setting(
+            conditions_of,
+            "temperature",
+            {**TEMPERATURE, "plus_minus": [{"stated_as": "bound", "value": 0.5, "unit": 1.0}]},
+            INVALID,
+        ),
+        "unit_null": setting(conditions_of, "temperature", {**TEMPERATURE, "unit": None}, INVALID),
+        "plus_minus_slip": setting(conditions_of, "temperature", {**TEMPERATURE, "plus_minsu": []}, INVALID),
+        "value_not_a_number": setting(
+            conditions_of, "temperature", {**TEMPERATURE, "value": "310.15"}, INVALID
+        ),
+    },
+    "condition_tokens": {
+        "token_of_another_row": setting(
+            conditions_of, "density_kind", {"token": "tube", "basis": "stated"}, INVALID
+        ),
+        "token_unknown": setting(
+            conditions_of, "density_kind", {"token": "porous", "basis": "stated"}, UNKNOWN
+        ),
+        # A condition's `token` knows the facts' tokens too: a member named `token` (step 8).
+        "token_of_a_fact": setting(
+            conditions_of, "density_kind", {"token": "stock", "basis": "stated"}, INVALID
+        ),
         "set_or_measured_null": setting(
             conditions_of, "temperature", {**TEMPERATURE, "set_or_measured": None}, INVALID
         ),
@@ -670,21 +855,22 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "inferred_from_missing": setting(
             conditions_of, "temperature", {**TEMPERATURE, "basis": "inferred"}, INVALID
         ),
+        "basis_unknown": setting(conditions_of, "temperature", {**TEMPERATURE, "basis": "guessed"}, UNKNOWN),
         "status_beside_unit": setting(
             conditions_of, "shear_rate", {"status": "unstated", "unit": "1/s"}, INVALID
         ),
-        "unit_null": setting(conditions_of, "temperature", {**TEMPERATURE, "unit": None}, INVALID),
-        "plus_minus_slip": setting(conditions_of, "temperature", {**TEMPERATURE, "plus_minsu": []}, INVALID),
+        # A condition's status object refuses the members of either shape (`provenance.md` section 1).
+        "status_beside_a_token": setting(
+            conditions_of, "temperature", {"status": "unstated", "token": "apparent"}, INVALID
+        ),
+        # A token condition's `unit` is a string or a status object; step 9 refuses it.
+        "token_condition_unit_not_a_string": setting(
+            conditions_of, "measurement_geometry", {"token": "tube", "unit": 5.0, "basis": "stated"}, INVALID
+        ),
         "name_unknown": setting(conditions_of, "temprature", {"value": "anything"}, NOTHING),
     },
     "specimen": {
         "fact_not_its_shape": setting(specimen_of, "preparation", "sliced", INVALID),
-        "fact_token_unknown": setting(
-            specimen_of, "tissue_state", {"token": "cultured", "basis": "stated"}, UNKNOWN
-        ),
-        "fact_token_of_another_fact": setting(
-            specimen_of, "tissue_state", {"token": "stock", "basis": "stated"}, INVALID
-        ),
         "fact_range_reversed": setting(
             specimen_of, "donor_age", {"range": [3.0e8, 1.0e8], "unit": "s", "basis": "stated"}, INVALID
         ),
@@ -697,15 +883,7 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "fact_name_slip": setting(
             specimen_of, "tissue_stat", {"token": "in_vivo", "basis": "stated"}, INVALID
         ),
-        "section_fact_not_its_shape": setting(section_specimen_of, "lot", "B-17", INVALID),
-        "section_fact_name_slip": setting(
-            section_specimen_of, "lots", {"text": "x", "basis": "stated"}, INVALID
-        ),
         "specimen_null": setting(field_of, "specimen", None, INVALID),
-        "section_specimen_null": setting(section_of, "specimen", None, INVALID),
-        "fact_status_beside_its_token": setting(
-            specimen_of, "tissue_state", {"status": "unstated", "token": "in_vivo"}, INVALID
-        ),
         "fact_text_beside_normal": setting(
             specimen_of,
             "disease_and_treatment_state",
@@ -725,9 +903,46 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
             {"value": 1.0e9, "unit": {"status": "approximate"}, "basis": "stated"},
             NOTHING,
         ),
+        # Each member of a row's shape, of its type (`provenance.md` section 6.2).
+        "species_label_not_a_string": setting(
+            specimen_of, "species", {"ncbi_taxon": 9606.0, "label": 5.0, "basis": "stated"}, INVALID
+        ),
+        "uberon_not_a_string": setting(
+            specimen_of, "anatomical_site", {"uberon": 2107.0, "label": "liver", "basis": "stated"}, INVALID
+        ),
+        "lot_text_not_a_string": setting(specimen_of, "lot", {"text": 17.0, "basis": "stated"}, INVALID),
+        "fact_value_not_a_number": setting(
+            specimen_of, "post_mortem_interval", {"value": "60", "unit": "s", "basis": "stated"}, INVALID
+        ),
+    },
+    "specimen_tokens": {
+        "fact_token_unknown": setting(
+            specimen_of, "tissue_state", {"token": "cultured", "basis": "stated"}, UNKNOWN
+        ),
+        "fact_token_of_another_fact": setting(
+            specimen_of, "tissue_state", {"token": "stock", "basis": "stated"}, INVALID
+        ),
+        # A fact's `token` knows the conditions' tokens too: a member named `token` (step 8).
+        "fact_token_of_a_condition": setting(
+            specimen_of, "tissue_state", {"token": "tube", "basis": "stated"}, INVALID
+        ),
+        "fact_status_beside_its_token": setting(
+            specimen_of, "tissue_state", {"status": "unstated", "token": "in_vivo"}, INVALID
+        ),
         "fact_basis_not_its_rows": setting(
             specimen_of, "mimics", {"text": "x", "basis": "inferred", "inferred_from": "y"}, INVALID
         ),
+        # `basis` takes `stated` or `inferred` (`provenance.md` section 6); `reported_sd` is a block's.
+        "fact_basis_of_another_member": setting(
+            specimen_of, "lot", {"text": "x", "basis": "reported_sd"}, INVALID
+        ),
+    },
+    "section_specimen": {
+        "section_fact_not_its_shape": setting(section_specimen_of, "lot", "B-17", INVALID),
+        "section_fact_name_slip": setting(
+            section_specimen_of, "lots", {"text": "x", "basis": "stated"}, INVALID
+        ),
+        "section_specimen_null": setting(section_of, "specimen", None, INVALID),
     },
     "provenance": {
         "origin_unknown": setting(provenance_of, "origin", "estimated", UNKNOWN),
@@ -736,6 +951,26 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "source_slip": setting(provenance_of, "sources", {"key": "x"}, INVALID),
         "unchecked_member_broken": setting(provenance_of, "extraction", None, NOTHING),
         "source_null": setting(provenance_of, "source", None, INVALID),
+        # `source` is present for origin `measured_by_source`, its `key` wherever present (step 8).
+        "source_missing_for_its_origin": source_missing_for_its_origin,
+        "source_key_missing": setting(provenance_of, "source", {"document": {"identifier": "x"}}, INVALID),
+    },
+    "derivation": {
+        "derivation_missing": derivation_missing,
+        "method_not_a_string": deriving(setting_in("method", value=5.0)),
+        "inputs_empty": deriving(setting_in("inputs", value=[])),
+        "assumptions_not_texts": deriving(setting_in("assumptions", value=["ideal mixing", 5.0])),
+        "input_specimens_missing": deriving(dropping("input_specimens")),
+        "mixed_conditions_not_a_boolean": deriving(setting_in("mixed_conditions", value="yes")),
+        "slip_beside_assumptions": deriving(setting_in("assumption", value=[])),
+    },
+    "derivation_inputs": {
+        "input_record_member_missing": deriving(dropping("inputs", "0", "record", "content_hash")),
+        "input_field_not_a_string": deriving(setting_in("inputs", 0, "field", value=5.0)),
+        "input_index_not_whole": deriving(setting_in("input_specimens", 0, "input", value=0.5)),
+        "input_index_negative": deriving(setting_in("input_specimens", 0, "input", value=-1.0)),
+        "input_index_past_the_last": deriving(setting_in("input_specimens", 0, "input", value=2.0)),
+        "input_fact_broken": deriving(setting_in("input_specimens", 0, "specimen", value={"lot": "B-17"})),
     },
     "field": {
         "unit_null": setting(field_of, "unit", None, INVALID),
@@ -748,7 +983,16 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "label_unknown": setting(field_of, "label", "materica.fluid.bingham.v1", UNKNOWN),
         "label_of_another_field": label_of_another_field,
         "label_null": setting(field_of, "label", None, INVALID),
+    },
+    "field_slips": {
         **{f"slip_{kind}": renaming(field_of, kind, ("form", "unit", "value")) for kind in SLIPS},
+    },
+    "field_slips_optional": {
+        **{f"slip_{kind}": slipping_beside(field_of, kind, ("specimen", "label", "fit")) for kind in SLIPS},
+    },
+    "field_form": {
+        "form_unknown_beside_the_label": form_unknown,
+        "form_unknown_beside_a_slip": form_unknown_beside_a_slip,
     },
     "record": {
         "envelope_slip": record_slip("envelope"),
@@ -756,13 +1000,14 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "section_name_slip": record_slip("sections"),
         "section_member_slip": record_slip("section"),
         "field_name_slip": record_slip("fields"),
+        "licence_slip": licence_slip,
     },
 }
 REGIONS = tuple(CATALOGUE)
 
 
-# The faults that give `unknown_token`, by region and name; every other fault gives `form_invalid`,
-# `withheld`, or nothing.
+# The faults that give `unknown_token` alone, by region and name; every other fault gives `form_invalid`,
+# `withheld`, `unknown_token` with `form_invalid`, or nothing.
 TOKEN_FAULTS = tuple(
     (region, name)
     for region, faults in CATALOGUE.items()
@@ -770,33 +1015,48 @@ TOKEN_FAULTS = tuple(
     if name.endswith("unknown")
 )
 PASSING_FAULTS = {
-    ("conditions", "name_unknown"),
+    ("condition_tokens", "name_unknown"),
     ("provenance", "unchecked_member_broken"),
     ("specimen", "fact_unit_not_its_rows"),
     ("specimen", "fact_unit_status_any_token"),
     ("statistics_statuses", "uncertainty_status_beside_an_unknown_member"),
 }
+# The part of the record each region's faults change: two faults of a draw never meet in one.
+GROUPS = {
+    "statistics": ("statistics_", "uncertainty"),
+    "conditions": ("condition",),
+    "specimen": ("specimen", "section_specimen"),
+    "provenance": ("provenance", "derivation"),
+    "field": ("field",),
+    "record": ("record",),
+}
 
 
 def group(region: str) -> str:
-    """The part of the record a region's faults change: the statistics block's regions share one, so that two
-    faults of a draw never meet in it."""
-    return "statistics" if region.startswith("statistics") or region == "uncertainty" else region
+    return next(name for name, prefixes in GROUPS.items() if region.startswith(prefixes))
 
 
 @st.composite
-def faulty_records(draw: Draw, size: Size = SIZE, faults: int | None = None) -> Example:
+def faulty_records(
+    draw: Draw, size: Size = SIZE, faults: int | None = None, among: tuple[str, ...] = ()
+) -> Example:
     """A valid record with one fault of the catalogue; or, in one draw in four, two of two parts of the
-    record, half of those a token fault beside another, so that the two give two codes."""
+    record, half of those a token fault beside another, so that the two give two codes. Where `among` names
+    faults (`region.name`), the first fault is one of them: a mutant's planned search."""
     example = draw(valid_records(size))
     mode = draw(st.sampled_from(["one", "one", "one", "two", "two_codes", "one", "one", "one"]))
     if faults is not None:
         mode = "one" if faults == 1 else "two"
+    planned = [(fault.partition(".")[0], fault.partition(".")[2]) for fault in among]
     if mode == "one":
         region = draw(st.sampled_from(REGIONS))
         chosen = [(region, draw(st.sampled_from(sorted(CATALOGUE[region]))))]
+        if planned:
+            chosen = [draw(st.sampled_from(planned))]
     else:
-        first = draw(st.sampled_from(TOKEN_FAULTS)) if mode == "two_codes" else None
+        first = draw(st.sampled_from(TOKEN_FAULTS)) if mode == "two_codes" and not planned else None
+        if planned:
+            first = draw(st.sampled_from(planned))
         if first is None:
             region = draw(st.sampled_from(REGIONS))
             first = (region, draw(st.sampled_from(sorted(CATALOGUE[region]))))
