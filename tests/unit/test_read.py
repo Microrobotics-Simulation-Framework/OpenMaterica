@@ -10,6 +10,7 @@ import pytest
 
 import materica
 from materica import shapes
+from materica.core.hashing import content_hash
 from materica.core.identifiers import FAMILY_ID, RECORD_ID, MaterialRef, Version, parse_version
 from materica.core.jsonio import JsonValue
 from materica.core.read import ReadRequest, ReadResult, read
@@ -160,6 +161,82 @@ def test_steps_not_built_yet_raise_rather_than_answer() -> None:
     )
     with pytest.raises(NotImplementedError):
         read(resolved, store())
+
+
+INPUTS = WATER.parent
+
+
+def stored(
+    record: dict[str, JsonValue], field: str = "fluid.dynamic_viscosity"
+) -> tuple[JsonValue, RecordStore]:
+    """REQUEST for `field` of `record`, pinned by its hash recomputed, and a store holding it."""
+    record = {**record, "content_hash": content_hash(record)}
+    records = RecordStore()
+    records.add("record", json.dumps(record).encode())
+    pin = {name: record[name] for name in ("id", "version", "content_hash")}
+    return with_members(target={"record": pin, "field": field}), records
+
+
+def water() -> dict[str, JsonValue]:
+    value: dict[str, JsonValue] = json.loads(WATER.read_text(encoding="utf-8"))
+    return value
+
+
+def with_field(name: str, field: JsonValue) -> dict[str, JsonValue]:
+    """The water record with `field`, in the section `name` names, as its only field."""
+    record = water()
+    section, _, field_name = name.partition(".")
+    record["body"] = {"sections": {section: {"fields": {field_name: field}}}}
+    return record
+
+
+def water_field() -> dict[str, JsonValue]:
+    found: JsonValue = water()
+    for step in ("body", "sections", "fluid", "fields", "dynamic_viscosity"):
+        assert isinstance(found, dict)
+        found = found[step]
+    assert isinstance(found, dict)
+    return found
+
+
+@pytest.mark.parametrize(
+    ("name", "form"),
+    [
+        ("fluid.dynamic_viscosity", "table"),
+        ("fluid.dynamic_viscosity", "interval"),
+        ("bulk.elemental_composition", "composition"),
+        ("biocompatibility.evidence", "evidence"),
+    ],
+)
+def test_a_form_whose_member_is_not_read_yet_raises_unless_a_shared_member_refuses(
+    name: str, form: str
+) -> None:
+    field = {**water_field(), "form": form, form: {}}
+    del field["label"]
+    with pytest.raises(NotImplementedError):
+        read(*stored(with_field(name, field), name))
+    refused = read(*stored(with_field(name, {**field, "unit": None}), name))
+    assert refused.reasons == (Reason("form_invalid"),)
+
+
+def test_a_constant_that_passes_step_8_raises_rather_than_answer() -> None:
+    with pytest.raises(NotImplementedError):
+        read(*stored(water()))
+    with pytest.raises(NotImplementedError):
+        read(*stored(water()), claims={"plain_read", "fits_and_reference_data"})
+
+
+def test_a_field_holding_alternatives_raises_rather_than_answer() -> None:
+    fields: list[JsonValue] = [{"alternatives": [water_field()]}, {**water_field(), "alternatives": []}]
+    for field in fields:
+        with pytest.raises(NotImplementedError):
+            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+
+
+def test_a_read_whose_target_is_an_overlay_raises_rather_than_answer() -> None:
+    overlay = json.loads((INPUTS / "water_overlay_fixture.json").read_text(encoding="utf-8"))
+    with pytest.raises(NotImplementedError):
+        read(*stored(overlay))
 
 
 def test_a_request_keeps_only_the_members_its_shape_names() -> None:

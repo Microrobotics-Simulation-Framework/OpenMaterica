@@ -5,7 +5,8 @@ of step 1. The mutants they kill are in `test_record_mutants.py`.
 Every check reads through `check_read`, so every law also holds the first two: a read never raises, except
 `NotImplementedError` once its target has resolved and the steps not built yet would read the field, and
 `ValueError` for claims without plain read, a misuse; and a reason appears at most once per code and
-condition.
+condition. The records drawn here hold no field a request names, so a read whose target resolves ends at step
+7 with `absent`, or raises for an overlay's; `test_value_field_properties.py` reads fields.
 """
 
 import copy
@@ -71,8 +72,24 @@ def check_read(world: World) -> Outcome:
     return Outcome(result.status, tuple(sorted(keys)), tuple(sorted(result.labels)))
 
 
-def outcome_features(outcome: Outcome) -> None:
-    feature(PAST_STEP_5.replace(" ", "_"), outcome.status == PAST_STEP_5)
+ABSENT = (("absent", ""),)
+PIN_MISMATCH = (("pin_mismatch", ""),)
+MALFORMED = Outcome("not_met", (("malformed", ""),), ())
+
+
+def resolves(world: World) -> bool:
+    """Whether the request passes step 0 and its target passes steps 1 to 5."""
+    checked = ReadRequest.from_json(world.request, world.claims)
+    return isinstance(checked, ReadRequest) and isinstance(
+        resolve_record(checked.target, store_of(world.sources), world.claims), ResolvedRecord
+    )
+
+
+def outcome_features(outcome: Outcome, world: World) -> None:
+    """The reasons' codes, and whether the read went past step 5: on to a step not built yet, or to step 7,
+    which finds no field the drawn records hold."""
+    past = outcome.status == PAST_STEP_5 or (outcome.reasons == ABSENT and resolves(world))
+    feature(PAST_STEP_5.replace(" ", "_"), past)
     for code in {code for code, _ in outcome.reasons}:
         feature(code)
 
@@ -105,7 +122,7 @@ def check_one_read(world: World) -> None:
 @given(stores.worlds())
 def test_a_read_never_raises_and_gives_each_reason_once(world: World) -> None:
     outcome = check_read(world)
-    outcome_features(outcome)
+    outcome_features(outcome, world)
     feature(f"case_{world.case}")
     feature("hash_not_checked", "hash_not_checked" in outcome.labels)
     feature("misuse", outcome.status == MISUSE)
@@ -152,7 +169,7 @@ def differing_copies(sources: Sequence[bytes]) -> bool:
 @pytest.mark.features(**OUTCOMES, differing_copies=0.06, copies_added=0.14, reordered=0.16)
 @given(shuffled())
 def test_the_order_and_identical_copies_of_the_sources_change_nothing(shuffled: Shuffled) -> None:
-    outcome_features(check_read(shuffled.world))
+    outcome_features(check_read(shuffled.world), shuffled.world)
     feature("differing_copies", differing_copies(shuffled.world.sources))
     feature("copies_added", bool(shuffled.copies))
     feature("reordered", list(shuffled.order) != sorted(shuffled.order))
@@ -197,7 +214,7 @@ def check_other_identity(with_other: WithOther) -> None:
 )
 @given(with_others())
 def test_a_record_of_another_identity_changes_nothing(with_other: WithOther) -> None:
-    outcome_features(check_read(with_other.world))
+    outcome_features(check_read(with_other.world), with_other.world)
     feature(f"other_{with_other.other.variant}")
     target = records.at(with_other.world.request, ("target", "record", "id"))
     feature("other_version_of_the_id", with_other.other.record["id"] == target)
@@ -205,7 +222,8 @@ def test_a_record_of_another_identity_changes_nothing(with_other: WithOther) -> 
     check_other_identity(with_other)
 
 
-# (d) An unreadable source turns only `absent` or `pin_mismatch` into `malformed`.
+# (d) An unreadable source turns only step 1's `absent` or `pin_mismatch` into `malformed`: a reference whose
+# record is found is read whatever else is supplied, so step 7's `absent` stands.
 
 
 class WithUnreadable(NamedTuple):
@@ -213,16 +231,12 @@ class WithUnreadable(NamedTuple):
     unreadable: bytes
 
 
-ABSENT = (("absent", ""),)
-PIN_MISMATCH = (("pin_mismatch", ""),)
-MALFORMED = Outcome("not_met", (("malformed", ""),), ())
-
-
 def check_unreadable(with_unreadable: WithUnreadable) -> None:
     world = with_unreadable.world
     before = check_read(world)
     after = check_read(world._replace(sources=(*world.sources, with_unreadable.unreadable)))
-    assert after == (MALFORMED if before.reasons in (ABSENT, PIN_MISMATCH) else before), (before, after)
+    unresolved = before.reasons in (ABSENT, PIN_MISMATCH) and not resolves(world)
+    assert after == (MALFORMED if unresolved else before), (before, after)
 
 
 def with_unreadables() -> st.SearchStrategy[WithUnreadable]:
@@ -234,7 +248,7 @@ def with_unreadables() -> st.SearchStrategy[WithUnreadable]:
 def test_an_unreadable_source_turns_only_absent_or_pin_mismatch_into_malformed(
     with_unreadable: WithUnreadable,
 ) -> None:
-    outcome_features(check_read(with_unreadable.world))
+    outcome_features(check_read(with_unreadable.world), with_unreadable.world)
     check_unreadable(with_unreadable)
 
 
@@ -276,7 +290,7 @@ def unnamed_requests() -> st.SearchStrategy[Unnamed]:
 @pytest.mark.features(**OUTCOMES, **{f"added_at_{'.'.join(place) or 'top'}": 0.06 for place in OBJECTS})
 @given(unnamed_requests())
 def test_a_request_member_the_shape_does_not_name_changes_nothing(unnamed: Unnamed) -> None:
-    outcome_features(check_read(unnamed.world))
+    outcome_features(check_read(unnamed.world), unnamed.world)
     for place, _, _ in unnamed.additions:
         feature(f"added_at_{'.'.join(place) or 'top'}")
     check_unnamed(unnamed)

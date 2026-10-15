@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """A read of one field of one record (`read_side_contract.md` sections 1 to 3).
 
-`read` checks the request on its own (step 0), resolves its target (steps 1 to 5, `resolve.resolve_record`)
-and gives a `ReadResult`. Steps 6 to 13, which read the field, are not built yet. A read that passes step 5
-raises `NotImplementedError`, and so does a request whose answer a check still to come could change, whatever
-else is wrong with it: one with a region target or acceptances. It raises rather than give an answer a later
-step would contradict.
+`read` checks the request on its own (step 0), resolves its target (steps 1 to 5, `resolve.resolve_record`),
+finds the field (step 7, `fields.find_field`) and checks its form and shape (step 8, `fields.form_problems`),
+and gives a `ReadResult`. Steps 9 to 13, which read the field's units, conditions and value, are not built
+yet, nor are overlays (step 6) and alternatives (step 7). A read that would need one raises
+`NotImplementedError`, and so does a request whose answer a check still to come could change, whatever else
+is wrong with it: one with a region target or acceptances. It raises rather than give an answer a later step
+would contradict.
 """
 
 import json
@@ -15,11 +17,12 @@ from typing import get_args
 
 from materica import shapes
 from materica.core import jsonio
+from materica.core.fields import find_field, form_problems
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason, merged
 from materica.core.record import RecordStore
-from materica.core.resolve import Refused, resolve_record
+from materica.core.resolve import Refused, ResolvedRecord, resolve_record
 from materica.core.slips import slipped
 from materica.core.status import ReadStatus, worst
 from materica.core.vocabulary import VOCABULARY, ConditionSpec
@@ -158,7 +161,26 @@ def read(request: RequestInput, store: RecordStore, *, claims: Collection[Suite]
     resolved = resolve_record(checked.target, store, claims)
     if isinstance(resolved, Refused):
         return _refused(resolved.reasons, resolved.labels)
-    raise NotImplementedError("steps 6 to 13, which read the field, are not built yet")
+    return _read_field(checked, resolved, claims)
+
+
+def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collection[Suite]) -> ReadResult:
+    """Steps 6 to 13, for a target that passed steps 1 to 5. Step 6 applies the overlays a request's
+    acceptances name, and step 0 raised for any acceptance, so it has none to apply."""
+    record = resolved.record.value
+    if record["record_type"] != "material":
+        raise NotImplementedError("a read whose target is an overlay is not built yet")
+    field = find_field(record, VOCABULARY.fields[request.field])
+    if isinstance(field, Reason):
+        return _refused((field,), resolved.labels)
+    if isinstance(field.value, dict) and "alternatives" in field.value:
+        raise NotImplementedError("a field holding alternatives is read at step 7, which is not built yet")
+    refusals = form_problems(field, record, claims)
+    if refusals:
+        return _refused(merged(refusals), resolved.labels)
+    raise NotImplementedError(
+        "steps 9 to 13, which read the field's units, conditions and value, are not built yet"
+    )
 
 
 def _check(claims: Collection[Suite]) -> None:

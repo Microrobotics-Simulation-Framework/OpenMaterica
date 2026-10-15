@@ -7,10 +7,10 @@ Against the text: each code is named in the text of each step the table gives it
 the target, which the table must give at step 6 too), and no step's text names a code the table does not give
 it there. A code no step gives is named in the document of each procedure the table gives it.
 
-Against the code, for steps 0 to 5, statically and as run: every `Reason` a module of the core constructs, by
-any name, is constructed in a function this module places at a step, with a code the table allows there; and
-every reason a read of a case file returns was constructed at a step that may give it, under every claim the
-case agrees with.
+Against the code, for the steps built, statically and as run: every `Reason` a module of the core constructs,
+by any name, is constructed in a function this module places at a step, with a code the table allows there;
+and every reason a read of a case file returns was constructed at a step that may give it, under every claim
+the case agrees with.
 """
 
 import ast
@@ -157,7 +157,8 @@ def test_each_code_is_given_at_the_steps_the_table_names_and_no_other() -> None:
 # The functions of the core that construct a reason, by module and qualified name, and the step each belongs
 # to; None for a function that is no step's: `jsonio.parse` gives the JSON reader's refusal, which `_parsed`
 # passes to step 0, to report as `request_incomplete`, and `RecordStore.add` notes for an unreadable source,
-# which step 1 reports; `merged` copies the reasons a step found, each code and condition once.
+# which step 1 reports; `merged` copies the reasons a step found, each code and condition once. Step 8's
+# checks of shape construct theirs in `value_shapes.invalid` and `unknown_token`.
 STEP_OF: dict[tuple[str, str], int | None] = {
     ("jsonio.py", "parse"): None,
     ("reasons.py", "merged"): None,
@@ -178,6 +179,11 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("resolve.py", "resolve_record"): 4,
     ("record.py", "Record.type_refusal"): 5,
     ("record.py", "RecordStore.add"): None,
+    ("fields.py", "find_field"): 7,
+    ("fields.py", "_form"): 8,
+    ("fields.py", "_constant"): 8,
+    ("value_shapes.py", "invalid"): 8,
+    ("value_shapes.py", "unknown_token"): 8,
 }
 # Every module of the core, a new one included.
 MODULES = tuple(sorted(path.name for path in CORE.glob("*.py")))
@@ -296,12 +302,24 @@ def test_each_reason_a_read_returns_was_constructed_at_a_step_that_gives_it(case
     check_traced(TABLE, case_file)
 
 
-def test_the_reads_traced_reach_every_code_steps_0_to_5_give() -> None:
-    """A tracer that saw nothing would find nothing: every code the table gives at steps 0 to 5 is returned,
+# The codes the table gives at a step built in part, which the code of a step not built yet gives: at step 7,
+# those of alternatives; at step 8, an evidence list's.
+NOT_BUILT = {
+    ("no_pick", 7),
+    ("form_invalid", 7),
+    ("want_mismatch", 7),
+    ("entries_withheld", 8),
+}
+BUILT = (0, 1, 2, 3, 4, 5, 7, 8)
+
+
+def test_the_reads_traced_reach_every_code_the_steps_built_give() -> None:
+    """A tracer that saw nothing would find nothing: every code the table gives at a step built is returned,
     constructed at each of those steps, by some read of a case file."""
     seen = {(code, step) for case_file in READS for code, at in traced(case_file) for step in at}
-    allowed = {(code, step) for code, (given, _) in TABLE.items() for step in given if step <= 5}
-    assert allowed - seen == set()
+    allowed = {(code, step) for code, (given, _) in TABLE.items() for step in given if step in BUILT}
+    assert allowed - NOT_BUILT - seen == set()
+    assert NOT_BUILT <= allowed
 
 
 def without(table: Table, code: str, step: int) -> Table:
@@ -423,6 +441,12 @@ SOURCES = {module: (CORE / module).read_text(encoding="utf-8") for module in MOD
             "def read_json(data: bytes)",
             id="a_function_no_step_places_in_another_module",
         ),
+        pytest.param(
+            "value_shapes.py",
+            'return Reason("form_invalid", detail=detail)',
+            'return Reason("absent", detail=detail)',
+            id="absent_at_step_8",
+        ),
     ],
 )
 def test_the_static_check_can_fail(module: str, old: str, new: str) -> None:
@@ -433,10 +457,14 @@ def test_the_static_check_can_fail(module: str, old: str, new: str) -> None:
 
 def test_the_static_check_reads_a_module_the_core_gains() -> None:
     """A step's new module, which no list names, is read: its reason, in a function no step places, fails."""
-    new_module = 'def find_field() -> Reason:\n    return Reason("absent")\n'
+    new_module = 'def outside() -> Reason:\n    return Reason("condition_outside")\n'
+    assert "conditions.py" not in SOURCES
     with pytest.raises(AssertionError, match="at no step this test knows"):
-        check_code(TABLE, {**SOURCES, "fields.py": new_module})
-    assert set(MODULES) >= {"read.py", "resolve.py", "record.py", "jsonio.py", "reasons.py"}
+        check_code(TABLE, {**SOURCES, "conditions.py": new_module})
+    assert set(MODULES) >= {
+        *("read.py", "resolve.py", "record.py", "jsonio.py", "reasons.py"),
+        *("fields.py", "value_shapes.py"),
+    }
 
 
 def test_the_traced_check_can_fail(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -9,7 +9,8 @@ this file differs.
 The implementation runs under several configurations of claims (`CONFIGURATIONS` in `runner.py`): plain read
 and the hash suite, as a read claims by default; plain read alone, as a reader without the hash suite; and
 with the fits and reference data suite too, whose `want`s step 0 then accepts. A read under the last ends by
-step 5 or raises, so that claim gives no answer a step not built yet could change. Each case file runs under
+step 8 or raises, and steps 1 to 8 check the same under it as without it, so that claim gives no answer a step
+not built yet could change. Each case file runs under
 every configuration that claims its suite and agrees with every claim it states, and gets one outcome, decided
 in this order:
 
@@ -31,7 +32,8 @@ after every run that includes these tests:
 | `content_hash` (HS-001 to HS-003) | 51 | run, passed |
 | reads that end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
-| reads of values, through steps 6 to 13 (plain read) | 457 | not yet runnable: the step that runs each is not done |
+| S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
+| S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, or steps 9 to 13 (plain read) | 295 | not yet runnable: the step that runs each is not done |
 
 Of the 874 case files, 862 agree with plain read and the hash suite, 802 with plain read alone, and 862 with
 the fits and reference data suite too.

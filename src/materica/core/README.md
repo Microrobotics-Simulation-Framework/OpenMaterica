@@ -14,7 +14,7 @@ bytes ─▶ jsonio.parse ─▶ value ─▶ hashing.hashable_view ─▶ view 
             └─▶ Reason("malformed")
 ```
 
-A read, steps 0 to 5 of `read_side_contract.md` section 3:
+A read, steps 0 to 8 of `read_side_contract.md` section 3:
 
 ```
 request ─▶ read.ReadRequest.from_json ─▶ step 0, the request on its own ─▶ reasons, or a ReadRequest
@@ -28,7 +28,19 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
                                                            4 the hash, with HS: recomputed on every read,
                                                              between steps 3 and 5
                                                                   │
-               read.ReadResult (status, reasons, labels) ◀────────┘   or NotImplementedError for steps 6 to 13
+                                                           fields.find_field
+                                                           7 the field, or absent
+                                                                  │
+                                                           fields.form_problems
+                                                           8 the form token against its row; the record's
+                                                             structure, the section and the members every
+                                                             form shares (value_shapes); a constant's value
+                                                                  │
+               read.ReadResult (status, reasons, labels) ◀────────┘   the reasons of the step that ended
+                                                                       the read, or NotImplementedError for
+                                                                       steps 9 to 13, an overlay,
+                                                                       alternatives and the other forms'
+                                                                       members
 ```
 
 | Module | Implements |
@@ -42,9 +54,11 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `slips.py` | `record_format.md` section 10: names one slip apart, by which a reader refuses a member it does not know that is one slip from a member named at its place |
 | `vocabulary.py` | the tokens of the specification's tables, read from `schema/0.1/vocabulary/` |
 | `envelope.py` | the reader schema's checks by hand (`record_format.md` section 1 item 2) |
+| `value_shapes.py` | step 8's checks of what every form of a value field shares, by hand: a slip in the record's structure, a section's specimen, and a field's unit, conditions, specimen facts, statistics block, provenance members, label and status objects (`read_side_contract.md` section 3, step 8; `provenance.md`; `uncertainty.md` sections 1 and 4) |
+| `fields.py` | a value field: step 7 finds it, and step 8 checks its form token against its row, its shared members, and its form's own member (a constant's so far) |
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
-| `read.py` | the request's own check (step 0), and the read; steps 6 to 13 are not built yet |
+| `read.py` | the request's own check (step 0), and the read through step 8; steps 9 to 13, overlays and alternatives are not built yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the
 read up to step 5 (`tests/conformance/`).
