@@ -318,9 +318,10 @@ jobs:
     # Weekly and on a manual run only: every second of fuzzing is a second billed.
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-    # Four targets at the default 300 s, the control (at most 3 minutes a target) and the replay: about 33
-    # minutes. A manual run longer than about 450 s a target needs this raised.
-    timeout-minutes: 45
+    # Four targets at the default 300 s, the control (at most 3 minutes for each of the first three targets and
+    # 10 for the fourth) and the replay, which leaves out the mutant tables: about 45 minutes, by estimate. A
+    # manual run longer than about 450 s a target needs this raised.
+    timeout-minutes: 60
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
       # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
@@ -357,8 +358,9 @@ jobs:
             > "$control/record_properties.log" 2>&1 || true
           uv run python -m tests.fuzz.read_field_bytes --seed "$control/fields"
           uv run python -m tests.fuzz.read_field_bytes --dict "$control/value_field.dict"
+          # Its fault is behind two changes to one seed: found after 22 to 279 s in four local runs (2026-10-15).
           uv run python -m tests.fuzz.read_field_bytes "$control/fields" -dict="$control/value_field.dict" \
-            -max_total_time=180 -artifact_prefix="$control/findings/" > "$control/read_field_bytes.log" 2>&1 || true
+            -max_total_time=600 -artifact_prefix="$control/findings/" > "$control/read_field_bytes.log" 2>&1 || true
           uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
             tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
             tests/property/test_hashing_properties.py tests/property/test_read_properties.py \

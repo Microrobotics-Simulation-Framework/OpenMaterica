@@ -7,9 +7,12 @@
   identical byte for byte, which a read must take as one record (`read_side_contract.md` section 3, step 1),
   beside an unreadable source, by a reader without the hash suite: a conjunction of three draws, which a
   fuzzer has to explore to meet.
-- In step 8, for the fourth: an exception escapes for a statistics block that represents a spread across
-  sources, over a number of sources that is not whole and above 2.5. Two seeds represent such a spread, one
-  over 5 sources and one over 2.5, so the fuzzer has to change a count to meet all three.
+- In step 8, for the fourth: an exception escapes for a constant above 1 measured above 311 K whose
+  statistics block represents a population's spread. No seed holds two of the three: nine seeds represent a
+  population (a viscosity of 0.000692 at 310.15 K), 18 hold a value above 1 (none of them a population's
+  spread, none above 311 K), and none a temperature above 311 K. So the fuzzer has to change two numbers of
+  one seed, each change new coverage (S2a-2's review, L3: the earlier fault was one digit from a seed, which
+  held two of its three parts).
 
 Each raises its own message, so that CI can tell which fault a run found.
 
@@ -63,10 +66,14 @@ def faulty_form_problems(
 ) -> list[Reason]:
     value = field.value if isinstance(field.value, dict) else {}
     statistics = value.get("statistics")
-    if isinstance(statistics, dict) and statistics.get("represents") == "across_sources":
-        sources = statistics.get("n_sources")
-        if isinstance(sources, float) and not sources.is_integer() and sources > 2.5:
-            raise IndexError("the seeded fault in step 8")
+    if isinstance(statistics, dict) and statistics.get("represents") == "population":
+        constant = value.get("value")
+        if isinstance(constant, float) and constant > 1.0:
+            conditions = value.get("conditions")
+            temperature = conditions.get("temperature") if isinstance(conditions, dict) else None
+            kelvin = temperature.get("value") if isinstance(temperature, dict) else None
+            if isinstance(kelvin, float) and kelvin > 311.0:
+                raise IndexError("the seeded fault in step 8")
     return _form_problems(field, record, claims)
 
 
