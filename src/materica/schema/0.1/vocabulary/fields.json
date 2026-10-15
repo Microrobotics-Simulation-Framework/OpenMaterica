@@ -318,7 +318,8 @@
         "temperature",
         "shear_rate"
       ],
-      "label": "materica.fluid.newtonian.v1"
+      "label": "materica.fluid.newtonian.v1",
+      "label_not_on_axis": "shear_rate"
     },
     "magnetic.remanence": {
       "unit": "T",
@@ -356,7 +357,8 @@
         "specimen_shape",
         "magnetic_flux_density"
       ],
-      "label": "materica.magnetic.linear.v1"
+      "label": "materica.magnetic.linear.v1",
+      "label_not_on_axis": "magnetic_flux_density"
     },
     "biocompatibility.evidence": {
       "unit": {

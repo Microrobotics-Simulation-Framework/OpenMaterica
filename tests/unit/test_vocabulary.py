@@ -2,13 +2,14 @@
 """The vocabulary as the core reads it: every token list the vocabulary's files define, and the status tokens,
 which no file holds."""
 
+import dataclasses
 import json
 
 import pytest
 
 from materica.core import vocabulary
 from materica.core.jsonio import JsonValue
-from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY
+from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY, Vocabulary
 from tests.spec_sync.schemas import SCHEMA
 
 
@@ -20,6 +21,23 @@ def test_every_token_list_of_every_file_is_read_by_its_name() -> None:
                 expected[name] = definition["enum"]
     assert {name: list(tokens) for name, tokens in VOCABULARY.token_lists.items()} == expected
     assert VOCABULARY.token_lists["statistics_distribution"] == ("normal", "lognormal")
+
+
+def axes_no_numeric_condition(vocabulary: Vocabulary) -> set[str]:
+    axes = {spec.label_not_on_axis for spec in vocabulary.fields.values()} - {None}
+    return {
+        str(axis)
+        for axis in axes
+        if axis not in vocabulary.conditions or vocabulary.conditions[axis].shape != "numeric"
+    }
+
+
+def test_the_axis_a_label_does_not_go_on_is_a_registered_numeric_condition() -> None:
+    assert {spec.label_not_on_axis for spec in VOCABULARY.fields.values()} - {None}
+    assert axes_no_numeric_condition(VOCABULARY) == set()
+    viscosity = VOCABULARY.fields["fluid.dynamic_viscosity"]
+    wrong = {"fluid.dynamic_viscosity": dataclasses.replace(viscosity, label_not_on_axis="density_kind")}
+    assert axes_no_numeric_condition(dataclasses.replace(VOCABULARY, fields=wrong)) == {"density_kind"}
 
 
 def test_a_binding_or_a_pattern_is_no_token_list() -> None:

@@ -91,6 +91,31 @@ def test_a_label_cell_gives_its_one_label() -> None:
     assert gen_vocabulary.field_label(LABEL) == "materica.fluid.newtonian.v1"
 
 
+def test_a_label_cell_says_where_the_label_goes() -> None:
+    assert gen_vocabulary.label_not_on_axis(LABEL) == "shear_rate"
+    assert gen_vocabulary.label_not_on_axis("`materica.fluid.newtonian.v1` on a constant") is None
+
+
+@pytest.mark.parametrize(
+    "where",
+    [
+        pytest.param("an interval", id="another_form"),
+        pytest.param("a constant, or on a table whose axis is `shear_rate`", id="the_axis_it_takes"),
+        pytest.param("a constant, or on a table whose axis is not shear_rate", id="an_axis_unquoted"),
+        pytest.param("a constant, or on a table", id="any_table"),
+        pytest.param("a constant or a table whose axis is not `shear_rate`", id="other_words"),
+        pytest.param(
+            "a constant, or on a table whose axis is not `shear_rate` or `temperature`", id="two_axes"
+        ),
+    ],
+)
+def test_a_label_cell_saying_otherwise_where_the_label_goes_is_refused(where: str) -> None:
+    """S2a-2's review, M3: where a label goes was a hand-written copy of the cell's prose; it is now read from
+    the cell, so that an unexpected cell stops the generator rather than a read."""
+    with pytest.raises(TableError):
+        gen_vocabulary.label_not_on_axis(f"`materica.fluid.newtonian.v1` on {where}")
+
+
 @pytest.mark.parametrize(
     "cell",
     [
@@ -423,6 +448,12 @@ def test_a_token_listed_twice_is_refused() -> None:
             id="a_label_that_is_no_family_identifier",
         ),
         pytest.param(
+            "record_format.md",
+            "on a constant, or on a table whose axis is not `shear_rate`",
+            "on a constant, or on an interval",
+            id="where_a_label_goes",
+        ),
+        pytest.param(
             "provenance.md",
             "| `temperature` | numeric | `K` |",
             "| `temperature` | numeric | `K` or `Cel` |",
@@ -458,6 +489,19 @@ def test_a_list_the_specification_rewords_stops_the_generator(
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
     with pytest.raises(TableError):
         gen_vocabulary.generate(specification)
+
+
+def test_a_labels_axis_changed_in_the_text_changes_the_vocabulary(tmp_path: Path) -> None:
+    specification = copy_tree(tmp_path, gen_vocabulary.SPECIFICATION)
+    path = specification / "record_format.md"
+    text = path.read_text(encoding="utf-8")
+    old = "whose axis is not `shear_rate`"
+    assert old in text
+    path.write_text(text.replace(old, "whose axis is not `temperature`", 1), encoding="utf-8")
+    fields = json.loads(gen_vocabulary.generate(specification)["fields.json"])["fields"]
+    assert fields["fluid.dynamic_viscosity"]["label_not_on_axis"] == "temperature"
+    assert fields["magnetic.volume_susceptibility"]["label_not_on_axis"] == "magnetic_flux_density"
+    assert "label_not_on_axis" not in fields["bulk.density"]
 
 
 @pytest.mark.parametrize(

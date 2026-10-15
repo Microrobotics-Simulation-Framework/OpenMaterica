@@ -663,19 +663,15 @@ def provenance(value: JsonValue, where: str, found: Found) -> None:
 
 # A field's label (`record_format.md` section 4.1, "Labels" and the Label column).
 
-# The row's prose, "on a constant, or on a table whose axis is not <condition>", by field.
-LABEL_NOT_ON_TABLE_AXIS = {
-    "fluid.dynamic_viscosity": "shear_rate",
-    "magnetic.volume_susceptibility": "magnetic_flux_density",
-}
-
 
 def label_allowed(spec: RecordFieldSpec, form: str | None, field: JsonObject) -> bool:
+    """Whether the row lets its label go on a field of this form: on a constant, and on a table whose axis is
+    not the condition the row names, where it names one (`vocabulary/fields.json`, `label_not_on_axis`)."""
     if form == "constant":
         return spec.label is not None
-    if form == "table" and spec.label is not None:
+    if form == "table" and spec.label is not None and spec.label_not_on_axis is not None:
         table = field.get("table")
-        return not (isinstance(table, dict) and table.get("axis") == LABEL_NOT_ON_TABLE_AXIS[spec.name])
+        return not (isinstance(table, dict) and table.get("axis") == spec.label_not_on_axis)
     return False
 
 
