@@ -177,10 +177,10 @@ in 0.1.0. Every read gives a result as `read_side_contract.md` defines it.
    `materica:overlay:scope` (the scope as JSON), and the replaced fields as
    `materica:<section>:<field>` string attributes, each with its own `specimen` inside it. The plain overlay
    is reassembled from these as section 3 item 5 says, and its hash checked as section 3 item 6 says. [UR-026]
-2. A reader applies an overlay only when the consumer declares it, and refuses it by `record_format.md`
-   section 4.4: a base whose envelope differs from `materica:overlay:baseRecord` (`overlay_base_mismatch`),
-   two declared overlays on one field (`overlay_conflict`). The scope is compared by the build
-   (`declarations.md` section 5). [UR-027] [UR-028]
+2. A reader applies an overlay only when an `overlay` acceptance names it for the field read, and refuses it
+   by `record_format.md` section 4.4: a base whose envelope differs from `materica:overlay:baseRecord`
+   (`overlay_base_mismatch`), two overlays named for the field read that both replace it
+   (`overlay_conflict`). The scope is compared by the build (`declarations.md` section 5). [UR-027] [UR-028]
 3. An overlay never edits its base prim's attributes: the base's own hash still verifies with the overlay on
    the stage. [UR-029]
 4. **The material input sheet.** A consumer that saves its run on a stage writes the material input sheet
