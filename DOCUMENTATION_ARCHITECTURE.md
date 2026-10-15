@@ -843,7 +843,9 @@ Schema: **major** for a removed or renamed field, a changed unit or a changed me
 optional field, section, token or value form; **patch** for wording only. A record: **major** when a value
 changes by more than the uncertainty its record states for that value (a population's spread is not that
 measure), a condition or specimen fact changes, or a parameter set moves to another family version; **minor**
-for a new value or section; **patch** for provenance wording. A family: any change is a new version.
+for a new value or section; **patch** for provenance wording. From 1.0.0, a re-issue that makes a field
+unreadable to a reader of an earlier minor schema version is **major** too, even where no value changes
+(maintainer, 2026-10-15). A family: any change is a new version.
 
 A released schema version's files, under `schema/<MAJOR.MINOR>/`, never change, not even their descriptions
 or READMEs, and CI enforces it (`tests/spec_sync/test_released_schemas.py`). So a patch version changes the
