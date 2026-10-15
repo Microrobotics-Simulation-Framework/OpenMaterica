@@ -173,14 +173,18 @@ def token(member: str, allowed: Collection[str]) -> Check:
     """A token of `allowed`, the tokens the row of a member named `member` allows."""
 
     def check(value: JsonValue, where: str, found: Found) -> None:
-        if not isinstance(value, str):
-            found.append(invalid(f"{where} is not a token"))
-        elif value in KNOWN[member] and value not in allowed:
-            found.append(invalid(f"{where} holds {value!r}, a token its row does not allow"))
-        elif value not in allowed:
-            found.append(unknown_token(f"{where} holds {value!r}, a token the reader knows for no {member}"))
+        token_problems(value, member, allowed, where, found)
 
     return check
+
+
+def token_problems(value: JsonValue, member: str, allowed: Collection[str], where: str, found: Found) -> None:
+    if not isinstance(value, str):
+        found.append(invalid(f"{where} is not a token"))
+    elif value in KNOWN[member] and value not in allowed:
+        found.append(invalid(f"{where} holds {value!r}, a token its row does not allow"))
+    elif value not in allowed:
+        found.append(unknown_token(f"{where} holds {value!r}, a token the reader knows for no {member}"))
 
 
 def listed(member: str, token_list: str) -> Check:
