@@ -213,20 +213,22 @@ RC-083). A table's and a power law's `axis`, a chain's `from` and `to`, a family
 `parameters`, the reference-data form's `reference_data`, a declared distribution's `space` and both meanings
 of `ranges` keep their names.
 
-Settled with S3's design, tables and extrapolations (2026-10-15): a table's `y` holds one number per `x`,
-`edges` is required, each edge lies strictly inside `[x[0], x[-1]]` and is listed once, and numbers, an
-operating value's included, are compared by value; a table's axis condition holds `not_applicable`, and an
-axis the reader does not know, or a token condition's name, is `unknown_token` (PR-322, PR-032); step 8 checks
-every member of a table that the reader's version defines, so a table returned as stored holds only checked
-members (PR-322); `source_range` never extends the readable range and narrows it where it is narrower, for the
-read, an evaluator's `in_range` and the form-range watch, and one that is not two ordered numbers sharing with
-`[x[0], x[-1]]` a value that is no edge is `form_invalid` (PR-019, TE-003, BC-031); the axis entry is `met`
-exactly when the operating value lies in the readable range off every edge, and step 11, not step 10, gives
-its reason (PR-312); a read over a range of the axis gives `want_mismatch` alone (PR-321); a read returns the
-table's statistics block (PR-157); an extrapolation covers `outside_range` only under `want: value`, after
-which the read goes on to steps 12 and 13, and two extrapolations naming one field are `request_incomplete`,
-as is an empty `law` (PR-307, PR-330); a read exactly at an edge is refused wherever the edge lies, outside
-the readable range included (PR-018); a 0.1.0 reader refuses a table that holds `points` with the new reason
-`points_unsupported` (PR-157); the table evaluation cases take the `evaluate` operation, a tolerance per
-precision, a refusal at an edge that returns no number, absent or NaN, and stops the run, and the inside
-derivative at every end of the readable range (TE-007, TE-010, TE-012).
+Proposed with S3's design, tables and extrapolations (2026-10-15), and awaiting the maintainer's ruling, two
+points most of all: that a 0.1.0 reader refuses a table that holds `points`, and that `source_range` narrows
+the readable range. A table's `y` holds one number per `x`, `edges` is required, each edge lies strictly
+inside `[x[0], x[-1]]` and is listed once, and numbers, an operating value's included, are compared by value;
+a table's axis condition holds `not_applicable`; an axis the reader does not know, or a token condition's
+name, is `unknown_token`, and so is a `scheme` the reader does not know, not `form_invalid` (PR-322, PR-032);
+step 8 checks every member of a table that the reader's version defines, so a table returned as stored holds
+only checked members (PR-322); `source_range` never extends the readable range and narrows it where it is
+narrower, for the read, an evaluator's `in_range` and the form-range watch, and one that is not two ordered
+numbers sharing with `[x[0], x[-1]]` a value that is no edge is `form_invalid` (PR-019, TE-003, BC-031); the
+axis entry is `met` exactly when the operating value lies in the readable range off every edge, and step 11,
+not step 10, gives its reason (PR-312); a read over a range of the axis gives `want_mismatch` alone (PR-321);
+a read returns the table's statistics block (PR-157); an extrapolation covers `outside_range` only under
+`want: value`, after which the read goes on to steps 12 and 13, and two extrapolations naming one field are
+`request_incomplete`, as is an empty `law` (PR-307, PR-330); a read exactly at an edge is refused wherever the
+edge lies, outside the readable range included (PR-018); a 0.1.0 reader refuses a table that holds `points`
+with the new reason `points_unsupported` (PR-157); the table evaluation cases take the `evaluate` operation, a
+tolerance per precision, a refusal at an edge that returns no number, absent or NaN, and stops the run, and
+the inside derivative at every end of the readable range (TE-007, TE-010, TE-012).
