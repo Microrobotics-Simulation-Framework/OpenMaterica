@@ -73,7 +73,7 @@ the members it holds.
 - **A reason found reading one alternative names it.** Every such reason carries `alternative`, the
   alternative's index among the stored ones; a fault of the request carries none, and neither does a reason
   step 7 gives of its own (`no_pick`, `pick_invalid`, `want_mismatch` over two or more). Each expected reason
-  holds it. The runner compares it with S4's code; until then a reason is compared by code and condition.
+  holds it, and the runner compares it.
 - **The density alternatives.** Most arms read `conformance/density_alternatives_fixture`, whose
   `bulk.density` holds alternatives built from a constant at a stated temperature (`density_kind` `apparent`
   unless the arm says), S3's density table (x 280 to 340 K) and edge table (an edge at 273 K), and an

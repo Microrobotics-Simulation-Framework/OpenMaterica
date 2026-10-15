@@ -77,6 +77,79 @@ def test_a_wrong_condition_fails() -> None:
     assert differences(case(expected), result)
 
 
+OUTSIDE: JsonObject = {"code": "condition_outside", "condition": "temperature"}
+
+
+def outside(index: JsonValue) -> JsonObject:
+    return {**OUTSIDE, "alternative": index}
+
+
+@pytest.mark.parametrize(
+    "reasons",
+    [
+        pytest.param([OUTSIDE], id="dropped"),
+        pytest.param([outside(1.0)], id="another_index"),
+        pytest.param([outside(-0.0)], id="minus_zero_under_exact"),
+        pytest.param([outside(False)], id="a_bool"),
+        pytest.param([outside("0")], id="a_string"),
+        pytest.param([outside(None)], id="null"),
+        pytest.param([outside(0.0), OUTSIDE], id="one_more_without"),
+    ],
+)
+def test_a_reason_s_alternative_is_compared(reasons: list[JsonValue]) -> None:
+    expected: JsonObject = {"status": "not_met", "reasons": [outside(0.0)]}
+    assert differences(case(expected, exact=True), {"status": "not_met", "reasons": [outside(0.0)]}) == []
+    assert differences(case(expected, exact=True), {"status": "not_met", "reasons": reasons})
+
+
+def test_two_reasons_that_differ_only_by_alternative_are_two() -> None:
+    expected: JsonObject = {"status": "not_met", "reasons": [outside(0.0), outside(1.0)]}
+    swapped: JsonObject = {"status": "not_met", "reasons": [outside(1.0), outside(0.0)]}
+    assert differences(case(expected, exact=True), swapped) == []
+    assert differences(
+        case(expected, exact=True), {"status": "not_met", "reasons": [outside(0.0), outside(0.0)]}
+    )
+
+
+def test_an_alternative_is_never_compared_at_a_tolerance_and_needs_one() -> None:
+    expected: JsonObject = {"status": "not_met", "reasons": [outside(0.0)]}
+    tolerant = case(expected, relative_tolerance=0.5)
+    assert differences(tolerant, {"status": "not_met", "reasons": [outside(-0.0)]}) == []
+    assert differences(tolerant, {"status": "not_met", "reasons": [outside(0.25)]})
+    with pytest.raises(CaseFileError):
+        differences(case(expected), {"status": "not_met", "reasons": [outside(0.0)]})
+
+
+def without_alternatives(reasons: JsonValue) -> list[JsonValue]:
+    assert isinstance(reasons, list)
+    return [
+        {name: value for name, value in reason.items() if name != "alternative"}
+        if isinstance(reason, dict)
+        else reason
+        for reason in reasons
+    ]
+
+
+def test_every_case_file_whose_reasons_hold_an_alternative_fails_without_it() -> None:
+    """A control through the real case files: a reader that drops a reason's `alternative`, on the one
+    alternative left or picked or anywhere, fails each file that expects one. Until S4's code can run them,
+    the expected answer with its indexes dropped stands for that reader's result."""
+    holding = [
+        case_file
+        for case_file in runner.discover()
+        if without_alternatives(case_file.expected.get("reasons", []))
+        != case_file.expected.get("reasons", [])
+    ]
+    assert [case_file for case_file in holding if "value" in case_file.expected]
+    for case_file in holding:
+        dropped: JsonObject = {
+            **case_file.expected,
+            "reasons": without_alternatives(case_file.expected["reasons"]),
+        }
+        assert differences(case_file, dict(case_file.expected)) == [], case_file.path.name
+        assert differences(case_file, dropped), case_file.path.name
+
+
 def test_a_member_compared_but_not_expected_must_be_absent() -> None:
     expected: JsonObject = {"status": "not_met", "reasons": [MALFORMED]}
     assert differences(case(expected), {"status": "not_met", "reasons": [MALFORMED], "value": "sha256:0"})

@@ -48,9 +48,12 @@ names (`materica.load_records`), and passes its result through JSON text, as a c
 ## How a result is compared
 
 `compare` in `runner.py` compares only the members a case's `compare.members` names. Reasons are a multiset of
-`(code, condition)`, and `detail` is never compared. The specification compares a reason's `alternative` too
-(`docs/specification/README.md`, "Case files"); `runner.py` adds it with the code that reads alternatives, S4.
-S4's case files hold reasons with `alternative`, and until then they are compared without it.
+`(code, condition, alternative)`, as the specification compares them (`docs/specification/README.md`, "Case
+files"), and `detail` is never compared. An `alternative` is an index, compared exactly: bit for bit under
+`exact`, so `-0` is not `0`, and by value under a relative tolerance, which never applies to one; a bool is
+never an index, and a case that compares one with neither is a defect (`CaseFileError`). Only S4's case files
+expect a reason with `alternative`, so the runs of earlier steps are unchanged; `test_comparator.py` drops the
+indexes from every such file's expected answer and shows that each then fails.
 `labels` are a set, absent counting as empty, with `hash_not_checked` compared only when the case's `claims`
 names `hash`. A member named but not expected must be absent from the result. Numbers compare by
 `relative_tolerance` or bit for bit under `exact`; a case that compares a number with neither is a defect in
