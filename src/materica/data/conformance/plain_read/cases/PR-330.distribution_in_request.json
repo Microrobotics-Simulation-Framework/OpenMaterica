@@ -50,7 +50,7 @@
         "field": "bulk.density",
         "distribution": "normal",
         "space": "identity",
-        "parameters": {
+        "distribution_parameters": {
           "mean": 1200.0,
           "sd": 25.0
         },
