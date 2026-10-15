@@ -47,13 +47,16 @@ names (`materica.load_records`), and passes its result through JSON text, as a c
 ## How a result is compared
 
 `compare` in `runner.py` compares only the members a case's `compare.members` names. Reasons are a multiset of
-`(code, condition)`, and `detail` is never compared. `labels` are a set, absent counting as empty, with
-`hash_not_checked` compared only when the case's `claims` names `hash`. A member named but not expected must be
-absent from the result. Numbers compare by `relative_tolerance` or bit for bit under `exact`; a case that
-compares a number with neither is a defect in the case (`CaseFileError`), never a pass. A `list_records` value
-is a set. `conditions` is a set keyed by `name`: each name once, in any order, so a reader that sorts its
-entries passes, and a missing, extra or repeated entry fails. `alternative_values` is compared in stored order,
-entry by entry, each entry's `labels` and `conditions` as the result's.
+`(code, condition)`, and `detail` is never compared. The specification compares a reason's `alternative` too
+(`docs/specification/README.md`, "Case files"); `runner.py` adds it with the code that reads alternatives. No
+case file holds a reason with `alternative` yet, and one that did would be compared without it until then.
+`labels` are a set, absent counting as empty, with `hash_not_checked` compared only when the case's `claims`
+names `hash`. A member named but not expected must be absent from the result. Numbers compare by
+`relative_tolerance` or bit for bit under `exact`; a case that compares a number with neither is a defect in
+the case (`CaseFileError`), never a pass. A `list_records` value is a set. `conditions` is a set keyed by
+`name`: each name once, in any order, so a reader that sorts its entries passes, and a missing, extra or
+repeated entry fails. `alternative_values` is compared in stored order, entry by entry, each entry's `labels`
+and `conditions` as the result's.
 
 ## The case files themselves
 
