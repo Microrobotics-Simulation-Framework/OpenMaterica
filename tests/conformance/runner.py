@@ -57,6 +57,9 @@ class CaseFile:
     members: tuple[str, ...]
     relative_tolerance: float | None
     exact: bool
+    # A table evaluation case's tolerance per precision, `binary64` and `binary32` (README, "Case files"), in
+    # place of `relative_tolerance`; its executor compares by the precision an evaluator claims.
+    precision_tolerances: dict[str, float] | None = None
 
     @classmethod
     def from_document(cls, path: Path, document: JsonValue) -> "CaseFile":
@@ -75,11 +78,11 @@ class CaseFile:
         expected = _object(document.get("expected"), "expected")
         if not set(expected) <= set(members):
             raise CaseFileError(f"{path.name}: expected holds members compare does not name")
-        tolerance = _tolerance(compare.get("relative_tolerance"))
+        tolerance, precision_tolerances = _tolerances(compare.get("relative_tolerance"))
         exact = compare.get("exact", False)
         if not isinstance(exact, bool):
             raise CaseFileError(f"{path.name}: compare's exact is not true or false")
-        if tolerance is not None and exact:
+        if (tolerance is not None or precision_tolerances is not None) and exact:
             raise CaseFileError(f"{path.name}: compare gives both relative_tolerance and exact")
         claims = _object(document.get("claims", {}), "claims")
         if not all(isinstance(claimed, bool) for claimed in claims.values()):
@@ -97,6 +100,7 @@ class CaseFile:
             members=members,
             relative_tolerance=tolerance,
             exact=exact,
+            precision_tolerances=precision_tolerances,
         )
 
     def input_bytes(self, member: str) -> bytes:
@@ -395,10 +399,20 @@ def _numbers_agree(case_file: CaseFile, expected: float, actual: float) -> bool:
     return abs(actual - expected) <= case_file.relative_tolerance * abs(expected)
 
 
-def _tolerance(value: JsonValue) -> float | None:
+def _tolerances(value: JsonValue) -> tuple[float | None, dict[str, float] | None]:
+    """One relative tolerance, or a tolerance per precision, `{"binary64", "binary32"}` (a table evaluation
+    case's: README, "Case files")."""
     if value is None or (isinstance(value, float) and value >= 0):
-        return value
-    raise CaseFileError(f"relative_tolerance is not a number at least 0: {value!r}")
+        return value, None
+    if isinstance(value, dict) and set(value) == {"binary64", "binary32"}:
+        per_precision = {
+            precision: tolerance
+            for precision, tolerance in value.items()
+            if isinstance(tolerance, float) and tolerance >= 0
+        }
+        if len(per_precision) == 2:
+            return None, per_precision
+    raise CaseFileError(f"relative_tolerance is not a number at least 0, nor one per precision: {value!r}")
 
 
 def _object(value: JsonValue, what: str) -> JsonObject:

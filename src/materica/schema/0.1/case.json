@@ -26,13 +26,43 @@
         {"$ref": "record.writer.json#/$defs/json_value"}
       ]
     },
-    "expected": {"$ref": "read_result.json"},
+    "expected": {
+      "description": "The members of the result compared: a read result, or a table evaluation case's evaluations.",
+      "anyOf": [{"$ref": "read_result.json"}, {"$ref": "#/$defs/table_evaluations"}]
+    },
     "compare": {"$ref": "#/$defs/case_compare"}
   },
   "additionalProperties": false,
   "if": {"required": ["inputs"], "properties": {"inputs": {"required": ["request"]}}},
   "then": {"not": {"required": ["request"]}},
   "else": {"required": ["request"]},
+  "allOf": [
+    {
+      "description": "A table evaluation case (README.md, \"Case files\"): the evaluate operation, no inputs, its evaluations, and a tolerance per precision; every other case, a read result and one tolerance.",
+      "if": {"required": ["suite"], "properties": {"suite": {"const": "table_evaluation"}}},
+      "then": {
+        "required": ["request"],
+        "properties": {
+          "inputs": {"maxProperties": 0},
+          "request": {"$ref": "#/$defs/evaluate_operation"},
+          "expected": {"$ref": "#/$defs/table_evaluations"},
+          "compare": {
+            "required": ["relative_tolerance"],
+            "properties": {
+              "members": {"const": ["evaluations"]},
+              "relative_tolerance": {"$ref": "#/$defs/precision_tolerances"}
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "expected": {"$ref": "read_result.json"},
+          "compare": {"properties": {"relative_tolerance": {"type": "number"}}}
+        }
+      }
+    }
+  ],
   "$defs": {
     "suite": {
       "enum": [
@@ -66,7 +96,10 @@
       "required": ["members"],
       "properties": {
         "members": {"type": "array", "items": {"type": "string"}},
-        "relative_tolerance": {"type": "number", "minimum": 0},
+        "relative_tolerance": {
+          "description": "One relative tolerance, or a table evaluation case's tolerance per precision.",
+          "anyOf": [{"type": "number", "minimum": 0}, {"$ref": "#/$defs/precision_tolerances"}]
+        },
         "exact": {"type": "boolean"}
       },
       "additionalProperties": false,
@@ -81,6 +114,76 @@
         "normals": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
         "uniforms": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}}
       }
+    },
+    "evaluate_operation": {
+      "description": "A table evaluation case's request (README.md, \"Case files\"): one table as record_format.md section 6 gives it, the axis condition aside, and the axis values it is evaluated at.",
+      "type": "object",
+      "required": ["operation", "form", "table", "at"],
+      "properties": {
+        "operation": {"const": "evaluate"},
+        "form": {"const": "table"},
+        "table": {"$ref": "record.writer.json#/$defs/json_object", "required": ["axis", "axis_unit", "x", "y", "scheme", "edges"]},
+        "at": {"type": "array", "items": {"type": "number"}, "minItems": 1}
+      },
+      "additionalProperties": false
+    },
+    "table_evaluations": {
+      "description": "A table evaluation case's expected answer: one entry per axis value, in order.",
+      "type": "object",
+      "required": ["evaluations"],
+      "properties": {"evaluations": {"type": "array", "items": {"$ref": "#/$defs/table_evaluation"}}},
+      "additionalProperties": false
+    },
+    "table_evaluation": {
+      "oneOf": [
+        {
+          "title": "TableEvaluationInside",
+          "description": "Inside the readable range, off every edge: the value and the derivative, both sides at an interior knot strictly inside the range, and none where the range is one point.",
+          "type": "object",
+          "required": ["in_range", "value", "derivative"],
+          "properties": {
+            "in_range": {"const": true},
+            "value": {"type": "number"},
+            "derivative": {
+              "anyOf": [
+                {"type": "number"},
+                {"const": "none"},
+                {
+                  "title": "DerivativeSides",
+                  "type": "object",
+                  "required": ["left", "right"],
+                  "properties": {"left": {"type": "number"}, "right": {"type": "number"}},
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "title": "TableEvaluationRefused",
+          "description": "At a declared edge, or across one from the readable range: the refusal, with no number.",
+          "type": "object",
+          "required": ["refused"],
+          "properties": {"refused": {"const": true}},
+          "additionalProperties": false
+        },
+        {
+          "title": "TableEvaluationOutside",
+          "description": "Elsewhere outside the readable range: the value at its nearest end, taken from inside it, and a derivative of 0.",
+          "type": "object",
+          "required": ["in_range", "value", "derivative"],
+          "properties": {"in_range": {"const": false}, "value": {"type": "number"}, "derivative": {"const": 0}},
+          "additionalProperties": false
+        }
+      ]
+    },
+    "precision_tolerances": {
+      "description": "A table evaluation case's relative tolerance per precision: 1e-12 for binary64, and the file's for binary32.",
+      "type": "object",
+      "required": ["binary64", "binary32"],
+      "properties": {"binary64": {"const": 1e-12}, "binary32": {"type": "number", "exclusiveMinimum": 0}},
+      "additionalProperties": false
     }
   }
 }

@@ -40,8 +40,16 @@ def code(value: JsonValue) -> str:
 def expected_column(case_file: CaseFile) -> str:
     """The column as `CASES.md` writes it, from the case file: status and reasons with their condition; the
     listing, the shortened hash, or a read's value, unit, alternative values and assumption, as JSON; then
-    labels and claims (sorted) where the case states them."""
+    labels and claims (sorted) where the case states them. A table evaluation case's is its evaluations, as
+    JSON, and its binary32 tolerance."""
     expected = case_file.expected
+    if case_file.operation == "evaluate":
+        tolerances = case_file.precision_tolerances
+        assert tolerances is not None
+        return (
+            f"evaluations {code(json.dumps(expected['evaluations']))}; "
+            f"binary32 tolerance {code(json.dumps(tolerances['binary32']))}"
+        )
     parts = [str(expected["status"])]
     reasons = expected["reasons"]
     assert isinstance(reasons, list)
