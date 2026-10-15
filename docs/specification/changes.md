@@ -187,3 +187,17 @@ not know is left out there too (PR-337).
 Settled with S2a-1's review (maintainer, 2026-10-15): the specimen fact `disease_and_treatment_state` holds
 `text`, naming the disease or the treatment, exactly when its `token` is `diseased` or `treated`, and none
 under `normal`, which has nothing to name (`provenance.md` section 6.2; RC-039).
+
+Names settled with the name-overlap check, before 0.1.0 (maintainer, 2026-10-15), so that a name keeps one
+meaning wherever no safeguard keeps two apart: a scene cylinder's `axis` is `direction`, as a layered path's
+is (`geometry.md` section 3.1; SC-006, RC-092); a family conversion's `from` and `to` are `from_measure` and
+`to_measure` (RC-068), and an admissibility constraint's `kind` is `rule` (RC-180), in a family manifest
+(`model_families.md` section 3); a declared model's `parameters` is `consumer_parameters` (`declarations.md`
+sections 1 and 9; BC-034); a declared distribution's and a marginal's `parameters` are
+`distribution_parameters` (`declarations.md` section 4.3, `uncertainty.md` section 2; BC-021, SA-007); a
+witness datum's `reference_data` is `reference_data_name` (`model_families.md` section 6; FE-006); and a
+`multivariate_normal`'s `space`, a space per parameter, is `parameter_spaces`, as is a fit's
+`covariance_space.space` (`uncertainty.md` section 2, `fits_and_reference_data.md` section 2; RC-055, RC-059,
+RC-083). A table's and a power law's `axis`, a chain's `from` and `to`, a family's `kind`, a family manifest's
+`parameters`, the reference-data form's `reference_data`, a declared distribution's `space` and both meanings
+of `ranges` keep their names.

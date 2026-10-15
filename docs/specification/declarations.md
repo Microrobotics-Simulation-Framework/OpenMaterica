@@ -25,7 +25,7 @@ model that reads material fields.
     "checked_over": {"domain": "lumen"},
     "target": {"species": {"ncbi_taxon": 9606}},
     "reads": ["fluid.dynamic_viscosity"],
-    "parameters": ["fluid.mu"],
+    "consumer_parameters": ["fluid.mu"],
     "requirements": [{
       "field": "fluid.dynamic_viscosity", "want": "value", "label": "materica.fluid.newtonian.v1",
       "conditions": {
@@ -60,7 +60,7 @@ model that reads material fields.
 | `checked_over` | where requirements are checked: `{"domain": <name>}` (the regions of a scene domain, `geometry.md`), `{"path": <name>}` (every interval of a layered path, by the path's `name`) or `{"records": [<material references>]}` (records read with no scene) [BC-002] |
 | `target` | the specimen facts the model stands for, each in the record's fact shape (`provenance.md` section 6.2) without `basis`; differences are computed against it (section 3) |
 | `reads` | every field the model reads |
-| `parameters` | every consumer parameter a record feeds; each needs a derivation in the sheet (section 9) |
+| `consumer_parameters` | every consumer parameter a record feeds; each needs a derivation in the sheet (section 9) |
 | `requirements` | per field: `want` (`read_side_contract.md` section 6), required; `conditions`, per condition either `tolerance` (absolute, in the condition's unit) or `accept` (a token list), each with its `reason` and, where known, its `consequence`; optionally `label`, the label the model assumes; and `represents`, the spread its question needs where it samples (`uncertainty.md`); and, where `represents` is `population` and the field is sampled, `population_level`: `{"level", "within"}` as in `uncertainty.md` section 1, or `{"level", "balanced_over": <level>}` for a balanced draw from an ensemble [BC-043] |
 | `families` | for each parameter-set field, the family version the model's evaluator implements (`model_families.md`) |
 | `mixing` | `fraction_sum_tolerance`, set by the model's precision, and per field the rule the model applies in a cell holding more than one material: `identity`, a named rule, or `refuse` (`mixing_rules.md`) |
@@ -191,7 +191,7 @@ the `field`; holds its kind's own members; and carries `reason`.
 | `accepted_difference` | optional: absent, every location the model is checked over | `section`, `fact`, `value` (in the fact's shape, or `"any"`) | covers specimen differences in that section and fact whose record value equals `value` under section 3 item 1 [BC-018] |
 | `extrapolation` | `region`, `interval` or `record` | `method` (`constant` or `consumer_law`), `law` (text), `basis` | the result carries the end value and the operating value; the consumer computes the extrapolated value by its method, and the sheet records it [BC-019] |
 | `nominal` | `region`, `interval` or `record` | `value`, `basis`; for a parameter set, `params` in place of `value` | supplies a value for an interval, in the field's registered unit, or the parameter vector held for a parameter set (under any structure, for one-at-a-time variation, or where `params` is not applicable), with exactly the family's parameters and passing its admissibility; refused: a value outside the interval's bounds (in a read, `nominal_invalid`), a vector with a missing or extra parameter or outside an `interval` structure's box, and an inadmissible vector [BC-020] [BC-042] |
-| `distribution` | `region`, `interval` or `record` | `distribution`, `space`, `parameters`, `basis` | sampling where the record gives no distribution (section 4.3) [BC-021] |
+| `distribution` | `region`, `interval` or `record` | `distribution`, `space`, `distribution_parameters`, `basis` | sampling where the record gives no distribution (section 4.3) [BC-021] |
 | `overlay` | none | `overlay` (identifier, version, hash) | applies that overlay (section 5) [BC-022] |
 | `overlay_scope` | none | `overlay`, `accepts` (any of `consumer`, `model`, `configuration`) | covers `overlay_scope_mismatch` for that overlay, in the members named [BC-023] |
 
@@ -230,16 +230,16 @@ reason not listed is never accepted. [BC-038]
 
 ```json
 {"acceptance": "distribution", "region": "tissue", "field": "bulk.density", "distribution": "normal",
- "space": "identity", "parameters": {"mean": 1050.0, "sd": 25.0},
+ "space": "identity", "distribution_parameters": {"mean": 1050.0, "sd": 25.0},
  "basis": "midpoint and quarter-width of the proxy range 1000 to 1100 kg/m3",
  "reason": "the record gives an interval only"}
 ```
 
-`distribution` takes the tokens and parameters of `uncertainty.md` section 4 (`normal`, `lognormal`,
-`uniform`, `triangular`, `student_t`, `beta`; a lognormal's `mean` and `sd` are of the value itself, in the
-field's unit); `space`
-is `identity` or `log` (natural logarithms); `basis` says why. A sampler draws from it as declared, and the
-sheet records it as the consumer's assumption, never as the record's statistics (`uncertainty.md` section 3).
+`distribution` takes a token of `uncertainty.md` section 4 (`normal`, `lognormal`, `uniform`, `triangular`,
+`student_t`, `beta`), and `distribution_parameters` that token's parameters, named as there (a lognormal's
+`mean` and `sd` are of the value itself, in the field's unit); `space` is `identity` or `log` (natural
+logarithms); `basis` says why. A sampler draws from it as declared, and the sheet records it as the
+consumer's assumption, never as the record's statistics (`uncertainty.md` section 3).
 [BC-021]
 
 ## 5. Overlays
@@ -321,8 +321,8 @@ The sheet is one JSON document per build. [BC-033]
 | `watches` | every watch of section 8 |
 | `notes` | operating conditions on table knots; anything reported but not refused |
 
-1. Every parameter in a model's `parameters` appears in `derivations`; one with no derivation is reported as
-   unexplained. [BC-034]
+1. Every parameter in a model's `consumer_parameters` appears in `derivations`; one with no derivation is
+   reported as unexplained. [BC-034]
 2. A value read through a fill-in overlay shows its label (`user_extracted`) and its review result in the
    sheet, and a value stated without origin its reason (`stated_without_origin`), so a run on a user-typed
    value never looks like a run on a curated one. [BC-035]

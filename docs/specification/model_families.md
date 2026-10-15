@@ -50,13 +50,13 @@ version; this section says what it MUST fix. [RC-065]
   "inputs": [{"name": "strain", "measure": "engineering_strain", "unit": "1"},
              {"name": "strain_rate", "measure": "engineering_strain_rate", "unit": "1/s", "role": "input"}],
   "outputs": [{"name": "stress", "measure": "nominal_stress", "unit": "Pa"}],
-  "conversions": [{"from": "nominal_stress", "to": "cauchy_stress",
+  "conversions": [{"from_measure": "nominal_stress", "to_measure": "cauchy_stress",
                    "vectors": "vectors/convert_cauchy.json"}],
   "parameters": [{"name": "E", "unit": "Pa", "meaning": "spring modulus"},
                  {"name": "eta", "unit": "Pa.s", "meaning": "dashpot viscosity"}],
-  "admissibility": [{"name": "E_positive", "kind": "bound", "parameter": "E",
+  "admissibility": [{"name": "E_positive", "rule": "bound", "parameter": "E",
                      "lower": 0.0, "upper": {"status": "none"}, "inclusive": [false, false]},
-                    {"name": "eta_positive", "kind": "bound", "parameter": "eta",
+                    {"name": "eta_positive", "rule": "bound", "parameter": "eta",
                      "lower": 0.0, "upper": {"status": "none"}, "inclusive": [false, false]}],
   "modes": ["uniaxial_tension", "uniaxial_compression"],
   "state": [],
@@ -138,7 +138,7 @@ family)". [RC-181]
                    "tolerance": {"relative": 1e-6, "absolute": 0.0,
                                  "reason": "x = H/a against x = 3H/a differs by 15 % at the first point and 0.15 % at the last; 1e-6 tells them apart in float32 or float64"},
                    "baked_with": {"family_hash": "sha256:..."}},
-  "witness": {"datum": {"reference_data": "..."}, "independent_of": "fit", "through_test_model": false,
+  "witness": {"datum": {"reference_data_name": "..."}, "independent_of": "fit", "through_test_model": false,
               "tolerance": {"relative": 0.03, "absolute": 0.0,
                             "reason": "the fit's residual and the precision of the stated field"}},
   "coverage": {"modes": [{"mode": "uniaxial_field", "ranges": {"H": [0.0, 1.6e6]}}],
@@ -264,7 +264,7 @@ family)". [RC-181]
 | RC-077 | record checks | a witness drawn from the fitted data, or from data marked `used_in_selection`, is flagged |
 | RC-078 | record checks | a witness tolerance based on between-specimen spread is flagged |
 | RC-079 | record checks | a witness through a model of a test is reported "not checked by `materica check`" |
-| RC-180 | record checks | flagged in a manifest: a constraint without a name, a kind or inclusiveness; a duplicate name; an unknown parameter; a constraint without vectors on both sides |
+| RC-180 | record checks | flagged in a manifest: a constraint without a name, a rule or inclusiveness; a duplicate name; an unknown parameter; a constraint without vectors on both sides |
 | RC-181 | record checks | a third-party family's `bound` and `linear` constraints are evaluated from its manifest; its `defined` ones are reported "not checked (third-party family)" |
 | RC-182 | record checks | a manifest whose `bound` and `linear` constraints, evaluated at its vectors, disagree with their verdicts is flagged, for any family |
 | RC-183 | record checks | flagged: a `log` linear constraint without positivity bounds before it; a boundary vector not exact in binary32; a vector file without precisions |

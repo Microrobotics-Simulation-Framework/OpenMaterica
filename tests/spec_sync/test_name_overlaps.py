@@ -380,11 +380,11 @@ SAFEGUARDS = (
     ("key", "change", "problem"),
     [
         pytest.param(
-            ("axis",), {"no_safeguard_because": None}, "no reason why none is possible", id="no_reason"
+            ("ranges",), {"no_safeguard_because": None}, "no reason why none is possible", id="no_reason"
         ),
-        pytest.param(("axis",), {"maintainer": None}, "no maintainer's flag", id="no_flag"),
+        pytest.param(("ranges",), {"maintainer": None}, "no maintainer's flag", id="no_flag"),
         pytest.param(
-            ("axis",), {"maintainer": "approved"}, "no maintainer's flag", id="a_flag_of_another_name"
+            ("ranges",), {"maintainer": "approved"}, "no maintainer's flag", id="a_flag_of_another_name"
         ),
         pytest.param(
             ("evidence", "registered"),
@@ -422,7 +422,7 @@ def test_an_entry_without_a_safeguard_needs_the_maintainers_flag_and_a_reason(
 
 
 def test_an_entry_approved_with_no_safeguard_passes() -> None:
-    _, problems = check(REPOSITORY, changed({("axis",): {"maintainer": "approved_no_safeguard"}}))
+    _, problems = check(REPOSITORY, changed({("ranges",): {"maintainer": "approved_no_safeguard"}}))
     assert problems == []
 
 
@@ -431,10 +431,10 @@ def test_a_pending_entry_passes_with_a_warning_until_the_maintainer_has_answered
     `answered`, the same entry is a problem, and one approved instead is not warned of."""
     _, problems = check(REPOSITORY, ALLOWLIST)
     assert problems == []
-    with pytest.warns(AwaitingTheMaintainer, match="axis"):
+    with pytest.warns(AwaitingTheMaintainer, match="ranges"):
         report_awaiting(ALLOWLIST)
     _, problems = check(REPOSITORY, {**ALLOWLIST, "renames": "answered"})
-    assert "['axis']: still pending, though the maintainer has answered" in problems
+    assert "['ranges']: still pending, though the maintainer has answered" in problems
     approved = changed({(name,): {"maintainer": "approved_no_safeguard"} for name in awaiting(ALLOWLIST)})
     assert awaiting(approved) == []
     _, problems = check(REPOSITORY, {**approved, "renames": "answered"})
