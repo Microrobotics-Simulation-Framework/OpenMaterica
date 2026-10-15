@@ -946,3 +946,81 @@ def test_each_value_field_check_can_fail(
         change(definitions)
     with pytest.raises(AssertionError):
         check(definitions, read)
+
+
+# Where the writer schema leaves a record open: a placeholder holding any JSON, or an object it does not
+# close, such as a map keyed by names it does not bind.
+ANY_JSON = ("json_object", "json_value")
+
+
+def opens(subschema: JsonValue, definitions: Definitions, seen: frozenset[str] = frozenset()) -> bool:
+    """Whether a member holding `subschema` may hold what the writer schema does not define: through a
+    `$ref`, a choice or an array's items, a placeholder or an object without `additionalProperties` or
+    `unevaluatedProperties` false."""
+    if not isinstance(subschema, dict):
+        return False
+    if (name := local(subschema)) is not None:
+        return name in ANY_JSON or (name not in seen and opens(definitions[name], definitions, seen | {name}))
+    parts = [*listing(subschema.get("anyOf", [])), *listing(subschema.get("oneOf", []))]
+    parts += [subschema.get("items"), *listing(subschema.get("prefixItems", []))]
+    if any(opens(part, definitions, seen) for part in parts):
+        return True
+    if subschema.get("type") != "object" and "properties" not in subschema:
+        return False
+    closing = (subschema.get("additionalProperties"), subschema.get("unevaluatedProperties"))
+    return subschema.get("propertyNames") is not False and False not in closing
+
+
+def open_members(writer: Schema, definitions: Definitions) -> set[str]:
+    owners = [writer, *definitions.values()]
+    return {
+        member
+        for owner in owners
+        for member, subschema in mapping(owner.get("properties", {})).items()
+        if opens(subschema, definitions)
+    }
+
+
+def check_description(writer: Schema, definitions: Definitions) -> None:
+    """The writer's description says it is closed but for the members it names, each in a code span: exactly
+    those that open it."""
+    description = str(writer["description"])
+    assert "closed in its structure" in description
+    assert set(re.findall(r"`([a-z_]+)`", description)) == open_members(writer, definitions)
+
+
+def test_the_writer_schema_is_closed_but_where_its_description_says() -> None:
+    check_description(WRITER, DEFINITIONS)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(removing("interval", "additionalProperties"), id="a_shape_opened"),
+        pytest.param(
+            setting({"$ref": "#/$defs/json_object"}, "standard", "properties", "designation"),
+            id="a_placeholder",
+        ),
+        pytest.param(
+            setting(
+                {"type": "object", "additionalProperties": {"type": "string"}},
+                "copy",
+                "properties",
+                "retrieved",
+            ),
+            id="a_map",
+        ),
+    ],
+)
+def test_the_description_check_can_fail(change: Callable[[Definitions], None]) -> None:
+    writer = copy.deepcopy(WRITER)
+    change(writer["$defs"])
+    with pytest.raises(AssertionError):
+        check_description(writer, writer["$defs"])
+
+
+def test_the_description_check_fails_on_a_place_left_unnamed() -> None:
+    writer = copy.deepcopy(WRITER)
+    writer["description"] = str(writer["description"]).replace("`digitisation`", "digitisation")
+    with pytest.raises(AssertionError):
+        check_description(writer, writer["$defs"])
