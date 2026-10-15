@@ -39,6 +39,7 @@ from tests.property import records
 from tests.property.strategies import SIZE, Size
 from tests.property.support import feature
 from tests.property.value_field_strategies import (
+    REGIONS,
     Example,
     JsonObject,
     faulty_records,
@@ -79,44 +80,68 @@ def check_one_fault(example: Example) -> None:
 
 
 def fault_features(example: Example) -> None:
-    for fault in example.faults:
-        feature(f"region_{fault.partition('.')[0]}")
+    feature(f"region_{example.faults[0].partition('.')[0]}")
     feature("two_faults", len(example.faults) == 2)
     feature("passes", not example.expected)
     feature("unknown_token", "unknown_token" in example.expected)
     feature("two_codes", len(example.expected) == 2)
 
 
-# Least shares, about a third of those measured at `ci` and `deep` (2026-10-15, S2a-2's fix round).
-@pytest.mark.features(
-    region_statistics_tokens=0.085,
-    region_statistics_numbers=0.026,
-    region_statistics_statuses=0.016,
-    region_statistics_members=0.016,
-    region_statistics_slips=0.011,
-    region_statistics_slips_beside=0.013,
-    region_uncertainty=0.01,
-    region_uncertainty_tokens=0.016,
-    region_conditions=0.013,
-    region_condition_tokens=0.018,
-    region_specimen=0.013,
-    region_specimen_tokens=0.013,
-    region_section_specimen=0.009,
-    region_provenance=0.012,
-    region_derivation=0.013,
-    region_derivation_inputs=0.012,
-    region_field=0.012,
-    region_field_slips=0.0095,
-    region_field_slips_optional=0.012,
-    region_field_form=0.0085,
-    region_record=0.0095,
-    two_faults=0.045,
-    unknown_token=0.055,
-    two_codes=0.036,
-    passes=0.003,
-)
-@given(faulty_records())
-def test_one_fault_gives_its_refusal_and_no_other(example: Example) -> None:
+# HP3 draws its first fault among a part of the regions, the regions taken in turn, each part a property of
+# its own; `region_<region>` is the region of an example's first fault. Drawn among all 21 regions, after the
+# record, a region was the first fault's in 1.7% to 24% of examples at `ci` (2026-10-15), too seldom for the
+# feature audit to judge it there (`audits.draw_floor`): from the measured clusters, the least shares of 14
+# regions failed a `ci` run with a probability of 1.2e-6 to 1.3e-3 each, about 4.7e-3 in all (at most 5.8e-3),
+# and one failed in 64 runs. In a part, each region is declared by its chance: its share at `ci` over 64 runs,
+# rounded down to two places, at least 7/8 of an even share among the part's regions (the draws of one fault,
+# and of two faults the first) and more for those holding token faults, which the draws of two faults that
+# give two codes take first. A part's regions now fall below their draw floors at `ci` with a probability of
+# about 1e-8 in all.
+HP3_PARTS = (REGIONS[0::2], REGIONS[1::2])
+HP3_CHANCES = {
+    "statistics_tokens": 0.18,
+    "statistics_numbers": 0.08,
+    "statistics_statuses": 0.09,
+    "statistics_members": 0.08,
+    "statistics_slips": 0.07,
+    "statistics_slips_beside": 0.08,
+    "uncertainty": 0.07,
+    "uncertainty_tokens": 0.15,
+    "conditions": 0.07,
+    "condition_tokens": 0.12,
+    "specimen": 0.08,
+    "specimen_tokens": 0.09,
+    "section_specimen": 0.07,
+    "provenance": 0.09,
+    "derivation": 0.07,
+    "derivation_inputs": 0.08,
+    "field": 0.09,
+    "field_slips": 0.08,
+    "field_slips_optional": 0.07,
+    "field_form": 0.08,
+    "record": 0.07,
+}
+# Least shares, about a third of those measured at `ci` and `deep` with HP3 whole (S2a-2's fix round); in each
+# part they fail a `ci` run with a probability below 1e-9 (measured 2026-10-15).
+HP3_FEATURES = {"two_faults": 0.045, "unknown_token": 0.055, "two_codes": 0.036, "passes": 0.003}
+
+
+def region_chances(part: tuple[str, ...]) -> dict[str, float]:
+    return {f"region_{region}": HP3_CHANCES[region] for region in part}
+
+
+@pytest.mark.chances(**region_chances(HP3_PARTS[0]))
+@pytest.mark.features(**HP3_FEATURES)
+@given(faulty_records(regions=HP3_PARTS[0]))
+def test_one_fault_gives_its_refusal_and_no_other_part_1(example: Example) -> None:
+    fault_features(example)
+    check_one_fault(example)
+
+
+@pytest.mark.chances(**region_chances(HP3_PARTS[1]))
+@pytest.mark.features(**HP3_FEATURES)
+@given(faulty_records(regions=HP3_PARTS[1]))
+def test_one_fault_gives_its_refusal_and_no_other_part_2(example: Example) -> None:
     fault_features(example)
     check_one_fault(example)
 

@@ -44,7 +44,8 @@ PROPERTIES: list[Callable[..., None]] = [
     read_properties.test_an_unreadable_source_turns_only_absent_or_pin_mismatch_into_malformed,
     read_properties.test_a_request_member_the_shape_does_not_name_changes_nothing,
     read_properties.test_every_listed_record_resolves_under_its_own_hash,
-    value_field_properties.test_one_fault_gives_its_refusal_and_no_other,
+    value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_1,
+    value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_2,
     value_field_properties.test_a_field_without_a_fault_passes_step_8,
     value_field_properties.test_members_the_reader_does_not_know_change_nothing,
 ]

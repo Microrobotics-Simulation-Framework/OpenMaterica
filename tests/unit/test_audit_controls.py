@@ -70,6 +70,16 @@ CONTROLS = [
         "faulty_base",
         ("check_ignored",),
     ),
+    Control(
+        value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_1,
+        "region_derivation",
+        ("check_one_fault",),
+    ),
+    Control(
+        value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_2,
+        "region_derivation_inputs",
+        ("check_one_fault",),
+    ),
 ]
 
 
