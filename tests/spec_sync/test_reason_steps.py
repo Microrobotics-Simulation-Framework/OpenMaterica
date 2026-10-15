@@ -4,13 +4,13 @@
 
 Against the text: each code is named in the text of each step the table gives it (the step's item in section
 3, with the passages that item hands its checks to, and step 6 giving an overlay the codes steps 1 to 5 give
-the target), and no step's item names a code the table does not give it there. A code no step gives is named
-in the document of each procedure the table gives it.
+the target, which the table must give at step 6 too), and no step's text names a code the table does not give
+it there. A code no step gives is named in the document of each procedure the table gives it.
 
-Against the code, for steps 0 to 5, statically and as run: every `Reason` the read's code constructs is
-constructed in a function this module places at a step, with a code the table allows there; and every reason
-a read of a case file returns was constructed at a step that may give it, under every claim the case agrees
-with.
+Against the code, for steps 0 to 5, statically and as run: every `Reason` a module of the core constructs, by
+any name, is constructed in a function this module places at a step, with a code the table allows there; and
+every reason a read of a case file returns was constructed at a step that may give it, under every claim the
+case agrees with.
 """
 
 import ast
@@ -97,12 +97,14 @@ HANDED = {
 }
 # Section 4: "step 6 giving an overlay the codes steps 1 to 5 give the target".
 OVERLAY = "step 6 giving an overlay the codes steps 1 to 5 give the target"
-# Codes a step's item names without giving them, each with the sentence that names it.
+TARGET_STEPS = frozenset(range(1, 6))
+# Codes a step's text names without giving them, each with the sentence that names it.
 MENTIONED = {
     (7, "condition_unstated"): (
         "Whether a `no_pick` result also reports an alternative's own reasons (its `condition_unstated`, "
         "say) is not yet specified."
     ),
+    (13, "no_pick"): "Under `no_pick` no nominal is applied, nor compared with the bounds",
 }
 PROCEDURE_DOCUMENTS = {
     "scene": ("geometry.md",),
@@ -118,22 +120,28 @@ def named(text: str, table: Table) -> set[str]:
     return {code for code in re.findall(r"`([a-z_]+)`", text) if code in table}
 
 
+def texts(read_document: Documents) -> dict[int, str]:
+    """Each step's text: its item in section 3, and the passages the item hands its checks to."""
+    return {
+        step: item + "".join(between(read_document(name), *ends) for name, *ends in HANDED.get(step, []))
+        for step, item in steps(read_document).items()
+    }
+
+
 def check_text(table: Table, read_document: Documents) -> None:
-    items = steps(read_document)
-    assert set(items) == set(range(14))
+    text_of = texts(read_document)
+    assert set(text_of) == set(range(14))
     assert OVERLAY in flowing(read_document("read_side_contract.md"))
     for (step, _), sentence in MENTIONED.items():
-        assert sentence in items[step], sentence
-    for step, item in items.items():
-        own = named(item, table) - {code for (at, code) in MENTIONED if at == step}
+        assert sentence in text_of[step], sentence
+    for step, text in text_of.items():
+        own = named(text, table) - {code for (at, code) in MENTIONED if at == step}
         assert {code for code in own if step not in table[code][0]} == set(), f"step {step}"
     for code, (given, procedures) in table.items():
+        overlays = bool(given & TARGET_STEPS)
+        assert 6 in given or not overlays, f"{code}: step 6 gives an overlay what steps 1 to 5 give"
         for step in given:
-            text = items[step] + "".join(
-                between(read_document(name), *ends) for name, *ends in HANDED.get(step, [])
-            )
-            overlays = step == 6 and bool(given & set(range(1, 6)))
-            assert code in named(text, table) or overlays, f"{code} at step {step}"
+            assert code in named(text_of[step], table) or (step == 6 and overlays), f"{code} at step {step}"
         for procedure in procedures:
             assert any(
                 code in named(read_document(name), table) for name in PROCEDURE_DOCUMENTS[procedure]
@@ -146,11 +154,13 @@ def test_each_code_is_given_at_the_steps_the_table_names_and_no_other() -> None:
     check_text(TABLE, document)
 
 
-# The functions of the read's code that construct a reason, by module and qualified name, and the step each
-# belongs to; None for a function that is no step's: `_parsed` gives the JSON reader's refusal of a request,
-# which step 0 reports as `request_incomplete`, and `RecordStore.add` notes an unreadable source, which step 1
-# reports.
+# The functions of the core that construct a reason, by module and qualified name, and the step each belongs
+# to; None for a function that is no step's: `jsonio.parse` gives the JSON reader's refusal, which `_parsed`
+# passes to step 0, to report as `request_incomplete`, and `RecordStore.add` notes for an unreadable source,
+# which step 1 reports; `merged` copies the reasons a step found, each code and condition once.
 STEP_OF: dict[tuple[str, str], int | None] = {
+    ("jsonio.py", "parse"): None,
+    ("reasons.py", "merged"): None,
     ("read.py", "ReadRequest.from_json"): 0,
     ("read.py", "_parsed"): None,
     ("read.py", "_incomplete"): 0,
@@ -168,23 +178,31 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("record.py", "Record.type_refusal"): 5,
     ("record.py", "RecordStore.add"): None,
 }
-MODULES = ("read.py", "resolve.py", "record.py")
+# Every module of the core, a new one included.
+MODULES = tuple(sorted(path.name for path in CORE.glob("*.py")))
 
 
-def constructed(module: str, source: str) -> Iterator[tuple[str, str]]:
-    """Each reason `source` constructs, as the qualified name of the function it is in and its code:
-    `Reason("code", ...)`, or `_incomplete(...)`, which constructs `request_incomplete`."""
+def callee(call: ast.Call) -> str | None:
+    """The last name of what `call` calls: `Reason` for `Reason(...)` and `reasons.Reason(...)` alike."""
+    if isinstance(call.func, ast.Name):
+        return call.func.id
+    return call.func.attr if isinstance(call.func, ast.Attribute) else None
 
-    def visit(node: ast.AST, owner: tuple[str, ...]) -> Iterator[tuple[str, str]]:
+
+def constructed(source: str) -> Iterator[tuple[str, str | None]]:
+    """Each reason `source` constructs, as the qualified name of the function it is in and its code, None
+    where the code is not written out: `Reason("code", ...)` or `Reason(code="code")`, by any name ending in
+    `Reason`, or `_incomplete(...)`, which constructs `request_incomplete`."""
+
+    def visit(node: ast.AST, owner: tuple[str, ...]) -> Iterator[tuple[str, str | None]]:
         if isinstance(node, ast.FunctionDef | ast.ClassDef):
             owner = (*owner, node.name)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            if node.func.id == "Reason":
-                code = node.args[0] if node.args else None
-                assert isinstance(code, ast.Constant), f"{module}: a Reason whose code is not written out"
-                yield ".".join(owner), str(code.value)
-            elif node.func.id == "_incomplete":
-                yield ".".join(owner), "request_incomplete"
+        if isinstance(node, ast.Call) and callee(node) == "Reason":
+            given = [*node.args[:1], *(keyword.value for keyword in node.keywords if keyword.arg == "code")]
+            code = given[0] if len(given) == 1 else None
+            yield ".".join(owner), str(code.value) if isinstance(code, ast.Constant) else None
+        elif isinstance(node, ast.Call) and callee(node) == "_incomplete":
+            yield ".".join(owner), "request_incomplete"
         for child in ast.iter_child_nodes(node):
             yield from visit(child, owner)
 
@@ -193,12 +211,17 @@ def constructed(module: str, source: str) -> Iterator[tuple[str, str]]:
 
 def check_code(table: Table, sources: dict[str, str]) -> None:
     for module, source in sources.items():
-        for function, code in constructed(module, source):
+        for function, code in constructed(source):
             assert (module, function) in STEP_OF, (
                 f"{module}: {function} constructs {code} at no step this test knows"
             )
             step = STEP_OF[(module, function)]
-            assert step is None or step in table[code][0], f"{code} at step {step}, in {module}: {function}"
+            if code is None:
+                assert step is None, f"{module}: {function} constructs a code not written out, at step {step}"
+            else:
+                assert step is None or step in table[code][0], (
+                    f"{code} at step {step}, in {module}: {function}"
+                )
 
 
 def test_the_reads_code_constructs_each_code_at_a_step_that_gives_it() -> None:
@@ -327,6 +350,28 @@ def changed_document(name: str, old: str, new: str) -> Documents:
             ),
             id="a_mention_gone",
         ),
+        *[
+            pytest.param(without(TABLE, code, 6), document, id=f"{code}_not_given_an_overlay")
+            for code in ("malformed", "other_version", "hash_mismatch", "pin_mismatch", "unknown_type")
+        ],
+        pytest.param(
+            TABLE,
+            changed_document(
+                "read_side_contract.md",
+                "| `bounds` | `not_met` (`want_mismatch`) |",
+                "| `bounds` | `not_met` (`want_mismatch`, `unit_mismatch`) |",
+            ),
+            id="a_code_added_to_a_passage_handed_to_step_13",
+        ),
+        pytest.param(
+            TABLE,
+            changed_document(
+                "read_side_contract.md",
+                "`unknown` (`condition_unstated`) [PR-305] [PR-323]",
+                "`unknown` (`condition_unstated`), or `withheld` [PR-305] [PR-323]",
+            ),
+            id="a_code_added_to_a_passage_handed_to_step_10",
+        ),
     ],
 )
 def test_the_text_check_can_fail(table: Table, read_document: Documents) -> None:
@@ -353,12 +398,44 @@ SOURCES = {module: (CORE / module).read_text(encoding="utf-8") for module in MOD
             id="absent_at_step_0",
         ),
         pytest.param("read.py", "def _member(", "def _members(", id="a_function_no_step_places"),
+        pytest.param(
+            "read.py",
+            '        return (Reason("request_incomplete", detail="the request is not an object"),)',
+            '        return (reasons.Reason("absent"),)',
+            id="absent_at_step_0_through_the_module",
+        ),
+        pytest.param(
+            "read.py",
+            '        return (Reason("request_incomplete", detail="the request is not an object"),)',
+            '        return (Reason(code="absent"),)',
+            id="absent_at_step_0_by_keyword",
+        ),
+        pytest.param(
+            "read.py",
+            '        return (Reason("request_incomplete", detail="the request is not an object"),)',
+            "        return (Reason(code),)",
+            id="a_code_not_written_out_at_step_0",
+        ),
+        pytest.param(
+            "jsonio.py",
+            "def parse(data: bytes)",
+            "def read_json(data: bytes)",
+            id="a_function_no_step_places_in_another_module",
+        ),
     ],
 )
 def test_the_static_check_can_fail(module: str, old: str, new: str) -> None:
     assert old in SOURCES[module], old
     with pytest.raises(AssertionError):
         check_code(TABLE, {**SOURCES, module: SOURCES[module].replace(old, new, 1)})
+
+
+def test_the_static_check_reads_a_module_the_core_gains() -> None:
+    """A step's new module, which no list names, is read: its reason, in a function no step places, fails."""
+    new_module = 'def find_field() -> Reason:\n    return Reason("absent")\n'
+    with pytest.raises(AssertionError, match="at no step this test knows"):
+        check_code(TABLE, {**SOURCES, "fields.py": new_module})
+    assert set(MODULES) >= {"read.py", "resolve.py", "record.py", "jsonio.py", "reasons.py"}
 
 
 def test_the_traced_check_can_fail(monkeypatch: pytest.MonkeyPatch) -> None:
