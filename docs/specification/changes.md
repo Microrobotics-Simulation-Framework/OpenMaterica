@@ -213,9 +213,11 @@ RC-083). A table's and a power law's `axis`, a chain's `from` and `to`, a family
 `parameters`, the reference-data form's `reference_data`, a declared distribution's `space` and both meanings
 of `ranges` keep their names.
 
-Proposed with S3's design, tables and extrapolations (2026-10-15), and awaiting the maintainer's ruling, three
-points most of all: that a 0.1.0 reader refuses a table that holds `points`, that `source_range` narrows the
-readable range, and that no extrapolation crosses a declared edge. A table's `y` holds one number per `x`,
+Settled with S3's design, tables and extrapolations (maintainer, 2026-10-15, as recommended; for `points`, the
+refusal stays). Three points most of all: a 0.1.0 reader refuses a table that holds `points`; `source_range`
+narrows the readable range; and no extrapolation crosses a declared edge. How a table alternative is set
+aside, which the clauses below on PR-044 and PR-013 state, is settled by S4's decision 1 (maintainer,
+2026-10-15), to be written in S4's text. A table's `y` holds one number per `x`,
 `edges` is required, each edge lies strictly inside `[x[0], x[-1]]` and is listed once, and numbers, an
 operating value's included, are compared by value; a table's axis condition holds `not_applicable`; an axis
 the reader does not know, or a token condition's name, is `unknown_token`, and so is a `scheme` the reader
