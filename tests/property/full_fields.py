@@ -189,6 +189,7 @@ def full_fields() -> dict[str, JsonObject]:
     statuses = constant(PROVENANCE_BY_SOURCE, "population")
     statuses["statistics"] = copy.deepcopy(STATUS_STATISTICS)
     measurement = constant(PROVENANCE_BY_SOURCE, "measurement", label=False)
+    measurement["fit"] = {"data": "the fit record's members are not named yet", "residual": 0.1}
     measurement["specimen"] = {
         **copy.deepcopy(SPECIMEN),
         "disease_and_treatment_state": {"token": "normal", **STATED},
