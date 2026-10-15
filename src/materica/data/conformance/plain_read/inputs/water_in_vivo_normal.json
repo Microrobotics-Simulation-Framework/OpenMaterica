@@ -8,7 +8,7 @@
     "values": "CC0-1.0",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:65fee20d53fa1f0d23cae0cb6c40b61d5d1252aa561bf0fca90376b2235406a2",
+  "content_hash": "sha256:9145e0b101e7fd0fadfb8b9e8ceccaa5d7f860e0e4635d410b80834257394acc",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "sections": {
@@ -93,7 +93,6 @@
           },
           "disease_and_treatment_state": {
             "token": "normal",
-            "text": "conformance fixture",
             "basis": "stated"
           }
         }
