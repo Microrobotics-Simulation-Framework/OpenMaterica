@@ -181,7 +181,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-007
 
-`record_format.md`: a referenced record of an unknown type is refused (`unknown_type`)
+`record_format.md`: a referenced record of an unknown type is refused (`unknown_type`); so is a target that is not a `material` (an overlay record, at step 5), and a record an `overlay` acceptance names that is not an `overlay` (at step 6)
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -1080,7 +1080,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-310
 
-`read_side_contract.md`: every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete`; `pick_invalid` among the codes reached
+`read_side_contract.md`: every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete`; `pick_invalid` and each code step 6 gives among the codes reached
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -1395,7 +1395,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-330
 
-`read_side_contract.md`: `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; two extrapolations naming one field; two picks naming one field, whatever their record or index; a pick whose `index` is not a number, has a fractional part (`1.5`) or lies below zero (`-1`); an extrapolation without `method` or `law`, with an unknown `method`, or with an empty `law`, a `law` of white space being accepted; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`)
+`read_side_contract.md`: `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; two extrapolations naming one field; two picks naming one field, whatever their record or index; two overlay acceptances naming one field and the same overlay; a pick whose `index` is not a number, has a fractional part (`1.5`) or lies below zero (`-1`); an extrapolation without `method` or `law`, with an unknown `method`, or with an empty `law`, a `law` of white space being accepted; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`)
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|

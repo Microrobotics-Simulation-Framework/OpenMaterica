@@ -111,7 +111,10 @@ one slip from a member of this table (section 10 item 5), and keeps it for hashi
    in 0.1.0) MUST skip it when listing records, and MUST refuse it, with the reason `unknown_type`
    (`read_side_contract.md` section 3, step 5, unless an earlier step refuses it first), when the record is
    referenced: by a request's target, a binding, a pin, a layered-path interval or an interface member.
-   [PR-006] [PR-007]
+   [PR-006] [PR-007] A record of a type the reader can read is refused in the same way where it is referenced
+   in a role its type does not fill: a target, named directly or through a scene's region, whose record is not
+   a `material`, and a record an `overlay` acceptance names that is not an `overlay`
+   (`read_side_contract.md` section 3, step 6). [PR-007]
 2. An object with a `document_type` member and no `record_type` member is a scene document (`geometry.md`), an
    engine crosswalk (`usd_binding.md` section 10.1) or another OpenMaterica document, not a record: a reader
    that lists records never lists it, and sets it aside before resolving a reference (`read_side_contract.md`
@@ -253,16 +256,27 @@ lists of `contact_category`, `contact_duration` and `material_form` will follow 
    `measurement` (an organisation's own measurement) or `scene_override`. [not yet covered]
 2. `base` names one material by identifier, version and content hash. `replaces` maps `<section>.<field>` to a
    whole value field, with its own `specimen` (it never inherits the base section's), which replaces the
-   base's field entirely, provenance included. `replaces` names only fields the base holds; a reader refuses
-   an overlay that replaces a field its base lacks, with the reason `absent`. [PR-011] [RC-016] [PR-046]
+   base's field entirely, provenance included. A field an overlay replaces is read from `replaces`, not from
+   the base's section. So a fault in the base's envelope or body that refuses each field read from the base
+   (section 10 item 5) refuses it, as one in the overlay's own envelope or body does; a fault in the base
+   section's `specimen`, or in the base field it replaces, does not. [PR-011] `replaces` names only fields the
+   base holds. A reader refuses an overlay that replaces a field its base lacks, whichever key of `replaces`
+   that is, with the reason `absent`. It refuses, with the same reason, an overlay named for the field read
+   that does not replace that field. [RC-016] [PR-046]
 3. `scope` names the consumer, the model (name and version) and a hash of the model's configuration with every
    value read from records removed (for MIME, the graph's configuration minus the parameters its material
    input sheet derives from records), and optionally the run. A `measurement` overlay's scope names the
    consumer only; a `fill_in` overlay's names the user in `consumer`, and no model. The build compares the
    scope (`declarations.md` section 5). [not yet covered]
-4. A reader applies an overlay only when a declaration names it (`declarations.md`). [PR-012]
+4. A reader applies an overlay only when an `overlay` acceptance the request carries names it, for the field
+   read (`read_side_contract.md` section 1). Every overlay so named must apply. Where this section, or steps 1
+   to 5 of the read, refuses one, the read is refused. [PR-012] [PR-039]
 5. A reader refuses an overlay whose base differs from the record in use, with the reason
-   `overlay_base_mismatch`; no declaration accepts it. [PR-039]
+   `overlay_base_mismatch`; no declaration accepts it. The base differs where its `id`, `version` or
+   `content_hash` differs from the record's, compared as strings, code point for code point. So a stale
+   overlay, whose base names another version of the record, is refused. So is one whose base `content_hash`
+   is not `sha256:` and 64 lowercase hexadecimal digits, since the reader schema checks only that it is a
+   string (section 1 item 2). [PR-039]
 6. Two declared overlays that replace the same field of the same base are refused, with the reason
    `overlay_conflict`. [PR-041]
 7. **Fill-ins.** A user fills in a reference-only value with an overlay of purpose `fill_in`, in the user's
@@ -273,9 +287,9 @@ lists of `contact_category`, `contact_duration` and `material_form` will follow 
    through a fill-in `user_extracted`. [PR-042]
 8. A reader refuses an overlay whose `purpose` is none of item 1's, with the reason `unknown_token`, and one
    of another purpose than `fill_in` that replaces a field in which its base holds a withheld value or
-   evidence entry, with the reason `withheld`: only a fill-in fills one in, and only a fill-in's value is
-   compared with the base's document and labelled `user_extracted` (item 7, `provenance.md` section 7).
-   [PR-042]
+   evidence entry, whichever key of `replaces` that field is, with the reason `withheld`: only a fill-in fills
+   one in, and only a fill-in's value is compared with the base's document and labelled `user_extracted` (item
+   7, `provenance.md` section 7). [PR-042]
 
 ## 5. Value fields
 
@@ -567,12 +581,12 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-004 | plain read | every record type carries the envelope |
 | PR-005 | plain read | an unknown top-level member is ignored; one that is one slip from an envelope member (`crad`) refuses every field read from the record (`form_invalid`) |
 | PR-006 | plain read | an unknown record type is skipped when listing; so is an object with `document_type` and no `record_type` |
-| PR-007 | plain read | a referenced record of an unknown type is refused (`unknown_type`) |
+| PR-007 | plain read | a referenced record of an unknown type is refused (`unknown_type`); so is a target that is not a `material` (an overlay record, at step 5), and a record an `overlay` acceptance names that is not an `overlay` (at step 6) |
 | PR-008 | plain read | a record with an unknown section is read for the sections the reader knows, whatever the unknown section holds (`null`, a number, an object); a section whose name is one slip from a known section's (`fluids`) refuses every field read from the record (`form_invalid`) |
 | PR-009 | plain read | a field's specimen fact overrides its section's |
 | PR-010 | plain read | a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8; a unit held as a status object is returned as stored, its `reason` included |
-| PR-011 | plain read | an overlay replaces a whole field, provenance included, with its own specimen |
-| PR-012 | plain read | an undeclared overlay is not applied |
+| PR-011 | plain read | an overlay replaces a whole field, provenance included, with its own specimen; a slip in the base's envelope or body (`crad`, `fluids`) refuses the field read through it, as one in the overlay's does, while a fault in the base section's `specimen` or in the replaced base field does not |
+| PR-012 | plain read | an undeclared overlay, or one an acceptance names for another field, is not applied |
 | PR-013 | plain read | alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; an entry's index counts set-aside alternatives, one stored past a set-aside alternative included; each remaining alternative's own `unknown` reasons stand beside `no_pick`, each with its `alternative` (`condition_unstated`), a set-aside one's not; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`; a table alternative kept outside its readable range, since an extrapolation the request carries would cover it, or read over an operating range of its axis has its table as stored in its entry, with no extrapolation applied |
 | PR-014 | plain read | every form carries its range |
 | PR-015 | plain read | a constant is returned with its conditions |
@@ -597,13 +611,13 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-036 | plain read | a form the field's row does not allow is refused (`form_not_registered`): a power law, a parameter set and reference data on every 0.1.0 field, a parameter set also `family_suite_absent` without the family evaluation suite; a composition basis the row does not allow; the member of a form the row does not allow is not checked |
 | PR-037 | plain read | an `axis_unit`, condition unit or `plus_minus` unit other than the registered one is refused (`unit_mismatch`), compared code point for code point, and so is a `unit` on a token condition, and a specimen fact's unit other than the one its row fixes, a status object there included |
 | PR-038 | plain read | biocompatibility evidence is returned as a list of reports, each with its `provenance` whole |
-| PR-039 | plain read | an overlay whose base differs from the record in use is refused (`overlay_base_mismatch`) |
-| PR-041 | plain read | two declared overlays replacing one field are refused (`overlay_conflict`) |
-| PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`) |
+| PR-039 | plain read | an overlay whose base differs from the record in use is refused (`overlay_base_mismatch`): another `id`, a stale `version` or `content_hash`, compared as strings, and a base `content_hash` that is ill-formed, which is not `malformed` |
+| PR-041 | plain read | two different declared overlays replacing one field are refused (`overlay_conflict`); one overlay named twice for one field gives `request_incomplete` |
+| PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
 | PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; a table alternative outside its readable range is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
 | PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
-| PR-046 | plain read | an overlay replacing a field its base lacks is refused (`absent`) |
+| PR-046 | plain read | an overlay replacing a field its base lacks is refused (`absent`), whichever key of `replaces` that is; so is one named for the field read that does not replace it |
 | PR-047 | plain read | numbers read as the nearest double, ties to even, compared exactly: `9007199254740993` as `9007199254740992`; `1e-400` as `0`; `-1e-400` as `-0`, not `0`; `3e-324` as `5e-324`; `2.4703282292062327e-324` as `0`; `1.7976931348623158e308` as the largest double |
 | PR-048 | plain read | a record whose `schema_version` is absent, not a string, or does not match the pattern (`"0.1"`, `"0.1.0-rc1"`, `"00.1.0"`, `"0.1.0 "`, `"0.1.0\n"`, Arabic-Indic digits) is malformed; a major or minor component of a hundred digits gives `other_version`, not a crash; `0.1.7` is read by a 0.1 reader |
 | PR-049 | plain read | `null` in the envelope (`"card": null`) makes the record malformed; inside a value field (`"unit": null`) it refuses that field (`form_invalid`); inside a member the reader does not know, at the top level or inside a value field, it is ignored; in a member step 8 does not check (`"extraction": null`), it does not refuse the field |
