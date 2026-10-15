@@ -14,6 +14,10 @@ import re
 from tests.spec_sync.test_value_fields import DEFINITIONS, alternatives, document, members, status_places
 
 PLACES = status_places(DEFINITIONS)
+# Section 1's row "a `unit` or `axis_unit`, wherever it sits": any token, and S a string, where the writer
+# names such a member or not (a token condition's `unit`, which step 9 refuses).
+UNITS = ("unit", "axis_unit")
+ANY = PLACES[("unit", None)]
 
 
 def condition_members(text: str) -> tuple[str, ...]:
@@ -31,7 +35,7 @@ CONDITION_MEMBERS = condition_members(document("provenance.md"))
 def tokens(definition: str, member: str) -> tuple[str, ...]:
     """The status tokens a status object may hold in `member` of `definition`: its place's, or those of the
     definition it refers to where that is a choice with a status object (a unit, a count)."""
-    held = PLACES.get((definition, member))
+    held = ANY if member in UNITS else PLACES.get((definition, member))
     if held is None:
         referred = alternatives(members(DEFINITIONS, definition)[member])
         held = frozenset[str]().union(*(PLACES.get((name, None), frozenset[str]()) for name in referred))
@@ -45,6 +49,8 @@ def defines(definition: str, member: str) -> tuple[str, ...]:
     is a number, a string or a token; for a condition, both shapes' members, as section 1 lists them."""
     if definition == "conditions":
         return CONDITION_MEMBERS
+    if member in UNITS:
+        return ()
     return tuple(dict.fromkeys(shape_members(members(DEFINITIONS, definition)[member])))
 
 
