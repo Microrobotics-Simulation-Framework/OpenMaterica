@@ -2633,6 +2633,7 @@ Low, 8 Info) gave the rows below. The maintainer has ruled on none of them.
 
 | Before | After | Why |
 |---|---|---|
+| step 7 could set a table alternative aside on its own axis entry | it never does; under `no_pick` a kept table's entry holds the table as stored | at an edge, another alternative's value came back as `met` where the table marks the value as two-sided |
 | the build counted any declared extrapolation as covering `outside_range` | only on a result whose `assumption` names it, so only where the read applied it (BC-019) | a model wanting bounds from a table was refused inside the table's range and accepted outside it, with no value |
 
 The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.
