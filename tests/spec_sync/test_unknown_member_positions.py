@@ -30,17 +30,16 @@ from typing import NamedTuple
 
 import pytest
 
-from materica import shapes
 from materica.core import read as read_module
 from materica.core import value_shapes
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.read import read
 from materica.core.record import RecordStore
-from materica.core.value_shapes import status_row
 from materica.core.vocabulary import VOCABULARY
 from scripts.gen_vocabulary import SPECIFICATION
 from tests.property.full_fields import SPECIMEN, full_fields, record_of
+from tests.spec_sync import status_rows
 from tests.spec_sync.schemas import SCHEMA
 
 JsonObject = dict[str, JsonValue]
@@ -208,6 +207,15 @@ def definition_of(map_name: str, name: str) -> str:
     return str(an_object(a_list(choices)[0])["$ref"]).removeprefix("#/$defs/")
 
 
+def parent(position: JsonObject, path: Path_) -> str:
+    """The definition of the object holding a status object at `path`, which a status position's `schema`
+    names: the condition's or the fact's own where it says `per_condition` or `per_fact`."""
+    (schema,) = a_list(position["schema"])
+    if schema in ("per_condition", "per_fact"):
+        return definition_of("conditions" if schema == "per_condition" else "specimen", str(path[-2]))
+    return str(schema)
+
+
 def named(position: JsonObject, path: Path_) -> list[str]:
     """The members named at `path`, where `position` finds it."""
     document = SCHEMAS[str(position["in"])]
@@ -239,8 +247,7 @@ def injections(position: JsonObject, host: Host, path: Path_) -> Iterator[tuple[
     target = at(host.request if position["in"] == "request" else host.record, path)
     assert isinstance(target, dict)
     if verdict == "status":
-        shape = getattr(shapes, str(position["shape"]))
-        defines = status_row(shape, str(path[-1]))[1]
+        defines = status_rows.defines(parent(position, path), str(path[-1]))
         yield UNKNOWN, 1.0, not defines
         yield "statusq", "x", True
         if defines:
@@ -364,7 +371,7 @@ def uncovered(positions: list[JsonObject]) -> set[str]:
     the ones `based` and `field_members` lend their members to others aside, and the status objects."""
     named_definitions: set[str] = set()
     for position in positions:
-        if position["in"] == "record":
+        if position["in"] == "record" and position["verdict"] != "status":
             named_definitions |= {str(schema) for schema in position.get("schema", [])}  # type: ignore[union-attr]
     per_name = {definition_of("conditions", name) for name in VOCABULARY.conditions} | {
         definition_of("specimen", name) for name in VOCABULARY.facts

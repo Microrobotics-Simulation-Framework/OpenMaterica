@@ -3,8 +3,9 @@
 faults of step 8's catalogue, each with the reasons it must give, and the members a reader does not know.
 
 A drawn field takes every member step 8 checks or leaves the optional ones out, each value-or-status member
-as its own shape or as a status object its row allows (the tokens read from the generated shapes, as step 8
-reads them), and anything at all in the members a read does not check. Nothing is filtered.
+as its own shape or as a status object its row allows, and anything at all in the members a read does not
+check. Nothing is filtered. The tokens a status object holds come from `provenance.md` section 1 item 5's
+table (`tests/spec_sync/status_rows.py`), never from step 8's own `value_shapes.status_row`.
 
 The fault catalogue is written from the text (`read_side_contract.md` section 3, step 8; `provenance.md`
 sections 1, 2, 5 and 6; `uncertainty.md` sections 1 and 4; `record_format.md` sections 2, 4, 5 and 10): each
@@ -18,13 +19,12 @@ from typing import NamedTuple
 
 from hypothesis import strategies as st
 
-from materica import shapes
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
-from materica.core.value_shapes import status_row
 from materica.core.vocabulary import VOCABULARY, ConditionSpec
 from tests.property import records
 from tests.property.strategies import DOUBLES, SIZE, TEXT, Size
+from tests.spec_sync import status_rows
 
 JsonObject = dict[str, JsonValue]
 Draw = st.DrawFn
@@ -46,13 +46,15 @@ def status_object(token: str, reason: str | None) -> JsonObject:
     return {"status": token} if reason is None else {"status": token, "reason": reason}
 
 
-def status_objects(shape: type, member: str) -> st.SearchStrategy[JsonObject]:
-    """A status object with a token `member` of `shape` allows, with a reason or none."""
-    return st.builds(status_object, st.sampled_from(status_row(shape, member)[0]), st.none() | TEXT)
+def status_objects(definition: str, member: str) -> st.SearchStrategy[JsonObject]:
+    """A status object with a token `member` of the writer's `definition` allows, with a reason or none."""
+    return st.builds(status_object, st.sampled_from(status_rows.tokens(definition, member)), st.none() | TEXT)
 
 
-def or_status(own: st.SearchStrategy[JsonValue], shape: type, member: str) -> st.SearchStrategy[JsonValue]:
-    return st.one_of(own, status_objects(shape, member))
+def or_status(
+    own: st.SearchStrategy[JsonValue], definition: str, member: str
+) -> st.SearchStrategy[JsonValue]:
+    return st.one_of(own, status_objects(definition, member))
 
 
 @st.composite
@@ -68,7 +70,7 @@ def based(draw: Draw) -> JsonObject:
     return {"basis": "inferred", "inferred_from": draw(TEXT)}
 
 
-UNITS: st.SearchStrategy[JsonValue] = st.one_of(TEXT, status_objects(shapes.PlusMinusEntry, "unit"))
+UNITS: st.SearchStrategy[JsonValue] = st.one_of(TEXT, status_objects("plus_minus_entry", "unit"))
 PLUS_MINUS_KINDS = (["bound"], ["sd"], ["bound", "sd"], ["sd", "bound"], ["unstated"])
 
 
@@ -104,7 +106,7 @@ def condition(spec: ConditionSpec) -> st.SearchStrategy[JsonValue]:
     own: st.SearchStrategy[JsonValue] = (
         numeric_condition() if spec.shape == "numeric" else token_condition(spec)
     )
-    return or_status(own, shapes.Conditions, spec.name)
+    return or_status(own, "conditions", spec.name)
 
 
 CONDITIONS = {name: condition(spec) for name, spec in VOCABULARY.conditions.items()}
@@ -156,7 +158,7 @@ def fact_shape(draw: Draw, name: str) -> JsonObject:
     return {**shape, **({"basis": fixed_basis} if fixed_basis else draw(based()))}
 
 
-FACTS = {name: or_status(fact_shape(name), shapes.Specimen, name) for name in VOCABULARY.facts}
+FACTS = {name: or_status(fact_shape(name), "specimen", name) for name in VOCABULARY.facts}
 
 
 @st.composite
@@ -166,10 +168,9 @@ def specimen(draw: Draw) -> JsonObject:
 
 
 UNCERTAINTY_STATUSES = {
-    name: status_objects(shapes.Uncertainty, name)
-    for name in ("coverage_factor", "coverage_probability", "dof")
+    name: status_objects("uncertainty", name) for name in ("coverage_factor", "coverage_probability", "dof")
 }
-UNCERTAINTY_PRECISION = or_status(tokens("precision_conditions"), shapes.Uncertainty, "precision_conditions")
+UNCERTAINTY_PRECISION = or_status(tokens("precision_conditions"), "uncertainty", "precision_conditions")
 
 
 @st.composite
@@ -204,7 +205,7 @@ def population_level(level: str, within: JsonValue) -> JsonObject:
 
 
 LEVELS = st.builds(
-    population_level, tokens("level"), or_status(tokens("level"), shapes.PopulationLevel, "within")
+    population_level, tokens("level"), or_status(tokens("level"), "population_level", "within")
 )
 OWN_BLOCK_MEMBERS: dict[str, st.SearchStrategy[JsonValue]] = {
     "central": tokens("central"),
@@ -222,9 +223,7 @@ OWN_BLOCK_MEMBERS: dict[str, st.SearchStrategy[JsonValue]] = {
     "n_sources": COUNTS,
     "precision_conditions": tokens("precision_conditions"),
 }
-BLOCK_MEMBERS = {
-    name: or_status(own, shapes.StatisticsBlock, name) for name, own in OWN_BLOCK_MEMBERS.items()
-}
+BLOCK_MEMBERS = {name: or_status(own, "statistics_block", name) for name, own in OWN_BLOCK_MEMBERS.items()}
 CONDITIONAL = {
     "population": "population_level",
     "across_sources": "n_sources",
@@ -584,6 +583,10 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "uncertainty_status_beside_a_member": setting(
             block, "expanded_uncertainty", {"status": "none", "value": 0.1}, INVALID
         ),
+        # Beside `status`, a member the uncertainty does not define is ignored (`provenance.md` section 1).
+        "uncertainty_status_beside_an_unknown_member": setting(
+            block, "expanded_uncertainty", {"status": "none", "note": "x"}, NOTHING
+        ),
     },
     "statistics_members": {
         "member_missing": removing(block, STATISTICS_REQUIRED),
@@ -771,6 +774,7 @@ PASSING_FAULTS = {
     ("provenance", "unchecked_member_broken"),
     ("specimen", "fact_unit_not_its_rows"),
     ("specimen", "fact_unit_status_any_token"),
+    ("statistics_statuses", "uncertainty_status_beside_an_unknown_member"),
 }
 
 
