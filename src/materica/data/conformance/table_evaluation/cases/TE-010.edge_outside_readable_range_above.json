@@ -1,0 +1,70 @@
+{
+  "case": "TE-010",
+  "variant": "edge_outside_readable_range_above",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "temperature",
+      "axis_unit": "K",
+      "x": [
+        263.0,
+        273.0,
+        273.0,
+        283.0
+      ],
+      "y": [
+        918.0,
+        916.0,
+        1000.0,
+        999.5
+      ],
+      "scheme": "linear",
+      "edges": [
+        273.0
+      ],
+      "source_range": [
+        263.0,
+        270.0
+      ]
+    },
+    "at": [
+      273.0,
+      275.0,
+      272.0,
+      270.0
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "refused": true
+      },
+      {
+        "refused": true
+      },
+      {
+        "in_range": false,
+        "value": 916.6,
+        "derivative": 0.0
+      },
+      {
+        "in_range": true,
+        "value": 916.6,
+        "derivative": -0.2
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 3e-07
+    }
+  }
+}
