@@ -198,8 +198,8 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    that ends before it carries no such label. An overlay's pin on its base is compared at step 6, not here.
    [HS-010] [HS-011] [PR-327]
 5. **Type.** Refuse a referenced record of a type the reader cannot read in its role (`unknown_type`): a
-   target's record that is not a `material`, and at step 6 an overlay that is not an `overlay`
-   (`record_format.md` section 3 item 1). [PR-007]
+   target's record that is not a `material`, however the target is named, and at step 6 a record an
+   `overlay` acceptance names that is not an `overlay` (`record_format.md` section 3 item 1). [PR-007]
 6. **Overlays.** Once the target has passed steps 1 to 5, resolve each overlay named by an `overlay`
    acceptance that names the read's field (section 1), as step 1 resolves a reference, and take it through
    steps 2 to 5. Then apply it, by `record_format.md` section 4.4. Refuse a `purpose` that is none of the four
@@ -352,7 +352,7 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `other_version` | not_met | 2, 6 | another schema version | `record_format.md` 8 |
 | `hash_mismatch` | not_met | 4, 6 | the recomputed hash differs from the record's own | `record_format.md` 9 |
 | `pin_mismatch` | not_met | 1, 4, 6 | the stated hash, or with HS the recomputed hash, differs from a pin (where no candidate holds the pin, `malformed` instead when a supplied source is unreadable or a candidate of the reference's `id` and `version` has an ill-formed `content_hash`: section 3, step 1) | this document 3 |
-| `unknown_type` | not_met | 5, 6 | a referenced record of a type the reader cannot read in its role: one of a type it cannot read at all, a target that is not a `material`, or an overlay that is not an `overlay` | `record_format.md` 3 |
+| `unknown_type` | not_met | 5, 6 | a referenced record of a type the reader cannot read in its role: one of a type it cannot read at all, a target that is not a `material`, however it is named, or a record an `overlay` acceptance names that is not an `overlay` | `record_format.md` 3 |
 | `absent` | not_met | 1, 6, 7 | the section or field is absent, or no supplied record has the reference's `id` and `version` (`malformed` instead when a supplied source is unreadable: section 3, step 1) | `record_format.md` 1, 4; this document 3 |
 | `no_pick` | unknown | 7 | alternatives remain and no pick is declared | `record_format.md` 5 |
 | `pick_invalid` | not_met | 7 | a pick whose `index` names no stored alternative of the field read (one past the last, or on a field holding no alternatives), or a pick located at the base of a field an applied overlay replaces, whose alternatives no longer describe the field read; never accepted | section 3; `declarations.md` 4.1 |
@@ -379,7 +379,7 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `points_unsupported` | not_met | 8 | a table holding `points`, which a 0.1.0 reader does not read | `record_format.md` 6 |
 | `overlay_base_mismatch` | not_met | 6 | an overlay whose base differs from the record in use; never accepted | `record_format.md` 4.4 |
 | `overlay_scope_mismatch` | not_met | build | an overlay scoped to another consumer, model or configuration (a build check) | `declarations.md` 5 |
-| `overlay_conflict` | not_met | 6 | two declared overlays replace one field | `record_format.md` 4.4 |
+| `overlay_conflict` | not_met | 6 | two overlays named for the field read both replace it | `record_format.md` 4.4 |
 | `request_incomplete` | not_met | 0, 10, 11 | a request that is not valid JSON or departs from the request's shape (a member missing or of the wrong JSON type, a reference without its `id`, `version` or `content_hash`, a target with both or neither of record and region, a field off the pattern, a member one slip from one named at its place); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a tolerance with no operating condition, or one below zero; an operating range with `lo` above `hi`; a table or power law with no operating value for its axis; a label given by both number and name (`geometry.md`); a field that is not registered; an acceptance of a kind a read does not take, or one that breaks its shape; two nominals, or two extrapolations, for one field; two implied conditions that apply and disagree | section 1 |
 | `request_unit_mismatch` | not_met | 0 | an operating condition or tolerance of a numeric condition whose `unit` is a string other than the registered one, compared code point for code point after JSON escapes are decoded, whatever else is wrong with the entry; or a value an implied condition supplies, alike | section 1 |
 | `owner_ambiguous` | not_met | scene | regions with no or tied priority claim one point | `geometry.md` |
