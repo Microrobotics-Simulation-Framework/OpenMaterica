@@ -3,8 +3,13 @@
 all: versions longer than `int` reads, the forms a request may be given in, the misuses that raise, and the
 steps not built yet, which raise rather than answer."""
 
+import importlib
+import inspect
 import json
+from collections.abc import Collection
 from pathlib import Path
+from types import ModuleType
+from typing import get_type_hints
 
 import pytest
 
@@ -19,6 +24,7 @@ from materica.core.record import RecordStore
 from materica.core.status import worst
 from materica.core.value_shapes import FORM_MEMBERS
 from materica.core.vocabulary import VOCABULARY
+from materica.shapes import Suite
 
 WATER = (
     Path(materica.__file__).parent / "data" / "conformance" / "plain_read" / "inputs" / "water_fixture.json"
@@ -455,3 +461,46 @@ def test_a_store_sets_documents_aside_and_keeps_unreadable_sources_apart() -> No
     assert [record.source for record in records.get("conformance/a", "1.0.0")] == ["record"]
     assert [source for source, _ in records.unparsed()] == ["array", "bytes"]
     assert records.list_records() == []
+
+
+def claims_parameters(modules: list[ModuleType]) -> dict[str, object]:
+    """The annotation of every `claims` parameter of a function or method defined in `modules`."""
+    found: dict[str, object] = {}
+    for module in modules:
+        for _, member in inspect.getmembers(module):
+            candidates: list[object] = list(vars(member).values()) if inspect.isclass(member) else [member]
+            for candidate in candidates:
+                function: object = getattr(candidate, "__func__", candidate)  # a classmethod's function
+                if (
+                    inspect.isfunction(function)
+                    and function.__module__ == module.__name__
+                    and "claims" in inspect.signature(function).parameters
+                ):
+                    found[function.__qualname__] = get_type_hints(function)["claims"]
+    return found
+
+
+CORE = [
+    importlib.import_module(f"materica.core.{path.stem}")
+    for path in sorted((Path(materica.__file__).parent / "core").glob("*.py"))
+]
+
+
+def test_each_claims_parameter_of_the_core_is_typed_by_the_suites() -> None:
+    """So that a misspelt suite name does not type-check (S2a-2's review, L7)."""
+    found = claims_parameters(CORE)
+    assert {"form_problems", "_form", "read", "ReadRequest.from_json", "resolve_record"} <= found.keys()
+    assert {name for name, hint in found.items() if hint != Collection[Suite]} == set()
+
+
+def test_a_claims_parameter_typed_otherwise_is_found() -> None:
+    module = ModuleType("loose")
+
+    def loose(claims: Collection[str]) -> None:
+        pass
+
+    loose.__module__ = module.__name__
+    module.loose = loose  # type: ignore[attr-defined]
+    assert claims_parameters([module]) == {
+        "test_a_claims_parameter_typed_otherwise_is_found.<locals>.loose": Collection[str]
+    }

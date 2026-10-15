@@ -173,7 +173,9 @@ def hash_not_recomputed(monkeypatch: pytest.MonkeyPatch) -> Executor:
 def checks_the_type_before_the_hash(monkeypatch: pytest.MonkeyPatch) -> Executor:
     resolve_record = resolve.resolve_record
 
-    def type_first(ref: MaterialRef, store: RecordStore, claims: Collection[str]) -> ResolvedRecord | Refused:
+    def type_first(
+        ref: MaterialRef, store: RecordStore, claims: Collection[Suite]
+    ) -> ResolvedRecord | Refused:
         resolved = resolve_record(ref, store, ())
         if isinstance(resolved, Refused) and resolved.reasons[0].code == "unknown_type":
             return Refused(resolved.reasons)
@@ -186,7 +188,7 @@ def checks_the_type_before_the_hash(monkeypatch: pytest.MonkeyPatch) -> Executor
 def labels_every_result_without_the_hash_suite(monkeypatch: pytest.MonkeyPatch) -> Executor:
     resolve_record = resolve.resolve_record
 
-    def labelled(ref: MaterialRef, store: RecordStore, claims: Collection[str]) -> ResolvedRecord | Refused:
+    def labelled(ref: MaterialRef, store: RecordStore, claims: Collection[Suite]) -> ResolvedRecord | Refused:
         resolved = resolve_record(ref, store, claims)
         if isinstance(resolved, Refused) and "hash" not in claims:
             return Refused(resolved.reasons, ("hash_not_checked",))
@@ -292,7 +294,7 @@ def allows_every_form(monkeypatch: pytest.MonkeyPatch) -> Executor:
     form = fields._form  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
 
     def unregistered_too(
-        field: dict[str, JsonValue], spec: RecordFieldSpec, claims: Collection[str], found: list[Reason]
+        field: dict[str, JsonValue], spec: RecordFieldSpec, claims: Collection[Suite], found: list[Reason]
     ) -> tuple[str | None, bool]:
         own: list[Reason] = []
         found_form, _ = form(field, spec, claims, own)
@@ -335,7 +337,7 @@ def stops_at_the_first_refusal(monkeypatch: pytest.MonkeyPatch) -> Executor:
     form_problems = fields.form_problems
 
     def first(
-        field: RecordField, record_value: dict[str, JsonValue], claims: Collection[str]
+        field: RecordField, record_value: dict[str, JsonValue], claims: Collection[Suite]
     ) -> list[Reason]:
         return form_problems(field, record_value, claims)[:1]
 

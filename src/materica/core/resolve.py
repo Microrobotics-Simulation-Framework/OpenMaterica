@@ -10,6 +10,7 @@ from materica.core.hashing import content_hash
 from materica.core.identifiers import CONTENT_HASH, MaterialRef
 from materica.core.reasons import Reason
 from materica.core.record import Record, RecordStore
+from materica.shapes import Suite
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,9 @@ class Refused:
     labels: tuple[str, ...] = ()
 
 
-def resolve_record(ref: MaterialRef, store: RecordStore, claims: Collection[str]) -> ResolvedRecord | Refused:
+def resolve_record(
+    ref: MaterialRef, store: RecordStore, claims: Collection[Suite]
+) -> ResolvedRecord | Refused:
     found = _candidate(ref, store)
     if isinstance(found, Reason):
         return Refused((found,))

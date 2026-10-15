@@ -473,7 +473,7 @@ def test_the_traced_check_can_fail(monkeypatch: pytest.MonkeyPatch) -> None:
     returns a reason step 0 may not give."""
     want = read_module._want  # pyright: ignore[reportPrivateUsage]  # the function the fault is seeded in
 
-    def faulty(value: JsonValue, claims: Collection[str], found: list[Reason]) -> Want | None:
+    def faulty(value: JsonValue, claims: Collection[Suite], found: list[Reason]) -> Want | None:
         found.append(Reason("absent"))
         return want(value, claims, found)
 

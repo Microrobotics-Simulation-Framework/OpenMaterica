@@ -20,6 +20,7 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.slips import one_slip
 from materica.core.value_shapes import Check, Found, JsonObject, Members
+from materica.shapes import Suite
 from tests.property import test_value_field_properties as properties
 from tests.property import value_field_strategies as strategies
 from tests.property.strategies import ORIGINAL, SMALL, Size
@@ -188,7 +189,7 @@ def _no_record_problems(record: JsonObject) -> Found:
 FORM_PROBLEMS = fields.form_problems
 
 
-def _first_refusal_only(field: RecordField, record: JsonObject, claims: Collection[str]) -> Found:
+def _first_refusal_only(field: RecordField, record: JsonObject, claims: Collection[Suite]) -> Found:
     return FORM_PROBLEMS(field, record, claims)[:1]
 
 
