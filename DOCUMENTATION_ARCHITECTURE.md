@@ -876,20 +876,19 @@ A schema change needs, in one pull request: the specification text, the conforma
 schema and USD schema files, the reader change, a `changes.md` entry, and a CHANGELOG entry under
 **Schema**. Removal follows the stability levels below.
 
-Any section or field can be added later as a minor change, because four rules hold (architecture draft
-section 5.6): sections are optional and a reader ignores those it does not use; an added field or member
-never changes how an existing one is read unless every older reader refuses each field it would change, and
-a change that would is otherwise major; an added member is never one slip from a member valid at its place
-(specification `record_format.md` section 10), since a reader refuses such a
-near-typo (maintainer, 2026-10-14); a condition a reader does not know gives
-"unknown", refused unless the consumer waives it, never "present and unchecked". An added token in an
-enumerated field (an interpolation scheme, a statistics basis) refuses that field in an older reader instead
-of being read as something it knows. From 1.0.0 a reader reads a record of a newer minor version and refuses
-one of another major version; before 1.0.0 it reads only its own minor version, because a pre-1.0 minor
-version may still change shapes (maintainer, 2026-10-12). A new record type is additive in the same way: a
-reader skips a type it does not know when listing records, and refuses it when a record of that type is
-referenced. This works only because every record states its type from the first schema version (constraint
-27).
+Any section or field can be added later as a minor change, because four rules hold (architecture draft section
+5.6): sections are optional and a reader ignores those it does not use; an added field or member never changes
+how an existing one is read unless every older reader refuses each field it would change, and a change that
+would is otherwise major; an added member is never one slip from a member named at its place, refused ones
+included (specification `record_format.md` section 10), since a reader refuses such a near-typo (maintainer,
+2026-10-14); a condition a reader does not know gives "unknown", refused unless the consumer waives it, never
+"present and unchecked". An added token in an enumerated field (an interpolation scheme, a statistics basis)
+refuses that field in an older reader instead of being read as something it knows. From 1.0.0 a reader reads a
+record of a newer minor version and refuses one of another major version; before 1.0.0 it reads only its own
+minor version, because a pre-1.0 minor version may still change shapes (maintainer, 2026-10-12). A new record
+type is additive in the same way: a reader skips a type it does not know when listing records, and refuses it
+when a record of that type is referenced. This works only because every record states its type from the first
+schema version (constraint 27).
 
 ### 7.3 Stability levels
 

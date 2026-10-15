@@ -1318,17 +1318,17 @@ key.
   schema change if five rules hold. Sections are optional, and a reader ignores sections it does not use. An
   added field or member never changes how an existing one is read, since an older reader ignores what it does
   not know, unless every older reader refuses each field it would change; a change that would is otherwise
-  major. An added member is never one slip from a member valid at its place (specification `record_format.md`
-  section 10), since a reader refuses such a near-typo (maintainer, 2026-10-14). A condition a reader does not
-  know gives "unknown", refused unless waived, because some conditions change what a value means (section
-  4.8); and an unknown token in an enumerated field (a new interpolation scheme, statistics basis or
-  uncertainty structure) refuses that field, so an old reader never falls back to a default it does know. A
-  reader skips a record type it does not know when listing, and refuses it when referenced (section 4.1). A
-  reader that knows schema 1.2 therefore reads a 1.3 record, refusing exactly what it cannot interpret, and
-  refuses a 2.0 record. Before 1.0.0 a minor version may still change shapes, so a reader reads only records
-  of its own minor version (maintainer, 2026-10-12); consumers pin exact versions anyway (section 12.4). USD
-  follows: a new section is a new API schema, and an older plug-in still reads its attributes as plain
-  attributes (recalled; to check).
+  major. An added member is never one slip from a member named at its place, refused ones included
+  (specification `record_format.md` section 10), since a reader refuses such a near-typo (maintainer,
+  2026-10-14). A condition a reader does not know gives "unknown", refused unless waived, because some
+  conditions change what a value means (section 4.8); and an unknown token in an enumerated field (a new
+  interpolation scheme, statistics basis or uncertainty structure) refuses that field, so an old reader never
+  falls back to a default it does know. A reader skips a record type it does not know when listing, and
+  refuses it when referenced (section 4.1). A reader that knows schema 1.2 therefore reads a 1.3 record,
+  refusing exactly what it cannot interpret, and refuses a 2.0 record. Before 1.0.0 a minor version may still
+  change shapes, so a reader reads only records of its own minor version (maintainer, 2026-10-12); consumers
+  pin exact versions anyway (section 12.4). USD follows: a new section is a new API schema, and an older
+  plug-in still reads its attributes as plain attributes (recalled; to check).
 - **Advisories** (a note for later: built at the first retraction, or before the first release a regulated
   consumer takes). A pinned hash cannot learn that its source was later corrected, retracted or contested.
   An advisory index, kept outside the records and versioned on its own, lists such notices by record and
