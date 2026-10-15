@@ -101,7 +101,7 @@ in one alternative it ends that alternative's read and refuses the field: the al
 | `status` | `met`, `not_met` or `unknown`. A build result adds the model, the region and what accepted it (`declarations.md`) |
 | `reasons` | a list of `{"code", "condition"?, "alternative"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
 | `value` | present unless `not_met` without an assumption; its shape follows `want` (section 6) |
-| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`: its index among the stored alternatives; its value as `want` shapes it, or, where `want` cannot give its form, or where it is a table kept outside its readable range or read over an operating range of its axis, its form's member as stored, with no nominal or extrapolation applied (sections 5 and 6) [PR-013]; and the other members as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
+| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`. `alternative` is its index among the stored alternatives. `value` is its value as `want` shapes it. Where `want` cannot give its form, or where the alternative is kept outside its form's range or is a table read over an operating range of its axis, the entry holds its form's member as stored instead, with no nominal or extrapolation applied (sections 5 and 6). [PR-013] The other members are as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
 | `unit` | the field's unit, as stored: a unit held as a status object keeps its `reason` [PR-010] |
 | `conditions` | one entry per condition checked (section 5): `{"name", "status", "record"?, "operating"?}` (item 6) |
 | `specimen` | the field's specimen facts, the section's merged with the field's |
@@ -224,20 +224,22 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    depend on the order of reading. Each alternative is set aside, stays, or refuses the field. [PR-044]
    - An alternative is set aside where its conditions, the form's own axis entry aside (section 5), give
      `not_met` at step 10. [PR-044]
-   - A table alternative is set aside where its read lies outside its readable range at step 11, not exactly
-     at a declared edge, and no extrapolation the request carries would cover it (section 5). [PR-044]
-   - Nothing else sets an alternative aside. These stay: one whose read gives no `not_met`; a table
-     alternative that an extrapolation the request carries would cover, since a pick would let the
-     extrapolation apply; and one whose form `want` cannot give (an interval under `want: value`, a constant
-     under `want: bounds`, or a table read over an operating range of its axis, say). A table kept for an
-     extrapolation is read on through steps 12 and 13, as a field is (above). The extrapolation is applied
-     only where that table is the one left. [PR-013] [PR-338]
+   - An alternative is set aside where its read lies outside its form's range at step 11, not exactly at a
+     declared edge, and no extrapolation the request carries would cover it (section 5). This holds for any
+     form with a range: a table's readable range, and a power law's `range`, though no 0.1.0 field takes a
+     power law. [PR-044]
+   - Nothing else sets an alternative aside. These stay: one whose read gives no `not_met`; one that an
+     extrapolation the request carries would cover, since a pick would let the extrapolation apply; and one
+     whose form `want` cannot give (an interval under `want: value`, a constant under `want: bounds`, or a
+     table read over an operating range of its axis, say). An alternative kept for an extrapolation is read
+     on through steps 12 and 13, as a field is (above). The extrapolation is applied only where that
+     alternative is the one left. [PR-013] [PR-338]
    - Every other `not_met` in an alternative's read refuses the field: a value field that breaks its shape, a
      unit other than the registered one or a withheld value, say. A table alternative read exactly at a
      declared edge refuses the field, wherever the edge lies, outside the readable range included. So does a
-     fault of the request (section 1): a table alternative whose read reaches step 11 with no operating value
-     for its axis refuses the field, while one set aside at step 10 never reaches step 11 and refuses nothing.
-     [PR-044] [PR-308] [PR-316]
+     fault of the request (section 1): an alternative whose read reaches step 11 with no operating value for
+     its form's axis refuses the field, while one set aside at step 10 never reaches step 11 and refuses
+     nothing. [PR-044] [PR-308] [PR-316]
 
    An alternative that stays may give `not_met` reasons, a nominal's outside an interval's bounds among them
    (section 6). These wait: they are reported once a pick names that alternative, once it is the one left, or
