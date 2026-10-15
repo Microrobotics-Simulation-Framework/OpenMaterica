@@ -90,15 +90,15 @@ value-field part and its two controls (M1 to M31, its numbering kept), one for e
 (M6b, M14b, M32 to M61), and nine that tighten it (T1 to T9); then the bindings it applies from the
 vocabulary, each changed in the vocabulary file or no longer applied by the writer: a section's field names, a
 field's forms, unit, label or composition basis, its alternatives, the replaced fields, a numeric condition's
-unit and its `plus_minus` entries' (B1 to B12, with B5b), and four that tighten them (TB1 to TB4). Each names the property that kills it and the
-assertion it must die at: a loosening mutant dies when the refusal property of its family finds the schema
-taking one of the faults it names, its search drawn among those faults, which the family's property draws as
-often as any other (the feature audit holds it to a third of that share); a tightening one dies when the
-acceptance property finds it refusing a field the text allows, its search drawn on fields of the form and
-with the parts in which it refuses one. Both sizes, as above. Two mutants of the review
-die at a fault besides the one they were written for, both by the rule they break: M13, without `plus_minus`'s
-`then`, also takes an unstated kind beside a stated one, and M48, with `withheld` among an entry's other
-statuses, also takes a withheld entry without its recipe.
+unit and its `plus_minus` entries' (B1 to B12, with B5b), and four that tighten them (TB1 to TB4). Each names
+the property that kills it and the assertion it must die at: a loosening mutant dies when the refusal property
+of its family finds the schema taking one of the faults it names, its search drawn among those faults, which
+the family's property draws as often as any other (the feature audit holds it to a third of that share); a
+tightening one dies when the acceptance property finds it refusing a field the text allows, its search drawn
+on fields of the form and with the parts in which it refuses one. Both sizes, as above. Two mutants of the
+review die at a fault besides the one they were written for, both by the rule they break: M13, without
+`plus_minus`'s `then`, also takes an unstated kind beside a stated one, and M48, with `withheld` among an
+entry's other statuses, also takes a withheld entry without its recipe.
 
 ## Audits
 

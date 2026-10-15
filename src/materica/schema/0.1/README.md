@@ -9,8 +9,8 @@
 | `case.json` | a conformance case file, holding a read request or an operation, and the result it expects | by hand |
 | `vocabulary/` | the tokens of the specification's tables, and the bindings of their rows (`vocabulary/README.md`) | generated, by `scripts/gen_vocabulary.py` |
 
-Every file's `$id` is its path under `https://w3id.org/materica/schema/0.1/` (`tests/spec_sync/test_schemas.py`),
-and the files refer to each other by `$ref`s relative to their `$id`s: `case.json` to `read_request.json` and
-`read_result.json`, these to `record.writer.json`, `read_result.json` to `vocabulary/reasons.json` for the
-reason codes, and `record.writer.json` to the vocabulary for every other token list and for the bindings of the
-rows.
+Every file's `$id` is its path under `https://w3id.org/materica/schema/0.1/`
+(`tests/spec_sync/test_schemas.py`), and the files refer to each other by `$ref`s relative to their `$id`s:
+`case.json` to `read_request.json` and `read_result.json`, these to `record.writer.json`, `read_result.json`
+to `vocabulary/reasons.json` for the reason codes, and `record.writer.json` to the vocabulary for every other
+token list and for the bindings of the rows.
