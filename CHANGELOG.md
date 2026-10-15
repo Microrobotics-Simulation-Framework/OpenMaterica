@@ -72,6 +72,12 @@ recorded in that repository's CHANGELOG.
   the text and the vocabulary's rows, never from the schema or its bindings; 89 mutants of the schema and of
   the bindings it applies, the S2a-1 review's 31 among them, each killed at the assertion it names
   (`tests/property/test_writer_properties.py`, `test_writer_mutants.py`), in a third CI shard, `writer`.
+- The feature audit holds a feature drawn alike as each example's first choice, as a refusal property draws
+  its fault, to a floor its draw gives at the `ci` profile: Hypothesis shows one draw in up to eight examples,
+  so the floor counts one draw in every eight examples, each draw shown in five, and is the count the feature
+  falls below with a probability of at most 1e-6, and never below 10. A family of more than 15 faults is
+  drawn in parts, a property each. Each fault is drawn by `st.sampled_from`, no longer by a drawn seed, which
+  drew some faults up to 1.27 times as often as others (`tests/property/audits.py`).
 - A check that each member the schemas declare whole admits the float the reader gives
   (`tests/unit/test_shapes.py`).
 - Each new check is shown failing on seeded faults.

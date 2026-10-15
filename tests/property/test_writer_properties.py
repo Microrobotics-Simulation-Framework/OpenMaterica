@@ -8,6 +8,7 @@ register or holding what its row does not give (maintainer, 2026-10-15). The fie
 applies. Each refusal is checked on a field the schema takes, the same field but for the fault, so that it is
 the fault's. The mutants they kill are in `test_writer_mutants.py`."""
 
+import math
 from collections.abc import Iterable
 from urllib.parse import urljoin
 
@@ -18,7 +19,8 @@ from jsonschema import Draft202012Validator
 from referencing.jsonschema import DRAFT202012
 
 from materica.core.jsonio import JsonValue
-from tests.property import value_fields
+from tests.conftest import EXAMPLES
+from tests.property import audits, value_fields
 from tests.property.support import feature
 from tests.property.value_fields import FAMILIES, FAULTS, Faulty, Json, listing, mapping
 from tests.spec_sync.schemas import BASE, REGISTRY
@@ -124,17 +126,37 @@ def test_the_writer_schema_takes_every_registered_field_in_its_place(body: Json)
     check_takes(PLACED, body)
 
 
-def shares(family: str) -> dict[str, float]:
-    """A third of each fault's share of its family's draws: each is drawn as often as another."""
+def strata(family: str) -> list[tuple[str, ...]]:
+    """The family's faults in the fewest parts, each drawn by a property of its own, at which the `ci`
+    profile's examples give each fault a draw floor its audit can judge (`audits.draw_floor`); the parts take
+    the faults in turn, so that each mixes the plans the faults are built on."""
     names = [fault.name for fault in FAULTS if fault.family == family]
-    return {name: 1 / len(names) / 3 for name in names}
+    parts = next(
+        parts
+        for parts in range(1, len(names) + 1)
+        if audits.draw_floor(EXAMPLES["ci"], 1 / math.ceil(len(names) / parts)) >= audits.LEAST_DRAWS
+    )
+    return [tuple(names[part::parts]) for part in range(parts)]
+
+
+def stratum_id(family: str, part: int, parts: int) -> str:
+    return family if parts == 1 else f"{family}-{part + 1}of{parts}"
 
 
 @pytest.mark.parametrize(
-    "family", [pytest.param(family, marks=pytest.mark.features(**shares(family))) for family in FAMILIES]
+    ("family", "faults"),
+    [
+        pytest.param(
+            family, faults, id=stratum_id(family, part, len(parts)), marks=pytest.mark.drawn(*faults)
+        )
+        for family, parts in ((family, strata(family)) for family in FAMILIES)
+        for part, faults in enumerate(parts)
+    ],
 )
 @given(data=st.data())
-def test_the_writer_schema_refuses_each_fault_the_text_names(family: str, data: st.DataObject) -> None:
-    faulty = data.draw(value_fields.faulty_fields(family))
+def test_the_writer_schema_refuses_each_fault_the_text_names(
+    family: str, faults: tuple[str, ...], data: st.DataObject
+) -> None:
+    faulty = data.draw(value_fields.faulty_fields(family, only=faults))
     feature(faulty.fault)
     check_refuses(WRITERS.get(family, WRITER), faulty)

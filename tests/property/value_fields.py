@@ -1852,12 +1852,23 @@ def _basis(draw: st.DrawFn, found: Json) -> str:
 FAMILIES = sorted({fault.family for fault in FAULTS})
 
 
+@functools.cache
+def _faults(family: str, only: tuple[str, ...]) -> st.SearchStrategy[Fault]:
+    """The faults of `family`, or those of them named in `only`, each drawn with the same chance: Hypothesis
+    draws `sampled_from`'s index uniformly, its pool of constants holding no integer below 100. A seed drawn
+    for `CHOOSERS` would not do: Hypothesis draws it mostly among small integers and its constants, so that
+    some seeds recur, each choosing the same fault (a fault's chance from 0.91 to 1.27 times its share among
+    27, over 200,000 seeds, 2026-10-15)."""
+    return st.sampled_from(
+        [fault for fault in FAULTS if fault.family == family and (not only or fault.name in only)]
+    )
+
+
 @st.composite
 def faulty_fields(draw: st.DrawFn, family: str, size: Size = SIZE, only: tuple[str, ...] = ()) -> Faulty:
     """A field the text allows, and the same field with one fault of `family`, drawn among them alike, or
     among those named in `only`."""
-    faults = [fault for fault in FAULTS if fault.family == family and (not only or fault.name in only)]
-    chosen = draw(CHOOSERS).choice(faults)
+    chosen = draw(_faults(family, only))
     base = draw(bodies(chosen.plan, size) if family == "binding" else form_fields(chosen.plan, size))
     changed = copy.deepcopy(base)
     place = chosen.change(draw, changed)

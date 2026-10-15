@@ -3,13 +3,13 @@
 kill it does so within the examples the `ci` profile gives a property, at both sizes, at the assertion named.
 
 A mutant that loosens the schema dies when the refusal check of its family's property finds the schema taking
-one of the faults it names, searched among those faults: the family's property draws each of its faults at
-least a third as often as another (its feature audit), so it meets them too. One that tightens the schema dies
-when the acceptance property finds it refusing a field the text allows. The table is the S2a-1 review's 29
-mutants and its two controls (M1 to M31, its numbering kept), then one per constraint added since and a few
-that tighten, then those of the bindings the writer applies from the vocabulary (B1 to B12, TB1 to TB4,
-maintainer 2026-10-15), which change the writer or a vocabulary file. Each test records the examples its kill
-took as `examples_to_kill`.
+one of the faults it names, searched among those faults: the refusal properties draw each fault of a family
+alike, and their feature audit holds each to its draw floor, so they meet them too. One that tightens the
+schema dies when the acceptance property finds it refusing a field the text allows. The table is the S2a-1
+review's 29 mutants and its two controls (M1 to M31, its numbering kept), then one per constraint added since
+and a few that tighten, then those of the bindings the writer applies from the vocabulary (B1 to B12, TB1 to
+TB4, maintainer 2026-10-15), which change the writer or a vocabulary file. Each test records the examples its
+kill took as `examples_to_kill`.
 """
 
 import copy

@@ -6,6 +6,7 @@ from collections.abc import Generator
 import pytest
 from hypothesis import is_hypothesis_test
 
+from tests.conftest import PROFILE
 from tests.property import audits
 
 
@@ -22,7 +23,13 @@ def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
         return
     if share > audits.MAX_REJECTION:
         pytest.fail(f"rejected {share:.0%} of its draws, over the audit's {audits.MAX_REJECTION:.0%}")
-    marker = item.get_closest_marker("features")
-    problems = audits.feature_shortfalls(counts, {} if marker is None else dict(marker.kwargs))
+    declared = item.get_closest_marker("features")
+    drawn = item.get_closest_marker("drawn")
+    problems = audits.feature_shortfalls(
+        counts,
+        {} if declared is None else dict(declared.kwargs),
+        () if drawn is None else drawn.args,
+        by_draws=PROFILE in audits.DRAW_FLOORS,
+    )
     if problems:
         pytest.fail("feature audit: " + "; ".join(problems))
