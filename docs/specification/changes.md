@@ -331,4 +331,6 @@ section or the replaced field (PR-011). A fill-in over a base field holding alte
 or not its marker breaks its shape (PR-042). An acceptance located at an `interval` is not applied in a plain
 read even where it also names the read's `record`, and a pick is no exception: its `region` and `interval` are
 its location, never members ignored (a default for the maintainer, 2026-10-15; PR-304, PR-307, PR-316,
-PR-338).
+PR-338). Only a pick may be located at an applied overlay: an extrapolation, a nominal or an implied condition
+located there is not applied, and one located at the target's record applies to a field an overlay replaces (a
+default for the maintainer, 2026-10-15; PR-307).
