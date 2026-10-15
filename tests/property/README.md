@@ -45,8 +45,12 @@ Hypothesis properties of the core, in three groups, and of the writer schema, in
   reader does not know, added where they may go, never change the outcome, two slips off a named member
   included. `value_field_strategies.py` builds a record holding one constant that passes step 8, each member
   its row's shape or a status object its row allows, and anything at all in the members a read does not check;
-  and the catalogue, by region of the record, each fault with the codes its rule gives. Until steps 9 to 13 are
-  built, a read that passes step 8 raises `NotImplementedError`, the outcome "past step 8".
+  and the catalogue, by region of the record, each fault with the codes its rule gives: 21 regions since S2a-2's
+  fix round, which wrote faults for each value step 8 checks, the derivation and `source` included, slips
+  beside a named member or of an optional one, and the eleven rules its review found untested. A third law,
+  the label's rule, holds a label on a table to the Label column, read by the test itself, through step 8's
+  shared check, since no read reaches a table before S3. Until steps 9 to 13 are built, a read that passes
+  step 8 raises `NotImplementedError`, the outcome "past step 8".
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -132,36 +136,62 @@ entry's other statuses, also takes a withheld entry without its recipe.
 
 ### Step 8's mutants
 
-`test_value_field_mutants.py`. Each fault is injected where the core looks a name up when it runs; the kill is
-the examples the derandomised search took, at the small and the original size (measured 2026-10-15).
+`test_value_field_mutants.py`. Each fault is injected where the core looks a name up when it runs, or in the
+tables it builds, rebuilt under the fault. The first 25 are S2a-2's, searched with their property whole; the
+rest are its fix round's: the eleven rules S2a-2's review found no test checked (M1; the fact unit's is
+`fact_unit_judged_at_step_8`) and the parts of the text HP3 had no fault for or could not tell from a missing
+member (M2). Each of those names the faults it must die at, and its search is planned, as the writer's are:
+HP3 draws its first fault among them, and the kill must hold one. Drawn with the property whole, each died
+within its 2,000 examples at both sizes but two, `within_any_status` and
+`label_beside_an_unknown_form_as_on_a_constant`, which died at the original size alone (884 and 845); so their
+faults' regions are held by the region audit, not by the search. The kill is the examples the derandomised
+search took, at the small and the original size (measured 2026-10-15, S2a-2's fix round).
 
-| Mutant | Fault | Killed by | Examples |
-|---|---|---|---|
-| `unknown_tokens_ignored` | a token the reader knows for no member of its name is accepted | HP3 | 7, 79 |
-| `unknown_token_read_as_a_shape_fault` | such a token gives `form_invalid` | HP3 | 7, 79 |
-| `status_tokens_unchecked` | a status object takes any status token | HP3 | 227, 278 |
-| `members_beside_a_status_ignored` | a status object beside a member of the shape it stands for is read as one | HP3 | 645, 1143 |
-| `missing_represents_accepted` | a statistics block without `represents` passes (the S2 design's HP3 mutant) | HP3 | 466, 34 |
-| `null_read_as_absent` | `null` in an optional member reads as the member absent (HP3's) | HP3 | 931, 180 |
-| `unknown_condition_names_checked` | a condition name the reader does not know is checked as a numeric condition (HP3's "read as known") | HP3 | 194, 124 |
-| `plus_minus_kinds_unchecked` | a `plus_minus` list is checked only as a list | HP3 | 11, 194 |
-| `range_order_unchecked` | a range's `lo` may lie above its `hi` | HP3 | 70, 919 |
-| `counts_not_whole` | `n_specimens` takes any number | HP3 | 112, 123 |
-| `conditional_members_unchecked` | `population_level`, `n_sources` and `precision_conditions` may sit beside any `represents` | HP3 | 65, 229 |
-| `uncertainty_rules_unchecked` | an uncertainty's coverage, `dof` and precision rules go | HP3 | 420, 201 |
-| `named_state_text_unchecked` | a disease or treatment state's text may sit beside any token, or be missing | HP3 | 387, 444 |
-| `fixed_basis_unchecked` | `mimics`'s basis takes either token, not the one its row fixes | HP3 | 34, 248 |
-| `fact_unit_judged_at_step_8` | a fact's unit is judged at step 8, `s` alone and a status object of the five tokens only, where step 9 alone compares it (a default for the maintainer, 2026-10-15) | HP3 | 279, 531 |
-| `record_structure_unchecked` | a slip in the envelope, the body or a section is ignored | HP3 | 91, 248 |
-| `section_specimen_unchecked` | a section's `specimen` is not checked | HP3 | 7, 264 |
-| `first_refusal_only` | step 8 gives its first reason only (the S2 design's HP12 mutant, on HP3's two-fault draws) | HP3 | 7, 79 |
-| `slip_by_substitution_missed` | the one-slip relation misses a character substituted | HP3 | 196, 734 |
-| `slip_by_insertion_missed` | it misses a character inserted or deleted | HP3 | 274, 248 |
-| `slip_by_swap_missed` | it misses two adjacent characters swapped | HP3 | 473, 79 |
-| `slip_by_plural_missed` | it misses a word made plural or singular | HP3 | 156, 264 |
-| `slip_by_underscore_missed` | it misses an underscore added or removed | HP3 | 91, 132 |
-| `unknown_members_refused` | every member a place does not name is refused | HP5 | 2, 2 |
-| `two_slips_refused` | names two characters off a named member are refused too | HP5 | 2, 2 |
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `unknown_tokens_ignored` | a token the reader knows for no member of its name is accepted | HP3 | any of its property | 3, 12 |
+| `unknown_token_read_as_a_shape_fault` | such a token gives `form_invalid` | HP3 | any of its property | 3, 12 |
+| `status_tokens_unchecked` | a status object takes any status token | HP3 | any of its property | 11, 137 |
+| `members_beside_a_status_ignored` | a status object beside a member of the shape it stands for is read as one | HP3 | any of its property | 121, 12 |
+| `missing_represents_accepted` | a statistics block without `represents` passes (the S2 design's HP3 mutant) | HP3 | any of its property | 65, 1384 |
+| `null_read_as_absent` | `null` in an optional member reads as the member absent (HP3's) | HP3 | any of its property | 322, 401 |
+| `unknown_condition_names_checked` | a condition name the reader does not know is checked as a numeric condition (HP3's "read as known") | HP3 | any of its property | 128, 30 |
+| `plus_minus_kinds_unchecked` | a `plus_minus` list is checked only as a list | HP3 | any of its property | 3, 24 |
+| `range_order_unchecked` | a range's `lo` may lie above its `hi` | HP3 | any of its property | 534, 139 |
+| `counts_not_whole` | `n_specimens` takes any number | HP3 | any of its property | 192, 318 |
+| `conditional_members_unchecked` | `population_level`, `n_sources` and `precision_conditions` may sit beside any `represents` | HP3 | any of its property | 170, 48 |
+| `uncertainty_rules_unchecked` | an uncertainty's coverage, `dof` and precision rules go | HP3 | any of its property | 20, 125 |
+| `named_state_text_unchecked` | a disease or treatment state's text may sit beside any token, or be missing | HP3 | any of its property | 313, 336 |
+| `fixed_basis_unchecked` | `mimics`'s basis takes either token, not the one its row fixes | HP3 | any of its property | 360, 98 |
+| `fact_unit_judged_at_step_8` | a fact's unit is judged at step 8, `s` alone and a status object of the five tokens only, where step 9 alone compares it (a default for the maintainer, 2026-10-15) | HP3 | any of its property | 224, 1297 |
+| `record_structure_unchecked` | a slip in the envelope, the body or a section is ignored | HP3 | any of its property | 58, 111 |
+| `section_specimen_unchecked` | a section's `specimen` is not checked | HP3 | any of its property | 70, 4 |
+| `first_refusal_only` | step 8 gives its first reason only (the S2 design's HP12 mutant, on HP3's two-fault draws) | HP3 | any of its property | 3, 12 |
+| `slip_by_substitution_missed` | the one-slip relation misses a character substituted | HP3 | any of its property | 102, 111 |
+| `slip_by_insertion_missed` | it misses a character inserted or deleted | HP3 | any of its property | 22, 57 |
+| `slip_by_swap_missed` | it misses two adjacent characters swapped | HP3 | any of its property | 9, 83 |
+| `slip_by_plural_missed` | it misses a word made plural or singular | HP3 | any of its property | 36, 6 |
+| `slip_by_underscore_missed` | it misses an underscore added or removed | HP3 | any of its property | 237, 188 |
+| `unknown_members_refused` | every member a place does not name is refused | HP5 | any of its property | 2, 2 |
+| `two_slips_refused` | names two characters off a named member are refused too | HP5 | any of its property | 2, 2 |
+| `within_any_status` | a population level's `within` takes any status token, where `none` alone is allowed | HP3 | `statistics_statuses.within_status_not_allowed` | 1, 1 |
+| `uncertainty_precision_any_string` | an uncertainty's `precision_conditions` takes any string | HP3 | `uncertainty_tokens.uncertainty_precision_unknown` | 1, 1 |
+| `statistics_not_applicable_on_a_constant` | a constant's `statistics` takes `not_applicable`, which only reference data's takes | HP3 | `statistics_statuses.block_status_not_allowed` | 1, 1 |
+| `basis_any_string` | a condition's and a fact's `basis` take any string | HP3 | `condition_tokens.basis_unknown`, `specimen_tokens.fact_basis_of_another_member` | 14, 10 |
+| `condition_status_refuses_its_own_shapes_members_only` | a condition's status object refuses only its own shape's members, so `token` beside a numeric condition's passes | HP3 | `condition_tokens.status_beside_a_token` | 1, 1 |
+| `token_known_within_its_kind` | a condition's `token` knows only the conditions' tokens and a fact's only the facts', so `tube` in `tissue_state` is `unknown_token` | HP3 | `condition_tokens.token_of_a_fact`, `specimen_tokens.fact_token_of_a_condition` | 1, 1 |
+| `token_condition_unit_unchecked` | a token condition's `unit` takes anything | HP3 | `condition_tokens.token_condition_unit_not_a_string` | 1, 1 |
+| `label_on_any_table` | a label goes on a table whatever its axis | the label's rule | its oracle, on a table on its row's axis | 54, 59 |
+| `label_beside_an_unknown_form_as_on_a_constant` | a label beside a form the reader does not know is judged as on a constant | HP3 | `field_form.form_unknown_beside_the_label` | 2, 2 |
+| `no_form_member_named_beside_an_unknown_form` | beside a form the reader does not know, no form's own member is named, so `intervals` is ignored | HP3 | `field_form.form_unknown_beside_a_slip` | 1, 1 |
+| `statistics_block_slips_ignored` | a slip among a statistics block's members is ignored | HP3 | `statistics_slips_beside.*` | 1, 1 |
+| `field_level_slips_ignored` | a slip among a field's members is ignored | HP3 | `field_slips_optional.*` | 1, 1 |
+| `status_object_slips_ignored` | a slip inside a status object is ignored | HP3 | `statistics_statuses.status_slip` | 1, 1 |
+| `derivation_unchecked` | a derived value's derivation is not checked | HP3 | `derivation.*` and `derivation_inputs.*` but `derivation_missing` | 1, 1 |
+| `n_sources_any_number` | `n_sources` takes any number | HP3 | `statistics_numbers.n_sources_not_whole`, `.n_sources_negative` | 1, 1 |
+| `dof_of_zero_allowed` | an uncertainty's `dof` may be 0 | HP3 | `uncertainty.dof_zero` | 1, 1 |
+| `coverage_probability_of_zero_allowed` | an uncertainty's `coverage_probability` may be 0 | HP3 | `uncertainty.coverage_probability_zero` | 1, 1 |
+| `population_level_any_string` | a population level's `level` takes any string | HP3 | `statistics_tokens.level_unknown` | 1, 1 |
 
 The S2 design's HP5 mutant, an unknown member returned, waits for the result's members (S2a-4).
 

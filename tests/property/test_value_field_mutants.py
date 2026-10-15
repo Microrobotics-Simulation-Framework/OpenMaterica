@@ -9,8 +9,10 @@ A fault is injected where the core looks a name up when it runs: a module-level 
 """
 
 from collections.abc import Callable, Collection, Iterable
+from typing import Any, NamedTuple
 
 import pytest
+from hypothesis import given
 from hypothesis import strategies as st
 
 from materica import shapes
@@ -20,23 +22,31 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.slips import one_slip
 from materica.core.value_shapes import Check, Found, JsonObject, Members
+from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite
 from tests.property import test_value_field_properties as properties
 from tests.property import value_field_strategies as strategies
 from tests.property.strategies import ORIGINAL, SMALL, Size
-from tests.property.test_mutants import Mutant, killed_by, setting
+from tests.property.support import MUTANT_SEARCH
+from tests.property.test_mutants import setting
+
+# Each property that kills a mutant, by name: its examples at a size, and its check.
+KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any], None]]] = {
+    "HP3": (strategies.faulty_records, properties.check_one_fault),
+    "HP5": (properties.with_unknowns, properties.check_ignored),
+    "base": (strategies.valid_records, properties.check_passes),
+    "label": (properties.labelled_fields, properties.check_label),
+}
+ONE_FAULT, IGNORANCE, BASE, LABEL = KILLERS
 
 
-def faulty(size: Size) -> st.SearchStrategy[strategies.Example]:
-    return strategies.faulty_records(size)
-
-
-def unknowns(size: Size) -> st.SearchStrategy[properties.Unknowns]:
-    return properties.with_unknowns(size)
-
-
-ONE_FAULT = killed_by(faulty, properties.check_one_fault)
-IGNORANCE = killed_by(unknowns, properties.check_ignored)
+class Mutant(NamedTuple):
+    name: str
+    killer: str  # a key of KILLERS
+    inject: Callable[[pytest.MonkeyPatch], None]
+    dies_at: tuple[
+        str, ...
+    ] = ()  # HP3's faults, `region.name`, one of which its kill must hold; any where none
 
 
 # Faults in what a token, a status object or a slip is.
@@ -231,6 +241,156 @@ FACT_UNIT_JUDGED = facts_with(
     ),
 )
 
+# The eleven rules S2a-2's review found untested, and the slips it found HP3 blind to (findings M1, M2).
+
+WITHIN_ANY_STATUS = value_shapes.status_or(value_shapes.listed("within", "level"), None, ())
+UNCERTAINTY_PRECISION_ANY_STRING = (
+    value_shapes.UNCERTAINTY[0],
+    {
+        "precision_conditions": value_shapes.or_status(
+            value_shapes.string, shapes.Uncertainty, "precision_conditions"
+        )
+    },
+)
+
+
+def uncertainty_with(**checks: Check) -> tuple[Members, Members]:
+    required, optional = value_shapes.UNCERTAINTY
+    return {**required, **{name: check for name, check in checks.items() if name in required}}, optional
+
+
+def _not_below_zero_but_one(value: JsonValue, where: str, found: Found) -> None:
+    if not isinstance(value, float) or not 0 <= value <= 1:
+        found.append(value_shapes.invalid(f"{where} is not from zero to one"))
+
+
+def rebuilt(monkeypatch: pytest.MonkeyPatch, condition: Callable[[Any], Check] | None = None) -> None:
+    """Step 8's conditions and facts built again under the faults `monkeypatch` holds, which `based` and
+    `condition` read when they build them; `condition` in place of step 8's where given."""
+    build = condition or value_shapes.condition
+    monkeypatch.setattr(
+        value_shapes, "CONDITIONS", {name: build(spec) for name, spec in VOCABULARY.conditions.items()}
+    )
+    facts = {
+        name: value_shapes.or_status(
+            value_shapes.based(
+                required, optional, rule, fixed_basis=VOCABULARY.facts[name].fixed.get("basis")
+            ),
+            shapes.Specimen,
+            name,
+        )
+        for name, (required, optional, rule) in value_shapes.FACT_SHAPES.items()
+    }
+    monkeypatch.setattr(value_shapes, "FACTS", facts)
+
+
+def rebuilt_with(condition: Callable[[Any], Check]) -> Callable[[pytest.MonkeyPatch], None]:
+    return lambda monkeypatch: rebuilt(monkeypatch, condition)
+
+
+def basis_any_string(monkeypatch: pytest.MonkeyPatch) -> None:
+    listed = value_shapes.listed
+
+    def any_basis(member: str, token_list: str) -> Check:
+        return (
+            value_shapes.string if (member, token_list) == ("basis", "basis") else listed(member, token_list)
+        )
+
+    monkeypatch.setattr(value_shapes, "listed", any_basis)
+    rebuilt(monkeypatch)
+
+
+def own_shape_only(spec: Any) -> Check:
+    """A condition whose status object refuses the members of its own shape only."""
+    own = (
+        value_shapes.NUMERIC_CONDITION
+        if spec.shape == "numeric"
+        else value_shapes.based(
+            {"token": value_shapes.token("token", spec.tokens)}, {"unit": value_shapes.unit}
+        )
+    )
+    return value_shapes.or_status(own, shapes.Conditions, spec.name)
+
+
+def token_unit_unchecked(spec: Any) -> Check:
+    if spec.shape == "numeric":
+        return value_shapes.condition(spec)
+    own = value_shapes.based({"token": value_shapes.token("token", spec.tokens)}, {"unit": _any})
+    return value_shapes.or_status(own, shapes.Conditions, spec.name, value_shapes.CONDITION_MEMBERS)
+
+
+CONDITION_TOKENS = frozenset(token for spec in VOCABULARY.conditions.values() for token in spec.tokens)
+FACT_TOKENS = frozenset(token for spec in VOCABULARY.facts.values() for token in spec.tokens)
+
+
+def _token_known_within_its_kind(
+    value: JsonValue, member: str, allowed: Collection[str], where: str, found: Found
+) -> None:
+    """A condition's `token` knowing the conditions' tokens alone, and a fact's the facts' alone."""
+    if member == "token" and isinstance(value, str) and value not in allowed:
+        kind = CONDITION_TOKENS if set(allowed) <= CONDITION_TOKENS else FACT_TOKENS
+        reason = value_shapes.invalid if value in kind else value_shapes.unknown_token
+        found.append(reason(f"{where} holds {value!r}"))
+    else:
+        TOKEN_PROBLEMS(value, member, allowed, where, found)
+
+
+LABEL_ALLOWED = value_shapes.label_allowed
+
+
+def _label_on_any_table(spec: Any, form: str | None, field: JsonObject) -> bool:
+    return (form == "table" and spec.label is not None) or LABEL_ALLOWED(spec, form, field)
+
+
+def _label_beside_an_unknown_form_as_on_a_constant(spec: Any, form: str | None, field: JsonObject) -> bool:
+    return LABEL_ALLOWED(spec, "constant" if form is None else form, field)
+
+
+FIELD_PROBLEMS = value_shapes.field_problems
+
+
+def _no_form_member_named_beside_an_unknown_form(field: JsonObject, spec: Any, form: str | None) -> Found:
+    """Step 8's shared check, naming no form's own member where the form is a token the reader does not
+    know."""
+    if form is not None:
+        return FIELD_PROBLEMS(field, spec, form)
+    stripped = {
+        name: member
+        for name, member in field.items()
+        if not any(one_slip(name, own) for own in value_shapes.FORM_MEMBERS.values())
+    }
+    return FIELD_PROBLEMS(stripped, spec, form)
+
+
+STATISTICS_BLOCK = value_shapes.statistics_block
+
+
+def _block_slips_ignored(value: JsonValue, where: str, found: Found) -> None:
+    mine: Found = []
+    STATISTICS_BLOCK(value, where, mine)
+    found += [
+        reason
+        for reason in mine
+        if not (str(reason.detail).startswith(f"{where} holds") and "one slip" in str(reason.detail))
+    ]
+
+
+def _field_slips_ignored(field: JsonObject, spec: Any, form: str | None) -> Found:
+    return [
+        reason
+        for reason in FIELD_PROBLEMS(field, spec, form)
+        if not (str(reason.detail).startswith(f"{spec.name} holds") and "one slip" in str(reason.detail))
+    ]
+
+
+def _status_slips_ignored(
+    value: JsonObject, where: str, tokens: Collection[str] | None, defines: Collection[str], found: Found
+) -> None:
+    mine: Found = []
+    STATUS_OBJECT(value, where, tokens, defines, mine)
+    found += [reason for reason in mine if "one slip" not in str(reason.detail)]
+
+
 MUTANTS = [
     Mutant(
         "unknown_tokens_ignored", ONE_FAULT, setting(value_shapes, "token_problems", _unknown_tokens_ignored)
@@ -288,7 +448,160 @@ MUTANTS = [
         "unknown_members_refused", IGNORANCE, setting(value_shapes, "slips", _every_unnamed_member_refused)
     ),
     Mutant("two_slips_refused", IGNORANCE, setting(value_shapes, "slipped", slipped_by(within_two_slips))),
+    # S2a-2's review, M1: the eleven rules no test checked (the fact unit's is `fact_unit_judged_at_step_8`).
+    Mutant(
+        "within_any_status",
+        ONE_FAULT,
+        members_with(replacing("within", WITHIN_ANY_STATUS)),
+        ("statistics_statuses.within_status_not_allowed",),
+    ),
+    Mutant(
+        "uncertainty_precision_any_string",
+        ONE_FAULT,
+        setting(value_shapes, "UNCERTAINTY", UNCERTAINTY_PRECISION_ANY_STRING),
+        ("uncertainty_tokens.uncertainty_precision_unknown",),
+    ),
+    Mutant(
+        "statistics_not_applicable_on_a_constant",
+        ONE_FAULT,
+        setting(value_shapes, "FIELD_STATISTICS", value_shapes.REFERENCE_DATA_STATISTICS),
+        ("statistics_statuses.block_status_not_allowed",),
+    ),
+    Mutant(
+        "basis_any_string",
+        ONE_FAULT,
+        basis_any_string,
+        ("condition_tokens.basis_unknown", "specimen_tokens.fact_basis_of_another_member"),
+    ),
+    Mutant(
+        "condition_status_refuses_its_own_shapes_members_only",
+        ONE_FAULT,
+        rebuilt_with(own_shape_only),
+        ("condition_tokens.status_beside_a_token",),
+    ),
+    Mutant(
+        "token_known_within_its_kind",
+        ONE_FAULT,
+        setting(value_shapes, "token_problems", _token_known_within_its_kind),
+        ("condition_tokens.token_of_a_fact", "specimen_tokens.fact_token_of_a_condition"),
+    ),
+    Mutant(
+        "token_condition_unit_unchecked",
+        ONE_FAULT,
+        rebuilt_with(token_unit_unchecked),
+        ("condition_tokens.token_condition_unit_not_a_string",),
+    ),
+    Mutant("label_on_any_table", LABEL, setting(value_shapes, "label_allowed", _label_on_any_table)),
+    Mutant(
+        "label_beside_an_unknown_form_as_on_a_constant",
+        ONE_FAULT,
+        setting(value_shapes, "label_allowed", _label_beside_an_unknown_form_as_on_a_constant),
+        ("field_form.form_unknown_beside_the_label",),
+    ),
+    Mutant(
+        "no_form_member_named_beside_an_unknown_form",
+        ONE_FAULT,
+        setting(fields, "field_problems", _no_form_member_named_beside_an_unknown_form),
+        ("field_form.form_unknown_beside_a_slip",),
+    ),
+    # S2a-2's review, M2: slips HP3 could not tell from a missing member, and parts of the text it had no
+    # fault for.
+    Mutant(
+        "statistics_block_slips_ignored",
+        ONE_FAULT,
+        setting(
+            value_shapes,
+            "FIELD_STATISTICS",
+            value_shapes.or_status(_block_slips_ignored, shapes.ConstantField, "statistics"),
+        ),
+        tuple(f"statistics_slips_beside.slip_beside_{kind}" for kind in strategies.SLIPS),
+    ),
+    Mutant(
+        "field_level_slips_ignored",
+        ONE_FAULT,
+        setting(fields, "field_problems", _field_slips_ignored),
+        tuple(f"field_slips_optional.slip_{kind}" for kind in strategies.SLIPS),
+    ),
+    Mutant(
+        "status_object_slips_ignored",
+        ONE_FAULT,
+        setting(value_shapes, "status_object", _status_slips_ignored),
+        ("statistics_statuses.status_slip",),
+    ),
+    Mutant(
+        "derivation_unchecked",
+        ONE_FAULT,
+        setting(value_shapes, "derivation", _nothing),
+        tuple(
+            f"{region}.{name}"
+            for region in ("derivation", "derivation_inputs")
+            for name in strategies.CATALOGUE[region]
+            if name != "derivation_missing"
+        ),
+    ),
+    Mutant(
+        "n_sources_any_number",
+        ONE_FAULT,
+        members_with(replacing("n_sources", COUNT_AS_NUMBER)),
+        ("statistics_numbers.n_sources_not_whole", "statistics_numbers.n_sources_negative"),
+    ),
+    Mutant(
+        "dof_of_zero_allowed",
+        ONE_FAULT,
+        setting(
+            value_shapes,
+            "UNCERTAINTY",
+            uncertainty_with(
+                dof=value_shapes.or_status(value_shapes.not_below_zero, shapes.Uncertainty, "dof")
+            ),
+        ),
+        ("uncertainty.dof_zero",),
+    ),
+    Mutant(
+        "coverage_probability_of_zero_allowed",
+        ONE_FAULT,
+        setting(
+            value_shapes,
+            "UNCERTAINTY",
+            uncertainty_with(
+                coverage_probability=value_shapes.or_status(
+                    _not_below_zero_but_one, shapes.Uncertainty, "coverage_probability"
+                )
+            ),
+        ),
+        ("uncertainty.coverage_probability_zero",),
+    ),
+    Mutant(
+        "population_level_any_string",
+        ONE_FAULT,
+        members_with(replacing("level", value_shapes.string)),
+        ("statistics_tokens.level_unknown",),
+    ),
 ]
+
+
+def kill(examples: st.SearchStrategy[Any], check: Callable[[Any], None]) -> tuple[int, str]:
+    """The examples searched until `check` first fails, and its message; an AssertionError where it never
+    does. Hypothesis runs the failing example once more to report it, which is not counted."""
+    tried = 0
+    first: list[tuple[int, str]] = []
+
+    @MUTANT_SEARCH
+    @given(examples)
+    def search(example: Any) -> None:
+        nonlocal tried
+        tried += 1
+        try:
+            check(example)
+        except AssertionError as error:
+            first.append((tried, str(error)))
+            raise
+
+    try:
+        search()
+    except AssertionError:
+        return first[0]
+    raise AssertionError(f"the mutant survived {tried} examples")
 
 
 @pytest.mark.parametrize("size", [pytest.param(SMALL, id="small"), pytest.param(ORIGINAL, id="original")])
@@ -299,5 +612,19 @@ def test_the_mutant_is_killed(
     monkeypatch: pytest.MonkeyPatch,
     record_property: Callable[[str, object], None],
 ) -> None:
+    """At one of the faults it names, where it names some: its search is then planned, HP3 drawing its first
+    fault among them, and HP3's message is the faults of the example that kills it."""
     mutant.inject(monkeypatch)
-    record_property("examples_to_kill", mutant.search(size))
+    examples, check = KILLERS[mutant.killer]
+    drawn = strategies.faulty_records(size, among=mutant.dies_at) if mutant.dies_at else examples(size)
+    tried, message = kill(drawn, check)
+    record_property("examples_to_kill", tried)
+    assert not mutant.dies_at or any(repr(fault) in message for fault in mutant.dies_at), message
+
+
+def test_each_mutant_names_faults_of_the_catalogue() -> None:
+    """A fault renamed in the catalogue would leave a mutant no fault to die at."""
+    faults = {f"{region}.{name}" for region, faults_of in strategies.CATALOGUE.items() for name in faults_of}
+    for mutant in MUTANTS:
+        assert set(mutant.dies_at) <= faults, mutant.name
+        assert mutant.killer in KILLERS, mutant.name
