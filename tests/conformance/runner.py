@@ -253,7 +253,7 @@ def compare(case_file: CaseFile, result: Mapping[str, JsonValue]) -> list[str]:
         elif member not in result:
             difference = "missing"
         elif member == "reasons":
-            difference = _reasons_differ(case_file.expected[member], result[member])
+            difference = _reasons_differ(case_file, case_file.expected[member], result[member])
         elif member == "value" and case_file.operation == "list_records":
             difference = _sets_differ(case_file.expected[member], result[member])
         elif member == "conditions":
@@ -284,12 +284,12 @@ def _label_set(labels: JsonValue) -> set[str]:
     return {label for label in labels if isinstance(label, str)} if isinstance(labels, list) else set()
 
 
-def _reasons_differ(expected: JsonValue, actual: JsonValue) -> str | None:
-    wanted = Counter(_reason_key(reason) for reason in _list(expected, "expected.reasons"))
+def _reasons_differ(case_file: CaseFile, expected: JsonValue, actual: JsonValue) -> str | None:
+    wanted = Counter(_reason_key(case_file, reason) for reason in _list(expected, "expected.reasons"))
     if not isinstance(actual, list):
         return f"not a list: {actual!r}"
     try:
-        found = Counter(_reason_key(reason) for reason in actual)
+        found = Counter(_reason_key(case_file, reason) for reason in actual)
     except CaseFileError as error:
         return str(error)
     if found == wanted:
@@ -299,11 +299,30 @@ def _reasons_differ(expected: JsonValue, actual: JsonValue) -> str | None:
     return f"missing {missing}, unexpected {unexpected}"
 
 
-def _reason_key(reason: JsonValue) -> tuple[str, str | None]:
+def _reason_key(case_file: CaseFile, reason: JsonValue) -> tuple[str, str | None, str | None]:
+    """A reason's identity: its code, its condition and its alternative (README, "Case files")."""
     reason = _object(reason, "a reason")
     condition = reason.get("condition")
     code = _string(reason.get("code"), "a reason's code")
-    return (code, None if condition is None else _string(condition, "a reason's condition"))
+    return (
+        code,
+        None if condition is None else _string(condition, "a reason's condition"),
+        _alternative_key(case_file, reason["alternative"]) if "alternative" in reason else None,
+    )
+
+
+def _alternative_key(case_file: CaseFile, index: JsonValue) -> str:
+    """An index is a number, compared exactly: bit for bit under `exact`, so `-0` is not `0`, and by value
+    under a relative tolerance, which never applies to an index. A bool is never one."""
+    if not isinstance(index, float):
+        raise CaseFileError(f"a reason's alternative is not a number: {index!r}")
+    if case_file.exact:
+        return repr(index)
+    if case_file.relative_tolerance is None:
+        raise CaseFileError(
+            f"{case_file.path.name} compares a reason's alternative with neither relative_tolerance nor exact"
+        )
+    return repr(index + 0.0)
 
 
 def _conditions_differ(case_file: CaseFile, expected: JsonValue, actual: JsonValue) -> str | None:
