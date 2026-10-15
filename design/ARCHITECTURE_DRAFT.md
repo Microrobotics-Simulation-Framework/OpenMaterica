@@ -396,8 +396,8 @@ Four limits keep this usable:
   law, a temperature coefficient, a midpoint it chooses); the build records the declaration in the material
   input sheet and labels the results. Isaac for Healthcare's ultrasound table at 3.5 MHz is the first case:
   for most tissues, the open sources fitted attenuation over bands that exclude it (prototype P2). An
-  evaluator that clamps outside its range is extrapolating by a constant, so it needs this declaration, or
-  its in-range flag stops the run.
+  evaluator that clamps at the ends of its readable range (section 4.4) is extrapolating by a constant, so it
+  needs this declaration, or its in-range flag stops the run.
 
 This is the positive form of a non-goal the draft has had from the start: OpenMaterica makes no judgement of
 applicability (section 7.6). The review of section 15 found the draft making that judgement in at least
