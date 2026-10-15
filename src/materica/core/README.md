@@ -39,6 +39,7 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `canonical.py` | `record_format.md` section 9 item 2: RFC 8785, with no Unicode normalisation |
 | `hashing.py` | `record_format.md` section 9 items 1 and 2: what the hash leaves out, and the hash |
 | `identifiers.py` | `record_format.md` sections 7 and 8: identifiers and versions, matched in full; material references |
+| `slips.py` | `record_format.md` section 10: names one slip apart, by which a reader refuses a member it does not know that is one slip from a member named at its place |
 | `vocabulary.py` | the tokens of the specification's tables, read from `schema/0.1/vocabulary/` |
 | `envelope.py` | the reader schema's checks by hand (`record_format.md` section 1 item 2) |
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |

@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Literal
 
 from materica.core.jsonio import JsonValue
+from materica.core.slips import one_slip
 from scripts.gen_vocabulary import cells
 
 SCHEMA = Path("src/materica/schema/0.1")
@@ -72,7 +73,6 @@ NAME_KEYED = (
     re.compile(r"((?:`[a-z_]+`(?:,? (?:or|and) |, )?)+),? wherever (?:it|a block) sits"),
     re.compile(r"members? named ((?:`[a-z_]+`(?: or | and |, )?)+)"),
 )
-PLURALS = {"datum": "data", "index": "indices", "matrix": "matrices"}
 
 
 @dataclass(frozen=True)
@@ -134,41 +134,6 @@ class Flag:
 
     def __str__(self) -> str:
         return f"[{self.rule}] {' ~ '.join(self.names)} (owner {self.owner}): {self.detail}"
-
-
-def one_slip(a: str, b: str) -> str | None:
-    """The slip that makes `a` into `b` (`record_format.md` section 10), or None where there is none."""
-    first, second = a.split("_"), b.split("_")
-    if len(first) == len(second):
-        differing = [(x, y) for x, y in zip(first, second, strict=True) if x != y]
-        if len(differing) == 1 and plural_of(*differing[0]):
-            return "singular or plural"
-    if len(a) == len(b):
-        positions = [index for index, (x, y) in enumerate(zip(a, b, strict=True)) if x != y]
-        if len(positions) == 1:
-            return "a character substituted"
-        if len(positions) == 2 and positions[1] == positions[0] + 1:
-            i, j = positions
-            if a[i] == b[j] and a[j] == b[i]:
-                return "two characters swapped"
-        return None
-    shorter, longer = sorted((a, b), key=len)
-    if len(longer) - len(shorter) == 1:
-        for index, character in enumerate(longer):
-            if longer[:index] + longer[index + 1 :] == shorter:
-                return "an underscore added" if character == "_" else "a character added"
-    return None
-
-
-def plural_of(a: str, b: str) -> bool:
-    """Whether one word is the other made plural or singular, as section 10 lists the ways."""
-    singular, plural = sorted((a, b), key=len)
-    return (
-        plural in (singular + "s", singular + "es")
-        or (singular.endswith("y") and plural == singular[:-1] + "ies")
-        or PLURALS.get(singular) == plural
-        or PLURALS.get(plural) == singular
-    )
 
 
 # The schemas and the vocabulary.
