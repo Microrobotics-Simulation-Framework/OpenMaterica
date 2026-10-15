@@ -285,11 +285,17 @@ lists of `contact_category`, `contact_duration` and `material_form` will follow 
    values (for a source that does not permit redistribution, `LicenseRef-user-extracted`), the evidence from
    the user's copy, and the user's review (`provenance.md` section 7). A reader labels every value it reads
    through a fill-in `user_extracted`. [PR-042]
-8. A reader refuses an overlay whose `purpose` is none of item 1's, with the reason `unknown_token`, and one
-   of another purpose than `fill_in` that replaces a field in which its base holds a withheld value or
-   evidence entry, one alternative's included, whichever key of `replaces` that field is, with the reason
-   `withheld`: only a fill-in fills one in, and only a fill-in's value is compared with the base's document
-   and labelled `user_extracted` (item 7, `provenance.md` section 7). [PR-042]
+8. A reader refuses an overlay whose `purpose` is none of item 1's, with the reason `unknown_token`. It
+   refuses an overlay of another purpose than `fill_in`, with the reason `withheld`, where it replaces any
+   field, the read's or another, in which its base holds a withheld value or evidence entry, in a single
+   value or in any one alternative. Only a fill-in fills one in, and only a fill-in's value is compared with
+   the base's document and labelled `user_extracted` (item 7, `provenance.md` section 7). [PR-042] The base
+   holds one there where the field's `statistics`, a member named for a form (`value`, `table`, `power_law`,
+   `interval`, `composition`, `parameter_set`, `reference_data` or `evidence`), or a member of an evidence
+   entry, in the field or in any of its alternatives, is an object whose `status` is `withheld`. This holds
+   whether or not that object, or the base field, breaks its shape. A read of that field would give its shape
+   fault alone (`provenance.md` section 1), but the base field is not read here (item 2), and its marker
+   still says the value is withheld. [PR-042]
 
 ## 5. Value fields
 
@@ -630,7 +636,7 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-038 | plain read | biocompatibility evidence is returned as a list of reports, each with its `provenance` whole |
 | PR-039 | plain read | an overlay whose base differs from the record in use is refused (`overlay_base_mismatch`): another `id`, a stale `version` or `content_hash`, compared as strings, and a base `content_hash` that is ill-formed, which is not `malformed` |
 | PR-041 | plain read | two different declared overlays replacing one field are refused (`overlay_conflict`); one overlay named twice for one field gives `request_incomplete` |
-| PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another, and where one alternative of the base's field is withheld |
+| PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another, where one alternative of the base's field is withheld, and where the base's withheld marker breaks its shape (`{"status": "withheld", "reasn": "licence"}`) |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
 | PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; an alternative outside its form's range (a table's readable range) is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative, `want`'s and that of an alternative kept for an extrapolation aside (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, those that wait in an alternative that stays included, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported, unless its read refuses the field, which then reports every alternative's reasons, with no `conditions`; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, one holding an entry that is not an object or that holds `alternatives` of its own, and one beside `form` or `value` refuse the field (`form_invalid`), before any pick is checked |
 | PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
