@@ -31,10 +31,10 @@ def test_case_file(case_file: CaseFile) -> None:
 
 def test_every_case_file_is_counted() -> None:
     runs = runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
-    assert len(runs) == 1032
+    assert len(runs) == 1065
     assert Counter(case_run.outcome for case_run in runs) == {
         Outcome.PASSED: 579,
-        Outcome.NOT_YET_RUNNABLE: 453,
+        Outcome.NOT_YET_RUNNABLE: 486,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
@@ -42,6 +42,7 @@ def test_every_case_file_is_counted() -> None:
         (Outcome.PASSED, "read"): 503,
         (Outcome.PASSED, "list_records"): 25,
         (Outcome.NOT_YET_RUNNABLE, "read"): 453,
+        (Outcome.NOT_YET_RUNNABLE, "evaluate"): 33,
     }
 
 
@@ -56,8 +57,8 @@ def test_a_case_passes_only_where_a_variant_ran() -> None:
     outcomes = runner.case_outcomes(
         runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
     )
-    assert len(outcomes) == 97
-    assert Counter(outcomes.values()) == {Outcome.PASSED: 45, Outcome.NOT_YET_RUNNABLE: 52}
+    assert len(outcomes) == 107
+    assert Counter(outcomes.values()) == {Outcome.PASSED: 45, Outcome.NOT_YET_RUNNABLE: 62}
 
 
 def test_a_case_file_runs_once_every_step_it_needs_is_done(tmp_path: Path) -> None:

@@ -126,11 +126,12 @@ The inputs come in families, named by what they break:
   - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
     is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
     both readings agree.
-- **Answers the text leaves open for tables**, with S4's decision on alternatives or with the text:
+- **Answers the text leaves open for tables:**
   - a table alternative read outside its readable range, at a declared edge or with no operating value for
     its axis (PR-044, PR-308, PR-013): whether `outside_range` or `at_edge` sets it aside or refuses the field
-    waits for S4's ruling, and its own reasons beside `no_pick` are not specified. The `no_pick` arms with a
-    table read it inside its range, or under `want: bounds`, where nothing at step 11 is in question;
+    waits for a ruling with the step that builds picks, and its own reasons beside `no_pick` are not
+    specified. The `no_pick` arms with a table read it inside its range, or under `want: bounds`, where
+    nothing at step 11 is in question;
   - a `points` member that is not a list, or a list of another length than `x`: whether step 8, which "checks
     nothing inside it", adds `form_invalid` beside `points_unsupported`. Only `null` (PR-049), `[]` and a
     list as long as `x` (PR-157) have arms;

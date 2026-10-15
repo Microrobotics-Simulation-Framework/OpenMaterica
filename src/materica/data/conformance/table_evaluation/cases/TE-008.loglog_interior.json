@@ -1,0 +1,62 @@
+{
+  "case": "TE-008",
+  "variant": "loglog_interior",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "shear_rate",
+      "axis_unit": "1/s",
+      "x": [
+        1.0,
+        10.0,
+        100.0,
+        1000.0
+      ],
+      "y": [
+        0.5,
+        0.125,
+        0.0625,
+        0.015625
+      ],
+      "scheme": "loglog",
+      "edges": []
+    },
+    "at": [
+      2.0,
+      50.0,
+      250.0
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "in_range": true,
+        "value": 0.3294062900063279,
+        "derivative": -0.09916117405229301
+      },
+      {
+        "in_range": true,
+        "value": 0.07700148054306288,
+        "derivative": -0.00046359510707996704
+      },
+      {
+        "in_range": true,
+        "value": 0.03599948261892505,
+        "derivative": -8.669539277344458e-05
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 2e-06
+    }
+  }
+}

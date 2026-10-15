@@ -1,0 +1,50 @@
+{
+  "case": "TE-010",
+  "variant": "loglog_edge",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "shear_rate",
+      "axis_unit": "1/s",
+      "x": [
+        1.0,
+        10.0,
+        10.0,
+        100.0
+      ],
+      "y": [
+        2.0,
+        1.0,
+        4.0,
+        2.0
+      ],
+      "scheme": "loglog",
+      "edges": [
+        10.0
+      ]
+    },
+    "at": [
+      10.0
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "refused": true
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 3e-07
+    }
+  }
+}

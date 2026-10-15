@@ -1,0 +1,56 @@
+{
+  "case": "TE-008",
+  "variant": "loglog_near_knot",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "shear_rate",
+      "axis_unit": "1/s",
+      "x": [
+        1.0,
+        10.0,
+        100.0,
+        1000.0
+      ],
+      "y": [
+        0.5,
+        0.125,
+        0.0625,
+        0.015625
+      ],
+      "scheme": "loglog",
+      "edges": []
+    },
+    "at": [
+      9.999999046325684,
+      10.000000953674316
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "in_range": true,
+        "value": 0.12500000717711493,
+        "derivative": -0.007525751041416453
+      },
+      {
+        "in_range": true,
+        "value": 0.12499999641144303,
+        "derivative": -0.0037628744789177616
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 2e-06
+    }
+  }
+}

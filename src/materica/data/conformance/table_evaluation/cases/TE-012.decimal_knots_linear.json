@@ -1,0 +1,75 @@
+{
+  "case": "TE-012",
+  "variant": "decimal_knots_linear",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "temperature",
+      "axis_unit": "K",
+      "x": [
+        293.15,
+        303.15,
+        313.15
+      ],
+      "y": [
+        0.001002,
+        0.000797,
+        0.000653
+      ],
+      "scheme": "linear",
+      "edges": []
+    },
+    "at": [
+      293.15,
+      303.15,
+      313.15,
+      298.15,
+      310.15
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "in_range": true,
+        "value": 0.001002,
+        "derivative": -2.050000000000001e-05
+      },
+      {
+        "in_range": true,
+        "value": 0.000797,
+        "derivative": {
+          "left": -2.050000000000001e-05,
+          "right": -1.4399999999999993e-05
+        }
+      },
+      {
+        "in_range": true,
+        "value": 0.000653,
+        "derivative": -1.4399999999999993e-05
+      },
+      {
+        "in_range": true,
+        "value": 0.0008995,
+        "derivative": -2.050000000000001e-05
+      },
+      {
+        "in_range": true,
+        "value": 0.0006962,
+        "derivative": -1.4399999999999993e-05
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 2e-06
+    }
+  }
+}

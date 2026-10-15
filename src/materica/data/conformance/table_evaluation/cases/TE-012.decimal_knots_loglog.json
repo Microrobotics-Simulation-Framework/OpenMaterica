@@ -1,0 +1,75 @@
+{
+  "case": "TE-012",
+  "variant": "decimal_knots_loglog",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "temperature",
+      "axis_unit": "K",
+      "x": [
+        293.15,
+        303.15,
+        313.15
+      ],
+      "y": [
+        0.001002,
+        0.000797,
+        0.000653
+      ],
+      "scheme": "loglog",
+      "edges": []
+    },
+    "at": [
+      293.15,
+      303.15,
+      313.15,
+      298.15,
+      310.15
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "in_range": true,
+        "value": 0.001002,
+        "derivative": -2.3324645967712564e-05
+      },
+      {
+        "in_range": true,
+        "value": 0.000797,
+        "derivative": {
+          "left": -1.7940642259770894e-05,
+          "right": -1.6142960242098694e-05
+        }
+      },
+      {
+        "in_range": true,
+        "value": 0.000653,
+        "derivative": -1.2803927122915304e-05
+      },
+      {
+        "in_range": true,
+        "value": 0.0008927836454000341,
+        "derivative": -2.0433777016154038e-05
+      },
+      {
+        "in_range": true,
+        "value": 0.0006927604467808675,
+        "derivative": -1.371493414105135e-05
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 4e-05
+    }
+  }
+}
