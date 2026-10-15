@@ -73,10 +73,14 @@
       "not": {"required": ["relative_tolerance", "exact"]}
     },
     "case_operation": {
-      "description": "A case that is not a read (README.md, \"Operations\").",
+      "description": "A case that is not a read (README.md, \"Operations\"), or a sampling case's draws mapped through a record's structure (README.md, \"Case files\"): the shape of each normal and uniform drawn, and of the result, are not yet specified.",
       "type": "object",
       "required": ["operation"],
-      "properties": {"operation": {"enum": ["content_hash", "list_records"]}}
+      "properties": {
+        "operation": {"enum": ["content_hash", "list_records", "transform_draws"]},
+        "normals": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
+        "uniforms": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}}
+      }
     }
   }
 }
