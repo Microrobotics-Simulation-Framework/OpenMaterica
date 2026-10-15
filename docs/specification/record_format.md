@@ -310,10 +310,13 @@ A value field is an object with these members, or an `alternatives` object (belo
 **Alternatives.** Where sources disagree, or one source gives values at several conditions, or a grade's
 datasheet sits beside measurements on its lots (`provenance.md` section 6.2 item 5), the field is
 `{"alternatives": [<value field>, ...]}`: every alternative found, each complete, none marked as the default.
-`alternatives` is a list of at least one value field, and the object holding it holds no member of a value
-field: an empty list, one that is not a list, or `alternatives` beside `form`, a form's member or another
-member of the table above breaks the field's shape (`form_invalid`, at `read_side_contract.md` section 3,
-step 7). [PR-044]
+`alternatives` is a non-empty list. Each entry is an object, and none holds `alternatives` of its own. The
+object holding `alternatives` holds no member of a value field. Anything else breaks the field's shape
+(`form_invalid`, at `read_side_contract.md` section 3, step 7, before any pick is checked): an empty list, one
+that is not a list, an entry that is not an object or that holds `alternatives`, or `alternatives` beside
+`form`, a form's member or another member of the table above. An entry that breaks a value field's shape in
+another way is that alternative's own fault, found when it is read (`read_side_contract.md` section 3, step
+8). [PR-044]
 Alternatives may differ in form. Writers MUST NOT reorder or drop alternatives once a record is released; a
 new alternative is appended. [RC-017] A reader reads alternatives as follows. `read_side_contract.md` section
 3, step 7, gives every outcome with its reasons and members. [PR-013] [PR-044]
@@ -629,7 +632,7 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-041 | plain read | two different declared overlays replacing one field are refused (`overlay_conflict`); one overlay named twice for one field gives `request_incomplete` |
 | PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another, and where one alternative of the base's field is withheld |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
-| PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; an alternative outside its form's range (a table's readable range) is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative, `want`'s and that of an alternative kept for an extrapolation aside (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, those that wait in an alternative that stays included, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported, unless its read refuses the field, which then reports every alternative's reasons, with no `conditions`; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
+| PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; an alternative outside its form's range (a table's readable range) is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative, `want`'s and that of an alternative kept for an extrapolation aside (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, those that wait in an alternative that stays included, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported, unless its read refuses the field, which then reports every alternative's reasons, with no `conditions`; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, one holding an entry that is not an object or that holds `alternatives` of its own, and one beside `form` or `value` refuse the field (`form_invalid`), before any pick is checked |
 | PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
 | PR-046 | plain read | an overlay replacing a field its base lacks is refused (`absent`), whichever key of `replaces` that is; so is one named for the field read that does not replace it |
 | PR-047 | plain read | numbers read as the nearest double, ties to even, compared exactly: `9007199254740993` as `9007199254740992`; `1e-400` as `0`; `-1e-400` as `-0`, not `0`; `3e-324` as `5e-324`; `2.4703282292062327e-324` as `0`; `1.7976931348623158e308` as the largest double |
