@@ -75,9 +75,9 @@ back as an overlay (`record_format.md` section 4.4). [FD-006]
    and field; or data not shipped, by the `document` and `locator` shapes of `provenance.md` section 2 and the
    SHA-256 of the file used. [RC-083]
 2. `procedure` states the method, objective, weights, bounds, initial values and software. Where the fit
-   gives a covariance, `procedure.covariance_space` states the space it is given in: `{"space": {<name>:
-   "identity" or "log"}, "chosen_by": "source" or "producer"}`, the space the source states it in, or the one
-   the fit's producer chose (`uncertainty.md` section 2 rule 2). [RC-083]
+   gives a covariance, `procedure.covariance_space` states the space it is given in: `{"parameter_spaces":
+   {<name>: "identity" or "log"}, "chosen_by": "source" or "producer"}`, the space of each parameter the
+   source states it in, or the one the fit's producer chose (`uncertainty.md` section 2 rule 2). [RC-083]
 3. `determination` is `overdetermined` where `n_data > n_params`, `exactly_determined` where they are equal,
    and `underdetermined` where `n_data < n_params`. An exactly determined fit's residual is zero by
    construction and shows nothing, and an underdetermined fit's parameters are not determined by its data: a

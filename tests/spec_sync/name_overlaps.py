@@ -60,8 +60,8 @@ VOCABULARY_TABLES = (
 # scenes, crosswalks): its keys are not members.
 MAPS = frozenset(
     "attributes bounds counts domains families groups initial_values input mean operating_conditions output "
-    "params per_parameter ranges region_conditions region_values replaces rules space state_mapping values "
-    "verdicts".split()
+    "parameter_spaces params per_parameter ranges region_conditions region_values replaces rules "
+    "state_mapping values verdicts".split()
 )
 # Keywords that declare no member or token list: annotations, and conditions on members declared elsewhere.
 CONSTRAINTS = frozenset("enum const required description $comment title if then else not contains".split())

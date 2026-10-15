@@ -54,7 +54,7 @@ A read of a field at a point resolves the point's material through `owner`, then
     {"name": "tissue",
      "material": {"id": "materica/MAT-0003", "version": "1.0.0", "content_hash": "sha256:..."},
      "priority": 10,
-     "geometry": {"primitive": "cylinder", "centre": [0, 0, 0], "axis": [0, 0, 1],
+     "geometry": {"primitive": "cylinder", "centre": [0, 0, 0], "direction": [0, 0, 1],
                   "radius": 0.01, "length": 0.05}},
     {"name": "lumen",
      "material": {"id": "materica/MAT-0004", "version": "1.0.0", "content_hash": "sha256:..."},
@@ -77,10 +77,11 @@ A read of a field at a point resolves the point's material through `owner`, then
    `priority` and an `orientation`. Every name in a domain's list is a region of the manifest or `background`.
    [RC-091]
 2. `geometry` is an **analytic primitive** or an **external reference**. A point is inside a primitive when
-   (all in metres, `a`, `n` unit vectors, `d = p - centre`):
+   (all in metres, `d = p - centre`, and `a`, a cylinder's `direction`, and `n`, a slab's `normal`, unit
+   vectors):
    - `sphere` (`centre`, `radius`): `d·d <= radius²`;
-   - `cylinder` (`centre` at the middle of its axis, `axis`, `radius`, `length`): with `t = d·a`,
-     `abs(t) <= length / 2` and `d·d - t² <= radius²`;
+   - `cylinder` (`centre` at the middle of its axis, `direction` along the axis, `radius`, `length`): with
+     `t = d·a`, `abs(t) <= length / 2` and `d·d - t² <= radius²`;
    - `slab` (`point` on its mid-plane, `normal`, `thickness`): `abs((p - point)·n) <= thickness / 2`.
    A point on a surface is inside. The tests use squared distances and no square roots, in IEEE 754 double
    precision, in the order written; case points are exactly representable. [SC-006] [SC-007] [RC-092]
@@ -247,7 +248,7 @@ and the representations of section 3.6 have no USD form in 0.1.0 (`usd_binding.m
 | SC-025 | scene documents | a read with another anatomy gives `anatomy_mismatch` |
 | RC-090 | record checks | a name outside `[a-z0-9_]+`, or a region named `background`, flagged |
 | RC-091 | record checks | duplicate region names, or a domain naming no such region, flagged |
-| RC-092 | record checks | a malformed primitive, or a non-unit axis or normal, flagged |
+| RC-092 | record checks | a malformed primitive, or a non-unit direction or normal, flagged |
 | RC-093 | record checks | an external reference without `metres_per_unit` flagged |
 | RC-094 | record checks | a non-unit quaternion or an unknown frame token flagged |
 | RC-095 | record checks | an interface binding that does not name two distinct regions flagged |

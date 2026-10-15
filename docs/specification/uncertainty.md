@@ -112,26 +112,26 @@ There is no default structure. A power law MAY carry one over its `a` and `b`, b
 | `structure` | Members | Notes |
 |---|---|---|
 | `ensemble` | `levels`: an ordered list of grouping levels, outermost first, the last being the members' own unit (`donor`, `lot`, `specimen`, `test`); `counts`: `{<level>: <integer or status object>}`; `members`: a list of `{"label": <text>, "groups": {<level>: <label or status object>}, "params": {<name>: <number>}}`, with a group for every level but the last | preferred: it keeps the dependence between parameters without assuming a distribution |
-| `multivariate_normal` | `space` (per parameter, `identity` or `log`), `mean`, `covariance` (`order` and `matrix`) | the form a fit's covariance arrives in; it assumes the family is right, so it excludes model-form error |
-| `independent` | `marginals`: `{<name>: {"distribution": <token>, "parameters": {...}}}`, with the tokens and parameters of section 4; `justification` | only with a stated justification for independence |
+| `multivariate_normal` | `parameter_spaces` (per parameter, `identity` or `log`), `mean`, `covariance` (`order` and `matrix`) | the form a fit's covariance arrives in; it assumes the family is right, so it excludes model-form error |
+| `independent` | `marginals`: `{<name>: {"distribution": <token>, "distribution_parameters": {...}}}`, with the tokens and parameters of section 4; `justification` | only with a stated justification for independence |
 | `marginals` | `parameter_statistics`: `{<name>: <statistics block>}`; `dependence`: `{"status": "unstated"}` | the commonest literature form, mean and standard deviation per parameter over n specimens |
 | `interval` | `bounds`: `{<name>: {"lower", "upper", "basis"}}`, the shapes of `record_format.md`'s interval | for corner and sweep analyses |
 | `none` | nothing | nominal values only |
 
 ```json
 "uncertainty": {"structure": "multivariate_normal", "represents": "estimate",
-                "space": {"mu": "log", "alpha": "identity"},
+                "parameter_spaces": {"mu": "log", "alpha": "identity"},
                 "mean": {"mu": 7.6, "alpha": 4.2},
                 "covariance": {"order": ["mu", "alpha"], "matrix": [[0.04, -0.01], [-0.01, 0.09]]}}
 ```
 
 1. `represents` takes the tokens of section 1 and is required for every structure but `none`. [RC-054]
 2. `log` means the natural logarithm. In a `multivariate_normal`, the mean and covariance of a parameter whose
-   space is `log` are those of its natural logarithm. The covariance is square in the order given, symmetric
-   and positive semi-definite. [RC-055] `space` is the space in which the source states its normal
-   approximation or, for a fit, the space its producer chose, which the fit record names
-   (`fits_and_reference_data.md` section 2). A record never holds a source's covariance re-expressed in
-   another space. [not yet covered]
+   space in `parameter_spaces` is `log` are those of its natural logarithm. The covariance is square in the
+   order given, symmetric and positive semi-definite. [RC-055] `parameter_spaces` gives each parameter the
+   space in which the source states its normal approximation or, for a fit, the space its producer chose,
+   which the fit record names (`fits_and_reference_data.md` section 2). A record never holds a source's
+   covariance re-expressed in another space. [not yet covered]
 3. `independent` without a `justification` is refused by a checker, because fitted parameters are strongly
    correlated as a rule. [RC-056]
 4. Ensemble members and the corners of an `interval` box may fail the family's admissibility constraints:
@@ -153,7 +153,8 @@ There is no default structure. A power law MAY carry one over its `a` and `b`, b
 11. A `multivariate_normal` keeps `mean` beside the set's `params`: in `log` space it is the centre of the
     logarithms, which need not equal the source's vector. A checker lists, never as findings, a centre that
     fails the family's admissibility constraints, a centre on one of its fit's stated `procedure.bounds`, and,
-    for `represents: estimate`, a `mean` that differs from `params` mapped into `space`. [RC-059]
+    for `represents: estimate`, a `mean` that differs from `params` mapped into each parameter's space in
+    `parameter_spaces`. [RC-059]
 
 ## 3. Sampling
 
@@ -289,6 +290,6 @@ that name, in a member whose row does not allow it (`student_t` in a block's `di
 | RC-056 | record checks | `independent` without a justification is flagged |
 | RC-057 | record checks | inadmissible ensemble members and interval corners are listed, not flagged |
 | RC-058 | record checks | a `value` that disagrees with its `central` statistic, or a reported dispersion with no spread, is flagged |
-| RC-059 | record checks | listed, not flagged: an inadmissible centre; a centre on a fit bound; for `estimate`, a `mean` that differs from `params` mapped into `space` |
+| RC-059 | record checks | listed, not flagged: an inadmissible centre; a centre on a fit bound; for `estimate`, a `mean` that differs from `params` mapped into each parameter's space in `parameter_spaces` |
 | RC-160 | record checks | `levels` missing or holding an unknown token, a member without a group for an outer level, and counts that differ from the distinct stated labels are flagged |
 | RC-162 | record checks | listed, not flagged: a coverage factor and probability that disagree under the stated distribution (k = 3 at 95 % under a normal) |

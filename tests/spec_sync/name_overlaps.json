@@ -220,42 +220,6 @@
     },
     {
       "rule": "A",
-      "names": ["axis"],
-      "meanings": 2,
-      "reason": "A cylinder's axis vector in a scene, and a table's or power law's axis condition in a record.",
-      "safeguard": null,
-      "no_safeguard_because": "Neither place has a schema yet: a scene document's cylinder (geometry.md) and a table's or power law's axis, a placeholder in the writer.",
-      "maintainer": "pending"
-    },
-    {
-      "rule": "A",
-      "names": ["from"],
-      "meanings": 2,
-      "reason": "A chain's first family and record, and a family conversion's source measure.",
-      "safeguard": null,
-      "no_safeguard_because": "Neither place has a schema yet: a chain in a declaration (declarations.md section 6) and a conversion in a family manifest (model_families.md section 3).",
-      "maintainer": "pending"
-    },
-    {
-      "rule": "A",
-      "names": ["to"],
-      "meanings": 2,
-      "reason": "A chain's following family and record, and a family conversion's target measure.",
-      "safeguard": null,
-      "no_safeguard_because": "Neither place has a schema yet: a chain in a declaration (declarations.md section 6) and a conversion in a family manifest (model_families.md section 3).",
-      "maintainer": "pending"
-    },
-    {
-      "rule": "A",
-      "names": ["kind"],
-      "meanings": 2,
-      "reason": "A family's kind per loading control, and an admissibility constraint's kind token, both in the family manifest.",
-      "safeguard": null,
-      "no_safeguard_because": "The family manifest has no schema yet (model_families.md section 3).",
-      "maintainer": "pending"
-    },
-    {
-      "rule": "A",
       "names": ["mean"],
       "meanings": 2,
       "reason": "A statistics block's mean, and a multivariate normal's mean per parameter (uncertainty.md section 3), in a parameter set whose shape is not yet written.",
@@ -266,38 +230,11 @@
     },
     {
       "rule": "A",
-      "names": ["parameters"],
-      "meanings": 3,
-      "reason": "A declared model's consumer parameters, a declared distribution's parameters, and a family's parameter list.",
-      "safeguard": null,
-      "no_safeguard_because": "None of the three places has a schema yet: a declared model, a declared distribution (declarations.md) and a family manifest (model_families.md).",
-      "maintainer": "pending"
-    },
-    {
-      "rule": "A",
       "names": ["ranges"],
       "meanings": 2,
       "reason": "A coverage mode's ranges by input, and an invariant's ranges in order.",
       "safeguard": null,
       "no_safeguard_because": "Neither place has a schema yet: a parameter set's and a fit's coverage (model_families.md section 6, fits_and_reference_data.md section 3), placeholders in the writer.",
-      "maintainer": "pending"
-    },
-    {
-      "rule": "A",
-      "names": ["reference_data"],
-      "meanings": 2,
-      "reason": "The reference-data form, and a witness's datum naming reference data.",
-      "safeguard": null,
-      "no_safeguard_because": "Neither place has a schema yet: the reference-data form's member and a witness's datum, placeholders in the writer.",
-      "maintainer": "pending"
-    },
-    {
-      "rule": "A",
-      "names": ["space"],
-      "meanings": 2,
-      "reason": "A declared distribution's space token, and a multivariate normal's space per parameter.",
-      "safeguard": null,
-      "no_safeguard_because": "Neither place has a schema yet: a declared distribution (declarations.md section 4) and a multivariate normal in a parameter set, a placeholder in the writer.",
       "maintainer": "pending"
     }
   ]
