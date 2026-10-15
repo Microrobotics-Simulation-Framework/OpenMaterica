@@ -1,0 +1,85 @@
+{
+  "case": "PR-042",
+  "variant": "fit_over_withheld",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "reference_only.json",
+      "fit_overlay_on_reference_only.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/reference_only_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:e53f88128826aaa27aba52a9375269f94b64c0855cba3684c834dbf9a721129b"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "overlay",
+        "field": "fluid.dynamic_viscosity",
+        "overlay": {
+          "id": "conformance/fit_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:47ab03a860fbcc403f1b2fbf721d5969557b036bef6b31eef87d177077a7b379"
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "withheld"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

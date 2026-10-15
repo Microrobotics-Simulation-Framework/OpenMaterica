@@ -1,0 +1,103 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "overlay",
+  "id": "conformance/viscosity_overlay_fixture",
+  "version": "1.0.0",
+  "name": "Viscosity overlay (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:a31229d4dbda30ff6276c02ee9bbb740b80283184c8202280cb4a93516a179a5",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "purpose": "measurement",
+    "base": {
+      "id": "conformance/reference_only_fixture",
+      "version": "1.0.0",
+      "content_hash": "sha256:373c95e9ccf33cc472d417611f33da8ca9732562248188fa2833406c90443d6d"
+    },
+    "scope": {
+      "consumer": "conformance"
+    },
+    "replaces": {
+      "fluid.dynamic_viscosity": {
+        "form": "constant",
+        "unit": "Pa.s",
+        "value": 0.000695,
+        "conditions": {
+          "temperature": {
+            "value": 310.15,
+            "unit": "K",
+            "basis": "stated"
+          },
+          "shear_rate": {
+            "range": [
+              10.0,
+              1000.0
+            ],
+            "unit": "1/s",
+            "basis": "stated"
+          }
+        },
+        "specimen": {
+          "preparation": {
+            "text": "deionised water, degassed before measurement",
+            "basis": "stated"
+          }
+        },
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: the overlay's own review, not yet done"
+          }
+        },
+        "label": "materica.fluid.newtonian.v1"
+      }
+    }
+  }
+}

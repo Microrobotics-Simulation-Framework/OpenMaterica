@@ -85,7 +85,9 @@ class Kind(NamedTuple):
 # For relation 2, S2a-1's 48 case files the reader `$defs` cannot refuse; for relation 1, the 12 of the
 # review's 42 the writer still accepts once it binds each field to its row (the maintainer's ruling,
 # 2026-10-15), PR-036's forms and PR-053's labels no longer among them. A variant renamed by one slip is
-# excepted from relation 2 by its change.
+# excepted from relation 2 by its change. S4's overlay cases add their own, PR-011's bases with a slip and
+# PR-042's broken withheld markers: each names the base's field as its target, which T1 reads in the base, not
+# through the overlay.
 EXCEPTIONS: dict[str, Kind] = {
     "slip": Kind(
         "a member one slip from a member named at its place (`record_format.md` section 10 item 5), in the "
@@ -96,6 +98,9 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-005.near_typo_crad",
                 "PR-008.near_typo_section_fluids",
                 "PR-008.near_typo_section_refuses_other_section",
+                "PR-011.base_body_slip_fluids",
+                "PR-011.base_envelope_slip_crad",
+                "PR-011.base_section_member_slip_not_refused",
                 "PR-030.near_typo_body_extension",
                 "PR-030.near_typo_field_name_dynamic_viscosty",
                 "PR-030.near_typo_section_specimens",
@@ -104,6 +109,10 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-005.near_typo_crad",
                 "PR-008.near_typo_section_fluids",
                 "PR-008.near_typo_section_refuses_other_section",
+                "PR-011.base_body_slip_fluids",
+                "PR-011.base_envelope_slip_crad",
+                "PR-011.base_section_member_slip_not_refused",
+                "PR-011.base_section_specimen_slip_not_refused",
                 "PR-030.near_typo_body_extension",
                 "PR-030.near_typo_composition_stated_sums",
                 "PR-030.near_typo_derivation_mixed_condition",
@@ -129,10 +138,19 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-108.near_typo_plus_minsu",
             ),
         },
-        # The fluid field beside the one PR-008's case reads: the section's slip refuses it too.
+        # The fluid field beside the one PR-008's case reads: the section's slip refuses it too; and the
+        # density beside the viscosity PR-011's cases read in the bases whose envelope and body hold a slip.
         {
-            1: ("water_near_typo_section_fluids_with_bulk fluid.dynamic_viscosity",),
-            2: ("water_near_typo_section_fluids_with_bulk fluid.dynamic_viscosity",),
+            1: (
+                "overlaid_material_crad bulk.density",
+                "overlaid_material_section_fluids bulk.density",
+                "water_near_typo_section_fluids_with_bulk fluid.dynamic_viscosity",
+            ),
+            2: (
+                "overlaid_material_crad bulk.density",
+                "overlaid_material_section_fluids bulk.density",
+                "water_near_typo_section_fluids_with_bulk fluid.dynamic_viscosity",
+            ),
         },
         mark=r"one slip from",
     ),
@@ -207,6 +225,7 @@ EXCEPTIONS: dict[str, Kind] = {
         "members they do not name",
         {
             2: (
+                "PR-042.broken_withheld_marker",
                 "PR-110.condition_status_beside_basis",
                 "PR-110.condition_status_beside_unit",
                 "PR-110.evidence_unit_status_beside_other_member",

@@ -1,0 +1,61 @@
+{
+  "case": "PR-042",
+  "variant": "withheld_evidence_entry",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_some_withheld.json",
+      "measured_evidence_overlay.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:0b4c753d259d154d98a400456102cb23ea481d4b979846e0edf6654044fc5e00"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "evidence"
+    },
+    "acceptances": [
+      {
+        "acceptance": "overlay",
+        "field": "biocompatibility.evidence",
+        "overlay": {
+          "id": "conformance/evidence_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:062777f73d8cbed8bfb919fbde6b43f3cb69f85087f0f54631d5ab5a9178c907"
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "withheld"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

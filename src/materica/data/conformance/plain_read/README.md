@@ -90,6 +90,28 @@ the members it holds.
   are written as such in their requests) and refuses two picks for one field. Step 7 then reads only the
   alternative a pick names, counting every stored alternative, or gives `pick_invalid`.
 
+## Overlays and fill-ins
+
+The cases of S4 that read through an overlay (`record_format.md` section 4.4; `read_side_contract.md` section
+3, steps 5 to 7): which overlays a read resolves and applies, which faults refuse the read, what the field
+read is, a pick at an overlay, and fill-ins of a reference-only value.
+- **The overlaid material.** `conformance/overlaid_material_fixture` holds the met water viscosity in a fluid
+  section whose specimen names a lot, and a density. A `measurement` overlay replaces the viscosity with
+  0.000695 Pa·s, its own specimen (a preparation, no lot) and its own review, read with the met request of
+  "The reads of values". Each overlay is named by an `overlay` acceptance for the field read; the base's
+  `id`, `version` and `content_hash` are those of the record in use, except where an arm changes one.
+- **Strict.** Every overlay named for the field read must apply: one not supplied, of another version, whose
+  base differs, that replaces a field its base lacks, or that does not replace the field read refuses the
+  read, and none is skipped. One named for another field is not resolved at all.
+- **What reaches the overlaid field.** A slip in the envelope or body of the base or of the overlay refuses it
+  (`form_invalid`, at step 8); a fault in the base's section, its specimen included, or in the base field
+  the overlay replaces, does not, and neither does a broken field the overlay replaces beside the one read.
+- **Withheld bases and fill-ins.** An overlay of any purpose but `fill_in` is refused (`withheld`) where it
+  replaces a field its base holds withheld: in a single value, in one alternative, in an evidence report,
+  with a marker that breaks its shape (`"reasn"`), or in `statistics` alone, whichever key of `replaces` holds
+  it. A `fill_in` overlay is read, labelled `user_extracted`, with its own review; its `evidence.document` is
+  compared with the base's `source.document`, and each of its alternatives with its own index.
+
 ## The fixtures
 
 All are illustrative, in the namespace `conformance`. See the conformance tree's `README.md`.
@@ -117,6 +139,12 @@ All are illustrative, in the namespace `conformance`. See the conformance tree's
 | `susceptibility*.json` | `conformance/susceptibility_table_fixture`: `magnetic.volume_susceptibility` as a table over flux density, x [0, 1, 2] T, or with an edge at 0 T, and over temperature with the linear label |
 | `water_with_broken_density_table.json` | the met water record beside a density table without `edges` |
 | `density_alternatives_*` | `conformance/density_alternatives_fixture`: `bulk.density` as `alternatives` of constants, tables and an interval, for step 7 and picks; `density_alternatives_empty.json`, `_entry_not_object`, `_entry_holds_alternatives` and `_beside_value` break the list itself |
+| `overlaid_material*.json` | `conformance/overlaid_material_fixture`: a material whose fluid section, its specimen naming a lot, holds the met water viscosity, and whose bulk section holds a density. Its variants break its envelope (`crad`), body (`fluids`) or section, or the viscosity the overlays replace, or hold a withheld value: a marker that breaks its shape, `statistics` alone, the density. `overlaid_material_alternatives.json` (`conformance/overlaid_alternatives_fixture`) holds the viscosity as two alternatives |
+| `viscosity_overlay*.json`, `second_viscosity_overlay.json`, `density_overlay.json`, `viscosity_and_density_overlay*.json` | `measurement` overlays on those materials, origin `measured_by_contributor`, each replaced field with its own specimen and review; their variants break the overlay's envelope, body, purpose (`fil_in`), base or a replaced field, replace a field the base lacks, are edited after pinning, or are written against schema 0.2.0 |
+| `fit_overlay*.json` | `conformance/fit_overlay_fixture`: a `fit` overlay, its scope naming a model and configuration, its viscosity of origin `fitted` with a `fit` record |
+| `reference_only*.json` | `conformance/reference_only_fixture`: a reference-only viscosity, its value and statistics withheld, origin `measured_by_source`, a recipe and the curator's review; or two alternatives, one of them withheld; the variants leave out the source's `document` or give its version as a number |
+| `fill_in*.json` | `conformance/fill_in_fixture`: `fill_in` overlays of the reference-only viscosity, in the user's namespace and licence (`LicenseRef-user-extracted`), with the user's review and the `evidence` of the user's copy; the variants name another document version or identifier, none, or an identifier that is a number, or hold alternatives |
+| `measured_evidence_overlay.json` | a `measurement` overlay replacing the biocompatibility evidence whose base holds one report withheld |
 
 The inputs come in families, named by what they break:
 
@@ -158,5 +186,14 @@ The inputs come in families, named by what they break:
 - **A power law** (PR-020, PR-021, TE-009): no 0.1.0 field takes one; its arms come with the acoustic section.
 - **Acceptances located at a region.** Regions belong to the scene suite. An acceptance located at an
   `interval` is checked and not applied (`PR-316.implied_at_interval`, `PR-338.nominal_at_interval`,
-  `PR-307.at_interval`).
-- **Overlays and fill-ins:** S4's text decides them; their arms are the S4 cases that read through an overlay.
+  `PR-307.at_interval`, `PR-304.pick_at_interval_not_applied`).
+- **Two faults in one overlay.** Step 6 makes all its checks, but where an overlay's base differs from the
+  record in use, the text does not say which base "lacks" a key of `replaces`, nor whether an overlay already
+  refused for its base still conflicts with another. No arm puts two faults in one overlay.
+- **An `overlay` acceptance that names a location** (`record`, say): an overlay names none, and the text does
+  not say whether one that does breaks its shape or is ignored.
+- **An overlay in a scene's roles** (a region's or the background's material, a layered path's interval): the
+  scene suite's cases.
+- **What the build does with overlays and alternatives:** selecting overlays by their base's `id`, reporting
+  one that applies to no read, comparing a scope (`overlay_scope_mismatch`), and whether a waiver names a
+  reason's `alternative`, are the build checks'.

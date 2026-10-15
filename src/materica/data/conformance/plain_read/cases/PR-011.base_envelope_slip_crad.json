@@ -1,0 +1,85 @@
+{
+  "case": "PR-011",
+  "variant": "base_envelope_slip_crad",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "overlaid_material_crad.json",
+      "viscosity_overlay_on_material_crad.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/overlaid_material_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:d611cb001ed41971a2115c37f69495b42d0c42dda7fd38ce268160042030f8b8"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "overlay",
+        "field": "fluid.dynamic_viscosity",
+        "overlay": {
+          "id": "conformance/viscosity_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:b739032740c497cf72db4f2bf741438ff67b8f285b84d56ea4445a9656d29897"
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

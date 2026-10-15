@@ -1,0 +1,96 @@
+{
+  "case": "PR-304",
+  "variant": "pick_at_overlay_single_value",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "overlaid_material_alternatives.json",
+      "viscosity_overlay_on_material_alternatives.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/overlaid_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:12281d9bc0114879e41b878045197c32124ac65fd1f7e2180bf03971bf65fcab"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "overlay",
+        "field": "fluid.dynamic_viscosity",
+        "overlay": {
+          "id": "conformance/viscosity_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:72c2d0f519c60ff9c190c3df204fb9cea693486fb05eb9bfa4a2f3d588cdfdca"
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      },
+      {
+        "acceptance": "pick",
+        "record": {
+          "id": "conformance/viscosity_overlay_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:72c2d0f519c60ff9c190c3df204fb9cea693486fb05eb9bfa4a2f3d588cdfdca"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "index": 0,
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "pick_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}
