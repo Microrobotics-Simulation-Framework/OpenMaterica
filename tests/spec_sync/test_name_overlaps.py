@@ -414,9 +414,9 @@ SAFEGUARDS = (
 def test_an_entry_without_a_safeguard_needs_the_maintainers_flag_and_a_reason(
     key: tuple[str, ...], change: dict[str, JsonValue | None], problem: str
 ) -> None:
-    """An entry with no safeguard says why none is possible and carries `pending` or `approved_no_safeguard`
-    (maintainer, 2026-10-15); one with a safeguard carries no flag; a test named as a safeguard must be there,
-    guarding that name."""
+    """An entry with no safeguard says why none is possible and carries `pending`, `approved_no_safeguard` or
+    `approved_safeguard_deferred` (maintainer, 2026-10-15); one with a safeguard carries no flag; a test named
+    as a safeguard must be there, guarding that name."""
     _, problems = check(REPOSITORY, changed({key: change}))
     assert any(problem in found for found in problems), problems
 
@@ -426,19 +426,47 @@ def test_an_entry_approved_with_no_safeguard_passes() -> None:
     assert problems == []
 
 
-def test_a_pending_entry_passes_with_a_warning_until_the_maintainer_has_answered() -> None:
-    """While `renames` is `proposed`, a `pending` entry is no problem and is warned of; once it is
-    `answered`, the same entry is a problem, and one approved instead is not warned of."""
-    _, problems = check(REPOSITORY, ALLOWLIST)
+def test_a_pending_entry_fails_now_that_the_maintainer_has_answered() -> None:
+    """The maintainer answered the renames proposed with S2a-1 (2026-10-15): no entry is `pending`, and none
+    is warned of. The control: `ranges` marked `pending` again is a problem, and the same entry passes, warned
+    of, only while `renames` is `proposed`."""
+    assert ALLOWLIST["renames"] == "answered"
+    assert awaiting(ALLOWLIST) == []
+    pending = changed({("ranges",): {"maintainer": "pending"}})
+    _, problems = check(REPOSITORY, pending)
+    assert problems == ["['ranges']: still pending, though the maintainer has answered"]
+    _, problems = check(REPOSITORY, {**pending, "renames": "proposed"})
     assert problems == []
     with pytest.warns(AwaitingTheMaintainer, match="ranges"):
-        report_awaiting(ALLOWLIST)
-    _, problems = check(REPOSITORY, {**ALLOWLIST, "renames": "answered"})
-    assert "['ranges']: still pending, though the maintainer has answered" in problems
-    approved = changed({(name,): {"maintainer": "approved_no_safeguard"} for name in awaiting(ALLOWLIST)})
-    assert awaiting(approved) == []
-    _, problems = check(REPOSITORY, {**approved, "renames": "answered"})
+        report_awaiting(pending)
+
+
+# A writer schema that gives `ranges` a place: a review holding it beside its checklist.
+RANGES_PLACED = [
+    (
+        WRITER,
+        '"checklist": {"type": "array", "items": {"type": "string"}}',
+        '"checklist": {"type": "array", "items": {"type": "string"}}, "ranges": {"type": "object"}',
+    )
+]
+
+
+def test_a_safeguard_deferred_to_the_shapes_is_due_once_a_schema_gives_the_name_a_place(
+    tmp_path: Path,
+) -> None:
+    """`ranges` keeps both meanings, its safeguard deferred to the parameter set's and the fit's shapes
+    (maintainer, 2026-10-15): it passes while no schema gives `ranges` a place, and fails once one does, where
+    the same entry approved with no safeguard still passes, so it is the flag that fails it."""
+    deferred = [entry for entry in ALLOWLIST["entries"] if entry["names"] == ["ranges"]]
+    assert [entry["maintainer"] for entry in deferred] == ["approved_safeguard_deferred"]
+    _, problems = check(REPOSITORY, ALLOWLIST)
     assert problems == []
+    placed = copied(tmp_path, RANGES_PLACED)
+    remaining, problems = check(placed, ALLOWLIST)
+    assert problems == ["['ranges']: its safeguard is due, since a schema now gives ['ranges'] a place"]
+    assert [found.names for found in remaining] == [("ranges",)]
+    approved = changed({("ranges",): {"maintainer": "approved_no_safeguard"}})
+    assert check(placed, approved) == ([], [])
 
 
 def test_the_corpus_reads_each_of_its_inputs() -> None:

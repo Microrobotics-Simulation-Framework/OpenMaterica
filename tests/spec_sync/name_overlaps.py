@@ -26,10 +26,12 @@ Two rules, each giving flags:
 
 `name_overlaps.json` allows a flag judged intended, with its reason and its safeguard: a quote that must stay
 in its document, or a test that keeps the meanings apart (`test_name_overlap_safeguards.py`). An entry with no
-safeguard needs the maintainer's flag (maintainer, 2026-10-15): `approved_no_safeguard`, or `pending` while a
-rename is proposed, which passes with a warning until the allowlist's `renames` says the maintainer has
-answered. An entry whose flag is gone, whose safeguard is gone, or whose rule-A name gains a meaning, fails
-the check, as does any flag no entry allows.
+safeguard needs the maintainer's flag (maintainer, 2026-10-15): `approved_no_safeguard`;
+`approved_safeguard_deferred`, whose safeguard waits for the shapes that give its name a place and is due,
+failing the check, once a schema gives it one; or `pending` while a rename is proposed, which passes with a
+warning until the allowlist's `renames` says the maintainer has answered. An entry whose flag is gone, whose
+safeguard is gone or due, or whose rule-A name gains a meaning, fails the check, as does any flag no entry
+allows.
 """
 
 import fnmatch
@@ -621,8 +623,9 @@ def slips(namespace: Namespace) -> Iterator[Flag]:
 
 # Where a safeguard's test is found: this repository, whatever tree the check reads.
 REPOSITORY = Path(__file__).resolve().parents[2]
-# The maintainer's flags on an entry with no safeguard.
-FLAGS = ("pending", "approved_no_safeguard")
+# The maintainer's flags on an entry with no safeguard: a rename proposed, the answer not yet in; none
+# possible; or one deferred to the shapes that give the name a place, due once a schema gives it one.
+FLAGS = ("pending", "approved_no_safeguard", "approved_safeguard_deferred")
 
 
 class AwaitingTheMaintainer(UserWarning):
@@ -665,22 +668,41 @@ def awaiting(allowlist: dict[str, JsonValue]) -> list[str]:
     ]
 
 
-def unflagged(names: Sequence[str], entry: dict[str, JsonValue], answered: bool) -> str | None:
-    """The problem of an entry with no safeguard: no maintainer's flag, no reason why none is possible, or
-    `pending` once the maintainer has answered."""
+def placed(corpus: Corpus) -> frozenset[str]:
+    """The names a schema file gives a place: the members of an object it declares."""
+    prefix = f"{SCHEMA.as_posix()}/"
+    return frozenset(
+        name
+        for namespace in corpus.namespaces
+        if namespace.kind == "members" and namespace.origin.startswith(prefix)
+        for name in namespace.shapes
+    )
+
+
+def unflagged(
+    names: Sequence[str], entry: dict[str, JsonValue], answered: bool, in_schemas: frozenset[str]
+) -> str | None:
+    """The problem of an entry with no safeguard: no maintainer's flag, no reason why none is possible,
+    `pending` once the maintainer has answered, or a safeguard deferred to the shapes once a schema gives one
+    of its names a place."""
     if entry.get("maintainer") not in FLAGS:
         return f"{list(names)}: no safeguard, and no maintainer's flag ({' or '.join(FLAGS)})"
     if not entry.get("no_safeguard_because"):
         return f"{list(names)}: no safeguard, and no reason why none is possible"
     if entry["maintainer"] == "pending" and answered:
         return f"{list(names)}: still pending, though the maintainer has answered"
+    if entry["maintainer"] == "approved_safeguard_deferred" and (due := sorted(set(names) & in_schemas)):
+        return f"{list(names)}: its safeguard is due, since a schema now gives {due} a place"
     return None
 
 
-def allowed(flags: list[Flag], allowlist: dict[str, JsonValue], root: Path) -> tuple[list[Flag], list[str]]:
+def allowed(
+    flags: list[Flag], allowlist: dict[str, JsonValue], root: Path, in_schemas: frozenset[str]
+) -> tuple[list[Flag], list[str]]:
     """The flags no entry allows, and the problems of the entries: one that allows no flag, one whose
     safeguard is gone, and one with no safeguard that lacks the maintainer's flag or the reason why none is
-    possible, or is still `pending` once the allowlist's `renames` is `answered`."""
+    possible, is still `pending` once the allowlist's `renames` is `answered`, or has its safeguard deferred
+    while a schema gives one of its names, `in_schemas`, a place."""
     entries = [mapping(entry) for entry in listing(allowlist["entries"])]
     answered = allowlist.get("renames") == "answered"
     if allowlist.get("renames") not in ("proposed", "answered"):
@@ -691,7 +713,7 @@ def allowed(flags: list[Flag], allowlist: dict[str, JsonValue], root: Path) -> t
         names = sorted(str(name) for name in listing(entry["names"]))
         safeguard = entry.get("safeguard")
         if safeguard is None:
-            problem = unflagged(names, entry, answered)
+            problem = unflagged(names, entry, answered, in_schemas)
             live.append(problem is None)
             problems += [problem] if problem else []
             continue
@@ -729,4 +751,4 @@ def allows(entry: dict[str, JsonValue], flag: Flag) -> bool:
 def check(root: Path, allowlist: dict[str, JsonValue]) -> tuple[list[Flag], list[str]]:
     """Every flag the allowlist does not allow, and every problem with the allowlist."""
     corpus = collect(root)
-    return allowed(rule_a(corpus) + rule_b(corpus), allowlist, root)
+    return allowed(rule_a(corpus) + rule_b(corpus), allowlist, root, placed(corpus))

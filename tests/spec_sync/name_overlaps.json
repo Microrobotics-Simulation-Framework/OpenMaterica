@@ -1,7 +1,7 @@
 {
   "format": 1,
-  "about": "The name overlaps judged intended (tests/spec_sync/name_overlaps.py). Each entry names its rule and its names; for rule A, how many meanings the name has, so that a new meaning flags it again; and optionally the owner its flag must have. Each gives its reason, and a safeguard: a quote that must stay in its document, or a test that keeps the meanings apart (tests/spec_sync/test_name_overlap_safeguards.py). An entry with no safeguard says why none is possible and carries the maintainer's flag: approved_no_safeguard, or pending while a rename is proposed (maintainer, 2026-10-15). While renames is proposed, a pending entry passes with a warning; once the maintainer has answered (answered), it fails until it is renamed away, given a safeguard or approved. An entry that allows no flag, or whose safeguard is gone, fails the check. Drafted with S2a-1 from the name-overlap prototype's allowlist (2026-10-14), for the maintainer to confirm.",
-  "renames": "proposed",
+  "about": "The name overlaps judged intended (tests/spec_sync/name_overlaps.py). Each entry names its rule and its names; for rule A, how many meanings the name has, so that a new meaning flags it again; and optionally the owner its flag must have. Each gives its reason, and a safeguard: a quote that must stay in its document, or a test that keeps the meanings apart (tests/spec_sync/test_name_overlap_safeguards.py). An entry with no safeguard says why none is possible and carries the maintainer's flag: approved_no_safeguard; approved_safeguard_deferred, its safeguard waiting for the shapes that give its name a place, which fails the check once a schema gives it one; or pending while a rename is proposed (maintainer, 2026-10-15). While renames is proposed, a pending entry passes with a warning; once the maintainer has answered (answered), it fails until it is renamed away, given a safeguard or approved. The maintainer answered the renames proposed with S2a-1 on 2026-10-15: seven were made, and ranges keeps both meanings with its safeguard deferred. An entry that allows no flag, or whose safeguard is gone, fails the check. Drafted with S2a-1 from the name-overlap prototype's allowlist (2026-10-14), for the maintainer to confirm.",
+  "renames": "answered",
   "entries": [
     {
       "rule": "B",
@@ -234,8 +234,8 @@
       "meanings": 2,
       "reason": "A coverage mode's ranges by input, and an invariant's ranges in order.",
       "safeguard": null,
-      "no_safeguard_because": "Neither place has a schema yet: a parameter set's and a fit's coverage (model_families.md section 6, fits_and_reference_data.md section 3), placeholders in the writer.",
-      "maintainer": "pending"
+      "no_safeguard_because": "Neither place has a schema yet: a parameter set's and a fit's coverage (model_families.md section 6, fits_and_reference_data.md section 3), placeholders in the writer. The safeguard, a map by input refused where an ordered list belongs and the reverse, is written with those shapes (maintainer, 2026-10-15); the check fails once a schema gives ranges a place.",
+      "maintainer": "approved_safeguard_deferred"
     }
   ]
 }
