@@ -682,12 +682,20 @@ def label_allowed(spec: RecordFieldSpec, form: str | None, field: JsonObject) ->
 def label(
     value: JsonValue, where: str, spec: RecordFieldSpec, form: str | None, field: JsonObject, found: Found
 ) -> None:
+    """A label the reader knows, the one the row names for this field and its form. Beside a form token the
+    reader does not know, the row names it for no such form; where the form is missing or not a string, which
+    refuses the field on its own, there is no form to judge it on."""
     if not isinstance(value, str):
         found.append(invalid(f"{where} is not a string"))
     elif value not in KNOWN["label"]:
         found.append(unknown_token(f"{where} holds {value!r}, a label the reader does not know"))
-    elif value != spec.label or not label_allowed(spec, form, field):
-        found.append(invalid(f"{where} holds {value!r}, which the row does not name for this field and form"))
+    elif value != spec.label:
+        found.append(invalid(f"{where} holds {value!r}, which the row does not name for this field"))
+    elif isinstance(stored := field.get("form"), str) and not label_allowed(spec, form, field):
+        beside = (
+            f"a field of form {form}" if form is not None else f"{stored!r}, a form the reader does not know"
+        )
+        found.append(invalid(f"{where} holds {value!r}, which the row does not name for {beside}"))
 
 
 # The checks a read makes: on the record's structure, on the section a field sits in, and on the field.
