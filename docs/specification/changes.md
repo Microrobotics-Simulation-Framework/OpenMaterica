@@ -217,7 +217,7 @@ Settled with S3's design, tables and extrapolations (maintainer, 2026-10-15, as 
 refusal stays). Three points most of all: a 0.1.0 reader refuses a table that holds `points`; `source_range`
 narrows the readable range; and no extrapolation crosses a declared edge. How a table alternative is set
 aside, which the clauses below on PR-044 and PR-013 state, is settled by S4's decision 1 (maintainer,
-2026-10-15), to be written in S4's text. A table's `y` holds one number per `x`,
+2026-10-15), and written in S4's entry at the end of this file. A table's `y` holds one number per `x`,
 `edges` is required, each edge lies strictly inside `[x[0], x[-1]]` and is listed once, and numbers, an
 operating value's included, are compared by value; a table's axis condition holds `not_applicable`; an axis
 the reader does not know, or a token condition's name, is `unknown_token`, and so is a `scheme` the reader
@@ -280,3 +280,31 @@ power law's uncertainty structure sits beside its statistics block, as the `powe
 `uncertainty`, not in the block as `structure` (`uncertainty.md` sections 1 and 2). No 0.1.0 field takes a
 power law, so no read changes. A structure changes how `a` and `b` are read, so the name `uncertainty` on a
 power law is reserved before 1.0.0 (`DOCUMENTATION_ARCHITECTURE.md` section 7.2).
+
+Settled for alternatives, picks, overlays and fill-ins (maintainer, 2026-10-15), S4's twelve decisions.
+Without a pick, a reader reads each alternative alone, and the outcome does not depend on the order of
+reading. An alternative is set aside where its conditions, the form's own axis entry aside, give `not_met`, or
+where a table is read outside its readable range, off every edge, and no extrapolation the request carries
+would cover it (PR-044). A table an extrapolation would cover stays, and so does one read over an operating
+range of its axis; under `no_pick` each holds its table as stored (PR-013). A table read exactly at a declared
+edge refuses the field, wherever the edge lies. These rules settle the S3 entry's clauses on PR-044 and
+PR-013, replacing the one under which a table outside its readable range or at an edge stayed. Every other
+`not_met` in an alternative refuses the field, and so does a fault of the request (PR-044, PR-308). A refused
+field, or one whose alternatives are all set aside, reports every alternative's reasons. Beside `no_pick` or
+`want_mismatch`, each remaining alternative's `unknown` reasons stand (PR-013). A result that rests on no
+single alternative holds no value, `assumption` or `conditions` (PR-336). A reason gains the member
+`alternative`, the stored index of the alternative it was found reading. A reason is identified by code,
+condition and alternative, and cases compare the three (`README.md`, "Case files"; PR-331). A pick reads only
+its alternative. A pick past the last stored alternative, on a field holding no alternatives, or on a field an
+applied overlay replaces gives the new reason `pick_invalid`, which nothing accepts (PR-304). A pick's index
+is a whole number not below zero, `1.0` being 1 and `-0` being 0, and two picks naming one field are
+`request_incomplete` (PR-330). Every overlay an acceptance names for the read's field must apply; the build's
+selection of overlays by base `id` comes with the build. An overlay that does not replace the read's field is
+refused (`absent`), and the checks on `replaces` cover every key (PR-042, PR-046). One overlay named twice for
+one field is `request_incomplete` (PR-041, PR-330). A base differs in `id`, `version` or `content_hash`,
+compared as strings, an ill-formed base hash included (PR-039). A record of a known type in the wrong role is
+refused as `unknown_type`: a target that is not a `material`, and an overlay acceptance naming a record that
+is not an `overlay` (PR-007). A field an overlay replaces is refused by the base's envelope and body faults,
+not by the base section's specimen or the replaced field (PR-011). A fill-in over a base field holding
+alternatives gives `fill_in_version_mismatch`, and a fill-in's own alternatives are compared one by one
+(PR-107). A withheld alternative of the base refuses an overlay that is not a fill-in (PR-042).
