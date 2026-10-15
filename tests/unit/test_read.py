@@ -15,6 +15,7 @@ import pytest
 
 import materica
 from materica import shapes
+from materica.core import value_shapes
 from materica.core.hashing import content_hash
 from materica.core.identifiers import FAMILY_ID, RECORD_ID, MaterialRef, Version, parse_version
 from materica.core.jsonio import JsonValue
@@ -522,3 +523,140 @@ def test_a_label_is_judged_on_the_form_the_field_holds_and_on_no_form_where_it_h
     composition = read(*stored(with_field("fluid.dynamic_viscosity", {**field, "form": "composition"})))
     assert {reason.code for reason in composition.reasons} == {"form_not_registered", "form_invalid"}
     assert "a field of form composition" in str(composition.reasons)
+
+
+UNCERTAINTY: dict[str, JsonValue] = {
+    "value": 0.02,
+    "coverage_factor": 2.0,
+    "coverage_probability": {"status": "unstated"},
+    "distribution": "normal",
+    "dof": {"status": "not_applicable"},
+    "basis": "reported_uncertainty",
+    "represents": "measurement",
+    "precision_conditions": "repeatability",
+}
+
+
+def with_block(**members: JsonValue) -> dict[str, JsonValue]:
+    statistics = water_field()["statistics"]
+    assert isinstance(statistics, dict)
+    return {**water_field(), "statistics": {**statistics, **members}}
+
+
+def with_condition(name: str, condition: JsonValue) -> dict[str, JsonValue]:
+    conditions = water_field()["conditions"]
+    assert isinstance(conditions, dict)
+    return {**water_field(), "conditions": {**conditions, name: condition}}
+
+
+def with_fact(name: str, fact: JsonValue) -> dict[str, JsonValue]:
+    return {**water_field(), "specimen": {name: fact}}
+
+
+def unlabelled(**members: JsonValue) -> dict[str, JsonValue]:
+    return {**{name: value for name, value in water_field().items() if name != "label"}, **members}
+
+
+# The eleven rules S2a-2's review found no test checking (finding M1), each with a field that breaks it and
+# the codes step 8 gives, and some with a field that keeps it, which passes step 8 (None). The label on a
+# table, which no read reaches before S3, is `test_a_label_on_a_table_follows_its_rows_axis`.
+RULES: list[tuple[str, dict[str, JsonValue], frozenset[str] | None]] = [
+    (
+        "a population level's within holds none alone of the statuses",
+        with_block(
+            represents="population", population_level={"level": "specimen", "within": {"status": "unstated"}}
+        ),
+        frozenset({"form_invalid"}),
+    ),
+    (
+        "... and none passes",
+        with_block(
+            represents="population", population_level={"level": "specimen", "within": {"status": "none"}}
+        ),
+        None,
+    ),
+    (
+        "an uncertainty's precision_conditions takes its tokens alone",
+        with_block(relative_uncertainty={**UNCERTAINTY, "precision_conditions": "lab_to_lab"}),
+        frozenset({"unknown_token"}),
+    ),
+    ("... and repeatability passes", with_block(relative_uncertainty=UNCERTAINTY), None),
+    (
+        "a constant's statistics takes withheld, never not_applicable",
+        {**water_field(), "statistics": {"status": "not_applicable"}},
+        frozenset({"form_invalid"}),
+    ),
+    (
+        "a condition's basis takes stated or inferred",
+        with_condition("temperature", {"value": 310.15, "unit": "K", "basis": "guessed"}),
+        frozenset({"unknown_token"}),
+    ),
+    (
+        "a fact's basis is no block's",
+        with_fact("lot", {"text": "B-17", "basis": "reported_sd"}),
+        frozenset({"form_invalid"}),
+    ),
+    (
+        "a condition's status object refuses the members of either shape",
+        with_condition("temperature", {"status": "unstated", "token": "apparent"}),
+        frozenset({"form_invalid"}),
+    ),
+    (
+        "a fact's token knows the conditions' tokens",
+        with_fact("tissue_state", {"token": "tube", "basis": "stated"}),
+        frozenset({"form_invalid"}),
+    ),
+    (
+        "a condition's token knows the facts' tokens",
+        with_condition("density_kind", {"token": "stock", "basis": "stated"}),
+        frozenset({"form_invalid"}),
+    ),
+    (
+        "a token condition's unit is a string or a status object",
+        with_condition("measurement_geometry", {"token": "tube", "unit": 5.0, "basis": "stated"}),
+        frozenset({"form_invalid"}),
+    ),
+    (
+        "... which step 9 compares",
+        with_condition("measurement_geometry", {"token": "tube", "unit": "m", "basis": "stated"}),
+        None,
+    ),
+    (
+        "a fact's unit takes any status token at step 8",
+        with_fact(
+            "post_mortem_interval", {"value": 60.0, "unit": {"status": "approximate"}, "basis": "stated"}
+        ),
+        None,
+    ),
+    (
+        "the row's label beside a form the reader does not know",
+        {**water_field(), "form": "spline"},
+        frozenset({"unknown_token", "form_invalid"}),
+    ),
+    ("a form the reader does not know, alone", unlabelled(form="spline"), frozenset({"unknown_token"})),
+    (
+        "beside a form the reader does not know, every form's own member is named",
+        unlabelled(form="spline", intervals={}),
+        frozenset({"unknown_token", "form_invalid"}),
+    ),
+]
+
+
+@pytest.mark.parametrize(("rule", "field", "codes"), RULES, ids=[rule for rule, _, _ in RULES])
+def test_each_rule_the_review_found_untested(
+    rule: str, field: dict[str, JsonValue], codes: frozenset[str] | None
+) -> None:
+    if codes is None:
+        with pytest.raises(NotImplementedError):
+            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+    else:
+        refused = read(*stored(with_field("fluid.dynamic_viscosity", field)))
+        assert {reason.code for reason in refused.reasons} == codes
+
+
+@pytest.mark.parametrize(("axis", "allowed"), [("shear_rate", False), ("temperature", True)])
+def test_a_label_on_a_table_follows_its_rows_axis(axis: str, allowed: bool) -> None:
+    """Step 8's shared check of a field, which a read reaches for a table only once S3 reads tables."""
+    field: dict[str, JsonValue] = {**water_field(), "form": "table", "table": {"axis": axis}}
+    found = value_shapes.field_problems(field, VOCABULARY.fields["fluid.dynamic_viscosity"], "table")
+    assert [reason.code for reason in found] == ([] if allowed else ["form_invalid"])
