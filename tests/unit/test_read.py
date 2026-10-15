@@ -504,3 +504,21 @@ def test_a_claims_parameter_typed_otherwise_is_found() -> None:
     assert claims_parameters([module]) == {
         "test_a_claims_parameter_typed_otherwise_is_found.<locals>.loose": Collection[str]
     }
+
+
+def test_a_label_is_judged_on_the_form_the_field_holds_and_on_no_form_where_it_holds_none() -> None:
+    """S2a-2's review, L8: the row names a label for a field and its form, so a label beside a form token the
+    reader does not know is refused for that form, and one beside a missing form is not judged on a form."""
+    field = water_field()
+    missing = read(
+        *stored(with_field("fluid.dynamic_viscosity", {k: v for k, v in field.items() if k != "form"}))
+    )
+    assert missing.reasons == (Reason("form_invalid"),)
+    assert "label" not in str(missing.reasons[0].detail)
+    unknown = read(*stored(with_field("fluid.dynamic_viscosity", {**field, "form": "spline"})))
+    details = {reason.code: str(reason.detail) for reason in unknown.reasons}
+    assert details.keys() == {"unknown_token", "form_invalid"}
+    assert "'spline', a form the reader does not know" in details["form_invalid"]
+    composition = read(*stored(with_field("fluid.dynamic_viscosity", {**field, "form": "composition"})))
+    assert {reason.code for reason in composition.reasons} == {"form_not_registered", "form_invalid"}
+    assert "a field of form composition" in str(composition.reasons)
