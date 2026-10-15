@@ -187,23 +187,30 @@ Both give a result shaped as `read_side_contract.md` section 2 defines:
 
 A **table evaluation case** (`read_side_contract.md` section 7) names `{"operation": "evaluate", "form":
 "table", "table": <table>, "at": [<axis values>]}` in `request`, `<table>` being a table as `record_format.md`
-section 6 gives it, and supplies no inputs. `expected.evaluations` holds one entry per `at` value, in order:
-inside the readable range `{"in_range": true, "value", "derivative"}`, `derivative` being, at an interior knot
-strictly inside the readable range, `{"left", "right"}`, of which the side the evaluator declares is compared;
-outside it `{"in_range": false}`; at a declared edge, wherever it lies, `{"refused": true}`, which passes only
-where the evaluator reports the refusal and each number it returns there is absent or NaN, never finite and
-never infinite. Such a case departs from the rules above twice: an entry compares only the members it holds,
-not both ways, since an evaluator may return a value beside `in_range: false`; and a runner is given, beside
-the suites, the precision and the side each evaluator claims, so a file holds for every precision and side and
-has no variant per claim (`read_side_contract.md` section 7 items 3 and 8). `compare.relative_tolerance` is
-`{"binary64": 1e-12, "binary32": <the file's>}`, and a runner uses the precision the evaluator claims, the
-tolerance being absolute where an expected number is zero. Expected numbers are exact for the case's doubles,
-rounded once; a `binary32` evaluator first rounds each number of the case to the nearest `binary32`. A point
-on a knot, an end or an edge is exact in `binary32`, except in a case that says its knots are decimal
-(TE-012), and a point beside one lies at least one `binary32` unit in the last place from it, so both
-precisions evaluate the same side of it. A file's `binary32` tolerance is at most a tenth of the relative
-difference, at a compared number where they differ, between the expected answer and that of each broken
-evaluator the suite's verification names.
+section 6 gives it, the axis condition aside, and supplies no inputs. `expected.evaluations` holds one entry
+per `at` value, in order:
+- inside the readable range, `{"in_range": true, "value", "derivative"}`, `derivative` being `{"left",
+  "right"}` at an interior knot strictly inside the readable range, of which the side the evaluator declares
+  is compared, and `"none"` where the readable range is one point;
+- outside it, `{"in_range": false, "value", "derivative"}`: the value at the readable range's nearest end,
+  taken from inside it, and a derivative of `0`;
+- at a declared edge, wherever it lies, `{"refused": true}`.
+
+A `"none"` passes only where the evaluator returns that number absent or NaN. Outside the readable range, each
+number passes where it is the expected one, or absent or NaN. `{"refused": true}` passes only where the
+evaluator reports the refusal and each number it returns there is absent or NaN, never finite and never
+infinite. Such a case departs from the rules above three times: an entry compares only the members it holds,
+not both ways, since an evaluator returns more than a refused entry holds; a number may pass by being absent
+or NaN; and a runner is given, beside the suites, the precision and the side each evaluator claims, so a file
+holds for every precision and side and has no variant per claim (`read_side_contract.md` section 7 items 3 and
+8). `compare.relative_tolerance` is `{"binary64": 1e-12, "binary32": <the file's>}`, and a runner uses the
+precision the evaluator claims, the tolerance being absolute where an expected number is zero. Expected
+numbers are exact for the case's doubles, rounded once; a `binary32` evaluator first rounds each number of the
+case to the nearest `binary32`. A point on a knot, an end or an edge is exact in `binary32`, except in a case
+that says its knots are decimal (TE-012), and a point beside one lies at least one `binary32` unit in the last
+place from it, so both precisions evaluate the same side of it. A file's `binary32` tolerance is at most a
+tenth of the relative difference, at a compared number where they differ, between the expected answer and that
+of each broken evaluator the suite's verification names.
 
 Three kinds of case take other inputs. Each names the schema files it passes in `inputs.schemas`
 (`usd_binding.md` section 10.1 item 8); a case that names none has none.

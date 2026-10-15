@@ -234,5 +234,7 @@ BC-019); two extrapolations naming one field are `request_incomplete`, as is an 
 exactly at an edge is refused wherever the edge lies, outside the readable range included (PR-018); a 0.1.0
 reader refuses a table that holds `points` with the new reason `points_unsupported` (PR-157); the table
 evaluation cases take the `evaluate` operation, a tolerance per precision, a refusal at an edge that returns
-no number, absent or NaN, and stops the run, and the inside derivative at every end of the readable range
-(TE-007, TE-010, TE-012).
+no number, absent or NaN, and stops the run, and the inside derivative at every end of the readable range,
+none where it is one point (TE-007, TE-010, TE-012); and outside the readable range an evaluator returns the
+value at its nearest end, from inside, with a zero derivative, or no number, so clamping is a constant
+extrapolation only at the readable range's ends (TE-003).
