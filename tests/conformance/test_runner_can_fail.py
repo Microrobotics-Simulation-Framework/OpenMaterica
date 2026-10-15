@@ -8,17 +8,18 @@ implementation stays the one under test.
 import hashlib
 import math
 import unicodedata
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterable
 
 import pytest
 
-from materica.core import canonical, envelope, hashing, jsonio, read, record, resolve
+from materica.core import canonical, envelope, fields, hashing, jsonio, read, record, resolve, value_shapes
+from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.record import Record, RecordStore
 from materica.core.resolve import Refused, ResolvedRecord
-from materica.core.vocabulary import ConditionSpec
+from materica.core.vocabulary import ConditionSpec, RecordFieldSpec
 from materica.shapes import Suite
 from tests.conformance import runner
 from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, Executor, JsonObject, Outcome
@@ -246,6 +247,102 @@ def refuses_a_tolerance_of_minus_zero(monkeypatch: pytest.MonkeyPatch) -> Execut
     return EXECUTORS["read"]
 
 
+# Step 8 with one fault: a check of `value_shapes` or `fields` left out, loosened or stopped early.
+
+
+def ignores_slips(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def none_slipped(members: Iterable[str], named: Collection[str]) -> list[tuple[str, str]]:
+        return []
+
+    monkeypatch.setattr(value_shapes, "slipped", none_slipped)
+    return EXECUTORS["read"]
+
+
+def ignores_members_beside_a_status(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    status_object = value_shapes.status_object
+
+    def only_status_and_reason(
+        value: dict[str, JsonValue],
+        where: str,
+        tokens: Collection[str] | None,
+        defines: Collection[str],
+        found: list[Reason],
+    ) -> None:
+        kept = {name: member for name, member in value.items() if name in ("status", "reason")}
+        status_object(kept, where, tokens, defines, found)
+
+    monkeypatch.setattr(value_shapes, "status_object", only_status_and_reason)
+    return EXECUTORS["read"]
+
+
+def knows_no_token_of_another_member(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    monkeypatch.setattr(value_shapes, "KNOWN", {member: frozenset[str]() for member in value_shapes.KNOWN})
+    return EXECUTORS["read"]
+
+
+def leaves_the_section_unchecked(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def nothing(name: str, section: dict[str, JsonValue]) -> list[Reason]:
+        return []
+
+    monkeypatch.setattr(fields, "section_problems", nothing)
+    return EXECUTORS["read"]
+
+
+def allows_every_form(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    form = fields._form  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def unregistered_too(
+        field: dict[str, JsonValue], spec: RecordFieldSpec, claims: Collection[str], found: list[Reason]
+    ) -> str | None:
+        own: list[Reason] = []
+        found_form = form(field, spec, claims, own)
+        found += [reason for reason in own if reason.code != "form_not_registered"]
+        return found_form
+
+    monkeypatch.setattr(fields, "_form", unregistered_too)
+    return EXECUTORS["read"]
+
+
+def reads_null_as_absent(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    members = value_shapes.members
+
+    def without_nulls(
+        value: JsonValue,
+        where: str,
+        found: list[Reason],
+        required: value_shapes.Members,
+        optional: value_shapes.Members | None = None,
+        *,
+        named: Collection[str] = (),
+    ) -> dict[str, JsonValue] | None:
+        if isinstance(value, dict):
+            value = {name: member for name, member in value.items() if member is not None}
+        return members(value, where, found, required, optional, named=named)
+
+    monkeypatch.setattr(value_shapes, "members", without_nulls)
+    return EXECUTORS["read"]
+
+
+def reads_a_withheld_value(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def no_member_check(field: dict[str, JsonValue], name: str, found: list[Reason]) -> None:
+        pass
+
+    monkeypatch.setattr(fields, "_constant", no_member_check)
+    return EXECUTORS["read"]
+
+
+def stops_at_the_first_refusal(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    form_problems = fields.form_problems
+
+    def first(
+        field: RecordField, record_value: dict[str, JsonValue], claims: Collection[str]
+    ) -> list[Reason]:
+        return form_problems(field, record_value, claims)[:1]
+
+    monkeypatch.setattr(read, "form_problems", first)
+    return EXECUTORS["read"]
+
+
 def _without(value: JsonValue, removed: str) -> JsonValue:
     if isinstance(value, list):
         return [_without(item, removed) for item in value]
@@ -297,6 +394,14 @@ FAULTS: list[tuple[Fault, str]] = [
     (repeats_reasons, "PR-331.request_incomplete_once_per_condition.json"),
     (ignores_the_suite_of_a_want, "PR-332.fit_without_fd.json"),
     (refuses_a_tolerance_of_minus_zero, "PR-330.tolerance_negative_zero_accepted.json"),
+    (ignores_slips, "PR-005.near_typo_crad.json"),
+    (ignores_members_beside_a_status, "PR-110.sd_status_beside_other_member.json"),
+    (knows_no_token_of_another_member, "PR-045.condition_token_of_another_row.json"),
+    (leaves_the_section_unchecked, "PR-045.section_specimen_fault_refuses_section.json"),
+    (allows_every_form, "PR-036.power_law_on_bulk_density.json"),
+    (reads_null_as_absent, "PR-049.field_specimen_null.json"),
+    (reads_a_withheld_value, "PR-105.withheld_value.json"),
+    (stops_at_the_first_refusal, "PR-301.two_refusals_step_8.json"),
 ]
 
 
