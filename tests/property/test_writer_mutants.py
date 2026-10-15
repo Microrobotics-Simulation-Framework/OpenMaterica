@@ -502,6 +502,18 @@ MUTANTS = [
         "conditions",
         ("token_condition_unit",),
     ),
+    WriterMutant(
+        "M60 a normal state holding a text",
+        deleting(D, "disease_and_treatment_state", "else"),
+        "specimen",
+        ("fact_member_beside_another_token",),
+    ),
+    WriterMutant(
+        "M61 a diseased or treated state without its text",
+        deleting(D, "disease_and_treatment_state", "then"),
+        "specimen",
+        ("fact_member_missing_for_its_token",),
+    ),
     # The bindings (maintainer, 2026-10-15): a field's name, form, unit or label, a composition's basis, or a
     # numeric condition's unit, left unbound in the vocabulary or not applied by the writer.
     WriterMutant(
@@ -635,6 +647,12 @@ MUTANTS = [
         "T8 a basis stated only", setting(D, "based", P, "basis", to={"const": "stated"}), TAKES, (REFUSED,)
     ),
     WriterMutant(
+        "T9 a text required in every disease or treatment state",
+        setting(D, "disease_and_treatment_state", "required", to=["token", "text"]),
+        TAKES,
+        (REFUSED,),
+    ),
+    WriterMutant(
         "TB1 a field bound to another unit",
         setting(D, "bulk.density", P, "unit", to={"const": "g/cm3"}),
         TAKES,
@@ -686,6 +704,7 @@ SEARCHED_ON = {
     "T6": replace(CONSTANT, rich=frozenset({"conditions"})),
     "T7": replace(CONSTANT, rich=frozenset({"block"})),
     "T8": replace(CONSTANT, rich=frozenset({"conditions"})),
+    "T9": replace(CONSTANT, rich=frozenset({"specimen"})),
     "TB1": Plan(registered="bulk.density"),
     "TB2": Plan(registered="bulk.density", form="table"),
     "TB3": Plan(registered="bulk.elemental_composition", place="fields"),

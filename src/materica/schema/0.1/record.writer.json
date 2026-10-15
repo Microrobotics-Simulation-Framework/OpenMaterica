@@ -630,14 +630,17 @@
       "unevaluatedProperties": false
     },
     "disease_and_treatment_state": {
-      "description": "The state, and which disease or treatment.",
+      "description": "The state, and which disease or treatment: a text exactly where the state is diseased or treated, none where it is normal (provenance.md section 6.2).",
       "type": "object",
       "allOf": [{"$ref": "#/$defs/based"}],
-      "required": ["token", "text"],
+      "required": ["token"],
       "properties": {
         "token": {"$ref": "vocabulary/specimen_facts.json#/$defs/disease_and_treatment_state_token"},
         "text": {"type": "string"}
       },
+      "if": {"required": ["token"], "properties": {"token": {"anyOf": [{"const": "diseased"}, {"const": "treated"}]}}},
+      "then": {"required": ["text"]},
+      "else": {"not": {"required": ["text"]}},
       "unevaluatedProperties": false
     },
     "preparation": {
