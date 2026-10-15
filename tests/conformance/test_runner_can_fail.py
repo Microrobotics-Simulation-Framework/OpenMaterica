@@ -293,11 +293,11 @@ def allows_every_form(monkeypatch: pytest.MonkeyPatch) -> Executor:
 
     def unregistered_too(
         field: dict[str, JsonValue], spec: RecordFieldSpec, claims: Collection[str], found: list[Reason]
-    ) -> str | None:
+    ) -> tuple[str | None, bool]:
         own: list[Reason] = []
-        found_form = form(field, spec, claims, own)
+        found_form, _ = form(field, spec, claims, own)
         found += [reason for reason in own if reason.code != "form_not_registered"]
-        return found_form
+        return found_form, found_form is not None
 
     monkeypatch.setattr(fields, "_form", unregistered_too)
     return EXECUTORS["read"]

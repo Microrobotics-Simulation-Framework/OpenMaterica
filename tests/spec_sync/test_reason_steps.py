@@ -181,6 +181,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("record.py", "RecordStore.add"): None,
     ("fields.py", "find_field"): 7,
     ("fields.py", "_form"): 8,
+    ("fields.py", "_basis_allowed"): 8,
     ("fields.py", "_constant"): 8,
     ("value_shapes.py", "invalid"): 8,
     ("value_shapes.py", "unknown_token"): 8,

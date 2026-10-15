@@ -55,7 +55,7 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `vocabulary.py` | the tokens of the specification's tables, read from `schema/0.1/vocabulary/` |
 | `envelope.py` | the reader schema's checks by hand (`record_format.md` section 1 item 2) |
 | `value_shapes.py` | step 8's checks of what every form of a value field shares, by hand: a slip in the record's structure, a section's specimen, and a field's unit, conditions, specimen facts, statistics block, provenance members, label and status objects (`read_side_contract.md` section 3, step 8; `provenance.md`; `uncertainty.md` sections 1 and 4) |
-| `fields.py` | a value field: step 7 finds it, and step 8 checks its form token against its row, its shared members, and its form's own member (a constant's so far) |
+| `fields.py` | a value field: step 7 finds it, and step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's so far; another form the row allows raises `NotImplementedError`) |
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
 | `read.py` | the request's own check (step 0), and the read through step 8; steps 9 to 13, overlays and alternatives are not built yet |
