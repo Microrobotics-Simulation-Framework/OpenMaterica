@@ -32,9 +32,6 @@
     "reasons": [
       {
         "code": "form_not_registered"
-      },
-      {
-        "code": "form_invalid"
       }
     ],
     "labels": []
