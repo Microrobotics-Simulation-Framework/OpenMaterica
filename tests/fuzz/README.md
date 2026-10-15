@@ -48,7 +48,7 @@ and checks each step for the message of the fault it must find.
 The `fuzz` job runs weekly and on a manual run only, on Python 3.14, after the Hypothesis job: the control
 above, then each target for `fuzz_seconds` (300 by default, an input of the manual run), then
 `pytest tests/property` to replay and shrink what was found. It starts from the union of the example databases
-the Hypothesis job's two shards just saved, or the latest each saved where that job did not run (a manual run
+the Hypothesis job's `json` and `records` shards just saved, or the latest each saved where that job did not run (a manual run
 with `fuzz_only`), and saves the two jobs' finds together, for each shard. Target 1's corpus is cached from run
 to run, seeded afresh each time, and merged into a fresh directory before it is saved, so that it keeps only
 the inputs that add coverage. The job keeps the inputs that failed.

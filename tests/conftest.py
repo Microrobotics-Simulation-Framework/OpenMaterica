@@ -39,8 +39,8 @@ if PROFILE not in EXAMPLES:
 settings.load_profile(PROFILE)
 
 
-# CI's Hypothesis job runs the property modules in two shards side by side, `--shard json` and `--shard
-# records`; `tests/unit/test_source_files.py` checks that each module is in exactly one.
+# CI's Hypothesis job runs the property modules in three shards side by side, `--shard json`, `--shard
+# records` and `--shard writer`; `tests/unit/test_source_files.py` checks that each module is in exactly one.
 SHARDS = {
     "json": (
         "test_jsonio_properties",
@@ -54,6 +54,7 @@ SHARDS = {
         "test_read_properties",
         "test_record_mutants",
     ),
+    "writer": ("test_writer_properties", "test_writer_mutants"),
 }
 
 

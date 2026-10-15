@@ -238,14 +238,18 @@ jobs:
     if: needs.gate.outputs.hypothesis == 'true' && !inputs.fuzz_only
     runs-on: ubuntu-latest
     # On two workers locally, `deep` took 14.5 minutes for json and 10 for records, and `ci` under a minute each
-    # (2026-10-14): about three times that.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 45 || 10 }}
+    # (2026-10-14): about three times that. The writer shard's `ci` took 11 minutes on two workers locally
+    # (2026-10-15), and its `deep`, ten times the examples, about ten times that, unmeasured.
+    timeout-minutes: >-
+      ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      && (matrix.shard == 'writer' && 180 || 45) || (matrix.shard == 'writer' && 30 || 10) }}
     strategy:
       fail-fast: false
       matrix:
-        # Two shards side by side, of about the same length (`SHARDS` in tests/conftest.py): the JSON reader,
-        # RFC 8785 and the hash; and the envelope checks, versions and the read.
-        shard: [json, records]
+        # Three shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
+        # envelope checks, versions and the read; and the writer schema's value fields, whose validation with
+        # jsonschema makes them the longest.
+        shard: [json, records, writer]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
     steps:
@@ -427,10 +431,13 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/findings"
           uv run python -m tests.fuzz.record_properties -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
-      # What the property target found is in the example database: replayed first here, and shrunk.
+      # What the property target found is in the example database: replayed first here, and shrunk. The writer
+      # schema's properties are no fuzz target, and their shard keeps its own database.
       - name: Replay and shrink what was found
         if: success() || failure()
-        run: uv run pytest tests/property -n auto --dist worksteal
+        run: >-
+          uv run pytest tests/property -n auto --dist worksteal
+          --ignore=tests/property/test_writer_properties.py --ignore=tests/property/test_writer_mutants.py
       - name: Keep the inputs that failed
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
