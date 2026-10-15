@@ -14,7 +14,10 @@ not resolve.
   them, so the specification keeps its prose (`tests/spec_sync/test_schemas.py`, `test_value_fields.py`).
 - **Tokens** are edited in the specification's tables and token lists. The vocabulary is generated from them
   (`0.1/vocabulary/`), and a schema takes a token list from it by `$ref`: a reason's code in `read_result.json`,
-  and every token list of a value field in `record.writer.json`.
+  and every token list of a value field in `record.writer.json` but the status-object tokens, which are
+  written there by hand and checked against `provenance.md` section 1. The writer schema is closed in its
+  structure but for the places its description names: a section's field names, which the vocabulary
+  registers, and the placeholders whose members the specification does not yet name.
 - **The reader schema** is generated from the writer schema by `scripts/gen_reader_schema.py`, which opens it
   where a reader is open: unknown members and tokens pass, a pattern stays only on `id`, `version` and
   `content_hash`, and the shapes of value fields, forms and a section's `specimen` are never applied. Its
