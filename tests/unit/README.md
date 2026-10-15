@@ -13,4 +13,6 @@ Tests by example, for what the conformance cases and the properties do not reach
   import, relative imports included, the SPDX header on every Python file, that each property module is in
   one shard, and that the classifiers and `requires-python` name the Pythons the `tests` job runs;
 - the scripts in `scripts/`, the generators included, and the audits of `tests/property/`, each against
-  inputs it must refuse.
+  inputs it must refuse;
+- the typed shapes against what the reader gives: each member the schemas declare whole admits the float a
+  JSON number reads as (`test_shapes.py`).
