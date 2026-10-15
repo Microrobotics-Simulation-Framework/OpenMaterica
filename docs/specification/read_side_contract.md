@@ -130,7 +130,8 @@ in one alternative it ends that alternative's read and refuses the field: the al
    [PR-331]
 3. An `unknown` result carries the value the record holds, so that a waiver has something to use. A `not_met`
    result carries no value, except where a declared extrapolation or nominal covers it: the status stays
-   `not_met`, the value is present, and `assumption` names the declaration. [PR-302] [PR-307]
+   `not_met`, the value is present, and `assumption` names the declaration. [PR-302] [PR-307] A result that
+   rests on no single alternative carries no value either way (section 3, step 7). [PR-336]
 4. A value whose origin is `stated_without_origin` (a number found in code or a datasheet with nothing behind
    it) gives `unknown` with the reason `stated_without_origin`, which a waiver may accept, so that the
    material input sheet records it (AD 4.7). [PR-309]
@@ -211,10 +212,10 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    A pick that applies to the read (section 1) is checked next. It gives `pick_invalid` where the field holds
    no `alternatives`, where its `index` lies past the last stored alternative, or where an overlay applied at
    step 6 replaces the field: its index then names no stored alternative of the field read. `pick_invalid`
-   carries no `condition` and no `alternative`, and ends the read. No alternative is read, and the result
-   holds no `value`, `unit` or other member read from the field; its `labels` holds at most
-   `hash_not_checked`. A reader never reads another alternative in place of the one a pick names. [PR-304]
-   Otherwise only the alternative the pick names is read, by its index among the stored alternatives,
+   carries no `condition` and no `alternative`, and ends the read. The pick is not applied, no alternative is
+   read, and the result holds no `value`, `unit` or other member read from the field; its `labels` holds at
+   most `hash_not_checked`. A reader never reads another alternative in place of the one a pick names.
+   [PR-304] Otherwise only the alternative the pick names is read, by its index among the stored alternatives,
    set-aside ones included. It is read as a field, by steps 8 to 13, and the result is its read. No other
    alternative is read, so a fault in one refuses nothing. [PR-304] [PR-013]
 
@@ -223,8 +224,8 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    on the order of reading. [PR-044]
    - An alternative is set aside where its conditions, the form's own axis entry aside (section 5), give
      `not_met` at step 10. [PR-044]
-   - A table alternative is set aside where its read lies outside its readable range at step 11, off every
-     declared edge, and no extrapolation the request carries would cover it (section 5). [PR-044]
+   - A table alternative is set aside where its read lies outside its readable range at step 11, not exactly
+     at a declared edge, and no extrapolation the request carries would cover it (section 5). [PR-044]
    - Nothing else sets an alternative aside. A table alternative that an extrapolation the request carries
      would cover stays, since a pick would let the extrapolation apply. One whose form `want` cannot give
      stays: an interval under `want: value`, a constant under `want: bounds`, or a table read over an
