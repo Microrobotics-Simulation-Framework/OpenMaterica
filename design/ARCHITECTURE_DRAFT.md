@@ -1316,11 +1316,12 @@ key.
   hash.
 - **Adding without breaking.** Any section, field, record type or extension can be added later as a minor
   schema change if five rules hold. Sections are optional, and a reader ignores sections it does not use. An
-  added field never changes the meaning of an existing one; a change that would is major. An added member is
-  never one slip from a member valid at its place (specification `record_format.md` section 10), since a
-  reader refuses such a near-typo (maintainer, 2026-10-14). A condition a reader
-  does not know gives "unknown", refused unless waived, because some conditions change what a value means
-  (section 4.8); and an unknown token in an enumerated field (a new interpolation scheme, statistics basis or
+  added field or member never changes how an existing one is read, since an older reader ignores what it does
+  not know, unless every older reader refuses each field it would change; a change that would is otherwise
+  major. An added member is never one slip from a member valid at its place (specification `record_format.md`
+  section 10), since a reader refuses such a near-typo (maintainer, 2026-10-14). A condition a reader does not
+  know gives "unknown", refused unless waived, because some conditions change what a value means (section
+  4.8); and an unknown token in an enumerated field (a new interpolation scheme, statistics basis or
   uncertainty structure) refuses that field, so an old reader never falls back to a default it does know. A
   reader skips a record type it does not know when listing, and refuses it when referenced (section 4.1). A
   reader that knows schema 1.2 therefore reads a 1.3 record, refusing exactly what it cannot interpret, and
@@ -2655,6 +2656,7 @@ maintainer's review.
 |---|---|---|
 | a table MAY carry `points`, in a stated shape, which every 0.1.0 reader refuses | `points` is a reserved name: a 0.1.0 writer writes none, a reader refuses it as before, and its shape comes with its first consumer (4.4) | a 0.1.0 record holding it could be read by no reader before 1.0.0, and its shape would have been fixed before the rule for reading it, which may need spreads stated by region, off the knots |
 | a knot's own block replaced the table's for that knot | the text states no rule for a spread that varies along the axis | the rule the spike found safe never returns a knot's own block alone: on a knot it takes the larger spread of both intervals |
+| an added field never changed the meaning of an existing one, but a member inside one, a table's or a statistics block's, could | from 1.0.0, a member that changes how earlier members are read is refused by every older reader, or the change is major (5.6) | an older reader ignores a member it does not know, so where a newer version let a per-knot or regional block widen a table's block, it would read the narrower one |
 
 The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.
 

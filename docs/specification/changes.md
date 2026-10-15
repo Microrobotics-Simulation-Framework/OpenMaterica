@@ -256,4 +256,7 @@ with its first consumer; a 0.1.0 writer writes none, the closed writer schema re
 0.1.0 reader refuses a table that holds it, whatever it holds, as before (`points_unsupported`, PR-157), so
 that reason stands alone whatever `points` holds, `null` aside, which is also `form_invalid` (PR-049); and a
 table's block applies to every value the table gives, the text no longer saying that a knot's own block
-replaces it (`record_format.md` sections 5 and 6, `uncertainty.md` section 1 rule 2).
+replaces it (`record_format.md` sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, a later
+minor version adds no member that changes how an earlier one's members are read, since an older reader
+ignores it, unless every older reader refuses each field the member would change; otherwise the change is
+major (`record_format.md` section 10).
