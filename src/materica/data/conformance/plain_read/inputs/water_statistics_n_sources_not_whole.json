@@ -1,0 +1,74 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/water_fixture",
+  "version": "1.0.0",
+  "name": "Water (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:42924853a6bc37e36b4e908530ec012b902efa0c74ae8b021d0a834052309a45",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "fluid": {
+        "fields": {
+          "dynamic_viscosity": {
+            "form": "constant",
+            "unit": "Pa.s",
+            "value": 0.000692,
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "shear_rate": {
+                "status": "unstated"
+              }
+            },
+            "statistics": {
+              "central": "mean",
+              "n_specimens": {
+                "status": "unstated"
+              },
+              "n_donors": {
+                "status": "unstated"
+              },
+              "mean": 0.000692,
+              "sd": 2e-05,
+              "min": 0.00066,
+              "max": 0.00072,
+              "distribution": "normal",
+              "basis": "across_sources",
+              "represents": "across_sources",
+              "dispersion": "reported",
+              "relative_uncertainty": {
+                "status": "none"
+              },
+              "expanded_uncertainty": {
+                "status": "none"
+              },
+              "n_sources": 2.5
+            },
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            },
+            "label": "materica.fluid.newtonian.v1"
+          }
+        }
+      }
+    }
+  }
+}

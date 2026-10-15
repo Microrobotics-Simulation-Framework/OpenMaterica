@@ -48,7 +48,7 @@
           "content_hash": "sha256:2dd13cc5a0a9abb5e910892f9ca7403866e4492f32d7f4dc8b0af86be493dc97"
         },
         "field": "bulk.density",
-        "value": 1200.0,
+        "value": 1180.0,
         "basis": "conformance fixture: the midpoint of the limits",
         "reason": "conformance fixture: an illustrative reason"
       }
@@ -61,7 +61,7 @@
         "code": "want_mismatch"
       }
     ],
-    "value": 1200.0,
+    "value": 1180.0,
     "unit": "kg/m3",
     "conditions": [
       {
@@ -138,7 +138,7 @@
     "labels": [],
     "assumption": {
       "acceptance": "nominal",
-      "value": 1200.0
+      "value": 1180.0
     }
   },
   "compare": {

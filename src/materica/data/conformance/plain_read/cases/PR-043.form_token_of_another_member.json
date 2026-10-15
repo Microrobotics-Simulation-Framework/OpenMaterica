@@ -13,7 +13,7 @@
       "record": {
         "id": "conformance/water_fixture",
         "version": "1.0.0",
-        "content_hash": "sha256:cfe3b0382b8d98a527aa00293ceb66d37f0afa72a462262717c4ea682eb56aa0"
+        "content_hash": "sha256:fba034cea474ca5cc547652b61a1848e21008fdda2fe196313f1132fb3c30ba8"
       },
       "field": "fluid.dynamic_viscosity"
     },

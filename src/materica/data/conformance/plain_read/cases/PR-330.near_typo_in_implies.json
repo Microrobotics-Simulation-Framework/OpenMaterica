@@ -1,0 +1,100 @@
+{
+  "case": "PR-330",
+  "variant": "near_typo_in_implies",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_in_vivo_temperature_unstated.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:0118b93439ecc96bce7331e080d408556897ac9ebb4f0d3017b7deee4ba5bc27"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "implied_condition",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:0118b93439ecc96bce7331e080d408556897ac9ebb4f0d3017b7deee4ba5bc27"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "fact": "tissue_state",
+        "token": "in_vivo",
+        "implies": {
+          "temperature": {
+            "value": 310.15,
+            "unit": "K",
+            "plus_minu": [
+              {
+                "stated_as": "bound",
+                "value": 0.5,
+                "unit": "K"
+              }
+            ]
+          }
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "request_incomplete",
+        "condition": "temperature"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}
