@@ -43,19 +43,21 @@ Reason codes: `read_side_contract.md` section 4. Rationale: AD 4.3, 4.7, 4.8, 4.
 
 In a member of this table, an object holding `status` is a status object. It breaks its shape, and refuses the
 field it belongs to (`form_invalid`), where its `status` or `reason` is not a string, or where it also holds a
-member S defines (for a condition, `value`,
-`range`, `token`, `unit`, `basis`, `inferred_from`, `plus_minus` and `set_or_measured`; a fact's members; a
-statistics block's members). Where S is a number, a string or a token, and there only, it does so also where
-it holds any member but `status` and `reason`. Elsewhere a member beside `status` and `reason` that S does not
-define is ignored, as a member the reader does not know (`record_format.md` section 10). A status token its
-row does not allow refuses the field as `form_invalid`, and one the reader does not know as `unknown_token`.
-At read, these refusals apply to the members step 8 checks (`read_side_contract.md` section 3); in any other
-member they are left to the record checks. Two members are read otherwise: `review` never refuses (section 2
-item 6), and a unit's token, known or not, is compared only at step 9 (`record_format.md` section 4.2), the
-rest of this paragraph holding for a unit at step 8. In a member not in this table, an object holding `status`
-is not a status object: it is read as the member's own shape, in which `status` is a member the reader does
-not know. The keys of `conditions` and of `specimen` are names, so `status` there names a condition or a fact,
-never a status. [PR-110]
+member S defines (for a condition, `value`, `range`, `token`, `unit`, `basis`, `inferred_from`, `plus_minus`
+and `set_or_measured`; a fact's members; a statistics block's members). Where S is a number, a string or a
+token, and there only, it does so also where it holds any member but `status` and `reason`. Elsewhere a member
+beside `status` and `reason` that S does not define is ignored, as a member the reader does not know
+(`record_format.md` section 10). A status token its row does not allow refuses the field as `form_invalid`,
+and one the reader does not know as `unknown_token`. A status object that breaks its shape is read for nothing
+else, so its token gives no reason of its own: one holding `withheld` beside a table's members refuses its
+field as `form_invalid` alone, not as a withheld value too (section 7 item 5). At read, these refusals apply
+to the members step 8 checks (`read_side_contract.md` section 3); in any other member they are left to the
+record checks. Two members are read otherwise: `review` never refuses (section 2 item 6), and a unit's token,
+known or not, is compared only at step 9 (`record_format.md` section 4.2), the rest of this paragraph holding
+for a unit at step 8. In a member not in this table, an object holding `status` is not a status object: it is
+read as the member's own shape, in which `status` is a member the reader does not know. The keys of
+`conditions` and of `specimen` are names, so `status` there names a condition or a fact, never a status.
+[PR-110]
 
 ## 2. The provenance object
 
