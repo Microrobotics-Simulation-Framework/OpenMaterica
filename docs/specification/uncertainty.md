@@ -60,9 +60,11 @@ interval's bounds (rule 8). [not yet covered]
    missing there, breaks the block's shape. [RC-051] [PR-158]
 2. **Tables and power laws.** A block on a table or a power law applies to every value the form gives: its
    `mean`, `min` and `max` hold `{"status": "not_applicable"}`, and its spread members (`sd`,
-   `relative_uncertainty`, `expanded_uncertainty`) apply to each value. A table entry with a spread of its own
-   carries a block in the table's `points` (`record_format.md` section 6), which replaces the table's for that
-   entry. A composition component and a parameter MAY carry a block of their own. [PR-157]
+   `relative_uncertainty`, `expanded_uncertainty`) apply to each value. A reader does not refuse a number in
+   `mean`, `min` or `max`; a checker flags it (RC-052). A table entry with a spread of its own carries a block
+   in the table's `points` (`record_format.md` section 6), which replaces the table's for that entry. A 0.1.0
+   reader refuses a table that holds `points` (`points_unsupported`, `record_format.md` section 6, table
+   item 5). A composition component and a parameter MAY carry a block of their own. [PR-157]
 3. `represents` is required, on the block and on each uncertainty, and each describes only its own spread. A
    population spread and the uncertainty of a mean differ by about the square root of the number of specimens,
    so a reader never substitutes one for the other. [PR-150] [PR-155]
@@ -80,8 +82,9 @@ interval's bounds (rule 8). [not yet covered]
    it; `n_donors` no greater than
    `n_specimens`; `min <= mean <= max` where all three are numbers; `across_sources` with a search record
    (`provenance.md` section 2); a constant's `value` equal to `mean` when `central` is `mean`, and inside
-   `[min, max]` where both are numbers; `basis` and `represents` other than `not_applicable` where the block
-   has a numeric `sd`, `min` or `max`; and `dispersion: reported` with at least one numeric spread member
+   `[min, max]` where both are numbers; on a table or a power law, `central`, `mean`, `min` and `max` holding
+   `not_applicable` (rule 2); `basis` and `represents` other than `not_applicable` where the block has a
+   numeric `sd`, `min` or `max`; and `dispersion: reported` with at least one numeric spread member
    (`sd`, `min` and `max`, or an uncertainty). These apply to the block's own spread and to each uncertainty
    separately. [RC-052] [RC-058]
 8. A value known only as bounds is an interval, not a statistics block (`record_format.md` section 6). An
@@ -255,7 +258,7 @@ that name, in a member whose row does not allow it (`student_t` in a block's `di
 | FE-040 | family evaluation | an unknown uncertainty-structure token refuses the parameter set |
 | FE-041 | family evaluation | a nominal vector from an ensemble is refused |
 | FE-042 | family evaluation | `marginals` is returned with dependence unstated |
-| PR-157 | plain read | a table's block applies to each value; an entry's own block replaces it |
+| PR-157 | plain read | a table's block applies to each value, between knots included; a 0.1.0 reader refuses a table that holds `points` (`points_unsupported`); a numeric `mean` on a table's block is returned as stored |
 | SA-001 | sampling | a spread whose `represents` differs from the requirement's, or is unstated, is not sampled |
 | SA-002 | sampling | a constant with no reported spread is not sampled without a declared distribution |
 | SA-003 | sampling | an interval is not sampled without a declared distribution |

@@ -312,9 +312,10 @@ every alternative is set aside, the result is `not_met` with the reasons of each
 
 ## 6. The value forms
 
-Every form carries the range it covers: a constant through its conditions, a table through its abscissae, a
-power law through its `range`, a parameter set through its coverage. How a read is checked against that range,
-and against a declared extrapolation, is in `read_side_contract.md` section 5. [PR-014]
+Every form carries the range it covers: a constant through its conditions, a table through its abscissae and
+`source_range` (table item 3), a power law through its `range`, a parameter set through its coverage. How a
+read is checked against that range, and against a declared extrapolation, is in `read_side_contract.md`
+section 5. [PR-014]
 
 **Constant.** `"value": <number>`. [PR-015]
 
@@ -326,18 +327,39 @@ and against a declared extrapolation, is in `read_side_contract.md` section 5. [
           "scheme": "linear", "edges": [], "source_range": [273.15, 373.15]}
 ```
 
-1. `axis` is a condition name and `axis_unit` its registered unit. `x` holds at least two distinct values and
-   is non-decreasing. `edges` is a list of numbers; each edge appears in `x` exactly twice, consecutively, the
-   two entries giving the values below and above it, and no other x value repeats. [RC-008] [RC-018]
+1. `axis` names the table's axis, a numeric condition, and the field's `conditions` holds that condition as
+   `{"status": "not_applicable"}` (section 4.1). `axis_unit` is a string or a status object; step 9 alone
+   compares it with that condition's registered unit (section 4.2). `x` holds at least two distinct values and
+   is non-decreasing, and `y` holds one number for each entry of `x`. `edges` is a list of numbers, empty
+   where the table has none, with no number twice; each edge lies strictly between `x[0]` and `x[-1]` and
+   appears in `x` exactly twice, consecutively, the two entries giving the values below and above it, and no
+   other x value repeats. Numbers are compared by value, so `-0` equals `0`. [RC-008] [RC-018] [PR-322]
 2. `scheme` is `linear` or `loglog`. A `loglog` table holds only positive `x` and `y`. [RC-019] [PR-016] A
-   reader refuses a table that breaks item 1 or item 2, with the reason `form_invalid`. [PR-045]
-3. The table is read between `x[0]` and `x[-1]`, inclusive. A read exactly at an edge is refused (the value is
-   two-sided); otherwise the interval used is the one whose two knots bracket the read, strictly where an edge
-   is concerned, so a read just below an edge uses the knot below it. [PR-017] [PR-018]
-4. `source_range`, where present, is the range the source says the values hold over. It never extends the
-   readable range. [PR-019]
+   reader refuses a table that breaks item 1 or item 2, with the reason `form_invalid`. [PR-045] A `scheme`
+   that is a string other than these two is a token the reader does not know: the field is refused with the
+   reason `unknown_token` (section 10 item 3), not `form_invalid` for the scheme. An `axis` that is a string
+   naming no numeric condition the reader knows, a token condition's name included, is a token the reader
+   does not know for that member: the field is refused with the reason `unknown_token` (section 10 item 3),
+   not `form_invalid` for the axis, and item 1's rule on the axis condition is not checked. An `axis` that is
+   not a string breaks item 1. [PR-032]
+3. The table is read over its **readable range**: from `x[0]`, or `source_range[0]` where that is greater, to
+   `x[-1]`, or `source_range[1]` where that is smaller, inclusive. An operating value is compared with these
+   ends and with the edges by value and exactly (`read_side_contract.md` section 5, "Exactness"), so `-0` lies
+   at an end or an edge at `0`. A read exactly at an edge is refused (the value is two-sided), wherever the
+   edge lies; where the edge lies outside the readable range, the refusal at the edge decides, not the range
+   (`read_side_contract.md` section 5, "The form's range"). Otherwise the interval used is the one whose two
+   knots bracket the read, strictly where an edge is concerned, so a read just below an edge uses the knot
+   below it; a knot outside `source_range` is used where it brackets a read inside the readable range.
+   [PR-017] [PR-018] [PR-019]
+4. `source_range`, where present, is the range the source says the values hold over: two numbers, the first
+   not greater than the second, sharing with `[x[0], x[-1]]` at least one value that is no edge. A reader
+   refuses one that is not (`form_invalid`). It never extends the readable range, and narrows it where it is
+   narrower (item 3). [PR-019]
 5. A table MAY carry `points`: a list as long as `x`, each entry holding that knot's own `provenance` and
-   optionally `statistics`, where entries came from different places in a source. [not yet covered]
+   optionally `statistics`, where entries came from different places in a source. How a read uses them is
+   planned with their first consumer. Until then a 0.1.0 reader refuses a table that holds `points`, whatever
+   it holds, with the reason `points_unsupported`, so that a knot's own spread or origin is never replaced by
+   the table's. [PR-157]
 
 **Power law.**
 
@@ -528,8 +550,8 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-015 | plain read | a constant is returned with its conditions |
 | PR-016 | plain read | linear and log-log tables interpolate by their scheme |
 | PR-017 | plain read | outside the tabulated range is refused (`outside_range`) |
-| PR-018 | plain read | exactly at an edge is refused; just below and just above an edge read the correct side |
-| PR-019 | plain read | `source_range` does not extend the readable range |
+| PR-018 | plain read | exactly at an edge is refused, wherever the edge lies, and outside the readable range the refusal decides; just below and just above an edge read the correct side; `-0` at an edge at `0` is at it |
+| PR-019 | plain read | `source_range` never extends the readable range, and narrows it where it is narrower; one that is not two ordered numbers sharing with `x`'s range a value that is no edge refuses the field (`form_invalid`) |
 | PR-020 | plain read | a power law evaluates in the field's unit (planned with the acoustic section) |
 | PR-021 | plain read | a power law with an unstated range gives `unknown` (`range_unstated`) |
 | PR-022 | plain read | an interval returns its bounds with their basis, a one-sided one included |

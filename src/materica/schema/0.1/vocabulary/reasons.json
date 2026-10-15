@@ -31,6 +31,7 @@
         "nominal_invalid",
         "stated_without_origin",
         "family_suite_absent",
+        "points_unsupported",
         "overlay_base_mismatch",
         "overlay_scope_mismatch",
         "overlay_conflict",
@@ -254,6 +255,12 @@
       ]
     },
     "family_suite_absent": {
+      "status": "not_met",
+      "steps": [
+        8
+      ]
+    },
+    "points_unsupported": {
       "status": "not_met",
       "steps": [
         8

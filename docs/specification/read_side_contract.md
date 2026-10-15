@@ -65,7 +65,8 @@ A request's `acceptances` take only the kinds `pick`, `overlay`, `extrapolation`
 `implied_condition` (`declarations.md` section 4.1). Each is checked here, whatever field or location it
 names: its `field` as the target's is (the pattern, and a registered field), and its kind's own members, have
 their shapes; its `reason` and `basis` are ignored. An acceptance of any other kind, or one that breaks
-its shape, gives `request_incomplete`, and so do two `nominal` acceptances naming one field. An implied
+its shape, gives `request_incomplete`, and so do two `nominal`, or two `extrapolation`, acceptances naming
+one field. An implied
 condition breaks its shape where its `fact` is not a specimen fact with tokens or its `token` is not one of
 that fact's, and where `implies` names a condition that is not registered, or gives one a status object,
 `plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries that `condition`
@@ -80,7 +81,8 @@ so a pick or an implied condition declared for one place never reaches a read of
 
 Two checks need the form, so they are made when the form is evaluated (section 3, step 11): a table or power
 law read with no operating value for its axis is refused with `request_incomplete` [PR-308], and one read over
-an operating range of its axis gives `want_mismatch` until a read over a band is specified (section 6).
+an operating range of its axis gives `want_mismatch` until a read over a band is specified (section 6), and
+no other reason of that step, since no point is read.
 [PR-321] One check needs the field's specimen facts, so it is made when the conditions are checked (section 3,
 step 10): two implied conditions that both apply to the field (its specimen states each one's fact and token)
 and supply different values for one condition give `request_incomplete` with that `condition`, whether or not
@@ -124,9 +126,9 @@ in one alternative it ends the read, and the alternative is not set aside (secti
    material input sheet records it (AD 4.7). [PR-309]
 5. Every member a result returns from a record holds the members the reader's version defines, each
    unconverted: numbers as read, status objects as status objects. That covers what this table calls "as
-   stored" (statistics, bounds, components) and every other such member: a condition entry's `record`, the
-   specimen facts and a `derivation`. A member the reader does not know is left out (`record_format.md`
-   section 10). [PR-337]
+   stored" (statistics, bounds, components, a table) and every other such member: a condition entry's
+   `record`, the specimen facts and a `derivation`. A member the reader does not know is left out
+   (`record_format.md` section 10). [PR-337]
 6. `reasons` and `labels` are always present, `labels` perhaps empty. `conditions` is present once step 10 has
    run to its end, and only then, with each name once and in no set order: a read that two disagreeing
    implied conditions end at step 10 (section 1), or that step 7 ends with `want_mismatch` over alternatives,
@@ -142,7 +144,9 @@ in one alternative it ends the read, and the alternative is not set aside (secti
 ## 3. The read procedure
 
 A reader takes these steps in this order. A step that gives `not_met` ends the read, with the reasons found so
-far; a step that gives `unknown` does not.
+far, except step 11's `outside_range` under an extrapolation that applies (section 5), after which the read
+goes on to steps 12 and 13, and except the form's own axis entry at step 10, which step 10 gives no reason for
+and does not end the read on (section 5, first row); a step that gives `unknown` does not.
 
 0. **Request.** Check the request on its own (section 1: `request_incomplete`, `want_mismatch` for a suite the
    reader does not claim, `request_unit_mismatch`). [PR-308] [PR-320] [PR-330]
@@ -216,8 +220,9 @@ far; a step that gives `unknown` does not.
    included; `label`; and in `provenance` its `origin`, its `source` (present for origin `measured_by_source`,
    and its `key` wherever present) and its `derivation` for origin `derived` (`provenance.md` section 5).
    `review` never refuses the field (`provenance.md` section 2 item 6), nor does a missing `label`
-   (`record_format.md` section 4.1); the other members of a value field are left to the record checks.
-   [PR-045] [PR-109] [PR-110] Beyond shapes, step 8 checks these values:
+   (`record_format.md` section 4.1); the other members of a value field are left to the record checks. Every
+   member of a table that the reader's version defines is checked, so a table returned as stored (section 2)
+   holds only checked members. [PR-045] [PR-109] [PR-110] Beyond shapes, step 8 checks these values:
    - counts (`n_specimens`, `n_donors`, `n_sources`, an ensemble's `counts`) are whole and not negative, and
      an evidence entry's `standard.year` is whole;
    - a condition's or fact's `range`, and an interval's numeric bounds, are in order;
@@ -229,6 +234,9 @@ far; a step that gives `unknown` does not.
    - a statistics block's conditional members are present exactly where its `represents` calls for them, an
      uncertainty has a numeric coverage factor or coverage probability, and its `dof` is a number exactly
      where its `distribution` is `student_t`;
+   - a table's `axis`, `axis_unit` (as a string or a status object), `x`, `y`, `scheme`, `edges` and
+     `source_range`, and its axis condition, by `record_format.md` section 6 table items 1, 2 and 4; a table
+     that holds `points` gives `points_unsupported` (item 5);
    - a status object stands only in a member that allows it, with a token its row allows (`provenance.md`
      section 1 item 5). [PR-050] [PR-051] [PR-052] [PR-108] [PR-110] [PR-158]
 
@@ -290,17 +298,18 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `condition_outside` | not_met | 10 | a stated condition outside the tolerance | section 5 |
 | `condition_not_accepted` | not_met | 10 | a token condition not in the accept list | section 5 |
 | `condition_uncertain` | unknown | 10 | a met condition whose stated ± leaves the tolerance unassured | section 5 |
-| `outside_range` | not_met | 11 | outside the form's range, with no declared extrapolation | section 5 |
+| `outside_range` | not_met | 11 | outside the form's range (for a table, its readable range), whether or not a declared extrapolation covers it | section 5 |
 | `at_edge` | not_met | 11 | a table read exactly at a declared edge | `record_format.md` 6 |
 | `range_unstated` | unknown | 11 | a power law with no stated range; only an extrapolation accepts it | `record_format.md` 6 |
 | `want_mismatch` | not_met | 0, 7, 11, 13 | a `want` the form cannot give, or one belonging to a suite the reader does not claim | section 6 |
 | `nominal_invalid` | not_met | 13 | a declared nominal outside the interval's bounds; never accepted | `declarations.md` 4.1 |
 | `stated_without_origin` | unknown | 12 | a value with nothing behind it | section 2 |
 | `family_suite_absent` | not_met | 8 | a parameter set, read without family evaluation | `record_format.md` 6 |
+| `points_unsupported` | not_met | 8 | a table holding `points`, which a 0.1.0 reader does not read | `record_format.md` 6 |
 | `overlay_base_mismatch` | not_met | 6 | an overlay whose base differs from the record in use; never accepted | `record_format.md` 4.4 |
 | `overlay_scope_mismatch` | not_met | build | an overlay scoped to another consumer, model or configuration (a build check) | `declarations.md` 5 |
 | `overlay_conflict` | not_met | 6 | two declared overlays replace one field | `record_format.md` 4.4 |
-| `request_incomplete` | not_met | 0, 10, 11 | a request that is not valid JSON or departs from the request's shape (a member missing or of the wrong JSON type, a reference without its `id`, `version` or `content_hash`, a target with both or neither of record and region, a field off the pattern, a member one slip from one named at its place); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a tolerance with no operating condition, or one below zero; an operating range with `lo` above `hi`; a table or power law with no operating value for its axis; a label given by both number and name (`geometry.md`); a field that is not registered; an acceptance of a kind a read does not take, or one that breaks its shape; two nominals for one field; two implied conditions that apply and disagree | section 1 |
+| `request_incomplete` | not_met | 0, 10, 11 | a request that is not valid JSON or departs from the request's shape (a member missing or of the wrong JSON type, a reference without its `id`, `version` or `content_hash`, a target with both or neither of record and region, a field off the pattern, a member one slip from one named at its place); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a tolerance with no operating condition, or one below zero; an operating range with `lo` above `hi`; a table or power law with no operating value for its axis; a label given by both number and name (`geometry.md`); a field that is not registered; an acceptance of a kind a read does not take, or one that breaks its shape; two nominals, or two extrapolations, for one field; two implied conditions that apply and disagree | section 1 |
 | `request_unit_mismatch` | not_met | 0 | an operating condition or tolerance of a numeric condition whose `unit` is a string other than the registered one, compared code point for code point after JSON escapes are decoded, whatever else is wrong with the entry; or a value an implied condition supplies, alike | section 1 |
 | `owner_ambiguous` | not_met | scene | regions with no or tied priority claim one point | `geometry.md` |
 | `no_material` | not_met | scene | no region claims a point and the scene declares no background | `geometry.md` |
@@ -360,7 +369,7 @@ as follows. [PR-311] [PR-316]
 
 | Record holds | Request gives | Entry |
 |---|---|---|
-| `{"status": "not_applicable"}`, on the form's own axis | anything | the entry is `met` when the read lies in the form's range; the form checks it (last rows) [PR-312] |
+| `{"status": "not_applicable"}`, on the form's own axis | anything | the entry is `met` when the operating value lies in the form's range and on no declared edge, and otherwise `not_met`, with no operating value or over an operating range included. Step 10 gives no reason for it and does not end the read on it: the form checks it, at step 11, which gives the reason (last rows). Its status never sets an alternative aside (section 3, step 7). Where the read ends before step 11, the entry stands with no reason naming the axis. [PR-312] |
 | any other status object, on any condition; or the condition is absent | anything | `unknown` (`condition_unstated`) [PR-305] [PR-323] |
 | a name the reader does not know | anything | `unknown` (`condition_unknown_name`) [PR-031] |
 | any stated value, range or token | no tolerance and no accept list for it | `unknown` (`condition_unchecked`) [PR-313] |
@@ -397,11 +406,16 @@ entry changes as follows, every comparison exact:
 [PR-334]
 
 **The form's range.** A **constant's** range is its conditions: once they are met, it is read; step 11 adds
-nothing. A **table** is read at the operating value of its axis, which must lie within `[x[0], x[-1]]`; the
-tolerance never widens a table. A **power law** is read inside its `range`. Outside the range, the result is
-`not_met` (`outside_range`), unless the request carries a declared extrapolation, in which case the result
-carries the value at the nearest end of the range, the operating value, and `assumption`: the consumer
-computes the extrapolated value by its declared method (`declarations.md`). [PR-317] [PR-307]
+nothing. A **table** is read at the operating value of its axis, which must lie within its readable range
+(`record_format.md` section 6, table item 3: `[x[0], x[-1]]`, narrowed by `source_range`); the tolerance never
+widens a table. A **power law** is read inside its `range`. Outside the range, the result is `not_met`
+(`outside_range`). Under `want: value`, a declared extrapolation that applies to the read (section 1) covers
+it: the result stays `not_met`, its reasons kept; the read goes on to steps 12 and 13, which add theirs; and
+the result carries the value at the range's nearest end, taken from inside the range, and `assumption`, the
+operating value being the axis entry's `operating`. The consumer computes the extrapolated value by its
+declared method (`declarations.md`). Under any other `want` an extrapolation is not applied, nor at a declared
+edge: there `at_edge` stands and decides, whether the edge lies inside the readable range or outside it, with
+`outside_range` beside it where it lies outside (`declarations.md` section 4.2). [PR-317] [PR-307] [PR-019]
 
 ## 6. What a read returns: `want`
 
@@ -434,24 +448,36 @@ A consumer that evaluates a value form in its own code (for example in JAX, to t
 evaluator. OpenMaterica's code never runs inside a consumer's computation (AD principle 2), so the consumer
 writes the evaluator and checks it against the table evaluation cases. Numbers are compared with the relative
 tolerance a case file gives for the precision the evaluator runs in: 1e-12 for `binary64`, and the tolerance
-the file states for `binary32`. An evaluator claims the suite at the precision it runs in. [TE-012]
+the file states for `binary32`. An evaluator claims the suite at the precision it runs in. A derivative is the
+value's derivative with respect to the axis. [TE-012]
 
-1. An evaluator returns, beside the value, `in_range`: whether its condition lies inside the form's range
-   (`false` for a power law whose range is unstated). It MUST NOT only clamp: a clamped value outside the
-   range is an extrapolation, which needs the consumer's declaration, or `in_range` false stops the run
-   (`declarations.md`). [TE-002] [TE-003]
+1. An evaluator returns, beside the value, `in_range`: whether its condition lies inside the form's range (for
+   a table, its readable range, `source_range` included: `record_format.md` section 6, table item 3; at a
+   declared edge the refusal comes first, item 7) (`false` for a power law whose range is unstated). It MUST
+   NOT only clamp: a clamped value outside the range is an extrapolation, which needs the consumer's
+   declaration, or `in_range` false stops the run (`declarations.md`). [TE-002] [TE-003]
 2. Linear interpolation within `[x0, x1]` is `y0 + (x - x0) * (y1 - y0) / (x1 - x0)`. Log-log interpolation is
    `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) / (ln x1 - ln x0))`, in natural logarithms. [TE-004]
 3. At an interior knot the derivative depends on the side. An evaluator states which side it returns there
    (`left` or `right`), and the cases give both. JAX's `jnp.interp` returns the right-hand derivative at
    interior knots and the lower end (measured in prototype P5). [TE-005] [TE-006]
-4. At a table's ends, the derivative is the one from inside the range. At a repeated knot (a declared edge),
-   the value and derivative below it come from the interval below, and above it from the interval above.
-   [TE-007] [TE-011]
+4. At an end of a table's readable range, an interior knot of `x` included, the derivative is the one from
+   inside the range, whatever side the evaluator declares: item 3's side applies only at an interior knot
+   strictly inside the readable range. At a repeated knot (a declared edge), the value and derivative below it
+   come from the interval below, and above it from the interval above. [TE-007] [TE-011]
 5. For a log-log table, the derivative within an interval is `(y / x) * (ln y1 - ln y0) / (ln x1 - ln x0)`.
    [TE-008]
 6. For a power law, the derivative is `a * b * x^(b - 1)`, inside its range. [TE-009]
-7. At a declared edge, an evaluator refuses, as the reader does. [TE-010]
+7. At a declared edge, wherever it lies, inside the readable range or outside it, an evaluator refuses, as
+   the reader does, and the refusal comes before `in_range`. It reports the refusal as an output of its own,
+   never only through the value, and returns no number there: the value and the derivative are each absent
+   or, in a language that cannot raise, not a number (NaN), never finite and never infinite. A refusal stops
+   the run whatever the consumer declared, since nothing accepts `at_edge` (`declarations.md` section 4.2):
+   the consumer checks the refusal at every evaluation, stops the run there, and keeps nothing computed from a
+   refused evaluation. NaN is a second line only, since a comparison or a selection on it can give a finite
+   number. A case at an edge compares only the refusal, and passes only where the refusal is reported and
+   each number is absent or NaN. Elsewhere outside the range a case compares only `in_range`. [TE-010]
+   [TE-002]
 8. An evaluator that cannot report `in_range` or its derivative side does not claim the table evaluation
    suite.
 
@@ -465,12 +491,12 @@ the file states for `binary32`. An evaluator claims the suite at the precision i
 | PR-304 | plain read | an absent field gives `not_met`; alternatives without a pick give `unknown` with `alternative_values` |
 | PR-305 | plain read | an unstated or absent condition gives `unknown` |
 | PR-306 | plain read | a stated value outside the tolerance gives `not_met`; at exactly the tolerance, in doubles, `met` |
-| PR-307 | plain read | outside a form's range under a declared extrapolation: `not_met`, the end value, the assumption |
+| PR-307 | plain read | outside a form's range under a declared extrapolation and `want: value`: `not_met`, the value at the readable range's nearest end, the assumption, and steps 12 and 13's reasons and labels; not applied under another `want`, at a declared edge, or naming another field or location |
 | PR-308 | plain read | no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative |
 | PR-309 | plain read | a value stated without origin gives `unknown` |
 | PR-310 | plain read | every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete` |
 | PR-311 | plain read | the conditions the record holds, an implied condition fills, the row requires, another condition requires and the request names all appear in `conditions` (`measurement_dimension` with a tube, the record's or an implied one; `test_method` on remanence) |
-| PR-312 | plain read | the form's own axis entry is `met` when the read lies in the form's range |
+| PR-312 | plain read | the form's own axis entry is `met` when the read lies in the form's readable range off every edge, and `not_met` outside it, at an edge, over a range or with no operating value |
 | PR-313 | plain read | a stated condition with no tolerance or accept list gives `unknown` (`condition_unchecked`) |
 | PR-314 | plain read | a record range against an operating value, widened by the tolerance |
 | PR-315 | plain read | a token condition against an accept list |
@@ -479,8 +505,8 @@ the file states for `binary32`. An evaluator claims the suite at the precision i
 | PR-318 | plain read | `want: value` on each form |
 | PR-319 | plain read | `want: reference_data` on reference data and on another form |
 | PR-320 | plain read | an operating condition or tolerance of a numeric condition with a string unit other than the registered one is refused (`request_unit_mismatch`, with that `condition`), whatever else is wrong with the entry; units are compared code point for code point (`Cel`, `k`, `K` with U+212A); an operating condition's or tolerance's unit that is not a string gives only `request_incomplete`; a unit on a token or unregistered condition is compared with nothing, and the entry gives `request_incomplete` only where its own shape is wrong or its condition is not registered; a value an implied condition supplies in another unit is refused alike |
-| PR-321 | plain read | a table read over an operating range of its axis gives `want_mismatch` |
-| PR-322 | plain read | a table breaking a structural rule gives `form_invalid` for that field only |
+| PR-321 | plain read | a table read over an operating range of its axis gives `want_mismatch`, and no other reason of step 11 |
+| PR-322 | plain read | a table breaking a structural rule gives `form_invalid` for that field only: lengths, order, an edge at an end, listed twice, not repeated or repeated thrice, a repeated x that is no edge, a non-positive log-log value, an axis condition absent or not `not_applicable`, a `source_range` out of order, disjoint from `x`, or meeting `x`'s range only at an edge |
 | PR-323 | plain read | a condition holding `withheld`, `none`, `not_checked`, or `not_applicable` off the axis, gives `unknown` |
 | PR-324 | plain read | one measured value against an operating range: met only when the whole range lies within its tolerance |
 | PR-325 | plain read | a record range against an operating range, widened by the tolerance |
@@ -488,7 +514,7 @@ the file states for `binary32`. An evaluator claims the suite at the precision i
 | PR-327 | plain read | a reader without HS labels `hash_not_checked` the results that reach step 4, and still refuses, at step 1 and without that label, a stated hash that differs from a pin |
 | PR-328 | plain read | a reference with no candidate gives `malformed` when a supplied source did not parse, or parsed to a value that is neither a set-aside document nor an object with a string `id` and `version` (an array, an object with only an `id`); otherwise `absent`; a scene manifest or an engine crosswalk among the sources is set aside and never resolved |
 | PR-329 | plain read | candidates of one `id` and `version`: the one with the reference's hash is read, and identical copies are read once; none with the hash gives `pin_mismatch`, whether there is one candidate or several, unless one has an absent, `null` or ill-formed `content_hash`, or a supplied source is unreadable, which gives `malformed`; two with the hash whose bytes differ give `malformed` |
-| PR-330 | plain read | `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`) |
+| PR-330 | plain read | `request_incomplete` for: a request that is not valid JSON, or not an object; a member missing or of the wrong JSON type; a target with neither or both of record and region; a reference without its hash; a field off the pattern (`fluid`, `a.b.c`, `Fluid.x`); a `want` not in section 6; a requirement holding `label`, `represents` or `population_level`; a condition that is not registered; a `range` of three numbers; a tolerance for a token condition (with that `condition`); a tolerance below zero; an operating range with `lo` above `hi`; a field that is not registered (`fluid.surface_tension`, `acoustic.sound_speed`, `fluid.specimen`); an operating condition for a token condition; an acceptance of a kind a read does not take, or one that breaks its shape, whatever field it names; an acceptance naming a field that is not registered; an implied condition whose `fact` takes no tokens or whose `token` is not that fact's, or whose `implies` names a condition that is not registered or gives one a status object, `plus_minus`, `set_or_measured` or a token outside its row; two nominals naming one field; two extrapolations naming one field; an extrapolation without `method` or `law`, with an unknown `method`, or with an empty `law`, a `law` of white space being accepted; `operating_conditions` that is not an object beside a tolerance, with a second reason carrying the tolerance's `condition`; a tolerance of `-0` is accepted; a member the shape does not name at that place, at any depth, is ignored (a `unit` beside an `accept` list), unless it is one slip from a member named there, refused ones included (`acceptance` beside `target`, for `acceptances`) |
 | PR-331 | plain read | a reason appears once per code and condition, however many times its check fails; `condition` is present exactly on the codes section 2 lists |
 | PR-332 | plain read | a `want` of a suite the reader does not claim (`fit`, `coverage`, `reference_data` without the fits and reference data suite) gives `want_mismatch` at step 0 |
 | PR-333 | plain read | the `mean_of_specimen_fits` label is returned with a parameter set whose fit says so |
@@ -500,13 +526,13 @@ the file states for `binary32`. An evaluator claims the suite at the precision i
 | HS-010 | hash | a record whose recomputed hash differs from its own is refused (`hash_mismatch`), with one `pin_mismatch`, since its stated hash equals the pin |
 | HS-011 | hash | a reader with HS refuses a record whose stated hash differs from a pin (`pin_mismatch`), and one edited after pinning whose stated hash still equals the pin (`hash_mismatch` and one `pin_mismatch`); a reader without HS refuses the first as well (PR-327's pin arm) |
 | TE-002 | table evaluation | `in_range` is reported beside the value, inside and outside the range |
-| TE-003 | table evaluation | an evaluator that only clamps fails |
+| TE-003 | table evaluation | an evaluator that only clamps, or that ignores a narrower `source_range`, fails |
 | TE-004 | table evaluation | linear and log-log values match the stated formulas |
 | TE-005 | table evaluation | the left and right derivatives at each interior knot |
 | TE-006 | table evaluation | the evaluator's declared side matches what it returns |
-| TE-007 | table evaluation | at a table's ends, the inside derivative only |
+| TE-007 | table evaluation | at the ends of a table's readable range, an interior knot included, the inside derivative only, whatever side the evaluator declares |
 | TE-008 | table evaluation | the derivative of a log-log table |
 | TE-009 | table evaluation | the derivative of a power law inside its range |
-| TE-010 | table evaluation | an evaluator refuses at a declared edge |
+| TE-010 | table evaluation | an evaluator refuses at a declared edge, wherever it lies: it reports the refusal, and each number it returns there is absent or NaN, never finite or infinite |
 | TE-011 | table evaluation | values and derivatives on each side of a repeated knot |
 | TE-012 | table evaluation | a `binary32` evaluator meets its case file's `binary32` tolerance, and a `binary64` one 1e-12 |
