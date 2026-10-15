@@ -233,7 +233,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-013
 
-`record_format.md`: alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`
+`record_format.md`: alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`; a table alternative left outside its readable range, at a declared edge or over an operating range of its axis has its table as stored in its entry, with no extrapolation applied, even under an extrapolation that names the field
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
@@ -460,7 +460,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-044
 
-`record_format.md`: alternatives whose conditions are not met are set aside; all set aside gives `not_met`; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`)
+`record_format.md`: alternatives whose conditions are not met are set aside, a table never for its own axis entry (at a declared edge, or outside its readable range); all set aside gives `not_met`; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`)
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|

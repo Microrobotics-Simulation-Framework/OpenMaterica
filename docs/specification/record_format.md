@@ -301,8 +301,9 @@ field: an empty list, one that is not a list, or `alternatives` beside `form`, a
 member of the table above breaks the field's shape (`form_invalid`, at `read_side_contract.md` section 3,
 step 7). [PR-044]
 Alternatives may differ in form. Writers MUST NOT reorder or drop alternatives once a record is released; a
-new alternative is appended. [RC-017] A reader first sets aside every alternative whose conditions give
-`not_met`, and no other: never one whose form `want` cannot give. If more than one remains, it gives
+new alternative is appended. [RC-017] A reader first sets aside every alternative whose conditions, the form's
+own axis aside, give `not_met`, and no other: never one whose form `want` cannot give, and never a table for
+its own axis (`read_side_contract.md` section 5). If more than one remains, it gives
 `unknown` with the reason `no_pick`, carrying each remaining alternative in stored order, with its own
 conditions, specimen, statistics and provenance (`read_side_contract.md` section 2), unless the consumer
 declared a pick, which names one alternative by its index among the stored alternatives (`declarations.md`),
@@ -545,7 +546,7 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-010 | plain read | a field whose unit differs from the registered one is refused (`unit_mismatch`), compared code point for code point (`kg.m-3`, `Pa s`, `pa.s`); an escaped `\u0050a.s` is `Pa.s`; a status object where a string is registered, or a string on evidence, is refused (`unit_mismatch`, at step 9); a unit that is neither a string nor a status object gives `form_invalid` at step 8; a unit held as a status object is returned as stored, its `reason` included |
 | PR-011 | plain read | an overlay replaces a whole field, provenance included, with its own specimen |
 | PR-012 | plain read | an undeclared overlay is not applied |
-| PR-013 | plain read | alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions` |
+| PR-013 | plain read | alternatives with no pick give `unknown` (`no_pick`), with one `alternative_values` entry per remaining alternative, holding its index, value, conditions, specimen, statistics, provenance and labels, and no `conditions`, `specimen`, `statistics` or `provenance` of the result's own; a waiver does not accept it; a grade's `specification_limits` interval beside a lot's constant gives `no_pick` under `want: value` and under `want: bounds`, neither set aside for its form, the interval's entry holding its bounds as stored under `want: value`, with no nominal applied; under `want: components`, which neither form gives, `not_met` (`want_mismatch`), with no `conditions`; a table alternative left outside its readable range, at a declared edge or over an operating range of its axis has its table as stored in its entry, with no extrapolation applied, even under an extrapolation that names the field |
 | PR-014 | plain read | every form carries its range |
 | PR-015 | plain read | a constant is returned with its conditions |
 | PR-016 | plain read | linear and log-log tables interpolate by their scheme |
@@ -573,7 +574,7 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-041 | plain read | two declared overlays replacing one field are refused (`overlay_conflict`) |
 | PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`) |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
-| PR-044 | plain read | alternatives whose conditions are not met are set aside; all set aside gives `not_met`; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
+| PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry (at a declared edge, or outside its readable range); all set aside gives `not_met`; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
 | PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
 | PR-046 | plain read | an overlay replacing a field its base lacks is refused (`absent`) |
 | PR-047 | plain read | numbers read as the nearest double, ties to even, compared exactly: `9007199254740993` as `9007199254740992`; `1e-400` as `0`; `-1e-400` as `-0`, not `0`; `3e-324` as `5e-324`; `2.4703282292062327e-324` as `0`; `1.7976931348623158e308` as the largest double |

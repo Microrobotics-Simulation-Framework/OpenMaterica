@@ -99,7 +99,7 @@ in one alternative it ends the read, and the alternative is not set aside (secti
 | `status` | `met`, `not_met` or `unknown`. A build result adds the model, the region and what accepted it (`declarations.md`) |
 | `reasons` | a list of `{"code", "condition"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
 | `value` | present unless `not_met` without an assumption; its shape follows `want` (section 6) |
-| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`: its index among the stored alternatives; its value as `want` shapes it, or, where `want` cannot give its form, its form's member as stored, with no nominal applied (section 6); and the other members as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
+| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`: its index among the stored alternatives; its value as `want` shapes it, or, where `want` cannot give its form, or where it is a table read outside its readable range, at a declared edge or over an operating range of its axis, its form's member as stored, with no nominal or extrapolation applied (sections 5 and 6) [PR-013]; and the other members as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
 | `unit` | the field's unit, as stored: a unit held as a status object keeps its `reason` [PR-010] |
 | `conditions` | one entry per condition checked (section 5): `{"name", "status", "record"?, "operating"?}` (item 6) |
 | `specimen` | the field's specimen facts, the section's merged with the field's |
@@ -190,22 +190,22 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    (`withheld`), a base mismatch or a conflict, by `record_format.md` section 4.4. [PR-042] The overlay's
    scope is compared by the build, not here (`declarations.md` section 5).
 7. **Field.** Find the field (`absent`); one whose `alternatives` breaks its shape is refused (`form_invalid`,
-   `record_format.md` section 5). For alternatives, read each, set aside those whose conditions give
-   `not_met` (step 10), and with more than one left and no pick give `unknown` (`no_pick`); with none left,
-   give `not_met` with the reasons of each. An alternative is set aside for its conditions only, never for its
-   form: one whose form `want` cannot give (an interval under `want: value`, a constant under `want: bounds`)
-   stays. Under `no_pick` it appears in `alternative_values` as section 2 says, and no `want_mismatch` is
-   reported; but where no alternative left has a form `want` can give, the read gives `not_met`
-   (`want_mismatch`) in place of `no_pick`, since no pick could help. An interval counts as a form
-   `want: value` can give where a nominal the request carries applies to the read (section 1), since a pick
-   would let it apply. Otherwise `want` refuses only the alternative a pick names, or the
-   one left. So a grade's specification limits beside a lot's measured constant give `no_pick` until the
-   consumer picks (`provenance.md` section 6.2 item 5). A pick's index counts the stored alternatives,
+   `record_format.md` section 5). For alternatives, read each, set aside those whose conditions, the form's
+   own axis entry aside (section 5), give `not_met` (step 10), and with more than one left and no pick give
+   `unknown` (`no_pick`); with none left, give `not_met` with the reasons of each. An alternative is set aside
+   for its conditions only, never for its form: one whose form `want` cannot give (an interval under `want:
+   value`, a constant under `want: bounds`) stays. Under `no_pick` it appears in `alternative_values` as
+   section 2 says, and no `want_mismatch` is reported; but where no alternative left has a form `want` can
+   give, the read gives `not_met` (`want_mismatch`) in place of `no_pick`, since no pick could help. An
+   interval counts as a form `want: value` can give where a nominal the request carries applies to the read
+   (section 1), since a pick would let it apply. Otherwise `want` refuses only the alternative a pick names,
+   or the one left. So a grade's specification limits beside a lot's measured constant give `no_pick` until
+   the consumer picks (`provenance.md` section 6.2 item 5). A pick's index counts the stored alternatives,
    set-aside ones included. [PR-304] [PR-013] [PR-044] [PR-338] Whether a `no_pick` result also reports an
-   alternative's own reasons (its `condition_unstated`, say) is not yet specified. [not yet covered]
-   What a pick gives whose `index` is not a whole number, is negative or lies past the last stored
-   alternative, or that names a field holding no alternatives, is not yet specified; a reader never reads
-   another alternative in its place. [not yet covered]
+   alternative's own reasons (its `condition_unstated`, say) is not yet specified. [not yet covered] What a
+   pick gives whose `index` is not a whole number, is negative or lies past the last stored alternative, or
+   that names a field holding no alternatives, is not yet specified; a reader never reads another alternative
+   in its place. [not yet covered]
 8. **Form and tokens.** Refuse a form the field's row does not allow (`form_not_registered`), a value field,
    form or section `specimen` that breaks its shape (`record_format.md` sections 5 and 6, `provenance.md`),
    such as a member missing, of the wrong JSON type or `null`, a member one slip from a member named at its
