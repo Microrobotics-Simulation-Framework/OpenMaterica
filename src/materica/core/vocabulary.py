@@ -7,8 +7,9 @@ written in one place. A file of another shape is a broken installation, and load
 
 from dataclasses import dataclass
 from importlib import resources
-from typing import Literal, get_args
+from typing import Literal, get_args, get_type_hints
 
+from materica import shapes
 from materica.core import jsonio
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
@@ -67,6 +68,10 @@ class Vocabulary:
     fields: dict[str, RecordFieldSpec]
     facts: dict[str, FactSpec]
     acceptance_kinds: tuple[str, ...]
+    token_lists: dict[str, tuple[str, ...]]
+    """Every token list the vocabulary's files define in their `$defs`, by its name there (`central`,
+    `statistics_distribution`, `origin`, `form`): the tokens of the members the specification's tables
+    list. The other definitions there, the writer's bindings and patterns, are no token list."""
 
     @property
     def sections(self) -> frozenset[str]:
@@ -85,6 +90,7 @@ def load() -> Vocabulary:
         fields={name: _field(name, _object(row)) for name, row in fields.items()},
         facts={name: FactSpec(name, _strings(_object(row)["tokens"])) for name, row in facts.items()},
         acceptance_kinds=_strings(_file("acceptances.json")["kinds"]),
+        token_lists=_token_lists(),
     )
 
 
@@ -109,6 +115,20 @@ def _field(name: str, row: dict[str, JsonValue]) -> RecordFieldSpec:
         _strings(row["requires"]),
         None if label is None else _string(label),
     )
+
+
+def _token_lists() -> dict[str, tuple[str, ...]]:
+    found: dict[str, tuple[str, ...]] = {}
+    names = sorted(path.name for path in resources.files("materica").joinpath(*_LOCATION).iterdir())
+    for file_name in (name for name in names if name.endswith(".json")):
+        for name, definition in _object(_file(file_name).get("$defs", {})).items():
+            tokens = _object(definition).get("enum")
+            if tokens is None:
+                continue
+            if name in found:
+                raise ValueError(f"the vocabulary defines the token list {name} twice")
+            found[name] = _strings(tokens)
+    return found
 
 
 _LOCATION = ("schema", "0.1", "vocabulary")
@@ -137,3 +157,7 @@ def _strings(value: JsonValue) -> tuple[str, ...]:
 
 
 VOCABULARY = load()
+
+STATUS_TOKENS: tuple[str, ...] = get_args(get_type_hints(shapes.StatusObject)["status"])
+"""The five tokens a status object holds (`provenance.md` section 1 item 2), as the writer schema's status
+object lists them: they sit in no table, so the vocabulary has no file of them."""
