@@ -12,6 +12,34 @@ recorded in that repository's CHANGELOG.
 
 ## [Unreleased]
 
+### Schema
+- The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
+  the eight forms, or alternatives; the constant, interval, composition and evidence forms in full; conditions
+  with `plus_minus` and `set_or_measured`, the specimen facts with `supply_form` and `lot`, the statistics
+  block and its uncertainties, the provenance object and `label`; and a status object in exactly the members
+  `provenance.md` section 1 item 5 lists. The table, power-law, parameter-set and reference-data forms' own
+  members, the fit record, and the provenance members whose own members the text does not yet name stay
+  placeholders. Members a read does not check carry `x-materica-write-only` (`record.writer.json`).
+- The reader schema holds a value field's and a section specimen's shapes in `$defs`, as step 8 checks them,
+  applied from nowhere; the typed shapes gain a TypedDict per form and per shape (`materica.shapes`).
+- The vocabulary gains every token S2 reads, generated from the specification: the reason table's steps, the
+  bases a field's row allows a form, the conditions another condition requires, the element symbols, and the
+  form, interval, composition, statistics, uncertainty, provenance and result-label tokens, four of them in
+  new files (`forms.json`, `statistics.json`, `provenance.json`, `labels.json`).
+- `case.json` takes the `transform_draws` operation of a sampling case, its draws' shape not yet specified.
+
+### Verification
+- Checks that the value-field shapes match the specification's member tables, status table and examples, and
+  that the members marked write-only are those step 8 does not check (`tests/spec_sync/test_value_fields.py`).
+- A check that the names valid at one place stay more than one slip apart and that no name has two meanings,
+  over the schemas, the vocabulary and the specification, with an allowlist of the overlaps judged intended,
+  each with its reason and a safeguard quote that must stay in its document
+  (`tests/spec_sync/test_name_overlaps.py`).
+- A check that each reason code is given only at the steps the reason table names, against the text, and
+  against the code of steps 0 to 5, statically and traced through every read case file
+  (`tests/spec_sync/test_reason_steps.py`).
+- Each new check is shown failing on seeded faults.
+
 ## [0.1.0.dev1] - 2026-10-14
 
 A development pre-release, published to rehearse the release workflow and to hold the name on PyPI. It holds

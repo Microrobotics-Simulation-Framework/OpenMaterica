@@ -1,7 +1,8 @@
 {
   "$comment": "Each conformance case file, by name, and the step of the implementation whose code first runs it. Every case file of a step in `done` must pass (tests/spec_sync/test_case_steps.py).",
   "done": [
-    "S1"
+    "S1",
+    "S2a-1"
   ],
   "case_files": {
     "HS-001.escaped_names.json": "S1",
