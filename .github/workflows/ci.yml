@@ -311,8 +311,8 @@ jobs:
     # Weekly and on a manual run only: every second of fuzzing is a second billed.
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-    # Three targets at the default 300 s, the control (at most 3 minutes a target) and the replay: about 25
-    # minutes. A manual run longer than about 600 s a target needs this raised.
+    # Four targets at the default 300 s, the control (at most 3 minutes a target) and the replay: about 33
+    # minutes. A manual run longer than about 450 s a target needs this raised.
     timeout-minutes: 45
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
@@ -333,9 +333,9 @@ jobs:
       - run: uv sync --locked --group fuzz
 
       # Before the example database is restored, and with it removed after: the first two targets must find a
-      # fault seeded in `parse`, and the third one seeded in the read (tests/fuzz/seeded_fault.py); the replay
-      # must find what the fuzzing saved again and shrink it.
-      - name: Control, the faults seeded in parse and the read are found, replayed and shrunk
+      # fault seeded in `parse`, the third one seeded in the read, and the fourth one seeded in step 8
+      # (tests/fuzz/seeded_fault.py); the replay must find what the property targets saved again and shrink it.
+      - name: Control, the faults seeded in parse, the read and step 8 are found, replayed and shrunk
         env:
           MATERICA_FUZZ_SEEDED_FAULT: "1"
         run: |
@@ -348,13 +348,17 @@ jobs:
             > "$control/properties.log" 2>&1 || true
           uv run python -m tests.fuzz.record_properties -max_total_time=180 -artifact_prefix="$control/findings/" \
             > "$control/record_properties.log" 2>&1 || true
+          uv run python -m tests.fuzz.read_field_bytes --seed "$control/fields"
+          uv run python -m tests.fuzz.read_field_bytes --dict "$control/value_field.dict"
+          uv run python -m tests.fuzz.read_field_bytes "$control/fields" -dict="$control/value_field.dict" \
+            -max_total_time=180 -artifact_prefix="$control/findings/" > "$control/read_field_bytes.log" 2>&1 || true
           uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
             tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
             tests/property/test_hashing_properties.py tests/property/test_read_properties.py \
             > "$control/replay.log" 2>&1 || true
           # Each step and the fault it must find: the replay runs the properties of both.
           for check in "bytes:in parse" "properties:in parse" "record_properties:in the read" \
-            "replay:in parse" "replay:in the read"; do
+            "read_field_bytes:in step 8" "replay:in parse" "replay:in the read"; do
             log="${check%%:*}"
             fault="${check#*:}"
             if ! grep -q "IndexError: the seeded fault $fault" "$control/$log.log"; then
@@ -431,6 +435,14 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/findings"
           uv run python -m tests.fuzz.record_properties -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
+      - name: Fuzz raw bytes into step 8 (tests/fuzz/read_field_bytes.py)
+        if: success() || failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/findings"
+          uv run python -m tests.fuzz.read_field_bytes --seed "$RUNNER_TEMP/fields"
+          uv run python -m tests.fuzz.read_field_bytes --dict "$RUNNER_TEMP/value_field.dict"
+          uv run python -m tests.fuzz.read_field_bytes "$RUNNER_TEMP/fields" -dict="$RUNNER_TEMP/value_field.dict" \
+            -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
       # What the property target found is in the example database: replayed first here, and shrunk. The writer
       # schema's properties are no fuzz target, and their shard keeps its own database.
       - name: Replay and shrink what was found
