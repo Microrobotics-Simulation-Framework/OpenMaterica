@@ -18,8 +18,10 @@ string, no pattern, and every member marked `x-materica-write-only` any value an
 read does not check it.
 
 Every pattern in the writer schema must start with `^` and end with `(?![\\s\\S])`: a validator's `$` also
-matches before a final newline, so `"0.1.0\\n"` would match `^...$`. An enumeration under `if` or `not` stops
-the script, since opening it would turn the condition around.
+matches before a final newline, so `"0.1.0\\n"` would match `^...$`. Under `if` or `not`, anything the script
+opens (an enumeration, a pattern, a closed object, `propertyNames`, a shape never applied, a member marked
+write-only), there or through a `$ref`, stops it, since opening it would turn the condition around. So does a
+keyword the script does not know, whose subschemas it would copy unopened.
 """
 
 import json
@@ -43,6 +45,7 @@ DESCRIPTION = (
 )
 
 NEVER_APPLIED = ("json_value", "value_field", "specimen", "extension")
+CLOSING = ("additionalProperties", "unevaluatedProperties")
 # The shapes the reader schema's `$defs` hold, with every definition they refer to.
 CHECKED_AT_READ = ("value_field", "specimen")
 WRITE_ONLY = "x-materica-write-only"
@@ -59,6 +62,22 @@ SUBSCHEMA = (
     "else",
 )
 SUBSCHEMAS = ("prefixItems", "allOf", "anyOf", "oneOf")
+# The keywords copied as they are, which hold no subschema, and those the reader leaves out.
+VERBATIM = (
+    "type",
+    "const",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "minItems",
+    "maxItems",
+    "title",
+    "description",
+    "$schema",
+    "$id",
+)
+LEFT_OUT = ("propertyNames", "$defs", "$comment")
 # Where the members a node marks write-only are required nowhere either: its conditions and alternatives.
 SAME_OBJECT = ("then", "else", "allOf", "anyOf", "oneOf")
 VOCABULARY_REF = re.compile(r"vocabulary/([a-z_]+\.json)#/\$defs/([a-z_]+)")
@@ -89,11 +108,9 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
         patterned: bool = False,
         root: bool = False,
         write_only: frozenset[str] = frozenset(),
-        condition: bool = False,
     ) -> Json:
         """`node` opened; `inline` writes references out in place (the schema's root) or keeps them (its
-        `$defs`); `write_only` are members of the object `node` constrains that are required nowhere; and
-        `condition` says that `node` lies under an `if` or a `not`."""
+        `$defs`); `write_only` are members of the object `node` constrains that are required nowhere."""
         if not isinstance(node, dict):
             return node
         if "$ref" in node:
@@ -109,8 +126,6 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
             elif keyword == "enum":
                 if not (isinstance(value, list) and all(isinstance(token, str) for token in value)):
                     raise SchemaError(f"an enumeration of other than strings: {value!r}")
-                if condition:
-                    raise SchemaError(f"an enumeration under if or not: {value!r}")
                 reader["type"] = "string"
             elif keyword == "required":
                 if not (isinstance(value, list) and all(isinstance(name, str) for name in value)):
@@ -123,27 +138,48 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
                 reader[keyword] = {
                     name: True
                     if name in own
-                    else opened(
-                        member, inline=inline, patterned=root and name in PATTERNED, condition=condition
-                    )
+                    else opened(member, inline=inline, patterned=root and name in PATTERNED)
                     for name, member in value.items()
                 }
             elif keyword in SUBSCHEMA:
+                if keyword in ("if", "not") and opens(value, set()):
+                    raise SchemaError(
+                        f"{keyword} holds what the reader opens, which would turn it around: {value}"
+                    )
                 within = own if keyword in SAME_OBJECT else frozenset[str]()
-                below = condition or keyword in ("if", "not")
-                reader[keyword] = opened(value, inline=inline, write_only=within, condition=below)
+                reader[keyword] = opened(value, inline=inline, write_only=within)
             elif keyword in SUBSCHEMAS:
                 if not isinstance(value, list):
                     raise SchemaError(f"{keyword} that is not a list: {value!r}")
                 within = own if keyword in SAME_OBJECT else frozenset[str]()
-                reader[keyword] = [
-                    opened(member, inline=inline, write_only=within, condition=condition) for member in value
-                ]
+                reader[keyword] = [opened(member, inline=inline, write_only=within) for member in value]
             elif keyword == WRITE_ONLY:
                 raise SchemaError(f"{WRITE_ONLY} marks a member of properties, and nothing else: {node}")
-            elif keyword not in ("propertyNames", "$defs", "$comment"):
+            elif keyword in VERBATIM:
                 reader[keyword] = value
+            elif keyword not in LEFT_OUT:
+                raise SchemaError(f"a keyword this script does not know: {keyword}")
         return without_empty(reader)
+
+    def opens(node: Json, seen: set[str]) -> bool:
+        """Whether opening `node` changes what it accepts: whether it holds, or reaches through a `$ref`, an
+        enumeration, a pattern, a closed object, `propertyNames`, a shape never applied or a member marked
+        write-only."""
+        if isinstance(node, list):
+            return any(opens(item, seen) for item in node)
+        if not isinstance(node, dict):
+            return False
+        if isinstance(target := node.get("$ref"), str):
+            name = target.removeprefix("#/$defs/")
+            if VOCABULARY_REF.fullmatch(target) or (name in NEVER_APPLIED and name != "json_value"):
+                return True
+            if name in seen or name not in definitions:
+                return False
+            return opens(definitions[name], seen | {name})
+        closed = any(node.get(keyword, True) is not True for keyword in CLOSING)
+        if closed or {"enum", "pattern", "propertyNames"} & set(node) or members_marked(node):
+            return True
+        return any(opens(value, seen) for keyword, value in node.items() if keyword != "$defs")
 
     def reference(node: dict[str, Json], *, inline: bool, patterned: bool) -> Json:
         target = node["$ref"]

@@ -635,6 +635,102 @@ def test_a_writer_schema_the_script_cannot_open_is_refused(place: str, value: Js
         reader_schema(changed(place, value), VOCABULARY)
 
 
+def changes(*places: tuple[str, Json]) -> dict[str, Json]:
+    """WRITER with the subschema at each place, a path of names through it, set to its value."""
+    writer: dict[str, Json] = json.loads(json.dumps(WRITER))
+    for place, value in places:
+        *path, last = place.split("/")
+        node = writer
+        for name in path:
+            inner = node[name]
+            assert isinstance(inner, dict)
+            node = inner
+        node[last] = value
+    return writer
+
+
+@pytest.mark.parametrize(
+    "places",
+    [
+        pytest.param(
+            [
+                (
+                    "$defs/value_field/if",
+                    {"properties": {"basis": {"$ref": "vocabulary/tokens.json#/$defs/basis"}}},
+                )
+            ],
+            id="a_vocabulary_list_under_if",
+        ),
+        pytest.param(
+            [
+                ("$defs/kinds", {"enum": ["stated"]}),
+                ("$defs/value_field/if", {"properties": {"basis": {"$ref": "#/$defs/kinds"}}}),
+            ],
+            id="a_definitions_enumeration_under_if",
+        ),
+        pytest.param(
+            [
+                ("$defs/value_field/not", {"properties": {"basis": {"$ref": "#/$defs/kinds"}}}),
+                ("$defs/kinds", {"enum": ["a"]}),
+            ],
+            id="a_definitions_enumeration_under_not",
+        ),
+        pytest.param(
+            [("$defs/value_field/if", {"properties": {"unit": {"pattern": "^[a-z]+(?![\\s\\S])"}}})],
+            id="a_pattern_under_if",
+        ),
+        pytest.param(
+            [("$defs/value_field/if", {"properties": {"unit": {"$ref": "#/$defs/id"}}})],
+            id="a_definitions_pattern_under_if",
+        ),
+        pytest.param(
+            [
+                (
+                    "$defs/value_field/not",
+                    {"properties": {"note": {"type": "object", "additionalProperties": False}}},
+                )
+            ],
+            id="a_closed_object_under_not",
+        ),
+        pytest.param(
+            [("$defs/value_field/if", {"properties": {"field": {"$ref": "#/$defs/specimen"}}})],
+            id="a_shape_never_applied_under_if",
+        ),
+        pytest.param(
+            [("$defs/value_field/patternProperties", {"^x_": {"$ref": "#/$defs/note"}})],
+            id="patternProperties",
+        ),
+        pytest.param(
+            [
+                (
+                    "$defs/value_field/dependentSchemas",
+                    {"value": {"properties": {"basis": {"enum": ["stated"]}}}},
+                )
+            ],
+            id="dependentSchemas",
+        ),
+        pytest.param([("$defs/value_field/dependentRequired", {"value": ["basis"]})], id="dependentRequired"),
+        pytest.param([("$defs/common/minLength", 1)], id="minLength"),
+    ],
+)
+def test_what_opening_would_turn_around_or_copy_unopened_is_refused(places: list[tuple[str, Json]]) -> None:
+    """The review's probes: a `$ref` under `if` that reaches an enumeration was opened, turning the condition
+    around, and a keyword the script does not open was copied, closed lists and `$ref`s with it."""
+    with pytest.raises(SchemaError):
+        reader_schema(changes(*places), VOCABULARY)
+
+
+def test_a_condition_on_a_constant_is_kept_as_written() -> None:
+    """`const` is not opened, so a condition testing one keeps its meaning in the reader."""
+    condition: Json = {"required": ["value"], "properties": {"value": {"const": 1}}}
+    writer = changes(("$defs/value_field/if", condition), ("$defs/value_field/then", {"required": ["basis"]}))
+    definitions = reader_schema(writer, VOCABULARY)["$defs"]
+    assert isinstance(definitions, dict)
+    value_field = definitions["value_field"]
+    assert isinstance(value_field, dict)
+    assert (value_field["if"], value_field["then"]) == (condition, {"required": ["basis"]})
+
+
 def test_the_reader_schema_check_fails_when_it_differs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
