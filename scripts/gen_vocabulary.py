@@ -8,9 +8,10 @@ Tokens live in the specification and structure in the writer schemas (CONTRIBUTI
 each file holds tokens and none of the prose around them: a rule written in prose (when a field's label
 applies) is code with its own cases. Most tokens sit in tables; the rest sit in lists in a table cell or a
 sentence (`a`, `b` or `c`), each found after a quoted piece of text that must occur exactly once, up to the
-quoted text that ends it. A cell or a list not of the form expected stops the script, and every list of
-tokens is read in full or not at all: the specification is the source, and a change to it must change a file
-or fail here, never drop a token.
+quoted text that ends it. A cell or a list not of the form expected stops the script, and so does a name
+listed twice in one table; every list of tokens is read in full or not at all: the specification is the
+source, and a change to it must change a file or fail here, never drop a token. A parenthetical in a list is
+prose and is read as none of its tokens; in a table cell of tokens, a code span inside one stops the script.
 """
 
 import json
@@ -38,6 +39,12 @@ _PROSE_LIST = re.compile(r"`[a-z0-9_]+`(?:(?:,| or|, or| and|, and) `[a-z0-9_]+`
 # A specimen fact's `token` member, as the JSON shape writes it: `"token": "a" | "b"`, up to the next member.
 _TOKEN_MEMBER = re.compile(r'"token": ("[a-z0-9_]+"(?: \| "[a-z0-9_]+")*)(?=, |\})')
 _SYMBOLS = re.compile(r"`[A-Z][a-z]?`(?: `[A-Z][a-z]?`)*")
+# A family identifier (`record_format.md` section 7 item 3), the form a label takes.
+_LABEL = re.compile(r"[a-z0-9_]+(?:\.[a-z0-9_]+)+\.v[1-9][0-9]*")
+# A field's Label cell: the label's code span, then ` on ` and the prose saying where it applies.
+_LABEL_CELL = re.compile(r"`([^`]+)` on ([^`]*(?:`[^`]*`[^`]*)*)")
+# A numeric condition's cell: its unit's code span alone, or followed by a parenthetical or `: ` and prose.
+_UNIT_CELL = re.compile(r"`([^`]+)`(?: \([^`()]*\)|: [^`]*)?")
 # The procedures section 4's `Step` column names for a code no step of the read gives (its paragraph above).
 PROCEDURES = ("scene", "USD read", "engine adapter", "build", "family evaluation", "mixing")
 # The steps of `read_side_contract.md` section 3.
@@ -90,11 +97,16 @@ def code_list(text: str, cell: str) -> list[str]:
 
 
 def outside_parentheses(cell: str) -> str:
+    """`cell` without its parentheticals, each of which must hold no code span: a token there would be
+    dropped."""
+    if any("`" in aside for aside in re.findall(r"\([^)]*\)", cell)):
+        raise TableError(f"a code span inside a parenthetical in {cell!r}")
     return re.sub(r"\s*\([^)]*\)", "", cell)
 
 
 def without_asides(text: str) -> str:
-    """`text` without its parentheticals, nested ones included, and its case tags (`[PR-333]`)."""
+    """`text` without its parentheticals, nested ones included, and its case tags (`[PR-333]`). A
+    parenthetical is prose: a code span inside one is no token of the list around it."""
     text = re.sub(r"\s*\[(?:[A-Z]{2}-\d{3}|not yet covered)\]", "", text)
     while True:
         shorter = re.sub(r"\s*\([^()]*\)", "", text)
@@ -148,12 +160,21 @@ def enumeration(found: list[str]) -> dict[str, object]:
     return {"enum": found}
 
 
+def names(rows: list[Row], column: str) -> list[str]:
+    """The code span of each row's `column`, a name each row gives once: a second row would replace the
+    first's."""
+    found = [only_code(row[column]) for row in rows]
+    if repeated := sorted({name for name in found if found.count(name) > 1}):
+        raise TableError(f"a name listed twice in the table: {repeated}")
+    return found
+
+
 def reasons(rows: list[Row]) -> Vocabulary:
     statuses: dict[str, object] = {}
-    for row in rows:
+    for code, row in zip(names(rows, "Code"), rows, strict=True):
         if row["Status"] not in ("met", "not_met", "unknown"):
             raise TableError(f"not a read status: {row['Status']!r}")
-        statuses[only_code(row["Code"])] = {"status": row["Status"], **given_by(row["Step"])}
+        statuses[code] = {"status": row["Status"], **given_by(row["Step"])}
     return {"$defs": {"reason_code": {"enum": list(statuses)}}, "reasons": statuses}
 
 
@@ -170,7 +191,7 @@ def given_by(cell: str) -> dict[str, object]:
 def fields(rows: list[Row]) -> Vocabulary:
     entries: dict[str, object] = {}
     labels: list[str] = []
-    for row in rows:
+    for name, row in zip(names(rows, "Section.field"), rows, strict=True):
         unit = only_code(row["Unit"])
         forms, bases = field_forms(row["Forms"])
         entry: dict[str, object] = {
@@ -181,14 +202,22 @@ def fields(rows: list[Row]) -> Vocabulary:
         if bases:
             entry["bases"] = bases
         if row["Label"] != "none":
-            # The token only: when the label applies is prose (`record_format.md` section 4.1, "Labels").
-            label = re.match(r"`([^`]+)`(?= |$)", row["Label"])
-            if label is None:
-                raise TableError(f"expected a label's code span first in {row['Label']!r}")
-            entry["label"] = label[1]
-            labels += [] if label[1] in labels else [label[1]]
-        entries[only_code(row["Section.field"])] = entry
+            label = field_label(row["Label"])
+            entry["label"] = label
+            labels += [] if label in labels else [label]
+        entries[name] = entry
     return {"$defs": {"label": {"enum": labels}}, "fields": entries}
+
+
+def field_label(cell: str) -> str:
+    """The label a Label cell names: one code span, a family identifier, then ` on ` and prose saying where it
+    applies, which is code (`record_format.md` section 4.1, "Labels") and names no second label."""
+    found = _LABEL_CELL.fullmatch(cell)
+    if found is None or not _LABEL.fullmatch(found[1]):
+        raise TableError(f"expected a label's code span, then ' on ' and where it applies, in {cell!r}")
+    if any(_LABEL.fullmatch(code) for code in codes(found[2])):
+        raise TableError(f"a second label in {cell!r}")
+    return found[1]
 
 
 def field_forms(cell: str) -> tuple[list[str], dict[str, list[str]]]:
@@ -209,13 +238,15 @@ def field_forms(cell: str) -> tuple[list[str], dict[str, list[str]]]:
 def conditions(rows: list[Row]) -> Vocabulary:
     entries: dict[str, dict[str, object]] = {}
     token_conditions: dict[str, list[str]] = {}
-    for row in rows:
-        name, cell = only_code(row["Name"]), row["Unit or tokens"]
+    for name, row in zip(names(rows, "Name"), rows, strict=True):
+        cell = row["Unit or tokens"]
         if row["Shape"] == "numeric":
-            unit = codes(cell)[0] if codes(cell) else ""
-            if not cell.startswith(f"`{unit}`"):
-                raise TableError(f"a numeric condition's cell starts with its unit: {cell!r}")
-            entries[name] = {"shape": "numeric", "unit": unit}
+            unit = _UNIT_CELL.fullmatch(cell)
+            if unit is None:
+                raise TableError(
+                    f"expected a unit's code span, then nothing, an aside or ': ' and prose: {cell!r}"
+                )
+            entries[name] = {"shape": "numeric", "unit": unit[1]}
         elif row["Shape"] == "token":
             token_conditions[name] = code_list(outside_parentheses(cell), cell)
             entries[name] = {"shape": "token", "tokens": token_conditions[name]}
@@ -250,7 +281,7 @@ def specimen_facts(rows: list[Row]) -> Vocabulary:
     """Each fact's tokens, those its `token` member takes; its members are structure, the writer schema's."""
     entries: dict[str, object] = {}
     definitions: dict[str, object] = {}
-    for row in rows:
+    for name, row in zip(names(rows, "Name"), rows, strict=True):
         shape = row["JSON shape"]
         found: list[str] = []
         for named in re.finditer(r'"token"', shape):
@@ -258,7 +289,6 @@ def specimen_facts(rows: list[Row]) -> Vocabulary:
             if member is None:
                 raise TableError(f'expected "token": "a" | "b" in {shape!r}')
             found += re.findall(r'"([a-z0-9_]+)"', member[1])
-        name = only_code(row["Name"])
         entries[name] = {"tokens": found}
         if found:
             definitions[f"{name}_token"] = enumeration(found)
@@ -266,7 +296,7 @@ def specimen_facts(rows: list[Row]) -> Vocabulary:
 
 
 def acceptance_kinds(rows: list[Row]) -> Vocabulary:
-    return {"kinds": [only_code(row["`acceptance`"]) for row in rows]}
+    return {"kinds": names(rows, "`acceptance`")}
 
 
 def forms(read: Documents) -> Vocabulary:
