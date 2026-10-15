@@ -273,4 +273,8 @@ waits for a new major schema version, not a new record version (`record_format.m
 
 Settled for 1.0.0 (maintainer, 2026-10-15, as recommended). From 1.0.0, a re-issue that makes a field
 unreadable to a reader of an earlier minor schema version changes the record's `version` major, even where no
-value changes, as when a spread is re-stated under a reserved name (`record_format.md` section 8 item 3).
+value changes, as when a spread is re-stated under a reserved name (`record_format.md` section 8 item 3). A
+power law's uncertainty structure sits beside its statistics block, as the value-field member `uncertainty`,
+not in the block as `structure` (`uncertainty.md` sections 1 and 2). No 0.1.0 field takes a power law, so no
+read changes. A structure changes how `a` and `b` are read, so the name `uncertainty` on a power law is
+reserved before 1.0.0 (`DOCUMENTATION_ARCHITECTURE.md` section 7.2).

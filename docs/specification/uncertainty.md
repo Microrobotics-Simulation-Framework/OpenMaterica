@@ -96,8 +96,9 @@ interval's bounds (rule 8). [not yet covered]
 8. A value known only as bounds is an interval, not a statistics block (`record_format.md` section 6). An
    interval's own statistics block holds `{"status": "not_applicable"}` in `mean`, `min` and `max`, and says
    what its bounds represent. [not yet covered]
-9. A power law's uncertainty structure over `a` and `b` sits in the power law's `statistics` block, as
-   `structure` with the shapes of section 2. [not yet covered]
+9. A power law's uncertainty structure over `a` and `b` sits beside its `statistics` block, not in it, as a
+   parameter set's `uncertainty` does: it is the value-field member `uncertainty`, with the shapes of
+   section 2. [not yet covered]
 10. `population_level` says which level a population spread is taken over: its `level` is what one value of
     the population is, and `within` the level it is taken inside, or `{"status": "none"}`. Between donors:
     `{"level": "donor", "within": {"status": "none"}}`. Within one donor: `{"level": "specimen", "within":
@@ -115,8 +116,8 @@ interval's bounds (rule 8). [not yet covered]
 ## 2. Uncertainty structures
 
 A parameter set declares `uncertainty`: a structure, what it represents, and the structure's own members.
-There is no default structure. A power law MAY carry one over its `a` and `b`, beside its statistics block.
-[RC-053]
+There is no default structure. A power law MAY carry one over its `a` and `b`, beside its statistics block,
+as the value-field member `uncertainty` (section 1 rule 9). [RC-053]
 
 | `structure` | Members | Notes |
 |---|---|---|

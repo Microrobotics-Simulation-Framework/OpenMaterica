@@ -894,7 +894,9 @@ Any section or field can be added later as a minor change, because five rules ho
   older reader instead of being read as something it knows.
 
 Before 1.0.0 is released, the specification reserves the name of every planned feature that would change how
-existing members are read, so that every 1.x reader refuses it (maintainer, 2026-10-15).
+existing members are read, so that every 1.x reader refuses it (maintainer, 2026-10-15). A power law's
+`uncertainty` is one, since a structure over `a` and `b` changes how they are read (specification
+`uncertainty.md` section 1 rule 9; maintainer, 2026-10-15).
 
 From 1.0.0 a reader reads a record of a newer minor version and refuses one of another major version; before
 1.0.0 it reads only its own minor version, because a pre-1.0 minor version may still change shapes
