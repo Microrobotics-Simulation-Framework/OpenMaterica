@@ -51,12 +51,392 @@ class ScopeModel(TypedDict):
     version: str
 
 
+Label: TypeAlias = Literal["materica.fluid.newtonian.v1", "materica.magnetic.linear.v1"]
+
+
+IntervalBasis: TypeAlias = Literal["reported_range", "proxy_range", "specification_limits", "stated_bound"]
+
+
+Form: TypeAlias = Literal[
+    "constant", "table", "power_law", "interval", "composition", "parameter_set", "reference_data", "evidence"
+]
+
+
+CompositionBasis: TypeAlias = Literal["mass_fraction", "volume_fraction", "mole_fraction"]
+
+
+SumRule: TypeAlias = Literal["sums_to_one", "partial"]
+
+
+Component: TypeAlias = Literal[
+    "element:H",
+    "element:He",
+    "element:Li",
+    "element:Be",
+    "element:B",
+    "element:C",
+    "element:N",
+    "element:O",
+    "element:F",
+    "element:Ne",
+    "element:Na",
+    "element:Mg",
+    "element:Al",
+    "element:Si",
+    "element:P",
+    "element:S",
+    "element:Cl",
+    "element:Ar",
+    "element:K",
+    "element:Ca",
+    "element:Sc",
+    "element:Ti",
+    "element:V",
+    "element:Cr",
+    "element:Mn",
+    "element:Fe",
+    "element:Co",
+    "element:Ni",
+    "element:Cu",
+    "element:Zn",
+    "element:Ga",
+    "element:Ge",
+    "element:As",
+    "element:Se",
+    "element:Br",
+    "element:Kr",
+    "element:Rb",
+    "element:Sr",
+    "element:Y",
+    "element:Zr",
+    "element:Nb",
+    "element:Mo",
+    "element:Tc",
+    "element:Ru",
+    "element:Rh",
+    "element:Pd",
+    "element:Ag",
+    "element:Cd",
+    "element:In",
+    "element:Sn",
+    "element:Sb",
+    "element:Te",
+    "element:I",
+    "element:Xe",
+    "element:Cs",
+    "element:Ba",
+    "element:La",
+    "element:Ce",
+    "element:Pr",
+    "element:Nd",
+    "element:Pm",
+    "element:Sm",
+    "element:Eu",
+    "element:Gd",
+    "element:Tb",
+    "element:Dy",
+    "element:Ho",
+    "element:Er",
+    "element:Tm",
+    "element:Yb",
+    "element:Lu",
+    "element:Hf",
+    "element:Ta",
+    "element:W",
+    "element:Re",
+    "element:Os",
+    "element:Ir",
+    "element:Pt",
+    "element:Au",
+    "element:Hg",
+    "element:Tl",
+    "element:Pb",
+    "element:Bi",
+    "element:Po",
+    "element:At",
+    "element:Rn",
+    "element:Fr",
+    "element:Ra",
+    "element:Ac",
+    "element:Th",
+    "element:Pa",
+    "element:U",
+    "element:Np",
+    "element:Pu",
+    "element:Am",
+    "element:Cm",
+    "element:Bk",
+    "element:Cf",
+    "element:Es",
+    "element:Fm",
+    "element:Md",
+    "element:No",
+    "element:Lr",
+    "element:Rf",
+    "element:Db",
+    "element:Sg",
+    "element:Bh",
+    "element:Hs",
+    "element:Mt",
+    "element:Ds",
+    "element:Rg",
+    "element:Cn",
+    "element:Nh",
+    "element:Fl",
+    "element:Mc",
+    "element:Lv",
+    "element:Ts",
+    "element:Og",
+]
+
+
+class Standard(TypedDict):
+    """
+    The standard and part a test followed, and its year, a whole number.
+    """
+
+    designation: str
+    year: int
+
+
+Basis: TypeAlias = Literal["stated", "inferred"]
+
+
+Origin: TypeAlias = Literal[
+    "measured_by_source",
+    "measured_by_contributor",
+    "fitted",
+    "derived",
+    "evaluated_from_formulation",
+    "stated_without_origin",
+]
+
+
+ReviewResult: TypeAlias = Literal["reviewed"]
+
+
+ExtractionMethod: TypeAlias = Literal[
+    "table",
+    "text",
+    "digitised_figure",
+    "supplementary_dataset",
+    "own_measurement",
+    "derivation",
+    "fit",
+    "formulation",
+]
+
+
+LocatorType: TypeAlias = Literal["table", "figure", "page", "equation", "text", "dataset"]
+
+
+SearchInputs: TypeAlias = Literal["primary", "secondary", "mixed"]
+
+
+StatedAs: TypeAlias = Literal["bound", "sd"]
+
+
+SetOrMeasured: TypeAlias = Literal["set_point", "measured"]
+
+
+Range: TypeAlias = tuple[float, float]
+"""
+[lo, hi], lo not above hi.
+"""
+
+
+TissueStateToken: TypeAlias = Literal["in_vivo", "ex_vivo_fresh", "frozen_thawed", "fixed", "phantom"]
+
+
+DiseaseAndTreatmentStateToken: TypeAlias = Literal["normal", "diseased", "treated"]
+
+
+PreservationToken: TypeAlias = Literal["none", "refrigerated", "frozen", "fixed_formalin", "other"]
+
+
+SupplyFormToken: TypeAlias = Literal["stock", "coupon", "finished_component"]
+
+
+Central: TypeAlias = Literal["mean", "median", "single_measurement", "stated"]
+
+
+StatisticsDistribution: TypeAlias = Literal["normal", "lognormal"]
+
+
+StatisticsBasis: TypeAlias = Literal[
+    "reported_sd",
+    "reported_se",
+    "reported_range",
+    "across_sources",
+    "digitising_error",
+    "specification_limits",
+]
+
+
+Represents: TypeAlias = Literal["population", "estimate", "measurement", "across_sources"]
+
+
+Level: TypeAlias = Literal["donor", "lot", "specimen", "test"]
+
+
+PrecisionConditions: TypeAlias = Literal["repeatability", "intermediate", "reproducibility"]
+
+
+Dispersion: TypeAlias = Literal["reported", "not_reported"]
+
+
+UncertaintyDistribution: TypeAlias = Literal["normal", "student_t"]
+
+
+UncertaintyBasis: TypeAlias = Literal["reported_uncertainty", "digitising_error"]
+
+
+UncertaintyRepresents: TypeAlias = Literal["measurement", "estimate"]
+
+
+Distribution: TypeAlias = Literal["normal", "lognormal", "uniform", "triangular", "student_t", "beta"]
+
+
+class Document(TypedDict):
+    """
+    A document by its identifier (a DOI as doi:<DOI>, or a URL) and the version read.
+    """
+
+    identifier: str
+    version: str
+
+
+class Column(TypedDict):
+    """
+    A table's column, its header quoted and its index counted from 1 as printed.
+    """
+
+    header: str
+    index: int
+
+
+class Copy(TypedDict):
+    """
+    The SHA-256 of the copy read, and the date it was retrieved; outside the content hash.
+    """
+
+    sha256: str
+    retrieved: str
+
+
+class Review(TypedDict):
+    """
+    Who checked the value against the source, their ORCID, the date, whether they are independent of whoever
+    or whatever extracted it, and the checklist items covered.
+    """
+
+    result: ReviewResult
+    reviewer: str
+    orcid: str
+    date: str
+    independent_of_extraction: bool
+    checklist: list[str]
+
+
+class Search(TypedDict):
+    """
+    The search that found the sources a pooled statistic is taken across: the queries, databases, date and
+    inclusion criteria (members not yet named), the sources' own weighting, and what they are (provenance.md
+    section 2).
+    """
+
+    weighting: NotRequired[str]
+    inputs: SearchInputs
+
+
+class PinnedRecord(TypedDict):
+    """
+    A record by its id and version, pinned by its content hash.
+    """
+
+    id: RecordId
+    version: Version
+    content_hash: ContentHash
+
+
 class StatusObject(TypedDict):
     """
     A member's status where it has no ordinary value (provenance.md section 1).
     """
 
     status: Literal["unstated", "not_checked", "none", "not_applicable", "withheld"]
+    reason: NotRequired[str]
+
+
+class StatusWithheld(TypedDict):
+    """
+    A status object holding withheld: a reference-only value (provenance.md section 7).
+    """
+
+    status: Literal["withheld"]
+    reason: NotRequired[str]
+
+
+class StatusNone(TypedDict):
+    """
+    A status object holding none.
+    """
+
+    status: Literal["none"]
+    reason: NotRequired[str]
+
+
+class StatusNotApplicable(TypedDict):
+    """
+    A status object holding not_applicable.
+    """
+
+    status: Literal["not_applicable"]
+    reason: NotRequired[str]
+
+
+class StatusUnstated(TypedDict):
+    """
+    A status object holding unstated.
+    """
+
+    status: Literal["unstated"]
+    reason: NotRequired[str]
+
+
+class StatusNotChecked(TypedDict):
+    """
+    A status object holding not_checked.
+    """
+
+    status: Literal["not_checked"]
+    reason: NotRequired[str]
+
+
+class StatusUnstatedOrNotApplicable(TypedDict):
+    """
+    A status object holding unstated or not_applicable.
+    """
+
+    status: Literal["unstated", "not_applicable"]
+    reason: NotRequired[str]
+
+
+class StatusWithheldOrNotApplicable(TypedDict):
+    """
+    A status object holding withheld or not_applicable.
+    """
+
+    status: Literal["withheld", "not_applicable"]
+    reason: NotRequired[str]
+
+
+class StatusNotWithheld(TypedDict):
+    """
+    A status object holding any token but withheld, which an evidence entry holds only whole.
+    """
+
+    status: Literal["unstated", "not_checked", "none", "not_applicable"]
     reason: NotRequired[str]
 
 
@@ -238,6 +618,180 @@ class OverlayScope(TypedDict):
     run: NotRequired[str]
 
 
+Unit: TypeAlias = str | StatusObject
+
+
+class Interval(TypedDict):
+    """
+    lower <= upper where both are numbers, and at most one holds none (record_format.md section 6).
+    """
+
+    lower: float | StatusNone
+    upper: float | StatusNone
+    basis: IntervalBasis
+
+
+ReportText: TypeAlias = str | StatusNotWithheld
+
+
+class Based(TypedDict):
+    """
+    Where a condition or a specimen fact comes from: stated, or inferred with the text it was inferred from
+    (provenance.md section 6).
+    """
+
+    basis: Basis
+    inferred_from: NotRequired[str]
+
+
+class TokenCondition(Based):
+    """
+    A token of the condition's row (provenance.md section 6.1 item 1); it registers no unit.
+    """
+
+    token: str
+
+
+class PlusMinusEntry(TypedDict):
+    stated_as: StatedAs | StatusUnstated
+    value: float
+    unit: Unit
+
+
+class Species(Based):
+    """
+    An NCBI Taxonomy identifier.
+    """
+
+    ncbi_taxon: int
+    label: str
+
+
+class AnatomicalSite(Based):
+    """
+    A UBERON identifier.
+    """
+
+    uberon: str
+    label: str
+
+
+class TissueState(Based):
+    token: TissueStateToken
+
+
+class DiseaseAndTreatmentState(Based):
+    """
+    The state, and which disease or treatment.
+    """
+
+    token: DiseaseAndTreatmentStateToken
+    text: str
+
+
+class Preparation(Based):
+    text: str
+
+
+class Preservation(Based):
+    """
+    The preservation, with a text required for other.
+    """
+
+    token: PreservationToken
+    text: NotRequired[str]
+
+
+Seconds: TypeAlias = str | StatusObject
+
+
+class Mimics(Based):
+    """
+    What a phantom or a substitute was made to mimic, as its maker states it.
+    """
+
+    text: str
+
+
+class SupplyForm(Based):
+    """
+    A manufactured material as supplied, a coupon made or cut for the test, or a finished component tested as
+    a specimen of its material.
+    """
+
+    token: SupplyFormToken
+
+
+class Lot(Based):
+    """
+    The lot or batch, as the source names it.
+    """
+
+    text: str
+
+
+Count: TypeAlias = int | StatusObject
+
+
+class PopulationLevel(TypedDict):
+    """
+    The level a population spread is taken over, and the level it is taken within (uncertainty.md section 1
+    rule 10).
+    """
+
+    level: Level
+    within: Level | StatusNone
+
+
+class Uncertainty(TypedDict):
+    """
+    A relative or expanded uncertainty, as stored (uncertainty.md section 1): at least one of coverage_factor
+    and coverage_probability a number, dof a number exactly where distribution is student_t, and
+    precision_conditions exactly where represents is measurement. value is in unit 1 in a relative one, and in
+    the field's unit in an expanded one.
+    """
+
+    value: float
+    coverage_factor: float | StatusObject
+    coverage_probability: float | StatusObject
+    distribution: UncertaintyDistribution | StatusUnstated
+    dof: float | StatusObject
+    basis: UncertaintyBasis
+    represents: UncertaintyRepresents | StatusUnstated
+    precision_conditions: NotRequired[PrecisionConditions | StatusUnstated]
+
+
+class Locator(TypedDict):
+    """
+    A place in the document version named beside it (provenance.md section 2 items 2 and 7).
+    """
+
+    type: LocatorType
+    label: NotRequired[str]
+    page: NotRequired[int]
+    column: NotRequired[Column]
+    row: NotRequired[str]
+    entry: NotRequired[str]
+
+
+class Evidence(TypedDict):
+    """
+    provenance.md section 4: the quote, or its hash where quotes may not ship, the place and document it was
+    read at, and the copy read.
+    """
+
+    quote: NotRequired[str]
+    quote_sha256: NotRequired[str]
+    locator: NotRequired[Locator]
+    document: NotRequired[Document]
+    copy: NotRequired[Copy]
+
+
+class DerivationInput(TypedDict):
+    record: PinnedRecord
+    field: str
+
+
 class RecordTarget(TypedDict):
     record: MaterialRef
     field: FieldName
@@ -270,10 +824,110 @@ class Reason(TypedDict):
     detail: NotRequired[str]
 
 
+PlusMinus: TypeAlias = list[PlusMinusEntry]
+"""
+The plus or minus a source states (provenance.md section 6.1 item 6): at most one entry of each kind, and one
+of unstated kind alone.
+"""
+
+
+class PostMortemInterval(Based):
+    value: float
+    unit: Seconds
+
+
+class DonorAge(Based):
+    """
+    A value or a range [lo, hi], in seconds.
+    """
+
+    value: NotRequired[float]
+    range: NotRequired[Range]
+    unit: Seconds
+
+
+class StatisticsBlock(TypedDict):
+    """
+    uncertainty.md section 1: every member present, population_level, n_sources and precision_conditions
+    exactly where represents calls for them.
+    """
+
+    central: Central | StatusNotApplicable
+    n_specimens: Count
+    n_donors: Count
+    mean: float | StatusObject
+    sd: float | StatusObject
+    min: float | StatusObject
+    max: float | StatusObject
+    distribution: StatisticsDistribution | StatusUnstated
+    basis: StatisticsBasis | StatusNotApplicable
+    represents: Represents | StatusUnstatedOrNotApplicable
+    population_level: NotRequired[PopulationLevel | StatusUnstated]
+    n_sources: NotRequired[Count]
+    precision_conditions: NotRequired[PrecisionConditions | StatusUnstated]
+    dispersion: Dispersion
+    relative_uncertainty: Uncertainty | StatusObject
+    expanded_uncertainty: Uncertainty | StatusObject
+
+
+class Source(TypedDict):
+    """
+    The source registry's key, the document read and the place in it. A read checks only key, which a result
+    returns.
+    """
+
+    key: str
+    document: Document
+    locator: Locator
+
+
 Target: TypeAlias = RecordTarget | RegionTarget
 
 
 RequirementCondition: TypeAlias = ToleranceRequirement | AcceptRequirement
+
+
+class NumericCondition(Based):
+    """
+    A value or a range [lo, hi], lo not above hi, in the condition's registered unit; optionally the source's
+    plus or minus and whether it was set or measured (provenance.md section 6.1 items 1, 6 and 7).
+    """
+
+    value: NotRequired[float]
+    range: NotRequired[Range]
+    unit: Unit
+    plus_minus: NotRequired[PlusMinus]
+    set_or_measured: NotRequired[SetOrMeasured]
+
+
+class Specimen(TypedDict):
+    """
+    Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact.
+    """
+
+    species: NotRequired[Species | StatusObject]
+    anatomical_site: NotRequired[AnatomicalSite | StatusObject]
+    tissue_state: NotRequired[TissueState | StatusObject]
+    disease_and_treatment_state: NotRequired[DiseaseAndTreatmentState | StatusObject]
+    preparation: NotRequired[Preparation | StatusObject]
+    preservation: NotRequired[Preservation | StatusObject]
+    post_mortem_interval: NotRequired[PostMortemInterval | StatusObject]
+    donor_age: NotRequired[DonorAge | StatusObject]
+    mimics: NotRequired[Mimics | StatusObject]
+    supply_form: NotRequired[SupplyForm | StatusObject]
+    lot: NotRequired[Lot | StatusObject]
+
+
+FieldStatistics: TypeAlias = StatisticsBlock | StatusWithheld
+
+
+class InputSpecimen(TypedDict):
+    """
+    An input's specimen facts, input being its index in inputs.
+    """
+
+    input: int
+    specimen: Specimen
 
 
 class Requirement(TypedDict):
@@ -281,11 +935,63 @@ class Requirement(TypedDict):
     conditions: NotRequired[dict[str, RequirementCondition]]
 
 
+class CompositionComponent(TypedDict):
+    """
+    A component, element:<symbol>, its fraction from 0 to 1, and optionally its own statistics block.
+    """
+
+    component: Component
+    fraction: float
+    statistics: NotRequired[FieldStatistics]
+
+
+class Conditions(TypedDict):
+    """
+    The conditions the value was measured at, by name (provenance.md section 6.1). The registered unit or
+    tokens of each are the vocabulary's.
+    """
+
+    temperature: NotRequired[NumericCondition | StatusObject]
+    shear_rate: NotRequired[NumericCondition | StatusObject]
+    magnetic_flux_density: NotRequired[NumericCondition | StatusObject]
+    density_kind: NotRequired[TokenCondition | StatusObject]
+    specimen_shape: NotRequired[TokenCondition | StatusObject]
+    specimen_size: NotRequired[NumericCondition | StatusObject]
+    measurement_geometry: NotRequired[TokenCondition | StatusObject]
+    measurement_dimension: NotRequired[NumericCondition | StatusObject]
+    test_method: NotRequired[TokenCondition | StatusObject]
+
+
+class Derivation(TypedDict):
+    """
+    A derived value's method, its inputs as pinned references, its assumptions, the inputs' specimen facts,
+    and whether the inputs' conditions differ (provenance.md section 5).
+    """
+
+    method: str
+    inputs: list[DerivationInput]
+    assumptions: list[str]
+    input_specimens: list[InputSpecimen]
+    mixed_conditions: NotRequired[bool]
+
+
+class Composition(TypedDict):
+    """
+    At least one component, none twice; stated_sum is the sum the source gives, never normalised
+    (record_format.md section 6).
+    """
+
+    basis: CompositionBasis
+    sum_rule: SumRule
+    stated_sum: NotRequired[float]
+    components: list[CompositionComponent]
+
+
 class Record(TypedDict):
     """
-    A record as a writer writes it (record_format.md sections 2 to 4.4): its envelope and body structure
-    closed, with no member they do not define and every enumerated member limited to its tokens. Value fields,
-    specimen facts and extensions are open placeholders until their shapes are written.
+    A record as a writer writes it (record_format.md, provenance.md and uncertainty.md): closed, with no
+    member it does not define and every enumerated member limited to its tokens. Extensions are placeholders,
+    which a reader never checks.
     """
 
     schema_version: Version
@@ -351,10 +1057,85 @@ class OverlayBody(TypedDict):
 Replaces: TypeAlias = dict[str, "ValueField"]
 
 
-ValueField: TypeAlias = "JsonObject"
+ValueField: TypeAlias = Union["FormField", "Alternatives"]
 
 
-Specimen: TypeAlias = "JsonObject"
+FormField: TypeAlias = Union[
+    "ConstantField",
+    "TableField",
+    "PowerLawField",
+    "IntervalField",
+    "CompositionField",
+    "ParameterSetField",
+    "ReferenceDataField",
+    "EvidenceField",
+]
+
+
+class Alternatives(TypedDict):
+    """
+    Every alternative found, each complete, in stored order and none the default; nothing beside them
+    (record_format.md section 5).
+    """
+
+    alternatives: list[FormField]
+
+
+class FieldMembers(TypedDict):
+    """
+    The members of a value field that do not depend on its form (record_format.md section 5).
+    """
+
+    unit: Unit
+    specimen: NotRequired[Specimen]
+    provenance: Provenance
+    label: NotRequired[Label]
+    fit: NotRequired[JsonObject]
+
+
+class EvidenceEntry(TypedDict):
+    """
+    A test report (record_format.md section 4.3). Each member but provenance may hold a status object other
+    than withheld.
+    """
+
+    endpoint: ReportText
+    standard: Standard | StatusNotWithheld
+    contact_category: ReportText
+    contact_duration: ReportText
+    material_form: ReportText
+    processing: ReportText
+    reported_result: ReportText
+    provenance: Provenance
+
+
+class WithheldEvidenceEntry(TypedDict):
+    """
+    A test report from a reference-only source: withheld whole, its provenance kept (record_format.md section
+    4.3 item 2).
+    """
+
+    endpoint: StatusWithheld
+    standard: StatusWithheld
+    contact_category: StatusWithheld
+    contact_duration: StatusWithheld
+    material_form: StatusWithheld
+    processing: StatusWithheld
+    reported_result: StatusWithheld
+    provenance: Provenance
+
+
+class Extraction(TypedDict):
+    """
+    provenance.md section 3: the method, with the members its row requires.
+    """
+
+    method: ExtractionMethod
+    text_extraction: NotRequired[str]
+    digitisation: NotRequired[JsonObject]
+    dataset_licence: NotRequired[str]
+    source_unit: NotRequired[str]
+    conversion: NotRequired[str]
 
 
 Extension: TypeAlias = "JsonObject"
@@ -410,3 +1191,111 @@ class ReadResult(TypedDict):
     provenance: NotRequired[JsonObject]
     labels: NotRequired[list[str]]
     assumption: NotRequired[JsonObject]
+
+
+class ConstantField(FieldMembers):
+    """
+    A constant: one number, whose range is its conditions (record_format.md section 6).
+    """
+
+    form: Literal["constant"]
+    value: float | StatusWithheld
+    conditions: Conditions
+    statistics: FieldStatistics
+
+
+class TableField(FieldMembers):
+    """
+    A table (record_format.md section 6). Its member is a placeholder until its shape is written.
+    """
+
+    form: Literal["table"]
+    table: JsonObject | StatusWithheld
+    conditions: Conditions
+    statistics: FieldStatistics
+
+
+class PowerLawField(FieldMembers):
+    """
+    A power law (record_format.md section 6). Its member is a placeholder until its shape is written.
+    """
+
+    form: Literal["power_law"]
+    power_law: JsonObject | StatusWithheld
+    conditions: Conditions
+    statistics: FieldStatistics
+
+
+class IntervalField(FieldMembers):
+    """
+    An interval: bounds with their basis, known only as bounds (record_format.md section 6).
+    """
+
+    form: Literal["interval"]
+    interval: Interval | StatusWithheld
+    conditions: Conditions
+    statistics: FieldStatistics
+
+
+class CompositionField(FieldMembers):
+    """
+    A composition (record_format.md section 6).
+    """
+
+    form: Literal["composition"]
+    composition: Composition | StatusWithheld
+    conditions: Conditions
+    statistics: FieldStatistics
+
+
+class ParameterSetField(FieldMembers):
+    """
+    A model parameter set (model_families.md). Its member is a placeholder until its shape is written.
+    """
+
+    form: Literal["parameter_set"]
+    parameter_set: JsonObject | StatusWithheld
+    conditions: Conditions
+    statistics: FieldStatistics
+
+
+class ReferenceDataField(FieldMembers):
+    """
+    Reference data (fits_and_reference_data.md section 1), whose statistics may not apply. Its member is a
+    placeholder until its shape is written.
+    """
+
+    form: Literal["reference_data"]
+    reference_data: JsonObject | StatusWithheld
+    conditions: Conditions
+    statistics: StatisticsBlock | StatusWithheldOrNotApplicable
+
+
+class EvidenceField(FieldMembers):
+    """
+    Biocompatibility evidence: a list of test reports, never a status, under no condition and with no
+    statistics (record_format.md section 4.3).
+    """
+
+    form: Literal["evidence"]
+    evidence: list[EvidenceEntry | WithheldEvidenceEntry]
+    conditions: dict[str, JsonValue]
+
+
+Provenance = TypedDict(
+    "Provenance",
+    {
+        "origin": Origin,
+        "source": NotRequired[Source],
+        "extraction": Extraction,
+        "evidence": NotRequired[Evidence],
+        "assistance": StatusNone | JsonObject,
+        "review": StatusNotChecked | Review,
+        "derivation": NotRequired[Derivation],
+        "formulation": NotRequired[JsonObject],
+        "search": NotRequired[Search],
+        "import": NotRequired[JsonObject],
+        "per_parameter": NotRequired[dict[str, "Provenance"]],
+        "recipe": NotRequired[JsonObject],
+    },
+)

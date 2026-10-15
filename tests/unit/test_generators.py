@@ -345,12 +345,41 @@ WRITER: dict[str, Json] = {
         "field": {"$ref": "#/$defs/value_field"},
     },
     "additionalProperties": False,
-    "$defs": {"id": {"type": "string", "pattern": "^[a-z]+(?![\\s\\S])"}, "value_field": {"type": "object"}},
+    "$defs": {
+        "id": {"type": "string", "pattern": "^[a-z]+(?![\\s\\S])"},
+        "value_field": {
+            "type": "object",
+            "allOf": [{"$ref": "#/$defs/common"}],
+            "required": ["value", "basis", "note"],
+            "properties": {
+                "value": {"type": "number"},
+                "basis": {"$ref": "vocabulary/tokens.json#/$defs/basis"},
+                "note": {"x-materica-write-only": True, "$ref": "#/$defs/note"},
+            },
+            "if": {"required": ["value"], "properties": {"value": {"const": 0}}},
+            "then": {"required": ["note"]},
+            "unevaluatedProperties": False,
+        },
+        "common": {
+            "type": "object",
+            "properties": {"unit": {"type": "string", "pattern": "^[a-z]+(?![\\s\\S])"}},
+        },
+        "note": {"type": "object", "properties": {"text": {"type": "string"}}},
+        "specimen": {
+            "type": "object",
+            "properties": {"fact": {"$ref": "#/$defs/id"}},
+            "additionalProperties": False,
+        },
+        "unused": {"type": "string"},
+    },
+}
+VOCABULARY: dict[str, Json] = {
+    "tokens.json": {"$defs": {"basis": {"enum": ["stated", "inferred"]}, "count": {"type": "integer"}}}
 }
 
 
 def test_the_reader_schema_opens_the_writers_where_a_reader_is_open() -> None:
-    reader = reader_schema(WRITER)
+    reader = reader_schema(WRITER, VOCABULARY)
     assert reader["properties"] == {
         "id": {"type": "string", "pattern": "^[a-z]+(?![\\s\\S])"},
         "kind": {"type": "string"},
@@ -358,24 +387,88 @@ def test_the_reader_schema_opens_the_writers_where_a_reader_is_open() -> None:
         "field": True,
     }
     assert "additionalProperties" not in reader
-    assert "$defs" not in reader
+
+
+def test_the_reader_schemas_defs_hold_the_shapes_a_read_checks_without_its_write_only_members() -> None:
+    """The value field and the specimen, with what they refer to and nothing else; the member marked
+    write-only accepts anything and is required nowhere, the condition that required it gone with it."""
+    assert reader_schema(WRITER, VOCABULARY)["$defs"] == {
+        "id": {"type": "string"},
+        "value_field": {
+            "type": "object",
+            "allOf": [{"$ref": "#/$defs/common"}],
+            "required": ["value", "basis"],
+            "properties": {"value": {"type": "number"}, "basis": {"type": "string"}, "note": True},
+        },
+        "common": {"type": "object", "properties": {"unit": {"type": "string"}}},
+        "specimen": {"type": "object", "properties": {"fact": {"$ref": "#/$defs/id"}}},
+    }
+
+
+def changed(place: str, value: Json) -> dict[str, Json]:
+    """WRITER with the subschema at `place`, a path of names through it, replaced by `value`, or removed where
+    `value` is None."""
+    writer: dict[str, Json] = json.loads(json.dumps(WRITER))
+    *path, last = place.split("/")
+    node = writer
+    for name in path:
+        inner = node[name]
+        assert isinstance(inner, dict)
+        node = inner
+    if value is None:
+        del node[last]
+    else:
+        node[last] = value
+    return writer
 
 
 @pytest.mark.parametrize(
     ("place", "value"),
     [
-        pytest.param("id", {"type": "string", "pattern": "^[a-z]+$"}, id="pattern_ending_with_dollar"),
-        pytest.param("id", {"type": "string", "pattern": "[a-z]+(?![\\s\\S])"}, id="pattern_without_caret"),
-        pytest.param("kind", {"enum": ["a", 1]}, id="enumeration_of_a_number"),
-        pytest.param("kind", {"$ref": "#/$defs/nowhere"}, id="reference_to_nothing"),
-        pytest.param("kind", {"$ref": "#/$defs/id", "minLength": 1}, id="reference_beside_a_keyword"),
+        pytest.param(
+            "properties/id", {"type": "string", "pattern": "^[a-z]+$"}, id="pattern_ending_with_dollar"
+        ),
+        pytest.param(
+            "properties/id", {"type": "string", "pattern": "[a-z]+(?![\\s\\S])"}, id="pattern_without_caret"
+        ),
+        pytest.param("properties/kind", {"enum": ["a", 1]}, id="enumeration_of_a_number"),
+        pytest.param("properties/kind", {"$ref": "#/$defs/nowhere"}, id="reference_to_nothing"),
+        pytest.param(
+            "properties/kind", {"$ref": "#/$defs/id", "minLength": 1}, id="reference_beside_a_keyword"
+        ),
+        pytest.param("properties/kind", {"$ref": "other.json#/$defs/id"}, id="reference_to_another_file"),
+        pytest.param(
+            "$defs/value_field/properties/basis",
+            {"$ref": "vocabulary/tokens.json#/$defs/count"},
+            id="vocabulary_reference_to_no_enumeration",
+        ),
+        pytest.param(
+            "$defs/value_field/properties/basis",
+            {"$ref": "vocabulary/other.json#/$defs/basis"},
+            id="vocabulary_reference_to_no_file",
+        ),
+        pytest.param(
+            "$defs/value_field/if",
+            {"properties": {"basis": {"enum": ["stated"]}}},
+            id="enumeration_under_if",
+        ),
+        pytest.param(
+            "$defs/value_field/not",
+            {"properties": {"basis": {"enum": ["stated"]}}},
+            id="enumeration_under_not",
+        ),
+        pytest.param(
+            "$defs/value_field/properties/note",
+            {"x-materica-write-only": False, "$ref": "#/$defs/note"},
+            id="write_only_false",
+        ),
+        pytest.param("$defs/common/x-materica-write-only", True, id="write_only_outside_properties"),
+        pytest.param("$defs/specimen", None, id="no_specimen"),
     ],
 )
 def test_a_writer_schema_the_script_cannot_open_is_refused(place: str, value: Json) -> None:
-    writer = json.loads(json.dumps(WRITER))
-    writer["properties"][place] = value
     with pytest.raises(SchemaError):
-        reader_schema(writer)
+        reader_schema(changed(place, value), VOCABULARY)
 
 
 def test_the_reader_schema_check_fails_when_it_differs(
@@ -400,6 +493,19 @@ def test_only_the_shapes_of_a_result_are_read_only() -> None:
     assert "from typing_extensions import ReadOnly\nfrom typing import TypedDict" in stub
     assert "    code: ReadOnly[str]" in stub
     assert "    field: str" in stub
+
+
+def test_a_functional_typed_dict_goes_last_with_its_references_to_itself_quoted() -> None:
+    """A shape with a member named by a Python keyword is written as a call, whose members are evaluated on
+    import: every name it uses must be defined above it."""
+    module = (
+        "\n\nShape = TypedDict('Shape', {\n    'import': Part,\n    'more': dict[str, Shape],})\n"
+        "\n\nclass Part(TypedDict):\n    text: str\n"
+    )
+    moved = gen_shapes.functional_last(module)
+    assert moved.index("class Part") < moved.index("Shape = TypedDict('Shape'")
+    assert "'more': dict[str, 'Shape']" in moved
+    assert "'import': Part" in moved
 
 
 def test_a_long_docstring_line_is_wrapped_and_code_is_not() -> None:
