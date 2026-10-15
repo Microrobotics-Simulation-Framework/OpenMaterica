@@ -237,19 +237,24 @@ jobs:
     needs: gate
     if: needs.gate.outputs.hypothesis == 'true' && !inputs.fuzz_only
     runs-on: ubuntu-latest
-    # On two workers locally, `deep` took 14.5 minutes for json and 10 for records, and `ci` under a minute each
-    # (2026-10-14): about three times that. The writer shard's `ci` took 11 minutes on two workers locally
-    # (2026-10-15), and its `deep`, ten times the examples, about ten times that, unmeasured.
+    # On two workers locally, `deep` took 14.5 minutes for json and 10 for records (2026-10-14); step 8's
+    # properties added about 17 minutes of CPU to the records shard's `deep` (2026-10-15, by S2a-2's review, on
+    # three workers), unmeasured as a shard. At `ci`, records took 98 s on two workers and 58 s on four, and
+    # step 8's mutants, a shard of their own, 51 s and 53 s; that shard's `deep` took 68 s on four, since its
+    # searches do not grow with the profile (2026-10-15, S2a-2's fix round; a runner perhaps two to three times
+    # slower a core, by estimate). The writer shard's `ci` took 11 minutes on two workers locally (2026-10-15),
+    # and its `deep`, ten times the examples, about ten times that, unmeasured.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && (matrix.shard == 'writer' && 180 || 45) || (matrix.shard == 'writer' && 30 || 10) }}
     strategy:
       fail-fast: false
       matrix:
-        # Three shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
-        # envelope checks, versions and the read; and the writer schema's value fields, whose validation with
-        # jsonschema makes them the longest.
-        shard: [json, records, writer]
+        # Four shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
+        # envelope checks, versions and the read; the writer schema's value fields, whose validation with
+        # jsonschema makes them the longest; and step 8's mutant searches, which were most of the records
+        # shard's time.
+        shard: [json, records, writer, step8_mutants]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
     steps:
@@ -257,8 +262,8 @@ jobs:
         with:
           persist-credentials: false
       # The newest Python, because it runs this suite fastest: at the `ci` profile, two workers each, the json
-      # shard took 39 to 48 s on 3.15 and 53 s on 3.11, the records shard 42 to 49 s and 55 s (measured
-      # 2026-10-14). Every Python runs the properties at `dev`.
+      # shard took 39 to 48 s on 3.15 and 53 s on 3.11 (measured 2026-10-14); the records shard took 98 s on
+      # 3.15 (2026-10-15). Every Python runs the properties at `dev`.
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: ${{ env.UV_VERSION }}
@@ -270,7 +275,9 @@ jobs:
       # immutable, so each run saves under its own key and restores the latest; it saves even when the run
       # fails, since a failing example is what most needs keeping. Each shard keeps its own, so that one shard's
       # later save never hides an example the other saved.
+      # The mutant searches keep no example database, so their shard restores and saves none.
       - name: Restore the example database
+        if: matrix.shard != 'step8_mutants'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
@@ -281,7 +288,7 @@ jobs:
       - name: Property tests and mutants, with the draw-rejection and feature audits (tests/property/conftest.py)
         run: uv run pytest tests/property --shard ${{ matrix.shard }} -n auto --dist worksteal --hypothesis-show-statistics
       - name: Save the example database
-        if: always()
+        if: always() && matrix.shard != 'step8_mutants'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
@@ -444,12 +451,15 @@ jobs:
           uv run python -m tests.fuzz.read_field_bytes "$RUNNER_TEMP/fields" -dict="$RUNNER_TEMP/value_field.dict" \
             -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
       # What the property target found is in the example database: replayed first here, and shrunk. The writer
-      # schema's properties are no fuzz target, and their shard keeps its own database.
+      # schema's properties are no fuzz target, and their shard keeps its own database; the mutant tables keep
+      # none, so they have nothing to replay.
       - name: Replay and shrink what was found
         if: success() || failure()
         run: >-
           uv run pytest tests/property -n auto --dist worksteal
           --ignore=tests/property/test_writer_properties.py --ignore=tests/property/test_writer_mutants.py
+          --ignore=tests/property/test_mutants.py --ignore=tests/property/test_record_mutants.py
+          --ignore=tests/property/test_value_field_mutants.py
       - name: Keep the inputs that failed
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
