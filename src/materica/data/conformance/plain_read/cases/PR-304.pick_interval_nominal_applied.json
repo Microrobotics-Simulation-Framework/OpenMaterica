@@ -1,0 +1,172 @@
+{
+  "case": "PR-304",
+  "variant": "pick_interval_nominal_applied",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "grade_density_limits_and_lot.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/polymer_grade_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:8f660584ddcfad8f706173e846942672710505e81e0623f0011cdcd750c2147b"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "pick",
+        "record": {
+          "id": "conformance/polymer_grade_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:8f660584ddcfad8f706173e846942672710505e81e0623f0011cdcd750c2147b"
+        },
+        "field": "bulk.density",
+        "index": 0,
+        "reason": "conformance fixture: an illustrative reason"
+      },
+      {
+        "acceptance": "nominal",
+        "record": {
+          "id": "conformance/polymer_grade_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:8f660584ddcfad8f706173e846942672710505e81e0623f0011cdcd750c2147b"
+        },
+        "field": "bulk.density",
+        "value": 1200.0,
+        "basis": "conformance fixture: the midpoint of the limits",
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "want_mismatch",
+        "alternative": 0
+      }
+    ],
+    "value": 1200.0,
+    "unit": "kg/m3",
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 293.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 293.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "density_kind",
+        "status": "met",
+        "record": {
+          "token": "apparent",
+          "basis": "stated"
+        }
+      }
+    ],
+    "specimen": {
+      "lot": {
+        "status": "not_applicable"
+      }
+    },
+    "statistics": {
+      "central": {
+        "status": "not_applicable"
+      },
+      "n_specimens": {
+        "status": "unstated"
+      },
+      "n_donors": {
+        "status": "not_applicable"
+      },
+      "mean": {
+        "status": "not_applicable"
+      },
+      "sd": {
+        "status": "not_applicable"
+      },
+      "min": {
+        "status": "not_applicable"
+      },
+      "max": {
+        "status": "not_applicable"
+      },
+      "distribution": {
+        "status": "unstated"
+      },
+      "basis": "specification_limits",
+      "represents": {
+        "status": "unstated"
+      },
+      "dispersion": "not_reported",
+      "relative_uncertainty": {
+        "status": "none"
+      },
+      "expanded_uncertainty": {
+        "status": "none"
+      }
+    },
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": [],
+    "assumption": {
+      "acceptance": "nominal",
+      "value": 1200.0
+    }
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

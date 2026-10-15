@@ -65,6 +65,31 @@ extrapolation, whose shape step 0 checks.
   `outside_range`, carries the value at the readable range's nearest end, and names the extrapolation in
   `assumption` without its `basis`.
 
+## Alternatives and picks
+
+The cases of S4 read a field that holds `alternatives`, with no pick or with one (`read_side_contract.md`
+section 3, step 7): which alternatives are set aside, which stay and which refuse the field, the outcome, and
+the members it holds.
+- **A reason found reading one alternative names it.** Every such reason carries `alternative`, the
+  alternative's index among the stored ones; a fault of the request carries none, and neither does a reason
+  step 7 gives of its own (`no_pick`, `pick_invalid`, `want_mismatch` over two or more). Each expected reason
+  holds it. The runner compares it with S4's code; until then a reason is compared by code and condition.
+- **The density alternatives.** Most arms read `conformance/density_alternatives_fixture`, whose
+  `bulk.density` holds alternatives built from a constant at a stated temperature (`density_kind` `apparent`
+  unless the arm says), S3's density table (x 280 to 340 K) and edge table (an edge at 273 K), and an
+  interval, read at 310 K with a tolerance of 1 K, accepting `apparent`. A constant at 330 K, or of
+  `density_kind` `matrix`, is set aside for its conditions; a table read outside its readable range, off every
+  edge, is set aside for its range unless an extrapolation would cover it; one read at an edge, or a constant
+  with the unit `kg.m-3`, refuses the field.
+- **Every outcome.** One alternative left, read as a field; `no_pick`, each remaining alternative's `unknown`
+  reasons beside it; step 7's `want_mismatch`; every alternative set aside; and the refusal, which comes first
+  and reports every alternative's reasons, the set-aside ones' and those that wait in an alternative that
+  stays included. Two arms store the refusing alternative first and last, and two PR-308 arms the table with
+  no operating value, so a reader whose answer depends on the order of reading fails one of each pair.
+- **Picks.** Step 0 checks a pick's `index` (a number with no fractional part, not below zero; `1e0` and `-0`
+  are written as such in their requests) and refuses two picks for one field. Step 7 then reads only the
+  alternative a pick names, counting every stored alternative, or gives `pick_invalid`.
+
 ## The fixtures
 
 All are illustrative, in the namespace `conformance`. See the conformance tree's `README.md`.
@@ -91,6 +116,7 @@ All are illustrative, in the namespace `conformance`. See the conformance tree's
 | `shear_thinning*.json` | `conformance/shear_thinning_fixture`: the viscosity as a log-log table over shear rate, x [1, 10, 100, 1000] 1/s, and its variants |
 | `susceptibility*.json` | `conformance/susceptibility_table_fixture`: `magnetic.volume_susceptibility` as a table over flux density, x [0, 1, 2] T, or with an edge at 0 T, and over temperature with the linear label |
 | `water_with_broken_density_table.json` | the met water record beside a density table without `edges` |
+| `density_alternatives_*` | `conformance/density_alternatives_fixture`: `bulk.density` as `alternatives` of constants, tables and an interval, for step 7 and picks; `density_alternatives_empty.json`, `_entry_not_object`, `_entry_holds_alternatives` and `_beside_value` break the list itself |
 
 The inputs come in families, named by what they break:
 
@@ -118,21 +144,8 @@ The inputs come in families, named by what they break:
   fail on that rule alone.
 - **PR-006's set-aside arms.** A document set aside at step 1 and a source that is simply not the target give
   the same answer. PR-328 holds the arms where setting aside changes the answer.
-- **Answers S4's text decides, with no arm yet.** The S4 cases write them (`read_side_contract.md` section 3,
-  step 7):
-  - an alternative's own reasons beside `no_pick`: each remaining alternative's `unknown` reasons stand, each
-    with its `alternative`, and its `not_met` ones wait for a pick. Every `no_pick` arm so far uses
-    alternatives whose conditions are all met, none is set aside, and no arm shows that an entry's
-    `alternative` counts the stored alternatives rather than the remaining ones;
-  - an alternative refused at step 8 or 9: it refuses the field, so the result is `not_met`, never `no_pick`;
-  - a table alternative outside its readable range: set aside, unless an extrapolation the request carries
-    would cover it; one read exactly at a declared edge: it refuses the field; one read over an operating
-    range of its axis: it stays, and `want` decides. The five arms S3's cases wrote for S4 before S4's text
-    (PR-044, PR-013, PR-308) now hold these answers: `PR-044.table_outside_range_set_aside` (written as
-    `table_outside_range_not_set_aside`, with `no_pick`) gives the constant left, `met`, and
-    `PR-044.table_at_edge_not_set_aside` refuses the field (`at_edge`);
-  - a missing operating value in one alternative: it refuses the field, with every alternative's reasons
-    beside `request_incomplete` (PR-308).
+- **A power-law alternative outside its range.** Step 7 sets one aside as it does a table, but no 0.1.0 field
+  takes a power law, and step 8 refuses one (`form_not_registered`, PR-036) before step 11.
 - **Answers the text leaves open.** No arm meets them; each waits for the text:
   - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
     is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
@@ -146,4 +159,4 @@ The inputs come in families, named by what they break:
 - **Acceptances located at a region.** Regions belong to the scene suite. An acceptance located at an
   `interval` is checked and not applied (`PR-316.implied_at_interval`, `PR-338.nominal_at_interval`,
   `PR-307.at_interval`).
-- **Overlays and picks:** S4's text decides them; their arms are the S4 cases.
+- **Overlays and fill-ins:** S4's text decides them; their arms are the S4 cases that read through an overlay.

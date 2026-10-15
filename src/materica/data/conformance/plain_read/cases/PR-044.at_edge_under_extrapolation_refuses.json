@@ -1,0 +1,85 @@
+{
+  "case": "PR-044",
+  "variant": "at_edge_under_extrapolation_refuses",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_edge_table_and_constant_273.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_edge_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:ef64f23978ec8e8a5e8393306455aac4055f46a977179bf60e98654f6b14dbe0"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 273.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "extrapolation",
+        "record": {
+          "id": "conformance/density_edge_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:ef64f23978ec8e8a5e8393306455aac4055f46a977179bf60e98654f6b14dbe0"
+        },
+        "field": "bulk.density",
+        "method": "constant",
+        "law": "conformance fixture: the end value held constant",
+        "basis": "conformance fixture: an illustrative basis",
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "at_edge",
+        "condition": "temperature",
+        "alternative": 0
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}
