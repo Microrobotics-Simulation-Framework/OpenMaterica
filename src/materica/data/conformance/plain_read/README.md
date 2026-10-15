@@ -118,27 +118,28 @@ The inputs come in families, named by what they break:
   fail on that rule alone.
 - **PR-006's set-aside arms.** A document set aside at step 1 and a source that is simply not the target give
   the same answer. PR-328 holds the arms where setting aside changes the answer.
+- **Answers S4's text decides, with no arm yet.** The S4 cases write them (`read_side_contract.md` section 3,
+  step 7):
+  - an alternative's own reasons beside `no_pick`: each remaining alternative's `unknown` reasons stand, each
+    with its `alternative`, and its `not_met` ones wait for a pick. Every `no_pick` arm so far uses
+    alternatives whose conditions are all met, none is set aside, and no arm shows that an entry's
+    `alternative` counts the stored alternatives rather than the remaining ones;
+  - an alternative refused at step 8 or 9: it refuses the field, so the result is `not_met`, never `no_pick`;
+  - a table alternative outside its readable range: set aside, unless an extrapolation the request carries
+    would cover it; one read exactly at a declared edge: it refuses the field; one read over an operating
+    range of its axis: it stays, and `want` decides. So two of the S4-mapped arms below,
+    `PR-044.table_outside_range_not_set_aside` and `PR-044.table_at_edge_not_set_aside`, now contradict the
+    text, and the S4 cases rewrite them;
+  - a missing operating value in one alternative: it refuses the field, with every alternative's reasons
+    beside `request_incomplete` (PR-308).
 - **Answers the text leaves open.** No arm meets them; each waits for the text:
-  - an alternative's own reasons beside `no_pick`, which `read_side_contract.md` section 3, step 7 leaves
-    unspecified. So every `no_pick` arm that compares `status` and `reasons` uses alternatives whose
-    conditions are all met, none is set aside, and no arm shows that an entry's `alternative` counts the
-    stored alternatives rather than the remaining ones; the arms with a table alternative kept outside its
-    range, at an edge or over a range of its axis leave `status` and `reasons` out of `compare` and of
-    `expected` (below);
-  - whether an alternative refused at step 8 or 9, which stays because alternatives are set aside for their
-    conditions only, turns `no_pick` into `not_met`;
   - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
     is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
     both readings agree.
 - **Answers the text leaves open for tables:**
-  - a table alternative's own reasons beside `no_pick`. The text keeps a table alternative read outside its
-    readable range, at a declared edge or over an operating range of its axis (its axis entry never sets it
-    aside) and gives its `table` as stored in its entry, with no extrapolation applied (PR-044, PR-013), so
-    those arms compare every member but `status` and `reasons`. A missing operating value in one alternative
-    ends the read (PR-308); that arm uses two table alternatives, so that no alternative adds a reason of its
-    own whatever order a reader takes their steps in, and leaves out `conditions`, which a result ended there
-    might take from either. All five are mapped to S4, which builds step 7's set-aside rule, and change with
-    the text if S4's ruling on it changes the text;
+  - none for alternatives now. The five S4-mapped arms (PR-044, PR-013, PR-308) were written before S4's text
+    and compare every member but `status` and `reasons`; S4's text decides those (above), and the S4 cases
+    complete them;
   - a table on `biocompatibility.evidence` whose `conditions` hold its axis (PR-036): whether step 8, refusing
     the form, finds the table's axis condition a condition evidence's own `conditions` may not hold. With
     `conditions` `{}` the text decides it (`form_not_registered`, and `form_invalid` for the absent axis
@@ -147,4 +148,4 @@ The inputs come in families, named by what they break:
 - **Acceptances located at a region.** Regions belong to the scene suite. An acceptance located at an
   `interval` is checked and not applied (`PR-316.implied_at_interval`, `PR-338.nominal_at_interval`,
   `PR-307.at_interval`).
-- **Overlays and picks:** later steps, with their cases.
+- **Overlays and picks:** S4's text decides them; their arms are the S4 cases.
