@@ -49,6 +49,8 @@ _SYMBOLS = re.compile(r"`[A-Z][a-z]?`(?: `[A-Z][a-z]?`)*")
 _LABEL = re.compile(r"[a-z0-9_]+(?:\.[a-z0-9_]+)+\.v[1-9][0-9]*")
 # A field's Label cell: the label's code span, then ` on ` and the prose saying where it applies.
 _LABEL_CELL = re.compile(r"`([^`]+)` on ([^`]*(?:`[^`]*`[^`]*)*)")
+# Where a label applies, after ` on `: a constant, and perhaps a table whose axis is not a given condition.
+_LABEL_ON = re.compile(r"a constant(?:, or on a table whose axis is not `([a-z0-9_]+)`)?")
 # A numeric condition's cell: its unit's code span alone, or followed by a parenthetical or `: ` and prose.
 _UNIT_CELL = re.compile(r"`([^`]+)`(?: \([^`()]*\)|: [^`]*)?")
 # A field's name in section 4.1's table, `<section>.<field>`.
@@ -198,13 +200,15 @@ def given_by(cell: str) -> dict[str, object]:
 
 class FieldRow(NamedTuple):
     """A row of `record_format.md` section 4.1, as read: its unit (a code, or a status object), its forms, the
-    bases it allows a form, the conditions it requires, and its label, if any."""
+    bases it allows a form, the conditions it requires, its label, if any, and the condition a table's axis
+    must not be for the label to go on it, where the label goes on a table at all."""
 
     unit: str | dict[str, str]
     forms: list[str]
     bases: dict[str, list[str]]
     requires: list[str]
     label: str | None
+    label_not_on_axis: str | None
 
 
 def fields(rows: list[Row]) -> Vocabulary:
@@ -213,12 +217,14 @@ def fields(rows: list[Row]) -> Vocabulary:
         if not _QUALIFIED.fullmatch(name):
             raise TableError(f"expected <section>.<field>, got {name!r}")
         forms, bases = field_forms(row["Forms"])
+        labelled = row["Label"] != "none"
         read[name] = FieldRow(
             field_unit(name, only_code(row["Unit"])),
             forms,
             bases,
             [] if row["Requires"] == "none" else code_list(row["Requires"], row["Requires"]),
-            None if row["Label"] == "none" else field_label(row["Label"]),
+            field_label(row["Label"]) if labelled else None,
+            label_not_on_axis(row["Label"]) if labelled else None,
         )
     entries: dict[str, object] = {}
     for name, field in read.items():
@@ -227,6 +233,8 @@ def fields(rows: list[Row]) -> Vocabulary:
             entry["bases"] = field.bases
         if field.label is not None:
             entry["label"] = field.label
+        if field.label_not_on_axis is not None:
+            entry["label_not_on_axis"] = field.label_not_on_axis
         entries[name] = entry
     labels = list(dict.fromkeys(field.label for field in read.values() if field.label is not None))
     return {"$defs": {"label": {"enum": labels}, **field_bindings(read)}, "fields": entries}
@@ -305,6 +313,20 @@ def field_label(cell: str) -> str:
     if any(_LABEL.fullmatch(code) for code in codes(found[2])):
         raise TableError(f"a second label in {cell!r}")
     return found[1]
+
+
+def label_not_on_axis(cell: str) -> str | None:
+    """Where a Label cell's label goes, after ` on `: "a constant", giving None, or "a constant, or on a table
+    whose axis is not `<condition>`", giving the condition. Any other prose stops the script, since a reader
+    reads where a label goes from what this gives (`record_format.md` section 4.1, "Labels")."""
+    found = _LABEL_CELL.fullmatch(cell)
+    where = _LABEL_ON.fullmatch(found[2]) if found is not None else None
+    if where is None:
+        raise TableError(
+            f"expected ' on a constant', or ' on a constant, or on a table whose axis is not `<condition>`', "
+            f"in {cell!r}"
+        )
+    return where[1]
 
 
 def field_forms(cell: str) -> tuple[list[str], dict[str, list[str]]]:

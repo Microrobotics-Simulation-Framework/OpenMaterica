@@ -40,8 +40,9 @@ class ConditionSpec:
 @dataclass(frozen=True)
 class RecordFieldSpec:
     """A row of `record_format.md` section 4.1. `unit` is a UCUM code or a status object; `bases`, for a form
-    whose bases the row restricts, those it allows; and `label` the label's token, where the row names one;
-    when a label applies is the row's prose, so it is code."""
+    whose bases the row restricts, those it allows; `label` the label's token, where the row names one, which
+    goes on a constant, and on a table whose axis is not `label_not_on_axis`, where the row names that
+    condition, and on no other table."""
 
     name: str
     unit: JsonValue
@@ -49,6 +50,7 @@ class RecordFieldSpec:
     requires: tuple[str, ...]
     label: str | None
     bases: dict[str, tuple[str, ...]]
+    label_not_on_axis: str | None
 
     @property
     def section(self) -> str:
@@ -116,7 +118,7 @@ def _condition(name: str, row: dict[str, JsonValue]) -> ConditionSpec:
 
 
 def _field(name: str, row: dict[str, JsonValue]) -> RecordFieldSpec:
-    label = row.get("label")
+    label, axis = row.get("label"), row.get("label_not_on_axis")
     bases = _object(row.get("bases", {}))
     return RecordFieldSpec(
         name,
@@ -125,6 +127,7 @@ def _field(name: str, row: dict[str, JsonValue]) -> RecordFieldSpec:
         _strings(row["requires"]),
         None if label is None else _string(label),
         {form: _strings(tokens) for form, tokens in bases.items()},
+        None if axis is None else _string(axis),
     )
 
 
