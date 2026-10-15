@@ -200,11 +200,11 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    acceptance that names the read's field (section 1), as step 1 resolves a reference, and take it through
    steps 2 to 5. Then apply it, by `record_format.md` section 4.4. Refuse a `purpose` that is none of the four
    (`unknown_token`), a key of `replaces` the base lacks (`absent`), and an overlay of another purpose than
-   `fill_in` that replaces a withheld value (`withheld`), whichever key of `replaces` holds it. Refuse an
-   overlay that does not replace the read's field (`absent`), a base mismatch and a conflict. Each overlay so
-   named must apply: a fault in any of them refuses the read, and none is skipped. A replaced field's own
-   shape is checked at step 8, for the read's field only. [PR-042] [PR-046] [PR-039] The overlay's scope is
-   compared by the build, not here (`declarations.md` section 5).
+   `fill_in` that replaces a withheld value (`withheld`), one alternative's included, whichever key of
+   `replaces` holds it. Refuse an overlay that does not replace the read's field (`absent`), a base mismatch
+   and a conflict. Each overlay so named must apply: a fault in any of them refuses the read, and none is
+   skipped. A replaced field's own shape is checked at step 8, for the read's field only. [PR-042] [PR-046]
+   [PR-039] The overlay's scope is compared by the build, not here (`declarations.md` section 5).
 7. **Field.** Find the field (`absent`); one whose `alternatives` breaks its shape is refused (`form_invalid`,
    `record_format.md` section 5). Either ends the read before any pick is checked. [PR-304] [PR-044]
 
