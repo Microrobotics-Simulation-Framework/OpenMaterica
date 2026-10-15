@@ -16,15 +16,22 @@ recorded in that repository's CHANGELOG.
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
   the eight forms, or alternatives; the constant, interval, composition and evidence forms in full; conditions
   with `plus_minus` and `set_or_measured`, each token condition bound to its own row's tokens; the specimen
-  facts with `supply_form` and `lot`, a fact's fixed unit `s` and `mimics`'s stated basis taken from the text;
-  the statistics block and its uncertainties, the provenance object and `label`; a status object in exactly
-  the members `provenance.md` section 1 item 5 lists, a placeholder beside one taking no other; and the rules
-  across objects of `provenance.md` sections 2, 3 and 7 (an extraction's derivation, formulation or fit
-  record, a pooled statistic's search, a withheld value's or evidence entry's recipe). The table, power-law,
-  parameter-set and reference-data forms' own members, the fit record, and the provenance members whose own
-  members the text does not yet name stay placeholders, and a section's field names stay open; the schema's
-  description names each such place. Members a read does not check carry `x-materica-write-only`
-  (`record.writer.json`).
+  facts with `supply_form` and `lot`, a fact's fixed unit `s`, `mimics`'s stated basis and the UBERON
+  identifier's pattern taken from the text, and a disease or treatment state's `text` present exactly for
+  `diseased` and `treated`; the statistics block and its uncertainties, the provenance object and `label`; a
+  status object in exactly the members `provenance.md` section 1 item 5 lists, a placeholder beside one taking
+  no other; and the rules across objects of `provenance.md` sections 2, 3 and 7 (an extraction's derivation,
+  formulation or fit record, a pooled statistic's search, a withheld value's or evidence entry's recipe). The
+  table, power-law, parameter-set and reference-data forms' own members, the fit record, and the provenance
+  members whose own members the text does not yet name stay placeholders; the schema's description names each
+  such place. Members a read does not check carry `x-materica-write-only` (`record.writer.json`).
+- The writer binds each name to its row (maintainer, 2026-10-15): each section's `fields` is closed to the
+  names `record_format.md` section 4.1 registers for it, and an overlay's `replaces` to the registered fields;
+  each field, and each of its alternatives, takes only its row's forms, the bases its row allows a
+  composition, its registered unit and its row's label or none; a numeric condition's `unit`, and its
+  `plus_minus` entries', hold its registered unit. The vocabulary generates the bindings from the rows, and
+  the writer applies each by `allOf`, holding no list of its own; the reader schema and the typed shapes leave
+  them out.
 - The reader schema holds a value field's and a section specimen's shapes in `$defs`, as step 8 checks them,
   applied from nowhere, without the rules a read cannot apply (one testing, or requiring only, a member it
   does not check); the typed shapes gain a TypedDict per form and per shape, every number typed `float` as the
@@ -33,26 +40,37 @@ recorded in that repository's CHANGELOG.
   bases a field's row allows a form, the conditions another condition requires, the element symbols, each
   token condition's tokens and each specimen fact's fixed values as enumerations, and the form, interval,
   composition, statistics, uncertainty, provenance and result-label tokens, four of them in new files
-  (`forms.json`, `statistics.json`, `provenance.json`, `labels.json`). The generator reads every code span of
-  a cell or stops, and stops on a name listed twice in a table.
+  (`forms.json`, `statistics.json`, `provenance.json`, `labels.json`); the pattern of an identifier a fact's
+  row writes (`"UBERON:<digits>"`); and the bindings of the rows (`fields.json`'s `sections`, `replaces` and
+  one per field, `conditions.json`'s `units`). The generator reads every code span of a cell or stops, and
+  stops on a name listed twice in a table, an identifier of another form, and a row a binding cannot state.
+- `provenance.md` section 6.2: a disease or treatment state's `text` names the disease or the treatment and is
+  present exactly when its token is `diseased` or `treated` (maintainer, 2026-10-15). Three plain-read inputs
+  that held a text beside `normal` lose it, rehashed, and the PR-316 case files that pin them are repinned.
 - `case.json` takes the `transform_draws` operation of a sampling case, its draws' shape not yet specified.
 
 ### Verification
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that
   the members marked write-only are those step 8 does not check, that each token condition and fact binds its
-  row's list, that each rule across objects refuses a field without its member, and that the writer's
-  description names exactly the places it leaves open (`tests/spec_sync/test_value_fields.py`).
+  row's list and a fact's identifier the pattern of its row's form, that a member a row gives as present
+  exactly with some tokens is so in the writer, that each rule across objects refuses a field without its
+  member, that each binding of the rows is applied where it belongs and holds what the rows give, a row added
+  to the text being taken by the unchanged writer, and that the writer's description names exactly the places
+  it leaves open (`tests/spec_sync/test_value_fields.py`).
 - A check that the names valid at one place, the members an `allOf` joins included, stay more than one slip
   apart and that no name has two meanings, over the schemas, the vocabulary and the specification, with an
-  allowlist of the overlaps judged intended, each with its reason and a safeguard quote that must stay in its
-  document (`tests/spec_sync/test_name_overlaps.py`).
+  allowlist of the overlaps judged intended, each with its reason and a safeguard, a quote that must stay in
+  its document or a test that refuses each meaning at the others' places, or with none, the reason and the
+  maintainer's flag; entries awaiting the maintainer's answer on a proposed rename pass with a warning
+  (`tests/spec_sync/test_name_overlaps.py`, `test_name_overlap_safeguards.py`).
 - A check that each reason code is given only at the steps the reason table names, against the text (a step's
   item and the passages it hands its checks to, and step 6 for an overlay what steps 1 to 5 give), and against
   the code of steps 0 to 5 in every module of the core, statically and traced through every read case file
   (`tests/spec_sync/test_reason_steps.py`).
-- Hypothesis properties of the writer schema: it takes every value field the specification allows, and refuses
-  each of 153 faults the text names, built from the text and the vocabulary, never from the schema; 69 mutants
-  of the schema, the S2a-1 review's 31 among them, each killed at the assertion it names
+- Hypothesis properties of the writer schema: it takes every value field the specification allows and every
+  registered field in its place, and refuses each of 166 faults the text names, in ten families, built from
+  the text and the vocabulary's rows, never from the schema or its bindings; 89 mutants of the schema and of
+  the bindings it applies, the S2a-1 review's 31 among them, each killed at the assertion it names
   (`tests/property/test_writer_properties.py`, `test_writer_mutants.py`), in a third CI shard, `writer`.
 - A check that each member the schemas declare whole admits the float the reader gives
   (`tests/unit/test_shapes.py`).
