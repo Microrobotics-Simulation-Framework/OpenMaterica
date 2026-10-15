@@ -1,6 +1,6 @@
 {
   "case": "PR-044",
-  "variant": "one_stays_and_refuses",
+  "variant": "one_not_set_aside_refuses",
   "suite": "plain_read",
   "schema_version": "0.1.0",
   "inputs": {

@@ -8,7 +8,7 @@
     "values": "CC0-1.0",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:062777f73d8cbed8bfb919fbde6b43f3cb69f85087f0f54631d5ab5a9178c907",
+  "content_hash": "sha256:57bc8825600d59d4918aff73e387ff7955333d39327b5fa4b1a8e13771e95db8",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "purpose": "measurement",
@@ -69,7 +69,7 @@
         },
         "specimen": {
           "preparation": {
-            "text": "deionised water, degassed before measurement",
+            "text": "conformance fixture: the overlay's own preparation",
             "basis": "stated"
           }
         }

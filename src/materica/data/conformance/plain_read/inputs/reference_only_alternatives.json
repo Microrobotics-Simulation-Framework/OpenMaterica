@@ -8,7 +8,7 @@
     "values": "CC0-1.0",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:373c95e9ccf33cc472d417611f33da8ca9732562248188fa2833406c90443d6d",
+  "content_hash": "sha256:68489c92d9c06f813157ad2668c8ffe756d154f329f5c475aba6155ef4bcaba5",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "sections": {
@@ -73,7 +73,7 @@
                         "header": "Viscosity (Pa s)",
                         "index": 2
                       },
-                      "row": "water"
+                      "row": "conformance fixture row"
                     }
                   },
                   "recipe": {
@@ -85,7 +85,7 @@
                         "header": "Viscosity (Pa s)",
                         "index": 2
                       },
-                      "row": "water"
+                      "row": "conformance fixture row"
                     },
                     "steps": "conformance fixture: illustrative extraction steps"
                   }
@@ -181,7 +181,7 @@
                         "header": "Viscosity (Pa s)",
                         "index": 2
                       },
-                      "row": "water"
+                      "row": "conformance fixture row"
                     }
                   }
                 },

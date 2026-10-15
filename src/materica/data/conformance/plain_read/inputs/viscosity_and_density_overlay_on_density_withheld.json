@@ -8,14 +8,14 @@
     "values": "CC0-1.0",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:2ee48e8a559877328502b8eace0b303f56fef7836af697980e66c98dbbf321bb",
+  "content_hash": "sha256:50e0948565442b2dc6bbaeb5d66ba3441b671f565c8220b7c5b55980231cf461",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "purpose": "measurement",
     "base": {
       "id": "conformance/overlaid_material_fixture",
       "version": "1.0.0",
-      "content_hash": "sha256:7e107bc54334b40053dfabb669eda4614d029760e20d19d456bf050b529937f2"
+      "content_hash": "sha256:2aa190c687c9b9d06ee7afa1d91c499adf442e2281dc28ad32e444a2be2748fd"
     },
     "scope": {
       "consumer": "conformance"
@@ -42,7 +42,7 @@
         },
         "specimen": {
           "preparation": {
-            "text": "deionised water, degassed before measurement",
+            "text": "conformance fixture: the overlay's own preparation",
             "basis": "stated"
           }
         },
@@ -165,7 +165,7 @@
         },
         "specimen": {
           "preparation": {
-            "text": "deionised water, degassed before measurement",
+            "text": "conformance fixture: the overlay's own preparation",
             "basis": "stated"
           }
         }

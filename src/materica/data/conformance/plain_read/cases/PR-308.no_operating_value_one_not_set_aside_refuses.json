@@ -1,6 +1,6 @@
 {
   "case": "PR-308",
-  "variant": "no_operating_value_one_stays_and_refuses",
+  "variant": "no_operating_value_one_not_set_aside_refuses",
   "suite": "plain_read",
   "schema_version": "0.1.0",
   "inputs": {

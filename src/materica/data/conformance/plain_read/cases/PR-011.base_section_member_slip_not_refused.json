@@ -52,7 +52,7 @@
         "overlay": {
           "id": "conformance/viscosity_overlay_fixture",
           "version": "1.0.0",
-          "content_hash": "sha256:6d0f21a14bc1d57574a368e51d31090945aa55cdd05c0587d2a2aab0adb653c9"
+          "content_hash": "sha256:a76ba5113587825e94e6d11f0d11a36f6cbd0aff34e2ee36f96b275da076dc66"
         },
         "reason": "conformance fixture: an illustrative reason"
       }
@@ -96,7 +96,7 @@
     ],
     "specimen": {
       "preparation": {
-        "text": "deionised water, degassed before measurement",
+        "text": "conformance fixture: the overlay's own preparation",
         "basis": "stated"
       }
     },

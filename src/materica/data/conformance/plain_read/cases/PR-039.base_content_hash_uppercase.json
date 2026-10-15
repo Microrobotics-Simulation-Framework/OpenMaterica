@@ -52,7 +52,7 @@
         "overlay": {
           "id": "conformance/viscosity_overlay_fixture",
           "version": "1.0.0",
-          "content_hash": "sha256:58ac84567494422e5e985846eb3648bc9b7adbfd6e393ade998f9335588ec1f5"
+          "content_hash": "sha256:3891ba7dd116c7bedafafe0e510a7c37193f1e5bae705fee2a741a4d20e39d08"
         },
         "reason": "conformance fixture: an illustrative reason"
       }

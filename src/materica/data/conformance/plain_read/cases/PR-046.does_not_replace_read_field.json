@@ -52,7 +52,7 @@
         "overlay": {
           "id": "conformance/density_overlay_fixture",
           "version": "1.0.0",
-          "content_hash": "sha256:03756ca828be88c25dca38382d70ae42bf94783143fea1dd53454b49f8c3d732"
+          "content_hash": "sha256:c815ab2159dd55dfdb1b6a88e678076f98af0dcf4a1c951016a1f1c8384a5c3f"
         },
         "reason": "conformance fixture: an illustrative reason"
       }

@@ -14,7 +14,7 @@
       "record": {
         "id": "conformance/overlaid_material_fixture",
         "version": "1.0.0",
-        "content_hash": "sha256:6e5f40d9813851467d65ce0cb4fd7f31fc0ce68413c7381f639e8c3e70c4be1a"
+        "content_hash": "sha256:c290966f025435e934160bca6f89c980cbb7ca9485d437ea3aaf3992ba1d2a19"
       },
       "field": "fluid.dynamic_viscosity"
     },
@@ -52,7 +52,7 @@
         "overlay": {
           "id": "conformance/viscosity_overlay_fixture",
           "version": "1.0.0",
-          "content_hash": "sha256:3d737b22307331acc6217d8b10d3e222bc54240bc6bcab86a6aa097b86695449"
+          "content_hash": "sha256:4a6d61720c4f3148c5952a6a922bab0e798760b62c674e6575b505d73cbdbde8"
         },
         "reason": "conformance fixture: an illustrative reason"
       }
