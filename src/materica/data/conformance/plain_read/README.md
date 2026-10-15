@@ -57,8 +57,9 @@ extrapolation, whose shape step 0 checks.
   999.5). Their `source_range` variants narrow or widen the readable range, and put an edge inside it, on its
   end or outside it.
 - **Points beside a knot or an edge** lie one double from it, and the two `-0` arms, at an end and at an edge
-  at 0, compare their numbers at the relative tolerance, under which `-0` and `0` agree: whether a result's
-  `operating` keeps the sign of the request's `-0` is not what they test.
+  at 0, compare their numbers at the relative tolerance, under which `-0` and `0` agree, so that they test
+  only where `-0` lies; their twin `PR-018.minus_zero_operating_kept_at_edge` compares `exact`, so that the
+  axis entry's `operating` keeps the sign of the request's `-0`.
 - **An extrapolation** in a request is an acceptance of kind `extrapolation` located at the read's record,
   with a `method`, a `law`, a `basis` and a `reason`. Where the read applies it, the result keeps
   `outside_range`, carries the value at the readable range's nearest end, and names the extrapolation in
@@ -83,9 +84,9 @@ All are illustrative, in the namespace `conformance`. See the conformance tree's
 | `composition_*` | `conformance/composition_fixture`: `bulk.elemental_composition`, a partial mass-fraction composition, and its faults |
 | `evidence_fixture.json`, `evidence_*` | `conformance/evidence_fixture`: `biocompatibility.evidence`, two reports, and its faults |
 | `mixture_*` | `conformance/mixture_fixture`: a derived viscosity whose derivation names the water and glycerol records |
-| `form_*` | `conformance/form_fixture`: a well-formed form on a field whose row does not allow it (`form_table_on_*`: a table) |
-| `density_table*.json` | `conformance/density_table_fixture`: `bulk.density` as a linear table over temperature, x [280, 300, 320, 340] K, and its variants: a `source_range` (`density_table_range_*`), a fault of structure, member or token, `points`, a statistics block, 10,000 knots, and alternatives beside a constant or an interval |
-| `density_edge*.json` | `conformance/density_edge_fixture`: the same over x [263, 273, 273, 283] K with an edge at 273 K, and its `source_range` and structural variants |
+| `form_*` | `conformance/form_fixture`: a form on a field whose row does not allow it (`form_table_on_*`: a well-formed table, on evidence without its axis condition; `form_broken_table_on_*`: a table without `edges`) |
+| `density_table*.json` | `conformance/density_table_fixture`: `bulk.density` as a linear table over temperature, x [280, 300, 320, 340] K, and its variants: a `source_range` (`density_table_range_*`), a fault of structure, member or token, `points`, a statistics block, 10,000 knots, and alternatives beside a constant, an interval or a second table |
+| `density_edge*.json` | `conformance/density_edge_fixture`: the same over x [263, 273, 273, 283] K with an edge at 273 K, and its `source_range` and structural variants (the edge below, inside, on an end of and above the readable range), and alternatives beside a constant or an interval |
 | `viscosity_table*.json` | `conformance/viscosity_table_fixture`: `fluid.dynamic_viscosity` as a linear table over temperature, shear rate stated, the Newtonian label; once stated without origin |
 | `shear_thinning*.json` | `conformance/shear_thinning_fixture`: the viscosity as a log-log table over shear rate, x [1, 10, 100, 1000] 1/s, and its variants |
 | `susceptibility*.json` | `conformance/susceptibility_table_fixture`: `magnetic.volume_susceptibility` as a table over flux density, x [0, 1, 2] T, or with an edge at 0 T, and over temperature with the linear label |
@@ -119,24 +120,32 @@ The inputs come in families, named by what they break:
   the same answer. PR-328 holds the arms where setting aside changes the answer.
 - **Answers the text leaves open.** No arm meets them; each waits for the text:
   - an alternative's own reasons beside `no_pick`, which `read_side_contract.md` section 3, step 7 leaves
-    unspecified. So every `no_pick` arm uses alternatives whose conditions are all met, none is set aside, and
-    no arm shows that an entry's `alternative` counts the stored alternatives rather than the remaining ones;
+    unspecified. So every `no_pick` arm that compares `status` and `reasons` uses alternatives whose
+    conditions are all met, none is set aside, and no arm shows that an entry's `alternative` counts the
+    stored alternatives rather than the remaining ones; the arms with a table alternative kept outside its
+    range, at an edge or over a range of its axis leave `status` and `reasons` out of `compare` and of
+    `expected` (below);
   - whether an alternative refused at step 8 or 9, which stays because alternatives are set aside for their
     conditions only, turns `no_pick` into `not_met`;
   - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
     is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
     both readings agree.
 - **Answers the text leaves open for tables:**
-  - a table alternative read outside its readable range, at a declared edge or with no operating value for
-    its axis (PR-044, PR-308, PR-013): whether `outside_range` or `at_edge` sets it aside or refuses the field
-    waits for a ruling with the step that builds picks, and its own reasons beside `no_pick` are not
-    specified. The `no_pick` arms with a table read it inside its range, or under `want: bounds`, where
-    nothing at step 11 is in question;
+  - a table alternative's own reasons beside `no_pick`. The text keeps a table alternative read outside its
+    readable range, at a declared edge or over an operating range of its axis (its axis entry never sets it
+    aside) and gives its `table` as stored in its entry, with no extrapolation applied (PR-044, PR-013), so
+    those arms compare every member but `status` and `reasons`. A missing operating value in one alternative
+    ends the read (PR-308); that arm uses two table alternatives, so that no alternative adds a reason of its
+    own whatever order a reader takes their steps in, and leaves out `conditions`, which a result ended there
+    might take from either. All five are mapped to S4, which builds step 7's set-aside rule, and change with
+    the text if S4's ruling on it changes the text;
   - a `points` member that is not a list, or a list of another length than `x`: whether step 8, which "checks
-    nothing inside it", adds `form_invalid` beside `points_unsupported`. Only `null` (PR-049), `[]` and a
-    list as long as `x` (PR-157) have arms;
-  - a table on `biocompatibility.evidence` (PR-036): whether step 8, refusing the form, also judges the table's
-    axis condition, which evidence's own `conditions` may not hold.
+    nothing inside it", adds `form_invalid` beside `points_unsupported`. Only `null` (PR-049), `[]` and a list
+    as long as `x` (PR-157) have arms;
+  - a table on `biocompatibility.evidence` whose `conditions` hold its axis (PR-036): whether step 8, refusing
+    the form, finds the table's axis condition a condition evidence's own `conditions` may not hold. With
+    `conditions` `{}` the text decides it (`form_not_registered`, and `form_invalid` for the absent axis
+    condition), and that arm is written.
 - **A power law** (PR-020, PR-021, TE-009): no 0.1.0 field takes one; its arms come with the acoustic section.
 - **Acceptances located at a region.** Regions belong to the scene suite. An acceptance located at an
   `interval` is checked and not applied (`PR-316.implied_at_interval`, `PR-338.nominal_at_interval`,

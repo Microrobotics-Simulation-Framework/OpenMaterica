@@ -1,0 +1,66 @@
+{
+  "case": "PR-322",
+  "variant": "loglog_negative_y",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "shear_thinning_loglog_negative_y.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/shear_thinning_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:40e1e7e23f3291a67d96d98bdca17b3136737a91b41eb26c93bef676ac46e74e"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 50.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

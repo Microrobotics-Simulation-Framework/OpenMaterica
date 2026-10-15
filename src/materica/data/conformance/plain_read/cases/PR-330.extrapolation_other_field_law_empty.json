@@ -1,6 +1,6 @@
 {
   "case": "PR-330",
-  "variant": "two_extrapolations_one_field_two_locations",
+  "variant": "extrapolation_other_field_law_empty",
   "suite": "plain_read",
   "schema_version": "0.1.0",
   "inputs": {
@@ -41,17 +41,9 @@
           "version": "1.0.0",
           "content_hash": "sha256:b9b82cc6c3611f1fef7e12d6ff2f21e663d4984b316b6c1f0f9e02c5f0c202a7"
         },
-        "field": "bulk.density",
+        "field": "fluid.dynamic_viscosity",
         "method": "constant",
-        "law": "conformance fixture: the end value held constant",
-        "basis": "conformance fixture: an illustrative basis",
-        "reason": "conformance fixture: an illustrative reason"
-      },
-      {
-        "acceptance": "extrapolation",
-        "field": "bulk.density",
-        "method": "constant",
-        "law": "conformance fixture: the end value held constant",
+        "law": "",
         "basis": "conformance fixture: an illustrative basis",
         "reason": "conformance fixture: an illustrative reason"
       }
