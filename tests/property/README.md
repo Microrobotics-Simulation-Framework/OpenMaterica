@@ -31,8 +31,10 @@ Hypothesis properties of the core, in two groups, and of the writer schema, in a
   member missing, a bound crossed, a token of another member's list or of none, a status token its row does
   not allow, a rule across objects broken, a unit other than the registered one, a field under a name or
   holding what its row does not give), 166 of them in ten families, each drawn as often as another of its
-  family on a field, or a body, planned so that its place exists. The refusal is checked on one the schema
-  takes, the same but for the fault, so that it is the fault's.
+  family on a field, or a body, planned so that its place exists; a family of more than 15 faults is drawn
+  in parts of at most 15, each a property of its own, so that the feature audit at `ci` can judge each fault
+  (below).
+  The refusal is checked on one the schema takes, the same but for the fault, so that it is the fault's.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -93,7 +95,7 @@ field's forms, unit, label or composition basis, its alternatives, the replaced 
 unit and its `plus_minus` entries' (B1 to B12, with B5b), and four that tighten them (TB1 to TB4). Each names
 the property that kills it and the assertion it must die at: a loosening mutant dies when the refusal property
 of its family finds the schema taking one of the faults it names, its search drawn among those faults, which
-the family's property draws as often as any other (the feature audit holds it to a third of that share); a
+the family's property draws as often as any other (the feature audit holds it to its draw floor); a
 tightening one dies when the acceptance property finds it refusing a field the text allows, its search drawn
 on fields of the form and with the parts in which it refuses one. Both sizes, as above. Two mutants of the
 review die at a fault besides the one they were written for, both by the rule they break: M13, without
@@ -111,7 +113,13 @@ entry's other statuses, also takes a withheld entry without its recipe.
   features with `support.feature`. A share below its least fails, and so does a feature recorded but not
   declared. Each least share is about a third of the share measured at both sizes. A share is judged only
   where the run's examples make at least 20 expected at the least share: `ci` and `deep` judge every share,
-  `dev` those of 10% or more.
+  `dev` those of 10% or more. A property that draws one of several features alike as its first choice, as a
+  refusal property draws its fault, names them with `@pytest.mark.drawn(name, ...)` instead. At `ci` each is
+  held to its draw floor: Hypothesis keeps an example's first choice through up to 8 examples (the example
+  and the mutations it makes of it), so the floor counts 2,000 examples as 250 draws, each shown in 5
+  examples (5.7 to 7.0 measured, by fault), and is the count a fault falls below with a probability of at
+  most 1e-6. A floor below 10 cannot be judged, and fails: those features must be drawn among fewer. `deep`
+  holds each to a third of its share, and `dev` judges none.
 
 ## Adding a property
 
