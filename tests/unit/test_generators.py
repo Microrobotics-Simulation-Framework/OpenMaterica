@@ -144,6 +144,191 @@ def test_the_vocabulary_check_fails_on_a_file_no_table_gives(
     assert gen_vocabulary.main(["--check"]) == 1
 
 
+@pytest.mark.parametrize(
+    ("cell", "given"),
+    [
+        ("1, 2, 3, 6", {"steps": [1, 2, 3, 6]}),
+        ("0", {"steps": [0]}),
+        ("USD read, engine adapter", {"procedures": ["USD read", "engine adapter"]}),
+    ],
+)
+def test_a_reasons_step_is_read_as_steps_or_procedures(cell: str, given: dict[str, object]) -> None:
+    assert gen_vocabulary.given_by(cell) == given
+
+
+@pytest.mark.parametrize("cell", ["14", "07", "1, build", "the build", "1,2", "step 3"])
+def test_a_reasons_step_of_another_form_is_refused(cell: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.given_by(cell)
+
+
+def test_a_fields_forms_are_read_with_the_bases_its_row_allows() -> None:
+    assert gen_vocabulary.field_forms("constant, table, interval") == (["constant", "table", "interval"], {})
+    assert gen_vocabulary.field_forms("composition (basis `mass_fraction`)") == (
+        ["composition"],
+        {"composition": ["mass_fraction"]},
+    )
+    assert gen_vocabulary.field_forms("evidence (section 4.3)") == (["evidence"], {})
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        "composition (basis mass_fraction)",
+        "composition (bases `mass_fraction`)",
+        "composition (`mass_fraction` only)",
+        "constant; table",
+        "Constant",
+    ],
+)
+def test_a_forms_cell_of_another_form_is_refused(cell: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.field_forms(cell)
+
+
+GEOMETRY = {"measurement_geometry": ["bulk", "tube", "gap"]}
+
+
+def test_required_with_is_read_as_a_token_condition_and_its_tokens() -> None:
+    assert gen_vocabulary.required_with("\u2014", GEOMETRY) == {}
+    assert gen_vocabulary.required_with("`measurement_geometry`: `tube`, `gap`", GEOMETRY) == {
+        "measurement_geometry": ["tube", "gap"]
+    }
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        pytest.param("`measurement_geometry`: `pipe`", id="a_token_not_the_conditions"),
+        pytest.param("`temperature`: `tube`", id="not_a_token_condition"),
+        pytest.param("measurement_geometry: `tube`", id="an_unquoted_condition"),
+        pytest.param("`measurement_geometry`: tube", id="an_unquoted_token"),
+        pytest.param("", id="empty"),
+    ],
+)
+def test_required_with_of_another_form_is_refused(cell: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.required_with(cell, GEOMETRY)
+
+
+def test_a_list_in_prose_is_read_between_its_anchors() -> None:
+    text = "the levels are `donor`, `lot` (a batch, `x`) [PR-156], `specimen` and `test` (rule 10)"
+    assert gen_vocabulary.listed(text, "the levels are ", " (rule 10)") == [
+        "donor",
+        "lot",
+        "specimen",
+        "test",
+    ]
+    assert gen_vocabulary.listed("`a`, or `b` where it applies", None, " where") == ["a", "b"]
+
+
+@pytest.mark.parametrize(
+    ("text", "after", "before"),
+    [
+        pytest.param("are `a`, b or `c`.", "are ", ".", id="an_unquoted_token"),
+        pytest.param("are `a`; `b`.", "are ", ".", id="another_separator"),
+        pytest.param("are `a` and `B`.", "are ", ".", id="a_capital"),
+        pytest.param("are `a`. are `b`.", "are ", ".", id="an_anchor_twice"),
+        pytest.param("is `a`.", "are ", ".", id="no_anchor"),
+        pytest.param("are `a`", "are ", ".", id="no_end"),
+        pytest.param("are .", "are ", ".", id="no_token"),
+    ],
+)
+def test_a_list_in_prose_of_another_form_is_refused(text: str, after: str, before: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.listed(text, after, before)
+
+
+def test_a_token_listed_twice_is_refused() -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.enumeration(["mean", "median", "mean"])
+
+
+@pytest.mark.parametrize(
+    ("document", "old", "new"),
+    [
+        pytest.param(
+            "uncertainty.md", "`median`, `single_measurement`", "median, `single_measurement`", id="central"
+        ),
+        pytest.param("uncertainty.md", "the levels are `donor`", "the levels: `donor`", id="level_anchor"),
+        pytest.param(
+            "uncertainty.md",
+            "- `basis` is `reported_uncertainty`",
+            "- `basis`: `reported_uncertainty`",
+            id="uncertainty",
+        ),
+        pytest.param("provenance.md", "`set_point` (the value", "set_point (the value", id="set_or_measured"),
+        pytest.param(
+            "provenance.md",
+            "`measurement_geometry`: `tube`, `gap`",
+            "`measurement_geometry`: `pipe`",
+            id="required_with",
+        ),
+        pytest.param(
+            "record_format.md",
+            "`mole_fraction`. `component`",
+            "mole fraction. `component`",
+            id="composition_basis",
+        ),
+        pytest.param("record_format.md", "| 1 | `H` `He` |", "| 1 | `H` |", id="element_count"),
+        pytest.param(
+            "record_format.md",
+            "`component` is `element:<symbol>`",
+            "`component` is `<symbol>`",
+            id="component_form",
+        ),
+        pytest.param(
+            "read_side_contract.md", "| `at_edge` | not_met | 11 |", "| `at_edge` | not_met | 14 |", id="step"
+        ),
+        pytest.param("read_side_contract.md", "from this list only: ", "from this list: ", id="labels"),
+    ],
+)
+def test_a_list_the_specification_rewords_stops_the_generator(
+    tmp_path: Path, document: str, old: str, new: str
+) -> None:
+    specification = copy_tree(tmp_path, gen_vocabulary.SPECIFICATION)
+    path = specification / document
+    text = path.read_text(encoding="utf-8")
+    assert old in text
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    with pytest.raises(TableError):
+        gen_vocabulary.generate(specification)
+
+
+@pytest.mark.parametrize(
+    ("document", "old", "new", "file", "definition", "tokens"),
+    [
+        pytest.param(
+            "uncertainty.md",
+            "`reproducibility`, or",
+            "`reproducibility`, `field_repeatability`, or",
+            "statistics.json",
+            "precision_conditions",
+            ["repeatability", "intermediate", "reproducibility", "field_repeatability"],
+            id="statistics",
+        ),
+        pytest.param(
+            "record_format.md",
+            "`stated_bound`. [RC-009]",
+            "`stated_bound` or `tolerance_band`. [RC-009]",
+            "forms.json",
+            "interval_basis",
+            ["reported_range", "proxy_range", "specification_limits", "stated_bound", "tolerance_band"],
+            id="forms",
+        ),
+    ],
+)
+def test_a_token_added_to_a_list_in_prose_is_read_with_the_others(
+    tmp_path: Path, document: str, old: str, new: str, file: str, definition: str, tokens: list[str]
+) -> None:
+    specification = copy_tree(tmp_path, gen_vocabulary.SPECIFICATION)
+    path = specification / document
+    text = path.read_text(encoding="utf-8")
+    assert old in text
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    assert json.loads(gen_vocabulary.generate(specification)[file])["$defs"][definition]["enum"] == tokens
+
+
 WRITER: dict[str, Json] = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://example.org/writer.json",
