@@ -603,8 +603,10 @@ operating condition sits exactly on a knot: in P5 the water table had a knot at 
 one-sided slopes of viscosity differ by 1.6 %, so a sensitivity taken there depends on the evaluator's side.
 An evaluator also returns whether its condition was in range, because an evaluator that only clamps turns
 "outside the record" into a value with a zero derivative: a fit then stalls silently at the table's end (P5).
-Clamping is a constant extrapolation, so it needs a declaration (section 3.5), or the in-range flag stops the
-run.
+Clamping at the ends of the readable range (the tabulated range, narrowed by the source's own validity range
+where that is narrower) is a constant extrapolation, so it needs a declaration (section 3.5), or the in-range
+flag stops the run. Clamping at the table's own ends inside a narrower validity range would return values the
+source disclaims, so outside the readable range an evaluator returns the end value or nothing.
 
 A constant can make a model claim without saying so: one viscosity means a Newtonian fluid, one
 susceptibility a linear response with no saturation. Such a constant names its trivial family as a label
@@ -2634,6 +2636,7 @@ Low, 8 Info) gave the rows below. The maintainer has ruled on none of them.
 | Before | After | Why |
 |---|---|---|
 | step 7 could set a table alternative aside on its own axis entry | it never does; under `no_pick` a kept table's entry holds the table as stored | at an edge, another alternative's value came back as `met` where the table marks the value as two-sided |
+| outside the range, a case compared only an evaluator's `in_range`, and clamping counted as a constant extrapolation | the value is the readable range's end value, from inside, with a zero derivative, or no number; clamping is a constant extrapolation only at the readable range's ends | an evaluator clamping at the table's ends returned values a narrower `source_range` disclaims, and passed every case |
 | the build counted any declared extrapolation as covering `outside_range` | only on a result whose `assumption` names it, so only where the read applied it (BC-019) | a model wanting bounds from a table was refused inside the table's range and accepted outside it, with no value |
 
 The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.

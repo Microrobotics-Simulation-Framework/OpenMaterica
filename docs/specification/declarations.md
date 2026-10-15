@@ -204,9 +204,11 @@ An acceptance whose kind needs a location and names none is refused. [BC-037]
 2. An accepted difference with `value` `"any"` accepts every value of that fact in that section; one that
    names a value accepts only that value, so accepting water's `not_applicable` species for the fluid section
    does not accept porcine blood. [BC-018]
-3. An evaluator that clamps outside its range is extrapolating by a constant: it needs an extrapolation of
-   method `constant`, or its in-range flag MUST stop the run (`read_side_contract.md` section 7). [not yet
-   covered]
+3. An evaluator that clamps a table at the ends of its readable range (`record_format.md` section 6, table
+   item 3) is extrapolating by a constant: it needs an extrapolation of method `constant`, or its in-range
+   flag MUST stop the run (`read_side_contract.md` section 7). [not yet covered] An evaluator returns no other
+   value outside that range, so a `consumer_law` extrapolation is computed beside it, from the end value it
+   returns (`read_side_contract.md` section 7 item 1). [TE-003]
 
 ### 4.2 What covers which reason
 

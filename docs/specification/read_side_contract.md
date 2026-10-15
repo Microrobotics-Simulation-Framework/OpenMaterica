@@ -455,7 +455,11 @@ value's derivative with respect to the axis. [TE-012]
    a table, its readable range, `source_range` included: `record_format.md` section 6, table item 3; at a
    declared edge the refusal comes first, item 7) (`false` for a power law whose range is unstated). It MUST
    NOT only clamp: a clamped value outside the range is an extrapolation, which needs the consumer's
-   declaration, or `in_range` false stops the run (`declarations.md`). [TE-002] [TE-003]
+   declaration, or `in_range` false stops the run (`declarations.md`). [TE-002] [TE-003] Outside a table's
+   readable range, an evaluator's value is the value at the range's nearest end, taken from inside the range,
+   as the read's is (section 5), and its derivative is zero, as a constant extrapolation gives; or it returns
+   neither, each absent or NaN. So it never returns a table's own value beyond a narrower `source_range`,
+   which the source disclaims: clamping at `x[0]` and `x[-1]` does not meet this item. [TE-003]
 2. Linear interpolation within `[x0, x1]` is `y0 + (x - x0) * (y1 - y0) / (x1 - x0)`. Log-log interpolation is
    `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) / (ln x1 - ln x0))`, in natural logarithms. [TE-004]
 3. At an interior knot the derivative depends on the side. An evaluator states which side it returns there
@@ -464,7 +468,8 @@ value's derivative with respect to the axis. [TE-012]
 4. At an end of a table's readable range, an interior knot of `x` included, the derivative is the one from
    inside the range, whatever side the evaluator declares: item 3's side applies only at an interior knot
    strictly inside the readable range. At a repeated knot (a declared edge), the value and derivative below it
-   come from the interval below, and above it from the interval above. [TE-007] [TE-011]
+   come from the interval below, and above it from the interval above. [TE-007] [TE-011] Where the readable
+   range is one point, it has no inside: the evaluator returns no derivative there, absent or NaN. [TE-007]
 5. For a log-log table, the derivative within an interval is `(y / x) * (ln y1 - ln y0) / (ln x1 - ln x0)`.
    [TE-008]
 6. For a power law, the derivative is `a * b * x^(b - 1)`, inside its range. [TE-009]
@@ -475,9 +480,9 @@ value's derivative with respect to the axis. [TE-012]
    the run whatever the consumer declared, since nothing accepts `at_edge` (`declarations.md` section 4.2):
    the consumer checks the refusal at every evaluation, stops the run there, and keeps nothing computed from a
    refused evaluation. NaN is a second line only, since a comparison or a selection on it can give a finite
-   number. A case at an edge compares only the refusal, and passes only where the refusal is reported and
-   each number is absent or NaN. Elsewhere outside the range a case compares only `in_range`. [TE-010]
-   [TE-002]
+   number. A case at an edge compares only the refusal, and passes only where the refusal is reported and each
+   number is absent or NaN. Elsewhere outside the range a case compares `in_range`, and the value and
+   the derivative by item 1. [TE-010] [TE-002]
 8. An evaluator that cannot report `in_range` or its derivative side does not claim the table evaluation
    suite.
 
@@ -526,11 +531,11 @@ value's derivative with respect to the axis. [TE-012]
 | HS-010 | hash | a record whose recomputed hash differs from its own is refused (`hash_mismatch`), with one `pin_mismatch`, since its stated hash equals the pin |
 | HS-011 | hash | a reader with HS refuses a record whose stated hash differs from a pin (`pin_mismatch`), and one edited after pinning whose stated hash still equals the pin (`hash_mismatch` and one `pin_mismatch`); a reader without HS refuses the first as well (PR-327's pin arm) |
 | TE-002 | table evaluation | `in_range` is reported beside the value, inside and outside the range |
-| TE-003 | table evaluation | an evaluator that only clamps, or that ignores a narrower `source_range`, fails |
+| TE-003 | table evaluation | an evaluator that only clamps, or that ignores a narrower `source_range`, fails; so does one that returns, outside a table's readable range, any number but the value at its nearest end, from inside, and a zero derivative (the table's own value beyond a narrower `source_range`, say) |
 | TE-004 | table evaluation | linear and log-log values match the stated formulas |
 | TE-005 | table evaluation | the left and right derivatives at each interior knot |
 | TE-006 | table evaluation | the evaluator's declared side matches what it returns |
-| TE-007 | table evaluation | at the ends of a table's readable range, an interior knot included, the inside derivative only, whatever side the evaluator declares |
+| TE-007 | table evaluation | at the ends of a table's readable range, an interior knot included, the inside derivative only, whatever side the evaluator declares; where the readable range is one point, no derivative |
 | TE-008 | table evaluation | the derivative of a log-log table |
 | TE-009 | table evaluation | the derivative of a power law inside its range |
 | TE-010 | table evaluation | an evaluator refuses at a declared edge, wherever it lies: it reports the refusal, and each number it returns there is absent or NaN, never finite or infinite |
