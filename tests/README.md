@@ -34,6 +34,9 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   (`spec_sync/test_value_fields.py`);
 - the name-overlap check: a reused name or a slip seeded into a schema, the vocabulary or an example, and its
   allowlist broken (`spec_sync/test_name_overlaps.py`);
+- the reason-step check: the table given a step its text lacks or lacking one, a code added to a step's text,
+  a code constructed at another step, and a step-0 function seeded to give `absent`
+  (`spec_sync/test_reason_steps.py`);
 - the released-schema check, on a copy of the tree with 0.1 frozen: a file changed, added or removed, the
   directory gone, and an `$id` frozen wrong (`spec_sync/test_released_schemas.py`);
 - the reference, case-tag and list-number checks: a broken reference of each form, an uncited row, a tag with

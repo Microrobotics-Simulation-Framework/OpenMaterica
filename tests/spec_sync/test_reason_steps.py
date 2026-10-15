@@ -1,0 +1,378 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Each reason code is given only at the steps the reason table names (`read_side_contract.md` section 4,
+`Step`, generated into `vocabulary/reasons.json`).
+
+Against the text: each code is named in the text of each step the table gives it (the step's item in section
+3, with the passages that item hands its checks to, and step 6 giving an overlay the codes steps 1 to 5 give
+the target), and no step's item names a code the table does not give it there. A code no step gives is named
+in the document of each procedure the table gives it.
+
+Against the code, for steps 0 to 5, statically and as run: every `Reason` the read's code constructs is
+constructed in a function this module places at a step, with a code the table allows there; and every reason
+a read of a case file returns was constructed at a step that may give it, under every claim the case agrees
+with.
+"""
+
+import ast
+import json
+import re
+import sys
+from collections.abc import Callable, Collection, Iterator
+from functools import cache
+from pathlib import Path
+from types import FrameType
+
+import pytest
+
+from materica.core import read as read_module
+from materica.core.jsonio import JsonValue
+from materica.core.read import ReadResult, read
+from materica.core.reasons import Reason
+from materica.core.record import RecordStore
+from materica.shapes import Suite, Want
+from scripts.gen_vocabulary import PROCEDURES, SPECIFICATION
+from tests.conformance import runner
+from tests.conformance.runner import CONFIGURATIONS, CaseFile, agreeing
+from tests.spec_sync.schemas import SCHEMA
+
+Documents = Callable[[str], str]
+# Each code, and the steps of section 3 that give it or the procedures that give one no step gives.
+Table = dict[str, tuple[frozenset[int], frozenset[str]]]
+CORE = Path(read_module.__file__).parent
+
+
+def reason_table() -> Table:
+    reasons = json.loads((SCHEMA / "vocabulary" / "reasons.json").read_text(encoding="utf-8"))["reasons"]
+    return {
+        code: (frozenset(int(step) for step in row.get("steps", [])), frozenset(row.get("procedures", [])))
+        for code, row in reasons.items()
+    }
+
+
+TABLE = reason_table()
+
+
+def document(name: str) -> str:
+    return (SPECIFICATION / name).read_text(encoding="utf-8")
+
+
+def flowing(text: str) -> str:
+    return re.sub(r"\s+", " ", text)
+
+
+def between(text: str, start: str, end: str) -> str:
+    """The text from `start`, which must be there once, to the first `end` after it."""
+    flat = flowing(text)
+    assert flat.count(start) == 1, start
+    first = flat.index(start)
+    last = flat.index(end, first + len(start))
+    return flat[first:last]
+
+
+def steps(read_document: Documents) -> dict[int, str]:
+    """Each step's item in section 3, by its number."""
+    procedure = between(
+        read_document("read_side_contract.md"), "## 3. The read procedure", "## 4. Reason codes"
+    )
+    items = list(re.finditer(r"(?:^| )(\d+)\. \*\*", procedure))
+    return {
+        int(item[1]): procedure[item.start() : following.start() if following else len(procedure)]
+        for item, following in zip(items, [*items[1:], None], strict=True)
+    }
+
+
+# The passages a step's item hands its checks to: the document, the text a passage starts and ends with.
+HANDED = {
+    0: [("read_side_contract.md", "A request is read as JSON by", "Two checks need the form")],
+    6: [("record_format.md", "2. `base` names one material", "## 5. Value fields")],
+    10: [
+        ("read_side_contract.md", "One check needs the field's specimen facts", "This fault, like step 11's"),
+        ("read_side_contract.md", "## 5. How a condition is checked", "**The form's range.**"),
+    ],
+    11: [
+        ("read_side_contract.md", "Two checks need the form", "One check needs the field's specimen facts"),
+        ("read_side_contract.md", "**The form's range.**", "## 6. What a read returns"),
+    ],
+    13: [("read_side_contract.md", "## 6. What a read returns", "## 7. Evaluating a table")],
+}
+# Section 4: "step 6 giving an overlay the codes steps 1 to 5 give the target".
+OVERLAY = "step 6 giving an overlay the codes steps 1 to 5 give the target"
+# Codes a step's item names without giving them, each with the sentence that names it.
+MENTIONED = {
+    (7, "condition_unstated"): (
+        "Whether a `no_pick` result also reports an alternative's own reasons (its `condition_unstated`, "
+        "say) is not yet specified."
+    ),
+}
+PROCEDURE_DOCUMENTS = {
+    "scene": ("geometry.md",),
+    "USD read": ("usd_binding.md",),
+    "engine adapter": ("usd_binding.md",),
+    "build": ("declarations.md",),
+    "family evaluation": ("model_families.md",),
+    "mixing": ("mixing_rules.md",),
+}
+
+
+def named(text: str, table: Table) -> set[str]:
+    return {code for code in re.findall(r"`([a-z_]+)`", text) if code in table}
+
+
+def check_text(table: Table, read_document: Documents) -> None:
+    items = steps(read_document)
+    assert set(items) == set(range(14))
+    assert OVERLAY in flowing(read_document("read_side_contract.md"))
+    for (step, _), sentence in MENTIONED.items():
+        assert sentence in items[step], sentence
+    for step, item in items.items():
+        own = named(item, table) - {code for (at, code) in MENTIONED if at == step}
+        assert {code for code in own if step not in table[code][0]} == set(), f"step {step}"
+    for code, (given, procedures) in table.items():
+        for step in given:
+            text = items[step] + "".join(
+                between(read_document(name), *ends) for name, *ends in HANDED.get(step, [])
+            )
+            overlays = step == 6 and bool(given & set(range(1, 6)))
+            assert code in named(text, table) or overlays, f"{code} at step {step}"
+        for procedure in procedures:
+            assert any(
+                code in named(read_document(name), table) for name in PROCEDURE_DOCUMENTS[procedure]
+            ), f"{code} by {procedure}"
+        assert bool(given) != bool(procedures), code
+    assert set(PROCEDURE_DOCUMENTS) == set(PROCEDURES)
+
+
+def test_each_code_is_given_at_the_steps_the_table_names_and_no_other() -> None:
+    check_text(TABLE, document)
+
+
+# The functions of the read's code that construct a reason, by module and qualified name, and the step each
+# belongs to; None for a function that is no step's: `_parsed` gives the JSON reader's refusal of a request,
+# which step 0 reports as `request_incomplete`, and `RecordStore.add` notes an unreadable source, which step 1
+# reports.
+STEP_OF: dict[tuple[str, str], int | None] = {
+    ("read.py", "ReadRequest.from_json"): 0,
+    ("read.py", "_parsed"): None,
+    ("read.py", "_incomplete"): 0,
+    ("read.py", "_member"): 0,
+    ("read.py", "_target"): 0,
+    ("read.py", "_want"): 0,
+    ("read.py", "_registered"): 0,
+    ("read.py", "_unit"): 0,
+    ("read.py", "_operating_condition"): 0,
+    ("read.py", "_requirement_condition"): 0,
+    ("resolve.py", "_candidate"): 1,
+    ("record.py", "Record.version_refusal"): 2,
+    ("record.py", "Record.envelope_refusal"): 3,
+    ("resolve.py", "resolve_record"): 4,
+    ("record.py", "Record.type_refusal"): 5,
+    ("record.py", "RecordStore.add"): None,
+}
+MODULES = ("read.py", "resolve.py", "record.py")
+
+
+def constructed(module: str, source: str) -> Iterator[tuple[str, str]]:
+    """Each reason `source` constructs, as the qualified name of the function it is in and its code:
+    `Reason("code", ...)`, or `_incomplete(...)`, which constructs `request_incomplete`."""
+
+    def visit(node: ast.AST, owner: tuple[str, ...]) -> Iterator[tuple[str, str]]:
+        if isinstance(node, ast.FunctionDef | ast.ClassDef):
+            owner = (*owner, node.name)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id == "Reason":
+                code = node.args[0] if node.args else None
+                assert isinstance(code, ast.Constant), f"{module}: a Reason whose code is not written out"
+                yield ".".join(owner), str(code.value)
+            elif node.func.id == "_incomplete":
+                yield ".".join(owner), "request_incomplete"
+        for child in ast.iter_child_nodes(node):
+            yield from visit(child, owner)
+
+    yield from visit(ast.parse(source), ())
+
+
+def check_code(table: Table, sources: dict[str, str]) -> None:
+    for module, source in sources.items():
+        for function, code in constructed(module, source):
+            assert (module, function) in STEP_OF, (
+                f"{module}: {function} constructs {code} at no step this test knows"
+            )
+            step = STEP_OF[(module, function)]
+            assert step is None or step in table[code][0], f"{code} at step {step}, in {module}: {function}"
+
+
+def test_the_reads_code_constructs_each_code_at_a_step_that_gives_it() -> None:
+    check_code(TABLE, {module: (CORE / module).read_text(encoding="utf-8") for module in MODULES})
+
+
+def traced_read(
+    request: JsonValue | bytes, store: RecordStore, claims: frozenset[Suite]
+) -> tuple[ReadResult, list[tuple[str, int | None]]]:
+    """A read, and the code and step of every reason constructed while it ran: the step `STEP_OF` gives the
+    nearest function that constructed it, or -1 where it gives none."""
+    target = Reason.__init__.__code__
+    created: list[tuple[str, int | None]] = []
+
+    def profile(frame: FrameType, event: str, _: object) -> None:
+        if event != "call" or frame.f_code is not target:
+            return
+        caller = frame.f_back
+        while caller is not None:
+            key = (Path(caller.f_code.co_filename).name, caller.f_code.co_qualname)
+            if key in STEP_OF:
+                created.append((str(frame.f_locals["code"]), STEP_OF[key]))
+                return
+            caller = caller.f_back
+        created.append((str(frame.f_locals["code"]), -1))
+
+    sys.setprofile(profile)
+    try:
+        result = read(request, store, claims=claims)
+    finally:
+        sys.setprofile(None)
+    return result, created
+
+
+READS = [
+    case_file
+    for case_file in runner.discover()
+    if case_file.operation == "read" and runner.step_done(case_file)
+]
+
+
+@cache
+def traced(case_file: CaseFile) -> tuple[tuple[str, frozenset[int | None]], ...]:
+    """For each reason a read of `case_file` returns, under each claim it agrees with, the steps at which a
+    reason of its code was constructed during that read."""
+    found: list[tuple[str, frozenset[int | None]]] = []
+    for claims in agreeing(case_file, CONFIGURATIONS):
+        store = RecordStore()
+        for path in case_file.input_paths("records"):
+            store.add(path.name, path.read_bytes())
+        request: JsonValue | bytes = (
+            case_file.input_bytes("request") if "request" in case_file.inputs else case_file.request
+        )
+        result, created = traced_read(request, store, claims)
+        found += [
+            (reason.code, frozenset(step for code, step in created if code == reason.code))
+            for reason in result.reasons
+        ]
+    return tuple(found)
+
+
+def check_traced(table: Table, case_file: CaseFile) -> None:
+    for code, at in traced(case_file):
+        assert -1 not in at, f"{code} constructed where no step is placed"
+        assert at - {None}, f"{code} constructed at no step"
+        assert at - {None} <= table[code][0], f"{code} constructed at {sorted(map(str, at))}"
+
+
+@pytest.mark.parametrize("case_file", READS, ids=lambda case_file: case_file.path.name)
+def test_each_reason_a_read_returns_was_constructed_at_a_step_that_gives_it(case_file: CaseFile) -> None:
+    check_traced(TABLE, case_file)
+
+
+def test_the_reads_traced_reach_every_code_steps_0_to_5_give() -> None:
+    """A tracer that saw nothing would find nothing: every code the table gives at steps 0 to 5 is returned,
+    constructed at each of those steps, by some read of a case file."""
+    seen = {(code, step) for case_file in READS for code, at in traced(case_file) for step in at}
+    allowed = {(code, step) for code, (given, _) in TABLE.items() for step in given if step <= 5}
+    assert allowed - seen == set()
+
+
+def without(table: Table, code: str, step: int) -> Table:
+    given, procedures = table[code]
+    return {**table, code: (given - {step}, procedures)}
+
+
+def adding(table: Table, code: str, step: int) -> Table:
+    given, procedures = table[code]
+    return {**table, code: (given | {step}, procedures)}
+
+
+def changed_document(name: str, old: str, new: str) -> Documents:
+    """The documents, `name` with `old`, which must be there, replaced by `new`."""
+    changed = document(name)
+    assert old in changed, old
+    changed = changed.replace(old, new, 1)
+    return lambda other: changed if other == name else document(other)
+
+
+@pytest.mark.parametrize(
+    ("table", "read_document"),
+    [
+        pytest.param(without(TABLE, "absent", 7), document, id="a_step_the_table_lacks"),
+        pytest.param(adding(TABLE, "withheld", 9), document, id="a_step_the_text_does_not_give"),
+        pytest.param(adding(TABLE, "condition_outside", 5), document, id="a_step_with_no_handed_passage"),
+        pytest.param(
+            TABLE,
+            changed_document(
+                "read_side_contract.md",
+                "(`unit_mismatch`), a condition's",
+                "(`unit_mismatch`, `withheld`), a condition's",
+            ),
+            id="a_code_added_to_a_steps_item",
+        ),
+        pytest.param(
+            {**TABLE, "label_mismatch": (frozenset[int](), frozenset({"scene"}))},
+            document,
+            id="a_procedure_not_naming_it",
+        ),
+        pytest.param(
+            TABLE,
+            changed_document(
+                "read_side_contract.md",
+                "(its `condition_unstated`, say)",
+                "(its `condition_unknown_name`, say)",
+            ),
+            id="a_mention_gone",
+        ),
+    ],
+)
+def test_the_text_check_can_fail(table: Table, read_document: Documents) -> None:
+    with pytest.raises(AssertionError):
+        check_text(table, read_document)
+
+
+SOURCES = {module: (CORE / module).read_text(encoding="utf-8") for module in MODULES}
+
+
+@pytest.mark.parametrize(
+    ("module", "old", "new"),
+    [
+        pytest.param(
+            "resolve.py",
+            'return Reason("absent", detail=',
+            'return Reason("unknown_type", detail=',
+            id="a_code_at_another_step",
+        ),
+        pytest.param(
+            "read.py",
+            '        return (Reason("request_incomplete", detail="the request is not an object"),)',
+            '        return (Reason("absent"),)',
+            id="absent_at_step_0",
+        ),
+        pytest.param("read.py", "def _member(", "def _members(", id="a_function_no_step_places"),
+    ],
+)
+def test_the_static_check_can_fail(module: str, old: str, new: str) -> None:
+    assert old in SOURCES[module], old
+    with pytest.raises(AssertionError):
+        check_code(TABLE, {**SOURCES, module: SOURCES[module].replace(old, new, 1)})
+
+
+def test_the_traced_check_can_fail(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A step-0 function that gives `absent` beside its own reason: a read of a case whose request it checks
+    returns a reason step 0 may not give."""
+    want = read_module._want  # pyright: ignore[reportPrivateUsage]  # the function the fault is seeded in
+
+    def faulty(value: JsonValue, claims: Collection[str], found: list[Reason]) -> Want | None:
+        found.append(Reason("absent"))
+        return want(value, claims, found)
+
+    monkeypatch.setattr(read_module, "_want", faulty)
+    traced.cache_clear()
+    case_file = next(case_file for case_file in READS if case_file.path.name == "PR-308.no_want.json")
+    with pytest.raises(AssertionError):
+        check_traced(TABLE, case_file)
+    traced.cache_clear()
