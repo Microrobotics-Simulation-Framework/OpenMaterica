@@ -243,6 +243,8 @@ field as `form_invalid` alone, its token giving no reason of its own, so one hol
 table's members is no withheld value (PR-110); the record checks flag a table that breaks its structural
 rules, `source_range`'s included (RC-008); the table evaluation cases take the `evaluate` operation, a
 tolerance per precision, a refusal at an edge that returns no number, absent or NaN, and stops the run, and
-the inside derivative at every end of the readable range, none where it is one point (TE-007, TE-010, TE-012);
-and outside the readable range an evaluator returns the value at its nearest end, from inside, with a zero
-derivative, or no number, so clamping is a constant extrapolation only at the readable range's ends (TE-003).
+the inside derivative at every end of the readable range, none where it is one point (TE-007, TE-010, TE-012),
+and they fail an evaluator that reports a refusal where none is due and compare an expected zero derivative
+exactly, either sign of zero passing (TE-002, TE-003); and outside the readable range an evaluator returns the
+value at its nearest end, from inside, with a zero derivative, or no number, so clamping is a constant
+extrapolation only at the readable range's ends (TE-003).
