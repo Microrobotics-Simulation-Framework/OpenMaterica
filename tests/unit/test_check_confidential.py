@@ -6,7 +6,6 @@ The paths are built by concatenation, so that this file does not hold them for t
 """
 
 import io
-import os
 import subprocess
 from pathlib import Path
 
@@ -14,6 +13,7 @@ import pytest
 
 from scripts import check_confidential
 from scripts.check_confidential import ALLOWED_PATHS, ScanError, Scanner
+from tests.unit.throwaway_git import throwaway_repository
 
 KEY = bytes(range(32))
 OTHER_KEY = bytes(range(1, 33))
@@ -128,13 +128,9 @@ def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     digests.write_text(check_confidential.digest_file(KEY, TERMS), encoding="utf-8")
     monkeypatch.setattr(check_confidential, "DIGESTS", digests)
     monkeypatch.delenv(check_confidential.KEY_VARIABLE, raising=False)
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
-    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     root = tmp_path / "repository"
     root.mkdir()
-    monkeypatch.chdir(root)
-    subprocess.run(["git", "init", "-q", "-b", "main"], check=True)
-    return root
+    return throwaway_repository(root, monkeypatch)
 
 
 def commit(message: str, files: dict[str, bytes]) -> None:
