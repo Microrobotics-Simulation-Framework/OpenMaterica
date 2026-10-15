@@ -213,15 +213,17 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    row does not allow it (`form_invalid`), a token the reader knows for no member of that name
    (`unknown_token`), and a withheld value (`withheld`). [PR-322] [PR-049] [PR-030] The shapes checked
    are those of the members the read uses or returns (`record_format.md` section 5, `provenance.md` sections
-   1, 2 and 5, `uncertainty.md` sections 1 and 4): the form's member; `unit`, only as a string or a status
-   object (`record_format.md` section 4.2), since step 9 alone compares it; each condition and specimen fact
-   whose name the reader knows; the statistics block and its uncertainties, a composition component's block
+   1, 2 and 5, `uncertainty.md` sections 1 and 4): the form's member, where the row allows the form (a form it
+   does not allow is refused, `form_not_registered`, and its member, which the read neither uses nor returns,
+   is not checked, neither its shape nor its values below); `unit`, only as a string or a status object
+   (`record_format.md` section 4.2), since step 9 alone compares it; each condition and specimen fact whose
+   name the reader knows; the statistics block and its uncertainties, a composition component's block
    included; `label`; and in `provenance` its `origin`, its `source` (present for origin `measured_by_source`,
    and its `key` wherever present) and its `derivation` for origin `derived` (`provenance.md` section 5).
    `review` never refuses the field (`provenance.md` section 2 item 6), nor does a missing `label`
    (`record_format.md` section 4.1); the other members of a value field are left to the record checks. Every
    member of a table that the reader's version defines is checked, so a table returned as stored (section 2)
-   holds only checked members. [PR-045] [PR-109] [PR-110] Beyond shapes, step 8 checks these values:
+   holds only checked members. [PR-036] [PR-045] [PR-109] [PR-110] Beyond shapes, step 8 checks these values:
    - counts (`n_specimens`, `n_donors`, `n_sources`, an ensemble's `counts`) are whole and not negative, and
      an evidence entry's `standard.year` is whole;
    - a condition's or fact's `range`, and an interval's numeric bounds, are in order;

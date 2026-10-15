@@ -394,7 +394,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-036
 
-`record_format.md`: a form the field's row does not allow is refused (`form_not_registered`): a power law, a parameter set and reference data on every 0.1.0 field, a parameter set also `family_suite_absent` without the family evaluation suite; a composition basis the row does not allow
+`record_format.md`: a form the field's row does not allow is refused (`form_not_registered`): a power law, a parameter set and reference data on every 0.1.0 field, a parameter set also `family_suite_absent` without the family evaluation suite; a composition basis the row does not allow; the member of a form the row does not allow is not checked
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|

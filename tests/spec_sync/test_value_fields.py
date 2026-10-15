@@ -785,11 +785,13 @@ CHECKED_WHERE = {
 }
 # What step 8 checks, which no member marked write-only may be, by the text that names it.
 STEP_8 = (
-    "the form's member; `unit`, only as a string or a status object (`record_format.md` section 4.2), since "
-    "step 9 alone compares it; each condition and specimen fact whose name the reader knows; the statistics "
-    "block and its uncertainties, a composition component's block included; `label`; and in `provenance` its "
-    "`origin`, its `source` (present for origin `measured_by_source`, and its `key` wherever present) and "
-    "its `derivation` for origin `derived`"
+    "the form's member, where the row allows the form (a form it does not allow is refused, "
+    "`form_not_registered`, and its member, which the read neither uses nor returns, is not checked, neither "
+    "its shape nor its values below); `unit`, only as a string or a status object (`record_format.md` "
+    "section 4.2), since step 9 alone compares it; each condition and specimen fact whose name the reader "
+    "knows; the statistics block and its uncertainties, a composition component's block included; `label`; "
+    "and in `provenance` its `origin`, its `source` (present for origin `measured_by_source`, and its `key` "
+    "wherever present) and its `derivation` for origin `derived`"
 )
 CHECKED = (
     {("field_members", member) for member in ("unit", "specimen", "provenance", "label")}
