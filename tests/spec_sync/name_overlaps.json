@@ -1,6 +1,7 @@
 {
   "format": 1,
-  "about": "The name overlaps judged intended (tests/spec_sync/name_overlaps.py). Each entry names its rule and its names; for rule A, how many meanings the name has, so that a new meaning flags it again; and optionally the owner its flag must have. Each gives its reason, and either a safeguard, a quote that must stay in its document, or why none is needed. An entry that allows no flag, or whose safeguard is gone, fails the check. Drafted with S2a-1 from the name-overlap prototype's allowlist (2026-10-14), for the maintainer to confirm.",
+  "about": "The name overlaps judged intended (tests/spec_sync/name_overlaps.py). Each entry names its rule and its names; for rule A, how many meanings the name has, so that a new meaning flags it again; and optionally the owner its flag must have. Each gives its reason, and a safeguard: a quote that must stay in its document, or a test that keeps the meanings apart (tests/spec_sync/test_name_overlap_safeguards.py). An entry with no safeguard says why none is possible and carries the maintainer's flag: approved_no_safeguard, or pending while a rename is proposed (maintainer, 2026-10-15). While renames is proposed, a pending entry passes with a warning; once the maintainer has answered (answered), it fails until it is renamed away, given a safeguard or approved. An entry that allows no flag, or whose safeguard is gone, fails the check. Drafted with S2a-1 from the name-overlap prototype's allowlist (2026-10-14), for the maintainer to confirm.",
+  "renames": "proposed",
   "entries": [
     {
       "rule": "B",
@@ -73,8 +74,10 @@
       "names": ["evidence"],
       "meanings": 3,
       "reason": "The licence's evidence (excluded), a value's provenance evidence (quote, locator, document, copy), and the evidence form's list of test reports.",
-      "safeguard": null,
-      "no_safeguard_because": "a token, an object and a list: a value written at another of the three places breaks that place's shape"
+      "safeguard": {
+        "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[evidence]",
+        "what": "The writer refuses each meaning's value at the other two places, and the reader refuses it at the licence and at the form's list; a provenance's evidence is one a read does not check."
+      }
     },
     {
       "rule": "A",
@@ -135,9 +138,11 @@
       "rule": "A",
       "names": ["method"],
       "meanings": 2,
-      "reason": "An extraction method (provenance.md section 3) and an extrapolation's method (declarations.md section 4.1): a record and a declaration, each list closed where it sits.",
-      "safeguard": null,
-      "no_safeguard_because": "different documents; neither list's tokens are valid at the other place"
+      "reason": "An extraction method, a closed list (provenance.md section 3), and the free text naming a derivation's or a fit procedure's method.",
+      "safeguard": {
+        "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[method]",
+        "what": "The writer refuses a method's free text at an extraction's method; a derivation's method is free text, and takes any string. A read checks neither."
+      }
     },
     {
       "rule": "A",
@@ -187,25 +192,31 @@
       "rule": "A",
       "names": ["inputs"],
       "meanings": 3,
-      "reason": "A case's input files, a derivation's inputs, and a search's inputs token.",
-      "safeguard": null,
-      "no_safeguard_because": "an object, a list and a token in different objects"
+      "reason": "A case's input files, a derivation's inputs, and a search's inputs token; a family manifest's list of inputs is a list, as a derivation's is.",
+      "safeguard": {
+        "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[inputs]",
+        "what": "case.json, and the writer at a derivation and at a search, each refuse the other two meanings; the reader refuses them at a derivation, which a read checks."
+      }
     },
     {
       "rule": "A",
       "names": ["input"],
       "meanings": 2,
-      "reason": "An input's index in a derivation's input_specimens, and a family vector's input by name.",
-      "safeguard": null,
-      "no_safeguard_because": "a number against a map, in different documents"
+      "reason": "An input's index in a derivation's input_specimens, and a check point's input by name (model_families.md section 6), in a parameter set whose shape is not yet written.",
+      "safeguard": {
+        "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[input]",
+        "what": "The writer and the reader refuse a check point's input at input_specimens[].input. A parameter set's check points have no schema yet; once they have, the test fails until it says what that place refuses."
+      }
     },
     {
       "rule": "A",
       "names": ["target"],
       "meanings": 3,
-      "reason": "A request's target, the specimen facts a declared model stands for, and a specimen difference's target value.",
-      "safeguard": null,
-      "no_safeguard_because": "disjoint shapes; a declaration's target never becomes a request's"
+      "reason": "A request's target (a record or region, and a field), a declared model's target (specimen facts, declarations.md section 1), and a specimen difference's target value (section 3).",
+      "safeguard": {
+        "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[target]",
+        "what": "The read request refuses a model's target and a specimen difference's. Declarations have no schema yet; once they have, the test fails until it says what their places refuse."
+      }
     },
     {
       "rule": "A",
@@ -213,7 +224,8 @@
       "meanings": 2,
       "reason": "A cylinder's axis vector in a scene, and a table's or power law's axis condition in a record.",
       "safeguard": null,
-      "no_safeguard_because": "a vector against a name, in different documents"
+      "no_safeguard_because": "Neither place has a schema yet: a scene document's cylinder (geometry.md) and a table's or power law's axis, a placeholder in the writer.",
+      "maintainer": "pending"
     },
     {
       "rule": "A",
@@ -221,7 +233,8 @@
       "meanings": 2,
       "reason": "A chain's first family and record, and a family conversion's source measure.",
       "safeguard": null,
-      "no_safeguard_because": "an object against a name, in different documents"
+      "no_safeguard_because": "Neither place has a schema yet: a chain in a declaration (declarations.md section 6) and a conversion in a family manifest (model_families.md section 3).",
+      "maintainer": "pending"
     },
     {
       "rule": "A",
@@ -229,7 +242,8 @@
       "meanings": 2,
       "reason": "A chain's following family and record, and a family conversion's target measure.",
       "safeguard": null,
-      "no_safeguard_because": "an object against a name, in different documents"
+      "no_safeguard_because": "Neither place has a schema yet: a chain in a declaration (declarations.md section 6) and a conversion in a family manifest (model_families.md section 3).",
+      "maintainer": "pending"
     },
     {
       "rule": "A",
@@ -237,15 +251,18 @@
       "meanings": 2,
       "reason": "A family's kind per loading control, and an admissibility constraint's kind token, both in the family manifest.",
       "safeguard": null,
-      "no_safeguard_because": "an object against a token, at different depths of one manifest"
+      "no_safeguard_because": "The family manifest has no schema yet (model_families.md section 3).",
+      "maintainer": "pending"
     },
     {
       "rule": "A",
       "names": ["mean"],
       "meanings": 2,
-      "reason": "A statistics block's mean, and a multivariate normal's mean per parameter.",
-      "safeguard": null,
-      "no_safeguard_because": "a number against a map"
+      "reason": "A statistics block's mean, and a multivariate normal's mean per parameter (uncertainty.md section 3), in a parameter set whose shape is not yet written.",
+      "safeguard": {
+        "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[mean]",
+        "what": "The writer and the reader refuse a mean per parameter at a statistics block's mean. A parameter set's uncertainty has no schema yet; once it has, the test fails until it says what that place refuses."
+      }
     },
     {
       "rule": "A",
@@ -253,7 +270,8 @@
       "meanings": 3,
       "reason": "A declared model's consumer parameters, a declared distribution's parameters, and a family's parameter list.",
       "safeguard": null,
-      "no_safeguard_because": "disjoint shapes in different objects"
+      "no_safeguard_because": "None of the three places has a schema yet: a declared model, a declared distribution (declarations.md) and a family manifest (model_families.md).",
+      "maintainer": "pending"
     },
     {
       "rule": "A",
@@ -261,7 +279,8 @@
       "meanings": 2,
       "reason": "A coverage mode's ranges by input, and an invariant's ranges in order.",
       "safeguard": null,
-      "no_safeguard_because": "a map against a list"
+      "no_safeguard_because": "Neither place has a schema yet: a parameter set's and a fit's coverage (model_families.md section 6, fits_and_reference_data.md section 3), placeholders in the writer.",
+      "maintainer": "pending"
     },
     {
       "rule": "A",
@@ -269,7 +288,8 @@
       "meanings": 2,
       "reason": "The reference-data form, and a witness's datum naming reference data.",
       "safeguard": null,
-      "no_safeguard_because": "an object against a string"
+      "no_safeguard_because": "Neither place has a schema yet: the reference-data form's member and a witness's datum, placeholders in the writer.",
+      "maintainer": "pending"
     },
     {
       "rule": "A",
@@ -277,7 +297,8 @@
       "meanings": 2,
       "reason": "A declared distribution's space token, and a multivariate normal's space per parameter.",
       "safeguard": null,
-      "no_safeguard_because": "a token against a map of the same tokens"
+      "no_safeguard_because": "Neither place has a schema yet: a declared distribution (declarations.md section 4) and a multivariate normal in a parameter set, a placeholder in the writer.",
+      "maintainer": "pending"
     }
   ]
 }

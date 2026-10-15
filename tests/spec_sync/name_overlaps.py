@@ -24,15 +24,18 @@ Two rules, each giving flags:
   A name is `[a-z][a-z0-9_]*`: the components `element:<symbol>` are IUPAC's symbols, minimal pairs by design
   that no rename can keep apart.
 
-`name_overlaps.json` allows a flag the maintainer judged intended, with its reason and the text that keeps it
-safe, which must stay in its document: an entry whose flag is gone, whose safeguard is gone, or whose rule-A
-name gains a meaning, fails the check, as does any flag no entry allows.
+`name_overlaps.json` allows a flag judged intended, with its reason and its safeguard: a quote that must stay
+in its document, or a test that keeps the meanings apart (`test_name_overlap_safeguards.py`). An entry with no
+safeguard needs the maintainer's flag (maintainer, 2026-10-15): `approved_no_safeguard`, or `pending` while a
+rename is proposed, which passes with a warning until the allowlist's `renames` says the maintainer has
+answered. An entry whose flag is gone, whose safeguard is gone, or whose rule-A name gains a meaning, fails
+the check, as does any flag no entry allows.
 """
 
 import fnmatch
 import json
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -616,30 +619,88 @@ def slips(namespace: Namespace) -> Iterator[Flag]:
 
 # The allowlist.
 
+# Where a safeguard's test is found: this repository, whatever tree the check reads.
+REPOSITORY = Path(__file__).resolve().parents[2]
+# The maintainer's flags on an entry with no safeguard.
+FLAGS = ("pending", "approved_no_safeguard")
+
+
+class AwaitingTheMaintainer(UserWarning):
+    """Entries marked `pending`: a rename proposed, the maintainer's answer not yet in."""
+
 
 def normalised(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def named_test_found(reference: str) -> bool:
+    """Whether `path::function[name]` names a test function of this repository, and `name` a guarded name of
+    its module (`MEANINGS`)."""
+    path, _, node = reference.partition("::")
+    function, _, name = node.removesuffix("]").partition("[")
+    file = REPOSITORY / path
+    if not (file.is_file() and function and name):
+        return False
+    text = file.read_text(encoding="utf-8")
+    return (
+        f"\ndef {function}(" in text and re.search(rf'^    "{re.escape(name)}": \{{$', text, re.M) is not None
+    )
+
+
+def safeguard_found(safeguard: dict[str, JsonValue], root: Path) -> bool:
+    if "test" in safeguard:
+        return named_test_found(str(safeguard["test"]))
+    path = root / str(safeguard["document"])
+    return path.is_file() and normalised(str(safeguard["quote"])) in normalised(
+        path.read_text(encoding="utf-8")
+    )
+
+
+def awaiting(allowlist: dict[str, JsonValue]) -> list[str]:
+    """The entries marked `pending`, by their names."""
+    return [
+        " ~ ".join(str(name) for name in listing(entry["names"]))
+        for entry in map(mapping, listing(allowlist["entries"]))
+        if entry.get("maintainer") == "pending"
+    ]
+
+
+def unflagged(names: Sequence[str], entry: dict[str, JsonValue], answered: bool) -> str | None:
+    """The problem of an entry with no safeguard: no maintainer's flag, no reason why none is possible, or
+    `pending` once the maintainer has answered."""
+    if entry.get("maintainer") not in FLAGS:
+        return f"{list(names)}: no safeguard, and no maintainer's flag ({' or '.join(FLAGS)})"
+    if not entry.get("no_safeguard_because"):
+        return f"{list(names)}: no safeguard, and no reason why none is possible"
+    if entry["maintainer"] == "pending" and answered:
+        return f"{list(names)}: still pending, though the maintainer has answered"
+    return None
+
+
 def allowed(flags: list[Flag], allowlist: dict[str, JsonValue], root: Path) -> tuple[list[Flag], list[str]]:
     """The flags no entry allows, and the problems of the entries: one that allows no flag, one whose
-    safeguard is gone from its document, and one with no safeguard that does not say why."""
+    safeguard is gone, and one with no safeguard that lacks the maintainer's flag or the reason why none is
+    possible, or is still `pending` once the allowlist's `renames` is `answered`."""
     entries = [mapping(entry) for entry in listing(allowlist["entries"])]
+    answered = allowlist.get("renames") == "answered"
+    if allowlist.get("renames") not in ("proposed", "answered"):
+        raise ValueError("the allowlist's renames must be proposed or answered")
     problems: list[str] = []
     live: list[bool] = []
     for entry in entries:
         names = sorted(str(name) for name in listing(entry["names"]))
         safeguard = entry.get("safeguard")
         if safeguard is None:
-            live.append(bool(entry.get("no_safeguard_because")))
-            if not live[-1]:
-                problems.append(f"{names}: no safeguard, and no reason why none is needed")
+            problem = unflagged(names, entry, answered)
+            live.append(problem is None)
+            problems += [problem] if problem else []
             continue
-        document, quote = str(mapping(safeguard)["document"]), str(mapping(safeguard)["quote"])
-        path = root / document
-        live.append(path.is_file() and normalised(quote) in normalised(path.read_text(encoding="utf-8")))
+        if "maintainer" in entry:
+            problems.append(f"{names}: a safeguard beside a maintainer's flag")
+        live.append(safeguard_found(mapping(safeguard), root))
         if not live[-1]:
-            problems.append(f"{names}: its safeguard is gone from {document}")
+            where = mapping(safeguard).get("test") or mapping(safeguard).get("document")
+            problems.append(f"{names}: its safeguard is gone from {where}")
     used = [False] * len(entries)
     remaining: list[Flag] = []
     for flag in flags:
