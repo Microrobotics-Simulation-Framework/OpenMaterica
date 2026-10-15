@@ -254,7 +254,8 @@ radiological sections that need them, the schema leaving them open. Proposed to 
 maintainer's review of the text: `points` is a reserved member name in a table, whose shape and reading come
 with its first consumer; a 0.1.0 writer writes none, the closed writer schema refusing it (RC-003), and a
 0.1.0 reader refuses a table that holds it, whatever it holds, as before (`points_unsupported`, PR-157), so
-that reason stands alone whatever `points` holds, `null` aside, which is also `form_invalid` (PR-049); and a
+that reason stands alone whatever `points` holds, `null` aside, which is also `form_invalid` (PR-049); the
+reserved name is a member the table's shape names, so `point` is refused as one slip from it (PR-030); and a
 table's block applies to every value the table gives, the text no longer saying that a knot's own block
 replaces it (`record_format.md` sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, a later
 minor version adds no member that changes how an earlier one's members are read, since an older reader

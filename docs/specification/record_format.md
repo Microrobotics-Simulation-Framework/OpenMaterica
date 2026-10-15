@@ -363,7 +363,9 @@ section 5. [PR-014]
    Its shape, and how a read uses it, are specified with its first consumer. A 0.1.0 writer MUST NOT write
    it, and the closed writer schema refuses it (section 1 item 2). [RC-003] A 0.1.0 reader refuses a table
    with a `points` member, whatever it holds, `null` and `[]` included, with the reason `points_unsupported`,
-   so that a knot's own spread or origin is never replaced by the table's. [PR-157]
+   so that a knot's own spread or origin is never replaced by the table's. [PR-157] The reserved name is a
+   member the table's shape names, so a member one slip from it (`point`) is refused (section 10 item 5).
+   [PR-030]
 
 **Power law.**
 
