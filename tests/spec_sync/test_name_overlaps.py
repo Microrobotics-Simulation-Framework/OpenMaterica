@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from materica.core.jsonio import JsonValue
+from materica.core.slips import one_slip
 from tests.spec_sync import name_overlaps
 from tests.spec_sync.name_overlaps import (
     AwaitingTheMaintainer,
@@ -22,7 +23,6 @@ from tests.spec_sync.name_overlaps import (
     Shape,
     awaiting,
     check,
-    one_slip,
     rule_a,
     rule_b,
 )
