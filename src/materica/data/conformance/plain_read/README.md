@@ -139,9 +139,6 @@ The inputs come in families, named by what they break:
     own whatever order a reader takes their steps in, and leaves out `conditions`, which a result ended there
     might take from either. All five are mapped to S4, which builds step 7's set-aside rule, and change with
     the text if S4's ruling on it changes the text;
-  - a `points` member that is not a list, or a list of another length than `x`: whether step 8, which "checks
-    nothing inside it", adds `form_invalid` beside `points_unsupported`. Only `null` (PR-049), `[]` and a list
-    as long as `x` (PR-157) have arms;
   - a table on `biocompatibility.evidence` whose `conditions` hold its axis (PR-036): whether step 8, refusing
     the form, finds the table's axis condition a condition evidence's own `conditions` may not hold. With
     `conditions` `{}` the text decides it (`form_not_registered`, and `form_invalid` for the absent axis
