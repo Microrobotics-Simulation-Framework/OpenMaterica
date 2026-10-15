@@ -585,6 +585,9 @@ Evidence per point, where points come from different places in a source, and spr
 knot by knot or by region, come in 0.2, with the acoustic and radiological sections that need them (R2, R3;
 maintainer, 2026-10-15). Until then `points` is a reserved name in a table: a 0.1.0 writer writes no `points`
 member, a 0.1.0 reader refuses a table that holds one, and no shape is fixed before its first consumer.
+Meanwhile a writer whose source's spread varies along the axis states the largest in the table's terms in the
+table's block, and says in the record's card that it was derived so (specification `uncertainty.md` section 1
+rule 2; a default awaiting the maintainer).
 
 A power law also states the basis of its exponent (fitted, assumed or theoretical). Attenuation is stored as
 an amplitude coefficient in nepers per metre per hertz to the power b, always. The source's own unit (decibels
@@ -2657,13 +2660,16 @@ A spike on reading per-knot statistics (2026-10-15) led the maintainer to defer 
 and radiological sections, on the condition that the schema leave them open. An audit of the 0.1.0 text
 against what the spike found 0.2 needs (22 items, 6 of them changing the text) gave the rows below. The
 maintainer ruled on the third row's mechanism (2026-10-15). The text of each row is proposed, awaiting the
-maintainer's review.
+maintainer's review. An independent check of that text (21 findings: 1 High, 4 Medium, 9 Low, 7 Info) led to
+its present wording, the third row's after the maintainer's ruling, and to the fourth row, a default awaiting
+the maintainer.
 
 | Before | After | Why |
 |---|---|---|
 | a table MAY carry `points`, in a stated shape, which every 0.1.0 reader refuses | `points` is a reserved name: a 0.1.0 writer writes none, a reader refuses it as before, and its shape comes with its first consumer (4.4) | a 0.1.0 record holding it could be read by no reader before 1.0.0, and its shape would have been fixed before the rule for reading it, which may need spreads stated by region, off the knots |
 | a knot's own block replaced the table's for that knot | the text states no rule for a spread that varies along the axis | the rule the spike found safe never returns a knot's own block alone: on a knot it takes the larger spread of both intervals |
 | AD 5.6 and DOCUMENTATION_ARCHITECTURE.md 7.2 said only that an added field never changes the meaning of an existing one, though its section 7.1 made any changed meaning major | from 1.0.0, such a member comes only under a name reserved in advance, or with a new token in an enumerated member older readers check, and the newer version requires it wherever the member appears; any other waits for a new major schema version (5.6; maintainer, 2026-10-15) | an older reader ignores a member it does not know, so where a newer version let a per-knot or regional block widen a table's block, it would read the narrower one |
+| a writer whose source's spread varies along a table's axis had no rule for the table's one block, nor a way to say it was derived | the writer SHOULD state the largest spread in the table's terms, as the source gives it on a `linear` table and relative on a `loglog` table, and SHOULD say so in the record's `card` (a default awaiting the maintainer) | with `points` closed, a block written from the rule that it applies to every value could state a spread narrower than the source's, and the maintainer asked for the derived block to be stated as such |
 
 The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.
 

@@ -261,9 +261,11 @@ the slip rule, `points` counts as a member named at a table's place, so `point` 
 members named at one place, refused ones included, are kept more than one slip apart, and a later minor
 version adds no member one slip from one of them (`record_format.md` section 10). A table's block applies to
 every value the table gives. The text no longer says that a knot's own block replaces it (`record_format.md`
-sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, an older reader ignores a member it does not
-know. So a later minor version adds a member that changes how existing members are read only under a name
-reserved in advance, which every earlier reader of the same major version refuses, or with a new token in an
-enumerated member such a reader checks (maintainer, 2026-10-15). The later version requires that name or token
-wherever the member appears. Any other such member waits for a new major schema version, not a new record
-version (`record_format.md` section 10).
+sections 5 and 6, `uncertainty.md` section 1 rule 2). Where the source's spread varies along the axis, a
+writer SHOULD state the largest in the table's terms in the table's single block, and SHOULD say in the
+record's `card` that it was derived so (`uncertainty.md` section 1 rule 2; a default awaiting the maintainer).
+From 1.0.0, an older reader ignores a member it does not know. So a later minor version adds a member that
+changes how existing members are read only under a name reserved in advance, which every earlier reader of the
+same major version refuses, or with a new token in an enumerated member such a reader checks (maintainer,
+2026-10-15). The later version requires that name or token wherever the member appears. Any other such member
+waits for a new major schema version, not a new record version (`record_format.md` section 10).

@@ -287,9 +287,11 @@ Every value needs (the full standard is `DOCUMENTATION_ARCHITECTURE.md` section 
 - for a table or a power law, the **range** it covers, and the range the source says it holds over where that
   differs; for a table, its **interpolation scheme** and **edges**; for a power law, the basis of its
   exponent. A 0.1.0 record holds no evidence per point (`points` is reserved until 0.2). So keep each row's
-  own spread, and where in the source it was found, in your draft. Attenuation is stored as an amplitude
-  coefficient in nepers per metre (UCUM `/m`), with a solid's shear attenuation beside its longitudinal one;
-  record the unit the source used and whether it reported an amplitude or an intensity coefficient;
+  own spread, and where in the source it was found, in your draft. Where that spread varies along the axis,
+  state the largest in the table's block, in the table's terms, and say so in the record's card (specification
+  `uncertainty.md` section 1 rule 2). Attenuation is stored as an amplitude coefficient in nepers per metre
+  (UCUM `/m`), with a solid's shear attenuation beside its longitudinal one; record the unit the source used
+  and whether it reported an amplitude or an intensity coefficient;
 - a **composition** with its components, basis (mass, volume or mole), sum rule, and the sum the source
   states, kept as a fact even when it is not 100 %;
 - **statistics** for a scalar: specimens and donors, mean, standard deviation, minimum, maximum, basis, and
