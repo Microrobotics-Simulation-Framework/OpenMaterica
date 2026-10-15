@@ -164,6 +164,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("read.py", "ReadRequest.from_json"): 0,
     ("read.py", "_parsed"): None,
     ("read.py", "_incomplete"): 0,
+    ("read.py", "_slips"): 0,
     ("read.py", "_member"): 0,
     ("read.py", "_target"): 0,
     ("read.py", "_want"): 0,

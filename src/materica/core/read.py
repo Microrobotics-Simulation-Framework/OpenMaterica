@@ -20,6 +20,7 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason, merged
 from materica.core.record import RecordStore
 from materica.core.resolve import Refused, resolve_record
+from materica.core.slips import slipped
 from materica.core.status import ReadStatus, worst
 from materica.core.vocabulary import VOCABULARY, ConditionSpec
 from materica.shapes import Suite, Want
@@ -39,6 +40,17 @@ _WANT_SUITES: dict[Want, Suite] = {
     "fit": "fits_and_reference_data",
     "coverage": "fits_and_reference_data",
 }
+# The members section 1 names at each place of a request, those it refuses included: a member one slip from
+# one of them is refused too, so that a misspelt member never drops what it holds.
+_REQUEST_MEMBERS = ("records", "target", "operating_conditions", "requirement", "acceptances")
+_TARGET_MEMBERS = ("record", "region", "field")
+_RECORD_MEMBERS = ("id", "version", "content_hash")
+_REQUIREMENT_MEMBERS = ("want", "conditions", "label", "represents", "population_level")
+_OPERATING_MEMBERS = ("value", "range", "unit")
+_REQUIREMENT_CONDITION_MEMBERS = ("tolerance", "accept")
+_TOLERANCE_MEMBERS = ("value", "unit")
+# What a declaration's requirement holds and a read checks none of (`declarations.md` section 1).
+_DECLARATIONS_ONLY = ("label", "represents", "population_level")
 
 
 @dataclass(frozen=True)
@@ -74,10 +86,17 @@ class ReadRequest:
         if isinstance(named, dict) and "region" in named:
             raise NotImplementedError("a region target resolves through a scene, which is not read yet")
         found: list[Reason] = []
+        _slips(value, _REQUEST_MEMBERS, "the request", found)
         if not isinstance(acceptances, list):
             found.append(_incomplete("acceptances is not a list"))
         target = _target(named, found)
         requirement = _member(value, "requirement", found, required=True)
+        _slips(requirement, _REQUIREMENT_MEMBERS, "requirement", found)
+        for name in _DECLARATIONS_ONLY:
+            if name in requirement:
+                found.append(
+                    _incomplete(f"requirement holds {name}, a declaration's, which a read never checks")
+                )
         want = _want(requirement.get("want"), claims, found)
         operating = _member(value, "operating_conditions", found)
         conditions = _member(requirement, "conditions", found)
@@ -169,6 +188,17 @@ def _incomplete(detail: str, condition: str | None = None) -> Reason:
     return Reason("request_incomplete", condition, detail)
 
 
+def _slips(
+    value: dict[str, JsonValue],
+    named: Collection[str],
+    where: str,
+    found: list[Reason],
+    condition: str | None = None,
+) -> None:
+    for member, name in slipped(value, named):
+        found.append(_incomplete(f"{where} holds {member!r}, one slip from {name!r}", condition))
+
+
 def _member(
     value: dict[str, JsonValue], name: str, found: list[Reason], *, required: bool = False
 ) -> dict[str, JsonValue]:
@@ -185,15 +215,21 @@ def _target(value: JsonValue, found: list[Reason]) -> tuple[MaterialRef, str] | 
     if not isinstance(value, dict):
         found.append(_incomplete("target is missing or not an object"))
         return None
+    _slips(value, _TARGET_MEMBERS, "target", found)
     field = value.get("field")
     if not (isinstance(field, str) and FIELD.fullmatch(field)):
         found.append(_incomplete(f"target.field is not <section>.<field>: {field!r}"))
+    elif field not in VOCABULARY.fields:
+        found.append(
+            _incomplete(f"target.field {field} is not registered: this reader's version does not know it")
+        )
     if "record" not in value:
         found.append(_incomplete("target names neither record nor region"))
         return None
     record = value["record"]
     if not isinstance(record, dict):
         record = {}
+    _slips(record, _RECORD_MEMBERS, "target.record", found)
     id_, version, pin = record.get("id"), record.get("version"), record.get("content_hash")
     if not (isinstance(id_, str) and isinstance(version, str) and isinstance(pin, str)):
         found.append(_incomplete("target.record is not an object with string id, version and content_hash"))
@@ -242,6 +278,7 @@ def _operating_condition(
     if spec.shape == "token" or not isinstance(entry, dict):
         found.append(_incomplete(f"{where} is not a numeric condition's value or range", name))
         return None
+    _slips(entry, _OPERATING_MEMBERS, where, found, name)
     unit = _unit(spec, entry, where, found)
     if ("value" in entry) == ("range" in entry):
         found.append(_incomplete(f"{where} gives both or neither of value and range", name))
@@ -273,6 +310,7 @@ def _requirement_condition(
     if not isinstance(entry, dict):
         found.append(_incomplete(f"{where} is not an object", name))
         return None
+    _slips(entry, _REQUIREMENT_CONDITION_MEMBERS, where, found, name)
     if spec.shape == "token":
         accept = entry.get("accept")
         if "tolerance" in entry:
@@ -290,6 +328,7 @@ def _requirement_condition(
     if not isinstance(tolerance, dict):
         found.append(_incomplete(f"{where}.tolerance is missing or not an object", name))
         return None
+    _slips(tolerance, _TOLERANCE_MEMBERS, f"{where}.tolerance", found, name)
     unit = _unit(spec, tolerance, f"{where}.tolerance", found)
     value = tolerance.get("value")
     if not isinstance(value, float):

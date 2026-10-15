@@ -171,6 +171,60 @@ def test_a_request_keeps_only_the_members_its_shape_names() -> None:
     assert checked.to_json() == expected
 
 
+def with_member(place: tuple[str, ...], name: str, value: JsonValue = 1.0) -> dict[str, JsonValue]:
+    """REQUEST as parsed JSON, with `name` set to `value` in the object at `place`."""
+    request = with_members()
+    parent: JsonValue = request
+    for step in place:
+        assert isinstance(parent, dict)
+        parent = parent[step]
+    assert isinstance(parent, dict)
+    parent[name] = value
+    return request
+
+
+TEMPERATURE = ("requirement", "conditions", "temperature")
+# A member one slip from one section 1 names at each place of a request, and the condition the place concerns.
+SLIPS = [
+    pytest.param((), "requirment", None, id="top"),
+    pytest.param((), "record", None, id="top_records"),
+    pytest.param((), "acceptance", None, id="top_acceptances"),
+    pytest.param(("target",), "fields", None, id="target"),
+    pytest.param(("target", "record"), "versions", None, id="target_record"),
+    pytest.param(("requirement",), "wants", None, id="requirement"),
+    pytest.param(("requirement",), "labels", None, id="requirement_refused_member"),
+    pytest.param(("operating_conditions", "temperature"), "units", "temperature", id="operating"),
+    pytest.param(TEMPERATURE, "tolerances", "temperature", id="requirement_condition"),
+    pytest.param(TEMPERATURE, "accepts", "temperature", id="requirement_condition_refused_member"),
+    pytest.param((*TEMPERATURE, "tolerance"), "vaule", "temperature", id="tolerance"),
+]
+
+
+@pytest.mark.parametrize(("place", "name", "condition"), SLIPS)
+def test_a_member_one_slip_from_a_named_one_is_refused_at_its_place(
+    place: tuple[str, ...], name: str, condition: str | None
+) -> None:
+    refused = read(with_member(place, name), store())
+    assert refused.reasons == (Reason("request_incomplete", condition),)
+
+
+@pytest.mark.parametrize(("place", "name", "condition"), SLIPS)
+def test_a_member_further_from_every_named_one_is_ignored(
+    place: tuple[str, ...], name: str, condition: str | None
+) -> None:
+    assert read(with_member(place, f"x_{name}"), store()) == ABSENT
+
+
+@pytest.mark.parametrize("field", ["fluid.surface_tension", "acoustic.sound_speed", "fluid.specimen"])
+def test_a_field_the_vocabulary_does_not_register_is_refused(field: str) -> None:
+    assert read(with_member(("target",), "field", field), store()).reasons == (Reason("request_incomplete"),)
+
+
+@pytest.mark.parametrize("name", ["label", "represents", "population_level"])
+def test_a_requirement_holding_a_declarations_member_is_refused(name: str) -> None:
+    assert read(with_member(("requirement",), name, "x"), store()).reasons == (Reason("request_incomplete"),)
+
+
 def test_a_result_reads_back_from_its_json() -> None:
     result = ReadResult(
         "not_met", (Reason("request_incomplete", "temperature", "below zero"),), ("hash_not_checked",)
