@@ -119,13 +119,19 @@ entry's other statuses, also takes a withheld entry without its recipe.
   and the mutations it makes of it), so the floor counts 2,000 examples as 250 draws, each shown in 5
   examples (5.7 to 7.0 measured, by fault), and is the count a fault falls below with a probability of at
   most 1e-6. A floor below 10 cannot be judged, and fails: those features must be drawn among fewer. `deep`
-  holds each to a third of its share, and `dev` judges none.
+  holds each to a third of its share, and `dev` judges none. A property that knows the chance that one draw
+  shows each feature declares it with `@pytest.mark.chances(name=chance, ...)`, as the writer schema's
+  acceptance properties do with their shares measured at `ci`: at `ci` each is held to the draw floor of its
+  chance, a floor below 10 failing (draw it more often, its family in parts); at `dev` to that floor where it
+  is at least 10, judging no other; and at `deep` to a third of its chance. Hypothesis's clusters make a least
+  share less safe than independent examples would: at the gate of 20 expected, a feature shown by whole
+  clusters falls below its least share in about one run in a hundred (`audits.JUDGED_FROM`).
 
 ## Adding a property
 
-Write the check as a function of the implementation and the example, and the property as a `test_...`
-function that records its features and calls the check. Declare the features with their least shares,
-measured. Add a mutant that the property must kill, to the mutant file of its group, and the module to a shard.
-Never set `max_examples` on a property: the profile decides it. Build strategies so that they draw what they
-need rather than filter it, take their size from `strategies.SIZE`, and build each strategy once rather than
-in every draw: Hypothesis spends more building and checking a strategy than drawing from it.
+Write the check as a function of the implementation and the example, and the property as a `test_...` function
+that records its features and calls the check. Declare the features with their least shares, or their chances,
+measured. Add a mutant that the property must kill, to the mutant file of its group, and the module to a
+shard. Never set `max_examples` on a property: the profile decides it. Build strategies so that they draw what
+they need rather than filter it, take their size from `strategies.SIZE`, and build each strategy once rather
+than in every draw: Hypothesis spends more building and checking a strategy than drawing from it.

@@ -55,6 +55,7 @@ xfail_strict = true
 markers = [
     "features: the least share of a property's examples that must show each feature (tests/property/audits.py)",
     "drawn: the features a property draws one of alike, each held to its draw floor (tests/property/audits.py)",
+    "chances: the chance that one draw of a property shows each feature, each held to its draw floor (tests/property/audits.py)",
 ]
 filterwarnings = ["error"]
 
