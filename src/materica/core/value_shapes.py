@@ -12,7 +12,8 @@
 
 Hand-written, as `envelope.py` is. Each shape is the writer schema's, opened as a reader is: a member the
 reader does not know is ignored unless it is one slip from a member named at its place, and nothing a read
-neither uses nor returns is checked. Each check makes all its checks and appends a reason for each fault:
+neither uses nor returns is checked. T1 (`tests/spec_sync/test_t1.py`) holds them to the writer schema and to
+the reader schema's `$defs`. Each check makes all its checks and appends a reason for each fault:
 `form_invalid`, or `unknown_token` for a token the reader knows for no member of that name.
 """
 

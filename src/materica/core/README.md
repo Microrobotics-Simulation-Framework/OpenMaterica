@@ -81,6 +81,10 @@ read up to step 5 (`tests/conformance/`).
   (`tests/unit/test_hashing.py`); a `Record` keeps the value its bytes parse to as it is.
 - **Identifiers match in full**, by `re.fullmatch` with character classes written out
   (`tests/property/test_version_properties.py`).
+- **Step 8's shapes, by hand and in the schemas.** `value_shapes.py` and `fields.py` agree with the writer
+  schema's value-field `$defs` and the generated reader `$defs`, but for listed exceptions of the kinds no JSON
+  Schema states (T1, `tests/spec_sync/test_t1.py`); a member's status tokens are read from the generated
+  shapes, never written out again.
 - **One envelope check, in two forms.** `envelope.py` and `schema/0.1/record.reader.json` accept and refuse
   the same records (`tests/spec_sync/test_envelope.py`, `tests/property/test_envelope_properties.py`).
 - **Standard library only**, with `materica.shapes`, itself standard library only, and, for type checkers
