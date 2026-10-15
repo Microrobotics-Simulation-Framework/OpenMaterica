@@ -55,10 +55,12 @@ class RecordFieldSpec:
 
 @dataclass(frozen=True)
 class FactSpec:
-    """A row of `provenance.md` section 6.2: a specimen fact, and the tokens of its `token` member, if any."""
+    """A row of `provenance.md` section 6.2: a specimen fact, the tokens of its `token` member, if any, and
+    the one value of each member its row fixes (a `unit` of `s`, a `basis` of `stated`)."""
 
     name: str
     tokens: tuple[str, ...]
+    fixed: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -88,10 +90,15 @@ def load() -> Vocabulary:
         reasons={code: _reason(code, _object(row)) for code, row in reasons.items()},
         conditions={name: _condition(name, _object(row)) for name, row in conditions.items()},
         fields={name: _field(name, _object(row)) for name, row in fields.items()},
-        facts={name: FactSpec(name, _strings(_object(row)["tokens"])) for name, row in facts.items()},
+        facts={name: _fact(name, _object(row)) for name, row in facts.items()},
         acceptance_kinds=_strings(_file("acceptances.json")["kinds"]),
         token_lists=_token_lists(),
     )
+
+
+def _fact(name: str, row: dict[str, JsonValue]) -> FactSpec:
+    fixed = {member: _string(value) for member, value in row.items() if member != "tokens"}
+    return FactSpec(name, _strings(row["tokens"]), fixed)
 
 
 def _reason(code: str, row: dict[str, JsonValue]) -> ReasonSpec:
