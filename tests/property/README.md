@@ -30,13 +30,14 @@ Hypothesis properties of the core, in three groups, and of the writer schema, in
   specification allows, and refuses each field it forbids by one fault; and it takes every registered field in
   its place, a section's `fields` or an overlay's `replaces`, bound to its row of section 4.1, refusing one
   under a name its section does not register or holding a form, a unit, a label or a composition's basis its
-  row does not give (maintainer, 2026-10-15). `value_fields.py` builds the fields from the text alone, never
-  from the schema or the bindings it applies: tokens and each field's row from the vocabulary (generated from
-  the specification), a specimen fact's members from `provenance.md` section 6.2's JSON shapes, and the rest
-  from the member tables and rules each builder cites. A fault is one change the text says breaks a field (a
+  row does not give, or a specimen fact's unit other than the one its row fixes, a status object included
+  (maintainer, 2026-10-15). `value_fields.py` builds the fields from the text alone, never from the schema or
+  the bindings it applies: tokens and each field's row from the vocabulary (generated from the specification),
+  a specimen fact's members from `provenance.md` section 6.2's JSON shapes, and the rest from the member tables
+  and rules each builder cites. A fault is one change the text says breaks a field (a
   member missing, a bound crossed, a token of another member's list or of none, a status token its row does
   not allow, a rule across objects broken, a unit other than the registered one, a field under a name or
-  holding what its row does not give), 166 of them in ten families, each drawn as often as another of its
+  holding what its row does not give), 167 of them in ten families, each drawn as often as another of its
   family on a field, or a body, planned so that its place exists; a family of more than 15 faults is drawn
   in parts of at most 15, each a property of its own, so that the feature audit at `ci` can judge each fault
   (below).
@@ -180,7 +181,8 @@ value-field part and its two controls (M1 to M31, its numbering kept), one for e
 (M6b, M14b, M32 to M61), and nine that tighten it (T1 to T9); then the bindings it applies from the
 vocabulary, each changed in the vocabulary file or no longer applied by the writer: a section's field names, a
 field's forms, unit, label or composition basis, its alternatives, the replaced fields, a numeric condition's
-unit and its `plus_minus` entries' (B1 to B12, with B5b), and four that tighten them (TB1 to TB4). Each names
+unit and its `plus_minus` entries', a specimen fact's fixed unit (B1 to B14, with B5b), and five that tighten
+them (TB1 to TB5). Each names
 the property that kills it and the assertion it must die at: a loosening mutant dies when the refusal property
 of its family finds the schema taking one of the faults it names, its search drawn among those faults, which
 the family's property draws as often as any other (the feature audit holds it to its draw floor); a

@@ -60,17 +60,6 @@
     },
     {
       "rule": "A",
-      "names": ["unit"],
-      "meanings": 2,
-      "reason": "A unit code wherever it sits: a request's takes any code, compared with the registered one; a value field's, a condition's and a plus_minus entry's shape take any code, which the vocabulary's bindings tie to each field's and condition's registered unit; a specimen fact's row fixes its unit to s.",
-      "safeguard": {
-        "document": "docs/specification/provenance.md",
-        "quote": "a `unit` or `axis_unit`, wherever it sits | any, compared only at step 9",
-        "what": "Section 1 item 5: a unit is compared as a unit alone, never read as another member's value."
-      }
-    },
-    {
-      "rule": "A",
       "names": ["evidence"],
       "meanings": 3,
       "reason": "The licence's evidence (excluded), a value's provenance evidence (quote, locator, document, copy), and the evidence form's list of test reports.",

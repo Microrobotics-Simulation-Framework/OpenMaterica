@@ -229,8 +229,10 @@ FACTS_VOCABULARY = "vocabulary/specimen_facts.json#/$defs/"
 
 def check_specimen_table(definitions: Definitions, read: Documents) -> None:
     """Each fact's members; its `token` bound to the vocabulary's list of its row's tokens, each member its
-    row fixes to one value (`"unit": "s"`) to the list of that value, and each identifier its row writes
-    (`"UBERON:<digits>"`) to the vocabulary's pattern of that form; and no other member bound to either."""
+    row fixes to one value (`"basis": "stated"`) to the list of that value, but a unit, which is a unit there,
+    the vocabulary's binding of the fixed units giving its value (`check_bindings`), and each identifier its
+    row writes (`"UBERON:<digits>"`) to the vocabulary's pattern of that form; and no other member bound to
+    either."""
     rows = table(read("provenance.md"), "### 6.2 Specimen facts of schema 0.1.0")
     facts = members(definitions, "specimen")
     assert [only_code(row["Name"]) for row in rows] == list(facts)
@@ -255,6 +257,8 @@ def check_specimen_table(definitions: Definitions, read: Documents) -> None:
             choices = listing(subschema.get("anyOf", [subschema])) if isinstance(subschema, dict) else []
             targets = [str(choice.get("$ref")) for choice in choices if isinstance(choice, dict)]
             if f"{FACTS_VOCABULARY}{name}_{member}" in targets:
+                bound.add((name, member))
+            elif member == "unit" and subschema == {"$ref": "#/$defs/unit"} and (name, member) in fixed:
                 bound.add((name, member))
     assert bound == fixed
 
@@ -346,14 +350,35 @@ def test_a_disease_or_treatment_state_holds_a_text_exactly_for_diseased_and_trea
             {"text": "liver parenchyma", "basis": "stated"},
             {"text": "liver parenchyma", "basis": "inferred", "inferred_from": "the maker's datasheet"},
         ),
+        (
+            "post_mortem_interval",
+            {"status": "unstated", "reason": "the source gives no unit"},
+            {"value": 7200, "unit": {"status": "unstated"}, "basis": "stated"},
+        ),
+        (
+            "donor_age",
+            {"status": "unstated"},
+            {"value": 1.0e9, "unit": {"status": "not_applicable", "reason": "x"}, "basis": "stated"},
+        ),
     ],
 )
 def test_a_member_a_facts_row_fixes_takes_that_value_alone(
     fact: str, valid: JsonValue, invalid: JsonValue
 ) -> None:
+    """A unit the row fixes is held as a status object nowhere in the writer, which step 9 would refuse
+    (maintainer, 2026-10-15): a fact whose unit the source does not give is a status object as a whole."""
     specimen = validator("record.writer.json#/$defs/specimen")
     assert specimen({fact: valid}) == []
     assert specimen({fact: invalid}) != []
+
+
+@pytest.mark.parametrize("fact", ["post_mortem_interval", "donor_age"])
+def test_the_reader_takes_a_status_object_in_a_facts_unit_which_step_9_refuses(fact: str) -> None:
+    """The writer's binding is the writer's alone: the reader's `$defs` take a unit held as a status object
+    wherever step 8 does, which leaves the unit to step 9 (`record_format.md` section 4.2)."""
+    held: JsonValue = {"value": 7200, "unit": {"status": "unstated"}, "basis": "stated"}
+    assert validator("record.reader.json#/$defs/specimen")({fact: held}) == []
+    assert validator("record.writer.json#/$defs/specimen")({fact: held}) != []
 
 
 def test_each_form_has_its_value_fields_members() -> None:
@@ -464,7 +489,7 @@ STATUS_ROWS: list[tuple[str, str, dict[tuple[str, str | None], frozenset[str]]]]
     (
         "a `unit` or `axis_unit`, wherever it sits",
         "any, compared only at step 9 (`read_side_contract.md` section 3)",
-        {("unit", None): ANY, ("post_mortem_interval", "unit"): ANY, ("donor_age", "unit"): ANY},
+        {("unit", None): ANY},
     ),
     (
         "each member of an evidence entry but `provenance`",
@@ -1345,12 +1370,15 @@ def test_the_description_check_fails_where_a_binding_no_longer_closes_a_map(
 
 # The bindings of the rows (maintainer, 2026-10-15): `record_format.md` section 4.1's, which close each
 # section's field names and an overlay's replaced fields and bind each field's forms, bases, unit and label,
-# and `provenance.md` section 6.1's numeric units. The vocabulary generates each from its rows; the writer
-# schema applies each by `allOf`, at the one definition named here, and writes no list of its own.
+# `provenance.md` section 6.1's numeric units, and section 6.2's fixed units of a specimen fact, a status
+# object there refused, since step 9 refuses one (maintainer, 2026-10-15). The vocabulary generates each from
+# its rows; the writer schema applies each by `allOf`, at the one definition named here, and writes no list
+# of its own.
 APPLIED = {
     "sections": "vocabulary/fields.json#/$defs/sections",
     "replaces": "vocabulary/fields.json#/$defs/replaces",
     "conditions": "vocabulary/conditions.json#/$defs/units",
+    "specimen": "vocabulary/specimen_facts.json#/$defs/units",
 }
 
 
@@ -1376,8 +1404,8 @@ def field_binding(qualified: str, row: Schema) -> Schema:
 
 def check_bindings(definitions: Definitions, files: Files) -> None:
     """Each binding applied by the definition named for it and by no other, holding exactly what the
-    vocabulary's rows give: each section's field names, the replaced fields, each field's row, and each
-    numeric condition's unit, in its `unit` and its `plus_minus` entries'."""
+    vocabulary's rows give: each section's field names, the replaced fields, each field's row, each numeric
+    condition's unit, in its `unit` and its `plus_minus` entries', and each specimen fact's fixed unit."""
     applied: dict[str, list[str]] = {}
     for name, definition in definitions.items():
         for conjunct in listing(definition.get("allOf", [])):
@@ -1420,6 +1448,15 @@ def check_bindings(definitions: Definitions, files: Files) -> None:
         }
         for name, unit in units.items()
     }
+    facts = mapping(files("specimen_facts.json")["facts"])
+    fixed = {name: mapping(row)["unit"] for name, row in facts.items() if "unit" in mapping(row)}
+    assert fixed, "no fact's row fixes a unit"
+    definitions_of_facts = mapping(files("specimen_facts.json")["$defs"])
+    assert mapping(definitions_of_facts["units"])["properties"] == {
+        name: {"properties": {"unit": {"$ref": f"#/$defs/{name}_unit"}}} for name in fixed
+    }
+    for name, unit in fixed.items():
+        assert definitions_of_facts[f"{name}_unit"] == {"enum": [unit]}, name
 
 
 def test_the_writer_binds_each_name_to_its_row_through_the_vocabulary() -> None:
@@ -1490,6 +1527,22 @@ def test_the_writer_binds_each_name_to_its_row_through_the_vocabulary() -> None:
                 editing("units", "properties", "shear_rate", "properties", "plus_minus", to=None),
             ),
             id="a_plus_minus_unit_unbound",
+        ),
+        pytest.param(removing("specimen", "allOf"), vocabulary_file, id="fact_units_unbound"),
+        pytest.param(
+            None,
+            changed_file("specimen_facts.json", editing("units", "properties", "donor_age", to=None)),
+            id="a_fact_unit_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file(
+                "specimen_facts.json",
+                editing(
+                    "units", "properties", "post_mortem_interval", "properties", "unit", to={"type": "string"}
+                ),
+            ),
+            id="a_fact_unit_bound_to_any_string",
         ),
     ],
 )

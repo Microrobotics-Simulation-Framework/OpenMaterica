@@ -8,8 +8,8 @@ alike, and their feature audit holds each to its draw floor, so they meet them t
 schema dies when the acceptance property finds it refusing a field the text allows. The table is the S2a-1
 review's 29 mutants and its two controls (M1 to M31, its numbering kept), then one per constraint added since
 and a few that tighten, then those of the bindings the writer applies from the vocabulary (B1 to B12, TB1 to
-TB4, maintainer 2026-10-15), which change the writer or a vocabulary file. Each test records the examples its
-kill took as `examples_to_kill`.
+TB4, maintainer 2026-10-15; B13, B14 and TB5, a specimen fact's unit, 2026-10-15), which change the writer
+or a vocabulary file. Each test records the examples its kill took as `examples_to_kill`.
 """
 
 import copy
@@ -33,9 +33,10 @@ from tests.spec_sync.schemas import SCHEMA
 WRITER_FILE = "record.writer.json"
 FIELDS_FILE = "vocabulary/fields.json"
 CONDITIONS_FILE = "vocabulary/conditions.json"
+FACTS_FILE = "vocabulary/specimen_facts.json"
 ORIGINALS: dict[str, Json] = {
     name: json.loads((SCHEMA / name).read_text(encoding="utf-8"))
-    for name in (WRITER_FILE, FIELDS_FILE, CONDITIONS_FILE)
+    for name in (WRITER_FILE, FIELDS_FILE, CONDITIONS_FILE, FACTS_FILE)
 }
 TAKES = "takes"
 REFUSED = "refused a field the text allows"
@@ -348,9 +349,10 @@ MUTANTS = [
     ),
     WriterMutant(
         "M34 a fact's unit unbound",
-        setting(D, "post_mortem_interval", P, "unit", to={"anyOf": [{"type": "string"}, STATUS]}),
+        setting(D, "units", P, "post_mortem_interval", P, "unit", to={"type": "string"}),
         "tokens",
         ("foreign_token_specimen.post_mortem_interval.unit",),
+        FACTS_FILE,
     ),
     WriterMutant(
         "M35 mimics takes an inferred basis",
@@ -604,6 +606,19 @@ MUTANTS = [
         ("plus_minus_unit_not_registered",),
         CONDITIONS_FILE,
     ),
+    WriterMutant(
+        "B13 a specimen fact's unit unbound",
+        deleting(D, "units", P, "donor_age"),
+        "specimen",
+        ("fact_unit_not_registered",),
+        FACTS_FILE,
+    ),
+    WriterMutant(
+        "B14 the writer applies no binding to the specimen facts",
+        deleting(D, "specimen", "allOf"),
+        "specimen",
+        ("fact_unit_not_registered",),
+    ),
     # Tightened: each refuses a field the text allows.
     WriterMutant(
         "T1 an interval's basis without stated_bound",
@@ -680,6 +695,13 @@ MUTANTS = [
         (REFUSED,),
         CONDITIONS_FILE,
     ),
+    WriterMutant(
+        "TB5 a specimen fact bound to another unit",
+        setting(D, "units", P, "donor_age", P, "unit", to={"const": "a"}),
+        TAKES,
+        (REFUSED,),
+        FACTS_FILE,
+    ),
 ]
 
 
@@ -709,6 +731,7 @@ SEARCHED_ON = {
     "TB2": Plan(registered="bulk.density", form="table"),
     "TB3": Plan(registered="bulk.elemental_composition", place="fields"),
     "TB4": replace(CONSTANT, rich=frozenset({"conditions"})),
+    "TB5": replace(CONSTANT, rich=frozenset({"specimen"})),
 }
 
 
