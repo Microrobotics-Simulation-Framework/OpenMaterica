@@ -191,7 +191,9 @@ under `normal`, which has nothing to name (`provenance.md` section 6.2; RC-039).
 Proposed with S2a-2's review, a default that awaits the maintainer (2026-10-15): a specimen fact's `unit` is
 compared at step 9, as every other unit is, with the unit its row fixes, wherever step 8 checks the fact, so
 that another unit, or a status object with any token, gives `unit_mismatch`; step 8 checks only that it is a
-string or a status object (`read_side_contract.md` section 3, step 9; PR-037).
+string or a status object (`read_side_contract.md` section 3, step 9; PR-037). Made explicit with the same
+review, also awaiting the maintainer: `mimics`, whose row fixes its `basis` to `stated`, takes no
+`inferred_from` (`provenance.md` section 6.2; RC-039).
 
 Names settled with the name-overlap check, before 0.1.0 (maintainer, 2026-10-15), so that a name keeps one
 meaning wherever no safeguard keeps two apart: a scene cylinder's `axis` is `direction`, as a layered path's

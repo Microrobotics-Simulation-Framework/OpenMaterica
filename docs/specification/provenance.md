@@ -271,7 +271,7 @@ them; where the two differ, these tables hold. The vocabulary grows by minor ver
 | `preservation` | `{"token": "none" \| "refrigerated" \| "frozen" \| "fixed_formalin" \| "other", "text": <text, required for other>, "basis"}` |
 | `post_mortem_interval` | `{"value", "unit": "s", "basis"}` |
 | `donor_age` | `{"value", "unit": "s", "basis"}` or `{"range": [lo, hi], "unit": "s", "basis"}` |
-| `mimics` | `{"text": <text>, "basis": "stated"}`: what a phantom or substitute was made to mimic, as its maker states it |
+| `mimics` | `{"text": <text>, "basis": "stated"}`: what a phantom or substitute was made to mimic, as its maker states it; its `basis` is fixed to `stated`, so it takes no `inferred_from` |
 | `supply_form` | `{"token": "stock" \| "coupon" \| "finished_component", "basis"}`: a manufactured material as supplied, a coupon made or cut for the test, or a finished component tested as a specimen of its material |
 | `lot` | `{"text": <the lot or batch, as the source names it>, "basis"}` |
 
