@@ -877,9 +877,10 @@ schema and USD schema files, the reader change, a `changes.md` entry, and a CHAN
 **Schema**. Removal follows the stability levels below.
 
 Any section or field can be added later as a minor change, because four rules hold (architecture draft
-section 5.6): sections are optional and a reader ignores those it does not use; an added field never changes
-the meaning of an existing one, and a change that would is major; an added member is never one slip from a
-member valid at its place (specification `record_format.md` section 10), since a reader refuses such a
+section 5.6): sections are optional and a reader ignores those it does not use; an added field or member
+never changes how an existing one is read unless every older reader refuses each field it would change, and
+a change that would is otherwise major; an added member is never one slip from a member valid at its place
+(specification `record_format.md` section 10), since a reader refuses such a
 near-typo (maintainer, 2026-10-14); a condition a reader does not know gives
 "unknown", refused unless the consumer waives it, never "present and unchecked". An added token in an
 enumerated field (an interpolation scheme, a statistics basis) refuses that field in an older reader instead

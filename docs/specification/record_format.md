@@ -533,6 +533,11 @@ distribution's `p` and `q`), which every reader of the version knows; and a late
 member one slip from one already valid at its place. So item 5 never refuses a member that a version defines.
 [not yet covered]
 
+From 1.0.0, a later minor version adds no member that changes how an earlier one's members are read, unless
+every reader of the earlier versions refuses each field the member would change: such a reader would
+otherwise ignore it (item 1), so the change is major (`DOCUMENTATION_ARCHITECTURE.md` section 7.1).
+[not yet covered]
+
 ## Cases
 
 | Case | Suite | Tests |
