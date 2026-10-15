@@ -671,6 +671,11 @@ def source_missing_for_its_origin(draw: Draw, example: Example) -> frozenset[str
     return INVALID
 
 
+def no_inputs(derivation: JsonObject) -> None:
+    derivation["inputs"] = []
+    derivation["input_specimens"] = []
+
+
 def form_unknown(draw: Draw, example: Example) -> frozenset[str]:
     """A form token the reader does not know (`unknown_token`), beside the row's label where the row names
     one: the row names it for no such form (`form_invalid`, the decision log's literal reading)."""
@@ -958,7 +963,8 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
     "derivation": {
         "derivation_missing": derivation_missing,
         "method_not_a_string": deriving(setting_in("method", value=5.0)),
-        "inputs_empty": deriving(setting_in("inputs", value=[])),
+        # With no input, no input specimen either, which would else be past the last input and refuse alone.
+        "inputs_empty": deriving(no_inputs),
         "assumptions_not_texts": deriving(setting_in("assumptions", value=["ideal mixing", 5.0])),
         "input_specimens_missing": deriving(dropping("input_specimens")),
         "mixed_conditions_not_a_boolean": deriving(setting_in("mixed_conditions", value="yes")),

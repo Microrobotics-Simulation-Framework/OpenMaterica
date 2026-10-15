@@ -154,7 +154,7 @@ recorded in that repository's CHANGELOG.
   regions written from the text (the derivation, `source` and each value step 8 checks among them, and slips
   that a reader ignoring slips cannot pass) gives exactly the codes its rule gives, two faults in two parts
   give both, and members the reader does not know never change the outcome; a third law holds a label on a
-  table to the Label column; 43 mutants of step 8 each killed at both sizes, 18 of them at the faults they
+  table to the Label column; 44 mutants of step 8 each killed at both sizes, 19 of them at the faults they
   name, the eleven rules S2a-2's review found untested among them
   (`tests/property/test_value_field_properties.py` in the records shard, `test_value_field_mutants.py` in a
   fourth CI shard, `step8_mutants`).
