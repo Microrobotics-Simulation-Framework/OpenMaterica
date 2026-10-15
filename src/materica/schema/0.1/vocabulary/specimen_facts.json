@@ -27,6 +27,21 @@
         "other"
       ]
     },
+    "post_mortem_interval_unit": {
+      "enum": [
+        "s"
+      ]
+    },
+    "donor_age_unit": {
+      "enum": [
+        "s"
+      ]
+    },
+    "mimics_basis": {
+      "enum": [
+        "stated"
+      ]
+    },
     "supply_form_token": {
       "enum": [
         "stock",
@@ -71,13 +86,16 @@
       ]
     },
     "post_mortem_interval": {
-      "tokens": []
+      "tokens": [],
+      "unit": "s"
     },
     "donor_age": {
-      "tokens": []
+      "tokens": [],
+      "unit": "s"
     },
     "mimics": {
-      "tokens": []
+      "tokens": [],
+      "basis": "stated"
     },
     "supply_form": {
       "tokens": [

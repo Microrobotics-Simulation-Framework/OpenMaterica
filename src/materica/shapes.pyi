@@ -247,7 +247,22 @@ DiseaseAndTreatmentStateToken: TypeAlias = Literal["normal", "diseased", "treate
 
 PreservationToken: TypeAlias = Literal["none", "refrigerated", "frozen", "fixed_formalin", "other"]
 
+PostMortemIntervalUnit: TypeAlias = Literal["s"]
+
+DonorAgeUnit: TypeAlias = Literal["s"]
+
+MimicsBasis: TypeAlias = Literal["stated"]
+
 SupplyFormToken: TypeAlias = Literal["stock", "coupon", "finished_component"]
+
+class Mimics(TypedDict):
+    """
+    What a phantom or a substitute was made to mimic, as its maker states it: its basis is stated, never
+    inferred, so it has no inferred_from.
+    """
+
+    text: str
+    basis: MimicsBasis
 
 Central: TypeAlias = Literal["mean", "median", "single_measurement", "stated"]
 
@@ -660,14 +675,18 @@ class Preservation(Based):
     token: PreservationToken
     text: NotRequired[str]
 
-Seconds: TypeAlias = str | StatusObject
+class PostMortemInterval(Based):
+    value: float
+    unit: PostMortemIntervalUnit | StatusObject
 
-class Mimics(Based):
+class DonorAge(Based):
     """
-    What a phantom or a substitute was made to mimic, as its maker states it.
+    A value or a range [lo, hi], in seconds.
     """
 
-    text: str
+    value: NotRequired[float]
+    range: NotRequired[Range]
+    unit: DonorAgeUnit | StatusObject
 
 class SupplyForm(Based):
     """
@@ -773,18 +792,22 @@ The plus or minus a source states (provenance.md section 6.1 item 6): at most on
 of unstated kind alone.
 """
 
-class PostMortemInterval(Based):
-    value: float
-    unit: Seconds
-
-class DonorAge(Based):
+class Specimen(TypedDict):
     """
-    A value or a range [lo, hi], in seconds.
+    Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact.
     """
 
-    value: NotRequired[float]
-    range: NotRequired[Range]
-    unit: Seconds
+    species: NotRequired[Species | StatusObject]
+    anatomical_site: NotRequired[AnatomicalSite | StatusObject]
+    tissue_state: NotRequired[TissueState | StatusObject]
+    disease_and_treatment_state: NotRequired[DiseaseAndTreatmentState | StatusObject]
+    preparation: NotRequired[Preparation | StatusObject]
+    preservation: NotRequired[Preservation | StatusObject]
+    post_mortem_interval: NotRequired[PostMortemInterval | StatusObject]
+    donor_age: NotRequired[DonorAge | StatusObject]
+    mimics: NotRequired[Mimics | StatusObject]
+    supply_form: NotRequired[SupplyForm | StatusObject]
+    lot: NotRequired[Lot | StatusObject]
 
 class StatisticsBlock(TypedDict):
     """
@@ -819,6 +842,14 @@ class Source(TypedDict):
     document: Document
     locator: Locator
 
+class InputSpecimen(TypedDict):
+    """
+    An input's specimen facts, input being its index in inputs.
+    """
+
+    input: int
+    specimen: Specimen
+
 Target: TypeAlias = RecordTarget | RegionTarget
 
 RequirementCondition: TypeAlias = ToleranceRequirement | AcceptRequirement
@@ -835,32 +866,19 @@ class NumericCondition(Based):
     plus_minus: NotRequired[PlusMinus]
     set_or_measured: NotRequired[SetOrMeasured]
 
-class Specimen(TypedDict):
-    """
-    Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact.
-    """
-
-    species: NotRequired[Species | StatusObject]
-    anatomical_site: NotRequired[AnatomicalSite | StatusObject]
-    tissue_state: NotRequired[TissueState | StatusObject]
-    disease_and_treatment_state: NotRequired[DiseaseAndTreatmentState | StatusObject]
-    preparation: NotRequired[Preparation | StatusObject]
-    preservation: NotRequired[Preservation | StatusObject]
-    post_mortem_interval: NotRequired[PostMortemInterval | StatusObject]
-    donor_age: NotRequired[DonorAge | StatusObject]
-    mimics: NotRequired[Mimics | StatusObject]
-    supply_form: NotRequired[SupplyForm | StatusObject]
-    lot: NotRequired[Lot | StatusObject]
-
 FieldStatistics: TypeAlias = StatisticsBlock | StatusWithheld
 
-class InputSpecimen(TypedDict):
+class Derivation(TypedDict):
     """
-    An input's specimen facts, input being its index in inputs.
+    A derived value's method, its inputs as pinned references, its assumptions, the inputs' specimen facts,
+    and whether the inputs' conditions differ (provenance.md section 5).
     """
 
-    input: int
-    specimen: Specimen
+    method: str
+    inputs: list[DerivationInput]
+    assumptions: list[str]
+    input_specimens: list[InputSpecimen]
+    mixed_conditions: NotRequired[bool]
 
 class Requirement(TypedDict):
     want: Want
@@ -890,18 +908,6 @@ class Conditions(TypedDict):
     measurement_geometry: NotRequired[ConditionMeasurementGeometry | StatusObject]
     measurement_dimension: NotRequired[NumericCondition | StatusObject]
     test_method: NotRequired[ConditionTestMethod | StatusObject]
-
-class Derivation(TypedDict):
-    """
-    A derived value's method, its inputs as pinned references, its assumptions, the inputs' specimen facts,
-    and whether the inputs' conditions differ (provenance.md section 5).
-    """
-
-    method: str
-    inputs: list[DerivationInput]
-    assumptions: list[str]
-    input_specimens: list[InputSpecimen]
-    mixed_conditions: NotRequired[bool]
 
 class Composition(TypedDict):
     """

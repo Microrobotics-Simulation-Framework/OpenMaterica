@@ -150,6 +150,47 @@ def test_a_specimen_facts_tokens_are_read_in_full_or_refused(cell: str) -> None:
 
 
 @pytest.mark.parametrize(
+    ("shape", "fixed"),
+    [
+        ('{"value", "unit": "s", "basis"}', {"unit": "s"}),
+        ('{"value", "unit": "s", "basis"} or {"range": [lo, hi], "unit": "s", "basis"}', {"unit": "s"}),
+        ('{"text": <text>, "basis": "stated"}', {"basis": "stated"}),
+        ('{"uberon": "UBERON:<digits>", "label": <text>, "basis"}', {}),
+        ('{"token": "none" | "other", "text": <text, required for other>, "basis"}', {}),
+    ],
+)
+def test_the_members_a_facts_shape_fixes_are_read_with_their_value(shape: str, fixed: dict[str, str]) -> None:
+    assert gen_vocabulary.fixed_members(shape) == fixed
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        pytest.param('{"value", "unit": "s" | "min", "basis"}', id="a_list_outside_token"),
+        pytest.param('{"value", "unit": s, "basis"}', id="an_unquoted_value"),
+        pytest.param('{"value", "unit": "s or min", "basis"}', id="a_value_with_a_space"),
+        pytest.param('{"value", "unit": "s"} or {"range": [lo, hi], "unit": "min"}', id="two_values"),
+    ],
+)
+def test_a_value_a_facts_shape_writes_otherwise_is_refused(shape: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.specimen_facts([{"Name": "`fact`", "JSON shape": f"`{shape}`"}])
+
+
+def test_a_facts_fixed_unit_changed_in_the_text_changes_the_vocabulary(tmp_path: Path) -> None:
+    """The review's probe: a unit no file held, so that changing it in the text changed nothing."""
+    specification = copy_tree(tmp_path, gen_vocabulary.SPECIFICATION)
+    document = specification / "provenance.md"
+    old = '| `post_mortem_interval` | `{"value", "unit": "s", "basis"}` |'
+    text = document.read_text(encoding="utf-8")
+    assert old in text
+    document.write_text(text.replace(old, old.replace('"s"', '"min"')), encoding="utf-8")
+    facts = json.loads(gen_vocabulary.generate(specification)["specimen_facts.json"])
+    assert facts["facts"]["post_mortem_interval"]["unit"] == "min"
+    assert facts["$defs"]["post_mortem_interval_unit"] == {"enum": ["min"]}
+
+
+@pytest.mark.parametrize(
     ("reader", "row"),
     [
         (

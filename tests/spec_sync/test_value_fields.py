@@ -18,7 +18,16 @@ from collections.abc import Callable, Iterator
 import pytest
 
 from materica.core.jsonio import JsonValue
-from scripts.gen_vocabulary import SPECIFICATION, between, cell_of, codes, only_code, prose, table
+from scripts.gen_vocabulary import (
+    SPECIFICATION,
+    between,
+    cell_of,
+    codes,
+    only_code,
+    prose,
+    specimen_facts,
+    table,
+)
 from tests.spec_sync.schemas import SCHEMA, validator
 
 Schema = dict[str, JsonValue]
@@ -211,17 +220,65 @@ def sketched(text: str) -> set[str]:
     }
 
 
+FACTS_VOCABULARY = "vocabulary/specimen_facts.json#/$defs/"
+
+
 def check_specimen_table(definitions: Definitions, read: Documents) -> None:
+    """Each fact's members; its `token` bound to the vocabulary's list of its row's tokens, and each member
+    its row fixes to one value (`"unit": "s"`) to the list of that value; and no other member bound to a
+    list."""
     rows = table(read("provenance.md"), "### 6.2 Specimen facts of schema 0.1.0")
     facts = members(definitions, "specimen")
     assert [only_code(row["Name"]) for row in rows] == list(facts)
+    entries: JsonValue = json.loads(json.dumps(specimen_facts(rows)["facts"]))
+    fixed = {
+        (name, "token" if member == "tokens" else member)
+        for name, entry in mapping(entries).items()
+        for member, value in mapping(entry).items()
+        if value
+    }
+    bound: set[tuple[str, str]] = set()
     for row in rows:
         name = only_code(row["Name"])
         fact, status = alternatives(facts[name])
         assert status == "status_object", name
-        assert set(members(definitions, fact)) == sketched(row["JSON shape"]) | set(
-            members(definitions, "based")
-        )
+        # A basis the row fixes to `stated` leaves no `inferred_from`, which goes with `inferred` alone.
+        based = set[str]() if (name, "basis") in fixed else set(members(definitions, "based"))
+        assert set(members(definitions, fact)) == sketched(row["JSON shape"]) | based, name
+        for member, subschema in mapping(definitions[fact].get("properties", {})).items():
+            choices = listing(subschema.get("anyOf", [subschema])) if isinstance(subschema, dict) else []
+            targets = [str(choice.get("$ref")) for choice in choices if isinstance(choice, dict)]
+            if f"{FACTS_VOCABULARY}{name}_{member}" in targets:
+                bound.add((name, member))
+    assert bound == fixed
+
+
+@pytest.mark.parametrize(
+    ("fact", "valid", "invalid"),
+    [
+        (
+            "post_mortem_interval",
+            {"value": 7200, "unit": "s", "basis": "stated"},
+            {"value": 120, "unit": "min", "basis": "stated"},
+        ),
+        (
+            "donor_age",
+            {"range": [1.0e9, 2.0e9], "unit": "s", "basis": "stated"},
+            {"range": [30, 60], "unit": "a", "basis": "stated"},
+        ),
+        (
+            "mimics",
+            {"text": "liver parenchyma", "basis": "stated"},
+            {"text": "liver parenchyma", "basis": "inferred", "inferred_from": "the maker's datasheet"},
+        ),
+    ],
+)
+def test_a_member_a_facts_row_fixes_takes_that_value_alone(
+    fact: str, valid: JsonValue, invalid: JsonValue
+) -> None:
+    specimen = validator("record.writer.json#/$defs/specimen")
+    assert specimen({fact: valid}) == []
+    assert specimen({fact: invalid}) != []
 
 
 def test_each_form_has_its_value_fields_members() -> None:
@@ -332,7 +389,7 @@ STATUS_ROWS: list[tuple[str, str, dict[tuple[str, str | None], frozenset[str]]]]
     (
         "a `unit` or `axis_unit`, wherever it sits",
         "any, compared only at step 9 (`read_side_contract.md` section 3)",
-        {("unit", None): ANY, ("seconds", None): ANY},
+        {("unit", None): ANY, ("post_mortem_interval", "unit"): ANY, ("donor_age", "unit"): ANY},
     ),
     (
         "each member of an evidence entry but `provenance`",
@@ -625,6 +682,36 @@ def dropping_last(name: str, *path: str) -> Callable[[Definitions], None]:
             ),
             None,
             id="fact_member_added",
+        ),
+        pytest.param(
+            check_specimen_table,
+            document,
+            setting(
+                {
+                    "anyOf": [
+                        {"type": "string", "pattern": "^s(?![\\s\\S])"},
+                        {"$ref": "#/$defs/status_object"},
+                    ]
+                },
+                "post_mortem_interval",
+                "properties",
+                "unit",
+            ),
+            id="fact_unit_written_by_hand",
+        ),
+        pytest.param(
+            check_specimen_table,
+            document,
+            removing("mimics", "properties", "basis"),
+            id="fact_basis_unbound",
+        ),
+        pytest.param(
+            check_specimen_table,
+            changed_document(
+                "provenance.md", '`{"text": <text>, "basis": "stated"}`', '`{"text": <text>, "basis"}`'
+            ),
+            None,
+            id="fact_basis_no_longer_fixed",
         ),
         pytest.param(
             check_status_objects,
