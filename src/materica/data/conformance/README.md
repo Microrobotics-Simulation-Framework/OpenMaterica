@@ -100,11 +100,11 @@ specification sentences each answer rests on were checked against the text. Two 
 them: an independent reader written from the text, run under every configuration of claims each case allows,
 and a scratch reader of the text run with about 300 seeded faults, one at a time. The first round found one
 wrong answer (a fixture that kept a label its arm did not test), six points the text left open, which the
-maintainer settled in the text, and 91 faults that no arm refused. After the arms added for them, the
-independent reader agrees with every answer, and every fault but fourteen is refused by some case: nine that
-no input can tell from the text, four whose arms wait for answers the text leaves open, and one the scratch
-reader never switched on. Every read compares every member of its result; where the text leaves an answer open, no
-arm is written (the suite's `README.md` lists them).
+maintainer settled in the text, and 91 faults that no arm refused. After the arms added for them, and for a
+seventh point their rerun raised, the independent reader agrees with every answer, and every fault but twelve
+is refused by some case: nine that no input can tell from the text, two whose arms wait for answers the text
+leaves open, and one the scratch reader never switched on. Every read compares every member of its result;
+where the text leaves an answer open, no arm is written (the suite's `README.md` lists them).
 
 The scripts that first generated these files are not part of the repository. The files are the source.
 

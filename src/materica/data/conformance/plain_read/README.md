@@ -94,9 +94,6 @@ The inputs come in families, named by what they break:
     no arm shows that an entry's `alternative` counts the stored alternatives rather than the remaining ones;
   - whether an alternative refused at step 8 or 9, which stays because alternatives are set aside for their
     conditions only, turns `no_pick` into `not_met`;
-  - whether a member the reader does not know is left out (`read_side_contract.md` section 2 item 5) inside a
-    review returned as found, and inside an evidence entry's `provenance`, returned whole: no fixture holds
-    one there;
   - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
     is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
     both readings agree.

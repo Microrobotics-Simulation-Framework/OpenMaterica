@@ -1,0 +1,84 @@
+{
+  "case": "PR-337",
+  "variant": "unknown_member_in_evidence_provenance",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_unknown_member_in_evidence_provenance.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:cee6104f7aa394a7aaadf77b17e6d130577466fc76aa0f494a0f07339be4c1d2"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "evidence"
+    }
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "endpoint": "cytotoxicity",
+        "standard": {
+          "designation": "ISO 10993-5",
+          "year": 2009
+        },
+        "contact_category": "conformance fixture: the source's words",
+        "contact_duration": "conformance fixture: the source's words",
+        "material_form": "conformance fixture: the source's words",
+        "processing": "conformance fixture: the source's words",
+        "reported_result": "conformance fixture: illustrative report text",
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        }
+      }
+    ],
+    "unit": {
+      "status": "not_applicable"
+    },
+    "conditions": [],
+    "specimen": {},
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

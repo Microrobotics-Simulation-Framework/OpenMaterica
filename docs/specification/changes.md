@@ -179,3 +179,7 @@ item 6 already said, and `read_side_contract.md` section 2 now says so too (PR-1
 object, the evidence field's included, is returned as stored, its `reason` with it (PR-010); an evidence entry
 is returned with its `provenance` whole (PR-038); and which of an alternative's own reasons a `no_pick` result
 reports is not yet specified.
+
+A seventh point (maintainer, 2026-10-15): a review returned as found and an evidence entry's `provenance`
+returned whole hold the members `read_side_contract.md` section 2 item 5 defines, so a member the reader does
+not know is left out there too (PR-337).
