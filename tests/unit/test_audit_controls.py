@@ -16,6 +16,9 @@ from tests.property import audits
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_jsonio_properties as jsonio_properties
+from tests.property import test_read_properties as read_properties
+from tests.property import test_value_field_properties as value_field_properties
+from tests.property import test_version_properties as version_properties
 
 
 class Control(NamedTuple):
@@ -38,6 +41,34 @@ CONTROLS = [
         hashing_properties.test_the_hash_ignores_what_it_leaves_out,
         "card_below_the_top",
         ("check_invariance",),
+    ),
+    Control(version_properties.test_versions_order_as_their_integers, "decided_by_major", ("check_order",)),
+    # The read's outcome is a feature, so the first law's check runs; the others' laws read again, skipped.
+    Control(read_properties.test_a_read_never_raises_and_gives_each_reason_once, "malformed", ()),
+    Control(
+        read_properties.test_the_order_and_identical_copies_of_the_sources_change_nothing,
+        "malformed",
+        ("check_order_and_copies",),
+    ),
+    Control(
+        read_properties.test_a_record_of_another_identity_changes_nothing,
+        "malformed",
+        ("check_other_identity",),
+    ),
+    Control(
+        read_properties.test_an_unreadable_source_turns_only_absent_or_pin_mismatch_into_malformed,
+        "malformed",
+        ("check_unreadable",),
+    ),
+    Control(
+        read_properties.test_a_request_member_the_shape_does_not_name_changes_nothing,
+        "malformed",
+        ("check_unnamed",),
+    ),
+    Control(
+        value_field_properties.test_members_the_reader_does_not_know_change_nothing,
+        "faulty_base",
+        ("check_ignored",),
     ),
 ]
 

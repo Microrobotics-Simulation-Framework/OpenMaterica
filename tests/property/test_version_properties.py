@@ -32,9 +32,12 @@ def check_order(parse: Parse, pair: VersionPair) -> None:
         )
 
 
-@pytest.mark.features(
-    equal=0.05, decided_by_major=0.10, decided_by_minor=0.05, decided_by_patch=0.05, long=0.30
-)
+# `long` and `decided_by_major` are declared by their chances: their shares at `ci` over 64 runs (2026-10-15),
+# rounded down to two places. Their least shares failed a `dev` run with a probability of about 1e-2, computed
+# from the measured clusters (at most 0.14), and `long` did so in 16 of 2,000 runs. Neither is judged at `dev`
+# now, and at `ci` each falls below its draw floor with a probability below 1e-24.
+@pytest.mark.chances(decided_by_major=0.26, long=0.48)
+@pytest.mark.features(equal=0.05, decided_by_minor=0.05, decided_by_patch=0.05)
 @example(VersionPair("9" * 400 + ".0.0", "1" + "0" * 400 + ".0.0"))
 @example(VersionPair("0.10.0", "0.9.0"))
 @given(records.version_pairs())
