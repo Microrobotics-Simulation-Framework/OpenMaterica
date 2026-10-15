@@ -31,10 +31,10 @@ def test_case_file(case_file: CaseFile) -> None:
 
 def test_every_case_file_is_counted() -> None:
     runs = runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
-    assert len(runs) == 1090
+    assert len(runs) == 1092
     assert Counter(case_run.outcome for case_run in runs) == {
         Outcome.PASSED: 579,
-        Outcome.NOT_YET_RUNNABLE: 511,
+        Outcome.NOT_YET_RUNNABLE: 513,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
@@ -42,7 +42,7 @@ def test_every_case_file_is_counted() -> None:
         (Outcome.PASSED, "read"): 503,
         (Outcome.PASSED, "list_records"): 25,
         (Outcome.NOT_YET_RUNNABLE, "read"): 478,
-        (Outcome.NOT_YET_RUNNABLE, "evaluate"): 33,
+        (Outcome.NOT_YET_RUNNABLE, "evaluate"): 35,
     }
 
 

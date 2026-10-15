@@ -52,7 +52,7 @@
     ],
     "relative_tolerance": {
       "binary64": 1e-12,
-      "binary32": 9e-07
+      "binary32": 3e-06
     }
   }
 }

@@ -17,12 +17,15 @@ inputs. `expected.evaluations` holds one entry per value, in order:
   the evaluator declares; where the readable range is one point it is `"none"`, which passes only absent or
   NaN;
 - at a declared edge, and across one from the readable range: `{"refused": true}`, which passes only where the
-  evaluator reports the refusal and each number it returns is absent or NaN, never finite or infinite;
+  evaluator reports the refusal and each number it returns is absent or NaN, never finite or infinite; every
+  other entry passes only where the evaluator reports no refusal;
 - elsewhere outside the readable range: `in_range` false, the value at the range's nearest end, taken from
   inside it, and a derivative of 0; each number also passes absent or NaN.
 
 `compare.relative_tolerance` is `{"binary64": 1e-12, "binary32": <the file's>}`, absolute where an expected
-number is zero. A `binary32` evaluator first rounds each number of the case to the nearest `binary32`.
+value is zero. An expected derivative of 0 passes only where it is zero, of either sign: every precision gives
+a constant extrapolation's derivative exactly. A `binary32` evaluator first rounds each number of the case to
+the nearest `binary32`.
 
 ## The tables
 
@@ -45,6 +48,8 @@ except T6's.
 | T12 | T1's | | | `source_range` [340, 400] | a readable range of one point, at an end |
 | T13 | T1's | | | `source_range` [310, 310] | a readable range of one point, between knots |
 | T14 | T3's | | | edge 273, `source_range` [273, 283] | an edge on the readable range's end |
+| T15 | T3's | | | edge 273, `source_range` [263, 270] | T11 mirrored: an edge above the readable range |
+| T16 | T3's | | | edge 273, `source_range` [263, 273] | T14 mirrored: an edge on the readable range's upper end |
 
 A point beside a knot, an end or an edge lies one `binary32` unit from it (written "one binary32 unit below
 280" in `CASES.md`), so both precisions evaluate the same side of it.
@@ -55,33 +60,47 @@ Every expected number was computed exactly for the case's doubles, from the inte
 point (`fractions` for a linear table, `decimal` at 80 digits for a log-log one), and rounded once. At a knot
 the value is that knot's `y`.
 
-Each file's `binary32` tolerance follows one rule: four times the worst `binary32` error, over three
-evaluation orders of the text's formulas, of the file's compared numbers; at least four times one rounding
-(2^-24, so at least 3e-7); rounded up to one significant digit. The error was emulated: the case's
-numbers rounded to `binary32`, then every operation, with `ln` and `exp` rounded to nearest, down and up, as a
-library within one unit of the true value may give them. A correctly rounded `ln` and `exp` alone understated
-NumPy's real `float32` error 2.3 times on one file. The README's cap holds for every file: the tolerance is at
-most a tenth of the gap to each broken evaluator listed below, at the file that catches it.
+Each file's `binary32` tolerance follows one rule: four times the worst `binary32` error a correct evaluator
+on a faithful library can make at the file's compared numbers; at least four times one rounding (2^-24, so at
+least 3e-7); rounded up to one significant digit. The error was emulated: the case's numbers rounded to
+`binary32`, then every operation rounded to nearest, in each of the three orders of each `p * q / r` in the
+text's formulas (`(p * q) / r`, the text's own order from left to right; `p * (q / r)`; and `(p / r) * q`),
+with each `ln` argument and each `exp` call rounded down or up, independently of the others and every
+combination tried, as a library within one unit of the true value may round each (one argument always the same
+way, since a library is a function); and at a knot, both the knot's `y` and the formula there. A correctly
+rounded `ln` and `exp` alone understated NumPy's real `float32` error 2.3 times on one file, and `ln` and
+`exp` rounded the same way throughout a run understated a faithful library's worst case up to 3.4 times. The
+README's cap holds for every file: the tolerance is at most a tenth of the largest relative difference between
+the expected answer and that of each broken evaluator listed below, in each file where the two differ.
 
 ## How they were checked
 
-In a scratch harness, not part of the repository, written from the text:
+In scratch harnesses, not part of the repository, written from the text:
 - correct evaluators, exact, in `binary64`, in emulated `binary32`, in NumPy `float32` (2.4.6) and in JAX
-  `float32` (0.5.3, CPU), each declaring each side, pass every file at their precision. NumPy's worst error is
-  at most 0.23 of a file's tolerance;
+  `float32` (0.5.3, CPU), each declaring each side, the floating-point ones in three orders, pass every file
+  at their precision. Their worst error is 0.186 of a file's tolerance (NumPy and JAX, TE-012
+  `decimal_knots_linear`); a faithful library's worst case, searched independently, is 0.238 of one (TE-003
+  `far_outside`);
 - broken evaluators, one fault each, each fail at least one file under every configuration of precision and
-  side it can claim (the `bfloat16` one claims `binary32` only), and the file that should catch each does: by a flag for one that clamps with `in_range` always true,
-  takes `in_range` by `<` at the ends, ignores a narrower `source_range`, reads an edge from the interval
-  above, reports a refusal but returns a finite or an infinite number, gives `in_range` false and no refusal
-  at an edge outside the readable range, extrapolates across an edge, or returns a derivative where the
-  range is one point; and by a number, at least 1,000 times the file's tolerance, for one that returns the
-  side it did not declare, the outside derivative at an end, the declared side at a range end on an interior
-  knot, the interval above just below an edge, log-log linearly, linear in log space, the linear slope as a
-  log-log derivative, NumPy's `interp` outside the readable range, a linear extrapolation, or `bfloat16`
-  intermediates.
+  side it can claim (the `bfloat16` one claims `binary32` only): by a flag for one that clamps with `in_range`
+  always true, takes `in_range` by `<` at the ends, ignores a narrower `source_range`, reads an edge from the
+  interval above, reports a refusal but returns a finite or an infinite number, gives `in_range` false and no
+  refusal at an edge outside the readable range, below it or above it, extrapolates across an edge on either
+  side, returns a derivative where the range is one point, or reports a refusal where none is due; and by a
+  number for one that returns the side it did not declare, the outside derivative at an end, the declared side
+  at a range end on an interior knot, the interval above just below an edge, log-log linearly, linear in log
+  space, the linear slope as a log-log derivative, NumPy's `interp` outside the readable range, a linear
+  extrapolation, or `bfloat16` intermediates. In every file where one of these differs from the expected
+  answer, its largest difference is at least ten times the file's tolerance (the weakest, 122 times, a linear
+  table read as log-log at TE-003 `narrowed`; at the log-log tolerances 557 times, at TE-012
+  `decimal_knots_loglog`), and at the file that catches it best at least 8,000 times (`bfloat16`; every other
+  at least a million).
 
-The independent checks the plain-read cases had have not been made here yet. The scripts that generated
-these files are not part of the repository; the files are the source.
+Two passes independent of the author, one told to break the cases and one to check them, each wrote its own
+evaluator from the text and checked these files with it; after the fixes they led to, their tools, rerun on
+these files under the comparison rules the text now states, agree with every one: the expected numbers bit for
+bit, each tolerance by the rule above. The scripts that generated these files are not part of the repository;
+the files are the source.
 
 ## What the cases cannot show
 
