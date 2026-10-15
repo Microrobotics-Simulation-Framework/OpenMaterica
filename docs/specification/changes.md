@@ -283,7 +283,8 @@ power law is reserved before 1.0.0 (`DOCUMENTATION_ARCHITECTURE.md` section 7.2)
 
 Settled for alternatives, picks, overlays and fill-ins (maintainer, 2026-10-15), S4's twelve decisions. An
 independent check of the text (1 High, 10 Medium, 12 Low and 7 Info findings) led to its present wording. The
-maintainer ruled on four points it raised (2026-10-15), each marked below.
+maintainer ruled on four points it raised, and approved the six defaults written after it (2026-10-15), each
+marked below.
 
 Without a pick, a reader reads each alternative alone, and the outcome does not depend on the order of
 reading. Each alternative is set aside, stays, or refuses the field (PR-044). An alternative is set aside
@@ -300,14 +301,15 @@ PR-044, PR-308, PR-316).
 
 The result is the first outcome that applies, a refusal first (PR-044). A refused field, or one whose
 alternatives are all set aside, reports every alternative's reasons, the `not_met` ones that wait in an
-alternative that stays included. Beside `no_pick` or `want_mismatch`, each remaining alternative's `unknown`
-reasons stand, and its `not_met` reasons wait for a pick (maintainer, 2026-10-15; PR-013). This settles the S2
-entry's open point on an alternative's own reasons beside `no_pick`. Where every alternative that stays is a
-table read over an operating range, the read gives `want_mismatch`, not `no_pick` (PR-013). A result that
-rests on no single alternative holds no value, `assumption` or `conditions` (PR-336). `alternatives` is a
-non-empty list of objects, none holding `alternatives` of its own (PR-044). A reason gains the member
-`alternative`, the stored index of the alternative it was found reading. A reason is identified by code,
-condition and alternative, and cases compare the three (`README.md`, "Case files"; PR-331).
+alternative that stays included (maintainer, 2026-10-15). Beside `no_pick` or `want_mismatch`, each remaining
+alternative's `unknown` reasons stand, and its `not_met` reasons wait for a pick (maintainer, 2026-10-15;
+PR-013). This settles the S2 entry's open point on an alternative's own reasons beside `no_pick`. Where every
+alternative that stays is a table read over an operating range, the read gives `want_mismatch`, not `no_pick`
+(PR-013). A result that rests on no single alternative holds no value, `assumption` or `conditions` (PR-336).
+`alternatives` is a non-empty list of objects, none holding `alternatives` of its own (maintainer, 2026-10-15;
+PR-044). A reason gains the member `alternative`, the stored index of the alternative it was found reading. A
+reason is identified by code, condition and alternative, and cases compare the three (`README.md`, "Case
+files"; PR-331).
 
 A pick reads only its alternative. A pick past the last stored alternative, or on a field holding no
 alternatives, gives the new reason `pick_invalid`, which nothing accepts (PR-304). This settles the S2 entry's
@@ -328,11 +330,11 @@ not a `material`, however it is named, and an overlay acceptance naming a record
 section or the replaced field (PR-011). A fill-in over a base field holding alternatives gives
 `fill_in_version_mismatch`. A fill-in's own alternatives are compared one by one, each mismatch with its index
 (PR-107). A withheld value of the base, in any alternative, refuses an overlay that is not a fill-in, whether
-or not its marker breaks its shape (PR-042). An acceptance located at an `interval` is not applied in a plain
-read even where it also names the read's `record`, and a pick is no exception: its `region` and `interval` are
-its location, never members ignored (a default for the maintainer, 2026-10-15; PR-304, PR-307, PR-316,
-PR-338). Only a pick may be located at an applied overlay: an extrapolation, a nominal or an implied condition
-located there is not applied, and one located at the target's record applies to a field an overlay replaces (a
-default for the maintainer, 2026-10-15; PR-307). A `no_pick` entry carries the labels step 12 gives its
-alternative even where that alternative's read ended at step 11, so a table read over an operating range of
-its axis keeps `user_extracted` and the field's `label` (a default for the maintainer, 2026-10-15; PR-013).
+or not its marker breaks its shape (maintainer, 2026-10-15; PR-042). An acceptance located at an `interval` is
+not applied in a plain read even where it also names the read's `record`, and a pick is no exception: its
+`region` and `interval` are its location, never members ignored (maintainer, 2026-10-15; PR-304, PR-307,
+PR-316, PR-338). Only a pick may be located at an applied overlay: an extrapolation, a nominal or an implied
+condition located there is not applied, and one located at the target's record applies to a field an overlay
+replaces (maintainer, 2026-10-15; PR-307). A `no_pick` entry carries the labels step 12 gives its alternative
+even where that alternative's read ended at step 11, so a table read over an operating range of its axis keeps
+`user_extracted` and the field's `label` (maintainer, 2026-10-15; PR-013).
