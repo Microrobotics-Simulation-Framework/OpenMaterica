@@ -80,12 +80,15 @@ location), only at the read's own location: its `record`, its `region` or both, 
 read, by `id`, `version` and `content_hash`; the target's region). A pick may instead be located at an overlay
 that an `overlay` acceptance of the request names for the read's field, equal in `id`, `version` and
 `content_hash`. It then applies to the read, and names one of that overlay's alternatives (section 3, step 7).
-One naming another field, another record or region, an `interval` (a request targets none: `declarations.md`
-section 2) or no location is checked and not applied, so a pick or an implied condition declared for one place
-never reaches a read of another. So one located at an `interval` is not applied in a plain read even where it
-also names the read's `record`. This holds for a pick too: `record`, `region` and `interval` are an
-acceptance's location whatever its kind, and are never ignored as members `declarations.md` does not name for
-that kind. [PR-330] [PR-338] [PR-320] [PR-316] [PR-304] [PR-307]
+No other kind of acceptance may be so located: an extrapolation, a nominal or an implied condition located at
+an overlay is not applied, and one located at the target's record applies to a field an overlay replaces, as
+to any field (`record_format.md` section 4.4 item 2). One naming another field, another record or region, an
+`interval` (a request targets none: `declarations.md` section 2) or no location is checked and not applied, so
+a pick or an implied condition declared for one place never reaches a read of another. So one located at an
+`interval` is not applied in a plain read even where it also names the read's `record`. This holds for a pick
+too: `record`, `region` and `interval` are an acceptance's location whatever its kind, and are never ignored
+as members `declarations.md` does not name for that kind. [PR-330] [PR-338] [PR-320] [PR-316] [PR-304]
+[PR-307]
 
 Two checks need the form, so they are made when the form is evaluated (section 3, step 11): a table or power
 law read with no operating value for its axis is refused with `request_incomplete` [PR-308], and one read over
