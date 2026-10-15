@@ -18,7 +18,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from materica.core import canonical, jsonio
+from materica.core import canonical, jsonio, slips
 from materica.core.canonical import canonicalize
 from materica.core.hashing import content_hash, hashable_view
 from materica.core.jsonio import JsonValue
@@ -28,6 +28,7 @@ from tests.property import strategies
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_jsonio_properties as jsonio_properties
+from tests.property import test_slip_properties as slip_properties
 from tests.property.strategies import ORIGINAL, SIZE, SMALL, Size
 from tests.property.support import examples_to_kill
 
@@ -405,7 +406,76 @@ HASH_MUTANTS = [
     ),
 ]
 
-MUTANTS = READER_MUTANTS + CANONICAL_MUTANTS + HASH_MUTANTS
+# The one-slip relation with one fault each, killed by its property against the neighbour generator.
+
+ONE_SLIP = slips.one_slip
+PLURAL_OF = slips.plural_of
+
+
+def _without_kind(kind: str) -> Callable[[str, str], str | None]:
+    def relation(a: str, b: str) -> str | None:
+        slip = ONE_SLIP(a, b)
+        return None if slip == kind else slip
+
+    return relation
+
+
+def _underscore_as_a_character(a: str, b: str) -> str | None:
+    slip = ONE_SLIP(a, b)
+    return "a character added" if slip == "an underscore added" else slip
+
+
+def _two_characters_added(a: str, b: str) -> str | None:
+    shorter, longer = sorted((a, b), key=len)
+    if len(longer) - len(shorter) == 2 and longer.startswith(shorter):
+        return "a character added"
+    return ONE_SLIP(a, b)
+
+
+def _plural_without_ies(a: str, b: str) -> bool:
+    singular, plural = sorted((a, b), key=len)
+    return not (singular.endswith("y") and plural == singular[:-1] + "ies") and PLURAL_OF(a, b)
+
+
+def _plural_without_es(a: str, b: str) -> bool:
+    singular, plural = sorted((a, b), key=len)
+    return plural != singular + "es" and PLURAL_OF(a, b)
+
+
+def _empty_word_made_plural(a: str, b: str) -> bool:
+    singular, plural = sorted((a, b), key=len)
+    return (not singular and plural in ("s", "es")) or PLURAL_OF(a, b)
+
+
+def _swap_of_any_two(a: str, b: str) -> str | None:
+    differing = [index for index, (x, y) in enumerate(zip(a, b, strict=False)) if x != y]
+    if len(a) == len(b) and len(differing) == 2 and sorted(a) == sorted(b):
+        return "two characters swapped"
+    return ONE_SLIP(a, b)
+
+
+SLIPS = killed_by(lambda size: slip_properties.pairs(), slip_properties.check_one_slip)
+SLIP_MUTANTS = [
+    *[
+        Mutant(f"{name}_missed", SLIPS, setting(slips, "one_slip", _without_kind(kind)))
+        for name, kind in (
+            ("substitution", slip_properties.SUBSTITUTED),
+            ("insertion", slip_properties.ADDED),
+            ("underscore", slip_properties.UNDERSCORE),
+            ("swap", slip_properties.SWAPPED),
+            ("plural", slip_properties.PLURAL),
+        )
+    ],
+    Mutant("underscore_read_as_a_character", SLIPS, setting(slips, "one_slip", _underscore_as_a_character)),
+    Mutant("two_characters_added_one_slip", SLIPS, setting(slips, "one_slip", _two_characters_added)),
+    Mutant("swap_of_any_two_characters", SLIPS, setting(slips, "one_slip", _swap_of_any_two)),
+    Mutant("ies_plural_missed", SLIPS, setting(slips, "plural_of", _plural_without_ies)),
+    Mutant("es_plural_missed", SLIPS, setting(slips, "plural_of", _plural_without_es)),
+    Mutant("irregular_plurals_missed", SLIPS, setting(slips, "_IRREGULAR_PLURALS", {})),
+    Mutant("empty_word_made_plural", SLIPS, setting(slips, "plural_of", _empty_word_made_plural)),
+]
+
+MUTANTS = READER_MUTANTS + CANONICAL_MUTANTS + HASH_MUTANTS + SLIP_MUTANTS
 
 
 @pytest.mark.parametrize("size", [pytest.param(SMALL, id="small"), pytest.param(ORIGINAL, id="original")])

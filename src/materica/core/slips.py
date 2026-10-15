@@ -40,9 +40,10 @@ def one_slip(a: str, b: str) -> str | None:
 
 def plural_of(a: str, b: str) -> bool:
     """Whether one word is the other made plural or singular: `s` or `es` added at its end, a final `y`
-    exchanged with `ies`, or `datum` with `data`, `index` with `indices` and `matrix` with `matrices`."""
+    exchanged with `ies`, or `datum` with `data`, `index` with `indices` and `matrix` with `matrices`. The
+    empty string between two underscores is no word, so `s` is not its plural."""
     singular, plural = sorted((a, b), key=len)
-    return (
+    return bool(singular) and (
         plural in (singular + "s", singular + "es")
         or (singular.endswith("y") and plural == singular[:-1] + "ies")
         or _IRREGULAR_PLURALS.get(singular) == plural
