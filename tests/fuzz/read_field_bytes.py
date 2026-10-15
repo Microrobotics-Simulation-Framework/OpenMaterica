@@ -46,7 +46,10 @@ from tests.fuzz.field_oracle import check_no_refusal_missing
 PACKAGE = Path(jsonio.__file__).parents[1]
 CONFORMANCE = PACKAGE / "data" / "conformance"
 REASONS = json.loads((PACKAGE / "schema" / "0.1" / "vocabulary" / "reasons.json").read_text(encoding="utf-8"))
-STEP_8_CODES = frozenset(code for code, row in REASONS["reasons"].items() if 8 in row.get("steps", []))
+# The codes of the steps built that a read of a field gives: 8, and 9, its units.
+BUILT_CODES = frozenset(
+    code for code, row in REASONS["reasons"].items() if {8, 9} & set(row.get("steps", []))
+)
 FIELDS = sorted(VOCABULARY.fields)
 WANTS = ("value", "bounds", "components", "evidence")
 JsonObject = dict[str, JsonValue]
@@ -88,11 +91,11 @@ def check_result(result: JsonValue) -> None:
     assert isinstance(result, dict), result
     reasons = result["reasons"]
     assert isinstance(reasons, list), result
-    assert reasons, f"step 8 gives a result only to refuse: {result}"
+    assert reasons, f"steps 8 and 9 give a result only to refuse: {result}"
     keys = [(reason["code"], reason.get("condition")) for reason in reasons if isinstance(reason, dict)]
     assert len(set(keys)) == len(keys), f"a reason twice: {keys}"
     codes = {str(code) for code, _ in keys}
-    assert codes <= STEP_8_CODES, f"codes step 8 does not give: {sorted(codes - STEP_8_CODES)}"
+    assert codes <= BUILT_CODES, f"codes steps 8 and 9 do not give: {sorted(codes - BUILT_CODES)}"
     assert result["status"] == worst(VOCABULARY.reasons[code].status for code in codes), result
 
 

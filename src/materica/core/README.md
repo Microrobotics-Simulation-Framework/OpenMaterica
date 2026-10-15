@@ -14,7 +14,7 @@ bytes ─▶ jsonio.parse ─▶ value ─▶ hashing.hashable_view ─▶ view 
             └─▶ Reason("malformed")
 ```
 
-A read, steps 0 to 8 of `read_side_contract.md` section 3:
+A read, steps 0 to 9 of `read_side_contract.md` section 3:
 
 ```
 request ─▶ read.ReadRequest.from_json ─▶ step 0, the request on its own ─▶ reasons, or a ReadRequest
@@ -36,9 +36,13 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
                                                              structure, the section and the members every
                                                              form shares (value_shapes); a constant's value
                                                                   │
+                                                           fields.unit_problems
+                                                           9 every unit against the registered one, code
+                                                             point for code point
+                                                                  │
                read.ReadResult (status, reasons, labels) ◀────────┘   the reasons of the step that ended
                                                                        the read, or NotImplementedError for
-                                                                       steps 9 to 13, an overlay,
+                                                                       steps 10 to 13, an overlay,
                                                                        alternatives and the other forms'
                                                                        members
 ```
@@ -55,10 +59,10 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `vocabulary.py` | the tokens of the specification's tables, read from `schema/0.1/vocabulary/` |
 | `envelope.py` | the reader schema's checks by hand (`record_format.md` section 1 item 2) |
 | `value_shapes.py` | step 8's checks of what every form of a value field shares, by hand: a slip in the record's structure, a section's specimen, and a field's unit, conditions, specimen facts, statistics block, provenance members, label and status objects (`read_side_contract.md` section 3, step 8; `provenance.md`; `uncertainty.md` sections 1 and 4) |
-| `fields.py` | a value field: step 7 finds it, and step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's so far; another form the row allows raises `NotImplementedError`) |
+| `fields.py` | a value field: step 7 finds it, step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's so far; another form the row allows raises `NotImplementedError`), and step 9 compares its units with the registered ones; its specimen facts, the section's merged with the field's |
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
-| `read.py` | the request's own check (step 0), and the read through step 8; steps 9 to 13, overlays and alternatives are not built yet |
+| `read.py` | the request's own check (step 0), and the read through step 9; steps 10 to 13, overlays and alternatives are not built yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the
 read up to step 5 (`tests/conformance/`).

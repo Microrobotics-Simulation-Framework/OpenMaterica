@@ -14,11 +14,14 @@ breaks no rule, a member step 8 must not check, gives none.
 """
 
 import copy
+import json
 from collections.abc import Callable
+from pathlib import Path
 from typing import NamedTuple
 
 from hypothesis import strategies as st
 
+from materica.core import jsonio
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY, ConditionSpec
@@ -28,6 +31,14 @@ from tests.spec_sync import status_rows
 
 JsonObject = dict[str, JsonValue]
 Draw = st.DrawFn
+
+REASONS = json.loads(
+    (Path(jsonio.__file__).parents[1] / "schema" / "0.1" / "vocabulary" / "reasons.json").read_text("utf-8")
+)
+AFTER_STEP_8 = frozenset(
+    code for code, row in REASONS["reasons"].items() if row.get("steps") and min(row["steps"]) > 8
+)
+"""The codes only steps after 8 give, by the reason table: a read that gives no other passed step 8."""
 
 # The fields a constant may take, the one form whose own member step 8 reads so far.
 CONSTANT_FIELDS = tuple(sorted(name for name, spec in VOCABULARY.fields.items() if "constant" in spec.forms))

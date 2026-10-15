@@ -306,16 +306,17 @@ FACTS: list[tuple[str, dict[str, JsonValue], tuple[str, ...] | None]] = [
         ("unknown_token", "form_invalid"),
     ),
     ("post_mortem_interval", {"value": 60.0, "unit": "s", **STATED}, None),
-    ("post_mortem_interval", {"value": 60.0, "unit": {"status": "unstated"}, **STATED}, None),
-    ("post_mortem_interval", {"value": 1.0, "unit": "min", **STATED}, None),
-    ("post_mortem_interval", {"value": 1.0, "unit": {"status": "approximate"}, **STATED}, None),
+    ("post_mortem_interval", {"value": 60.0, "unit": {"status": "unstated"}, **STATED}, ("unit_mismatch",)),
+    ("post_mortem_interval", {"value": 1.0, "unit": "min", **STATED}, ("unit_mismatch",)),
+    ("post_mortem_interval", {"value": 1.0, "unit": {"status": "approximate"}, **STATED}, ("unit_mismatch",)),
     ("post_mortem_interval", {"value": 1.0, "unit": 60.0, **STATED}, ("form_invalid",)),
     (
         "post_mortem_interval",
         {"value": 1.0, "unit": {"status": "unstated", "note": "x"}, **STATED},
         ("form_invalid",),
     ),
-    ("donor_age", {"range": [1.0, 2.0], "unit": "a", **STATED}, None),
+    ("donor_age", {"range": [1.0, 2.0], "unit": "a", **STATED}, ("unit_mismatch",)),
+    ("donor_age", {"range": [1.0, 2.0], "unit": "s", **STATED}, None),
     ("mimics", {"text": "liver", **STATED}, None),
     ("mimics", {"text": "liver", "inferred_from": "Methods", **STATED}, None),
     ("mimics", {"text": "liver", "basis": "inferred", "inferred_from": "Methods"}, ("form_invalid",)),
@@ -330,8 +331,8 @@ def test_a_specimen_fact_takes_its_rows_shape_and_fixed_members(
     """A disease or treatment state's text is there exactly for `diseased` and `treated`; a basis its row
     fixes (`"basis": "stated"`) takes that token alone and leaves no `inferred_from` to name, so one there is
     ignored; and a fact's unit, which its row fixes too (`"unit": "s"`), is checked here only as a string or a
-    status object, any token included, since step 9 alone compares it (a default for the maintainer,
-    2026-10-15)."""
+    status object, any token included, since step 9 alone compares it, and refuses another unit or any status
+    object (maintainer, 2026-10-15)."""
     field: JsonValue = {**water_field(), "specimen": {name: fact}}
     if codes is None:
         with pytest.raises(NotImplementedError):
@@ -617,16 +618,16 @@ RULES: list[tuple[str, dict[str, JsonValue], frozenset[str] | None]] = [
         frozenset({"form_invalid"}),
     ),
     (
-        "... which step 9 compares",
+        "... which step 9 refuses",
         with_condition("measurement_geometry", {"token": "tube", "unit": "m", "basis": "stated"}),
-        None,
+        frozenset({"unit_mismatch"}),
     ),
     (
-        "a fact's unit takes any status token at step 8",
+        "a fact's unit takes any status token at step 8, which step 9 refuses",
         with_fact(
             "post_mortem_interval", {"value": 60.0, "unit": {"status": "approximate"}, "basis": "stated"}
         ),
-        None,
+        frozenset({"unit_mismatch"}),
     ),
     (
         "the row's label beside a form the reader does not know",
@@ -675,3 +676,170 @@ def test_withheld_is_given_beside_a_shared_refusal() -> None:
     assert {reason.code for reason in alone.reasons} == {"withheld"}
     both = read(*stored(with_field("fluid.dynamic_viscosity", {**withheld, "unit": None})))
     assert {reason.code for reason in both.reasons} == {"withheld", "form_invalid"}
+
+
+DERIVED: dict[str, JsonValue] = {
+    "origin": "derived",
+    "derivation": {
+        "method": "arrhenius_mixing",
+        "inputs": [
+            {
+                "record": {"id": "conformance/a", "version": "1.0.0", "content_hash": "sha256:" + "0" * 64},
+                "field": "fluid.dynamic_viscosity",
+            }
+        ],
+        "assumptions": [],
+        "input_specimens": [
+            {"input": 0.0, "specimen": {"post_mortem_interval": {"value": 60.0, "unit": "min", **STATED}}}
+        ],
+    },
+}
+KELVIN_SIGN = chr(0x212A)
+# Units step 9 compares (`read_side_contract.md` section 3, step 9), each changed in the water field, and the
+# reasons, `(code, condition)`, it then gives; none where the field passes step 9.
+UNITS: list[tuple[str, dict[str, JsonValue], set[tuple[str, str | None]] | None]] = [
+    ("the field's unit as registered", water_field(), None),
+    ("the field's unit with a space", {**water_field(), "unit": "Pa s"}, {("unit_mismatch", None)}),
+    ("the field's unit in capitals", {**water_field(), "unit": "PA.S"}, {("unit_mismatch", None)}),
+    (
+        "a status object where a string is registered",
+        {**water_field(), "unit": {"status": "unstated"}},
+        {("unit_mismatch", None)},
+    ),
+    (
+        "a condition's unit in another code",
+        with_condition("temperature", {"value": 37.0, "unit": "Cel", "basis": "stated"}),
+        {("unit_mismatch", "temperature")},
+    ),
+    (
+        "a condition's unit as the Kelvin sign",
+        with_condition("temperature", {"value": 310.15, "unit": KELVIN_SIGN, "basis": "stated"}),
+        {("unit_mismatch", "temperature")},
+    ),
+    (
+        "a condition's unit as a status object",
+        with_condition("temperature", {"value": 310.15, "unit": {"status": "unstated"}, "basis": "stated"}),
+        {("unit_mismatch", "temperature")},
+    ),
+    (
+        "a plus_minus entry's unit, once with its condition's",
+        with_condition(
+            "temperature",
+            {
+                "value": 310.15,
+                "unit": "Cel",
+                "plus_minus": [{"stated_as": "bound", "value": 0.5, "unit": "Cel"}],
+                "basis": "stated",
+            },
+        ),
+        {("unit_mismatch", "temperature")},
+    ),
+    (
+        "a plus_minus entry's unit alone",
+        with_condition(
+            "temperature",
+            {
+                "value": 310.15,
+                "unit": "K",
+                "plus_minus": [{"stated_as": "sd", "value": 0.5, "unit": {"status": "unstated"}}],
+                "basis": "stated",
+            },
+        ),
+        {("unit_mismatch", "temperature")},
+    ),
+    (
+        "a unit on a token condition",
+        with_condition("measurement_geometry", {"token": "bulk", "unit": "1", "basis": "stated"}),
+        {("unit_mismatch", "measurement_geometry")},
+    ),
+    (
+        "the field's unit and a condition's: one reason each",
+        {**with_condition("shear_rate", {"value": 1.0, "unit": "s-1", "basis": "stated"}), "unit": "Pa*s"},
+        {("unit_mismatch", None), ("unit_mismatch", "shear_rate")},
+    ),
+    (
+        "a condition the reader does not know, compared with nothing",
+        with_condition("pressure", {"value": 1.0, "unit": "bar", "basis": "stated"}),
+        None,
+    ),
+    (
+        "a condition held as a status object",
+        with_condition("temperature", {"status": "unstated", "reason": "no unit given either"}),
+        None,
+    ),
+    (
+        "a field's fact in minutes",
+        with_fact("post_mortem_interval", {"value": 1.0, "unit": "min", **STATED}),
+        {("unit_mismatch", None)},
+    ),
+    (
+        "a field's fact in seconds",
+        with_fact("donor_age", {"range": [1.0e9, 2.0e9], "unit": "s", **STATED}),
+        None,
+    ),
+    ("a field's fact as a status object", with_fact("donor_age", {"status": "unstated"}), None),
+    (
+        "a derived value's input fact in minutes",
+        {**water_field(), "provenance": DERIVED},
+        {("unit_mismatch", None)},
+    ),
+    (
+        "an input fact in minutes where the origin is not derived, which step 8 does not check",
+        {**water_field(), "provenance": {**DERIVED, "origin": "measured_by_contributor"}},
+        None,
+    ),
+]
+
+
+@pytest.mark.parametrize(("units", "field", "reasons"), UNITS, ids=[units for units, _, _ in UNITS])
+def test_step_9_compares_each_unit_with_the_one_registered_for_it(
+    units: str, field: dict[str, JsonValue], reasons: set[tuple[str, str | None]] | None
+) -> None:
+    """Code point for code point, a status object never equal to a string, each reason once with its
+    condition; a field that passes goes on to steps not built yet."""
+    if reasons is None:
+        with pytest.raises(NotImplementedError):
+            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+        return
+    result = read(*stored(with_field("fluid.dynamic_viscosity", field)))
+    assert result.status == "not_met"
+    assert {(reason.code, reason.condition) for reason in result.reasons} == reasons
+    assert len(result.reasons) == len(reasons)
+
+
+@pytest.mark.parametrize(
+    ("fact", "reasons"),
+    [
+        ({"value": 60.0, "unit": "s", **STATED}, None),
+        ({"value": 60.0, "unit": {"status": "not_applicable"}, **STATED}, {("unit_mismatch", None)}),
+    ],
+)
+def test_step_9_compares_a_section_facts_unit_for_every_field_of_the_section(
+    fact: dict[str, JsonValue], reasons: set[tuple[str, str | None]] | None
+) -> None:
+    record = water()
+    section: dict[str, JsonValue] = {
+        "specimen": {"post_mortem_interval": fact},
+        "fields": {"dynamic_viscosity": water_field()},
+    }
+    record["body"] = {"sections": {"fluid": section}}
+    if reasons is None:
+        with pytest.raises(NotImplementedError):
+            read(*stored(record))
+        return
+    assert {(reason.code, reason.condition) for reason in read(*stored(record)).reasons} == reasons
+
+
+def test_a_field_unit_registered_as_a_status_object_takes_its_token_whatever_its_reason() -> None:
+    """`biocompatibility.evidence`'s unit is `{"status": "not_applicable"}` (`record_format.md` section 4.2):
+    step 9's comparison, apart from evidence's own member, which S2b-2 reads."""
+    from materica.core.fields import same_unit
+
+    registered = VOCABULARY.fields["biocompatibility.evidence"].unit
+    assert same_unit({"status": "not_applicable", "reason": "a list of reports"}, registered)
+    assert not same_unit({"status": "unstated"}, registered)
+    assert not same_unit({"status": "bogus"}, registered)
+    assert not same_unit("not_applicable", registered)
+    assert same_unit("Pa.s", "Pa.s")
+    assert not same_unit("Pa.s" + chr(0x200B), "Pa.s")
+    assert not same_unit({"status": "unstated"}, "Pa.s")

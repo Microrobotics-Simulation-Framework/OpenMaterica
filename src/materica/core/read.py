@@ -2,12 +2,12 @@
 """A read of one field of one record (`read_side_contract.md` sections 1 to 3).
 
 `read` checks the request on its own (step 0), resolves its target (steps 1 to 5, `resolve.resolve_record`),
-finds the field (step 7, `fields.find_field`) and checks its form and shape (step 8, `fields.form_problems`),
-and gives a `ReadResult`. Steps 9 to 13, which read the field's units, conditions and value, are not built
-yet, nor are overlays (step 6) and alternatives (step 7). A read that would need one raises
-`NotImplementedError`, and so does a request whose answer a check still to come could change, whatever else
-is wrong with it: one with a region target or acceptances. It raises rather than give an answer a later step
-would contradict.
+finds the field (step 7, `fields.find_field`), checks its form and shape (step 8, `fields.form_problems`) and
+its units (step 9, `fields.unit_problems`), and gives a `ReadResult`. Steps 10 to 13, which read the field's
+conditions and value, are not built yet, nor are overlays (step 6) and alternatives (step 7). A read that
+would need one raises `NotImplementedError`, and so does a request whose answer a check still to come could
+change, whatever else is wrong with it: one with a region target or acceptances. It raises rather than give an
+answer a later step would contradict.
 """
 
 import json
@@ -17,7 +17,7 @@ from typing import get_args
 
 from materica import shapes
 from materica.core import jsonio
-from materica.core.fields import find_field, form_problems
+from materica.core.fields import find_field, form_problems, unit_problems
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason, merged
@@ -175,12 +175,20 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
         return _refused((field,), resolved.labels)
     if isinstance(field.value, dict) and "alternatives" in field.value:
         raise NotImplementedError("a field holding alternatives is read at step 7, which is not built yet")
-    refusals = form_problems(field, record, claims)
-    if refusals:
-        return _refused(merged(refusals), resolved.labels)
+    found = form_problems(field, record, claims)
+    if _ends(found):
+        return _refused(merged(found), resolved.labels)
+    found += unit_problems(field)
+    if _ends(found):
+        return _refused(merged(found), resolved.labels)
     raise NotImplementedError(
-        "steps 9 to 13, which read the field's units, conditions and value, are not built yet"
+        "steps 10 to 13, which read the field's conditions and value, are not built yet"
     )
+
+
+def _ends(found: list[Reason]) -> bool:
+    """Whether the reasons a read has found end it: a step that gives `not_met` does (section 3)."""
+    return worst(VOCABULARY.reasons[reason.code].status for reason in found) == "not_met"
 
 
 def _check(claims: Collection[Suite]) -> None:
