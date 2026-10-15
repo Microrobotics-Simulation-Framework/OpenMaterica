@@ -15,10 +15,14 @@ Its `$defs` hold the shapes of a value field and a section's `specimen` as step 
 (`read_side_contract.md` section 3), applied from nowhere in the schema, for a reader that checks one field
 with them: opened in the same way, with their `$ref`s kept, a reference to the vocabulary's tokens any
 string, no pattern, and every member marked `x-materica-write-only` any value and required nowhere, since a
-read does not check it. A rule that reaches only such members, at any depth (an `allOf` conjunct, or a
-condition's `then` and `else`), is the record checks' alone and is left out, and so is a condition whose `if`
-tests one: a read cannot tell whether it holds. A conjunct, or a `then` and `else`, that reaches members of
-both kinds stops the script.
+read does not check it. An `allOf` conjunct that refers to one of the vocabulary's bindings (a section's
+field names and each field's row, a numeric condition's unit) is left out wherever it stands: those `$defs`
+hold the shape of a value field whatever its name, and a read checks a field against its row in its own
+steps, a unit at step 9 alone. A binding referred to anywhere else, or a vocabulary definition that is neither
+a binding nor a list of tokens, stops the script. A rule that reaches only such members, at any depth (an
+`allOf` conjunct, or a condition's `then` and `else`), is the record checks' alone and is left out, and so is
+a condition whose `if` tests one: a read cannot tell whether it holds. A conjunct, or a `then` and `else`,
+that reaches members of both kinds stops the script.
 
 Every pattern in the writer schema must start with `^` and end with `(?![\\s\\S])`: a validator's `$` also
 matches before a final newline, so `"0.1.0\\n"` would match `^...$`. Under `if` or `not`, anything the script
@@ -175,7 +179,8 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
                 if not isinstance(value, list):
                     raise SchemaError(f"{keyword} that is not a list: {value!r}")
                 within = scope if keyword in SAME_OBJECT else UNSCOPED
-                reader[keyword] = [opened(member, inline=inline, outer=within) for member in value]
+                applied = [member for member in value if not (keyword == "allOf" and binding(member))]
+                reader[keyword] = [opened(member, inline=inline, outer=within) for member in applied]
             elif keyword == WRITE_ONLY:
                 raise SchemaError(f"{WRITE_ONLY} marks a member of properties, and nothing else: {node}")
             elif keyword in VERBATIM:
@@ -263,11 +268,19 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
             return True
         return any(opens(value, seen) for keyword, value in node.items() if keyword != "$defs")
 
+    def binding(node: Json) -> bool:
+        """Whether `node` is a reference to one of the vocabulary's bindings."""
+        target = as_object(node).get("$ref")
+        found = VOCABULARY_REF.fullmatch(target) if isinstance(target, str) else None
+        return found is not None and binds(vocabulary, found[1], found[2])
+
     def reference(node: dict[str, Json], *, inline: bool, patterned: bool) -> Json:
         target = node["$ref"]
         if set(node) - {"$ref", "description"} or not isinstance(target, str):
             raise SchemaError(f"a $ref beside keywords other than description: {node}")
         if vocabulary_ref := VOCABULARY_REF.fullmatch(target):
+            if binding(node):
+                raise SchemaError(f"a vocabulary binding applied other than as an allOf conjunct: {target}")
             if not enumerates(vocabulary, vocabulary_ref[1], vocabulary_ref[2]):
                 raise SchemaError(f"a $ref to the vocabulary that is no enumeration of strings: {target}")
             return {"type": "string"}
@@ -346,6 +359,16 @@ def enumerates(vocabulary: dict[str, Json], name: str, definition: str) -> bool:
     found = definitions.get(definition) if isinstance(definitions, dict) else None
     tokens = found.get("enum") if isinstance(found, dict) and set(found) == {"enum"} else None
     return isinstance(tokens, list) and all(isinstance(token, str) for token in tokens)
+
+
+def binds(vocabulary: dict[str, Json], name: str, definition: str) -> bool:
+    """Whether the vocabulary file `name` defines `definition` as a binding: a schema of the members a name's
+    row fixes (`properties`, `propertyNames`), holding no list of tokens of its own."""
+    contents = vocabulary.get(name)
+    definitions = contents.get("$defs") if isinstance(contents, dict) else None
+    found = definitions.get(definition) if isinstance(definitions, dict) else None
+    structure = {"properties", "propertyNames"}
+    return isinstance(found, dict) and "enum" not in found and bool(structure & set(found))
 
 
 def without_empty(reader: dict[str, Json]) -> dict[str, Json]:

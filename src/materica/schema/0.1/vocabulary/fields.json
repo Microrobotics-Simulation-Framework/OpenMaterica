@@ -7,6 +7,279 @@
         "materica.fluid.newtonian.v1",
         "materica.magnetic.linear.v1"
       ]
+    },
+    "sections": {
+      "description": "Each section's fields: the names its rows register, each bound to its row.",
+      "properties": {
+        "bulk": {
+          "properties": {
+            "fields": {
+              "propertyNames": {
+                "enum": [
+                  "density",
+                  "elemental_composition"
+                ]
+              },
+              "properties": {
+                "density": {
+                  "$ref": "#/$defs/bulk.density"
+                },
+                "elemental_composition": {
+                  "$ref": "#/$defs/bulk.elemental_composition"
+                }
+              }
+            }
+          }
+        },
+        "fluid": {
+          "properties": {
+            "fields": {
+              "propertyNames": {
+                "enum": [
+                  "dynamic_viscosity"
+                ]
+              },
+              "properties": {
+                "dynamic_viscosity": {
+                  "$ref": "#/$defs/fluid.dynamic_viscosity"
+                }
+              }
+            }
+          }
+        },
+        "magnetic": {
+          "properties": {
+            "fields": {
+              "propertyNames": {
+                "enum": [
+                  "remanence",
+                  "saturation_magnetisation",
+                  "volume_susceptibility"
+                ]
+              },
+              "properties": {
+                "remanence": {
+                  "$ref": "#/$defs/magnetic.remanence"
+                },
+                "saturation_magnetisation": {
+                  "$ref": "#/$defs/magnetic.saturation_magnetisation"
+                },
+                "volume_susceptibility": {
+                  "$ref": "#/$defs/magnetic.volume_susceptibility"
+                }
+              }
+            }
+          }
+        },
+        "biocompatibility": {
+          "properties": {
+            "fields": {
+              "propertyNames": {
+                "enum": [
+                  "evidence"
+                ]
+              },
+              "properties": {
+                "evidence": {
+                  "$ref": "#/$defs/biocompatibility.evidence"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "replaces": {
+      "description": "The fields an overlay may replace, each bound to its row.",
+      "propertyNames": {
+        "enum": [
+          "bulk.density",
+          "bulk.elemental_composition",
+          "fluid.dynamic_viscosity",
+          "magnetic.remanence",
+          "magnetic.saturation_magnetisation",
+          "magnetic.volume_susceptibility",
+          "biocompatibility.evidence"
+        ]
+      },
+      "properties": {
+        "bulk.density": {
+          "$ref": "#/$defs/bulk.density"
+        },
+        "bulk.elemental_composition": {
+          "$ref": "#/$defs/bulk.elemental_composition"
+        },
+        "fluid.dynamic_viscosity": {
+          "$ref": "#/$defs/fluid.dynamic_viscosity"
+        },
+        "magnetic.remanence": {
+          "$ref": "#/$defs/magnetic.remanence"
+        },
+        "magnetic.saturation_magnetisation": {
+          "$ref": "#/$defs/magnetic.saturation_magnetisation"
+        },
+        "magnetic.volume_susceptibility": {
+          "$ref": "#/$defs/magnetic.volume_susceptibility"
+        },
+        "biocompatibility.evidence": {
+          "$ref": "#/$defs/biocompatibility.evidence"
+        }
+      }
+    },
+    "bulk.density": {
+      "properties": {
+        "form": {
+          "enum": [
+            "constant",
+            "table",
+            "interval"
+          ]
+        },
+        "unit": {
+          "const": "kg/m3"
+        },
+        "label": false,
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/bulk.density"
+          }
+        }
+      }
+    },
+    "bulk.elemental_composition": {
+      "properties": {
+        "form": {
+          "enum": [
+            "composition"
+          ]
+        },
+        "unit": {
+          "const": "1"
+        },
+        "label": false,
+        "composition": {
+          "properties": {
+            "basis": {
+              "enum": [
+                "mass_fraction"
+              ]
+            }
+          }
+        },
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/bulk.elemental_composition"
+          }
+        }
+      }
+    },
+    "fluid.dynamic_viscosity": {
+      "properties": {
+        "form": {
+          "enum": [
+            "constant",
+            "table",
+            "interval"
+          ]
+        },
+        "unit": {
+          "const": "Pa.s"
+        },
+        "label": {
+          "const": "materica.fluid.newtonian.v1"
+        },
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/fluid.dynamic_viscosity"
+          }
+        }
+      }
+    },
+    "magnetic.remanence": {
+      "properties": {
+        "form": {
+          "enum": [
+            "constant",
+            "interval"
+          ]
+        },
+        "unit": {
+          "const": "T"
+        },
+        "label": false,
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/magnetic.remanence"
+          }
+        }
+      }
+    },
+    "magnetic.saturation_magnetisation": {
+      "properties": {
+        "form": {
+          "enum": [
+            "constant",
+            "interval"
+          ]
+        },
+        "unit": {
+          "const": "A/m"
+        },
+        "label": false,
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/magnetic.saturation_magnetisation"
+          }
+        }
+      }
+    },
+    "magnetic.volume_susceptibility": {
+      "properties": {
+        "form": {
+          "enum": [
+            "constant",
+            "table",
+            "interval"
+          ]
+        },
+        "unit": {
+          "const": "1"
+        },
+        "label": {
+          "const": "materica.magnetic.linear.v1"
+        },
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/magnetic.volume_susceptibility"
+          }
+        }
+      }
+    },
+    "biocompatibility.evidence": {
+      "properties": {
+        "form": {
+          "enum": [
+            "evidence"
+          ]
+        },
+        "unit": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "not_applicable"
+            }
+          }
+        },
+        "label": false,
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/biocompatibility.evidence"
+          }
+        }
+      }
     }
   },
   "fields": {

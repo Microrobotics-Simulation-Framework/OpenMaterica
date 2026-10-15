@@ -346,3 +346,20 @@ def test_the_corpus_reads_each_of_its_inputs() -> None:
         "docs/specification/declarations.md",
     } <= origins
     assert {"status", "unit"} <= set(found.name_keyed)
+
+
+def test_a_binding_of_the_vocabulary_declares_no_namespace() -> None:
+    """A binding restricts members the writer declares (a field's `unit` to its registered one), as a
+    condition does: its names and lists are no namespace, and its conjunct adds no member to the definition
+    that applies it. The control: the vocabulary's lists of tokens are read."""
+    files = name_overlaps.load(REPOSITORY)
+    fields = name_overlaps.mapping(name_overlaps.mapping(files["vocabulary/fields.json"])["$defs"])
+    assert name_overlaps.binding(fields["sections"], "vocabulary/fields.json")
+    assert not name_overlaps.binding(fields["label"], "vocabulary/fields.json")
+    origins = [namespace.origin for namespace in name_overlaps.collect(REPOSITORY).namespaces]
+    vocabulary = "src/materica/schema/0.1/vocabulary/"
+    bindings = (f"{vocabulary}fields.json#/$defs/sections", f"{vocabulary}conditions.json#/$defs/units")
+    assert not [origin for origin in origins if origin.startswith(bindings)]
+    assert f"{vocabulary}fields.json#/$defs/label" in origins
+    replaces = [origin for origin in origins if origin.endswith("record.writer.json#/$defs/replaces")]
+    assert replaces == []

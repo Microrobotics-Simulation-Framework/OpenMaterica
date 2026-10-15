@@ -8,7 +8,10 @@ The shapes come from `schema/0.1/record.writer.json` and `case.json`, with the r
 refers to, through datamodel-code-generator, pinned in the dev group, then ruff. A member the schemas declare
 `integer` is typed `float`, since the reader gives every JSON number as a double (`record_format.md` section 1
 item 6): a whole number is a `float` with no fractional part, so a consumer type-checks against what it is
-given. `shapes.py` uses the standard
+given. The vocabulary's bindings, which the writer schema applies by `allOf` to bind a name to its row (a
+section's field names, a field's forms, unit and label, a numeric condition's unit), are left out: a TypedDict
+cannot narrow a member by the name it sits under, and the shapes stay those of a value field whatever its
+name. `shapes.py` uses the standard
 library only, so the package keeps no run-time dependency; `shapes.pyi`, which type checkers read in its
 place, adds PEP 705's `ReadOnly` to every member of the shapes a read returns, from `typing_extensions`, which
 type checkers resolve from their own typeshed. datamodel-code-generator 0.83 does not run on Python 3.15: run
@@ -53,7 +56,10 @@ def generated_text() -> str:
         copy = Path(directory)
         shutil.copytree(PACKAGE / "schema", copy / "schema")
         for schema in (copy / "schema").rglob("*.json"):
-            schema.write_text(json.dumps(as_read(json.loads(schema.read_text("utf-8")))), encoding="utf-8")
+            contents = as_read(json.loads(schema.read_text("utf-8")))
+            if schema.parent.name == "vocabulary":
+                contents = without_bindings(contents)
+            schema.write_text(json.dumps(contents), encoding="utf-8")
         root = copy / "shapes_root.json"
         root.write_text(
             json.dumps(
@@ -94,15 +100,40 @@ Json = bool | int | float | str | list["Json"] | dict[str, "Json"] | None
 
 
 def as_read(node: Json) -> Json:
-    """`node` with every `integer` type a `number`: the reader gives a whole number as a double."""
+    """`node` with every `integer` type a `number`, since the reader gives a whole number as a double, and
+    without the `allOf` conjuncts that refer to the vocabulary, which bind names to their rows."""
     if isinstance(node, list):
         return [as_read(item) for item in node]
     if not isinstance(node, dict):
         return node
-    return {
-        keyword: ("number" if keyword == "type" and value == "integer" else as_read(value))
-        for keyword, value in node.items()
+    found: dict[str, Json] = {}
+    for keyword, value in node.items():
+        if keyword == "type" and value == "integer":
+            found[keyword] = "number"
+        elif keyword == "allOf" and isinstance(value, list):
+            if kept := [as_read(conjunct) for conjunct in value if not binding(conjunct)]:
+                found[keyword] = kept
+        else:
+            found[keyword] = as_read(value)
+    return found
+
+
+def binding(conjunct: Json) -> bool:
+    target = conjunct.get("$ref") if isinstance(conjunct, dict) else None
+    return isinstance(target, str) and target.startswith("vocabulary/")
+
+
+def without_bindings(vocabulary: Json) -> Json:
+    """A vocabulary file without its bindings, the definitions that are schemas of members rather than lists
+    of tokens, which datamodel-code-generator would otherwise type as shapes of their own."""
+    if not isinstance(vocabulary, dict) or not isinstance(definitions := vocabulary.get("$defs"), dict):
+        return vocabulary
+    kept = {
+        name: definition
+        for name, definition in definitions.items()
+        if not (isinstance(definition, dict) and {"properties", "propertyNames"} & set(definition))
     }
+    return {**vocabulary, "$defs": kept}
 
 
 _FUNCTIONAL = re.compile(r"\n(\w+) = TypedDict\('\1', \{\n.*?\}\)\n", re.S)

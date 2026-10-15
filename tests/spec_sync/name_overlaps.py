@@ -6,7 +6,9 @@ valid name passes every check and means something else. Section 10 keeps the nam
 than one slip apart, and this check holds the schema to it. A namespace is the names valid together at one
 place: the members of one object, those of the definitions its `allOf` refers to included, or one token list.
 Names come from:
-- every schema file but the generated reader schema, `$ref`s followed across files, and the vocabulary;
+- every schema file but the generated reader schema, `$ref`s followed across files, and the vocabulary, less
+  its bindings, which declare no member: like a condition, a binding restricts members a schema declares
+  elsewhere (a field's `unit` to its registered one), so neither its names nor its lists are a namespace;
 - the specification's fenced JSON examples, and its tables of members and of tokens (member names only);
 - its name-keyed sentences: "`x`, wherever it sits", "a member named `x`".
 
@@ -238,12 +240,14 @@ class Schemas:
 
     def members(self, node: dict[str, JsonValue], current: str) -> dict[str, tuple[JsonValue, str]]:
         """The members valid at `node`: its own, and those of each definition its `allOf` refers to, which
-        the same object holds (a value field's `unit` beside its form's `form`), each with its file."""
+        the same object holds (a value field's `unit` beside its form's `form`), each with its file; a binding
+        of the vocabulary adds none."""
         found: dict[str, tuple[JsonValue, str]] = {}
         for conjunct in listing(node.get("allOf", [])):
             if isinstance(conjunct, dict) and "$ref" in conjunct:
                 base, file = self.resolve(str(conjunct["$ref"]), current)
-                found |= self.members(mapping(base), file)
+                if not binding(base, file):
+                    found |= self.members(mapping(base), file)
         properties = node.get("properties", {})
         return found | {name: (subschema, current) for name, subschema in mapping(properties).items()}
 
@@ -270,9 +274,21 @@ class Schemas:
         for keyword, value in node.items():
             if keyword in ("properties", "$defs") and isinstance(value, dict):
                 for name, subschema in value.items():
-                    self.walk(subschema, current, f"{pointer}/{keyword}/{name}", name)
+                    if not (keyword == "$defs" and binding(subschema, current)):
+                        self.walk(subschema, current, f"{pointer}/{keyword}/{name}", name)
             elif keyword not in CONSTRAINTS:
                 self.walk(value, current, f"{pointer}/{keyword}", owner)
+
+
+def binding(definition: JsonValue, file: str) -> bool:
+    """Whether a definition of the vocabulary is a binding (`scripts/gen_vocabulary.py`): a schema of the
+    members a name's row fixes, holding no list of tokens of its own."""
+    return (
+        file.startswith("vocabulary/")
+        and isinstance(definition, dict)
+        and "enum" not in definition
+        and bool({"properties", "propertyNames"} & set(definition))
+    )
 
 
 def vocabulary(files: dict[str, JsonValue], corpus: Corpus) -> None:

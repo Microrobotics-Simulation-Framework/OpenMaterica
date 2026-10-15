@@ -35,6 +35,91 @@
         "hysteresigraph",
         "pycnometer"
       ]
+    },
+    "units": {
+      "description": "Each numeric condition's registered unit, in its unit and its plus_minus entries'.",
+      "properties": {
+        "temperature": {
+          "properties": {
+            "unit": {
+              "const": "K"
+            },
+            "plus_minus": {
+              "items": {
+                "properties": {
+                  "unit": {
+                    "const": "K"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "shear_rate": {
+          "properties": {
+            "unit": {
+              "const": "1/s"
+            },
+            "plus_minus": {
+              "items": {
+                "properties": {
+                  "unit": {
+                    "const": "1/s"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "magnetic_flux_density": {
+          "properties": {
+            "unit": {
+              "const": "T"
+            },
+            "plus_minus": {
+              "items": {
+                "properties": {
+                  "unit": {
+                    "const": "T"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "specimen_size": {
+          "properties": {
+            "unit": {
+              "const": "m"
+            },
+            "plus_minus": {
+              "items": {
+                "properties": {
+                  "unit": {
+                    "const": "m"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "measurement_dimension": {
+          "properties": {
+            "unit": {
+              "const": "m"
+            },
+            "plus_minus": {
+              "items": {
+                "properties": {
+                  "unit": {
+                    "const": "m"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "conditions": {
