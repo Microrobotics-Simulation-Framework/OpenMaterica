@@ -17,6 +17,7 @@ from materica.core.read import ReadRequest, ReadResult, read
 from materica.core.reasons import Reason, merged
 from materica.core.record import RecordStore
 from materica.core.status import worst
+from materica.core.value_shapes import FORM_MEMBERS
 from materica.core.vocabulary import VOCABULARY
 
 WATER = (
@@ -208,15 +209,78 @@ def water_field() -> dict[str, JsonValue]:
         ("biocompatibility.evidence", "evidence"),
     ],
 )
-def test_a_form_whose_member_is_not_read_yet_raises_unless_a_shared_member_refuses(
+def test_a_form_its_row_allows_whose_member_is_not_read_yet_raises_whatever_else_is_wrong(
     name: str, form: str
 ) -> None:
+    """Its own member could add a reason, and every reason found is reported (`read_side_contract.md` section
+    2 item 2): an interval's unknown `basis` beside a broken `unit` gives `unknown_token` too, once read."""
     field = {**water_field(), "form": form, form: {}}
     del field["label"]
-    with pytest.raises(NotImplementedError):
-        read(*stored(with_field(name, field), name))
+    for broken in ({}, {"unit": None}, {"statistics": None, "label": "materica.fluid.newtonian.v1"}):
+        with pytest.raises(NotImplementedError):
+            read(*stored(with_field(name, {**field, **broken}), name))
+
+
+@pytest.mark.parametrize(
+    ("name", "form"),
+    [
+        ("bulk.density", "composition"),
+        ("bulk.elemental_composition", "interval"),
+        ("bulk.elemental_composition", "constant"),
+        ("biocompatibility.evidence", "table"),
+    ],
+)
+def test_a_form_its_row_does_not_allow_is_refused_with_every_shared_reason_and_not_its_member(
+    name: str, form: str
+) -> None:
+    """The read neither uses nor returns the member of a form its row does not allow, so step 8 does not read
+    it: a constant's `value` that is not a number adds nothing beside `form_not_registered`."""
+    field = {**water_field(), "form": form, FORM_MEMBERS[form]: "not this form's member"}
+    del field["label"]
+    assert read(*stored(with_field(name, field), name)).reasons == (Reason("form_not_registered"),)
     refused = read(*stored(with_field(name, {**field, "unit": None}), name))
-    assert refused.reasons == (Reason("form_invalid"),)
+    assert {reason.code for reason in refused.reasons} == {"form_not_registered", "form_invalid"}
+
+
+COMPOSITION: dict[str, JsonValue] = {
+    "form": "composition",
+    "unit": "1",
+    "conditions": {},
+    "statistics": water_field()["statistics"],
+    "provenance": water_field()["provenance"],
+}
+
+
+@pytest.mark.parametrize(
+    ("basis", "codes"),
+    [
+        ("mole_fraction", {"form_not_registered"}),
+        ("volume_fraction", {"form_not_registered"}),
+        ("mass_fraction", None),
+        ("stated", None),
+        ("bogus", None),
+        (5.0, None),
+    ],
+)
+def test_a_compositions_basis_is_checked_with_its_form_token(
+    basis: JsonValue, codes: set[str] | None
+) -> None:
+    """A basis of a composition's own list that the row does not allow is `form_not_registered`, as a form the
+    row does not allow is (the S2 design's section 1.4, SQ43), beside every shared reason; any other basis is
+    the composition's own member's to judge, which S2b-1 reads."""
+    name = "bulk.elemental_composition"
+    field: dict[str, JsonValue] = {
+        **COMPOSITION,
+        "composition": {"basis": basis, "sum_rule": "partial", "components": []},
+    }
+    if codes is None:
+        with pytest.raises(NotImplementedError):
+            read(*stored(with_field(name, field), name))
+        return
+    assert {reason.code for reason in read(*stored(with_field(name, field), name)).reasons} == codes
+    statistics = {**COMPOSITION["statistics"], "n_specimens": -1.0}  # type: ignore[dict-item]
+    refused = read(*stored(with_field(name, {**field, "statistics": statistics}), name))
+    assert {reason.code for reason in refused.reasons} == codes | {"form_invalid"}
 
 
 STATED: dict[str, JsonValue] = {"basis": "stated"}

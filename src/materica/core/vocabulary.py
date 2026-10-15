@@ -39,14 +39,16 @@ class ConditionSpec:
 
 @dataclass(frozen=True)
 class RecordFieldSpec:
-    """A row of `record_format.md` section 4.1. `unit` is a UCUM code or a status object, and `label` the
-    label's token, where the row names one; when a label applies is the row's prose, so it is code."""
+    """A row of `record_format.md` section 4.1. `unit` is a UCUM code or a status object; `bases`, for a form
+    whose bases the row restricts, those it allows; and `label` the label's token, where the row names one;
+    when a label applies is the row's prose, so it is code."""
 
     name: str
     unit: JsonValue
     forms: tuple[str, ...]
     requires: tuple[str, ...]
     label: str | None
+    bases: dict[str, tuple[str, ...]]
 
     @property
     def section(self) -> str:
@@ -115,12 +117,14 @@ def _condition(name: str, row: dict[str, JsonValue]) -> ConditionSpec:
 
 def _field(name: str, row: dict[str, JsonValue]) -> RecordFieldSpec:
     label = row.get("label")
+    bases = _object(row.get("bases", {}))
     return RecordFieldSpec(
         name,
         row["unit"],
         _strings(row["forms"]),
         _strings(row["requires"]),
         None if label is None else _string(label),
+        {form: _strings(tokens) for form, tokens in bases.items()},
     )
 
 
