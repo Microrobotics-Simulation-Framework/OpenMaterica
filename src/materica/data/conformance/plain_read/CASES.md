@@ -426,7 +426,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-037
 
-`record_format.md`: an `axis_unit`, condition unit or `plus_minus` unit other than the registered one is refused (`unit_mismatch`), compared code point for code point, and so is a `unit` on a token condition
+`record_format.md`: an `axis_unit`, condition unit or `plus_minus` unit other than the registered one is refused (`unit_mismatch`), compared code point for code point, and so is a `unit` on a token condition, and a specimen fact's unit other than the one its row fixes, a status object there included
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|

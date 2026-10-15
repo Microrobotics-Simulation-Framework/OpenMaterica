@@ -188,6 +188,11 @@ Settled with S2a-1's review (maintainer, 2026-10-15): the specimen fact `disease
 `text`, naming the disease or the treatment, exactly when its `token` is `diseased` or `treated`, and none
 under `normal`, which has nothing to name (`provenance.md` section 6.2; RC-039).
 
+Proposed with S2a-2's review, a default that awaits the maintainer (2026-10-15): a specimen fact's `unit` is
+compared at step 9, as every other unit is, with the unit its row fixes, wherever step 8 checks the fact, so
+that another unit, or a status object with any token, gives `unit_mismatch`; step 8 checks only that it is a
+string or a status object (`read_side_contract.md` section 3, step 9; PR-037).
+
 Names settled with the name-overlap check, before 0.1.0 (maintainer, 2026-10-15), so that a name keeps one
 meaning wherever no safeguard keeps two apart: a scene cylinder's `axis` is `direction`, as a layered path's
 is (`geometry.md` section 3.1; SC-006, RC-092); a family conversion's `from` and `to` are `from_measure` and
