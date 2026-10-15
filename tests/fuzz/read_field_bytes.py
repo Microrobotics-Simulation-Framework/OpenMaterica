@@ -13,10 +13,12 @@ in a record that is valid otherwise; the record's hash is recomputed and pinned.
 `want` of plain read, twice, and once more without the hash suite. The target fails when a read raises
 anything but `NotImplementedError`, when two reads of one request differ, when a result is other than a
 refusal step 8 gives (`not_met`, every code one step 8 gives, each code and condition once, the status the
-worst of the codes'), or when the read without the hash suite differs from the read with it by more than the
-label `hash_not_checked`. `NotImplementedError` is a step not built yet: the field passed step 8, or its
-form's own member waits for S2b or S3, or it holds alternatives. The seeds are every value field of every
-conformance input.
+worst of the codes'), when the read without the hash suite differs from the read with it by more than the
+label `hash_not_checked`, or when step 8 lets through a constant its row allows that the reader `$defs` refuse
+(T1's third relation, the one way this target sees a refusal step 8 is missing until the reference model of
+S2a-4 can say what each read must give). `NotImplementedError` is a step not built yet: the field passed
+step 8, or its form's own member waits for S2b or S3, or it holds alternatives. The seeds are every value
+field of every conformance input.
 """
 
 import json
@@ -39,6 +41,7 @@ from materica.core.status import worst
 from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY
 from materica.shapes import Suite
 from tests.fuzz import seeded_fault
+from tests.fuzz.field_oracle import check_no_refusal_missing
 
 PACKAGE = Path(jsonio.__file__).parents[1]
 CONFORMANCE = PACKAGE / "data" / "conformance"
@@ -116,6 +119,7 @@ def test_one_input(data: bytes) -> None:
         first = read_json(request, store, WITH_HASH)
         assert read_json(request, store, WITH_HASH) == first, "two reads differ"
         check_result(first)
+        check_no_refusal_missing(field_name, field, first)
         plain = read_json(request, store, WITHOUT_HASH)
         assert without_hash_label(plain) == first, "the hash suite changed more than its label"
 
