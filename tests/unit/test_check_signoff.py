@@ -1,24 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 """The sign-off check passes signed and design commits, and fails on any other, in a throwaway repository."""
 
-import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
 from scripts import check_signoff
+from tests.unit.throwaway_git import throwaway_repository
 
 AUTHOR = "Author <author@example.org>"
 
 
 @pytest.fixture
 def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
-    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
-    subprocess.run(["git", "init", "-q", "-b", "main"], check=True)
-    return tmp_path
+    return throwaway_repository(tmp_path, monkeypatch)
 
 
 def commit(message: str, author: str = AUTHOR) -> str:

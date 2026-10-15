@@ -97,6 +97,10 @@ recorded in that repository's CHANGELOG.
   (`tests/property/audits.py`).
 - A check that each member the schemas declare whole admits the float the reader gives
   (`tests/unit/test_shapes.py`).
+- The tests of the repository scripts make their throwaway git repositories with every `GIT_` variable
+  removed. Git exports `GIT_DIR` to the commands it runs, `git rebase --exec` among them, so the suite run
+  that way re-initialised the outer repository, setting `core.bare` in its shared config, and committed onto
+  its HEAD (`tests/unit/throwaway_git.py`, `test_throwaway_git.py`).
 - Each new check is shown failing on seeded faults.
 
 ## [0.1.0.dev1] - 2026-10-14
