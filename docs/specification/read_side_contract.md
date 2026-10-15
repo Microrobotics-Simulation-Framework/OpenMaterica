@@ -77,9 +77,12 @@ lies in one. A value an implied condition supplies for a registered numeric cond
 operating condition is, its `unit` included (`request_unit_mismatch`, with that `condition`). An acceptance
 applies only to a read of the field it names and, an overlay aside (it names no location), only at the read's
 own location: its `record`, its `region` or both, each the read's (the record read, by `id`, `version` and
-`content_hash`; the target's region). One naming another field, another record or region, an `interval` (a
-request targets none: `declarations.md` section 2) or no location is checked and not applied, so a pick or an
-implied condition declared for one place never reaches a read of another. [PR-330] [PR-338] [PR-320] [PR-316]
+`content_hash`; the target's region). A pick may instead be located at an overlay that an `overlay` acceptance
+of the request names for the read's field, equal in `id`, `version` and `content_hash`. It then applies to the
+read, and names one of that overlay's alternatives (section 3, step 7). One naming another field, another
+record or region, an `interval` (a request targets none: `declarations.md` section 2) or no location is
+checked and not applied, so a pick or an implied condition declared for one place never reaches a read of
+another. [PR-330] [PR-338] [PR-320] [PR-316] [PR-304]
 
 Two checks need the form, so they are made when the form is evaluated (section 3, step 11): a table or power
 law read with no operating value for its axis is refused with `request_incomplete` [PR-308], and one read over
@@ -101,7 +104,7 @@ in one alternative it ends that alternative's read and refuses the field: the al
 | `status` | `met`, `not_met` or `unknown`. A build result adds the model, the region and what accepted it (`declarations.md`) |
 | `reasons` | a list of `{"code", "condition"?, "alternative"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
 | `value` | present unless `not_met` without an assumption; its shape follows `want` (section 6) |
-| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`. `alternative` is its index among the stored alternatives. `value` is its value as `want` shapes it. Where `want` cannot give its form, or where the alternative is kept outside its form's range or is a table read over an operating range of its axis, the entry holds its form's member as stored instead, with no nominal or extrapolation applied (sections 5 and 6). [PR-013] The other members are as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
+| `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "conditions", "specimen", "statistics", "provenance", "labels"}`. `alternative` is its index among the stored alternatives of the field read. `value` is its value as `want` shapes it. Where `want` cannot give its form, or where the alternative is kept outside its form's range or is a table read over an operating range of its axis, the entry holds its form's member as stored instead, with no nominal or extrapolation applied (sections 5 and 6). [PR-013] The other members are as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7) |
 | `unit` | the field's unit, as stored: a unit held as a status object keeps its `reason` [PR-010] |
 | `conditions` | one entry per condition checked (section 5): `{"name", "status", "record"?, "operating"?}` (item 6) |
 | `specimen` | the field's specimen facts, the section's merged with the field's |
@@ -123,11 +126,11 @@ in one alternative it ends that alternative's read and refuses the field: the al
    `range_unstated`; and `want_mismatch` for a read over a range of an axis. [PR-301] [PR-331] A reason
    carries `alternative` exactly when it was found at steps 8 to 13 while reading one alternative (section 3,
    step 7), a fault of the request aside. This holds for a picked alternative and for the one left.
-   `alternative` is that alternative's index among the stored alternatives, as in `alternative_values`. A
-   fault of the request carries none, even one found in an alternative (section 1). Nor does a reason step 7
-   gives of its own: `absent`, `form_invalid` for the `alternatives` list, `no_pick`, `pick_invalid`, and
-   `want_mismatch` over two or more alternatives. So two alternatives' `condition_outside` for one condition
-   are two reasons. [PR-331]
+   `alternative` is that alternative's index among the stored alternatives of the field read, as in
+   `alternative_values`. A fault of the request carries none, even one found in an alternative (section 1).
+   Nor does a reason step 7 gives of its own: `absent`, `form_invalid` for the `alternatives` list, `no_pick`,
+   `pick_invalid`, and `want_mismatch` over two or more alternatives. So two alternatives' `condition_outside`
+   for one condition are two reasons. [PR-331]
 3. An `unknown` result carries the value the record holds, so that a waiver has something to use. A `not_met`
    result carries no value, except where a declared extrapolation or nominal covers it: the status stays
    `not_met`, the value is present, and `assumption` names the declaration. [PR-302] [PR-307] A result that
@@ -206,18 +209,21 @@ and does not end the read on (section 5, first row); a step that gives `unknown`
    and a conflict. Each overlay so named must apply: a fault in any of them refuses the read, and none is
    skipped. A replaced field's own shape is checked at step 8, for the read's field only. [PR-042] [PR-046]
    [PR-039] The overlay's scope is compared by the build, not here (`declarations.md` section 5).
-7. **Field.** Find the field (`absent`); one whose `alternatives` breaks its shape is refused (`form_invalid`,
-   `record_format.md` section 5). Either ends the read before any pick is checked. [PR-304] [PR-044]
+7. **Field.** Find the field (`absent`). Where an overlay applied at step 6 replaces it, the field read is the
+   overlay's (`record_format.md` section 4.4). A field whose `alternatives` breaks its shape is refused
+   (`form_invalid`, `record_format.md` section 5). Either reason ends the read before any pick is checked.
+   [PR-304] [PR-044]
 
-   A pick that applies to the read (section 1) is checked next. It gives `pick_invalid` where the field holds
-   no `alternatives`, where its `index` lies past the last stored alternative, or where an overlay applied at
-   step 6 replaces the field: its index then names no stored alternative of the field read. `pick_invalid`
-   carries no `condition` and no `alternative`, and ends the read. The pick is not applied, no alternative is
-   read, and the result holds no `value`, `unit` or other member read from the field; its `labels` holds at
-   most `hash_not_checked`. A reader never reads another alternative in place of the one a pick names.
-   [PR-304] Otherwise only the alternative the pick names is read, by its index among the stored alternatives,
-   set-aside ones included. It is read as a field, by steps 8 to 13, and the result is its read. No other
-   alternative is read, so a fault in one refuses nothing. [PR-304] [PR-013]
+   A pick that applies to the read (section 1) is checked next. Where an overlay applied at step 6 replaces
+   the field, a pick located at the base gives `pick_invalid`, since the base's alternatives no longer
+   describe the field read. A pick located at that overlay names one of the overlay's alternatives. A pick
+   also gives `pick_invalid` where the field read holds no `alternatives`, or where its `index` lies past the
+   last stored alternative. `pick_invalid` carries no `condition` and no `alternative`, and ends the read. The
+   pick is not applied, no alternative is read, and the result holds no `value`, `unit` or other member read
+   from the field; its `labels` holds at most `hash_not_checked`. A reader never reads another alternative in
+   place of the one a pick names. [PR-304] Otherwise only the alternative the pick names is read, by its
+   index, counting every stored alternative of the field read. It is read as a field, by steps 8 to 13, and
+   the result is its read. No other alternative is read, so a fault in one refuses nothing. [PR-304] [PR-013]
 
    Without a pick that applies, each alternative is read alone, as a field, by steps 8 to 13, and its read
    ends where a field's would (above). The outcome is decided once every alternative is read, so it does not
@@ -348,7 +354,7 @@ build (`declarations.md`), family evaluation (`model_families.md`) or mixing (`m
 | `unknown_type` | not_met | 5, 6 | a referenced record of a type the reader cannot read in its role: one of a type it cannot read at all, a target that is not a `material`, or an overlay that is not an `overlay` | `record_format.md` 3 |
 | `absent` | not_met | 1, 6, 7 | the section or field is absent, or no supplied record has the reference's `id` and `version` (`malformed` instead when a supplied source is unreadable: section 3, step 1) | `record_format.md` 1, 4; this document 3 |
 | `no_pick` | unknown | 7 | alternatives remain and no pick is declared | `record_format.md` 5 |
-| `pick_invalid` | not_met | 7 | a pick whose `index` names no stored alternative of the field read: one past the last, on a field holding no alternatives, or on a field an applied overlay replaces; never accepted | section 3; `declarations.md` 4.1 |
+| `pick_invalid` | not_met | 7 | a pick whose `index` names no stored alternative of the field read (one past the last, or on a field holding no alternatives), or a pick located at the base of a field an applied overlay replaces, whose alternatives no longer describe the field read; never accepted | section 3; `declarations.md` 4.1 |
 | `form_not_registered` | not_met | 8 | a form the field's row does not allow, a composition's basis included | `record_format.md` 4.1 |
 | `form_invalid` | not_met | 7, 8 | a value field, form or section `specimen` that breaks its shape (a field that is not an object; an `alternatives` that is not a list of at least one value field, or that sits beside a value field's members; a member missing, of the wrong JSON type or `null`; a member one slip from one named at its place, which in the envelope, the body or a section refuses every field read from it; a token the reader knows for a member of that name, or a status object, where the member's row does not allow it; a value outside step 8's checks; a table's lengths, order, knots or edges; a non-positive log-log value) | `record_format.md` 1, 5, 6, 10; `provenance.md` 1 |
 | `unknown_token` | not_met | 6, 8 | a token the reader knows for no member of that name (section 3, step 8), or an overlay's `purpose` that is none of the four (step 6) | `record_format.md` 10, 4.4 |
@@ -563,7 +569,7 @@ value's derivative with respect to the axis. [TE-012]
 | PR-300 | plain read | no read raises; every read returns a result |
 | PR-301 | plain read | every reason is reported; the status is the worst; each step makes all its checks |
 | PR-302 | plain read | an `unknown` result carries the value; `not_met` carries none, except under a declared nominal inside an interval's bounds, which supplies the value and `assumption` |
-| PR-304 | plain read | an absent field gives `not_met`; alternatives without a pick give `unknown` with `alternative_values`; a pick reads only the alternative it names, by its stored index, set-aside ones counted, as a field, its reasons each with its `alternative` and a fault in another refusing nothing; an index of `1.0` reads as 1, and `-0` as 0; `pick_invalid`, with no value and no member read from the field, for an index past the last stored alternative, on a field holding no alternatives and on a field an applied overlay replaces; an absent field, or a broken `alternatives`, gives its reason with no `pick_invalid` |
+| PR-304 | plain read | an absent field gives `not_met`; alternatives without a pick give `unknown` with `alternative_values`; a pick reads only the alternative it names, by its stored index, set-aside ones counted, as a field, its reasons each with its `alternative` and a fault in another refusing nothing; an index of `1.0` reads as 1, and `-0` as 0; `pick_invalid`, with no value and no member read from the field, for an index past the last stored alternative, on a field holding no alternatives, and for a pick located at the base of a field an applied overlay replaces; a pick located at that overlay reads the overlay's alternative it names, and one located at an overlay no acceptance names for the field is not applied; an absent field, or a broken `alternatives`, gives its reason with no `pick_invalid` |
 | PR-305 | plain read | an unstated or absent condition gives `unknown` |
 | PR-306 | plain read | a stated value outside the tolerance gives `not_met`; at exactly the tolerance, in doubles, `met` |
 | PR-307 | plain read | outside a form's range under a declared extrapolation and `want: value`: `not_met`, the value at the readable range's nearest end, the assumption, and steps 12 and 13's reasons and labels; not applied under another `want`, at a declared edge, across one (an edge between the operating value and the readable range's nearest end, or on that end: `outside_range`, no value), or naming another field or location |

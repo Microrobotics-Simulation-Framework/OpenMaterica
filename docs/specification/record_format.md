@@ -319,7 +319,9 @@ new alternative is appended. [RC-017] A reader reads alternatives as follows. `r
 3, step 7, gives every outcome with its reasons and members. [PR-013] [PR-044]
 
 1. **A pick.** A consumer's pick names one alternative by its index among the stored alternatives
-   (`declarations.md`). A reader then reads that alternative only, as a field. [PR-304]
+   (`declarations.md`). A reader then reads that alternative only, as a field. Where an overlay replaces the
+   field, a pick located at the overlay names one of the overlay's alternatives, and one located at the base
+   gives `pick_invalid` (`read_side_contract.md` section 3, step 7). [PR-304]
 2. **Set aside.** Without a pick, a reader reads each alternative alone, as a field. It sets aside an
    alternative whose conditions, the form's own axis aside, give `not_met`. It sets aside an alternative read
    outside its form's range, a table's or a power law's (`outside_range` without `at_edge`), unless an
