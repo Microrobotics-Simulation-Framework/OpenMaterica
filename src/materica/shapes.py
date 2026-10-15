@@ -538,6 +538,7 @@ ReasonCode: TypeAlias = Literal[
     "unknown_type",
     "absent",
     "no_pick",
+    "pick_invalid",
     "form_not_registered",
     "form_invalid",
     "unknown_token",
