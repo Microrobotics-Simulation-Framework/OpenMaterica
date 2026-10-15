@@ -151,14 +151,20 @@ def check_statistics_table(definitions: Definitions, read: Documents) -> None:
     assert required(definitions, "uncertainty") == set(sketched)
 
 
+def token_condition(name: str) -> str:
+    """The definition of the token condition `name`, which binds its `token` to its own row's tokens."""
+    return f"condition_{name}"
+
+
 def check_conditions_table(definitions: Definitions, read: Documents) -> None:
     text = read("provenance.md")
-    kinds = {"numeric": "numeric_condition", "token": "token_condition"}
+    rows = table(text, "### 6.1 Conditions of schema 0.1.0")
+    shapes = {only_code(row["Name"]): row["Shape"] for row in rows}
     assert {
         name: alternatives(condition) for name, condition in members(definitions, "conditions").items()
     } == {
-        only_code(row["Name"]): [kinds[row["Shape"]], "status_object"]
-        for row in table(text, "### 6.1 Conditions of schema 0.1.0")
+        name: ["numeric_condition" if shape == "numeric" else token_condition(name), "status_object"]
+        for name, shape in shapes.items()
     }
     based = set(members(definitions, "based"))
     assert based <= set(codes(between(prose(text), "each shape except a status object carries", ".")))
@@ -167,13 +173,33 @@ def check_conditions_table(definitions: Definitions, read: Documents) -> None:
     )
     added = codes(between(numeric, "MAY add ", " (items"))
     assert set(members(definitions, "numeric_condition")) == sketched(numeric) | set(added) | based
-    assert set(members(definitions, "token_condition")) == sketched(token) | based
+    for name in (name for name, shape in shapes.items() if shape == "token"):
+        assert set(members(definitions, token_condition(name))) == sketched(token) | based, name
+        assert at(definitions, token_condition(name), "properties", "token") == {
+            "$ref": f"vocabulary/conditions.json#/$defs/{name}_token"
+        }, name
     entry = between(prose(text), "6. `plus_minus` records ", "`stated_as` is ")
     assert (
         set(members(definitions, "plus_minus_entry"))
         == sketched(entry)
         == required(definitions, "plus_minus_entry")
     )
+
+
+def test_a_token_condition_takes_its_own_rows_tokens_and_no_other() -> None:
+    """The writer refuses a token of another row, as `PR-045.condition_token_of_another_row` puts it, and one
+    of no row (`PR-033`'s `porous`), and takes each of the row's own."""
+    rows = json.loads((SCHEMA / "vocabulary" / "conditions.json").read_text(encoding="utf-8"))["conditions"]
+    tokens: dict[str, set[str]] = {
+        name: set(row["tokens"]) for name, row in rows.items() if row["shape"] == "token"
+    }
+    every = set[str]().union(*tokens.values())
+    conditions = validator("record.writer.json#/$defs/conditions")
+    for name, own in tokens.items():
+        for token in sorted(own):
+            assert conditions({name: {"token": token, "basis": "stated"}}) == [], (name, token)
+        for token in sorted(every - own | {"porous"}):
+            assert conditions({name: {"token": token, "basis": "stated"}}) != [], (name, token)
 
 
 def sketched(text: str) -> set[str]:
@@ -574,6 +600,23 @@ def dropping_last(name: str, *path: str) -> Callable[[Definitions], None]:
             changed_document("provenance.md", '`{"stated_as",', '`{"stated_as", "note",'),
             None,
             id="plus_minus_entry",
+        ),
+        pytest.param(
+            check_conditions_table,
+            document,
+            setting({"type": "string"}, "condition_density_kind", "properties", "token"),
+            id="condition_token_unbound",
+        ),
+        pytest.param(
+            check_conditions_table,
+            document,
+            setting(
+                {"$ref": "vocabulary/conditions.json#/$defs/specimen_shape_token"},
+                "condition_density_kind",
+                "properties",
+                "token",
+            ),
+            id="condition_token_of_another_row",
         ),
         pytest.param(
             check_specimen_table,

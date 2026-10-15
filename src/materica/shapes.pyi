@@ -219,6 +219,23 @@ StatedAs: TypeAlias = Literal["bound", "sd"]
 
 SetOrMeasured: TypeAlias = Literal["set_point", "measured"]
 
+DensityKindToken: TypeAlias = Literal["apparent", "matrix"]
+
+SpecimenShapeToken: TypeAlias = Literal[
+    "sphere", "cylinder", "prolate_spheroid", "oblate_spheroid", "slab", "film", "irregular"
+]
+
+MeasurementGeometryToken: TypeAlias = Literal["bulk", "tube", "gap"]
+
+TestMethodToken: TypeAlias = Literal[
+    "rotational_rheometer",
+    "capillary_viscometer",
+    "vibrating_sample_magnetometer",
+    "squid_magnetometer",
+    "hysteresigraph",
+    "pycnometer",
+]
+
 Range: TypeAlias = tuple[float, float]
 """
 [lo, hi], lo not above hi.
@@ -568,12 +585,37 @@ class Based(TypedDict):
     basis: Basis
     inferred_from: NotRequired[str]
 
-class TokenCondition(Based):
+class ConditionDensityKind(Based):
     """
-    A token of the condition's row (provenance.md section 6.1 item 1); it registers no unit.
+    The token condition density_kind: a token of its row (provenance.md section 6.1 item 1); it registers no
+    unit.
     """
 
-    token: str
+    token: DensityKindToken
+
+class ConditionSpecimenShape(Based):
+    """
+    The token condition specimen_shape: a token of its row (provenance.md section 6.1 item 1); it registers no
+    unit.
+    """
+
+    token: SpecimenShapeToken
+
+class ConditionMeasurementGeometry(Based):
+    """
+    The token condition measurement_geometry: a token of its row (provenance.md section 6.1 item 1); it
+    registers no unit.
+    """
+
+    token: MeasurementGeometryToken
+
+class ConditionTestMethod(Based):
+    """
+    The token condition test_method: a token of its row (provenance.md section 6.1 item 1); it registers no
+    unit.
+    """
+
+    token: TestMethodToken
 
 class PlusMinusEntry(TypedDict):
     stated_as: StatedAs | StatusUnstated
@@ -835,19 +877,19 @@ class CompositionComponent(TypedDict):
 
 class Conditions(TypedDict):
     """
-    The conditions the value was measured at, by name (provenance.md section 6.1). The registered unit or
-    tokens of each are the vocabulary's.
+    The conditions the value was measured at, by name (provenance.md section 6.1): a token condition holds a
+    token of its own row's list, and a numeric one's registered unit is compared at step 9.
     """
 
     temperature: NotRequired[NumericCondition | StatusObject]
     shear_rate: NotRequired[NumericCondition | StatusObject]
     magnetic_flux_density: NotRequired[NumericCondition | StatusObject]
-    density_kind: NotRequired[TokenCondition | StatusObject]
-    specimen_shape: NotRequired[TokenCondition | StatusObject]
+    density_kind: NotRequired[ConditionDensityKind | StatusObject]
+    specimen_shape: NotRequired[ConditionSpecimenShape | StatusObject]
     specimen_size: NotRequired[NumericCondition | StatusObject]
-    measurement_geometry: NotRequired[TokenCondition | StatusObject]
+    measurement_geometry: NotRequired[ConditionMeasurementGeometry | StatusObject]
     measurement_dimension: NotRequired[NumericCondition | StatusObject]
-    test_method: NotRequired[TokenCondition | StatusObject]
+    test_method: NotRequired[ConditionTestMethod | StatusObject]
 
 class Derivation(TypedDict):
     """

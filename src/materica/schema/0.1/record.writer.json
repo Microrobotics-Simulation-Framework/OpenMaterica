@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://w3id.org/materica/schema/0.1/record.writer.json",
-  "$comment": "Hand-edited: the one source of a record's structure. record.reader.json and the package's typed shapes are generated from it. A member marked x-materica-write-only is one a read does not check (read_side_contract.md section 3, step 8), so a fault in it never refuses a field at read, although a read may return it (a review, as found). Tokens come from vocabulary/, and so does what binds one field or condition to its unit, forms, label and tokens. The table, power-law, parameter-set and reference-data forms, the fit record, extensions and the provenance members not yet named are placeholders until their shapes are written.",
+  "$comment": "Hand-edited: the one source of a record's structure. record.reader.json and the package's typed shapes are generated from it. A member marked x-materica-write-only is one a read does not check (read_side_contract.md section 3, step 8), so a fault in it never refuses a field at read, although a read may return it (a review, as found). Tokens come from vocabulary/, a token condition's own list included; what binds one field to its unit, forms and label, and a numeric condition to its unit, is the vocabulary's alone. The table, power-law, parameter-set and reference-data forms, the fit record, extensions and the provenance members not yet named are placeholders until their shapes are written.",
   "title": "Record",
   "description": "A record as a writer writes it (record_format.md, provenance.md and uncertainty.md): closed, with no member it does not define and every enumerated member limited to its tokens. Extensions are placeholders, which a reader never checks.",
   "type": "object",
@@ -433,18 +433,18 @@
       "additionalProperties": false
     },
     "conditions": {
-      "description": "The conditions the value was measured at, by name (provenance.md section 6.1). The registered unit or tokens of each are the vocabulary's.",
+      "description": "The conditions the value was measured at, by name (provenance.md section 6.1): a token condition holds a token of its own row's list, and a numeric one's registered unit is compared at step 9.",
       "type": "object",
       "properties": {
         "temperature": {"anyOf": [{"$ref": "#/$defs/numeric_condition"}, {"$ref": "#/$defs/status_object"}]},
         "shear_rate": {"anyOf": [{"$ref": "#/$defs/numeric_condition"}, {"$ref": "#/$defs/status_object"}]},
         "magnetic_flux_density": {"anyOf": [{"$ref": "#/$defs/numeric_condition"}, {"$ref": "#/$defs/status_object"}]},
-        "density_kind": {"anyOf": [{"$ref": "#/$defs/token_condition"}, {"$ref": "#/$defs/status_object"}]},
-        "specimen_shape": {"anyOf": [{"$ref": "#/$defs/token_condition"}, {"$ref": "#/$defs/status_object"}]},
+        "density_kind": {"anyOf": [{"$ref": "#/$defs/condition_density_kind"}, {"$ref": "#/$defs/status_object"}]},
+        "specimen_shape": {"anyOf": [{"$ref": "#/$defs/condition_specimen_shape"}, {"$ref": "#/$defs/status_object"}]},
         "specimen_size": {"anyOf": [{"$ref": "#/$defs/numeric_condition"}, {"$ref": "#/$defs/status_object"}]},
-        "measurement_geometry": {"anyOf": [{"$ref": "#/$defs/token_condition"}, {"$ref": "#/$defs/status_object"}]},
+        "measurement_geometry": {"anyOf": [{"$ref": "#/$defs/condition_measurement_geometry"}, {"$ref": "#/$defs/status_object"}]},
         "measurement_dimension": {"anyOf": [{"$ref": "#/$defs/numeric_condition"}, {"$ref": "#/$defs/status_object"}]},
-        "test_method": {"anyOf": [{"$ref": "#/$defs/token_condition"}, {"$ref": "#/$defs/status_object"}]}
+        "test_method": {"anyOf": [{"$ref": "#/$defs/condition_test_method"}, {"$ref": "#/$defs/status_object"}]}
       },
       "additionalProperties": false
     },
@@ -476,12 +476,36 @@
       "else": {"required": ["range"]},
       "unevaluatedProperties": false
     },
-    "token_condition": {
-      "description": "A token of the condition's row (provenance.md section 6.1 item 1); it registers no unit.",
+    "condition_density_kind": {
+      "description": "The token condition density_kind: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
       "type": "object",
       "allOf": [{"$ref": "#/$defs/based"}],
       "required": ["token"],
-      "properties": {"token": {"type": "string"}},
+      "properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/density_kind_token"}},
+      "unevaluatedProperties": false
+    },
+    "condition_specimen_shape": {
+      "description": "The token condition specimen_shape: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/based"}],
+      "required": ["token"],
+      "properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/specimen_shape_token"}},
+      "unevaluatedProperties": false
+    },
+    "condition_measurement_geometry": {
+      "description": "The token condition measurement_geometry: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/based"}],
+      "required": ["token"],
+      "properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/measurement_geometry_token"}},
+      "unevaluatedProperties": false
+    },
+    "condition_test_method": {
+      "description": "The token condition test_method: a token of its row (provenance.md section 6.1 item 1); it registers no unit.",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/based"}],
+      "required": ["token"],
+      "properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/test_method_token"}},
       "unevaluatedProperties": false
     },
     "range": {
