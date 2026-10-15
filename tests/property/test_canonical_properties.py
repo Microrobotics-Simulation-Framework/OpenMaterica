@@ -15,6 +15,7 @@ from hypothesis import strategies as st
 from materica.core.canonical import canonicalize
 from materica.core.jsonio import JsonValue
 from tests.property import strategies
+from tests.property.strategies import SIZE, Size
 from tests.property.support import feature
 
 SMALLEST_NORMAL = 2.2250738585072014e-308
@@ -62,6 +63,33 @@ def _parts(value: JsonValue) -> tuple[list[str], list[str], list[float], int]:
     return [], [], [], 0
 
 
+# Names across the surrogate range, built character by character, each from one of these: st.text would merge
+# them into one set and draw its lowest code points far more often than the rest, and the orders differ only
+# where a character above U+FFFF meets one from U+E000 to U+FFFF.
+ACROSS_SURROGATES = st.lists(
+    st.one_of(
+        st.sampled_from([chr(code) for code in (0xD7FF, 0xE000, 0xFB33, 0xFFFD, 0x10000, 0x1F600, 0x10FFFF)]),
+        st.characters(min_codepoint=0xD700, max_codepoint=0xD7FF),
+        st.characters(min_codepoint=0xE000, max_codepoint=0xFFFF),
+        st.characters(min_codepoint=0x10000, max_codepoint=0x10FFFF),
+    ),
+    min_size=1,
+    max_size=3,
+).map("".join)
+
+# The values (2a) draws: trees whose names are drawn across the surrogate range one time in three, and whose
+# numbers are negative zero one time in four, besides what the trees draw. Drawn as the trees draw them, a
+# value held names whose UTF-16 order differs (4.7% of examples at `ci`, 2026-10-15) and negative zero (2.9%)
+# too seldom for the feature audit to judge them at `ci` (`audits.draw_floor`); negative zero fell below its
+# least share in about one run in 450, computed from the measured clusters.
+RFC8785_NAMES = st.one_of(strategies.TEXT, ACROSS_SURROGATES)
+RFC8785_NUMBERS = st.one_of(strategies.DOUBLES, st.just(-0.0))
+
+
+def rfc8785_values(size: Size = SIZE) -> st.SearchStrategy[JsonValue]:
+    return strategies.json_values(names=RFC8785_NAMES, numbers=RFC8785_NUMBERS, size=size)
+
+
 # (2a) Byte for byte what the `rfc8785` package writes.
 
 
@@ -69,17 +97,23 @@ def check_matches_rfc8785(value: JsonValue) -> None:
     assert canonicalize(value) == rfc8785.dumps(value)
 
 
-@pytest.mark.features(
-    three_members_to_sort=0.07,
-    names_whose_utf16_order_differs=0.01,
-    control_character=0.13,
-    non_ascii_character=0.20,
-    changed_by_normalisation=0.06,
-    exponent_form=0.10,
-    negative_zero=0.01,
+# Each feature whose least share failed a run too often is declared by its chance, its share at `ci` over 64
+# runs of these values (2026-10-15) rounded down to two places. From the measured clusters, with the values
+# drawn as before, those least shares failed a `ci` run with a probability of about 2.2e-3 (at most 3.7e-3,
+# almost all negative zero's) and a `dev` run with one of about 1.4e-3 (at most 2.7e-2); with these values,
+# `exponent_form`'s failed 6 of 400 `dev` runs. Only `non_ascii_character` is judged at `dev` now, falling
+# below its draw floor with a probability of about 1e-15 (at most 1.4e-5), and at `ci` each falls below its
+# floor with a probability below 1e-15.
+@pytest.mark.chances(
+    names_whose_utf16_order_differs=0.10,
+    negative_zero=0.14,
+    control_character=0.35,
+    non_ascii_character=0.66,
+    exponent_form=0.25,
 )
+@pytest.mark.features(three_members_to_sort=0.07, changed_by_normalisation=0.06)
 @example(MANY_MEMBERS)
-@given(strategies.json_values())
+@given(rfc8785_values())
 def test_output_matches_rfc8785(value: JsonValue) -> None:
     names, strings, numbers, widest = _parts(value)
     texts = names + strings
@@ -144,19 +178,6 @@ def test_every_double_reads_back_from_its_shortest_form(number: float) -> None:
 
 # (2c) Member names on both sides of the surrogate range sort by their UTF-16 code units.
 
-# Names are built character by character, each from one of these: st.text would merge them into one set and
-# draw its lowest code points far more often than the rest, and the orders differ only where a character above
-# U+FFFF meets one from U+E000 to U+FFFF.
-ACROSS_SURROGATES = st.lists(
-    st.one_of(
-        st.sampled_from([chr(code) for code in (0xD7FF, 0xE000, 0xFB33, 0xFFFD, 0x10000, 0x1F600, 0x10FFFF)]),
-        st.characters(min_codepoint=0xD700, max_codepoint=0xD7FF),
-        st.characters(min_codepoint=0xE000, max_codepoint=0xFFFF),
-        st.characters(min_codepoint=0x10000, max_codepoint=0x10FFFF),
-    ),
-    min_size=1,
-    max_size=3,
-).map("".join)
 # Built from a list, where a repeated name simply collapses: st.dictionaries would retry it, and Hypothesis
 # draws the same few characters often.
 OBJECTS_ACROSS_SURROGATES = st.lists(ACROSS_SURROGATES, min_size=2, max_size=8).map(
