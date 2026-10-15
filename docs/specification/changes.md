@@ -250,14 +250,14 @@ value at its nearest end, from inside, with a zero derivative, or no number, so 
 extrapolation only at the readable range's ends (TE-003).
 
 Per-knot statistics (maintainer, 2026-10-15, after a spike): deferred to 0.2, with the acoustic and
-radiological sections that need them, the schema leaving them open. Proposed to that end, and awaiting the
-maintainer's review of the text: `points` is a reserved member name in a table, whose shape and reading come
-with its first consumer; a 0.1.0 writer writes none, the closed writer schema refusing it (RC-003), and a
-0.1.0 reader refuses a table that holds it, whatever it holds, as before (`points_unsupported`, PR-157), so
-that reason stands alone whatever `points` holds, `null` aside, which is also `form_invalid` (PR-049); the
-reserved name is a member the table's shape names, so `point` is refused as one slip from it (PR-030); and a
-table's block applies to every value the table gives, the text no longer saying that a knot's own block
-replaces it (`record_format.md` sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, a later
-minor version adds no member that changes how an earlier one's members are read, since an older reader
-ignores it, unless every older reader refuses each field the member would change; otherwise the change is
-major (`record_format.md` section 10).
+radiological sections that need them. The schema leaves them open. The text that does so is proposed and
+awaits the maintainer's review. `points` is a reserved member name in a table. Its shape and its reading come
+with its first consumer. A 0.1.0 writer writes none, and the closed writer schema refuses it (RC-003). A 0.1.0
+reader refuses a table that holds `points`, as before (`points_unsupported`, PR-157). With no shape left to
+break, that is the only reason, whatever `points` holds. `null` there also gives `form_invalid` (PR-049). The
+reserved name is a member the table's shape names, so `point` is still refused as one slip from it (PR-030). A
+table's block applies to every value the table gives. The text no longer says that a knot's own block replaces
+it (`record_format.md` sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, an older reader
+ignores a member it does not know. So a later minor version adds no member that changes how an earlier one's
+members are read, unless every older reader refuses each field the member would change; otherwise the change
+is major (`record_format.md` section 10).
