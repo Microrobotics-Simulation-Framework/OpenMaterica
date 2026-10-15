@@ -52,6 +52,25 @@
         "coupon",
         "finished_component"
       ]
+    },
+    "units": {
+      "description": "Each specimen fact's unit, where its row fixes one.",
+      "properties": {
+        "post_mortem_interval": {
+          "properties": {
+            "unit": {
+              "$ref": "#/$defs/post_mortem_interval_unit"
+            }
+          }
+        },
+        "donor_age": {
+          "properties": {
+            "unit": {
+              "$ref": "#/$defs/donor_age_unit"
+            }
+          }
+        }
+      }
     }
   },
   "facts": {

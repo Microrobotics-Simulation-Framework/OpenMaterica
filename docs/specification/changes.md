@@ -188,12 +188,14 @@ Settled with S2a-1's review (maintainer, 2026-10-15): the specimen fact `disease
 `text`, naming the disease or the treatment, exactly when its `token` is `diseased` or `treated`, and none
 under `normal`, which has nothing to name (`provenance.md` section 6.2; RC-039).
 
-Proposed with S2a-2's review, a default that awaits the maintainer (2026-10-15): a specimen fact's `unit` is
+Proposed with S2a-2's review as a default and approved (maintainer, 2026-10-15): a specimen fact's `unit` is
 compared at step 9, as every other unit is, with the unit its row fixes, wherever step 8 checks the fact, so
 that another unit, or a status object with any token, gives `unit_mismatch`; step 8 checks only that it is a
-string or a status object (`read_side_contract.md` section 3, step 9; PR-037). Made explicit with the same
-review, also awaiting the maintainer: `mimics`, whose row fixes its `basis` to `stated`, takes no
-`inferred_from` (`provenance.md` section 6.2; RC-039).
+string or a status object (`read_side_contract.md` section 3, step 9; PR-037). With it, the writer schema binds
+such a unit to the one the row fixes, a status object refused, so that no record that step 9 refuses is
+written: a fact whose unit the source does not give is written as a status object in place of the fact
+(maintainer, 2026-10-15). Made explicit with the same review, and approved with it: `mimics`, whose row fixes
+its `basis` to `stated`, takes no `inferred_from` (`provenance.md` section 6.2; RC-039).
 
 Aligned with S2a-3's review (2026-10-16): step 8's list names a `derivation` for origin `derived` alone, as
 `provenance.md` sections 2 and 5 already did; the reader schema's value-field `$defs` check it so, and leave a

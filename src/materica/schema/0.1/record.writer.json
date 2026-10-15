@@ -584,8 +584,9 @@
       "additionalProperties": false
     },
     "specimen": {
-      "description": "Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact.",
+      "description": "Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact. Where a fact's row fixes its unit, step 9 compares the unit with it and the writer binds the unit to it: a fact whose unit the source does not give is written as a status object.",
       "type": "object",
+      "allOf": [{"$ref": "vocabulary/specimen_facts.json#/$defs/units"}],
       "properties": {
         "species": {"anyOf": [{"$ref": "#/$defs/species"}, {"$ref": "#/$defs/status_object"}]},
         "anatomical_site": {"anyOf": [{"$ref": "#/$defs/anatomical_site"}, {"$ref": "#/$defs/status_object"}]},
@@ -669,12 +670,7 @@
       "required": ["value", "unit"],
       "properties": {
         "value": {"type": "number"},
-        "unit": {
-          "anyOf": [
-            {"$ref": "vocabulary/specimen_facts.json#/$defs/post_mortem_interval_unit"},
-            {"$ref": "#/$defs/status_object"}
-          ]
-        }
+        "unit": {"$ref": "#/$defs/unit"}
       },
       "unevaluatedProperties": false
     },
@@ -686,9 +682,7 @@
       "properties": {
         "value": {"type": "number"},
         "range": {"$ref": "#/$defs/range"},
-        "unit": {
-          "anyOf": [{"$ref": "vocabulary/specimen_facts.json#/$defs/donor_age_unit"}, {"$ref": "#/$defs/status_object"}]
-        }
+        "unit": {"$ref": "#/$defs/unit"}
       },
       "if": {"required": ["value"]},
       "then": {"not": {"required": ["range"]}},

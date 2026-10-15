@@ -215,6 +215,9 @@ def test_a_facts_fixed_unit_changed_in_the_text_changes_the_vocabulary(tmp_path:
     facts = json.loads(gen_vocabulary.generate(specification)["specimen_facts.json"])
     assert facts["facts"]["post_mortem_interval"]["unit"] == "min"
     assert facts["$defs"]["post_mortem_interval_unit"] == {"enum": ["min"]}
+    assert facts["$defs"]["units"]["properties"]["post_mortem_interval"] == {
+        "properties": {"unit": {"$ref": "#/$defs/post_mortem_interval_unit"}}
+    }
 
 
 @pytest.mark.parametrize(
@@ -1216,14 +1219,36 @@ def condition_unit(unit: str) -> dict[str, Json]:
             {("units", "properties", "temperature"): condition_unit("Cel")},
             id="a_condition_unit_changed",
         ),
+        pytest.param(
+            "provenance.md",
+            '`{"value", "unit": "s", "basis"}` or `{"range": [lo, hi], "unit": "s", "basis"}`',
+            '`{"value", "unit": "a", "basis"}` or `{"range": [lo, hi], "unit": "a", "basis"}`',
+            "specimen_facts.json",
+            {
+                ("units", "properties", "donor_age"): {
+                    "properties": {"unit": {"$ref": "#/$defs/donor_age_unit"}}
+                },
+                ("donor_age_unit",): {"enum": ["a"]},
+            },
+            id="a_facts_unit_changed",
+        ),
+        pytest.param(
+            "provenance.md",
+            '`{"value", "unit": "s", "basis"}` |',
+            '`{"value", "unit": <text>, "basis"}` |',
+            "specimen_facts.json",
+            {("units", "properties", "post_mortem_interval"): None, ("post_mortem_interval_unit",): None},
+            id="a_facts_unit_no_longer_fixed",
+        ),
     ],
 )
 def test_a_row_changed_in_the_text_changes_the_binding_the_writer_applies(
     tmp_path: Path, document: str, old: str, new: str, file: str, expected: dict[tuple[str, ...], Json]
 ) -> None:
     """Each list a binding holds (a section's field names, the replaced fields, a field's forms, unit, label
-    and bases, a numeric condition's unit) comes from its row: a row added, removed or changed in a copy of
-    the text changes it, and the writer schema, which applies the binding by reference, follows."""
+    and bases, a numeric condition's unit, a specimen fact's fixed unit) comes from its row: a row added,
+    removed or changed in a copy of the text changes it, and the writer schema, which applies the binding by
+    reference, follows."""
     specification = copy_tree(tmp_path, gen_vocabulary.SPECIFICATION)
     path = specification / document
     text = path.read_text(encoding="utf-8")

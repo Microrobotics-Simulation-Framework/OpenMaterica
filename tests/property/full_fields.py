@@ -193,7 +193,9 @@ def full_fields() -> dict[str, JsonObject]:
     measurement["specimen"] = {
         **copy.deepcopy(SPECIMEN),
         "disease_and_treatment_state": {"token": "normal", **STATED},
-        "post_mortem_interval": {"value": 3600.0, "unit": _status("unstated"), **STATED},
+        # The writer binds a fact's unit to its row's (maintainer, 2026-10-15): a fact whose unit the source
+        # does not give is a status object as a whole. A unit held as one is in a host of the positions test.
+        "post_mortem_interval": _status("unstated", "the source gives no unit"),
         "mimics": {"text": "human liver", **STATED},
     }
     return {

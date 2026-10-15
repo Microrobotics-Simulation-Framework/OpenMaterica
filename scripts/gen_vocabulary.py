@@ -404,11 +404,12 @@ def required_with(cell: str, token_conditions: dict[str, list[str]]) -> dict[str
 
 def specimen_facts(rows: list[Row]) -> Vocabulary:
     """Each fact's tokens, those its `token` member takes, and the one value of each member its shape fixes
-    (`"unit": "s"`), each again as an enumeration in `$defs`; and in `$defs` the pattern of each identifier
-    its shape writes (`"UBERON:<digits>"`, maintainer 2026-10-15), which the writer schema takes from here.
-    Its other members are structure, the writer schema's."""
+    (`"unit": "s"`), each again as an enumeration in `$defs`; in `$defs` the pattern of each identifier its
+    shape writes (`"UBERON:<digits>"`, maintainer 2026-10-15), which the writer schema takes from here; and
+    the binding of each fixed unit (`fact_units`). Its other members are structure, the writer schema's."""
     entries: dict[str, object] = {}
     definitions: dict[str, object] = {}
+    units: list[str] = []
     for name, row in zip(names(rows, "Name"), rows, strict=True):
         shape = row["JSON shape"]
         found: list[str] = []
@@ -425,7 +426,20 @@ def specimen_facts(rows: list[Row]) -> Vocabulary:
             definitions[f"{name}_{member_name}"] = enumeration([value])
         for member_name, pattern in identifier_patterns(shape).items():
             definitions[f"{name}_{member_name}"] = {"type": "string", "pattern": pattern}
-    return {"$defs": definitions, "facts": entries}
+        if "unit" in fixed:
+            units.append(name)
+    return {"$defs": {**definitions, "units": fact_units(units)}, "facts": entries}
+
+
+def fact_units(units: Sequence[str]) -> dict[str, object]:
+    """What the writer schema binds to the fact names (maintainer, 2026-10-15): the `unit` of each fact whose
+    row fixes one holds that unit, its enumeration here, so that no record that step 9 refuses is written, a
+    status object there included. A fact whose unit the source does not give is written as a status object in
+    its place."""
+    return {
+        "description": "Each specimen fact's unit, where its row fixes one.",
+        "properties": {name: {"properties": {"unit": {"$ref": f"#/$defs/{name}_unit"}}} for name in units},
+    }
 
 
 def fixed_members(shape: str) -> dict[str, str]:

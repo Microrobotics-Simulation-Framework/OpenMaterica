@@ -1261,7 +1261,7 @@
       }
     },
     "specimen": {
-      "description": "Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact.",
+      "description": "Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact. Where a fact's row fixes its unit, step 9 compares the unit with it and the writer binds the unit to it: a fact whose unit the source does not give is written as a status object.",
       "type": "object",
       "properties": {
         "species": {
@@ -1550,14 +1550,7 @@
           "type": "number"
         },
         "unit": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/status_object"
-            }
-          ]
+          "$ref": "#/$defs/unit"
         }
       }
     },
@@ -1580,14 +1573,7 @@
           "$ref": "#/$defs/range"
         },
         "unit": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/status_object"
-            }
-          ]
+          "$ref": "#/$defs/unit"
         }
       },
       "if": {

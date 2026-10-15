@@ -928,10 +928,6 @@ NOT_READ = {
     "method": "an extraction's, which a read does not check",
     "result": "a review's, which never refuses a field",
     "type": "a locator's, which a read does not check",
-    "unit": (
-        "a specimen fact's fixed unit, `s`, which step 9 compares (`read_side_contract.md` section 3, "
-        "step 9, a default for the maintainer): step 8 checks only that it is a string or a status object"
-    ),
 }
 # Lists `BOUND` holds that no record member binds: a declaration's distributions (`uncertainty.md` section 4),
 # and the form tokens, which each form's definition holds as a constant (`test_value_fields.py` checks them).

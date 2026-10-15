@@ -809,7 +809,7 @@ class Preservation(Based):
 
 class PostMortemInterval(Based):
     value: float
-    unit: PostMortemIntervalUnit | StatusObject
+    unit: Unit
 
 
 class DonorAge(Based):
@@ -819,7 +819,7 @@ class DonorAge(Based):
 
     value: NotRequired[float]
     range: NotRequired[Range]
-    unit: DonorAgeUnit | StatusObject
+    unit: Unit
 
 
 class SupplyForm(Based):
@@ -961,7 +961,9 @@ of unstated kind alone.
 
 class Specimen(TypedDict):
     """
-    Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact.
+    Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact. Where
+    a fact's row fixes its unit, step 9 compares the unit with it and the writer binds the unit to it: a fact
+    whose unit the source does not give is written as a status object.
     """
 
     species: NotRequired[Species | StatusObject]

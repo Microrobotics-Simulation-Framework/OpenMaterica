@@ -20,8 +20,8 @@
 
 The hosts are the full fields of `tests/property/full_fields.py`, each in a record with a section specimen
 and extensions, and a request for one of them; three of them also hold a unit as a status object in a token
-condition, a section's fact and a derivation input's fact. A read that passes step 8 raises
-`NotImplementedError` until steps 9 to 13 are built: the outcome "past step 8".
+condition, a field's, a section's and a derivation input's fact, which the writer refuses. A read that passes
+step 8 raises `NotImplementedError` until steps 9 to 13 are built: the outcome "past step 8".
 """
 
 import copy
@@ -110,6 +110,9 @@ def hosts() -> tuple[Host, ...]:
             conditions = an_object(field["conditions"])
             conditions["measurement_dimension"] = {"value": 5.0e-5, "unit": UNSTATED, "basis": "stated"}
             conditions["measurement_geometry"] = {"token": "tube", "unit": UNSTATED, "basis": "stated"}
+            # And a field's fact's unit, which the writer binds to its row's (maintainer, 2026-10-15).
+            facts = an_object(field["specimen"])
+            facts["post_mortem_interval"] = {"value": 60.0, "unit": UNSTATED, "basis": "stated"}
         if name == "measurement":
             section_specimen["donor_age"] = {"range": [1.0e9, 2.0e9], "unit": UNSTATED, "basis": "stated"}
         if name == "across_sources":

@@ -101,11 +101,19 @@ every family entry goes in `families/CHANGELOG.md`.
 - `provenance.md` section 6.2: a disease or treatment state's `text` names the disease or the treatment and is
   present exactly when its token is `diseased` or `treated` (maintainer, 2026-10-15). Three plain-read inputs
   that held a text beside `normal` lose it, rehashed, and the PR-316 case files that pin them are repinned.
-- Two defaults that await the maintainer, from S2a-2's review (`docs/specification/changes.md`): step 9 of a
-  read compares a specimen fact's `unit` with the unit its row fixes, wherever step 8 checks the fact, so that
-  another unit, or a status object with any token, gives `unit_mismatch`, and step 8 checks it only as a
-  string or a status object (`read_side_contract.md` section 3, step 9; three PR-037 arms, for S2a-3); and
+- Two defaults from S2a-2's review, approved (maintainer, 2026-10-15; `docs/specification/changes.md`): step
+  9 of a read compares a specimen fact's `unit` with the unit its row fixes, wherever step 8 checks the fact,
+  so that another unit, or a status object with any token, gives `unit_mismatch`, and step 8 checks it only as
+  a string or a status object (`read_side_contract.md` section 3, step 9; three PR-037 arms, for S2a-3); and
   `mimics`, whose row fixes its basis to `stated`, takes no `inferred_from` (`provenance.md` section 6.2).
+- The writer binds a specimen fact's unit to the one its row fixes (`"s"`), a status object there refused, as
+  a numeric condition's unit is bound, so that no record step 9 refuses is written; a fact whose unit the
+  source does not give is written as a status object (maintainer, 2026-10-15). The vocabulary generates the
+  binding from the rows (`specimen_facts.json`'s `units`, each referring to its row's unit), and the writer's
+  `specimen` applies it by `allOf`, a fact's own `unit` being a unit as anywhere else; the reader schema and
+  the typed shapes leave the binding out. Every other unit the writer takes was already bound to
+  its registered unit wherever the row fixes one (a field's, a condition's, a `plus_minus` entry's, none on a
+  token condition); a table's `axis_unit` waits for S3, which writes the table's shape.
 - `fields.json` gives, for a field whose Label cell lets its label go on a table, the condition the table's
   axis must not be (`label_not_on_axis`); the generator reads the cell's prose in its two forms, and any other
   stops it.
@@ -155,8 +163,8 @@ every family entry goes in `families/CHANGELOG.md`.
   the code of steps 0 to 5 in every module of the core, statically and traced through every read case file
   (`tests/spec_sync/test_reason_steps.py`).
 - Hypothesis properties of the writer schema: it takes every value field the specification allows and every
-  registered field in its place, and refuses each of 166 faults the text names, in ten families, built from
-  the text and the vocabulary's rows, never from the schema or its bindings; 89 mutants of the schema and of
+  registered field in its place, and refuses each of 167 faults the text names, in ten families, built from
+  the text and the vocabulary's rows, never from the schema or its bindings; 92 mutants of the schema and of
   the bindings it applies, the S2a-1 review's 31 among them, each killed at the assertion it names
   (`tests/property/test_writer_properties.py`, `test_writer_mutants.py`), in a third CI shard, `writer`.
 - The feature audit holds a feature drawn alike as each example's first choice, as a refusal property draws

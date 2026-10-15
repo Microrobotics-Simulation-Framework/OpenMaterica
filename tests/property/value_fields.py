@@ -1752,6 +1752,19 @@ def _plus_minus_unit(draw: st.DrawFn, found: Json) -> str:
     return f"conditions.{NUMERIC_CONDITIONS[0]}.plus_minus[0].unit"
 
 
+# A specimen fact's unit is the one its row fixes (`provenance.md` section 6.2, `"unit": "s"`), never a
+# status object, which step 9 refuses: the source not giving it, the whole fact is one (maintainer,
+# 2026-10-15).
+FIXED_UNITS = {name: str(mapping(row)["unit"]) for name, row in FACTS.items() if "unit" in mapping(row)}
+
+
+@fault("fact_unit_not_registered", "specimen", SPECIMEN_PLAN)
+def _fact_unit(draw: st.DrawFn, found: Json) -> str:
+    name = draw(st.sampled_from(sorted(FIXED_UNITS)))
+    specimen_fact(found, name)["unit"] = draw(foreign_unit(FIXED_UNITS[name]))
+    return f"specimen.{name}.unit"
+
+
 # The binding of a field to its row (`record_format.md` section 4.1, maintainer 2026-10-15): in a body, a
 # field under a name its section does not register, or holding a form, a unit, a label or a composition's
 # basis its row does not give, in the field or in one of its alternatives.

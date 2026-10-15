@@ -21,10 +21,10 @@ a condition whose `if` tests one: a read cannot tell whether it holds. A conjunc
 that reaches members of both kinds stops the script.
 
 An `allOf` conjunct that refers to one of the vocabulary's bindings (a section's field names and each field's
-row, a numeric condition's unit) is left out wherever it stands: those `$defs` hold the shape of a value field
-whatever its name, and a read checks a field against its row in its own steps, a unit at step 9 alone. A
-binding referred to anywhere else, or a vocabulary definition that is neither a binding, a list of tokens nor
-an identifier's pattern, stops the script.
+row, a numeric condition's unit, a specimen fact's fixed unit) is left out wherever it stands: those `$defs`
+hold the shape of a value field whatever its name, and a read checks a field against its row in its own steps,
+a unit at step 9 alone. A binding referred to anywhere else, or a vocabulary definition that is neither a
+binding, a list of tokens nor an identifier's pattern, stops the script.
 
 Every pattern in the writer schema must start with `^` and end with `(?![\\s\\S])`: a validator's `$` also
 matches before a final newline, so `"0.1.0\\n"` would match `^...$`. Under `if` or `not`, anything the script
