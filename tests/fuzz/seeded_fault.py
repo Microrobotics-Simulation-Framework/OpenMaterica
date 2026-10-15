@@ -7,19 +7,25 @@
   identical byte for byte, which a read must take as one record (`read_side_contract.md` section 3, step 1),
   beside an unreadable source, by a reader without the hash suite: a conjunction of three draws, which a
   fuzzer has to explore to meet.
+- In step 8, for the fourth: an exception escapes for a statistics block that represents a spread across
+  sources, over a number of sources that is not whole and above 2.5. Two seeds represent such a spread, one
+  over 5 sources and one over 2.5, so the fuzzer has to change a count to meet all three.
 
 Each raises its own message, so that CI can tell which fault a run found.
 
-The fuzz targets seed both when `MATERICA_FUZZ_SEEDED_FAULT` is set; pytest seeds them when loaded as a
-plugin, `python -m pytest -p tests.fuzz.seeded_fault`.
+The first three targets seed the first two faults when `MATERICA_FUZZ_SEEDED_FAULT` is set, and pytest seeds
+them when loaded as a plugin, `python -m pytest -p tests.fuzz.seeded_fault`. Only the fourth target seeds the
+third, since the property targets draw statistics blocks too and would find it before their own.
 """
 
 import os
-from collections.abc import Collection
+from collections.abc import Callable, Collection
+from typing import Protocol, TypeVar
 
 import pytest
 
-from materica.core import jsonio, read
+from materica.core import fields, jsonio, read
+from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
@@ -48,6 +54,21 @@ def faulty_resolve_record(
     return resolve_record(ref, store, claims)
 
 
+_form_problems = fields.form_problems
+
+
+def faulty_form_problems(
+    field: RecordField, record: dict[str, JsonValue], claims: Collection[str]
+) -> list[Reason]:
+    value = field.value if isinstance(field.value, dict) else {}
+    statistics = value.get("statistics")
+    if isinstance(statistics, dict) and statistics.get("represents") == "across_sources":
+        sources = statistics.get("n_sources")
+        if isinstance(sources, float) and not sources.is_integer() and sources > 2.5:
+            raise IndexError("the seeded fault in step 8")
+    return _form_problems(field, record, claims)
+
+
 def seed() -> None:
     jsonio.parse = faulty_parse
     read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
@@ -56,6 +77,21 @@ def seed() -> None:
 def seed_if_asked() -> None:
     if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT"):
         seed()
+
+
+_Function = TypeVar("_Function", bound=Callable[..., object])
+
+
+class Instrument(Protocol):
+    def __call__(self, function: _Function, /) -> _Function: ...
+
+
+def seed_step_8_if_asked(instrument: Instrument) -> None:
+    """The fourth target's fault, which only it seeds, since the property targets draw fields too.
+    `instrument` is Atheris's, so that each part of the conjunction the fuzzer meets is new coverage and each
+    comparison a hint, as in a real fault of the core."""
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT"):
+        read.form_problems = instrument(faulty_form_problems)  # type: ignore[attr-defined]  # read's own name
 
 
 def pytest_configure(config: pytest.Config) -> None:
