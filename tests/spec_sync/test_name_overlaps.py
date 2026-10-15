@@ -187,6 +187,11 @@ def test_a_member_holding_another_members_tokens_and_more_is_flagged() -> None:
 Edit = tuple[str, str, str]
 FACTS = "src/materica/schema/0.1/vocabulary/specimen_facts.json"
 WRITER = "src/materica/schema/0.1/record.writer.json"
+SET_OR_MEASURED = '"set_or_measured": {"$ref": "vocabulary/provenance.json#/$defs/set_or_measured"}'
+# Each form's value field holds the members of `field_members` by `allOf`, beside its own `form`.
+FORMS = json.loads(
+    (REPOSITORY / "src/materica/schema/0.1/vocabulary/forms.json").read_text(encoding="utf-8")
+)["$defs"]["form"]["enum"]
 
 
 def copied(tmp_path: Path, edits: list[Edit]) -> Path:
@@ -250,6 +255,29 @@ LOTS = [
             ],
             {"[B] origin ~ origins (owner provenance)"},
             id="origins_in_an_example",
+        ),
+        pytest.param(
+            [
+                (
+                    WRITER,
+                    '"unit": {"$ref": "#/$defs/unit"},\n        "specimen": {"$ref": "#/$defs/specimen"},',
+                    '"unit": {"$ref": "#/$defs/unit"},\n        "forms": {"type": "string"},\n'
+                    '        "specimen": {"$ref": "#/$defs/specimen"},',
+                )
+            ],
+            {f"[B] form ~ forms (owner {form}_field)" for form in FORMS},
+            id="forms_in_the_members_every_form_takes",
+        ),
+        pytest.param(
+            [
+                (
+                    WRITER,
+                    f"{SET_OR_MEASURED}\n      }},",
+                    f'{SET_OR_MEASURED},\n        "bases": {{"type": "string"}}\n      }},',
+                )
+            ],
+            {"[B] bases ~ basis (owner numeric_condition)"},
+            id="bases_beside_the_basis_a_condition_takes",
         ),
     ],
 )
