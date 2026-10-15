@@ -1,0 +1,84 @@
+{
+  "case": "PR-019",
+  "variant": "narrower_above_range",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_table_range_290_330.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:b222f40215980e18befda5c2d18254332d8a8d9f5a81a822122032b7dd00a9cb"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 335.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "outside_range",
+        "condition": "temperature"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "not_met",
+        "record": {
+          "status": "not_applicable"
+        },
+        "operating": {
+          "value": 335.0,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "density_kind",
+        "status": "met",
+        "record": {
+          "token": "apparent",
+          "basis": "stated"
+        }
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "case": "PR-030",
+  "variant": "near_typo_point",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_table_near_typo_point.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:af992b69f53be69165c8c5dc065cbc760a4e60d6f76f94b56ad4be881fe8e1d0"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

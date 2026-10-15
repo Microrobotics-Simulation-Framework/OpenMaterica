@@ -1,0 +1,61 @@
+{
+  "case": "PR-019",
+  "variant": "source_range_three_numbers",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_table_source_range_three_numbers.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:2d823a0531974ccad820d91220e54c27d3043f33eb3fa648f20ea354da46e8d3"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "case": "PR-019",
+  "variant": "one_point_range_read",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_table_range_250_280.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:482e919f135e8b5d74c95d449b705f693538c61bdfb76e8ff844c9d349da6d64"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 280.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": 1000.0,
+    "unit": "kg/m3",
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "status": "not_applicable"
+        },
+        "operating": {
+          "value": 280.0,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "density_kind",
+        "status": "met",
+        "record": {
+          "token": "apparent",
+          "basis": "stated"
+        }
+      }
+    ],
+    "specimen": {},
+    "statistics": {
+      "central": {
+        "status": "not_applicable"
+      },
+      "n_specimens": {
+        "status": "unstated"
+      },
+      "n_donors": {
+        "status": "not_applicable"
+      },
+      "mean": {
+        "status": "not_applicable"
+      },
+      "sd": {
+        "status": "unstated"
+      },
+      "min": {
+        "status": "not_applicable"
+      },
+      "max": {
+        "status": "not_applicable"
+      },
+      "distribution": {
+        "status": "unstated"
+      },
+      "basis": {
+        "status": "not_applicable"
+      },
+      "represents": {
+        "status": "unstated"
+      },
+      "dispersion": "not_reported",
+      "relative_uncertainty": {
+        "status": "none"
+      },
+      "expanded_uncertainty": {
+        "status": "none"
+      }
+    },
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "relative_tolerance": 1e-12
+  }
+}

@@ -16,8 +16,8 @@ in this order:
 
 1. **not yet runnable**: no executor exists for its operation (`EXECUTORS` in `runner.py`), or a step of the
    implementation its arm needs is not done: `tests/spec_sync/case_steps.json` maps each case file to the step
-   whose code first runs it (S2 in its pieces, `S2a-1` to `S2b-2`, or a list of pieces where their order is
-   not fixed), and lists the steps done;
+   whose code first runs it (S2 and S3 in their pieces, `S2a-1` to `S2b-2` and `S3-te` to `S3c`, or a list
+   of pieces where their order is not fixed), and lists the steps done;
 2. **not run**: no configuration claims its suite and agrees with its `claims`;
 3. **passed** or **failed**: each result compared with `expected`; it fails if one run fails, and says under
    which claims. An executor that raises fails the case, as no read may raise (PR-300).
@@ -34,8 +34,9 @@ after every run that includes these tests:
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
 | S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, or steps 9 to 13 (plain read) | 298 | not yet runnable: the step that runs each is not done |
+| reads of tables, and reads under an extrapolation (plain read) | 155 | not yet runnable: the step that runs each is not done |
 
-Of the 877 case files, 865 agree with plain read and the hash suite, 805 with plain read alone, and 865 with
+Of the 1032 case files, 1020 agree with plain read and the hash suite, 960 with plain read alone, and 1020 with
 the fits and reference data suite too.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`

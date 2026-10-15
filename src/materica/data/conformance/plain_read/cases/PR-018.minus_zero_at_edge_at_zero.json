@@ -1,0 +1,107 @@
+{
+  "case": "PR-018",
+  "variant": "minus_zero_at_edge_at_zero",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "susceptibility_edge_table.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/susceptibility_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:4ec25562c48340cc7a45067aaca8215881ffde8716871e2c955ea74aa1a1db89"
+      },
+      "field": "magnetic.volume_susceptibility"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      },
+      "magnetic_flux_density": {
+        "value": -0.0,
+        "unit": "T"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "specimen_shape": {
+          "accept": [
+            "sphere"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "at_edge",
+        "condition": "magnetic_flux_density"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 293.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 293.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "specimen_shape",
+        "status": "met",
+        "record": {
+          "token": "sphere",
+          "basis": "stated"
+        }
+      },
+      {
+        "name": "magnetic_flux_density",
+        "status": "not_met",
+        "record": {
+          "status": "not_applicable"
+        },
+        "operating": {
+          "value": -0.0,
+          "unit": "T"
+        }
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "relative_tolerance": 1e-12
+  }
+}

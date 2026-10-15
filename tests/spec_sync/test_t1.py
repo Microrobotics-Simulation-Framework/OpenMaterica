@@ -3,9 +3,10 @@
 `core/fields.py`, against the writer schema's value-field `$defs` and the reader `$defs` generated from them.
 Where a form's own member waits for a step not built yet (an interval, a composition, evidence, a table, which
 `form_problems` will not answer), the "step 8 verdict" is not the code's: it is what the case files reading
-that field expect, and with no such case file there is none. So for 51 of the 409 conformance examples, and
-for every variant of a drawn base of those forms, T1 holds the data to the schemas, not step 8; it holds step
-8 itself on the constants and on the forms a row does not allow.
+that field expect, and with no such case file there is none. A table has none yet: the writer schema holds its
+member as a placeholder until S3a writes it, and with it T1 on the table fixtures (the S3 design, section
+6.5). So for 51 conformance examples, and for every variant of a drawn base of those forms, T1 holds the data
+to the schemas, not step 8; it holds step 8 itself on the constants and on the forms a row does not allow.
 
 It runs on every value field a registered field's row reads, with its section's `specimen`, in every material
 record among the conformance inputs, and on one-fault variants of its bases: the full fields of
@@ -285,6 +286,8 @@ def step_8(example: Example) -> frozenset[str] | None:
             RecordField(spec, example.value, example.section), example.record, {"plain_read"}
         )
     except NotImplementedError:
+        if field_shape(example.value) == "table_field":
+            return None
         expected = [verdict for _, verdict in readers().get(example.name, []) if verdict is not None]
         return frozenset[str]().union(*expected) if expected else None
     return frozenset(reason.code for reason in found)
