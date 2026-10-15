@@ -613,6 +613,32 @@ JOINED: list[tuple[str, JsonValue, tuple[tuple[str, ...], JsonValue], JsonValue]
 ]
 
 
+@pytest.mark.parametrize(
+    ("place", "shape"),
+    [
+        *[((form,), {"rows": []}) for form in ("table", "power_law", "parameter_set", "reference_data")],
+        (("provenance", "assistance"), {"tool": "a drafting tool"}),
+    ],
+    ids=["table", "power_law", "parameter_set", "reference_data", "assistance"],
+)
+def test_a_placeholder_beside_a_status_object_holds_no_other_status(
+    place: tuple[str, ...], shape: JsonValue
+) -> None:
+    """`provenance.md` section 1 item 5: in a member that may hold a status object, an object holding
+    `status` is one, and holds a token its row allows. A placeholder's shape, any object until its members are
+    named, takes every other object; the control is that shape and the row's own token."""
+    own: JsonValue = {"status": "none" if place[-1] == "assistance" else "withheld"}
+    base = mapping(CONSTANT)
+    if len(place) == 1:
+        # Another form, whose member is the placeholder; withheld, it needs its recipe (section 7 item 2).
+        base = {member: value for member, value in base.items() if member != "value"}
+        base = mapping(edited(base, (("form",), place[0]), (("provenance", "recipe"), {"steps": "Table 2"})))
+    writer = validator("record.writer.json#/$defs/value_field")
+    held: list[tuple[JsonValue, bool]] = [(shape, True), (own, True), ({"status": "unstated"}, False)]
+    for value, taken in held:
+        assert (writer(edited(base, (place, value))) == []) is taken, (place, value)
+
+
 def completed(field: JsonValue, member: tuple[tuple[str, ...], JsonValue]) -> JsonValue:
     (path, value) = member
     found = copy.deepcopy(field)

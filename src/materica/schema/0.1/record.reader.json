@@ -483,7 +483,7 @@
         "table": {
           "anyOf": [
             {
-              "$ref": "#/$defs/json_object"
+              "$ref": "#/$defs/placeholder"
             },
             {
               "$ref": "#/$defs/status_withheld"
@@ -519,7 +519,7 @@
         "power_law": {
           "anyOf": [
             {
-              "$ref": "#/$defs/json_object"
+              "$ref": "#/$defs/placeholder"
             },
             {
               "$ref": "#/$defs/status_withheld"
@@ -627,7 +627,7 @@
         "parameter_set": {
           "anyOf": [
             {
-              "$ref": "#/$defs/json_object"
+              "$ref": "#/$defs/placeholder"
             },
             {
               "$ref": "#/$defs/status_withheld"
@@ -663,7 +663,7 @@
         "reference_data": {
           "anyOf": [
             {
-              "$ref": "#/$defs/json_object"
+              "$ref": "#/$defs/placeholder"
             },
             {
               "$ref": "#/$defs/status_withheld"
@@ -2347,8 +2347,14 @@
         }
       }
     },
-    "json_object": {
-      "type": "object"
+    "placeholder": {
+      "description": "A member whose shape is not yet written, in a member that may hold a status object instead: any object but one holding status, which is a status object and holds a token its row allows (provenance.md section 1 item 5).",
+      "type": "object",
+      "not": {
+        "required": [
+          "status"
+        ]
+      }
     }
   }
 }
