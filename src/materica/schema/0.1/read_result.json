@@ -23,12 +23,13 @@
   "$defs": {
     "read_status": {"enum": ["met", "not_met", "unknown"]},
     "reason": {
-      "description": "read_side_contract.md section 2; a reason is identified by its code and condition, and detail is for people.",
+      "description": "read_side_contract.md section 2; a reason is identified by its code, condition and alternative, and detail is for people.",
       "type": "object",
       "required": ["code"],
       "properties": {
         "code": {"$ref": "vocabulary/reasons.json#/$defs/reason_code"},
         "condition": {"type": "string"},
+        "alternative": {"description": "The index among the stored alternatives of the one the reason was found reading.", "type": "integer", "minimum": 0},
         "detail": {"type": "string"}
       },
       "additionalProperties": false
