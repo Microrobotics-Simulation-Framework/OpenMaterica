@@ -1,0 +1,272 @@
+{
+  "format": 1,
+  "about": "The name overlaps judged intended (tests/spec_sync/name_overlaps.py). Each entry names its rule and its names; for rule A, how many meanings the name has, so that a new meaning flags it again; and optionally the owner its flag must have. Each gives its reason, and either a safeguard, a quote that must stay in its document, or why none is needed. An entry that allows no flag, or whose safeguard is gone, fails the check. Drafted with S2a-1 from the name-overlap prototype's allowlist (2026-10-14), for the maintainer to confirm.",
+  "entries": [
+    {
+      "rule": "B",
+      "names": ["reported_sd", "reported_se"],
+      "owner": "statistics_basis",
+      "reason": "Two statistics a source reports, named for them: the one letter is the distinction.",
+      "safeguard": {
+        "document": "docs/specification/uncertainty.md",
+        "quote": "Consistency a checker enforces: `reported_se` with `represents: estimate`, and `reported_sd` never with it",
+        "what": "Section 1 rule 7 (RC-052): either typed for the other beside represents: estimate is flagged."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["across_sources"],
+      "owner": "basis | represents",
+      "reason": "One fact, a spread pooled across sources, stated by both sibling members of a statistics block.",
+      "safeguard": {
+        "document": "docs/specification/uncertainty.md",
+        "quote": "each present exactly where the `represents` beside it is `population`, `across_sources` or `measurement`",
+        "what": "Section 1 rule 1: n_sources is present exactly where represents is across_sources, so the token moved between the two members breaks the block's shape (form_invalid)."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["status"],
+      "meanings": 2,
+      "reason": "A status object's status (unstated, not_checked, none, not_applicable, withheld) and a result's status (met, not_met, unknown) are different vocabularies by design.",
+      "safeguard": {
+        "document": "docs/specification/README.md",
+        "quote": "A member named `status` in any other object is not a status object and has its own tokens",
+        "what": "Conventions, \"Status objects\", and provenance.md section 1 item 5 (PR-110): which members may hold a status object is a closed list."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["basis"],
+      "meanings": 6,
+      "reason": "Where a number comes from, with a vocabulary per place: a condition's or fact's (stated, inferred), a statistics block's spread, an uncertainty's, an interval's, a composition's fractions (mass, volume, mole), and free text in a declaration. Each list is closed where it sits.",
+      "safeguard": {
+        "document": "docs/specification/uncertainty.md",
+        "quote": "a token it knows for a member of that name, in a member whose row does not allow it (`student_t` in a block's `distribution`, or `reported_uncertainty` in a block's `basis`), breaks the block's shape (`form_invalid`)",
+        "what": "Section 4 (PR-154, PR-158): a token of another place's list is refused (form_invalid, or unknown_token for one known for no member of that name), never misread."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["token"],
+      "meanings": 4,
+      "reason": "A specimen fact's token takes its own row's tokens: a tissue state, a disease and treatment state, a preservation, a supply form.",
+      "safeguard": {
+        "document": "docs/specification/read_side_contract.md",
+        "quote": "a token the reader knows for a member of that name in a member whose row does not allow it (`form_invalid`), a token the reader knows for no member of that name (`unknown_token`)",
+        "what": "Section 3, step 8: a token moved from one fact to another is refused."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["evidence"],
+      "meanings": 3,
+      "reason": "The licence's evidence (excluded), a value's provenance evidence (quote, locator, document, copy), and the evidence form's list of test reports.",
+      "safeguard": null,
+      "no_safeguard_because": "a token, an object and a list: a value written at another of the three places breaks that place's shape"
+    },
+    {
+      "rule": "A",
+      "names": ["evidence"],
+      "owner": "registered",
+      "reason": "The field biocompatibility.evidence holds a value of form evidence, whose member is named like its form; a reader dispatches on a field's name only among a section's fields.",
+      "safeguard": {
+        "document": "docs/specification/record_format.md",
+        "quote": "`value` for a constant; otherwise the member named like the form",
+        "what": "Section 5: the form's member is named like the form."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["tolerance"],
+      "meanings": 2,
+      "reason": "A requirement's absolute tolerance in the condition's unit, and a check point's or witness's relative and absolute tolerance: different documents, no shared member.",
+      "safeguard": {
+        "document": "docs/specification/read_side_contract.md",
+        "quote": "a requirement condition is `{\"tolerance\": {\"value\", \"unit\"}}` for a numeric condition",
+        "what": "Section 1: the request's exact shape, which refuses the other tolerance's members."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["conditions"],
+      "meanings": 2,
+      "reason": "A map of conditions by name in records, requests and declarations; the list of condition entries in a result.",
+      "safeguard": {
+        "document": "docs/specification/README.md",
+        "quote": "`conditions` as a set keyed by `name`",
+        "what": "Case files compare a result's conditions by name."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["record"],
+      "meanings": 2,
+      "reason": "A material reference (id, version, content hash) wherever a record is named, and a result's condition entry's record: the condition as the record holds it.",
+      "safeguard": {
+        "document": "docs/specification/read_side_contract.md",
+        "quote": "An entry's `record` is the record's entry, or the value an implied condition supplies with basis `implied`",
+        "what": "Section 2 item 6: what a condition entry's record holds."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["label"],
+      "meanings": 2,
+      "reason": "A value field's label, a token naming the trivial model its value implies, and a human-readable label (a species', an anatomical site's, a locator's, a curve's).",
+      "safeguard": {
+        "document": "docs/specification/record_format.md",
+        "quote": "A label the reader does not know refuses the field as a token it does not know (`unknown_token`, section 10)",
+        "what": "Section 4.1: free text written as a value field's label is refused."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["method"],
+      "meanings": 2,
+      "reason": "An extraction method (provenance.md section 3) and an extrapolation's method (declarations.md section 4.1): a record and a declaration, each list closed where it sits.",
+      "safeguard": null,
+      "no_safeguard_because": "different documents; neither list's tokens are valid at the other place"
+    },
+    {
+      "rule": "A",
+      "names": ["model"],
+      "meanings": 2,
+      "reason": "A model as name and version in declarations and overlay scopes, by name alone in a build result.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "`scope.model` (name and version)",
+        "what": "Section 5 item 2 says what is compared."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["consumer"],
+      "meanings": 2,
+      "reason": "An overlay scope's consumer, a name, and a declaration's consumer, a name and a version.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "the build compares `scope.consumer` with the declaring consumer's `name`",
+        "what": "Section 5 item 2: what is compared, the version not."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["value"],
+      "meanings": 2,
+      "reason": "A case's inputs.value names a file; everywhere else value is a number.",
+      "safeguard": {
+        "document": "docs/specification/README.md",
+        "quote": "takes the JSON file `inputs.value` names (one file name)",
+        "what": "Case files, \"Operations\"."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["request"],
+      "meanings": 2,
+      "reason": "A case's request, and the file holding one that breaks the JSON rules.",
+      "safeguard": {
+        "document": "docs/specification/README.md",
+        "quote": "names a file holding it in `inputs.request`, in place of `request`",
+        "what": "Case files; case.json makes the two exclusive."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["inputs"],
+      "meanings": 3,
+      "reason": "A case's input files, a derivation's inputs, and a search's inputs token.",
+      "safeguard": null,
+      "no_safeguard_because": "an object, a list and a token in different objects"
+    },
+    {
+      "rule": "A",
+      "names": ["input"],
+      "meanings": 2,
+      "reason": "An input's index in a derivation's input_specimens, and a family vector's input by name.",
+      "safeguard": null,
+      "no_safeguard_because": "a number against a map, in different documents"
+    },
+    {
+      "rule": "A",
+      "names": ["target"],
+      "meanings": 3,
+      "reason": "A request's target, the specimen facts a declared model stands for, and a specimen difference's target value.",
+      "safeguard": null,
+      "no_safeguard_because": "disjoint shapes; a declaration's target never becomes a request's"
+    },
+    {
+      "rule": "A",
+      "names": ["axis"],
+      "meanings": 2,
+      "reason": "A cylinder's axis vector in a scene, and a table's or power law's axis condition in a record.",
+      "safeguard": null,
+      "no_safeguard_because": "a vector against a name, in different documents"
+    },
+    {
+      "rule": "A",
+      "names": ["from"],
+      "meanings": 2,
+      "reason": "A chain's first family and record, and a family conversion's source measure.",
+      "safeguard": null,
+      "no_safeguard_because": "an object against a name, in different documents"
+    },
+    {
+      "rule": "A",
+      "names": ["to"],
+      "meanings": 2,
+      "reason": "A chain's following family and record, and a family conversion's target measure.",
+      "safeguard": null,
+      "no_safeguard_because": "an object against a name, in different documents"
+    },
+    {
+      "rule": "A",
+      "names": ["kind"],
+      "meanings": 2,
+      "reason": "A family's kind per loading control, and an admissibility constraint's kind token, both in the family manifest.",
+      "safeguard": null,
+      "no_safeguard_because": "an object against a token, at different depths of one manifest"
+    },
+    {
+      "rule": "A",
+      "names": ["mean"],
+      "meanings": 2,
+      "reason": "A statistics block's mean, and a multivariate normal's mean per parameter.",
+      "safeguard": null,
+      "no_safeguard_because": "a number against a map"
+    },
+    {
+      "rule": "A",
+      "names": ["parameters"],
+      "meanings": 3,
+      "reason": "A declared model's consumer parameters, a declared distribution's parameters, and a family's parameter list.",
+      "safeguard": null,
+      "no_safeguard_because": "disjoint shapes in different objects"
+    },
+    {
+      "rule": "A",
+      "names": ["ranges"],
+      "meanings": 2,
+      "reason": "A coverage mode's ranges by input, and an invariant's ranges in order.",
+      "safeguard": null,
+      "no_safeguard_because": "a map against a list"
+    },
+    {
+      "rule": "A",
+      "names": ["reference_data"],
+      "meanings": 2,
+      "reason": "The reference-data form, and a witness's datum naming reference data.",
+      "safeguard": null,
+      "no_safeguard_because": "an object against a string"
+    },
+    {
+      "rule": "A",
+      "names": ["space"],
+      "meanings": 2,
+      "reason": "A declared distribution's space token, and a multivariate normal's space per parameter.",
+      "safeguard": null,
+      "no_safeguard_because": "a token against a map of the same tokens"
+    }
+  ]
+}

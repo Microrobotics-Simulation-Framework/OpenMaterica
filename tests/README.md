@@ -32,6 +32,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
 - the `CASES.md` check: a case file changed after its row (`spec_sync/test_cases_md.py`);
 - the value-field checks: a member table, a status row or a quote changed, and the schema changed
   (`spec_sync/test_value_fields.py`);
+- the name-overlap check: a reused name or a slip seeded into a schema, the vocabulary or an example, and its
+  allowlist broken (`spec_sync/test_name_overlaps.py`);
 - the released-schema check, on a copy of the tree with 0.1 frozen: a file changed, added or removed, the
   directory gone, and an `$id` frozen wrong (`spec_sync/test_released_schemas.py`);
 - the reference, case-tag and list-number checks: a broken reference of each form, an uncited row, a tag with
