@@ -2,12 +2,12 @@
 """A read of one field of one record (`read_side_contract.md` sections 1 to 3).
 
 `read` checks the request on its own (step 0), resolves its target (steps 1 to 5, `resolve.resolve_record`),
-finds the field (step 7, `fields.find_field`), checks its form and shape (step 8, `fields.form_problems`) and
-its units (step 9, `fields.unit_problems`), and gives a `ReadResult`. Steps 10 to 13, which read the field's
-conditions and value, are not built yet, nor are overlays (step 6) and alternatives (step 7). A read that
-would need one raises `NotImplementedError`, and so does a request whose answer a check still to come could
-change, whatever else is wrong with it: one with a region target or acceptances. It raises rather than give an
-answer a later step would contradict.
+finds the field (step 7, `fields.find_field`), checks its form and shape (step 8, `fields.form_problems`),
+its units (step 9, `fields.unit_problems`) and its conditions (step 10, `conditions.check_conditions`), and
+gives a `ReadResult`. Steps 11 to 13, which read the field's value, are not built yet, nor are overlays (step
+6) and alternatives (step 7). A read that would need one raises `NotImplementedError`, and so does a request
+whose answer a check still to come could change, whatever else is wrong with it: one with a region target or
+acceptances. It raises rather than give an answer a later step would contradict.
 """
 
 import json
@@ -17,6 +17,7 @@ from typing import get_args
 
 from materica import shapes
 from materica.core import jsonio
+from materica.core.conditions import ConditionEntry, check_conditions
 from materica.core.fields import find_field, form_problems, unit_problems
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
@@ -130,21 +131,36 @@ class ReadRequest:
 
 @dataclass(frozen=True)
 class ReadResult:
-    """A read's result (section 2): its status, every reason found, and its labels. The members that carry a
-    value arrive with the steps that read one."""
+    """A read's result (section 2): its status, every reason found, its labels, and `conditions` once step 10
+    has run to its end (item 6). The members that carry a value arrive with the steps that read one."""
 
     status: ReadStatus
     reasons: tuple[Reason, ...]
     labels: tuple[str, ...] = ()
+    conditions: tuple[ConditionEntry, ...] | None = None
 
     @classmethod
     def from_json(cls, result: shapes.ReadResult) -> "ReadResult":
         reasons = tuple(Reason.from_json(reason) for reason in result["reasons"])
-        return cls(result["status"], reasons, tuple(result.get("labels", [])))
+        conditions = result.get("conditions")
+        return cls(
+            result["status"],
+            reasons,
+            tuple(result.get("labels", [])),
+            None if conditions is None else tuple(ConditionEntry.from_json(entry) for entry in conditions),
+        )
 
     def to_json(self) -> shapes.ReadResult:
         reasons = [reason.to_json() for reason in self.reasons]
-        return {"status": self.status, "reasons": reasons, "labels": list(self.labels)}
+        if self.conditions is None:
+            return {"status": self.status, "reasons": reasons, "labels": list(self.labels)}
+        conditions = [entry.to_json() for entry in self.conditions]
+        return {
+            "status": self.status,
+            "reasons": reasons,
+            "conditions": conditions,
+            "labels": list(self.labels),
+        }
 
 
 def read(request: RequestInput, store: RecordStore, *, claims: Collection[Suite] = CLAIMS) -> ReadResult:
@@ -181,14 +197,17 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
     found += unit_problems(field)
     if _ends(found):
         return _refused(merged(found), resolved.labels)
-    raise NotImplementedError(
-        "steps 10 to 13, which read the field's conditions and value, are not built yet"
-    )
+    checked = check_conditions(field, request.operating_conditions, request.conditions)
+    found += checked.reasons
+    if _ends(found):
+        reasons = merged(found)
+        return ReadResult(_status(reasons), reasons, resolved.labels, checked.entries)
+    raise NotImplementedError("steps 11 to 13, which read the field's value, are not built yet")
 
 
 def _ends(found: list[Reason]) -> bool:
     """Whether the reasons a read has found end it: a step that gives `not_met` does (section 3)."""
-    return worst(VOCABULARY.reasons[reason.code].status for reason in found) == "not_met"
+    return _status(found) == "not_met"
 
 
 def _check(claims: Collection[Suite]) -> None:
@@ -211,7 +230,11 @@ def _parsed(request: RequestInput) -> JsonValue | Reason:
 
 
 def _refused(reasons: tuple[Reason, ...], labels: tuple[str, ...] = ()) -> ReadResult:
-    return ReadResult(worst(VOCABULARY.reasons[reason.code].status for reason in reasons), reasons, labels)
+    return ReadResult(_status(reasons), reasons, labels)
+
+
+def _status(reasons: Collection[Reason]) -> ReadStatus:
+    return worst(VOCABULARY.reasons[reason.code].status for reason in reasons)
 
 
 def _incomplete(detail: str, condition: str | None = None) -> Reason:

@@ -29,12 +29,14 @@ class ReasonSpec:
 
 @dataclass(frozen=True)
 class ConditionSpec:
-    """A row of `provenance.md` section 6.1: a numeric condition and its unit, or a token one and tokens."""
+    """A row of `provenance.md` section 6.1: a numeric condition and its unit, or a token one and tokens; and
+    the conditions it is required with, each with the tokens that require it ("Required with", item 9)."""
 
     name: str
     shape: Literal["numeric", "token"]
     unit: str | None
     tokens: tuple[str, ...]
+    required_with: dict[str, tuple[str, ...]]
 
 
 @dataclass(frozen=True)
@@ -110,10 +112,11 @@ def _reason(code: str, row: dict[str, JsonValue]) -> ReasonSpec:
 
 
 def _condition(name: str, row: dict[str, JsonValue]) -> ConditionSpec:
+    required_with = {other: _strings(tokens) for other, tokens in _object(row["required_with"]).items()}
     if row["shape"] == "numeric":
-        return ConditionSpec(name, "numeric", _string(row["unit"]), ())
+        return ConditionSpec(name, "numeric", _string(row["unit"]), (), required_with)
     if row["shape"] == "token":
-        return ConditionSpec(name, "token", None, _strings(row["tokens"]))
+        return ConditionSpec(name, "token", None, _strings(row["tokens"]), required_with)
     raise ValueError(f"the condition {name} has no shape this reader knows")
 
 
