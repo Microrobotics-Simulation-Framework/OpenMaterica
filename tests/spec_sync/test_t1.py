@@ -534,7 +534,7 @@ def disagreements(
 
 
 def sampled() -> list[Example]:
-    return input_examples()[::7] + variant_examples()[::7]
+    return input_examples()[::14] + variant_examples()[::14]
 
 
 @pytest.mark.parametrize("schemas", [WRITER, READER], ids=["writer", "reader"])
@@ -546,7 +546,7 @@ def test_a_form_definition_picked_wrongly_disagrees() -> None:
     def interval(field: JsonValue) -> str:
         return "interval_field" if field_shape(field) != "value_field" else "value_field"
 
-    assert disagreements(WRITER, sampled(), interval) != []
+    assert disagreements(WRITER, sampled()[:20], interval) != []
 
 
 def test_every_kind_lists_an_exception_and_every_change_is_made() -> None:

@@ -1,6 +1,6 @@
 # Property tests
 
-Hypothesis properties of the core, in two groups, and of the writer schema, in a third.
+Hypothesis properties of the core, in three groups, and of the writer schema, in a fourth.
 
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
@@ -19,7 +19,6 @@ Hypothesis properties of the core, in two groups, and of the writer schema, in a
   The first law is checked against the specification only where the read refuses. Where the implementation's
   own `resolve_record` resolves the target, a `NotImplementedError` is allowed, so a resolution that wrongly
   succeeds is invisible to it; the case files and the other laws are the oracle there.
-
 - **Writer schema:** (7) the writer schema (`record_format.md` section 1 item 2) takes every value field the
   specification allows, and refuses each field it forbids by one fault; and it takes every registered field in
   its place, a section's `fields` or an overlay's `replaces`, bound to its row of section 4.1, refusing one
@@ -35,6 +34,14 @@ Hypothesis properties of the core, in two groups, and of the writer schema, in a
   in parts of at most 15, each a property of its own, so that the feature audit at `ci` can judge each fault
   (below).
   The refusal is checked on one the schema takes, the same but for the fault, so that it is the fault's.
+- **Step 8:** (8) the laws of step 8 of a read (`read_side_contract.md` section 3), in the part step 8 decides,
+  the S2 design's HP3 and HP5: one fault of a catalogue written from the text gives exactly the codes its rule
+  gives, and two faults in two parts of the record give both (each step makes all its checks); members the
+  reader does not know, added where they may go, never change the outcome, two slips off a named member
+  included. `value_field_strategies.py` builds a record holding one constant that passes step 8, each member
+  its row's shape or a status object its row allows, and anything at all in the members a read does not check;
+  and the catalogue, by region of the record, each fault with the codes its rule gives. Until steps 9 to 13 are
+  built, a read that passes step 8 raises `NotImplementedError`, the outcome "past step 8".
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -70,11 +77,12 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the three groups side by side, each in a job of its own: `pytest tests/property --shard json`,
-`--shard records` and `--shard writer` (`SHARDS` in `tests/conftest.py`). The writer schema's properties
-validate each field with `jsonschema` against the writer's value field, a choice among eight forms, which
-costs about 30 ms a field: so each family of faults is a property of its own, run in parallel. Each module is
-in exactly one shard (`tests/unit/test_source_files.py`), and each shard keeps its own example database in CI.
+CI runs the groups in three shards side by side, each in a job of its own: `pytest tests/property --shard json`,
+`--shard records`, which holds the record and step-8 groups, and `--shard writer` (`SHARDS` in
+`tests/conftest.py`). The writer schema's properties validate each field with `jsonschema` against the writer's
+value field, a choice among eight forms, which costs about 30 ms a field: so each family of faults is a
+property of its own, run in parallel. Each module is in exactly one shard (`tests/unit/test_source_files.py`),
+and each shard keeps its own example database in CI.
 
 ## Mutants
 
@@ -101,6 +109,40 @@ on fields of the form and with the parts in which it refuses one. Both sizes, as
 review die at a fault besides the one they were written for, both by the rule they break: M13, without
 `plus_minus`'s `then`, also takes an unstated kind beside a stated one, and M48, with `withheld` among an
 entry's other statuses, also takes a withheld entry without its recipe.
+
+### Step 8's mutants
+
+`test_value_field_mutants.py`. Each fault is injected where the core looks a name up when it runs; the kill is
+the examples the derandomised search took, at the small and the original size (measured 2026-10-15).
+
+| Mutant | Fault | Killed by | Examples |
+|---|---|---|---|
+| `unknown_tokens_ignored` | a token the reader knows for no member of its name is accepted | HP3 | 7, 79 |
+| `unknown_token_read_as_a_shape_fault` | such a token gives `form_invalid` | HP3 | 7, 79 |
+| `status_tokens_unchecked` | a status object takes any status token | HP3 | 227, 278 |
+| `members_beside_a_status_ignored` | a status object beside a member of the shape it stands for is read as one | HP3 | 645, 1143 |
+| `missing_represents_accepted` | a statistics block without `represents` passes (the S2 design's HP3 mutant) | HP3 | 466, 34 |
+| `null_read_as_absent` | `null` in an optional member reads as the member absent (HP3's) | HP3 | 931, 180 |
+| `unknown_condition_names_checked` | a condition name the reader does not know is checked as a numeric condition (HP3's "read as known") | HP3 | 194, 124 |
+| `plus_minus_kinds_unchecked` | a `plus_minus` list is checked only as a list | HP3 | 11, 194 |
+| `range_order_unchecked` | a range's `lo` may lie above its `hi` | HP3 | 70, 919 |
+| `counts_not_whole` | `n_specimens` takes any number | HP3 | 112, 123 |
+| `conditional_members_unchecked` | `population_level`, `n_sources` and `precision_conditions` may sit beside any `represents` | HP3 | 65, 229 |
+| `uncertainty_rules_unchecked` | an uncertainty's coverage, `dof` and precision rules go | HP3 | 420, 201 |
+| `named_state_text_unchecked` | a disease or treatment state's text may sit beside any token, or be missing | HP3 | 387, 444 |
+| `fixed_fact_members_unchecked` | a fact's unit and `mimics`'s basis take any value, not the one their rows fix | HP3 | 87, 152 |
+| `record_structure_unchecked` | a slip in the envelope, the body or a section is ignored | HP3 | 91, 248 |
+| `section_specimen_unchecked` | a section's `specimen` is not checked | HP3 | 7, 264 |
+| `first_refusal_only` | step 8 gives its first reason only (the S2 design's HP12 mutant, on HP3's two-fault draws) | HP3 | 7, 79 |
+| `slip_by_substitution_missed` | the one-slip relation misses a character substituted | HP3 | 196, 734 |
+| `slip_by_insertion_missed` | it misses a character inserted or deleted | HP3 | 274, 248 |
+| `slip_by_swap_missed` | it misses two adjacent characters swapped | HP3 | 473, 79 |
+| `slip_by_plural_missed` | it misses a word made plural or singular | HP3 | 156, 264 |
+| `slip_by_underscore_missed` | it misses an underscore added or removed | HP3 | 91, 132 |
+| `unknown_members_refused` | every member a place does not name is refused | HP5 | 2, 2 |
+| `two_slips_refused` | names two characters off a named member are refused too | HP5 | 2, 2 |
+
+The S2 design's HP5 mutant, an unknown member returned, waits for the result's members (S2a-4).
 
 ## Audits
 

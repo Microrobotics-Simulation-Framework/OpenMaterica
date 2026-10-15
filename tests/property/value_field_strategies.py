@@ -1,0 +1,800 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Strategies for step 8's properties: records holding one constant value field that passes step 8, the
+faults of step 8's catalogue, each with the reasons it must give, and the members a reader does not know.
+
+A drawn field takes every member step 8 checks or leaves the optional ones out, each value-or-status member
+as its own shape or as a status object its row allows (the tokens read from the generated shapes, as step 8
+reads them), and anything at all in the members a read does not check. Nothing is filtered.
+
+The fault catalogue is written from the text (`read_side_contract.md` section 3, step 8; `provenance.md`
+sections 1, 2, 5 and 6; `uncertainty.md` sections 1 and 4; `record_format.md` sections 2, 4, 5 and 10): each
+fault sets one member, at one place, to what breaks one rule, and gives the codes the rule gives. A fault that
+breaks no rule, a member step 8 must not check, gives none.
+"""
+
+import copy
+from collections.abc import Callable
+from typing import NamedTuple
+
+from hypothesis import strategies as st
+
+from materica import shapes
+from materica.core.hashing import content_hash
+from materica.core.jsonio import JsonValue
+from materica.core.value_shapes import status_row
+from materica.core.vocabulary import VOCABULARY, ConditionSpec
+from tests.property import records
+from tests.property.strategies import DOUBLES, SIZE, TEXT, Size
+
+JsonObject = dict[str, JsonValue]
+Draw = st.DrawFn
+
+# The fields a constant may take, the one form whose own member step 8 reads so far.
+CONSTANT_FIELDS = tuple(sorted(name for name, spec in VOCABULARY.fields.items() if "constant" in spec.forms))
+
+NOT_NEGATIVE = DOUBLES.map(abs)
+POSITIVE = DOUBLES.map(lambda number: abs(number) or 1.0)
+PROBABILITIES = st.floats(min_value=0.0, max_value=1.0, exclude_min=True)
+COUNTS = st.integers(0, 2**53).map(float)
+
+
+def tokens(name: str) -> st.SearchStrategy[str]:
+    return st.sampled_from(VOCABULARY.token_lists[name])
+
+
+def status_object(token: str, reason: str | None) -> JsonObject:
+    return {"status": token} if reason is None else {"status": token, "reason": reason}
+
+
+def status_objects(shape: type, member: str) -> st.SearchStrategy[JsonObject]:
+    """A status object with a token `member` of `shape` allows, with a reason or none."""
+    return st.builds(status_object, st.sampled_from(status_row(shape, member)[0]), st.none() | TEXT)
+
+
+def or_status(own: st.SearchStrategy[JsonValue], shape: type, member: str) -> st.SearchStrategy[JsonValue]:
+    return st.one_of(own, status_objects(shape, member))
+
+
+@st.composite
+def in_order(draw: Draw) -> list[JsonValue]:
+    ends = sorted([draw(DOUBLES), draw(DOUBLES)])
+    return [ends[0], ends[1]]
+
+
+@st.composite
+def based(draw: Draw) -> JsonObject:
+    if draw(st.booleans()):
+        return {"basis": "stated"}
+    return {"basis": "inferred", "inferred_from": draw(TEXT)}
+
+
+UNITS: st.SearchStrategy[JsonValue] = st.one_of(TEXT, status_objects(shapes.PlusMinusEntry, "unit"))
+PLUS_MINUS_KINDS = (["bound"], ["sd"], ["bound", "sd"], ["sd", "bound"], ["unstated"])
+
+
+@st.composite
+def plus_minus(draw: Draw) -> list[JsonValue]:
+    entries: list[JsonValue] = []
+    for kind in draw(st.sampled_from(PLUS_MINUS_KINDS)):
+        stated_as: JsonValue = {"status": "unstated"} if kind == "unstated" else kind
+        entries.append({"stated_as": stated_as, "value": draw(NOT_NEGATIVE), "unit": draw(UNITS)})
+    return entries
+
+
+@st.composite
+def numeric_condition(draw: Draw) -> JsonObject:
+    entry: JsonObject = {"unit": draw(UNITS), **draw(based())}
+    if draw(st.booleans()):
+        entry["value"] = draw(DOUBLES)
+    else:
+        entry["range"] = draw(in_order())
+    if draw(st.booleans()):
+        entry["plus_minus"] = draw(plus_minus())
+    if draw(st.booleans()):
+        entry["set_or_measured"] = draw(tokens("set_or_measured"))
+    return entry
+
+
+@st.composite
+def token_condition(draw: Draw, spec: ConditionSpec) -> JsonObject:
+    return {"token": draw(st.sampled_from(spec.tokens)), **draw(based())}
+
+
+def condition(spec: ConditionSpec) -> st.SearchStrategy[JsonValue]:
+    own: st.SearchStrategy[JsonValue] = (
+        numeric_condition() if spec.shape == "numeric" else token_condition(spec)
+    )
+    return or_status(own, shapes.Conditions, spec.name)
+
+
+CONDITIONS = {name: condition(spec) for name, spec in VOCABULARY.conditions.items()}
+
+
+@st.composite
+def conditions(draw: Draw, size: Size) -> JsonObject:
+    """Some of the registered conditions; and, in one draw in four, a name the reader does not know, holding
+    anything."""
+    chosen = draw(st.lists(st.sampled_from(sorted(CONDITIONS)), unique=True, max_size=4))
+    found: JsonObject = {name: draw(CONDITIONS[name]) for name in chosen}
+    if draw(st.integers(0, 3)) == 0:
+        found["x_" + draw(st.text("abcdefgh", min_size=3, max_size=6))] = draw(records.trees(size).values)
+    return found
+
+
+@st.composite
+def fact_shape(draw: Draw, name: str) -> JsonObject:
+    """A specimen fact of `name` in its row's shape (`provenance.md` section 6.2)."""
+    tokens_of = VOCABULARY.facts[name].tokens
+    shape: JsonObject
+    if name == "species":
+        shape = {"ncbi_taxon": draw(COUNTS), "label": draw(TEXT)}
+    elif name == "anatomical_site":
+        shape = {"uberon": draw(TEXT), "label": draw(TEXT)}
+    elif name in ("post_mortem_interval", "donor_age"):
+        # The row fixes the unit, `"unit": "s"`; a status object may stand for any unit.
+        fixed = st.just(VOCABULARY.facts[name].fixed["unit"])
+        own = shapes.PostMortemInterval if name == "post_mortem_interval" else shapes.DonorAge
+        shape = {"unit": draw(st.one_of(fixed, status_objects(own, "unit")))}
+        if name == "post_mortem_interval" or draw(st.booleans()):
+            shape["value"] = draw(DOUBLES)
+        else:
+            shape["range"] = draw(in_order())
+    elif name == "disease_and_treatment_state":
+        # `text` names the disease or the treatment, so it is there exactly beside those two.
+        shape = {"token": draw(st.sampled_from(tokens_of))}
+        if shape["token"] in ("diseased", "treated"):
+            shape["text"] = draw(TEXT)
+    elif tokens_of:
+        shape = {"token": draw(st.sampled_from(tokens_of))}
+        if shape["token"] == "other" or draw(st.booleans()):
+            shape["text"] = draw(TEXT)
+        if name in ("tissue_state", "supply_form"):
+            shape.pop("text", None)
+    else:
+        shape = {"text": draw(TEXT)}
+    # A row that fixes the basis (`mimics`, `"basis": "stated"`) leaves nothing to infer from.
+    fixed_basis = VOCABULARY.facts[name].fixed.get("basis")
+    return {**shape, **({"basis": fixed_basis} if fixed_basis else draw(based()))}
+
+
+FACTS = {name: or_status(fact_shape(name), shapes.Specimen, name) for name in VOCABULARY.facts}
+
+
+@st.composite
+def specimen(draw: Draw) -> JsonObject:
+    chosen = draw(st.lists(st.sampled_from(sorted(FACTS)), unique=True, max_size=4))
+    return {name: draw(FACTS[name]) for name in chosen}
+
+
+UNCERTAINTY_STATUSES = {
+    name: status_objects(shapes.Uncertainty, name)
+    for name in ("coverage_factor", "coverage_probability", "dof")
+}
+UNCERTAINTY_PRECISION = or_status(tokens("precision_conditions"), shapes.Uncertainty, "precision_conditions")
+
+
+@st.composite
+def uncertainty(draw: Draw) -> JsonObject:
+    """A relative or expanded uncertainty: at least one of its coverage factor and probability a number,
+    `dof` a number exactly under `student_t`, and `precision_conditions` exactly where it represents a
+    measurement."""
+    distribution = draw(st.sampled_from(["normal", "student_t", "unstated"]))
+    covered = draw(st.sampled_from(["factor", "probability", "both"]))
+    represents = draw(st.sampled_from(["measurement", "estimate", "unstated"]))
+    factor = UNCERTAINTY_STATUSES["coverage_factor"] if covered == "probability" else POSITIVE
+    probability = UNCERTAINTY_STATUSES["coverage_probability"] if covered == "factor" else PROBABILITIES
+    entry: JsonObject = {
+        "value": draw(NOT_NEGATIVE),
+        "coverage_factor": draw(factor),
+        "coverage_probability": draw(probability),
+        "distribution": {"status": "unstated"} if distribution == "unstated" else distribution,
+        "dof": draw(POSITIVE if distribution == "student_t" else UNCERTAINTY_STATUSES["dof"]),
+        "basis": draw(tokens("uncertainty_basis")),
+        "represents": {"status": "unstated"} if represents == "unstated" else represents,
+    }
+    if represents == "measurement":
+        entry["precision_conditions"] = draw(UNCERTAINTY_PRECISION)
+    return entry
+
+
+REPRESENTS = ("population", "estimate", "measurement", "across_sources", "unstated", "not_applicable")
+
+
+def population_level(level: str, within: JsonValue) -> JsonObject:
+    return {"level": level, "within": within}
+
+
+LEVELS = st.builds(
+    population_level, tokens("level"), or_status(tokens("level"), shapes.PopulationLevel, "within")
+)
+OWN_BLOCK_MEMBERS: dict[str, st.SearchStrategy[JsonValue]] = {
+    "central": tokens("central"),
+    "n_specimens": COUNTS,
+    "n_donors": COUNTS,
+    "mean": DOUBLES,
+    "sd": NOT_NEGATIVE,
+    "min": DOUBLES,
+    "max": DOUBLES,
+    "distribution": tokens("statistics_distribution"),
+    "basis": tokens("statistics_basis"),
+    "relative_uncertainty": uncertainty(),
+    "expanded_uncertainty": uncertainty(),
+    "population_level": LEVELS,
+    "n_sources": COUNTS,
+    "precision_conditions": tokens("precision_conditions"),
+}
+BLOCK_MEMBERS = {
+    name: or_status(own, shapes.StatisticsBlock, name) for name, own in OWN_BLOCK_MEMBERS.items()
+}
+CONDITIONAL = {
+    "population": "population_level",
+    "across_sources": "n_sources",
+    "measurement": "precision_conditions",
+}
+
+
+@st.composite
+def statistics(draw: Draw) -> JsonObject:
+    """A statistics block, each member its row's shape or a status object, with the conditional member its
+    `represents` calls for."""
+    represents = draw(st.sampled_from(REPRESENTS))
+    block: JsonObject = {
+        name: draw(strategy) for name, strategy in BLOCK_MEMBERS.items() if name not in CONDITIONAL.values()
+    }
+    block["represents"] = (
+        {"status": represents} if represents in ("unstated", "not_applicable") else represents
+    )
+    block["dispersion"] = draw(tokens("dispersion"))
+    if represents in CONDITIONAL:
+        block[CONDITIONAL[represents]] = draw(BLOCK_MEMBERS[CONDITIONAL[represents]])
+    return block
+
+
+PIN = "sha256:" + "0" * 64
+
+
+@st.composite
+def derivation(draw: Draw) -> JsonObject:
+    inputs = [
+        {"record": {"id": draw(TEXT), "version": draw(TEXT), "content_hash": PIN}, "field": draw(TEXT)}
+        for _ in range(draw(st.integers(1, 3)))
+    ]
+    specimens = [
+        {"input": float(draw(st.integers(0, len(inputs) - 1))), "specimen": draw(specimen())}
+        for _ in range(draw(st.integers(0, 2)))
+    ]
+    entry: JsonObject = {
+        "method": draw(TEXT),
+        "inputs": inputs,  # type: ignore[dict-item]  # a list of objects is a JSON value
+        "assumptions": draw(st.lists(TEXT, max_size=2)),  # type: ignore[dict-item]
+        "input_specimens": specimens,  # type: ignore[dict-item]
+    }
+    if draw(st.booleans()):
+        entry["mixed_conditions"] = draw(st.booleans())
+    return entry
+
+
+@st.composite
+def provenance(draw: Draw, size: Size) -> JsonObject:
+    """`origin`, `source` where it requires one and in one other draw in two, `derivation` where derived; and
+    anything at all in the members a read does not check."""
+    anything = records.trees(size).values
+    origin = draw(tokens("origin"))
+    entry: JsonObject = {
+        "origin": origin,
+        "extraction": draw(anything),
+        "assistance": draw(anything),
+        "review": draw(anything),
+    }
+    if origin == "measured_by_source" or draw(st.booleans()):
+        entry["source"] = {"key": draw(TEXT), "document": draw(anything), "locator": draw(anything)}
+    if origin == "derived":
+        entry["derivation"] = draw(derivation())
+    return entry
+
+
+class Example(NamedTuple):
+    record: JsonObject
+    field: str  # the field read, `<section>.<field>`
+    faults: tuple[str, ...]  # the catalogue's faults, by name
+    expected: frozenset[str]  # the codes step 8 must give; none where it must pass the field
+
+
+@st.composite
+def fields(draw: Draw, size: Size) -> tuple[str, JsonObject]:
+    """A registered field's name and a constant of it that passes step 8."""
+    name = draw(st.sampled_from(CONSTANT_FIELDS))
+    spec = VOCABULARY.fields[name]
+    field: JsonObject = {
+        "form": "constant",
+        "unit": spec.unit if draw(st.integers(0, 3)) else draw(UNITS),
+        "value": draw(DOUBLES),
+        "conditions": draw(conditions(size)),
+        "statistics": draw(statistics()),
+        "provenance": draw(provenance(size)),
+    }
+    if draw(st.booleans()):
+        field["specimen"] = draw(specimen())
+    if spec.label is not None and draw(st.booleans()):
+        field["label"] = spec.label
+    if draw(st.integers(0, 3)) == 0:
+        field["fit"] = draw(records.trees(size).values)
+    return name, field
+
+
+@st.composite
+def valid_records(draw: Draw, size: Size = SIZE) -> Example:
+    name, field = draw(fields(size))
+    section, _, field_name = name.partition(".")
+    members: JsonObject = {"fields": {field_name: field}}
+    if draw(st.booleans()):
+        members["specimen"] = draw(specimen())
+    record: JsonObject = {
+        "schema_version": "0.1.0",
+        "record_type": "material",
+        "id": "conformance/field_fixture",
+        "version": "1.0.0",
+        "name": draw(TEXT),
+        "licence": {"values": "CC0-1.0", "evidence": "excluded"},
+        "content_hash": PIN,
+        "body": {"sections": {section: members}},
+    }
+    return Example(record, name, (), frozenset())
+
+
+def pinned(record: JsonObject) -> JsonObject:
+    """`record` with its content hash recomputed, so that a request pins it."""
+    return {**record, "content_hash": content_hash(record)}
+
+
+# Where a fault or an addition goes.
+
+
+def body(record: JsonObject) -> JsonObject:
+    found = record["body"]
+    assert isinstance(found, dict)
+    return found
+
+
+def section_of(example: Example) -> JsonObject:
+    sections = body(example.record)["sections"]
+    assert isinstance(sections, dict)
+    found = sections[example.field.partition(".")[0]]
+    assert isinstance(found, dict)
+    return found
+
+
+def field_of(example: Example) -> JsonObject:
+    found = section_of(example)["fields"]
+    assert isinstance(found, dict)
+    field = found[example.field.partition(".")[2]]
+    assert isinstance(field, dict)
+    return field
+
+
+def member(value: JsonObject, name: str) -> JsonObject:
+    found = value[name]
+    assert isinstance(found, dict)
+    return found
+
+
+# One slip, by each of `record_format.md` section 10's kinds.
+
+SLIPS = ("inserted", "deleted", "substituted", "swapped", "plural", "underscore")
+
+
+def slipped(name: str, kind: str) -> str:
+    """`name` changed by one slip of `kind`; one that would give back `name` itself is made by a character
+    inserted."""
+    if kind == "deleted" and len(name) > 1:
+        return name[:-1]
+    if kind == "substituted":
+        return name[:-1] + ("q" if name[-1] != "q" else "z")
+    if kind == "swapped" and len(name) > 1 and name[-1] != name[-2]:
+        return name[:-2] + name[-1] + name[-2]
+    if kind == "plural":
+        return name[:-1] + "ies" if name.endswith("y") else name + "s"
+    if kind == "underscore":
+        return name.replace("_", "", 1) if "_" in name else name[:1] + "_" + name[1:]
+    return name + "q"
+
+
+# The fault catalogue. A fault changes the record in place and gives the codes its rule gives: one change at
+# one place, its region, so that two faults of two regions never meet.
+
+INVALID = frozenset({"form_invalid"})
+UNKNOWN = frozenset({"unknown_token"})
+NOTHING = frozenset[str]()
+Fault = Callable[[Draw, Example], frozenset[str]]
+
+
+def setting(
+    place: Callable[[Example], JsonObject], name: str, value: JsonValue, codes: frozenset[str]
+) -> Fault:
+    """A fault that sets `name` in the object `place` finds to `value`."""
+
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        place(example)[name] = copy.deepcopy(value)
+        return codes
+
+    return fault
+
+
+def block(example: Example) -> JsonObject:
+    return member(field_of(example), "statistics")
+
+
+def provenance_of(example: Example) -> JsonObject:
+    return member(field_of(example), "provenance")
+
+
+def conditions_of(example: Example) -> JsonObject:
+    return member(field_of(example), "conditions")
+
+
+def specimen_of(example: Example) -> JsonObject:
+    field = field_of(example)
+    field.setdefault("specimen", {})
+    return member(field, "specimen")
+
+
+def section_specimen_of(example: Example) -> JsonObject:
+    section = section_of(example)
+    section.setdefault("specimen", {})
+    return member(section, "specimen")
+
+
+def renaming(place: Callable[[Example], JsonObject], kind: str, among: tuple[str, ...] = ()) -> Fault:
+    """A member of the object `place` finds, of `among` where given, renamed by one slip of `kind`: a member
+    no other region's fault reaches into."""
+
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        found = place(example)
+        name = draw(st.sampled_from(sorted(name for name in found if name in (among or found))))
+        new = slipped(name, kind)
+        found[new if new not in found else name + "q"] = found.pop(name)
+        return INVALID
+
+    return fault
+
+
+def removing(place: Callable[[Example], JsonObject], names: tuple[str, ...]) -> Fault:
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        place(example).pop(draw(st.sampled_from(names)), None)
+        return INVALID
+
+    return fault
+
+
+def nulling(place: Callable[[Example], JsonObject], names: tuple[str, ...]) -> Fault:
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        place(example)[draw(st.sampled_from(names))] = None
+        return INVALID
+
+    return fault
+
+
+def uncertainty_fault(change: JsonObject, codes: frozenset[str] = INVALID) -> Fault:
+    """A relative uncertainty valid but for `change`."""
+    base: JsonObject = {
+        "value": 0.02,
+        "coverage_factor": 2.0,
+        "coverage_probability": {"status": "unstated"},
+        "distribution": "normal",
+        "dof": {"status": "not_applicable"},
+        "basis": "reported_uncertainty",
+        "represents": "estimate",
+    }
+    return setting(block, "relative_uncertainty", {**base, **change}, codes)
+
+
+def represents_without(member_name: str, represents: str) -> Fault:
+    """`represents` set to call for `member_name`, which is taken away, or not to, and the member set."""
+
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        found = block(example)
+        for conditional in ("population_level", "n_sources", "precision_conditions"):
+            found.pop(conditional, None)
+        found["represents"] = represents
+        if represents != {"population_level": "population", "n_sources": "across_sources"}.get(
+            member_name, "measurement"
+        ):
+            found[member_name] = {"status": "unstated"}
+        return INVALID
+
+    return fault
+
+
+def represents_missing(draw: Draw, example: Example) -> frozenset[str]:
+    """No `represents`, nor any member it would call for: `represents` is required on its own account."""
+    found = block(example)
+    for name in ("represents", "population_level", "n_sources", "precision_conditions"):
+        found.pop(name, None)
+    return INVALID
+
+
+def record_slip(where: str) -> Fault:
+    """A member one slip from one named in the record's envelope, body, section names, section members or a
+    section's field names, beside the named one: it refuses every field read from the record or section."""
+
+    def fault(draw: Draw, example: Example) -> frozenset[str]:
+        section, _, field_name = example.field.partition(".")
+        kind = draw(st.sampled_from(SLIPS))
+        place, name = {
+            "envelope": (example.record, draw(st.sampled_from(["card", "name", "licence", "body"]))),
+            "body": (body(example.record), "extensions"),
+            "sections": (member(body(example.record), "sections"), section),
+            "section": (section_of(example), draw(st.sampled_from(["specimen", "fields"]))),
+            "fields": (member(section_of(example), "fields"), field_name),
+        }[where]
+        new = slipped(name, kind)
+        place[new if new not in place else name + "q"] = {}
+        return INVALID
+
+    return fault
+
+
+def label_of_another_field(draw: Draw, example: Example) -> frozenset[str]:
+    """A label the reader knows that the field's row does not name."""
+    own = VOCABULARY.fields[example.field].label
+    field_of(example)["label"] = draw(
+        st.sampled_from([label for label in VOCABULARY.token_lists["label"] if label != own])
+    )
+    return INVALID
+
+
+STATISTICS_REQUIRED = (
+    "central",
+    "n_specimens",
+    "n_donors",
+    "mean",
+    "sd",
+    "min",
+    "max",
+    "distribution",
+    "basis",
+    "represents",
+    "dispersion",
+    "relative_uncertainty",
+    "expanded_uncertainty",
+)
+TEMPERATURE: JsonObject = {"value": 310.15, "unit": "K", "basis": "stated"}
+
+# By region: each fault's name, and the fault.
+CATALOGUE: dict[str, dict[str, Fault]] = {
+    "statistics_tokens": {
+        "central_unknown": setting(block, "central", "mode", UNKNOWN),
+        "basis_of_a_condition": setting(block, "basis", "stated", INVALID),
+        "distribution_of_an_uncertainty": setting(block, "distribution", "student_t", INVALID),
+        "distribution_of_a_declaration": setting(block, "distribution", "uniform", INVALID),
+        "distribution_unknown": setting(block, "distribution", "weibull", UNKNOWN),
+        "basis_of_another_member": setting(block, "basis", "reported_uncertainty", INVALID),
+        "dispersion_status": setting(block, "dispersion", {"status": "unstated"}, INVALID),
+    },
+    "statistics_numbers": {
+        "sd_negative": setting(block, "sd", -0.5, INVALID),
+        "count_not_whole": setting(block, "n_specimens", 12.5, INVALID),
+        "count_negative": setting(block, "n_donors", -1.0, INVALID),
+    },
+    "statistics_statuses": {
+        "status_unknown": setting(block, "sd", {"status": "pending"}, UNKNOWN),
+        "status_not_allowed": setting(block, "central", {"status": "unstated"}, INVALID),
+        "status_beside_a_member": setting(block, "mean", {"status": "none", "note": "x"}, INVALID),
+        "status_not_a_string": setting(block, "n_donors", {"status": 3.0}, INVALID),
+        "reason_not_a_string": setting(block, "min", {"status": "unstated", "reason": 5.0}, INVALID),
+        "uncertainty_status_beside_a_member": setting(
+            block, "expanded_uncertainty", {"status": "none", "value": 0.1}, INVALID
+        ),
+    },
+    "statistics_members": {
+        "member_missing": removing(block, STATISTICS_REQUIRED),
+        "member_null": nulling(block, STATISTICS_REQUIRED),
+        "represents_missing": represents_missing,
+        "population_level_missing": represents_without("population_level", "population"),
+        "population_level_elsewhere": represents_without("population_level", "estimate"),
+        "n_sources_elsewhere": represents_without("n_sources", "population"),
+        "precision_conditions_missing": represents_without("precision_conditions", "measurement"),
+    },
+    "uncertainty": {
+        "dof_under_normal": uncertainty_fault({"dof": 8.0}),
+        "dof_status_under_student_t": uncertainty_fault({"distribution": "student_t"}),
+        "no_coverage_number": uncertainty_fault({"coverage_factor": {"status": "unstated"}}),
+        "coverage_probability_above_one": uncertainty_fault({"coverage_probability": 1.5}),
+        "coverage_factor_zero": uncertainty_fault({"coverage_factor": 0.0}),
+        "uncertainty_value_negative": uncertainty_fault({"value": -0.02}),
+        "uncertainty_represents_of_the_block": uncertainty_fault({"represents": "population"}),
+        "uncertainty_represents_unknown": uncertainty_fault({"represents": "sample"}, UNKNOWN),
+        "uncertainty_precision_missing": uncertainty_fault({"represents": "measurement"}),
+    },
+    "statistics_slips": {
+        **{f"slip_{kind}": renaming(block, kind) for kind in SLIPS},
+    },
+    "conditions": {
+        "range_reversed": setting(
+            conditions_of,
+            "temperature",
+            {"range": [312.0, 310.0], "unit": "K", **{"basis": "stated"}},
+            INVALID,
+        ),
+        "range_reversed_on_shear_rate": setting(
+            conditions_of, "shear_rate", {"range": [1000.0, 10.0], "unit": "1/s", "basis": "stated"}, INVALID
+        ),
+        "value_and_range": setting(
+            conditions_of, "temperature", {**TEMPERATURE, "range": [1.0, 2.0]}, INVALID
+        ),
+        "token_of_another_row": setting(
+            conditions_of, "density_kind", {"token": "tube", "basis": "stated"}, INVALID
+        ),
+        "token_unknown": setting(
+            conditions_of, "density_kind", {"token": "porous", "basis": "stated"}, UNKNOWN
+        ),
+        "plus_minus_empty": setting(conditions_of, "temperature", {**TEMPERATURE, "plus_minus": []}, INVALID),
+        "plus_minus_two_bounds": setting(
+            conditions_of,
+            "temperature",
+            {
+                **TEMPERATURE,
+                "plus_minus": [
+                    {"stated_as": "bound", "value": 0.5, "unit": "K"},
+                    {"stated_as": "bound", "value": 0.2, "unit": "K"},
+                ],
+            },
+            INVALID,
+        ),
+        "plus_minus_unstated_beside_sd": setting(
+            conditions_of,
+            "temperature",
+            {
+                **TEMPERATURE,
+                "plus_minus": [
+                    {"stated_as": {"status": "unstated"}, "value": 0.5, "unit": "K"},
+                    {"stated_as": "sd", "value": 0.1, "unit": "K"},
+                ],
+            },
+            INVALID,
+        ),
+        "plus_minus_negative": setting(
+            conditions_of,
+            "temperature",
+            {**TEMPERATURE, "plus_minus": [{"stated_as": "bound", "value": -0.5, "unit": "K"}]},
+            INVALID,
+        ),
+        "set_or_measured_null": setting(
+            conditions_of, "temperature", {**TEMPERATURE, "set_or_measured": None}, INVALID
+        ),
+        "set_or_measured_unknown": setting(
+            conditions_of, "temperature", {**TEMPERATURE, "set_or_measured": "nominal"}, UNKNOWN
+        ),
+        "inferred_from_missing": setting(
+            conditions_of, "temperature", {**TEMPERATURE, "basis": "inferred"}, INVALID
+        ),
+        "status_beside_unit": setting(
+            conditions_of, "shear_rate", {"status": "unstated", "unit": "1/s"}, INVALID
+        ),
+        "unit_null": setting(conditions_of, "temperature", {**TEMPERATURE, "unit": None}, INVALID),
+        "plus_minus_slip": setting(conditions_of, "temperature", {**TEMPERATURE, "plus_minsu": []}, INVALID),
+        "name_unknown": setting(conditions_of, "temprature", {"value": "anything"}, NOTHING),
+    },
+    "specimen": {
+        "fact_not_its_shape": setting(specimen_of, "preparation", "sliced", INVALID),
+        "fact_token_unknown": setting(
+            specimen_of, "tissue_state", {"token": "cultured", "basis": "stated"}, UNKNOWN
+        ),
+        "fact_token_of_another_fact": setting(
+            specimen_of, "tissue_state", {"token": "stock", "basis": "stated"}, INVALID
+        ),
+        "fact_range_reversed": setting(
+            specimen_of, "donor_age", {"range": [3.0e8, 1.0e8], "unit": "s", "basis": "stated"}, INVALID
+        ),
+        "fact_other_without_text": setting(
+            specimen_of, "preservation", {"token": "other", "basis": "stated"}, INVALID
+        ),
+        "fact_taxon_not_whole": setting(
+            specimen_of, "species", {"ncbi_taxon": 9606.5, "label": "x", "basis": "stated"}, INVALID
+        ),
+        "fact_name_slip": setting(
+            specimen_of, "tissue_stat", {"token": "in_vivo", "basis": "stated"}, INVALID
+        ),
+        "section_fact_not_its_shape": setting(section_specimen_of, "lot", "B-17", INVALID),
+        "section_fact_name_slip": setting(
+            section_specimen_of, "lots", {"text": "x", "basis": "stated"}, INVALID
+        ),
+        "specimen_null": setting(field_of, "specimen", None, INVALID),
+        "section_specimen_null": setting(section_of, "specimen", None, INVALID),
+        "fact_status_beside_its_token": setting(
+            specimen_of, "tissue_state", {"status": "unstated", "token": "in_vivo"}, INVALID
+        ),
+        "fact_text_beside_normal": setting(
+            specimen_of,
+            "disease_and_treatment_state",
+            {"token": "normal", "text": "x", "basis": "stated"},
+            INVALID,
+        ),
+        "fact_treated_without_text": setting(
+            specimen_of, "disease_and_treatment_state", {"token": "treated", "basis": "stated"}, INVALID
+        ),
+        "fact_unit_not_its_rows": setting(
+            specimen_of, "post_mortem_interval", {"value": 1.0, "unit": "min", "basis": "stated"}, INVALID
+        ),
+        "fact_basis_not_its_rows": setting(
+            specimen_of, "mimics", {"text": "x", "basis": "inferred", "inferred_from": "y"}, INVALID
+        ),
+    },
+    "provenance": {
+        "origin_unknown": setting(provenance_of, "origin", "estimated", UNKNOWN),
+        "origin_missing": removing(provenance_of, ("origin",)),
+        "source_key_not_a_string": setting(provenance_of, "source", {"key": 5.0}, INVALID),
+        "source_slip": setting(provenance_of, "sources", {"key": "x"}, INVALID),
+        "unchecked_member_broken": setting(provenance_of, "extraction", None, NOTHING),
+        "source_null": setting(provenance_of, "source", None, INVALID),
+    },
+    "field": {
+        "unit_null": setting(field_of, "unit", None, INVALID),
+        "unit_status_beside_a_member": setting(
+            field_of, "unit", {"status": "unstated", "note": "x"}, INVALID
+        ),
+        "value_withheld": setting(field_of, "value", {"status": "withheld"}, frozenset({"withheld"})),
+        "value_status_not_allowed": setting(field_of, "value", {"status": "unstated"}, INVALID),
+        "value_not_a_number": setting(field_of, "value", "0.000692", INVALID),
+        "label_unknown": setting(field_of, "label", "materica.fluid.bingham.v1", UNKNOWN),
+        "label_of_another_field": label_of_another_field,
+        "label_null": setting(field_of, "label", None, INVALID),
+        **{f"slip_{kind}": renaming(field_of, kind, ("form", "unit", "value")) for kind in SLIPS},
+    },
+    "record": {
+        "envelope_slip": record_slip("envelope"),
+        "body_slip": record_slip("body"),
+        "section_name_slip": record_slip("sections"),
+        "section_member_slip": record_slip("section"),
+        "field_name_slip": record_slip("fields"),
+    },
+}
+REGIONS = tuple(CATALOGUE)
+
+
+# The faults that give `unknown_token`, by region and name; every other fault gives `form_invalid`,
+# `withheld`, or nothing.
+TOKEN_FAULTS = tuple(
+    (region, name)
+    for region, faults in CATALOGUE.items()
+    for name in sorted(faults)
+    if name.endswith("unknown")
+)
+PASSING_FAULTS = {("conditions", "name_unknown"), ("provenance", "unchecked_member_broken")}
+
+
+def group(region: str) -> str:
+    """The part of the record a region's faults change: the statistics block's regions share one, so that two
+    faults of a draw never meet in it."""
+    return "statistics" if region.startswith("statistics") or region == "uncertainty" else region
+
+
+@st.composite
+def faulty_records(draw: Draw, size: Size = SIZE, faults: int | None = None) -> Example:
+    """A valid record with one fault of the catalogue; or, in one draw in four, two of two parts of the
+    record, half of those a token fault beside another, so that the two give two codes."""
+    example = draw(valid_records(size))
+    mode = draw(st.sampled_from(["one", "one", "one", "two", "two_codes", "one", "one", "one"]))
+    if faults is not None:
+        mode = "one" if faults == 1 else "two"
+    if mode == "one":
+        region = draw(st.sampled_from(REGIONS))
+        chosen = [(region, draw(st.sampled_from(sorted(CATALOGUE[region]))))]
+    else:
+        first = draw(st.sampled_from(TOKEN_FAULTS)) if mode == "two_codes" else None
+        if first is None:
+            region = draw(st.sampled_from(REGIONS))
+            first = (region, draw(st.sampled_from(sorted(CATALOGUE[region]))))
+        others = [
+            (region, name)
+            for region, faults_of in CATALOGUE.items()
+            if group(region) != group(first[0])
+            for name in sorted(faults_of)
+            if mode == "two" or ((region, name) not in TOKEN_FAULTS and (region, name) not in PASSING_FAULTS)
+        ]
+        chosen = [first, draw(st.sampled_from(others))]
+    faulty = example._replace(record=copy.deepcopy(example.record))
+    expected: frozenset[str] = NOTHING
+    for region, name in chosen:
+        expected |= CATALOGUE[region][name](draw, faulty)
+    return faulty._replace(faults=tuple(f"{region}.{name}" for region, name in chosen), expected=expected)

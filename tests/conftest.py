@@ -53,6 +53,8 @@ SHARDS = {
         "test_version_properties",
         "test_read_properties",
         "test_record_mutants",
+        "test_value_field_properties",
+        "test_value_field_mutants",
     ),
     "writer": ("test_writer_properties", "test_writer_mutants"),
 }

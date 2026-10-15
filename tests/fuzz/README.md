@@ -9,7 +9,7 @@ collect them. Atheris ships no types, so `typings/atheris/` holds stubs for the 
 |---|---|---|
 | `jsonio_bytes.py` | raw bytes into `jsonio.parse`, from a seed corpus of every conformance input and with `json.dict`, JSON's tokens and the escapes and bytes `record_format.md` section 1 item 6 turns on | `parse` raises; or it disagrees with the reference reader (`tests/conformance/reference_reader.py`), the standard library's json with hooks that refuse exactly the faults the item lists: a value it accepts differs, numbers bit for bit, or it refuses what the reference accepts, or the reverse |
 | `properties.py` | the JSON properties of `tests/property/` (the reader, RFC 8785, the hash), through `fuzz_one_input`, in-process; the first byte picks the property | a property fails. The failure goes into the example database, and `pytest tests/property`, under the same `MATERICA_HYPOTHESIS_PROFILE`, replays it first and shrinks it |
-| `record_properties.py` | the record properties of `tests/property/` (the envelope checks, versions, the read's laws) in the same way: structure-aware, since their strategies build records, stores and requests from the bytes Atheris gives | as above |
+| `record_properties.py` | the record properties of `tests/property/` (the envelope checks, versions, the read's laws, step 8's laws) in the same way: structure-aware, since their strategies build records, stores and requests from the bytes Atheris gives | as above |
 
 ## Running
 
