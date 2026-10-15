@@ -475,6 +475,173 @@ def test_the_specifications_example_is_a_valid_shape(name: str, after: str, defi
     assert validator(f"record.writer.json#/$defs/{definition}")(example) == []
 
 
+# The rules that join members of different objects (`provenance.md` sections 2, 3 and 7). Each case is a
+# field that meets the rule's condition without the member it requires, the member that completes it, and the
+# field again with the condition not met and the member still absent.
+POPULATION: JsonValue = {
+    "central": "mean",
+    "n_specimens": 12,
+    "n_donors": 4,
+    "mean": 1050.0,
+    "sd": 12.0,
+    "min": 1031.0,
+    "max": 1072.0,
+    "distribution": {"status": "unstated"},
+    "basis": "reported_sd",
+    "represents": "population",
+    "population_level": {"level": "specimen", "within": {"status": "none"}},
+    "dispersion": "reported",
+    "relative_uncertainty": {"status": "none"},
+    "expanded_uncertainty": {"status": "none"},
+}
+ACROSS_SOURCES: JsonValue = {
+    **mapping(copy.deepcopy(POPULATION)),
+    "basis": "across_sources",
+    "represents": "across_sources",
+    "n_sources": 3,
+}
+del mapping(ACROSS_SOURCES)["population_level"]
+PROVENANCE: JsonValue = {
+    "origin": "measured_by_contributor",
+    "extraction": {"method": "own_measurement"},
+    "assistance": {"status": "none"},
+    "review": {"status": "not_checked"},
+}
+CONSTANT: JsonValue = {
+    "form": "constant",
+    "unit": "kg/m3",
+    "value": 1050.0,
+    "conditions": {"temperature": {"value": 310.15, "unit": "K", "basis": "stated"}},
+    "statistics": POPULATION,
+    "provenance": PROVENANCE,
+}
+INTERVAL: JsonValue = {
+    **{member: value for member, value in mapping(CONSTANT).items() if member != "value"},
+    "form": "interval",
+    "interval": {"lower": 1000.0, "upper": 1100.0, "basis": "reported_range"},
+}
+DERIVATION: JsonValue = {
+    "method": "density_from_mass_and_volume",
+    "inputs": [
+        {
+            "record": {"id": "example/MAT-1", "version": "1.0.0", "content_hash": "sha256:" + "0" * 64},
+            "field": "bulk.density",
+        }
+    ],
+    "assumptions": [],
+    "input_specimens": [],
+}
+WITHHELD: JsonValue = {"status": "withheld"}
+REPORT = ("endpoint", "standard", "contact_category", "contact_duration", "material_form", "processing")
+
+
+def edited(base: JsonValue, *edits: tuple[tuple[str, ...], JsonValue]) -> JsonValue:
+    """A copy of `base` with each value set at its path of names."""
+    found = copy.deepcopy(base)
+    for path, value in edits:
+        *inner, last = path
+        node = found
+        for name in inner:
+            node = mapping(node)[name]
+        mapping(node)[last] = value
+    return found
+
+
+def evidence(entry: JsonValue) -> JsonValue:
+    return {
+        "form": "evidence",
+        "unit": {"status": "not_applicable"},
+        "evidence": [entry],
+        "conditions": {},
+        "provenance": PROVENANCE,
+    }
+
+
+WITHHELD_ENTRY: JsonValue = {
+    **{member: WITHHELD for member in (*REPORT, "reported_result")},
+    "provenance": PROVENANCE,
+}
+REPORTED_ENTRY: JsonValue = {
+    **{member: {"status": "unstated"} for member in REPORT},
+    "standard": {"designation": "ISO 10993-5", "year": 2009},
+    "reported_result": "non-cytotoxic",
+    "provenance": PROVENANCE,
+}
+JOINED: list[tuple[str, JsonValue, tuple[tuple[str, ...], JsonValue], JsonValue]] = [
+    (
+        "derivation_extracted_by_derivation",
+        edited(CONSTANT, (("provenance", "extraction", "method"), "derivation")),
+        (("provenance", "derivation"), DERIVATION),
+        CONSTANT,
+    ),
+    (
+        "formulation_extracted_by_formulation",
+        edited(CONSTANT, (("provenance", "extraction", "method"), "formulation")),
+        (("provenance", "formulation"), {"name": "IAPWS-95", "version": "2018"}),
+        CONSTANT,
+    ),
+    (
+        "fit_extracted_by_fit",
+        edited(CONSTANT, (("provenance", "extraction", "method"), "fit")),
+        (("fit",), {"procedure": "least squares"}),
+        CONSTANT,
+    ),
+    (
+        "search_across_sources",
+        edited(CONSTANT, (("statistics",), ACROSS_SOURCES)),
+        (("provenance", "search"), {"inputs": "primary"}),
+        CONSTANT,
+    ),
+    (
+        "recipe_for_a_withheld_value",
+        edited(CONSTANT, (("value",), WITHHELD), (("statistics",), WITHHELD)),
+        (("provenance", "recipe"), {"steps": "Table 2, row liver"}),
+        CONSTANT,
+    ),
+    (
+        "recipe_for_a_withheld_interval",
+        edited(INTERVAL, (("interval",), WITHHELD), (("statistics",), WITHHELD)),
+        (("provenance", "recipe"), {"steps": "Table 2, row liver"}),
+        INTERVAL,
+    ),
+    (
+        "recipe_for_a_withheld_evidence_entry",
+        evidence(WITHHELD_ENTRY),
+        (("evidence", "0", "provenance", "recipe"), {"steps": "Table 4"}),
+        evidence(REPORTED_ENTRY),
+    ),
+]
+
+
+def completed(field: JsonValue, member: tuple[tuple[str, ...], JsonValue]) -> JsonValue:
+    (path, value) = member
+    found = copy.deepcopy(field)
+    node = found
+    for name in path[:-1]:
+        node = listing(node)[int(name)] if name.isdigit() else mapping(node)[name]
+    mapping(node)[path[-1]] = value
+    return found
+
+
+@pytest.mark.parametrize(
+    ("field", "member", "unmet"),
+    [(field, member, unmet) for _, field, member, unmet in JOINED],
+    ids=[case[0] for case in JOINED],
+)
+def test_a_rule_across_objects_requires_its_member_where_its_condition_holds(
+    field: JsonValue, member: tuple[tuple[str, ...], JsonValue], unmet: JsonValue
+) -> None:
+    """The writer refuses the field without the member and takes it with it; the control is the field with
+    the condition not met, taken without the member. A read applies none of these rules (step 8 checks
+    neither `extraction`, `search`, `recipe` nor `fit`), so the reader's `$defs` take the field either way."""
+    writer = validator("record.writer.json#/$defs/value_field")
+    reader = validator("record.reader.json#/$defs/value_field")
+    assert writer(field) != []
+    assert writer(completed(field, member)) == []
+    assert writer(unmet) == []
+    assert reader(field) == []
+
+
 # The members a read does not check, each with the text that says so: `read_side_contract.md` section 3, step
 # 8, and `provenance.md` section 2 item 6.
 UNCHECKED = {
