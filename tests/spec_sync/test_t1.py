@@ -225,6 +225,7 @@ EXCEPTIONS: dict[str, Kind] = {
         "members they do not name",
         {
             2: (
+                "PR-042.broken_marker_in_value_only",
                 "PR-042.broken_withheld_marker",
                 "PR-110.condition_status_beside_basis",
                 "PR-110.condition_status_beside_unit",

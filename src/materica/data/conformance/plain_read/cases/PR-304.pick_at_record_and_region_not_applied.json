@@ -1,0 +1,235 @@
+{
+  "case": "PR-304",
+  "variant": "pick_at_record_and_region_not_applied",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_alternatives_outside_met_unstated.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/density_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:5daade187d37d7c417fbefa3d6fb08c9bffa9e5242d2a6c5144c5c0a485f74ae"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.0,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "pick",
+        "record": {
+          "id": "conformance/density_alternatives_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:5daade187d37d7c417fbefa3d6fb08c9bffa9e5242d2a6c5144c5c0a485f74ae"
+        },
+        "field": "bulk.density",
+        "index": 1,
+        "reason": "conformance fixture: an illustrative reason",
+        "region": "conformance_fixture_region"
+      }
+    ]
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "no_pick"
+      },
+      {
+        "code": "condition_unstated",
+        "condition": "density_kind",
+        "alternative": 2
+      }
+    ],
+    "alternative_values": [
+      {
+        "alternative": 1,
+        "value": 993.5,
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "met",
+            "record": {
+              "value": 310.0,
+              "unit": "K",
+              "basis": "stated"
+            },
+            "operating": {
+              "value": 310.0,
+              "unit": "K"
+            }
+          },
+          {
+            "name": "density_kind",
+            "status": "met",
+            "record": {
+              "token": "apparent",
+              "basis": "stated"
+            }
+          }
+        ],
+        "specimen": {},
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      },
+      {
+        "alternative": 2,
+        "value": 993.0,
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "met",
+            "record": {
+              "value": 310.5,
+              "unit": "K",
+              "basis": "stated"
+            },
+            "operating": {
+              "value": 310.0,
+              "unit": "K"
+            }
+          },
+          {
+            "name": "density_kind",
+            "status": "unknown",
+            "record": {
+              "status": "unstated"
+            }
+          }
+        ],
+        "specimen": {},
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      }
+    ],
+    "unit": "kg/m3",
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

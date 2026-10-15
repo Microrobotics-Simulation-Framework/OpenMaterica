@@ -1,0 +1,98 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "overlay",
+  "id": "conformance/density_overlay_fixture",
+  "version": "1.0.0",
+  "name": "Density overlay (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:c136757bce5c7d380d3d6159f91ac8de119e82c0c2232363a34fe4739b6b8282",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "purpose": "fil_in",
+    "base": {
+      "id": "conformance/overlaid_material_fixture",
+      "version": "1.0.0",
+      "content_hash": "sha256:aca3f295927d7646d4620e6dc6f297f284d22b20612cd1505a712842e272b65d"
+    },
+    "scope": {
+      "consumer": "conformance"
+    },
+    "replaces": {
+      "bulk.density": {
+        "form": "constant",
+        "unit": "kg/m3",
+        "value": 995.0,
+        "conditions": {
+          "temperature": {
+            "value": 310.15,
+            "unit": "K",
+            "basis": "stated"
+          },
+          "density_kind": {
+            "token": "apparent",
+            "basis": "stated"
+          }
+        },
+        "statistics": {
+          "central": "stated",
+          "n_specimens": {
+            "status": "unstated"
+          },
+          "n_donors": {
+            "status": "not_applicable"
+          },
+          "mean": {
+            "status": "unstated"
+          },
+          "sd": {
+            "status": "unstated"
+          },
+          "min": {
+            "status": "unstated"
+          },
+          "max": {
+            "status": "unstated"
+          },
+          "distribution": {
+            "status": "unstated"
+          },
+          "basis": {
+            "status": "not_applicable"
+          },
+          "represents": {
+            "status": "unstated"
+          },
+          "dispersion": "not_reported",
+          "relative_uncertainty": {
+            "status": "none"
+          },
+          "expanded_uncertainty": {
+            "status": "none"
+          }
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: the overlay's own review, not yet done"
+          }
+        },
+        "specimen": {
+          "preparation": {
+            "text": "conformance fixture: the overlay's own preparation",
+            "basis": "stated"
+          }
+        }
+      }
+    }
+  }
+}

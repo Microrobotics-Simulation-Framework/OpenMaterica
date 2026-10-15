@@ -79,13 +79,18 @@ the members it holds.
   unless the arm says), S3's density table (x 280 to 340 K) and edge table (an edge at 273 K), and an
   interval, read at 310 K with a tolerance of 1 K, accepting `apparent`. A constant at 330 K, or of
   `density_kind` `matrix`, is set aside for its conditions; a table read outside its readable range, off every
-  edge, is set aside for its range unless an extrapolation would cover it; one read at an edge, or a constant
-  with the unit `kg.m-3`, refuses the field.
+  edge, is set aside for its range unless an extrapolation would cover it; one read at an edge, a constant
+  with the unit `kg.m-3`, and an alternative step 8 refuses (a form `spline`, a power law, a table holding
+  `points`, a parameter set) refuse the field. A list of one alternative is still alternatives: set aside, it
+  gives no `conditions`.
 - **Every outcome.** One alternative left, read as a field; `no_pick`, each remaining alternative's `unknown`
   reasons beside it; step 7's `want_mismatch`; every alternative set aside; and the refusal, which comes first
   and reports every alternative's reasons, the set-aside ones' and those that wait in an alternative that
   stays included. Two arms store the refusing alternative first and last, and two PR-308 arms the table with
-  no operating value, so a reader whose answer depends on the order of reading fails one of each pair.
+  no operating value, so a reader whose answer depends on the order of reading fails one of each pair. A
+  `no_pick` entry holds the labels step 12 gives its alternative, even one whose read ended at step 11, a
+  table read over an operating range (`PR-013.table_over_operating_range_keeps_labels`; S4-spec's default for
+  the maintainer).
 - **Picks.** Step 0 checks a pick's `index` (a number with no fractional part, not below zero; `1e0` and `-0`
   are written as such in their requests) and refuses two picks for one field. Step 7 then reads only the
   alternative a pick names, counting every stored alternative, or gives `pick_invalid`.
@@ -107,10 +112,12 @@ read is, a pick at an overlay, and fill-ins of a reference-only value.
   (`form_invalid`, at step 8); a fault in the base's section, its specimen included, or in the base field
   the overlay replaces, does not, and neither does a broken field the overlay replaces beside the one read.
 - **Withheld bases and fill-ins.** An overlay of any purpose but `fill_in` is refused (`withheld`) where it
-  replaces a field its base holds withheld: in a single value, in one alternative, in an evidence report,
-  with a marker that breaks its shape (`"reasn"`), or in `statistics` alone, whichever key of `replaces` holds
-  it. A `fill_in` overlay is read, labelled `user_extracted`, with its own review; its `evidence.document` is
-  compared with the base's `source.document`, and each of its alternatives with its own index.
+  replaces a field its base holds withheld: in a single value, in one alternative, in an evidence report, with
+  a marker that breaks its shape (`"reasn"`) in `value` and `statistics` or in `value` alone, in a `value`
+  beside a form token no reader knows (`constnt`), or in `statistics` alone, whichever key of `replaces` holds
+  it, and whatever the overlay's purpose, `fil_in` included. A `fill_in` overlay is read, labelled
+  `user_extracted`, with its own review; its `evidence.document` is compared with the base's
+  `source.document`, and each of its alternatives with its own index.
 
 ## The fixtures
 
@@ -138,13 +145,14 @@ All are illustrative, in the namespace `conformance`. See the conformance tree's
 | `shear_thinning*.json` | `conformance/shear_thinning_fixture`: the viscosity as a log-log table over shear rate, x [1, 10, 100, 1000] 1/s, and its variants |
 | `susceptibility*.json` | `conformance/susceptibility_table_fixture`: `magnetic.volume_susceptibility` as a table over flux density, x [0, 1, 2] T, or with an edge at 0 T, and over temperature with the linear label |
 | `water_with_broken_density_table.json` | the met water record beside a density table without `edges` |
-| `density_alternatives_*` | `conformance/density_alternatives_fixture`: `bulk.density` as `alternatives` of constants, tables and an interval, for step 7 and picks; `density_alternatives_empty.json`, `_entry_not_object`, `_entry_holds_alternatives` and `_beside_value` break the list itself |
-| `overlaid_material*.json` | `conformance/overlaid_material_fixture`: a material whose fluid section, its specimen naming a lot, holds the met water viscosity, and whose bulk section holds a density. Its variants break its envelope (`crad`), body (`fluids`) or section, or the viscosity the overlays replace, or hold a withheld value: a marker that breaks its shape, `statistics` alone, the density. `overlaid_material_alternatives.json` (`conformance/overlaid_alternatives_fixture`) holds the viscosity as two alternatives |
-| `viscosity_overlay*.json`, `viscosity_alternatives_overlay.json`, `second_viscosity_overlay.json`, `density_overlay.json`, `viscosity_and_density_overlay*.json` | `measurement` overlays on those materials, origin `measured_by_contributor`, each replaced field with its own specimen (a preparation that names no material) and review; `viscosity_alternatives_overlay.json` replaces the viscosity of `overlaid_material_alternatives.json` with two alternatives; their variants break the overlay's envelope, body, purpose (`fil_in`), base or a replaced field, replace a field the base lacks, are edited after pinning, or are written against schema 0.2.0 |
+| `density_alternatives_*` | `conformance/density_alternatives_fixture`: `bulk.density` as `alternatives` of constants, tables and an interval, for step 7 and picks, or one alternative alone (`_one_outside`); `_form_spline_`, `_power_law_`, `_table_points_` and `_parameter_set_and_met.json` hold an alternative step 8 refuses beside a met constant; `density_alternatives_empty.json`, `_entry_not_object`, `_entry_holds_alternatives` and `_beside_value` break the list itself |
+| `overlaid_material*.json` | `conformance/overlaid_material_fixture`: a material whose fluid section, its specimen naming a lot, holds the met water viscosity, and whose bulk section holds a density. Its variants break its envelope (`crad`), body (`fluids`) or section, or the viscosity the overlays replace, or hold a withheld value: a marker that breaks its shape (in `value` and `statistics`, or in `value` alone), a withheld `value` under the form token `constnt`, `statistics` alone, the density. `overlaid_material_alternatives.json` (`conformance/overlaid_alternatives_fixture`) holds the viscosity as two alternatives |
+| `viscosity_overlay*.json`, `viscosity_alternatives_overlay.json`, `second_viscosity_overlay.json`, `density_overlay*.json`, `density_table_overlay.json`, `viscosity_and_density_overlay*.json` | `measurement` overlays on those materials, origin `measured_by_contributor`, each replaced field with its own specimen (a preparation that names no material) and review; `viscosity_alternatives_overlay.json` replaces the viscosity of `overlaid_material_alternatives.json` with two alternatives, and `density_table_overlay.json` the density table of `density_table.json` with a table 1 kg/m3 higher; their variants break the overlay's envelope, body, purpose (`fil_in`), base or a replaced field, replace a field the base lacks (a whole section, or `bulk.elemental_composition` in the section it holds), are edited after pinning, or are written against schema 0.2.0 |
 | `fit_overlay*.json` | `conformance/fit_overlay_fixture`: a `fit` overlay, its scope naming a model and configuration, its viscosity of origin `fitted` with a `fit` record |
 | `reference_only*.json` | `conformance/reference_only_fixture`: a reference-only viscosity, its value and statistics withheld, origin `measured_by_source`, a recipe and the curator's review; or two alternatives, one of them withheld; the variants leave out the source's `document` or give its version as a number |
-| `fill_in*.json` | `conformance/fill_in_fixture`: `fill_in` overlays of the reference-only viscosity, in the user's namespace and licence (`LicenseRef-user-extracted`), with the user's review and the `evidence` of the user's copy; the variants name another document version or identifier, none, or an identifier that is a number, or hold alternatives |
+| `fill_in*.json` | `conformance/fill_in_fixture`: `fill_in` overlays of the reference-only viscosity, in the user's namespace and licence (`LicenseRef-user-extracted`), with the user's review and the `evidence` of the user's copy; the variants name another document version or identifier, none, or an identifier or a version that is a number, or hold alternatives |
 | `measured_evidence_overlay.json` | a `measurement` overlay replacing the biocompatibility evidence whose base holds one report withheld |
+| `viscosity_alternatives_table_and_constant.json` | `conformance/viscosity_alternatives_fixture`: `fluid.dynamic_viscosity` as two alternatives, S3's viscosity table and the met constant, both with the Newtonian label, read over an operating range |
 
 The inputs come in families, named by what they break:
 
@@ -173,7 +181,9 @@ The inputs come in families, named by what they break:
 - **PR-006's set-aside arms.** A document set aside at step 1 and a source that is simply not the target give
   the same answer. PR-328 holds the arms where setting aside changes the answer.
 - **A power-law alternative outside its range.** Step 7 sets one aside as it does a table, but no 0.1.0 field
-  takes a power law, and step 8 refuses one (`form_not_registered`, PR-036) before step 11.
+  takes a power law, and step 8 refuses one (`form_not_registered`, PR-036) before step 11. That refusal of
+  the field is tested (`PR-044.refused_form_not_registered`); only the set-aside rule for a power law's range
+  is unreachable.
 - **Answers the text leaves open.** No arm meets them; each waits for the text:
   - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
     is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
@@ -186,10 +196,21 @@ The inputs come in families, named by what they break:
 - **A power law** (PR-020, PR-021, TE-009): no 0.1.0 field takes one; its arms come with the acoustic section.
 - **Acceptances located at a region.** Regions belong to the scene suite. An acceptance located at an
   `interval` is checked and not applied (`PR-316.implied_at_interval`, `PR-338.nominal_at_interval`,
-  `PR-307.at_interval`, `PR-304.pick_at_interval_not_applied`).
-- **Two faults in one overlay.** Step 6 makes all its checks, but where an overlay's base differs from the
-  record in use, the text does not say which base "lacks" a key of `replaces`, nor whether an overlay already
-  refused for its base still conflicts with another. No arm puts two faults in one overlay.
+  `PR-307.at_interval`, `PR-304.pick_at_interval_not_applied`), and so is one located at the read's record and
+  an interval, a pick included (`PR-316.implied_at_record_and_interval`,
+  `PR-338.nominal_at_record_and_interval`, `PR-307.at_record_and_interval`,
+  `PR-304.pick_at_record_and_interval_not_applied`). A pick naming a region beside the read's record is a
+  plain read's, and is not applied, since a plain read has no region
+  (`PR-304.pick_at_record_and_region_not_applied`).
+- **Two faults in one overlay, where its base differs.** Step 6 makes all its checks, and every reason is
+  reported (`read_side_contract.md` section 2 item 2), so two faults are reported where the answer does not
+  depend on which base is meant: one overlay with an unknown purpose that does not replace the read field, or
+  that replaces a field its base, the record in use, holds withheld
+  (`PR-042.purpose_fil_in_not_replacing_read_field`, `PR-042.purpose_fil_in_over_withheld`), and two overlays,
+  one not supplied and one whose base differs (`PR-310.two_overlays_two_faults`). Where an overlay's base
+  differs from the record in use, the text does not say which base "lacks" a key of `replaces` or holds a
+  withheld value, so no arm puts a base mismatch beside another fault of the same overlay. Nor does it say
+  whether an overlay refused for its base still conflicts with another.
 - **An `overlay` acceptance that names a location** (`record`, say): an overlay names none, and the text does
   not say whether one that does breaks its shape or is ignored.
 - **An overlay in a scene's roles** (a region's or the background's material, a layered path's interval): the
