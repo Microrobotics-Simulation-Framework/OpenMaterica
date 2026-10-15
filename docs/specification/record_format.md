@@ -535,10 +535,14 @@ law's `a` and `b`, a beta distribution's `p` and `q`), which every reader of the
 version adds no member one slip from one already named at its place, refused ones included. So item 5 never
 refuses a member that a version names at its place. [not yet covered]
 
-From 1.0.0, a later minor version adds no member that changes how an earlier one's members are read, unless
-every reader of the earlier versions refuses each field the member would change: such a reader would
-otherwise ignore it (item 1), so the change is major (`DOCUMENTATION_ARCHITECTURE.md` section 7.1).
-[not yet covered]
+From 1.0.0, a later minor version adds a member that changes how existing members are read only (a) under a
+name reserved in advance, which every earlier reader of the same major version already refuses, as it refuses
+a table's `points` (section 6, table item 5), or (b) with a new token in an existing enumerated member that
+such a reader checks in each field the member changes (`unknown_token`, item 3). The later version requires
+that name or token wherever the member appears: without it, an earlier reader ignores the member (item 1) and
+reads each field as if the member were absent. Any other such member waits for a new major version of the
+schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 8;
+`DOCUMENTATION_ARCHITECTURE.md` section 7.1). [not yet covered]
 
 ## Cases
 

@@ -260,6 +260,8 @@ members named at one place, refused ones included, are kept more than one slip a
 version adds no member one slip from one of them (`record_format.md` section 10). A table's block applies to
 every value the table gives. The text no longer says that a knot's own block replaces it (`record_format.md`
 sections 5 and 6, `uncertainty.md` section 1 rule 2). From 1.0.0, an older reader ignores a member it does not
-know. So a later minor version adds no member that changes how an earlier one's members are read, unless every
-older reader refuses each field the member would change; otherwise the change is major (`record_format.md`
-section 10).
+know. So a later minor version adds a member that changes how existing members are read only under a name
+reserved in advance, which every earlier reader of the same major version refuses, or with a new token in an
+enumerated member such a reader checks (maintainer, 2026-10-15). The later version requires that name or token
+wherever the member appears. Any other such member waits for a new major schema version, not a new record
+version (`record_format.md` section 10).
