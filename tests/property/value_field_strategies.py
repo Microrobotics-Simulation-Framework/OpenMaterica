@@ -131,10 +131,9 @@ def fact_shape(draw: Draw, name: str) -> JsonObject:
     elif name == "anatomical_site":
         shape = {"uberon": draw(TEXT), "label": draw(TEXT)}
     elif name in ("post_mortem_interval", "donor_age"):
-        # The row fixes the unit, `"unit": "s"`; a status object may stand for any unit.
-        fixed = st.just(VOCABULARY.facts[name].fixed["unit"])
-        own = shapes.PostMortemInterval if name == "post_mortem_interval" else shapes.DonorAge
-        shape = {"unit": draw(st.one_of(fixed, status_objects(own, "unit")))}
+        # The row fixes the unit, `"unit": "s"`, which step 9 alone compares: step 8 takes any string or
+        # status object there, as for every unit (a default for the maintainer, 2026-10-15).
+        shape = {"unit": draw(st.one_of(st.just(VOCABULARY.facts[name].fixed["unit"]), UNITS))}
         if name == "post_mortem_interval" or draw(st.booleans()):
             shape["value"] = draw(DOUBLES)
         else:
@@ -713,8 +712,15 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "fact_treated_without_text": setting(
             specimen_of, "disease_and_treatment_state", {"token": "treated", "basis": "stated"}, INVALID
         ),
+        # A fact's unit is compared at step 9 alone, so neither of these refuses at step 8.
         "fact_unit_not_its_rows": setting(
-            specimen_of, "post_mortem_interval", {"value": 1.0, "unit": "min", "basis": "stated"}, INVALID
+            specimen_of, "post_mortem_interval", {"value": 1.0, "unit": "min", "basis": "stated"}, NOTHING
+        ),
+        "fact_unit_status_any_token": setting(
+            specimen_of,
+            "donor_age",
+            {"value": 1.0e9, "unit": {"status": "approximate"}, "basis": "stated"},
+            NOTHING,
         ),
         "fact_basis_not_its_rows": setting(
             specimen_of, "mimics", {"text": "x", "basis": "inferred", "inferred_from": "y"}, INVALID
@@ -760,7 +766,12 @@ TOKEN_FAULTS = tuple(
     for name in sorted(faults)
     if name.endswith("unknown")
 )
-PASSING_FAULTS = {("conditions", "name_unknown"), ("provenance", "unchecked_member_broken")}
+PASSING_FAULTS = {
+    ("conditions", "name_unknown"),
+    ("provenance", "unchecked_member_broken"),
+    ("specimen", "fact_unit_not_its_rows"),
+    ("specimen", "fact_unit_status_any_token"),
+}
 
 
 def group(region: str) -> str:

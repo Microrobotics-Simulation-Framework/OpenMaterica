@@ -652,8 +652,8 @@ NOT_READ = {
     "result": "a review's, which never refuses a field",
     "type": "a locator's, which a read does not check",
     "unit": (
-        "a specimen fact's fixed unit, `s`, which step 8 compares as its row's one value: a unit is no "
-        "token, so another unit is `form_invalid`, never `unknown_token`"
+        "a specimen fact's fixed unit, `s`, which step 9 compares (`read_side_contract.md` section 3, "
+        "step 9, a default for the maintainer): step 8 checks only that it is a string or a status object"
     ),
 }
 # Lists `BOUND` holds that no record member binds: a declaration's distributions (`uncertainty.md` section 4),

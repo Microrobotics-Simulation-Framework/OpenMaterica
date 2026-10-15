@@ -150,7 +150,8 @@ the examples the derandomised search took, at the small and the original size (m
 | `conditional_members_unchecked` | `population_level`, `n_sources` and `precision_conditions` may sit beside any `represents` | HP3 | 65, 229 |
 | `uncertainty_rules_unchecked` | an uncertainty's coverage, `dof` and precision rules go | HP3 | 420, 201 |
 | `named_state_text_unchecked` | a disease or treatment state's text may sit beside any token, or be missing | HP3 | 387, 444 |
-| `fixed_fact_members_unchecked` | a fact's unit and `mimics`'s basis take any value, not the one their rows fix | HP3 | 87, 152 |
+| `fixed_basis_unchecked` | `mimics`'s basis takes either token, not the one its row fixes | HP3 | 34, 248 |
+| `fact_unit_judged_at_step_8` | a fact's unit is judged at step 8, `s` alone and a status object of the five tokens only, where step 9 alone compares it (a default for the maintainer, 2026-10-15) | HP3 | 279, 531 |
 | `record_structure_unchecked` | a slip in the envelope, the body or a section is ignored | HP3 | 91, 248 |
 | `section_specimen_unchecked` | a section's `specimen` is not checked | HP3 | 7, 264 |
 | `first_refusal_only` | step 8 gives its first reason only (the S2 design's HP12 mutant, on HP3's two-fault draws) | HP3 | 7, 79 |

@@ -294,8 +294,9 @@ def status_object(
 
 
 unit = status_or(string, None, ())
-"""A unit: a string, or a status object whose token, known or not, step 9 alone compares
-(`record_format.md` section 4.2)."""
+"""A unit, wherever it sits, a specimen fact's included: a string, or a status object whose token, known or
+not, step 9 alone compares, with the unit the field's, the condition's or the fact's row registers or fixes
+(`record_format.md` section 4.2, `read_side_contract.md` section 3 step 9)."""
 
 
 def based(
@@ -427,30 +428,6 @@ def fact_token(name: str) -> Check:
     return token("token", VOCABULARY.facts[name].tokens)
 
 
-def fact_shape(name: str) -> type:
-    """The generated shape of the specimen fact `name`, beside the status object that may stand for it."""
-    shape: type = next(
-        alternative
-        for alternative in get_args(get_type_hints(shapes.Specimen)[name])
-        if is_typeddict(alternative) and "status" not in get_type_hints(alternative)
-    )
-    return shape
-
-
-def the_one(expected: str) -> Check:
-    def check(value: JsonValue, where: str, found: Found) -> None:
-        if value != expected:
-            found.append(invalid(f"{where} is not {expected!r}, the one value its row allows"))
-
-    return check
-
-
-def fixed_unit(name: str) -> Check:
-    """A specimen fact's unit, which its row fixes (`"unit": "s"`), or a status object: a unit is no token,
-    so another unit breaks the row's shape (`form_invalid`) and is never `unknown_token`."""
-    return or_status(the_one(VOCABULARY.facts[name].fixed["unit"]), fact_shape(name), "unit")
-
-
 FACT_SHAPES: dict[str, tuple[Members, Members, Check | None]] = {
     "species": ({"ncbi_taxon": whole, "label": string}, {}, None),
     "anatomical_site": ({"uberon": string, "label": string}, {}, None),
@@ -462,9 +439,9 @@ FACT_SHAPES: dict[str, tuple[Members, Members, Check | None]] = {
     ),
     "preparation": ({"text": string}, {}, None),
     "preservation": ({"token": fact_token("preservation")}, {"text": string}, other_with_text),
-    "post_mortem_interval": ({"value": number, "unit": fixed_unit("post_mortem_interval")}, {}, None),
+    "post_mortem_interval": ({"value": number, "unit": unit}, {}, None),
     "donor_age": (
-        {"unit": fixed_unit("donor_age")},
+        {"unit": unit},
         {"value": number, "range": in_order},
         one_of_value_and_range,
     ),
