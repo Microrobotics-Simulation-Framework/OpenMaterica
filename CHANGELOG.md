@@ -134,6 +134,17 @@ recorded in that repository's CHANGELOG.
   with a probability of about 1.5e-6 at `ci` and 1e-3 at `dev`, against about 3e-10 and 7e-7 now. The
   audit's comment no longer says 1e-9: a least share at its gate fails about one run in a hundred
   (`tests/property/audits.py`).
+- The json and records shards' properties declare by its chance, measured at `ci`, each feature whose least
+  share failed a correct run with a probability above 1e-6 at `ci` or 1e-3 at `dev`, computed from the
+  clusters measured on each property: 44 features of 13 properties. Their least shares failed a run of the two
+  shards with a probability of about 7e-3 at `ci` (negative zero in RFC 8785's values, about one run in 450,
+  and 14 of HP3's regions, one in 200) and 2e-2 at `dev` (`long` in the versions' order failed 16 of 2,000
+  runs), against about 2e-6 and 5e-4 now, from the least shares kept. RFC 8785's property draws names across
+  the surrogate range and negative zero more often, and HP3 runs in two parts, a property each, its first
+  fault's region drawn among the part's before the record, so that each feature has a floor at `ci`; the
+  mutant searches draw as before. For each such property a control runs it at `ci`'s examples with a
+  generator that stops producing one feature: its audit fails on that feature alone
+  (`tests/unit/test_audit_controls.py`).
 - A check that each member the schemas declare whole admits the float the reader gives
   (`tests/unit/test_shapes.py`).
 - The tests of the repository scripts make their throwaway git repositories with every `GIT_` variable

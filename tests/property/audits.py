@@ -10,9 +10,10 @@ The feature audit: a property declares, with the `features` marker, the least sh
 show each feature the specification distinguishes, and records each example's features with
 `support.feature`. A property that draws one of several features alike as its first choice, as a refusal
 property draws its fault, declares them with the `drawn` marker instead; one that declares the chance that a
-draw shows each feature, measured, as the writer schema's acceptance properties do, declares them with the
-`chances` marker. At the `ci` profile, each drawn feature and each feature declared by its chance is held to
-its draw floor (`draw_floor`).
+draw shows each feature, measured, as the writer schema's acceptance properties do, and the json and records
+shards' properties where a least share failed a run too often, declares them with the `chances` marker. At
+the `ci` profile, each drawn feature and each feature declared by its chance is held to its draw floor
+(`draw_floor`).
 """
 
 import math
@@ -78,10 +79,18 @@ def rejection(draws: Counter[str]) -> float | None:
 # varying up to 8 times as much as a binomial count), a feature shown by whole clusters at the gate falls
 # below its least share with a probability of about 1e-2 at either profile. Those properties' least shares
 # failed a run with a probability of about 1.5e-6 at `ci` and 1e-3 at `dev`, computed from the measured
-# clusters, so they declare their features by their chances instead (CHANCE_FLOORS). The other properties
-# keep their least shares, their clusters not measured; at `dev`, one of them failed 16 of 2,000 runs
-# (`test_versions_order_as_their_integers`, feature `long`). The `ci` and `deep` profiles judge every share
-# declared; `dev`, with 200 examples, judges those of 10% or more.
+# clusters, so they declare their features by their chances instead (CHANCE_FLOORS). So do the json and
+# records shards' properties, measured on each (2026-10-15: 1.5 to 6.7 examples a cluster, by property and
+# profile), for each feature whose least share failed a run with a probability above 1e-6 at `ci` or 1e-3 at
+# `dev`. The two shards' least shares failed a run with a probability of about 7e-3 at `ci` and 2e-2 at `dev`,
+# and one of them failed 16 of 2,000 `dev` runs (`test_versions_order_as_their_integers`, feature `long`).
+# Two models give these figures, each taking the measured clusters as independent: the earlier analyses' sums
+# the fewest clusters a run held, a bound that overstates a common feature's spread (it gave `long` 13%); the
+# other draws clusters until a run's examples are made, and predicts the failures seen (`long` 0.95%, against
+# 0.8%). A feature was chosen by the bound; the figures are the other's, the bound's "at most" where cited.
+# The least shares kept fail a run of the two shards with a probability of about 2e-6 at `ci` and 5e-4 at
+# `dev`, most of it `test_the_envelope_checks_agree_with_the_reader_schema`'s `card_accepted` (4e-4). The
+# `ci` and `deep` profiles judge every share declared; `dev`, with 200 examples, judges those of 10% or more.
 JUDGED_FROM = 20
 
 # The draw floor. A feature drawn as an example's first choice with chance p is not shown in a binomial count
@@ -103,7 +112,10 @@ LEAST_DRAWS = 10
 # whose 200 examples leave no drawn feature's floor judged, judges none, and holds a feature declared by its
 # chance to its draw floor where that is at least LEAST_DRAWS (CHANCE_FLOORS), judging no other.
 # For the acceptance properties' chances, from the measured clusters: a run of both falls short with a
-# probability of about 3e-10 at `ci` and 7e-7 at `dev`, and at most 2e-22 at `deep` (three runs measured).
+# probability of about 3e-10 at `ci` and 7e-7 at `dev`, and at most 2e-22 at `deep` (three runs measured). For
+# the json and records shards': about 2e-8 a run of the two at `ci`, nearly all HP3's regions, and 1e-15 at
+# `dev`, where one is judged; at `deep`, three runs of each property held each at 2.6 times its least share
+# or more.
 DRAW_FLOORS = frozenset({"ci"})
 CHANCE_FLOORS = frozenset({"ci", "dev"})
 

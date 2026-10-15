@@ -5,7 +5,9 @@ Hypothesis properties of the core, in three groups, and of the writer schema, in
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
   value in many valid ways, and texts holding exactly one fault the specification lists. Trees are drawn
-  top-down within a leaf budget, so no draw is thrown away. With them, (9) the one-slip relation
+  top-down within a leaf budget, so no draw is thrown away. RFC 8785's property draws names across the
+  surrogate range one name in three and negative zero one number in four, which its trees alone held in under
+  5% of examples, too seldom for the feature audit at `ci` (below). With them, (9) the one-slip relation
   (`core/slips.py`, section 10), which the read and the name-overlap check share, against a neighbour generator
   written from section 10's list (`test_slip_properties.py`): two names are one slip apart exactly where the
   generator reaches one from the other, by a kind it reaches it by. The generator builds names from a name, as
@@ -48,9 +50,11 @@ Hypothesis properties of the core, in three groups, and of the writer schema, in
   check; and the catalogue, by region of the record, each fault with the codes its rule gives: 21 regions
   since S2a-2's fix round, which wrote faults for each value step 8 checks, the derivation and `source`
   included, slips beside a named member or of an optional one, and the eleven rules its review found untested.
-  A third law, the label's rule, holds a label on a table to the Label column, read by the test itself,
-  through step 8's shared check, since no read reaches a table before S3. Until steps 9 to 13 are built, a
-  read that passes step 8 raises `NotImplementedError`, the outcome "past step 8".
+  HP3 runs in two parts, a property each, the regions taken in turn: each draws its first fault's region among
+  its own, before the record, so that the feature audit at `ci` can judge each region (below); the mutant
+  searches draw HP3 whole. A third law, the label's rule, holds a label on a table to the Label column, read
+  by the test itself, through step 8's shared check, since no read reaches a table before S3. Until steps 9 to
+  13 are built, a read that passes step 8 raises `NotImplementedError`, the outcome "past step 8".
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -227,7 +231,12 @@ The S2 design's HP5 mutant, an unknown member returned, waits for the result's m
   chance, a floor below 10 failing (draw it more often, its family in parts); at `dev` to that floor where it
   is at least 10, judging no other; and at `deep` to a third of its chance. Hypothesis's clusters make a least
   share less safe than independent examples would: at the gate of 20 expected, a feature shown by whole
-  clusters falls below its least share in about one run in a hundred (`audits.JUDGED_FROM`).
+  clusters falls below its least share in about one run in a hundred (`audits.JUDGED_FROM`). So the json and
+  records shards' properties declare by its chance each feature whose least share failed a run with a
+  probability above 1e-6 at `ci` or 1e-3 at `dev`, computed from the clusters measured on each property
+  (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. For each
+  such property, `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops
+  producing one of those features: its audit fails, on that feature alone.
 
 ## Adding a property
 
