@@ -1051,29 +1051,48 @@ def group(region: str) -> str:
     return next(name for name, prefixes in GROUPS.items() if region.startswith(prefixes))
 
 
+MODES = st.sampled_from(["one", "one", "one", "two", "two_codes", "one", "one", "one"])
+
+
 @st.composite
 def faulty_records(
-    draw: Draw, size: Size = SIZE, faults: int | None = None, among: tuple[str, ...] = ()
+    draw: Draw,
+    size: Size = SIZE,
+    faults: int | None = None,
+    among: tuple[str, ...] = (),
+    regions: tuple[str, ...] = (),
 ) -> Example:
     """A valid record with one fault of the catalogue; or, in one draw in four, two of two parts of the
     record, half of those a token fault beside another, so that the two give two codes. Where `among` names
-    faults (`region.name`), the first fault is one of them: a mutant's planned search."""
-    example = draw(valid_records(size))
-    mode = draw(st.sampled_from(["one", "one", "one", "two", "two_codes", "one", "one", "one"]))
+    faults (`region.name`), the first fault is one of them: a mutant's planned search. Where `regions` names
+    some, a part of HP3, the first fault is of one of them, and the mode and its region are drawn first,
+    before the record: Hypothesis's mutations keep an example's first choices, but copy into a later choice
+    the choices of the record's other draws, so a region drawn after the record came up 0.03 to 0.33 of a
+    part's examples, by its place in the list (measured 2026-10-15)."""
+    assert not (among and regions)
+    region = ""
+    if regions:
+        mode = draw(MODES)
+        region = draw(st.sampled_from(regions))
+        example = draw(valid_records(size))
+    else:
+        example = draw(valid_records(size))
+        mode = draw(MODES)
     if faults is not None:
         mode = "one" if faults == 1 else "two"
     planned = [(fault.partition(".")[0], fault.partition(".")[2]) for fault in among]
     if mode == "one":
-        region = draw(st.sampled_from(REGIONS))
+        region = region or draw(st.sampled_from(REGIONS))
         chosen = [(region, draw(st.sampled_from(sorted(CATALOGUE[region]))))]
         if planned:
             chosen = [draw(st.sampled_from(planned))]
     else:
-        first = draw(st.sampled_from(TOKEN_FAULTS)) if mode == "two_codes" and not planned else None
+        tokens = tuple(fault for fault in TOKEN_FAULTS if fault[0] in regions) if regions else TOKEN_FAULTS
+        first = draw(st.sampled_from(tokens)) if mode == "two_codes" and not planned else None
         if planned:
             first = draw(st.sampled_from(planned))
         if first is None:
-            region = draw(st.sampled_from(REGIONS))
+            region = region or draw(st.sampled_from(REGIONS))
             first = (region, draw(st.sampled_from(sorted(CATALOGUE[region]))))
         others = [
             (region, name)
