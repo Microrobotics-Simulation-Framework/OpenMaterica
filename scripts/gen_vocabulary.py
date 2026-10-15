@@ -38,6 +38,9 @@ _CODE_LIST = re.compile(r"`[a-z0-9_]+`(?:, `[a-z0-9_]+`)*")
 _PROSE_LIST = re.compile(r"`[a-z0-9_]+`(?:(?:,| or|, or| and|, and) `[a-z0-9_]+`)*")
 # A specimen fact's `token` member, as the JSON shape writes it: `"token": "a" | "b"`, up to the next member.
 _TOKEN_MEMBER = re.compile(r'"token": ("[a-z0-9_]+"(?: \| "[a-z0-9_]+")*)(?=, |\})')
+# Any member a specimen fact's JSON shape writes with a value, and a quoted value up to the next member.
+_MEMBER_VALUE = re.compile(r'"([a-z_]+)": ')
+_QUOTED = re.compile(r'"([^"]*)"(?=, |\})')
 _SYMBOLS = re.compile(r"`[A-Z][a-z]?`(?: `[A-Z][a-z]?`)*")
 # A family identifier (`record_format.md` section 7 item 3), the form a label takes.
 _LABEL = re.compile(r"[a-z0-9_]+(?:\.[a-z0-9_]+)+\.v[1-9][0-9]*")
@@ -280,7 +283,9 @@ def required_with(cell: str, token_conditions: dict[str, list[str]]) -> dict[str
 
 
 def specimen_facts(rows: list[Row]) -> Vocabulary:
-    """Each fact's tokens, those its `token` member takes; its members are structure, the writer schema's."""
+    """Each fact's tokens, those its `token` member takes, and the one value of each member its shape fixes
+    (`"unit": "s"`), each again as an enumeration in `$defs`; its other members are structure, the writer
+    schema's."""
     entries: dict[str, object] = {}
     definitions: dict[str, object] = {}
     for name, row in zip(names(rows, "Name"), rows, strict=True):
@@ -291,10 +296,33 @@ def specimen_facts(rows: list[Row]) -> Vocabulary:
             if member is None:
                 raise TableError(f'expected "token": "a" | "b" in {shape!r}')
             found += re.findall(r'"([a-z0-9_]+)"', member[1])
-        entries[name] = {"tokens": found}
+        fixed = fixed_members(shape)
+        entries[name] = {"tokens": found, **fixed}
         if found:
             definitions[f"{name}_token"] = enumeration(found)
+        for member_name, value in fixed.items():
+            definitions[f"{name}_{member_name}"] = enumeration([value])
     return {"$defs": definitions, "facts": entries}
+
+
+def fixed_members(shape: str) -> dict[str, str]:
+    """The members other than `token` that a fact's shape writes with one quoted value, each taking that value
+    alone. A placeholder (`<text>`, `"UBERON:<digits>"`) or a range (`[lo, hi]`) is structure, the writer
+    schema's; any other value, a list of values among them, stops the script."""
+    fixed: dict[str, str] = {}
+    for member in _MEMBER_VALUE.finditer(shape):
+        if member[1] == "token" or shape.startswith(("<", "["), member.end()):
+            continue
+        value = _QUOTED.match(shape, member.end())
+        if value is None or not re.fullmatch(r'[^\s"<>|]+|[^"]*<[a-z]+>[^"]*', value[1]):
+            raise TableError(
+                f"expected a quoted value, a placeholder or a range for {member[1]!r} in {shape!r}"
+            )
+        if "<" in value[1]:
+            continue
+        if fixed.setdefault(member[1], value[1]) != value[1]:
+            raise TableError(f"two values for {member[1]!r} in {shape!r}")
+    return fixed
 
 
 def acceptance_kinds(rows: list[Row]) -> Vocabulary:

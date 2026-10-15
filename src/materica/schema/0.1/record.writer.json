@@ -620,7 +620,15 @@
       "type": "object",
       "allOf": [{"$ref": "#/$defs/based"}],
       "required": ["value", "unit"],
-      "properties": {"value": {"type": "number"}, "unit": {"$ref": "#/$defs/seconds"}},
+      "properties": {
+        "value": {"type": "number"},
+        "unit": {
+          "anyOf": [
+            {"$ref": "vocabulary/specimen_facts.json#/$defs/post_mortem_interval_unit"},
+            {"$ref": "#/$defs/status_object"}
+          ]
+        }
+      },
       "unevaluatedProperties": false
     },
     "donor_age": {
@@ -628,23 +636,27 @@
       "type": "object",
       "allOf": [{"$ref": "#/$defs/based"}],
       "required": ["unit"],
-      "properties": {"value": {"type": "number"}, "range": {"$ref": "#/$defs/range"}, "unit": {"$ref": "#/$defs/seconds"}},
+      "properties": {
+        "value": {"type": "number"},
+        "range": {"$ref": "#/$defs/range"},
+        "unit": {
+          "anyOf": [{"$ref": "vocabulary/specimen_facts.json#/$defs/donor_age_unit"}, {"$ref": "#/$defs/status_object"}]
+        }
+      },
       "if": {"required": ["value"]},
       "then": {"not": {"required": ["range"]}},
       "else": {"required": ["range"]},
       "unevaluatedProperties": false
     },
-    "seconds": {
-      "description": "A specimen fact's unit, s, or a status object.",
-      "anyOf": [{"type": "string", "pattern": "^s(?![\\s\\S])"}, {"$ref": "#/$defs/status_object"}]
-    },
     "mimics": {
-      "description": "What a phantom or a substitute was made to mimic, as its maker states it.",
+      "description": "What a phantom or a substitute was made to mimic, as its maker states it: its basis is stated, never inferred, so it has no inferred_from.",
       "type": "object",
-      "allOf": [{"$ref": "#/$defs/based"}],
-      "required": ["text"],
-      "properties": {"text": {"type": "string"}},
-      "unevaluatedProperties": false
+      "required": ["text", "basis"],
+      "properties": {
+        "text": {"type": "string"},
+        "basis": {"$ref": "vocabulary/specimen_facts.json#/$defs/mimics_basis"}
+      },
+      "additionalProperties": false
     },
     "supply_form": {
       "description": "A manufactured material as supplied, a coupon made or cut for the test, or a finished component tested as a specimen of its material.",

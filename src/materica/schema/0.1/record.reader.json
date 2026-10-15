@@ -1522,7 +1522,14 @@
           "type": "number"
         },
         "unit": {
-          "$ref": "#/$defs/seconds"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/status_object"
+            }
+          ]
         }
       }
     },
@@ -1545,7 +1552,14 @@
           "$ref": "#/$defs/range"
         },
         "unit": {
-          "$ref": "#/$defs/seconds"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/status_object"
+            }
+          ]
         }
       },
       "if": {
@@ -1566,30 +1580,18 @@
         ]
       }
     },
-    "seconds": {
-      "description": "A specimen fact's unit, s, or a status object.",
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/status_object"
-        }
-      ]
-    },
     "mimics": {
-      "description": "What a phantom or a substitute was made to mimic, as its maker states it.",
+      "description": "What a phantom or a substitute was made to mimic, as its maker states it: its basis is stated, never inferred, so it has no inferred_from.",
       "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/$defs/based"
-        }
-      ],
       "required": [
-        "text"
+        "text",
+        "basis"
       ],
       "properties": {
         "text": {
+          "type": "string"
+        },
+        "basis": {
           "type": "string"
         }
       }
