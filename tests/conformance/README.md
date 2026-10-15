@@ -33,9 +33,9 @@ after every run that includes these tests:
 | reads that end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
-| S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, or steps 9 to 13 (plain read) | 295 | not yet runnable: the step that runs each is not done |
+| S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, or steps 9 to 13 (plain read) | 298 | not yet runnable: the step that runs each is not done |
 
-Of the 874 case files, 862 agree with plain read and the hash suite, 802 with plain read alone, and 862 with
+Of the 877 case files, 865 agree with plain read and the hash suite, 805 with plain read alone, and 865 with
 the fits and reference data suite too.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`
