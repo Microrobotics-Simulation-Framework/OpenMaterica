@@ -236,6 +236,17 @@
       "safeguard": null,
       "no_safeguard_because": "Neither place has a schema yet: a parameter set's and a fit's coverage (model_families.md section 6, fits_and_reference_data.md section 3), placeholders in the writer. The safeguard, a map by input refused where an ordered list belongs and the reverse, is written with those shapes (maintainer, 2026-10-15); the check fails once a schema gives ranges a place.",
       "maintainer": "approved_safeguard_deferred"
+    },
+    {
+      "rule": "A",
+      "names": ["in_range"],
+      "meanings": 2,
+      "reason": "One boolean, whether an evaluation's axis value lies inside the readable range: a table evaluation case's entry inside the range holds true and one outside it false, each fixed in case.json so that the entries' shapes tell themselves apart.",
+      "safeguard": {
+        "document": "docs/specification/read_side_contract.md",
+        "quote": "An evaluator returns, beside the value, `in_range`: whether its condition lies inside the form's range",
+        "what": "Section 7 item 1: in_range has one meaning, true inside the range and false outside it; the README's table evaluation case gives each entry its value."
+      }
     }
   ]
 }

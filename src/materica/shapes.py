@@ -634,14 +634,52 @@ class CaseInputs(TypedDict):
     request: NotRequired[str]
 
 
-class CaseCompare(TypedDict):
+class DerivativeSides(TypedDict):
+    left: float
+    right: float
+
+
+class TableEvaluationInside(TypedDict):
     """
-    The result's members compared, and how numbers are: relative_tolerance or exact, never both.
+    Inside the readable range, off every edge: the value and the derivative, both sides at an interior knot
+    strictly inside the range, and none where the range is one point.
     """
 
-    members: list[str]
-    relative_tolerance: NotRequired[float]
-    exact: NotRequired[bool]
+    in_range: Literal[True]
+    value: float
+    derivative: float | Literal["none"] | DerivativeSides
+
+
+class TableEvaluationRefused(TypedDict):
+    """
+    At a declared edge, or across one from the readable range: the refusal, with no number.
+    """
+
+    refused: Literal[True]
+
+
+class TableEvaluationOutside(TypedDict):
+    """
+    Elsewhere outside the readable range: the value at its nearest end, taken from inside it, and a derivative
+    of 0.
+    """
+
+    in_range: Literal[False]
+    value: float
+    derivative: Literal[0]
+
+
+TableEvaluation: TypeAlias = TableEvaluationInside | TableEvaluationRefused | TableEvaluationOutside
+
+
+class PrecisionTolerances(TypedDict):
+    """
+    A table evaluation case's relative tolerance per precision: 1e-12 for binary64, and the file's for
+    binary32.
+    """
+
+    binary64: float
+    binary32: float
 
 
 class OverlayScope(TypedDict):
@@ -892,6 +930,24 @@ class Reason(TypedDict):
     code: ReasonCode
     condition: NotRequired[str]
     detail: NotRequired[str]
+
+
+class CaseCompare(TypedDict):
+    """
+    The result's members compared, and how numbers are: relative_tolerance or exact, never both.
+    """
+
+    members: list[str]
+    relative_tolerance: NotRequired[float | PrecisionTolerances]
+    exact: NotRequired[bool]
+
+
+class TableEvaluations(TypedDict):
+    """
+    A table evaluation case's expected answer: one entry per axis value, in order.
+    """
+
+    evaluations: list[TableEvaluation]
 
 
 PlusMinus: TypeAlias = list[PlusMinusEntry]
@@ -1231,7 +1287,7 @@ class Case(TypedDict):
     claims: NotRequired[dict[Suite, bool]]
     inputs: CaseInputs
     request: NotRequired[ReadRequest | CaseOperation | JsonValue]
-    expected: ReadResult
+    expected: ReadResult | TableEvaluations
     compare: CaseCompare
 
 
@@ -1275,6 +1331,18 @@ class CaseOperation(TypedDict):
     operation: Literal["content_hash", "list_records", "transform_draws", "evaluate"]
     normals: NotRequired[list[JsonValue]]
     uniforms: NotRequired[list[JsonValue]]
+
+
+class EvaluateOperation(TypedDict):
+    """
+    A table evaluation case's request (README.md, "Case files"): one table as record_format.md section 6 gives
+    it, the axis condition aside, and the axis values it is evaluated at.
+    """
+
+    operation: Literal["evaluate"]
+    form: Literal["table"]
+    table: JsonObject
+    at: list[float]
 
 
 class ConstantField(FieldMembers):

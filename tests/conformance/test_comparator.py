@@ -141,6 +141,24 @@ def test_relative_tolerance() -> None:
     assert differences(tolerant, {"status": "met", "reasons": [], "value": [1000.0, 1.1e-6]})
 
 
+def test_a_table_evaluation_tolerance_is_one_per_precision() -> None:
+    expected: JsonObject = {"evaluations": [{"refused": True}]}
+    tolerances: JsonObject = {"binary64": 1e-12, "binary32": 3e-7}
+    read = case(expected, ("evaluations",), operation="evaluate", relative_tolerance=tolerances)
+    assert read.precision_tolerances == {"binary64": 1e-12, "binary32": 3e-7}
+    assert read.relative_tolerance is None
+    broken_tolerances: list[JsonValue] = [
+        {"binary64": 1e-12},
+        {"binary64": 1e-12, "binary32": -1.0},
+        {**tolerances, "bfloat16": 1e-2},
+    ]
+    for broken in broken_tolerances:
+        with pytest.raises(CaseFileError):
+            case(expected, ("evaluations",), operation="evaluate", relative_tolerance=broken)
+    with pytest.raises(CaseFileError):
+        case(expected, ("evaluations",), operation="evaluate", relative_tolerance=tolerances, exact=True)
+
+
 def test_exact_compares_bits() -> None:
     expected: JsonObject = {"status": "met", "reasons": [], "value": -0.0}
     assert differences(case(expected, exact=True), {"status": "met", "reasons": [], "value": -0.0}) == []
