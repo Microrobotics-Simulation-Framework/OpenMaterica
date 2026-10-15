@@ -47,6 +47,14 @@ recorded in that repository's CHANGELOG.
 - `provenance.md` section 6.2: a disease or treatment state's `text` names the disease or the treatment and is
   present exactly when its token is `diseased` or `treated` (maintainer, 2026-10-15). Three plain-read inputs
   that held a text beside `normal` lose it, rehashed, and the PR-316 case files that pin them are repinned.
+- Members that held a name with a second meaning, and no safeguard to keep the two apart, are renamed before
+  0.1.0 (maintainer, 2026-10-15; `docs/specification/changes.md`): a scene cylinder's `axis` to `direction`;
+  a family conversion's `from` and `to` to `from_measure` and `to_measure`; an admissibility constraint's
+  `kind` to `rule`; a declared model's `parameters` to `consumer_parameters`, and a declared distribution's
+  and a marginal's to `distribution_parameters`; a witness datum's `reference_data` to
+  `reference_data_name`; and a multivariate normal's per-parameter `space`, with a fit's
+  `covariance_space.space`, to `parameter_spaces`. No schema held any of them yet; the one case file that
+  did, a declared distribution in a request (PR-330), follows.
 - `case.json` takes the `transform_draws` operation of a sampling case, its draws' shape not yet specified.
 
 ### Verification
@@ -61,8 +69,10 @@ recorded in that repository's CHANGELOG.
   apart and that no name has two meanings, over the schemas, the vocabulary and the specification, with an
   allowlist of the overlaps judged intended, each with its reason and a safeguard, a quote that must stay in
   its document or a test that refuses each meaning at the others' places, or with none, the reason and the
-  maintainer's flag; entries awaiting the maintainer's answer on a proposed rename pass with a warning
-  (`tests/spec_sync/test_name_overlaps.py`, `test_name_overlap_safeguards.py`).
+  maintainer's flag: approved with none possible; approved with the safeguard deferred to the shapes that give
+  the name a place, and due, failing the check, once a schema gives it one (`ranges`); or pending while a
+  rename is proposed, failing once the maintainer has answered, as the maintainer has for the eight proposed
+  with S2a-1 (`tests/spec_sync/test_name_overlaps.py`, `test_name_overlap_safeguards.py`).
 - A check that each reason code is given only at the steps the reason table names, against the text (a step's
   item and the passages it hands its checks to, and step 6 for an overlay what steps 1 to 5 give), and against
   the code of steps 0 to 5 in every module of the core, statically and traced through every read case file
