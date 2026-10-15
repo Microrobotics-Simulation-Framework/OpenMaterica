@@ -34,7 +34,9 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
 - the value-field checks: a member table, a status row or a quote changed, the schema changed, and a binding
   of the vocabulary changed or no longer applied (`spec_sync/test_value_fields.py`);
 - the name-overlap check: a reused name or a slip seeded into a schema, the vocabulary or an example, and its
-  allowlist broken (`spec_sync/test_name_overlaps.py`);
+  allowlist broken, a safeguard or the maintainer's flag missing among them (`spec_sync/test_name_overlaps.py`);
+  its safeguards: a place opened to another meaning, and a place no entry lists
+  (`spec_sync/test_name_overlap_safeguards.py`);
 - the reason-step check: the table given a step its text lacks or lacking one (step 6 for an overlay among
   them), a code added to a step's text or a passage it hands its checks to, a code constructed at another step
   however the call is written or in a module no list names, and a step-0 function seeded to give `absent`

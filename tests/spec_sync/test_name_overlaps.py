@@ -5,24 +5,47 @@ it with its reason and safeguard (`name_overlaps.py`; `record_format.md` section
 The controls run the whole check on a copy of the schemas and the specification with one fault seeded, each
 in one of the check's inputs, and assert first that the text they seed into is there."""
 
+import copy
 import json
 import shutil
+import warnings
 from pathlib import Path
 
 import pytest
 
 from materica.core.jsonio import JsonValue
 from tests.spec_sync import name_overlaps
-from tests.spec_sync.name_overlaps import Corpus, Flag, Shape, check, one_slip, rule_a, rule_b
+from tests.spec_sync.name_overlaps import (
+    AwaitingTheMaintainer,
+    Corpus,
+    Flag,
+    Shape,
+    awaiting,
+    check,
+    one_slip,
+    rule_a,
+    rule_b,
+)
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 ALLOWLIST_PATH = Path(__file__).with_name("name_overlaps.json")
 ALLOWLIST = json.loads(ALLOWLIST_PATH.read_text(encoding="utf-8"))
 
 
+def report_awaiting(allowlist: dict[str, JsonValue]) -> None:
+    """Warns of each entry marked `pending`: its rename is proposed, and the check passes until the maintainer
+    has answered (maintainer, 2026-10-15)."""
+    if pending := awaiting(allowlist):
+        warnings.warn(
+            f"awaiting the maintainer's answer on a rename: {pending}", AwaitingTheMaintainer, stacklevel=2
+        )
+
+
+@pytest.mark.filterwarnings("default::tests.spec_sync.name_overlaps.AwaitingTheMaintainer")
 def test_every_name_overlap_is_allowed_with_its_reason_and_safeguard() -> None:
     remaining, problems = check(REPOSITORY, ALLOWLIST)
     assert [*map(str, remaining), *problems] == []
+    report_awaiting(ALLOWLIST)
 
 
 @pytest.mark.parametrize(
@@ -321,15 +344,101 @@ def test_a_new_meaning_flags_an_allowed_name_again(tmp_path: Path) -> None:
     assert [found.names for found in remaining] == [("basis",)]
 
 
-def test_an_entry_without_a_safeguard_must_say_why() -> None:
-    allowlist: dict[str, JsonValue] = json.loads(ALLOWLIST_PATH.read_text(encoding="utf-8"))
+def changed(changes: dict[tuple[str, ...], dict[str, JsonValue | None]]) -> dict[str, JsonValue]:
+    """The allowlist with each entry named by its names, and its owner where two share them, changed: each
+    member set, or removed for None."""
+    allowlist: dict[str, JsonValue] = copy.deepcopy(ALLOWLIST)
     entries = allowlist["entries"]
     assert isinstance(entries, list)
-    without = next(entry for entry in entries if isinstance(entry, dict) and entry["safeguard"] is None)
-    assert isinstance(without, dict)
-    del without["no_safeguard_because"]
-    _, problems = check(REPOSITORY, allowlist)
-    assert any("no reason why none is needed" in problem for problem in problems)
+    for key, change in changes.items():
+        found = [
+            entry
+            for entry in entries
+            if isinstance(entry, dict)
+            and (*listing(entry["names"]), *([entry["owner"]] if "owner" in entry else [])) == key
+        ]
+        assert len(found) == 1, key
+        for member, value in change.items():
+            if value is None:
+                found[0].pop(member, None)
+            else:
+                found[0][member] = value
+    return allowlist
+
+
+def listing(value: JsonValue) -> list[JsonValue]:
+    assert isinstance(value, list)
+    return value
+
+
+SAFEGUARDS = (
+    "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places"
+)
+
+
+@pytest.mark.parametrize(
+    ("key", "change", "problem"),
+    [
+        pytest.param(
+            ("axis",), {"no_safeguard_because": None}, "no reason why none is possible", id="no_reason"
+        ),
+        pytest.param(("axis",), {"maintainer": None}, "no maintainer's flag", id="no_flag"),
+        pytest.param(
+            ("axis",), {"maintainer": "approved"}, "no maintainer's flag", id="a_flag_of_another_name"
+        ),
+        pytest.param(
+            ("evidence", "registered"),
+            {"maintainer": "pending"},
+            "a safeguard beside a maintainer's flag",
+            id="a_safeguard_and_a_flag",
+        ),
+        pytest.param(
+            ("mean",),
+            {
+                "safeguard": {
+                    "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_gone[mean]",
+                    "what": ".",
+                }
+            },
+            "its safeguard is gone",
+            id="a_test_gone",
+        ),
+        pytest.param(
+            ("mean",),
+            {"safeguard": {"test": f"{SAFEGUARDS}[means]", "what": "."}},
+            "its safeguard is gone",
+            id="a_name_the_test_does_not_guard",
+        ),
+    ],
+)
+def test_an_entry_without_a_safeguard_needs_the_maintainers_flag_and_a_reason(
+    key: tuple[str, ...], change: dict[str, JsonValue | None], problem: str
+) -> None:
+    """An entry with no safeguard says why none is possible and carries `pending` or `approved_no_safeguard`
+    (maintainer, 2026-10-15); one with a safeguard carries no flag; a test named as a safeguard must be there,
+    guarding that name."""
+    _, problems = check(REPOSITORY, changed({key: change}))
+    assert any(problem in found for found in problems), problems
+
+
+def test_an_entry_approved_with_no_safeguard_passes() -> None:
+    _, problems = check(REPOSITORY, changed({("axis",): {"maintainer": "approved_no_safeguard"}}))
+    assert problems == []
+
+
+def test_a_pending_entry_passes_with_a_warning_until_the_maintainer_has_answered() -> None:
+    """While `renames` is `proposed`, a `pending` entry is no problem and is warned of; once it is
+    `answered`, the same entry is a problem, and one approved instead is not warned of."""
+    _, problems = check(REPOSITORY, ALLOWLIST)
+    assert problems == []
+    with pytest.warns(AwaitingTheMaintainer, match="axis"):
+        report_awaiting(ALLOWLIST)
+    _, problems = check(REPOSITORY, {**ALLOWLIST, "renames": "answered"})
+    assert "['axis']: still pending, though the maintainer has answered" in problems
+    approved = changed({(name,): {"maintainer": "approved_no_safeguard"} for name in awaiting(ALLOWLIST)})
+    assert awaiting(approved) == []
+    _, problems = check(REPOSITORY, {**approved, "renames": "answered"})
+    assert problems == []
 
 
 def test_the_corpus_reads_each_of_its_inputs() -> None:
