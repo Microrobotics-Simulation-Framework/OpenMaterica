@@ -287,9 +287,9 @@ lists of `contact_category`, `contact_duration` and `material_form` will follow 
    through a fill-in `user_extracted`. [PR-042]
 8. A reader refuses an overlay whose `purpose` is none of item 1's, with the reason `unknown_token`, and one
    of another purpose than `fill_in` that replaces a field in which its base holds a withheld value or
-   evidence entry, whichever key of `replaces` that field is, with the reason `withheld`: only a fill-in fills
-   one in, and only a fill-in's value is compared with the base's document and labelled `user_extracted` (item
-   7, `provenance.md` section 7). [PR-042]
+   evidence entry, one alternative's included, whichever key of `replaces` that field is, with the reason
+   `withheld`: only a fill-in fills one in, and only a fill-in's value is compared with the base's document
+   and labelled `user_extracted` (item 7, `provenance.md` section 7). [PR-042]
 
 ## 5. Value fields
 
@@ -613,7 +613,7 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-038 | plain read | biocompatibility evidence is returned as a list of reports, each with its `provenance` whole |
 | PR-039 | plain read | an overlay whose base differs from the record in use is refused (`overlay_base_mismatch`): another `id`, a stale `version` or `content_hash`, compared as strings, and a base `content_hash` that is ill-formed, which is not `malformed` |
 | PR-041 | plain read | two different declared overlays replacing one field are refused (`overlay_conflict`); one overlay named twice for one field gives `request_incomplete` |
-| PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another |
+| PR-042 | plain read | a value read through a fill-in overlay is labelled `user_extracted`; an overlay whose `purpose` is none of the four (`fil_in`) is refused (`unknown_token`), and one of another purpose replacing a field its base holds withheld is refused (`withheld`), whichever key of `replaces` holds that field, the read's or another, and where one alternative of the base's field is withheld |
 | PR-043 | plain read | the form tokens are exactly the eight listed |
 | PR-044 | plain read | alternatives whose conditions are not met are set aside, a table never for its own axis entry; a table alternative outside its readable range is set aside, unless an extrapolation the request carries would cover it; one read at a declared edge refuses the field, outside a narrowed readable range too, and so does any other `not_met` in an alternative (`form_invalid`, `unit_mismatch`, `withheld`), the result holding every alternative's reasons, each with its `alternative`, and no `conditions`; one alternative left is read as a field, the set-aside ones' reasons not reported; all set aside gives `not_met`, with every alternative's reasons; an empty `alternatives`, one that is not a list, and one beside `form` or `value` refuse the field (`form_invalid`) |
 | PR-045 | plain read | a shape error inside one field refuses that field (`form_invalid`); the other fields are read; a shape error in a section's `specimen` refuses each field read from that section, and fields of other sections are read |
