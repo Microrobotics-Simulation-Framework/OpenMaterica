@@ -259,7 +259,7 @@ def _target(value: JsonValue, found: list[Reason]) -> tuple[MaterialRef, str] | 
     return (MaterialRef(id_, version, pin), field) if isinstance(field, str) else None
 
 
-def _want(value: JsonValue, claims: Collection[str], found: list[Reason]) -> Want | None:
+def _want(value: JsonValue, claims: Collection[Suite], found: list[Reason]) -> Want | None:
     want = _WANTS.get(value) if isinstance(value, str) else None
     if want is None:
         found.append(_incomplete(f"requirement.want is not a token of section 6: {value!r}"))

@@ -31,6 +31,7 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
+from materica.shapes import Suite
 
 _parse = jsonio.parse
 
@@ -43,7 +44,7 @@ def faulty_parse(data: bytes) -> JsonValue | Reason:
 
 
 def faulty_resolve_record(
-    ref: MaterialRef, store: RecordStore, claims: Collection[str]
+    ref: MaterialRef, store: RecordStore, claims: Collection[Suite]
 ) -> ResolvedRecord | Refused:
     pinned = [
         copy for copy in store.get(ref.id, ref.version) if copy.value.get("content_hash") == ref.content_hash
@@ -58,7 +59,7 @@ _form_problems = fields.form_problems
 
 
 def faulty_form_problems(
-    field: RecordField, record: dict[str, JsonValue], claims: Collection[str]
+    field: RecordField, record: dict[str, JsonValue], claims: Collection[Suite]
 ) -> list[Reason]:
     value = field.value if isinstance(field.value, dict) else {}
     statistics = value.get("statistics")

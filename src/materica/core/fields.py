@@ -29,6 +29,7 @@ from materica.core.value_shapes import (
     unknown_token,
 )
 from materica.core.vocabulary import VOCABULARY, RecordFieldSpec
+from materica.shapes import Suite
 
 # The forms whose own member step 8 reads so far; another form a row allows waits for a step not built yet.
 FORMS_READ = ("constant",)
@@ -57,7 +58,7 @@ def find_field(record: JsonObject, spec: RecordFieldSpec) -> RecordField | Reaso
     return RecordField(spec, fields[name], section)
 
 
-def form_problems(field: RecordField, record: JsonObject, claims: Collection[str]) -> Found:
+def form_problems(field: RecordField, record: JsonObject, claims: Collection[Suite]) -> Found:
     """Step 8: every reason the record's structure, the field's section and the field give; or
     `NotImplementedError` where the row allows the field's form and that form's own member waits for a step
     not built yet, whatever the rest holds."""
@@ -74,7 +75,7 @@ def form_problems(field: RecordField, record: JsonObject, claims: Collection[str
 
 
 def _form(
-    field: JsonObject, spec: RecordFieldSpec, claims: Collection[str], found: Found
+    field: JsonObject, spec: RecordFieldSpec, claims: Collection[Suite], found: Found
 ) -> tuple[str | None, bool]:
     """The field's form, where it is a token the reader knows, and whether its row allows it, a composition's
     basis included (`record_format.md` section 4.1)."""
