@@ -8,7 +8,7 @@
     "values": "CC0-1.0",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:dba98f51f6c26a0ed142a4b77a5db25acf6df3129c9f4f3f12ecd6c20f3e25dc",
+  "content_hash": "sha256:d5bba405a21d11c2f65f58ecc572a110f5d1725ab1699906a5995bb6c9daa766",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "sections": {
@@ -56,10 +56,10 @@
                   "label": "Table 1",
                   "page": 1,
                   "column": {
-                    "header": "Viscosity (Pa s)",
+                    "header": "Density (kg/m3)",
                     "index": 2
                   },
-                  "row": "water"
+                  "row": "Density table (conformance fixture)"
                 }
               },
               "recipe": {
@@ -68,10 +68,10 @@
                   "label": "Table 1",
                   "page": 1,
                   "column": {
-                    "header": "Viscosity (Pa s)",
+                    "header": "Density (kg/m3)",
                     "index": 2
                   },
-                  "row": "water"
+                  "row": "Density table (conformance fixture)"
                 },
                 "steps": "conformance fixture: illustrative extraction steps"
               }
