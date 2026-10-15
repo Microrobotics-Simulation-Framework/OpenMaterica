@@ -301,23 +301,35 @@ class FactMember(NamedTuple):
     kind: str  # value, range, basis, whole, text, identifier, token or fixed
     fixed: str = ""  # a fixed member's value, or an identifier's prefix
     required_for: str = ""  # the token for which a member is required, where the row says so
+    exactly_for: tuple[str, ...] = ()  # the tokens with which, and only with which, a member is present
+
+
+FACT_ROWS = table(
+    (SPECIFICATION / "provenance.md").read_text(encoding="utf-8"), "### 6.2 Specimen facts of schema 0.1.0"
+)
+
+
+def present_exactly(cell: str) -> dict[str, tuple[str, ...]]:
+    """The members a row's sentence gives as present exactly with some tokens: "`text` ... is present exactly
+    when `token` is `diseased` or `treated`"."""
+    found = re.search(
+        r"`([a-z_]+)`[^`]* is present exactly when `token` is (`[a-z_]+`(?:(?:,|, or| or) `[a-z_]+`)*)", cell
+    )
+    return {found[1]: tuple(codes(found[2]))} if found else {}
 
 
 def fact_shapes() -> dict[str, list[list[FactMember]]]:
     """Each fact's shapes, each a list of its members: `{"value", "unit": "s", "basis"}` or `{...}`."""
-    rows = table(
-        (SPECIFICATION / "provenance.md").read_text(encoding="utf-8"),
-        "### 6.2 Specimen facts of schema 0.1.0",
-    )
     return {
         only_code(row["Name"]): [
-            members_of(sketch) for sketch in re.findall(r"`(\{[^`]*\})`", row["JSON shape"])
+            members_of(sketch, present_exactly(row["JSON shape"]))
+            for sketch in re.findall(r"`(\{[^`]*\})`", row["JSON shape"])
         ]
-        for row in rows
+        for row in FACT_ROWS
     }
 
 
-def members_of(sketch: str) -> list[FactMember]:
+def members_of(sketch: str, exactly: dict[str, tuple[str, ...]]) -> list[FactMember]:
     found: list[FactMember] = []
     for part in re.split(r', (?="[a-z_]+")', sketch.strip("{}")):
         name, _, value = part.partition(": ")
@@ -336,7 +348,14 @@ def members_of(sketch: str) -> list[FactMember]:
             found.append(FactMember(name, "fixed", value.strip('"')))
         else:
             required = re.fullmatch(r"<[^,>]*, required for ([a-z_]+)>", value)
-            found.append(FactMember(name, "text", required_for=required[1] if required else ""))
+            found.append(
+                FactMember(
+                    name,
+                    "text",
+                    required_for=required[1] if required else "",
+                    exactly_for=exactly.get(name, ()),
+                )
+            )
     return found
 
 
@@ -363,7 +382,9 @@ def fact(draw: st.DrawFn, name: str) -> Json:
         elif member.kind == "identifier":
             found[member.name] = f"{member.fixed}:{draw(st.integers(0, 10**7))}"
         elif member.kind in values and (
-            not member.required_for or token == member.required_for or draw(st.booleans())
+            token in member.exactly_for
+            if member.exactly_for
+            else not member.required_for or token == member.required_for or draw(st.booleans())
         ):
             found[member.name] = values[member.kind]()
     return found
@@ -1355,7 +1376,8 @@ def _fact_member_missing(draw: st.DrawFn, found: Json) -> str:
     required = next(
         names
         for names in (
-            [member.name for member in shape if not member.required_for] for shape in FACT_SHAPES[name]
+            [member.name for member in shape if not (member.required_for or member.exactly_for)]
+            for shape in FACT_SHAPES[name]
         )
         if set(names) <= set(present)
     )
@@ -1373,6 +1395,37 @@ def _fact_member_unknown(draw: st.DrawFn, found: Json) -> str:
 def _preservation(draw: st.DrawFn, found: Json) -> str:
     mapping(found["specimen"])["preservation"] = {"token": "other", "basis": "stated"}
     return "specimen.preservation.text"
+
+
+# Section 6.2's rows: a member present exactly with some of its fact's tokens (a disease or treatment
+# state's `text`, with `diseased` and `treated`).
+EXACTLY = {
+    (name, member.name): member.exactly_for
+    for name, shapes in FACT_SHAPES.items()
+    for shape in shapes
+    for member in shape
+    if member.exactly_for
+}
+
+
+@fault("fact_member_beside_another_token", "specimen", SPECIMEN_PLAN)
+def _beside_another_token(draw: st.DrawFn, found: Json) -> str:
+    (name, member), tokens = draw(st.sampled_from(sorted(EXACTLY.items())))
+    present = specimen_fact(found, name)
+    present["token"] = draw(
+        st.sampled_from([token for token in LISTS[f"{name}_token"] if token not in tokens])
+    )
+    present[member] = draw(TEXT)
+    return f"specimen.{name}.{member}"
+
+
+@fault("fact_member_missing_for_its_token", "specimen", SPECIMEN_PLAN)
+def _missing_for_its_token(draw: st.DrawFn, found: Json) -> str:
+    (name, member), tokens = draw(st.sampled_from(sorted(EXACTLY.items())))
+    present = specimen_fact(found, name)
+    present["token"] = draw(st.sampled_from(tokens))
+    present.pop(member, None)
+    return f"specimen.{name}.{member}"
 
 
 @fault("fact_inferred_without_inferred_from", "specimen", SPECIMEN_PLAN)

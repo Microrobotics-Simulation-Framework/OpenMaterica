@@ -30,7 +30,7 @@ Hypothesis properties of the core, in two groups, and of the writer schema, in a
   from the member tables and rules each builder cites. A fault is one change the text says breaks a field (a
   member missing, a bound crossed, a token of another member's list or of none, a status token its row does
   not allow, a rule across objects broken, a unit other than the registered one, a field under a name or
-  holding what its row does not give), 164 of them in ten families, each drawn as often as another of its
+  holding what its row does not give), 166 of them in ten families, each drawn as often as another of its
   family on a field, or a body, planned so that its place exists. The refusal is checked on one the schema
   takes, the same but for the fault, so that it is the fault's.
 
@@ -87,7 +87,7 @@ mean the small size misses it.
 
 `test_writer_mutants.py` gives the writer schema one change at a time: the S2a-1 review's 29 mutants of its
 value-field part and its two controls (M1 to M31, its numbering kept), one for each constraint written since
-(M6b, M14b, M32 to M59), and eight that tighten it (T1 to T8); then the bindings it applies from the
+(M6b, M14b, M32 to M61), and nine that tighten it (T1 to T9); then the bindings it applies from the
 vocabulary, each changed in the vocabulary file or no longer applied by the writer: a section's field names, a
 field's forms, unit, label or composition basis, its alternatives, the replaced fields, a numeric condition's
 unit and its `plus_minus` entries' (B1 to B12, with B5b), and four that tighten them (TB1 to TB4). Each names the property that kills it and the

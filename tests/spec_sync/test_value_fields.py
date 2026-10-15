@@ -262,6 +262,75 @@ def check_specimen_table(definitions: Definitions, read: Documents) -> None:
     assert bound == fixed
 
 
+# A row's sentence giving a member as present exactly with some of its fact's tokens.
+PRESENT_EXACTLY = re.compile(
+    r"`([a-z_]+)`[^`]* is present exactly when `token` is (`[a-z_]+`(?:(?:,|, or| or) `[a-z_]+`)*)"
+)
+
+
+def present_exactly(definitions: Definitions, name: str) -> set[tuple[str, tuple[str, ...]]]:
+    """The members the writer's definition `name` holds exactly with some tokens: a condition on its `token`
+    whose `then` requires the member and whose `else` refuses it."""
+    definition = definitions[name]
+    rule = (definition.get("if"), definition.get("then"), definition.get("else"))
+    if not all(isinstance(part, dict) for part in rule):
+        return set()
+    tested, then, otherwise = map(mapping, rule)
+    if "token" not in mapping(tested.get("properties", {})):
+        return set()
+    choices = mapping(mapping(tested.get("properties", {})).get("token", {})).get("anyOf", [])
+    tokens = tuple(str(mapping(choice)["const"]) for choice in listing(choices))
+    (member,) = listing(then["required"])
+    assert otherwise == {"not": {"required": [member]}}, name
+    assert tested.get("required") == ["token"], name
+    return {(str(member), tokens)}
+
+
+def check_present_exactly(definitions: Definitions, read: Documents) -> None:
+    """Each member a row of section 6.2 gives as present exactly with some tokens is so in the writer, and is
+    required nowhere else; and no other fact holds such a rule."""
+    rows = table(read("provenance.md"), "### 6.2 Specimen facts of schema 0.1.0")
+    facts = members(definitions, "specimen")
+    expected: dict[str, set[tuple[str, tuple[str, ...]]]] = {}
+    for row in rows:
+        name = only_code(row["Name"])
+        if found := PRESENT_EXACTLY.search(row["JSON shape"]):
+            expected[name] = {(found[1], tuple(codes(found[2])))}
+    assert expected, "no row gives a member as present exactly with some tokens"
+    for name in facts:
+        (fact, _) = alternatives(facts[name])
+        assert present_exactly(definitions, fact) == expected.get(name, set()), name
+        for member, _ in expected.get(name, set()):
+            assert member not in required(definitions, fact), name
+
+
+def test_a_member_present_exactly_with_some_tokens_is_so_in_the_writer() -> None:
+    check_present_exactly(DEFINITIONS, document)
+
+
+@pytest.mark.parametrize(
+    ("token", "text", "taken"),
+    [
+        ("normal", None, True),
+        ("normal", "no lesion seen", False),
+        ("diseased", "hepatic steatosis", True),
+        ("diseased", None, False),
+        ("treated", "after radiotherapy", True),
+        ("treated", None, False),
+    ],
+)
+def test_a_disease_or_treatment_state_holds_a_text_exactly_for_diseased_and_treated(
+    token: str, text: str | None, taken: bool
+) -> None:
+    """`provenance.md` section 6.2 (maintainer, 2026-10-15): `normal` with a text is refused, and so is
+    `diseased` or `treated` without one; the writer and the reader's `$defs` agree, since step 8 checks a
+    known fact's shape."""
+    fact: JsonValue = {"token": token, "basis": "stated", **({"text": text} if text is not None else {})}
+    for schema in ("record.writer.json", "record.reader.json"):
+        specimen = validator(f"{schema}#/$defs/specimen")
+        assert (specimen({"disease_and_treatment_state": fact}) == []) is taken, (schema, token, text)
+
+
 @pytest.mark.parametrize(
     ("fact", "valid", "invalid"),
     [
@@ -931,6 +1000,32 @@ def dropping_last(name: str, *path: str) -> Callable[[Definitions], None]:
             ),
             None,
             id="fact_basis_no_longer_fixed",
+        ),
+        pytest.param(
+            check_present_exactly,
+            changed_document("provenance.md", "`token` is `diseased` or `treated`", "`token` is `diseased`"),
+            None,
+            id="present_exactly_with_another_token",
+        ),
+        pytest.param(
+            check_present_exactly,
+            changed_document(
+                "provenance.md", ", and is present exactly when `token` is", ", whenever `token` is"
+            ),
+            None,
+            id="present_exactly_no_longer_said",
+        ),
+        pytest.param(
+            check_present_exactly,
+            document,
+            removing("disease_and_treatment_state", "else"),
+            id="present_beside_another_token",
+        ),
+        pytest.param(
+            check_present_exactly,
+            document,
+            setting(["token", "text"], "disease_and_treatment_state", "required"),
+            id="required_with_every_token",
         ),
         pytest.param(
             check_status_objects,

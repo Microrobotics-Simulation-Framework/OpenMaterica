@@ -746,11 +746,12 @@ class TissueState(Based):
 
 class DiseaseAndTreatmentState(Based):
     """
-    The state, and which disease or treatment.
+    The state, and which disease or treatment: a text exactly where the state is diseased or treated, none
+    where it is normal (provenance.md section 6.2).
     """
 
     token: DiseaseAndTreatmentStateToken
-    text: str
+    text: NotRequired[str]
 
 
 class Preparation(Based):
