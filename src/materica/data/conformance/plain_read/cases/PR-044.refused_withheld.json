@@ -13,7 +13,7 @@
       "record": {
         "id": "conformance/density_alternatives_fixture",
         "version": "1.0.0",
-        "content_hash": "sha256:a4fde0785bbe1941d45e6d17d13f0a850c34b308c737e979323b2a2225062f2b"
+        "content_hash": "sha256:f90357daeafb563bcee8e1ad2f4c7c352d5cb28dbc31599d5d8a5922b45a1f2f"
       },
       "field": "bulk.density"
     },

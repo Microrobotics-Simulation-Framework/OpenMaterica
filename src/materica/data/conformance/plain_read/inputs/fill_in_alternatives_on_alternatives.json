@@ -8,14 +8,14 @@
     "values": "LicenseRef-user-extracted",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:8097a3fd8238f5652965668af4a908942bd44539e8c0f2d0b64caae1a08b096f",
+  "content_hash": "sha256:f990c57188c6e3d53baebbee9cd51a423a831b99b04f6d091702e53a8d272f9f",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "purpose": "fill_in",
     "base": {
       "id": "conformance/reference_only_fixture",
       "version": "1.0.0",
-      "content_hash": "sha256:373c95e9ccf33cc472d417611f33da8ca9732562248188fa2833406c90443d6d"
+      "content_hash": "sha256:68489c92d9c06f813157ad2668c8ffe756d154f329f5c475aba6155ef4bcaba5"
     },
     "scope": {
       "consumer": "conformance_fixture_user"
@@ -101,7 +101,7 @@
                     "header": "Viscosity (Pa s)",
                     "index": 2
                   },
-                  "row": "water"
+                  "row": "conformance fixture row"
                 }
               },
               "extraction": {
@@ -117,7 +117,7 @@
                     "header": "Viscosity (Pa s)",
                     "index": 2
                   },
-                  "row": "water"
+                  "row": "conformance fixture row"
                 },
                 "copy": {
                   "sha256": "3a285061746557f23b71d97ddcbb1a51d01b0cbe17c7522c3829ca81e21d3de2",
@@ -216,7 +216,7 @@
                     "header": "Viscosity (Pa s)",
                     "index": 2
                   },
-                  "row": "water"
+                  "row": "conformance fixture row"
                 }
               },
               "extraction": {
@@ -232,7 +232,7 @@
                     "header": "Viscosity (Pa s)",
                     "index": 2
                   },
-                  "row": "water"
+                  "row": "conformance fixture row"
                 },
                 "copy": {
                   "sha256": "3a285061746557f23b71d97ddcbb1a51d01b0cbe17c7522c3829ca81e21d3de2",

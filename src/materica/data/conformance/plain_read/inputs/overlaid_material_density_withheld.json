@@ -8,7 +8,7 @@
     "values": "CC0-1.0",
     "evidence": "excluded"
   },
-  "content_hash": "sha256:7e107bc54334b40053dfabb669eda4614d029760e20d19d456bf050b529937f2",
+  "content_hash": "sha256:2aa190c687c9b9d06ee7afa1d91c499adf442e2281dc28ad32e444a2be2748fd",
   "card": "conformance fixture: illustrative values, not a measurement",
   "body": {
     "sections": {
@@ -142,7 +142,7 @@
                     "header": "Density (kg m-3)",
                     "index": 3
                   },
-                  "row": "water"
+                  "row": "conformance fixture row"
                 }
               },
               "recipe": {
@@ -154,7 +154,7 @@
                     "header": "Density (kg m-3)",
                     "index": 3
                   },
-                  "row": "water"
+                  "row": "conformance fixture row"
                 },
                 "steps": "conformance fixture: illustrative extraction steps"
               }
