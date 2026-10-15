@@ -242,7 +242,10 @@ far; a step that gives `unknown` does not.
    registers none (`provenance.md` section 6.1 item 1). This step alone compares units: code point
    for code point, as at step 0, and a unit registered as a status object by its `status` token, so that a
    status object where a string is registered, a string where a status object is, and a status token the
-   reader does not know all give `unit_mismatch` (`record_format.md` section 4.2). [PR-010] [PR-037]
+   reader does not know all give `unit_mismatch` (`record_format.md` section 4.2). [PR-010] [PR-037] A
+   specimen fact's `unit`, wherever step 8 checks the fact, is compared in the same way with the unit its row
+   fixes (`provenance.md` section 6.2): another unit, or a status object with any token, gives
+   `unit_mismatch`. [PR-037]
 10. **Conditions**, by section 5, with the implied conditions the request gives that apply to the read
     (section 1) and whose fact and token the field's specimen states. [PR-316]
 11. **Form.** Evaluate the form at the operating conditions, within its range (section 5, last rows:

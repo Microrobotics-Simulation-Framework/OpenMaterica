@@ -545,7 +545,7 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-034 | plain read | `extensions` is ignored, whatever its members hold |
 | PR-035 | plain read | a label is returned with the value and never refused as an unknown family |
 | PR-036 | plain read | a form the field's row does not allow is refused (`form_not_registered`): a power law, a parameter set and reference data on every 0.1.0 field, a parameter set also `family_suite_absent` without the family evaluation suite; a composition basis the row does not allow |
-| PR-037 | plain read | an `axis_unit`, condition unit or `plus_minus` unit other than the registered one is refused (`unit_mismatch`), compared code point for code point, and so is a `unit` on a token condition |
+| PR-037 | plain read | an `axis_unit`, condition unit or `plus_minus` unit other than the registered one is refused (`unit_mismatch`), compared code point for code point, and so is a `unit` on a token condition, and a specimen fact's unit other than the one its row fixes, a status object there included |
 | PR-038 | plain read | biocompatibility evidence is returned as a list of reports, each with its `provenance` whole |
 | PR-039 | plain read | an overlay whose base differs from the record in use is refused (`overlay_base_mismatch`) |
 | PR-041 | plain read | two declared overlays replacing one field are refused (`overlay_conflict`) |
