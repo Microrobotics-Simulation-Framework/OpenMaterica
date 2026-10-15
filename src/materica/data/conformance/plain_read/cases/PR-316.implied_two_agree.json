@@ -13,7 +13,7 @@
       "record": {
         "id": "conformance/water_fixture",
         "version": "1.0.0",
-        "content_hash": "sha256:1ed356a1a0ed8f8b8351f8b948beec9a39fa8bc1dca9c550b88434c1e5cc2ae7"
+        "content_hash": "sha256:e7966e0e5c4119a3654116f6f0973c4be7557ee0f4c7710846e5a6df3b2140de"
       },
       "field": "fluid.dynamic_viscosity"
     },
@@ -50,7 +50,7 @@
         "record": {
           "id": "conformance/water_fixture",
           "version": "1.0.0",
-          "content_hash": "sha256:1ed356a1a0ed8f8b8351f8b948beec9a39fa8bc1dca9c550b88434c1e5cc2ae7"
+          "content_hash": "sha256:e7966e0e5c4119a3654116f6f0973c4be7557ee0f4c7710846e5a6df3b2140de"
         },
         "field": "fluid.dynamic_viscosity",
         "fact": "tissue_state",
@@ -68,7 +68,7 @@
         "record": {
           "id": "conformance/water_fixture",
           "version": "1.0.0",
-          "content_hash": "sha256:1ed356a1a0ed8f8b8351f8b948beec9a39fa8bc1dca9c550b88434c1e5cc2ae7"
+          "content_hash": "sha256:e7966e0e5c4119a3654116f6f0973c4be7557ee0f4c7710846e5a6df3b2140de"
         },
         "field": "fluid.dynamic_viscosity",
         "fact": "disease_and_treatment_state",
@@ -126,7 +126,6 @@
       },
       "disease_and_treatment_state": {
         "token": "normal",
-        "text": "conformance fixture",
         "basis": "stated"
       }
     },
