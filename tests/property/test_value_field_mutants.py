@@ -370,6 +370,37 @@ def _inputs_may_be_empty(value: JsonValue, where: str, found: Found) -> None:
         value_shapes.derivation_input(item, f"{where}[{index}]", found)
 
 
+def _both_but_not_neither(value: JsonValue, where: str, found: Found) -> None:
+    if isinstance(value, dict) and "value" in value and "range" in value:
+        found.append(value_shapes.invalid(f"{where} holds both value and range"))
+
+
+def neither_value_nor_range_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
+    required, optional = (
+        {"unit": value_shapes.unit},
+        {
+            "value": value_shapes.number,
+            "range": value_shapes.in_order,
+            "plus_minus": value_shapes.plus_minus,
+            "set_or_measured": value_shapes.listed("set_or_measured", "set_or_measured"),
+        },
+    )
+    numeric = value_shapes.based(required, optional, _both_but_not_neither)
+    monkeypatch.setattr(value_shapes, "NUMERIC_CONDITION", numeric)
+    rebuilt(monkeypatch)
+
+
+BLOCK_PRECISION_ANY_STRING = (
+    value_shapes.STATISTICS[0],
+    {
+        **value_shapes.STATISTICS[1],
+        "precision_conditions": value_shapes.or_status(
+            value_shapes.string, shapes.StatisticsBlock, "precision_conditions"
+        ),
+    },
+)
+
+
 STATISTICS_BLOCK = value_shapes.statistics_block
 
 
@@ -552,6 +583,24 @@ MUTANTS = [
         ONE_FAULT,
         setting(value_shapes, "derivation_inputs", _inputs_may_be_empty),
         ("derivation.inputs_empty",),
+    ),
+    Mutant(
+        "block_mean_any",
+        ONE_FAULT,
+        members_with(replacing("mean", _any)),
+        ("statistics_numbers.mean_not_a_number",),
+    ),
+    Mutant(
+        "block_precision_any_string",
+        ONE_FAULT,
+        setting(value_shapes, "STATISTICS", BLOCK_PRECISION_ANY_STRING),
+        ("statistics_tokens.precision_conditions_unknown",),
+    ),
+    Mutant(
+        "neither_value_nor_range_allowed",
+        ONE_FAULT,
+        neither_value_nor_range_allowed,
+        ("conditions.neither_value_nor_range",),
     ),
     Mutant(
         "n_sources_any_number",

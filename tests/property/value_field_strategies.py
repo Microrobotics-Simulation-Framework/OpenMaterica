@@ -720,6 +720,9 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         # A population level's tokens (`uncertainty.md` section 1): `level`, and `within`, from the levels.
         "level_unknown": level({"status": "none"}, "cohort", UNKNOWN),
         "within_unknown": level("cohort", "specimen", UNKNOWN),
+        "precision_conditions_unknown": represented(
+            "measurement", "precision_conditions", "lab_to_lab", UNKNOWN
+        ),
     },
     "statistics_numbers": {
         "sd_negative": setting(block, "sd", -0.5, INVALID),
@@ -728,6 +731,8 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         # `n_sources` is a count too (`read_side_contract.md` section 3, step 8).
         "n_sources_not_whole": represented("across_sources", "n_sources", 2.5),
         "n_sources_negative": represented("across_sources", "n_sources", -3.0),
+        # `mean` is a number or a status object (`uncertainty.md` section 1).
+        "mean_not_a_number": setting(block, "mean", "0.000692", INVALID),
     },
     "statistics_statuses": {
         "status_unknown": setting(block, "sd", {"status": "pending"}, UNKNOWN),
@@ -796,6 +801,10 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         ),
         "value_and_range": setting(
             conditions_of, "temperature", {**TEMPERATURE, "range": [1.0, 2.0]}, INVALID
+        ),
+        # A numeric condition holds a value or a range (`provenance.md` section 6.1 item 1).
+        "neither_value_nor_range": setting(
+            conditions_of, "temperature", {"unit": "K", "basis": "stated"}, INVALID
         ),
         "plus_minus_empty": setting(conditions_of, "temperature", {**TEMPERATURE, "plus_minus": []}, INVALID),
         "plus_minus_two_bounds": setting(
