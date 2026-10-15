@@ -35,9 +35,11 @@ after every run that includes these tests:
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
 | S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, or steps 9 to 13 (plain read) | 298 | not yet runnable: the step that runs each is not done |
 | reads of tables, and reads under an extrapolation (plain read) | 155 | not yet runnable: the step that runs each is not done |
+| `evaluate` (TE-002 to TE-012) | 33 | not yet runnable: no executor; S3-te adds one, which runs a test-only reference evaluator |
 
-Of the 1032 case files, 1020 agree with plain read and the hash suite, 960 with plain read alone, and 1020 with
-the fits and reference data suite too.
+Of the 1065 case files, 1020 agree with plain read and the hash suite, 960 with plain read alone, and 1020 with
+the fits and reference data suite too; the 33 of the table evaluation suite agree with none, since this
+implementation claims no evaluator.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`
 names (`materica.load_records`), and passes its result through JSON text, as a consumer would receive it.

@@ -1,0 +1,51 @@
+{
+  "case": "TE-006",
+  "variant": "close_sides",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "temperature",
+      "axis_unit": "K",
+      "x": [
+        300.0,
+        310.0,
+        320.0
+      ],
+      "y": [
+        1000.0,
+        980.46875,
+        960.625
+      ],
+      "scheme": "linear",
+      "edges": []
+    },
+    "at": [
+      310.0
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "in_range": true,
+        "value": 980.46875,
+        "derivative": {
+          "left": -1.953125,
+          "right": -1.984375
+        }
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 3e-07
+    }
+  }
+}

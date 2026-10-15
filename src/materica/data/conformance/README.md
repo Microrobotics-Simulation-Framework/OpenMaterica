@@ -10,6 +10,7 @@ file or the ones beside it differ. These files only help you find your way.
 |---|---|---|---|
 | `plain_read/` | plain read | `read_side_contract.md`, `record_format.md`, `provenance.md`, `uncertainty.md` | a read of one field of one record: the request's own check; steps 1 to 5 of the read (resolve, version, validate, hash, type); steps 6 to 13, which read the value (field, form and tokens, units, conditions, origin, `want`); and `list_records` |
 | `hash/` | hash (HS) | `record_format.md` section 9; `read_side_contract.md` steps 1 and 4 | the content hash, as an operation on any JSON value, and the reads of a reader that recomputes it |
+| `table_evaluation/` | table evaluation (TE) | `read_side_contract.md` section 7; `record_format.md` section 6 | what a consumer's own evaluator of a table returns: the value, `in_range`, the derivative by side, and the refusal at or across an edge, at each precision |
 
 The tree grows with the implementation. The plain-read cases cover the read through step 13 for the forms
 0.1.0's fields use: constant, table, interval, composition and evidence, and reads under an extrapolation.

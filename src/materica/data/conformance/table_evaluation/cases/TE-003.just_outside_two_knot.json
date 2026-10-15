@@ -1,0 +1,52 @@
+{
+  "case": "TE-003",
+  "variant": "just_outside_two_knot",
+  "suite": "table_evaluation",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "evaluate",
+    "form": "table",
+    "table": {
+      "axis": "magnetic_flux_density",
+      "axis_unit": "T",
+      "x": [
+        0.5,
+        2.0
+      ],
+      "y": [
+        3.0,
+        1.5
+      ],
+      "scheme": "linear",
+      "edges": []
+    },
+    "at": [
+      0.4999999701976776,
+      2.000000238418579
+    ]
+  },
+  "expected": {
+    "evaluations": [
+      {
+        "in_range": false,
+        "value": 3.0,
+        "derivative": 0.0
+      },
+      {
+        "in_range": false,
+        "value": 1.5,
+        "derivative": 0.0
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "evaluations"
+    ],
+    "relative_tolerance": {
+      "binary64": 1e-12,
+      "binary32": 3e-07
+    }
+  }
+}
