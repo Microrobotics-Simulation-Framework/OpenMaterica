@@ -476,7 +476,7 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
-| `broken_table_on_magnetic_remanence` | a table without `edges` on `magnetic.remanence`, whose row does not allow a table: `form_not_registered` and, for the table's own shape, `form_invalid`, at step 8 | 8 | not_met; `form_not_registered`, `form_invalid`; labels none |
+| `broken_table_on_magnetic_remanence` | a table without `edges` on `magnetic.remanence`, whose row does not allow a table: `form_not_registered` alone at step 8, the member of a form the row does not allow not being checked | 8 | not_met; `form_not_registered`; labels none |
 | `composition_basis_mole_fraction` | a composition with the basis `mole_fraction`, which the row does not allow: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
 | `composition_basis_volume_fraction` | a composition with the basis `volume_fraction`, which the row does not allow: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
 | `composition_on_density` | a well-formed composition on `bulk.density`, whose row allows a constant, a table or an interval: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
@@ -502,7 +502,7 @@ See `README.md` beside this file for how to read a case.
 | `reference_data_on_magnetic_remanence` | a well-formed `reference_data` on `magnetic.remanence`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
 | `reference_data_on_magnetic_saturation_magnetisation` | a well-formed `reference_data` on `magnetic.saturation_magnetisation`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
 | `reference_data_on_magnetic_volume_susceptibility` | a well-formed `reference_data` on `magnetic.volume_susceptibility`, whose row does not allow it: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
-| `table_on_biocompatibility_evidence` | a table over temperature on `biocompatibility.evidence`, whose row does not allow one, with `conditions` `{}`, so without the table's axis condition: `form_not_registered` and, for the table's own shape, `form_invalid`, at step 8 | 8 | not_met; `form_not_registered`, `form_invalid`; labels none |
+| `table_on_biocompatibility_evidence` | a table over temperature on `biocompatibility.evidence`, whose row does not allow one, with `conditions` `{}`, so without the table's axis condition: `form_not_registered` alone at step 8, the member of a form the row does not allow not being checked | 8 | not_met; `form_not_registered`; labels none |
 | `table_on_bulk_elemental_composition` | a well-formed table on `bulk.elemental_composition`, whose row does not allow one: `form_not_registered` at step 8 | 8 | not_met; `form_not_registered`; labels none |
 | `table_on_magnetic_remanence` | a well-formed table on `magnetic.remanence`, whose row does not allow one: `form_not_registered` at step 8 | 8 | not_met; `form_not_registered`; labels none |
 | `table_on_magnetic_saturation_magnetisation` | a well-formed table on `magnetic.saturation_magnetisation`, whose row does not allow one: `form_not_registered` at step 8 | 8 | not_met; `form_not_registered`; labels none |
