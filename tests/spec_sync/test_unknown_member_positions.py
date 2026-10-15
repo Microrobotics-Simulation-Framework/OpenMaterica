@@ -4,8 +4,11 @@
 
 - Each position quotes the sentence that decides it, which must stay in its document.
 - The members named at a position are the schema's (the writer schema's for a record, `read_request.json`'s
-  for a request), with any other member the text names there given with its reason; every object definition
-  step 8 checks has a position.
+  for a request), with any other member the text names there given with its reason. Every object definition a
+  read reaches in a record has a position, and every member of one that may hold a status object a status
+  position, but where a `deferred` position names the piece that will read it (an interval, a composition,
+  evidence, a table, alternatives, a request's acceptances): it fails once that piece is done. Every object in
+  a host is found by a position's path.
 - At each position of a few valid records and a valid request, at every place the pattern finds, the read
   meets the verdict: a member named `x_unknown_member` is ignored, or refused where every unknown name is, or
   as the row of a status object says; a member one slip from each named member (the name with a character
@@ -16,8 +19,9 @@
 - Every position is found in some host, so that no row is dead.
 
 The hosts are the full fields of `tests/property/full_fields.py`, each in a record with a section specimen
-and extensions, and a request for one of them. A read that passes step 8 raises `NotImplementedError` until
-steps 9 to 13 are built: the outcome "past step 8".
+and extensions, and a request for one of them; three of them also hold a unit as a status object in a token
+condition, a section's fact and a derivation input's fact. A read that passes step 8 raises
+`NotImplementedError` until steps 9 to 13 are built: the outcome "past step 8".
 """
 
 import copy
@@ -41,6 +45,7 @@ from scripts.gen_vocabulary import SPECIFICATION
 from tests.property.full_fields import SPECIMEN, full_fields, record_of
 from tests.spec_sync import status_rows
 from tests.spec_sync.schemas import SCHEMA
+from tests.spec_sync.test_case_steps import KNOWN, STEPS
 
 JsonObject = dict[str, JsonValue]
 Path_ = tuple[str | int, ...]
@@ -50,6 +55,7 @@ SCHEMAS = {
     "request": json.loads((SCHEMA / "read_request.json").read_text(encoding="utf-8")),
 }
 UNKNOWN = "x_unknown_member"
+UNSTATED: JsonObject = {"status": "unstated"}
 FIELD = "fluid.dynamic_viscosity"
 PAST_STEP_8 = "past step 8"
 REFUSAL = {"record": "form_invalid", "request": "request_incomplete"}
@@ -96,17 +102,22 @@ def hosts() -> tuple[Host, ...]:
     """Each full field in a record with a section specimen and extensions; and a request for the first."""
     found: list[Host] = []
     for name, field in full_fields().items():
+        section_specimen = copy.deepcopy(SPECIMEN)
         if name == "statuses":
-            # A numeric condition's unit as a status object: the text allows it (`provenance.md` section 6.1
-            # item 1), though the writer binds the unit to the registered one, so no full field holds one.
-            conditions = field["conditions"]
-            assert isinstance(conditions, dict)
-            conditions["measurement_dimension"] = {
-                "value": 5.0e-5,
-                "unit": {"status": "unstated"},
-                "basis": "stated",
-            }
-        record = record_of(field, specimen=copy.deepcopy(SPECIMEN))
+            # A condition's unit as a status object: the text allows one on a numeric condition
+            # (`provenance.md` section 6.1 item 1) and on a token condition (step 9 refuses it), though the
+            # writer binds a numeric condition's unit to the registered one and gives a token condition none.
+            conditions = an_object(field["conditions"])
+            conditions["measurement_dimension"] = {"value": 5.0e-5, "unit": UNSTATED, "basis": "stated"}
+            conditions["measurement_geometry"] = {"token": "tube", "unit": UNSTATED, "basis": "stated"}
+        if name == "measurement":
+            section_specimen["donor_age"] = {"range": [1.0e9, 2.0e9], "unit": UNSTATED, "basis": "stated"}
+        if name == "across_sources":
+            derivation = an_object(an_object(field["provenance"])["derivation"])
+            inputs = an_object(a_list(derivation["input_specimens"])[0])
+            facts = an_object(inputs["specimen"])
+            facts["post_mortem_interval"] = {"value": 60.0, "unit": UNSTATED, "basis": "stated"}
+        record = record_of(field, specimen=section_specimen)
         record_body = record["body"]
         assert isinstance(record_body, dict)
         record_body["extensions"] = {"acme": {"sections": {"x": 1.0}}}
@@ -294,9 +305,39 @@ def problems(position: JsonObject) -> list[str]:
     return found
 
 
-@pytest.mark.parametrize("position", TABLE, ids=[str(position["id"]) for position in TABLE])
+LIVE = [position for position in TABLE if "deferred" not in position]
+
+
+@pytest.mark.parametrize("position", LIVE, ids=[str(position["id"]) for position in LIVE])
 def test_the_read_meets_each_positions_verdict(position: JsonObject) -> None:
     assert problems(position) == []
+
+
+def done_too_soon(positions: list[JsonObject], done: list[str]) -> list[str]:
+    """Each deferred position whose piece is done, or that names no piece, an unknown one or a verdict."""
+    found: list[str] = []
+    for position in positions:
+        pieces = [str(piece) for piece in a_list(position.get("deferred", []))]
+        if "deferred" in position and (not pieces or "verdict" in position or set(pieces) - KNOWN):
+            found.append(f"{position['id']}: a deferred position names its known pieces and no verdict")
+        found += [
+            f"{position['id']}: {piece} is done, so the position needs its verdict"
+            for piece in pieces
+            if piece in done
+        ]
+    return found
+
+
+def test_a_deferred_position_waits_for_a_piece_not_done() -> None:
+    """A position no read of this version reaches yet: the test fails once the first piece that builds it is
+    done, until the position gets its verdict and is read."""
+    done = [str(piece) for piece in STEPS["done"]]
+    assert done_too_soon(TABLE, done) == []
+    assert done_too_soon(TABLE, [*done, "S2b-1"]) == [
+        "D01: S2b-1 is done, so the position needs its verdict",
+        "D02: S2b-1 is done, so the position needs its verdict",
+    ]
+    assert done_too_soon([{**BY_ID["D04"], "deferred": ["S2c"]}], done) != []
 
 
 # The table against the text and the schemas.
@@ -366,21 +407,79 @@ def objects(names: set[str]) -> set[str]:
     return {name for name in names if isinstance(definitions[name].get("properties"), dict)}
 
 
+# Where a read starts in a record: a value field of each form some row of schema 0.1 allows, alternatives and
+# a section's specimen. A power law, a parameter set and reference data, which no row allows, are refused for
+# their form, their own member read by no reader of this version; the members they share have a constant's
+# positions.
+STARTS = (
+    "constant_field",
+    "table_field",
+    "interval_field",
+    "composition_field",
+    "evidence_field",
+    "alternatives",
+)
+NO_ROW_ALLOWS = {"power_law_field", "parameter_set_field", "reference_data_field"}
+
+
+def expanded(names: set[str]) -> set[str]:
+    """`names`, with every condition's and fact's definition for `per_condition` and `per_fact`."""
+    if "per_condition" in names:
+        names = names | {definition_of("conditions", name) for name in VOCABULARY.conditions}
+    if "per_fact" in names:
+        names = names | {definition_of("specimen", name) for name in VOCABULARY.facts}
+    return names
+
+
+def status_members(definition: str) -> list[str]:
+    """The members of `definition` that may hold a status object (`status_rows.py`)."""
+    found: list[str] = []
+    for member in members_of(SCHEMAS["record"], definition):
+        try:
+            status_rows.tokens(definition, member)
+        except ValueError:
+            continue
+        found.append(member)
+    return found
+
+
 def uncovered(positions: list[JsonObject]) -> set[str]:
-    """The object definitions step 8 reads from a constant and a section's specimen that no position names,
-    the ones `based` and `field_members` lend their members to others aside, and the status objects."""
-    named_definitions: set[str] = set()
+    """Each object definition a read reaches in a record that no position names, the ones `based` and
+    `field_members` lend their members to others aside; and each member of such a definition that may hold a
+    status object, `<definition>.<member>`, whose definition no status position names. A deferred position
+    covers both kinds for the definitions it names."""
+    objects_named: set[str] = set()
+    statuses_named: set[str] = set()
     for position in positions:
-        if position["in"] == "record" and position["verdict"] != "status":
-            named_definitions |= {str(schema) for schema in position.get("schema", [])}  # type: ignore[union-attr]
-    per_name = {definition_of("conditions", name) for name in VOCABULARY.conditions} | {
-        definition_of("specimen", name) for name in VOCABULARY.facts
-    }
-    if "per_condition" in named_definitions or "per_fact" in named_definitions:
-        named_definitions |= per_name
+        if position["in"] != "record":
+            continue
+        named_here = expanded({str(schema) for schema in a_list(position.get("schema", []))})
+        if position.get("verdict") != "status":
+            objects_named |= named_here
+        if position.get("verdict") == "status" or "deferred" in position:
+            statuses_named |= named_here
     lent = {"based", "field_members"}
-    statuses = {name for name in SCHEMAS["record"]["$defs"] if name.startswith("status_")}
-    return objects(reachable("constant_field") | reachable("specimen")) - named_definitions - lent - statuses
+    reached = objects(set[str]().union(*(reachable(start) for start in (*STARTS, "specimen"))))
+    reached -= lent | NO_ROW_ALLOWS | {name for name in reached if name.startswith("status_")}
+    found = reached - objects_named
+    for definition in reached - statuses_named:
+        found |= {
+            f"{definition}.{member}"
+            for member in status_members(definition)
+            if (definition, member) not in unchecked(positions)
+        }
+    return found
+
+
+def unchecked(positions: list[JsonObject]) -> set[tuple[str, str]]:
+    """The members a `not_checked` position names, each with the name of the object holding it, which is its
+    definition's (`provenance`'s `review` and `assistance`)."""
+    found: set[tuple[str, str]] = set()
+    for position in positions:
+        path = [str(step) for step in a_list(position["path"])]
+        if position.get("verdict") == "not_checked" and len(path) >= 2:
+            found |= {(path[-2], name) for name in path[-1].split("|")}
+    return found
 
 
 def test_every_object_step_8_reads_has_a_position() -> None:
@@ -426,3 +525,52 @@ def test_a_wrong_verdict_a_dead_row_and_a_lost_quote_are_found() -> None:
     assert problems({**BY_ID["R22"], "path": ["body", "nowhere"]}) == ["R22: found in no host"]
     assert unquoted([{**BY_ID["R01"], "quote": "A reader ignores every member"}], document) == ["R01"]
     assert uncovered([position for position in TABLE if position["id"] != "R26"]) == {"uncertainty"}
+    assert uncovered([position for position in TABLE if position["id"] != "R23"]) == {
+        f"statistics_block.{member}" for member in status_members("statistics_block")
+    }
+    assert uncovered([position for position in TABLE if position["id"] != "D02"]) == {
+        "composition_field",
+        "composition",
+        "composition_component",
+        *(f"composition_field.{member}" for member in ("composition", "statistics", "unit")),
+        "composition_component.statistics",
+    }
+
+
+def objects_in(value: JsonValue, here: Path_ = ()) -> Iterator[Path_]:
+    """The path of every object in `value`."""
+    if isinstance(value, dict):
+        yield here
+        for name, member in value.items():
+            yield from objects_in(member, (*here, name))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from objects_in(item, (*here, index))
+
+
+def unfound(positions: list[JsonObject]) -> list[str]:
+    """Each object in a host that no position's path finds, outside a place step 8 does not check."""
+    found: list[str] = []
+    for host in hosts():
+        document = host.request if host.request is not None else host.record
+        kind = "record" if host.request is None else "request"
+        reached: set[Path_] = set()
+        unchecked: set[Path_] = set()
+        for position in positions:
+            if position["in"] == kind:
+                paths = set(places(document, [str(step) for step in a_list(position["path"])]))
+                reached |= paths
+                if position.get("verdict") == "not_checked":
+                    unchecked |= paths
+        for path in objects_in(document):
+            inside = any(path[: len(place)] == place for place in unchecked)
+            if path not in reached and not inside:
+                found.append(f"{host.name}: {'.'.join(map(str, path)) or '$'}")
+    return sorted(set(found))
+
+
+def test_every_object_in_a_host_is_found_by_a_position() -> None:
+    """The review's three missing kinds included: a section's or a derivation input's fact held as a status
+    object, and a fact's member or a token condition's unit held as one."""
+    assert unfound(TABLE) == []
+    assert unfound([position for position in TABLE if position["id"] != "R39"]) != []
