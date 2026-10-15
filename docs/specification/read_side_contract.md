@@ -480,17 +480,17 @@ value's derivative with respect to the axis. [TE-012]
 7. At a declared edge, wherever it lies, inside the readable range or outside it, an evaluator refuses, as the
    reader does, and the refusal comes before `in_range`. It refuses in the same way where a declared edge lies
    between its condition and the readable range's nearest end, or on that end, since no extrapolation crosses
-   an edge (section 5). It reports the refusal as an output of its own, never only through the value, and
-   returns no number there: the value and the derivative are each absent or, in a language that cannot raise,
-   not a number (NaN), never finite and never infinite. A refusal stops the run whatever the consumer
+   an edge (section 5). It reports the refusal as an output of its own, never only through the value; a raised
+   refusal counts as reported. It returns no number there: the value and the derivative are each absent or not
+   a number (NaN), never finite and never infinite. [TE-010] A refusal stops the run whatever the consumer
    declared, since nothing accepts `at_edge` (`declarations.md` section 4.2): the consumer checks the refusal
-   at every evaluation, stops the run there, and keeps nothing computed from a refused evaluation. NaN is a
-   second line only, since a comparison or a selection on it can give a finite number. A case at or across an
-   edge compares only the refusal, and passes only where the refusal is reported and each number is absent or
-   NaN. Elsewhere outside the range a case compares `in_range`, and the value and the derivative by item 1.
-   [TE-010] [TE-002]
-8. An evaluator that cannot report `in_range` or its derivative side does not claim the table evaluation
-   suite.
+   at every evaluation, stops the run there, and keeps nothing computed from a refused evaluation.
+   [not yet covered] NaN is a second line only, since a comparison or a selection on it can give a finite
+   number. A case at or across an edge compares only the refusal, and passes only where the refusal is
+   reported and each number is absent or NaN. Elsewhere outside the range a case compares `in_range`, and the
+   value and the derivative by item 1. [TE-010] [TE-002]
+8. An evaluator that cannot report `in_range`, a refusal or its derivative side does not claim the table
+   evaluation suite.
 
 ## Cases
 
