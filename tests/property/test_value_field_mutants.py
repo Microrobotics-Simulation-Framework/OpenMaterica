@@ -213,9 +213,21 @@ STATE = value_shapes.fact_token("disease_and_treatment_state")
 TEXT_ANYWHERE = facts_with(
     disease_and_treatment_state=value_shapes.based({"token": STATE}, {"text": value_shapes.string})
 )
-ANY_UNIT_OR_BASIS = facts_with(
-    post_mortem_interval=value_shapes.based({"value": value_shapes.number, "unit": value_shapes.unit}),
-    mimics=value_shapes.based({"text": value_shapes.string}),
+MIMICS_EITHER_BASIS = facts_with(mimics=value_shapes.based({"text": value_shapes.string}))
+
+
+def _the_unit_s(value: JsonValue, where: str, found: Found) -> None:
+    if value != "s":
+        found.append(value_shapes.invalid(f"{where} is not s"))
+
+
+# A fact's unit judged at step 8 as S2a-2 first did: `s` alone, and a status object of the five tokens only.
+FACT_UNIT_S = value_shapes.or_status(_the_unit_s, shapes.PostMortemInterval, "unit")
+FACT_UNIT_JUDGED = facts_with(
+    post_mortem_interval=value_shapes.based({"value": value_shapes.number, "unit": FACT_UNIT_S}),
+    donor_age=value_shapes.based(
+        {"unit": FACT_UNIT_S}, {"value": value_shapes.number, "range": value_shapes.in_order}
+    ),
 )
 
 MUTANTS = [
@@ -250,7 +262,8 @@ MUTANTS = [
     ),
     Mutant("uncertainty_rules_unchecked", ONE_FAULT, setting(value_shapes, "uncertainty_rules", _nothing)),
     Mutant("named_state_text_unchecked", ONE_FAULT, setting(value_shapes, "FACTS", TEXT_ANYWHERE)),
-    Mutant("fixed_fact_members_unchecked", ONE_FAULT, setting(value_shapes, "FACTS", ANY_UNIT_OR_BASIS)),
+    Mutant("fixed_basis_unchecked", ONE_FAULT, setting(value_shapes, "FACTS", MIMICS_EITHER_BASIS)),
+    Mutant("fact_unit_judged_at_step_8", ONE_FAULT, setting(value_shapes, "FACTS", FACT_UNIT_JUDGED)),
     Mutant("record_structure_unchecked", ONE_FAULT, setting(fields, "record_problems", _no_record_problems)),
     Mutant(
         "section_specimen_unchecked",

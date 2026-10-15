@@ -236,8 +236,15 @@ FACTS: list[tuple[str, dict[str, JsonValue], tuple[str, ...] | None]] = [
     ),
     ("post_mortem_interval", {"value": 60.0, "unit": "s", **STATED}, None),
     ("post_mortem_interval", {"value": 60.0, "unit": {"status": "unstated"}, **STATED}, None),
-    ("post_mortem_interval", {"value": 1.0, "unit": "min", **STATED}, ("form_invalid",)),
-    ("donor_age", {"range": [1.0, 2.0], "unit": "a", **STATED}, ("form_invalid",)),
+    ("post_mortem_interval", {"value": 1.0, "unit": "min", **STATED}, None),
+    ("post_mortem_interval", {"value": 1.0, "unit": {"status": "approximate"}, **STATED}, None),
+    ("post_mortem_interval", {"value": 1.0, "unit": 60.0, **STATED}, ("form_invalid",)),
+    (
+        "post_mortem_interval",
+        {"value": 1.0, "unit": {"status": "unstated", "note": "x"}, **STATED},
+        ("form_invalid",),
+    ),
+    ("donor_age", {"range": [1.0, 2.0], "unit": "a", **STATED}, None),
     ("mimics", {"text": "liver", **STATED}, None),
     ("mimics", {"text": "liver", "inferred_from": "Methods", **STATED}, None),
     ("mimics", {"text": "liver", "basis": "inferred", "inferred_from": "Methods"}, ("form_invalid",)),
@@ -249,9 +256,11 @@ FACTS: list[tuple[str, dict[str, JsonValue], tuple[str, ...] | None]] = [
 def test_a_specimen_fact_takes_its_rows_shape_and_fixed_members(
     name: str, fact: dict[str, JsonValue], codes: tuple[str, ...] | None
 ) -> None:
-    """A disease or treatment state's text is there exactly for `diseased` and `treated`, and a member its row
-    fixes (`"unit": "s"`, `"basis": "stated"`) takes that value: a unit is no token, so another one is
-    `form_invalid`; a fixed basis leaves no `inferred_from` to name, so one there is ignored."""
+    """A disease or treatment state's text is there exactly for `diseased` and `treated`; a basis its row
+    fixes (`"basis": "stated"`) takes that token alone and leaves no `inferred_from` to name, so one there is
+    ignored; and a fact's unit, which its row fixes too (`"unit": "s"`), is checked here only as a string or a
+    status object, any token included, since step 9 alone compares it (a default for the maintainer,
+    2026-10-15)."""
     field: JsonValue = {**water_field(), "specimen": {name: fact}}
     if codes is None:
         with pytest.raises(NotImplementedError):
