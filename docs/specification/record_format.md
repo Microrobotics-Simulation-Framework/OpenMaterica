@@ -347,11 +347,13 @@ section 5. [PR-014]
    `x[-1]`, or `source_range[1]` where that is smaller, inclusive. An operating value is compared with these
    ends and with the edges by value and exactly (`read_side_contract.md` section 5, "Exactness"), so `-0` lies
    at an end or an edge at `0`. A read exactly at an edge is refused (the value is two-sided), wherever the
-   edge lies; where the edge lies outside the readable range, the refusal at the edge decides, not the range
-   (`read_side_contract.md` section 5, "The form's range"). Otherwise the interval used is the one whose two
-   knots bracket the read, strictly where an edge is concerned, so a read just below an edge uses the knot
-   below it; a knot outside `source_range` is used where it brackets a read inside the readable range.
-   [PR-017] [PR-018] [PR-019]
+   edge lies. Where the edge lies outside the readable range, the refusal at the edge decides: the table gives
+   no value, no extrapolation applies, and `outside_range` stands beside `at_edge`. Beyond an edge that lies
+   outside the readable range or on its end, on the far side from the range, no extrapolation applies either,
+   so the table gives no value there (`read_side_contract.md` section 5, "The form's range"). Otherwise the
+   interval used is the one whose two knots bracket the read, strictly where an edge is concerned, so a read
+   just below an edge uses the knot below it; a knot outside `source_range` is used where it brackets a read
+   inside the readable range. [PR-017] [PR-018] [PR-019]
 4. `source_range`, where present, is the range the source says the values hold over: two numbers, the first
    not greater than the second, sharing with `[x[0], x[-1]]` at least one value that is no edge. A reader
    refuses one that is not (`form_invalid`). It never extends the readable range, and narrows it where it is
@@ -551,7 +553,7 @@ member one slip from one already valid at its place. So item 5 never refuses a m
 | PR-015 | plain read | a constant is returned with its conditions |
 | PR-016 | plain read | linear and log-log tables interpolate by their scheme |
 | PR-017 | plain read | outside the tabulated range is refused (`outside_range`) |
-| PR-018 | plain read | exactly at an edge is refused, wherever the edge lies, and outside the readable range the refusal decides; just below and just above an edge read the correct side; `-0` at an edge at `0` is at it |
+| PR-018 | plain read | exactly at an edge is refused, wherever the edge lies; outside the readable range, `at_edge` and `outside_range`, and no value; just below and just above an edge read the correct side; `-0` at an edge at `0` is at it |
 | PR-019 | plain read | `source_range` never extends the readable range, and narrows it where it is narrower; one that is not two ordered numbers sharing with `x`'s range a value that is no edge refuses the field (`form_invalid`) |
 | PR-020 | plain read | a power law evaluates in the field's unit (planned with the acoustic section) |
 | PR-021 | plain read | a power law with an unstated range gives `unknown` (`range_unstated`) |

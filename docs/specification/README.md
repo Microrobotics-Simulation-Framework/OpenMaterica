@@ -194,7 +194,8 @@ per `at` value, in order:
   is compared, and `"none"` where the readable range is one point;
 - outside it, `{"in_range": false, "value", "derivative"}`: the value at the readable range's nearest end,
   taken from inside it, and a derivative of `0`;
-- at a declared edge, wherever it lies, `{"refused": true}`.
+- at a declared edge, wherever it lies, and across one from the readable range (an edge between the point and
+  the range's nearest end, or on that end), `{"refused": true}`.
 
 A `"none"` passes only where the evaluator returns that number absent or NaN. Outside the readable range, each
 number passes where it is the expected one, or absent or NaN. `{"refused": true}` passes only where the

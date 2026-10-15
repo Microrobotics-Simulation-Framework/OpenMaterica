@@ -416,6 +416,9 @@ operating value being the axis entry's `operating`. The consumer computes the ex
 declared method (`declarations.md`). Under any other `want` an extrapolation is not applied, nor at a declared
 edge: there `at_edge` stands and decides, whether the edge lies inside the readable range or outside it, with
 `outside_range` beside it where it lies outside (`declarations.md` section 4.2). [PR-317] [PR-307] [PR-019]
+Nor is an extrapolation applied across a declared edge: where an edge lies between the operating value and the
+readable range's nearest end, or on that end, `outside_range` stands and the result carries no value, since
+the end value would come from the far side of the edge. [PR-307]
 
 ## 6. What a read returns: `want`
 
@@ -453,13 +456,14 @@ value's derivative with respect to the axis. [TE-012]
 
 1. An evaluator returns, beside the value, `in_range`: whether its condition lies inside the form's range (for
    a table, its readable range, `source_range` included: `record_format.md` section 6, table item 3; at a
-   declared edge the refusal comes first, item 7) (`false` for a power law whose range is unstated). It MUST
-   NOT only clamp: a clamped value outside the range is an extrapolation, which needs the consumer's
-   declaration, or `in_range` false stops the run (`declarations.md`). [TE-002] [TE-003] Outside a table's
-   readable range, an evaluator's value is the value at the range's nearest end, taken from inside the range,
-   as the read's is (section 5), and its derivative is zero, as a constant extrapolation gives; or it returns
-   neither, each absent or NaN. So it never returns a table's own value beyond a narrower `source_range`,
-   which the source disclaims: clamping at `x[0]` and `x[-1]` does not meet this item. [TE-003]
+   declared edge, and across one from the readable range, the refusal comes first, item 7) (`false` for a
+   power law whose range is unstated). It MUST NOT only clamp: a clamped value outside the range is an
+   extrapolation, which needs the consumer's declaration, or `in_range` false stops the run
+   (`declarations.md`). [TE-002] [TE-003] Outside a table's readable range, an evaluator's value is the value
+   at the range's nearest end, taken from inside the range, as the read's is (section 5), and its derivative
+   is zero, as a constant extrapolation gives; or it returns neither, each absent or NaN. So it never returns
+   a table's own value beyond a narrower `source_range`, which the source disclaims: clamping at `x[0]` and
+   `x[-1]` does not meet this item. [TE-003]
 2. Linear interpolation within `[x0, x1]` is `y0 + (x - x0) * (y1 - y0) / (x1 - x0)`. Log-log interpolation is
    `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) / (ln x1 - ln x0))`, in natural logarithms. [TE-004]
 3. At an interior knot the derivative depends on the side. An evaluator states which side it returns there
@@ -473,16 +477,18 @@ value's derivative with respect to the axis. [TE-012]
 5. For a log-log table, the derivative within an interval is `(y / x) * (ln y1 - ln y0) / (ln x1 - ln x0)`.
    [TE-008]
 6. For a power law, the derivative is `a * b * x^(b - 1)`, inside its range. [TE-009]
-7. At a declared edge, wherever it lies, inside the readable range or outside it, an evaluator refuses, as
-   the reader does, and the refusal comes before `in_range`. It reports the refusal as an output of its own,
-   never only through the value, and returns no number there: the value and the derivative are each absent
-   or, in a language that cannot raise, not a number (NaN), never finite and never infinite. A refusal stops
-   the run whatever the consumer declared, since nothing accepts `at_edge` (`declarations.md` section 4.2):
-   the consumer checks the refusal at every evaluation, stops the run there, and keeps nothing computed from a
-   refused evaluation. NaN is a second line only, since a comparison or a selection on it can give a finite
-   number. A case at an edge compares only the refusal, and passes only where the refusal is reported and each
-   number is absent or NaN. Elsewhere outside the range a case compares `in_range`, and the value and
-   the derivative by item 1. [TE-010] [TE-002]
+7. At a declared edge, wherever it lies, inside the readable range or outside it, an evaluator refuses, as the
+   reader does, and the refusal comes before `in_range`. It refuses in the same way where a declared edge lies
+   between its condition and the readable range's nearest end, or on that end, since no extrapolation crosses
+   an edge (section 5). It reports the refusal as an output of its own, never only through the value, and
+   returns no number there: the value and the derivative are each absent or, in a language that cannot raise,
+   not a number (NaN), never finite and never infinite. A refusal stops the run whatever the consumer
+   declared, since nothing accepts `at_edge` (`declarations.md` section 4.2): the consumer checks the refusal
+   at every evaluation, stops the run there, and keeps nothing computed from a refused evaluation. NaN is a
+   second line only, since a comparison or a selection on it can give a finite number. A case at or across an
+   edge compares only the refusal, and passes only where the refusal is reported and each number is absent or
+   NaN. Elsewhere outside the range a case compares `in_range`, and the value and the derivative by item 1.
+   [TE-010] [TE-002]
 8. An evaluator that cannot report `in_range` or its derivative side does not claim the table evaluation
    suite.
 
@@ -496,7 +502,7 @@ value's derivative with respect to the axis. [TE-012]
 | PR-304 | plain read | an absent field gives `not_met`; alternatives without a pick give `unknown` with `alternative_values` |
 | PR-305 | plain read | an unstated or absent condition gives `unknown` |
 | PR-306 | plain read | a stated value outside the tolerance gives `not_met`; at exactly the tolerance, in doubles, `met` |
-| PR-307 | plain read | outside a form's range under a declared extrapolation and `want: value`: `not_met`, the value at the readable range's nearest end, the assumption, and steps 12 and 13's reasons and labels; not applied under another `want`, at a declared edge, or naming another field or location |
+| PR-307 | plain read | outside a form's range under a declared extrapolation and `want: value`: `not_met`, the value at the readable range's nearest end, the assumption, and steps 12 and 13's reasons and labels; not applied under another `want`, at a declared edge, across one (an edge between the operating value and the readable range's nearest end, or on that end: `outside_range`, no value), or naming another field or location |
 | PR-308 | plain read | no `want`, a tolerance with no operating condition (both at step 0), or no operating value for an axis (at step 11): `request_incomplete`, which at step 11 ends the read even where it arises in one alternative |
 | PR-309 | plain read | a value stated without origin gives `unknown` |
 | PR-310 | plain read | every reason code a read gives is one of the table's; a read applies no acceptance the request does not carry, and a `waiver` in a request gives `request_incomplete` |
@@ -538,6 +544,6 @@ value's derivative with respect to the axis. [TE-012]
 | TE-007 | table evaluation | at the ends of a table's readable range, an interior knot included, the inside derivative only, whatever side the evaluator declares; where the readable range is one point, no derivative |
 | TE-008 | table evaluation | the derivative of a log-log table |
 | TE-009 | table evaluation | the derivative of a power law inside its range |
-| TE-010 | table evaluation | an evaluator refuses at a declared edge, wherever it lies: it reports the refusal, and each number it returns there is absent or NaN, never finite or infinite |
+| TE-010 | table evaluation | an evaluator refuses at a declared edge, wherever it lies, and across one from the readable range: it reports the refusal, and each number it returns there is absent or NaN, never finite or infinite |
 | TE-011 | table evaluation | values and derivatives on each side of a repeated knot |
 | TE-012 | table evaluation | a `binary32` evaluator meets its case file's `binary32` tolerance, and a `binary64` one 1e-12 |
