@@ -183,3 +183,7 @@ reports is not yet specified.
 A seventh point (maintainer, 2026-10-15): a review returned as found and an evidence entry's `provenance`
 returned whole hold the members `read_side_contract.md` section 2 item 5 defines, so a member the reader does
 not know is left out there too (PR-337).
+
+Settled with S2a-1's review (maintainer, 2026-10-15): the specimen fact `disease_and_treatment_state` holds
+`text`, naming the disease or the treatment, exactly when its `token` is `diseased` or `treated`, and none under
+`normal`, which has nothing to name (`provenance.md` section 6.2; RC-039).
