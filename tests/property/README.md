@@ -39,18 +39,18 @@ Hypothesis properties of the core, in three groups, and of the writer schema, in
   in parts of at most 15, each a property of its own, so that the feature audit at `ci` can judge each fault
   (below).
   The refusal is checked on one the schema takes, the same but for the fault, so that it is the fault's.
-- **Step 8:** (8) the laws of step 8 of a read (`read_side_contract.md` section 3), in the part step 8 decides,
-  the S2 design's HP3 and HP5: one fault of a catalogue written from the text gives exactly the codes its rule
-  gives, and two faults in two parts of the record give both (each step makes all its checks); members the
-  reader does not know, added where they may go, never change the outcome, two slips off a named member
-  included. `value_field_strategies.py` builds a record holding one constant that passes step 8, each member
-  its row's shape or a status object its row allows, and anything at all in the members a read does not check;
-  and the catalogue, by region of the record, each fault with the codes its rule gives: 21 regions since S2a-2's
-  fix round, which wrote faults for each value step 8 checks, the derivation and `source` included, slips
-  beside a named member or of an optional one, and the eleven rules its review found untested. A third law,
-  the label's rule, holds a label on a table to the Label column, read by the test itself, through step 8's
-  shared check, since no read reaches a table before S3. Until steps 9 to 13 are built, a read that passes
-  step 8 raises `NotImplementedError`, the outcome "past step 8".
+- **Step 8:** (8) the laws of step 8 of a read (`read_side_contract.md` section 3), in the part step 8
+  decides, the S2 design's HP3 and HP5: one fault of a catalogue written from the text gives exactly the codes
+  its rule gives, and two faults in two parts of the record give both (each step makes all its checks);
+  members the reader does not know, added where they may go, never change the outcome, two slips off a named
+  member included. `value_field_strategies.py` builds a record holding one constant that passes step 8, each
+  member its row's shape or a status object its row allows, and anything at all in the members a read does not
+  check; and the catalogue, by region of the record, each fault with the codes its rule gives: 21 regions
+  since S2a-2's fix round, which wrote faults for each value step 8 checks, the derivation and `source`
+  included, slips beside a named member or of an optional one, and the eleven rules its review found untested.
+  A third law, the label's rule, holds a label on a table to the Label column, read by the test itself,
+  through step 8's shared check, since no read reaches a table before S3. Until steps 9 to 13 are built, a
+  read that passes step 8 raises `NotImplementedError`, the outcome "past step 8".
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -86,13 +86,14 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the groups in four shards side by side, each in a job of its own: `pytest tests/property --shard json`,
-`--shard records`, which holds the record and step-8 groups, `--shard writer`, and `--shard step8_mutants`,
-step 8's mutant searches, which keep no example database and were most of the records shard's time (`SHARDS`
-in `tests/conftest.py`). The writer schema's properties validate each field with `jsonschema` against the writer's
-value field, a choice among eight forms, which costs about 30 ms a field: so each family of faults is a
-property of its own, run in parallel. Each module is in exactly one shard (`tests/unit/test_source_files.py`),
-and each shard but the mutant searches' keeps its own example database in CI.
+CI runs the groups in four shards side by side, each in a job of its own: `pytest tests/property --shard
+json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, and `--shard
+step8_mutants`, step 8's mutant searches, which keep no example database and were most of the records shard's
+time (`SHARDS` in `tests/conftest.py`). The writer schema's properties validate each field with `jsonschema`
+against the writer's value field, a choice among eight forms, which costs about 30 ms a field: so each family
+of faults is a property of its own, run in parallel. Each module is in exactly one shard
+(`tests/unit/test_source_files.py`), and each shard but the mutant searches' keeps its own example database in
+CI.
 
 ## Mutants
 
@@ -139,14 +140,17 @@ entry's other statuses, also takes a withheld entry without its recipe.
 
 `test_value_field_mutants.py`. Each fault is injected where the core looks a name up when it runs, or in the
 tables it builds, rebuilt under the fault. The first 25 (S2a-2's 24, and its fix round's
-`fact_unit_judged_at_step_8`) are searched with their property whole; the rest are the fix round's: the eleven
-rules S2a-2's review found no test checked (M1; the fact unit's is `fact_unit_judged_at_step_8`) and the parts
-of the text HP3 had no fault for or could not tell from a missing member (M2). Each of those names the faults it must die at, and its search is planned, as the writer's are:
-HP3 draws its first fault among them, and the kill must hold one. Drawn with the property whole, each died
-within its 2,000 examples at both sizes but two, `within_any_status` and
-`label_beside_an_unknown_form_as_on_a_constant`, which died at the original size alone (884 and 845); so their
-faults' regions are held by the region audit, not by the search. The kill is the examples the derandomised
-search took, at the small and the original size (measured 2026-10-15, S2a-2's fix round).
+`fact_unit_judged_at_step_8`) are searched with their property whole. The other 22 are the fix round's: the
+eleven rules S2a-2's review found no test checked (M1; the fact unit's is `fact_unit_judged_at_step_8`), and
+parts of the text HP3 had no fault for or could not tell from a missing member (M2). One,
+`label_on_any_table`, dies to the label's rule. The other 21 each name the faults they must die at, and their
+search is planned, as the writer's are: HP3 draws its first fault among them, and the kill must hold one.
+Drawn with HP3 whole, 17 of those 21 were measured: each died within its 2,000 examples at both sizes but
+`within_any_status` and `label_beside_an_unknown_form_as_on_a_constant`, which died at the original size alone
+(884 and 845). HP3 whole meets one fault of 154 too seldom to kill each such mutant every time at `ci`, so the
+planned search is what shows HP3 refuses each fault, and the region audit that HP3 draws it; each of the
+review's eleven rules also has a deterministic read in `tests/unit/test_read.py`. The kill is the examples the
+derandomised search took, at the small and the original size (measured 2026-10-15, S2a-2's fix round).
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
@@ -190,6 +194,9 @@ search took, at the small and the original size (measured 2026-10-15, S2a-2's fi
 | `status_object_slips_ignored` | a slip inside a status object is ignored | HP3 | `statistics_statuses.status_slip` | 1, 1 |
 | `derivation_unchecked` | a derived value's derivation is not checked | HP3 | `derivation.*` and `derivation_inputs.*` but `derivation_missing` | 1, 1 |
 | `derivation_inputs_may_be_empty` | a derivation's `inputs` may be empty | HP3 | `derivation.inputs_empty`, its input specimens emptied with it, since an index past no input would refuse alone | 1, 1 |
+| `block_mean_any` | a statistics block's `mean` takes any value | HP3 | `statistics_numbers.mean_not_a_number` | 1, 1 |
+| `block_precision_any_string` | a statistics block's `precision_conditions` takes any string | HP3 | `statistics_tokens.precision_conditions_unknown` | 1, 1 |
+| `neither_value_nor_range_allowed` | a numeric condition may hold neither `value` nor `range` | HP3 | `conditions.neither_value_nor_range` | 1, 1 |
 | `n_sources_any_number` | `n_sources` takes any number | HP3 | `statistics_numbers.n_sources_not_whole`, `.n_sources_negative` | 1, 1 |
 | `dof_of_zero_allowed` | an uncertainty's `dof` may be 0 | HP3 | `uncertainty.dof_zero` | 1, 1 |
 | `coverage_probability_of_zero_allowed` | an uncertainty's `coverage_probability` may be 0 | HP3 | `uncertainty.coverage_probability_zero` | 1, 1 |

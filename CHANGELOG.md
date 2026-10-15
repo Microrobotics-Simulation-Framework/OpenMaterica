@@ -150,11 +150,11 @@ recorded in that repository's CHANGELOG.
   from the generated files as the test runs, an unlisted, stale or misplaced one failing it; the shortcut of
   validating a field against its form's definition is checked on every example; and the token lists step 8
   knows by member name are held to the writer's (`tests/spec_sync/test_t1.py`).
-- Hypothesis properties of step 8, the S2 design's HP3 and HP5: one fault of a 151-fault catalogue in 21
+- Hypothesis properties of step 8, the S2 design's HP3 and HP5: one fault of a 154-fault catalogue in 21
   regions written from the text (the derivation, `source` and each value step 8 checks among them, and slips
   that a reader ignoring slips cannot pass) gives exactly the codes its rule gives, two faults in two parts
   give both, and members the reader does not know never change the outcome; a third law holds a label on a
-  table to the Label column; 44 mutants of step 8 each killed at both sizes, 19 of them at the faults they
+  table to the Label column; 47 mutants of step 8 each killed at both sizes, 21 of them at the faults they
   name, the eleven rules S2a-2's review found untested among them
   (`tests/property/test_value_field_properties.py` in the records shard, `test_value_field_mutants.py` in a
   fourth CI shard, `step8_mutants`).
