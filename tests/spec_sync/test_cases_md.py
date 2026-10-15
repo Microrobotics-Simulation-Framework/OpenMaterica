@@ -37,11 +37,20 @@ def code(value: JsonValue) -> str:
     return f"`{value}`"
 
 
+def reason_text(reason: dict[str, JsonValue]) -> str:
+    """A reason as `CASES.md` writes it: its code, then its condition and alternative where it has them."""
+    inside = [str(reason["condition"])] if "condition" in reason else []
+    alternative = reason.get("alternative")
+    if isinstance(alternative, float):
+        inside.append(f"alternative {int(alternative)}")
+    return f"{reason['code']} ({', '.join(inside)})" if inside else str(reason["code"])
+
+
 def expected_column(case_file: CaseFile) -> str:
-    """The column as `CASES.md` writes it, from the case file: status and reasons with their condition, or
-    that the two are not compared; the listing, the shortened hash, or a read's value, unit, alternative
-    values and assumption, as JSON; then labels and claims (sorted) where the case states them. A table
-    evaluation case's is its evaluations, as JSON, and its binary32 tolerance."""
+    """The column as `CASES.md` writes it, from the case file: status and reasons with their condition and
+    alternative, or that the two are not compared; the listing, the shortened hash, or a read's value, unit,
+    alternative values and assumption, as JSON; then labels and claims (sorted) where the case states them. A
+    table evaluation case's is its evaluations, as JSON, and its binary32 tolerance."""
     expected = case_file.expected
     if case_file.operation == "evaluate":
         tolerances = case_file.precision_tolerances
@@ -58,13 +67,7 @@ def expected_column(case_file: CaseFile) -> str:
     reasons = expected.get("reasons", [])
     assert isinstance(reasons, list)
     if reasons:
-        parts.append(
-            ", ".join(
-                code(f"{reason['code']} ({reason['condition']})" if "condition" in reason else reason["code"])
-                for reason in reasons
-                if isinstance(reason, dict)
-            )
-        )
+        parts.append(", ".join(code(reason_text(reason)) for reason in reasons if isinstance(reason, dict)))
     if case_file.operation == "list_records":
         listed = expected["value"]
         assert isinstance(listed, list)

@@ -127,9 +127,10 @@ The inputs come in families, named by what they break:
   - an alternative refused at step 8 or 9: it refuses the field, so the result is `not_met`, never `no_pick`;
   - a table alternative outside its readable range: set aside, unless an extrapolation the request carries
     would cover it; one read exactly at a declared edge: it refuses the field; one read over an operating
-    range of its axis: it stays, and `want` decides. So two of the S4-mapped arms below,
-    `PR-044.table_outside_range_not_set_aside` and `PR-044.table_at_edge_not_set_aside`, now contradict the
-    text, and the S4 cases rewrite them;
+    range of its axis: it stays, and `want` decides. The five arms S3's cases wrote for S4 before S4's text
+    (PR-044, PR-013, PR-308) now hold these answers: `PR-044.table_outside_range_set_aside` (written as
+    `table_outside_range_not_set_aside`, with `no_pick`) gives the constant left, `met`, and
+    `PR-044.table_at_edge_not_set_aside` refuses the field (`at_edge`);
   - a missing operating value in one alternative: it refuses the field, with every alternative's reasons
     beside `request_incomplete` (PR-308).
 - **Answers the text leaves open.** No arm meets them; each waits for the text:
@@ -137,9 +138,6 @@ The inputs come in families, named by what they break:
     is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
     both readings agree.
 - **Answers the text leaves open for tables:**
-  - none for alternatives now. The five S4-mapped arms (PR-044, PR-013, PR-308) were written before S4's text
-    and compare every member but `status` and `reasons`; S4's text decides those (above), and the S4 cases
-    complete them;
   - a table on `biocompatibility.evidence` whose `conditions` hold its axis (PR-036): whether step 8, refusing
     the form, finds the table's axis condition a condition evidence's own `conditions` may not hold. With
     `conditions` `{}` the text decides it (`form_not_registered`, and `form_invalid` for the absent axis

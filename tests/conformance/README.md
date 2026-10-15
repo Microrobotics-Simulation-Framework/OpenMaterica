@@ -16,8 +16,8 @@ in this order:
 
 1. **not yet runnable**: no executor exists for its operation (`EXECUTORS` in `runner.py`), or a step of the
    implementation its arm needs is not done: `tests/spec_sync/case_steps.json` maps each case file to the step
-   whose code first runs it (S2 and S3 in their pieces, `S2a-1` to `S2b-2` and `S3-te` to `S3c`, or a list
-   of pieces where their order is not fixed), and lists the steps done;
+   whose code first runs it (S2 and S3 in their pieces, `S2a-1` to `S2b-2` and `S3-te` to `S3c`, then `S4`,
+   or a list of pieces where their order is not fixed), and lists the steps done;
 2. **not run**: no configuration claims its suite and agrees with its `claims`;
 3. **passed** or **failed**: each result compared with `expected`; it fails if one run fails, and says under
    which claims. An executor that raises fails the case, as no read may raise (PR-300).
@@ -34,7 +34,8 @@ after every run that includes these tests:
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
 | S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, or steps 9 to 13 (plain read) | 299 | not yet runnable: the step that runs each is not done |
-| reads of tables, and reads under an extrapolation (plain read) | 184 | not yet runnable: the step that runs each is not done |
+| reads of tables, and reads under an extrapolation (plain read) | 179 | not yet runnable: the step that runs each is not done |
+| reads over alternatives (plain read) | 5 | not yet runnable: S4, which runs each, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | not yet runnable: no executor; S3-te adds one, which runs a test-only reference evaluator |
 
 Of the 1097 case files, 1050 agree with plain read and the hash suite, 990 with plain read alone, and 1050 with
@@ -48,8 +49,8 @@ names (`materica.load_records`), and passes its result through JSON text, as a c
 
 `compare` in `runner.py` compares only the members a case's `compare.members` names. Reasons are a multiset of
 `(code, condition)`, and `detail` is never compared. The specification compares a reason's `alternative` too
-(`docs/specification/README.md`, "Case files"); `runner.py` adds it with the code that reads alternatives. No
-case file holds a reason with `alternative` yet, and one that did would be compared without it until then.
+(`docs/specification/README.md`, "Case files"); `runner.py` adds it with the code that reads alternatives, S4.
+S4's case files hold reasons with `alternative`, and until then they are compared without it.
 `labels` are a set, absent counting as empty, with `hash_not_checked` compared only when the case's `claims`
 names `hash`. A member named but not expected must be absent from the result. Numbers compare by
 `relative_tolerance` or bit for bit under `exact`; a case that compares a number with neither is a defect in
