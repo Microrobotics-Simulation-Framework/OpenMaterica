@@ -55,8 +55,10 @@ every family entry goes in `families/CHANGELOG.md`.
   keeps only the members its shape names; step 10 applies one located at the read whose fact and token the
   field's specimen states, the section's facts merged with the field's (`RecordField.specimen`), filling a
   condition the record leaves unstated or does not hold, with the basis `implied`; two that disagree end the
-  read there with `request_incomplete` for that condition and no `conditions`. A result's `applied`, outside
-  its JSON, holds the indexes of the implied conditions that filled a condition. A request with any other
+  read there with `request_incomplete` for that condition and no `conditions`, values differing unless of one
+  shape and holding the same token or the same numbers bit for bit (`0` and `-0` differ, as do a value and
+  `[v, v]`). A result's `applied`, outside its JSON and its equality, holds the indexes of the implied
+  conditions that filled a condition. A request with any other
   acceptance still raises `NotImplementedError`.
 - `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
   name-overlap check share. A word made plural or singular must be a word: the empty string between two
@@ -132,6 +134,13 @@ every family entry goes in `families/CHANGELOG.md`.
   the typed shapes leave the binding out. Every other unit the writer takes was already bound to
   its registered unit wherever the row fixes one (a field's, a condition's, a `plus_minus` entry's, none on a
   token condition); a table's `axis_unit` waits for S3, which writes the table's shape.
+- A default for the maintainer, from S2a-3's review (`docs/specification/changes.md`): two values implied for
+  one condition differ unless they are of one shape and hold the same token or the same numbers bit for bit,
+  so `0` and `-0` differ, as a value and `[v, v]` do, and which of two that agree fills it never depends on
+  the order of the acceptances (`read_side_contract.md` section 1).
+- `provenance.md` section 6.2 item 1 states the writer's rule for a specimen fact's unit (maintainer,
+  2026-10-15): a fact whose row fixes its unit holds that unit, and one whose unit the source does not give is
+  written as a status object in place of the fact.
 - `fields.json` gives, for a field whose Label cell lets its label go on a table, the condition the table's
   axis must not be (`label_not_on_axis`); the generator reads the cell's prose in its two forms, and any other
   stops it.
@@ -253,9 +262,10 @@ every family entry goes in `families/CHANGELOG.md`.
   each condition against an oracle written from section 5 alone, on exact rationals, at each boundary its
   exactness turns on, with a plus or minus of each kind, the table's other rows and implied conditions; HP8,
   units by code point, end to end, however escapes write the registered one and refusing one equal under NFKC
-  or case folding; HP9, the specimen merge; and HP3 and HP5 for the part steps 9 and 10 decide. 43 mutants,
-  each killed within the `ci` profile's examples at both sizes (`test_condition_mutants.py`), 29 of them at
-  the labels they name; four feature-audit controls, drawn features among them.
+  or case folding; HP9, the specimen merge; and HP3 and HP5 for the part steps 9 and 10 decide. 51 mutants,
+  each killed within the `ci` profile's examples at both sizes (`test_condition_mutants.py`), 33 of them at
+  the labels they name; five feature-audit controls, drawn features among them, one on a parameter of a
+  parametrised property.
 - Deterministic checks of each unit place, each row of section 5, the exact arms of PR-306 and PR-335 with a
   control that floating point gets them wrong, and implied conditions at steps 0 and 10
   (`tests/unit/test_read.py`, `tests/unit/test_conditions.py`).
@@ -265,6 +275,19 @@ every family entry goes in `families/CHANGELOG.md`.
   target twice side by side for up to 900 s each. The record fuzz target drives the new properties. The
   unknown-member positions table gives an implied condition's members their verdicts (D06's first piece), and
   the reason-step check traces steps 9 and 10.
+- With S2a-3's review (0 High, 2 Medium, 6 Low, 5 Info): the seven mutants that survived the whole suite each
+  die now, in the mutant table. An implied condition located elsewhere (another field, version or content
+  hash, a region beside the record, an interval, none) is read end to end and leaves its condition
+  `condition_unstated`, and an implied value that is not an object is refused at step 0 (`tests/unit/`); HP7's
+  token kinds draw accept lists holding strings outside the row, its unknown names a status object as often as
+  a value, and HP8 a `plus_minus` unit in either entry of two. HP7's boundary kinds reach both sides of their
+  bound, each one-sided kind built on its side and asserted there, the mixed kind as PR-335's pattern, with
+  the end of the span and a bound's window as features; a mutant computing section 5's first row in floating
+  point dies at it. A property holds that what the writer takes in a body, step 9 passes, with three writer
+  mutants as its controls; a spec-sync test holds an implied condition's members, in the positions table and
+  in the read, to the text, and the deferred row of the other acceptances names their kinds alone. HP7's
+  oracle is said to repeat three of its implementer's readings. Steps 9 and 10's mutant searches join the
+  `conditions` shard, whose `ci` timeout is 30 minutes.
 - Each new check is shown failing on seeded faults.
 - T1 sets each provenance object's `origin` to each other token of its row, in each base alone and beside each
   change inside the object, so that its relations see a member a read checks under one origin beside the
