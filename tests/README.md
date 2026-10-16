@@ -228,8 +228,9 @@ agreement shard at `ci` on 4, 241 s, 480 s of CPU.
 
 A check that cannot fail is not a check. So each kind here comes with tests in which it must fail:
 
-- the conformance runner: broken implementations, one fault each (`conformance/test_runner_can_fail.py`), and
-  a comparator fed wrong answers (`conformance/test_comparator.py`);
+- the conformance runner: broken implementations, one fault each, broken evaluators of tables among them
+  (`conformance/test_runner_can_fail.py`), and a comparator fed wrong answers
+  (`conformance/test_comparator.py`);
 - the reference evaluator of tables: a control beside each of its checks (`reference/test_table_evaluator.py`);
   its citations and its layering are the reference model's checks, each with a control on the evaluator's own
   source, drifted or with an import of the core added (`reference/test_citations.py`,
