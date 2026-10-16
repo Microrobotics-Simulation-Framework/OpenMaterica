@@ -9,7 +9,7 @@
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
 | `examples/` | the example records in `examples/` (schemas, hash, record checks, each number against its source, the note that they are not yet fully reviewed, what a read of each gives now) and the quickstart, run as a doctest | each check and its controls |
-| `reference/` | a test-only reference model of the read, written from the text, which imports nothing from `materica`; it agrees with every case file of a read or lists it, its tables with the vocabulary, its citations with the text | what it decides and what not; its open points; its exceptions; its mutant table |
+| `reference/` | test-only reference implementations written from the specification's text, which import nothing from `materica`: a model of the read, which agrees with every case file of a read or lists it, its tables with the vocabulary, its citations with the text; and the table evaluator the table evaluation cases are verified against, with its own tests | what the model decides and what not; its open points; its exceptions; its mutant table (`reference/README.md`); how the evaluator was written (`table_evaluator.py`'s docstring) |
 
 `conftest.py` here registers the Hypothesis profiles for every test, on Hypothesis's own defaults, so that no
 machine's environment changes them, and the property shards (`--shard`), keeps every derandomized run from
@@ -230,6 +230,10 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
 
 - the conformance runner: broken implementations, one fault each (`conformance/test_runner_can_fail.py`), and
   a comparator fed wrong answers (`conformance/test_comparator.py`);
+- the reference evaluator of tables: a control beside each of its checks (`reference/test_table_evaluator.py`);
+  its citations and its layering are the reference model's checks, each with a control on the evaluator's own
+  source, drifted or with an import of the core added (`reference/test_citations.py`,
+  `reference/test_layering.py`);
 - each property: mutants of the core, or of the writer schema, one fault each, that it must kill at both tree
   sizes, a writer mutant and a table evaluator's at the assertion it names (`property/test_mutants.py`,
   `property/test_record_mutants.py`, `property/test_value_field_mutants.py`,

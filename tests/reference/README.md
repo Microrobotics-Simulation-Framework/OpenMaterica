@@ -13,8 +13,8 @@ S2 design's SQ49), as S3 keeps a test-only reference evaluator. It never ships, 
 | `exceptions.py` | the case files the model does not agree with, by kind, each kind with its reason: today, reads outside its scope, on which it gives no verdict |
 | `test_cases.py` | the model agrees with every case file of a read, or the case file is listed under its kind |
 | `test_tables.py` | the model's tables against the generated vocabulary, so that a drift of either fails |
-| `test_citations.py` | each quote the model cites is at the line it cites; each open point is listed once and named where it is applied |
-| `test_layering.py` | the model reaches no `materica` module, by the imports it writes or in a fresh interpreter |
+| `test_citations.py` | each quote the model, and the table evaluator beside it, cites is at the line it cites; each open point is listed once and named where it is applied |
+| `test_layering.py` | the model and the table evaluator reach no `materica` module, by the imports they write or in a fresh interpreter |
 | `mutants.py`, `test_seeded_faults.py` | seeded faults of the model, each killed by a case file or listed as a survivor with its reason; not named `test_*mutants*`, since they are no Hypothesis search and run on every Python (`tests/conftest.py`, `PROPERTY_CONTROLS`) |
 
 ## What it decides
