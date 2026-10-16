@@ -18,9 +18,15 @@ report reads), and prints the count of conformance case files after a run that i
 
 ```sh
 uv sync
-uv run pytest                                                   # everything, properties at `dev`
+uv run pytest -n 12 --dist worksteal                            # everything, properties at `dev`
 MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest tests/property --shard records -n auto --dist worksteal   # one shard of CI's Hypothesis job
 ```
+
+`-n 12` is for a whole run on a machine like the maintainer's (8 performance cores, 24 threads); use `-n 8`
+when two such jobs share it. Use `--dist worksteal`, not xdist's default `load`, which hands each worker a
+file's tests in blocks, so that a file's slow tests (the audit controls, T1's shares) pile onto one worker
+while the others idle. There, at `dev` (2026-10-16): 6 workers took 6.0 minutes under `load` and 4.0 under
+`worksteal`, and 12 took 2.9 under `worksteal`; more than 12 gained nothing.
 
 ## Every check can fail
 
