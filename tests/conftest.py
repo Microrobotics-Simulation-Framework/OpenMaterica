@@ -6,6 +6,7 @@ weekly run. A property never sets its own example count, which would override th
 """
 
 import os
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -73,6 +74,25 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         dropped = [item for item in items if item.path.stem not in SHARDS[shard]]
         config.hook.pytest_deselected(items=dropped)
         items[:] = [item for item in items if item.path.stem in SHARDS[shard]]
+
+
+# Each test's CPU time, written beside the wall time in the JUnit XML that CI's durations report reads
+# (`scripts/report_test_durations.py`). The xdist workers share a runner's cores, so a test's wall time partly
+# measures the others; its CPU time much less. Both span setup, call and teardown.
+CPU_AT_SETUP = pytest.StashKey[float]()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item: pytest.Item) -> None:
+    item.stash[CPU_AT_SETUP] = time.process_time()
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) -> None:
+    # What `record_property` does, at the last moment it can: the XML takes a test's properties from its
+    # teardown report, which is made after the teardown and copies them when made.
+    if call.when == "teardown" and CPU_AT_SETUP in item.stash:
+        item.user_properties.append(("cpu_seconds", f"{time.process_time() - item.stash[CPU_AT_SETUP]:.3f}"))
 
 
 # Here rather than in `conformance/`, so that it runs where pytest-xdist's controller, which collects nothing,

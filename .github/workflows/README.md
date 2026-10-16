@@ -13,5 +13,9 @@
 | `fuzz` | after `hypothesis`, from the union of the shards' example databases: the Atheris targets of `tests/fuzz/`, after a control with seeded faults, for `fuzz_seconds` each; then the property tests, to replay and shrink what was found; on Python 3.14 | weekly; manual, alone with `fuzz_only` |
 | `result` | fails when a job it needs failed or was cancelled: the one check the ruleset on main requires | always |
 
+Each pytest job writes a JUnit report, summarised on the run's page (`scripts/report_test_durations.py`: the tests
+in each band of wall time, the slowest tests and files, and the total, wall and CPU time) and kept 90 days as
+the artifact `durations-<job>-<Python or shard>`. No duration fails a job.
+
 Every action is pinned to a commit, and uv to one version (`UV_VERSION`); `uv sync --locked` fails on a lock
 file out of date with `pyproject.toml`.

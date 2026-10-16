@@ -233,9 +233,24 @@ jobs:
       - run: uv sync --locked
       # Every test, the property tests at the `dev` profile: Python's json differs between versions, so the
       # properties run on each; their depth is the Hypothesis job's. A worker per vCPU, as in that job.
-      - run: uv run pytest -n auto --dist worksteal
+      - run: uv run pytest -n auto --dist worksteal --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
+      # Where the time went, on the run's page, and the report kept for later runs to compare (no time fails
+      # the job): scripts/report_test_durations.py.
+      - name: Test durations
+        if: success() || failure()
+        env:
+          TITLE: "Test durations: tests, Python ${{ matrix.python }}"
+        run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
+      - name: Keep the durations
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: durations-tests-${{ matrix.python }}
+          path: ${{ runner.temp }}/durations.xml
+          if-no-files-found: error
+          retention-days: 90
 
   hypothesis:
     name: hypothesis (${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}, ${{ matrix.shard }})
@@ -297,7 +312,22 @@ jobs:
       # A worker per vCPU: minutes are billed by wall time. Work stealing keeps the long properties from finishing
       # last on one worker.
       - name: Property tests and mutants, with the draw-rejection and feature audits (tests/property/conftest.py)
-        run: uv run pytest tests/property --shard ${{ matrix.shard }} -n auto --dist worksteal --hypothesis-show-statistics
+        run: >-
+          uv run pytest tests/property --shard ${{ matrix.shard }} -n auto --dist worksteal
+          --hypothesis-show-statistics --junitxml="$RUNNER_TEMP/durations.xml"
+      - name: Test durations
+        if: success() || failure()
+        env:
+          TITLE: "Test durations: hypothesis (${{ env.MATERICA_HYPOTHESIS_PROFILE }}, ${{ matrix.shard }})"
+        run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
+      - name: Keep the durations
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: durations-hypothesis-${{ matrix.shard }}
+          path: ${{ runner.temp }}/durations.xml
+          if-no-files-found: error
+          retention-days: 90
       - name: Save the example database
         if: always() && matrix.shard != 'step8_mutants'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
