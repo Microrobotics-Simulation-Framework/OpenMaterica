@@ -2462,7 +2462,7 @@ The maintainer's decision of 2026-10-14 on the project's name gave the row below
 
 | Before | After | Why |
 |---|---|---|
-| a working name, never published, in the distribution, package, reserved namespace, family namespace, binding purpose, attribute namespace and command, the schema classes' prefix, the local ids and the registry prefixes | OpenMaterica: distribution `openmaterica`, package `materica`, and `materica` for each of the others; schema classes `Materica…`; local ids `MAT-NNNN` and `INT-NNNN`; registry prefixes `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-` (4.1, 5.3, 5.4, 7.1; DA 8.3) | a name cleared for the project's use, chosen before any release, while no identifier was yet frozen (maintainer, 2026-10-14) |
+| the working name the drafts used before the first release, since removed from the public files, in the distribution, package, reserved namespace, family namespace, binding purpose, attribute namespace and command, the schema classes' prefix, the local ids and the registry prefixes | OpenMaterica: distribution `openmaterica`, package `materica`, and `materica` for each of the others; schema classes `Materica…`; local ids `MAT-NNNN` and `INT-NNNN`; registry prefixes `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-` (4.1, 5.3, 5.4, 7.1; DA 8.3) | a name cleared for the project's use, chosen before any release, while no identifier was yet frozen (maintainer, 2026-10-14) |
 
 The maintainer's decisions of 2026-10-14 on the questions on the read of values (specification `changes.md`,
 entry of that date), gave the rows below, each written as its question was ruled. They take in a

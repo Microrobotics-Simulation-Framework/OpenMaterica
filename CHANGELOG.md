@@ -326,11 +326,12 @@ up to this release.
   the reader schema and the typed shapes from the writer schemas (`scripts/gen_*.py`).
 
 ### Changed
-- Names settled before the first release (maintainer, 2026-10-14): the project is OpenMaterica, replacing a
-  working name never published. The distribution is `openmaterica` and the package `materica`. The record
-  namespace, family identifiers, USD binding purpose, attribute namespace and command are `materica`, and the
-  USD schema classes take the prefix `Materica`. Library records are `materica/MAT-NNNN` and
-  `materica/INT-NNNN`, and the registry prefixes are `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-`.
+- Names settled before the first release (maintainer, 2026-10-14): the project is OpenMaterica, replacing the
+  working name the drafts used until then, since removed from the public files. The distribution is
+  `openmaterica` and the package `materica`. The record namespace, family identifiers, USD binding purpose,
+  attribute namespace and command are `materica`, and the USD schema classes take the prefix `Materica`.
+  Library records are `materica/MAT-NNNN` and `materica/INT-NNNN`, and the registry prefixes are `OMAT-ANO-`,
+  `OMAT-VER-` and `OMAT-MTH-`.
 
 ### Schema
 - Schema 0.1.0 (draft), settled before the first code: what a reader refuses as malformed JSON, numbers read
