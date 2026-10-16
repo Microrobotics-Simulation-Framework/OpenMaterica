@@ -28,6 +28,9 @@ dev = [
     "datamodel-code-generator==0.83.0",
     "hypothesis>=6.140",
     "jsonschema>=4.26",
+    # A second JSON Schema implementation (`tests/verdicts.py`); `tests/property/test_validators_agree.py` holds
+    # the two to one verdict.
+    "jsonschema-rs==0.58.4",
     "mypy>=1.18",
     # The release MADDENING's CI pins.
     "pyright==1.1.414",

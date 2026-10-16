@@ -64,7 +64,12 @@ SHARDS = {
         "test_record_mutants",
         "test_value_field_properties",
     ),
-    "writer": ("test_writer_properties", "test_writer_mutants", "test_writer_mutant_table"),
+    "writer": (
+        "test_writer_properties",
+        "test_writer_mutants",
+        "test_writer_mutant_table",
+        "test_validators_agree",
+    ),
     # Step 8's mutant searches, the longest part of the records shard, and their table's check; they keep no
     # example database.
     "step8_mutants": ("test_value_field_mutants", "test_value_field_mutant_table"),
