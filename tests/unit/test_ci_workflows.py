@@ -220,6 +220,36 @@ def test_a_pull_request_runs_the_jobs_its_paths_need(
     }
 
 
+@pytest.mark.parametrize(
+    ("source", "destination", "also", "hypothesis"),
+    [
+        ("src/materica/core/read.py", "docs/regulatory/read.py", (), "true"),
+        ("src/materica/core/read.py", "docs/validation/read.py", ("CHANGELOG.md",), "true"),
+        ("tests/unit/test_read.py", "docs/validation/test_read.py", (), "false"),
+        ("tests/unit/test_read.py", ".github/ISSUE_TEMPLATE/test_read.py", (), "false"),
+    ],
+    ids=[
+        "core-into-regulatory",
+        "core-into-validation-beside-the-changelog",
+        "test-into-validation",
+        "test-into-the-issue-templates",
+    ],
+)
+def test_a_pull_request_that_moves_code_into_documentation_runs_the_jobs_of_the_code(
+    repository: Path, source: str, destination: str, also: tuple[str, ...], hypothesis: str
+) -> None:
+    """git gives a file moved whole as a rename, under where it went alone: a module moved into a path the
+    gate lists is still code taken away."""
+    base = commit(source)
+    Path(destination).parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "mv", source, destination], check=True)
+    head = commit(*also)
+    assert gate_outputs(repository, gate_context("pull_request", base, head)) == {
+        "code": "true",
+        "hypothesis": hypothesis,
+    }
+
+
 def documentation_pattern() -> str:
     """The gate's pattern of the paths that are documentation only (`docs_paths`), matched whole."""
     found = re.search(

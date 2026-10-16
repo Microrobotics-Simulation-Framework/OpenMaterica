@@ -204,16 +204,16 @@ recorded in that repository's CHANGELOG.
   derivation beside every origin, break relation 3 on a derived value's derivation varied with another
   origin, and on none of its variants that keep `derived` (`tests/spec_sync/test_t1.py`).
 - CI fails closed. A merge to main runs every job and is never cancelled; the gate lists the paths that are
-  documentation only and counts every other as code; and the one required check fails unless every job the
-  gate asked for succeeded, so that a job skipped by mistake no longer passes. Every job runs on the image
-  `ubuntu-24.04`. Each pytest job writes a JUnit report, summarised on the run's page and kept 90 days
-  (`scripts/report_test_durations.py`); each test records its CPU time beside its wall time. The mutant
-  searches and the audit controls run on Python 3.11 and 3.15, the supported range's ends, in jobs of their
-  own (`--property-controls`), and every other test on all five Pythons. `tests/unit/test_ci_workflows.py`
-  holds the workflows to their comments: the image, the gate's step, each job's condition and the result,
-  that no test or script names a path the gate calls documentation, what each pytest command selects, no
-  `continue-on-error` or `PYTEST_ADDOPTS`, and the workflows README's jobs and shards; each check with a
-  control in which it must fail.
+  documentation only and counts every other as code, both paths of a file moved included; and the one required
+  check fails unless every job the gate asked for succeeded, so that a job skipped by mistake no longer
+  passes. Every job runs on the image `ubuntu-24.04`. Each pytest job writes a JUnit report, summarised on the
+  run's page and kept 90 days (`scripts/report_test_durations.py`); each test records its CPU time beside its
+  wall time. The mutant searches and the audit controls run on Python 3.11 and 3.15, the supported range's
+  ends, in jobs of their own (`--property-controls`), and every other test on all five Pythons.
+  `tests/unit/test_ci_workflows.py` holds the workflows to their comments: the image, the gate's step, each
+  job's condition and the result, that no test or script names a path the gate calls documentation, what each
+  pytest command selects, no `continue-on-error` or `PYTEST_ADDOPTS`, and the workflows README's jobs and
+  shards; each check with a control in which it must fail.
 - Two of step 8's mutants, `missing_represents_accepted` and `named_state_text_unchecked`, are searched among
   their own faults: searched whole, their kills changed with the constants Hypothesis draws from the modules a
   process has loaded (`tests/property/README.md`).

@@ -115,7 +115,9 @@ jobs:
             code=false
             hypothesis=false
           elif [ "$EVENT" = pull_request ]; then
-            changed=$(git diff --name-only "$PR_BASE...$PR_HEAD")
+            # Both paths of a file moved, which git would otherwise give as a rename, by where it went alone:
+            # a module moved into a documentation path is a change to code.
+            changed=$(git diff --no-renames --name-only "$PR_BASE...$PR_HEAD")
             printf '%s\n' "$changed"
             # Documentation only when there are paths and each is listed: a diff that names none is code.
             if [ -n "$changed" ] && ! grep -qvxE "$docs_paths" <<< "$changed"; then code=false; else code=true; fi
