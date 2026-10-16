@@ -472,11 +472,18 @@ def checkout_files() -> list[str]:
     return files
 
 
+# The wildcards of a glob, as `Path.glob` reads them.
+WILDCARD = re.compile(r"(\*\*/|\*\*|\*|\?|\[[^\]]*\])")
+GLOBBING = {"glob", "rglob", "iglob"}
+
+
 def named_paths(source: str) -> set[str]:
-    """What a Python module could name a path by: each string, and each run of strings joined by `/`, as in
-    `REPOSITORY / "docs" / "specification"`."""
+    """What a Python module could name a path by: each string, each run of strings joined by `/`, as in
+    `REPOSITORY / "docs" / "specification"`, and each glob a call of `glob` or `rglob` is given, as in
+    `ROOT.glob("*.md")`; a string with wildcards that no glob is given is a pattern of another kind."""
     names: set[str] = set()
     in_a_join: set[int] = set()
+    globs: set[int] = set()
 
     def operands(node: ast.expr) -> list[ast.expr]:
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
@@ -484,8 +491,14 @@ def named_paths(source: str) -> set[str]:
             return operands(node.left) + operands(node.right)
         return [node]
 
-    # ast.walk reaches a join before its parts, so that a part joined is not also taken alone.
+    # ast.walk reaches a join before its parts, so that a part joined is not also taken alone, and a call
+    # before its arguments.
     for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Call) and node.args:
+            if isinstance(node.func, ast.Attribute) and node.func.attr in GLOBBING:
+                globs.add(id(node.args[0]))
+            if isinstance(node.func, ast.Name) and node.func.id in GLOBBING:
+                globs.add(id(node.args[0]))
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and id(node) not in in_a_join:
             run: list[str] = []
             for operand in [*operands(node), None]:
@@ -496,7 +509,8 @@ def named_paths(source: str) -> set[str]:
                     names.add("/".join(run))
                     run = []
         elif isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in in_a_join:
-            names.add(node.value)
+            if id(node) in globs or not WILDCARD.search(node.value):
+                names.add(node.value)
     return names
 
 
@@ -524,8 +538,16 @@ def readers() -> dict[str, set[str]]:
 
 
 def names(name: str, path: str) -> bool:
-    """Whether `name` can mean `path`: the path, its end (`intended_use.md`), or a directory it is in."""
+    """Whether `name` can mean `path`: the path, its end (`intended_use.md`), or a directory it is in; and a
+    glob (`*.md`), each path it matches from any directory, since a glob's directory is not in the string."""
     name = name.removeprefix("./").strip("/")
+    if WILDCARD.search(name):
+        wildcards = {"**/": "(?:.*/)?", "**": ".*", "*": "[^/]*", "?": "[^/]"}
+        pieces = [
+            wildcards.get(piece, "[^/]" if piece.startswith("[") else re.escape(piece))
+            for piece in WILDCARD.split(name)
+        ]
+        return re.search("(?:^|/)" + "".join(pieces) + "$", path) is not None
     return bool(name) and (path == name or path.endswith(f"/{name}") or path.startswith(f"{name}/"))
 
 
@@ -539,6 +561,14 @@ NAMED_NOT_READ = {
         "tests/unit/test_check_confidential.py",
         "CLAUDE.md",
     ): "a key of the scan's allowed paths, over text it writes",
+    # Globs, each in a directory that holds no documentation.
+    ("scripts/check_wheel.py", "*"): "the files of the wheel it unpacks",
+    ("scripts/freeze_schema.py", "*"): "the files of a schema version",
+    ("scripts/schema_index.py", "*"): "the directories of the published schemas",
+    ("tests/unit/test_freeze_schema.py", "*"): "the files of a frozen schema version",
+    ("tests/unit/test_schema_index.py", "*"): "the schema directory",
+    ("tests/spec_sync/name_overlaps.py", "*.md"): "the specification's documents, in docs/specification/",
+    ("tests/spec_sync/test_references.py", "*.md"): "the specification's documents, in docs/specification/",
 } | {
     ("tests/unit/test_ci_workflows.py", example): "a path the gate's tests commit in a throwaway repository"
     for example in DOCUMENTATION_EXAMPLES
@@ -592,8 +622,23 @@ def test_no_test_or_script_names_a_path_the_gate_calls_documentation() -> None:
             'f"{ROOT}/SECURITY.md"',
             "tests/unit/test_notes.py names SECURITY.md",
         ),
+        ("", "tests/unit/test_notes.py", 'ROOT.glob("*.md")', "test_notes.py names CHANGELOG.md as '*.md'"),
+        (
+            "",
+            "scripts/notes.py",
+            'sorted(ROOT.rglob("**/*.yaml"))',
+            "scripts/notes.py names docs/validation/known_anomalies.yaml as '**/*.yaml'",
+        ),
     ],
-    ids=["readme", "specification", "a-script", "a-joined-directory", "an-f-string"],
+    ids=[
+        "readme",
+        "specification",
+        "a-script",
+        "a-joined-directory",
+        "an-f-string",
+        "a-glob",
+        "a-recursive-glob",
+    ],
 )
 def test_the_documentation_check_can_fail(
     listed: str, reader: str | None, source: str | None, problem: str
