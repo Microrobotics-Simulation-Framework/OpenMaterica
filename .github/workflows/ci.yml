@@ -231,11 +231,12 @@ jobs:
     needs: gate
     if: needs.gate.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    # Measured on CI: at S2a-1's head 2.1 to 4.1 minutes; at S2a-2's, 6.1 to 8.7 minutes with 3.11 past 10, where its
-    # timeout cancelled it (run 38818013140, 2026-10-15), then 8.7 to 13.9 minutes, 3.11 the slowest (run
-    # 38859424951, 2026-10-16). T1's origin variants then added about 100 s on four local workers. A hosted runner
-    # here is 1.6 to 4 times slower than a local core, and varies from run to run, so the timeout is set well above
-    # the slowest measured job.
+    # Measured on CI with the mutant searches and the audit controls in this job: at S2a-1's head 2.1 to 4.1
+    # minutes; at S2a-2's, 6.1 to 8.7 minutes with 3.11 past 10, where its timeout cancelled it (run 38818013140,
+    # 2026-10-15), then 8.7 to 13.9 minutes, 3.11 the slowest (run 38859424951, 2026-10-16). Without them, in the
+    # first run with the controls job apart, 3.8 to 7.0 minutes, 3.14 and 3.15 the slowest (run 38954710616,
+    # 2026-10-16). A hosted runner here is 1.6 to 4 times slower than a local core, and varies from run to run, so
+    # the timeout is set well above the slowest measured job.
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -291,7 +292,8 @@ jobs:
     needs: gate
     if: needs.gate.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    # As the test job's, until the durations report has measured the two apart.
+    # Measured on CI in its first run: 3.4 minutes on 3.11 and 2.3 on 3.15 (run 38954710616, 2026-10-16). The test
+    # job's timeout, until more runs are measured.
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -363,9 +365,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The newest Python, because it runs this suite fastest: at the `ci` profile, two workers each, the json
-      # shard took 39 to 48 s on 3.15 and 53 s on 3.11 (measured 2026-10-14); the records shard took 98 s on
-      # 3.15 (2026-10-15). Every Python runs the properties at `dev`.
+      # The newest Python, because it ran the shards fastest, locally: at the `ci` profile, two workers each, the
+      # json shard took 39 to 48 s on 3.15 and 53 s on 3.11 (measured 2026-10-14); the records shard took 98 s
+      # on 3.15 (2026-10-15). Every Python runs the properties at `dev`.
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: ${{ env.UV_VERSION }}
