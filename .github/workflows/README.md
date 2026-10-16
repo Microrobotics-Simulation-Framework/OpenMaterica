@@ -17,9 +17,9 @@ selects; no job or step carries on after a failure (`continue-on-error`).
 | `result` | fails unless every job the gate asked for succeeded (a job skipped by its `if` reports success), and when any job failed or was cancelled: the one check the ruleset on main requires | always |
 
 Each pytest job writes a JUnit report, summarised on the run's page (`scripts/report_test_durations.py`: the tests
-in each band of wall time, the slowest tests and files, and the total, wall and CPU time) and kept 90 days as
-the artifact `durations-<job>-<Python or shard>`, whenever pytest ran; a job its timeout cancels has none
-(`ci.yml` says why). No duration fails a job.
+in each band of wall time, the slowest tests and files, and the total, wall time and CPU time, the tests' own and
+their child processes') and kept 90 days as the artifact `durations-<job>-<Python or shard>`, whenever pytest ran;
+a job its timeout cancels has none (`ci.yml` says why). No duration fails a job.
 
 Every action is pinned to a commit, uv to one version (`UV_VERSION`), and every job of every workflow to the runner
 image `ubuntu-24.04` (`ci.yml` says why, above its jobs); `uv sync --locked` fails on a lock file out of date with

@@ -38,7 +38,7 @@ def test_a_report_written_under_xdist_gives_each_test_its_node_id_and_cpu_time(t
     nodeids = [line for line in collected.stdout.splitlines() if line.startswith(SAMPLE + "::")]
     tests = read_report(report)
     assert sorted(test.nodeid for test in tests) == sorted(nodeids)
-    assert [test.nodeid for test in tests if test.cpu is None] == []
+    assert [test.nodeid for test in tests if test.cpu is None or test.children_cpu is None] == []
 
 
 def test_without_the_conftest_no_test_has_a_cpu_time(tmp_path: Path) -> None:
@@ -48,22 +48,35 @@ def test_without_the_conftest_no_test_has_a_cpu_time(tmp_path: Path) -> None:
     assert ran.returncode == 0, ran.stdout + ran.stderr
     tests = read_report(report)
     assert tests
-    assert all(test.cpu is None for test in tests)
+    assert all(test.cpu is None and test.children_cpu is None for test in tests)
 
 
-# Two tests, run in this order in one process: one that spins for `SPIN` seconds of its own CPU time, and one
-# that waits as long. Each test's CPU time is its own only if the waiting test's is near nothing and the
-# spinning test's is at least `SPIN` and hardly more than its wall time (pytest's own work between a test's
-# phases is in its CPU time and not in its wall time: about 0.01 s here).
+# Three tests, run in this order in one process: one that spins for `SPIN` seconds of its own CPU time, one
+# that starts a process that spins as long, and one that waits as long. Each test's CPU times are its own only
+# if the spinning test's own is at least `SPIN` and hardly more than its wall time (pytest's own work between
+# a test's phases is in its CPU time and not in its wall time: about 0.01 s here), the other two's own near
+# nothing, and only the test that starts a process has its children's.
 SPIN = 0.3
-SPINS_THEN_WAITS = f"""\
+SPINNING = f"""
 import time
+end = time.process_time() + {SPIN}
+while time.process_time() < end:
+    pass
+"""
+SAMPLE_TIMES = f"""\
+import subprocess
+import sys
+import time
+
+SPINNING = {SPINNING!r}
 
 
 def test_spins():
-    end = time.process_time() + {SPIN}
-    while time.process_time() < end:
-        pass
+    exec(SPINNING)
+
+
+def test_starts_a_process_that_spins():
+    subprocess.run([sys.executable, "-c", SPINNING], check=True)
 
 
 def test_waits():
@@ -73,9 +86,9 @@ CONFTEST = REPOSITORY / "tests" / "conftest.py"
 
 
 def recorded(tmp_path: Path, conftest: str) -> dict[str, Timing]:
-    """Each test of `SPINS_THEN_WAITS` by name, as `conftest`, loaded as a plugin, records its times."""
+    """Each test of `SAMPLE_TIMES` by name, as `conftest`, loaded as a plugin, records its times."""
     (tmp_path / "recording.py").write_text(conftest, encoding="utf-8")
-    (tmp_path / "test_sample.py").write_text(SPINS_THEN_WAITS, encoding="utf-8")
+    (tmp_path / "test_sample.py").write_text(SAMPLE_TIMES, encoding="utf-8")
     report = tmp_path / "report.xml"
     environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
     environment["PYTHONPATH"] = os.pathsep.join([str(tmp_path), str(REPOSITORY)])
@@ -92,36 +105,54 @@ def recorded(tmp_path: Path, conftest: str) -> dict[str, Timing]:
     return {test.nodeid.rpartition("::")[2]: test for test in read_report(report)}
 
 
+def spent(seconds: float | None) -> bool:
+    """Whether a test recorded the CPU time of a spin."""
+    return seconds is not None and seconds >= 0.95 * SPIN
+
+
+def idle(seconds: float | None) -> bool:
+    return seconds is not None and seconds < SPIN / 3
+
+
+# What each test must record: of its own CPU time, and of its children's.
+WANTED = {
+    "test_spins": (spent, idle),
+    "test_starts_a_process_that_spins": (idle, spent),
+    "test_waits": (idle, idle),
+}
+
+
 def recording_problems(tests: dict[str, Timing]) -> list[str]:
-    spins, waits = tests["test_spins"], tests["test_waits"]
     problems: list[str] = []
-    if spins.cpu is None or spins.cpu < 0.95 * SPIN:
-        problems.append(f"the spinning test recorded {spins.cpu} s of CPU time for its {SPIN} s")
+    for name, (own, children) in WANTED.items():
+        test = tests[name]
+        if not own(test.cpu):
+            problems.append(f"{name}: its own CPU time, {test.cpu} s")
+        if not children(test.children_cpu):
+            problems.append(f"{name}: its children's CPU time, {test.children_cpu} s")
+    spins = tests["test_spins"]
     if spins.cpu is not None and spins.cpu > spins.wall + SPIN / 2:
-        problems.append(f"the spinning test recorded {spins.cpu} s of CPU time in {spins.wall} s")
-    if waits.cpu is None or waits.cpu >= SPIN / 3:
-        problems.append(f"the waiting test recorded {waits.cpu} s of CPU time")
+        problems.append(f"test_spins: its own CPU time, {spins.cpu} s, in {spins.wall} s")
     return problems
 
 
-def test_each_test_records_its_own_cpu_time(tmp_path: Path) -> None:
+def test_each_test_records_its_own_cpu_time_and_its_childrens(tmp_path: Path) -> None:
     assert recording_problems(recorded(tmp_path, CONFTEST.read_text(encoding="utf-8"))) == []
 
 
 @pytest.mark.parametrize(
     ("old", "new", "problem"),
     [
-        ("time.process_time()", "time.perf_counter()", "the waiting test recorded"),
-        (
-            "time.process_time() - item.stash[CPU_AT_SETUP]",
-            "time.process_time()",
-            "the spinning test recorded",
-        ),
+        ("time.process_time()", "time.perf_counter()", "test_waits: its own CPU time"),
+        ("time.process_time() - own", "time.process_time()", "test_spins: its own CPU time"),
+        ("children_now - children", "children_now", "test_waits: its children's CPU time"),
+        ("RUSAGE_CHILDREN", "RUSAGE_SELF", "test_starts_a_process_that_spins: its children's CPU time"),
     ],
-    ids=["wall-time", "the-workers-running-total"],
+    ids=["wall-time", "the-workers-running-total", "the-childrens-running-total", "the-workers-own"],
 )
 def test_the_cpu_time_check_can_fail(tmp_path: Path, old: str, new: str, problem: str) -> None:
-    """The conftest with one fault: wall time recorded as CPU time, or the process's running total."""
+    """The conftest with one fault: wall time recorded as CPU time, the process's running total, its
+    children's running total, or its own CPU time as its children's."""
     conftest = CONFTEST.read_text(encoding="utf-8")
     assert old in conftest
     found = recording_problems(recorded(tmp_path, conftest.replace(old, new)))
@@ -137,16 +168,21 @@ def junit(*cases: str) -> str:
 
 
 def case(
-    name: str, time: str = "0.5", file: str | None = "tests/unit/test_x.py", cpu: str | None = "0.4"
+    name: str,
+    time: str = "0.5",
+    file: str | None = "tests/unit/test_x.py",
+    cpu: str | None = "0.4",
+    children_cpu: str | None = "0.125",
 ) -> str:
     module = "tests.unit.test_x"
     attributes = f'classname="{module}" name="{name}" time="{time}"' + (
         "" if file is None else f' file="{file}"'
     )
-    properties = (
-        "" if cpu is None else f'<properties><property name="cpu_seconds" value="{cpu}"/></properties>'
+    recorded = {"cpu_seconds": cpu, "children_cpu_seconds": children_cpu}
+    properties = "".join(
+        f'<property name="{key}" value="{value}"/>' for key, value in recorded.items() if value is not None
     )
-    return f"<testcase {attributes}>{properties}</testcase>"
+    return f"<testcase {attributes}><properties>{properties}</properties></testcase>"
 
 
 COLLECTION_FAILURE = (
@@ -164,11 +200,11 @@ def test_a_test_case_is_read_with_its_node_id_wall_and_cpu_time(tmp_path: Path) 
     classed = case("test_b[1-x]").replace(
         'classname="tests.unit.test_x"', 'classname="tests.unit.test_x.TestB"'
     )
-    other = case("test_a", time="2.25", cpu=None, file="tests/unit/test_y.py").replace("test_x", "test_y")
-    tests = read_report(written(tmp_path, junit(classed, other)))
+    other = case("test_a", time="2.25", cpu=None, children_cpu=None, file="tests/unit/test_y.py")
+    tests = read_report(written(tmp_path, junit(classed, other.replace("test_x", "test_y"))))
     assert tests == [
-        Timing("tests/unit/test_x.py::TestB::test_b[1-x]", "tests/unit/test_x.py", 0.5, 0.4),
-        Timing("tests/unit/test_y.py::test_a", "tests/unit/test_y.py", 2.25, None),
+        Timing("tests/unit/test_x.py::TestB::test_b[1-x]", "tests/unit/test_x.py", 0.5, 0.4, 0.125),
+        Timing("tests/unit/test_y.py::test_a", "tests/unit/test_y.py", 2.25, None, None),
     ]
 
 
@@ -186,25 +222,26 @@ def test_each_test_falls_in_one_band_its_lower_edge_included() -> None:
 
 def test_the_summary_gives_the_bands_the_slowest_tests_and_files_and_the_total() -> None:
     tests = [
-        Timing("a.py::fast", "a.py", 0.5, 0.25),
-        Timing("a.py::slow", "a.py", 30.0, 20.0),
-        Timing("b.py::middling", "b.py", 6.0, 5.0),
-        Timing("c.py::untimed", "c.py", 2.0, None),
+        Timing("a.py::fast", "a.py", 0.5, 0.25, 0.0),
+        Timing("a.py::slow", "a.py", 30.0, 20.0, 1.5),
+        Timing("b.py::middling", "b.py", 6.0, 0.5, 5.0),
+        Timing("c.py::untimed", "c.py", 2.0, None, None),
     ]
     text = summary(tests, "Test durations, Python 3.11", slowest_tests=2, slowest_files=2)
     assert text.startswith("## Test durations, Python 3.11\n")
-    assert "4 tests: 38.50 s of wall time and 25.25 s of CPU time" in text
+    assert "4 tests: 38.50 s of wall time, 20.75 s of CPU time in the test processes and 6.50 s" in text
     assert "Tests that recorded no CPU time: 1." in text
-    assert "| under 1 s | 1 | 0.50 s | 0.25 s | 1% |" in text
-    assert "| 20 to 60 s | 1 | 30.00 s | 20.00 s | 78% |" in text
-    assert "| 60 s or more | 0 | 0.00 s | 0.00 s | 0% |" in text
+    assert "| under 1 s | 1 | 0.50 s | 0.25 s | 0.00 s | 1% |" in text
+    assert "| 20 to 60 s | 1 | 30.00 s | 20.00 s | 1.50 s | 78% |" in text
+    assert "| 60 s or more | 0 | 0.00 s | 0.00 s | 0.00 s | 0% |" in text
     slowest = text.partition("### The 2 slowest tests")[2].partition("###")[0]
+    assert "| 30.00 s | 20.00 s | 1.50 s | `a.py::slow` |" in slowest
     assert slowest.index("`a.py::slow`") < slowest.index("`b.py::middling`")
     assert "fast" not in slowest
     assert "untimed" not in slowest
     files = text.partition("### The 2 slowest files")[2]
-    assert "| 30.50 s | 20.25 s | 2 | `a.py` |" in files
-    assert "| 6.00 s | 5.00 s | 1 | `b.py` |" in files
+    assert "| 30.50 s | 20.25 s | 1.50 s | 2 | `a.py` |" in files
+    assert "| 6.00 s | 0.50 s | 5.00 s | 1 | `b.py` |" in files
     assert "c.py" not in files
 
 
