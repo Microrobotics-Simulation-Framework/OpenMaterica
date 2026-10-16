@@ -270,18 +270,21 @@ took, at the small and the original size (measured 2026-10-15, S2a-2's fix round
 
 Two of the first 25, `missing_represents_accepted` and `named_state_text_unchecked`, have had planned searches
 since 2026-10-16: searched with HP3 whole, each survived 2,000 examples at the small size once the suite held
-`scripts/report_test_durations.py`, which its unit tests import, and died where their module ran alone.
-Hypothesis (6.169) draws, among its values, constants it finds in the project's modules the process has
-loaded, test modules aside, so the examples a derandomised search meets change with the code and with what
-else a process imported. Planned, each dies at its first example at both sizes, alone, after the whole suite's
-collection, on Python 3.11 and 3.15. The other 21 that HP3 kills, which could each meet the same at any
-change, have been planned since S2a-3 came onto main (maintainer, 2026-10-16): each names the faults of HP3's
-catalogue that test the rule it breaks, chosen from a search on each of the 154 faults alone against each
-mutant at both sizes (a fault that killed it only beside a second fault was left out), and dies at its first
-example at both sizes, alone and after the whole suite's collection, on Python 3.11 and 3.15 (measured
-2026-10-17). Searched whole, they had died after 3 to 1,297 examples. HP5's two, `unknown_members_refused` and
-`two_slips_refused`, are still searched whole: HP5 draws no fault of the catalogue to name, and nearly every
-example it draws kills each, at the second example at both sizes in each of those runs.
+`scripts/report_test_durations.py`, which its unit tests import, and died where their module ran alone. At
+S2a-3's head, `named_state_text_unchecked` also survived 2,000 examples at the original size where its shard
+ran alone, as CI runs it, and died where the whole suite ran: S2a-3's code added constants. Hypothesis (6.169)
+draws, among its values, constants it finds in the project's modules the process has loaded, test modules
+aside, so the examples a derandomised search meets change with the code and with what else a process imported.
+Emptying that pool, the search killed it alone and after the unit tests alike (measured 2026-10-16). Planned,
+each dies at its first example at both sizes, alone, after the whole suite's collection, on Python 3.11 and
+3.15. The other 21 that HP3 kills, which could each meet the same at any change, have been planned since S2a-3
+came onto main (maintainer, 2026-10-16): each names the faults of HP3's catalogue that test the rule it
+breaks, chosen from a search on each of the 154 faults alone against each mutant at both sizes (a fault that
+killed it only beside a second fault was left out), and dies at its first example at both sizes, alone and
+after the whole suite's collection, on Python 3.11 and 3.15 (measured 2026-10-17). Searched whole, they had
+died after 3 to 1,297 examples. HP5's two, `unknown_members_refused` and `two_slips_refused`, are still
+searched whole: HP5 draws no fault of the catalogue to name, and nearly every example it draws kills each, at
+the second example at both sizes in each of those runs.
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
