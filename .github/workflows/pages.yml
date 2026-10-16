@@ -4,9 +4,8 @@
 # set in the repository's Pages settings: a site deployed by a workflow needs no CNAME file, and GitHub ignores
 # one ("Managing a custom domain for your GitHub Pages site", GitHub Docs).
 #
-# ci.yml needs no change for this workflow. Its gate counts as code only src/, tests/, scripts/,
-# docs/specification/, pyproject.toml, uv.lock and ci.yml, so a change to site/ or to this file runs the gate
-# alone, as any other docs-only change does.
+# ci.yml's gate counts site/ and this file as code, as it does every path but those it lists as documentation,
+# so a pull request that changes either runs every CI job.
 
 name: Pages
 

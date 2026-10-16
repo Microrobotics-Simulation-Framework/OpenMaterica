@@ -5,13 +5,15 @@ A workflow that runs less than it claims still goes green, so each test here hol
 would notice breaking, and each has a control in which the check must fail.
 """
 
+import ast
 import copy
 import os
 import re
 import subprocess
+import tomllib
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -34,6 +36,17 @@ RESULT_STEP = "Every job the gate asked for succeeded, and none failed or was ca
 GATED = {"static": "code", "generated": "code", "tests": "code", "hypothesis": "hypothesis"}
 # Jobs the gate does not decide: the gate itself, the result, and the weekly and manual fuzz job.
 UNGATED = {"gate", "result", "fuzz"}
+# A path of each kind the gate calls documentation, as its tests commit them in a throwaway repository.
+DOCUMENTATION_EXAMPLES = (
+    "CHANGELOG.md",
+    "CLAUDE.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs/regulatory/intended_use.md",
+    "docs/validation/known_anomalies.yaml",
+    ".github/ISSUE_TEMPLATE/anomaly.yml",
+    ".github/pull_request_template.md",
+)
 
 
 def workflow(name: str) -> Workflow:
@@ -114,12 +127,15 @@ def gate_context(event: str, base: str = "", head: str = "", fuzz_only: str = ""
     }
 
 
-def commit(path: str, text: str = "changed\n") -> str:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(text, encoding="utf-8")
-    subprocess.run(["git", "add", path], check=True)
+def commit(*paths: str) -> str:
+    """A commit that changes each of `paths`, or none."""
+    for path in paths:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with Path(path).open("a", encoding="utf-8") as changed:
+            changed.write("changed\n")
+        subprocess.run(["git", "add", path], check=True)
     identity = ["-c", "user.name=Author", "-c", "user.email=author@example.org"]
-    subprocess.run(["git", *identity, "commit", "-q", "-m", path], check=True)
+    subprocess.run(["git", *identity, "commit", "-q", "--allow-empty", "-m", "change"], check=True)
     return subprocess.run(
         ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
     ).stdout.strip()
@@ -137,7 +153,7 @@ def gate_outputs(repository: Path, context: dict[str, str]) -> dict[str, str]:
 def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (tmp_path / "repository").mkdir()
     root = throwaway_repository(tmp_path / "repository", monkeypatch)
-    commit("src/materica/core/read.py", "base\n")
+    commit("src/materica/core/read.py", "README.md", "CHANGELOG.md")
     return root
 
 
@@ -164,22 +180,195 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
 
 
 @pytest.mark.parametrize(
-    ("path", "code", "hypothesis"),
+    ("paths", "code", "hypothesis"),
     [
-        ("CHANGELOG.md", "false", "false"),
-        ("tests/unit/test_read.py", "true", "false"),
-        ("src/materica/core/read.py", "true", "true"),
+        pytest.param(list(DOCUMENTATION_EXAMPLES), "false", "false", id="documentation"),
+        # Code, though written as documentation: what the wheel, the type checkers, the spec-sync tests and
+        # the Pages workflow read.
+        (["README.md"], "true", "false"),
+        (["LICENSE"], "true", "false"),
+        (["typings/atheris/__init__.pyi"], "true", "false"),
+        (["docs/specification/README.md"], "true", "false"),
+        (["site/index.html"], "true", "false"),
+        # A path nobody listed is code, and one path of code makes a change code.
+        (["notes/plan.txt"], "true", "false"),
+        (["CHANGELOG.md", "scripts/check_wheel.py"], "true", "false"),
+        # A diff with no path at all, as if the diff had gone wrong: the safe side.
+        ([], "true", "false"),
+        (["tests/unit/test_read.py"], "true", "false"),
+        (["src/materica/core/read.py"], "true", "true"),
     ],
+    ids=lambda value: "+".join(cast(list[str], value)) or "nothing" if isinstance(value, list) else None,
 )
 def test_a_pull_request_runs_the_jobs_its_paths_need(
-    repository: Path, path: str, code: str, hypothesis: str
+    repository: Path, paths: list[str], code: str, hypothesis: str
 ) -> None:
-    base = commit("README.md", "base\n")
-    head = commit(path)
+    base = commit()
+    head = commit(*paths)
     assert gate_outputs(repository, gate_context("pull_request", base, head)) == {
         "code": code,
         "hypothesis": hypothesis,
     }
+
+
+def documentation_pattern() -> str:
+    """The gate's pattern of the paths that are documentation only (`docs_paths`), matched whole."""
+    found = re.search(
+        r"^ *docs_paths='([^']+)'$", step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP)["run"], re.M
+    )
+    assert found, "the gate's step sets no docs_paths"
+    return found[1]
+
+
+def checkout_files() -> list[str]:
+    """Every file of the checkout but those of git and of the virtual environment: an export of a commit has
+    no `.git/` to list the tracked files."""
+    files: list[str] = []
+    for directory, subdirectories, names in os.walk(REPOSITORY):
+        subdirectories[:] = [name for name in subdirectories if name not in {".git", ".venv"}]
+        files += [(Path(directory) / name).relative_to(REPOSITORY).as_posix() for name in names]
+    return files
+
+
+def named_paths(source: str) -> set[str]:
+    """What a Python module could name a path by: each string, and each run of strings joined by `/`, as in
+    `REPOSITORY / "docs" / "specification"`."""
+    names: set[str] = set()
+    in_a_join: set[int] = set()
+
+    def operands(node: ast.expr) -> list[ast.expr]:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+            in_a_join.add(id(node))
+            return operands(node.left) + operands(node.right)
+        return [node]
+
+    # ast.walk reaches a join before its parts, so that a part joined is not also taken alone.
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and id(node) not in in_a_join:
+            run: list[str] = []
+            for operand in [*operands(node), None]:
+                if isinstance(operand, ast.Constant) and isinstance(operand.value, str):
+                    in_a_join.add(id(operand))
+                    run.append(operand.value)
+                elif run:
+                    names.add("/".join(run))
+                    run = []
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in in_a_join:
+            names.add(node.value)
+    return names
+
+
+def strings(value: object) -> set[str]:
+    """Every string in a parsed TOML document."""
+    if isinstance(value, str):
+        return {value}
+    if isinstance(value, dict):
+        return strings(list(cast(dict[str, object], value).values()))
+    if isinstance(value, list):
+        return {found for item in cast(list[object], value) for found in strings(item)}
+    return set()
+
+
+def readers() -> dict[str, set[str]]:
+    """What each test and script, and the build (`pyproject.toml`), could name a path by."""
+    modules = sorted(
+        path for directory in ("tests", "scripts") for path in (REPOSITORY / directory).rglob("*.py")
+    )
+    found = {
+        path.relative_to(REPOSITORY).as_posix(): named_paths(path.read_text("utf-8")) for path in modules
+    }
+    found["pyproject.toml"] = strings(tomllib.loads((REPOSITORY / "pyproject.toml").read_text("utf-8")))
+    return found
+
+
+def names(name: str, path: str) -> bool:
+    """Whether `name` can mean `path`: the path, its end (`intended_use.md`), or a directory it is in."""
+    name = name.removeprefix("./").strip("/")
+    return bool(name) and (path == name or path.endswith(f"/{name}") or path.startswith(f"{name}/"))
+
+
+# Where a test or script names documentation without reading it, and why.
+NAMED_NOT_READ = {
+    (
+        "scripts/check_confidential.py",
+        "CLAUDE.md",
+    ): "the gate runs the scan on every change, documentation included",
+    (
+        "tests/unit/test_check_confidential.py",
+        "CLAUDE.md",
+    ): "a key of the scan's allowed paths, over text it writes",
+} | {
+    ("tests/unit/test_ci_workflows.py", example): "a path the gate's tests commit in a throwaway repository"
+    for example in DOCUMENTATION_EXAMPLES
+}
+
+
+def documentation_named(pattern: str, files: list[str], named: dict[str, set[str]]) -> list[str]:
+    """Each place a test, a script or the build names a path that `pattern` calls documentation, but those
+    `NAMED_NOT_READ` gives; and each of those it no longer finds."""
+    documentation = [path for path in files if re.fullmatch(pattern, path)]
+    found = {
+        (reader, name, path)
+        for reader, names_there in named.items()
+        for name in names_there
+        for path in documentation
+        if names(name, path)
+    }
+    problems = [
+        f"{reader} names {path} as {name!r}, and the gate calls it documentation"
+        for reader, name, path in sorted(found)
+        if (reader, name) not in NAMED_NOT_READ
+    ]
+    still_named = {(reader, name) for reader, name, _ in found}
+    return problems + [
+        f"{reader} no longer names {name!r}" for reader, name in sorted(NAMED_NOT_READ.keys() - still_named)
+    ]
+
+
+def test_no_test_or_script_names_a_path_the_gate_calls_documentation() -> None:
+    """A change to a path the gate calls documentation runs no test: so no test may read it."""
+    assert documentation_named(documentation_pattern(), checkout_files(), readers()) == []
+
+
+@pytest.mark.parametrize(
+    ("listed", "reader", "source", "problem"),
+    [
+        # Documentation the code reads: the wheel's readme, and the specification by its parts.
+        ("|README\\.md", None, None, "pyproject.toml names README.md as 'README.md'"),
+        ("|docs/specification/.+", None, None, "scripts/gen_vocabulary.py names docs/specification/"),
+        # A test or script that reads a path the gate lists.
+        ("", "scripts/notes.py", 'Path("CHANGELOG.md").read_text()', "scripts/notes.py names CHANGELOG.md"),
+        (
+            "",
+            "tests/unit/test_notes.py",
+            'ROOT / "docs" / "regulatory"',
+            "names docs/regulatory/intended_use.md",
+        ),
+        (
+            "",
+            "tests/unit/test_notes.py",
+            'f"{ROOT}/SECURITY.md"',
+            "tests/unit/test_notes.py names SECURITY.md",
+        ),
+    ],
+    ids=["readme", "specification", "a-script", "a-joined-directory", "an-f-string"],
+)
+def test_the_documentation_check_can_fail(
+    listed: str, reader: str | None, source: str | None, problem: str
+) -> None:
+    named = readers()
+    if reader is not None and source is not None:
+        named[reader] = named_paths(source)
+    found = documentation_named(documentation_pattern() + listed, checkout_files(), named)
+    assert any(problem in line for line in found), found
+
+
+def test_the_documentation_check_finds_an_exemption_gone_stale() -> None:
+    named = readers()
+    named["scripts/check_confidential.py"].discard("CLAUDE.md")
+    assert documentation_named(documentation_pattern(), checkout_files(), named) == [
+        "scripts/check_confidential.py no longer names 'CLAUDE.md'"
+    ]
 
 
 def result_status(gate: str, code: str, hypothesis: str, jobs: dict[str, str], tmp_path: Path) -> int:
@@ -299,7 +488,7 @@ def result_reading_no_job(ci: Workflow) -> None:
 
 
 def job_nobody_gated(ci: Workflow) -> None:
-    ci["jobs"]["docs"] = {"needs": "gate"}
+    ci["jobs"]["lint"] = {"needs": "gate"}
 
 
 @pytest.mark.parametrize(
@@ -311,7 +500,7 @@ def job_nobody_gated(ci: Workflow) -> None:
         (condition_on_another_output, "hypothesis runs if"),
         (result_without_a_job, "the result needs"),
         (result_reading_no_job, "does not read needs.tests.result"),
-        (job_nobody_gated, "neither gated nor ungated: docs"),
+        (job_nobody_gated, "neither gated nor ungated: lint"),
     ],
 )
 def test_the_wiring_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
