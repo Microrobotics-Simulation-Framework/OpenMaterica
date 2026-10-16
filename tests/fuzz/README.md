@@ -10,7 +10,7 @@ collect them. Atheris ships no types, so `typings/atheris/` holds stubs for the 
 | `jsonio_bytes.py` | raw bytes into `jsonio.parse`, from a seed corpus of every conformance input and with `json.dict`, JSON's tokens and the escapes and bytes `record_format.md` section 1 item 6 turns on | `parse` raises; or it disagrees with the reference reader (`tests/conformance/reference_reader.py`), the standard library's json with hooks that refuse exactly the faults the item lists: a value it accepts differs, numbers bit for bit, or it refuses what the reference accepts, or the reverse |
 | `properties.py` | the JSON properties of `tests/property/` (the reader, RFC 8785, the hash), through `fuzz_one_input`, in-process; the first byte picks the property | a property fails. The failure goes into the example database, and `pytest tests/property`, under the same `MATERICA_HYPOTHESIS_PROFILE`, replays it first and shrinks it |
 | `record_properties.py` | the record properties of `tests/property/` (the envelope checks, versions, the read's laws, step 8's laws) in the same way: structure-aware, since their strategies build records, stores and requests from the bytes Atheris gives | as above |
-| `read_field_bytes.py` | raw bytes into step 8 of a read: the first byte picks a registered field, and the rest, read by `jsonio.parse`, stands in that field's place in a record valid otherwise, pinned by its recomputed hash; seeded with every value field of every conformance input, with a dictionary of S2's member names and tokens that `--dict` writes from the schema and the vocabulary | a read raises anything but `NotImplementedError`; two reads differ; a result is not a refusal step 8 gives (`not_met`, codes of step 8 only, each once, the worst status); the read without the hash suite differs by more than the label `hash_not_checked`; or step 8 lets through a constant its row allows that the reader `$defs` refuse (`field_oracle.py`, T1's third relation). Until S2a-4's reference model can say what each read must give, that relation is the one way this target sees a refusal step 8 is missing; a field step 8 refuses wrongly it cannot see |
+| `read_field_bytes.py` | raw bytes into steps 8 to 10 of a read: the first byte picks a registered field, and the rest, read by `jsonio.parse`, stands in that field's place in a record valid otherwise, pinned by its recomputed hash, read at operating conditions with a tolerance or an accept list for each condition its row requires; seeded with every value field of every conformance input, with a dictionary of S2's member names and tokens that `--dict` writes from the schema and the vocabulary | a read raises anything but `NotImplementedError`; two reads differ; a result is not a refusal steps 8 to 10 give (`not_met`, codes of those steps only, each once, the worst status); the read without the hash suite differs by more than the label `hash_not_checked`; step 8 lets through a constant its row allows that the reader `$defs` refuse (`field_oracle.py`, T1's third relation); or steps 9 and 10 read such a constant otherwise than their text: its units by code point, and its conditions by HP7's oracle (`tests/property/condition_oracle.py`). Until S2a-4's reference model can say what each read must give, these are the ways this target sees a missing refusal; a field step 8 refuses wrongly it cannot see |
 
 ## Running
 
@@ -40,28 +40,34 @@ is written with a seeded `random.Random`, which shrinking cannot simplify, so on
 `seeded_fault.py` seeds three faults, each with its own message. One makes `parse` raise for an array whose
 first item is an empty object, a shape no seed holds; another makes the read raise where two copies of the
 target state its pin and are identical byte for byte, which a read must take as one record, beside an
-unreadable source and without the hash suite: three draws that must meet. The third makes step 8 raise for a
-constant above 1, measured above 311 K, whose statistics block represents a population's spread: no seed holds
-two of the three (nine represent a population, 18 hold a value above 1, none is above 311 K), so the fuzzer
-has to change two numbers of one seed. Only the fourth target seeds it, since the property targets draw fields
-too, and it is instrumented by Atheris, as the core is, so that each part met is new coverage. In four local
-runs it was found after 22, 156, 204 and 279 s (Python 3.14, 2026-10-15), so the control gives that target 600
-s. It replaced, in S2a-2's fix round, a fault one digit from a seed that held two of its three parts (found
-after 10 to 94 s); a rarer conjunction tried first, on a measurement's spread, which two seeds hold, was found
-after 260, 360 and 607 s and missed once in 300 s. A refusal step 8 misses is the oracle's to see, which
-`tests/unit/test_fuzz_oracle.py` shows failing. With `MATERICA_FUZZ_SEEDED_FAULT=1`, the first two targets
-must find the first, the third target the second and the fourth the third, and
-`python -m pytest -p tests.fuzz.seeded_fault tests/property/...` must replay what the property targets saved
-and shrink it. CI's fuzz job does this first, against an empty example database, before it fuzzes the core,
-and checks each step for the message of the fault it must find.
+unreadable source and without the hash suite: three draws that must meet. The third makes step 10 raise for a
+temperature above 311 K stated with a plus or minus, beside a shear rate stated as a range other than 10 to
+1000 1/s: no seed holds two of the three (18 hold a plus or minus on a temperature, at 310.15 K or below;
+three state another range, with no plus or minus; none a temperature above 311 K), so the fuzzer has to change
+two numbers of one seed, keeping the field through steps 8 and 9. Only the fourth target seeds it, since the
+property targets draw conditions too, and it is instrumented by Atheris, as the core is, so that each part met
+is new coverage. In ten local runs, six at a time, it was found after 84, 126, 147, 189, 216, 225, 236, 483,
+531 and 601 s (Python 3.14, 2026-10-16), so the control runs the target twice side by side, each for up to 900
+s, and passes where either finds it. Rarer conjunctions tried first were missed: a temperature stated as a
+range, with an `sd` entry, measured rather than set, in 600 s; one ending above 1000 1/s, in two runs of 600
+s, since libFuzzer picks the number it changes after a random offset and an upper end two bytes after its
+lower is seldom picked; one starting above 10 1/s, in one run of seven. The fault replaced, in S2a-3, the
+step-8 fault of S2a-2's fix round (a constant above 1, measured above 311 K, whose statistics block represents
+a population's spread, found after 22 to 279 s), once the target read steps 9 and 10; that one had replaced a
+fault one digit from a seed that held two of its three parts. A refusal steps 8 to 10 miss is the oracles' to
+see, which `tests/unit/test_fuzz_oracle.py` shows failing. With `MATERICA_FUZZ_SEEDED_FAULT=1`, the first two
+targets must find the first, the third target the second and the fourth the third, and `python -m pytest -p
+tests.fuzz.seeded_fault tests/property/...` must replay what the property targets saved and shrink it. CI's
+fuzz job does this first, against an empty example database, before it fuzzes the core, and checks each step
+for the message of the fault it must find.
 
 ## In CI
 
 The `fuzz` job runs weekly and on a manual run only, on Python 3.14, after the Hypothesis job: the control
-above, then each target for `fuzz_seconds` (300 by default, an input of the manual run), then
-`pytest tests/property`, but the writer's properties and the mutant tables, to replay and shrink what was
-found. It starts from the union of the example databases
-the Hypothesis job's `json` and `records` shards just saved, or the latest each saved where that job did not run (a manual run
-with `fuzz_only`), and saves the two jobs' finds together, for each shard. Target 1's corpus is cached from run
-to run, seeded afresh each time, and merged into a fresh directory before it is saved, so that it keeps only
-the inputs that add coverage. The job keeps the inputs that failed.
+above, then each target for `fuzz_seconds` (300 by default, an input of the manual run), then `pytest
+tests/property`, but the writer's properties and the mutant tables, to replay and shrink what was found. It
+starts from the union of the example databases the Hypothesis job's `json`, `records` and `conditions` shards
+just saved, or the latest each saved where that job did not run (a manual run with `fuzz_only`), and saves the
+two jobs' finds together, for each shard. Target 1's corpus is cached from run to run, seeded afresh each
+time, and merged into a fresh directory before it is saved, so that it keeps only the inputs that add
+coverage. The job keeps the inputs that failed.

@@ -8,15 +8,27 @@ conditions checked, the implied conditions that apply and fill, and two that dis
 sentences.
 """
 
+import json
 from collections.abc import Mapping, Sequence
 from fractions import Fraction
+from pathlib import Path
 from typing import NamedTuple
 
+from materica.core import jsonio
 from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 
 JsonObject = dict[str, JsonValue]
 Pair = tuple[str, str | None]  # a reason's code and condition
+
+REASONS = json.loads(
+    (Path(jsonio.__file__).parents[1] / "schema" / "0.1" / "vocabulary" / "reasons.json").read_text("utf-8")
+)
+AFTER_STEP_8 = frozenset(
+    code for code, row in REASONS["reasons"].items() if row.get("steps") and min(row["steps"]) > 8
+)
+"""The codes only steps after 8 give, by the reason table: a read that gives no other passed step 8. Here,
+since this module imports no strategy, so that fuzz target 4 may read it without a Hypothesis profile."""
 
 
 def exact(number: JsonValue) -> Fraction:

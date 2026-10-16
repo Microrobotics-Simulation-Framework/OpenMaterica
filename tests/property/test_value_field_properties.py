@@ -36,10 +36,10 @@ from materica.core.record import RecordStore
 from materica.core.vocabulary import VOCABULARY
 from scripts.gen_vocabulary import SPECIFICATION
 from tests.property import records
+from tests.property.condition_oracle import AFTER_STEP_8
 from tests.property.strategies import SIZE, Size
 from tests.property.support import feature
 from tests.property.value_field_strategies import (
-    AFTER_STEP_8,
     REGIONS,
     Example,
     JsonObject,
