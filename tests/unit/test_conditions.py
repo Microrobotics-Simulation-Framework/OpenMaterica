@@ -196,7 +196,7 @@ def test_a_stated_plus_minus_turns_met_into_unknown_only(
 
 
 def test_a_bound_on_a_range_moves_both_ends_inward() -> None:
-    """`[a, b]` stated within ± u: `a + u - t <= v <= b - u + t`."""
+    """`[a, b]` stated within plus or minus u: `a + u - t <= v <= b - u + t`."""
     condition: JsonValue = {
         "range": [300.0, 320.0],
         "unit": "K",
