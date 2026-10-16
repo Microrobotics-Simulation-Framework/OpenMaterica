@@ -8,7 +8,8 @@
   read reaches in a record has a position, and every member of one that may hold a status object a status
   position, but where a `deferred` position names the piece that will read it (an interval, a composition,
   evidence, a table, alternatives, a request's acceptances): it fails once that piece is done. Every object in
-  a host is found by a position's path.
+  a host is found by a position's path. An implied condition's members, which no schema gives yet, are those
+  the text names at each place, in its rows' `also` and in the read's tuples.
 - At each position of a few valid records and a valid request, at every place the pattern finds, the read
   meets the verdict: a member named `x_unknown_member` is ignored, or refused where every unknown name is, or
   as the row of a status object says; a member one slip from each named member (the name with a character
@@ -198,8 +199,9 @@ def places(value: JsonValue, pattern: list[str], here: Path_ = ()) -> Iterator[P
         return
     step, rest = pattern[0], pattern[1:]
     if step.startswith("[") and isinstance(value, list):
+        kinds = step[1:-1].split("|")
         for index, item in enumerate(value):
-            if step == "[*]" or (isinstance(item, dict) and f"[{item.get('acceptance')}]" == step):
+            if step == "[*]" or (isinstance(item, dict) and item.get("acceptance") in kinds):
                 yield from places(item, rest, (*here, index))
     elif isinstance(value, dict):
         for key, member in value.items():
@@ -598,6 +600,159 @@ def unfound(positions: list[JsonObject]) -> list[str]:
 
 def test_every_object_in_a_host_is_found_by_a_position() -> None:
     """The review's three missing kinds included: a section's or a derivation input's fact held as a status
-    object, and a fact's member or a token condition's unit held as one."""
+    object, and a fact's member or a token condition's unit held as one; and an implied condition, which the
+    deferred row of the other acceptances does not find."""
     assert unfound(TABLE) == []
     assert unfound([position for position in TABLE if position["id"] != "R39"]) != []
+    assert unfound([position for position in TABLE if position["id"] != "Q10"]) == ["request: acceptances.0"]
+
+
+# An implied condition's members against the text (D06's first piece). No schema gives its shape yet
+# (S2b-2 writes the acceptances into `read_request.json`), so rows Q10, Q13 and Q14 name its members by
+# `also` alone, and the read by `read.py`'s `_IMPLIED_*` tuples. Each member, at its place, with what a read
+# does with it and the sentence that names it there.
+
+AN_IMPLIED_CONDITION = "an implied condition"
+A_NUMERIC_VALUE = "a value of `implies` for a numeric condition"
+A_TOKEN_VALUE = "a value of `implies` for a token condition"
+
+
+class Named(NamedTuple):
+    place: str
+    use: str  # `read`, a `location`, `ignored` or `refused`
+    members: tuple[str, ...]
+    cite: str
+    quote: str  # names each member, in backticks or in double quotes
+
+
+SHAPES = '`{"value", "unit"}` or `{"range": [lo, hi], "unit"}` for a numeric one'
+WITHOUT = (
+    "a record condition's shapes without `basis` (one there is ignored), `plus_minus` or `set_or_measured`"
+)
+# Ignored with the basis it goes with: S2a-3's reading.
+INFERRED = "or `inferred` with an `inferred_from` text"
+STATUS = "an object holding `status` is a status object"
+IMPLIED_NAMES = [
+    Named(AN_IMPLIED_CONDITION, "read", ("acceptance",), "declarations.md", "Every entry has `acceptance`"),
+    Named(AN_IMPLIED_CONDITION, "read", ("field",), "declarations.md", "names the `field`"),
+    Named(
+        AN_IMPLIED_CONDITION,
+        "ignored",
+        ("reason", "basis"),
+        "read_side_contract.md",
+        "its `reason` and `basis`",
+    ),
+    Named(
+        AN_IMPLIED_CONDITION,
+        "location",
+        ("record", "region", "interval"),
+        "declarations.md",
+        "| `implied_condition` | `region`, `interval` or `record` |",
+    ),
+    Named(AN_IMPLIED_CONDITION, "read", ("fact",), "declarations.md", "`fact`, a specimen fact whose shape"),
+    Named(AN_IMPLIED_CONDITION, "read", ("token",), "declarations.md", "and `token`, one of its tokens"),
+    Named(
+        AN_IMPLIED_CONDITION, "read", ("implies",), "declarations.md", "`implies`, per registered condition"
+    ),
+    Named(A_NUMERIC_VALUE, "read", ("value", "range", "unit"), "declarations.md", SHAPES),
+    Named(A_TOKEN_VALUE, "read", ("token",), "declarations.md", '`{"token"}`, with a token of its row'),
+    *(
+        named_here
+        for place in (A_NUMERIC_VALUE, A_TOKEN_VALUE)
+        for named_here in (
+            Named(place, "ignored", ("basis",), "declarations.md", WITHOUT),
+            Named(place, "ignored", ("inferred_from",), "provenance.md", INFERRED),
+            Named(place, "refused", ("plus_minus", "set_or_measured"), "declarations.md", WITHOUT),
+            Named(place, "refused", ("status",), "provenance.md", STATUS),
+        )
+    ),
+]
+
+
+class ReadNames(NamedTuple):
+    """`read.py`'s names of an implied condition's members."""
+
+    own: tuple[str, ...]
+    locations: tuple[str, ...]
+    ignored: tuple[str, ...]
+    refused: tuple[str, ...]
+
+
+READ_NAMES = ReadNames(
+    read_module._IMPLIED_OWN,  # pyright: ignore[reportPrivateUsage]
+    read_module._LOCATION_MEMBERS,  # pyright: ignore[reportPrivateUsage]
+    read_module._IMPLIED_IGNORED,  # pyright: ignore[reportPrivateUsage]
+    read_module._IMPLIED_REFUSED,  # pyright: ignore[reportPrivateUsage]
+)
+
+
+def implied_name_problems(
+    names: list[Named], rows: dict[str, JsonObject], read_names: ReadNames, read_document: Documents
+) -> list[str]:
+    """Each way `names`, the rows' `also` lists and the read's tuples part: a quote lost or not naming its
+    members, and a row or a tuple that names other members than the text at its place."""
+    found = [
+        f"{named.members} at {named.place}: {named.cite} no longer says {named.quote!r}"
+        for named in names
+        if flowing(named.quote) not in flowing(read_document(named.cite))
+    ]
+    found += [
+        f"{member} at {named.place}: {named.quote!r} does not name it"
+        for named in names
+        for member in named.members
+        if f"`{member}`" not in named.quote and f'"{member}"' not in named.quote
+    ]
+
+    def at(places: tuple[str, ...], *uses: str) -> set[str]:
+        return {
+            member
+            for named in names
+            if named.place in places and (not uses or named.use in uses)
+            for member in named.members
+        }
+
+    acceptance, numeric, token = (AN_IMPLIED_CONDITION,), (A_NUMERIC_VALUE,), (A_TOKEN_VALUE,)
+    values = (A_NUMERIC_VALUE, A_TOKEN_VALUE)
+    shape = {
+        *members_of(SCHEMAS["request"], "operating_value"),
+        *members_of(SCHEMAS["request"], "operating_range"),
+    }
+    held_and_named = {
+        "Q10's also": (set(an_object(rows["Q10"]["also"])), at(acceptance)),
+        "Q13's schema and also": (shape | set(an_object(rows["Q13"]["also"])), at(numeric)),
+        "Q14's also": (set(an_object(rows["Q14"]["also"])), at(token)),
+        "read._IMPLIED_OWN": (set(read_names.own), at(acceptance)),
+        "read._LOCATION_MEMBERS": (set(read_names.locations), at(acceptance, "location")),
+        "read._IMPLIED_IGNORED": (set(read_names.ignored), at(values, "ignored")),
+        "read._IMPLIED_REFUSED": (set(read_names.refused), at(values, "refused")),
+    }
+    found += [
+        f"{where} names {sorted(held - named)} beyond the text and lacks {sorted(named - held)}"
+        for where, (held, named) in held_and_named.items()
+        if held != named
+    ]
+    return found
+
+
+def test_an_implied_conditions_members_are_those_the_text_names_at_each_place() -> None:
+    assert implied_name_problems(IMPLIED_NAMES, BY_ID, READ_NAMES, document) == []
+
+
+def without_also(row: str, *members: str) -> dict[str, JsonObject]:
+    also = {name: reason for name, reason in an_object(BY_ID[row]["also"]).items() if name not in members}
+    return {**BY_ID, row: {**BY_ID[row], "also": also}}
+
+
+def test_an_implied_conditions_member_dropped_or_its_quote_lost_is_found() -> None:
+    """The review's probe: `interval` and `basis` out of Q10's `also`, `inferred_from` out of Q13's."""
+    assert implied_name_problems(
+        IMPLIED_NAMES, without_also("Q10", "interval", "basis"), READ_NAMES, document
+    )
+    assert implied_name_problems(IMPLIED_NAMES, without_also("Q13", "inferred_from"), READ_NAMES, document)
+    assert implied_name_problems(IMPLIED_NAMES, without_also("Q14", "status"), READ_NAMES, document)
+    unrefusing = READ_NAMES._replace(refused=("plus_minus", "set_or_measured"))
+    assert implied_name_problems(IMPLIED_NAMES, BY_ID, unrefusing, document)
+    elsewhere = READ_NAMES._replace(locations=("record", "region"))
+    assert implied_name_problems(IMPLIED_NAMES, BY_ID, elsewhere, document)
+    lost = [named._replace(quote="its `reason` and `basis` are read") for named in IMPLIED_NAMES[2:3]]
+    assert implied_name_problems([*IMPLIED_NAMES[:2], *lost, *IMPLIED_NAMES[3:]], BY_ID, READ_NAMES, document)
