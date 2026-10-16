@@ -34,10 +34,10 @@ def _registry() -> Registry[Schema]:
 REGISTRY = _registry()
 
 
-def validator(reference: str) -> Callable[[JsonValue], list[str]]:
+def validator(reference: str, registry: Registry[Schema] = REGISTRY) -> Callable[[JsonValue], list[str]]:
     """The errors a value has against the schema at `reference`, relative to schema 0.1's
-    (`case.json#/$defs/reason`): none where it is valid."""
-    checker = Draft202012Validator({"$ref": urljoin(BASE, reference)}, registry=REGISTRY)
+    (`case.json#/$defs/reason`), its references resolved in `registry`: none where it is valid."""
+    checker = Draft202012Validator({"$ref": urljoin(BASE, reference)}, registry=registry)
 
     def errors(value: JsonValue) -> list[str]:
         # types-jsonschema types its second overload's instance as unknown.

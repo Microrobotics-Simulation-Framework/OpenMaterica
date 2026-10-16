@@ -12,7 +12,9 @@ record among the conformance inputs, and on one-fault variants of its bases: the
 `tests/property/full_fields.py`, and one field of each row and each form it allows, drawn by the writer's
 strategies (`tests/property/value_fields.py`), derandomised, so that every row's binding is varied. A variant
 removes each member and list item, makes it `null` or gives it another JSON type, or renames a member by one
-slip; a path two bases share is changed in the first. Each example gets three verdicts:
+slip; a path two bases share is changed in the first. Since a read checks some members of a provenance object
+by its origin (a `derivation` for origin `derived` alone), each provenance object of each base also takes each
+other token of the origin's row, alone and beside each change inside it. Each example gets three verdicts:
 - the writer schema's, which accepts where it accepts the field and the section's specimen;
 - the reader `$defs`', alike;
 - step 8's, read in the field's own record (so a slip in its envelope or section counts), which accepts where
@@ -31,7 +33,8 @@ JSON Schema states its rule here, a mark that shows a refusal is of the kind, an
 whose read field breaks it; a field no case file reads, and a variant, is named instead. A variant renamed by
 one slip is excepted from relation 2 by its change, since no schema sees a slip. Everything is computed from
 the generated files when the test runs: a relation broken with no exception fails, and so do an exception
-whose relation holds, as stale, and one whose refusal does not show its kind's mark.
+whose relation holds, as stale, and one whose refusal does not show its kind's mark. The origin variants'
+control is the reader `$defs` of b8a597d, which checked a derivation beside every origin.
 """
 
 import copy
@@ -45,6 +48,7 @@ from typing import NamedTuple
 
 import pytest
 from hypothesis import Phase, given, settings
+from referencing.jsonschema import DRAFT202012
 
 from materica.core import jsonio
 from materica.core.fields import RecordField, form_problems
@@ -52,11 +56,12 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.value_shapes import BOUND
 from materica.core.vocabulary import VOCABULARY
+from scripts import gen_reader_schema
 from tests.conformance import runner
 from tests.property import value_fields
 from tests.property.full_fields import full_fields, record_of
 from tests.property.strategies import SMALL
-from tests.spec_sync.schemas import SCHEMA, validator
+from tests.spec_sync.schemas import REGISTRY, SCHEMA, validator
 from tests.spec_sync.test_cases_md import sections
 
 JsonObject = dict[str, JsonValue]
@@ -237,6 +242,7 @@ class Example(NamedTuple):
     section: JsonObject  # the section it sits in, its `specimen` and the names of its fields
     record: JsonObject
     change: str = ""  # a variant's change
+    origin: str = ""  # the token a variant's change sets its provenance object's origin to
 
 
 # Step 8's verdict on an example: the codes it gives, or None where it has none.
@@ -286,8 +292,31 @@ def step_8(example: Example) -> frozenset[str] | None:
 
 FORMS = VOCABULARY.token_lists["form"]
 SHAPES = ("value_field", "specimen", *(f"{form}_field" for form in FORMS))
-WRITER = {shape: validator(f"record.writer.json#/$defs/{shape}") for shape in SHAPES}
-READER = {shape: validator(f"record.reader.json#/$defs/{shape}") for shape in SHAPES}
+Validators = dict[str, Callable[[JsonValue], list[str]]]
+WRITER: Validators = {shape: validator(f"record.writer.json#/$defs/{shape}") for shape in SHAPES}
+READER: Validators = {shape: validator(f"record.reader.json#/$defs/{shape}") for shape in SHAPES}
+# The reader `$defs` as they stood at b8a597d, which applied a derivation's shape beside every origin: what
+# `gen_reader_schema.py` gives for the writer schema without the derivation's mark, which was that file but
+# for the provenance object's description. T1's control for its origin variants.
+BEFORE_THE_CONDITION = "reader before the derivation's condition"
+
+
+@cache
+def reader_before_the_condition() -> Validators:
+    writer = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
+    del writer["$defs"]["provenance"]["properties"]["derivation"][gen_reader_schema.WRITE_ONLY]
+    reader = gen_reader_schema.reader_schema(writer)
+    registry = REGISTRY.with_resource(str(reader["$id"]), DRAFT202012.create_resource(reader))
+    return {shape: validator(f"record.reader.json#/$defs/{shape}", registry) for shape in SHAPES}
+
+
+def validators(schemas: str) -> Validators:
+    found: dict[str, Callable[[], Validators]] = {
+        "writer": lambda: WRITER,
+        "reader": lambda: READER,
+        BEFORE_THE_CONDITION: reader_before_the_condition,
+    }
+    return found[schemas]()
 
 
 def field_shape(field: JsonValue) -> str:
@@ -306,11 +335,11 @@ ROW = {name: validator(f"vocabulary/fields.json#/$defs/{name}") for name in VOCA
 
 @cache
 def accepted(schemas: str, field_name: str, text: str) -> bool:
-    """Whether the writer schema, or the reader `$defs`, accept a field of `field_name` and its section's
+    """Whether the schemas `schemas` names (`validators`) accept a field of `field_name` and its section's
     specimen, which `text` writes: validating is the slow part, and the controls ask again of the same
     values."""
     field, specimens = json.loads(text)
-    checks = WRITER if schemas == "writer" else READER
+    checks = validators(schemas)
     bound = schemas != "writer" or not ROW[field_name](field)
     return (
         bound
@@ -319,20 +348,20 @@ def accepted(schemas: str, field_name: str, text: str) -> bool:
     )
 
 
-def failed(example: Example, verdict: Verdict) -> list[int]:
-    """The relations `example` breaks, by number."""
+def failed(example: Example, verdict: Verdict, reader: str = "reader") -> list[int]:
+    """The relations `example` breaks, by number, the reader `$defs` those `reader` names."""
     codes = verdict(example)
     if codes is None:
         return []
     specimen = [example.section["specimen"]] if "specimen" in example.section else []
     text = json.dumps([example.value, specimen])
-    writer, reader = accepted("writer", example.field, text), accepted("reader", example.field, text)
+    writer, read = accepted("writer", example.field, text), accepted(reader, example.field, text)
     broken: list[int] = []
     if writer and codes & REFUSALS:
         broken.append(1)
-    if "form_invalid" in codes and reader:
+    if "form_invalid" in codes and read:
         broken.append(2)
-    if not reader and not codes & REFUSALS:
+    if not read and not codes & REFUSALS:
         broken.append(3)
     return broken
 
@@ -349,12 +378,14 @@ def excepted(example: Example, relation: int, exceptions: dict[str, Kind]) -> bo
     )
 
 
-def problems(examples: list[Example], verdict: Verdict, exceptions: dict[str, Kind]) -> list[str]:
+def problems(
+    examples: list[Example], verdict: Verdict, exceptions: dict[str, Kind], reader: str = "reader"
+) -> list[str]:
     """Each relation an example breaks with no exception for it."""
     return [
         f"relation {relation} fails on {example.name}"
         for example in examples
-        for relation in failed(example, verdict)
+        for relation in failed(example, verdict, reader)
         if not excepted(example, relation, exceptions)
     ]
 
@@ -535,6 +566,44 @@ def changed(field: JsonValue, path: tuple[str | int, ...], change: str) -> JsonV
 
 
 CHANGES = ("removed", "null", "retyped", SLIPPED)
+# A provenance object's `origin` set to another token of its row: alone, and beside each change inside the
+# object, since a read checks some of its members by the origin (a `derivation` for origin `derived`).
+ORIGIN = "origin"
+ORIGINS = VOCABULARY.token_lists["origin"]
+Path_ = tuple[str | int, ...]
+
+
+def value_at(field: JsonValue, path: Path_) -> JsonValue:
+    for step in path:
+        field = child(field, step)
+    return field
+
+
+def is_provenance(value: JsonValue) -> bool:
+    return isinstance(value, dict) and ORIGIN in value
+
+
+def provenance_of(field: JsonValue, path: Path_) -> Path_ | None:
+    """The path of the innermost provenance object that `path` lies inside, or None where there is none or
+    `path` is its `origin`."""
+    for end in range(len(path) - 1, -1, -1):
+        if is_provenance(value_at(field, path[:end])):
+            return path[:end] if path[end] != ORIGIN else None
+    return None
+
+
+def other_origins(field: JsonValue, provenance: Path_) -> list[str]:
+    return [token for token in ORIGINS if token != child(value_at(field, provenance), ORIGIN)]
+
+
+def with_origin(field: JsonValue, provenance: Path_, token: str) -> JsonValue:
+    copied = copy.deepcopy(field)
+    found = value_at(copied, provenance)
+    assert isinstance(found, dict)
+    found[ORIGIN] = token
+    return copied
+
+
 # Every part of a field the writer's strategies draw in full where a plan names it.
 RICH = frozenset(
     {"block", "uncertainty", "conditions", "specimen", "provenance", "composition", "evidence", "label"}
@@ -568,26 +637,42 @@ def bases() -> dict[str, tuple[str, JsonObject]]:
     return found
 
 
+def variant(registered: str, name: str, value: JsonValue, change: str, origin: str = "") -> Example:
+    """An example of the field `registered`, `value`, alone in its section of a material record."""
+    section_name, _, field_name = registered.partition(".")
+    section: JsonObject = {"fields": {field_name: value}}
+    record: JsonObject = {"record_type": "material", "body": {"sections": {section_name: section}}}
+    return Example(name, registered, value, section, record, change, origin)
+
+
 @cache
 def variant_examples() -> list[Example]:
-    """Each change at each path of the bases, once: a path two bases share is changed in the first."""
-    seen: set[tuple[str, tuple[str | int, ...]]] = set()
+    """Each change at each path of the bases, once: a path two bases share is changed in the first. Each
+    provenance object of each base takes each other origin, and so does each change inside it."""
+    seen: set[tuple[str, Path_]] = set()
     found: list[Example] = []
     for base, (registered, field) in bases().items():
-        section_name, _, field_name = registered.partition(".")
         for path in paths(field):
+            where = ".".join(map(str, path))
+            if is_provenance(value_at(field, path)):
+                for token in other_origins(field, path):
+                    varied = with_origin(field, path, token)
+                    found.append(
+                        variant(registered, f"{base} {ORIGIN} {where} {token}", varied, ORIGIN, token)
+                    )
             for change in CHANGES:
-                variant = changed(field, path, change)
-                if variant is None or (change, path) in seen:
+                value = changed(field, path, change)
+                if value is None or (change, path) in seen:
                     continue
                 seen.add((change, path))
-                section: JsonObject = {"fields": {field_name: variant}}
-                record: JsonObject = {
-                    "record_type": "material",
-                    "body": {"sections": {section_name: section}},
-                }
-                name = f"{base} {change} {'.'.join(map(str, path))}"
-                found.append(Example(name, registered, variant, section, record, change))
+                name = f"{base} {change} {where}"
+                found.append(variant(registered, name, value, change))
+                if (provenance := provenance_of(field, path)) is not None:
+                    for token in other_origins(field, provenance):
+                        varied = with_origin(value, provenance, token)
+                        found.append(
+                            variant(registered, f"{name} with origin {token}", varied, change, token)
+                        )
     return found
 
 
@@ -669,9 +754,6 @@ def test_the_bases_are_valid_and_pass_step_8() -> None:
     assert forms == {"constant", "table", "interval", "composition", "evidence"}
 
 
-Validators = dict[str, Callable[[JsonValue], list[str]]]
-
-
 def disagreements(
     schemas: Validators, examples: list[Example], shape_of: Callable[[JsonValue], str]
 ) -> Iterator[str]:
@@ -701,8 +783,28 @@ def test_a_form_definition_picked_wrongly_disagrees() -> None:
 
 
 def test_every_kind_lists_an_exception_and_every_change_is_made() -> None:
+    """Every change, alone and with each origin; and each origin alone."""
     assert all(kind.case_files or kind.examples for kind in EXCEPTIONS.values())
-    assert {example.change for example in variant_examples()} == set(CHANGES)
+    made = {(example.change, example.origin) for example in variant_examples()}
+    for change in CHANGES:
+        assert {origin for made_change, origin in made if made_change == change} == {"", *ORIGINS}
+    assert {origin for made_change, origin in made if made_change == ORIGIN} == set(ORIGINS)
+    assert {change for change, _ in made} == {*CHANGES, ORIGIN}
+
+
+def test_the_origin_variants_find_a_derivation_checked_beside_every_origin() -> None:
+    """The control for the origin variants: the reader `$defs` of b8a597d break relation 3, and only on a
+    variant whose origin was changed, where step 8 does not read the derivation that those `$defs` refuse.
+    The variants of a derived value's derivation, alone and with each origin."""
+    derivation = [
+        example
+        for example in variant_examples()
+        if example.name.startswith("across_sources ") and " provenance.derivation" in example.name
+    ]
+    found = problems(derivation, step_8, EXCEPTIONS, BEFORE_THE_CONDITION)
+    assert found
+    assert all(problem.startswith("relation 3 ") and " with origin " in problem for problem in found), found
+    assert problems(derivation, step_8, EXCEPTIONS) == []
 
 
 # Controls: step 8 with one fault, and exceptions with one fault. Each must make the check fail.
