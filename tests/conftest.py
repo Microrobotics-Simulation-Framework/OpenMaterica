@@ -8,6 +8,7 @@ weekly run. A property never sets its own example count, which would override th
 import os
 import time
 from collections import Counter
+from fnmatch import fnmatch
 from pathlib import Path
 
 import pytest
@@ -64,16 +65,37 @@ SHARDS = {
 }
 
 
+# The mutant searches and the audit controls, which show that the properties and their feature audits can
+# fail, by module. They run at the `ci` profile's examples whatever the profile. CI's test matrix runs them on
+# the supported range's ends alone, in jobs of their own (`--property-controls only`), and everything else on
+# every Python (`--property-controls none`); `tests/unit/test_ci_workflows.py` checks that together the jobs
+# leave nothing out. A run without the option runs both.
+PROPERTY_CONTROLS = ("test_*mutants*", "test_audit_controls*")
+
+
+def is_property_control(module: Path) -> bool:
+    return any(fnmatch(module.stem, pattern) for pattern in PROPERTY_CONTROLS)
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--shard", choices=sorted(SHARDS), help="run only the property modules of this shard")
+    parser.addoption(
+        "--property-controls",
+        choices=["only", "none"],
+        help="run only the mutant searches and the audit controls, or none of them",
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     shard = config.getoption("--shard")
-    if shard is not None:
-        dropped = [item for item in items if item.path.stem not in SHARDS[shard]]
-        config.hook.pytest_deselected(items=dropped)
-        items[:] = [item for item in items if item.path.stem in SHARDS[shard]]
+    controls = config.getoption("--property-controls")
+
+    def kept(item: pytest.Item) -> bool:
+        in_shard = shard is None or item.path.stem in SHARDS[shard]
+        return in_shard and (controls is None or is_property_control(item.path) == (controls == "only"))
+
+    config.hook.pytest_deselected(items=[item for item in items if not kept(item)])
+    items[:] = [item for item in items if kept(item)]
 
 
 # Each test's CPU time, written beside the wall time in the JUnit XML that CI's durations report reads
