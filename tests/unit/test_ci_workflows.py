@@ -975,8 +975,8 @@ def test_the_matrix_check_can_fail(
 
 
 # What each job's pytest commands select, in order, as the comment above each says: every argument that is
-# not in `NOT_SELECTING`. A stray `-k`, `-m`, `--ignore` or other argument fails the check until it is
-# written here too, beside the comment that gives its reason.
+# not in `NOT_SELECTING`. A stray `-k`, `-m`, `--ignore`, plugin (`-p`, which can deselect anything) or other
+# argument fails the check until it is written here too, beside the comment that gives its reason.
 SELECTIONS = {
     # Every test but the mutant searches and the audit controls.
     "tests": [["--property-controls", "none"]],
@@ -985,8 +985,11 @@ SELECTIONS = {
     # The property tests of one shard.
     "hypothesis": [["tests/property", "--shard", "${{matrix.shard}}"]],
     "fuzz": [
-        # The control's replay: the properties of the faults seeded in parse and in the read.
+        # The control's replay: the properties of the faults seeded in parse and in the read, which a plugin
+        # seeds.
         [
+            "-p",
+            "tests.fuzz.seeded_fault",
             "tests/property/test_jsonio_properties.py",
             "tests/property/test_canonical_properties.py",
             "tests/property/test_hashing_properties.py",
@@ -1005,7 +1008,17 @@ SELECTIONS = {
     ],
 }
 # Arguments that choose no test: each with the value it takes, if any.
-NOT_SELECTING = {"-n": 1, "--dist": 1, "-p": 1, "-q": 0, "--hypothesis-show-statistics": 0}
+NOT_SELECTING = {
+    "-n": 1,
+    "--dist": 1,
+    "-q": 0,
+    "-ra": 0,
+    "--strict-markers": 0,
+    "--strict-config": 0,
+    "--hypothesis-show-statistics": 0,
+}
+# What pytest reads options and plugins from, beside its command line.
+PYTEST_ENVIRONMENT = ("PYTEST_ADDOPTS", "PYTEST_PLUGINS")
 
 
 def selecting(command: list[str]) -> list[str]:
@@ -1037,8 +1050,7 @@ def selection_problems(ci: Workflow) -> list[str]:
     problems: list[str] = []
     if "continue-on-error" in keys(ci):
         problems.append("ci.yml sets continue-on-error")
-    if "PYTEST_ADDOPTS" in keys(ci) or "PYTEST_ADDOPTS" in str(ci):
-        problems.append("ci.yml sets PYTEST_ADDOPTS")
+    problems += [f"ci.yml sets {name}" for name in PYTEST_ENVIRONMENT if name in keys(ci) or name in str(ci)]
     for job_id, job in ci["jobs"].items():
         commands = [selecting(command) for command in pytest_commands(job)]
         if commands != SELECTIONS.get(job_id, []):
@@ -1097,6 +1109,20 @@ def pytest_in_another_job(ci: Workflow) -> None:
     ci["jobs"]["static"]["steps"].append({"run": "uv run pytest tests/unit"})
 
 
+def a_plugin(ci: Workflow) -> None:
+    found = run_of(ci, "tests", "pytest")
+    found["run"] = found["run"].replace("--property-controls none", "--property-controls none -p tests.drop")
+
+
+def plugins_from_the_step(ci: Workflow) -> None:
+    run_of(ci, "tests", "pytest")["env"]["PYTEST_PLUGINS"] = "tests.drop"
+
+
+def plugins_exported(ci: Workflow) -> None:
+    found = run_of(ci, "controls", "pytest")
+    found["run"] = "export PYTEST_PLUGINS=tests.drop; " + found["run"]
+
+
 @pytest.mark.parametrize(
     ("fault", "problem"),
     [
@@ -1109,12 +1135,60 @@ def pytest_in_another_job(ci: Workflow) -> None:
         (a_job_that_carries_on, "sets continue-on-error"),
         (a_step_that_carries_on, "sets continue-on-error"),
         (pytest_in_another_job, "static's pytest commands select [['tests/unit']]"),
+        (a_plugin, "tests's pytest commands select [['--property-controls', 'none', '-p', 'tests.drop']]"),
+        (plugins_from_the_step, "sets PYTEST_PLUGINS"),
+        (plugins_exported, "sets PYTEST_PLUGINS"),
     ],
 )
 def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     fault(ci)
     found = selection_problems(ci)
+    assert any(problem in line for line in found), found
+
+
+# pytest's settings in pyproject.toml that choose no test. Every job's pytest reads them, and so does the
+# matrix check's own collection, which could not see a test they moved out of every job.
+PYTEST_SETTINGS = {"testpaths", "addopts", "junit_family", "xfail_strict", "markers", "filterwarnings"}
+
+
+def settings_problems(settings: dict[str, Any]) -> list[str]:
+    """Where pyproject.toml's pytest settings may choose tests: a setting not in `PYTEST_SETTINGS`, test paths
+    other than `tests`, or an option in `addopts` not in `NOT_SELECTING`."""
+    problems = [f"pyproject.toml sets {name}" for name in sorted(settings.keys() - PYTEST_SETTINGS)]
+    if settings.get("testpaths") != ["tests"]:
+        problems.append(f"pyproject.toml's testpaths are {settings.get('testpaths')!r}")
+    options = settings.get("addopts", [])
+    chosen = selecting(shlex.split(options) if isinstance(options, str) else options)
+    if chosen:
+        problems.append(f"pyproject.toml's addopts select {chosen}")
+    return problems
+
+
+def pytest_settings() -> dict[str, Any]:
+    loaded: dict[str, Any] = tomllib.loads((REPOSITORY / "pyproject.toml").read_text("utf-8"))
+    return cast(dict[str, Any], loaded["tool"]["pytest"]["ini_options"])
+
+
+def test_no_pytest_setting_in_pyproject_chooses_tests() -> None:
+    assert settings_problems(pytest_settings()) == []
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "problem"),
+    [
+        ("addopts", ["-ra", "--ignore=tests/spec_sync"], "addopts select ['--ignore=tests/spec_sync']"),
+        ("addopts", ["-ra", "--deselect", "tests/unit"], "addopts select ['--deselect', 'tests/unit']"),
+        ("addopts", "-ra -k 'not slow'", "addopts select ['-k', 'not slow']"),
+        ("addopts", ["-m", "not slow", "-ra"], "addopts select ['-m', 'not slow']"),
+        ("addopts", ["-ra", "-p", "tests.drop"], "addopts select ['-p', 'tests.drop']"),
+        ("testpaths", ["tests/unit"], "testpaths are ['tests/unit']"),
+        ("python_files", "test_read*.py", "pyproject.toml sets python_files"),
+    ],
+    ids=["ignore", "deselect", "keyword", "marker", "plugin", "testpaths", "python-files"],
+)
+def test_the_settings_check_can_fail(name: str, value: object, problem: str) -> None:
+    found = settings_problems(pytest_settings() | {name: value})
     assert any(problem in line for line in found), found
 
 
