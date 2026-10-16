@@ -24,6 +24,8 @@ from materica.core.value_shapes import (
     FORM_MEMBERS,
     Found,
     JsonObject,
+    a_list,
+    an_object,
     field_problems,
     invalid,
     is_status_object,
@@ -52,18 +54,18 @@ class RecordField:
     def specimen(self) -> JsonObject:
         """The specimen facts of a field that passed step 8: the section's, each overridden by the field's
         fact of that name (`record_format.md` section 4 item 2)."""
-        value = _object(self.value)
-        return {**_object(self.section.get("specimen", {})), **_object(value.get("specimen", {}))}
+        value = an_object(self.value)
+        return {**an_object(self.section.get("specimen", {})), **an_object(value.get("specimen", {}))}
 
 
 def find_field(record: JsonObject, spec: RecordFieldSpec) -> RecordField | Reason:
     """Step 7: the field `spec` names, in a material record that passed step 3, or `absent`."""
     section_name, _, name = spec.name.partition(".")
-    sections = _object(_object(record["body"])["sections"])
+    sections = an_object(an_object(record["body"])["sections"])
     if section_name not in sections:
         return Reason("absent", detail=f"the record holds no section {section_name}")
-    section = _object(sections[section_name])
-    fields = _object(section["fields"])
+    section = an_object(sections[section_name])
+    fields = an_object(section["fields"])
     if name not in fields:
         return Reason("absent", detail=f"the section {section_name} holds no field {name}")
     return RecordField(spec, fields[name], section)
@@ -135,7 +137,7 @@ def same_unit(stored: JsonValue, registered: JsonValue) -> bool:
     """`record_format.md` section 4.2: a string equal to the registered one code point for code point, or,
     where a status object is registered, a status object holding its `status` token, whatever its `reason`."""
     if isinstance(registered, dict):
-        return is_status_object(stored) and _object(stored)["status"] == registered["status"]
+        return is_status_object(stored) and an_object(stored)["status"] == registered["status"]
     return isinstance(stored, str) and stored == registered
 
 
@@ -145,14 +147,14 @@ def unit_problems(field: RecordField) -> Found:
     entries', with that condition; a `unit` on a token condition, which registers none, with that condition;
     and a specimen fact's, against the unit its row fixes, wherever step 8 checks the fact (the section's
     specimen, the field's, and a derived value's inputs')."""
-    value = _object(field.value)
+    value = an_object(field.value)
     found: Found = []
     _compare_unit(value["unit"], field.spec.unit, f"{field.spec.name}.unit", None, found)
-    for name, condition in _object(value["conditions"]).items():
+    for name, condition in an_object(value["conditions"]).items():
         spec = VOCABULARY.conditions.get(name)
         if spec is None or is_status_object(condition):
             continue
-        held = _object(condition)
+        held = an_object(condition)
         where = f"{field.spec.name}.conditions.{name}"
         if spec.unit is None:
             if "unit" in held:
@@ -161,13 +163,15 @@ def unit_problems(field: RecordField) -> Found:
                 )
             continue
         _compare_unit(held["unit"], spec.unit, f"{where}.unit", name, found)
-        for index, entry in enumerate(_list(held.get("plus_minus", []))):
-            _compare_unit(_object(entry)["unit"], spec.unit, f"{where}.plus_minus[{index}].unit", name, found)
+        for index, entry in enumerate(a_list(held.get("plus_minus", []))):
+            _compare_unit(
+                an_object(entry)["unit"], spec.unit, f"{where}.plus_minus[{index}].unit", name, found
+            )
     for where, specimen in _specimens(field):
         for name, fact in specimen.items():
             unit = VOCABULARY.facts[name].fixed.get("unit") if name in VOCABULARY.facts else None
             if unit is not None and not is_status_object(fact):
-                _compare_unit(_object(fact)["unit"], unit, f"{where}.{name}.unit", None, found)
+                _compare_unit(an_object(fact)["unit"], unit, f"{where}.{name}.unit", None, found)
     return found
 
 
@@ -185,38 +189,24 @@ def _mismatch(detail: str, condition: str | None) -> Reason:
 def _specimens(field: RecordField) -> list[tuple[str, JsonObject]]:
     """Each specimen step 8 checks for `field`, and where it is: the section's, the field's, and a derived
     value's inputs'."""
-    value = _object(field.value)
+    value = an_object(field.value)
     section = field.spec.section
     found = [
-        (where, _object(holder["specimen"]))
+        (where, an_object(holder["specimen"]))
         for where, holder in (
             (f"body.sections.{section}.specimen", field.section),
             (f"{field.spec.name}.specimen", value),
         )
         if "specimen" in holder
     ]
-    provenance = _object(value["provenance"])
+    provenance = an_object(value["provenance"])
     if provenance["origin"] == "derived":
-        inputs = _list(_object(provenance["derivation"])["input_specimens"])
+        inputs = a_list(an_object(provenance["derivation"])["input_specimens"])
         found += [
             (
                 f"{field.spec.name}.provenance.derivation.input_specimens[{index}].specimen",
-                _object(_object(item)["specimen"]),
+                an_object(an_object(item)["specimen"]),
             )
             for index, item in enumerate(inputs)
         ]
     return found
-
-
-def _list(value: JsonValue) -> list[JsonValue]:
-    if not isinstance(value, list):
-        raise TypeError(f"step 8 lets through no {type(value).__name__} here")
-    return value
-
-
-def _object(value: JsonValue) -> JsonObject:
-    """`value`, which step 3 or step 8 found to be an object: the body of a material, its `sections`, a known
-    section and its `fields`; a field that passed step 8 and the objects in it."""
-    if not isinstance(value, dict):
-        raise TypeError(f"steps 3 and 8 let through no {type(value).__name__} here")
-    return value

@@ -830,6 +830,17 @@ def test_step_9_compares_a_section_facts_unit_for_every_field_of_the_section(
     assert {(reason.code, reason.condition) for reason in read(*stored(record)).reasons} == reasons
 
 
+def test_what_a_step_before_found_is_taken_as_found_and_anything_else_raises() -> None:
+    """`value_shapes.an_object` and `a_list`, the pair steps 8 to 10 share: a defect of the core raises."""
+    found: JsonValue = {"a": [1.0]}
+    assert value_shapes.an_object(found) is found
+    assert value_shapes.a_list(found["a"]) is found["a"]
+    with pytest.raises(TypeError):
+        value_shapes.an_object(found["a"])
+    with pytest.raises(TypeError):
+        value_shapes.a_list(found)
+
+
 def test_a_field_unit_registered_as_a_status_object_takes_its_token_whatever_its_reason() -> None:
     """`biocompatibility.evidence`'s unit is `{"status": "not_applicable"}` (`record_format.md` section 4.2):
     step 9's comparison, apart from evidence's own member, which S2b-2 reads."""
@@ -1005,6 +1016,7 @@ def test_a_read_returns_the_implied_conditions_it_applied_outside_its_json() -> 
     }
     assert result.applied == (0,)
     assert "applied" not in result.to_json()
+    assert ReadResult.from_json(result.to_json()) == result
 
 
 # An implied condition located elsewhere (`read_side_contract.md` section 1): one naming another field,

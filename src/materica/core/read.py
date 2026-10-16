@@ -11,6 +11,7 @@ an acceptance other than an implied condition. It raises rather than give an ans
 contradict.
 """
 
+import dataclasses
 import json
 from collections.abc import Collection
 from dataclasses import dataclass
@@ -162,9 +163,10 @@ class ReadResult:
     reasons: tuple[Reason, ...]
     labels: tuple[str, ...] = ()
     conditions: tuple[ConditionEntry, ...] | None = None
-    applied: tuple[int, ...] = ()
-    """Outside `to_json`: the indexes, in the request's `acceptances`, of those the read applied, the implied
-    conditions that filled a condition so far, which a build maps to what accepted the result."""
+    applied: tuple[int, ...] = dataclasses.field(default=(), compare=False)
+    """Outside `to_json`, and so outside equality, which compares what section 2 gives: the indexes, in the
+    request's `acceptances`, of those the read applied, the implied conditions that filled a condition so far,
+    which a build maps to what accepted the result."""
 
     @classmethod
     def from_json(cls, result: shapes.ReadResult) -> "ReadResult":

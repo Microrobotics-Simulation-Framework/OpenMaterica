@@ -29,7 +29,7 @@ from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.status import ReadStatus
-from materica.core.value_shapes import JsonObject, is_status_object, status_row
+from materica.core.value_shapes import JsonObject, a_list, an_object, is_status_object, status_row
 from materica.core.vocabulary import VOCABULARY
 
 
@@ -81,7 +81,7 @@ class ConditionEntry:
 
     @classmethod
     def from_json(cls, entry: JsonObject) -> "ConditionEntry":
-        name, status, record = entry["name"], entry["status"], entry.get("record")
+        name, status, record = entry.get("name"), entry.get("status"), entry.get("record")
         if not (isinstance(name, str) and isinstance(status, str) and status in _STATUSES):
             raise ValueError(f"not a condition entry: {entry!r}")
         if record is not None and not isinstance(record, dict):
@@ -123,7 +123,7 @@ def check_conditions(
     disagreeing = _disagreeing(applying)
     if disagreeing:
         return ConditionsRead(disagreeing, None)
-    stored = _object(_object(field.value)["conditions"])
+    stored = an_object(an_object(field.value)["conditions"])
     filled, applied = _filled(stored, applying)
     held = {**stored, **filled}
     reasons: list[Reason] = []
@@ -164,7 +164,7 @@ def _disagreeing(applying: Sequence[ImpliedCondition]) -> tuple[Reason, ...]:
 def _fillable(entry: JsonValue | None) -> bool:
     """A condition the record does not hold, or holds as `unstated`: an implied condition fills it, never one
     holding another status object or a value (`declarations.md` section 4.1 item 1)."""
-    return entry is None or (is_status_object(entry) and _object(entry)["status"] == "unstated")
+    return entry is None or (is_status_object(entry) and an_object(entry)["status"] == "unstated")
 
 
 def _filled(stored: JsonObject, applying: Sequence[ImpliedCondition]) -> tuple[JsonObject, tuple[int, ...]]:
@@ -210,11 +210,11 @@ def _entry(
             Reason("condition_unknown_name", name, f"{name} is a condition the reader does not know")
         )
         return ConditionEntry(name, "unknown")
-    record = None if held is None else _as_read(name, _object(held))
+    record = None if held is None else _as_read(name, an_object(held))
     if held is None or is_status_object(held):
         reasons.append(Reason("condition_unstated", name, f"the source does not state {name}"))
         return ConditionEntry(name, "unknown", record, operating)
-    found = _compared(name, _object(held), operating, required)
+    found = _compared(name, an_object(held), operating, required)
     if found is None:
         return ConditionEntry(name, "met", record, operating)
     reasons.append(found)
@@ -239,7 +239,7 @@ def _compared(
     tolerance = required["tolerance"]["value"]
     if not _within(condition, operating, tolerance, 0.0):
         return Reason("condition_outside", name, f"{name} is outside the tolerance")
-    stated = [_object(entry) for entry in _list(condition.get("plus_minus", []))]
+    stated = [an_object(entry) for entry in a_list(condition.get("plus_minus", []))]
     bounds = [_number(entry["value"]) for entry in stated if entry["stated_as"] == "bound"]
     if bounds:
         assured = _within(condition, operating, tolerance, bounds[0])
@@ -310,14 +310,14 @@ def _as_read(name: str, condition: JsonObject) -> JsonObject:
         return _known(condition, _STATUS_MEMBERS)
     found = _known(condition, status_row(shapes.Conditions, name)[1])
     if "plus_minus" in found:
-        found["plus_minus"] = [_plus_minus_entry(_object(entry)) for entry in _list(found["plus_minus"])]
+        found["plus_minus"] = [_plus_minus_entry(an_object(entry)) for entry in a_list(found["plus_minus"])]
     return found
 
 
 def _plus_minus_entry(entry: JsonObject) -> JsonValue:
     found = _known(entry, _PLUS_MINUS_MEMBERS)
     if is_status_object(found["stated_as"]):
-        found["stated_as"] = _known(_object(found["stated_as"]), _STATUS_MEMBERS)
+        found["stated_as"] = _known(an_object(found["stated_as"]), _STATUS_MEMBERS)
     return found
 
 
@@ -326,7 +326,7 @@ def _known(value: JsonObject, members: Collection[str]) -> JsonObject:
 
 
 def _operating(value: JsonValue) -> shapes.OperatingCondition:
-    entry = _object(value)
+    entry = an_object(value)
     unit = entry["unit"]
     if not isinstance(unit, str):
         raise ValueError(f"not an operating condition: {entry!r}")
@@ -341,18 +341,6 @@ def operating_json(operating: shapes.OperatingCondition) -> JsonObject:
         return {"value": operating["value"], "unit": operating["unit"]}
     lo, hi = _operating_ends(operating)
     return {"range": [lo, hi], "unit": operating["unit"]}
-
-
-def _object(value: JsonValue) -> JsonObject:
-    if not isinstance(value, dict):
-        raise TypeError(f"step 8 lets through no {type(value).__name__} here")
-    return value
-
-
-def _list(value: JsonValue) -> list[JsonValue]:
-    if not isinstance(value, list):
-        raise TypeError(f"step 8 lets through no {type(value).__name__} here")
-    return value
 
 
 def _number(value: object) -> float:

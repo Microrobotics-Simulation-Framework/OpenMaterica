@@ -28,6 +28,23 @@ from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY, ConditionSpec, R
 
 JsonObject = dict[str, JsonValue]
 Found = list[Reason]
+
+
+def an_object(value: JsonValue) -> JsonObject:
+    """`value`, which a step before found to be an object: anything else is a defect of the core, never of a
+    record or a request, and raises."""
+    if not isinstance(value, dict):
+        raise TypeError(f"the steps before let through no {type(value).__name__} here")
+    return value
+
+
+def a_list(value: JsonValue) -> list[JsonValue]:
+    """`value`, which a step before found to be a list, as `an_object` does an object."""
+    if not isinstance(value, list):
+        raise TypeError(f"the steps before let through no {type(value).__name__} here")
+    return value
+
+
 Check = Callable[[JsonValue, str, Found], None]
 """A member's check, given its value, where it sits (in words, for a reason's detail) and the reasons found
 so far, to which it appends its own."""
