@@ -7,6 +7,8 @@ would notice breaking, and each has a control in which the check must fail.
 
 import ast
 import copy
+import itertools
+import math
 import os
 import re
 import shlex
@@ -14,7 +16,7 @@ import subprocess
 import sys
 import tomllib
 from collections import Counter
-from collections.abc import Callable, Set
+from collections.abc import Callable, Mapping, Set
 from pathlib import Path
 from typing import Any, cast
 
@@ -96,19 +98,154 @@ def step(job: dict[str, Any], name: str) -> dict[str, Any]:
     return found[0]
 
 
-def rendered(text: str, context: dict[str, str]) -> str:
-    """`text` with each `${{ expression }}` filled in from `context`; an expression it lacks fails the test,
-    rather than run the step with a guess."""
-
-    def value(match: re.Match[str]) -> str:
-        expression = match[1].strip()
-        assert expression in context, f"the test does not know the expression {expression!r}"
-        return context[expression]
-
-    return re.sub(r"\$\{\{(.*?)\}\}", value, text)
+# GitHub's expressions as far as the workflows use them: strings, numbers, true, false and null, context paths
+# (`github.event_name`), the status functions (`success()`), `!`, `==`, `!=`, `&&`, `||` and parentheses.
+# Anything else fails the test, rather than be guessed.
+EXPRESSION_TOKEN = re.compile(
+    r"\s*('(?:[^']|'')*'|\d+(?:\.\d+)?|[A-Za-z_][\w.-]*(?:\(\))?|==|!=|&&|\|\||[!()])"
+)
+STATUS_FUNCTION = re.compile(r"\b(?:success|failure|cancelled|always)\(\)")
 
 
-def run_step(found: dict[str, Any], context: dict[str, str], cwd: Path) -> tuple[int, dict[str, str], str]:
+def as_number(value: object) -> float:
+    """A value as GitHub's `==` compares it with one of another type."""
+    if value is None:
+        return 0.0
+    if isinstance(value, bool | int | float):
+        return float(value)
+    try:
+        return float(str(value).strip() or 0)
+    except ValueError:
+        return math.nan
+
+
+def truthy(value: object) -> bool:
+    return value not in (None, False, 0, "") and not (isinstance(value, float) and math.isnan(value))
+
+
+def equal(left: object, right: object) -> bool:
+    """GitHub's `==`: strings ignoring case, and values of two types as numbers."""
+    if isinstance(left, str) and isinstance(right, str):
+        return left.casefold() == right.casefold()
+    if type(left) is type(right):
+        return left == right
+    return as_number(left) == as_number(right)
+
+
+def as_text(value: object) -> str:
+    """A value as GitHub writes it into text."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def evaluated(expression: str, context: Mapping[str, object]) -> object:
+    """The value of `expression`, each context path and status function in it as `context` gives it."""
+    tokens: list[str] = []
+    position, end = 0, len(expression.rstrip())
+    while position < end:
+        found = EXPRESSION_TOKEN.match(expression, position)
+        assert found, f"the test cannot read {expression[position:]!r} in {expression!r}"
+        tokens.append(found[1])
+        position = found.end()
+    tokens.append("")
+    at = 0
+
+    def take(*expected: str) -> str | None:
+        nonlocal at
+        if tokens[at] not in expected:
+            return None
+        at += 1
+        return tokens[at - 1]
+
+    def either() -> object:
+        value = both()
+        while take("||"):
+            right = both()
+            value = value if truthy(value) else right
+        return value
+
+    def both() -> object:
+        value = comparison()
+        while take("&&"):
+            right = comparison()
+            value = right if truthy(value) else value
+        return value
+
+    def comparison() -> object:
+        value = negation()
+        while operator := take("==", "!="):
+            value = equal(value, negation()) == (operator == "==")
+        return value
+
+    def negation() -> object:
+        return not truthy(negation()) if take("!") else operand()
+
+    def operand() -> object:
+        nonlocal at
+        token = tokens[at]
+        at += 1
+        if token == "(":
+            value = either()
+            assert take(")"), f"a parenthesis left open in {expression!r}"
+            return value
+        if token.startswith("'"):
+            return token[1:-1].replace("''", "'")
+        if re.fullmatch(r"\d+(?:\.\d+)?", token):
+            return float(token)
+        literals: dict[str, object] = {"true": True, "false": False, "null": None}
+        if token in literals:
+            return literals[token]
+        assert token in context, f"the test does not know {token!r}, in {expression!r}"
+        return context[token]
+
+    value = either()
+    assert tokens[at] == "", f"the test cannot read {expression!r} from {tokens[at]!r}"
+    return value
+
+
+def rendered(text: str, context: Mapping[str, object]) -> str:
+    """`text` with each `${{ expression }}` replaced by its value; an expression the test cannot evaluate
+    fails it, rather than run the step with a guess."""
+    return re.sub(r"\$\{\{(.*?)\}\}", lambda match: as_text(evaluated(match[1], context)), text)
+
+
+def condition(found: Mapping[str, Any]) -> str:
+    """A job's or step's `if` as GitHub evaluates it: `success()` where there is none, and `success() &&`
+    before one that calls no status function."""
+    written = found.get("if", "success()")
+    text = as_text(written) if isinstance(written, bool) else str(written)
+    if wrapped := re.fullmatch(r"\s*\$\{\{(.*)\}\}\s*", text, re.S):
+        text = wrapped[1]
+    return text if STATUS_FUNCTION.search(text) else f"success() && ({text})"
+
+
+def test_the_expressions_are_evaluated_as_github_evaluates_them() -> None:
+    context = {"github.event_name": "push", "github.run_id": "7", "matrix.python": "3.15"}
+    cases = {
+        "github.event_name == 'PUSH'": True,
+        "github.event_name != 'push'": False,
+        "github.event_name == 'pull_request' && 'cancel' || github.run_id": "7",
+        "github.event_name == 'push' && 'push' || github.run_id": "push",
+        "!(matrix.python == '3.15') || null": None,
+        "github.run_id == 7": True,
+        "'it''s'": "it's",
+    }
+    assert {expression: evaluated(expression, context) for expression in cases} == cases
+    assert condition({"if": "matrix.python != '3.15'"}) == "success() && (matrix.python != '3.15')"
+    assert condition({"if": "${{ always() }}"}) == " always() "
+    assert condition({}) == "success()"
+    with pytest.raises(AssertionError, match=r"does not know 'github\.ref'"):
+        evaluated("github.ref == 'refs/heads/main'", context)
+
+
+def run_step(
+    found: dict[str, Any], context: Mapping[str, object], cwd: Path
+) -> tuple[int, dict[str, str], str]:
     """The step's script run in `cwd` as GitHub runs it, under bash with `-e` and `pipefail`: its exit status,
     what it wrote to `GITHUB_OUTPUT` (a file beside `cwd`), and what it printed."""
     outputs = cwd.parent / f"{cwd.name}.github_output"
@@ -587,25 +724,112 @@ def version(python: str) -> tuple[int, ...]:
     return tuple(int(part) for part in python.split("."))
 
 
+def combinations(matrix: object) -> list[dict[str, object]]:
+    """The jobs a matrix makes, as GitHub makes them: each combination of its lists but those an `exclude`
+    entry matches; then each `include` entry added to every combination whose own values it leaves alone, or,
+    where it fits none, a combination of its own."""
+    assert isinstance(matrix, dict), f"a matrix the test cannot expand: {matrix!r}"
+    entries = cast(dict[str, Any], matrix)
+    axes = {key: values for key, values in entries.items() if key not in ("include", "exclude")}
+    assert all(isinstance(values, list) for values in axes.values()), (
+        f"a matrix the test cannot expand: {matrix}"
+    )
+    made = [dict(zip(axes, values, strict=True)) for values in itertools.product(*axes.values())]
+    kept = [
+        combination
+        for combination in made
+        if not any(
+            all(combination.get(key) == value for key, value in excluded.items())
+            for excluded in entries.get("exclude", [])
+        )
+    ]
+    added: list[dict[str, object]] = []
+    for included in entries.get("include", []):
+        fitting = [
+            combination
+            for combination in kept
+            if all(combination[key] == value for key, value in included.items() if key in axes)
+        ]
+        for combination in fitting:
+            combination.update(included)
+        if not fitting:
+            added.append(dict(included))
+    return kept + added
+
+
+def test_a_matrix_is_expanded_as_github_expands_it() -> None:
+    matrix = {
+        "python": ["3.11", "3.12"],
+        "os": ["a", "b"],
+        "exclude": [{"python": "3.12", "os": "b"}],
+        "include": [{"python": "3.11", "extra": "x"}, {"python": "3.12", "os": "b", "extra": "y"}],
+    }
+    assert combinations(matrix) == [
+        {"python": "3.11", "os": "a", "extra": "x"},
+        {"python": "3.11", "os": "b", "extra": "x"},
+        {"python": "3.12", "os": "a"},
+        {"python": "3.12", "os": "b", "extra": "y"},
+    ]
+
+
+def pytest_step(job: dict[str, Any]) -> dict[str, Any]:
+    """The job's one step that runs pytest."""
+    [found] = [found for found in job["steps"] if pytest_commands({"steps": [found]})]
+    return cast(dict[str, Any], found)
+
+
+# The events that run the test matrix, and the status functions as a step finds them when every step before it
+# succeeded.
+EVENTS = ("pull_request", "push", "schedule", "workflow_dispatch")
+SO_FAR_SUCCEEDED = {"success()": True, "failure()": False, "cancelled()": False, "always()": True}
+
+
 def matrix_problems(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> list[str]:
     """Where the test matrix's jobs, together, leave a test out on a Python: any test on the supported
     range's ends, any but the mutant searches and the audit controls between them, which run there.
-    `selected` gives the tests that each value of `--property-controls` selects, None for a run without it."""
+    `selected` gives the tests that each value of `--property-controls` selects, None for a run without it.
+    What a job runs is computed as GitHub runs it: its matrix after `exclude` and `include`, the Python each
+    combination installs, and whether its pytest step's `if` skips it there, on any event."""
     every = selected[None]
     controls = {test for test in every if CONTROL_FILES.fullmatch(test.partition("::")[0])}
+    # The supported range, which tests/unit/test_python_versions.py holds to pyproject.toml.
     pythons: list[str] = ci["jobs"]["tests"]["strategy"]["matrix"]["python"]
     ends = {min(pythons, key=version), max(pythons, key=version)}
     run: dict[str, set[str]] = {python: set() for python in pythons}
+    problems: list[str] = []
     for job_id in ("tests", "controls"):
         job = ci["jobs"][job_id]
-        for python in job["strategy"]["matrix"]["python"]:
+        installed = [
+            found.get("with", {}).get("python-version")
+            for found in job["steps"]
+            if str(found.get("uses", "")).startswith("astral-sh/setup-uv@")
+        ]
+        if installed != ["${{ matrix.python }}"]:
+            problems.append(f"{job_id} installs Python {installed}, not the matrix's")
+        runs_pytest = pytest_step(job)
+        for combination in combinations(job["strategy"]["matrix"]):
+            python = combination.get("python")
+            if not isinstance(python, str):
+                problems.append(f"{job_id} has a combination with no Python: {combination}")
+                continue
+            context = {f"matrix.{key}": value for key, value in combination.items()} | SO_FAR_SUCCEEDED
+            skipped = [
+                event
+                for event in EVENTS
+                if not truthy(evaluated(condition(runs_pytest), context | {"github.event_name": event}))
+            ]
+            if skipped:
+                problems.append(
+                    f"{job_id}'s pytest step is skipped on Python {python} ({', '.join(skipped)}): "
+                    f"if {runs_pytest.get('if')!r}"
+                )
+                continue
             run.setdefault(python, set()).update(selected[property_controls(job)])
 
     def by_file(tests: Set[str]) -> str:
         files = Counter(test.partition("::")[0] for test in tests)
         return ", ".join(f"{count} of {file}" for file, count in sorted(files.items()))
 
-    problems: list[str] = []
     for python in sorted(run, key=version):
         wanted = every if python in ends else every - controls
         if wanted - run[python]:
@@ -692,6 +916,30 @@ def plain_job_without_the_option(ci: Workflow, selected: dict[str | None, frozen
     )
 
 
+def controls_excluding_3_15(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    ci["jobs"]["controls"]["strategy"]["matrix"]["exclude"] = [{"python": "3.15"}]
+
+
+def the_tests_job_excluding_3_13(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    ci["jobs"]["tests"]["strategy"]["matrix"]["exclude"] = [{"python": "3.13"}]
+
+
+def controls_including_3_12(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    ci["jobs"]["controls"]["strategy"]["matrix"]["include"] = [{"python": "3.12"}]
+
+
+def controls_step_skipped_on_3_15(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    pytest_step(ci["jobs"]["controls"])["if"] = "matrix.python != '3.15'"
+
+
+def pull_requests_skipping_the_tests_step(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    pytest_step(ci["jobs"]["tests"])["if"] = "${{ github.event_name != 'pull_request' }}"
+
+
+def controls_on_one_python(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    ci["jobs"]["controls"]["steps"][1]["with"]["python-version"] = "3.11"
+
+
 @pytest.mark.parametrize(
     ("fault", "problem"),
     [
@@ -703,6 +951,18 @@ def plain_job_without_the_option(ci: Workflow, selected: dict[str | None, frozen
         ),
         (another_test_deselected, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
         (plain_job_without_the_option, "Python 3.12 runs 1 of tests/property/test_mutants.py"),
+        (controls_excluding_3_15, "Python 3.15 leaves out 1 of tests/property/test_mutants.py"),
+        (the_tests_job_excluding_3_13, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
+        (controls_including_3_12, "Python 3.12 runs 1 of tests/property/test_mutants.py"),
+        (
+            controls_step_skipped_on_3_15,
+            "controls's pytest step is skipped on Python 3.15 (pull_request, push",
+        ),
+        (
+            pull_requests_skipping_the_tests_step,
+            "tests's pytest step is skipped on Python 3.11 (pull_request)",
+        ),
+        (controls_on_one_python, "controls installs Python ['3.11'], not the matrix's"),
     ],
 )
 def test_the_matrix_check_can_fail(
