@@ -6,6 +6,7 @@ weekly run. A property never sets its own example count, which would override th
 """
 
 import os
+import sys
 import time
 from collections import Counter
 from fnmatch import fnmatch
@@ -16,6 +17,9 @@ from hypothesis import settings
 from hypothesis.database import DirectoryBasedExampleDatabase
 
 from tests.conformance import runner
+
+if sys.platform != "win32":
+    import resource
 
 # One example database at a fixed path, whatever the working directory, so that a local run and CI's cached
 # copy are the same directory: an example that failed once is replayed first on the next run. `.hypothesis/`
@@ -100,13 +104,25 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
 # Each test's CPU time, written beside the wall time in the JUnit XML that CI's durations report reads
 # (`scripts/report_test_durations.py`). The xdist workers share a runner's cores, so a test's wall time partly
-# measures the others; its CPU time much less. Both span setup, call and teardown.
-CPU_AT_SETUP = pytest.StashKey[float]()
+# measures the others; its CPU time much less. `cpu_seconds` is the CPU time of the test's own process, its
+# xdist worker, and `children_cpu_seconds` that of the processes it started and waited for, which the first
+# leaves out: a test that runs pytest or git in a subprocess spends its time there. Both span setup, call and
+# teardown.
+CPU_AT_SETUP = pytest.StashKey[tuple[float, float | None]]()
+
+
+def children_cpu() -> float | None:
+    """The CPU time of the processes this one started that have ended and been waited for; None where Python
+    cannot tell (Windows)."""
+    if sys.platform == "win32":
+        return None
+    usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+    return usage.ru_utime + usage.ru_stime
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_setup(item: pytest.Item) -> None:
-    item.stash[CPU_AT_SETUP] = time.process_time()
+    item.stash[CPU_AT_SETUP] = (time.process_time(), children_cpu())
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -114,7 +130,11 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
     # What `record_property` does, at the last moment it can: the XML takes a test's properties from its
     # teardown report, which is made after the teardown and copies them when made.
     if call.when == "teardown" and CPU_AT_SETUP in item.stash:
-        item.user_properties.append(("cpu_seconds", f"{time.process_time() - item.stash[CPU_AT_SETUP]:.3f}"))
+        own, children = item.stash[CPU_AT_SETUP]
+        item.user_properties.append(("cpu_seconds", f"{time.process_time() - own:.3f}"))
+        children_now = children_cpu()
+        if children is not None and children_now is not None:
+            item.user_properties.append(("children_cpu_seconds", f"{children_now - children:.3f}"))
 
 
 # Here rather than in `conformance/`, so that it runs where pytest-xdist's controller, which collects nothing,
