@@ -75,10 +75,15 @@ def unpinned_jobs(workflows: dict[str, Workflow]) -> list[str]:
     ]
 
 
-def test_every_job_of_every_workflow_runs_on_the_pinned_image() -> None:
+def workflows() -> dict[str, Workflow]:
+    """Every workflow, by its file's name."""
     names = sorted(path.name for path in WORKFLOWS.glob("*.yml"))
     assert {"ci.yml", "pages.yml", "release.yml"} <= set(names)
-    assert unpinned_jobs({name: workflow(name) for name in names}) == []
+    return {name: workflow(name) for name in names}
+
+
+def test_every_job_of_every_workflow_runs_on_the_pinned_image() -> None:
+    assert unpinned_jobs(workflows()) == []
 
 
 def test_the_image_check_can_fail() -> None:
@@ -243,17 +248,24 @@ def test_the_expressions_are_evaluated_as_github_evaluates_them() -> None:
         evaluated("github.ref == 'refs/heads/main'", context)
 
 
+# GitHub's command for a step's script under `shell: bash`, which each workflow sets as its default, the
+# script's file last ("Workflow syntax for GitHub Actions", `jobs.<job_id>.steps[*].shell`).
+GITHUB_BASH = ("bash", "--noprofile", "--norc", "-eo", "pipefail")
+
+
 def run_step(
     found: dict[str, Any], context: Mapping[str, object], cwd: Path
 ) -> tuple[int, dict[str, str], str]:
-    """The step's script run in `cwd` as GitHub runs it, under bash with `-e` and `pipefail`: its exit status,
+    """The step's script run in `cwd` as GitHub runs it, from a file, with `GITHUB_BASH`: its exit status,
     what it wrote to `GITHUB_OUTPUT` (a file beside `cwd`), and what it printed."""
+    script = cwd.parent / f"{cwd.name}.step.sh"
+    script.write_text(rendered(found["run"], context), encoding="utf-8")
     outputs = cwd.parent / f"{cwd.name}.github_output"
     outputs.write_text("", encoding="utf-8")
     environment = dict(os.environ, GITHUB_OUTPUT=str(outputs))
     environment |= {name: rendered(str(value), context) for name, value in found.get("env", {}).items()}
     ran = subprocess.run(
-        ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", rendered(found["run"], context)],
+        [*GITHUB_BASH, str(script)],
         cwd=cwd,
         env=environment,
         capture_output=True,
@@ -262,6 +274,49 @@ def run_step(
     )
     written = dict(line.split("=", 1) for line in outputs.read_text(encoding="utf-8").splitlines())
     return ran.returncode, written, ran.stdout + ran.stderr
+
+
+def shell_problems(loaded: dict[str, Workflow]) -> list[str]:
+    """Where a workflow does not run its steps under `shell: bash`, the shell `run_step` runs them with."""
+    problems: list[str] = []
+    for name, found in loaded.items():
+        if found.get("defaults") != {"run": {"shell": "bash"}}:
+            problems.append(f"{name} has the defaults {found.get('defaults')!r}")
+        for job_id, job in found["jobs"].items():
+            if "defaults" in job:
+                problems.append(f"{name}: {job_id} has defaults of its own")
+            problems += [
+                f"{name}: a step of {job_id} runs under {each['shell']!r}"
+                for each in job.get("steps", [])
+                if "shell" in each
+            ]
+    return problems
+
+
+def test_every_step_runs_under_bash_with_pipefail(tmp_path: Path) -> None:
+    assert shell_problems(workflows()) == []
+    (tmp_path / "step").mkdir()
+    status, _, _ = run_step({"run": "false | true"}, {}, tmp_path / "step")
+    assert status == 1
+
+
+@pytest.mark.parametrize(
+    ("place", "problem"),
+    [
+        ("workflow", "pages.yml has the defaults None"),
+        ("job", "ci.yml: static has defaults of its own"),
+        ("step", "release.yml: a step of build runs under 'sh'"),
+    ],
+)
+def test_the_shell_check_can_fail(place: str, problem: str) -> None:
+    loaded = copy.deepcopy(workflows())
+    if place == "workflow":
+        del loaded["pages.yml"]["defaults"]
+    elif place == "job":
+        loaded["ci.yml"]["jobs"]["static"]["defaults"] = {"run": {"shell": "sh"}}
+    else:
+        loaded["release.yml"]["jobs"]["build"]["steps"][1]["shell"] = "sh"
+    assert shell_problems(loaded) == [problem]
 
 
 def gate_context(event: str, base: str = "", head: str = "", fuzz_only: str = "") -> dict[str, str]:

@@ -43,6 +43,13 @@ permissions:
 env:
   UV_VERSION: "0.13.0"
 
+# Every step of every workflow here runs under bash with `-eo pipefail` (GitHub's `shell: bash`), so that a
+# command that fails inside a pipe fails its step; without it GitHub runs `bash -e`, where only a pipe's last
+# command counts. tests/unit/test_ci_workflows.py holds each workflow to it, and runs the steps it tests so.
+defaults:
+  run:
+    shell: bash
+
 # Every job of every workflow here runs on ubuntu-24.04, never ubuntu-latest, which GitHub moves to Ubuntu
 # 26.04 between 2026-10-19 and 2026-11-19 (its changelog of 2026-09-17): a label that moves changes the
 # system Python and the tools under a run whose code did not change. A newer image is a deliberate change,
@@ -507,12 +514,14 @@ jobs:
               exit 1
             fi
           done
-          # Only a stored example can fail in the reuse phase: the replay found what the fuzzing saved.
-          if ! grep -A3 "during reuse phase" "$control/replay.log" | grep -qE " [1-9][0-9]* failing"; then
+          # Only a stored example can fail in the reuse phase: the replay found what the fuzzing saved. Each
+          # reads its lines through `<(...)`: a command that stops reading early (`grep -q`, `head`) would
+          # end the one writing to it, which fails a pipe under pipefail.
+          if ! grep -qE " [1-9][0-9]* failing" <(grep -A3 "during reuse phase" "$control/replay.log"); then
             echo "::error::the replay did not find the failure the fuzzing saved"
             exit 1
           fi
-          grep -B2 -A3 -E "document=|data=|world=|shuffled=" "$control/replay.log" | head -40
+          head -40 <(grep -B2 -A3 -E "document=|data=|world=|shuffled=" "$control/replay.log")
           rm -rf .hypothesis
 
       # The databases the Hypothesis job's shards saved in this run, the latest saved where it did not run,
