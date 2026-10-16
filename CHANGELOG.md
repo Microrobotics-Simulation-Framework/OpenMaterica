@@ -309,8 +309,8 @@ up to this release.
   the reader schema and the typed shapes from the writer schemas (`scripts/gen_*.py`).
 
 ### Changed
-- Renamed before the first release (maintainer, 2026-10-14): the project is OpenMaterica, formerly developed
-  under the working name Vesalius. The distribution is `openmaterica` and the package `materica`. The record
+- Names settled before the first release (maintainer, 2026-10-14): the project is OpenMaterica, replacing a
+  working name never published. The distribution is `openmaterica` and the package `materica`. The record
   namespace, family identifiers, USD binding purpose, attribute namespace and command are `materica`, and the
   USD schema classes take the prefix `Materica`. Library records are `materica/MAT-NNNN` and
   `materica/INT-NNNN`, and the registry prefixes are `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-`.

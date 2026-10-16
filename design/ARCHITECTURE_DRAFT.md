@@ -2338,7 +2338,7 @@ standardising) added the last three rows.
 | none | check points per record; fail-closed readers; fit-reproduction check | silent convention mismatches are the main technical risk |
 | none | proxies per field; a conditions vocabulary with ontology identifiers | most tissue data comes from stand-ins |
 | none | adoption strategy with criteria | a standard succeeds by adoption |
-| catalogue numbers `VES-MAT-XXXX` | namespaced identifiers `<namespace>/<local id>` | anyone can publish without a central authority; retrofitting would break the schema |
+| catalogue numbers under one prefix, `<prefix>-MAT-XXXX` | namespaced identifiers `<namespace>/<local id>` | anyone can publish without a central authority; retrofitting would break the schema |
 | data sheets | material cards: a metadata header and prose sections | a landing page that tools and people both read |
 | hosting unstated | git repositories, static archived releases, federation through an index; no hosted service | small data; static releases can be assessed; no service to run |
 | USD composition trusted | shipped layers self-contained, checked | reading a library layer reads one file, whoever published it |
@@ -2462,7 +2462,7 @@ The maintainer's decision of 2026-10-14 on the project's name gave the row below
 
 | Before | After | Why |
 |---|---|---|
-| the working name Vesalius: distribution, package, reserved namespace, family namespace, binding purpose, attribute namespace and command `vesalius`; schema classes `Vesalius…`; local ids `VES-MAT-NNNN` and `VES-INT-NNNN`; registry prefixes `VES-ANO-`, `VES-VER-` and `VES-MTH-` | OpenMaterica: distribution `openmaterica`, package `materica`, and `materica` for each of the others; schema classes `Materica…`; local ids `MAT-NNNN` and `INT-NNNN`; registry prefixes `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-` (4.1, 5.3, 5.4, 7.1; DA 8.3) | a name cleared for the project's use, chosen before any release, while no identifier was yet frozen (maintainer, 2026-10-14) |
+| a working name, never published, in the distribution, package, reserved namespace, family namespace, binding purpose, attribute namespace and command, the schema classes' prefix, the local ids and the registry prefixes | OpenMaterica: distribution `openmaterica`, package `materica`, and `materica` for each of the others; schema classes `Materica…`; local ids `MAT-NNNN` and `INT-NNNN`; registry prefixes `OMAT-ANO-`, `OMAT-VER-` and `OMAT-MTH-` (4.1, 5.3, 5.4, 7.1; DA 8.3) | a name cleared for the project's use, chosen before any release, while no identifier was yet frozen (maintainer, 2026-10-14) |
 
 The maintainer's decisions of 2026-10-14 on the questions on the read of values (specification `changes.md`,
 entry of that date), gave the rows below, each written as its question was ruled. They take in a
