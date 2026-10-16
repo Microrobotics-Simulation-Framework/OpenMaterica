@@ -26,9 +26,11 @@ not resolve.
   `$defs` hold those shapes as step 8 of a read checks them, opened alike, for a reader that checks one field
   with them: a member the writer schema marks `x-materica-write-only`, one a read does not check (its
   `extraction`, a `review`), accepts anything there and is required nowhere, and a rule that tests one or
-  requires only such members (a recipe where the value is withheld) is left out. Cross-member rules (a range in
-  order, no component twice), a member one slip from a named one, and a token or status token where its row
-  does not allow it are step 8's but no JSON Schema's.
+  requires only such members (a recipe where the value is withheld) is left out. A member marked
+  `{"unless": {<member>: <token>}}` is one a read checks only where that member holds that token (a
+  `derivation` for origin `derived`): the reader `$defs` apply its shape there alone, and elsewhere treat it
+  as write-only. Cross-member rules (a range in order, no component twice), a member one slip from a named
+  one, and a token or status token where its row does not allow it are step 8's but no JSON Schema's.
 - **The typed shapes** (`materica/shapes.py`, `shapes.pyi`) are generated from the writer schema,
   `case.json` and the request and result it refers to, by `scripts/gen_shapes.py`.
 

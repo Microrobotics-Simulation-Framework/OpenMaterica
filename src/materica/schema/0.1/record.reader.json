@@ -2090,7 +2090,7 @@
       ]
     },
     "provenance": {
-      "description": "provenance.md section 2. A read checks origin, source and derivation; the other members are the record checks'.",
+      "description": "provenance.md section 2. A read checks origin, source and, for origin derived, derivation; the other members are the record checks'.",
       "type": "object",
       "required": [
         "origin"
@@ -2106,9 +2106,7 @@
         "evidence": true,
         "assistance": true,
         "review": true,
-        "derivation": {
-          "$ref": "#/$defs/derivation"
-        },
+        "derivation": true,
         "formulation": true,
         "search": true,
         "import": true,
@@ -2148,6 +2146,25 @@
             "required": [
               "derivation"
             ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "origin"
+            ],
+            "properties": {
+              "origin": {
+                "const": "derived"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "derivation": {
+                "$ref": "#/$defs/derivation"
+              }
+            }
           }
         }
       ]

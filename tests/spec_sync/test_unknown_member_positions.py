@@ -371,7 +371,8 @@ WRITE_ONLY = "x-materica-write-only"
 
 def reachable(name: str, seen: set[str] | None = None) -> set[str]:
     """The writer's definitions of objects with named members that step 8 reads from `name`: through members,
-    choices and items, never into a member marked write-only."""
+    choices and items, never into a member marked write-only `true`. A member marked write-only `unless` a
+    condition holds is one step 8 reads where it holds (a derived value's `derivation`)."""
     seen = set() if seen is None else seen
     if name in seen:
         return seen
@@ -392,7 +393,7 @@ def reachable(name: str, seen: set[str] | None = None) -> set[str]:
                         [
                             member
                             for member in value.values()
-                            if not (isinstance(member, dict) and member.get(WRITE_ONLY))
+                            if not (isinstance(member, dict) and member.get(WRITE_ONLY) is True)
                         ]
                     )
                 elif keyword in ("allOf", "anyOf", "oneOf", "items", "additionalProperties"):
@@ -405,6 +406,12 @@ def reachable(name: str, seen: set[str] | None = None) -> set[str]:
 def objects(names: set[str]) -> set[str]:
     definitions = SCHEMAS["record"]["$defs"]
     return {name for name in names if isinstance(definitions[name].get("properties"), dict)}
+
+
+def test_a_member_read_under_a_condition_is_reached() -> None:
+    """A derivation, which step 8 reads for origin `derived` alone, and the objects inside it."""
+    derivation = {"derivation", "derivation_input", "input_specimen", "pinned_record"}
+    assert derivation <= objects(reachable("constant_field"))
 
 
 # Where a read starts in a record: a value field of each form some row of schema 0.1 allows, alternatives and
