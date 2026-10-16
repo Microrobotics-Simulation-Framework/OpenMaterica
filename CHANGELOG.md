@@ -100,6 +100,14 @@ recorded in that repository's CHANGELOG.
   checks, holds that token. The reader `$defs` keep its shape, and whether its object requires it, in a
   conjunct under that condition, and elsewhere treat it as write-only: a rule in the `then` of exactly that
   condition takes it as checked, any other rule as unchecked. A mark of another form stops the generator.
+- The reader `$defs` check a provenance object's `derivation` for origin `derived` alone, as `provenance.md`
+  section 2 item 6 and step 8 do. They applied its shape wherever a `derivation` stood, so a reader validating
+  a field with them refused one the text reads: a constant of origin `measured_by_contributor`, say, whose
+  derivation, there because its extraction's method is `derivation`, holds no `inputs` (found by S2a-3's fuzz
+  target 4 and its review). The writer marks `derivation` write-only `unless` its origin is `derived`, and
+  still holds it to its shape wherever it stands (`provenance.md` sections 3 and 5, RC-035); the typed shapes
+  are unchanged. The value-field check holds the marks of this form to the text, and the unknown-member positions
+  walk into such a member, as before.
 
 ### Verification
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that

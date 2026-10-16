@@ -2,8 +2,8 @@
 """The value-field part of the writer schema against the specification: the member tables of a value field,
 the provenance object, the statistics block, the conditions and the specimen facts; the members that may hold
 a status object, with their tokens (`provenance.md` section 1 item 5); the specification's examples of these
-shapes; and the members a read does not check, marked `x-materica-write-only` (`read_side_contract.md` section
-3, step 8).
+shapes; and the members a read does not check, marked `x-materica-write-only`, or checks only under a
+condition, marked write-only `unless` it holds (`read_side_contract.md` section 3, step 8).
 
 Structure is edited in the writer schema and checked here against the text, so that the specification keeps
 its prose (CONTRIBUTING, "Changing the schema"). Each check takes the schema's definitions and the documents
@@ -773,6 +773,16 @@ UNCHECKED = {
     ),
     ("source", "locator"): ("provenance.md", "(its `document` and `locator` are the record checks', RC-044)"),
 }
+# The members a read checks only where members of their object hold tokens, marked write-only `unless` they
+# do, each with those tokens and the text that names the member and each of them: `provenance.md` section 2
+# item 6.
+CHECKED_WHERE = {
+    ("provenance", "derivation"): (
+        {"origin": "derived"},
+        "provenance.md",
+        "`derivation` for origin `derived` (section 5)",
+    ),
+}
 # What step 8 checks, which no member marked write-only may be, by the text that names it.
 STEP_8 = (
     "the form's member; `unit`, only as a string or a status object (`record_format.md` section 4.2), since "
@@ -797,6 +807,16 @@ def write_only(definitions: Definitions) -> set[tuple[str, str]]:
     }
 
 
+def write_only_unless(definitions: Definitions) -> dict[tuple[str, str], JsonValue]:
+    """Each member marked write-only `unless` members of its object hold tokens, with those tokens."""
+    return {
+        (name, member): mapping(subschema[WRITE_ONLY]).get("unless")
+        for name, definition in definitions.items()
+        for member, subschema in mapping(definition.get("properties", {})).items()
+        if isinstance(subschema, dict) and isinstance(subschema.get(WRITE_ONLY), dict)
+    }
+
+
 def check_write_only(definitions: Definitions, read: Documents) -> None:
     for name, quote in [*UNCHECKED.values(), ("read_side_contract.md", STEP_8)]:
         assert quote in prose(read(name)), quote
@@ -804,6 +824,14 @@ def check_write_only(definitions: Definitions, read: Documents) -> None:
     for form, name in forms(definitions).items():
         own = {(name, member) for member in ("form", form_member(form), "conditions", "statistics")}
         assert not write_only(definitions) & (own | CHECKED), form
+    for (_, member), (tokens, name, quote) in CHECKED_WHERE.items():
+        assert quote in prose(read(name)), quote
+        assert f"`{member}`" in quote
+        assert all(f"{held} `{token}`" in quote for held, token in tokens.items())
+    assert write_only_unless(definitions) == {
+        place: tokens for place, (tokens, _, _) in CHECKED_WHERE.items()
+    }
+    assert set(CHECKED_WHERE) <= CHECKED
 
 
 def test_the_members_marked_write_only_are_those_step_8_does_not_check() -> None:
@@ -1080,6 +1108,38 @@ def dropping_last(name: str, *path: str) -> Callable[[Definitions], None]:
             ),
             None,
             id="write_only_quote_gone",
+        ),
+        pytest.param(
+            check_write_only,
+            document,
+            removing("provenance", "properties", "derivation", WRITE_ONLY),
+            id="derivation_checked_beside_every_origin",
+        ),
+        pytest.param(
+            check_write_only,
+            document,
+            setting(True, "provenance", "properties", "derivation", WRITE_ONLY),
+            id="derivation_marked_write_only",
+        ),
+        pytest.param(
+            check_write_only,
+            document,
+            setting({"unless": {"origin": "fitted"}}, "provenance", "properties", "derivation", WRITE_ONLY),
+            id="derivation_checked_beside_another_origin",
+        ),
+        pytest.param(
+            check_write_only,
+            document,
+            setting({"unless": {"origin": "derived"}}, "provenance", "properties", "source", WRITE_ONLY),
+            id="source_checked_under_a_condition",
+        ),
+        pytest.param(
+            check_write_only,
+            changed_document(
+                "provenance.md", "`derivation` for origin `derived` (section 5)", "`derivation` (section 5)"
+            ),
+            None,
+            id="derivation_condition_gone_from_the_text",
         ),
     ],
 )

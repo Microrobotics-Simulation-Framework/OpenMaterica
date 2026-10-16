@@ -843,7 +843,7 @@
       ]
     },
     "provenance": {
-      "description": "provenance.md section 2. A read checks origin, source and derivation; the other members are the record checks'.",
+      "description": "provenance.md section 2. A read checks origin, source and, for origin derived, derivation; the other members are the record checks'.",
       "type": "object",
       "required": ["origin", "extraction", "assistance", "review"],
       "properties": {
@@ -861,7 +861,7 @@
           "x-materica-write-only": true,
           "anyOf": [{"$ref": "#/$defs/status_not_checked"}, {"$ref": "#/$defs/review"}]
         },
-        "derivation": {"$ref": "#/$defs/derivation"},
+        "derivation": {"x-materica-write-only": {"unless": {"origin": "derived"}}, "$ref": "#/$defs/derivation"},
         "formulation": {
           "description": "The formulation's name and version and the evaluation that produced the value: a placeholder until its members are named.",
           "x-materica-write-only": true,
