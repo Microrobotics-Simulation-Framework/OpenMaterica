@@ -195,6 +195,10 @@ string or a status object (`read_side_contract.md` section 3, step 9; PR-037). M
 review, also awaiting the maintainer: `mimics`, whose row fixes its `basis` to `stated`, takes no
 `inferred_from` (`provenance.md` section 6.2; RC-039).
 
+Aligned with S2a-3's review (2026-10-16): step 8's list names a `derivation` for origin `derived` alone, as
+`provenance.md` sections 2 and 5 already did; the reader schema's value-field `$defs` check it so, and leave a
+derivation beside another origin unread, as a read does.
+
 Names settled with the name-overlap check, before 0.1.0 (maintainer, 2026-10-15), so that a name keeps one
 meaning wherever no safeguard keeps two apart: a scene cylinder's `axis` is `direction`, as a layered path's
 is (`geometry.md` section 3.1; SC-006, RC-092); a family conversion's `from` and `to` are `from_measure` and
