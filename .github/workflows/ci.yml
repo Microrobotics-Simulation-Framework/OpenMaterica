@@ -210,7 +210,10 @@ jobs:
     needs: gate
     if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Measured on CI at S2a-2's head (run 38818013140, 2026-10-15): 6.1 to 8.7 minutes, and 3.11 past 10, where its
+    # timeout cancelled it; at S2a-1's head 2.1 to 4.1. A hosted runner here is 1.6 to 4 times slower than a local
+    # core, and varies from run to run, so the timeout is set well above the slowest measured job.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -244,9 +247,14 @@ jobs:
     # searches do not grow with the profile (2026-10-15, S2a-2's fix round; a runner perhaps two to three times
     # slower a core, by estimate). The writer shard's `ci` took 11 minutes on two workers locally (2026-10-15),
     # and its `deep`, ten times the examples, about ten times that, unmeasured.
+    # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
+    # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, though locally its four workers took
+    # 8.1 and 7.1 minutes at those heads (Python 3.15): the runner, not the code, made the difference. At S2a-2's
+    # head json took 1.4 minutes, records 2.5 and step 8's mutants 1.6. Each `ci` timeout is set well above the
+    # slowest measured run; `deep` has not yet run on CI.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-      && (matrix.shard == 'writer' && 180 || 45) || (matrix.shard == 'writer' && 30 || 10) }}
+      && (matrix.shard == 'writer' && 180 || 45) || (matrix.shard == 'writer' && 75 || 20) }}
     strategy:
       fail-fast: false
       matrix:
