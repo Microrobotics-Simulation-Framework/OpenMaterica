@@ -7,6 +7,7 @@
 | `property/` | Hypothesis properties of the reader, the canonical form, the hash, the one-slip relation, the envelope checks, versions, the read and its step 8, of the writer schema's value fields, and the mutants they kill | the profiles and sizes, the shards, the mutants, the audits; adding a property |
 | `unit/` | examples at the edges, the rules over source files, and the scripts in `scripts/` | what belongs there |
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
+| `reference/` | test-only reference implementations written from the specification's text: the table evaluator the table evaluation cases are verified against, with its own tests | no README yet: `table_evaluator.py`'s docstring says how it was written |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
 
 `conftest.py` here registers the Hypothesis profiles for every test and the property shards (`--shard`), selects
@@ -35,6 +36,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
 
 - the conformance runner: broken implementations, one fault each (`conformance/test_runner_can_fail.py`), and
   a comparator fed wrong answers (`conformance/test_comparator.py`);
+- the reference evaluator of tables: a control beside each of its checks, and a citation check fed drifted
+  citations (`reference/test_table_evaluator.py`);
 - each property: mutants of the core, or of the writer schema, one fault each, that it must kill at both tree
   sizes, a writer mutant at the assertion it names (`property/test_mutants.py`,
   `property/test_record_mutants.py`, `property/test_value_field_mutants.py`, `property/test_writer_mutants.py`),
