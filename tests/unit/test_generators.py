@@ -9,6 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from scripts import gen_reader_schema, gen_shapes, gen_vocabulary
 from scripts.gen_reader_schema import Json, SchemaError, reader_schema
@@ -631,6 +632,17 @@ def changed(place: str, value: Json) -> dict[str, Json]:
     return writer
 
 
+# Marks of a member checked at read only under a condition, each of a form the generator does not take.
+MALFORMED_MARKS: list[tuple[str, Json]] = [
+    ("empty", {"unless": {}}),
+    ("a_number", {"unless": {"basis": 1}}),
+    ("a_list", {"unless": [{"basis": "stated"}]}),
+    ("beside_another_member", {"unless": {"basis": "stated"}, "also": True}),
+    ("another_keyword", {"when": {"basis": "stated"}}),
+    ("on_no_member", {"unless": {"nowhere": "stated"}}),
+]
+
+
 @pytest.mark.parametrize(
     ("place", "value"),
     [
@@ -665,6 +677,24 @@ def changed(place: str, value: Json) -> dict[str, Json]:
             "$defs/value_field/properties/note",
             {"x-materica-write-only": False, "$ref": "#/$defs/note"},
             id="write_only_false",
+        ),
+        pytest.param(
+            "$defs/value_field/properties/note",
+            {"x-materica-write-only": None, "$ref": "#/$defs/note"},
+            id="write_only_null",
+        ),
+        *(
+            pytest.param(
+                "$defs/value_field/properties/note",
+                {"x-materica-write-only": mark, "$ref": "#/$defs/note"},
+                id=f"write_only_unless_{name}",
+            )
+            for name, mark in MALFORMED_MARKS
+        ),
+        pytest.param(
+            "$defs/value_field/properties/value",
+            {"x-materica-write-only": {"unless": {"note": "stated"}}, "type": "number"},
+            id="write_only_unless_on_a_member_not_checked",
         ),
         pytest.param("$defs/common/x-materica-write-only", True, id="write_only_outside_properties"),
         pytest.param("$defs/specimen", None, id="no_specimen"),
@@ -755,6 +785,24 @@ def changes(*places: tuple[str, Json]) -> dict[str, Json]:
         ),
         pytest.param([("$defs/value_field/dependentRequired", {"value": ["basis"]})], id="dependentRequired"),
         pytest.param([("$defs/common/minLength", 1)], id="minLength"),
+        pytest.param(
+            [
+                (
+                    "$defs/value_field/if",
+                    {
+                        "properties": {
+                            "value": {
+                                "properties": {
+                                    "kind": {"type": "string"},
+                                    "detail": {"x-materica-write-only": {"unless": {"kind": "a"}}},
+                                }
+                            }
+                        }
+                    },
+                )
+            ],
+            id="a_member_checked_under_a_condition_under_if",
+        ),
     ],
 )
 def test_what_opening_would_turn_around_or_copy_unopened_is_refused(places: list[tuple[str, Json]]) -> None:
@@ -868,6 +916,119 @@ def test_a_condition_on_a_constant_is_kept_as_written() -> None:
     value_field = definitions["value_field"]
     assert isinstance(value_field, dict)
     assert (value_field["if"], value_field["then"]) == (condition, {"required": ["basis"]})
+
+
+# A member of the value field a read checks only where its `basis` is `stated`, as a read checks a
+# `derivation` for origin `derived` alone (provenance.md section 2 item 6).
+STATED: Json = {"required": ["basis"], "properties": {"basis": {"const": "stated"}}}
+DETAIL: tuple[tuple[str, Json], ...] = (
+    (
+        "$defs/value_field/properties/detail",
+        {"x-materica-write-only": {"unless": {"basis": "stated"}}, "$ref": "#/$defs/detail"},
+    ),
+    ("$defs/detail", {"type": "object", "required": ["text"], "properties": {"text": {"type": "string"}}}),
+)
+DETAIL_WHERE_STATED: Json = {"if": STATED, "then": {"properties": {"detail": {"$ref": "#/$defs/detail"}}}}
+
+
+def value_field_errors(writer: dict[str, Json], field: Json) -> list[str]:
+    """The errors of `field` against the value field of the reader `$defs` `writer` gives."""
+    checker = Draft202012Validator(
+        {"$defs": reader_schema(writer, VOCABULARY)["$defs"], "$ref": "#/$defs/value_field"}
+    )
+    # types-jsonschema types its second overload's instance as unknown.
+    return [error.message for error in checker.iter_errors(field)]  # pyright: ignore[reportUnknownMemberType]
+
+
+def test_a_member_a_read_checks_under_a_condition_is_checked_there_alone() -> None:
+    """Its shape stands in a conjunct under the condition; elsewhere it accepts anything, as a member marked
+    write-only does."""
+    value_field = reader_value_field(*DETAIL)
+    assert value_field["properties"] == {
+        "value": {"type": "number"},
+        "basis": {"type": "string"},
+        "note": True,
+        "part": {"$ref": "#/$defs/part"},
+        "detail": True,
+    }
+    assert value_field["allOf"] == [COMMON, DETAIL_WHERE_STATED]
+    writer = changes(*DETAIL)
+    broken: dict[str, Json] = {"value": 1, "basis": "inferred", "detail": {"text": 1}}
+    assert value_field_errors(writer, broken) == []
+    assert value_field_errors(writer, {**broken, "basis": "stated"}) != []
+    assert value_field_errors(writer, {**broken, "basis": "stated", "detail": {"text": "a"}}) == []
+
+
+def test_a_member_a_read_checks_under_a_condition_is_required_there_alone() -> None:
+    value_field = reader_value_field(*DETAIL, ("$defs/value_field/required", ["value", "basis", "detail"]))
+    assert value_field["required"] == ["value", "basis"]
+    conjunct: Json = {
+        "if": STATED,
+        "then": {"properties": {"detail": {"$ref": "#/$defs/detail"}}, "required": ["detail"]},
+    }
+    assert value_field["allOf"] == [COMMON, conjunct]
+
+
+def test_a_rule_under_exactly_its_condition_takes_it_as_checked() -> None:
+    """The control for the next test: the condition stands in the reader, as `derived`'s requiring a
+    derivation does."""
+    value_field = reader_value_field(
+        *DETAIL, ("$defs/value_field/if", STATED), ("$defs/value_field/then", {"required": ["detail"]})
+    )
+    assert (value_field["if"], value_field["then"]) == (STATED, {"required": ["detail"]})
+
+
+@pytest.mark.parametrize(
+    "places",
+    [
+        pytest.param(
+            [("$defs/value_field/if", WHEN_ZERO), ("$defs/value_field/then", {"required": ["detail"]})],
+            id="a_then_of_another_condition",
+        ),
+        pytest.param(
+            [("$defs/value_field/if", STATED), ("$defs/value_field/else", {"required": ["detail"]})],
+            id="the_else_of_its_own_condition",
+        ),
+        pytest.param(
+            [("$defs/value_field/allOf", [COMMON, {"required": ["detail"]}])],
+            id="a_conjunct",
+        ),
+        pytest.param(
+            [
+                ("$defs/value_field/if", {"properties": {"detail": {"required": ["text"]}}}),
+                ("$defs/value_field/then", {"required": ["basis"]}),
+            ],
+            id="an_if_testing_it",
+        ),
+    ],
+)
+def test_a_rule_outside_its_condition_takes_it_as_unchecked(places: list[tuple[str, Json]]) -> None:
+    value_field = reader_value_field(*DETAIL, *places)
+    assert not {"if", "then", "else"} & set(value_field)
+    assert value_field["allOf"] == [COMMON, DETAIL_WHERE_STATED]
+
+
+@pytest.mark.parametrize(
+    "places",
+    [
+        pytest.param(
+            [
+                ("$defs/value_field/if", WHEN_ZERO),
+                ("$defs/value_field/then", {"required": ["detail", "value"]}),
+            ],
+            id="a_then",
+        ),
+        pytest.param(
+            [("$defs/value_field/allOf", [COMMON, {"required": ["detail", "value"]}])],
+            id="a_conjunct",
+        ),
+    ],
+)
+def test_a_rule_outside_its_condition_reaching_it_and_a_checked_member_is_refused(
+    places: list[tuple[str, Json]],
+) -> None:
+    with pytest.raises(SchemaError, match="reaches members a read checks and others"):
+        reader_value_field(*DETAIL, *places)
 
 
 def test_the_reader_schema_check_fails_when_it_differs(

@@ -29,15 +29,21 @@ an identifier's pattern, stops the script.
 Every pattern in the writer schema must start with `^` and end with `(?![\\s\\S])`: a validator's `$` also
 matches before a final newline, so `"0.1.0\\n"` would match `^...$`. Under `if` or `not`, anything the script
 opens (an enumeration, a pattern, a closed object, `propertyNames`, a shape never applied, a member marked
-write-only), there or through a `$ref`, stops it, since opening it would turn the condition around. So does a
-keyword the script does not know, whose subschemas it would copy unopened.
+write-only in either form), there or through a `$ref`, stops it, since opening it would turn the condition
+around. So does a keyword the script does not know, whose subschemas it would copy unopened.
+
+A member marked `{"unless": {<member>: <token>, ...}}` in place of `true` is one a read checks only where each
+named member of its object, one a read checks, holds that token: a `derivation` for origin `derived`
+(`provenance.md` section 2 item 6). Its shape, and whether its object requires it, are kept in a conjunct
+under that condition; elsewhere it is as a member marked write-only. A rule in the `then` of a condition that
+is exactly that one takes it as checked, and any other rule as unchecked.
 """
 
 import json
 import re
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -101,11 +107,23 @@ class SchemaError(ValueError):
 
 @dataclass(frozen=True)
 class Scope:
-    """The object a subschema constrains: its members marked write-only, and the definition each member
-    refers to, its own and those the definitions its `allOf` refers to give it."""
+    """The object a subschema constrains: its members marked write-only, the definition each member refers
+    to, its own and those the definitions its `allOf` refers to give it, and its members a read checks only
+    under a condition not known to hold here, each with that condition."""
 
     write_only: frozenset[str]
     refers: dict[str, str]
+    conditional: dict[str, Json] = field(default_factory=dict[str, Json])
+
+    @property
+    def unchecked(self) -> frozenset[str]:
+        return self.write_only | frozenset(self.conditional)
+
+    def where(self, condition: Json) -> "Scope":
+        """This scope where `condition` holds: a member a read checks under exactly that condition is
+        checked."""
+        conditional = {name: kept for name, kept in self.conditional.items() if kept != condition}
+        return Scope(self.write_only, self.refers, conditional)
 
 
 UNSCOPED = Scope(frozenset(), {})
@@ -135,15 +153,20 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
     ) -> Json:
         """`node` opened; `inline` writes references out in place (the schema's root) or keeps them (its
         `$defs`); `outer` describes the object `node` constrains where `node` is a rule of an object outside
-        it (a condition's result, a conjunct, a choice), whose members marked write-only are required
-        nowhere."""
+        it (a condition's result, a conjunct, a choice), whose members a read does not check here are
+        required nowhere."""
         if not isinstance(node, dict):
             return node
         if "$ref" in node:
             return reference(node, inline=inline, patterned=patterned)
         inner = scope_of(node)
-        scope = Scope(outer.write_only | inner.write_only, outer.refers | inner.refers)
-        own = outer.write_only | members_marked(node)
+        scope = Scope(
+            outer.write_only | inner.write_only,
+            outer.refers | inner.refers,
+            outer.conditional | inner.conditional,
+        )
+        read_where = members_read_where(node)
+        own = outer.unchecked | members_marked(node) | frozenset(read_where)
         node = without_record_checks(node, scope)
         reader: dict[str, Json] = {}
         for keyword, value in node.items():
@@ -176,6 +199,8 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
                         f"{keyword} holds what the reader opens, which would turn it around: {value}"
                     )
                 within = scope if keyword in SAME_OBJECT else UNSCOPED
+                if keyword == "then":
+                    within = scope.where(node.get("if"))
                 reader[keyword] = opened(value, inline=inline, outer=within)
             elif keyword in SUBSCHEMAS:
                 if not isinstance(value, list):
@@ -189,29 +214,50 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
                 reader[keyword] = value
             elif keyword not in LEFT_OUT:
                 raise SchemaError(f"a keyword this script does not know: {keyword}")
+        if checked_where := conditional_checks(node, read_where, inline=inline):
+            reader["allOf"] = [*as_list(reader.get("allOf")), *checked_where]
         return without_empty(reader)
+
+    def conditional_checks(node: dict[str, Json], read_where: dict[str, Json], *, inline: bool) -> list[Json]:
+        """For each member of `node` a read checks only under a condition, a conjunct that applies its shape
+        where the condition holds, and requires it there where `node` requires it."""
+        required = names_in(node.get("required"))
+        members = as_object(node.get("properties"))
+        conjuncts: list[Json] = []
+        for name, condition in read_where.items():
+            shape = {
+                keyword: value for keyword, value in as_object(members[name]).items() if keyword != WRITE_ONLY
+            }
+            then: dict[str, Json] = {"properties": {name: opened(shape, inline=inline)}}
+            if name in required:
+                then["required"] = [name]
+            conjuncts.append({"if": condition, "then": then})
+        return conjuncts
 
     def scope_of(node: dict[str, Json]) -> Scope:
         marked = set(members_marked(node))
+        conditional = members_read_where(node)
         refers: dict[str, str] = {}
         for conjunct in as_list(node.get("allOf")):
             if (base := local(conjunct)) in definitions:
                 inherited = scope_of(as_object(definitions[base]))
                 marked |= inherited.write_only
+                conditional |= inherited.conditional
                 refers |= inherited.refers
         for name, member in as_object(node.get("properties")).items():
             if (target := local(member)) in definitions:
                 refers[name] = target
-        return Scope(frozenset(marked), refers)
+        return Scope(frozenset(marked), refers, conditional)
 
     def reached(rule: Json, scope: Scope, *, conditions: bool = True) -> set[bool]:
         """For each member `rule` requires or constrains, at any depth, of the object `scope` describes,
-        whether a read leaves it unchecked: True where its path passes a member marked write-only. Without
-        `conditions`, a condition of `rule` itself is left out, which `opened` judges on its own."""
+        whether a read leaves it unchecked: True where its path passes a member marked write-only, or one a
+        read checks under a condition not known to hold there. Without `conditions`, a condition of `rule`
+        itself is left out, which `opened` judges on its own."""
         rule = as_object(rule)
-        found = {name in scope.write_only for name in names_in(rule.get("required"))}
+        found = {name in scope.unchecked for name in names_in(rule.get("required"))}
         for name, member in as_object(rule.get("properties")).items():
-            if name in scope.write_only:
+            if name in scope.unchecked:
                 found.add(True)
                 continue
             if set(as_object(member)) - set(SAME_OBJECT_RULES) - {"properties", "required"}:
@@ -223,8 +269,9 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
         for keyword in SAME_OBJECT_RULES:
             if keyword in rule and (conditions or keyword not in ("if", "then", "else")):
                 value = rule[keyword]
+                within = scope.where(rule.get("if")) if keyword == "then" else scope
                 for part in as_list(value) if isinstance(value, list) else [value]:
-                    found |= reached(part, scope)
+                    found |= reached(part, within)
         return found
 
     def without_record_checks(node: dict[str, Json], scope: Scope) -> dict[str, Json]:
@@ -234,7 +281,7 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
         kept = dict(node)
         if "if" in node:
             tested = reached(node["if"], scope)
-            results = reached(node.get("then"), scope) | reached(node.get("else"), scope)
+            results = reached(node.get("then"), scope.where(node["if"])) | reached(node.get("else"), scope)
             if results == {True, False} and True not in tested:
                 raise SchemaError(f"a then or else that reaches members a read checks and others: {node}")
             if True in tested or results == {True}:
@@ -253,7 +300,7 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
     def opens(node: Json, seen: set[str]) -> bool:
         """Whether opening `node` changes what it accepts: whether it holds, or reaches through a `$ref`, an
         enumeration, a pattern, a closed object, `propertyNames`, a shape never applied or a member marked
-        write-only."""
+        write-only in either form."""
         if isinstance(node, list):
             return any(opens(item, seen) for item in node)
         if not isinstance(node, dict):
@@ -266,7 +313,7 @@ def reader_schema(writer: dict[str, Json], vocabulary: dict[str, Json] | None = 
                 return False
             return opens(definitions[name], seen | {name})
         closed = any(node.get(keyword, True) is not True for keyword in CLOSING)
-        if closed or {"enum", "pattern", "propertyNames"} & set(node) or members_marked(node):
+        if closed or {"enum", "pattern", "propertyNames"} & set(node) or marks(node):
             return True
         return any(opens(value, seen) for keyword, value in node.items() if keyword != "$defs")
 
@@ -341,20 +388,44 @@ def names_in(value: Json) -> list[str]:
 
 
 def members_marked(node: dict[str, Json]) -> frozenset[str]:
-    """The members of `node`'s properties marked write-only."""
-    members = node.get("properties")
-    if not isinstance(members, dict):
-        return frozenset()
-    marked = frozenset(
-        name
-        for name, member in members.items()
-        if isinstance(member, dict) and member.get(WRITE_ONLY) is True
-    )
-    if any(
-        isinstance(member, dict) and member.get(WRITE_ONLY, True) is not True for member in members.values()
-    ):
-        raise SchemaError(f"{WRITE_ONLY} that is not true in {sorted(members)}")
-    return marked
+    """The members of `node`'s properties marked write-only, `true`."""
+    return frozenset(name for name, condition in marks(node).items() if condition is None)
+
+
+def members_read_where(node: dict[str, Json]) -> dict[str, Json]:
+    """The members of `node`'s properties a read checks only under a condition, each with the condition as
+    the `if` of a schema of `node`'s object."""
+    return {name: condition for name, condition in marks(node).items() if condition is not None}
+
+
+def marks(node: dict[str, Json]) -> dict[str, Json]:
+    """Each member of `node`'s properties marked write-only: None where the mark is `true`, and the condition
+    under which a read checks it where it is `{"unless": {<member>: <token>, ...}}`, each member named one of
+    `node`'s properties that no mark makes unchecked."""
+    members = as_object(node.get("properties"))
+    found: dict[str, Json] = {}
+    for name, member in members.items():
+        if WRITE_ONLY not in as_object(member):
+            continue
+        mark = as_object(member)[WRITE_ONLY]
+        if mark is True:
+            found[name] = None
+            continue
+        tokens = as_object(mark).get("unless") if set(as_object(mark)) == {"unless"} else None
+        if not (
+            isinstance(tokens, dict) and tokens and all(isinstance(token, str) for token in tokens.values())
+        ):
+            raise SchemaError(f"{WRITE_ONLY} on {name} neither true nor unless members hold tokens: {mark}")
+        if unread := [
+            tested for tested in tokens if tested not in members or WRITE_ONLY in as_object(members[tested])
+        ]:
+            raise SchemaError(
+                f"{name} checked at read under a condition on {unread}, which a read does not check"
+            )
+        required: list[Json] = [*tokens]
+        constants: dict[str, Json] = {tested: {"const": token} for tested, token in tokens.items()}
+        found[name] = {"required": required, "properties": constants}
+    return found
 
 
 def enumerates(vocabulary: dict[str, Json], name: str, definition: str) -> bool:
