@@ -33,9 +33,12 @@ dev = [
     "pyright==1.1.414",
     "pytest>=8.4",
     "pytest-xdist>=3.8",
+    # Reads the workflows in tests/unit/test_ci_workflows.py.
+    "pyyaml>=6.0",
     "rfc8785>=0.1.4",
     "ruff>=0.13",
     "types-jsonschema>=4.26",
+    "types-pyyaml>=6.0",
 ]
 # Atheris 3.1.0 publishes wheels for CPython 3.12 to 3.14 on Linux x86_64 only, and no source distribution, so
 # it installs only there; `uv sync` and `uv sync --group fuzz` work everywhere else without it.

@@ -40,10 +40,14 @@ permissions:
 env:
   UV_VERSION: "0.13.0"
 
+# Every job of every workflow here runs on ubuntu-24.04, never ubuntu-latest, which GitHub moves to Ubuntu
+# 26.04 between 2026-10-19 and 2026-11-19 (its changelog of 2026-09-17): a label that moves changes the
+# system Python and the tools under a run whose code did not change. A newer image is a deliberate change,
+# made in every workflow at once and in tests/unit/test_ci_workflows.py, which holds each job to it.
 jobs:
   gate:
     name: sign-off and changed paths
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       code: ${{ steps.paths.outputs.code }}
@@ -120,7 +124,7 @@ jobs:
     name: lint, types, wheel
     needs: gate
     if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -184,7 +188,7 @@ jobs:
     name: generated files
     needs: gate
     if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -209,7 +213,7 @@ jobs:
     name: tests (Python ${{ matrix.python }})
     needs: gate
     if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Measured on CI: at S2a-1's head 2.1 to 4.1 minutes; at S2a-2's, 6.1 to 8.7 minutes with 3.11 past 10, where its
     # timeout cancelled it (run 38818013140, 2026-10-15), then 8.7 to 13.9 minutes, 3.11 the slowest (run
     # 38859424951, 2026-10-16). T1's origin variants then added about 100 s on four local workers. A hosted runner
@@ -256,7 +260,7 @@ jobs:
     name: hypothesis (${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}, ${{ matrix.shard }})
     needs: gate
     if: needs.gate.outputs.hypothesis == 'true' && !inputs.fuzz_only
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # On two workers locally, `deep` took 14.5 minutes for json and 10 for records (2026-10-14); step 8's
     # properties added about 17 minutes of CPU to the records shard's `deep` (2026-10-15, by S2a-2's review, on
     # three workers), unmeasured as a shard. At `ci`, records took 98 s on two workers and 58 s on four, and
@@ -341,7 +345,7 @@ jobs:
     # requiring the jobs by name would leave docs-only pull requests waiting; a skipped job passes this one.
     needs: [gate, static, generated, tests, hypothesis]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
       - name: No needed job failed or was cancelled
@@ -358,7 +362,7 @@ jobs:
     needs: hypothesis
     # Weekly and on a manual run only: every second of fuzzing is a second billed.
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Four targets at the default 300 s, the control (at most 3 minutes for each of the first three targets and
     # 10 for the fourth) and the replay, which leaves out the mutant tables: about 45 minutes, by estimate. A
     # manual run longer than about 450 s a target needs this raised.
