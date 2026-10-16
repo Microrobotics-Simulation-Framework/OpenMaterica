@@ -53,7 +53,10 @@ def nodeid(case: ElementTree.Element, file: str) -> str:
 
 def read_report(path: Path) -> list[Timing]:
     if not path.is_file():
-        raise ReportError(f"{path}: no such report (did pytest run with --junitxml?)")
+        raise ReportError(
+            f"{path}: no such report (pytest writes it with --junitxml as its run ends, which a run its "
+            "job's timeout cancelled never reaches)"
+        )
     try:
         root = ElementTree.parse(path).getroot()
     except ElementTree.ParseError as error:

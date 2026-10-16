@@ -255,18 +255,23 @@ jobs:
       # Every test but the mutant searches and the audit controls, which the next job runs; the property tests
       # at the `dev` profile: Python's json differs between versions, so the properties run on each; their
       # depth is the Hypothesis job's. A worker per vCPU, as in that job.
-      - run: uv run pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
+      - id: pytest
+        run: uv run pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
       # Where the time went, on the run's page, and the report kept for later runs to compare (no time fails
-      # the job): scripts/report_test_durations.py.
+      # the job): scripts/report_test_durations.py. Whenever pytest ran, passed, failed or cancelled, and not
+      # where a failed checkout or setup skipped it. A job its timeout cancels has no report: GitHub's runner
+      # interrupts, then ends, the step's shell and not pytest, which writes its report only as its run ends
+      # (so a run cancelled that way here wrote none, 2026-10-16). The durations step then says there is none,
+      # and the pytest step's log shows how far the run got.
       - name: Test durations
-        if: success() || failure()
+        if: always() && steps.pytest.outcome != 'skipped'
         env:
           TITLE: "Test durations: tests, Python ${{ matrix.python }}"
         run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
       - name: Keep the durations
-        if: success() || failure()
+        if: always() && steps.pytest.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: durations-tests-${{ matrix.python }}
@@ -305,16 +310,17 @@ jobs:
       - run: uv sync --locked
       # The mutant searches and the audit controls alone (`--property-controls` in tests/conftest.py), under the
       # same profile as the test job.
-      - run: uv run pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
+      - id: pytest
+        run: uv run pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
       - name: Test durations
-        if: success() || failure()
+        if: always() && steps.pytest.outcome != 'skipped'
         env:
           TITLE: "Test durations: mutant searches and audit controls, Python ${{ matrix.python }}"
         run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
       - name: Keep the durations
-        if: success() || failure()
+        if: always() && steps.pytest.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: durations-controls-${{ matrix.python }}
@@ -382,16 +388,17 @@ jobs:
       # A worker per vCPU: minutes are billed by wall time. Work stealing keeps the long properties from finishing
       # last on one worker.
       - name: Property tests and mutants, with the draw-rejection and feature audits (tests/property/conftest.py)
+        id: pytest
         run: >-
           uv run pytest tests/property --shard ${{ matrix.shard }} -n auto --dist worksteal
           --hypothesis-show-statistics --junitxml="$RUNNER_TEMP/durations.xml"
       - name: Test durations
-        if: success() || failure()
+        if: always() && steps.pytest.outcome != 'skipped'
         env:
           TITLE: "Test durations: hypothesis (${{ env.MATERICA_HYPOTHESIS_PROFILE }}, ${{ matrix.shard }})"
         run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
       - name: Keep the durations
-        if: success() || failure()
+        if: always() && steps.pytest.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: durations-hypothesis-${{ matrix.shard }}
