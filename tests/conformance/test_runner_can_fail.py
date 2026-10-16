@@ -9,6 +9,7 @@ import hashlib
 import math
 import unicodedata
 from collections.abc import Callable, Collection, Iterable
+from dataclasses import replace
 
 import pytest
 
@@ -23,9 +24,21 @@ from materica.core.resolve import Refused, ResolvedRecord
 from materica.core.vocabulary import ConditionSpec, RecordFieldSpec
 from materica.shapes import Suite
 from tests.conformance import runner
-from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, Executor, JsonObject, Outcome
+from tests.conformance.runner import (
+    CONFIGURATIONS,
+    EVALUATOR_CLAIMS,
+    EXECUTORS,
+    EvaluatorClaim,
+    EvaluatorPrecision,
+    Executor,
+    JsonObject,
+    Outcome,
+    TableEvaluator,
+)
 from tests.property import test_alternatives_mutants as alternatives_mutants
 from tests.property.support import Searched
+from tests.reference import table_evaluator
+from tests.reference.table_evaluator import REFUSED, Evaluation, Side, Table
 
 CASE_FILES = {case_file.path.name: case_file for case_file in runner.discover()}
 
@@ -686,6 +699,308 @@ FAULTS: list[tuple[Fault, str]] = [
 ]
 
 
+# Broken evaluators of a table, one fault each: the S3 design's section 6.4, and those the suite's README
+# names besides. Each is the reference evaluator with its answer changed or one of its functions replaced,
+# and claims every precision and side unless it says otherwise.
+EvaluatorFault = Callable[[pytest.MonkeyPatch], TableEvaluator]
+
+
+def reference(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+    return table_evaluator.evaluate(table, at, precision, side)
+
+
+def only_clamps(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """`in_range` always true, with the end value outside the range."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        return found if found.refused else replace(found, in_range=True)
+
+    return evaluate
+
+
+def takes_in_range_strictly(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """`in_range` by `<` at the ends: at an end of the readable range, false, with the end value and 0."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if found.in_range and at in table_evaluator.readable_range(table):
+            return Evaluation(refused=False, in_range=False, value=found.value, derivative=0.0)
+        return found
+
+    return evaluate
+
+
+def ignores_a_narrower_source_range(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """The readable range from `x` alone."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        return reference(replace(table, source_range=None), at, precision, side)
+
+    return evaluate
+
+
+def returns_the_side_it_did_not_declare(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        return reference(table, at, precision, "left" if side == "right" else "right")
+
+    return evaluate
+
+
+def gives_the_outside_derivative_at_an_end(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """At an end of the readable range, the derivative from outside it: zero."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if found.in_range and at in table_evaluator.readable_range(table):
+            return replace(found, derivative=0.0)
+        return found
+
+    return evaluate
+
+
+def read_from_above(table: Table, edge: float, precision: EvaluatorPrecision) -> Evaluation:
+    """The evaluation at `edge` from the interval above it: the table without the edge's lower knot, which
+    then declares no edge there, read with the right-hand derivative."""
+    lower = table.x.index(edge)
+    above = replace(
+        table,
+        x=table.x[:lower] + table.x[lower + 1 :],
+        y=table.y[:lower] + table.y[lower + 1 :],
+        edges=tuple(other for other in table.edges if other != edge),
+    )
+    return reference(above, edge, precision, "right")
+
+
+def reads_an_edge_from_the_interval_above(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        return (
+            read_from_above(table, at, precision)
+            if at in table.edges
+            else reference(table, at, precision, side)
+        )
+
+    return evaluate
+
+
+def refuses_an_edge_beside_the_interval_above(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """At an edge, the refusal reported, and the value and derivative of the interval above returned."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if at not in table.edges:
+            return found
+        above = read_from_above(table, at, precision)
+        return replace(found, value=above.value, derivative=above.derivative)
+
+    return evaluate
+
+
+def refuses_an_edge_beside_infinity(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """At an edge, the refusal reported, and +inf returned for the value and the derivative."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        return replace(found, value=math.inf, derivative=math.inf) if at in table.edges else found
+
+    return evaluate
+
+
+def end_value_outside(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+    """Outside the readable range, `in_range` false, with the value at its nearest end and 0, refusing
+    nothing."""
+    low, high = table_evaluator.readable_range(table)
+    end = reference(table, low if at < low else high, precision, side)
+    return Evaluation(refused=False, in_range=False, value=end.value, derivative=0.0)
+
+
+def checks_the_range_before_the_edge(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """At an edge outside the readable range, `in_range` false and no refusal."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        low, high = table_evaluator.readable_range(table)
+        if at in table.edges and not low <= at <= high:
+            return end_value_outside(table, at, precision, side)
+        return reference(table, at, precision, side)
+
+    return evaluate
+
+
+def extrapolates_across_an_edge(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """Outside the readable range, the end value, though an edge lies between the point and the end, or on
+    it."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        low, high = table_evaluator.readable_range(table)
+        if at in table.edges or low <= at <= high:
+            return reference(table, at, precision, side)
+        return end_value_outside(table, at, precision, side)
+
+    return evaluate
+
+
+def refuses_outside_the_range(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """A refusal where none is due: outside the readable range, off every edge."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        return REFUSED if found.in_range is False else found
+
+    return evaluate
+
+
+def reads_outside_the_range_as_numpy_interp(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """Outside the readable range, the table's own value there, held at `x[0]` and `x[-1]`, with 0."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if found.in_range is not False:
+            return found
+        held = min(max(at, table.x[0]), table.x[-1])
+        own = reference(replace(table, source_range=None), held, precision, side)
+        return replace(found, value=own.value)
+
+    return evaluate
+
+
+def extrapolates_linearly(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """Outside the readable range, the line through the end with the inside derivative there."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if found.in_range is not False:
+            return found
+        low, high = table_evaluator.readable_range(table)
+        nearest = low if at < low else high
+        end = reference(table, nearest, precision, side)
+        slope = float(end.derivative or 0.0)
+        return replace(found, value=float(end.value or 0.0) + (at - nearest) * slope, derivative=slope)
+
+    return evaluate
+
+
+def takes_the_declared_side_at_a_knot_ending_the_range(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """At an end of the readable range on an interior knot of `x`, the declared side's derivative."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        low, high = table_evaluator.readable_range(table)
+        if found.in_range and low < high and at in (low, high) and at in table.x[1:-1]:
+            declared = reference(replace(table, source_range=None), at, precision, side)
+            return replace(found, derivative=declared.derivative)
+        return found
+
+    return evaluate
+
+
+def returns_a_derivative_where_the_range_is_one_point(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """Where the readable range is one point, the derivative the table would give there without
+    `source_range`."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        low, high = table_evaluator.readable_range(table)
+        if found.in_range and low == high:
+            unnarrowed = reference(replace(table, source_range=None), at, precision, side)
+            return replace(found, derivative=unnarrowed.derivative)
+        return found
+
+    return evaluate
+
+
+def reads_below_an_edge_from_the_interval_above(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    interval = table_evaluator._interval  # pyright: ignore[reportPrivateUsage]  # the function the fault replaces
+
+    def past_the_edge(x: tuple[float, ...], point: float, side: Side) -> int:
+        found = interval(x, point, side)
+        below_an_edge = found + 2 < len(x) and x[found + 1] == x[found + 2] and point < x[found + 1]
+        return found + 2 if below_an_edge else found
+
+    monkeypatch.setattr(table_evaluator, "_interval", past_the_edge)
+    return table_evaluator.evaluate
+
+
+def interpolates_log_log_linearly(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        return reference(replace(table, scheme="linear"), at, precision, side)
+
+    return evaluate
+
+
+def interpolates_linear_in_log_space(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        return reference(replace(table, scheme="loglog"), at, precision, side)
+
+    return evaluate
+
+
+def takes_the_linear_slope_as_the_log_log_derivative(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    linear_slope = table_evaluator._linear_slope  # pyright: ignore[reportPrivateUsage]  # the replacement
+    monkeypatch.setattr(table_evaluator, "_loglog_slope", linear_slope)
+    return table_evaluator.evaluate
+
+
+def rounds_binary32_results_to_bfloat16(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """Each operation's result in `binary32` rounded on to bfloat16's 8 bits; it claims `binary32` only."""
+    binary32 = table_evaluator._binary32_result  # pyright: ignore[reportPrivateUsage]  # the function the fault replaces
+
+    def bfloat16(value: float) -> float:
+        if not math.isfinite(value):
+            return binary32(value)
+        mantissa, exponent = math.frexp(value)
+        return binary32(math.ldexp(round(mantissa * 256) / 256, exponent))
+
+    monkeypatch.setattr(table_evaluator, "_binary32_result", bfloat16)
+    return table_evaluator.evaluate
+
+
+BINARY32_CLAIMS = tuple(claim for claim in EVALUATOR_CLAIMS if claim.precision == "binary32")
+
+EVALUATOR_FAULTS: list[tuple[EvaluatorFault, str, tuple[EvaluatorClaim, ...]]] = [
+    # Section 6.4's table, each fault with every case file the table names for it.
+    (only_clamps, "TE-002.linear.json", EVALUATOR_CLAIMS),
+    (only_clamps, "TE-003.just_outside_linear.json", EVALUATOR_CLAIMS),
+    (takes_in_range_strictly, "TE-002.linear.json", EVALUATOR_CLAIMS),
+    (ignores_a_narrower_source_range, "TE-003.narrowed.json", EVALUATOR_CLAIMS),
+    (ignores_a_narrower_source_range, "TE-002.source_range_narrow.json", EVALUATOR_CLAIMS),
+    (returns_the_side_it_did_not_declare, "TE-006.close_sides.json", EVALUATOR_CLAIMS),
+    (returns_the_side_it_did_not_declare, "TE-006.far_sides.json", EVALUATOR_CLAIMS),
+    (gives_the_outside_derivative_at_an_end, "TE-007.linear_ends.json", EVALUATOR_CLAIMS),
+    (reads_an_edge_from_the_interval_above, "TE-010.linear_edge.json", EVALUATOR_CLAIMS),
+    (refuses_an_edge_beside_the_interval_above, "TE-010.linear_edge.json", EVALUATOR_CLAIMS),
+    (refuses_an_edge_beside_infinity, "TE-010.linear_edge.json", EVALUATOR_CLAIMS),
+    (checks_the_range_before_the_edge, "TE-010.edge_outside_readable_range.json", EVALUATOR_CLAIMS),
+    (
+        takes_the_declared_side_at_a_knot_ending_the_range,
+        "TE-007.readable_range_knot_ends.json",
+        EVALUATOR_CLAIMS,
+    ),
+    (reads_below_an_edge_from_the_interval_above, "TE-011.linear_sides.json", EVALUATOR_CLAIMS),
+    (interpolates_log_log_linearly, "TE-004.loglog_values.json", EVALUATOR_CLAIMS),
+    (interpolates_log_log_linearly, "TE-008.loglog_interior.json", EVALUATOR_CLAIMS),
+    (interpolates_linear_in_log_space, "TE-004.linear_values.json", EVALUATOR_CLAIMS),
+    (takes_the_linear_slope_as_the_log_log_derivative, "TE-008.loglog_interior.json", EVALUATOR_CLAIMS),
+    (rounds_binary32_results_to_bfloat16, "TE-012.decimal_knots_linear.json", BINARY32_CLAIMS),
+    (rounds_binary32_results_to_bfloat16, "TE-012.decimal_knots_loglog.json", BINARY32_CLAIMS),
+    # The text's further faults, which the suite's README names (read_side_contract.md section 7 items 1, 4
+    # and 7), each with a case file that catches it.
+    (checks_the_range_before_the_edge, "TE-010.edge_outside_readable_range_above.json", EVALUATOR_CLAIMS),
+    (extrapolates_across_an_edge, "TE-010.edge_outside_readable_range.json", EVALUATOR_CLAIMS),
+    (extrapolates_across_an_edge, "TE-010.edge_outside_readable_range_above.json", EVALUATOR_CLAIMS),
+    (extrapolates_across_an_edge, "TE-010.edge_on_readable_range_end.json", EVALUATOR_CLAIMS),
+    (extrapolates_across_an_edge, "TE-010.edge_on_readable_range_end_above.json", EVALUATOR_CLAIMS),
+    (returns_a_derivative_where_the_range_is_one_point, "TE-007.one_point_range_end.json", EVALUATOR_CLAIMS),
+    (
+        returns_a_derivative_where_the_range_is_one_point,
+        "TE-007.one_point_range_inside.json",
+        EVALUATOR_CLAIMS,
+    ),
+    (refuses_outside_the_range, "TE-003.just_outside_linear.json", EVALUATOR_CLAIMS),
+    (reads_outside_the_range_as_numpy_interp, "TE-002.source_range_narrow.json", EVALUATOR_CLAIMS),
+    (extrapolates_linearly, "TE-002.linear.json", EVALUATOR_CLAIMS),
+]
+
+
 def failed_cases(operation: str, executor: Executor) -> set[str]:
     runs = runner.run_all(
         CASE_FILES.values(), configurations=CONFIGURATIONS, executors={**EXECUTORS, operation: executor}
@@ -705,3 +1020,18 @@ def test_a_broken_implementation_fails_a_real_case(
 @pytest.mark.parametrize("operation", sorted(EXECUTORS))
 def test_the_implementation_itself_fails_none(operation: str) -> None:
     assert failed_cases(operation, EXECUTORS[operation]) == set()
+
+
+@pytest.mark.parametrize(
+    ("fault", "catcher", "claims"),
+    EVALUATOR_FAULTS,
+    ids=[f"{fault.__name__}-{catcher.removesuffix('.json')}" for fault, catcher, _ in EVALUATOR_FAULTS],
+)
+def test_a_broken_evaluator_fails_its_case_under_every_claim_it_makes(
+    fault: EvaluatorFault, catcher: str, claims: tuple[EvaluatorClaim, ...], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    evaluator = fault(monkeypatch)
+    for claim in claims:
+        executors = {**EXECUTORS, "evaluate": runner.evaluate_executor(evaluator, (claim,))}
+        run = runner.run(CASE_FILES[catcher], configurations=CONFIGURATIONS, executors=executors)
+        assert run.outcome is Outcome.FAILED, claim
