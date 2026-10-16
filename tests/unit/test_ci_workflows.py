@@ -529,7 +529,9 @@ def pytest_commands(job: dict[str, Any]) -> list[list[str]]:
         script = re.sub(r"\\\n", " ", str(found.get("run", "")))
         for line in script.splitlines():
             line = re.sub(r"\$\{\{(.*?)\}\}", lambda match: "${{" + match[1].replace(" ", "") + "}}", line)
-            words = list(shlex.shlex(line, posix=True, punctuation_chars=True))
+            lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+            lexer.whitespace_split = True
+            words = list(lexer)
             for start, word in enumerate(words):
                 if word == "pytest":
                     rest = words[start + 1 :]
@@ -679,4 +681,188 @@ def test_the_matrix_check_can_fail(
     ci, selected = copy.deepcopy(workflow("ci.yml")), dict(SELECTED)
     fault(ci, selected)
     found = matrix_problems(ci, selected)
+    assert any(problem in line for line in found), found
+
+
+# What each job's pytest commands select, in order, as the comment above each says: every argument that is
+# not in `NOT_SELECTING`. A stray `-k`, `-m`, `--ignore` or other argument fails the check until it is
+# written here too, beside the comment that gives its reason.
+SELECTIONS = {
+    # Every test but the mutant searches and the audit controls.
+    "tests": [["--property-controls", "none"]],
+    # The mutant searches and the audit controls alone.
+    "controls": [["--property-controls", "only"]],
+    # The property tests of one shard.
+    "hypothesis": [["tests/property", "--shard", "${{matrix.shard}}"]],
+    "fuzz": [
+        # The control's replay: the properties of the faults seeded in parse and in the read.
+        [
+            "tests/property/test_jsonio_properties.py",
+            "tests/property/test_canonical_properties.py",
+            "tests/property/test_hashing_properties.py",
+            "tests/property/test_read_properties.py",
+        ],
+        # The replay: the property tests, but the writer schema's, no fuzz target, and the mutant tables,
+        # which keep no example database.
+        [
+            "tests/property",
+            "--ignore=tests/property/test_writer_properties.py",
+            "--ignore=tests/property/test_writer_mutants.py",
+            "--ignore=tests/property/test_mutants.py",
+            "--ignore=tests/property/test_record_mutants.py",
+            "--ignore=tests/property/test_value_field_mutants.py",
+        ],
+    ],
+}
+# Arguments that choose no test: each with the value it takes, if any.
+NOT_SELECTING = {"-n": 1, "--dist": 1, "-p": 1, "-q": 0, "--hypothesis-show-statistics": 0}
+
+
+def selecting(command: list[str]) -> list[str]:
+    """The arguments of a pytest command that may choose its tests."""
+    found: list[str] = []
+    words = iter(command)
+    for word in words:
+        if word in NOT_SELECTING:
+            for _ in range(NOT_SELECTING[word]):
+                next(words)
+        elif not word.startswith("--junitxml="):
+            found.append(word)
+    return found
+
+
+def keys(value: object) -> set[str]:
+    """Every mapping key in a parsed workflow, at any depth."""
+    if isinstance(value, dict):
+        mapping = cast(dict[str, object], value)
+        return set(mapping) | {found for item in mapping.values() for found in keys(item)}
+    if isinstance(value, list):
+        return {found for item in cast(list[object], value) for found in keys(item)}
+    return set()
+
+
+def selection_problems(ci: Workflow) -> list[str]:
+    """Where a job carries on after a failure, pytest takes options from the environment, or a pytest command
+    selects other than `SELECTIONS` says."""
+    problems: list[str] = []
+    if "continue-on-error" in keys(ci):
+        problems.append("ci.yml sets continue-on-error")
+    if "PYTEST_ADDOPTS" in keys(ci) or "PYTEST_ADDOPTS" in str(ci):
+        problems.append("ci.yml sets PYTEST_ADDOPTS")
+    for job_id, job in ci["jobs"].items():
+        commands = [selecting(command) for command in pytest_commands(job)]
+        if commands != SELECTIONS.get(job_id, []):
+            problems.append(f"{job_id}'s pytest commands select {commands}, not {SELECTIONS.get(job_id, [])}")
+    return problems
+
+
+def test_each_pytest_command_selects_what_its_comment_says() -> None:
+    assert selection_problems(workflow("ci.yml")) == []
+
+
+def run_of(ci: Workflow, job_id: str, words: str) -> dict[str, Any]:
+    """The step of the job that runs the command holding `words`."""
+    [found] = [found for found in ci["jobs"][job_id]["steps"] if words in str(found.get("run", ""))]
+    return cast(dict[str, Any], found)
+
+
+def a_keyword(ci: Workflow) -> None:
+    run_of(ci, "tests", "pytest")["run"] += " -k 'not slow'"
+
+
+def a_marker(ci: Workflow) -> None:
+    found = run_of(ci, "hypothesis", "pytest")
+    found["run"] = found["run"].replace("--shard", "-m 'not slow' --shard")
+
+
+def another_ignore(ci: Workflow) -> None:
+    found = run_of(ci, "fuzz", "--ignore")
+    found["run"] = found["run"].replace(
+        "tests/property ", "tests/property --ignore=tests/property/test_read_properties.py "
+    )
+
+
+def options_from_the_step(ci: Workflow) -> None:
+    run_of(ci, "controls", "pytest")["env"]["PYTEST_ADDOPTS"] = "-x"
+
+
+def options_from_the_workflow(ci: Workflow) -> None:
+    ci["env"]["PYTEST_ADDOPTS"] = "--deselect tests/unit"
+
+
+def options_exported(ci: Workflow) -> None:
+    found = run_of(ci, "tests", "pytest")
+    found["run"] = "export PYTEST_ADDOPTS=-x; " + found["run"]
+
+
+def a_job_that_carries_on(ci: Workflow) -> None:
+    ci["jobs"]["controls"]["continue-on-error"] = True
+
+
+def a_step_that_carries_on(ci: Workflow) -> None:
+    run_of(ci, "hypothesis", "pytest")["continue-on-error"] = True
+
+
+def pytest_in_another_job(ci: Workflow) -> None:
+    ci["jobs"]["static"]["steps"].append({"run": "uv run pytest tests/unit"})
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_keyword, "tests's pytest commands select"),
+        (a_marker, "hypothesis's pytest commands select"),
+        (another_ignore, "fuzz's pytest commands select"),
+        (options_from_the_step, "sets PYTEST_ADDOPTS"),
+        (options_from_the_workflow, "sets PYTEST_ADDOPTS"),
+        (options_exported, "sets PYTEST_ADDOPTS"),
+        (a_job_that_carries_on, "sets continue-on-error"),
+        (a_step_that_carries_on, "sets continue-on-error"),
+        (pytest_in_another_job, "static's pytest commands select [['tests/unit']]"),
+    ],
+)
+def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    fault(ci)
+    found = selection_problems(ci)
+    assert any(problem in line for line in found), found
+
+
+NUMBERS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9}
+
+
+def table_problems(readme: str, ci: Workflow) -> list[str]:
+    """Where the workflows README's table names other jobs than `ci.yml` has, or other Hypothesis shards."""
+    rows = {found[1]: found[2] for found in re.finditer(r"^\| `([\w-]+)` \|(.*)$", readme, re.M)}
+    problems: list[str] = []
+    if sorted(rows) != sorted(ci["jobs"]):
+        problems.append(f"the table's jobs are {sorted(rows)}, ci.yml's {sorted(ci['jobs'])}")
+    shards: list[str] = ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"]
+    found = re.search(r"in (\w+) shards side by side \(([^)]*)\)", rows.get("hypothesis", ""))
+    if found is None:
+        problems.append("the table's hypothesis row names no shards side by side")
+    elif NUMBERS.get(found[1]) != len(shards) or re.findall(r"`(\w+)`", found[2]) != shards:
+        problems.append(f"the table's shards are {found[1]}, {found[2]}; ci.yml's {shards}")
+    return problems
+
+
+def test_the_workflows_readme_names_the_jobs_and_shards_of_ci() -> None:
+    readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
+    assert table_problems(readme, workflow("ci.yml")) == []
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        ("| `controls` |", "| `mutants` |", "the table's jobs are"),
+        ("four shards side by side", "three shards side by side", "the table's shards are three"),
+        (", `step8_mutants`)", ")", "the table's shards are four"),
+        ("shards side by side", "shards", "names no shards"),
+    ],
+    ids=["a-job-renamed", "a-count-wrong", "a-shard-missing", "no-shards"],
+)
+def test_the_table_check_can_fail(old: str, new: str, problem: str) -> None:
+    readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
+    assert readme.count(old) == 1
+    found = table_problems(readme.replace(old, new), workflow("ci.yml"))
     assert any(problem in line for line in found), found
