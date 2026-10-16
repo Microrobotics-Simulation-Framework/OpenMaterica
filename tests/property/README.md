@@ -93,11 +93,28 @@ failure prints a blob that replays it anywhere.
 CI runs the groups in four shards side by side, each in a job of its own: `pytest tests/property --shard
 json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, and `--shard
 step8_mutants`, step 8's mutant searches, which keep no example database and were most of the records shard's
-time (`SHARDS` in `tests/conftest.py`). The writer schema's properties validate each field with `jsonschema`
-against the writer's value field, a choice among eight forms, which costs about 30 ms a field: so each family
-of faults is a property of its own, run in parallel. Each module is in exactly one shard
-(`tests/unit/test_source_files.py`), and each shard but the mutant searches' keeps its own example database in
-CI.
+time (`SHARDS` in `tests/conftest.py`). Each family of faults is a property of its own, run in parallel. The
+writer shard also holds the two validators' agreement (below), whose python-jsonschema validations cost about
+30 ms a field against the writer's value field, a choice among eight forms. At `deep` each of its drawn
+properties would take 30 to 45 minutes locally (ten times its 155 to 262 s at `ci`, an estimate), more than the
+other shards' 45-minute timeout on CI's slower cores; the writer shard's is 180. Each module is in exactly one
+shard (`tests/unit/test_source_files.py`), and each shard but the mutant searches' keeps its own example
+database in CI.
+
+## The two validators
+
+Every verdict the tests take from the package's JSON Schemas is jsonschema-rs's (`tests/verdicts.py`, about
+0.02 ms a field), and python-jsonschema gives the messages a failure prints (`tests/spec_sync/schemas.py`).
+`test_validators_agree.py` holds the two to one verdict: on T1's inputs (`tests/spec_sync/test_t1.py`), each
+field against the writer schema and the reader `$defs`, by its form's definition and by `value_field`, its
+section's specimen against both, and the field against its row's binding, a tenth of the examples at `dev` and
+`ci` and every one at `deep`; and on drawn fields, bodies, and the base and faulty field of each fault family,
+as many as the profile gives. Its controls: a writer mutant given to one side, M18 on T1's share and M55 on the
+drawn faults, each found as the side given it taking what the other refuses; and a pattern ended in `$`, given
+to both, which python-jsonschema reads as matching before a final newline and jsonschema-rs, as ECMA-262 does,
+not. The package's patterns end in `(?![\s\S])`, which both read alike. A whole pass over T1's 5,066 examples,
+python-jsonschema nearly all of it, took 590 s and 760 s summed over 8 workers in two runs on a loaded machine
+(2026-10-16); the tenth, 40 to 80 s.
 
 ## Mutants
 
@@ -107,8 +124,10 @@ the original one. The faults include those the conformance runner's self-tests u
 sizes or contents could show: a nesting limit off by one, removal that stops at depth 2, sorting by one pass of
 exchanges, a pattern searched where it must match in full, versions ordered as strings or as doubles, an
 unreadable source ignored, the first of two differing copies read. Each test records the examples its kill
-took as `examples_to_kill`, which `--junitxml` writes out. A fault that died only at the original size would
-mean the small size misses it.
+took as `examples_to_kill`, which `--junitxml` writes out. Hypothesis also draws constants from the project's
+modules a process has imported, the tests excepted, and every shard run imports every property module: an
+import added to one can move kills in every shard, so compare counts only between runs that import the same
+modules. A fault that died only at the original size would mean the small size misses it.
 
 CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported range's ends alone
 (`--property-controls` in `tests/conftest.py`), so a mutant module holds mutant searches only. The checks of

@@ -29,6 +29,14 @@ file's tests in blocks, so that a file's slow tests (the audit controls, T1's sh
 while the others idle. There, at `dev` (2026-10-16): 6 workers took 6.0 minutes under `load` and 4.0 under
 `worksteal`, and 12 took 2.9 under `worksteal`; more than 12 gained nothing.
 
+## Schema verdicts
+
+Every verdict the tests take from the package's JSON Schemas is jsonschema-rs's (`verdicts.py`).
+python-jsonschema prints the messages of a failure and, a second implementation, is held to the same verdicts
+(`property/test_validators_agree.py`). Measured back to back on a shared machine (2026-10-16), before and
+after: the whole suite on 8 workers, 363 s and 233 s; the writer shard at `ci` on 4, 943 s and 489 s;
+`spec_sync/test_t1.py` alone, 155 s and 17 s.
+
 ## Every check can fail
 
 A check that cannot fail is not a check. So each kind here comes with tests in which it must fail:
@@ -39,6 +47,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   sizes, a writer mutant at the assertion it names (`property/test_mutants.py`,
   `property/test_record_mutants.py`, `property/test_value_field_mutants.py`, `property/test_writer_mutants.py`),
   and a feature audit that fails when its examples stop reaching what the specification distinguishes;
+- the two validators' agreement: a writer mutant given to one side, and a pattern the two regex dialects read
+  differently given to both (`property/test_validators_agree.py`);
 - the `CASES.md` check: a case file changed after its row (`spec_sync/test_cases_md.py`);
 - the value-field checks: a member table, a status row or a quote changed, the schema changed, and a binding
   of the vocabulary changed or no longer applied (`spec_sync/test_value_fields.py`);

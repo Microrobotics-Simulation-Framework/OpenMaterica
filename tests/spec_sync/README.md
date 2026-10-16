@@ -21,5 +21,6 @@ holds.
 | `test_references.py` | each reference in the specification, the architecture draft and the documentation plan, in the forms its docstring lists, and the section, item or title it names; each case tag and a row of a Cases table, and each row and a tag; and the items of each numbered list, no two with one number. References that are right but that the forms read wrongly are allowed by name, each with its reason |
 
 The vocabulary and the generated schemas and shapes are checked by their generators' `--check`, which CI runs
-(`scripts/README.md`). `schemas.py` gives jsonschema validators for the package's schemas, each reference
-resolved to a file in this tree, never over a network.
+(`scripts/README.md`). `schemas.py` gives validators for the package's schemas, their verdicts jsonschema-rs's
+(`tests/verdicts.py`) and their messages python-jsonschema's, each reference resolved to a file in this tree,
+never over a network.
