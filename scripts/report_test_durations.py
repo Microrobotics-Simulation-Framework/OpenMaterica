@@ -17,6 +17,7 @@ missing or not XML, a test case without the file pytest writes under `junit_fami
 
 import argparse
 import os
+import re
 import sys
 from collections import defaultdict
 from collections.abc import Sequence
@@ -59,7 +60,13 @@ def seconds(value: str | None) -> float | None:
     return None if value is None else float(value)
 
 
+def summed(first: float | None, second: float | None) -> float | None:
+    return None if first is None and second is None else (first or 0.0) + (second or 0.0)
+
+
 def read_report(path: Path) -> list[Timing]:
+    """Each test of the report, once: a test that fails and then errors in its teardown is written as two
+    test cases, the second with its teardown and its properties, and is read as one, its times summed."""
     if not path.is_file():
         raise ReportError(
             f"{path}: no such report (pytest writes it with --junitxml as its run ends, which a run its "
@@ -69,7 +76,7 @@ def read_report(path: Path) -> list[Timing]:
         root = ElementTree.parse(path).getroot()
     except ElementTree.ParseError as error:
         raise ReportError(f"{path}: not XML ({error})") from error
-    tests: list[Timing] = []
+    tests: dict[str, Timing] = {}
     for case in root.iter("testcase"):
         failure = case.find("error")
         if failure is not None and failure.get("message") == COLLECTION_FAILURE:
@@ -81,20 +88,34 @@ def read_report(path: Path) -> list[Timing]:
             )
         properties = {item.get("name"): item.get("value") for item in case.iter("property")}
         try:
-            tests.append(
-                Timing(
-                    nodeid(case, file),
-                    file,
-                    float(case.get("time", "0")),
-                    seconds(properties.get(CPU_PROPERTY)),
-                    seconds(properties.get(CHILDREN_CPU_PROPERTY)),
-                )
+            test = Timing(
+                nodeid(case, file),
+                file,
+                float(case.get("time", "0")),
+                seconds(properties.get(CPU_PROPERTY)),
+                seconds(properties.get(CHILDREN_CPU_PROPERTY)),
             )
         except ValueError as error:
             raise ReportError(f"{path}: an unreadable time ({error})") from error
+        if earlier := tests.get(test.nodeid):
+            test = test._replace(
+                wall=earlier.wall + test.wall,
+                cpu=summed(earlier.cpu, test.cpu),
+                children_cpu=summed(earlier.children_cpu, test.children_cpu),
+            )
+        tests[test.nodeid] = test
     if not tests:
         raise ReportError(f"{path}: no test ran")
-    return tests
+    return list(tests.values())
+
+
+def code(text: str) -> str:
+    """`text` as code in a Markdown table's cell: between more backticks than it holds in a row, a space
+    inside them where it starts or ends with one, and each `|` escaped, as a table needs inside code too."""
+    fence = "`" * (max((len(run) for run in re.findall("`+", text)), default=0) + 1)
+    space = " " if text.startswith("`") or text.endswith("`") else ""
+    escaped = text.replace("|", "\\|")
+    return f"{fence}{space}{escaped}{space}{fence}"
 
 
 def duration(seconds: float) -> str:
@@ -169,7 +190,7 @@ def summary(
     ]
     for test in ranked:
         cpus = f"{optional(test.cpu)} | {optional(test.children_cpu)}"
-        lines.append(f"| {duration(test.wall)} | {cpus} | `{test.nodeid}` |")
+        lines.append(f"| {duration(test.wall)} | {cpus} | {code(test.nodeid)} |")
     files: defaultdict[str, list[Timing]] = defaultdict(list)
     for test in tests:
         files[test.file].append(test)
@@ -184,7 +205,7 @@ def summary(
     for file, members in slowest:
         lines.append(
             f"| {duration(wall(members))} | {duration(cpu(members))} | {duration(children_cpu(members))} "
-            f"| {len(members)} | `{file}` |"
+            f"| {len(members)} | {code(file)} |"
         )
     return "\n".join(lines) + "\n"
 
