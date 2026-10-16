@@ -5,7 +5,7 @@
 # one ("Managing a custom domain for your GitHub Pages site", GitHub Docs).
 #
 # ci.yml's gate counts site/ and this file as code, as it does every path but those it lists as documentation,
-# so a pull request that changes either runs every CI job.
+# so a pull request that changes either runs every job the gate gives to code.
 
 name: Pages
 
