@@ -5,33 +5,30 @@ Every JSON file under `schema/`, the vocabulary included, is registered under it
 resolves to the file in this tree and never over a network.
 """
 
-import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from urllib.parse import urljoin
 
 from jsonschema import Draft202012Validator
-from referencing import Registry, Resource
+from referencing import Registry
 from referencing.jsonschema import DRAFT202012, Schema
 
 import materica
 from materica.core.jsonio import JsonValue
+from tests.verdicts import DOCUMENTS, Json
 
 PACKAGE = Path(materica.__file__).parent
 SCHEMA = PACKAGE / "schema" / "0.1"
 BASE = "https://w3id.org/materica/schema/0.1/"
 
-
-def _registry() -> Registry[Schema]:
-    resources: list[tuple[str, Resource[Schema]]] = []
-    for path in sorted((PACKAGE / "schema").rglob("*.json")):
-        contents = json.loads(path.read_text(encoding="utf-8"))
-        resources.append((contents["$id"], DRAFT202012.create_resource(contents)))
-    registry: Registry[Schema] = Registry()
-    return registry.with_resources(resources)
+REGISTRY: Registry[Schema] = Registry[Schema]().with_resources(
+    (uri, DRAFT202012.create_resource(document)) for uri, document in DOCUMENTS.items()
+)
 
 
-REGISTRY = _registry()
+def registry(files: Iterable[Json] = ()) -> Registry[Schema]:
+    """The registry with each of `files` in place of the package's file of its `$id`."""
+    return REGISTRY.with_resources((str(file["$id"]), DRAFT202012.create_resource(file)) for file in files)
 
 
 def validator(reference: str, registry: Registry[Schema] = REGISTRY) -> Callable[[JsonValue], list[str]]:
