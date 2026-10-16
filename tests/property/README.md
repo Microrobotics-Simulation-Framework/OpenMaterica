@@ -65,9 +65,9 @@ Hypothesis properties of the core, in four groups, and of the writer schema, in 
 - **Steps 9 and 10:** (10) the laws of steps 9 and 10 (`read_side_contract.md` sections 3 and 5), the S2
   design's HP7, HP8 and HP9, and HP3 and HP5 for the part steps 9 and 10 decide
   (`test_condition_properties.py`). HP7: step 10 gives each condition the entry and reason of an oracle
-  written from section 5 alone (`condition_oracle.py`, which shares nothing with `core/conditions.py`), on the
-  exact rationals the doubles are: each numeric row at each boundary its exactness turns on (an operating end
-  anywhere; at `fl(r + t)`; the double next to the exact bound `r + t`, inside it or outside, at ordinary
+  written from section 5 alone (`condition_oracle.py`, which imports nothing from `core/conditions.py`), on
+  the exact rationals the doubles are: each numeric row at each boundary its exactness turns on (an operating
+  end anywhere; at `fl(r + t)`; the double next to the exact bound `r + t`, inside it or outside, at ordinary
   magnitudes and among subnormals; a tolerance that is the rounded difference; PR-335's mixed magnitudes, a
   large stated value, a small operating one and a tolerance the double next to their exact difference, at or
   above it or below it; negative zero), each at the lower or the upper end of the stated span, a stated plus
@@ -89,6 +89,16 @@ Hypothesis properties of the core, in four groups, and of the writer schema, in 
   conditions, requirement and tolerances, and an implied condition, its record and its values, change nothing,
   the returned `conditions` included. `condition_strategies.py` draws each, its kind first, so that the
   feature audit holds each kind to its draw floor.
+
+  HP7's oracle is a second reading of section 5's rows, written out row by row where the code folds them
+  into one test, but not of everything: S2a-3's implementer wrote it after `core/conditions.py`, and it
+  repeats three readings the text left open, each the implementer's default in the decision log (section
+  "S2a-3 (branch feat/s2a-3)"): a value never agrees with the range `[v, v]` (the entry on two implied
+  conditions that "supply different values", now written in section 1 with the fix round's default that `0`
+  and `-0` differ); of two implied values that agree, one fills the condition, alike in any order since they
+  agree bit for bit (the same entry); and `applied` lists every implied condition that fills, both of two that
+  agree (the entry on the result's `applied`). S2a-4's reference model (`tests/reference/read_model.py`, on
+  its branch), written from the text by another agent, is to check the three through HP12.
 
   HP7's boundary kinds reach these sides of their bound, measured over 3,000 derandomised draws a kind
   (2026-10-16, S2a-3's fix round): `one_ulp_inside`, `subnormal_inside` and `mixed_magnitudes_inside` are
