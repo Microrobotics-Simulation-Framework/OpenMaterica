@@ -94,6 +94,11 @@ jobs:
 
       # Its outputs decide which jobs run: `code` the static, generated-files and test jobs, `hypothesis` the
       # Hypothesis job. tests/unit/test_ci_workflows.py runs this step and holds each job's `if` to them.
+      # The gate fails closed: it lists the paths that are documentation only, which no test, script, generator,
+      # build or workflow reads, and counts every other path as code, a new one included. Some documents are
+      # code: README.md and LICENSE go into the wheel, typings/ to the type checkers, docs/specification/, the
+      # architecture draft and the documentation plan to the spec-sync tests, and site/ to the Pages workflow.
+      # tests/unit/test_ci_workflows.py checks that no test or script names a path listed here.
       - name: Changed paths
         id: paths
         env:
@@ -102,9 +107,7 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          # The architecture draft and the documentation plan count as code too:
-          # tests/spec_sync/test_references.py checks the specification's references into them.
-          code_paths='^(src/|tests/|scripts/|docs/specification/|design/ARCHITECTURE_DRAFT\.md$|DOCUMENTATION_ARCHITECTURE\.md$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
+          docs_paths='CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|docs/regulatory/.+|docs/validation/.+|\.github/ISSUE_TEMPLATE/.+|\.github/pull_request_template\.md'
           hypothesis_paths='^(src/materica/(core/|schema/|shapes\.pyi?$)|tests/property/|tests/conftest\.py$|tests/spec_sync/schemas\.py$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
           if [ "$FUZZ_ONLY" = true ]; then
             # A manual run of the fuzz job alone.
@@ -113,7 +116,8 @@ jobs:
           elif [ "$EVENT" = pull_request ]; then
             changed=$(git diff --name-only "$PR_BASE...$PR_HEAD")
             printf '%s\n' "$changed"
-            grep -qE "$code_paths" <<< "$changed" && code=true || code=false
+            # Documentation only when there are paths and each is listed: a diff that names none is code.
+            if [ -n "$changed" ] && ! grep -qvxE "$docs_paths" <<< "$changed"; then code=false; else code=true; fi
             grep -qE "$hypothesis_paths" <<< "$changed" && hypothesis=true || hypothesis=false
           else
             # A merge to main, the weekly run and a manual run test everything, whatever changed.

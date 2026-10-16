@@ -6,7 +6,7 @@
 | Job | Runs | When |
 |---|---|---|
 | `gate` | the sign-off check (`scripts/check_signoff.py`) on a pull request, and the confidentiality scan; decides which jobs run: on a pull request from the paths it touched, otherwise every job (no other job with `fuzz_only`) | always |
-| `static` | ruff, mypy and pyright; `uv build` and the wheel check; the consumer snippet against the installed wheel, and its control | a pull request that changes code: `src/`, `tests/`, `scripts/`, `docs/specification/`, `pyproject.toml`, `uv.lock`, `ci.yml`; every merge to main; weekly; manual |
+| `static` | ruff, mypy and pyright; `uv build` and the wheel check; the consumer snippet against the installed wheel, and its control | a pull request that changes code, which is any path the gate does not list as documentation (`docs_paths` in its step); every merge to main; weekly; manual |
 | `generated` | every generator of `scripts/` with `--check`: the vocabulary, the reader schema, the typed shapes; on Python 3.11 | as `static` |
 | `tests` | `uv run pytest -n auto`, property tests at the `dev` profile | as `static`; Python 3.11 to 3.15, in parallel |
 | `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run, in three shards side by side (`json`, `records`, `writer`), each with its own example database; on Python 3.15, a worker per vCPU | a change to `src/materica/core/`, `schema/` (the vocabulary included), the shapes, `tests/property/`, `tests/conftest.py`, `tests/spec_sync/schemas.py` or the configuration; every merge to main; weekly; manual |
