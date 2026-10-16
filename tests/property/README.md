@@ -369,9 +369,9 @@ place the unit in either entry of two.
 | `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | any of its examples | 34, 34 |
 | `implied_overrides_a_stated_value` | an implied condition fills a stated condition | HP7, implied | `never_over_a_stated_value`, `never_over_another_status` | 2, 2 |
 | `implied_fills_any_status` | an implied condition fills any status object | HP7, implied | `never_over_another_status` | 21, 21 |
-| `disagreement_ignored` | two implied conditions that disagree, the first wins | HP7, implied | `two_that_disagree`, `a_value_beside_a_range` | 11, 11 |
+| `disagreement_ignored` | two implied conditions that disagree, the first wins | HP7, implied | `two_that_disagree`, `a_value_beside_a_range`, `minus_zero_beside_zero` | 8, 8 |
 | `a_value_agrees_with_its_range` | a value agrees with the range `[v, v]` | HP7, implied | `a_value_beside_a_range` | 25, 25 |
-| `minus_zero_disagrees_with_zero` | implied values compared as written, `-0` against `0` | HP7, implied | `minus_zero_beside_zero` | 8, 8 |
+| `minus_zero_agrees_with_zero` | implied values compared as numbers, `-0` agreeing with `0` (S2a-3's first reading, until its fix round's default) | HP7, implied | `minus_zero_beside_zero` | 8, 8 |
 | `implied_applies_without_its_fact` | an implied condition applies whatever the specimen states | HP7, implied | `its_fact_not_stated` | 73, 73 |
 | `applied_not_recorded` | `applied` holds no implied condition | HP7, implied | any of its examples | 1, 1 |
 | `implied_not_located` | every implied condition applied, wherever it is located | located elsewhere | any of its rows | 1, 1 |

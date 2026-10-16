@@ -12,7 +12,9 @@ An implied condition (`declarations.md` section 4.1) applies where the request l
 (section 1) and the field's specimen, the section's facts merged with the field's, states its fact and token.
 It fills a condition the record does not hold, or holds as `unstated`, as if the record stated it with the
 basis `implied`. Two that apply and supply different values for one condition end the read here, with
-`request_incomplete` for that condition, and then no condition is checked (ruling A).
+`request_incomplete` for that condition, and then no condition is checked (ruling A). Values differ unless
+they are of one shape and hold the same token or the same doubles bit for bit, so that which of two that agree
+fills a condition never depends on their order.
 """
 
 import copy
@@ -138,11 +140,11 @@ def _states(specimen: JsonObject, fact: str, token: str) -> bool:
 
 
 def _said(implied: JsonObject) -> tuple[object, ...]:
-    """What an implied value says, to compare two: a token, or a value or a range, its numbers exactly."""
+    """What an implied value says, to compare two: a token, or a value or a range, its numbers bit for bit."""
     if "token" in implied:
         return ("token", implied["token"])
     lo, hi = _stated_ends(implied)
-    return ("value" if "value" in implied else "range", Fraction(lo), Fraction(hi))
+    return ("value" if "value" in implied else "range", lo.hex(), hi.hex())
 
 
 def _disagreeing(applying: Sequence[ImpliedCondition]) -> tuple[Reason, ...]:

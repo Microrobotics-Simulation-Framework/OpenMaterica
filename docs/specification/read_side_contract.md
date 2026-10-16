@@ -97,7 +97,10 @@ no other reason of that step, since no point is read.
 [PR-321] One check needs the field's specimen facts, so it is made when the conditions are checked (section 3,
 step 10): two implied conditions that both apply to the field (its specimen states each one's fact and token)
 and supply different values for one condition give `request_incomplete` with that `condition`, whether or not
-the record states that condition. Step 10 makes this check first, and where it fails it checks no condition,
+the record states that condition. Two values differ unless they are of one shape, a value, a range or a token,
+and hold the same token or the same numbers bit for bit (`record_format.md` section 1 item 6), so `0` and `-0`
+differ, as a value and the range `[v, v]` do: which of two that agree fills the condition never depends on
+their order. [not yet covered] Step 10 makes this check first, and where it fails it checks no condition,
 an exception to section 2 item 2: neither value fills that condition, and the result holds no `conditions`
 (section 2 item 6). This fault, like step 11's `request_incomplete`, is the request's, so where either arises
 in one alternative it ends that alternative's read and refuses the field: the alternative is not set aside
