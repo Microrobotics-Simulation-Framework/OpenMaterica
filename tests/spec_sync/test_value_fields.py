@@ -372,6 +372,15 @@ def test_a_member_a_facts_row_fixes_takes_that_value_alone(
     assert specimen({fact: invalid}) != []
 
 
+def test_the_writers_rule_for_a_facts_unit_is_the_texts() -> None:
+    """The binding the test above holds is written in `provenance.md` section 6.2 item 1."""
+    rule = (
+        "a fact whose row fixes its unit holds that unit, and one whose unit the source does not give"
+        " is written as a status object in place of the fact"
+    )
+    assert rule in prose(document("provenance.md"))
+
+
 @pytest.mark.parametrize("fact", ["post_mortem_interval", "donor_age"])
 def test_the_reader_takes_a_status_object_in_a_facts_unit_which_step_9_refuses(fact: str) -> None:
     """The writer's binding is the writer's alone: the reader's `$defs` take a unit held as a status object

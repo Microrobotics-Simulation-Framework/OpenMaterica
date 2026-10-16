@@ -207,6 +207,12 @@ bit for bit, so `0` and `-0` differ, as a value and the range `[v, v]` already d
 the review agreed with); which of two that agree fills the condition then never depends on the order of the
 acceptances, and the read fails closed where they differ (`read_side_contract.md` section 1).
 
+Written with S2a-3's review (2026-10-16): `provenance.md` section 6.2 item 1 states the writer's rule for a
+specimen fact's unit that the maintainer's ruling of 2026-10-15 set and the writer schema already applied: a
+fact whose row fixes its unit holds that unit, and one whose unit the source does not give is written as a
+status object in place of the fact (RC-039). Read alone, `record_format.md` section 4.2 (step 8 takes any
+string or status object there) could have led a writer to `"min"`.
+
 Names settled with the name-overlap check, before 0.1.0 (maintainer, 2026-10-15), so that a name keeps one
 meaning wherever no safeguard keeps two apart: a scene cylinder's `axis` is `direction`, as a layered path's
 is (`geometry.md` section 3.1; SC-006, RC-092); a family conversion's `from` and `to` are `from_measure` and

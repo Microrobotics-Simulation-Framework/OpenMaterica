@@ -277,8 +277,10 @@ them; where the two differ, these tables hold. The vocabulary grows by minor ver
 | `supply_form` | `{"token": "stock" \| "coupon" \| "finished_component", "basis"}`: a manufactured material as supplied, a coupon made or cut for the test, or a finished component tested as a specimen of its material |
 | `lot` | `{"text": <the lot or batch, as the source names it>, "basis"}` |
 
-1. Every fact takes its row's shape or a status object. A checker flags a malformed ontology identifier, a
-   shape other than its row's, and a fact name not in this table. [RC-039]
+1. Every fact takes its row's shape or a status object: a fact whose row fixes its unit holds that unit, and
+   one whose unit the source does not give is written as a status object in place of the fact. A checker
+   flags a malformed ontology identifier, a shape other than its row's, and a fact name not in this table.
+   [RC-039]
 2. Specimen facts may sit on a section and on a field; the field's fact overrides the section's, fact by fact
    (`record_format.md` section 4). [PR-009]
 3. A consumer's target uses these shapes without `basis` (`declarations.md`), and the build compares fact by
