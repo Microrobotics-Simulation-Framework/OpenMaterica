@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atheris installs on Python 3.12 to 3.14 only; elsewhere its stub in typings/ stands in for it.
 # pyright: reportMissingModuleSource=false
-"""Fuzz target 4: raw bytes into step 8 of a read (`read_side_contract.md` section 3), the S2 design's
+"""Fuzz target 4: raw bytes into steps 8 to 10 of a read (`read_side_contract.md` section 3), the S2 design's
 `read_field_bytes`.
 
     python -m tests.fuzz.read_field_bytes --seed CORPUS     # copy the seed corpus into CORPUS
@@ -10,15 +10,18 @@
 
 The first byte picks a registered field, and `jsonio.parse` reads the rest, which stands in that field's place
 in a record that is valid otherwise; the record's hash is recomputed and pinned. Each input is read with each
-`want` of plain read, twice, and once more without the hash suite. The target fails when a read raises
+`want` of plain read, at operating conditions with a tolerance or an accept list for each condition the
+field's row requires, twice, and once more without the hash suite. The target fails when a read raises
 anything but `NotImplementedError`, when two reads of one request differ, when a result is other than a
-refusal step 8 gives (`not_met`, every code one step 8 gives, each code and condition once, the status the
-worst of the codes'), when the read without the hash suite differs from the read with it by more than the
-label `hash_not_checked`, or when step 8 lets through a constant its row allows that the reader `$defs` refuse
-(T1's third relation, the one way this target sees a refusal step 8 is missing until the reference model of
-S2a-4 can say what each read must give). `NotImplementedError` is a step not built yet: the field passed
-step 8, or its form's own member waits for S2b or S3, or it holds alternatives. The seeds are every value
-field of every conformance input.
+refusal steps 8 to 10 give (`not_met`, every code one of them gives, each code and condition once, the status
+the worst of the codes'), when the read without the hash suite differs from the read with it by more than the
+label `hash_not_checked`, when step 8 lets through a constant its row allows that the reader `$defs` refuse
+(T1's third relation, but for one divergence of the `$defs` that `field_oracle.py` names: the one way this
+target sees a refusal step 8 is missing until the reference model of S2a-4 can say what each read must give),
+or when steps 9 and 10 read such a constant otherwise than their text, its units by code point and its
+conditions by HP7's oracle (`field_oracle.py`). `NotImplementedError` is a step not built yet: the field
+passed step 10, or its form's own member waits for S2b or S3, or it holds alternatives. The seeds are every
+value field of every conformance input.
 """
 
 import json
@@ -41,18 +44,18 @@ from materica.core.status import worst
 from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY
 from materica.shapes import Suite
 from tests.fuzz import seeded_fault
-from tests.fuzz.field_oracle import check_no_refusal_missing
+from tests.fuzz.field_oracle import OPERATING, REQUIRED, check_no_refusal_missing, check_steps_9_and_10
 
 PACKAGE = Path(jsonio.__file__).parents[1]
 CONFORMANCE = PACKAGE / "data" / "conformance"
 REASONS = json.loads((PACKAGE / "schema" / "0.1" / "vocabulary" / "reasons.json").read_text(encoding="utf-8"))
-# The codes of the steps built that a read of a field gives: 8, and 9, its units.
+JsonObject = dict[str, JsonValue]
+# The codes of the steps built that a read of a field gives: 8, 9, its units, and 10, its conditions.
 BUILT_CODES = frozenset(
-    code for code, row in REASONS["reasons"].items() if {8, 9} & set(row.get("steps", []))
+    code for code, row in REASONS["reasons"].items() if {8, 9, 10} & set(row.get("steps", []))
 )
 FIELDS = sorted(VOCABULARY.fields)
 WANTS = ("value", "bounds", "components", "evidence")
-JsonObject = dict[str, JsonValue]
 
 
 def record_holding(field_name: str, field: JsonValue) -> JsonObject:
@@ -91,11 +94,11 @@ def check_result(result: JsonValue) -> None:
     assert isinstance(result, dict), result
     reasons = result["reasons"]
     assert isinstance(reasons, list), result
-    assert reasons, f"steps 8 and 9 give a result only to refuse: {result}"
+    assert reasons, f"steps 8 to 10 give a result only to refuse: {result}"
     keys = [(reason["code"], reason.get("condition")) for reason in reasons if isinstance(reason, dict)]
     assert len(set(keys)) == len(keys), f"a reason twice: {keys}"
     codes = {str(code) for code, _ in keys}
-    assert codes <= BUILT_CODES, f"codes steps 8 and 9 do not give: {sorted(codes - BUILT_CODES)}"
+    assert codes <= BUILT_CODES, f"codes steps 8 to 10 do not give: {sorted(codes - BUILT_CODES)}"
     assert result["status"] == worst(VOCABULARY.reasons[code].status for code in codes), result
 
 
@@ -117,12 +120,20 @@ def test_one_input(data: bytes) -> None:
     store = RecordStore()
     store.add("record", json.dumps(record).encode())
     pin = {member: record[member] for member in ("id", "version", "content_hash")}
+    requires = VOCABULARY.fields[field_name].requires
+    operating = {name: value for name, value in OPERATING.items() if name in requires}
+    required = {name: value for name, value in REQUIRED.items() if name in requires}
     for want in WANTS:
-        request: JsonObject = {"target": {"record": pin, "field": field_name}, "requirement": {"want": want}}
+        request: JsonObject = {
+            "target": {"record": pin, "field": field_name},
+            "operating_conditions": dict(operating),
+            "requirement": {"want": want, "conditions": dict(required)},
+        }
         first = read_json(request, store, WITH_HASH)
         assert read_json(request, store, WITH_HASH) == first, "two reads differ"
         check_result(first)
         check_no_refusal_missing(field_name, field, first)
+        check_steps_9_and_10(field_name, field, operating, required, first)
         plain = read_json(request, store, WITHOUT_HASH)
         assert without_hash_label(plain) == first, "the hash suite changed more than its label"
 
@@ -172,7 +183,7 @@ def main(arguments: list[str]) -> None:
     if arguments[1:2] == ["--dict"]:
         Path(arguments[2]).write_text("\n".join(dictionary()) + "\n", encoding="utf-8")
         return
-    seeded_fault.seed_step_8_if_asked(atheris.instrument_func)
+    seeded_fault.seed_step_10_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 
