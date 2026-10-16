@@ -3,6 +3,7 @@
 nothing to summarise."""
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from scripts import report_test_durations
-from scripts.report_test_durations import ReportError, Timing, bands, read_report, summary
+from scripts.report_test_durations import ReportError, Timing, bands, code, read_report, summary
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 # A file of quick tests, some of them parametrised.
@@ -206,6 +207,44 @@ def test_a_test_case_is_read_with_its_node_id_wall_and_cpu_time(tmp_path: Path) 
         Timing("tests/unit/test_x.py::TestB::test_b[1-x]", "tests/unit/test_x.py", 0.5, 0.4, 0.125),
         Timing("tests/unit/test_y.py::test_a", "tests/unit/test_y.py", 2.25, None, None),
     ]
+
+
+def test_a_test_that_fails_and_then_errors_in_its_teardown_is_one_test(tmp_path: Path) -> None:
+    """pytest writes it as two test cases, the first without the properties the teardown records."""
+    failed = case("test_a", time="0.25", cpu=None, children_cpu=None)
+    torn_down = case("test_a", time="0.125", cpu="0.5", children_cpu="0.0625")
+    tests = read_report(written(tmp_path, junit(failed, torn_down, case("test_b"))))
+    assert tests == [
+        Timing("tests/unit/test_x.py::test_a", "tests/unit/test_x.py", 0.375, 0.5, 0.0625),
+        Timing("tests/unit/test_x.py::test_b", "tests/unit/test_x.py", 0.5, 0.4, 0.125),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("text", "written_as"),
+    [
+        ("a.py::test[x]", "`a.py::test[x]`"),
+        ("a.py::test[c|d]", "`a.py::test[c\\|d]`"),
+        ("a.py::test[e`f]", "``a.py::test[e`f]``"),
+        ("a.py::test[``]", "```a.py::test[``]```"),
+        ("`a.py", "`` `a.py ``"),
+    ],
+)
+def test_a_node_id_is_code_whatever_it_holds(text: str, written_as: str) -> None:
+    assert code(text) == written_as
+
+
+def cells(row: str) -> list[str]:
+    """A Markdown table row's cells, split at each `|` not escaped."""
+    return [cell.strip() for cell in re.split(r"(?<!\\)\|", row)[1:-1]]
+
+
+def test_a_node_id_with_a_pipe_keeps_the_tables_columns() -> None:
+    text = summary([Timing("a|b.py::test[c|d]", "a|b.py", 1.0, 0.5, 0.0)], "Durations")
+    slowest_test = next(line for line in text.splitlines() if "test[c" in line)
+    slowest_file = text.splitlines()[-1]
+    assert cells(slowest_test) == ["1.00 s", "0.50 s", "0.00 s", "`a\\|b.py::test[c\\|d]`"]
+    assert cells(slowest_file) == ["1.00 s", "0.50 s", "0.00 s", "1", "`a\\|b.py`"]
 
 
 def test_each_test_falls_in_one_band_its_lower_edge_included() -> None:
