@@ -213,11 +213,11 @@ far; a step that gives `unknown` does not.
    1, 2 and 5, `uncertainty.md` sections 1 and 4): the form's member; `unit`, only as a string or a status
    object (`record_format.md` section 4.2), since step 9 alone compares it; each condition and specimen fact
    whose name the reader knows; the statistics block and its uncertainties, a composition component's block
-   included; `label`; and in `provenance` its `origin`, its `source` (present for origin
-   `measured_by_source`, and its `key` wherever present) and a `derivation`. `review` never refuses the field
-   (`provenance.md` section 2 item 6), nor does a missing `label` (`record_format.md` section 4.1); the other
-   members of a value field are left to the record checks. [PR-045] [PR-109] [PR-110] Beyond shapes, step 8
-   checks these values:
+   included; `label`; and in `provenance` its `origin`, its `source` (present for origin `measured_by_source`,
+   and its `key` wherever present) and its `derivation` for origin `derived` (`provenance.md` section 5).
+   `review` never refuses the field (`provenance.md` section 2 item 6), nor does a missing `label`
+   (`record_format.md` section 4.1); the other members of a value field are left to the record checks.
+   [PR-045] [PR-109] [PR-110] Beyond shapes, step 8 checks these values:
    - counts (`n_specimens`, `n_donors`, `n_sources`, an ensemble's `counts`) are whole and not negative, and
      an evidence entry's `standard.year` is whole;
    - a condition's or fact's `range`, and an interval's numeric bounds, are in order;
