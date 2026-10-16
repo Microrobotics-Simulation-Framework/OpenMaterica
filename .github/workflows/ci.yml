@@ -268,9 +268,9 @@ jobs:
       # Where the time went, on the run's page, and the report kept for later runs to compare (no time fails
       # the job): scripts/report_test_durations.py. Whenever pytest ran, passed, failed or cancelled, and not
       # where a failed checkout or setup skipped it. A job its timeout cancels has no report: GitHub's runner
-      # interrupts, then ends, the step's shell and not pytest, which writes its report only as its run ends
-      # (so a run cancelled that way here wrote none, 2026-10-16). The durations step then says there is none,
-      # and the pytest step's log shows how far the run got.
+      # interrupts, then ends, the step's shell and not pytest, which writes its report only as its run ends.
+      # Read from the runner's code, and seen in a local run sent the same signals (2026-10-16); not yet seen on
+      # CI. The durations step then says there is none, and the pytest step's log shows how far the run got.
       - name: Test durations
         if: always() && steps.pytest.outcome != 'skipped'
         env:
