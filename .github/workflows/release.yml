@@ -20,10 +20,11 @@ permissions: {}
 env:
   UV_VERSION: "0.13.0"
 
+# On ubuntu-24.04, pinned as ci.yml says above its jobs.
 jobs:
   build:
     name: build and check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -71,7 +72,7 @@ jobs:
   publish:
     name: publish to PyPI
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment:
       name: pypi

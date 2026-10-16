@@ -17,5 +17,6 @@ Each pytest job writes a JUnit report, summarised on the run's page (`scripts/re
 in each band of wall time, the slowest tests and files, and the total, wall and CPU time) and kept 90 days as
 the artifact `durations-<job>-<Python or shard>`. No duration fails a job.
 
-Every action is pinned to a commit, and uv to one version (`UV_VERSION`); `uv sync --locked` fails on a lock
-file out of date with `pyproject.toml`.
+Every action is pinned to a commit, uv to one version (`UV_VERSION`), and every job of every workflow to the runner
+image `ubuntu-24.04` (`ci.yml` says why, above its jobs); `uv sync --locked` fails on a lock file out of date with
+`pyproject.toml`.

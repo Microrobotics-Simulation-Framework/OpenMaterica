@@ -28,10 +28,11 @@ concurrency:
 
 permissions: {}
 
+# On ubuntu-24.04, pinned as ci.yml says above its jobs.
 jobs:
   deploy:
     name: deploy site
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # deploy-pages stops waiting for the deployment after 10 minutes on its own.
     timeout-minutes: 15
     permissions:
