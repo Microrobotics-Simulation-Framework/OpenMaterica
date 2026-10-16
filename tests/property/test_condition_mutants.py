@@ -21,6 +21,7 @@ from hypothesis import strategies as st
 from materica.core import conditions, fields, read
 from materica.core.conditions import ConditionsRead, ImpliedCondition
 from materica.core.fields import RecordField
+from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.value_shapes import Found, JsonObject
@@ -39,6 +40,7 @@ from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.support import MUTANT_SEARCH
 from tests.property.test_mutants import setting
 from tests.property.test_value_field_mutants import slipped_by, within_two_slips
+from tests.unit import test_read
 
 
 def drawn_rows(size: Size) -> st.SearchStrategy[Any]:
@@ -86,6 +88,18 @@ KILLERS: dict[
     ),
     "HP5": (with_unknowns, properties.check_ignored, lambda unknowns: set(unknowns.places)),
     "base": (base_reads, properties.check_base, lambda read_case: set()),
+    # Two deterministic tables of `tests/unit/test_read.py`, which no property draws: an implied condition
+    # located elsewhere, read end to end, and the implied conditions step 0 refuses.
+    "located elsewhere": (
+        lambda size: st.sampled_from(test_read.ELSEWHERE),
+        test_read.check_located_elsewhere,
+        lambda where: {where},
+    ),
+    "step 0": (
+        lambda size: st.sampled_from(test_read.IMPLIED_AT_STEP_0),
+        lambda row: test_read.check_refused_at_step_0(row[1], row[2]),
+        lambda row: {row[0]},
+    ),
 }
 
 
@@ -176,6 +190,29 @@ def _not_accepted_read_as_unknown(
     return found
 
 
+def _accepted_where(
+    matches: Callable[[str, list[str]], bool],
+) -> Callable[[str, JsonObject, Any, Any], Reason | None]:
+    """`_compared`, a token checked against an accept list by `matches` rather than by its presence."""
+
+    def compared(name: str, condition: JsonObject, operating: Any, required: Any) -> Reason | None:
+        if required is None or "accept" not in required:
+            return COMPARED(name, condition, operating, required)
+        if matches(str(condition["token"]), [str(token) for token in required["accept"]]):
+            return None
+        return Reason("condition_not_accepted", name)
+
+    return compared
+
+
+def _case_folded_in(token: str, accept: list[str]) -> bool:
+    return token.casefold() in [listed.casefold() for listed in accept]
+
+
+def _by_its_first_three_characters(token: str, accept: list[str]) -> bool:
+    return any(listed.startswith(token[:3]) for listed in accept)
+
+
 # Step 10's other rows, the conditions checked and the entries.
 
 ENTRY = conditions._entry  # pyright: ignore[reportPrivateUsage]
@@ -190,6 +227,15 @@ def _unknown_name_read_as_unstated(
         return ENTRY(name, held, operating, required, reasons)
     reasons.append(Reason("condition_unstated", name))
     return conditions.ConditionEntry(name, "unknown")
+
+
+def _an_unknown_status_read_as_unstated(
+    name: str, held: JsonValue | None, operating: Any, required: Any, reasons: list[Reason]
+) -> Any:
+    if name in VOCABULARY.conditions or not (isinstance(held, dict) and "status" in held):
+        return ENTRY(name, held, operating, required, reasons)
+    reasons.append(Reason("condition_unstated", name))
+    return conditions.ConditionEntry(name, "unknown", KNOWN(held, ("status", "reason")), operating)
 
 
 def _required_with_ignored(
@@ -266,6 +312,29 @@ def _applied_not_recorded(
     return FILLED(stored, applying)[0], ()
 
 
+def _located_anywhere(self: ImpliedCondition, field: str, record: MaterialRef) -> bool:
+    return True
+
+
+def _located_without_its_hash(self: ImpliedCondition, field: str, record: MaterialRef) -> bool:
+    held = self.location.get("record")
+    return (
+        self.field == field
+        and set(self.location) == {"record"}
+        and isinstance(held, dict)
+        and (held.get("id"), held.get("version")) == (record.id, record.version)
+    )
+
+
+IMPLIED_VALUE = read._implied_value  # pyright: ignore[reportPrivateUsage]
+
+
+def _a_value_not_an_object_ignored(name: str, value: JsonValue, where: str, found: list[Reason]) -> Any:
+    if name in VOCABULARY.conditions and not isinstance(value, dict):
+        return None
+    return IMPLIED_VALUE(name, value, where, found)
+
+
 # The specimen merge.
 
 
@@ -339,6 +408,16 @@ def _plus_minus_units_unchecked(field: RecordField) -> Found:
     def change(value: JsonObject) -> None:
         for condition in conditions_of(value).values():
             for entry in entries_of(condition):
+                assert isinstance(condition, dict)
+                entry["unit"] = condition.get("unit")
+
+    return _without(field, change)
+
+
+def _only_the_first_plus_minus_unit(field: RecordField) -> Found:
+    def change(value: JsonObject) -> None:
+        for condition in conditions_of(value).values():
+            for entry in entries_of(condition)[1:]:
                 assert isinstance(condition, dict)
                 entry["unit"] = condition.get("unit")
 
@@ -518,6 +597,21 @@ MUTANTS = [
         "HP7 table",
         setting(conditions, "_entry", _unknown_name_read_as_unstated),
     ),
+    Mutant(
+        "accept_list_case_folded",
+        "HP7 table",
+        setting(conditions, "_compared", _accepted_where(_case_folded_in)),
+    ),
+    Mutant(
+        "accept_list_by_prefix",
+        "HP7 table",
+        setting(conditions, "_compared", _accepted_where(_by_its_first_three_characters)),
+    ),
+    Mutant(
+        "unknown_name_status_read_as_unstated",
+        "HP7 table",
+        setting(conditions, "_entry", _an_unknown_status_read_as_unstated),
+    ),
     Mutant("required_with_ignored", "HP7 table", setting(conditions, "_checked", _required_with_ignored)),
     Mutant(
         "row_requirements_ignored", "HP7 table", setting(conditions, "_checked", _row_requirements_ignored)
@@ -566,6 +660,21 @@ MUTANTS = [
     ),
     Mutant("applied_not_recorded", "HP7 implied", setting(conditions, "_filled", _applied_not_recorded)),
     Mutant(
+        "implied_not_located", "located elsewhere", setting(ImpliedCondition, "located_at", _located_anywhere)
+    ),
+    Mutant(
+        "located_at_without_its_hash",
+        "located elsewhere",
+        setting(ImpliedCondition, "located_at", _located_without_its_hash),
+        ("another_content_hash",),
+    ),
+    Mutant(
+        "implies_value_not_an_object_ignored",
+        "step 0",
+        setting(read, "_implied_value", _a_value_not_an_object_ignored),
+        ("a value that is not an object",),
+    ),
+    Mutant(
         "section_facts_win",
         "HP9",
         setting(RecordField, "specimen", _section_wins),
@@ -597,6 +706,12 @@ MUTANTS = [
         "plus_minus_units_unchecked",
         "HP8 other",
         setting(read, "unit_problems", _plus_minus_units_unchecked),
+        ("plus_minus",),
+    ),
+    Mutant(
+        "only_the_first_plus_minus_unit",
+        "HP8 other",
+        setting(read, "unit_problems", _only_the_first_plus_minus_unit),
         ("plus_minus",),
     ),
     Mutant(

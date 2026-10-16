@@ -59,24 +59,26 @@ Hypothesis properties of the core, in four groups, and of the writer schema, in 
   either is the outcome "past step 8".
 - **Steps 9 and 10:** (10) the laws of steps 9 and 10 (`read_side_contract.md` sections 3 and 5), the S2
   design's HP7, HP8 and HP9, and HP3 and HP5 for the part steps 9 and 10 decide
-  (`test_condition_properties.py`). HP7: step 10 gives each condition the entry and reason of an oracle written
-  from section 5 alone (`condition_oracle.py`, which shares nothing with `core/conditions.py`), on the exact
-  rationals the doubles are: each numeric row at each boundary its exactness turns on (an operating end at
-  `fl(r + t)`, one ulp inside or outside it, a tolerance that is the rounded difference, subnormals, mixed
-  magnitudes, negative zero), a stated plus or minus of each kind, the table's other rows and the conditions
-  checked, and implied conditions that fill, never override, and disagree. Step 10's `met` and `unknown`
-  entries are not returned before S2a-4, so HP7 calls `check_conditions` as the read does. HP9: a field's
-  specimen is the section's facts, each overridden by the field's (a dict merge written in the test), and an
-  implied condition applies exactly where that merge states its fact and token. HP8, end to end through the
-  read: the registered unit passes however escapes write it in the record's text, at each place a unit sits
-  (a field's, a condition's, a `plus_minus` entry's, a fact's in the section, the field and a derived value's
-  inputs); any other, equal under NFKC or case folding, or but for a space, another registered unit, any text
-  or a status object, gives `unit_mismatch` with its condition, and so does any unit on a token condition.
-  HP3: one fault of a catalogue of steps 9 and 10, written from the text, on a read every condition of which
-  is stated and met, gives exactly the reasons its rule gives; in one draw in four, two faults of two parts of
-  the read give step 9's alone, or two implied conditions that disagree alone, or every reason of step 10, its
-  `conditions` returned where one ends the read. HP5: members the reader does not know, added to a condition,
-  a `plus_minus` entry, a fact, the request's operating conditions, requirement and tolerances, and an implied
+  (`test_condition_properties.py`). HP7: step 10 gives each condition the entry and reason of an oracle
+  written from section 5 alone (`condition_oracle.py`, which shares nothing with `core/conditions.py`), on the
+  exact rationals the doubles are: each numeric row at each boundary its exactness turns on (an operating end
+  at `fl(r + t)`, one ulp inside or outside it, a tolerance that is the rounded difference, subnormals, mixed
+  magnitudes, negative zero), a stated plus or minus of each kind, the table's other rows (an accept list
+  holding, beside the row's tokens, a token capitalised, a prefix of one and another row's token; a name the
+  reader does not know, held as a value or a status object) and the conditions checked, and implied conditions
+  that fill, never override, and disagree. Step 10's `met` and `unknown` entries are not returned before
+  S2a-4, so HP7 calls `check_conditions` as the read does. HP9: a field's specimen is the section's facts,
+  each overridden by the field's (a dict merge written in the test), and an implied condition applies exactly
+  where that merge states its fact and token. HP8, end to end through the read: the registered unit passes
+  however escapes write it in the record's text, at each place a unit sits (a field's, a condition's, either
+  of two `plus_minus` entries', a fact's in the section, the field and a derived value's inputs); any other,
+  equal under NFKC or case folding, or but for a space, another registered unit, any text or a status object,
+  gives `unit_mismatch` with its condition, and so does any unit on a token condition. HP3: one fault of a
+  catalogue of steps 9 and 10, written from the text, on a read every condition of which is stated and met,
+  gives exactly the reasons its rule gives; in one draw in four, two faults of two parts of the read give step
+  9's alone, or two implied conditions that disagree alone, or every reason of step 10, its `conditions`
+  returned where one ends the read. HP5: members the reader does not know, added to a condition, a
+  `plus_minus` entry, a fact, the request's operating conditions, requirement and tolerances, and an implied
   condition, its record and its values, change nothing, the returned `conditions` included.
   `condition_strategies.py` draws each, its kind first, so that the feature audit holds each kind to its draw
   floor.
@@ -309,8 +311,18 @@ condition's entry, which steps 9 and 10's HP5 kills (`unknown_members_returned_i
 examples, the parametrised ones (HP7's rows, HP8's places) drawn among their parameters, and where it names
 the labels it must die at (the kind an example was drawn of, a unit's place and kind, a read's faults, the
 places of its additions), the example that kills it must hold one. HP7's and HP9's examples hold no tree, so
-both sizes take the same examples. The kill is the examples the derandomised search took, at the small and
-the original size (measured 2026-10-16, S2a-3).
+both sizes take the same examples. Three rules no property draws are searched alike over the deterministic
+tables of `tests/unit/test_read.py` that check them: an implied condition located elsewhere, read end to end
+("located elsewhere"), and the implied conditions step 0 refuses ("step 0"). The kill is the examples the
+derandomised search took, at the small and the original size (measured 2026-10-16, S2a-3's fix round).
+
+Seven of these are the mutants of S2a-3's review that survived the whole suite (its M2), each a rule no test
+checked: `implied_not_located`, `located_at_without_its_hash`, `accept_list_case_folded`,
+`accept_list_by_prefix`, `unknown_name_status_read_as_unstated`, `only_the_first_plus_minus_unit` and
+`implies_value_not_an_object_ignored`. The first two and the last die to the deterministic tables written for
+them; the other four survived 2,000 examples at both sizes until HP7's token kinds drew accept lists holding
+strings outside the row, its `unknown_name` kind a status object as often as a value, and HP8's `plus_minus`
+place the unit in either entry of two.
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
@@ -324,11 +336,14 @@ the original size (measured 2026-10-16, S2a-3).
 | `bound_moves_the_low_end_only` | a bound narrows the window at its low end alone | HP7, plus or minus | `bound`, `bound_beside_sd` | 24, 24 |
 | `unchecked_read_as_met` | a stated condition with no tolerance or accept list is `met` | HP7, table | any of its examples | 3, 3 |
 | `not_accepted_read_as_unknown` | a token outside the accept list is `unknown` | HP7, table | any of its examples | 7, 7 |
+| `accept_list_case_folded` | a token matched against an accept list after case folding | HP7, table | any of its examples | 7, 7 |
+| `accept_list_by_prefix` | a token matched by an entry of the accept list that begins with its first three characters | HP7, table | any of its examples | 122, 122 |
+| `unknown_name_status_read_as_unstated` | a name the reader does not know, held as a status object, read as `condition_unstated` | HP7, table | any of its examples | 5, 5 |
 | `unknown_name_read_as_unstated` | a name the reader does not know is `condition_unstated` | HP7, table | any of its examples | 5, 5 |
 | `required_with_ignored` | a condition another requires with its token is not checked | HP7, table | any of its examples | 3, 3 |
-| `row_requirements_ignored` | the row's required conditions are not checked | HP7, table | any of its examples | 242, 242 |
+| `row_requirements_ignored` | the row's required conditions are not checked | HP7, table | any of its examples | 308, 308 |
 | `status_object_not_returned` | an entry held as a status object returns no `record` | HP7, table | any of its examples | 1, 1 |
-| `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | any of its examples | 11, 11 |
+| `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | any of its examples | 34, 34 |
 | `implied_overrides_a_stated_value` | an implied condition fills a stated condition | HP7, implied | `never_over_a_stated_value`, `never_over_another_status` | 2, 2 |
 | `implied_fills_any_status` | an implied condition fills any status object | HP7, implied | `never_over_another_status` | 21, 21 |
 | `disagreement_ignored` | two implied conditions that disagree, the first wins | HP7, implied | `two_that_disagree`, `a_value_beside_a_range` | 11, 11 |
@@ -336,24 +351,28 @@ the original size (measured 2026-10-16, S2a-3).
 | `minus_zero_disagrees_with_zero` | implied values compared as written, `-0` against `0` | HP7, implied | `minus_zero_beside_zero` | 8, 8 |
 | `implied_applies_without_its_fact` | an implied condition applies whatever the specimen states | HP7, implied | `its_fact_not_stated` | 73, 73 |
 | `applied_not_recorded` | `applied` holds no implied condition | HP7, implied | any of its examples | 1, 1 |
+| `implied_not_located` | every implied condition applied, wherever it is located | located elsewhere | any of its rows | 1, 1 |
+| `located_at_without_its_hash` | a location compared by `id` and `version`, without its `content_hash` | located elsewhere | `another_content_hash` | 3, 3 |
+| `implies_value_not_an_object_ignored` | an implied value that is not an object dropped without a reason | step 0 | `a value that is not an object` | 2, 2 |
 | `section_facts_win` | the section's fact overrides the field's (the S2 design's HP9 mutant) | HP9 | `the_field_another_token`, `the_field_a_status_object`, `the_section_a_status_object` | 7, 7 |
 | `a_status_fact_overrides_nothing` | a field's fact held as a status object leaves the section's | HP9 | `the_field_a_status_object` | 22, 22 |
 | `nfkc_before_comparing` | units compared after NFKC (the S2 design's HP8 mutant) | HP8, another unit | `compatibility_equal` | 1, 1 |
 | `case_folded` | units compared after case folding (the S2 design's HP8 mutant) | HP8, another unit | `case_folded`, `compatibility_equal` | 2, 2 |
-| `spaces_ignored` | spaces and zero-width spaces dropped from a unit | HP8, another unit | `spaced` | 18, 7 |
-| `a_status_object_where_a_string_is_registered` | a status object takes a string's place | HP8, another unit | `status_object` | 5, 5 |
+| `spaces_ignored` | spaces and zero-width spaces dropped from a unit | HP8, another unit | `spaced` | 11, 46 |
+| `a_status_object_where_a_string_is_registered` | a status object takes a string's place | HP8, another unit | `status_object` | 26, 12 |
 | `plus_minus_units_unchecked` | a `plus_minus` entry's unit not compared | HP8, another unit | `plus_minus` | 2, 2 |
-| `token_condition_units_unchecked` | a `unit` on a token condition passes | HP8, another unit | `token_condition` | 10, 3 |
-| `section_facts_unchecked` | the section's facts' units not compared | HP8, another unit | `section_fact` | 6, 6 |
-| `input_facts_unchecked` | a derived value's input facts' units not compared | HP8, another unit | `input_fact` | 8, 4 |
+| `only_the_first_plus_minus_unit` | only the first `plus_minus` entry's unit compared | HP8, another unit | `plus_minus` | 9, 69 |
+| `token_condition_units_unchecked` | a `unit` on a token condition passes | HP8, another unit | `token_condition` | 150, 3 |
+| `section_facts_unchecked` | the section's facts' units not compared | HP8, another unit | `section_fact` | 34, 11 |
+| `input_facts_unchecked` | a derived value's input facts' units not compared | HP8, another unit | `input_fact` | 4, 21 |
 | `condition_dropped_from_unit_mismatch` | a condition's `unit_mismatch` carries no condition | HP8, another unit | `condition`, `plus_minus`, `token_condition` | 2, 2 |
 | `plus_minus_against_the_field_unit` | a `plus_minus` unit compared with the field's unit | HP8, the registered unit | any of its examples | 1, 1 |
 | `facts_against_the_field_unit` | a fact's unit compared with the field's unit | HP8, the registered unit | any of its examples | 1, 1 |
 | `step_10_after_a_refusal_at_step_9` | step 10 runs after step 9's `not_met` | HP3 | a fault of step 9 | 1, 1 |
 | `first_unit_reason_only` | step 9 gives its first reason only | HP3 | a fault of step 9 | 1, 1 |
-| `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | `unchecked`, `unstated`, `unknown_name`, `uncertain` | 193, 193 |
-| `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3 | `outside`, `range_outside`, `not_accepted`, `implied_outside` | 6, 7 |
-| `disagreement_checks_the_others` | two implied conditions that disagree, and the conditions checked all the same | HP3 | `disagreeing` | 10, 75 |
+| `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | `unchecked`, `unstated`, `unknown_name`, `uncertain` | 7, 198 |
+| `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3 | `outside`, `range_outside`, `not_accepted`, `implied_outside` | 7, 7 |
+| `disagreement_checks_the_others` | two implied conditions that disagree, and the conditions checked all the same | HP3 | `disagreeing` | 155, 111 |
 | `unknown_members_returned_in_an_entry` | a condition's entry returns members the reader does not know | HP5 | `condition`, `plus_minus_entry` | 5, 10 |
 | `two_slips_refused_in_a_request` | a request's names two characters off a named one refused | HP5 | any of its examples | 4, 4 |
 | `unknown_request_members_refused` | every member a request's place does not name refused | HP5 | `operating`, `requirement_condition`, `tolerance`, `implied`, `implied_record`, `implied_value` | 4, 3 |

@@ -917,6 +917,10 @@ IMPLIED_AT_STEP_0: list[tuple[str, JsonValue, set[tuple[str, str | None]]]] = [
 def test_an_implied_condition_that_breaks_its_shape_is_refused_at_step_0(
     fault: str, request_value: JsonValue, reasons: set[tuple[str, str | None]]
 ) -> None:
+    check_refused_at_step_0(request_value, reasons)
+
+
+def check_refused_at_step_0(request_value: JsonValue, reasons: set[tuple[str, str | None]]) -> None:
     refused = read(request_value, store())
     assert refused.status == "not_met"
     assert {(reason.code, reason.condition) for reason in refused.reasons} == reasons
