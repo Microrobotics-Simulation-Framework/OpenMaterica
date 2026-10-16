@@ -95,6 +95,11 @@ recorded in that repository's CHANGELOG.
   `covariance_space.space`, to `parameter_spaces`. No schema held any of them yet; the one case file that
   did, a declared distribution in a request (PR-330), follows.
 - `case.json` takes the `transform_draws` operation of a sampling case, its draws' shape not yet specified.
+- `scripts/gen_reader_schema.py` takes a member marked `x-materica-write-only` with `{"unless": {<member>:
+  <token>, ...}}` in place of `true`: one a read checks only where each named member of its object, one a read
+  checks, holds that token. The reader `$defs` keep its shape, and whether its object requires it, in a
+  conjunct under that condition, and elsewhere treat it as write-only: a rule in the `then` of exactly that
+  condition takes it as checked, any other rule as unchecked. A mark of another form stops the generator.
 
 ### Verification
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that
