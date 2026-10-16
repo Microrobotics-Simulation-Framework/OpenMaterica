@@ -49,6 +49,7 @@ from tests.property.condition_strategies import (
     Read,
     Unknowns,
     base_reads,
+    entries,
     faulty_reads,
     numeric,
     operating_of,
@@ -260,7 +261,9 @@ def table_cases(draw: st.DrawFn) -> tuple[str, Case]:
             _, operating[name], required[name] = draw(stated_numeric(name))
             conditions.pop(name, None)
         elif current == "unknown_name":
-            conditions["x_" + draw(st.text("abcdef", min_size=1, max_size=5))] = draw(DOUBLES)
+            conditions["x_" + draw(st.text("abcdef", min_size=1, max_size=5))] = (
+                {"status": draw(st.sampled_from(STATUS_TOKENS))} if draw(st.booleans()) else draw(DOUBLES)
+            )
         elif current == "unchecked":
             conditions[name], operating[name], _ = draw(stated_numeric(name))
             required.pop(name, None)
@@ -272,6 +275,7 @@ def table_cases(draw: st.DrawFn) -> tuple[str, Case]:
             accept: list[JsonValue] = (
                 [*draw(st.lists(st.sampled_from(others), unique=True))] if others else []
             )
+            accept += draw(outside_the_row(name, held))
             required[name] = {"accept": [*accept, held] if current == "token_accepted" else accept}
         else:
             other, tokens = draw(st.sampled_from(sorted(REQUIRED_WITH)))
@@ -280,6 +284,24 @@ def table_cases(draw: st.DrawFn) -> tuple[str, Case]:
             )
             conditions[other] = {"token": held, "basis": "stated"}
     return kind, Case(conditions, operating, required, (), {}, {})
+
+
+@st.composite
+def outside_the_row(draw: st.DrawFn, name: str, held: str) -> list[JsonValue]:
+    """Some strings that are none of the token condition `name`'s tokens, for an accept list beside its own:
+    `held` capitalised, a prefix of it, and a token of another token condition's row."""
+    prefix = held[: draw(st.integers(1, len(held) - 1))]
+    strings = [held.capitalize(), prefix, draw(st.sampled_from(FOREIGN_TOKENS[name]))]
+    return [*draw(st.lists(st.sampled_from(strings), unique=True))]
+
+
+FOREIGN_TOKENS = {
+    name: sorted(
+        {token for other in TOKEN for token in VOCABULARY.conditions[other].tokens}
+        - set(VOCABULARY.conditions[name].tokens)
+    )
+    for name in TOKEN
+}
 
 
 # Each condition another requires with some of its tokens, and those tokens (`provenance.md` section 6.1).
@@ -454,6 +476,16 @@ def test_an_implied_condition_rests_on_the_section_facts_overridden_by_the_field
     check_merge(case)
 
 
+def test_the_strings_drawn_outside_a_row_are_none_of_its_tokens() -> None:
+    """A control on `outside_the_row`: no token of a row is a prefix of another, nor capitalised, so each
+    string it draws is outside the row it is drawn for."""
+    for name in TOKEN:
+        tokens = VOCABULARY.conditions[name].tokens
+        for held in tokens:
+            drawn = {held.capitalize(), *(held[:end] for end in range(1, len(held))), *FOREIGN_TOKENS[name]}
+            assert not drawn & set(tokens), (name, held, drawn & set(tokens))
+
+
 def test_the_boundaries_are_drawn_on_finite_doubles() -> None:
     """A control on the strategies: a sum past the largest double is drawn as the value itself."""
     from tests.property.condition_strategies import finite, nudged
@@ -531,7 +563,7 @@ def registered_units(draw: st.DrawFn, size: Size = SIZE) -> tuple[str, Read, byt
     escapes."""
     place = draw(st.sampled_from(REGISTERED_PLACES))
     read_case = draw(base_reads(size))
-    unit = place_in(read_case, place)
+    unit = place_in(read_case, place, draw(entries(place)))
     read_case = repinned(read_case)
     unit.holder["unit"] = SENTINEL
     text = json.dumps(read_case.record).replace(json.dumps(SENTINEL), draw(escaped(str(unit.registered))), 1)
@@ -564,12 +596,12 @@ class OtherUnit(NamedTuple):
 
 @st.composite
 def other_units(draw: st.DrawFn, place: str, size: Size = SIZE) -> OtherUnit:
-    """A base read, its unit at `place` another than the registered one, of a kind drawn first; a token
-    condition's any unit, since it registers none."""
+    """A base read, its unit at `place` another than the registered one, of a kind drawn first, at
+    `plus_minus` in either of two entries; a token condition's any unit, since it registers none."""
     kind = draw(st.sampled_from(OTHER_UNITS))
     names = CASED_FIELDS if kind == "case_folded" else CONSTANT_FIELDS
     read_case = draw(base_reads(size, names))
-    unit = place_in(read_case, place)
+    unit = place_in(read_case, place, draw(entries(place)))
     registered = unit.registered or draw(st.sampled_from(CASED_UNITS))
     unit.holder["unit"] = draw(other_unit(kind, registered))
     return OtherUnit(place, kind, repinned(read_case), unit.condition)

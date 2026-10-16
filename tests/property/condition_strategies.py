@@ -318,9 +318,23 @@ def at(value: JsonValue, *path: str | int) -> JsonObject:
     return value
 
 
-def place_in(read: Read, place: str) -> UnitPlace:
+# A temperature's two `plus_minus` entries, one of each stated kind, which leave it met within a tolerance
+# of 0: the `plus_minus` place, so that a unit is drawn in either entry.
+TWO_ENTRIES: list[JsonValue] = [
+    {"stated_as": "sd", "value": 0.0, "unit": "K"},
+    {"stated_as": "bound", "value": 0.0, "unit": "K"},
+]
+
+
+def entries(place: str) -> st.SearchStrategy[int]:
+    """The entry of two that `place_in` takes at `plus_minus`, drawn there alone."""
+    return st.sampled_from(range(len(TWO_ENTRIES))) if place == "plus_minus" else st.just(0)
+
+
+def place_in(read: Read, place: str, entry: int = 0) -> UnitPlace:
     """The object holding the unit at `place` in `read`'s record, changed in place where the base has none
-    there (a derived value's provenance)."""
+    there (a derived value's provenance, a second `plus_minus` entry); at `plus_minus`, the entry `entry` of
+    two."""
     section_name, _, name = read.field.partition(".")
     section = at(read.record, "body", "sections", section_name)
     field = at(section, "fields", name)
@@ -330,7 +344,9 @@ def place_in(read: Read, place: str) -> UnitPlace:
     if place == "condition":
         return UnitPlace(at(field, "conditions", "temperature"), "K", "temperature")
     if place == "plus_minus":
-        return UnitPlace(at(field, "conditions", "temperature", "plus_minus", 0), "K", "temperature")
+        temperature = at(field, "conditions", "temperature")
+        temperature["plus_minus"] = copy.deepcopy(TWO_ENTRIES)
+        return UnitPlace(at(temperature, "plus_minus", entry), "K", "temperature")
     if place == "token_condition":
         return UnitPlace(at(field, "conditions", "measurement_geometry"), None, "measurement_geometry")
     if place == "field_fact":
@@ -408,7 +424,7 @@ def requested(read: Read, *path: str) -> JsonObject:
 
 def unit_fault(place: str) -> Fault:
     def change(draw: Draw, read: Read) -> Pairs:
-        unit = place_in(read, place)
+        unit = place_in(read, place, draw(entries(place)))
         kind = draw(st.sampled_from(OTHER_UNITS))
         registered = unit.registered or "K"
         unit.holder["unit"] = draw(
