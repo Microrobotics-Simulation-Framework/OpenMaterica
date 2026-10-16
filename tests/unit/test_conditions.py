@@ -288,6 +288,16 @@ def test_a_plus_minus_entry_is_returned_with_the_members_the_reader_knows() -> N
     }
 
 
+@pytest.mark.parametrize(
+    "entry",
+    [{"status": "met"}, {"name": "temperature"}, {"name": "temperature", "status": "fine"}],
+    ids=["no_name", "no_status", "a_status_of_no_entry"],
+)
+def test_a_condition_entry_that_breaks_its_shape_raises_value_error(entry: dict[str, JsonValue]) -> None:
+    with pytest.raises(ValueError, match="not a condition entry"):
+        ConditionEntry.from_json(entry)
+
+
 def test_a_read_that_step_10_ends_holds_its_conditions_and_one_step_9_ends_none() -> None:
     record = with_field(
         "fluid.dynamic_viscosity", with_condition("shear_rate", {"value": 50.0, "unit": "1/s", **STATED})
