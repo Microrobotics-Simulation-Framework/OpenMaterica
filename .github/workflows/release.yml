@@ -20,7 +20,11 @@ permissions: {}
 env:
   UV_VERSION: "0.13.0"
 
-# On ubuntu-24.04, pinned as ci.yml says above its jobs.
+# Under bash with `-eo pipefail`, and on ubuntu-24.04, as ci.yml says above its jobs.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     name: build and check
