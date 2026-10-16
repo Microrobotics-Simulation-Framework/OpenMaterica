@@ -75,11 +75,22 @@ def unpinned_jobs(workflows: dict[str, Workflow]) -> list[str]:
     ]
 
 
+def workflow_names(directory: Path = WORKFLOWS) -> list[str]:
+    """The name of each workflow's file: GitHub reads `.yml` and `.yaml` alike."""
+    return sorted(path.name for pattern in ("*.yml", "*.yaml") for path in directory.glob(pattern))
+
+
 def workflows() -> dict[str, Workflow]:
     """Every workflow, by its file's name."""
-    names = sorted(path.name for path in WORKFLOWS.glob("*.yml"))
+    names = workflow_names()
     assert {"ci.yml", "pages.yml", "release.yml"} <= set(names)
     return {name: workflow(name) for name in names}
+
+
+def test_a_workflow_is_found_by_either_extension(tmp_path: Path) -> None:
+    for name in ("a.yml", "b.yaml", "README.md", "c.yml.txt"):
+        (tmp_path / name).write_text("", encoding="utf-8")
+    assert workflow_names(tmp_path) == ["a.yml", "b.yaml"]
 
 
 def test_every_job_of_every_workflow_runs_on_the_pinned_image() -> None:
@@ -602,14 +613,17 @@ def test_the_documentation_check_finds_an_exemption_gone_stale() -> None:
     ]
 
 
-def result_status(gate: str, code: str, hypothesis: str, jobs: dict[str, str], tmp_path: Path) -> int:
+def result_status(
+    gate: str, code: str, hypothesis: str, jobs: dict[str, str], tmp_path: Path, ci: Workflow | None = None
+) -> int:
     """The result step's exit status, for the gate's result and outputs and each other job's result."""
     context = {
         "needs.gate.result": gate,
         "needs.gate.outputs.code": code,
         "needs.gate.outputs.hypothesis": hypothesis,
     } | {f"needs.{job}.result": result for job, result in jobs.items()}
-    status, _, _ = run_step(step(workflow("ci.yml")["jobs"]["result"], RESULT_STEP), context, tmp_path)
+    found = step((ci or workflow("ci.yml"))["jobs"]["result"], RESULT_STEP)
+    status, _, _ = run_step(found, context, tmp_path)
     return status
 
 
@@ -641,6 +655,7 @@ def test_the_result_passes_when_every_job_the_gate_asked_for_succeeded(
         ("success", "true", "false", all_jobs("success", static="cancelled", hypothesis="skipped")),
         ("success", "", "", all_jobs("skipped")),
         ("failure", "", "", all_jobs("skipped")),
+        ("failure", "false", "false", all_jobs("skipped")),
         ("success", "false", "false", all_jobs("skipped", tests="failure")),
     ],
     ids=[
@@ -650,6 +665,7 @@ def test_the_result_passes_when_every_job_the_gate_asked_for_succeeded(
         "asked-for-and-cancelled",
         "outputs-empty",
         "gate-failed",
+        "gate-failed-with-its-outputs",
         "not-asked-for-and-failed",
     ],
 )
@@ -659,6 +675,17 @@ def test_the_result_fails_when_a_job_the_gate_asked_for_did_not_succeed(
     """A skipped job reports success to a required check: a gate whose outputs are empty or wrong would skip
     every job, and a result that looked only for failures would pass."""
     assert result_status(gate, code, hypothesis, jobs, tmp_path) == 1
+
+
+def test_without_its_check_of_the_gate_the_result_passes_a_failed_gate_with_outputs(tmp_path: Path) -> None:
+    """The control of `gate-failed-with-its-outputs`: no line but the gate's own check fails that case. A
+    failed gate has no outputs today, since its sign-off and scan run first; this holds if they move."""
+    ci = copy.deepcopy(workflow("ci.yml"))
+    found = step(ci["jobs"]["result"], RESULT_STEP)
+    line = """[ "$GATE" = success ] || fail "the gate ended in '$GATE'"\n"""
+    assert found["run"].count(line) == 1
+    found["run"] = found["run"].replace(line, "")
+    assert result_status("failure", "false", "false", all_jobs("skipped"), tmp_path, ci) == 0
 
 
 def wiring_problems(ci: Workflow) -> list[str]:
