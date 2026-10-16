@@ -112,10 +112,14 @@ with `uv sync --locked`, so a lock file out of date with `pyproject.toml` fails 
 
 ```sh
 uv sync                                  # .venv with the package, editable, and the dev group
-uv run pytest                            # every test; the summary counts the conformance cases
+uv run pytest -n 12 --dist worksteal     # every test; the summary counts the conformance cases
 uv run ruff check && uv run ruff format --check
 uv run mypy && uv run pyright
 ```
+
+Twelve workers suit a machine of 8 performance cores and 24 threads, as the maintainer's; use `-n 8` when
+another heavy job shares it. Always `--dist worksteal`: xdist's default hands a worker a file's tests together,
+so a file's slow tests wait on one worker (`tests/README.md`, "Running").
 
 Property tests take their depth from `MATERICA_HYPOTHESIS_PROFILE`: `dev` (the default), `ci` or `deep`
 (`tests/README.md`). Fuzzing needs Linux x86_64 and Python 3.12 to 3.14: `uv sync --group fuzz`, then
