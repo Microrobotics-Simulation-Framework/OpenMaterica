@@ -118,16 +118,15 @@ failure prints a blob that replays it anywhere.
 CI runs the groups in seven shards side by side, each in a job of its own: `pytest tests/property --shard
 json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
 two validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
-database and were most of the records shard's time, `--shard conditions`, steps 9 and 10's group, about 7
-minutes of CPU at `ci` (2026-10-16), and `--shard condition_mutants`, its mutant searches, about 2 (`SHARDS`
-in `tests/conftest.py`). Each family of faults is a property of its own, run in parallel. The agreement
-shard's drawn properties run python-jsonschema on every example, and are the longest tests of any shard: on 4
-workers locally (2026-10-17), the shard took 4.0 and 8.0 minutes at `ci`, its longest property 1.9 and 4.7 (at
-loads of 4 to 7 and 15 to 17), and 112 minutes at `deep`, its longest property 70 (load 18 to 30). `deep` has
-not yet run on CI, whose cores are 1.6 to 4 times slower: there it may not fit in the 6 hours GitHub gives a
-job. Each module is in exactly one shard
-(`tests/unit/test_source_files.py`), and each shard but the mutant searches' keeps its own example database in
-CI.
+database and were most of the records shard's time, `--shard conditions`, steps 9 and 10's group, 97 s on four
+workers at `ci` (2026-10-16), and `--shard condition_mutants`, its mutant searches, 6 s (`SHARDS` in
+`tests/conftest.py`). Each family of faults is a property of its own, run in parallel. The agreement shard's
+drawn properties run python-jsonschema on every example, and are the longest tests of any shard: on 4 workers
+locally (2026-10-17), the shard took 4.0 and 8.0 minutes at `ci`, its longest property 1.9 and 4.7 (at loads
+of 4 to 7 and 15 to 17), and 112 minutes at `deep`, its longest property 70 (load 18 to 30). `deep` has not
+yet run on CI, whose cores are 1.6 to 4 times slower: there it may not fit in the 6 hours GitHub gives a job.
+Each module is in exactly one shard (`tests/unit/test_source_files.py`), and each shard but the mutant
+searches' keeps its own example database in CI.
 
 ## The two validators
 

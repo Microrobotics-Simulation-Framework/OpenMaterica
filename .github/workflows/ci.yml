@@ -347,8 +347,9 @@ jobs:
     # searches do not grow with the profile (2026-10-15, S2a-2's fix round; a runner perhaps two to three times
     # slower a core, by estimate). The writer shard's `ci` took 11 minutes on two workers locally (2026-10-15),
     # and its `deep`, ten times the examples, about ten times that, unmeasured. Steps 9 and 10's properties,
-    # which read records end to end, took about 7 minutes of CPU at `ci` (2026-10-16, S2a-3): a shard of their
-    # own, `conditions`, with the writer's timeouts; their mutant searches, `condition_mutants`, about 2.
+    # which read records end to end, took 97 s on four workers and 153 s on two at `ci` (2026-10-16, S2a-3), and
+    # `deep` is ten times the examples: a shard of their own, `conditions`, with the writer's timeouts. Their
+    # mutant searches, `condition_mutants`, took 6 s on four at `ci` and at `deep`; records, 61 s and 97 s.
     # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
     # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
