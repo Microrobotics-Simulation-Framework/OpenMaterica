@@ -49,6 +49,7 @@ from tests.property.condition_strategies import (
     UNKNOWN_PLACES,
     Faulty,
     JsonObject,
+    Numeric,
     Read,
     Unknowns,
     above,
@@ -187,12 +188,14 @@ def numeric_cases(draw: st.DrawFn, row: str) -> Bounded:
     return Bounded(boundary, drawn.end, case)
 
 
-def entry_status(case: Case) -> str:
-    """The oracle's entry for the one condition a numeric case states."""
-    (name,) = case.conditions
-    expected = oracle.expected(FIELD, case.conditions, {}, case.operating, case.required)
-    assert expected.statuses is not None
-    return expected.statuses[name]
+def check_side(drawn: Bounded) -> None:
+    """A case of a kind drawn on one side of its bound lies on that side, by the oracle's entry for it."""
+    if drawn.boundary in SIDES:
+        (name,) = drawn.case.conditions
+        case = drawn.case
+        expected = oracle.expected(FIELD, case.conditions, {}, case.operating, case.required)
+        assert expected.statuses is not None
+        assert expected.statuses[name] == SIDES[drawn.boundary], drawn
 
 
 # Which end of the stated span the boundary sits at, and the window of a bound, declared by the least share
@@ -210,7 +213,22 @@ def test_a_numeric_condition_is_checked_exactly_at_each_boundary(row: str, data:
     feature(drawn.boundary)
     feature(f"{drawn.end}_end")
     check_against_the_oracle(drawn.case)
-    assert entry_status(drawn.case) == SIDES.get(drawn.boundary, entry_status(drawn.case)), drawn
+    check_side(drawn)
+
+
+def test_a_case_on_the_other_side_of_its_kind_is_found() -> None:
+    """A control on `check_side`: a temperature met exactly, drawn as one ulp outside, fails it."""
+    met = Case(
+        {"temperature": stated("temperature", Numeric({"value": 310.15}, {}, 0.0, "lower"))},
+        {"temperature": {"value": 310.15, "unit": "K"}},
+        {"temperature": {"tolerance": {"value": 0.0, "unit": "K"}}},
+        (),
+        {},
+        {},
+    )
+    check_side(Bounded("one_ulp_inside", "lower", met))
+    with pytest.raises(AssertionError):
+        check_side(Bounded("one_ulp_outside", "lower", met))
 
 
 # HP7: a stated plus or minus of each kind.

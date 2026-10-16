@@ -2,8 +2,9 @@
 """The controls of the feature audits of the json and records shards' properties that declare features by
 their chances (`@pytest.mark.chances`), and of the conditions shard's, which declare them by their chances or
 draw them alike (`@pytest.mark.drawn`): run at the `ci` profile's examples with a generator that stops
-producing one of them, each property fails its audit, on that feature alone. Outside `tests/property/`, whose
-audits would fail these runs too."""
+producing one of them, each property fails its audit, on that feature alone; a parametrised property, on one
+of its parameters, by the marks that parameter carries. Outside `tests/property/`, whose audits would fail
+these runs too."""
 
 import sys
 from collections.abc import Callable
@@ -29,6 +30,7 @@ class Control(NamedTuple):
     # The checks of the property's law it skips: the audit counts the features, which the checks do not
     # change, and skipping them saves most of the run.
     skipped: tuple[str, ...]
+    parameters: tuple[tuple[str, object], ...] = ()  # of a parametrised property, the one it runs with
 
 
 CONTROLS = [
@@ -102,6 +104,12 @@ CONTROLS = [
         "implied_value",
         ("check_ignored",),
     ),
+    Control(
+        condition_properties.test_any_other_unit_gives_unit_mismatch_with_its_condition,
+        "status_object",
+        ("check_refused",),
+        (("place", "plus_minus"),),
+    ),
 ]
 
 
@@ -109,19 +117,35 @@ def skipped(*_: object) -> None:
     pass
 
 
-def marker_kwargs(test: Callable[..., None], name: str) -> dict[str, float]:
-    marks: list[pytest.Mark] = getattr(test, "pytestmark", [])
-    return {key: value for mark in marks if mark.name == name for key, value in mark.kwargs.items()}
+def marks_of(control: Control) -> list[pytest.Mark]:
+    """The property's marks, and those of the parameter set it runs with, as pytest gives them to its item."""
+    marks: list[pytest.Mark] = getattr(control.test, "pytestmark", [])
+    found = [mark for mark in marks if mark.name != "parametrize"]
+    for mark in marks:
+        if mark.name == "parametrize":
+            names = [name.strip() for name in str(mark.args[0]).split(",")]
+            for parameter_set in mark.args[1]:
+                if tuple(zip(names, parameter_set.values, strict=True)) == control.parameters:
+                    found += [decorator.mark for decorator in parameter_set.marks]
+    return found
 
 
-def marker_args(test: Callable[..., None], name: str) -> tuple[str, ...]:
-    marks: list[pytest.Mark] = getattr(test, "pytestmark", [])
-    return tuple(arg for mark in marks if mark.name == name for arg in mark.args)
+def marker_kwargs(control: Control, name: str) -> dict[str, float]:
+    return {
+        key: value for mark in marks_of(control) if mark.name == name for key, value in mark.kwargs.items()
+    }
 
 
-@pytest.mark.parametrize(
-    "control", CONTROLS, ids=[f"{control.test.__name__}-{control.never}" for control in CONTROLS]
-)
+def marker_args(control: Control, name: str) -> tuple[str, ...]:
+    return tuple(arg for mark in marks_of(control) if mark.name == name for arg in mark.args)
+
+
+def control_id(control: Control) -> str:
+    parameters = "".join(f"[{value}]" for _, value in control.parameters)
+    return f"{control.test.__name__}{parameters}-{control.never}"
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=[control_id(control) for control in CONTROLS])
 def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
     control: Control, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -151,14 +175,14 @@ def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
             suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow],
         ),
     )
-    chances = marker_kwargs(control.test, "chances")
-    drawn = marker_args(control.test, "drawn")
+    chances = marker_kwargs(control, "chances")
+    drawn = marker_args(control, "drawn")
     assert control.never in chances or control.never in drawn
     with audits.counting() as counts:
-        control.test()
+        control.test(**dict(control.parameters))
     problems = audits.feature_shortfalls(
         counts,
-        marker_kwargs(control.test, "features"),
+        marker_kwargs(control, "features"),
         drawn,
         by_draws=True,
         chances=chances,
