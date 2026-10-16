@@ -40,6 +40,24 @@ every family entry goes in `families/CHANGELOG.md`.
   settle them; and where a field's label goes from its row (`vocabulary/fields.json`).
 - Step 0 refuses, as `request_incomplete`, a request member one slip from one the request's shape names, a
   field the vocabulary does not register, and a requirement holding a declaration's members.
+- The read's steps 9 and 10 (S2a-3; `read_side_contract.md` sections 3 and 5). Step 9 compares each unit a
+  field states with the one registered for it, code point for code point, and a unit registered as a status
+  object by its token alone: the field's, a known numeric condition's and its `plus_minus` entries', with that
+  condition, a `unit` on a token condition, which registers none, and a specimen fact's, against the unit its
+  row fixes, wherever step 8 checks the fact (`unit_mismatch`; `core/fields.py`). Step 10 checks the
+  conditions the record holds, those the row requires, those another condition requires with its token and
+  those the request names, each by section 5's table, every comparison on the exact values of the doubles
+  (`fractions.Fraction`), a stated `plus_minus` turning `met` into `unknown` alone (`condition_uncertain`),
+  and gives the result's `conditions` once it has run to its end (`core/conditions.py`). A read step 10 does
+  not end raises `NotImplementedError` until S2a-4 builds steps 11 to 13.
+- Implied conditions (`declarations.md` section 4.1): step 0 checks each request's `implied_condition`,
+  whatever field or location it names, its units as an operating condition's (`request_unit_mismatch`), and
+  keeps only the members its shape names; step 10 applies one located at the read whose fact and token the
+  field's specimen states, the section's facts merged with the field's (`RecordField.specimen`), filling a
+  condition the record leaves unstated or does not hold, with the basis `implied`; two that disagree end the
+  read there with `request_incomplete` for that condition and no `conditions`. A result's `applied`, outside
+  its JSON, holds the indexes of the implied conditions that filled a condition. A request with any other
+  acceptance still raises `NotImplementedError`.
 - `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
   name-overlap check share. A word made plural or singular must be a word: the empty string between two
   underscores is none.
@@ -230,6 +248,23 @@ every family entry goes in `families/CHANGELOG.md`.
 - 24 case files that end at step 0 or 8 on checks S2a-2 builds are run at S2a-2, two of them since its fix
   round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
   step (`tests/spec_sync/case_steps.json`).
+- S2a-3's 54 case files run and pass: 633 of 1254 case files pass, 621 wait for later steps.
+- Steps 9 and 10's properties (`tests/property/test_condition_properties.py`), in a shard of their own: HP7,
+  each condition against an oracle written from section 5 alone, on exact rationals, at each boundary its
+  exactness turns on, with a plus or minus of each kind, the table's other rows and implied conditions; HP8,
+  units by code point, end to end, however escapes write the registered one and refusing one equal under NFKC
+  or case folding; HP9, the specimen merge; and HP3 and HP5 for the part steps 9 and 10 decide. 43 mutants,
+  each killed within the `ci` profile's examples at both sizes (`test_condition_mutants.py`), 29 of them at
+  the labels they name; four feature-audit controls, drawn features among them.
+- Deterministic checks of each unit place, each row of section 5, the exact arms of PR-306 and PR-335 with a
+  control that floating point gets them wrong, and implied conditions at steps 0 and 10
+  (`tests/unit/test_read.py`, `tests/unit/test_conditions.py`).
+- Fuzz target 4 reads at operating conditions and holds steps 9 and 10 to their text, its units by code point
+  and its conditions by HP7's oracle. Its seeded fault moved to step 10, behind two changes to one seed, no
+  seed holding two of its three parts; found after 84 to 601 s in ten local runs, so CI's control runs the
+  target twice side by side for up to 900 s each. The record fuzz target drives the new properties. The
+  unknown-member positions table gives an implied condition's members their verdicts (D06's first piece), and
+  the reason-step check traces steps 9 and 10.
 - Each new check is shown failing on seeded faults.
 - T1 sets each provenance object's `origin` to each other token of its row, in each base alone and beside each
   change inside the object, so that its relations see a member a read checks under one origin beside the
