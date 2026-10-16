@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The reference model imports nothing from `materica`, at any depth, so that it never rests on the code it
-checks: neither by the imports its source writes, followed through the modules beside it, nor in a fresh
-interpreter that imports it. The control is a throwaway package whose first module reaches `materica` only
-through its second, and both checks must see that."""
+"""The reference model, and the reference evaluator of tables beside it, import nothing from `materica`, at
+any depth, so that they never rest on the code they check: neither by the imports their source writes,
+followed through the modules beside them, nor in a fresh interpreter that imports them. The control is a
+throwaway package whose first module reaches `materica` only through its second, and another is the
+evaluator's own source with one import of the core added; both checks must see both."""
 
 import ast
 import subprocess
@@ -12,7 +13,7 @@ from pathlib import Path
 import pytest
 
 REPOSITORY = Path(__file__).resolve().parents[2]
-MODEL = ("tests.reference.read_model", "tests.reference.strict_json")
+MODEL = ("tests.reference.read_model", "tests.reference.strict_json", "tests.reference.table_evaluator")
 
 
 def module_file(module: str, root: Path) -> Path | None:
@@ -111,3 +112,18 @@ def test_the_walk_resolves_relative_imports(tmp_path: Path) -> None:
         "tests",
         "tests.conftest",
     ]
+
+
+def test_an_import_of_materica_added_to_the_evaluator_is_seen_by_both_checks(tmp_path: Path) -> None:
+    """The evaluator's own source, with one import of the core added, in a copy of its package."""
+    package = tmp_path / "tests" / "reference"
+    package.mkdir(parents=True)
+    (tmp_path / "tests" / "__init__.py").write_text("")
+    (package / "__init__.py").write_text("")
+    source = (REPOSITORY / "tests" / "reference" / "table_evaluator.py").read_text(encoding="utf-8")
+    assert from_materica(imported("tests.reference.table_evaluator", REPOSITORY)) == []
+    (package / "table_evaluator.py").write_text(source + "\nfrom materica.core.jsonio import JsonValue\n")
+    assert "materica.core.jsonio" in from_materica(imported("tests.reference.table_evaluator", tmp_path))
+    assert "materica.core.jsonio" in loaded_in_a_fresh_interpreter(
+        "tests.reference.table_evaluator", tmp_path
+    )

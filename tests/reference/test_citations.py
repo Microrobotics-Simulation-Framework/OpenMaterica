@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Each rule of the reference model cites the specification as `file:line` and a short quote; each quote is
-found at its line, so that a citation that drifts from the text fails, and so does a `file:line` without a
-quote, which nothing could check. A quote holds `"` only inside a code span, as the text's JSON stands, so
-that it ends at the first `"` outside one. Each point the text leaves open is listed once in `OPEN_POINTS`
-and named where the model applies it, and the two agree."""
+"""Each rule of the reference model, and of the reference evaluator of tables beside it, cites the
+specification as `file:line` and a short quote; each quote is found at its line, so that a citation that
+drifts from the text fails, and so does a `file:line` without a quote, which nothing could check. A quote
+holds `"` only inside a code span, as the text's JSON stands, so that it ends at the first `"` outside one.
+Each point the text leaves open is listed once in `OPEN_POINTS` and named
+where the model applies it, and the two agree."""
 
 import ast
 import io
@@ -18,7 +19,9 @@ from tests.reference import read_model
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 SPECIFICATION = REPOSITORY / "docs" / "specification"
-SOURCES = [REPOSITORY / "tests" / "reference" / name for name in ("read_model.py", "strict_json.py")]
+MODEL_SOURCES = ("read_model.py", "strict_json.py")
+EVALUATOR_SOURCE = REPOSITORY / "tests" / "reference" / "table_evaluator.py"
+SOURCES = [*(REPOSITORY / "tests" / "reference" / name for name in MODEL_SOURCES), EVALUATOR_SOURCE]
 # A quote's text: characters but `"` and a backtick, and code spans, which may hold `"`.
 QUOTED = r'"((?:[^"`]|`[^`]*`)+)"'
 REFERENCE = re.compile(r"(?P<file>[A-Za-z_]+\.md):(?P<start>\d+)(?:-(?P<end>\d+))?")
@@ -156,3 +159,32 @@ def test_an_open_point_named_and_listed_apart_fails() -> None:
         "named but not listed: unknown",
         "listed but named nowhere: unused",
     ]
+
+
+def test_the_evaluator_is_held_to_the_same_citation_rules() -> None:
+    texts = prose(EVALUATOR_SOURCE.read_text(encoding="utf-8"))
+    assert sum(len(CITATION.findall(text)) for text in texts) >= 20
+    assert citation_problems(texts) == []
+    assert EVALUATOR_SOURCE in SOURCES
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        pytest.param(
+            "read_side_contract.md:551 ", "read_side_contract.md:560 ", "is not at lines 560", id="line"
+        ),
+        pytest.param('"Linear interpolation within', '"Linear interpolation outside', "outside", id="quote"),
+        pytest.param(
+            "read_side_contract.md:551 ", "read_contract.md:551 ", "no file read_contract.md", id="file"
+        ),
+    ],
+)
+def test_a_citation_of_the_evaluator_that_drifts_fails(old: str, new: str, problem: str) -> None:
+    """The evaluator's own source, with one of its citations drifted, fails the check that passes it."""
+    source = EVALUATOR_SOURCE.read_text(encoding="utf-8")
+    assert source.count(old) == 1
+    assert citation_problems(prose(source)) == []
+    found = citation_problems(prose(source.replace(old, new)))
+    assert len(found) == 1
+    assert problem in found[0]

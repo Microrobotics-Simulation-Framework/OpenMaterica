@@ -154,5 +154,10 @@ that file's tolerance; a fault's margin is its best file's, the least over the c
   only.
 - **A table that does not survive `binary32`**: two knots that become one, an operating value that changes
   side. Every table here survives it; the build's check is planned with S7.
+- **A table whose numbers underflow to zero in `binary32`.** The test-only reference evaluator
+  (`tests/reference/table_evaluator.py`) raises, in `binary32`, on a log-log table with an `x` or a `y` that
+  rounds to zero there, where it cannot take the logarithm, and reports no refusal; a linear table it
+  evaluates. No file here holds such a table, so no case shows it, and the build's refusal of one for a
+  `binary32` model is planned with S7.
 - **A power law** (TE-009): no 0.1.0 field takes one; its cases come with the acoustic section. TE-001 is not
   defined.
