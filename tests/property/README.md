@@ -1,6 +1,6 @@
 # Property tests
 
-Hypothesis properties of the core, in three groups, and of the writer schema, in a fourth.
+Hypothesis properties of the core, in four groups, and of the writer schema, in a fifth.
 
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
@@ -54,8 +54,32 @@ Hypothesis properties of the core, in three groups, and of the writer schema, in
   HP3 runs in two parts, a property each, the regions taken in turn: each draws its first fault's region among
   its own, before the record, so that the feature audit at `ci` can judge each region (below); the mutant
   searches draw HP3 whole. A third law, the label's rule, holds a label on a table to the Label column, read
-  by the test itself, through step 8's shared check, since no read reaches a table before S3. Until steps 9 to
-  13 are built, a read that passes step 8 raises `NotImplementedError`, the outcome "past step 8".
+  by the test itself, through step 8's shared check, since no read reaches a table before S3. A read that
+  passes step 8 is refused at step 9 or 10 or, until steps 11 to 13 are built, raises `NotImplementedError`:
+  either is the outcome "past step 8".
+- **Steps 9 and 10:** (10) the laws of steps 9 and 10 (`read_side_contract.md` sections 3 and 5), the S2
+  design's HP7, HP8 and HP9, and HP3 and HP5 for the part steps 9 and 10 decide
+  (`test_condition_properties.py`). HP7: step 10 gives each condition the entry and reason of an oracle written
+  from section 5 alone (`condition_oracle.py`, which shares nothing with `core/conditions.py`), on the exact
+  rationals the doubles are: each numeric row at each boundary its exactness turns on (an operating end at
+  `fl(r + t)`, one ulp inside or outside it, a tolerance that is the rounded difference, subnormals, mixed
+  magnitudes, negative zero), a stated plus or minus of each kind, the table's other rows and the conditions
+  checked, and implied conditions that fill, never override, and disagree. Step 10's `met` and `unknown`
+  entries are not returned before S2a-4, so HP7 calls `check_conditions` as the read does. HP9: a field's
+  specimen is the section's facts, each overridden by the field's (a dict merge written in the test), and an
+  implied condition applies exactly where that merge states its fact and token. HP8, end to end through the
+  read: the registered unit passes however escapes write it in the record's text, at each place a unit sits
+  (a field's, a condition's, a `plus_minus` entry's, a fact's in the section, the field and a derived value's
+  inputs); any other, equal under NFKC or case folding, or but for a space, another registered unit, any text
+  or a status object, gives `unit_mismatch` with its condition, and so does any unit on a token condition.
+  HP3: one fault of a catalogue of steps 9 and 10, written from the text, on a read every condition of which
+  is stated and met, gives exactly the reasons its rule gives; in one draw in four, two faults of two parts of
+  the read give step 9's alone, or two implied conditions that disagree alone, or every reason of step 10, its
+  `conditions` returned where one ends the read. HP5: members the reader does not know, added to a condition,
+  a `plus_minus` entry, a fact, the request's operating conditions, requirement and tolerances, and an implied
+  condition, its record and its values, change nothing, the returned `conditions` included.
+  `condition_strategies.py` draws each, its kind first, so that the feature audit holds each kind to its draw
+  floor.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -91,15 +115,17 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the groups in five shards side by side, each in a job of its own: `pytest tests/property --shard
+CI runs the groups in seven shards side by side, each in a job of its own: `pytest tests/property --shard
 json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
-two validators' agreement (below), and `--shard step8_mutants`, step 8's mutant searches, which keep no
-example database and were most of the records shard's time (`SHARDS` in `tests/conftest.py`). Each family of
-faults is a property of its own, run in parallel. The agreement shard's drawn properties run python-jsonschema
-on every example, and are the longest tests of any shard: on 4 workers locally (2026-10-17), the shard took
-4.0 and 8.0 minutes at `ci`, its longest property 1.9 and 4.7 (at loads of 4 to 7 and 15 to 17), and 112
-minutes at `deep`, its longest property 70 (load 18 to 30). `deep` has not yet run on CI, whose cores are 1.6
-to 4 times slower: there it may not fit in the 6 hours GitHub gives a job. Each module is in exactly one shard
+two validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
+database and were most of the records shard's time, `--shard conditions`, steps 9 and 10's group, about 7
+minutes of CPU at `ci` (2026-10-16), and `--shard condition_mutants`, its mutant searches, about 2 (`SHARDS`
+in `tests/conftest.py`). Each family of faults is a property of its own, run in parallel. The agreement
+shard's drawn properties run python-jsonschema on every example, and are the longest tests of any shard: on 4
+workers locally (2026-10-17), the shard took 4.0 and 8.0 minutes at `ci`, its longest property 1.9 and 4.7 (at
+loads of 4 to 7 and 15 to 17), and 112 minutes at `deep`, its longest property 70 (load 18 to 30). `deep` has
+not yet run on CI, whose cores are 1.6 to 4 times slower: there it may not fit in the 6 hours GitHub gives a
+job. Each module is in exactly one shard
 (`tests/unit/test_source_files.py`), and each shard but the mutant searches' keeps its own example database in
 CI.
 
@@ -158,8 +184,8 @@ modules. A fault that died only at the original size would mean the small size m
 CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported range's ends alone
 (`--property-controls` in `tests/conftest.py`), so a mutant module holds mutant searches only. The checks of
 the mutants' own code, which run on every Python, are in modules of their own: `test_mutant_view.py` (the hash
-mutants' view, without a fault, is the core's), `test_value_field_mutant_table.py` and
-`test_writer_mutant_table.py`.
+mutants' view, without a fault, is the core's), `test_value_field_mutant_table.py`,
+`test_writer_mutant_table.py` and `test_condition_mutant_table.py`.
 
 `test_mutants.py` also gives the one-slip relation twelve faults, each killed by (9) (its strategy has no size,
 so both sizes take the same examples; measured 2026-10-15):
@@ -274,7 +300,65 @@ example it draws kills each, at the second example at both sizes in each of thos
 | `coverage_probability_of_zero_allowed` | an uncertainty's `coverage_probability` may be 0 | HP3 | `uncertainty.coverage_probability_zero` | 1, 1 |
 | `population_level_any_string` | a population level's `level` takes any string | HP3 | `statistics_tokens.level_unknown` | 1, 1 |
 
-The S2 design's HP5 mutant, an unknown member returned, waits for the result's members (S2a-4).
+The S2 design's HP5 mutant, an unknown member returned, waits for the result's members (S2a-4), but in a
+condition's entry, which steps 9 and 10's HP5 kills (`unknown_members_returned_in_an_entry`, below).
+
+### Steps 9 and 10's mutants
+
+`test_condition_mutants.py`, injected as step 8's are: a module-level function of `conditions`, `fields` or
+`read`, or `RecordField.specimen`. Each names the property that kills it; the search draws that property's
+examples, the parametrised ones (HP7's rows, HP8's places) drawn among their parameters. HP7's and HP9's
+examples hold no tree, so both sizes take the same examples. The kill is the examples the derandomised search
+took, at the small and the original size (measured 2026-10-16, S2a-3).
+
+| Mutant | Fault | Killed by | Examples |
+|---|---|---|---|
+| `floating_point_as_written` | section 5's tests computed in floating point | HP7 | 28, 28 |
+| `strict_inequalities` | `<` for `<=` | HP7 | 1, 1 |
+| `stated_range_as_its_low_end` | a stated range read as its `lo` | HP7 | 22, 22 |
+| `operating_range_as_its_low_end` | an operating range read as its `lo` | HP7 | 56, 56 |
+| `plus_minus_ignored` | a stated plus or minus ignored | HP7, plus or minus | 5, 5 |
+| `plus_minus_makes_not_met` | a stated plus or minus turns `met` into `not_met` | HP7, plus or minus | 5, 5 |
+| `sd_ignored` | an `sd` or unstated entry ignored where no bound sits | HP7, plus or minus | 11, 11 |
+| `bound_moves_the_low_end_only` | a bound narrows the window at its low end alone | HP7, plus or minus | 189, 189 |
+| `unchecked_read_as_met` | a stated condition with no tolerance or accept list is `met` | HP7, table | 2, 2 |
+| `not_accepted_read_as_unknown` | a token outside the accept list is `unknown` | HP7, table | 10, 10 |
+| `unknown_name_read_as_unstated` | a name the reader does not know is `condition_unstated` | HP7, table | 3, 3 |
+| `required_with_ignored` | a condition another requires with its token is not checked | HP7, table | 2, 2 |
+| `row_requirements_ignored` | the row's required conditions are not checked | HP7, table | 114, 114 |
+| `status_object_not_returned` | an entry held as a status object returns no `record` | HP7, table | 1, 1 |
+| `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | 8, 8 |
+| `implied_overrides_a_stated_value` | an implied condition fills a stated condition | HP7, implied | 34, 34 |
+| `implied_fills_any_status` | an implied condition fills any status object | HP7, implied | 34, 34 |
+| `disagreement_ignored` | two implied conditions that disagree, the first wins | HP7, implied | 23, 23 |
+| `a_value_agrees_with_its_range` | a value agrees with the range `[v, v]` | HP7, implied | 23, 23 |
+| `minus_zero_disagrees_with_zero` | implied values compared as written, `-0` against `0` | HP7, implied | 2, 2 |
+| `implied_applies_without_its_fact` | an implied condition applies whatever the specimen states | HP7, implied | 4, 4 |
+| `applied_not_recorded` | `applied` holds no implied condition | HP7, implied | 1, 1 |
+| `section_facts_win` | the section's fact overrides the field's (the S2 design's HP9 mutant) | HP9 | 2, 2 |
+| `a_status_fact_overrides_nothing` | a field's fact held as a status object leaves the section's | HP9 | 11, 11 |
+| `nfkc_before_comparing` | units compared after NFKC (the S2 design's HP8 mutant) | HP8, another unit | 1, 1 |
+| `case_folded` | units compared after case folding (the S2 design's HP8 mutant) | HP8, another unit | 4, 11 |
+| `spaces_ignored` | spaces and zero-width spaces dropped from a unit | HP8, another unit | 34, 36 |
+| `a_status_object_where_a_string_is_registered` | a status object takes a string's place | HP8, another unit | 19, 9 |
+| `plus_minus_units_unchecked` | a `plus_minus` entry's unit not compared | HP8, another unit | 8, 11 |
+| `token_condition_units_unchecked` | a `unit` on a token condition passes | HP8, another unit | 6, 4 |
+| `section_facts_unchecked` | the section's facts' units not compared | HP8, another unit | 2, 2 |
+| `input_facts_unchecked` | a derived value's input facts' units not compared | HP8, another unit | 43, 3 |
+| `condition_dropped_from_unit_mismatch` | a condition's `unit_mismatch` carries no condition | HP8, another unit | 6, 4 |
+| `plus_minus_against_the_field_unit` | a `plus_minus` unit compared with the field's unit | HP8, the registered unit | 1, 1 |
+| `facts_against_the_field_unit` | a fact's unit compared with the field's unit | HP8, the registered unit | 1, 1 |
+| `step_10_after_a_refusal_at_step_9` | step 10 runs after step 9's `not_met` | HP3 | 1, 1 |
+| `first_unit_reason_only` | step 9 gives its first reason only | HP3 | 1, 1 |
+| `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | 29, 490 |
+| `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3 | 29, 65 |
+| `disagreement_checks_the_others` | two implied conditions that disagree, and the conditions checked all the same | HP3 | 4, 72 |
+| `unknown_members_returned_in_an_entry` | a condition's entry returns members the reader does not know | HP5 | 3, 56 |
+| `two_slips_refused_in_a_request` | a request's names two characters off a named one refused | HP5 | 2, 2 |
+| `unknown_request_members_refused` | every member a request's place does not name refused | HP5 | 2, 2 |
+
+A mutant first written for HP5, step 0 keeping an implied value's unknown members, was dropped: no read can
+tell it from the core, since step 10 returns a filled condition with the members the reader knows alone.
 
 ## Audits
 
@@ -302,9 +386,11 @@ The S2 design's HP5 mutant, an unknown member returned, waits for the result's m
   clusters falls below its least share in about one run in a hundred (`audits.JUDGED_FROM`). So the json and
   records shards' properties declare by its chance each feature whose least share failed a run with a
   probability above 1e-6 at `ci` or 1e-3 at `dev`, computed from the clusters measured on each property
-  (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. For each
-  such property, `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops
-  producing one of those features: its audit fails, on that feature alone.
+  (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. Steps 9
+  and 10's properties draw each kind first among at most nine, and declare it drawn; their HP3's two faults
+  are declared by their chance, one in four. For each such property, and four of steps 9 and 10's,
+  `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
+  those features: its audit fails, on that feature alone.
 
 ## Adding a property
 

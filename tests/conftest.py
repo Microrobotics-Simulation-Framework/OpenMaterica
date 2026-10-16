@@ -45,8 +45,9 @@ if PROFILE not in EXAMPLES:
 settings.load_profile(PROFILE)
 
 
-# CI's Hypothesis job runs the property modules in five shards side by side, `--shard json`, `--shard
-# records`, `--shard writer`, `--shard agreement` and `--shard step8_mutants`;
+# CI's Hypothesis job runs the property modules in seven shards side by side, `--shard json`, `--shard
+# records`, `--shard writer`, `--shard agreement`, `--shard step8_mutants`, `--shard conditions` and `--shard
+# condition_mutants`;
 # `tests/unit/test_source_files.py` checks that each module is in exactly one.
 SHARDS = {
     "json": (
@@ -71,6 +72,9 @@ SHARDS = {
     # Step 8's mutant searches, the longest part of the records shard, and their table's check; they keep no
     # example database.
     "step8_mutants": ("test_value_field_mutants", "test_value_field_mutant_table"),
+    # Steps 9 and 10's properties, which read records end to end, and their mutant searches and table's check.
+    "conditions": ("test_condition_properties",),
+    "condition_mutants": ("test_condition_mutants", "test_condition_mutant_table"),
 }
 
 

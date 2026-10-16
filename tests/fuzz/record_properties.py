@@ -2,7 +2,8 @@
 # Atheris installs on Python 3.12 to 3.14 only; elsewhere its stub in typings/ stands in for it.
 # pyright: reportMissingModuleSource=false
 """Fuzz target 3: Atheris drives the Hypothesis properties of records and the read, in-process, through
-`fuzz_one_input`: the envelope checks against the reader schema, versions, the read's laws, and step 8's.
+`fuzz_one_input`: the envelope checks against the reader schema, versions, the read's laws, step 8's, and
+steps 9 and 10's but those drawn in parameters, which `fuzz_one_input` cannot take.
 
     python -m tests.fuzz.record_properties [CORPUS] [libFuzzer options]
 
@@ -29,6 +30,7 @@ from hypothesis.core import HypothesisHandle
 importlib.import_module("tests.conftest")
 
 from tests.fuzz import seeded_fault  # noqa: E402
+from tests.property import test_condition_properties as condition_properties  # noqa: E402
 from tests.property import test_envelope_properties as envelope_properties  # noqa: E402
 from tests.property import test_read_properties as read_properties  # noqa: E402
 from tests.property import test_value_field_properties as value_field_properties  # noqa: E402
@@ -48,6 +50,15 @@ PROPERTIES: list[Callable[..., None]] = [
     value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_2,
     value_field_properties.test_a_field_without_a_fault_passes_step_8,
     value_field_properties.test_members_the_reader_does_not_know_change_nothing,
+    condition_properties.test_a_stated_plus_minus_turns_met_into_unknown_and_nothing_else,
+    condition_properties.test_each_row_of_the_table_and_the_conditions_it_checks,
+    condition_properties.test_implied_conditions_fill_never_override_and_end_the_read_where_they_disagree,
+    condition_properties.test_an_implied_condition_rests_on_the_section_facts_overridden_by_the_fields,
+    condition_properties.test_a_base_read_passes_steps_8_to_10,
+    condition_properties.test_the_registered_unit_passes_step_9_however_escapes_write_it,
+    condition_properties.test_one_fault_of_step_9_gives_its_refusal_and_no_other,
+    condition_properties.test_one_fault_of_step_10_gives_its_reason_beside_the_others,
+    condition_properties.test_members_the_reader_does_not_know_change_nothing_steps_9_and_10_read,
 ]
 
 

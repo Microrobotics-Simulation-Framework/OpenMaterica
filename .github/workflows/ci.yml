@@ -346,7 +346,9 @@ jobs:
     # step 8's mutants, a shard of their own, 51 s and 53 s; that shard's `deep` took 68 s on four, since its
     # searches do not grow with the profile (2026-10-15, S2a-2's fix round; a runner perhaps two to three times
     # slower a core, by estimate). The writer shard's `ci` took 11 minutes on two workers locally (2026-10-15),
-    # and its `deep`, ten times the examples, about ten times that, unmeasured.
+    # and its `deep`, ten times the examples, about ten times that, unmeasured. Steps 9 and 10's properties,
+    # which read records end to end, took about 7 minutes of CPU at `ci` (2026-10-16, S2a-3): a shard of their
+    # own, `conditions`, with the writer's timeouts; their mutant searches, `condition_mutants`, about 2.
     # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
     # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
@@ -360,16 +362,19 @@ jobs:
     # hosted runner, which it may not fit.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-      && (matrix.shard == 'writer' && 180 || matrix.shard == 'agreement' && 360 || 45)
-      || (matrix.shard == 'writer' && 75 || matrix.shard == 'agreement' && 45 || 20) }}
+      && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180 || matrix.shard == 'agreement' && 360
+      || 45)
+      || ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 75 || matrix.shard == 'agreement' && 45
+      || 20) }}
     strategy:
       fail-fast: false
       matrix:
-        # Five shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
+        # Seven shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
         # envelope checks, versions and the read; the writer schema's value fields; the two JSON Schema
-        # libraries' agreement, whose python-jsonschema validations make it the longest; and step 8's mutant
-        # searches, which were most of the records shard's time.
-        shard: [json, records, writer, agreement, step8_mutants]
+        # libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
+        # searches, which were most of the records shard's time; and steps 9 and 10's properties and their
+        # mutant searches.
+        shard: [json, records, writer, agreement, step8_mutants, conditions, condition_mutants]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
     steps:
@@ -392,7 +397,7 @@ jobs:
       # later save never hides an example the other saved.
       # The mutant searches keep no example database, so their shard restores and saves none.
       - name: Restore the example database
-        if: matrix.shard != 'step8_mutants'
+        if: matrix.shard != 'step8_mutants' && matrix.shard != 'condition_mutants'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
@@ -419,7 +424,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
       - name: Save the example database
-        if: always() && matrix.shard != 'step8_mutants'
+        if: always() && matrix.shard != 'step8_mutants' && matrix.shard != 'condition_mutants'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
@@ -558,6 +563,12 @@ jobs:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-records-${{ github.run_id }}
           restore-keys: hypothesis-${{ runner.os }}-records-
+      - name: Restore the example database of the conditions shard
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-conditions-${{ github.run_id }}
+          restore-keys: hypothesis-${{ runner.os }}-conditions-
       # Target 1's corpus from earlier runs, so that its coverage builds up; it is seeded afresh as well.
       - name: Restore the raw-bytes corpus
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -622,7 +633,7 @@ jobs:
           --ignore=tests/property/test_writer_properties.py --ignore=tests/property/test_writer_mutants.py
           --ignore=tests/property/test_validators_agree.py
           --ignore=tests/property/test_mutants.py --ignore=tests/property/test_record_mutants.py
-          --ignore=tests/property/test_value_field_mutants.py
+          --ignore=tests/property/test_value_field_mutants.py --ignore=tests/property/test_condition_mutants.py
       - name: Keep the inputs that failed
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -643,3 +654,9 @@ jobs:
         with:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-records-${{ github.run_id }}-fuzz
+      - name: Save the example database for the conditions shard
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-conditions-${{ github.run_id }}-fuzz

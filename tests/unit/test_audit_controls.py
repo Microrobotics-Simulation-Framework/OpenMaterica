@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """The controls of the feature audits of the json and records shards' properties that declare features by
-their chances (`@pytest.mark.chances`): run at the `ci` profile's examples with a generator that stops
+their chances (`@pytest.mark.chances`), and of the conditions shard's, which declare them by their chances or
+draw them alike (`@pytest.mark.drawn`): run at the `ci` profile's examples with a generator that stops
 producing one of them, each property fails its audit, on that feature alone. Outside `tests/property/`, whose
 audits would fail these runs too."""
 
@@ -14,6 +15,7 @@ from hypothesis import HealthCheck, reject, settings
 from tests.conftest import EXAMPLES
 from tests.property import audits
 from tests.property import test_canonical_properties as canonical_properties
+from tests.property import test_condition_properties as condition_properties
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_jsonio_properties as jsonio_properties
 from tests.property import test_read_properties as read_properties
@@ -80,6 +82,26 @@ CONTROLS = [
         "region_derivation_inputs",
         ("check_one_fault",),
     ),
+    Control(
+        condition_properties.test_each_row_of_the_table_and_the_conditions_it_checks,
+        "required_with_its_token",
+        ("check_against_the_oracle",),
+    ),
+    Control(
+        condition_properties.test_the_registered_unit_passes_step_9_however_escapes_write_it,
+        "input_fact",
+        ("check_registered",),
+    ),
+    Control(
+        condition_properties.test_one_fault_of_step_10_gives_its_reason_beside_the_others,
+        "two_faults",
+        ("check_one_fault",),
+    ),
+    Control(
+        condition_properties.test_members_the_reader_does_not_know_change_nothing_steps_9_and_10_read,
+        "implied_value",
+        ("check_ignored",),
+    ),
 ]
 
 
@@ -90,6 +112,11 @@ def skipped(*_: object) -> None:
 def marker_kwargs(test: Callable[..., None], name: str) -> dict[str, float]:
     marks: list[pytest.Mark] = getattr(test, "pytestmark", [])
     return {key: value for mark in marks if mark.name == name for key, value in mark.kwargs.items()}
+
+
+def marker_args(test: Callable[..., None], name: str) -> tuple[str, ...]:
+    marks: list[pytest.Mark] = getattr(test, "pytestmark", [])
+    return tuple(arg for mark in marks if mark.name == name for arg in mark.args)
 
 
 @pytest.mark.parametrize(
@@ -125,17 +152,20 @@ def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
         ),
     )
     chances = marker_kwargs(control.test, "chances")
-    assert control.never in chances
+    drawn = marker_args(control.test, "drawn")
+    assert control.never in chances or control.never in drawn
     with audits.counting() as counts:
         control.test()
     problems = audits.feature_shortfalls(
         counts,
         marker_kwargs(control.test, "features"),
+        drawn,
         by_draws=True,
         chances=chances,
         chance_floors=True,
     )
-    floor = audits.draw_floor(EXAMPLES["ci"], chances[control.never])
+    chance = chances[control.never] if control.never in chances else 1 / len(drawn)
+    floor = audits.draw_floor(EXAMPLES["ci"], chance)
     assert floor >= audits.LEAST_DRAWS
     assert problems == [
         f"feature {control.never!r} in 0 of {EXAMPLES['ci']} examples, below its floor of {floor}"
