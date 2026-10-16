@@ -453,6 +453,29 @@ def test_a_pull_request_that_moves_code_into_documentation_runs_the_jobs_of_the_
     }
 
 
+def printed_with_commands_stopped(printed: str, name: str) -> bool:
+    """Whether `name` is printed with GitHub's workflow commands stopped, by a token that is not guessed."""
+    lines = printed.splitlines()
+    at = lines.index(name)
+    stopped = re.fullmatch(r"::stop-commands::(\w{32,})", lines[at - 1]) if at else None
+    return stopped is not None and f"::{stopped[1]}::" in lines[at + 1 :]
+
+
+def test_the_gate_prints_the_paths_of_a_pull_request_with_workflow_commands_stopped(repository: Path) -> None:
+    """A path a pull request names, printed as it is, would be read as a workflow command (`::error::...`)."""
+    base = commit()
+    head = commit("./::warning::a name.md")  # `./`, or git reads `:` as the start of a pathspec's magic
+    gate = step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP)
+    status, _, printed = run_step(gate, gate_context("pull_request", base, head), repository)
+    assert status == 0, printed
+    assert printed_with_commands_stopped(printed, "::warning::a name.md"), printed
+    # The control: the same step without its two lines that stop and restart the commands.
+    gate["run"], removed = re.subn(r'.*echo "::(stop-commands::)?\$stop(::)?"\n', "", gate["run"])
+    assert removed == 2
+    _, _, printed_unstopped = run_step(gate, gate_context("pull_request", base, head), repository)
+    assert not printed_with_commands_stopped(printed_unstopped, "::warning::a name.md"), printed_unstopped
+
+
 def documentation_pattern() -> str:
     """The gate's pattern of the paths that are documentation only (`docs_paths`), matched whole."""
     found = re.search(

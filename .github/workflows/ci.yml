@@ -125,7 +125,12 @@ jobs:
             # Both paths of a file moved, which git would otherwise give as a rename, by where it went alone:
             # a module moved into a documentation path is a change to code.
             changed=$(git diff --no-renames --name-only "$PR_BASE...$PR_HEAD")
+            # A pull request names its own files: printed with workflow commands stopped, so that a name
+            # beginning with `::` is printed, not obeyed.
+            stop=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
+            echo "::stop-commands::$stop"
             printf '%s\n' "$changed"
+            echo "::$stop::"
             # Documentation only when there are paths and each is listed: a diff that names none is code.
             if [ -n "$changed" ] && ! grep -qvxE "$docs_paths" <<< "$changed"; then code=false; else code=true; fi
             grep -qE "$hypothesis_paths" <<< "$changed" && hypothesis=true || hypothesis=false
