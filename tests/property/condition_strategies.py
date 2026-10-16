@@ -658,6 +658,7 @@ class Unknowns(NamedTuple):
     place: str  # the first addition's
     read: Read
     added: Read  # `read` with the members added
+    places: tuple[str, ...]  # where each was added
 
 
 @st.composite
@@ -690,4 +691,4 @@ def with_unknowns(draw: Draw, size: Size) -> Unknowns:
         else:
             name = "x_" + draw(st.text("abcdefghij", min_size=1, max_size=6))
         holder[name] = draw(records.trees(size).values)
-    return Unknowns(place, read, repinned(added))
+    return Unknowns(place, read, repinned(added), tuple(places))
