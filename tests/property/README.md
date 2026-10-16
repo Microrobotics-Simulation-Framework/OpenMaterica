@@ -62,26 +62,41 @@ Hypothesis properties of the core, in four groups, and of the writer schema, in 
   (`test_condition_properties.py`). HP7: step 10 gives each condition the entry and reason of an oracle
   written from section 5 alone (`condition_oracle.py`, which shares nothing with `core/conditions.py`), on the
   exact rationals the doubles are: each numeric row at each boundary its exactness turns on (an operating end
-  at `fl(r + t)`, one ulp inside or outside it, a tolerance that is the rounded difference, subnormals, mixed
-  magnitudes, negative zero), a stated plus or minus of each kind, the table's other rows (an accept list
-  holding, beside the row's tokens, a token capitalised, a prefix of one and another row's token; a name the
-  reader does not know, held as a value or a status object) and the conditions checked, and implied conditions
-  that fill, never override, and disagree. Step 10's `met` and `unknown` entries are not returned before
-  S2a-4, so HP7 calls `check_conditions` as the read does. HP9: a field's specimen is the section's facts,
-  each overridden by the field's (a dict merge written in the test), and an implied condition applies exactly
-  where that merge states its fact and token. HP8, end to end through the read: the registered unit passes
-  however escapes write it in the record's text, at each place a unit sits (a field's, a condition's, either
-  of two `plus_minus` entries', a fact's in the section, the field and a derived value's inputs); any other,
-  equal under NFKC or case folding, or but for a space, another registered unit, any text or a status object,
-  gives `unit_mismatch` with its condition, and so does any unit on a token condition. HP3: one fault of a
-  catalogue of steps 9 and 10, written from the text, on a read every condition of which is stated and met,
-  gives exactly the reasons its rule gives; in one draw in four, two faults of two parts of the read give step
-  9's alone, or two implied conditions that disagree alone, or every reason of step 10, its `conditions`
-  returned where one ends the read. HP5: members the reader does not know, added to a condition, a
-  `plus_minus` entry, a fact, the request's operating conditions, requirement and tolerances, and an implied
-  condition, its record and its values, change nothing, the returned `conditions` included.
-  `condition_strategies.py` draws each, its kind first, so that the feature audit holds each kind to its draw
-  floor.
+  anywhere; at `fl(r + t)`; the double next to the exact bound `r + t`, inside it or outside, at ordinary
+  magnitudes and among subnormals; a tolerance that is the rounded difference; PR-335's mixed magnitudes, a
+  large stated value, a small operating one and a tolerance the double next to their exact difference, at or
+  above it or below it; negative zero), each at the lower or the upper end of the stated span, a stated plus
+  or minus of each kind, the table's other rows (an accept list holding, beside the row's tokens, a token
+  capitalised, a prefix of one and another row's token; a name the reader does not know, held as a value or a
+  status object) and the conditions checked, and implied conditions that fill, never override, and disagree.
+  Step 10's `met` and `unknown` entries are not returned before S2a-4, so HP7 calls `check_conditions` as the
+  read does. HP9: a field's specimen is the section's facts, each overridden by the field's (a dict merge
+  written in the test), and an implied condition applies exactly where that merge states its fact and token.
+  HP8, end to end through the read: the registered unit passes however escapes write it in the record's text,
+  at each place a unit sits (a field's, a condition's, either of two `plus_minus` entries', a fact's in the
+  section, the field and a derived value's inputs); any other, equal under NFKC or case folding, or but for a
+  space, another registered unit, any text or a status object, gives `unit_mismatch` with its condition, and
+  so does any unit on a token condition. HP3: one fault of a catalogue of steps 9 and 10, written from the
+  text, on a read every condition of which is stated and met, gives exactly the reasons its rule gives; in one
+  draw in four, two faults of two parts of the read give step 9's alone, or two implied conditions that
+  disagree alone, or every reason of step 10, its `conditions` returned where one ends the read. HP5: members
+  the reader does not know, added to a condition, a `plus_minus` entry, a fact, the request's operating
+  conditions, requirement and tolerances, and an implied condition, its record and its values, change nothing,
+  the returned `conditions` included. `condition_strategies.py` draws each, its kind first, so that the
+  feature audit holds each kind to its draw floor.
+
+  HP7's boundary kinds reach these sides of their bound, measured over 3,000 derandomised draws a kind
+  (2026-10-16, S2a-3's fix round): `one_ulp_inside`, `subnormal_inside` and `mixed_magnitudes_inside` are
+  `met` in every draw, and their `_outside` twins `not_met` in every draw, by construction (a draw whose
+  window holds no double outside it is built at its other bound, or within the stated span); the property
+  asserts it of each example, so that each side is a drawn feature the audit holds to its floor. `anywhere`
+  (`met` in 1,625), `at_the_tolerance` (2,747) and `rounded_difference` (2,523) reach both, by where they draw
+  and by rounding, and `minus_zero` is `met` but where its edge at `fl(r + t)` rounds outside (2,998).
+  Floating point as written disagrees with the exact test in `anywhere`, `at_the_tolerance`,
+  `one_ulp_outside`, `rounded_difference` and `minus_zero` (34, 253, 306, 213 and 2 draws), and section 5's
+  first row as written, `|r - v| <= t`, also in `mixed_magnitudes_outside` (1,127 of 3,000 value rows): the
+  kinds those mutants die at. Which end of the stated span the boundary sits at, and a bound's window, are
+  features declared by their chances.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -326,10 +341,11 @@ place the unit in either entry of two.
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
-| `floating_point_as_written` | section 5's tests computed in floating point | HP7 | `at_the_tolerance`, `one_ulp_inside`, `one_ulp_outside`, `rounded_difference`, `subnormal`, `mixed_magnitudes` | 9, 9 |
+| `floating_point_as_written` | section 5's tests computed in floating point | HP7 | `anywhere`, `at_the_tolerance`, `one_ulp_outside`, `rounded_difference`, `minus_zero` | 9, 9 |
+| `value_row_difference_in_floating_point` | section 5's first row as written, `\|r - v\| <= t`, computed in floating point | HP7 | `anywhere`, `at_the_tolerance`, `one_ulp_outside`, `rounded_difference`, `mixed_magnitudes_outside` | 9, 9 |
 | `strict_inequalities` | `<` for `<=` | HP7 | any of its examples | 1, 1 |
-| `stated_range_as_its_low_end` | a stated range read as its `lo` | HP7 | any of its examples | 109, 109 |
-| `operating_range_as_its_low_end` | an operating range read as its `lo` | HP7 | any of its examples | 9, 9 |
+| `stated_range_as_its_low_end` | a stated range read as its `lo` | HP7 | any of its examples | 75, 75 |
+| `operating_range_as_its_low_end` | an operating range read as its `lo` | HP7 | any of its examples | 26, 26 |
 | `plus_minus_ignored` | a stated plus or minus ignored | HP7, plus or minus | `bound`, `sd`, `unstated`, `bound_beside_sd` | 3, 3 |
 | `plus_minus_makes_not_met` | a stated plus or minus turns `met` into `not_met` | HP7, plus or minus | `bound`, `sd`, `unstated`, `bound_beside_sd` | 3, 3 |
 | `sd_ignored` | an `sd` or unstated entry ignored where no bound sits | HP7, plus or minus | `sd`, `unstated` | 3, 3 |
@@ -407,8 +423,9 @@ tell it from the core, since step 10 returns a filled condition with the members
   records shards' properties declare by its chance each feature whose least share failed a run with a
   probability above 1e-6 at `ci` or 1e-3 at `dev`, computed from the clusters measured on each property
   (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. Steps 9
-  and 10's properties draw each kind first among at most nine, and declare it drawn; their HP3's two faults
-  are declared by their chance, one in four. For each such property, and four of steps 9 and 10's,
+  and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and declare it drawn;
+  their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
+  window by the least share measured. For each such property, and four of steps 9 and 10's,
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone.
 

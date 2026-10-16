@@ -16,7 +16,9 @@ design's HP7, HP8 and HP9, and HP3 and HP5 for what steps 9 and 10 decide. The m
 
 import json
 import math
+import sys
 import unicodedata
+from fractions import Fraction
 from typing import NamedTuple
 
 import pytest
@@ -39,6 +41,7 @@ from tests.property.condition_strategies import (
     OTHER_UNITS,
     REGISTERED_UNITS,
     ROWS,
+    SIDES,
     STEP_9_FAULTS,
     STEP_10_FAULTS,
     TOKEN,
@@ -48,9 +51,13 @@ from tests.property.condition_strategies import (
     JsonObject,
     Read,
     Unknowns,
+    above,
     base_reads,
+    below,
     entries,
     faulty_reads,
+    finite,
+    next_to_the_bound,
     numeric,
     operating_of,
     other_unit,
@@ -156,8 +163,14 @@ def check_against_the_oracle(case: Case) -> None:
 # HP7: a numeric condition at each boundary of each row.
 
 
+class Bounded(NamedTuple):
+    boundary: str  # the kind drawn first
+    end: str  # the end of the stated span the boundary is drawn at
+    case: Case
+
+
 @st.composite
-def numeric_cases(draw: st.DrawFn, row: str) -> tuple[str, Case]:
+def numeric_cases(draw: st.DrawFn, row: str) -> Bounded:
     """A stated value or range of a numeric condition against its operating value or range and tolerance,
     its boundary drawn first."""
     boundary = draw(st.sampled_from(BOUNDARIES))
@@ -171,15 +184,33 @@ def numeric_cases(draw: st.DrawFn, row: str) -> tuple[str, Case]:
         {},
         {},
     )
-    return boundary, case
+    return Bounded(boundary, drawn.end, case)
 
 
+def entry_status(case: Case) -> str:
+    """The oracle's entry for the one condition a numeric case states."""
+    (name,) = case.conditions
+    expected = oracle.expected(FIELD, case.conditions, {}, case.operating, case.required)
+    assert expected.statuses is not None
+    return expected.statuses[name]
+
+
+# Which end of the stated span the boundary sits at, and the window of a bound, declared by the least share
+# measured at `ci` in twelve runs of each property, each row's (2026-10-16), rounded down to two places:
+# Hypothesis draws `False`, the lower end, less often than `True`.
+END_CHANCES = {"lower_end": 0.35, "upper_end": 0.5}
+
+
+@pytest.mark.chances(**END_CHANCES)
 @pytest.mark.parametrize("row", [pytest.param(row, marks=pytest.mark.drawn(*BOUNDARIES)) for row in ROWS])
 @given(data=st.data())
 def test_a_numeric_condition_is_checked_exactly_at_each_boundary(row: str, data: st.DataObject) -> None:
-    boundary, case = data.draw(numeric_cases(row))
-    feature(boundary)
-    check_against_the_oracle(case)
+    """Each kind drawn on one side of its bound lies on that side, so that both sides of each are reached."""
+    drawn = data.draw(numeric_cases(row))
+    feature(drawn.boundary)
+    feature(f"{drawn.end}_end")
+    check_against_the_oracle(drawn.case)
+    assert entry_status(drawn.case) == SIDES.get(drawn.boundary, entry_status(drawn.case)), drawn
 
 
 # HP7: a stated plus or minus of each kind.
@@ -188,13 +219,21 @@ PLUS_MINUS_KINDS = ("bound", "sd", "unstated", "bound_beside_sd", "zero")
 WINDOW = ("at_the_tolerance", "one_ulp_inside", "one_ulp_outside", "anywhere")
 
 
+class Stated(NamedTuple):
+    kind: str  # the plus or minus's, drawn first
+    window: str  # the boundary of its bound's window the operating end is drawn at
+    end: str
+    case: Case
+
+
 @st.composite
-def plus_minus_cases(draw: st.DrawFn) -> tuple[str, Case]:
+def plus_minus_cases(draw: st.DrawFn) -> Stated:
     """A stated plus or minus of a kind drawn first, its bound's window drawn at its boundary."""
     kind = draw(st.sampled_from(PLUS_MINUS_KINDS))
     row = draw(st.sampled_from(ROWS))
     u = abs(draw(st.one_of(DOUBLES, st.floats(min_value=0.0, max_value=10.0))))
-    drawn = draw(numeric(row, draw(st.sampled_from(WINDOW)), slack=u if "bound" in kind else 0.0))
+    window = draw(st.sampled_from(WINDOW))
+    drawn = draw(numeric(row, window, slack=u if "bound" in kind else 0.0))
     name = draw(st.sampled_from(NUMERIC))
     case = Case(
         {name: stated(name, drawn, plus_minus(kind, u))},
@@ -204,15 +243,17 @@ def plus_minus_cases(draw: st.DrawFn) -> tuple[str, Case]:
         {},
         {},
     )
-    return kind, case
+    return Stated(kind, window, drawn.end, case)
 
 
+@pytest.mark.chances(**END_CHANCES, **{f"window_{window}": 0.18 for window in WINDOW})
 @pytest.mark.drawn(*PLUS_MINUS_KINDS)
 @given(plus_minus_cases())
-def test_a_stated_plus_minus_turns_met_into_unknown_and_nothing_else(drawn: tuple[str, Case]) -> None:
-    kind, case = drawn
-    feature(kind)
-    check_against_the_oracle(case)
+def test_a_stated_plus_minus_turns_met_into_unknown_and_nothing_else(drawn: Stated) -> None:
+    feature(drawn.kind)
+    feature(f"window_{drawn.window}")
+    feature(f"{drawn.end}_end")
+    check_against_the_oracle(drawn.case)
 
 
 # HP7: the table's other rows, and the conditions checked.
@@ -487,14 +528,24 @@ def test_the_strings_drawn_outside_a_row_are_none_of_its_tokens() -> None:
 
 
 def test_the_boundaries_are_drawn_on_finite_doubles() -> None:
-    """A control on the strategies: a sum past the largest double is drawn as the value itself."""
-    from tests.property.condition_strategies import finite, nudged
-
-    assert finite(1.7976931348623157e308 * 2, 1.0) == 1.0
-    assert nudged(1.0, 0.0, True) == math.nextafter(1.0, math.inf)
-    assert nudged(1.0, 0.0, False) == math.nextafter(1.0, -math.inf)
-    assert nudged(-1.0, 0.0, True) == math.nextafter(-1.0, -math.inf)
-    assert nudged(0.0, 0.0, True) == 0.0
+    """A control on the strategies: a sum past the largest double is drawn as the value itself; the double
+    next to an exact bound is the nearest on its side, and none lies past the largest double; a window that
+    holds every double below it is left for its upper bound, and one that holds them all for the stated
+    span."""
+    largest = sys.float_info.max
+    tenth = Fraction(1, 10)
+    assert finite(largest * 2, 1.0) == 1.0
+    assert Fraction(0.1) > tenth
+    assert above(tenth, strictly=False) == 0.1
+    assert below(tenth, strictly=True) == math.nextafter(0.1, 0.0)
+    assert above(Fraction(1), strictly=True) == math.nextafter(1.0, 2.0)
+    assert below(Fraction(1), strictly=False) == 1.0
+    assert above(Fraction(largest), strictly=True) is None
+    assert below(-Fraction(largest) * 2, strictly=False) is None
+    past_the_lower = next_to_the_bound(-largest, 1.0, 1.0, 0.0, True, inside=False)
+    assert past_the_lower == (math.nextafter(2.0, math.inf), False, 1.0)
+    every_double = next_to_the_bound(0.0, 0.0, largest, 0.0, True, inside=False)
+    assert every_double == (math.nextafter(0.0, -math.inf), True, 0.0)
 
 
 # Reads end to end.

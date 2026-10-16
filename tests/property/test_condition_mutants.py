@@ -47,6 +47,10 @@ def drawn_rows(size: Size) -> st.SearchStrategy[Any]:
     return st.sampled_from(ROWS).flatmap(properties.numeric_cases)
 
 
+def its_case(check: Callable[[Any], None]) -> Callable[[Any], None]:
+    return lambda drawn: check(drawn.case)
+
+
 def drawn_places(size: Size) -> st.SearchStrategy[Any]:
     return st.sampled_from(UNIT_PLACES).flatmap(lambda place: properties.other_units(place, size))
 
@@ -66,11 +70,11 @@ KILLERS: dict[
     str,
     tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any], None], Callable[[Any], set[str]]],
 ] = {
-    "HP7": (drawn_rows, second(properties.check_against_the_oracle), kind),
+    "HP7": (drawn_rows, its_case(properties.check_against_the_oracle), lambda drawn: {drawn.boundary}),
     "HP7 plus or minus": (
         lambda size: properties.plus_minus_cases(),
-        second(properties.check_against_the_oracle),
-        kind,
+        its_case(properties.check_against_the_oracle),
+        lambda drawn: {drawn.kind},
     ),
     "HP7 table": (lambda size: properties.table_cases(), second(properties.check_against_the_oracle), kind),
     "HP7 implied": (
@@ -122,6 +126,18 @@ def _floating_point_as_written(condition: JsonObject, operating: Any, tolerance:
     a, b = STATED_ENDS(condition)
     lo, hi = OPERATING_ENDS(operating)
     return a - (tolerance - bound) <= lo and hi <= b + (tolerance - bound)
+
+
+def _value_row_difference_in_floating_point(
+    condition: JsonObject, operating: Any, tolerance: float, bound: float
+) -> bool:
+    """Section 5's first row as written, `|r - v| <= t`, and its bound's `|r - v| + u <= t`, in floating
+    point."""
+    if "value" in condition and "value" in operating:
+        r, _ = STATED_ENDS(condition)
+        v, _ = OPERATING_ENDS(operating)
+        return abs(r - v) + bound <= tolerance
+    return WITHIN(condition, operating, tolerance, bound)
 
 
 def _strict(condition: JsonObject, operating: Any, tolerance: float, bound: float) -> bool:
@@ -545,14 +561,13 @@ MUTANTS = [
         "floating_point_as_written",
         "HP7",
         setting(conditions, "_within", _floating_point_as_written),
-        (
-            "at_the_tolerance",
-            "one_ulp_inside",
-            "one_ulp_outside",
-            "rounded_difference",
-            "subnormal",
-            "mixed_magnitudes",
-        ),
+        ("anywhere", "at_the_tolerance", "one_ulp_outside", "rounded_difference", "minus_zero"),
+    ),
+    Mutant(
+        "value_row_difference_in_floating_point",
+        "HP7",
+        setting(conditions, "_within", _value_row_difference_in_floating_point),
+        ("anywhere", "at_the_tolerance", "one_ulp_outside", "rounded_difference", "mixed_magnitudes_outside"),
     ),
     Mutant("strict_inequalities", "HP7", setting(conditions, "_within", _strict)),
     Mutant(
