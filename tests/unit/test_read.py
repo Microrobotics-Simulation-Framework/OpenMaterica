@@ -868,6 +868,11 @@ def implied_with(**members: JsonValue) -> JsonValue:
 # with the condition it concerns, and what is ignored.
 IMPLIED_AT_STEP_0: list[tuple[str, JsonValue, set[tuple[str, str | None]]]] = [
     ("implies not an object", implied_with(implies=[]), {("request_incomplete", None)}),
+    (
+        "a value that is not an object",
+        implied_with(implies={"temperature": 310.15, "density_kind": {"token": "matrix"}}),
+        {("request_incomplete", "temperature")},
+    ),
     ("no implies", implied_with(implies=None), {("request_incomplete", None)}),
     ("no fact", implied_with(fact=None), {("request_incomplete", None)}),
     ("a field off the pattern", implied_with(field="viscosity"), {("request_incomplete", None)}),
@@ -996,3 +1001,87 @@ def test_a_read_returns_the_implied_conditions_it_applied_outside_its_json() -> 
     }
     assert result.applied == (0,)
     assert "applied" not in result.to_json()
+
+
+# An implied condition located elsewhere (`read_side_contract.md` section 1): one naming another field,
+# another record (another version or content hash), a region beside the record, an interval or no location
+# is checked and not applied. Each implies a shear rate the record leaves unstated, beside a temperature
+# outside its tolerance, which ends the read at step 10 so that its entries are returned: applied, the shear
+# rate would be `condition_unchecked`, the request giving it no tolerance.
+ELSEWHERE = (
+    "another_field",
+    "another_version",
+    "another_content_hash",
+    "a_region_beside_the_record",
+    "an_interval",
+    "no_location",
+)
+AT_THE_READ = "at_the_read"
+
+
+def implying_a_shear_rate(where: str) -> tuple[JsonValue, RecordStore]:
+    """A request at 330 K for a water field in vivo, its implied condition `AT_THE_READ` or at a location
+    `ELSEWHERE`."""
+    assert where in (AT_THE_READ, *ELSEWHERE)
+    field: dict[str, JsonValue] = {
+        **water_field(),
+        "specimen": {"tissue_state": {"token": "in_vivo", **STATED}},
+    }
+    request, records = stored(with_field("fluid.dynamic_viscosity", field))
+    assert isinstance(request, dict)
+    target = request["target"]
+    assert isinstance(target, dict)
+    pin = target["record"]
+    assert isinstance(pin, dict)
+    acceptance: dict[str, JsonValue] = {
+        **IMPLIED,
+        "record": dict(pin),
+        "implies": {"shear_rate": {"value": 100.0, "unit": "1/s"}},
+    }
+    if where == "another_field":
+        acceptance["field"] = "bulk.density"
+    elif where == "another_version":
+        acceptance["record"] = {**pin, "version": "9.0.0"}
+    elif where == "another_content_hash":
+        acceptance["record"] = {**pin, "content_hash": "sha256:" + "f" * 64}
+    elif where == "a_region_beside_the_record":
+        acceptance["region"] = "lumen"
+    elif where == "an_interval":
+        del acceptance["record"]
+        acceptance["interval"] = 0.0
+    elif where == "no_location":
+        del acceptance["record"]
+    request["acceptances"] = [acceptance]
+    request["operating_conditions"] = {"temperature": {"value": 330.0, "unit": "K"}}
+    return request, records
+
+
+def check_located_elsewhere(where: str) -> None:
+    result = read(*implying_a_shear_rate(where))
+    assert set(result.reasons) == {
+        Reason("condition_outside", "temperature"),
+        Reason("condition_unstated", "shear_rate"),
+    }, where
+    assert result.conditions is not None
+    assert {entry.name: (entry.status, entry.record) for entry in result.conditions} == {
+        "temperature": ("not_met", {"value": 310.15, "unit": "K", **STATED}),
+        "shear_rate": ("unknown", {"status": "unstated"}),
+    }, where
+    assert result.applied == (), where
+
+
+@pytest.mark.parametrize("where", ELSEWHERE)
+def test_an_implied_condition_located_elsewhere_leaves_its_condition_unstated(where: str) -> None:
+    check_located_elsewhere(where)
+
+
+def test_an_implied_condition_at_the_reads_own_location_fills_its_condition() -> None:
+    """The control: the same implied condition, located at the read, is applied."""
+    result = read(*implying_a_shear_rate(AT_THE_READ))
+    assert set(result.reasons) == {
+        Reason("condition_outside", "temperature"),
+        Reason("condition_unchecked", "shear_rate"),
+    }
+    assert result.applied == (0,)
+    with pytest.raises(AssertionError):
+        check_located_elsewhere(AT_THE_READ)

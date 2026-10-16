@@ -483,6 +483,11 @@ def test_an_implied_token_fills_a_token_condition_and_what_it_requires() -> None
             "fluid.dynamic_viscosity",
             False,
         ),
+        (
+            {"record": {"id": PIN.id, "version": PIN.version, "content_hash": "sha256:" + "f" * 64}},
+            "fluid.dynamic_viscosity",
+            False,
+        ),
         ({"record": "conformance/field_fixture"}, "fluid.dynamic_viscosity", False),
     ],
     ids=[
@@ -493,6 +498,7 @@ def test_an_implied_token_fills_a_token_condition_and_what_it_requires() -> None
         "and_a_region",
         "a_region",
         "another_version",
+        "another_content_hash",
         "not_a_reference",
     ],
 )
