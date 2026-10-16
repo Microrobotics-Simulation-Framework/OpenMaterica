@@ -693,11 +693,3 @@ def test_the_mutant_is_killed(
     tried, message = kill(drawn, check)
     record_property("examples_to_kill", tried)
     assert not mutant.dies_at or any(repr(fault) in message for fault in mutant.dies_at), message
-
-
-def test_each_mutant_names_faults_of_the_catalogue() -> None:
-    """A fault renamed in the catalogue would leave a mutant no fault to die at."""
-    faults = {f"{region}.{name}" for region, faults_of in strategies.CATALOGUE.items() for name in faults_of}
-    for mutant in MUTANTS:
-        assert set(mutant.dies_at) <= faults, mutant.name
-        assert mutant.killer in KILLERS, mutant.name

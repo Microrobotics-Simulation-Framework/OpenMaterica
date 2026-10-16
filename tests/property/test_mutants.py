@@ -15,21 +15,19 @@ from collections.abc import Callable
 from typing import NamedTuple, TypeVar
 
 import pytest
-from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from materica.core import canonical, jsonio, slips
 from materica.core.canonical import canonicalize
-from materica.core.hashing import content_hash, hashable_view
+from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
-from tests.conftest import EXAMPLES
 from tests.property import strategies
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_jsonio_properties as jsonio_properties
 from tests.property import test_slip_properties as slip_properties
-from tests.property.strategies import ORIGINAL, SIZE, SMALL, Size
+from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.support import examples_to_kill
 
 Example = TypeVar("Example")
@@ -309,7 +307,7 @@ CANONICAL_MUTANTS = [
 
 
 def mutant_view(value: JsonValue, fault: str = "") -> JsonValue:
-    """The hashable view with `fault`; with none, `hashable_view` itself (checked below)."""
+    """The hashable view with `fault`; with none, `hashable_view` itself (`test_mutant_view.py`)."""
 
     def view(node: JsonValue, depth: int, top: bool) -> JsonValue:
         if isinstance(node, list):
@@ -488,11 +486,3 @@ def test_the_mutant_is_killed(
 ) -> None:
     mutant.inject(monkeypatch)
     record_property("examples_to_kill", mutant.search(size))
-
-
-# This checks the mutants' own code, not the core's, so `deep` adds nothing to it: it searches as `ci` does at
-# most, which saves `deep` some five minutes.
-@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
-@given(hashing_properties.records(SIZE))
-def test_the_view_without_a_fault_is_the_view(record: JsonValue) -> None:
-    assert mutant_view(record) == hashable_view(record)

@@ -214,9 +214,9 @@ recorded in that repository's CHANGELOG.
   range's ends, in jobs of their own (`--property-controls`), and every other test on all five Pythons.
   `tests/unit/test_ci_workflows.py` holds the workflows to their comments: the image, the gate's step, each
   job's condition and the result, that no test or script names a path the gate calls documentation, what each
-  pytest command selects, no `continue-on-error`, `PYTEST_ADDOPTS` or `PYTEST_PLUGINS`, no pytest setting in
-  `pyproject.toml` that chooses tests, and the workflows README's jobs and shards; each check with a control
-  in which it must fail.
+  pytest command selects, that the controls' modules hold mutant searches and audit controls only, no
+  `continue-on-error`, `PYTEST_ADDOPTS` or `PYTEST_PLUGINS`, no pytest setting in `pyproject.toml` that
+  chooses tests, and the workflows README's jobs and shards; each check with a control in which it must fail.
 - Two of step 8's mutants, `missing_represents_accepted` and `named_state_text_unchecked`, are searched among
   their own faults: searched whole, their kills changed with the constants Hypothesis draws from the modules a
   process has loaded (`tests/property/README.md`).
