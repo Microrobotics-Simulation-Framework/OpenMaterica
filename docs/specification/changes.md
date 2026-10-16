@@ -54,9 +54,9 @@ that place is ignored (PR-320, PR-330); a reference with no candidate holding it
 normalisation (`record_format.md` section 9 item 2; HS-003); and the namespace `conformance` is reserved for
 conformance fixtures, whose contents are illustrative: a record check flags one given from outside a
 conformance tree, and a check of a whole library leaves conformance trees out (`record_format.md` section 7;
-RC-121). Names (maintainer, 2026-10-14): the project, formerly Vesalius, is OpenMaterica; the reserved
-namespace, the family namespace, the USD binding purpose and the attribute namespace are `materica`, where
-drafts before that date used `vesalius`; the schema class prefix is `Materica`; and the local ids in
+RC-121). Names, settled before any release (maintainer, 2026-10-14): the project is OpenMaterica; the
+reserved namespace, the family namespace, the USD binding purpose and the attribute namespace are `materica`,
+where drafts before that date used a working name; the schema class prefix is `Materica`; and the local ids in
 `materica` are `MAT-NNNN` and `INT-NNNN` (`record_format.md` section 7; RC-012, RC-013). Settled with S1's
 review (maintainer, 2026-10-14): a tolerance whose condition has no operating entry because
 `operating_conditions` is not an object gives `request_incomplete` with that `condition`, beside the member's
