@@ -110,6 +110,12 @@ unreadable source ignored, the first of two differing copies read. Each test rec
 took as `examples_to_kill`, which `--junitxml` writes out. A fault that died only at the original size would
 mean the small size misses it.
 
+CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported range's ends alone
+(`--property-controls` in `tests/conftest.py`), so a mutant module holds mutant searches only. The checks of
+the mutants' own code, which run on every Python, are in modules of their own: `test_mutant_view.py` (the hash
+mutants' view, without a fault, is the core's), `test_value_field_mutant_table.py` and
+`test_writer_mutant_table.py`.
+
 `test_mutants.py` also gives the one-slip relation twelve faults, each killed by (9) (its strategy has no size,
 so both sizes take the same examples; measured 2026-10-15):
 

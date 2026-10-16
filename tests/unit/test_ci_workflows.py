@@ -861,9 +861,22 @@ def property_controls(job: dict[str, Any]) -> str | None:
     return None
 
 
-# The mutant searches and the audit controls by file, as the maintainer named them; CI selects them with
-# `--property-controls`, by module (`PROPERTY_CONTROLS` in tests/conftest.py).
-CONTROL_FILES = re.compile(r"tests/(?:[^/]+/)*test_[^/]*mutants[^/]*\.py|tests/unit/test_audit_controls\.py")
+# The mutant searches and the audit controls, by the test's name: a mutant search tests that a mutant is
+# killed or dies, an audit control that a property fails its feature audit. CI selects them by module
+# instead (`--property-controls`, `PROPERTY_CONTROLS` in tests/conftest.py), so a new module of either is
+# selected unedited, and the matrix check finds any other test such a module holds, which would run on the
+# range's ends alone.
+MUTANT_SEARCH = re.compile(r"test_\w*mutant\w*_(?:is_killed|dies)\w*")
+AUDIT_CONTROL = re.compile(r"test_\w*_fails_the_audit\w*")
+
+
+def function(test: str) -> str:
+    """The name of the test function a node id names."""
+    return test.partition("[")[0].rpartition("::")[2]
+
+
+def is_control(test: str) -> bool:
+    return bool(MUTANT_SEARCH.fullmatch(function(test)) or AUDIT_CONTROL.fullmatch(function(test)))
 
 
 def version(python: str) -> tuple[int, ...]:
@@ -937,7 +950,7 @@ def matrix_problems(ci: Workflow, selected: dict[str | None, frozenset[str]]) ->
     What a job runs is computed as GitHub runs it: its matrix after `exclude` and `include`, the Python each
     combination installs, and whether its pytest step's `if` skips it there, on any event."""
     every = selected[None]
-    controls = {test for test in every if CONTROL_FILES.fullmatch(test.partition("::")[0])}
+    controls = {test for test in every if is_control(test)}
     # The supported range, which tests/unit/test_python_versions.py holds to pyproject.toml.
     pythons: list[str] = ci["jobs"]["tests"]["strategy"]["matrix"]["python"]
     ends = {min(pythons, key=version), max(pythons, key=version)}
@@ -976,6 +989,8 @@ def matrix_problems(ci: Workflow, selected: dict[str | None, frozenset[str]]) ->
         files = Counter(test.partition("::")[0] for test in tests)
         return ", ".join(f"{count} of {file}" for file, count in sorted(files.items()))
 
+    if others := selected["only"] - controls:
+        problems.append(f"the controls' modules hold {by_file(others)}: no mutant search or audit control")
     for python in sorted(run, key=version):
         wanted = every if python in ends else every - controls
         if wanted - run[python]:
@@ -1011,30 +1026,34 @@ def collected(options: list[str | None]) -> dict[str | None, frozenset[str]]:
 
 def test_the_mutant_searches_and_audit_controls_run_at_the_range_ends_and_nothing_else_is_left_out() -> None:
     selected = collected([None, "none", "only"])
-    control_files = {
-        test.partition("::")[0] for test in selected[None] if CONTROL_FILES.fullmatch(test.partition("::")[0])
-    }
-    on_disk = {
-        path.relative_to(REPOSITORY).as_posix()
-        for path in (REPOSITORY / "tests").rglob("test_*.py")
-        if CONTROL_FILES.fullmatch(path.relative_to(REPOSITORY).as_posix())
-    }
-    assert "tests/unit/test_audit_controls.py" in on_disk
-    assert control_files == on_disk
+    # Every test module is collected, so that none is out of every job unseen; and the names find both kinds.
+    on_disk = {path.relative_to(REPOSITORY).as_posix() for path in (REPOSITORY / "tests").rglob("test_*.py")}
+    assert on_disk - {test.partition("::")[0] for test in selected[None]} == set()
+    functions = {function(test) for test in selected["only"]}
+    assert any(MUTANT_SEARCH.fullmatch(name) for name in functions)
+    assert any(AUDIT_CONTROL.fullmatch(name) for name in functions)
     assert matrix_problems(workflow("ci.yml"), selected) == []
 
 
-READ, AUDIT = "tests/unit/test_read.py::test_reads", "tests/unit/test_audit_controls.py::test_control"
-MUTANTS, WRITER_MUTANTS = (
-    "tests/property/test_mutants.py::test_kills",
-    "tests/property/test_writer_mutants.py::test_kills",
-)
+READ = "tests/unit/test_read.py::test_reads"
+AUDIT = "tests/unit/test_audit_controls.py::test_a_generator_fails_the_audit_at_ci[a]"
+MUTANTS = "tests/property/test_mutants.py::test_the_mutant_is_killed[b-small]"
+WRITER_MUTANTS = "tests/property/test_writer_mutants.py::test_the_writer_mutant_is_killed_at_its_assertion[c]"
 EVERY = frozenset({READ, AUDIT, MUTANTS, WRITER_MUTANTS})
 SELECTED: dict[str | None, frozenset[str]] = {None: EVERY, "none": frozenset({READ}), "only": EVERY - {READ}}
 
 
 def test_the_matrix_check_passes_the_selection_meant() -> None:
     assert matrix_problems(workflow("ci.yml"), SELECTED) == []
+
+
+def test_the_matrix_check_takes_a_new_module_of_mutant_searches_or_audit_controls_unedited() -> None:
+    new = {
+        "tests/unit/test_cli_mutants.py::test_a_cli_mutant_dies",
+        "tests/unit/test_audit_controls_writer.py::test_a_writer_generator_fails_the_audit_at_ci[d]",
+    }
+    selected = SELECTED | {None: EVERY | new, "only": SELECTED["only"] | new}
+    assert matrix_problems(workflow("ci.yml"), selected) == []
 
 
 def controls_on_3_11_alone(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
@@ -1049,6 +1068,12 @@ def controls_job_running_none(ci: Workflow, selected: dict[str | None, frozenset
 
 def a_mutant_module_left_unselected(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
     selected["only"] = selected["only"] - {WRITER_MUTANTS}
+
+
+def a_plain_test_in_a_mutants_module(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    plain = "tests/property/test_record_mutants.py::test_the_reader_round_trips"
+    selected[None] |= {plain}
+    selected["only"] |= {plain}
 
 
 def another_test_deselected(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
@@ -1096,6 +1121,10 @@ def controls_on_one_python(ci: Workflow, selected: dict[str | None, frozenset[st
             "Python 3.15 leaves out 1 of tests/property/test_writer_mutants.py",
         ),
         (another_test_deselected, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
+        (
+            a_plain_test_in_a_mutants_module,
+            "the controls' modules hold 1 of tests/property/test_record_mutants.py: no mutant search",
+        ),
         (plain_job_without_the_option, "Python 3.12 runs 1 of tests/property/test_mutants.py"),
         (controls_excluding_3_15, "Python 3.15 leaves out 1 of tests/property/test_mutants.py"),
         (the_tests_job_excluding_3_13, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
