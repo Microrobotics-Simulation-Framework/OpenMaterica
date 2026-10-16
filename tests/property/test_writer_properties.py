@@ -15,15 +15,14 @@ from urllib.parse import urljoin
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from jsonschema import Draft202012Validator
-from referencing.jsonschema import DRAFT202012
 
 from materica.core.jsonio import JsonValue
 from tests.conftest import EXAMPLES
 from tests.property import audits, value_fields
 from tests.property.support import feature
 from tests.property.value_fields import FAMILIES, FAULTS, Faulty, Json, listing, mapping
-from tests.spec_sync.schemas import BASE, REGISTRY
+from tests.spec_sync.schemas import BASE, why_refused
+from tests.verdicts import verdict
 
 VALUE_FIELD: Json = {"$ref": urljoin(BASE, "record.writer.json#/$defs/value_field")}
 # A record body: a material's, holding registered fields in their sections, or an overlay's, replacing them.
@@ -37,22 +36,19 @@ BODY: Json = {
 
 class Writer:
     """The writer schema at `place`, a value field or a record body, with each of `files` (a schema file, the
-    writer's or the vocabulary's, a mutant of it) in place of the tree's."""
+    writer's or the vocabulary's, a mutant of it) in place of the tree's: its verdict jsonschema-rs's, and the
+    messages for a field it refuses python-jsonschema's."""
 
     def __init__(self, place: Json = VALUE_FIELD, files: Iterable[Json] = ()) -> None:
-        registry = REGISTRY
-        for schema in files:
-            registry = registry.with_resource(str(schema["$id"]), DRAFT202012.create_resource(schema))
-        self.checker = Draft202012Validator(place, registry=registry)
+        files = tuple(files)
+        self.verdict = verdict(place, files)
+        self.messages = why_refused(place, files)
 
     def takes(self, field: JsonValue) -> bool:
-        # types-jsonschema types its second overload's instance as unknown.
-        return self.checker.is_valid(field)  # pyright: ignore[reportUnknownMemberType]
+        return self.verdict(field)
 
     def errors(self, field: JsonValue) -> list[str]:
-        # types-jsonschema types its second overload's instance as unknown.
-        found = self.checker.iter_errors(field)  # pyright: ignore[reportUnknownMemberType]
-        return [error.message[:200] for error in found][:3]
+        return [message[:200] for message in self.messages(field)][:3]
 
 
 WRITER = Writer()

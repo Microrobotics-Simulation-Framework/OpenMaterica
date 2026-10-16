@@ -9,11 +9,11 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator
 
 from scripts import gen_reader_schema, gen_shapes, gen_vocabulary
 from scripts.gen_reader_schema import Json, SchemaError, reader_schema
 from scripts.gen_vocabulary import TableError, cells, table
+from tests.verdicts import verdict
 
 
 def test_a_table_is_read_by_its_headers_with_escaped_pipes() -> None:
@@ -931,13 +931,10 @@ DETAIL: tuple[tuple[str, Json], ...] = (
 DETAIL_WHERE_STATED: Json = {"if": STATED, "then": {"properties": {"detail": {"$ref": "#/$defs/detail"}}}}
 
 
-def value_field_errors(writer: dict[str, Json], field: Json) -> list[str]:
-    """The errors of `field` against the value field of the reader `$defs` `writer` gives."""
-    checker = Draft202012Validator(
-        {"$defs": reader_schema(writer, VOCABULARY)["$defs"], "$ref": "#/$defs/value_field"}
-    )
-    # types-jsonschema types its second overload's instance as unknown.
-    return [error.message for error in checker.iter_errors(field)]  # pyright: ignore[reportUnknownMemberType]
+def reader_takes(writer: dict[str, Json], field: Json) -> bool:
+    """Whether the value field of the reader `$defs` `writer` gives takes `field`."""
+    reader = {"$defs": reader_schema(writer, VOCABULARY)["$defs"], "$ref": "#/$defs/value_field"}
+    return verdict(reader)(field)
 
 
 def test_a_member_a_read_checks_under_a_condition_is_checked_there_alone() -> None:
@@ -954,9 +951,9 @@ def test_a_member_a_read_checks_under_a_condition_is_checked_there_alone() -> No
     assert value_field["allOf"] == [COMMON, DETAIL_WHERE_STATED]
     writer = changes(*DETAIL)
     broken: dict[str, Json] = {"value": 1, "basis": "inferred", "detail": {"text": 1}}
-    assert value_field_errors(writer, broken) == []
-    assert value_field_errors(writer, {**broken, "basis": "stated"}) != []
-    assert value_field_errors(writer, {**broken, "basis": "stated", "detail": {"text": "a"}}) == []
+    assert reader_takes(writer, broken)
+    assert not reader_takes(writer, {**broken, "basis": "stated"})
+    assert reader_takes(writer, {**broken, "basis": "stated", "detail": {"text": "a"}})
 
 
 def test_a_member_a_read_checks_under_a_condition_is_required_there_alone() -> None:

@@ -15,9 +15,9 @@ from materica.core import jsonio
 from materica.core.envelope import envelope_problems
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
-from tests.spec_sync.schemas import PACKAGE, validator
+from tests.spec_sync.schemas import PACKAGE, takes
 
-READER = validator("record.reader.json")
+READER = takes("record.reader.json")
 
 
 def parsed(path: Path) -> JsonValue | Reason:
@@ -35,7 +35,7 @@ VECTORS = [
 def test_the_envelope_checks_agree_with_the_reader_schema(path: Path) -> None:
     value = parsed(path)
     assert not isinstance(value, Reason)
-    assert (envelope_problems(value) == []) == (READER(value) == []), envelope_problems(value)
+    assert (envelope_problems(value) == []) == READER(value), envelope_problems(value)
 
 
 def test_the_vectors_hold_both_answers() -> None:
