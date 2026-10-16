@@ -16,11 +16,8 @@ import re
 import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from urllib.parse import urljoin
 
 import pytest
-from jsonschema import Draft202012Validator
-from referencing.jsonschema import DRAFT202012
 
 from materica.core.jsonio import JsonValue
 from scripts import gen_vocabulary
@@ -35,7 +32,7 @@ from scripts.gen_vocabulary import (
     specimen_facts,
     table,
 )
-from tests.spec_sync.schemas import BASE, REGISTRY, SCHEMA, validator
+from tests.spec_sync.schemas import SCHEMA, validator
 
 Schema = dict[str, JsonValue]
 Definitions = dict[str, Schema]
@@ -1518,15 +1515,7 @@ def test_a_field_the_text_adds_is_taken_by_the_writer_as_it_stands(tmp_path: Pat
     generated = json.loads(gen_vocabulary.generate(specification)["fields.json"])
     porosity = edited(CONSTANT, (("unit",), "1"))
     body: JsonValue = {"sections": {"bulk": {"fields": {"porosity": porosity}}}}
-    registry = REGISTRY.with_resource(str(generated["$id"]), DRAFT202012.create_resource(generated))
-    checker = Draft202012Validator(
-        {"$ref": urljoin(BASE, "record.writer.json#/$defs/material_body")}, registry=registry
-    )
-
-    def with_the_row(value: JsonValue) -> list[str]:
-        # types-jsonschema types its second overload's instance as unknown.
-        return [error.message for error in checker.iter_errors(value)]  # pyright: ignore[reportUnknownMemberType]
-
+    with_the_row = validator("record.writer.json#/$defs/material_body", [generated])
     assert with_the_row(body) == []
     assert validator("record.writer.json#/$defs/material_body")(body) != []
     assert with_the_row(edited(body, (("sections", "bulk", "fields", "porosity", "unit"), "kg/m3"))) != []

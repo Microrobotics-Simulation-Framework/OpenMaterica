@@ -14,16 +14,13 @@ import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urljoin
 
 import pytest
-from jsonschema import Draft202012Validator
-from referencing import Registry
-from referencing.jsonschema import DRAFT202012, Schema
 
 from materica.core.jsonio import JsonValue
 from tests.spec_sync import name_overlaps
-from tests.spec_sync.schemas import BASE, REGISTRY
+from tests.spec_sync.schemas import takes
+from tests.verdicts import Json
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 HASH = "sha256:" + "0" * 64
@@ -150,24 +147,19 @@ REFUSES: dict[str, dict[str, tuple[str, ...]]] = {
 GENERATED = "record.reader.json"
 
 
-def errors(registry: Registry[Schema], reference: str, value: JsonValue) -> list[str]:
-    checker = Draft202012Validator({"$ref": urljoin(BASE, reference)}, registry=registry)
-    # types-jsonschema types its second overload's instance as unknown.
-    return [error.message for error in checker.iter_errors(value)]  # pyright: ignore[reportUnknownMemberType]
-
-
-def check_refusals(name: str, registry: Registry[Schema] = REGISTRY) -> None:
+def check_refusals(name: str, files: tuple[Json, ...] = ()) -> None:
     """Each meaning with a schema of its own is taken there; each place refuses the meanings listed for it,
-    and at least one place refuses something, or the safeguard could not fail."""
+    and at least one place refuses something, or the safeguard could not fail. `files` replace the package's
+    files of their `$id`s."""
     for label, meaning in MEANINGS[name].items():
         if meaning.home is not None:
-            assert errors(registry, meaning.home, meaning.value) == [], (name, label)
+            assert takes(meaning.home, files)(meaning.value), (name, label)
         else:
             assert meaning.text, (name, label)
     assert any(REFUSES[name].values()), name
     for place, refused in REFUSES[name].items():
         for label in refused:
-            assert errors(registry, place, MEANINGS[name][label].value) != [], (name, place, label)
+            assert not takes(place, files)(MEANINGS[name][label].value), (name, place, label)
 
 
 def places(root: Path, name: str) -> set[str]:
@@ -211,17 +203,14 @@ def test_every_guarded_name_is_an_allowlist_entry_that_names_this_test() -> None
     assert cited == set(GUARDED)
 
 
-def opened(file: str, path: tuple[str, ...], to: JsonValue) -> Registry[Schema]:
-    """The schemas with the subschema at `path` in `file` replaced by `to`."""
+def opened(file: str, path: tuple[str, ...], to: JsonValue) -> tuple[Json]:
+    """`file` with the subschema at `path` replaced by `to`."""
     schema = json.loads((REPOSITORY / "src/materica/schema/0.1" / file).read_text(encoding="utf-8"))
     node = schema
     for step in path[:-1]:
         node = node[step]
     node[path[-1]] = to
-    registry: Registry[Schema] = REGISTRY.with_resource(
-        str(schema["$id"]), DRAFT202012.create_resource(schema)
-    )
-    return registry
+    return (schema,)
 
 
 ANY_VALUE: JsonValue = {"$ref": "#/$defs/json_value"}
@@ -230,7 +219,7 @@ ANY_OBJECT: JsonValue = {"type": "object"}
 
 
 @pytest.mark.parametrize(
-    ("name", "registry"),
+    ("name", "files"),
     [
         pytest.param(
             "evidence",
@@ -269,9 +258,9 @@ ANY_OBJECT: JsonValue = {"type": "object"}
         ),
     ],
 )
-def test_the_refusal_check_can_fail(name: str, registry: Registry[Schema]) -> None:
+def test_the_refusal_check_can_fail(name: str, files: tuple[Json]) -> None:
     with pytest.raises(AssertionError):
-        check_refusals(name, registry)
+        check_refusals(name, files)
 
 
 def test_the_place_check_fails_on_a_place_no_entry_lists(tmp_path: Path) -> None:

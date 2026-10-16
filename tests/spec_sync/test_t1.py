@@ -49,7 +49,6 @@ from typing import NamedTuple
 
 import pytest
 from hypothesis import Phase, given, settings
-from referencing.jsonschema import DRAFT202012
 
 from materica.core import jsonio
 from materica.core.fields import RecordField, form_problems
@@ -62,7 +61,7 @@ from tests.conformance import runner
 from tests.property import value_fields
 from tests.property.full_fields import full_fields, record_of
 from tests.property.strategies import SMALL
-from tests.spec_sync.schemas import REGISTRY, SCHEMA, validator
+from tests.spec_sync.schemas import SCHEMA, takes
 from tests.spec_sync.test_cases_md import sections
 
 JsonObject = dict[str, JsonValue]
@@ -320,9 +319,10 @@ def step_8(example: Example) -> frozenset[str] | None:
 
 FORMS = VOCABULARY.token_lists["form"]
 SHAPES = ("value_field", "specimen", *(f"{form}_field" for form in FORMS))
-Validators = dict[str, Callable[[JsonValue], list[str]]]
-WRITER: Validators = {shape: validator(f"record.writer.json#/$defs/{shape}") for shape in SHAPES}
-READER: Validators = {shape: validator(f"record.reader.json#/$defs/{shape}") for shape in SHAPES}
+# Whether each definition takes a value, by jsonschema-rs (`tests/verdicts.py`).
+Validators = dict[str, Callable[[JsonValue], bool]]
+WRITER: Validators = {shape: takes(f"record.writer.json#/$defs/{shape}") for shape in SHAPES}
+READER: Validators = {shape: takes(f"record.reader.json#/$defs/{shape}") for shape in SHAPES}
 # The reader `$defs` as they stood at b8a597d, which applied a derivation's shape beside every origin: what
 # `gen_reader_schema.py` gives for the writer schema without the derivation's mark, which was that file but
 # for the provenance object's description. T1's control for its origin variants.
@@ -334,8 +334,7 @@ def reader_before_the_condition() -> Validators:
     writer = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
     del writer["$defs"]["provenance"]["properties"]["derivation"][gen_reader_schema.WRITE_ONLY]
     reader = gen_reader_schema.reader_schema(writer)
-    registry = REGISTRY.with_resource(str(reader["$id"]), DRAFT202012.create_resource(reader))
-    return {shape: validator(f"record.reader.json#/$defs/{shape}", registry) for shape in SHAPES}
+    return {shape: takes(f"record.reader.json#/$defs/{shape}", [reader]) for shape in SHAPES}
 
 
 def validators(schemas: str) -> Validators:
@@ -358,7 +357,7 @@ def field_shape(field: JsonValue) -> str:
 
 # The writer binds each registered field to its row (its forms, unit and label) where a section holds it, in
 # `vocabulary/fields.json`; the reader `$defs` leave the bindings out, since step 8 and 9 check the row.
-ROW = {name: validator(f"vocabulary/fields.json#/$defs/{name}") for name in VOCABULARY.fields}
+ROW = {name: takes(f"vocabulary/fields.json#/$defs/{name}") for name in VOCABULARY.fields}
 
 
 @cache
@@ -368,12 +367,8 @@ def accepted(schemas: str, field_name: str, text: str) -> bool:
     values."""
     field, specimens = json.loads(text)
     checks = validators(schemas)
-    bound = schemas != "writer" or not ROW[field_name](field)
-    return (
-        bound
-        and not checks[field_shape(field)](field)
-        and not any(checks["specimen"](specimen) for specimen in specimens)
-    )
+    bound = schemas != "writer" or ROW[field_name](field)
+    return bound and checks[field_shape(field)](field) and all(map(checks["specimen"], specimens))
 
 
 def failed(example: Example, verdict: Verdict, reader: str = "reader") -> list[int]:
@@ -775,8 +770,8 @@ def test_the_bases_are_valid_and_pass_step_8() -> None:
     """Each base the variants change, the full fields and the drawn ones; a drawn field of a form whose own
     member waits for S2b or S3 has no step-8 verdict yet."""
     for example in base_examples():
-        assert WRITER["value_field"](example.value) == [], example.name
-        assert ROW[example.field](example.value) == [], example.name
+        assert WRITER["value_field"](example.value), example.name
+        assert ROW[example.field](example.value), example.name
         assert step_8(example) in (frozenset(), frozenset({"withheld"}), None), example.name
     forms = {str(example.value["form"]) for example in base_examples() if isinstance(example.value, dict)}
     assert forms == {"constant", "table", "interval", "composition", "evidence"}
@@ -787,9 +782,7 @@ def disagreements(
 ) -> Iterator[str]:
     """The examples a field's form definition, as `shape_of` picks it, and `value_field` judge apart."""
     for example in examples:
-        if (not schemas[shape_of(example.value)](example.value)) != (
-            not schemas["value_field"](example.value)
-        ):
+        if schemas[shape_of(example.value)](example.value) != schemas["value_field"](example.value):
             yield example.name
 
 

@@ -12,9 +12,9 @@ from materica.core.jsonio import JsonValue
 from tests.property import records
 from tests.property.records import Envelope
 from tests.property.support import feature
-from tests.spec_sync.schemas import validator
+from tests.spec_sync.schemas import takes
 
-READER = validator("record.reader.json")
+READER = takes("record.reader.json")
 
 Problems = Callable[[JsonValue], list[str]]
 
@@ -22,7 +22,7 @@ Problems = Callable[[JsonValue], list[str]]
 def check_all_agree(problems: Problems, envelopes: list[Envelope]) -> None:
     for envelope in envelopes:
         accepted = problems(envelope.record) == []
-        assert accepted == (READER(envelope.record) == []), (envelope.changes, problems(envelope.record))
+        assert accepted == READER(envelope.record), (envelope.changes, problems(envelope.record))
 
 
 # A record no small draw reaches: every known section, an unknown one, and null in each place left unchecked.

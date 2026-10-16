@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The verdict jsonschema-rs, a development dependency only, gives on a value against the package's JSON
-Schemas. `tests/property/test_validators_agree.py` holds it to the verdicts of python-jsonschema
-(`tests/spec_sync/schemas.py`), which reads the same documents.
+"""Every verdict the tests take from the package's JSON Schemas, given by jsonschema-rs, a development
+dependency only.
+
+python-jsonschema stays in two roles: a second, independent implementation, which
+`tests/property/test_validators_agree.py` holds to the same verdicts, and the source of the messages a failing
+test prints (`tests/spec_sync/schemas.py`). Both read the documents here.
 
 Every JSON file under `schema/`, the vocabulary included, is registered under its `$id`, so that a reference
 resolves to the file in this tree and never over a network. A `format` is an annotation, as python-jsonschema
