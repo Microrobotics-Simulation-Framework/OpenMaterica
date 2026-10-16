@@ -38,9 +38,9 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
 - the unknown-member positions: an unknown member refused, a slip ignored in a record and in a request, a row's
   verdict wrong, a dead row, a lost quote and a missing row (`spec_sync/test_unknown_member_positions.py`);
 - T1, step 8 against the writer schema and the reader `$defs`: a step 8 that refuses what the writer accepts,
-  what the reader accepts, or accepts what the reader refuses, and an exception missing, stale, listed twice,
-  listed by name where a case file reads it, or unreasoned
-  (`spec_sync/test_t1.py`);
+  what the reader accepts, or accepts what the reader refuses, reader `$defs` that check a derivation beside
+  every origin, and an exception missing, stale, listed twice, listed by name where a case file reads it, or
+  unreasoned (`spec_sync/test_t1.py`);
   allowlist broken, a safeguard or the maintainer's flag missing, an entry pending once the maintainer has
   answered, and a deferred safeguard come due among them (`spec_sync/test_name_overlaps.py`); its safeguards:
   a place opened to another meaning, and a place no entry lists (`spec_sync/test_name_overlap_safeguards.py`);

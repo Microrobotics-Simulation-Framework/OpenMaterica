@@ -198,6 +198,11 @@ recorded in that repository's CHANGELOG.
   round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
   step (`tests/spec_sync/case_steps.json`).
 - Each new check is shown failing on seeded faults.
+- T1 sets each provenance object's `origin` to each other token of its row, in each base alone and beside each
+  change inside the object, so that its relations see a member a read checks under one origin beside the
+  others: 2,995 variants more, 4,657 in all. Its control: the reader `$defs` of b8a597d, which checked a
+  derivation beside every origin, break relation 3 on a derived value's derivation varied with another
+  origin, and on none of its variants that keep `derived` (`tests/spec_sync/test_t1.py`).
 
 ## [0.1.0.dev1] - 2026-10-14
 
