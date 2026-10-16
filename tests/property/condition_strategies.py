@@ -5,15 +5,18 @@ section 5's table, and implied conditions, each drawn by its kind first, so that
 kind to its draw floor; and reads end to end, of records that pass steps 8 to 10, and units other than the
 registered one.
 
-A boundary is drawn on the doubles a reader reads: an operating end at `fl(r + t)` exactly, one ulp inside or
-outside it, a tolerance that is the rounded difference `fl(r - v)`, subnormals, a tolerance many magnitudes
-below its value, and negative zero. Every number is finite; a sum that would overflow is drawn again as the
-value itself, a boundary all the same.
+A boundary is drawn on the doubles a reader reads: an operating end at `fl(r + t)`, the double next to the
+exact bound `r + t` inside or outside it, at ordinary magnitudes and among subnormals, a tolerance that is the
+rounded difference `fl(r - v)`, PR-335's mixed magnitudes (a large stated value, a small operating one, and a
+tolerance the double next to their exact difference, at or above it, or below it), and negative zero. Every
+number is finite; a sum that would overflow is drawn again as the value itself, a boundary all the same.
 """
 
 import copy
 import math
+import sys
 from collections.abc import Callable
+from fractions import Fraction
 from typing import NamedTuple
 
 from hypothesis import strategies as st
@@ -36,35 +39,60 @@ BOUNDARIES = (
     "one_ulp_inside",
     "one_ulp_outside",
     "rounded_difference",
-    "subnormal",
-    "mixed_magnitudes",
+    "subnormal_inside",
+    "subnormal_outside",
+    "mixed_magnitudes_inside",
+    "mixed_magnitudes_outside",
     "minus_zero",
 )
+# The kinds drawn on one side of their bound, and the entry that side gives; the others reach both sides, by
+# where they draw or by rounding.
+SIDES = {
+    "one_ulp_inside": "met",
+    "one_ulp_outside": "not_met",
+    "subnormal_inside": "met",
+    "subnormal_outside": "not_met",
+    "mixed_magnitudes_inside": "met",
+    "mixed_magnitudes_outside": "not_met",
+}
+NEXT_TO_THE_BOUND = ("one_ulp_inside", "one_ulp_outside", "subnormal_inside", "subnormal_outside")
 PLUS_MINUS_KINDS = ("bound", "bound_past_the_tolerance", "sd", "unstated", "bound_beside_sd", "zero")
 SUBNORMAL = st.integers(-(2**20), 2**20).map(lambda units: units * 5e-324)
-LARGE = st.floats(min_value=1e15, max_value=1e300)
-SMALL = st.floats(min_value=1e-300, max_value=1e-3)
+LARGE = st.floats(min_value=1e2, max_value=1e300)
+SMALL = st.floats(min_value=-1.0, max_value=1.0)
+LARGEST = sys.float_info.max
 
 
 def finite(number: float, fallback: float) -> float:
     return number if math.isfinite(number) else fallback
 
 
-def nudged(number: float, away: float, outward: bool | None) -> float:
-    """`number`, one ulp further from `away` where `outward`, one ulp nearer where not, unchanged for None."""
-    if outward is None or number == away:
-        return number
-    direction = math.inf if (number > away) == outward else -math.inf
-    return finite(math.nextafter(number, direction), number)
+def above(number: Fraction, *, strictly: bool) -> float | None:
+    """The least double at or above `number`, or above it `strictly`; None where none is."""
+    if number > LARGEST or (strictly and number == LARGEST):
+        return None
+    if number < -LARGEST:
+        return -LARGEST
+    nearest = float(number)
+    if Fraction(nearest) < number or (strictly and Fraction(nearest) == number):
+        nearest = math.nextafter(nearest, math.inf)
+    return nearest
+
+
+def below(number: Fraction, *, strictly: bool) -> float | None:
+    """The greatest double at or below `number`, or below it `strictly`; None where none is."""
+    found = above(-number, strictly=strictly)
+    return None if found is None else -found
 
 
 class Numeric(NamedTuple):
     """A numeric condition as a record states it, without its plus or minus, the operating condition and the
-    tolerance."""
+    tolerance; and the end of the stated span the boundary is drawn at, `lower` or `upper`."""
 
     record: JsonObject
     operating: JsonObject
     tolerance: float
+    end: str
 
 
 def pair(a: float, b: float) -> list[JsonValue]:
@@ -74,34 +102,76 @@ def pair(a: float, b: float) -> list[JsonValue]:
 @st.composite
 def numeric(draw: Draw, row: str, boundary: str, slack: float = 0.0) -> Numeric:
     """A stated value or range `[a, b]` and an operating value or range of `row`, one operating end drawn at
-    the `boundary` of `a - (t - slack)` or `b + (t - slack)`, the other inside: `slack` is a bound's, whose
-    window section 5 narrows by it."""
-    if boundary == "subnormal":
+    the `boundary` of the window `[a - (t - slack), b + (t - slack)]`, at its lower bound or its upper one,
+    the other inside: `slack` is a bound's, whose window section 5 narrows by it."""
+    if boundary.startswith("mixed_magnitudes"):
+        return draw(mixed_magnitudes(row, inside=SIDES[boundary] == "met"))
+    if boundary.startswith("subnormal"):
         r, t, free, width = draw(SUBNORMAL), abs(draw(SUBNORMAL)), draw(SUBNORMAL), abs(draw(SUBNORMAL))
-    elif boundary == "mixed_magnitudes":
-        sign = draw(st.sampled_from([1.0, -1.0]))
-        r, t, free, width = sign * draw(LARGE), draw(SMALL), draw(LARGE), draw(SMALL)
     else:
         r, t, free, width = draw(DOUBLES), abs(draw(DOUBLES)), draw(DOUBLES), abs(draw(DOUBLES))
     if boundary == "minus_zero":
         r, t = draw(st.sampled_from([(-0.0, -0.0), (0.0, -0.0), (-0.0, 0.0), (-0.0, abs(r))]))
     a, b = (r, r) if row.startswith("value") else (r, finite(r + width, r))
     span = finite(t - slack, t)
-    outward = {"one_ulp_inside": False, "one_ulp_outside": True}.get(boundary)
     lower = draw(st.booleans())
     end = a if lower else b
-    edge = nudged(finite(end - span if lower else end + span, end), end, outward)
+    edge = finite(end - span if lower else end + span, end)
+    if boundary in NEXT_TO_THE_BOUND:
+        edge, lower, t = next_to_the_bound(a, b, t, slack, lower, inside=SIDES[boundary] == "met")
     if boundary in ("anywhere", "rounded_difference"):
         edge = free
     if boundary == "rounded_difference":
         t = finite(abs(end - free) + slack, t)
     if boundary == "minus_zero":
         edge = draw(st.sampled_from([-0.0, 0.0, edge]))
+    return stated_against(row, r, (a, b), edge, t, lower)
+
+
+def stated_against(
+    row: str, r: float, span: tuple[float, float], edge: float, t: float, lower: bool
+) -> Numeric:
+    """`row`'s stated value `r` or range `span` and operating value `edge`, or range from `edge` to the stated
+    end `lower` names."""
+    a, b = span
     record: JsonObject = {"value": r} if row.startswith("value") else {"range": [a, b]}
+    end = "lower" if lower else "upper"
     if row.endswith("_value"):
-        return Numeric(record, {"value": edge}, t)
-    inside = a if lower else b
-    return Numeric(record, {"range": pair(edge, inside)}, t)
+        return Numeric(record, {"value": edge}, t, end)
+    return Numeric(record, {"range": pair(edge, a if lower else b)}, t, end)
+
+
+def next_to_the_bound(
+    a: float, b: float, t: float, slack: float, lower: bool, *, inside: bool
+) -> tuple[float, bool, float]:
+    """The double next to the exact lower bound `a - (t - slack)` of the window where `lower`, else to its
+    upper bound `b + (t - slack)`: on it or inside it where `inside`, strictly outside it where not; with the
+    side and the tolerance it is drawn at. Where no double lies there, the other bound's; where neither has
+    one (a window past the largest doubles), the tolerance is `slack` instead, so that the window is the
+    stated span, which always leaves a double outside one of its ends."""
+    for tolerance in (t, slack):
+        span = Fraction(tolerance) - Fraction(slack)
+        for side in (lower, not lower):
+            bound = Fraction(a) - span if side else Fraction(b) + span
+            edge = (above if side == inside else below)(bound, strictly=not inside)
+            if edge is not None:
+                return edge, side, tolerance
+    raise AssertionError(f"no double next to the window of [{a}, {b}] within {slack}")
+
+
+@st.composite
+def mixed_magnitudes(draw: Draw, row: str, *, inside: bool) -> Numeric:
+    """PR-335's pattern: a stated value or range large in magnitude, an operating value or range end small,
+    beside it, and a tolerance that is the double next to their exact difference, at or above it where
+    `inside`, below it where not, so that no rounding of the difference decides the entry."""
+    lower = draw(st.booleans())
+    r = draw(LARGE) if lower else -draw(LARGE)
+    a, b = (r, r) if row.startswith("value") else (r, finite(r + abs(draw(SMALL)), r))
+    edge = draw(SMALL)
+    difference = abs(Fraction(a if lower else b) - Fraction(edge))
+    t = above(difference, strictly=False) if inside else below(difference, strictly=True)
+    assert t is not None
+    return stated_against(row, r, (a, b), edge, t, lower)
 
 
 def plus_minus(kind: str, u: float) -> list[JsonValue]:
