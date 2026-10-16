@@ -51,6 +51,8 @@ module-name = "materica"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
+# A JUnit report (`--junitxml`, as CI writes for its durations report) gives each test its file and line.
+junit_family = "xunit1"
 xfail_strict = true
 markers = [
     "features: the least share of a property's examples that must show each feature (tests/property/audits.py)",
