@@ -9,9 +9,10 @@
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
 
-`conftest.py` here registers the Hypothesis profiles for every test and the property shards (`--shard`), records
-each test's CPU time for a JUnit report (`--junitxml`, which CI's durations report reads), and prints the count of
-conformance case files after a run that included them.
+`conftest.py` here registers the Hypothesis profiles for every test and the property shards (`--shard`), selects
+the mutant searches and the audit controls (`--property-controls only`) or every other test (`none`), as CI's
+test matrix splits them, records each test's CPU time for a JUnit report (`--junitxml`, which CI's durations
+report reads), and prints the count of conformance case files after a run that included them.
 
 ## Running
 

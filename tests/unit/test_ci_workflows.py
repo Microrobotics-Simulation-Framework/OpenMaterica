@@ -9,9 +9,12 @@ import ast
 import copy
 import os
 import re
+import shlex
 import subprocess
+import sys
 import tomllib
-from collections.abc import Callable
+from collections import Counter
+from collections.abc import Callable, Set
 from pathlib import Path
 from typing import Any, cast
 
@@ -33,7 +36,13 @@ Workflow = dict[str, Any]
 GATE_STEP, GATE_STEP_ID = "Changed paths", "paths"
 RESULT_STEP = "Every job the gate asked for succeeded, and none failed or was cancelled"
 # Each job the gate decides, by the output that decides it.
-GATED = {"static": "code", "generated": "code", "tests": "code", "hypothesis": "hypothesis"}
+GATED = {
+    "static": "code",
+    "generated": "code",
+    "tests": "code",
+    "controls": "code",
+    "hypothesis": "hypothesis",
+}
 # Jobs the gate does not decide: the gate itself, the result, and the weekly and manual fuzz job.
 UNGATED = {"gate", "result", "fuzz"}
 # A path of each kind the gate calls documentation, as its tests commit them in a throwaway repository.
@@ -405,6 +414,7 @@ def test_the_result_passes_when_every_job_the_gate_asked_for_succeeded(
     ("gate", "code", "hypothesis", "jobs"),
     [
         ("success", "true", "true", all_jobs("success", tests="skipped")),
+        ("success", "true", "false", all_jobs("success", controls="skipped", hypothesis="skipped")),
         ("success", "true", "true", all_jobs("success", hypothesis="skipped")),
         ("success", "true", "false", all_jobs("success", static="cancelled", hypothesis="skipped")),
         ("success", "", "", all_jobs("skipped")),
@@ -413,6 +423,7 @@ def test_the_result_passes_when_every_job_the_gate_asked_for_succeeded(
     ],
     ids=[
         "asked-for-and-skipped",
+        "controls-asked-for-and-skipped",
         "hypothesis-asked-for-and-skipped",
         "asked-for-and-cancelled",
         "outputs-empty",
@@ -507,4 +518,165 @@ def test_the_wiring_check_can_fail(fault: Callable[[Workflow], None], problem: s
     ci = copy.deepcopy(workflow("ci.yml"))
     fault(ci)
     found = wiring_problems(ci)
+    assert any(problem in line for line in found), found
+
+
+def pytest_commands(job: dict[str, Any]) -> list[list[str]]:
+    """Each pytest command of the job, its arguments as the shell splits them, up to the end of the command;
+    an expression `${{ ... }}` is kept as one word."""
+    commands: list[list[str]] = []
+    for found in job.get("steps", []):
+        script = re.sub(r"\\\n", " ", str(found.get("run", "")))
+        for line in script.splitlines():
+            line = re.sub(r"\$\{\{(.*?)\}\}", lambda match: "${{" + match[1].replace(" ", "") + "}}", line)
+            words = list(shlex.shlex(line, posix=True, punctuation_chars=True))
+            for start, word in enumerate(words):
+                if word == "pytest":
+                    rest = words[start + 1 :]
+                    ends = [index for index, rest_word in enumerate(rest) if set(rest_word) <= set("();<>|&")]
+                    commands.append(rest[: ends[0]] if ends else rest)
+    return commands
+
+
+def property_controls(job: dict[str, Any]) -> str | None:
+    """What the job's one pytest command gives `--property-controls`, or None."""
+    [command] = pytest_commands(job)
+    if "--property-controls" in command:
+        return command[command.index("--property-controls") + 1]
+    return None
+
+
+# The mutant searches and the audit controls by file, as the maintainer named them; CI selects them with
+# `--property-controls`, by module (`PROPERTY_CONTROLS` in tests/conftest.py).
+CONTROL_FILES = re.compile(r"tests/(?:[^/]+/)*test_[^/]*mutants[^/]*\.py|tests/unit/test_audit_controls\.py")
+
+
+def version(python: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in python.split("."))
+
+
+def matrix_problems(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> list[str]:
+    """Where the test matrix's jobs, together, leave a test out on a Python: any test on the supported
+    range's ends, any but the mutant searches and the audit controls between them, which run there.
+    `selected` gives the tests that each value of `--property-controls` selects, None for a run without it."""
+    every = selected[None]
+    controls = {test for test in every if CONTROL_FILES.fullmatch(test.partition("::")[0])}
+    pythons: list[str] = ci["jobs"]["tests"]["strategy"]["matrix"]["python"]
+    ends = {min(pythons, key=version), max(pythons, key=version)}
+    run: dict[str, set[str]] = {python: set() for python in pythons}
+    for job_id in ("tests", "controls"):
+        job = ci["jobs"][job_id]
+        for python in job["strategy"]["matrix"]["python"]:
+            run.setdefault(python, set()).update(selected[property_controls(job)])
+
+    def by_file(tests: Set[str]) -> str:
+        files = Counter(test.partition("::")[0] for test in tests)
+        return ", ".join(f"{count} of {file}" for file, count in sorted(files.items()))
+
+    problems: list[str] = []
+    for python in sorted(run, key=version):
+        wanted = every if python in ends else every - controls
+        if wanted - run[python]:
+            problems.append(f"Python {python} leaves out {by_file(wanted - run[python])}")
+        if run[python] - wanted:
+            problems.append(f"Python {python} runs {by_file(run[python] - wanted)}")
+    return problems
+
+
+def collected(options: list[str | None]) -> dict[str | None, frozenset[str]]:
+    """The tests that a run of the whole suite collects with each value of `--property-controls`, collected
+    side by side."""
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
+    runs = {
+        option: subprocess.Popen(
+            [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"]
+            + (["--property-controls", option] if option else []),
+            cwd=REPOSITORY,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        for option in options
+    }
+    found: dict[str | None, frozenset[str]] = {}
+    for option, run in runs.items():
+        printed, _ = run.communicate()
+        assert run.returncode == 0, printed[-3000:]
+        found[option] = frozenset(line for line in printed.splitlines() if "::" in line)
+    return found
+
+
+def test_the_mutant_searches_and_audit_controls_run_at_the_range_ends_and_nothing_else_is_left_out() -> None:
+    selected = collected([None, "none", "only"])
+    control_files = {
+        test.partition("::")[0] for test in selected[None] if CONTROL_FILES.fullmatch(test.partition("::")[0])
+    }
+    on_disk = {
+        path.relative_to(REPOSITORY).as_posix()
+        for path in (REPOSITORY / "tests").rglob("test_*.py")
+        if CONTROL_FILES.fullmatch(path.relative_to(REPOSITORY).as_posix())
+    }
+    assert "tests/unit/test_audit_controls.py" in on_disk
+    assert control_files == on_disk
+    assert matrix_problems(workflow("ci.yml"), selected) == []
+
+
+READ, AUDIT = "tests/unit/test_read.py::test_reads", "tests/unit/test_audit_controls.py::test_control"
+MUTANTS, WRITER_MUTANTS = (
+    "tests/property/test_mutants.py::test_kills",
+    "tests/property/test_writer_mutants.py::test_kills",
+)
+EVERY = frozenset({READ, AUDIT, MUTANTS, WRITER_MUTANTS})
+SELECTED: dict[str | None, frozenset[str]] = {None: EVERY, "none": frozenset({READ}), "only": EVERY - {READ}}
+
+
+def test_the_matrix_check_passes_the_selection_meant() -> None:
+    assert matrix_problems(workflow("ci.yml"), SELECTED) == []
+
+
+def controls_on_3_11_alone(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    ci["jobs"]["controls"]["strategy"]["matrix"]["python"] = ["3.11"]
+
+
+def controls_job_running_none(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    ci["jobs"]["controls"]["steps"][3]["run"] = ci["jobs"]["controls"]["steps"][3]["run"].replace(
+        "only", "none"
+    )
+
+
+def a_mutant_module_left_unselected(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    selected["only"] = selected["only"] - {WRITER_MUTANTS}
+
+
+def another_test_deselected(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    selected["none"] = frozenset()
+    selected["only"] = EVERY
+
+
+def plain_job_without_the_option(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+    ci["jobs"]["tests"]["steps"][3]["run"] = ci["jobs"]["tests"]["steps"][3]["run"].replace(
+        " --property-controls none", ""
+    )
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (controls_on_3_11_alone, "Python 3.15 leaves out 1 of tests/property/test_mutants.py"),
+        (controls_job_running_none, "Python 3.11 leaves out 1 of tests/property/test_mutants.py"),
+        (
+            a_mutant_module_left_unselected,
+            "Python 3.15 leaves out 1 of tests/property/test_writer_mutants.py",
+        ),
+        (another_test_deselected, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
+        (plain_job_without_the_option, "Python 3.12 runs 1 of tests/property/test_mutants.py"),
+    ],
+)
+def test_the_matrix_check_can_fail(
+    fault: Callable[[Workflow, dict[str | None, frozenset[str]]], None], problem: str
+) -> None:
+    ci, selected = copy.deepcopy(workflow("ci.yml")), dict(SELECTED)
+    fault(ci, selected)
+    found = matrix_problems(ci, selected)
     assert any(problem in line for line in found), found

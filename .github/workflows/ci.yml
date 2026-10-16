@@ -92,8 +92,9 @@ jobs:
           esac
           python3 scripts/check_confidential.py ${range:+--messages "$range"}
 
-      # Its outputs decide which jobs run: `code` the static, generated-files and test jobs, `hypothesis` the
-      # Hypothesis job. tests/unit/test_ci_workflows.py runs this step and holds each job's `if` to them.
+      # Its outputs decide which jobs run: `code` the static, generated-files, test and control jobs,
+      # `hypothesis` the Hypothesis job. tests/unit/test_ci_workflows.py runs this step and holds each job's
+      # `if` to them.
       # The gate fails closed: it lists the paths that are documentation only, which no test, script, generator,
       # build or workflow reads, and counts every other path as code, a new one included. Some documents are
       # code: README.md and LICENSE go into the wheel, typings/ to the type checkers, docs/specification/, the
@@ -242,9 +243,10 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
-      # Every test, the property tests at the `dev` profile: Python's json differs between versions, so the
-      # properties run on each; their depth is the Hypothesis job's. A worker per vCPU, as in that job.
-      - run: uv run pytest -n auto --dist worksteal --junitxml="$RUNNER_TEMP/durations.xml"
+      # Every test but the mutant searches and the audit controls, which the next job runs; the property tests
+      # at the `dev` profile: Python's json differs between versions, so the properties run on each; their
+      # depth is the Hypothesis job's. A worker per vCPU, as in that job.
+      - run: uv run pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
       # Where the time went, on the run's page, and the report kept for later runs to compare (no time fails
@@ -259,6 +261,54 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: durations-tests-${{ matrix.python }}
+          path: ${{ runner.temp }}/durations.xml
+          if-no-files-found: error
+          retention-days: 90
+
+  controls:
+    name: mutant searches and audit controls (Python ${{ matrix.python }})
+    # The mutant searches and the audit controls show that each property and each feature audit can fail
+    # (tests/README.md, "Every check can fail"). They run at the `ci` profile's examples whatever the profile,
+    # so on each Python they cost about as much as all its other tests. They run on the supported range's
+    # ends, the oldest Python and the newest, which bracket the versions between (maintainer, 2026-10-16), and
+    # in a job of their own beside each end's test job, so that neither job is the longest: 3.11's was. The
+    # Hypothesis job's shards run the mutant searches too. tests/unit/test_ci_workflows.py checks that the two
+    # jobs together leave nothing out on 3.11 and 3.15, and only these tests on the Pythons between.
+    needs: gate
+    if: needs.gate.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    # As the test job's, until the durations report has measured the two apart.
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.15"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # The mutant searches and the audit controls alone (`--property-controls` in tests/conftest.py), under the
+      # same profile as the test job.
+      - run: uv run pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
+        env:
+          MATERICA_HYPOTHESIS_PROFILE: dev
+      - name: Test durations
+        if: success() || failure()
+        env:
+          TITLE: "Test durations: mutant searches and audit controls, Python ${{ matrix.python }}"
+        run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
+      - name: Keep the durations
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: durations-controls-${{ matrix.python }}
           path: ${{ runner.temp }}/durations.xml
           if-no-files-found: error
           retention-days: 90
@@ -352,7 +402,7 @@ jobs:
     # requiring the jobs by name would leave docs-only pull requests waiting. A job skipped by its `if` reports
     # success, so a gate wired wrongly (a renamed step id leaves its outputs empty) would skip every job and pass
     # a check that only looks for failures: this one fails unless every job the gate asked for succeeded.
-    needs: [gate, static, generated, tests, hypothesis]
+    needs: [gate, static, generated, tests, controls, hypothesis]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -365,12 +415,13 @@ jobs:
           STATIC_JOB: ${{ needs.static.result }}
           GENERATED_JOB: ${{ needs.generated.result }}
           TESTS_JOB: ${{ needs.tests.result }}
+          CONTROLS_JOB: ${{ needs.controls.result }}
           HYPOTHESIS_JOB: ${{ needs.hypothesis.result }}
         run: |
           status=0
           fail() { echo "::error::$1"; status=1; }
           asked() { [ "$2" = success ] || fail "the gate asked for $1, which ended in '$2'"; }
-          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, hypothesis $HYPOTHESIS_JOB"
+          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, controls $CONTROLS_JOB, hypothesis $HYPOTHESIS_JOB"
           [ "$GATE" = success ] || fail "the gate ended in '$GATE'"
           case "$CODE $HYPOTHESIS" in
             "true true" | "true false" | "false true" | "false false") ;;
@@ -380,9 +431,10 @@ jobs:
             asked static "$STATIC_JOB"
             asked generated "$GENERATED_JOB"
             asked tests "$TESTS_JOB"
+            asked controls "$CONTROLS_JOB"
           fi
           if [ "$HYPOTHESIS" = true ]; then asked hypothesis "$HYPOTHESIS_JOB"; fi
-          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$HYPOTHESIS_JOB"; do
+          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$CONTROLS_JOB" "$HYPOTHESIS_JOB"; do
             case "$result" in failure | cancelled) fail "a job ended in '$result'" ;; esac
           done
           exit "$status"
