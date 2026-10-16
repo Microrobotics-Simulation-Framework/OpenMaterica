@@ -1,8 +1,9 @@
 # Why CI is shaped this way. The repository is public, so GitHub's standard runners cost nothing; what matters is
 # how fast a change gets its answer. So a first job (gate) finds what a change touched, and the other jobs skip
 # at job level when nothing relevant changed: a skipped job counts as passed for a required check, while a
-# workflow skipped by `paths` would leave the check pending. A docs-only change runs the gate alone, which also
-# checks sign-offs and that nothing private is named.
+# workflow skipped by `paths` would leave the check pending. A docs-only pull request runs the gate alone, which
+# also checks sign-offs and that nothing private is named. A merge to main runs every job, whatever it changed,
+# and the `result` job fails where a job the gate asked for did not succeed.
 # Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
 # per-push critical path is the Hypothesis job at the `ci` profile, which runs whenever the core, its schemas
 # and vocabulary, the property tests or their configuration change. Keep it short: work that would lengthen the
@@ -29,10 +30,12 @@ on:
         type: boolean
         default: false
 
-# One group per ref and event, so that a push to main never cancels the weekly run.
+# A newer push to a pull request cancels the run of the older one, which nobody will read. Every other run has
+# a group of its own, so that none is ever cancelled or replaced: each merge to main is tested whole, and the
+# weekly run never meets a push.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -89,41 +92,41 @@ jobs:
           esac
           python3 scripts/check_confidential.py ${range:+--messages "$range"}
 
+      # Its outputs decide which jobs run: `code` the static, generated-files and test jobs, `hypothesis` the
+      # Hypothesis job. tests/unit/test_ci_workflows.py runs this step and holds each job's `if` to them.
       - name: Changed paths
         id: paths
         env:
           EVENT: ${{ github.event_name }}
+          FUZZ_ONLY: ${{ inputs.fuzz_only }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
-          PUSH_BEFORE: ${{ github.event.before }}
-          PUSH_AFTER: ${{ github.sha }}
         run: |
           # The architecture draft and the documentation plan count as code too:
           # tests/spec_sync/test_references.py checks the specification's references into them.
-          code='^(src/|tests/|scripts/|docs/specification/|design/ARCHITECTURE_DRAFT\.md$|DOCUMENTATION_ARCHITECTURE\.md$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
-          hypothesis='^(src/materica/(core/|schema/|shapes\.pyi?$)|tests/property/|tests/conftest\.py$|tests/spec_sync/schemas\.py$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
-          case "$EVENT" in
-            pull_request) changed=$(git diff --name-only "$PR_BASE...$PR_HEAD") ;;
-            push) changed=$(git diff --name-only "$PUSH_BEFORE" "$PUSH_AFTER" 2>/dev/null) || changed=everything ;;
-            *) changed=everything ;;
-          esac
-          if [ "$changed" = everything ]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "hypothesis=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          code_paths='^(src/|tests/|scripts/|docs/specification/|design/ARCHITECTURE_DRAFT\.md$|DOCUMENTATION_ARCHITECTURE\.md$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
+          hypothesis_paths='^(src/materica/(core/|schema/|shapes\.pyi?$)|tests/property/|tests/conftest\.py$|tests/spec_sync/schemas\.py$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
+          if [ "$FUZZ_ONLY" = true ]; then
+            # A manual run of the fuzz job alone.
+            code=false
+            hypothesis=false
+          elif [ "$EVENT" = pull_request ]; then
+            changed=$(git diff --name-only "$PR_BASE...$PR_HEAD")
+            printf '%s\n' "$changed"
+            grep -qE "$code_paths" <<< "$changed" && code=true || code=false
+            grep -qE "$hypothesis_paths" <<< "$changed" && hypothesis=true || hypothesis=false
+          else
+            # A merge to main, the weekly run and a manual run test everything, whatever changed.
+            code=true
+            hypothesis=true
           fi
-          printf '%s\n' "$changed"
-          grep -qE "$code" <<< "$changed" && touched_code=true || touched_code=false
-          grep -qE "$hypothesis" <<< "$changed" && touched_core=true || touched_core=false
-          echo "code=$touched_code" >> "$GITHUB_OUTPUT"
-          # On main, every code change runs the Hypothesis job.
-          if [ "$EVENT" = push ]; then touched_core=$touched_code; fi
-          echo "hypothesis=$touched_core" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "hypothesis=$hypothesis" >> "$GITHUB_OUTPUT"
 
   static:
     name: lint, types, wheel
     needs: gate
-    if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
+    if: needs.gate.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -187,7 +190,7 @@ jobs:
   generated:
     name: generated files
     needs: gate
-    if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
+    if: needs.gate.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -212,7 +215,7 @@ jobs:
   tests:
     name: tests (Python ${{ matrix.python }})
     needs: gate
-    if: needs.gate.outputs.code == 'true' && !inputs.fuzz_only
+    if: needs.gate.outputs.code == 'true'
     runs-on: ubuntu-24.04
     # Measured on CI: at S2a-1's head 2.1 to 4.1 minutes; at S2a-2's, 6.1 to 8.7 minutes with 3.11 past 10, where its
     # timeout cancelled it (run 38818013140, 2026-10-15), then 8.7 to 13.9 minutes, 3.11 the slowest (run
@@ -259,7 +262,7 @@ jobs:
   hypothesis:
     name: hypothesis (${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}, ${{ matrix.shard }})
     needs: gate
-    if: needs.gate.outputs.hypothesis == 'true' && !inputs.fuzz_only
+    if: needs.gate.outputs.hypothesis == 'true'
     runs-on: ubuntu-24.04
     # On two workers locally, `deep` took 14.5 minutes for json and 10 for records (2026-10-14); step 8's
     # properties added about 17 minutes of CPU to the records shard's `deep` (2026-10-15, by S2a-2's review, on
@@ -342,18 +345,43 @@ jobs:
   result:
     name: CI result
     # The one check the ruleset on main requires. A matrix job skipped by its `if` reports under another name, so
-    # requiring the jobs by name would leave docs-only pull requests waiting; a skipped job passes this one.
+    # requiring the jobs by name would leave docs-only pull requests waiting. A job skipped by its `if` reports
+    # success, so a gate wired wrongly (a renamed step id leaves its outputs empty) would skip every job and pass
+    # a check that only looks for failures: this one fails unless every job the gate asked for succeeded.
     needs: [gate, static, generated, tests, hypothesis]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
-      - name: No needed job failed or was cancelled
+      - name: Every job the gate asked for succeeded, and none failed or was cancelled
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          GATE: ${{ needs.gate.result }}
+          CODE: ${{ needs.gate.outputs.code }}
+          HYPOTHESIS: ${{ needs.gate.outputs.hypothesis }}
+          STATIC_JOB: ${{ needs.static.result }}
+          GENERATED_JOB: ${{ needs.generated.result }}
+          TESTS_JOB: ${{ needs.tests.result }}
+          HYPOTHESIS_JOB: ${{ needs.hypothesis.result }}
         run: |
-          echo "$RESULTS"
-          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
+          status=0
+          fail() { echo "::error::$1"; status=1; }
+          asked() { [ "$2" = success ] || fail "the gate asked for $1, which ended in '$2'"; }
+          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, hypothesis $HYPOTHESIS_JOB"
+          [ "$GATE" = success ] || fail "the gate ended in '$GATE'"
+          case "$CODE $HYPOTHESIS" in
+            "true true" | "true false" | "false true" | "false false") ;;
+            *) fail "the gate's outputs are code '$CODE' and hypothesis '$HYPOTHESIS', not each true or false" ;;
+          esac
+          if [ "$CODE" = true ]; then
+            asked static "$STATIC_JOB"
+            asked generated "$GENERATED_JOB"
+            asked tests "$TESTS_JOB"
+          fi
+          if [ "$HYPOTHESIS" = true ]; then asked hypothesis "$HYPOTHESIS_JOB"; fi
+          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$HYPOTHESIS_JOB"; do
+            case "$result" in failure | cancelled) fail "a job ended in '$result'" ;; esac
+          done
+          exit "$status"
 
   fuzz:
     name: fuzz (Atheris)
