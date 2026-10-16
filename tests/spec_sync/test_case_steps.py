@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 
 from tests.conformance import runner
-from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, Outcome
+from tests.conformance.runner import CONFIGURATIONS, EXECUTORS
 
 STEPS = json.loads((Path(__file__).parent / "case_steps.json").read_text(encoding="utf-8"))
 CASE_FILES = runner.discover()
@@ -49,8 +49,9 @@ def test_every_case_file_has_its_steps() -> None:
 
 
 def test_every_case_file_of_a_step_done_passes() -> None:
+    """Passes, or, for a table evaluation case, which the reference evaluator runs, is verified against it."""
     done = [case_file for case_file in CASE_FILES if runner.step_done(case_file)]
     runs = runner.run_all(done, configurations=CONFIGURATIONS, executors=EXECUTORS)
     assert {case_run.case_file.path.name: case_run.outcome for case_run in runs} == {
-        case_file.path.name: Outcome.PASSED for case_file in done
+        case_file.path.name: runner.passing_outcome(case_file) for case_file in done
     }
