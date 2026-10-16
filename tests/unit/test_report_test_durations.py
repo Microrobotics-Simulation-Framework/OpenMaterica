@@ -51,6 +51,83 @@ def test_without_the_conftest_no_test_has_a_cpu_time(tmp_path: Path) -> None:
     assert all(test.cpu is None for test in tests)
 
 
+# Two tests, run in this order in one process: one that spins for `SPIN` seconds of its own CPU time, and one
+# that waits as long. Each test's CPU time is its own only if the waiting test's is near nothing and the
+# spinning test's is at least `SPIN` and hardly more than its wall time (pytest's own work between a test's
+# phases is in its CPU time and not in its wall time: about 0.01 s here).
+SPIN = 0.3
+SPINS_THEN_WAITS = f"""\
+import time
+
+
+def test_spins():
+    end = time.process_time() + {SPIN}
+    while time.process_time() < end:
+        pass
+
+
+def test_waits():
+    time.sleep({SPIN})
+"""
+CONFTEST = REPOSITORY / "tests" / "conftest.py"
+
+
+def recorded(tmp_path: Path, conftest: str) -> dict[str, Timing]:
+    """Each test of `SPINS_THEN_WAITS` by name, as `conftest`, loaded as a plugin, records its times."""
+    (tmp_path / "recording.py").write_text(conftest, encoding="utf-8")
+    (tmp_path / "test_sample.py").write_text(SPINS_THEN_WAITS, encoding="utf-8")
+    report = tmp_path / "report.xml"
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
+    environment["PYTHONPATH"] = os.pathsep.join([str(tmp_path), str(REPOSITORY)])
+    pytest_with_the_plugin = [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "-p", "recording"]
+    ran = subprocess.run(
+        [*pytest_with_the_plugin, "-o", "junit_family=xunit1", f"--junitxml={report}", "test_sample.py"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert ran.returncode == 0, ran.stdout + ran.stderr
+    return {test.nodeid.rpartition("::")[2]: test for test in read_report(report)}
+
+
+def recording_problems(tests: dict[str, Timing]) -> list[str]:
+    spins, waits = tests["test_spins"], tests["test_waits"]
+    problems: list[str] = []
+    if spins.cpu is None or spins.cpu < 0.95 * SPIN:
+        problems.append(f"the spinning test recorded {spins.cpu} s of CPU time for its {SPIN} s")
+    if spins.cpu is not None and spins.cpu > spins.wall + SPIN / 2:
+        problems.append(f"the spinning test recorded {spins.cpu} s of CPU time in {spins.wall} s")
+    if waits.cpu is None or waits.cpu >= SPIN / 3:
+        problems.append(f"the waiting test recorded {waits.cpu} s of CPU time")
+    return problems
+
+
+def test_each_test_records_its_own_cpu_time(tmp_path: Path) -> None:
+    assert recording_problems(recorded(tmp_path, CONFTEST.read_text(encoding="utf-8"))) == []
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        ("time.process_time()", "time.perf_counter()", "the waiting test recorded"),
+        (
+            "time.process_time() - item.stash[CPU_AT_SETUP]",
+            "time.process_time()",
+            "the spinning test recorded",
+        ),
+    ],
+    ids=["wall-time", "the-workers-running-total"],
+)
+def test_the_cpu_time_check_can_fail(tmp_path: Path, old: str, new: str, problem: str) -> None:
+    """The conftest with one fault: wall time recorded as CPU time, or the process's running total."""
+    conftest = CONFTEST.read_text(encoding="utf-8")
+    assert old in conftest
+    found = recording_problems(recorded(tmp_path, conftest.replace(old, new)))
+    assert any(problem in line for line in found), found
+
+
 def junit(*cases: str) -> str:
     return (
         '<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite>'
