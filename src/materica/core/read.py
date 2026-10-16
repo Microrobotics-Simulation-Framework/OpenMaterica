@@ -6,18 +6,19 @@ finds the field (step 7, `fields.find_field`), checks its form and shape (step 8
 its units (step 9, `fields.unit_problems`) and its conditions (step 10, `conditions.check_conditions`), and
 gives a `ReadResult`. Steps 11 to 13, which read the field's value, are not built yet, nor are overlays (step
 6) and alternatives (step 7). A read that would need one raises `NotImplementedError`, and so does a request
-whose answer a check still to come could change, whatever else is wrong with it: one with a region target or
-acceptances. It raises rather than give an answer a later step would contradict.
+whose answer a check still to come could change, whatever else is wrong with it: one with a region target, or
+an acceptance other than an implied condition. It raises rather than give an answer a later step would
+contradict.
 """
 
 import json
 from collections.abc import Collection
 from dataclasses import dataclass
-from typing import get_args
+from typing import TypeGuard, get_args
 
 from materica import shapes
 from materica.core import jsonio
-from materica.core.conditions import ConditionEntry, check_conditions
+from materica.core.conditions import ConditionEntry, ImpliedCondition, check_conditions, operating_json
 from materica.core.fields import find_field, form_problems, unit_problems
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
@@ -26,6 +27,7 @@ from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
 from materica.core.slips import slipped
 from materica.core.status import ReadStatus, worst
+from materica.core.value_shapes import JsonObject
 from materica.core.vocabulary import VOCABULARY, ConditionSpec
 from materica.shapes import Suite, Want
 
@@ -55,6 +57,16 @@ _REQUIREMENT_CONDITION_MEMBERS = ("tolerance", "accept")
 _TOLERANCE_MEMBERS = ("value", "unit")
 # What a declaration's requirement holds and a read checks none of (`declarations.md` section 1).
 _DECLARATIONS_ONLY = ("label", "represents", "population_level")
+# The members named at an implied condition's place (`declarations.md` section 4.1): every acceptance's
+# kind, location, field and reason, the basis a read ignores (section 1), and its own; and at a condition's
+# place in its `implies`, those of a record condition's shapes (`provenance.md` section 6.1), the `basis` and
+# `inferred_from` a read ignores among them, and those an implied value may not hold, which are refused.
+_IMPLIED_CONDITION = "implied_condition"
+_IMPLIED_MEMBERS = ("acceptance", "record", "region", "interval", "field", "reason", "basis", "fact", "token")
+_IMPLIED_OWN = (*_IMPLIED_MEMBERS, "implies")
+_LOCATION_MEMBERS = ("record", "region", "interval")
+_IMPLIED_IGNORED = ("basis", "inferred_from")
+_IMPLIED_REFUSED = ("plus_minus", "set_or_measured", "status")
 
 
 @dataclass(frozen=True)
@@ -66,6 +78,7 @@ class ReadRequest:
     want: Want
     operating_conditions: dict[str, shapes.OperatingCondition]
     conditions: dict[str, shapes.RequirementCondition]
+    implied: tuple[ImpliedCondition, ...] = ()
 
     @classmethod
     def from_json(
@@ -74,8 +87,9 @@ class ReadRequest:
         """Step 0: the request, or every reason found against it, each code and condition once.
 
         `request` is JSON text, read by `record_format.md` section 1 item 6, as a `str` or bytes-like; any
-        other value is read as the JSON text `json.dumps` writes of it. A request with acceptances or a region
-        target raises `NotImplementedError`, and claims no reader makes raise `ValueError`, as in `read`.
+        other value is read as the JSON text `json.dumps` writes of it. A request with a region target, or
+        with an acceptance other than an implied condition, raises `NotImplementedError`, and claims no reader
+        makes raise `ValueError`, as in `read`.
         """
         _check(claims)
         value = _parsed(request)
@@ -84,8 +98,10 @@ class ReadRequest:
         if not isinstance(value, dict):
             return (Reason("request_incomplete", detail="the request is not an object"),)
         acceptances = value.get("acceptances", [])
-        if isinstance(acceptances, list) and acceptances:
-            raise NotImplementedError("a request's acceptances are not read yet")
+        if isinstance(acceptances, list) and not all(map(_is_implied_condition, acceptances)):
+            raise NotImplementedError(
+                "a request's acceptances other than implied conditions are not read yet"
+            )
         named = value.get("target")
         if isinstance(named, dict) and "region" in named:
             raise NotImplementedError("a region target resolves through a scene, which is not read yet")
@@ -114,9 +130,15 @@ class ReadRequest:
             for name, entry in conditions.items()
             if (required := _requirement_condition(name, entry, name in operating, found)) is not None
         }
+        implied = tuple(
+            acceptance
+            for index, entry in enumerate(acceptances if isinstance(acceptances, list) else [])
+            if _is_implied_condition(entry)
+            and (acceptance := _implied_condition(index, entry, found)) is not None
+        )
         if found or target is None or want is None:
             return merged(found)
-        return cls(target[0], target[1], want, checked_operating, checked_conditions)
+        return cls(target[0], target[1], want, checked_operating, checked_conditions, implied)
 
     def to_json(self) -> shapes.ReadRequest:
         target: shapes.Target = {"record": self.target.to_json(), "field": self.field}
@@ -126,6 +148,8 @@ class ReadRequest:
         request: shapes.ReadRequest = {"target": target, "requirement": requirement}
         if self.operating_conditions:
             request["operating_conditions"] = dict(self.operating_conditions)
+        if self.implied:
+            request["acceptances"] = [condition.to_json() for condition in self.implied]
         return request
 
 
@@ -138,6 +162,9 @@ class ReadResult:
     reasons: tuple[Reason, ...]
     labels: tuple[str, ...] = ()
     conditions: tuple[ConditionEntry, ...] | None = None
+    applied: tuple[int, ...] = ()
+    """Outside `to_json`: the indexes, in the request's `acceptances`, of those the read applied, the implied
+    conditions that filled a condition so far, which a build maps to what accepted the result."""
 
     @classmethod
     def from_json(cls, result: shapes.ReadResult) -> "ReadResult":
@@ -197,11 +224,14 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
     found += unit_problems(field)
     if _ends(found):
         return _refused(merged(found), resolved.labels)
-    checked = check_conditions(field, request.operating_conditions, request.conditions)
+    implied = [
+        condition for condition in request.implied if condition.located_at(request.field, request.target)
+    ]
+    checked = check_conditions(field, request.operating_conditions, request.conditions, implied)
     found += checked.reasons
     if _ends(found):
         reasons = merged(found)
-        return ReadResult(_status(reasons), reasons, resolved.labels, checked.entries)
+        return ReadResult(_status(reasons), reasons, resolved.labels, checked.entries, checked.applied)
     raise NotImplementedError("steps 11 to 13, which read the field's value, are not built yet")
 
 
@@ -331,7 +361,20 @@ def _operating_condition(
     if spec.shape == "token" or not isinstance(entry, dict):
         found.append(_incomplete(f"{where} is not a numeric condition's value or range", name))
         return None
-    _slips(entry, _OPERATING_MEMBERS, where, found, name)
+    return _numeric(spec, entry, where, found)
+
+
+def _numeric(
+    spec: ConditionSpec,
+    entry: dict[str, JsonValue],
+    where: str,
+    found: list[Reason],
+    named: Collection[str] = (),
+) -> shapes.OperatingCondition | None:
+    """A numeric condition's value or range and its unit, as an operating condition gives them, where
+    `named` are the other members named at its place."""
+    name = spec.name
+    _slips(entry, (*_OPERATING_MEMBERS, *named), where, found, name)
     unit = _unit(spec, entry, where, found)
     if ("value" in entry) == ("range" in entry):
         found.append(_incomplete(f"{where} gives both or neither of value and range", name))
@@ -391,3 +434,76 @@ def _requirement_condition(
     elif unit is not None and operated and "accept" not in entry:
         return {"tolerance": {"value": value, "unit": unit}}
     return None
+
+
+def _is_implied_condition(entry: JsonValue) -> TypeGuard[dict[str, JsonValue]]:
+    return isinstance(entry, dict) and entry.get("acceptance") == _IMPLIED_CONDITION
+
+
+def _implied_condition(
+    index: int, entry: dict[str, JsonValue], found: list[Reason]
+) -> ImpliedCondition | None:
+    """An implied condition's shape (`declarations.md` section 4.1), whatever field or location it names:
+    its field, as the target's is; its fact, a specimen fact with tokens, and one of that fact's tokens; and
+    its `implies`, a value for each registered condition, as an operating condition's for a numeric one and
+    a token of its row for a token one. None, its reasons in `found`, where it breaks its shape."""
+    where = f"acceptances[{index}]"
+    before = len(found)
+    _slips(entry, _IMPLIED_OWN, where, found)
+    field, fact, token, implies = (entry.get(name) for name in ("field", "fact", "token", "implies"))
+    if not (isinstance(field, str) and FIELD.fullmatch(field) and field in VOCABULARY.fields):
+        found.append(_incomplete(f"{where}.field is not a registered <section>.<field>: {field!r}"))
+    spec = VOCABULARY.facts.get(fact) if isinstance(fact, str) else None
+    if spec is None or not spec.tokens:
+        found.append(_incomplete(f"{where}.fact is not a specimen fact with tokens: {fact!r}"))
+    elif token not in spec.tokens:
+        found.append(_incomplete(f"{where}.token is not one of {fact}'s tokens: {token!r}"))
+    location = {
+        name: _location(name, entry[name], where, found) for name in _LOCATION_MEMBERS if name in entry
+    }
+    values: dict[str, JsonObject] = {}
+    if not isinstance(implies, dict):
+        found.append(_incomplete(f"{where}.implies is missing or not an object"))
+    else:
+        for name, value in implies.items():
+            if (implied := _implied_value(name, value, f"{where}.implies.{name}", found)) is not None:
+                values[name] = implied
+    if len(found) > before or not (
+        isinstance(field, str) and isinstance(fact, str) and isinstance(token, str)
+    ):
+        return None
+    return ImpliedCondition(index, field, location, fact, token, values)
+
+
+def _location(name: str, value: JsonValue, where: str, found: list[Reason]) -> JsonValue:
+    """A location as the acceptance gives it, a record by the members a reference names: where it is not
+    the read's, the acceptance is not applied (`read_side_contract.md` section 1)."""
+    if name != "record" or not isinstance(value, dict):
+        return value
+    _slips(value, _RECORD_MEMBERS, f"{where}.record", found)
+    return {member: value[member] for member in _RECORD_MEMBERS if member in value}
+
+
+def _implied_value(name: str, value: JsonValue, where: str, found: list[Reason]) -> JsonObject | None:
+    """The value an implied condition gives a registered condition: a record condition's shape without its
+    `basis`, never a status object, `plus_minus` or `set_or_measured`; a numeric one's unit compared as an
+    operating condition's is."""
+    spec = _registered(name, found)
+    if spec is None:
+        return None
+    if not isinstance(value, dict):
+        found.append(_incomplete(f"{where} is not an object", name))
+        return None
+    if refused := [member for member in _IMPLIED_REFUSED if member in value]:
+        found.append(
+            _incomplete(f"{where} holds {', '.join(refused)}, which an implied value never holds", name)
+        )
+    if spec.shape == "token":
+        _slips(value, ("token", *_IMPLIED_IGNORED, *_IMPLIED_REFUSED), where, found, name)
+        token = value.get("token")
+        if not (isinstance(token, str) and token in spec.tokens):
+            found.append(_incomplete(f"{where}.token is not one of {name}'s tokens: {token!r}", name))
+            return None
+        return None if refused else {"token": token}
+    checked = _numeric(spec, value, where, found, (*_IMPLIED_IGNORED, *_IMPLIED_REFUSED))
+    return None if checked is None or refused else operating_json(checked)
