@@ -241,7 +241,9 @@ jobs:
     # 2026-10-15), then 8.7 to 13.9 minutes, 3.11 the slowest (run 38859424951, 2026-10-16). Without them, in the
     # first run with the controls job apart, 3.8 to 7.0 minutes, 3.14 and 3.15 the slowest (run 38954710616,
     # 2026-10-16). A hosted runner here is 1.6 to 4 times slower than a local core, and varies from run to run, so
-    # the timeout is set well above the slowest measured job.
+    # the timeout is set well above the slowest measured job. With S2a-3 and its fix round, the whole suite, the
+    # mutant searches and the audit controls among it, took 314 s on four local workers (Python 3.15,
+    # 2026-10-16), unmeasured on CI.
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -347,15 +349,18 @@ jobs:
     # searches do not grow with the profile (2026-10-15, S2a-2's fix round; a runner perhaps two to three times
     # slower a core, by estimate). The writer shard's `ci` took 11 minutes on two workers locally (2026-10-15),
     # and its `deep`, ten times the examples, about ten times that, unmeasured. Steps 9 and 10's properties,
-    # which read records end to end, took 97 s on four workers and 153 s on two at `ci` (2026-10-16, S2a-3), and
-    # `deep` is ten times the examples: a shard of their own, `conditions`, with the writer's timeouts. Their
-    # mutant searches, `condition_mutants`, took 6 s on four at `ci` and at `deep`; records, 61 s and 97 s.
+    # which read records end to end, are a shard of their own, `conditions`, with their mutant searches, which
+    # take seconds and do not grow with the profile. Measured locally at `ci` on four workers (Python 3.15,
+    # 2026-10-16, S2a-3's fix round): `conditions` 112 s, records 62 s, and the writer shard 9.3 minutes, 158 s
+    # of it one worker's, S2a-3's relation of the writer to step 9; `conditions` at `deep`, ten times the
+    # examples, about 17 minutes by my arithmetic, unmeasured.
     # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
     # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
     # runner, not the code, made the difference. At S2a-2's head json took 0.9 to 1.4 minutes, records 2.3 to 2.5
     # and step 8's mutants 1.6 to 2.1. Each `ci` timeout is set well above the slowest measured run; `deep` has not
-    # yet run on CI.
+    # yet run on CI. `conditions` has not run on CI either: a hosted runner has taken 1.6 to 4 times as long as
+    # this machine (the matrix's comment), which would be 3 to 7.5 minutes; its `ci` timeout is 30.
     # The agreement shard, on four workers locally (PR #24's fix round, 2026-10-17): at `ci`, 4.0 minutes, its
     # longest property 1.9, at load 4 to 7, and 8.0 minutes, its longest 4.7, at load 15 to 17; at `deep`, 112
     # minutes, its longest property 70, at load 18 to 30. A runner 1.6 to 4 times slower a core would take 13 to
@@ -365,17 +370,17 @@ jobs:
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180 || matrix.shard == 'agreement' && 360
       || 45)
-      || ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 75 || matrix.shard == 'agreement' && 45
-      || 20) }}
+      || (matrix.shard == 'writer' && 75 || matrix.shard == 'conditions' && 30 || matrix.shard == 'agreement'
+      && 45 || 20) }}
     strategy:
       fail-fast: false
       matrix:
-        # Seven shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
+        # Six shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
         # envelope checks, versions and the read; the writer schema's value fields; the two JSON Schema
         # libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
-        # searches, which were most of the records shard's time; and steps 9 and 10's properties and their
+        # searches, which were most of the records shard's time; and steps 9 and 10's properties with their
         # mutant searches.
-        shard: [json, records, writer, agreement, step8_mutants, conditions, condition_mutants]
+        shard: [json, records, writer, agreement, step8_mutants, conditions]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
     steps:
@@ -396,9 +401,10 @@ jobs:
       # immutable, so each run saves under its own key and restores the latest; it saves even when the run
       # fails, since a failing example is what most needs keeping. Each shard keeps its own, so that one shard's
       # later save never hides an example the other saved.
-      # The mutant searches keep no example database, so their shard restores and saves none.
+      # Step 8's mutant searches keep no example database, so their shard restores and saves none; steps 9 and
+      # 10's, in the conditions shard, set none either, which the shard's database leaves alone.
       - name: Restore the example database
-        if: matrix.shard != 'step8_mutants' && matrix.shard != 'condition_mutants'
+        if: matrix.shard != 'step8_mutants'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
@@ -425,7 +431,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
       - name: Save the example database
-        if: always() && matrix.shard != 'step8_mutants' && matrix.shard != 'condition_mutants'
+        if: always() && matrix.shard != 'step8_mutants'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
