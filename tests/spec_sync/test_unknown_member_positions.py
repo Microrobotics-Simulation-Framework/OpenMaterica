@@ -126,7 +126,19 @@ def hosts() -> tuple[Host, ...]:
         record_body["extensions"] = {"acme": {"sections": {"x": 1.0}}}
         record["content_hash"] = content_hash(record)
         found.append(Host(name, record, None))
+    # An implied condition the read applies (its fact and token are the field's), holding a numeric and a
+    # token condition the record does not.
+    implied: JsonObject = {
+        "acceptance": "implied_condition",
+        "record": pin(found[0].record),
+        "field": FIELD,
+        "fact": "tissue_state",
+        "token": "ex_vivo_fresh",
+        "implies": {"specimen_size": {"value": 1.0e-3, "unit": "m"}, "density_kind": {"token": "apparent"}},
+        "reason": "a fixture's",
+    }
     request: JsonObject = {
+        "acceptances": [implied],
         "target": {"record": pin(found[0].record), "field": FIELD},
         "operating_conditions": {
             "temperature": {"value": 310.15, "unit": "K"},
@@ -185,12 +197,13 @@ def places(value: JsonValue, pattern: list[str], here: Path_ = ()) -> Iterator[P
             yield here
         return
     step, rest = pattern[0], pattern[1:]
-    if step == "[*]" and isinstance(value, list):
+    if step.startswith("[") and isinstance(value, list):
         for index, item in enumerate(value):
-            yield from places(item, rest, (*here, index))
+            if step == "[*]" or (isinstance(item, dict) and f"[{item.get('acceptance')}]" == step):
+                yield from places(item, rest, (*here, index))
     elif isinstance(value, dict):
         for key, member in value.items():
-            if step != "[*]" and fits(step, key, member):
+            if not step.startswith("[") and fits(step, key, member):
                 yield from places(member, rest, (*here, key))
 
 
@@ -521,6 +534,8 @@ BY_ID = {str(position["id"]): position for position in TABLE}
         pytest.param(value_shapes, "slips", _refusing_the_unknown, "R22", id="an_unknown_member_refused"),
         pytest.param(value_shapes, "slipped", _no_slip, "R28", id="a_slip_ignored"),
         pytest.param(read_module, "slipped", _no_slip, "Q04", id="a_slip_in_a_request_ignored"),
+        pytest.param(read_module, "slipped", _no_slip, "Q13", id="a_slip_in_an_implied_value_ignored"),
+        pytest.param(read_module, "_IMPLIED_REFUSED", (), "Q14", id="an_implied_value_holding_a_status"),
     ],
 )
 def test_a_read_against_the_verdict_is_found(
@@ -533,6 +548,8 @@ def test_a_read_against_the_verdict_is_found(
 def test_a_wrong_verdict_a_dead_row_and_a_lost_quote_are_found() -> None:
     assert problems({**BY_ID["R22"], "verdict": "not_checked"}) != []
     assert problems({**BY_ID["R22"], "path": ["body", "nowhere"]}) == ["R22: found in no host"]
+    assert problems({**BY_ID["Q10"], "path": ["acceptances", "[nominal]"]}) == ["Q10: found in no host"]
+    assert problems({**BY_ID["Q12"], "verdict": "ignored"}) != []
     assert unquoted([{**BY_ID["R01"], "quote": "A reader ignores every member"}], document) == ["R01"]
     assert uncovered([position for position in TABLE if position["id"] != "R26"]) == {"uncertainty"}
     assert uncovered([position for position in TABLE if position["id"] != "R23"]) == {

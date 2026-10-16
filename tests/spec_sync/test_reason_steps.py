@@ -317,7 +317,15 @@ NOT_BUILT = {
     ("entries_withheld", 8),
     ("points_unsupported", 8),
 }
-BUILT = (0, 1, 2, 3, 4, 5, 7, 8)
+BUILT = (0, 1, 2, 3, 4, 5, 7, 8, 9, 10)
+# The `unknown` codes of step 10 that no read of a case file returns until steps 11 to 13 are built (S2a-4):
+# a read they do not end raises until then, and no case of S2a-3 holds them beside a `not_met`. Once one
+# does, the test fails, and the code leaves this set.
+UNKNOWN_UNTIL_S2A_4 = {
+    ("condition_unchecked", 10),
+    ("condition_unknown_name", 10),
+    ("condition_uncertain", 10),
+}
 
 
 def test_the_reads_traced_reach_every_code_the_steps_built_give() -> None:
@@ -325,8 +333,9 @@ def test_the_reads_traced_reach_every_code_the_steps_built_give() -> None:
     constructed at each of those steps, by some read of a case file."""
     seen = {(code, step) for case_file in READS for code, at in traced(case_file) for step in at}
     allowed = {(code, step) for code, (given, _) in TABLE.items() for step in given if step in BUILT}
-    assert allowed - NOT_BUILT - seen == set()
-    assert NOT_BUILT <= allowed
+    assert allowed - NOT_BUILT - UNKNOWN_UNTIL_S2A_4 - seen == set()
+    assert NOT_BUILT | UNKNOWN_UNTIL_S2A_4 <= allowed
+    assert UNKNOWN_UNTIL_S2A_4.isdisjoint(seen)
 
 
 def without(table: Table, code: str, step: int) -> Table:
