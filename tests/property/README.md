@@ -42,6 +42,11 @@ Hypothesis properties of the core, in four groups, and of the writer schema, in 
   in parts of at most 15, each a property of its own, so that the feature audit at `ci` can judge each fault
   (below).
   The refusal is checked on one the schema takes, the same but for the fault, so that it is the fault's.
+  And what the writer takes in a body, step 9 of a read passes (the relation its unit bindings exist for):
+  a body the text allows passes step 9, and one with every condition and fact, its unit changed at one place
+  step 9 compares (the field's, a numeric condition's, a `plus_minus` entry's, a token condition's, a fact's),
+  is one the writer refuses. A table's `axis_unit` is not among the places: S3 writes the table's shape, and
+  adds it there.
 - **Step 8:** (8) the laws of step 8 of a read (`read_side_contract.md` section 3), in the part step 8
   decides, the S2 design's HP3 and HP5: one fault of a catalogue written from the text gives exactly the codes
   its rule gives, and two faults in two parts of the record give both (each step makes all its checks);
@@ -175,14 +180,14 @@ value field, a choice among eight forms, and 6 to 20 ms against the reader's; js
 
 It lists every place in the tests that takes jsonschema-rs's verdict alone, with the tests that compare that
 schema or the reason it is left out, and checks that the list is exact by reading the tests' sources. Its
-controls: writer mutants given to one side (M18 on T1's share, M55 on the drawn faults, and each of the 12
-along its own search) and reader mutants given to one side (on drawn faults and on drawn records), each found
-as the side given it taking what the other refuses; a pattern ended in `$`, given to both, which
-python-jsonschema reads as matching before a final newline and jsonschema-rs, as ECMA-262 does, not; the pairs
-the properties use, each of both libraries; and T1's inputs, naming every definition T1 judges an example by.
-`tests/spec_sync/test_schemas.py` holds every schema file to draft 2020-12 and every pattern to what both
-libraries read alike: anchored at both ends, by `^` and `(?![\s\S])`, with no escape of a letter or digit, no
-`.` or `$` outside a class and no POSIX class.
+controls: writer mutants given to one side (M18 on T1's share, M55 on the drawn faults, each of the 12 along
+its own search, and U1 to U3 along theirs, which draw bodies with a unit changed) and reader mutants given to
+one side (on drawn faults and on drawn records), each found as the side given it taking what the other
+refuses; a pattern ended in `$`, given to both, which python-jsonschema reads as matching before a final
+newline and jsonschema-rs, as ECMA-262 does, not; the pairs the properties use, each of both libraries; and
+T1's inputs, naming every definition T1 judges an example by. `tests/spec_sync/test_schemas.py` holds every
+schema file to draft 2020-12 and every pattern to what both libraries read alike: anchored at both ends, by
+`^` and `(?![\s\S])`, with no escape of a letter or digit, no `.` or `$` outside a class and no POSIX class.
 
 ## Mutants
 
@@ -224,7 +229,9 @@ value-field part and its two controls (M1 to M31, its numbering kept), one for e
 vocabulary, each changed in the vocabulary file or no longer applied by the writer: a section's field names, a
 field's forms, unit, label or composition basis, its alternatives, the replaced fields, a numeric condition's
 unit and its `plus_minus` entries', a specimen fact's fixed unit (B1 to B14, with B5b), and five that tighten
-them (TB1 to TB5). Each names
+them (TB1 to TB5); and three of those bindings removed again (U1 to U3: the specimen facts', a field's unit,
+the conditions'), each killed by the relation to step 9 at a body with a unit changed where it held, searched
+among those places (each at its first example, both sizes; measured 2026-10-16). Each names
 the property that kills it and the assertion it must die at: a loosening mutant dies when the refusal property
 of its family finds the schema taking one of the faults it names, its search drawn among those faults, which
 the family's property draws as often as any other (the feature audit holds it to its draw floor); a

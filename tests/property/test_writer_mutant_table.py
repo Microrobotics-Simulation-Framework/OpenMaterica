@@ -5,7 +5,7 @@ searches, so that it runs on every Python (`--property-controls` in `tests/conft
 import copy
 
 from tests.property import value_fields
-from tests.property.test_writer_mutants import MUTANTS, ORIGINALS, SEARCHED_ON, TAKES, identifier
+from tests.property.test_writer_mutants import MUTANTS, ORIGINALS, SEARCHED_ON, STEP_9, TAKES, identifier
 
 
 def test_each_mutant_changes_the_schema() -> None:
@@ -16,5 +16,5 @@ def test_each_mutant_changes_the_schema() -> None:
         schema = copy.deepcopy(ORIGINALS[mutant.file])
         mutant.change(schema)
         assert schema != ORIGINALS[mutant.file], mutant.name
-        assert mutant.killer == TAKES or set(mutant.intended) <= names, mutant.name
+        assert mutant.killer in (TAKES, STEP_9) or set(mutant.intended) <= names, mutant.name
         assert (mutant.killer == TAKES) == (identifier(mutant) in SEARCHED_ON), mutant.name

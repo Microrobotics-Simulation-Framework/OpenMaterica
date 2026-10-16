@@ -6,21 +6,43 @@ an overlay's `replaces`, bound to its row of section 4.1, and refuses one under 
 register or holding what its row does not give (maintainer, 2026-10-15). The fields come from
 `value_fields.py`, built from the text and the vocabulary's rows, never from the schema or the bindings it
 applies. Each refusal is checked on a field the schema takes, the same field but for the fault, so that it is
-the fault's. The mutants they kill are in `test_writer_mutants.py`."""
+the fault's. And what it takes in a body, step 9 of a read passes. The mutants they kill are in
+`test_writer_mutants.py`."""
 
 import math
 from collections.abc import Iterable
+from dataclasses import replace
+from typing import NamedTuple
 from urllib.parse import urljoin
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from materica.core.fields import RecordField, unit_problems
 from materica.core.jsonio import JsonValue
+from materica.core.reasons import Reason
+from materica.core.vocabulary import VOCABULARY
 from tests.conftest import EXAMPLES
 from tests.property import audits, value_fields
+from tests.property.strategies import SIZE, Size
 from tests.property.support import feature
-from tests.property.value_fields import FAMILIES, FAULTS, Faulty, Json, listing, mapping
+from tests.property.value_fields import (
+    ANY,
+    FAMILIES,
+    FAULTS,
+    FIXED_UNITS,
+    NUMERIC_CONDITIONS,
+    REGISTERED_UNITS,
+    TOKEN_CONDITIONS,
+    Faulty,
+    Json,
+    Plan,
+    listing,
+    mapping,
+    registered_unit,
+    row_of,
+)
 from tests.spec_sync.schemas import BASE, why_refused
 from tests.verdicts import verdict
 
@@ -163,3 +185,102 @@ def test_the_writer_schema_refuses_each_fault_the_text_names(
     faulty = data.draw(value_fields.faulty_fields(family, only=faults))
     feature(faulty.fault)
     check_refuses(WRITERS.get(family, WRITER), faulty)
+
+
+# What the writer takes in a body, step 9 passes (`read_side_contract.md` section 3, step 9): the writer binds
+# each unit step 9 compares to the one registered for it (maintainer, 2026-10-15), so that no record a reader
+# must refuse there can be written. A body the text allows, or one planned with every condition and fact, its
+# unit changed at a place step 9 compares, in the field or its first alternative: a writer that takes it
+# fails the relation.
+
+UNIT_PLACES = ("none", "field", "condition", "plus_minus", "token_condition", "fact")
+ON_A_CONDITION = ("condition", "plus_minus", "token_condition")
+WITH_EVERY_UNIT = Plan(rich=frozenset({"conditions", "specimen"}))
+WITH_CONDITIONS = [name for name in value_fields.FIELDS if set(listing(row_of(name)["forms"])) - {"evidence"}]
+
+
+class Changed(NamedTuple):
+    place: str  # where a unit was changed, `none` where none was
+    body: Json
+
+
+@st.composite
+def another_unit(draw: st.DrawFn, own: JsonValue) -> JsonValue:
+    """A unit step 9 refuses where `own` is registered: another registered unit, `own` with a space or in
+    capitals, or a status object of another token."""
+    strings: list[JsonValue] = [unit for unit in REGISTERED_UNITS if unit != own]
+    if isinstance(own, str):
+        strings += [own + " ", own.upper()] if own.upper() != own else [own + " "]
+    token = mapping(own)["status"] if isinstance(own, dict) else None
+    statuses: list[JsonValue] = [{"status": other} for other in value_fields.ANY_STATUS if other != token]
+    return draw(st.sampled_from([*strings, *statuses]))
+
+
+@st.composite
+def bodies_with_a_unit_changed(
+    draw: st.DrawFn, among: tuple[str, ...] = UNIT_PLACES, plan: Plan = WITH_EVERY_UNIT, size: Size = SIZE
+) -> Changed:
+    place = draw(st.sampled_from(among))
+    if place == "none":
+        return Changed(place, draw(value_fields.bodies(ANY, size)))
+    if place in ON_A_CONDITION:
+        # An evidence field holds no conditions.
+        registered = plan.registered or draw(st.sampled_from(WITH_CONDITIONS))
+        forms = [str(form) for form in listing(row_of(registered)["forms"]) if form != "evidence"]
+        plan = replace(plan, registered=registered, form=draw(st.sampled_from(forms)))
+    body = draw(value_fields.bodies(plan, size))
+    container, name, registered = value_fields.placed(body)
+    value = mapping(container[name])
+    field = mapping(listing(value["alternatives"])[0]) if "alternatives" in value else value
+    conditions = mapping(field["conditions"])
+    if place == "field":
+        field["unit"] = draw(another_unit(row_of(registered)["unit"]))
+    elif place in ("condition", "plus_minus"):
+        condition_name = draw(st.sampled_from(NUMERIC_CONDITIONS))
+        condition = mapping(conditions[condition_name])
+        entries = listing(condition["plus_minus"])
+        holder = condition if place == "condition" else mapping(draw(st.sampled_from(entries)))
+        holder["unit"] = draw(another_unit(registered_unit(condition_name)))
+    elif place == "token_condition":
+        token_condition = mapping(conditions[draw(st.sampled_from(TOKEN_CONDITIONS))])
+        any_unit: list[JsonValue] = [*REGISTERED_UNITS, {"status": "unstated"}]
+        token_condition["unit"] = draw(st.sampled_from(any_unit))
+    else:
+        fact_name = draw(st.sampled_from(sorted(FIXED_UNITS)))
+        fact = mapping(mapping(field["specimen"])[fact_name])
+        fact["unit"] = draw(another_unit(FIXED_UNITS[fact_name]))
+    return Changed(place, body)
+
+
+def step_9(body: Json) -> list[Reason]:
+    """Step 9's reasons for a body's field, read in its section, each of its alternatives where it holds
+    some."""
+    container, name, registered = value_fields.placed(body)
+    sections = body.get("sections")
+    section = mapping(mapping(sections)[registered.partition(".")[0]]) if sections is not None else {}
+    value = mapping(container[name])
+    found: list[Reason] = []
+    for one in listing(value["alternatives"]) if "alternatives" in value else [value]:
+        found += unit_problems(RecordField(VOCABULARY.fields[registered], one, section))
+    return found
+
+
+def check_passes_step_9(writer: Writer, changed: Changed) -> bool:
+    """Whether `writer` takes the body; where it does, step 9 must pass it."""
+    if not writer.takes(changed.body):
+        return False
+    refused = step_9(changed.body)
+    assert not refused, (
+        f"the writer takes a body step 9 refuses, changed at the {changed.place}: {refused[:2]}"
+    )
+    return True
+
+
+# `taken`, the writer taking the body, declared by its chance, the least share measured in seven runs at `ci`
+# (12 to 20%, 2026-10-16): the writer takes the bodies drawn with no unit changed, and no other.
+@pytest.mark.chances(taken=0.12)
+@pytest.mark.drawn(*UNIT_PLACES)
+@given(bodies_with_a_unit_changed())
+def test_step_9_passes_every_body_the_writer_takes(changed: Changed) -> None:
+    feature(changed.place)
+    feature("taken", check_passes_step_9(PLACED, changed))
