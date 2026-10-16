@@ -843,3 +843,156 @@ def test_a_field_unit_registered_as_a_status_object_takes_its_token_whatever_its
     assert same_unit("Pa.s", "Pa.s")
     assert not same_unit("Pa.s" + chr(0x200B), "Pa.s")
     assert not same_unit({"status": "unstated"}, "Pa.s")
+
+
+IMPLIED: dict[str, JsonValue] = {
+    "acceptance": "implied_condition",
+    "record": {"id": "conformance/water_fixture", "version": "2.0.0", "content_hash": PIN},
+    "field": "fluid.dynamic_viscosity",
+    "fact": "tissue_state",
+    "token": "in_vivo",
+    "implies": {"temperature": {"value": 310.15, "unit": "K"}, "density_kind": {"token": "matrix"}},
+    "reason": "body temperature in vivo",
+}
+
+
+def implied_with(**members: JsonValue) -> JsonValue:
+    """REQUEST with one implied condition, `members` changed in it, None removing one."""
+    acceptance: dict[str, JsonValue] = {
+        name: value for name, value in {**IMPLIED, **members}.items() if value is not None
+    }
+    return with_members(acceptances=[acceptance])
+
+
+# Implied conditions at step 0 (`read_side_contract.md` section 1), beyond the PR-330 arms: what is refused,
+# with the condition it concerns, and what is ignored.
+IMPLIED_AT_STEP_0: list[tuple[str, JsonValue, set[tuple[str, str | None]]]] = [
+    ("implies not an object", implied_with(implies=[]), {("request_incomplete", None)}),
+    ("no implies", implied_with(implies=None), {("request_incomplete", None)}),
+    ("no fact", implied_with(fact=None), {("request_incomplete", None)}),
+    ("a field off the pattern", implied_with(field="viscosity"), {("request_incomplete", None)}),
+    ("a slip beside its members", implied_with(facts="tissue_state"), {("request_incomplete", None)}),
+    ("a slip of the basis a read ignores", implied_with(bases="x"), {("request_incomplete", None)}),
+    (
+        "a numeric value without its unit",
+        implied_with(implies={"temperature": {"value": 310.15}}),
+        {("request_incomplete", "temperature")},
+    ),
+    (
+        "a numeric value in another unit",
+        implied_with(implies={"shear_rate": {"value": 1.0, "unit": "s-1"}}),
+        {("request_unit_mismatch", "shear_rate")},
+    ),
+    (
+        "a token for a numeric condition",
+        implied_with(implies={"temperature": {"token": "matrix"}}),
+        {("request_incomplete", "temperature")},
+    ),
+    (
+        "a value for a token condition",
+        implied_with(implies={"density_kind": {"value": 1.0, "unit": "1"}}),
+        {("request_incomplete", "density_kind")},
+    ),
+    (
+        "a status object for a token condition",
+        implied_with(implies={"density_kind": {"status": "unstated"}}),
+        {("request_incomplete", "density_kind")},
+    ),
+    (
+        "two faults in two conditions",
+        implied_with(implies={"temperature": {"range": [2.0, 1.0], "unit": "K"}, "pressure": {}}),
+        {("request_incomplete", "temperature"), ("request_incomplete", "pressure")},
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("fault", "request_value", "reasons"), IMPLIED_AT_STEP_0, ids=[fault for fault, _, _ in IMPLIED_AT_STEP_0]
+)
+def test_an_implied_condition_that_breaks_its_shape_is_refused_at_step_0(
+    fault: str, request_value: JsonValue, reasons: set[tuple[str, str | None]]
+) -> None:
+    refused = read(request_value, store())
+    assert refused.status == "not_met"
+    assert {(reason.code, reason.condition) for reason in refused.reasons} == reasons
+
+
+@pytest.mark.parametrize(
+    "request_value",
+    [
+        pytest.param(implied_with(), id="as_given"),
+        pytest.param(implied_with(basis="a datasheet", x_note=1.0), id="its_basis_and_an_unknown_member"),
+        pytest.param(
+            implied_with(implies={"temperature": {"value": 310.15, "unit": "K", "basis": "stated"}}),
+            id="a_basis_in_a_value",
+        ),
+        pytest.param(
+            implied_with(implies={"density_kind": {"token": "matrix", "unit": "K"}}),
+            id="a_unit_beside_a_token",
+        ),
+        pytest.param(implied_with(record=None, region="lumen"), id="at_a_region"),
+        pytest.param(implied_with(record="a reference of no shape"), id="at_no_reference"),
+        pytest.param(implied_with(implies={}), id="implying_nothing"),
+        pytest.param(implied_with(reason=None), id="without_its_reason"),
+    ],
+)
+def test_an_implied_condition_that_keeps_its_shape_passes_step_0(request_value: JsonValue) -> None:
+    """The record is version 2.0.0, which the store does not hold: the read goes on to step 1."""
+    assert read(request_value, store()) == ABSENT
+
+
+def test_an_acceptance_of_another_kind_raises_whatever_else_the_request_holds() -> None:
+    """S2b-2 reads the other kinds and refuses a kind a read does not take (section 1)."""
+    others: list[JsonValue] = [
+        {"acceptance": "nominal", "value": 1.0},
+        {"acceptance": "waiver"},
+        1.0,
+        {"acceptance": "implied"},
+    ]
+    for other in others:
+        with pytest.raises(NotImplementedError):
+            read(with_members(acceptances=[IMPLIED, other]), store())
+        with pytest.raises(NotImplementedError):
+            read(with_members(acceptances=[other], target=None), store())
+
+
+def test_a_request_keeps_its_implied_conditions_with_the_members_their_shape_names() -> None:
+    checked = ReadRequest.from_json(implied_with(x_note=1.0, basis="a datasheet"))
+    assert isinstance(checked, ReadRequest)
+    (implied,) = checked.implied
+    assert implied.index == 0
+    assert checked.to_json().get("acceptances") == [
+        {
+            "acceptance": "implied_condition",
+            "record": IMPLIED["record"],
+            "field": "fluid.dynamic_viscosity",
+            "fact": "tissue_state",
+            "token": "in_vivo",
+            "implies": {"temperature": {"value": 310.15, "unit": "K"}, "density_kind": {"token": "matrix"}},
+        }
+    ]
+
+
+def test_a_read_returns_the_implied_conditions_it_applied_outside_its_json() -> None:
+    """A field in vivo with no temperature, read at 330 K: the implied 310.15 K fills it and is outside."""
+    conditions: dict[str, JsonValue] = {"shear_rate": {"status": "unstated"}}
+    field: dict[str, JsonValue] = {
+        **water_field(),
+        "conditions": conditions,
+        "specimen": {"tissue_state": {"token": "in_vivo", **STATED}},
+    }
+    request, records = stored(with_field("fluid.dynamic_viscosity", field))
+    assert isinstance(request, dict)
+    target = request["target"]
+    assert isinstance(target, dict)
+    acceptance: dict[str, JsonValue] = {**IMPLIED, "record": target["record"]}
+    request["acceptances"] = [acceptance]
+    request["operating_conditions"] = {"temperature": {"value": 330.0, "unit": "K"}}
+    result = read(request, records)
+    assert set(result.reasons) == {
+        Reason("condition_outside", "temperature"),
+        Reason("condition_unstated", "shear_rate"),
+        Reason("condition_unchecked", "density_kind"),
+    }
+    assert result.applied == (0,)
+    assert "applied" not in result.to_json()

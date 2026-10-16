@@ -1,26 +1,69 @@
 # SPDX-License-Identifier: Apache-2.0
 """Step 10 of a read: the conditions (`read_side_contract.md` section 3, step 10, and section 5).
 
-The conditions checked are those the record holds, those the field's row requires, those another condition
-requires with the token it holds, and those the request's requirement names, each giving one entry of the
-result's `conditions`. A condition the record states is compared with the request by section 5's table,
-every comparison made on the exact values of the doubles, as rationals, so that no rounding of `r - v` passes
-a value outside its tolerance; a stated `plus_minus` can only turn `met` into `unknown`.
+The conditions checked are those the record holds, those an implied condition the read applies fills, those
+the field's row requires, those another condition requires with the token it holds, and those the request's
+requirement names, each giving one entry of the result's `conditions`. A condition the record states is
+compared with the request by section 5's table, every comparison made on the exact values of the doubles, as
+rationals, so that no rounding of `r - v` passes a value outside its tolerance; a stated `plus_minus` can only
+turn `met` into `unknown`.
+
+An implied condition (`declarations.md` section 4.1) applies where the request locates it at the read
+(section 1) and the field's specimen, the section's facts merged with the field's, states its fact and token.
+It fills a condition the record does not hold, or holds as `unstated`, as if the record stated it with the
+basis `implied`. Two that apply and supply different values for one condition end the read here, with
+`request_incomplete` for that condition, and then no condition is checked (ruling A).
 """
 
 import copy
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
 from typing import TypeGuard, get_type_hints
 
 from materica import shapes
 from materica.core.fields import RecordField
+from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.status import ReadStatus
 from materica.core.value_shapes import JsonObject, is_status_object, status_row
 from materica.core.vocabulary import VOCABULARY
+
+
+@dataclass(frozen=True)
+class ImpliedCondition:
+    """An implied condition of a request's `acceptances` that passed step 0: its index there; the field it
+    names; where it is located, its `record`, `region` and `interval` as the request gives them, a record by
+    the members a reference names; the specimen fact and token it rests on; and the value it implies for each
+    condition, holding the members its shape names, a value or a range and a unit, or a token."""
+
+    index: int
+    field: str
+    location: JsonObject
+    fact: str
+    token: str
+    implies: dict[str, JsonObject]
+
+    def located_at(self, field: str, record: MaterialRef) -> bool:
+        """Whether it applies to a read of `field` in `record`: it names that field, and that record as its
+        one location, by `id`, `version` and `content_hash` (`read_side_contract.md` section 1)."""
+        reference: JsonObject = {
+            "id": record.id,
+            "version": record.version,
+            "content_hash": record.content_hash,
+        }
+        return self.field == field and self.location == {"record": reference}
+
+    def to_json(self) -> JsonObject:
+        return {
+            "acceptance": "implied_condition",
+            **copy.deepcopy(self.location),
+            "field": self.field,
+            "fact": self.fact,
+            "token": self.token,
+            "implies": {name: copy.deepcopy(value) for name, value in self.implies.items()},
+        }
 
 
 @dataclass(frozen=True)
@@ -49,32 +92,90 @@ class ConditionEntry:
         if self.record is not None:
             entry["record"] = copy.deepcopy(self.record)
         if self.operating is not None:
-            entry["operating"] = _operating_json(self.operating)
+            entry["operating"] = operating_json(self.operating)
         return entry
 
 
 @dataclass(frozen=True)
 class ConditionsRead:
-    """What step 10 found: its reasons, and the entries of the result's `conditions`."""
+    """What step 10 found: its reasons; the entries of the result's `conditions`, or None where two implied
+    conditions disagree and no condition is checked; and the indexes, in the request's `acceptances`, of the
+    implied conditions that fill a condition."""
 
     reasons: tuple[Reason, ...]
-    entries: tuple[ConditionEntry, ...]
+    entries: tuple[ConditionEntry, ...] | None
+    applied: tuple[int, ...] = ()
 
 
 def check_conditions(
     field: RecordField,
     operating: Mapping[str, shapes.OperatingCondition],
     required: Mapping[str, shapes.RequirementCondition],
+    implied: Sequence[ImpliedCondition] = (),
 ) -> ConditionsRead:
     """Step 10 for `field`, which passed steps 8 and 9, against the request's operating conditions and the
-    conditions its requirement names (step 0 gives a tolerance only with an operating condition)."""
-    held = _object(_object(field.value)["conditions"])
+    conditions its requirement names (step 0 gives a tolerance only with an operating condition), with the
+    implied conditions the request locates at the read."""
+    specimen = field.specimen()
+    applying = [condition for condition in implied if _states(specimen, condition.fact, condition.token)]
+    disagreeing = _disagreeing(applying)
+    if disagreeing:
+        return ConditionsRead(disagreeing, None)
+    stored = _object(_object(field.value)["conditions"])
+    filled, applied = _filled(stored, applying)
+    held = {**stored, **filled}
     reasons: list[Reason] = []
     entries = tuple(
         _entry(name, held.get(name), operating.get(name), required.get(name), reasons)
         for name in _checked(held, field.spec.requires, required)
     )
-    return ConditionsRead(tuple(reasons), entries)
+    return ConditionsRead(tuple(reasons), entries, applied)
+
+
+def _states(specimen: JsonObject, fact: str, token: str) -> bool:
+    stated = specimen.get(fact)
+    return isinstance(stated, dict) and not is_status_object(stated) and stated.get("token") == token
+
+
+def _said(implied: JsonObject) -> tuple[object, ...]:
+    """What an implied value says, to compare two: a token, or a value or a range, its numbers exactly."""
+    if "token" in implied:
+        return ("token", implied["token"])
+    lo, hi = _stated_ends(implied)
+    return ("value" if "value" in implied else "range", Fraction(lo), Fraction(hi))
+
+
+def _disagreeing(applying: Sequence[ImpliedCondition]) -> tuple[Reason, ...]:
+    """`request_incomplete` for each condition to which two implied conditions that apply give different
+    values (`read_side_contract.md` section 1)."""
+    said: dict[str, set[tuple[object, ...]]] = {}
+    for condition in applying:
+        for name, value in condition.implies.items():
+            said.setdefault(name, set()).add(_said(value))
+    return tuple(
+        Reason("request_incomplete", name, f"two implied conditions that apply give {name} different values")
+        for name, values in said.items()
+        if len(values) > 1
+    )
+
+
+def _fillable(entry: JsonValue | None) -> bool:
+    """A condition the record does not hold, or holds as `unstated`: an implied condition fills it, never one
+    holding another status object or a value (`declarations.md` section 4.1 item 1)."""
+    return entry is None or (is_status_object(entry) and _object(entry)["status"] == "unstated")
+
+
+def _filled(stored: JsonObject, applying: Sequence[ImpliedCondition]) -> tuple[JsonObject, tuple[int, ...]]:
+    """The conditions the implied conditions that apply fill, each as stated with the basis `implied`, and
+    the indexes of those that fill one."""
+    filled: JsonObject = {}
+    applied: list[int] = []
+    for condition in applying:
+        for name, value in condition.implies.items():
+            if _fillable(stored.get(name)):
+                filled.setdefault(name, {**copy.deepcopy(value), "basis": "implied"})
+                applied.append(condition.index)
+    return filled, tuple(dict.fromkeys(applied))
 
 
 def _token(entry: JsonValue | None) -> JsonValue:
@@ -232,7 +333,8 @@ def _operating(value: JsonValue) -> shapes.OperatingCondition:
     return {"range": _pair(entry["range"]), "unit": unit}
 
 
-def _operating_json(operating: shapes.OperatingCondition) -> JsonObject:
+def operating_json(operating: shapes.OperatingCondition) -> JsonObject:
+    """An operating condition as JSON: a value, or a range as a list, and the unit."""
     if _is_value(operating):
         return {"value": operating["value"], "unit": operating["unit"]}
     lo, hi = _operating_ends(operating)

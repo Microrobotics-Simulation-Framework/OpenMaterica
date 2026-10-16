@@ -11,10 +11,12 @@ from fractions import Fraction
 import pytest
 
 from materica import shapes
-from materica.core.conditions import ConditionEntry, ConditionsRead, check_conditions
+from materica.core.conditions import ConditionEntry, ConditionsRead, ImpliedCondition, check_conditions
 from materica.core.fields import RecordField
+from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.read import ReadResult, read
+from materica.core.reasons import Reason
 from materica.core.vocabulary import VOCABULARY
 from tests.unit.test_read import stored, with_condition, with_field
 
@@ -44,8 +46,13 @@ def temperature(value: float, tolerance: float) -> tuple[Operating, Required]:
     )
 
 
+def entries_of(read: ConditionsRead) -> tuple[ConditionEntry, ...]:
+    assert read.entries is not None, read.reasons
+    return read.entries
+
+
 def entry_of(read: ConditionsRead, name: str) -> ConditionEntry:
-    (found,) = [entry for entry in read.entries if entry.name == name]
+    (found,) = [entry for entry in entries_of(read) if entry.name == name]
     return found
 
 
@@ -225,7 +232,7 @@ def test_the_conditions_checked_and_their_entries() -> None:
         {"temperature": {"value": 310.15, "unit": "K"}, "magnetic_flux_density": {"value": 1.0, "unit": "T"}},
         {"magnetic_flux_density": {"tolerance": {"value": 0.0, "unit": "T"}}},
     )
-    assert [entry.to_json() for entry in found.entries] == [
+    assert [entry.to_json() for entry in entries_of(found)] == [
         {
             "name": "temperature",
             "status": "unknown",
@@ -256,9 +263,9 @@ def test_the_conditions_checked_and_their_entries() -> None:
 
 def test_a_condition_required_with_another_token_only_with_it() -> None:
     bulk = check_conditions(field_holding(measurement_geometry={"token": "bulk", **STATED}), {}, {})
-    assert "measurement_dimension" not in {entry.name for entry in bulk.entries}
+    assert "measurement_dimension" not in {entry.name for entry in entries_of(bulk)}
     unstated = check_conditions(field_holding(measurement_geometry=UNSTATED), {}, {})
-    assert "measurement_dimension" not in {entry.name for entry in unstated.entries}
+    assert "measurement_dimension" not in {entry.name for entry in entries_of(unstated)}
     gap = check_conditions(field_holding(measurement_geometry={"token": "gap", **STATED}), {}, {})
     assert entry_of(gap, "measurement_dimension").status == "unknown"
 
@@ -309,3 +316,188 @@ def test_a_read_that_step_10_ends_holds_its_conditions_and_one_step_9_ends_none(
     )
     assert step_9.conditions is None
     assert "conditions" not in step_9.to_json()
+
+
+# Implied conditions (`declarations.md` section 4.1, `read_side_contract.md` sections 1 and 5).
+
+PIN = MaterialRef("conformance/field_fixture", "1.0.0", "sha256:" + "0" * 64)
+LOCATED: dict[str, JsonValue] = {
+    "record": {"id": PIN.id, "version": PIN.version, "content_hash": PIN.content_hash}
+}
+
+
+def implying(index: int, fact: str, token: str, **implies: dict[str, JsonValue]) -> ImpliedCondition:
+    return ImpliedCondition(index, "fluid.dynamic_viscosity", LOCATED, fact, token, implies)
+
+
+IN_VIVO = implying(0, "tissue_state", "in_vivo", temperature={"value": 310.15, "unit": "K"})
+
+
+def specimen_field(
+    field_facts: dict[str, JsonValue], section_facts: dict[str, JsonValue], **conditions: JsonValue
+) -> RecordField:
+    held = field_holding(**conditions)
+    value = held.value
+    assert isinstance(value, dict)
+    value["specimen"] = field_facts
+    return RecordField(VISCOSITY, value, {"specimen": section_facts, "fields": {"dynamic_viscosity": value}})
+
+
+def in_vivo(**conditions: JsonValue) -> RecordField:
+    return specimen_field({"tissue_state": {"token": "in_vivo", **STATED}}, {}, **conditions)
+
+
+def test_an_implied_condition_fills_an_absent_or_unstated_condition_with_the_basis_implied() -> None:
+    for field in (
+        in_vivo(),
+        in_vivo(temperature=UNSTATED),
+        in_vivo(temperature={"status": "unstated", "reason": "x"}),
+    ):
+        found = check_conditions(field, *temperature(310.15, 1.0), [IN_VIVO])
+        assert entry_of(found, "temperature").to_json() == {
+            "name": "temperature",
+            "status": "met",
+            "record": {"value": 310.15, "unit": "K", "basis": "implied"},
+            "operating": {"value": 310.15, "unit": "K"},
+        }
+        assert found.applied == (0,)
+
+
+@pytest.mark.parametrize(
+    "held",
+    [{"value": 296.15, "unit": "K", **STATED}, {"status": "not_checked"}, {"status": "withheld"}],
+    ids=["a_stated_value", "not_checked", "withheld"],
+)
+def test_an_implied_condition_never_overrides_a_stated_value_or_another_status(held: JsonValue) -> None:
+    found = check_conditions(in_vivo(temperature=held), *temperature(310.15, 1.0), [IN_VIVO])
+    assert entry_of(found, "temperature").record == held
+    assert found.applied == ()
+
+
+@pytest.mark.parametrize(
+    ("field_facts", "section_facts", "applies"),
+    [
+        ({"tissue_state": {"token": "in_vivo", **STATED}}, {}, True),
+        ({}, {"tissue_state": {"token": "in_vivo", **STATED}}, True),
+        (
+            {"tissue_state": {"token": "ex_vivo_fresh", **STATED}},
+            {"tissue_state": {"token": "in_vivo", **STATED}},
+            False,
+        ),
+        (
+            {"tissue_state": {"token": "in_vivo", **STATED}},
+            {"tissue_state": {"token": "ex_vivo_fresh", **STATED}},
+            True,
+        ),
+        ({"tissue_state": UNSTATED}, {"tissue_state": {"token": "in_vivo", **STATED}}, False),
+        ({}, {}, False),
+        ({"tissue_state": {"token": "fixed", **STATED}}, {}, False),
+    ],
+    ids=[
+        "field",
+        "section",
+        "field_overrides_section",
+        "field_over_another",
+        "status_overrides",
+        "none",
+        "other_token",
+    ],
+)
+def test_an_implied_condition_applies_where_the_merged_specimen_states_its_fact_and_token(
+    field_facts: dict[str, JsonValue], section_facts: dict[str, JsonValue], applies: bool
+) -> None:
+    found = check_conditions(specimen_field(field_facts, section_facts), *temperature(310.15, 1.0), [IN_VIVO])
+    assert (entry_of(found, "temperature").status == "met") is applies
+    assert found.applied == ((0,) if applies else ())
+
+
+@pytest.mark.parametrize(
+    ("other", "disagree"),
+    [
+        ({"value": 309.15, "unit": "K"}, True),
+        ({"value": 310.15, "unit": "K"}, False),
+        ({"range": [310.15, 310.15], "unit": "K"}, True),
+    ],
+    ids=["another_value", "the_same_value", "a_range_holding_it"],
+)
+def test_two_implied_conditions_that_disagree_end_the_read_at_step_10(
+    other: dict[str, JsonValue], disagree: bool
+) -> None:
+    """Ruling A: `request_incomplete` with that condition, whether or not the record states it, no condition
+    checked and no entry; agreeing, both are applied."""
+    normal = implying(3, "disease_and_treatment_state", "normal", temperature=other)
+    facts: dict[str, JsonValue] = {
+        "tissue_state": {"token": "in_vivo", **STATED},
+        "disease_and_treatment_state": {"token": "normal", **STATED},
+    }
+    for held in ({}, {"temperature": {"value": 296.15, "unit": "K", **STATED}}):
+        found = check_conditions(
+            specimen_field(facts, {}, **held), *temperature(310.15, 1.0), [IN_VIVO, normal]
+        )
+        if disagree:
+            assert found == ConditionsRead((Reason("request_incomplete", "temperature"),), None)
+        else:
+            assert found.entries is not None
+            assert found.applied == (() if held else (0, 3))
+
+
+def test_disagreeing_implied_conditions_count_only_where_both_apply() -> None:
+    normal = implying(1, "disease_and_treatment_state", "normal", temperature={"value": 293.15, "unit": "K"})
+    found = check_conditions(in_vivo(), *temperature(310.15, 1.0), [IN_VIVO, normal])
+    assert entry_of(found, "temperature").status == "met"
+    assert found.applied == (0,)
+
+
+def test_an_implied_value_is_compared_as_numbers_so_minus_zero_agrees_with_zero() -> None:
+    zero = implying(0, "tissue_state", "in_vivo", specimen_size={"value": 0.0, "unit": "m"})
+    minus_zero = implying(1, "tissue_state", "in_vivo", specimen_size={"value": -0.0, "unit": "m"})
+    found = check_conditions(in_vivo(), {}, {}, [zero, minus_zero])
+    assert entry_of(found, "specimen_size").status == "unknown"
+    assert found.applied == (0, 1)
+
+
+def test_an_implied_token_fills_a_token_condition_and_what_it_requires() -> None:
+    """`read_side_contract.md` section 5: those another condition requires with the token it holds by an
+    implied condition (PR-311)."""
+    tube = implying(0, "tissue_state", "in_vivo", measurement_geometry={"token": "tube"})
+    found = check_conditions(in_vivo(), {}, {"measurement_geometry": {"accept": ["tube"]}}, [tube])
+    assert entry_of(found, "measurement_geometry").to_json() == {
+        "name": "measurement_geometry",
+        "status": "met",
+        "record": {"token": "tube", "basis": "implied"},
+    }
+    assert entry_of(found, "measurement_dimension").status == "unknown"
+
+
+@pytest.mark.parametrize(
+    ("location", "field", "located"),
+    [
+        (LOCATED, "fluid.dynamic_viscosity", True),
+        (LOCATED, "bulk.density", False),
+        ({}, "fluid.dynamic_viscosity", False),
+        ({**LOCATED, "interval": 0.0}, "fluid.dynamic_viscosity", False),
+        ({**LOCATED, "region": "lumen"}, "fluid.dynamic_viscosity", False),
+        ({"region": "lumen"}, "fluid.dynamic_viscosity", False),
+        (
+            {"record": {"id": PIN.id, "version": "2.0.0", "content_hash": PIN.content_hash}},
+            "fluid.dynamic_viscosity",
+            False,
+        ),
+        ({"record": "conformance/field_fixture"}, "fluid.dynamic_viscosity", False),
+    ],
+    ids=[
+        "record",
+        "another_field",
+        "nowhere",
+        "and_an_interval",
+        "and_a_region",
+        "a_region",
+        "another_version",
+        "not_a_reference",
+    ],
+)
+def test_an_implied_condition_applies_only_at_the_reads_own_location(
+    location: dict[str, JsonValue], field: str, located: bool
+) -> None:
+    condition = ImpliedCondition(0, field, location, "tissue_state", "in_vivo", {})
+    assert condition.located_at("fluid.dynamic_viscosity", PIN) is located

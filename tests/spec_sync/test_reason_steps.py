@@ -169,6 +169,9 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("read.py", "_unit"): 0,
     ("read.py", "_operating_condition"): 0,
     ("read.py", "_requirement_condition"): 0,
+    ("read.py", "_numeric"): 0,
+    ("read.py", "_implied_condition"): 0,
+    ("read.py", "_implied_value"): 0,
     ("resolve.py", "_candidate"): 1,
     ("record.py", "Record.version_refusal"): 2,
     ("record.py", "Record.envelope_refusal"): 3,
@@ -182,6 +185,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("fields.py", "_mismatch"): 9,
     ("conditions.py", "_entry"): 10,
     ("conditions.py", "_compared"): 10,
+    ("conditions.py", "_disagreeing"): 10,
     ("value_shapes.py", "invalid"): 8,
     ("value_shapes.py", "unknown_token"): 8,
 }

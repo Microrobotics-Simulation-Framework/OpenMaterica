@@ -65,8 +65,8 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `fields.py` | a value field: step 7 finds it, step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's so far; another form the row allows raises `NotImplementedError`), and step 9 compares its units with the registered ones; its specimen facts, the section's merged with the field's |
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
-| `conditions.py` | step 10: the conditions checked, each against the request by section 5's table, on the exact values of the doubles, with a stated `plus_minus`; a result's condition entries |
-| `read.py` | the request's own check (step 0), and the read through step 10; steps 11 to 13, overlays and alternatives are not built yet |
+| `conditions.py` | step 10: the conditions checked, each against the request by section 5's table, on the exact values of the doubles, with a stated `plus_minus`, and the implied conditions the read applies (`declarations.md` section 4.1); a result's condition entries |
+| `read.py` | the request's own check (step 0), its implied conditions included, and the read through step 10; steps 11 to 13, the other acceptances, overlays and alternatives are not built yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the
 read up to step 5 (`tests/conformance/`).
