@@ -314,8 +314,11 @@ def _a_value_says_a_range(implied: JsonObject) -> tuple[object, ...]:
     return ("range", *found[1:]) if found and found[0] == "value" else found
 
 
-def _numbers_bit_for_bit(implied: JsonObject) -> tuple[object, ...]:
-    return ("written", repr(sorted(implied.items())))
+def _numbers_as_rationals(implied: JsonObject) -> tuple[object, ...]:
+    if "token" in implied:
+        return ("token", implied["token"])
+    lo, hi = STATED_ENDS(implied)
+    return ("value" if "value" in implied else "range", Fraction(lo), Fraction(hi))
 
 
 def _applies_without_its_fact(specimen: JsonObject, fact: str, token: str) -> bool:
@@ -653,7 +656,7 @@ MUTANTS = [
         "disagreement_ignored",
         "HP7 implied",
         setting(conditions, "_disagreeing", _disagreement_ignored),
-        ("two_that_disagree", "a_value_beside_a_range"),
+        ("two_that_disagree", "a_value_beside_a_range", "minus_zero_beside_zero"),
     ),
     Mutant(
         "a_value_agrees_with_its_range",
@@ -662,9 +665,9 @@ MUTANTS = [
         ("a_value_beside_a_range",),
     ),
     Mutant(
-        "minus_zero_disagrees_with_zero",
+        "minus_zero_agrees_with_zero",
         "HP7 implied",
-        setting(conditions, "_said", _numbers_bit_for_bit),
+        setting(conditions, "_said", _numbers_as_rationals),
         ("minus_zero_beside_zero",),
     ),
     Mutant(

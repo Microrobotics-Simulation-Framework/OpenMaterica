@@ -448,11 +448,27 @@ def test_disagreeing_implied_conditions_count_only_where_both_apply() -> None:
     assert found.applied == (0,)
 
 
-def test_an_implied_value_is_compared_as_numbers_so_minus_zero_agrees_with_zero() -> None:
-    zero = implying(0, "tissue_state", "in_vivo", specimen_size={"value": 0.0, "unit": "m"})
-    minus_zero = implying(1, "tissue_state", "in_vivo", specimen_size={"value": -0.0, "unit": "m"})
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [(0.0, -0.0), (-0.0, 0.0), (0.0, 0.0), (-0.0, -0.0)],
+    ids=["zero_then_minus_zero", "minus_zero_then_zero", "zero_twice", "minus_zero_twice"],
+)
+def test_implied_values_that_differ_in_their_bits_disagree_in_either_order(
+    first: float, second: float
+) -> None:
+    """`0` and `-0` differ, as a value and `[v, v]` do, so that which fills never depends on the order of the
+    acceptances (`read_side_contract.md` section 1); the same value twice agrees and fills, bit for bit."""
+    zero = implying(0, "tissue_state", "in_vivo", specimen_size={"value": first, "unit": "m"})
+    minus_zero = implying(1, "tissue_state", "in_vivo", specimen_size={"value": second, "unit": "m"})
     found = check_conditions(in_vivo(), {}, {}, [zero, minus_zero])
-    assert entry_of(found, "specimen_size").status == "unknown"
+    if math.copysign(1.0, first) != math.copysign(1.0, second):
+        assert found == ConditionsRead((Reason("request_incomplete", "specimen_size"),), None)
+        return
+    record = entry_of(found, "specimen_size").record
+    assert record is not None
+    filled = record["value"]
+    assert isinstance(filled, float)
+    assert math.copysign(1.0, filled) == math.copysign(1.0, first)
     assert found.applied == (0, 1)
 
 

@@ -113,11 +113,18 @@ def states(specimen: Mapping[str, JsonValue], fact: str, token: str) -> bool:
 
 
 def said(value: Mapping[str, JsonValue]) -> object:
+    """What an implied value says: two differ unless of one shape, holding the same token or the same numbers
+    bit for bit (`read_side_contract.md` section 1)."""
     if "token" in value:
         return ("token", value["token"])
-    if "value" in value:
-        return ("value", exact(value["value"]))
-    return ("range", *ends(value))
+    numbers = [value["value"]] if "value" in value else value["range"]
+    assert isinstance(numbers, list | tuple), numbers
+    return ("value" if "value" in value else "range", *(bits(number) for number in numbers))
+
+
+def bits(number: JsonValue) -> str:
+    assert isinstance(number, float), number
+    return number.hex()
 
 
 class Implied(NamedTuple):
