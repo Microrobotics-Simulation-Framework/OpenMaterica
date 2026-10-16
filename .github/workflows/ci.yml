@@ -32,7 +32,7 @@ on:
 
 # A newer push to a pull request cancels the run of the older one, which nobody will read. Every other run has
 # a group of its own, so that none is ever cancelled or replaced: each merge to main is tested whole, and the
-# weekly run never meets a push.
+# weekly run never meets a push. tests/unit/test_ci_workflows.py evaluates both settings for each event.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

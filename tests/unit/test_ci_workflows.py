@@ -688,6 +688,97 @@ def test_the_wiring_check_can_fail(fault: Callable[[Workflow], None], problem: s
     assert any(problem in line for line in found), found
 
 
+# Runs of ci.yml, each as the context its concurrency settings read: two pushes to main, the weekly run, a
+# manual run on main, two pushes to one pull request and one to another.
+RUNS = [
+    {"github.event_name": "push", "github.ref": "refs/heads/main", "github.run_id": "101"},
+    {"github.event_name": "push", "github.ref": "refs/heads/main", "github.run_id": "102"},
+    {"github.event_name": "schedule", "github.ref": "refs/heads/main", "github.run_id": "103"},
+    {"github.event_name": "workflow_dispatch", "github.ref": "refs/heads/main", "github.run_id": "104"},
+    {"github.event_name": "pull_request", "github.ref": "refs/pull/7/merge", "github.run_id": "105"},
+    {"github.event_name": "pull_request", "github.ref": "refs/pull/7/merge", "github.run_id": "106"},
+    {"github.event_name": "pull_request", "github.ref": "refs/pull/8/merge", "github.run_id": "107"},
+]
+
+
+def setting(value: object, context: Mapping[str, object]) -> object:
+    """A setting's value: its expression's, where it is one whole, its text with each expression filled in,
+    or the value as written."""
+    if not isinstance(value, str):
+        return value
+    whole = re.fullmatch(r"\s*\$\{\{(.*)\}\}\s*", value, re.S)
+    return evaluated(whole[1], context) if whole and "${{" not in whole[1] else rendered(value, context)
+
+
+def described(run: Mapping[str, str]) -> str:
+    return f"{run['github.run_id']} ({run['github.event_name']})"
+
+
+def concurrency_problems(ci: Workflow) -> list[str]:
+    """Where a run other than a pull request's could cancel another or be replaced, or a newer push to a pull
+    request would not cancel the run of the older one."""
+    concurrency: dict[str, Any] = ci.get("concurrency", {})
+    problems = [
+        f"the job {job_id} sets concurrency" for job_id, job in ci["jobs"].items() if "concurrency" in job
+    ]
+    runs = [run | {"github.workflow": ci["name"]} for run in RUNS]
+    for run in runs:
+        event = run["github.event_name"]
+        cancels = truthy(setting(concurrency.get("cancel-in-progress", False), run))
+        if cancels != (event == "pull_request"):
+            verb = "cancels" if cancels else "does not cancel"
+            problems.append(f"a {event} run {verb} the one in its group")
+    grouped = [(run, setting(concurrency.get("group", ""), run)) for run in runs]
+    for (first, first_group), (second, second_group) in itertools.combinations(grouped, 2):
+        one_pull_request = first["github.event_name"] == second["github.event_name"] == "pull_request" and (
+            first["github.ref"] == second["github.ref"]
+        )
+        shared = first_group == second_group
+        if shared != one_pull_request:
+            problems.append(
+                f"runs {described(first)} and {described(second)} {'share' if shared else 'do not share'} "
+                f"a group: {first_group!r}, {second_group!r}"
+            )
+    return problems
+
+
+def test_only_a_newer_push_to_a_pull_request_cancels_a_run() -> None:
+    """A run on main is never cancelled or replaced: each merge is tested whole, and the weekly run never
+    waits behind a push that could replace it."""
+    assert concurrency_problems(workflow("ci.yml")) == []
+
+
+@pytest.mark.parametrize(
+    ("concurrency", "problem"),
+    [
+        (
+            {"group": "${{ github.workflow }}-${{ github.ref }}", "cancel-in-progress": False},
+            "runs 101 (push) and 103 (schedule) share a group",
+        ),
+        (
+            {"group": "${{ github.workflow }}-${{ github.run_id }}", "cancel-in-progress": True},
+            "a push run cancels the one in its group",
+        ),
+        (
+            {"group": "${{ github.workflow }}-${{ github.run_id }}"},
+            "runs 105 (pull_request) and 106 (pull_request) do not share a group",
+        ),
+    ],
+    ids=["a-group-per-ref", "every-run-cancels", "a-group-per-run"],
+)
+def test_the_concurrency_check_can_fail(concurrency: dict[str, object], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    ci["concurrency"] = concurrency
+    found = concurrency_problems(ci)
+    assert any(problem in line for line in found), found
+
+
+def test_the_concurrency_check_finds_a_jobs_own_group() -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    ci["jobs"]["hypothesis"]["concurrency"] = {"group": "hypothesis", "cancel-in-progress": True}
+    assert concurrency_problems(ci) == ["the job hypothesis sets concurrency"]
+
+
 def pytest_commands(job: dict[str, Any]) -> list[list[str]]:
     """Each pytest command of the job, its arguments as the shell splits them, up to the end of the command;
     an expression `${{ ... }}` is kept as one word."""
