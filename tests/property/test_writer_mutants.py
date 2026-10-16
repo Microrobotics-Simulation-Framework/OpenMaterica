@@ -9,7 +9,9 @@ schema dies when the acceptance property finds it refusing a field the text allo
 review's 29 mutants and its two controls (M1 to M31, its numbering kept), then one per constraint added since
 and a few that tighten, then those of the bindings the writer applies from the vocabulary (B1 to B12, TB1 to
 TB4, maintainer 2026-10-15; B13, B14 and TB5, a specimen fact's unit, 2026-10-15), which change the writer
-or a vocabulary file. Each test records the examples its kill took as `examples_to_kill`.
+or a vocabulary file; and three bindings removed again (U1 to U3), each killed by the relation that what the
+writer takes, step 9 passes, searched on bodies with a unit changed where the binding held it. Each test
+records the examples its kill took as `examples_to_kill`.
 """
 
 import copy
@@ -26,7 +28,17 @@ from materica.core.jsonio import JsonValue
 from tests.property import value_fields
 from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.support import MUTANT_SEARCH
-from tests.property.test_writer_properties import BODY, VALUE_FIELD, Writer, check_refuses, check_takes
+from tests.property.test_writer_properties import (
+    BODY,
+    VALUE_FIELD,
+    WITH_EVERY_UNIT,
+    Changed,
+    Writer,
+    bodies_with_a_unit_changed,
+    check_passes_step_9,
+    check_refuses,
+    check_takes,
+)
 from tests.property.value_fields import Json, Plan, listing, mapping
 from tests.spec_sync.schemas import SCHEMA
 
@@ -40,13 +52,16 @@ ORIGINALS: dict[str, Json] = {
 }
 TAKES = "takes"
 REFUSED = "refused a field the text allows"
+STEP_9 = "step 9"
 
 
 class WriterMutant(NamedTuple):
     name: str
     change: Callable[[Json], None]  # changes a copy of `file` in place
-    killer: str  # TAKES, or the family of faults whose refusal property kills it
-    intended: tuple[str, ...]  # the faults, one of which the kill must be, or REFUSED for TAKES
+    killer: str  # TAKES, STEP_9, or the family of faults whose refusal property kills it
+    # the faults, one of which the kill must be; REFUSED for TAKES; for STEP_9, the places a unit is changed
+    # at, which its search draws among
+    intended: tuple[str, ...]
     file: str = WRITER_FILE  # the writer schema, or a vocabulary file whose bindings it applies
 
 
@@ -702,6 +717,26 @@ MUTANTS = [
         (REFUSED,),
         FACTS_FILE,
     ),
+    # Bindings removed, each killed by the relation to step 9.
+    WriterMutant(
+        "U1 the writer applies no binding to the specimen facts, read at step 9",
+        deleting(D, "specimen", "allOf"),
+        STEP_9,
+        ("fact",),
+    ),
+    WriterMutant(
+        "U2 a field's unit unbound, read at step 9",
+        deleting(D, "fluid.dynamic_viscosity", P, "unit"),
+        STEP_9,
+        ("field",),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "U3 the writer applies no binding to the conditions, read at step 9",
+        deleting(D, "conditions", "allOf"),
+        STEP_9,
+        ("condition", "plus_minus"),
+    ),
 ]
 
 
@@ -733,6 +768,8 @@ SEARCHED_ON = {
     "TB4": replace(CONSTANT, rich=frozenset({"conditions"})),
     "TB5": replace(CONSTANT, rich=frozenset({"specimen"})),
 }
+# The bodies a mutant killed by the relation to step 9 is searched on, where its binding is a field's.
+STEP_9_PLANS = {"U2": replace(WITH_EVERY_UNIT, registered="fluid.dynamic_viscosity")}
 
 
 def identifier(mutant: WriterMutant) -> str:
@@ -778,9 +815,20 @@ def test_the_writer_mutant_is_killed_at_its_assertion(
         writer = Writer(BODY if plan.registered else VALUE_FIELD, [schema])
         fields = value_fields.bodies(plan, size) if plan.registered else value_fields.form_fields(plan, size)
         tried, message = kill(fields, lambda field: check_takes(writer, field))
+    elif mutant.killer == STEP_9:
+        placed = Writer(BODY, [schema])
+        plan = STEP_9_PLANS.get(identifier(mutant), WITH_EVERY_UNIT)
+
+        def passes_step_9(changed: Changed) -> None:
+            check_passes_step_9(placed, changed)
+
+        tried, message = kill(bodies_with_a_unit_changed(mutant.intended, plan, size), passes_step_9)
     else:
         writer = Writer(BODY if mutant.killer == "binding" else VALUE_FIELD, [schema])
         faulty = value_fields.faulty_fields(mutant.killer, size, mutant.intended)
         tried, message = kill(faulty, lambda drawn: check_refuses(writer, drawn))
     record_property("examples_to_kill", tried)
-    assert any(intended in message for intended in mutant.intended), message
+    if mutant.killer == STEP_9:
+        assert any(f"changed at the {place}:" in message for place in mutant.intended), message
+    else:
+        assert any(intended in message for intended in mutant.intended), message

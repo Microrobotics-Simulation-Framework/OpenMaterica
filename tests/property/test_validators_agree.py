@@ -44,6 +44,8 @@ from tests.property.test_writer_mutants import (
     MUTANTS,
     ORIGINALS,
     SEARCHED_ON,
+    STEP_9,
+    STEP_9_PLANS,
     TAKES,
     WRITER_FILE,
     WriterMutant,
@@ -52,7 +54,12 @@ from tests.property.test_writer_mutants import (
     kill,
     setting,
 )
-from tests.property.test_writer_properties import BODY, VALUE_FIELD
+from tests.property.test_writer_properties import (
+    BODY,
+    VALUE_FIELD,
+    WITH_EVERY_UNIT,
+    bodies_with_a_unit_changed,
+)
 from tests.property.value_fields import FAMILIES, Faulty, Json
 from tests.spec_sync import test_t1 as t1
 from tests.spec_sync.schemas import BASE, Disagreement, registry
@@ -281,7 +288,7 @@ def along(
     differently."""
     plan = SEARCHED_ON[identifier(mutant)] if mutant.killer == TAKES else None
     registered = plan is not None and plan.registered is not None
-    place = BODY if registered or mutant.killer == "binding" else VALUE_FIELD
+    place = BODY if registered or mutant.killer in ("binding", STEP_9) else VALUE_FIELD
     both, package, changed = (
         pair(place, rust_files, python_files),
         verdict(place),
@@ -295,7 +302,11 @@ def along(
                 raise Disagreement(f"{identifier(mutant)}'s search, {name}: {found}")
         assert all(changed(value) == package(value) for _, value in values)
 
-    if plan is None:
+    if mutant.killer == STEP_9:
+        units = STEP_9_PLANS.get(identifier(mutant), WITH_EVERY_UNIT)
+        changed_bodies = bodies_with_a_unit_changed(mutant.intended, units, size)
+        tried, _ = kill(changed_bodies, lambda drawn: compare([("the body", drawn.body)]))
+    elif plan is None:
         faulty = value_fields.faulty_fields(mutant.killer, size, mutant.intended)
         tried, _ = kill(faulty, lambda drawn: compare(faulty_values(drawn)))
     else:
@@ -329,6 +340,8 @@ COMPARED = {
     "tests/property/test_writer_properties.py::PLACED": (
         "test_both_give_one_verdict_on_drawn_bodies",
         "test_both_give_one_verdict_on_each_fault_familys_fields",
+        # The bodies with a unit changed that step 9's relation reads, along U1 to U3's searches.
+        "test_both_give_one_verdict_along_each_writer_mutants_search",
     ),
 }
 SWITCH_POINTS_TEST = "the switch point's own test, on a vocabulary file changed so that the two disagree"
@@ -522,6 +535,14 @@ MISSED = ("M6b", "M9", "M10", "M22", "M27", "M29", "M35", "M42", "M50", "M52", "
 @pytest.mark.parametrize("side", LOOSER)
 @pytest.mark.parametrize("name", MISSED)
 def test_one_side_given_a_writer_mutant_disagrees_along_its_search(name: str, side: str) -> None:
+    with pytest.raises(Disagreement, match=LOOSER[side]):
+        along(mutant_named(name), SIZE, *sides(side, [mutant(name)]))
+
+
+@pytest.mark.parametrize("side", LOOSER)
+@pytest.mark.parametrize("name", ["U1", "U2", "U3"])
+def test_one_side_given_a_step_9_writer_mutant_disagrees_along_its_search(name: str, side: str) -> None:
+    """Step 9's mutants search bodies with a unit changed, which no other mutant's search draws."""
     with pytest.raises(Disagreement, match=LOOSER[side]):
         along(mutant_named(name), SIZE, *sides(side, [mutant(name)]))
 
