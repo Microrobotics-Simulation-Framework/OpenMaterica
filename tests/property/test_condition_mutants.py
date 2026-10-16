@@ -29,6 +29,7 @@ from tests.property import test_condition_properties as properties
 from tests.property.condition_strategies import (
     FAULTS,
     ROWS,
+    STEP_9_FAULTS,
     UNIT_PLACES,
     base_reads,
     faulty_reads,
@@ -52,21 +53,39 @@ def second(check: Callable[[Any], None]) -> Callable[[tuple[str, Any]], None]:
     return lambda drawn: check(drawn[1])
 
 
-# Each property that kills a mutant, by name: its examples at a size, and its check.
-KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any], None]]] = {
-    "HP7": (drawn_rows, second(properties.check_against_the_oracle)),
+def kind(drawn: tuple[str, Any]) -> set[str]:
+    return {drawn[0]}
+
+
+# Each property that kills a mutant, by name: its examples at a size, its check, and the labels of an example
+# (the kind it was drawn of, a unit's place and kind, a read's faults, the places of its additions), among
+# which a mutant's `dies_at` must be.
+KILLERS: dict[
+    str,
+    tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any], None], Callable[[Any], set[str]]],
+] = {
+    "HP7": (drawn_rows, second(properties.check_against_the_oracle), kind),
     "HP7 plus or minus": (
         lambda size: properties.plus_minus_cases(),
         second(properties.check_against_the_oracle),
+        kind,
     ),
-    "HP7 table": (lambda size: properties.table_cases(), second(properties.check_against_the_oracle)),
-    "HP7 implied": (lambda size: properties.implied_cases(), second(properties.check_against_the_oracle)),
-    "HP9": (lambda size: properties.merge_cases(), second(properties.check_merge)),
-    "HP8 registered": (properties.registered_units, properties.check_registered),
-    "HP8 other": (drawn_places, properties.check_refused),
-    "HP3": (lambda size: faulty_reads(tuple(FAULTS), size), properties.check_one_fault),
-    "HP5": (with_unknowns, properties.check_ignored),
-    "base": (base_reads, properties.check_base),
+    "HP7 table": (lambda size: properties.table_cases(), second(properties.check_against_the_oracle), kind),
+    "HP7 implied": (
+        lambda size: properties.implied_cases(),
+        second(properties.check_against_the_oracle),
+        kind,
+    ),
+    "HP9": (lambda size: properties.merge_cases(), second(properties.check_merge), kind),
+    "HP8 registered": (properties.registered_units, properties.check_registered, kind),
+    "HP8 other": (drawn_places, properties.check_refused, lambda drawn: {drawn.place, drawn.kind}),
+    "HP3": (
+        lambda size: faulty_reads(tuple(FAULTS), size),
+        properties.check_one_fault,
+        lambda faulty: set(faulty.faults),
+    ),
+    "HP5": (with_unknowns, properties.check_ignored, lambda unknowns: set(unknowns.places)),
+    "base": (base_reads, properties.check_base, lambda read_case: set()),
 }
 
 
@@ -74,6 +93,7 @@ class Mutant(NamedTuple):
     name: str
     killer: str  # a key of KILLERS
     inject: Callable[[pytest.MonkeyPatch], None]
+    dies_at: tuple[str, ...] = ()  # labels, one of which the example that kills it must have; any where none
 
 
 # Step 10's comparisons.
@@ -442,7 +462,19 @@ def _unknown_request_members_refused(
 
 
 MUTANTS = [
-    Mutant("floating_point_as_written", "HP7", setting(conditions, "_within", _floating_point_as_written)),
+    Mutant(
+        "floating_point_as_written",
+        "HP7",
+        setting(conditions, "_within", _floating_point_as_written),
+        (
+            "at_the_tolerance",
+            "one_ulp_inside",
+            "one_ulp_outside",
+            "rounded_difference",
+            "subnormal",
+            "mixed_magnitudes",
+        ),
+    ),
     Mutant("strict_inequalities", "HP7", setting(conditions, "_within", _strict)),
     Mutant(
         "stated_range_as_its_low_end",
@@ -454,17 +486,26 @@ MUTANTS = [
         "HP7",
         setting(conditions, "_operating_ends", _operating_range_as_its_low_end),
     ),
-    Mutant("plus_minus_ignored", "HP7 plus or minus", setting(conditions, "_compared", _plus_minus_ignored)),
+    Mutant(
+        "plus_minus_ignored",
+        "HP7 plus or minus",
+        setting(conditions, "_compared", _plus_minus_ignored),
+        ("bound", "sd", "unstated", "bound_beside_sd"),
+    ),
     Mutant(
         "plus_minus_makes_not_met",
         "HP7 plus or minus",
         setting(conditions, "_compared", _plus_minus_makes_not_met),
+        ("bound", "sd", "unstated", "bound_beside_sd"),
     ),
-    Mutant("sd_ignored", "HP7 plus or minus", setting(conditions, "_compared", _sd_ignored)),
+    Mutant(
+        "sd_ignored", "HP7 plus or minus", setting(conditions, "_compared", _sd_ignored), ("sd", "unstated")
+    ),
     Mutant(
         "bound_moves_the_low_end_only",
         "HP7 plus or minus",
         setting(conditions, "_within", _bound_moves_the_low_end_only),
+        ("bound", "bound_beside_sd"),
     ),
     Mutant("unchecked_read_as_met", "HP7 table", setting(conditions, "_compared", _unchecked_read_as_met)),
     Mutant(
@@ -491,47 +532,96 @@ MUTANTS = [
         "implied_overrides_a_stated_value",
         "HP7 implied",
         setting(conditions, "_filled", _implied_overrides_stated),
-    ),
-    Mutant("implied_fills_any_status", "HP7 implied", setting(conditions, "_fillable", _fills_any_status)),
-    Mutant("disagreement_ignored", "HP7 implied", setting(conditions, "_disagreeing", _disagreement_ignored)),
-    Mutant(
-        "a_value_agrees_with_its_range", "HP7 implied", setting(conditions, "_said", _a_value_says_a_range)
+        ("never_over_a_stated_value", "never_over_another_status"),
     ),
     Mutant(
-        "minus_zero_disagrees_with_zero", "HP7 implied", setting(conditions, "_said", _numbers_bit_for_bit)
+        "implied_fills_any_status",
+        "HP7 implied",
+        setting(conditions, "_fillable", _fills_any_status),
+        ("never_over_another_status",),
+    ),
+    Mutant(
+        "disagreement_ignored",
+        "HP7 implied",
+        setting(conditions, "_disagreeing", _disagreement_ignored),
+        ("two_that_disagree", "a_value_beside_a_range"),
+    ),
+    Mutant(
+        "a_value_agrees_with_its_range",
+        "HP7 implied",
+        setting(conditions, "_said", _a_value_says_a_range),
+        ("a_value_beside_a_range",),
+    ),
+    Mutant(
+        "minus_zero_disagrees_with_zero",
+        "HP7 implied",
+        setting(conditions, "_said", _numbers_bit_for_bit),
+        ("minus_zero_beside_zero",),
     ),
     Mutant(
         "implied_applies_without_its_fact",
         "HP7 implied",
         setting(conditions, "_states", _applies_without_its_fact),
+        ("its_fact_not_stated",),
     ),
     Mutant("applied_not_recorded", "HP7 implied", setting(conditions, "_filled", _applied_not_recorded)),
-    Mutant("section_facts_win", "HP9", setting(RecordField, "specimen", _section_wins)),
+    Mutant(
+        "section_facts_win",
+        "HP9",
+        setting(RecordField, "specimen", _section_wins),
+        ("the_field_another_token", "the_field_a_status_object", "the_section_a_status_object"),
+    ),
     Mutant(
         "a_status_fact_overrides_nothing",
         "HP9",
         setting(RecordField, "specimen", _a_status_fact_overrides_nothing),
+        ("the_field_a_status_object",),
     ),
-    Mutant("nfkc_before_comparing", "HP8 other", setting(fields, "same_unit", _nfkc)),
-    Mutant("case_folded", "HP8 other", setting(fields, "same_unit", _case_folded)),
-    Mutant("spaces_ignored", "HP8 other", setting(fields, "same_unit", _stripped)),
+    Mutant(
+        "nfkc_before_comparing", "HP8 other", setting(fields, "same_unit", _nfkc), ("compatibility_equal",)
+    ),
+    Mutant(
+        "case_folded",
+        "HP8 other",
+        setting(fields, "same_unit", _case_folded),
+        ("case_folded", "compatibility_equal"),
+    ),
+    Mutant("spaces_ignored", "HP8 other", setting(fields, "same_unit", _stripped), ("spaced",)),
     Mutant(
         "a_status_object_where_a_string_is_registered",
         "HP8 other",
         setting(fields, "same_unit", _a_status_object_for_a_string),
+        ("status_object",),
     ),
     Mutant(
-        "plus_minus_units_unchecked", "HP8 other", setting(read, "unit_problems", _plus_minus_units_unchecked)
+        "plus_minus_units_unchecked",
+        "HP8 other",
+        setting(read, "unit_problems", _plus_minus_units_unchecked),
+        ("plus_minus",),
     ),
     Mutant(
         "token_condition_units_unchecked",
         "HP8 other",
         setting(read, "unit_problems", _token_condition_units_unchecked),
+        ("token_condition",),
     ),
-    Mutant("section_facts_unchecked", "HP8 other", setting(fields, "_specimens", _section_facts_unchecked)),
-    Mutant("input_facts_unchecked", "HP8 other", setting(fields, "_specimens", _input_facts_unchecked)),
     Mutant(
-        "condition_dropped_from_unit_mismatch", "HP8 other", setting(fields, "_mismatch", _condition_dropped)
+        "section_facts_unchecked",
+        "HP8 other",
+        setting(fields, "_specimens", _section_facts_unchecked),
+        ("section_fact",),
+    ),
+    Mutant(
+        "input_facts_unchecked",
+        "HP8 other",
+        setting(fields, "_specimens", _input_facts_unchecked),
+        ("input_fact",),
+    ),
+    Mutant(
+        "condition_dropped_from_unit_mismatch",
+        "HP8 other",
+        setting(fields, "_mismatch", _condition_dropped),
+        ("condition", "plus_minus", "token_condition"),
     ),
     Mutant(
         "plus_minus_against_the_field_unit",
@@ -543,33 +633,52 @@ MUTANTS = [
         "HP8 registered",
         setting(fields, "_specimens", _facts_against_the_field_unit),
     ),
-    Mutant("step_10_after_a_refusal_at_step_9", "HP3", step_10_after_step_9),
-    Mutant("first_unit_reason_only", "HP3", setting(read, "unit_problems", _first_unit_reason_only)),
+    Mutant("step_10_after_a_refusal_at_step_9", "HP3", step_10_after_step_9, tuple(STEP_9_FAULTS)),
+    Mutant(
+        "first_unit_reason_only",
+        "HP3",
+        setting(read, "unit_problems", _first_unit_reason_only),
+        tuple(STEP_9_FAULTS),
+    ),
     Mutant(
         "unknown_reasons_dropped_beside_not_met",
         "HP3",
         setting(read, "check_conditions", _unknown_reasons_dropped),
+        ("unchecked", "unstated", "unknown_name", "uncertain"),
     ),
     Mutant(
-        "conditions_withheld_from_a_refusal", "HP3", setting(read, "check_conditions", _conditions_withheld)
+        "conditions_withheld_from_a_refusal",
+        "HP3",
+        setting(read, "check_conditions", _conditions_withheld),
+        ("outside", "range_outside", "not_accepted", "implied_outside"),
     ),
     Mutant(
         "disagreement_checks_the_others",
         "HP3",
         setting(read, "check_conditions", _disagreement_checks_the_others),
+        ("disagreeing",),
     ),
-    Mutant("unknown_members_returned_in_an_entry", "HP5", setting(conditions, "_known", _every_member_known)),
+    Mutant(
+        "unknown_members_returned_in_an_entry",
+        "HP5",
+        setting(conditions, "_known", _every_member_known),
+        ("condition", "plus_minus_entry"),
+    ),
     Mutant("two_slips_refused_in_a_request", "HP5", setting(read, "slipped", slipped_by(within_two_slips))),
     Mutant(
-        "unknown_request_members_refused", "HP5", setting(read, "_slips", _unknown_request_members_refused)
+        "unknown_request_members_refused",
+        "HP5",
+        setting(read, "_slips", _unknown_request_members_refused),
+        ("operating", "requirement_condition", "tolerance", "implied", "implied_record", "implied_value"),
     ),
 ]
 
 
-def kill(examples: st.SearchStrategy[Any], check: Callable[[Any], None]) -> int:
-    """The examples searched until `check` first fails; an AssertionError where it never does."""
+def kill(examples: st.SearchStrategy[Any], check: Callable[[Any], None]) -> tuple[int, Any]:
+    """The examples searched until `check` first fails, and that example; an AssertionError where it never
+    does."""
     tried = 0
-    first: list[int] = []
+    first: list[tuple[int, Any]] = []
 
     @MUTANT_SEARCH
     @given(examples)
@@ -579,7 +688,7 @@ def kill(examples: st.SearchStrategy[Any], check: Callable[[Any], None]) -> int:
         try:
             check(example)
         except AssertionError:
-            first.append(tried)
+            first.append((tried, example))
             raise
 
     try:
@@ -597,6 +706,9 @@ def test_the_mutant_is_killed(
     monkeypatch: pytest.MonkeyPatch,
     record_property: Callable[[str, object], None],
 ) -> None:
+    """At an example of one of the labels it names, where it names some."""
     mutant.inject(monkeypatch)
-    examples, check = KILLERS[mutant.killer]
-    record_property("examples_to_kill", kill(examples(size), check))
+    examples, check, labels = KILLERS[mutant.killer]
+    tried, example = kill(examples(size), check)
+    record_property("examples_to_kill", tried)
+    assert not mutant.dies_at or labels(example) & set(mutant.dies_at), labels(example)

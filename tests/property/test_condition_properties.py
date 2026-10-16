@@ -556,6 +556,7 @@ CASED_FIELDS = tuple(name for name in CONSTANT_FIELDS if str(VOCABULARY.fields[n
 
 
 class OtherUnit(NamedTuple):
+    place: str
     kind: str
     read: Read
     condition: str | None  # the condition the refusal carries
@@ -571,7 +572,7 @@ def other_units(draw: st.DrawFn, place: str, size: Size = SIZE) -> OtherUnit:
     unit = place_in(read_case, place)
     registered = unit.registered or draw(st.sampled_from(CASED_UNITS))
     unit.holder["unit"] = draw(other_unit(kind, registered))
-    return OtherUnit(kind, repinned(read_case), unit.condition)
+    return OtherUnit(place, kind, repinned(read_case), unit.condition)
 
 
 def check_refused(drawn: OtherUnit) -> None:
