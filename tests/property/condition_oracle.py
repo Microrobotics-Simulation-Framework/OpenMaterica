@@ -1,11 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
-"""What step 10 must find, written from `read_side_contract.md` section 5 and `declarations.md` section 4.1
-alone, never from `core/conditions.py`: the oracle of HP7 and HP9, and of fuzz target 4 at step 10.
+"""What step 10 must find, written from `read_side_contract.md` sections 1 and 5 and `declarations.md`
+section 4.1, importing nothing from `core/conditions.py`: the oracle of HP7 and HP9, and of fuzz target 4 at
+step 10.
 
 Each row of section 5's table is written out as the text gives it, its comparisons on the exact rationals the
 doubles are (the "Exactness" paragraph), and the rule for a stated plus or minus after it, row by row. The
 conditions checked, the implied conditions that apply and fill, and two that disagree follow the text's
 sentences.
+
+It is not independent of the code in everything: S2a-3's implementer wrote it after `core/conditions.py`,
+and it repeats three readings the text left open, each the implementer's default (the decision log,
+`S2a-3 (branch feat/s2a-3)`): a value never agrees with the range `[v, v]` ("when two implied conditions
+'supply different values'", now written in section 1 with the fix round's default that `0` and `-0` differ);
+of two implied values that agree, one fills the condition, which, agreeing bit for bit, fills it alike in any
+order (the same entry); and `applied` lists every implied condition that fills, both of two that agree
+("the result's `applied`"). S2a-4's reference model (`tests/reference/read_model.py`, on its branch), written
+from the text by another agent, is to check the three through HP12.
 """
 
 import json
