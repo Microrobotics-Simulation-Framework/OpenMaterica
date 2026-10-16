@@ -1049,6 +1049,13 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   The table evaluator's 18 mutant searches (`test_evaluate_mutants.py`) are recorded with the rest, their README
   table under a comment naming its group: the recorded counts equal the ones typed there, and the latest kill is
   the 96th example (`loglog_not_exact_at_ties`, original size), so none needs a plan.
+- The table evaluation cases run (S3-te; `read_side_contract.md` section 7). OpenMaterica's own code claims no
+  table evaluation, so a test-only reference evaluator, written from the specification's text and importing
+  only the standard library (`tests/reference/table_evaluator.py`), stands in for a consumer's: the runner's
+  `evaluate` executor runs every TE file under its four configurations, `binary64` and `binary32`, each
+  declaring the left and the right side, and compares each by the specification's README ("Case files"). All
+  35 files are reported on their own line, verified against the reference evaluator, never as passed. The
+  evaluator also has an `exact` mode, for later pieces' properties.
 
 ### Known Anomalies
 - The registry's `materica_version` is the package's version (`0.1.0.dev2` at this release); it still read
