@@ -156,13 +156,21 @@ planned search is what shows HP3 refuses each fault, and the region audit that H
 review's eleven rules also has a deterministic read in `tests/unit/test_read.py`. The kill is the examples the
 derandomised search took, at the small and the original size (measured 2026-10-15, S2a-2's fix round).
 
+Two of the first 25, `missing_represents_accepted` and `named_state_text_unchecked`, have had planned searches
+since 2026-10-16: searched with HP3 whole, each survived 2,000 examples at the small size once the suite held
+`scripts/report_test_durations.py`, which its unit tests import, and died where their module ran alone.
+Hypothesis (6.169) draws, among its values, constants it finds in the project's modules the process has loaded,
+test modules aside, so the examples a derandomised search meets change with the code and with what else a
+process imported. Planned, each dies at its first example at both sizes, alone, after the whole suite's
+collection, on Python 3.11 and 3.15. The other 23 searched whole may meet the same at any change.
+
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `unknown_tokens_ignored` | a token the reader knows for no member of its name is accepted | HP3 | any of its property | 3, 12 |
 | `unknown_token_read_as_a_shape_fault` | such a token gives `form_invalid` | HP3 | any of its property | 3, 12 |
 | `status_tokens_unchecked` | a status object takes any status token | HP3 | any of its property | 11, 137 |
 | `members_beside_a_status_ignored` | a status object beside a member of the shape it stands for is read as one | HP3 | any of its property | 121, 12 |
-| `missing_represents_accepted` | a statistics block without `represents` passes (the S2 design's HP3 mutant) | HP3 | any of its property | 65, 1384 |
+| `missing_represents_accepted` | a statistics block without `represents` passes (the S2 design's HP3 mutant) | HP3 | `statistics_members.represents_missing` | 1, 1 |
 | `null_read_as_absent` | `null` in an optional member reads as the member absent (HP3's) | HP3 | any of its property | 322, 401 |
 | `unknown_condition_names_checked` | a condition name the reader does not know is checked as a numeric condition (HP3's "read as known") | HP3 | any of its property | 128, 30 |
 | `plus_minus_kinds_unchecked` | a `plus_minus` list is checked only as a list | HP3 | any of its property | 3, 24 |
@@ -170,7 +178,7 @@ derandomised search took, at the small and the original size (measured 2026-10-1
 | `counts_not_whole` | `n_specimens` takes any number | HP3 | any of its property | 192, 318 |
 | `conditional_members_unchecked` | `population_level`, `n_sources` and `precision_conditions` may sit beside any `represents` | HP3 | any of its property | 170, 48 |
 | `uncertainty_rules_unchecked` | an uncertainty's coverage, `dof` and precision rules go | HP3 | any of its property | 20, 125 |
-| `named_state_text_unchecked` | a disease or treatment state's text may sit beside any token, or be missing | HP3 | any of its property | 313, 336 |
+| `named_state_text_unchecked` | a disease or treatment state's text may sit beside any token, or be missing | HP3 | `specimen.fact_text_beside_normal`, `specimen.fact_treated_without_text` | 1, 1 |
 | `fixed_basis_unchecked` | `mimics`'s basis takes either token, not the one its row fixes | HP3 | any of its property | 360, 98 |
 | `fact_unit_judged_at_step_8` | a fact's unit is judged at step 8, `s` alone and a status object of the five tokens only, where step 9 alone compares it (a default for the maintainer, 2026-10-15) | HP3 | any of its property | 224, 1297 |
 | `record_structure_unchecked` | a slip in the envelope, the body or a section is ignored | HP3 | any of its property | 58, 111 |

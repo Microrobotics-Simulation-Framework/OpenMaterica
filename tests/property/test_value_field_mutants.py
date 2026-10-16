@@ -447,7 +447,12 @@ MUTANTS = [
         ONE_FAULT,
         setting(value_shapes, "status_object", _members_beside_a_status_ignored),
     ),
-    Mutant("missing_represents_accepted", ONE_FAULT, members_with(optional("represents"))),
+    Mutant(
+        "missing_represents_accepted",
+        ONE_FAULT,
+        members_with(optional("represents")),
+        ("statistics_members.represents_missing",),
+    ),
     Mutant("null_read_as_absent", ONE_FAULT, setting(value_shapes, "members", _without_nulls)),
     Mutant(
         "unknown_condition_names_checked",
@@ -461,7 +466,12 @@ MUTANTS = [
         "conditional_members_unchecked", ONE_FAULT, setting(value_shapes, "present_exactly_where", _nothing)
     ),
     Mutant("uncertainty_rules_unchecked", ONE_FAULT, setting(value_shapes, "uncertainty_rules", _nothing)),
-    Mutant("named_state_text_unchecked", ONE_FAULT, setting(value_shapes, "FACTS", TEXT_ANYWHERE)),
+    Mutant(
+        "named_state_text_unchecked",
+        ONE_FAULT,
+        setting(value_shapes, "FACTS", TEXT_ANYWHERE),
+        ("specimen.fact_text_beside_normal", "specimen.fact_treated_without_text"),
+    ),
     Mutant("fixed_basis_unchecked", ONE_FAULT, setting(value_shapes, "FACTS", MIMICS_EITHER_BASIS)),
     Mutant("fact_unit_judged_at_step_8", ONE_FAULT, setting(value_shapes, "FACTS", FACT_UNIT_JUDGED)),
     Mutant("record_structure_unchecked", ONE_FAULT, setting(fields, "record_problems", _no_record_problems)),
