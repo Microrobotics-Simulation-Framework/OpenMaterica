@@ -425,9 +425,11 @@ tell it from the core, since step 10 returns a filled condition with the members
   (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. Steps 9
   and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and declare it drawn;
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
-  window by the least share measured. For each such property, and four of steps 9 and 10's,
+  window by the least share measured. For each such property, and five of steps 9 and 10's,
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
-  those features: its audit fails, on that feature alone.
+  those features: its audit fails, on that feature alone. One of the five runs a parametrised property, HP8's
+  other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,
+  as the audit holds each parameter to its own.
 
 ## Adding a property
 
