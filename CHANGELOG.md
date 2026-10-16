@@ -245,6 +245,13 @@ every family entry goes in `families/CHANGELOG.md`.
 - Two of step 8's mutants, `missing_represents_accepted` and `named_state_text_unchecked`, are searched among
   their own faults: searched whole, their kills changed with the constants Hypothesis draws from the modules a
   process has loaded (`tests/property/README.md`).
+- The table evaluation cases run (S3-te; `read_side_contract.md` section 7). OpenMaterica's own code claims no
+  table evaluation, so a test-only reference evaluator, written from the specification's text and importing
+  only the standard library (`tests/reference/table_evaluator.py`), stands in for a consumer's: the runner's
+  `evaluate` executor runs every TE file under its four configurations, `binary64` and `binary32`, each
+  declaring the left and the right side, and compares each by the specification's README ("Case files"). All
+  35 files are reported on their own line, verified against the reference evaluator, never as passed. The
+  evaluator also has an `exact` mode, for later pieces' properties.
 
 ## [0.1.0.dev1] - 2026-10-14
 

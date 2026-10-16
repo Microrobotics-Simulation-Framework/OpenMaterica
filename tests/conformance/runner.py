@@ -4,18 +4,23 @@
 It finds every case file, runs those whose operation has an executor under every configuration of claims that
 agrees with the case's suite and claims, compares each result with the case's expected answer, and folds a
 case's variants into the case's outcome. Later steps add executors; the rest stays as it is.
+
+The table evaluation cases are the exception: `materica` claims no table evaluation, so their executor runs
+the test-only reference evaluator (`tests/reference/table_evaluator.py`), and a case it passes is verified
+against that evaluator, never passed.
 """
 
 import json
+import math
 import re
 import struct
 from collections import Counter
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from functools import cache
 from pathlib import Path
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import materica
 from materica.core import hashing, jsonio
@@ -24,6 +29,8 @@ from materica.core.read import read
 from materica.core.reasons import Reason
 from materica.io.plain import load_records
 from materica.shapes import Suite
+from tests.reference import table_evaluator
+from tests.reference.table_evaluator import Evaluation, Scheme, Side, Table
 
 CONFORMANCE = Path(materica.__file__).parent / "data" / "conformance"
 # Each case file's implementation step, and the steps done (`tests/spec_sync/test_case_steps.py`).
@@ -38,6 +45,7 @@ class CaseFileError(Exception):
 
 class Outcome(Enum):
     PASSED = "passed"
+    VERIFIED = "verified against the reference evaluator"
     FAILED = "failed"
     NOT_RUN = "not run: its suite or claims disagree with every configuration of claims"
     NOT_YET_RUNNABLE = "not yet runnable: no executor for its operation, or its step not done"
@@ -196,7 +204,14 @@ def run(
         for claims in claimed
         for difference in _run_once(case_file, claims, executors[case_file.operation])
     ]
-    return CaseRun(case_file, Outcome.FAILED if differences else Outcome.PASSED, tuple(differences), claimed)
+    outcome = Outcome.FAILED if differences else passing_outcome(case_file)
+    return CaseRun(case_file, outcome, tuple(differences), claimed)
+
+
+def passing_outcome(case_file: CaseFile) -> Outcome:
+    """What a case file that ran and failed nowhere counts as: verified, where its executor runs the reference
+    evaluator, which only a table evaluation case's does; passed otherwise."""
+    return Outcome.VERIFIED if case_file.operation == "evaluate" else Outcome.PASSED
 
 
 def _run_once(case_file: CaseFile, claims: frozenset[Suite], executor: Executor) -> list[str]:
@@ -221,12 +236,15 @@ def run_all(
 
 
 def case_outcome(variants: Iterable[Outcome]) -> Outcome:
-    """A case passes when at least one variant ran and none failed; with none run, it is not run."""
+    """A case passes, or is verified, when at least one variant ran and none failed; with none run, it is not
+    run."""
     outcomes = set(variants)
     if Outcome.FAILED in outcomes:
         return Outcome.FAILED
     if Outcome.PASSED in outcomes:
         return Outcome.PASSED
+    if Outcome.VERIFIED in outcomes:
+        return Outcome.VERIFIED
     if outcomes == {Outcome.NOT_YET_RUNNABLE}:
         return Outcome.NOT_YET_RUNNABLE
     return Outcome.NOT_RUN
@@ -244,6 +262,8 @@ def compare(case_file: CaseFile, result: Mapping[str, JsonValue]) -> list[str]:
 
     Raises `CaseFileError` for a case that compares a number with neither `relative_tolerance` nor `exact`.
     """
+    if case_file.operation == "evaluate":
+        return _evaluation_runs_differ(case_file, result)
     differences: list[str] = []
     for member in case_file.members:
         if member == "labels":
@@ -488,17 +508,232 @@ def list_records_executor() -> Executor:
     return execute
 
 
-# The claims this implementation runs under, each case file under every one that agrees with it: plain read
-# and HS, as by default; plain read alone, a reader without HS; and with the fits and reference data suite
-# too, whose `want`s step 0 then accepts. A read under it ends by step 8 or raises, and steps 1 to 8 check the
-# same under it as without it, so claiming that suite gives no answer a step not built could change.
+# Table evaluation (README, "Case files"; `read_side_contract.md` section 7).
+
+# The precisions an evaluator may claim (`read_side_contract.md` section 7's lead).
+EvaluatorPrecision = Literal["binary64", "binary32"]
+
+
+@dataclass(frozen=True)
+class EvaluatorClaim:
+    """What a runner is given beside the suites for an evaluator: the precision it runs in, and the side whose
+    derivative it returns at an interior knot (README, "Case files")."""
+
+    precision: EvaluatorPrecision
+    side: Side
+
+    def __str__(self) -> str:
+        return f"{self.precision} {self.side}"
+
+
+# The reference evaluator's four configurations: each precision, declaring each side (S3Q15).
+EVALUATOR_CLAIMS: tuple[EvaluatorClaim, ...] = (
+    EvaluatorClaim("binary64", "left"),
+    EvaluatorClaim("binary64", "right"),
+    EvaluatorClaim("binary32", "left"),
+    EvaluatorClaim("binary32", "right"),
+)
+
+# An evaluator: a table at one axis value, in a precision, declaring a side.
+TableEvaluator = Callable[[Table, float, EvaluatorPrecision, Side], Evaluation]
+
+
+def evaluate_executor(
+    evaluator: TableEvaluator = table_evaluator.evaluate,
+    claims: Sequence[EvaluatorClaim] = EVALUATOR_CLAIMS,
+) -> Executor:
+    """The `evaluate` operation (README, "Case files"): `evaluator` at each of the case's axis values, in
+    order, once under each precision and side it claims. Its result holds one run per claim, each with its
+    evaluations, which `compare` takes in turn."""
+
+    def execute(case_file: CaseFile, suites: frozenset[Suite]) -> JsonObject:
+        table, points = _evaluate_request(case_file)
+        runs: list[JsonValue] = []
+        for claim in claims:
+            evaluations: list[JsonValue] = [
+                _evaluation_json(evaluator(table, at, claim.precision, claim.side)) for at in points
+            ]
+            runs.append({"precision": claim.precision, "side": claim.side, "evaluations": evaluations})
+        return {"runs": runs}
+
+    return execute
+
+
+def _evaluate_request(case_file: CaseFile) -> tuple[Table, list[float]]:
+    """The table and the axis values of a table evaluation case. A table the reference evaluator refuses
+    (`table_evaluator.structural_fault`) is a defect in the case."""
+    request = _object(case_file.request, "request")
+    table = _object(request.get("table"), "request.table")
+    points = _numbers(request.get("at"), "request.at")
+    source_range = table.get("source_range")
+    try:
+        return Table(
+            x=tuple(_numbers(table.get("x"), "table.x")),
+            y=tuple(_numbers(table.get("y"), "table.y")),
+            scheme=_scheme(table.get("scheme")),
+            edges=tuple(_numbers(table.get("edges"), "table.edges")),
+            source_range=None if source_range is None else _pair(source_range, "table.source_range"),
+        ), points
+    except ValueError as error:
+        raise CaseFileError(f"{case_file.path.name}: {error}") from error
+
+
+def _scheme(value: JsonValue) -> Scheme:
+    match value:
+        case "linear" | "loglog":
+            return value
+        case _:
+            raise CaseFileError(f"a table whose scheme is {value!r}")
+
+
+def _evaluation_json(evaluation: Evaluation) -> JsonObject:
+    """An evaluation as the comparison reads it: `refused` always; `in_range`, `value` and `derivative` where
+    the evaluator returned them."""
+    entry: JsonObject = {"refused": evaluation.refused}
+    if evaluation.in_range is not None:
+        entry["in_range"] = evaluation.in_range
+    for name, number in (("value", evaluation.value), ("derivative", evaluation.derivative)):
+        if number is not None:
+            entry[name] = float(number)
+    return entry
+
+
+def _evaluation_runs_differ(case_file: CaseFile, result: Mapping[str, JsonValue]) -> list[str]:
+    """How each run of a table evaluation case, one per precision and side the evaluator claims, differs from
+    the case's evaluations, entry by entry in order, at the tolerance of the run's precision."""
+    tolerances = case_file.precision_tolerances
+    if tolerances is None:
+        raise CaseFileError(
+            f"{case_file.path.name}: a table evaluation case without a tolerance per precision"
+        )
+    points = _numbers(_object(case_file.request, "request").get("at"), "request.at")
+    expected = [
+        _object(entry, "an expected evaluation")
+        for entry in _list(case_file.expected.get("evaluations"), "expected.evaluations")
+    ]
+    if len(expected) != len(points):
+        raise CaseFileError(f"{case_file.path.name}: not one expected evaluation per axis value")
+    runs = result.get("runs")
+    if not isinstance(runs, list) or not runs:
+        # An evaluator that claims the suite claims a precision and a side (read_side_contract.md section 7
+        # item 8), so a result with no run is no pass.
+        return ["evaluations: no run under any precision and side"]
+    differences: list[str] = []
+    for run in runs:
+        if not isinstance(run, dict):
+            differences.append(f"evaluations: a run that is not an object: {run!r}")
+            continue
+        precision, side, found = run.get("precision"), run.get("side"), run.get("evaluations")
+        if not (isinstance(precision, str) and precision in tolerances and side in ("left", "right")):
+            differences.append(f"evaluations: a run under no precision and side: {run!r}")
+            continue
+        if not isinstance(found, list) or len(found) != len(expected):
+            differences.append(f"{precision} {side}: expected {len(expected)} evaluations, got {found!r}")
+            continue
+        for at, wanted, got in zip(points, expected, found, strict=True):
+            difference = _evaluation_differs(wanted, got, tolerances[precision], str(side))
+            if difference is not None:
+                differences.append(f"{precision} {side}: at {at!r}: {difference}")
+    return differences
+
+
+def _evaluation_differs(wanted: JsonObject, got: JsonValue, tolerance: float, side: str) -> str | None:
+    """How one evaluation differs from its expected entry, which is compared only by the members it holds and
+    whether a refusal is reported (README, "Case files")."""
+    if not isinstance(got, dict):
+        return f"not an object: {got!r}"
+    refused = got.get("refused")
+    if not isinstance(refused, bool):
+        return f"the refusal is not reported as true or false: {refused!r}"
+    if wanted.get("refused") is True:
+        # A refused entry "passes only where the evaluator reports the refusal and each number it returns
+        # there is absent or NaN, never finite and never infinite".
+        if not refused:
+            return "expected the refusal, got none"
+        beside = [
+            f"{name} {got[name]!r}" for name in ("value", "derivative") if name in got and not _nan(got[name])
+        ]
+        return f"a number beside the refusal: {', '.join(beside)}" if beside else None
+    # Any other entry passes "only where the evaluator reports no refusal".
+    if refused:
+        return "refused where no refusal is due"
+    in_range = wanted.get("in_range")
+    if not isinstance(in_range, bool):
+        raise CaseFileError(f"an expected evaluation that is neither refused nor in_range: {wanted!r}")
+    if got.get("in_range") is not in_range:
+        return f"in_range: expected {in_range!r}, got {got.get('in_range')!r}"
+    for name in ("value", "derivative"):
+        # Outside the readable range, "each number passes where it is the expected one, or absent or NaN".
+        difference = _evaluated_number_differs(
+            name, wanted.get(name), got.get(name), tolerance, side, absent_passes=not in_range
+        )
+        if difference is not None:
+            return f"{name}: {difference}"
+    return None
+
+
+def _evaluated_number_differs(
+    name: str, expected: JsonValue, found: JsonValue, tolerance: float, side: str, *, absent_passes: bool
+) -> str | None:
+    """How a returned value or derivative, `None` where absent, differs from the expected one (README, "Case
+    files")."""
+    if expected == "none":
+        # "A `"none"` passes only where the evaluator returns that number absent or NaN."
+        return None if found is None or _nan(found) else f"expected none, got {found!r}"
+    if isinstance(expected, dict):
+        # "`{"left", "right"}` ..., of which the side the evaluator declares is compared"
+        expected = expected.get(side)
+    if not isinstance(expected, float):
+        raise CaseFileError(f"an expected {name} that is not a number, none or one per side: {expected!r}")
+    if found is None or _nan(found):
+        return None if absent_passes else f"expected {expected!r}, got {'none' if found is None else 'NaN'}"
+    if not isinstance(found, float):
+        return f"expected {expected!r}, got {found!r}"
+    if name == "derivative" and expected == 0.0:
+        # "an expected derivative of `0` passes only where it is zero, of either sign"
+        agree = found == 0.0
+    elif expected == 0.0:
+        # "the tolerance being absolute where an expected value is zero"
+        agree = abs(found) <= tolerance
+    else:
+        agree = abs(found - expected) <= tolerance * abs(expected)
+    return None if agree else f"expected {expected!r}, got {found!r}"
+
+
+def _nan(value: JsonValue) -> bool:
+    return isinstance(value, float) and math.isnan(value)
+
+
+def _numbers(value: JsonValue, what: str) -> list[float]:
+    numbers = _list(value, what)
+    if not all(isinstance(number, float) for number in numbers):
+        raise CaseFileError(f"{what} holds something other than numbers")
+    return [number for number in numbers if isinstance(number, float)]
+
+
+def _pair(value: JsonValue, what: str) -> tuple[float, float]:
+    numbers = _numbers(value, what)
+    if len(numbers) != 2:
+        raise CaseFileError(f"{what} is not two numbers")
+    return numbers[0], numbers[1]
+
+
+# The claims the case files run under, each under every one that agrees with it. This implementation's: plain
+# read and HS, as by default; plain read alone, a reader without HS; and with the fits and reference data
+# suite too, whose `want`s step 0 then accepts. A read under it ends by step 8 or raises, and steps 1 to 8
+# check the same under it as without it, so claiming that suite gives no answer a step not built could change.
+# Last, the reference evaluator's: the table evaluation suite alone, which `materica` does not claim, at each
+# precision and side (`EVALUATOR_CLAIMS`).
+REFERENCE_EVALUATOR: frozenset[Suite] = frozenset({"table_evaluation"})
 CONFIGURATIONS: tuple[frozenset[Suite], ...] = (
     frozenset({"plain_read", "hash"}),
     frozenset({"plain_read"}),
     frozenset({"plain_read", "hash", "fits_and_reference_data"}),
+    REFERENCE_EVALUATOR,
 )
 EXECUTORS: dict[str, Executor] = {
     "content_hash": content_hash_executor(),
     "read": read_executor(),
     "list_records": list_records_executor(),
+    "evaluate": evaluate_executor(),
 }

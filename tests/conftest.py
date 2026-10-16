@@ -16,6 +16,7 @@ import pytest
 from hypothesis import settings
 from hypothesis.database import DirectoryBasedExampleDatabase
 
+from materica.shapes import Suite
 from tests.conformance import runner
 
 if sys.platform != "win32":
@@ -149,7 +150,7 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
     runs = runner.run_all(runner.discover(), configurations=runner.CONFIGURATIONS, executors=runner.EXECUTORS)
     outcomes = Counter(case_run.outcome for case_run in runs)
     terminalreporter.section("conformance cases")
-    claims = "; ".join(", ".join(sorted(claimed)) for claimed in runner.CONFIGURATIONS)
+    claims = "; ".join(_configuration(claimed) for claimed in runner.CONFIGURATIONS)
     terminalreporter.write_line(
         f"{len(runs)} case files, each under every one of these claims it agrees with: {claims}"
     )
@@ -168,3 +169,10 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
             terminalreporter.write_line(
                 "       by step: " + ", ".join(f"{step} {count}" for step, count in sorted(steps.items()))
             )
+
+
+def _configuration(claimed: frozenset[Suite]) -> str:
+    suites = ", ".join(sorted(claimed))
+    if claimed != runner.REFERENCE_EVALUATOR:
+        return suites
+    return f"{suites} (the reference evaluator: {', '.join(map(str, runner.EVALUATOR_CLAIMS))})"

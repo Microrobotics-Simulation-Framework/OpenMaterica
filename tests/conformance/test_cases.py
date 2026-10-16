@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Every conformance case file: those this implementation runs must pass, and the rest are counted.
+"""Every conformance case file: those this implementation runs must pass, those the reference evaluator runs
+must be verified against it, and the rest are counted.
 
 A case file that is not run is never a pytest item, so it cannot read as a pass or a skip; the counts below
 and the terminal summary (`conftest.py`) account for it. A case file is not yet runnable while its operation
@@ -26,7 +27,7 @@ RUN = [
 @pytest.mark.parametrize("case_file", RUN, ids=[case_file.path.name for case_file in RUN])
 def test_case_file(case_file: CaseFile) -> None:
     case_run = runner.run(case_file, configurations=CONFIGURATIONS, executors=EXECUTORS)
-    assert case_run.outcome is Outcome.PASSED, "\n".join(case_run.differences)
+    assert case_run.outcome is runner.passing_outcome(case_file), "\n".join(case_run.differences)
 
 
 def test_every_case_file_is_counted() -> None:
@@ -34,15 +35,16 @@ def test_every_case_file_is_counted() -> None:
     assert len(runs) == 1097
     assert Counter(case_run.outcome for case_run in runs) == {
         Outcome.PASSED: 579,
-        Outcome.NOT_YET_RUNNABLE: 518,
+        Outcome.VERIFIED: 35,
+        Outcome.NOT_YET_RUNNABLE: 483,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
         (Outcome.PASSED, "content_hash"): 51,
         (Outcome.PASSED, "read"): 503,
         (Outcome.PASSED, "list_records"): 25,
+        (Outcome.VERIFIED, "evaluate"): 35,
         (Outcome.NOT_YET_RUNNABLE, "read"): 483,
-        (Outcome.NOT_YET_RUNNABLE, "evaluate"): 35,
     }
 
 
@@ -50,7 +52,12 @@ def test_each_configuration_runs_every_case_file_that_holds_for_it() -> None:
     claims = Counter(
         claimed for case_file in CASE_FILES for claimed in runner.agreeing(case_file, CONFIGURATIONS)
     )
-    assert claims == {CONFIGURATIONS[0]: 1050, CONFIGURATIONS[1]: 990, CONFIGURATIONS[2]: 1050}
+    assert claims == {
+        CONFIGURATIONS[0]: 1050,
+        CONFIGURATIONS[1]: 990,
+        CONFIGURATIONS[2]: 1050,
+        runner.REFERENCE_EVALUATOR: 35,
+    }
 
 
 def test_a_case_passes_only_where_a_variant_ran() -> None:
@@ -58,7 +65,11 @@ def test_a_case_passes_only_where_a_variant_ran() -> None:
         runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
     )
     assert len(outcomes) == 107
-    assert Counter(outcomes.values()) == {Outcome.PASSED: 45, Outcome.NOT_YET_RUNNABLE: 62}
+    assert Counter(outcomes.values()) == {
+        Outcome.PASSED: 45,
+        Outcome.VERIFIED: 10,
+        Outcome.NOT_YET_RUNNABLE: 52,
+    }
 
 
 def test_a_case_file_runs_once_every_step_it_needs_is_done(tmp_path: Path) -> None:
