@@ -208,11 +208,12 @@ recorded in that repository's CHANGELOG.
   check fails unless every job the gate asked for succeeded, so that a job skipped by mistake no longer
   passes. Every job runs on the image `ubuntu-24.04`, and every step under bash with `-eo pipefail`. Each
   pytest job writes a JUnit report, summarised on the run's page and kept 90 days
-  (`scripts/report_test_durations.py`); each test records its CPU time beside its wall time. The mutant
-  searches and the audit controls run on Python 3.11 and 3.15, the supported range's ends, in jobs of their
-  own (`--property-controls`), and every other test on all five Pythons. `tests/unit/test_ci_workflows.py`
-  holds the workflows to their comments: the image, the gate's step, each job's condition and the result, that
-  no test or script names a path the gate calls documentation, what each pytest command selects, no
+  (`scripts/report_test_durations.py`), whenever pytest ran (a job its timeout cancels has none: pytest is
+  stopped before it writes it); each test records its CPU time beside its wall time. The mutant searches and
+  the audit controls run on Python 3.11 and 3.15, the supported range's ends, in jobs of their own
+  (`--property-controls`), and every other test on all five Pythons. `tests/unit/test_ci_workflows.py` holds
+  the workflows to their comments: the image, the gate's step, each job's condition and the result, that no
+  test or script names a path the gate calls documentation, what each pytest command selects, no
   `continue-on-error`, `PYTEST_ADDOPTS` or `PYTEST_PLUGINS`, no pytest setting in `pyproject.toml` that
   chooses tests, and the workflows README's jobs and shards; each check with a control in which it must fail.
 - Two of step 8's mutants, `missing_represents_accepted` and `named_state_text_unchecked`, are searched among

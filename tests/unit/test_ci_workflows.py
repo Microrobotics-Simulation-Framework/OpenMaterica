@@ -1293,6 +1293,70 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
     assert any(problem in line for line in found), found
 
 
+# Where a pytest job can stand when its durations steps come: the status functions there, the pytest step's
+# outcome, and whether the steps must run, which is whenever pytest ran.
+DURATIONS_STEPS = ("Test durations", "Keep the durations")
+PASSED = {"success()": True, "failure()": False, "cancelled()": False, "always()": True}
+FAILED = {"success()": False, "failure()": True, "cancelled()": False, "always()": True}
+CANCELLED = {"success()": False, "failure()": False, "cancelled()": True, "always()": True}
+STANDINGS = {
+    "pytest passed": (PASSED, "success", True),
+    "pytest failed": (FAILED, "failure", True),
+    "the timeout cancelled pytest": (CANCELLED, "cancelled", True),
+    "the checkout failed": (FAILED, "skipped", False),
+    "a cancel came before pytest": (CANCELLED, "skipped", False),
+}
+
+
+def report_problems(ci: Workflow) -> list[str]:
+    """Where a job whose pytest writes a JUnit report would not report its durations whenever pytest ran, or
+    would where a failed checkout skipped pytest."""
+    problems: list[str] = []
+    for job_id, job in ci["jobs"].items():
+        if not any(word.startswith("--junitxml=") for command in pytest_commands(job) for word in command):
+            continue
+        outcome = f"steps.{pytest_step(job).get('id')}.outcome"
+        matrices = [
+            {f"matrix.{key}": value for key, value in combination.items()}
+            for combination in combinations(job["strategy"]["matrix"])
+        ]
+        for name, (standing, (status, pytest_outcome, wanted)) in itertools.product(
+            DURATIONS_STEPS, STANDINGS.items()
+        ):
+            found = step(job, name)
+            context = status | {outcome: pytest_outcome}
+            if {truthy(evaluated(condition(found), matrix | context)) for matrix in matrices} != {wanted}:
+                verb = "does not run" if wanted else "runs"
+                problems.append(f"{job_id}'s step {name!r} {verb} when {standing}: if {found.get('if')!r}")
+    return problems
+
+
+def test_each_job_reports_its_durations_whenever_pytest_ran() -> None:
+    assert report_problems(workflow("ci.yml")) == []
+
+
+@pytest.mark.parametrize(
+    ("written", "problem"),
+    [
+        ("success() || failure()", "'Test durations' does not run when the timeout cancelled pytest"),
+        ("always()", "'Test durations' runs when the checkout failed"),
+    ],
+    ids=["not-after-a-cancel", "after-a-failed-checkout"],
+)
+def test_the_durations_check_can_fail(written: str, problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    step(ci["jobs"]["controls"], "Test durations")["if"] = written
+    found = report_problems(ci)
+    assert any(problem in line for line in found), found
+
+
+def test_the_durations_check_fails_on_another_steps_outcome() -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    pytest_step(ci["jobs"]["hypothesis"])["id"] = "properties"
+    with pytest.raises(AssertionError, match=r"does not know 'steps\.pytest\.outcome'"):
+        report_problems(ci)
+
+
 # pytest's settings in pyproject.toml that choose no test. Every job's pytest reads them, and so does the
 # matrix check's own collection, which could not see a test they moved out of every job.
 PYTEST_SETTINGS = {"testpaths", "addopts", "junit_family", "xfail_strict", "markers", "filterwarnings"}
