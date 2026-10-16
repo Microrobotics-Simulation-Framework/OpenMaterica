@@ -50,4 +50,5 @@ tree, so the wheel and the published site hold the schemas alone.
 
 The Python reader checks envelopes with `core/envelope.py`, which tests hold to agreement with the reader schema;
 it never runs a JSON Schema validator. The schemas are for readers in other languages, for record checks, and
-for the tests, which validate with jsonschema, a development dependency.
+for the tests, which validate with jsonschema-rs and hold python-jsonschema to its verdicts, both development
+dependencies.
