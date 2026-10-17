@@ -866,7 +866,8 @@ first core minor the sibling exists for and the install that works; a resolver p
 pinned to that minor. Today that is `openmaterica-families` 0.1.0, published at core 0.1.0a1 or 0.1.0, which
 also claims the name. The release workflow writes a compatibility table of each core version and its siblings'
 versions into the documentation. The version command, the import guard, the extras and the CI matrix are built
-with `openmaterica-authoring`'s first release, and Appendices A and B gain them then (2026-10-17). A regulated
+with `openmaterica-authoring`'s first release after the `0.1.0.devN` that claims its name, and Appendices A
+and B gain them then (2026-10-17). A regulated
 consumer pins exact versions all the same (architecture draft section 5.6).
 
 ### 7.2 Changes to the schema
