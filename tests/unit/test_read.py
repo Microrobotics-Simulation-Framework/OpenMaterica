@@ -660,6 +660,34 @@ def test_withheld_is_given_beside_a_shared_refusal() -> None:
     assert {reason.code for reason in both.reasons} == {"withheld", "form_invalid"}
 
 
+# A status object holding a token the reader does not know, broken in each way `provenance.md` section 1 item
+# 5 names, and by a slip (section 10): it is read for nothing else, so its token gives no `unknown_token`.
+UNKNOWN_STATUS = "x_unknown"
+BROKEN_STATUSES: list[tuple[str, dict[str, JsonValue]]] = [
+    ("beside a member where S is a number", with_block(sd={"status": UNKNOWN_STATUS, "note": 1.0})),
+    ("beside a member S defines", with_block(relative_uncertainty={"status": UNKNOWN_STATUS, "value": 1.0})),
+    ("with a reason that is no string", with_block(sd={"status": UNKNOWN_STATUS, "reason": 1.0})),
+    ("beside a slip of reason", with_block(relative_uncertainty={"status": UNKNOWN_STATUS, "reasons": "x"})),
+    ("as a condition", with_condition("temperature", {"status": UNKNOWN_STATUS, "unit": "K"})),
+    ("as a fact", with_fact("lot", {"status": UNKNOWN_STATUS, "text": "B-17"})),
+]
+
+
+@pytest.mark.parametrize(("place", "field"), BROKEN_STATUSES, ids=[place for place, _ in BROKEN_STATUSES])
+def test_a_status_object_that_breaks_its_shape_gives_no_reason_for_its_token(
+    place: str, field: dict[str, JsonValue]
+) -> None:
+    refused = read(*stored(with_field("fluid.dynamic_viscosity", field)))
+    assert [reason.code for reason in refused.reasons] == ["form_invalid"]
+
+
+def test_an_unknown_status_token_alone_is_unknown_token() -> None:
+    """The control: the same token, in an object that keeps its shape, gives its own reason."""
+    kept = with_block(relative_uncertainty={"status": UNKNOWN_STATUS, "reason": "not stated"})
+    refused = read(*stored(with_field("fluid.dynamic_viscosity", kept)))
+    assert [reason.code for reason in refused.reasons] == ["unknown_token"]
+
+
 DERIVED: dict[str, JsonValue] = {
     "origin": "derived",
     "derivation": {

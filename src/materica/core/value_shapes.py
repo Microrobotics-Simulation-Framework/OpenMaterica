@@ -290,24 +290,33 @@ def status_or(check: Check, tokens: Collection[str] | None, defines: Collection[
 def status_object(
     value: JsonObject, where: str, tokens: Collection[str] | None, defines: Collection[str], found: Found
 ) -> None:
+    """A status object that breaks its shape is read for nothing else, so its token gives no reason of its
+    own (`provenance.md` section 1 item 5); a member one slip from `status`, `reason` or a member S defines
+    breaks it, as a member S defines does."""
     status = value["status"]
+    broken: Found = []
     if not isinstance(status, str):
-        found.append(invalid(f"{where}.status is not a string"))
-    elif tokens is not None and status in STATUS_TOKENS and status not in tokens:
-        found.append(invalid(f"{where} holds the status {status!r}, which its row does not allow"))
-    elif tokens is not None and status not in tokens:
-        found.append(unknown_token(f"{where} holds the status {status!r}, which the reader does not know"))
+        broken.append(invalid(f"{where}.status is not a string"))
     if "reason" in value and not isinstance(value["reason"], str):
-        found.append(invalid(f"{where}.reason is not a string"))
+        broken.append(invalid(f"{where}.reason is not a string"))
     others = sorted(value.keys() - {"status", "reason"})
     if not defines and others:
-        found.append(
+        broken.append(
             invalid(f"{where} holds {others} beside its status, where a number, string or token goes")
         )
     elif beside := [member for member in others if member in defines]:
-        found.append(invalid(f"{where} holds {beside} beside its status, members of the shape it stands for"))
+        broken.append(
+            invalid(f"{where} holds {beside} beside its status, members of the shape it stands for")
+        )
     else:
-        slips(value, ("status", "reason", *defines), where, found)
+        slips(value, ("status", "reason", *defines), where, broken)
+    found.extend(broken)
+    if broken or tokens is None:
+        return
+    if status in STATUS_TOKENS and status not in tokens:
+        found.append(invalid(f"{where} holds the status {status!r}, which its row does not allow"))
+    elif status not in tokens:
+        found.append(unknown_token(f"{where} holds the status {status!r}, which the reader does not know"))
 
 
 unit = status_or(string, None, ())
