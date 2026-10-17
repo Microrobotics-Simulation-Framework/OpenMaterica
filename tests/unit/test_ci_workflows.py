@@ -2827,7 +2827,12 @@ def cap_checked(variable: str, default: str) -> str:
 def cap_problems(found: Workflow, cap: Cap) -> list[str]:
     """Where the capped job's `max-parallel` is not its variable, parsed, with its default, exactly; it can
     start though the job that checks its cap failed; or that job does not check the same value, in one step,
-    on every run."""
+    on every run, or carries on after the check failed.
+
+    A capped job starts on its checker's success alone: on GitHub's implicit `success()`, so it calls no
+    status function, `success()` included, since `success() || ...` starts it after a failure too. Nor does
+    the checker or its cap step set `continue-on-error`, with which the job, or the step, passes though the
+    check failed."""
     job = found["jobs"][cap.job]
     problems: list[str] = []
     expected = cap_expression(cap.variable, cap.default)
@@ -2835,8 +2840,8 @@ def cap_problems(found: Workflow, cap: Cap) -> list[str]:
     if written != expected:
         problems.append(f"the {cap.job} job runs {written!r} at once, not {expected}")
     needs = job.get("needs", [])
-    if cap.checker not in ([needs] if isinstance(needs, str) else needs) or re.search(
-        r"\b(?:always|failure|cancelled)\(\)", str(job.get("if", ""))
+    if cap.checker not in ([needs] if isinstance(needs, str) else needs) or STATUS_FUNCTION.search(
+        str(job.get("if", ""))
     ):
         problems.append(
             f"the {cap.job} job can start without {cap.checker}, which checks its cap, succeeding"
@@ -2849,6 +2854,12 @@ def cap_problems(found: Workflow, cap: Cap) -> list[str]:
         problems.append(f"{cap.checker} checks {checks[0].get('env')!r}, not {checked}")
     if "if" in checks[0]:
         problems.append(f"{cap.checker} checks the cap only if {checks[0]['if']!r}")
+    for where, setting in (
+        (f"the {cap.checker} job", found["jobs"][cap.checker]),
+        (f"the {cap.checker} job's cap step", checks[0]),
+    ):
+        if "continue-on-error" in setting:
+            problems.append(f"{where} carries on after the cap check fails: {setting['continue-on-error']!r}")
     return problems
 
 
@@ -2929,6 +2940,19 @@ def the_job_needing_no_check(found: Workflow, cap: Cap) -> None:
     found["jobs"][cap.job]["needs"] = []
 
 
+def the_job_started_on_a_failed_check(found: Workflow, cap: Cap) -> None:
+    """No `always()`, `failure()` or `cancelled()`, but a status function, so no implicit `success()`."""
+    found["jobs"][cap.job]["if"] = f"success() || needs.{cap.checker}.result == 'failure'"
+
+
+def the_check_carrying_on(found: Workflow, cap: Cap) -> None:
+    step(found["jobs"][cap.checker], CAP_STEP)["continue-on-error"] = True
+
+
+def the_checker_carrying_on(found: Workflow, cap: Cap) -> None:
+    found["jobs"][cap.checker]["continue-on-error"] = True
+
+
 @pytest.mark.parametrize("cap", CAPS, ids=lambda cap: cap.job)
 @pytest.mark.parametrize(
     ("fault", "problem"),
@@ -2939,6 +2963,9 @@ def the_job_needing_no_check(found: Workflow, cap: Cap) -> None:
         (the_check_on_a_push_alone, "checks the cap only if"),
         (the_job_started_whatever_the_check, "can start without"),
         (the_job_needing_no_check, "can start without"),
+        (the_job_started_on_a_failed_check, "can start without"),
+        (the_check_carrying_on, "job's cap step carries on after the cap check fails: True"),
+        (the_checker_carrying_on, "job carries on after the cap check fails: True"),
     ],
     ids=lambda value: value.__name__ if callable(value) else None,
 )
