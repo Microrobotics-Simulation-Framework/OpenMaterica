@@ -124,6 +124,11 @@ every family entry goes in `families/CHANGELOG.md`.
   versions` checks them; an explainer release, first `openmaterica-families` 0.1.0, stands in for a sibling at
   each core minor before its first. Family entries go in `families/CHANGELOG.md`. Text only: none of it is
   built yet.
+- The documentation plan (sections 1, 6.5, 8.1 and 15, and Appendix B) and `CONTRIBUTING.md` (constraint 12)
+  say what checks the known-anomalies registry: `scripts/check_anomalies.py`, which stands in for MADDENING's
+  validator until that accepts the registry's component names; MADDENING's validator accepts
+  `materica_version` from MADDENING 0.4.0. They had said that CI checked the registry with MADDENING's
+  validator, which no job did, and that the validator refused `materica_version`.
 
 ### Schema
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
