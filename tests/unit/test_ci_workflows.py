@@ -49,9 +49,17 @@ GATED = {
     "hypothesis": "hypothesis",
     "site": "site",
     "commit": "commits",
+    "site_commit": "site_commits",
 }
-# How each output runs its jobs: `code`, `hypothesis` and `site` when true, `commits` when it lists one.
-RUNS_WHEN = {"code": "== 'true'", "hypothesis": "== 'true'", "site": "== 'true'", "commits": "!= '[]'"}
+# How each output runs its jobs: `code`, `hypothesis` and `site` when true, `commits` and `site_commits` when
+# it lists one.
+RUNS_WHEN = {
+    "code": "== 'true'",
+    "hypothesis": "== 'true'",
+    "site": "== 'true'",
+    "commits": "!= '[]'",
+    "site_commits": "!= '[]'",
+}
 # Jobs the gate does not decide: the gate itself, the result, and the weekly and manual fuzz job.
 UNGATED = {"gate", "result", "fuzz"}
 # A path of each kind the gate calls documentation, as its tests commit them in a throwaway repository.
@@ -402,6 +410,7 @@ def test_a_merge_to_main_and_every_run_but_a_pull_request_run_every_job(
         "hypothesis": "true",
         "site": "true",
         "commits": "[]",
+        "site_commits": "[]",
     }
 
 
@@ -411,6 +420,7 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
         "hypothesis": "false",
         "site": "false",
         "commits": "[]",
+        "site_commits": "[]",
     }
 
 
@@ -464,6 +474,7 @@ def test_a_pull_request_runs_the_jobs_its_paths_need(
         "hypothesis": hypothesis,
         "site": site,
         "commits": "[]",
+        "site_commits": "[]",
     }
 
 
@@ -523,6 +534,7 @@ def test_a_pull_request_that_moves_code_into_documentation_runs_the_jobs_of_the_
         "hypothesis": hypothesis,
         "site": "true",
         "commits": "[]",
+        "site_commits": "[]",
     }
 
 
@@ -551,14 +563,20 @@ def test_a_pull_request_of_one_commit_lists_none(repository: Path) -> None:
 
 
 def test_a_commit_that_changes_documentation_or_the_site_alone_is_not_listed(repository: Path) -> None:
-    """Its tree is its parent's but for paths no test reads; README.md is code."""
+    """Its tree is its parent's but for paths no test reads; README.md is code. One that changes the site is
+    listed for the site's checks alone."""
     base = commit()
     commit("CHANGELOG.md", "docs/regulatory/intended_use.md")
     code = commit("README.md")
-    commit("CONTRIBUTING.md", "site/index.html")
-    commit("assets/images/logo.png")
+    beside = commit("CONTRIBUTING.md", "site/index.html")
+    alone = commit("assets/images/logo.png")
+    python = commit("site/make_icons.py")
     head = commit("CHANGELOG.md")
-    assert listed(repository, base, head) == [code]
+    outputs = gate_outputs(repository, gate_context("pull_request", base, head))
+    assert (json.loads(outputs["commits"]), json.loads(outputs["site_commits"])) == (
+        [code, python],
+        [beside, alone],
+    )
 
 
 def test_a_commit_that_adds_a_python_file_to_documentation_is_listed(repository: Path) -> None:
@@ -648,6 +666,19 @@ def test_after_a_force_push_the_commits_the_branch_holds_now_are_listed(reposito
     assert listed(repository, base, head) == [first, rewritten]
 
 
+def test_more_site_commits_than_a_matrix_holds_fail_the_gate(repository: Path) -> None:
+    base = commit()
+    for _ in range(257):
+        commit("site/index.html")
+    head = commit()
+    gate = step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP)
+    status, _, printed = run_step(gate, gate_context("pull_request", base, head), repository)
+    assert status == 1
+    assert (
+        "::error::257 commits to check on their own in one job, more than the 256 jobs of a matrix" in printed
+    )
+
+
 def test_more_commits_than_a_matrix_holds_fail_the_gate(repository: Path) -> None:
     """GitHub makes at most 256 jobs of a matrix; a run that left commits out would pass without them."""
     base = commit()
@@ -659,7 +690,9 @@ def test_more_commits_than_a_matrix_holds_fail_the_gate(repository: Path) -> Non
     gate = step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP)
     status, _, printed = run_step(gate, gate_context("pull_request", base, head), repository)
     assert status == 1
-    assert "::error::257 commits to check on their own, more than the 256 jobs of a matrix" in printed
+    assert (
+        "::error::257 commits to check on their own in one job, more than the 256 jobs of a matrix" in printed
+    )
 
 
 def printed_with_commands_stopped(printed: str, name: str) -> bool:
@@ -1363,7 +1396,7 @@ def job_status(job: dict[str, Any], tree: Path, monkeypatch: pytest.MonkeyPatch)
     return 0, ""
 
 
-@pytest.mark.parametrize("job_id", ["site"])
+@pytest.mark.parametrize("job_id", ["site", "site_commit"])
 def test_the_site_jobs_steps_as_written_fail_a_broken_site(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, job_id: str
 ) -> None:
@@ -1415,6 +1448,76 @@ def test_the_site_jobs_run_check_can_fail(
         != 0,
     ]
     assert not all(outcomes), outcomes
+
+
+def site_commit_problems(ci: Workflow) -> list[str]:
+    """Where the site-commit job, or the per-commit job, does not run the site job's checks on each commit
+    it is given, checked out as it is."""
+    jobs = ci["jobs"]
+    site_steps = [step(jobs["site"], SITE_STEP), step(jobs["site"], SITE_CHECK_STEP)]
+    job = jobs["site_commit"]
+    problems: list[str] = []
+    strategy = job.get("strategy", {})
+    if strategy != {
+        "fail-fast": False,
+        "max-parallel": 6,
+        "matrix": {"sha": "${{ fromJSON(needs.gate.outputs.site_commits) }}"},
+    }:
+        problems.append(f"the site-commit job's strategy is {strategy!r}")
+    checkout = {
+        **jobs["site"]["steps"][0],
+        "with": {"ref": "${{ matrix.sha }}", **jobs["site"]["steps"][0]["with"]},
+    }
+    if job["steps"] != [checkout, *site_steps]:
+        problems.append("the site-commit job's steps are not its commit's checkout and the site job's steps")
+    commit_steps = [
+        {key: value for key, value in found.items() if key != "if"}
+        for found in jobs["commit"]["steps"]
+        if found.get("name") in (SITE_STEP, SITE_CHECK_STEP)
+    ]
+    if commit_steps != site_steps:
+        problems.append("the per-commit job does not run the site job's steps")
+    return problems
+
+
+def test_each_commit_gets_the_site_jobs_checks() -> None:
+    assert site_commit_problems(workflow("ci.yml")) == []
+
+
+def site_commit_on_the_merge(ci: Workflow) -> None:
+    del ci["jobs"]["site_commit"]["steps"][0]["with"]["ref"]
+
+
+def site_commit_without_the_readme(ci: Workflow) -> None:
+    found = step(ci["jobs"]["site_commit"], SITE_CHECK_STEP)
+    found["run"] = found["run"].replace(" --readme README.md", "")
+
+
+def site_commit_of_the_code_commits(ci: Workflow) -> None:
+    ci["jobs"]["site_commit"]["strategy"]["matrix"]["sha"] = "${{ fromJSON(needs.gate.outputs.commits) }}"
+
+
+def commit_job_without_the_site_check(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["steps"] = [
+        found for found in ci["jobs"]["commit"]["steps"] if found.get("name") != SITE_CHECK_STEP
+    ]
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (site_commit_on_the_merge, "the site-commit job's steps are not"),
+        (site_commit_without_the_readme, "the site-commit job's steps are not"),
+        (site_commit_of_the_code_commits, "the site-commit job's strategy is"),
+        (commit_job_without_the_site_check, "the per-commit job does not run the site job's steps"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_site_commit_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    fault(ci)
+    found = site_commit_problems(ci)
+    assert any(problem in line for line in found), found
 
 
 # What Pages deploys: pages.yml's job checks out the tree as the site job does, stages it with the step the
@@ -1507,6 +1610,7 @@ def result_status(
     ci: Workflow | None = None,
     commits: str = "[]",
     site: str | None = None,
+    site_commits: str = "[]",
 ) -> int:
     """The result step's exit status, for the gate's result and outputs and each other job's result; the
     site's output as the code's where it is not given, as the gate gives it but for a change to the site or
@@ -1517,6 +1621,7 @@ def result_status(
         "needs.gate.outputs.hypothesis": hypothesis,
         "needs.gate.outputs.site": code if site is None else site,
         "needs.gate.outputs.commits": commits,
+        "needs.gate.outputs.site_commits": site_commits,
     } | {f"needs.{job}.result": result for job, result in jobs.items()}
     found = step((ci or workflow("ci.yml"))["jobs"]["result"], RESULT_STEP)
     status, _, _ = run_step(found, context, tmp_path)
@@ -1628,6 +1733,35 @@ def test_the_result_requires_the_per_commit_job_when_the_gate_lists_commits(
 ) -> None:
     jobs = all_jobs("success", commit=commit_job)
     assert result_status("success", "true", "true", jobs, tmp_path, commits=commits) == status
+
+
+@pytest.mark.parametrize(
+    ("site_commits", "site_commit_job", "status"),
+    [
+        ("[]", "skipped", 0),
+        (TWO_COMMITS, "success", 0),
+        (TWO_COMMITS, "skipped", 1),
+        (TWO_COMMITS, "failure", 1),
+        ("[]", "cancelled", 1),
+        ("", "skipped", 1),
+    ],
+    ids=[
+        "none-to-check",
+        "checked",
+        "asked-for-and-skipped",
+        "asked-for-and-failed",
+        "not-asked-for-and-cancelled",
+        "output-empty",
+    ],
+)
+def test_the_result_requires_the_site_commit_job_when_the_gate_lists_site_commits(
+    tmp_path: Path, site_commits: str, site_commit_job: str, status: int
+) -> None:
+    jobs = all_jobs("skipped", site="success", site_commit=site_commit_job)
+    assert (
+        result_status("success", "false", "false", jobs, tmp_path, site="true", site_commits=site_commits)
+        == status
+    )
 
 
 def test_without_its_check_of_the_gate_the_result_passes_a_failed_gate_with_outputs(tmp_path: Path) -> None:

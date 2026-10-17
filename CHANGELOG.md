@@ -371,18 +371,21 @@ every family entry goes in `families/CHANGELOG.md`.
   NUL byte; what a file holds compressed is still not read (CONTRIBUTING).
 - A change to `site/` or `assets/` alone no longer runs the test suite, the mutant searches or the Hypothesis
   shards, none of which reads them, but a seconds-long `site` job (the gate's `site_paths`, neither code nor
-  documentation). It stages the site with the Pages workflow's own step, copied word for word, which fails
-  where a file it copies is missing, then runs `scripts/check_site.py` on the copy: every local link, image
-  and icon, the web manifest's included, resolves; every page keeps one content security policy, in its head
-  as a browser reads it and before anything it loads, that gives no directive twice and allows only `'none'`,
-  `'self'`, `'unsafe-inline'`, hashes, nonces and `data:`, and nothing loads from elsewhere, an SVG image, a
-  `background` or a stylesheet of the copy included, whose local addresses resolve too; no page has a
-  `<base>`; the copy holds no symbolic link or hidden path, which the Pages artifact would publish
-  dereferenced or leave out; and the README's images name
-  files of the tree. It runs on every change but one to documentation alone, and the one required check
-  requires it then. `tests/unit/test_ci_workflows.py` holds the job's staging step to Pages', shows that
-  leaving out any file the step copies fails it, and checks that no test or script names a path of the site
-  but those the site job runs and a few listed with their reasons, beside #23's check for documentation.
+  documentation; a Python file there is code). It stages the site with the Pages workflow's own step, copied
+  word for word, which fails where a file it copies is missing, then runs `scripts/check_site.py` on the copy:
+  every local link, image and icon, the web manifest's included, resolves; every page keeps one content
+  security policy, in its head as a browser reads it and before anything it loads, that gives no directive
+  twice and allows only `'none'`, `'self'`, `'unsafe-inline'`, hashes, nonces and `data:`, and nothing loads
+  from elsewhere, an SVG image, a `background` or a stylesheet of the copy included, whose local addresses
+  resolve too; no page has a `<base>`; the copy holds no symbolic link or hidden path, which the Pages
+  artifact would publish dereferenced or leave out; and the README's images name files of the tree. It runs
+  on every change but one to documentation alone, and the one required check requires it then. Each commit
+  before a pull request's head gets the same steps: in the per-commit job, or, for a commit that changes the
+  site alone, in a `site_commit` job. `tests/unit/test_ci_workflows.py` holds the job's staging step to
+  Pages', shows that leaving out any file the step copies fails it, runs the site jobs' steps as written on a
+  broken README and a page that loads from elsewhere, holds pages.yml's job to deploying what the site job
+  checks, and checks that no test or script names a path of the site but those the site job runs and a few
+  listed with their reasons, beside #23's check for documentation.
 
 ## [0.1.0.dev1] - 2026-10-14
 
