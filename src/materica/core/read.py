@@ -88,7 +88,8 @@ _IMPLIED_REFUSED = ("plus_minus", "set_or_measured", "status")
 _OF_THE_OTHER_KIND: dict[str, tuple[str, ...]] = {"numeric": ("token",), "token": _OPERATING_MEMBERS}
 # The members a review names, a status object's included (`provenance.md` section 2 item 6), and a statistics
 # block's counts (section 3, step 8), which a result writes as integers.
-_REVIEW_MEMBERS = (*get_type_hints(shapes.Review), *get_type_hints(shapes.StatusObject))
+_REVIEW_DEFINES = tuple(get_type_hints(shapes.Review))
+_REVIEW_MEMBERS = (*_REVIEW_DEFINES, *get_type_hints(shapes.StatusObject))
 _COUNTS = ("n_specimens", "n_donors", "n_sources")
 # A constant's statistics: a block, or the status object its row allows in its place.
 _CONSTANT_STATISTICS = get_type_hints(shapes.ConstantField)["statistics"]
@@ -568,12 +569,18 @@ def _review(review: JsonValue) -> JsonObject:
     """`provenance.md` section 2 item 6: a review as found in two cases only, each holding no member one slip
     from a member a review names, a status object holding `not_checked` and no `result`, or an object holding
     no `status` whose `result` is a token the reader knows; any other review reads as `not_checked`, since a
-    review never refuses."""
+    review never refuses. A status object that breaks its shape (section 1 item 5: its `reason` not a string,
+    or a member a review defines beside it, `result` among them) is read for nothing else, so it is another
+    review."""
     not_checked: JsonObject = {"status": "not_checked"}
     if not isinstance(review, dict) or slipped(review, _REVIEW_MEMBERS):
         return not_checked
     if "status" in review:
-        found = "result" not in review and review["status"] == "not_checked"
+        found = (
+            review["status"] == "not_checked"
+            and isinstance(review.get("reason", ""), str)
+            and not any(name in review for name in _REVIEW_DEFINES)
+        )
         return cast(JsonObject, _returned(review, shapes.StatusNotChecked)) if found else not_checked
     if review.get("result") in get_args(shapes.ReviewResult):
         return cast(JsonObject, _returned(review, shapes.Review))

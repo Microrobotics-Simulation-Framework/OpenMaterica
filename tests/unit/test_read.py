@@ -24,9 +24,10 @@ from materica.core.read import ReadRequest, ReadResult, read
 from materica.core.reasons import Reason, merged
 from materica.core.record import RecordStore
 from materica.core.status import worst
-from materica.core.value_shapes import FORM_MEMBERS
+from materica.core.value_shapes import FORM_MEMBERS, an_object
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite
+from tests.spec_sync.schemas import validator
 
 WATER = (
     Path(materica.__file__).parent / "data" / "conformance" / "plain_read" / "inputs" / "water_fixture.json"
@@ -1246,6 +1247,43 @@ def test_a_statistics_block_held_as_a_status_object_is_returned_as_one(held: dic
     statistics row allows. Fuzz target 4 found it returned as an empty block, against the reference model."""
     written = json.loads(json.dumps(read_met(met_field(statistics=held)).to_json()))
     assert written["statistics"] == held
+
+
+RESULT_SCHEMA = validator("read_result.json")
+NOT_CHECKED: JsonValue = {"status": "not_checked"}
+# A review a status object stands for, and what a read returns of it (`provenance.md` section 2 item 6): as
+# found where it keeps its shape (section 1 item 5), else `not_checked`, since a review never refuses.
+NOT_CHECKED_REVIEWS = [
+    pytest.param(
+        {"status": "not_checked", "reason": "r"}, {"status": "not_checked", "reason": "r"}, id="as_found"
+    ),
+    pytest.param(
+        {"status": "not_checked", "reason": "r", "x_note": 1.0},
+        {"status": "not_checked", "reason": "r"},
+        id="an_unknown_member_left_out",
+    ),
+    pytest.param({"status": "not_checked", "reason": 5.0}, NOT_CHECKED, id="a_reason_not_a_string"),
+    pytest.param({"status": "not_checked", "reason": None}, NOT_CHECKED, id="a_reason_null"),
+    pytest.param(
+        {"status": "not_checked", "reason": "r", "result": "reviewed"}, NOT_CHECKED, id="beside_a_result"
+    ),
+    pytest.param(
+        {"status": "not_checked", "reason": "r", "reviewer": "a"}, NOT_CHECKED, id="beside_a_reviewer"
+    ),
+]
+
+
+@pytest.mark.parametrize(("review", "returned"), NOT_CHECKED_REVIEWS)
+def test_a_not_checked_review_is_returned_as_found_only_where_it_keeps_its_shape(
+    review: JsonValue, returned: JsonValue
+) -> None:
+    """S2a-4's review, L5 (a `reason` that is no string was returned as found, and the result then failed
+    `read_result.json`) and L3's M25 (a `reason` kept beside a `result`)."""
+    field = met_field()
+    field["provenance"] = {**an_object(field["provenance"]), "review": review}
+    written = json.loads(json.dumps(read_met(field).to_json()))
+    assert written["provenance"]["review"] == returned
+    assert RESULT_SCHEMA(written) == []
 
 
 def test_a_want_the_constant_cannot_give_keeps_the_conditions_and_labels_but_returns_no_value() -> None:
