@@ -4,6 +4,7 @@
 and `tests/unit/test_ci_workflows.py` holds its jobs and shards to `ci.yml`, with what each pytest command
 selects; no job or step carries on after a failure (`continue-on-error`).
 `pages.yml` deploys `site/` to openmaterica.org on a push to main that touches it.
+`repeat.yml` runs one test many times, each run under a seed of its own, when dispatched by hand (below).
 
 | Job | Runs | When |
 |---|---|---|
@@ -30,3 +31,27 @@ No duration fails a job.
 Every action is pinned to a commit, uv to one version (`UV_VERSION`), and every job of every workflow to the runner
 image `ubuntu-24.04` (`ci.yml` says why, above its jobs); `uv sync --locked` fails on a lock file out of date with
 `pyproject.toml`.
+
+## Repeat runs (`repeat.yml`)
+
+Run by hand alone (`workflow_dispatch`), never on a push or a pull request: one pytest node, a test, a file or a
+directory under `tests/`, run many times in parallel jobs, each run under a seed of its own, to measure how often
+it fails (maintainer, 2026-10-17). `tests/README.md`, "Repeat runs on CI", says how to ask for one and how to read
+its summary. Its inputs: the node; the profile, one of `tests/conftest.py`'s (`dev`, `ci`, `deep`; `ci` by
+default); the jobs, 1 to 20, and the runs in each, 1 to 25; the first seed, 0 to 999999999; the Python, one of
+the test matrix's; and extra pytest arguments, `--shard` and `--property-controls` alone.
+
+| Job | Runs | When |
+|---|---|---|
+| `request` | checks the inputs (`scripts/repeat_runs.py request`, on the runner's Python) and writes them, checked, as its outputs, which the jobs after it read in place of the inputs; then collects the node with the extra arguments, so that a test that does not exist or a value pytest does not list fails before any run starts | every dispatch |
+| `runs` | each job its runs one after another, each under its own seed (`--hypothesis-seed`; job `j` of `r` runs from the first seed `s` takes the seeds `s + (j - 1) r` to `s + j r - 1`), `.hypothesis/` removed before each, as CI's test jobs run pytest; each run's record, with its failing examples, kept 90 days as the artifact `runs-<job>`; fails where any run failed or did not finish | after `request`, the jobs side by side |
+| `summary` | sums every job's records on the run's page: the runs, the failures with their seeds and failing examples, and the failure rate with its exact one-sided 95 % upper bound (`scripts/repeat_runs.py summary`); fails where a run failed or did not finish, a seed has no record, or a job of runs did not succeed | after the runs, whatever their result, once the request was checked |
+
+No input reaches a profile's example count, deadline or health checks: the profile is chosen from
+`tests/conftest.py`'s own, each input reaches a step through its environment alone and is checked before any job
+reads it, and no extra argument but the two listed is taken. A job of runs starts no run, and interrupts the one
+running (`uv run timeout --signal=INT`, as `ci.yml`'s jobs do), three minutes before its timeout: 60 minutes at
+`dev`, 120 at `ci`, 360 at `deep`. The workflow reads the repository alone (`contents: read`), reads no secret,
+and restores the uv cache CI saved but saves none. A dispatch waits behind a running one of the same inputs on the
+same ref, whose seeds it would repeat; one of other inputs runs beside it, and none is cancelled.
+`tests/unit/test_ci_workflows.py` holds it to each of these, running its steps as written.

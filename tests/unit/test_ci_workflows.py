@@ -25,7 +25,7 @@ from typing import Any, cast
 import pytest
 import yaml
 
-from scripts import check_confidential
+from scripts import check_confidential, repeat_runs
 from tests.unit.throwaway_git import throwaway_repository
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -280,15 +280,21 @@ GITHUB_BASH = ("bash", "--noprofile", "--norc", "-eo", "pipefail")
 
 
 def run_step(
-    found: dict[str, Any], context: Mapping[str, object], cwd: Path
+    found: dict[str, Any],
+    context: Mapping[str, object],
+    cwd: Path,
+    base: Mapping[str, str] = os.environ,
+    scratch: Path | None = None,
 ) -> tuple[int, dict[str, str], str]:
-    """The step's script run in `cwd` as GitHub runs it, from a file, with `GITHUB_BASH`: its exit status,
-    what it wrote to `GITHUB_OUTPUT` (a file beside `cwd`), and what it printed."""
-    script = cwd.parent / f"{cwd.name}.step.sh"
+    """The step's script run in `cwd` as GitHub runs it, from a file, with `GITHUB_BASH`, in the environment
+    `base` with the step's own: its exit status, what it wrote to `GITHUB_OUTPUT`, and what it printed. The
+    script and the outputs' file go in `scratch`, or beside `cwd`."""
+    scratch = cwd.parent if scratch is None else scratch
+    script = scratch / f"{cwd.name}.step.sh"
     script.write_text(rendered(found["run"], context), encoding="utf-8")
-    outputs = cwd.parent / f"{cwd.name}.github_output"
+    outputs = scratch / f"{cwd.name}.github_output"
     outputs.write_text("", encoding="utf-8")
-    environment = dict(os.environ, GITHUB_OUTPUT=str(outputs))
+    environment = dict(base, GITHUB_OUTPUT=str(outputs))
     environment |= {name: rendered(str(value), context) for name, value in found.get("env", {}).items()}
     ran = subprocess.run(
         [*GITHUB_BASH, str(script)],
@@ -2962,7 +2968,9 @@ NUMBERS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "ei
 
 
 def table_problems(readme: str, ci: Workflow) -> list[str]:
-    """Where the workflows README's table names other jobs than `ci.yml` has, or other Hypothesis shards."""
+    """Where the workflows README's table, before its first section, names other jobs than `ci.yml` has, or
+    other Hypothesis shards."""
+    readme = readme.partition("\n## ")[0]
     rows = {found[1]: found[2] for found in re.finditer(r"^\| `([\w-]+)` \|(.*)$", readme, re.M)}
     problems: list[str] = []
     if sorted(rows) != sorted(ci["jobs"]):
@@ -2996,3 +3004,939 @@ def test_the_table_check_can_fail(old: str, new: str, problem: str) -> None:
     assert readme.count(old) == 1
     found = table_problems(readme.replace(old, new), workflow("ci.yml"))
     assert any(problem in line for line in found), found
+
+
+# The repeat workflow, `repeat.yml`: one pytest node run many times, each run under a seed of its own, when
+# dispatched by hand. Its steps run here as written: the request's check in a checkout holding a copy of its
+# script, the collect step on this repository, and the runs and the summary with a stub `uv` in place of
+# pytest, which records what each run was given and fails the seeds it is told to.
+REPEAT = "repeat.yml"
+CHECK_STEP, COLLECT_STEP = "The inputs, checked", "The node collects a test"
+RUNS_STEP, KEEP_STEP, SUM_STEP = "Run the node under each seed", "Keep the records", "Sum the runs"
+REPEAT_SCRIPT = REPOSITORY / "scripts" / "repeat_runs.py"
+# A request as a dispatch gives it, each input as text, and its outputs once the request job has checked it.
+REQUESTED = {
+    "node": "tests/property/test_sample.py::test_x[a b]",
+    "profile": "ci",
+    "python": "3.15",
+    "jobs": "10",
+    "runs": "20",
+    "first_seed": "1",
+    "extra": "--shard records --property-controls=none",
+}
+CHECKED = REQUESTED | {
+    "extra": "--shard=records --property-controls=none",
+    "matrix": json.dumps(list(range(1, 11))),
+}
+# Where an input may be read but in the check step's environment: the run's name and the concurrency group,
+# which no shell reads.
+INPUTS_READ_AT = (("run-name",), ("concurrency", "group"))
+INPUT = re.compile(r"\$\{\{[^}]*\binputs\.")
+# The checked profile, as the request job's steps and the jobs after it read it.
+PROFILE_SOURCES = ("${{ steps.checked.outputs.profile }}", "${{ needs.request.outputs.profile }}")
+
+
+def dispatch(found: Workflow) -> dict[str, Any]:
+    """The workflow's triggers: PyYAML reads the key `on` as True."""
+    triggers = cast(dict[object, Any], found).get(True)
+    return cast(dict[str, Any], triggers) if isinstance(triggers, dict) else {}
+
+
+def repeat_context(outputs: Mapping[str, str]) -> dict[str, object]:
+    """The context of a step after the request's check: the dispatch's inputs, which every job can read, and
+    the checked request as the request job's own steps read it and as the jobs after it do."""
+    context: dict[str, object] = {f"inputs.{name}": value for name, value in REQUESTED.items()}
+    for name, value in outputs.items():
+        context[f"steps.checked.outputs.{name}"] = context[f"needs.request.outputs.{name}"] = value
+    return context
+
+
+def runner(directory: Path, uv: str) -> dict[str, str]:
+    """An environment as a runner's: `python3` the Python running these tests and `uv` a Python program,
+    first on the path; `RUNNER_TEMP`; and no variable of pytest's, Hypothesis's or the profiles' from this
+    run's own."""
+    tools = directory / "bin"
+    tools.mkdir(parents=True, exist_ok=True)
+    (directory / "uv.py").write_text(uv, encoding="utf-8")
+    python = shlex.quote(sys.executable)
+    for name, command in (("python3", python), ("uv", f"{python} {shlex.quote(str(directory / 'uv.py'))}")):
+        (tools / name).write_text(f'#!/bin/sh\nexec {command} "$@"\n', encoding="utf-8")
+        (tools / name).chmod(0o755)
+    (directory / "runner").mkdir(exist_ok=True)
+    own = ("PYTEST_", "HYPOTHESIS_", "MATERICA_")
+    environment = {name: value for name, value in os.environ.items() if not name.startswith(own)}
+    return environment | {
+        "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}",
+        "RUNNER_TEMP": str(directory / "runner"),
+        "STUB_CALLS": str(directory / "calls.jsonl"),
+    }
+
+
+def checkout(directory: Path) -> Path:
+    """A checkout holding the repeat script, a test file, and a module outside tests/."""
+    tree = directory / "tree"
+    (tree / "scripts").mkdir(parents=True, exist_ok=True)
+    shutil.copy(REPEAT_SCRIPT, tree / "scripts" / "repeat_runs.py")
+    (tree / "tests" / "property").mkdir(parents=True, exist_ok=True)
+    (tree / "tests" / "property" / "test_sample.py").write_text("", encoding="utf-8")
+    (tree / "src").mkdir(exist_ok=True)
+    (tree / "src" / "module.py").write_text("", encoding="utf-8")
+    return tree
+
+
+def edited(path: Path, old: str, new: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    assert text.count(old) == 1, f"{old!r} in {path.name}"
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def triggers_problems(repeat: Workflow) -> list[str]:
+    """Where the repeat workflow runs on anything but a dispatch by hand."""
+    triggers = cast(dict[object, object], repeat).get(True)
+    if isinstance(triggers, dict) and list(cast(dict[str, object], triggers)) == ["workflow_dispatch"]:
+        return []
+    return [f"repeat.yml runs on {triggers!r}"]
+
+
+def test_the_repeat_workflow_runs_on_a_dispatch_by_hand_alone() -> None:
+    assert triggers_problems(workflow(REPEAT)) == []
+
+
+@pytest.mark.parametrize(
+    ("triggers", "problem"),
+    [
+        ({"workflow_dispatch": {}, "push": {"branches": ["main"]}}, "runs on {'workflow_dispatch'"),
+        ({"workflow_dispatch": {}, "pull_request_target": {}}, "'pull_request_target'"),
+        ({"pull_request": {}}, "runs on {'pull_request': {}}"),
+        (["workflow_dispatch", "workflow_call"], "runs on ['workflow_dispatch', 'workflow_call']"),
+    ],
+    ids=["a-push", "a-pull-request-target", "a-pull-request", "a-call"],
+)
+def test_the_trigger_check_can_fail(triggers: object, problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    cast(dict[object, object], repeat)[True] = triggers
+    assert any(problem in line for line in triggers_problems(repeat)), triggers_problems(repeat)
+
+
+def safety_problems(repeat: Workflow, others: dict[str, Workflow]) -> list[str]:
+    """Where the repeat workflow could write to the repository, read a secret or the token, keep the token in
+    its checkout, write a cache another run reads, or use an action not pinned to a commit as the other
+    workflows pin it, or another uv than ci.yml's."""
+    problems: list[str] = []
+    if repeat.get("permissions") != {"contents": "read"}:
+        problems.append(f"repeat.yml has the permissions {repeat.get('permissions')!r}")
+    pinned = {
+        found["uses"]
+        for name, loaded in others.items()
+        if name != REPEAT
+        for job in loaded["jobs"].values()
+        for found in job.get("steps", [])
+        if "uses" in found
+    }
+    for job_id, job in repeat["jobs"].items():
+        if "permissions" in job:
+            problems.append(f"{job_id} sets permissions of its own")
+        for found in job.get("steps", []):
+            action, given = found.get("uses"), found.get("with", {})
+            if action is None:
+                continue
+            if not re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40}", action) or action not in pinned:
+                problems.append(
+                    f"{job_id} uses {action}, not pinned to a commit as the other workflows pin it"
+                )
+            if action.startswith("actions/cache"):
+                problems.append(f"{job_id} uses {action}")
+            if action.startswith("astral-sh/setup-uv@") and given.get("save-cache") is not False:
+                problems.append(f"{job_id} saves the uv cache, which ci.yml restores")
+            if action.startswith("actions/checkout@") and given.get("persist-credentials") is not False:
+                problems.append(f"{job_id} keeps the token in its checkout")
+    text = json.dumps(repeat, default=str)
+    problems += [f"repeat.yml reads {found}" for found in re.findall(r"\b(?:secrets|github\.token)\b", text)]
+    if repeat.get("env", {}).get("UV_VERSION") != others["ci.yml"]["env"]["UV_VERSION"]:
+        problems.append(f"repeat.yml's uv is {repeat.get('env', {}).get('UV_VERSION')!r}, not ci.yml's")
+    return problems
+
+
+def test_the_repeat_workflow_reads_and_writes_nothing_beyond_its_own_run() -> None:
+    assert safety_problems(workflow(REPEAT), workflows()) == []
+
+
+def written_permissions(repeat: Workflow) -> None:
+    repeat["permissions"] = {"contents": "write"}
+
+
+def a_jobs_own_permissions(repeat: Workflow) -> None:
+    repeat["jobs"]["summary"]["permissions"] = {"actions": "write"}
+
+
+def a_secret(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], RUNS_STEP)["env"]["TOKEN"] = "${{ secrets.CONFIDENTIAL_SCAN_KEY }}"
+
+
+def the_token(repeat: Workflow) -> None:
+    step(repeat["jobs"]["summary"], SUM_STEP)["env"]["TOKEN"] = "${{ github.token }}"
+
+
+def a_cache_saved(repeat: Workflow) -> None:
+    repeat["jobs"]["runs"]["steps"].append({"uses": "actions/cache/save@v6", "with": {"path": ".hypothesis"}})
+
+
+def the_uv_cache_saved(repeat: Workflow) -> None:
+    del repeat["jobs"]["runs"]["steps"][1]["with"]["save-cache"]
+
+
+def the_token_kept(repeat: Workflow) -> None:
+    repeat["jobs"]["request"]["steps"][0]["with"]["persist-credentials"] = True
+
+
+def an_action_by_its_tag(repeat: Workflow) -> None:
+    repeat["jobs"]["summary"]["steps"][0]["uses"] = "actions/checkout@v7"
+
+
+def an_action_pinned_elsewhere(repeat: Workflow) -> None:
+    repeat["jobs"]["summary"]["steps"][0]["uses"] = "actions/checkout@" + "0" * 40
+
+
+def another_uv(repeat: Workflow) -> None:
+    repeat["env"]["UV_VERSION"] = "0.12.0"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (written_permissions, "has the permissions {'contents': 'write'}"),
+        (a_jobs_own_permissions, "summary sets permissions of its own"),
+        (a_secret, "reads secrets"),
+        (the_token, "reads github.token"),
+        (a_cache_saved, "runs uses actions/cache/save@v6"),
+        (the_uv_cache_saved, "runs saves the uv cache"),
+        (the_token_kept, "request keeps the token in its checkout"),
+        (an_action_by_its_tag, "summary uses actions/checkout@v7, not pinned to a commit"),
+        (
+            an_action_pinned_elsewhere,
+            "summary uses actions/checkout@0000000000000000000000000000000000000000,",
+        ),
+        (another_uv, "repeat.yml's uv is '0.12.0'"),
+    ],
+)
+def test_the_safety_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat)
+    found = safety_problems(repeat, workflows())
+    assert any(problem in line for line in found), found
+
+
+# A dispatch of the request above on one ref, and those that differ from it in one thing each.
+DISPATCHED = {"github.ref": "refs/heads/a", "github.run_id": "1"} | {
+    f"inputs.{name}": value for name, value in REQUESTED.items()
+}
+DIFFERING = {
+    "github.ref": "refs/heads/b",
+    "inputs.node": "tests/property",
+    "inputs.profile": "deep",
+    "inputs.python": "3.11",
+    "inputs.jobs": "3",
+    "inputs.runs": "4",
+    "inputs.first_seed": "81",
+    "inputs.extra": "",
+}
+
+
+def repeat_concurrency_problems(repeat: Workflow) -> list[str]:
+    """Where two dispatches of one request on one ref, whose runs share their seeds, could run at once, or a
+    dispatch could cancel, replace or wait behind another request."""
+    concurrency = repeat.get("concurrency")
+    if not isinstance(concurrency, dict):
+        return ["repeat.yml sets no concurrency"]
+    settings = cast(dict[str, object], concurrency)
+    context = DISPATCHED | {"github.workflow": repeat["name"]}
+    problems: list[str] = []
+    if truthy(setting(settings.get("cancel-in-progress", False), context)):
+        problems.append("a dispatch cancels the one running in its group")
+    group = setting(settings.get("group"), context)
+    if setting(settings.get("group"), context | {"github.run_id": "2"}) != group:
+        problems.append("two dispatches of one request on one ref do not share a group")
+    for key, value in DIFFERING.items():
+        if setting(settings.get("group"), context | {key: value}) == group:
+            problems.append(f"a dispatch of another {key} shares the group {group!r}")
+    return problems
+
+
+def test_a_dispatch_waits_only_behind_one_of_the_same_request() -> None:
+    assert repeat_concurrency_problems(workflow(REPEAT)) == []
+
+
+@pytest.mark.parametrize(
+    ("concurrency", "problem"),
+    [
+        (None, "sets no concurrency"),
+        ({"group": "${{ github.workflow }}-${{ github.ref }}"}, "a dispatch of another inputs.node shares"),
+        ({"group": "${{ github.workflow }}-${{ github.run_id }}"}, "of one request on one ref do not share"),
+        ({"group": "${{ github.workflow }}", "cancel-in-progress": True}, "cancels the one running"),
+    ],
+    ids=["none", "a-group-per-ref", "a-group-per-run", "cancelling"],
+)
+def test_the_repeat_concurrency_check_can_fail(concurrency: object, problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    repeat["concurrency"] = concurrency
+    found = repeat_concurrency_problems(repeat)
+    assert any(problem in line for line in found), found
+
+
+# Inputs the request's check takes and inputs it refuses, each in place of the request's own. The node holding
+# a command and the counts written for bash's arithmetic, which would run the command inside `a[...]`, show
+# that the step hands each input to the script whole, and no shell reads it.
+TAKEN = [
+    ("node", "tests"),
+    ("node", "tests/property/test_sample.py::test_x[';touch ran;']"),
+    ("profile", "deep"),
+    ("python", "3.11"),
+    ("jobs", "1"),
+    ("jobs", "20"),
+    ("runs", "25"),
+    ("first_seed", "0"),
+    ("first_seed", "999999999"),
+    ("extra", ""),
+]
+REFUSED = [
+    ("node", "src/module.py"),
+    ("node", "tests/../src/module.py"),
+    ("node", "tests/property/test_missing.py"),
+    ("node", "tests/property/test_sample.py\nmatrix=[1]"),
+    ("profile", "default"),
+    ("python", "3.10"),
+    ("jobs", "0"),
+    ("jobs", "21"),
+    ("jobs", "010"),
+    ("jobs", "a[$(touch ran)]"),
+    ("runs", "26"),
+    ("first_seed", "-1"),
+    ("first_seed", "1000000000"),
+    ("extra", "--hypothesis-profile=dev"),
+    ("extra", "--hypothesis-seed=5"),
+    ("extra", "-o addopts="),
+    ("extra", "-p no:hypothesispytest"),
+]
+
+
+def request_problems(repeat: Workflow, directory: Path) -> list[str]:
+    """Where the request job's check, run on the checkout in `directory`, refuses an input it must take, takes
+    one it must refuse, writes other outputs than the request checked, or lets an input run a command."""
+    tree = directory / "tree"
+    environment = runner(directory, "")
+    check = step(repeat["jobs"]["request"], CHECK_STEP)
+    problems: list[str] = []
+    cases = [(name, value, True) for name, value in TAKEN] + [(name, value, False) for name, value in REFUSED]
+    for name, value, taken in cases:
+        inputs = {f"inputs.{key}": text for key, text in (REQUESTED | {name: value}).items()}
+        status, outputs, _ = run_step(check, inputs, tree, base=environment, scratch=directory)
+        if (tree / "ran").exists():
+            problems.append(f"the {name} {value!r} ran a command")
+            (tree / "ran").unlink()
+        if taken and status != 0:
+            problems.append(f"the check refuses the {name} {value!r}")
+        if not taken and (status == 0 or outputs):
+            problems.append(f"the check takes the {name} {value!r}")
+    inputs = {f"inputs.{key}": text for key, text in REQUESTED.items()}
+    status, outputs, _ = run_step(check, inputs, tree, base=environment, scratch=directory)
+    if (status, outputs) != (0, CHECKED):
+        problems.append(f"the check of the request exits {status} and writes {outputs}, not {CHECKED}")
+    return problems
+
+
+def test_the_request_job_refuses_each_input_out_of_bounds(tmp_path: Path) -> None:
+    checkout(tmp_path)
+    assert request_problems(workflow(REPEAT), tmp_path) == []
+
+
+def a_bound_raised(repeat: Workflow, tree: Path) -> None:
+    edited(tree / "scripts" / "repeat_runs.py", "MAX_JOBS = 20\n", "MAX_JOBS = 200\n")
+
+
+def a_hypothesis_option_listed(repeat: Workflow, tree: Path) -> None:
+    edited(
+        tree / "scripts" / "repeat_runs.py",
+        'OPTIONS = {"',
+        'OPTIONS = {"--hypothesis-profile": re.compile(r"\\w+"), "',
+    )
+
+
+def the_refusal_ignored(repeat: Workflow, tree: Path) -> None:
+    step(repeat["jobs"]["request"], CHECK_STEP)["run"] += " || true"
+
+
+def a_count_in_bash_arithmetic(repeat: Workflow, tree: Path) -> None:
+    check = step(repeat["jobs"]["request"], CHECK_STEP)
+    check["run"] = 'echo "jobs $((JOBS))"\n' + check["run"]
+
+
+def an_input_in_the_script(repeat: Workflow, tree: Path) -> None:
+    check = step(repeat["jobs"]["request"], CHECK_STEP)
+    check["run"] = "NODE='${{ inputs.node }}' " + check["run"]
+
+
+def the_check_left_out(repeat: Workflow, tree: Path) -> None:
+    step(repeat["jobs"]["request"], CHECK_STEP)["run"] = "true"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_bound_raised, "the check takes the jobs '21'"),
+        (a_hypothesis_option_listed, "the check takes the extra '--hypothesis-profile=dev'"),
+        (the_refusal_ignored, "the check takes the node 'src/module.py'"),
+        (a_count_in_bash_arithmetic, "the jobs 'a[$(touch ran)]' ran a command"),
+        (
+            an_input_in_the_script,
+            "the node \"tests/property/test_sample.py::test_x[';touch ran;']\" ran a command",
+        ),
+        (the_check_left_out, "the check of the request exits 0 and writes {}"),
+    ],
+)
+def test_the_request_check_can_fail(
+    tmp_path: Path, fault: Callable[[Workflow, Path], None], problem: str
+) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat, checkout(tmp_path))
+    found = request_problems(repeat, tmp_path)
+    assert any(problem in line for line in found), found
+
+
+# Nodes and extra arguments the request's check takes, which pytest takes or refuses when the request job
+# collects the node in this repository: a test that does not exist, or a shard's name pytest does not list.
+COLLECTED = [
+    ("tests/unit/test_repeat_runs.py::test_with_every_run_failed_the_bound_is_one", "", True),
+    ("tests/unit/test_repeat_runs.py::test_no_such_test", "", False),
+    ("tests/unit/test_repeat_runs.py", "--shard=no_such_shard", False),
+]
+# A `uv` whose `uv run` runs a module of the Python running these tests.
+UV_RUN = """
+import os, sys
+assert sys.argv[1] == "run"
+os.execv(sys.executable, [sys.executable, "-m", *sys.argv[2:]])
+"""
+
+
+def collect_problems(repeat: Workflow, directory: Path, cases: list[tuple[str, str, bool]]) -> list[str]:
+    """Where the request job's collect step, run on this repository, takes a node pytest refuses, or refuses
+    one it takes."""
+    environment = runner(directory, UV_RUN)
+    collect = step(repeat["jobs"]["request"], COLLECT_STEP)
+    problems: list[str] = []
+    for node, extra, taken in cases:
+        context = repeat_context(CHECKED | {"node": node, "extra": extra})
+        status, _, printed = run_step(collect, context, REPOSITORY, base=environment, scratch=directory)
+        if (status == 0) != taken:
+            verb = "refuses" if taken else "takes"
+            problems.append(f"the collect step {verb} {node!r} with {extra!r}: {printed[-400:]}")
+    return problems
+
+
+def test_the_request_job_refuses_a_node_pytest_cannot_collect(tmp_path: Path) -> None:
+    assert collect_problems(workflow(REPEAT), tmp_path, COLLECTED) == []
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        (
+            "  exit 1\n",
+            "  exit 0\n",
+            "the collect step takes 'tests/unit/test_repeat_runs.py::test_no_such_test'",
+        ),
+        (' "${extra[@]}")', ")", "takes 'tests/unit/test_repeat_runs.py' with '--shard=no_such_shard'"),
+    ],
+    ids=["a-failure-passed", "the-extra-arguments-left-out"],
+)
+def test_the_collect_check_can_fail(tmp_path: Path, old: str, new: str, problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    collect = step(repeat["jobs"]["request"], COLLECT_STEP)
+    assert collect["run"].count(old) == 1
+    collect["run"] = collect["run"].replace(old, new)
+    found = collect_problems(repeat, tmp_path, [case for case in COLLECTED if not case[2]])
+    assert any(problem in line for line in found), found
+
+
+# A `uv` that stands for `uv run ...` of one run: it records its arguments, the profile, any variable of
+# pytest's or Hypothesis's, and whether the run found an example database; writes one, as a run does; writes a
+# JUnit report of one test, failing with a failing example on the seeds `STUB_FAILING` lists; and exits as
+# pytest would.
+STUB_UV = """
+import json, os, sys
+from pathlib import Path
+
+arguments = sys.argv[1:]
+given = dict(word.partition("=")[::2] for word in arguments if word.startswith("--"))
+with open(os.environ["STUB_CALLS"], "a", encoding="utf-8") as calls:
+    record = {
+        "arguments": arguments,
+        "profile": os.environ.get("MATERICA_HYPOTHESIS_PROFILE"),
+        "environment": sorted(name for name in os.environ if name.startswith(("PYTEST_", "HYPOTHESIS_"))),
+        "database": Path(".hypothesis").exists(),
+    }
+    print(json.dumps(record), file=calls)
+Path(".hypothesis", "examples").mkdir(parents=True, exist_ok=True)
+seed = given.get("--hypothesis-seed", "")
+failing = seed in os.environ.get("STUB_FAILING", "").split()
+failure = f"Failing test case: test_y(\\n    x={seed},\\n)\\n\\n@reproduce_failure('6', b'AA')"
+if "--junitxml" in given:
+    Path(given["--junitxml"]).write_text(
+        '<testsuites><testsuite><testcase classname="tests.property.test_x" name="test_y" '
+        'file="tests/property/test_x.py">'
+        + (f'<failure message="assert">{failure}</failure>' if failing else "")
+        + "</testcase></testsuite></testsuites>",
+        encoding="utf-8",
+    )
+sys.exit(1 if failing else 0)
+"""
+# The request a job of runs is given: three runs from seed 1.
+RUN_OUTPUTS = CHECKED | {"runs": "3"}
+
+
+def run_the_runs(
+    repeat: Workflow, directory: Path, failing: str = "", **overrides: str
+) -> tuple[int, list[dict[str, Any]], list[dict[str, Any]]]:
+    """The runs step of job 1, with its job's environment and `overrides`, run as written on a checkout in
+    `directory` with the stub `uv`: its status, each call of `uv`, and the records the step kept."""
+    tree = checkout(directory)
+    environment = runner(directory, STUB_UV) | {"STUB_FAILING": failing}
+    job = repeat["jobs"]["runs"]
+    found = step(job, RUNS_STEP)
+    found = dict(found, env=job.get("env", {}) | found.get("env", {}) | overrides)
+    context = repeat_context(RUN_OUTPUTS) | {"matrix.job": 1}
+    status, _, _ = run_step(found, context, tree, base=environment, scratch=directory)
+
+    def lines(path: Path) -> list[dict[str, Any]]:
+        return [json.loads(line) for line in path.read_text("utf-8").splitlines()] if path.exists() else []
+
+    return status, lines(directory / "calls.jsonl"), lines(directory / "runner" / "runs" / "results.jsonl")
+
+
+def run_words(directory: Path, seed: int) -> list[str]:
+    """The words of a run of seed `seed` after `uv run timeout --signal=INT <seconds>`."""
+    return [
+        *("pytest", "-n", "auto", "--dist", "worksteal", RUN_OUTPUTS["node"], *RUN_OUTPUTS["extra"].split()),
+        f"--hypothesis-seed={seed}",
+        f"--junitxml={directory / 'runner' / 'runs' / f'{seed}.xml'}",
+    ]
+
+
+def conftest_profiles() -> list[str]:
+    """The profiles tests/conftest.py registers: the keys of its `EXAMPLES`."""
+    module = ast.parse((REPOSITORY / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    [examples] = [
+        node.value
+        for node in module.body
+        if isinstance(node, ast.Assign) and [ast.unparse(target) for target in node.targets] == ["EXAMPLES"]
+    ]
+    return list(ast.literal_eval(examples))
+
+
+def places(value: object, at: tuple[str, ...] = ()) -> list[tuple[tuple[str, ...], str]]:
+    """Each string of a parsed workflow, with the keys and indexes that lead to it."""
+    if isinstance(value, dict):
+        mapping = cast(dict[object, object], value)
+        return [found for key, item in mapping.items() for found in places(item, (*at, str(key)))]
+    if isinstance(value, list):
+        return [
+            found
+            for index, item in enumerate(cast(list[object], value))
+            for found in places(item, (*at, str(index)))
+        ]
+    return [(at, value)] if isinstance(value, str) else []
+
+
+def reach_problems(repeat: Workflow, ci: Workflow, directory: Path) -> list[str]:
+    """Where an input could reach pytest's options or the Hypothesis settings but as the request's check
+    passed it: an input read anywhere but the check step's environment, the run's name and the concurrency
+    group; an expression in a script, which GitHub writes into its text; a variable of pytest's or
+    Hypothesis's; a pytest step without the checked profile, or a profile from anything else; profiles or
+    Pythons other than the repository's own; or a run given other words than its node, the extra arguments
+    and its seed, run as written with the stub `uv`."""
+    problems: list[str] = []
+    check = str(repeat["jobs"]["request"]["steps"].index(step(repeat["jobs"]["request"], CHECK_STEP)))
+    for at, text in places(repeat):
+        if (
+            INPUT.search(text)
+            and at not in INPUTS_READ_AT
+            and at[:5] != ("jobs", "request", "steps", check, "env")
+        ):
+            problems.append(f"an input is read at {'.'.join(at)}")
+        if at[-1] == "MATERICA_HYPOTHESIS_PROFILE" and text not in PROFILE_SOURCES:
+            problems.append(f"the profile at {'.'.join(at)} is {text!r}")
+    problems += [
+        f"repeat.yml sets {name}"
+        for name in map(str, keys(repeat))
+        if name.startswith(("PYTEST_", "HYPOTHESIS_"))
+    ]
+    for job_id, job in repeat["jobs"].items():
+        for found in job.get("steps", []):
+            script = str(found.get("run", ""))
+            if "${{" in script:
+                problems.append(f"a script of {job_id} holds an expression")
+            if re.search(r"\b(?:PYTEST|HYPOTHESIS)_\w+=", script):
+                problems.append(f"a script of {job_id} sets a variable of pytest's or Hypothesis's")
+            environment = job.get("env", {}) | found.get("env", {})
+            if "pytest" in script and environment.get("MATERICA_HYPOTHESIS_PROFILE") not in PROFILE_SOURCES:
+                problems.append(f"a pytest step of {job_id} runs without the checked profile")
+    inputs = dispatch(repeat)["workflow_dispatch"]["inputs"]
+    profiles = [inputs["profile"]["options"], list(repeat_runs.PROFILES), conftest_profiles()]
+    if any(found != profiles[0] for found in profiles):
+        problems.append(f"the workflow's, the script's and tests/conftest.py's profiles are {profiles}")
+    pythons = [
+        inputs["python"]["options"],
+        list(repeat_runs.PYTHONS),
+        ci["jobs"]["tests"]["strategy"]["matrix"]["python"],
+    ]
+    if any(found != pythons[0] for found in pythons):
+        problems.append(f"the workflow's, the script's and ci.yml's test matrix's Pythons are {pythons}")
+    _, calls, _ = run_the_runs(repeat, directory)
+    for seed, call in enumerate(calls, 1):
+        if call["arguments"][4:] != run_words(directory, seed) or call["environment"]:
+            problems.append(
+                f"the run of seed {seed} is given {call['arguments'][4:]} and {call['environment']}"
+            )
+        if call["profile"] != RUN_OUTPUTS["profile"]:
+            problems.append(f"the run of seed {seed} has the profile {call['profile']!r}")
+    if len(calls) != 3:
+        problems.append(f"{len(calls)} runs of 3")
+    return problems
+
+
+def test_no_input_reaches_the_hypothesis_settings_or_pytests_options(tmp_path: Path) -> None:
+    assert reach_problems(workflow(REPEAT), workflow("ci.yml"), tmp_path) == []
+
+
+def the_profile_from_the_input(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], RUNS_STEP)["env"]["MATERICA_HYPOTHESIS_PROFILE"] = "${{ inputs.profile }}"
+
+
+def the_node_from_the_input(repeat: Workflow) -> None:
+    step(repeat["jobs"]["request"], COLLECT_STEP)["env"]["NODE"] = "${{ inputs.node }}"
+
+
+def no_profile(repeat: Workflow) -> None:
+    del step(repeat["jobs"]["runs"], RUNS_STEP)["env"]["MATERICA_HYPOTHESIS_PROFILE"]
+
+
+def options_from_the_workflow_env(repeat: Workflow) -> None:
+    repeat["env"]["PYTEST_ADDOPTS"] = "-p no:hypothesispytest"
+
+
+def options_exported_in_the_loop(repeat: Workflow) -> None:
+    runs = step(repeat["jobs"]["runs"], RUNS_STEP)
+    runs["run"] = "export PYTEST_ADDOPTS=--hypothesis-profile=dev\n" + runs["run"]
+
+
+def a_profile_in_the_loop(repeat: Workflow) -> None:
+    runs = step(repeat["jobs"]["runs"], RUNS_STEP)
+    runs["run"] = runs["run"].replace(
+        '--hypothesis-seed="$seed"', '--hypothesis-profile=dev --hypothesis-seed="$seed"'
+    )
+
+
+def an_expression_in_the_loop(repeat: Workflow) -> None:
+    runs = step(repeat["jobs"]["runs"], RUNS_STEP)
+    runs["run"] = runs["run"].replace('"$NODE"', '"${{ needs.request.outputs.node }}"')
+
+
+def a_profile_of_its_own(repeat: Workflow) -> None:
+    dispatch(repeat)["workflow_dispatch"]["inputs"]["profile"]["options"].append("quick")
+
+
+def another_python(repeat: Workflow) -> None:
+    dispatch(repeat)["workflow_dispatch"]["inputs"]["python"]["options"].insert(0, "3.10")
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (the_profile_from_the_input, "an input is read at jobs.runs.steps.3.env.MATERICA_HYPOTHESIS_PROFILE"),
+        (the_node_from_the_input, "an input is read at jobs.request.steps.4.env.NODE"),
+        (no_profile, "the run of seed 1 has the profile None"),
+        (options_from_the_workflow_env, "repeat.yml sets PYTEST_ADDOPTS"),
+        (options_exported_in_the_loop, "a script of runs sets a variable"),
+        (a_profile_in_the_loop, "the run of seed 1 is given"),
+        (an_expression_in_the_loop, "a script of runs holds an expression"),
+        (a_profile_of_its_own, "the workflow's, the script's and tests/conftest.py's profiles are"),
+        (another_python, "Pythons are [['3.10'"),
+    ],
+)
+def test_the_reach_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], None], problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat)
+    found = reach_problems(repeat, workflow("ci.yml"), tmp_path)
+    assert any(problem in line for line in found), found
+
+
+def repeat_timeout_problems(repeat: Workflow, directory: Path) -> list[str]:
+    """Where a job has no timeout; the runs' timeout, at some profile, is not the minutes their interrupt is
+    set from, or leaves no room for it; or, run as written with the stub `uv`, a run does not start under
+    `uv run timeout --signal=INT` until three minutes before the job's timeout, counted from the step's start,
+    or one starts with no time left."""
+    problems = [
+        f"{job_id} has no timeout" for job_id, job in repeat["jobs"].items() if "timeout-minutes" not in job
+    ]
+    runs = repeat["jobs"]["runs"]
+    for profile in repeat_runs.PROFILES:
+        context = {"needs.request.outputs.profile": profile}
+        limit = setting(runs.get("timeout-minutes"), context)
+        minutes = setting(runs.get("env", {}).get("JOB_MINUTES"), context)
+        if not equal(limit, minutes) or as_number(limit) <= 3:
+            problems.append(
+                f"at {profile} the runs time out at {limit!r} minutes, their JOB_MINUTES are {minutes!r}"
+            )
+    _, calls, _ = run_the_runs(repeat, directory / "ten", JOB_MINUTES="10")
+    for call in calls:
+        head = call["arguments"][:5]
+        left = re.fullmatch(r"(\d+)s", head[3]) if len(head) == 5 else None
+        if head[:3] != ["run", "timeout", "--signal=INT"] or head[4:] != ["pytest"] or not left:
+            problems.append(f"a run starts as {head}, not under `uv run timeout --signal=INT <seconds>`")
+        elif not 7 * 60 - 30 <= int(left[1]) <= 7 * 60:
+            problems.append(f"a run of a job of 10 minutes is interrupted after {left[1]} s, not about 420")
+    if len(calls) != 3:
+        problems.append(f"{len(calls)} runs of 3 started in a job of 10 minutes")
+    status, calls, _ = run_the_runs(repeat, directory / "three", JOB_MINUTES="3")
+    if calls or status == 0:
+        problems.append(f"in a job of 3 minutes {len(calls)} runs started and the step exited {status}")
+    return problems
+
+
+def test_each_run_is_interrupted_three_minutes_before_its_job_times_out(tmp_path: Path) -> None:
+    assert repeat_timeout_problems(workflow(REPEAT), tmp_path) == []
+
+
+def interrupted_by_term(repeat: Workflow) -> None:
+    edited_step(repeat, "--signal=INT", "--signal=TERM")
+
+
+def no_room_for_the_interrupt(repeat: Workflow) -> None:
+    edited_step(repeat, "(JOB_MINUTES - 3)", "JOB_MINUTES")
+
+
+def uv_under_timeout(repeat: Workflow) -> None:
+    edited_step(
+        repeat,
+        'uv run timeout --signal=INT "${left}s" pytest',
+        'timeout --signal=INT "${left}s" uv run pytest',
+    )
+
+
+def no_deadline(repeat: Workflow) -> None:
+    edited_step(repeat, 'if [ "$left" -le 0 ]; then', "if false; then")
+
+
+def minutes_of_another_profile(repeat: Workflow) -> None:
+    runs = repeat["jobs"]["runs"]
+    runs["env"]["JOB_MINUTES"] = runs["env"]["JOB_MINUTES"].replace("'deep' && 360", "'deep' && 350")
+
+
+def a_summary_without_a_timeout(repeat: Workflow) -> None:
+    del repeat["jobs"]["summary"]["timeout-minutes"]
+
+
+def edited_step(repeat: Workflow, old: str, new: str) -> None:
+    runs = step(repeat["jobs"]["runs"], RUNS_STEP)
+    assert runs["run"].count(old) == 1, old
+    runs["run"] = runs["run"].replace(old, new)
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (interrupted_by_term, "a run starts as ['run', 'timeout', '--signal=TERM'"),
+        (no_room_for_the_interrupt, "is interrupted after 60"),
+        (uv_under_timeout, "a run starts as ['run', 'pytest', '-n'"),
+        (no_deadline, "in a job of 3 minutes 3 runs started"),
+        (
+            minutes_of_another_profile,
+            "at deep the runs time out at 360.0 minutes, their JOB_MINUTES are 350.0",
+        ),
+        (a_summary_without_a_timeout, "summary has no timeout"),
+    ],
+)
+def test_the_repeat_interrupt_check_can_fail(
+    tmp_path: Path, fault: Callable[[Workflow], None], problem: str
+) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat)
+    found = repeat_timeout_problems(repeat, tmp_path)
+    assert any(problem in line for line in found), found
+
+
+def records_problems(repeat: Workflow, directory: Path) -> list[str]:
+    """Where the runs step, run as written with the stub `uv` and seed 2 failing, passes; keeps other records
+    than each run's, in order, or the failed run's without its failing example; lets a run find the example
+    database of a run before it; or where the records are not kept whenever the step ran."""
+    status, calls, records = run_the_runs(repeat, directory, failing="2")
+    problems: list[str] = []
+    if status == 0:
+        problems.append("the runs step passes with a run failed")
+    kept = [(found["seed"], found["outcome"]) for found in records]
+    if kept != [(1, "passed"), (2, "failed"), (3, "passed")]:
+        problems.append(f"the records are {kept}")
+    elif not any("x=2," in example for failure in records[1]["failures"] for example in failure["examples"]):
+        problems.append(f"the failed run's record is {records[1]}")
+    problems += [
+        f"run {index} found an example database" for index, call in enumerate(calls, 1) if call["database"]
+    ]
+    keep = step(repeat["jobs"]["runs"], KEEP_STEP)
+    for standing, outcome in ((PASSED, "success"), (FAILED, "failure"), (CANCELLED, "cancelled")):
+        if not truthy(evaluated(condition(keep), standing | {"steps.runs.outcome": outcome})):
+            problems.append(f"the records are not kept when the runs step ends in {outcome}")
+    return problems
+
+
+def test_each_runs_record_is_kept_and_a_failed_run_fails_its_job(tmp_path: Path) -> None:
+    assert records_problems(workflow(REPEAT), tmp_path) == []
+
+
+def the_database_kept(repeat: Workflow) -> None:
+    edited_step(repeat, "rm -rf .hypothesis\n", "")
+
+
+def a_failure_forgotten(repeat: Workflow) -> None:
+    edited_step(repeat, '[ "$status" -eq 0 ] || failed=1', "true")
+
+
+def the_records_kept_on_success_alone(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], KEEP_STEP)["if"] = "success()"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (the_database_kept, "run 2 found an example database"),
+        (a_failure_forgotten, "the runs step passes with a run failed"),
+        (the_records_kept_on_success_alone, "the records are not kept when the runs step ends in failure"),
+    ],
+)
+def test_the_records_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], None], problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat)
+    found = records_problems(repeat, tmp_path)
+    assert any(problem in line for line in found), found
+
+
+# The records of two jobs of three runs from seed 1, the runs' jobs' result, and whether the summary passes.
+EVERY_RUN_PASSED = dict.fromkeys(range(1, 7), "passed")
+SUMMED = {
+    "every run passed": (EVERY_RUN_PASSED, "success", True),
+    "a run failed": (EVERY_RUN_PASSED | {4: "failed"}, "failure", False),
+    "a run was interrupted": (EVERY_RUN_PASSED | {6: "interrupted"}, "failure", False),
+    "a seed has no record": ({seed: "passed" for seed in range(1, 6)}, "failure", False),
+    "a job of runs failed after its runs": (EVERY_RUN_PASSED, "failure", False),
+    "the runs were cancelled": (EVERY_RUN_PASSED, "cancelled", False),
+}
+STATUSES = {"passed": 0, "failed": 1, "interrupted": 124}
+
+
+def summary_problems(repeat: Workflow, directory: Path) -> list[str]:
+    """Where the summary job does not wait for the runs, does not run whatever their result once the request
+    was checked, or, run as written on each set of records, passes where a run failed, did not finish or left
+    no record, or the runs' jobs did not succeed, or fails where every run passed."""
+    job = repeat["jobs"]["summary"]
+    problems: list[str] = []
+    if "runs" not in job.get("needs", []):
+        problems.append("the summary does not wait for the runs")
+    for result in ("success", "failure", "cancelled"):
+        standing: dict[str, object] = {
+            "success()": result == "success",
+            "failure()": result == "failure",
+            "cancelled()": False,
+        }
+        context: dict[str, object] = standing | {
+            "always()": True,
+            "needs.request.result": "success",
+            "needs.runs.result": result,
+        }
+        if not truthy(evaluated(condition(job), context)):
+            problems.append(f"the summary does not run when the runs end in {result}")
+    outputs = CHECKED | {"jobs": "2", "runs": "3", "matrix": "[1, 2]"}
+    for index, (case, (outcomes, result, passes)) in enumerate(SUMMED.items()):
+        tree = checkout(directory / str(index))
+        environment = runner(directory / str(index), "")
+        for seed, outcome in outcomes.items():
+            kept = Path(environment["RUNNER_TEMP"]) / "runs" / f"runs-{(seed - 1) // 3 + 1}"
+            kept.mkdir(parents=True, exist_ok=True)
+            record: dict[str, object] = {
+                "seed": seed,
+                "status": STATUSES[outcome],
+                "outcome": outcome,
+                "tests": 1,
+                "failures": [],
+            }
+            with (kept / "results.jsonl").open("a", encoding="utf-8") as lines:
+                lines.write(json.dumps(record) + "\n")
+        context = repeat_context(outputs) | {
+            "needs.runs.result": result if "runs" in job.get("needs", []) else None
+        }
+        status, _, _ = run_step(
+            step(job, SUM_STEP), context, tree, base=environment, scratch=directory / str(index)
+        )
+        if (status == 0) != passes:
+            problems.append(f"the summary {'fails' if passes else 'passes'} when {case}")
+    return problems
+
+
+def test_the_summary_fails_where_any_run_failed(tmp_path: Path) -> None:
+    assert summary_problems(workflow(REPEAT), tmp_path) == []
+
+
+def a_summary_after_success_alone(repeat: Workflow) -> None:
+    repeat["jobs"]["summary"]["if"] = "needs.request.result == 'success'"
+
+
+def a_summary_that_carries_on(repeat: Workflow) -> None:
+    step(repeat["jobs"]["summary"], SUM_STEP)["run"] += " || true"
+
+
+def a_summary_before_the_runs(repeat: Workflow) -> None:
+    repeat["jobs"]["summary"]["needs"] = ["request"]
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_summary_after_success_alone, "the summary does not run when the runs end in failure"),
+        (a_summary_that_carries_on, "the summary passes when a run failed"),
+        (a_summary_before_the_runs, "the summary does not wait for the runs"),
+    ],
+)
+def test_the_summary_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], None], problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat)
+    found = summary_problems(repeat, tmp_path)
+    assert any(problem in line for line in found), found
+
+
+# The heading of the workflows README's section on repeat.yml, whose table holds a row for each of its jobs.
+REPEAT_HEADING = "## Repeat runs (`repeat.yml`)"
+
+
+def repeat_table_problems(readme: str, repeat: Workflow) -> list[str]:
+    """Where the workflows README's section on repeat.yml names other jobs than it has."""
+    section = readme.partition(f"\n{REPEAT_HEADING}\n")[2].partition("\n## ")[0]
+    rows = re.findall(r"^\| `([\w-]+)` \|", section, re.M)
+    return (
+        []
+        if rows == list(repeat["jobs"])
+        else [f"the repeat table's jobs are {rows}, repeat.yml's {list(repeat['jobs'])}"]
+    )
+
+
+def test_the_workflows_readme_names_the_jobs_of_repeat() -> None:
+    assert (
+        repeat_table_problems((WORKFLOWS / "README.md").read_text(encoding="utf-8"), workflow(REPEAT)) == []
+    )
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [("| `summary` |", "| `sum` |"), (REPEAT_HEADING, "## Repeat runs")],
+    ids=["a-job-renamed", "no-section"],
+)
+def test_the_repeat_table_check_can_fail(old: str, new: str) -> None:
+    readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
+    assert readme.count(old) == 1
+    assert repeat_table_problems(readme.replace(old, new), workflow(REPEAT)) != []
