@@ -51,13 +51,21 @@ does not hold opens with a note, "Draft until 0.1.0": its files may change until
 freezes them. The page of a listed version has none (`scripts/schema_index.py`, tested in
 `tests/unit/test_schema_index.py`), so freezing a version at its release removes the note when Pages next
 deploys. Until 0.1.0 is released, then, the 0.1 files at `https://w3id.org/materica/schema/0.1/` can be seen to
-change.
+change. The manifest is committed in the release's pull request, before the tag, so the note leaves the site when
+that pull request merges and Pages deploys, which is just before the tag: from that merge CI holds the files, and
+the note's "until 0.1.0 is released" is read as until then. That is intended.
 
 **The next line** (maintainer, 2026-10-18). After 0.1.0 is released, the development of the next minor version
 lives in a directory of its own, `0.2-dev/`, with `$id`s under `https://w3id.org/materica/schema/0.2-dev/`, and
-its index page carries the same note. At the 0.2.0 release the directory becomes `0.2/`, its `$id`s are
-rewritten to match, and `scripts/freeze_schema.py 0.2` freezes it, which it would refuse to do under the name
-`0.2-dev` or with the old `$id`s. No `0.2-dev/` exists until the first change that belongs to 0.2 is made.
+its index page carries the same note. At the 0.2.0 release the directory is renamed `0.2/` (moved, not copied:
+the site's staging refuses a tree that holds both `0.2-dev/` and `0.2/`), its `$id`s are rewritten to match, and
+`scripts/freeze_schema.py 0.2` freezes it, which it would refuse to do under the name `0.2-dev` or with the old
+`$id`s. The rename is more than the `$id`s: the files the generators write into the directory (the reader
+schema, the vocabulary) move with it, and the paths wired to `0.1` (`scripts/gen_vocabulary.py`,
+`scripts/gen_reader_schema.py`, `scripts/gen_shapes.py`, `tests/spec_sync/schemas.py`) are pointed at the new
+line, since each generator's `--check` reads only the tree it names. Renaming and freezing is the documented
+path; the alternative, to redirect the address by a pull request to `perma-id/w3id.org`, is decided at the 0.2.0
+release. No `0.2-dev/` exists until the first change that belongs to 0.2 is made.
 
 ## Who reads them
 

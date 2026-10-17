@@ -856,8 +856,10 @@ The schemas are published under `https://w3id.org/materica/schema/<MAJOR.MINOR>/
 Until a version is released its files may change, and its index page on the site opens with a note saying
 so: "Draft until 0.1.0" for schema 0.1, which the freezing of the version at its release removes. After 0.1.0
 is released, the next line's development schemas live under `schema/0.2-dev/`, with `$id`s under
-`.../schema/0.2-dev/`; at the 0.2.0 release the directory becomes `0.2/` and is frozen, or its address is
-redirected by a pull request to `perma-id/w3id.org`.
+`.../schema/0.2-dev/`; at the 0.2.0 release the directory is renamed `0.2/`, its `$id`s are rewritten and it is
+frozen. That is the documented path; the alternative, to redirect the address by a pull request to
+`perma-id/w3id.org`, is decided at the 0.2.0 release. The note leaves the site with the merge of the release's
+pull request, which carries the freezing manifest and comes just before the tag (maintainer, 2026-10-18).
 
 **The siblings' versions** (maintainer, 2026-10-16, except where 2026-10-17 is given; architecture draft
 section 7.2). A sibling's MAJOR.MINOR is the core's MAJOR.MINOR it is built for, and its patch number is its
