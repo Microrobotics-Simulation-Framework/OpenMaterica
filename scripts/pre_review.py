@@ -144,6 +144,13 @@ DATA_RULES = (
         tests=("tests/unit/test_read.py", "tests/unit/test_conditions.py"),
     ),
     DataRule(
+        "PR-316's case and its record, which the read tests load",
+        r"src/materica/data/conformance/plain_read/(cases/PR-316\.implied_two_disagree_in_alternative"
+        r"|inputs/water_alternatives_in_vivo_normal)\.json",
+        "the read tests load PR-316's case file and its record directly, for step 7's arm under decision 12",
+        tests=("tests/unit/test_read.py",),
+    ),
+    DataRule(
         "a spec-sync table",
         r"tests/spec_sync/.+\.json",
         "the tables are checked against the text and the schemas",

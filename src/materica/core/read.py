@@ -510,6 +510,8 @@ def _read_alternatives(
         )
         return _refused((mismatch,), labels)
     if any(read.unit != reads[0].unit for read in reads):
+        # A constant never reaches this: an alternative with no reason of its own has passed step 9, so its
+        # unit is the registered unit's string. A guard for the forms S2b, S3 and S4 read.
         raise NotImplementedError("alternatives whose units are stored differently wait for S4")
     no_pick = Reason("no_pick", detail=f"{field.spec.name} holds {len(reads)} alternatives and no pick")
     return ReadResult("unknown", (no_pick,), labels, alternative_values=tuple(reads), unit=reads[0].unit)
