@@ -353,10 +353,11 @@ jobs:
     # runner, not the code, made the difference. At S2a-2's head json took 0.9 to 1.4 minutes, records 2.3 to 2.5
     # and step 8's mutants 1.6 to 2.1. Each `ci` timeout is set well above the slowest measured run; `deep` has not
     # yet run on CI.
-    # The agreement shard, on four workers locally (PR #24's fix round, 2026-10-17): at `ci`, 8.0 minutes, its
-    # longest property 4.7 (load 15 to 17); at `deep`, 112 minutes, its longest property 70 (load 18 to 30). A
-    # runner 1.6 to 4 times slower a core would take 13 to 32 minutes at `ci`, and 3 to 7.5 hours at `deep`, so
-    # its `deep` timeout is GitHub's limit for a job on a hosted runner, which it may not fit.
+    # The agreement shard, on four workers locally (PR #24's fix round, 2026-10-17): at `ci`, 4.0 minutes, its
+    # longest property 1.9, at load 4 to 7, and 8.0 minutes, its longest 4.7, at load 15 to 17; at `deep`, 112
+    # minutes, its longest property 70, at load 18 to 30. A runner 1.6 to 4 times slower a core would take 13 to
+    # 32 minutes at `ci`, and 3 to 7.5 hours at `deep`, so its `deep` timeout is GitHub's limit for a job on a
+    # hosted runner, which it may not fit.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && (matrix.shard == 'writer' && 180 || matrix.shard == 'agreement' && 360 || 45)
