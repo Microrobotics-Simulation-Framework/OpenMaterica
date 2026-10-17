@@ -527,6 +527,10 @@ class AcceptRequirement(TypedDict):
     accept: list[str]
 
 
+class ImpliesToken(TypedDict):
+    token: str
+
+
 ReadStatus: TypeAlias = Literal["met", "not_met", "unknown"]
 
 
@@ -987,6 +991,9 @@ OperatingCondition: TypeAlias = OperatingValue | OperatingRange
 
 class ToleranceRequirement(TypedDict):
     tolerance: Tolerance
+
+
+ImpliesValue: TypeAlias = OperatingCondition | ImpliesToken
 
 
 class Reason(TypedDict):
@@ -1457,7 +1464,27 @@ class ReadRequest(TypedDict):
     target: Target
     operating_conditions: NotRequired[dict[str, OperatingCondition]]
     requirement: Requirement
-    acceptances: NotRequired[list[JsonObject]]
+    acceptances: NotRequired[list[Acceptance]]
+
+
+Acceptance: TypeAlias = Union["NominalAcceptance", "ImpliedConditionAcceptance", "PickOverlayOrExtrapolation"]
+
+
+class AcceptanceMembers(TypedDict):
+    """
+    What every acceptance holds beside its kind's own members (declarations.md section 4.1): the field it
+    names, checked as a target's is; and where it applies, its record, region or interval. A read applies one
+    only to a read of the field it names, at its own record: one located at a region, at an interval or
+    nowhere is checked and not applied, and step 0 does not check a location's shape. A read ignores its
+    reason and basis.
+    """
+
+    record: NotRequired[JsonValue]
+    region: NotRequired[JsonValue]
+    interval: NotRequired[JsonValue]
+    field: FieldName
+    reason: NotRequired[JsonValue]
+    basis: NotRequired[JsonValue]
 
 
 class ComparedResult(TypedDict):
@@ -1663,6 +1690,39 @@ class EvidenceField(FieldMembers):
     form: Literal["evidence"]
     evidence: list[EvidenceEntry | WithheldEvidenceEntry]
     conditions: dict[str, JsonValue]
+
+
+class PickOverlayOrExtrapolation(AcceptanceMembers):
+    """
+    A pick, an overlay or an extrapolation (declarations.md section 4.1). Their own members are written with
+    the steps that apply them: an extrapolation's with tables, a pick's and an overlay's with alternatives and
+    overlays.
+    """
+
+    acceptance: Literal["pick", "overlay", "extrapolation"]
+
+
+class NominalAcceptance(AcceptanceMembers):
+    """
+    A value for an interval, in the field's registered unit. A parameter set's nominal holds params in place
+    of a value; no field of this version takes a parameter set, and a read ignores params.
+    """
+
+    acceptance: Literal["nominal"]
+    value: float
+    params: NotRequired[JsonValue]
+
+
+class ImpliedConditionAcceptance(AcceptanceMembers):
+    """
+    A value for each condition in implies, which fills a condition the record holds as unstated or does not
+    hold, on a field whose specimen states the fact and its token.
+    """
+
+    acceptance: Literal["implied_condition"]
+    fact: str
+    token: str
+    implies: dict[str, ImpliesValue]
 
 
 Provenance = TypedDict(

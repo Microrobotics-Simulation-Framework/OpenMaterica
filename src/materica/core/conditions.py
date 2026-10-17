@@ -40,6 +40,14 @@ from materica.core.value_shapes import (
 from materica.core.vocabulary import VOCABULARY
 
 
+def located_at(named: str, location: JsonObject, field: str, record: MaterialRef) -> bool:
+    """Whether an acceptance naming the field `named` at `location` applies to a read of `field` in `record`:
+    it names that field, and that record as its one location, by `id`, `version` and `content_hash`
+    (`read_side_contract.md` section 1)."""
+    reference: JsonObject = {"id": record.id, "version": record.version, "content_hash": record.content_hash}
+    return named == field and location == {"record": reference}
+
+
 @dataclass(frozen=True)
 class ImpliedCondition:
     """An implied condition of a request's `acceptances` that passed step 0: its index there; the field it
@@ -55,14 +63,7 @@ class ImpliedCondition:
     implies: dict[str, JsonObject]
 
     def located_at(self, field: str, record: MaterialRef) -> bool:
-        """Whether it applies to a read of `field` in `record`: it names that field, and that record as its
-        one location, by `id`, `version` and `content_hash` (`read_side_contract.md` section 1)."""
-        reference: JsonObject = {
-            "id": record.id,
-            "version": record.version,
-            "content_hash": record.content_hash,
-        }
-        return self.field == field and self.location == {"record": reference}
+        return located_at(self.field, self.location, field, record)
 
     def to_json(self) -> JsonObject:
         return {

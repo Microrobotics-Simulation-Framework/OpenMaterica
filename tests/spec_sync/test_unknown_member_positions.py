@@ -8,8 +8,9 @@
   read reaches in a record has a position, and every member of one that may hold a status object a status
   position, but where a `deferred` position names the piece that will read it (evidence, a table,
   alternatives, a request's acceptances): it fails once that piece is done. Every object in
-  a host is found by a position's path. An implied condition's members, which no schema gives yet, are those
-  the text names at each place, in its rows' `also` and in the read's tuples.
+  a host is found by a position's path. An implied condition's and a nominal's members are those the text
+  names at each place, in `read_request.json`, in an implied condition's rows' `also` and in the read's
+  tuples.
 - At each position of a few valid records and a valid request, at every place the pattern finds, the read
   meets the verdict: a member named `x_unknown_member` is ignored, or refused where every unknown name is, or
   as the row of a status object says; a member one slip from each named member (the name with a character
@@ -159,8 +160,16 @@ def hosts() -> tuple[Host, ...]:
         "implies": {"specimen_size": {"value": 1.0e-3, "unit": "m"}, "density_kind": {"token": "apparent"}},
         "reason": "a fixture's",
     }
+    # And a nominal, which a constant leaves unused.
+    nominal: JsonObject = {
+        "acceptance": "nominal",
+        "record": pin(found[0].record),
+        "field": FIELD,
+        "value": 0.0007,
+        "basis": "a fixture's",
+    }
     request: JsonObject = {
-        "acceptances": [implied],
+        "acceptances": [implied, nominal],
         "target": {"record": pin(found[0].record), "field": FIELD},
         "operating_conditions": {
             "temperature": {"value": 310.15, "unit": "K"},
@@ -395,8 +404,9 @@ def test_a_deferred_position_waits_for_a_piece_not_done() -> None:
     done, until the position gets its verdict and is read."""
     done = [str(piece) for piece in STEPS["done"]]
     assert done_too_soon(TABLE, done) == []
-    assert done_too_soon(TABLE, [*done, "S2b-2"]) == [
-        "D06: S2b-2 is done, so the position needs its verdict",
+    assert done_too_soon(TABLE, [*done, "S3"]) == [
+        "D04: S3 is done, so the position needs its verdict",
+        "D06: S3 is done, so the position needs its verdict",
     ]
     assert done_too_soon([{**BY_ID["D04"], "deferred": ["S2c"]}], done) != []
 
@@ -570,6 +580,9 @@ def _no_slip(members: object, names: object) -> list[tuple[str, str]]:
     return []
 
 
+NAMED_AT_A_NOMINAL = read_module._NOMINAL_MEMBERS  # pyright: ignore[reportPrivateUsage]
+
+
 BY_ID = {str(position["id"]): position for position in TABLE}
 
 
@@ -587,6 +600,7 @@ BY_ID = {str(position["id"]): position for position in TABLE}
         pytest.param(read_module, "slipped", _no_slip, "Q04", id="a_slip_in_a_request_ignored"),
         pytest.param(read_module, "slipped", _no_slip, "Q13", id="a_slip_in_an_implied_value_ignored"),
         pytest.param(read_module, "_IMPLIED_REFUSED", (), "Q14", id="an_implied_value_holding_a_status"),
+        pytest.param(read_module, "_NOMINAL_MEMBERS", NAMED_AT_A_NOMINAL[:-1], "Q15", id="a_slip_of_params"),
     ],
 )
 def test_a_read_against_the_verdict_is_found(
@@ -599,7 +613,7 @@ def test_a_read_against_the_verdict_is_found(
 def test_a_wrong_verdict_a_dead_row_and_a_lost_quote_are_found() -> None:
     assert problems({**BY_ID["R22"], "verdict": "not_checked"}) != []
     assert problems({**BY_ID["R22"], "path": ["body", "nowhere"]}) == ["R22: found in no host"]
-    assert problems({**BY_ID["Q10"], "path": ["acceptances", "[nominal]"]}) == ["Q10: found in no host"]
+    assert problems({**BY_ID["Q10"], "path": ["acceptances", "[pick]"]}) == ["Q10: found in no host"]
     assert problems({**BY_ID["Q12"], "verdict": "ignored"}) != []
     assert unquoted([{**BY_ID["R01"], "quote": "A reader ignores every member"}], document) == ["R01"]
     assert uncovered([position for position in TABLE if position["id"] not in ("R26", "R58")]) == {
@@ -662,10 +676,9 @@ def test_every_object_in_a_host_is_found_by_a_position() -> None:
     assert unfound([position for position in TABLE if position["id"] != "Q10"]) == ["request: acceptances.0"]
 
 
-# An implied condition's members against the text (D06's first piece). No schema gives its shape yet
-# (S2b-2 writes the acceptances into `read_request.json`), so rows Q10, Q13 and Q14 name its members by
-# `also` alone, and the read by `read.py`'s `_IMPLIED_*` tuples. Each member, at its place, with what a read
-# does with it and the sentence that names it there.
+# An implied condition's members against the text (D06's first piece): rows Q10, Q13 and Q14 name them by
+# `also`, `read_request.json` by its definitions (S2b-2), and the read by `read.py`'s `_IMPLIED_*` tuples.
+# Each member, at its place, with what a read does with it and the sentence that names it there.
 
 AN_IMPLIED_CONDITION = "an implied condition"
 A_NUMERIC_VALUE = "a value of `implies` for a numeric condition"
@@ -763,11 +776,8 @@ READ_NAMES = ReadNames(
 )
 
 
-def implied_name_problems(
-    names: list[Named], rows: dict[str, JsonObject], read_names: ReadNames, read_document: Documents
-) -> list[str]:
-    """Each way `names`, the rows' `also` lists and the read's tuples part: a quote lost or not naming its
-    members, and a row or a tuple that names other members than the text at its place."""
+def quote_problems(names: list[Named], read_document: Documents) -> list[str]:
+    """Each quote of `names` its document no longer holds, and each member a quote does not name."""
     found = [
         f"{named.members} at {named.place}: {named.cite} no longer says {named.quote!r}"
         for named in names
@@ -779,6 +789,16 @@ def implied_name_problems(
         for member in named.members
         if f"`{member}`" not in named.quote and f'"{member}"' not in named.quote
     ]
+    return found
+
+
+def implied_name_problems(
+    names: list[Named], rows: dict[str, JsonObject], read_names: ReadNames, read_document: Documents
+) -> list[str]:
+    """Each way `names`, the rows' `also` lists, `read_request.json`'s definition and the read's tuples
+    part: a quote lost or not naming its members, and a row, a definition or a tuple that names other members
+    than the text at its place."""
+    found = quote_problems(names, read_document)
 
     def at(places: tuple[str, ...], *uses: str) -> set[str]:
         return {
@@ -796,6 +816,10 @@ def implied_name_problems(
     }
     held_and_named = {
         "Q10's also": (set(an_object(rows["Q10"]["also"])), at(acceptance)),
+        "read_request.json's implied condition": (
+            set(members_of(SCHEMAS["request"], "implied_condition_acceptance")),
+            at(acceptance),
+        ),
         "Q13's schema and also": (shape | set(an_object(rows["Q13"]["also"])), at(numeric)),
         "Q14's also": (set(an_object(rows["Q14"]["also"])), at(token)),
         "read._IMPLIED_OWN": (set(read_names.own), at(acceptance)),
@@ -869,3 +893,53 @@ def test_an_implied_value_refused_the_other_kinds_members_by_no_sentence_is_foun
             (("value", "range", "unit"), A_TOKEN_VALUE, "or a token condition a `value`, `range` or `unit`"),
         ]
     ]
+
+
+# A nominal's members against the text: `read_request.json`'s definition, which row Q15 names, and the read's
+# tuple.
+
+A_NOMINAL = "a nominal"
+NOMINAL_OWN = "`value`, `basis`; for a parameter set, `params` in place of `value`"
+NOMINAL_NAMES = [
+    Named(A_NOMINAL, "read", ("acceptance",), "declarations.md", "Every entry has `acceptance`"),
+    Named(A_NOMINAL, "read", ("field",), "declarations.md", "names the `field`"),
+    Named(A_NOMINAL, "ignored", ("reason", "basis"), "read_side_contract.md", "its `reason` and `basis`"),
+    Named(
+        A_NOMINAL,
+        "location",
+        ("record", "region", "interval"),
+        "declarations.md",
+        "| `nominal` | `region`, `interval` or `record` |",
+    ),
+    Named(A_NOMINAL, "read", ("value",), "declarations.md", NOMINAL_OWN),
+    Named(A_NOMINAL, "ignored", ("params",), "declarations.md", NOMINAL_OWN),
+]
+
+
+def nominal_name_problems(
+    names: list[Named], definition: str, read_names: tuple[str, ...], read_document: Documents
+) -> list[str]:
+    """Each way `names`, `read_request.json`'s `definition` and the read's tuple part."""
+    named = {member for named in names for member in named.members}
+    held = {
+        "read_request.json's nominal": set(members_of(SCHEMAS["request"], definition)),
+        "read._NOMINAL_MEMBERS": set(read_names),
+    }
+    return quote_problems(names, read_document) + [
+        f"{where} names {sorted(members - named)} beyond the text and lacks {sorted(named - members)}"
+        for where, members in held.items()
+        if members != named
+    ]
+
+
+def test_a_nominals_members_are_those_the_text_names() -> None:
+    assert nominal_name_problems(NOMINAL_NAMES, "nominal_acceptance", NAMED_AT_A_NOMINAL, document) == []
+
+
+def test_a_nominals_member_dropped_or_its_quote_lost_is_found() -> None:
+    assert nominal_name_problems(NOMINAL_NAMES, "nominal_acceptance", NAMED_AT_A_NOMINAL[:-1], document)
+    assert nominal_name_problems(NOMINAL_NAMES, "implied_condition_acceptance", NAMED_AT_A_NOMINAL, document)
+    lost = NOMINAL_NAMES[4]._replace(quote="`value` alone")
+    assert nominal_name_problems(
+        [*NOMINAL_NAMES[:4], lost], "nominal_acceptance", NAMED_AT_A_NOMINAL, document
+    )
