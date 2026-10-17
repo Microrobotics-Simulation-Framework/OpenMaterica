@@ -264,7 +264,11 @@ NOT_VERSIONS = [
     "0.1-",
     "0.1\n",
     " 0.1",
-    "\u0660.\u0661",  # Arabic-Indic digits, which `\d` would take
+    "1\u0660.1",  # Arabic-Indic digits, which `\d` would take
+    "0.1\u0661",
+    "0x1",  # a dot that matches any character
+    "0-1",
+    "0_1",
 ]
 
 
