@@ -28,7 +28,7 @@ from typing import Any, NamedTuple, cast
 import pytest
 import yaml
 
-from scripts import check_confidential, repeat_runs
+from scripts import check_confidential, repeat_runs, schema_index
 from tests.unit.test_report_test_durations import INTERRUPT_AS_CI
 from tests.unit.throwaway_git import throwaway_repository
 
@@ -494,6 +494,9 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
         (["LICENSE"], "true", "true", "true"),
         (["typings/atheris/__init__.pyi"], "true", "false", "true"),
         (["docs/specification/README.md"], "true", "true", "true"),
+        # The freeze manifest is code: the site job's index writer reads it, so the freezing commit, which
+        # changes it alone, runs the site job beside the code's.
+        (["tests/spec_sync/released_schemas.json"], "true", "true", "true"),
         # The site's own paths: the site job alone, beside documentation too; with code, every job.
         (["site/index.html"], "false", "false", "true"),
         (["assets/images/logo.png", "CHANGELOG.md"], "false", "false", "true"),
@@ -1705,6 +1708,82 @@ def test_the_pages_check_can_fail(fault: Callable[[Workflow], None], problem: st
     fault(pages)
     found = pages_problems(pages, workflow("ci.yml"))
     assert any(problem in line for line in found), found
+
+
+def path_filter_matches(pattern: str, path: str) -> bool:
+    """GitHub's filter patterns for paths: `*` is any run of characters but `/`, `**` any run of them."""
+    regex = "".join(
+        ".*" if part == "**" else "[^/]*" if part == "*" else re.escape(part)
+        for part in re.split(r"(\*\*|\*)", pattern)
+    )
+    return re.fullmatch(regex, path) is not None
+
+
+def push_paths(pages: Workflow) -> list[str]:
+    """The `paths` of a workflow's push trigger, which PyYAML reads under the key `True`, for `on`."""
+    triggers = cast(dict[object, Any], pages)[True]
+    paths: list[str] = triggers["push"]["paths"]
+    return paths
+
+
+def pages_trigger_problems(pages: Workflow) -> list[str]:
+    """Each input of the deployed site that a push to main could change without the Pages workflow running.
+
+    The inputs are the staging step's: `site/`, the logo and favicons, every file of the schema tree, the
+    index writer, and the manifest it reads to decide which version's page carries the draft note. The
+    workflow itself is an input too. The freezing commit changes the manifest alone, so without its line the
+    note would stay on the live page of a version that is frozen."""
+    patterns = push_paths(pages)
+    schema = REPOSITORY / "src" / "materica" / "schema"
+    inputs = [
+        "site/index.html",
+        "assets/images/logo.png",
+        *(
+            (Path(where) / name).relative_to(REPOSITORY).as_posix()
+            for where, _, names in os.walk(schema)
+            for name in names
+        ),
+        "src/materica/schema/0.2-dev/a_new_file.json",
+        Path(schema_index.__file__).relative_to(REPOSITORY).as_posix(),
+        schema_index.MANIFEST.relative_to(REPOSITORY).as_posix(),
+        ".github/workflows/pages.yml",
+    ]
+    return [
+        f"a push that changes {path} does not run pages.yml"
+        for path in inputs
+        if not any(path_filter_matches(pattern, path) for pattern in patterns)
+    ]
+
+
+def test_pages_runs_when_any_input_of_the_deployed_site_changes() -> None:
+    assert pages_trigger_problems(workflow("pages.yml")) == []
+
+
+def test_the_path_filter_matches_as_github_does() -> None:
+    assert path_filter_matches("src/materica/schema/**", "src/materica/schema/0.1/vocabulary/a.json")
+    assert path_filter_matches(
+        "tests/spec_sync/released_schemas.json", "tests/spec_sync/released_schemas.json"
+    )
+    assert path_filter_matches("assets/images/*.png", "assets/images/logo.png")
+    assert not path_filter_matches("assets/images/*.png", "assets/images/favicon/a.png")
+    assert not path_filter_matches("scripts/schema_index.py", "scripts/schema_index_py")
+    assert not path_filter_matches("site/**", "sites/index.html")
+
+
+@pytest.mark.parametrize("line", push_paths(workflow("pages.yml")))
+def test_the_pages_trigger_check_can_fail(line: str) -> None:
+    """The control: with any one line of the filter removed, an input no longer runs the workflow."""
+    pages = copy.deepcopy(workflow("pages.yml"))
+    push_paths(pages).remove(line)
+    assert pages_trigger_problems(pages)
+
+
+def test_the_pages_trigger_check_names_the_manifest_where_its_line_is_removed() -> None:
+    pages = copy.deepcopy(workflow("pages.yml"))
+    push_paths(pages).remove("tests/spec_sync/released_schemas.json")
+    assert pages_trigger_problems(pages) == [
+        "a push that changes tests/spec_sync/released_schemas.json does not run pages.yml"
+    ]
 
 
 def result_status(
