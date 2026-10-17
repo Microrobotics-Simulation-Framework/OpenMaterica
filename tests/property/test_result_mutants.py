@@ -193,13 +193,13 @@ MUTANTS = [
         "condition_unchecked_without_its_condition",
         "HP1",
         setting(conditions, "_compared", _unchecked_without_its_condition),
-        ("step_8_fault", "step_9_or_10_fault"),
+        ("step_8_fault", "step_9_or_10_fault", "unknown_at_step_10"),
     ),
     Mutant(
         "stated_without_origin_with_a_condition",
         "HP1",
         setting(read, "_origin", _origin_with_a_condition),
-        ("met", "step_9_or_10_fault"),
+        ("met", "step_9_or_10_fault", "unknown_at_step_10"),
     ),
     Mutant("a_code_outside_the_table", "HP1", setting(read, "_by_want", _a_code_outside_the_table), ("met",)),
     # A reason "appears at most once in a result" (section 2 item 2), at any step: step 9's faults of the
@@ -218,7 +218,7 @@ MUTANTS = [
             setting(read, "_ends", _conditions_never_end),
             setting(read, "_value_returned", _value_whatever_the_status),
         ),
-        ("step_9_or_10_fault",),
+        ("step_9_or_10_fault", "unknown_at_step_10"),
     ),
     Mutant("best_status", "HP2", setting(read, "_status", _best_status), KINDS),
     Mutant(
@@ -269,6 +269,7 @@ MUTANTS = [
             "met",
             "step_8_fault",
             "step_9_or_10_fault",
+            "unknown_at_step_10",
             "step_5",
             "step_7",
             "alternatives",
