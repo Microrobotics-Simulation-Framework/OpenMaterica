@@ -1,0 +1,109 @@
+{
+  "case": "PR-316",
+  "variant": "implied_tokens_differ",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_in_vivo_normal_temperature_unstated.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/water_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:e7966e0e5c4119a3654116f6f0973c4be7557ee0f4c7710846e5a6df3b2140de"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "implied_condition",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:e7966e0e5c4119a3654116f6f0973c4be7557ee0f4c7710846e5a6df3b2140de"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "fact": "tissue_state",
+        "token": "in_vivo",
+        "implies": {
+          "measurement_geometry": {
+            "token": "tube"
+          }
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      },
+      {
+        "acceptance": "implied_condition",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:e7966e0e5c4119a3654116f6f0973c4be7557ee0f4c7710846e5a6df3b2140de"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "fact": "disease_and_treatment_state",
+        "token": "normal",
+        "implies": {
+          "measurement_geometry": {
+            "token": "gap"
+          }
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "request_incomplete",
+        "condition": "measurement_geometry"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}
