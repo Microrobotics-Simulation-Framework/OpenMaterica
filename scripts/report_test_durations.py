@@ -13,6 +13,10 @@ total.
 It reports and never judges: no duration fails a job. It exits 2 when there is nothing to report: a report
 missing or not XML, a test case without the file pytest writes under `junit_family = "xunit1"`
 (`pyproject.toml`), or no test that ran.
+
+A run that `ci.yml` interrupts before its job's timeout writes, beside the tests that finished, a test case
+holding nothing but a time for each test still running then: no name, no class and no file. Those are
+counted as stopped, and their times left out.
 """
 
 import argparse
@@ -64,22 +68,37 @@ def summed(first: float | None, second: float | None) -> float | None:
     return None if first is None and second is None else (first or 0.0) + (second or 0.0)
 
 
-def read_report(path: Path) -> list[Timing]:
-    """Each test of the report, once: a test that fails and then errors in its teardown is written as two
-    test cases, the second with its teardown and its properties, and is read as one, its times summed."""
+def report_cases(path: Path) -> list[ElementTree.Element]:
     if not path.is_file():
         raise ReportError(
-            f"{path}: no such report (pytest writes it with --junitxml as its run ends, which a run its "
-            "job's timeout cancelled never reaches)"
+            f"{path}: no such report (pytest writes it with --junitxml as its run ends, which a run "
+            "cancelled from outside never reaches)"
         )
     try:
-        root = ElementTree.parse(path).getroot()
+        return list(ElementTree.parse(path).getroot().iter("testcase"))
     except ElementTree.ParseError as error:
         raise ReportError(f"{path}: not XML ({error})") from error
+
+
+def is_stopped(case: ElementTree.Element) -> bool:
+    """Whether a test case is one an interrupt stopped: one that holds a time alone."""
+    return not any(case.get(attribute) for attribute in ("name", "classname", "file")) and len(case) == 0
+
+
+def stopped(path: Path) -> int:
+    """How many tests an interrupt stopped before they ended."""
+    return sum(is_stopped(case) for case in report_cases(path))
+
+
+def read_report(path: Path) -> list[Timing]:
+    """Each test of the report, once: a test that fails and then errors in its teardown is written as two
+    test cases, the second with its teardown and its properties, and is read as one, its times summed. The
+    tests an interrupt stopped are left out."""
     tests: dict[str, Timing] = {}
-    for case in root.iter("testcase"):
+    cases = report_cases(path)
+    for case in cases:
         failure = case.find("error")
-        if failure is not None and failure.get("message") == COLLECTION_FAILURE:
+        if (failure is not None and failure.get("message") == COLLECTION_FAILURE) or is_stopped(case):
             continue
         file = case.get("file")
         if not file:
@@ -105,7 +124,11 @@ def read_report(path: Path) -> list[Timing]:
             )
         tests[test.nodeid] = test
     if not tests:
-        raise ReportError(f"{path}: no test ran")
+        stopped_there = sum(is_stopped(case) for case in cases)
+        raise ReportError(
+            f"{path}: no test ran"
+            + (f" to its end ({stopped_there} stopped by an interrupt)" if stopped_there else "")
+        )
     return list(tests.values())
 
 
@@ -156,6 +179,7 @@ def summary(
     title: str,
     slowest_tests: int = SLOWEST_TESTS,
     slowest_files: int = SLOWEST_FILES,
+    stopped_tests: int = 0,
 ) -> str:
     total = wall(tests)
     lines = [
@@ -169,6 +193,11 @@ def summary(
     without_cpu = sum(test.cpu is None for test in tests)
     if without_cpu:
         lines.append(f"Tests that recorded no CPU time: {without_cpu}.")
+    if stopped_tests:
+        lines.append(
+            "Tests stopped by the interrupt before the job's timeout, which the report does not name and "
+            f"which are left out: {stopped_tests}."
+        )
     lines += [
         "",
         "| Wall time | Tests | Wall | CPU | Children's CPU | Share of the wall time |",
@@ -227,7 +256,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ReportError as error:
         print(f"::error title=Test durations::{error}")
         return 2
-    text = summary(tests, arguments.title)
+    text = summary(tests, arguments.title, stopped_tests=stopped(arguments.report))
     if arguments.markdown is None:
         print(text, end="")
     else:

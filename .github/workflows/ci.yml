@@ -254,6 +254,9 @@ jobs:
     # mutant searches and the audit controls among it, took 314 s on four local workers (Python 3.15,
     # 2026-10-16), unmeasured on CI.
     timeout-minutes: 40
+    # The same minutes, from which the pytest step's interrupt is set (below).
+    env:
+      JOB_MINUTES: 40
     strategy:
       fail-fast: false
       matrix:
@@ -272,16 +275,29 @@ jobs:
       # Every test but the mutant searches and the audit controls, which the next job runs; the property tests
       # at the `dev` profile: Python's json differs between versions, so the properties run on each; their
       # depth is the Hypothesis job's. A worker per vCPU, as in that job.
+      # Each pytest command runs under `timeout --signal=INT`, three minutes before its job's limit (maintainer,
+      # 2026-10-17; all but the fuzz job's, which write no report and start late among its steps). `timeout`
+      # sends SIGINT to pytest's whole process group, its workers included, as Ctrl-C does, so that pytest
+      # stops, writes the report of the tests that finished, and fails the step (`timeout` exits 124); the
+      # durations steps then read that report. GitHub's own timeout would interrupt, then end, the step's shell
+      # and not pytest, which writes its report only as its run ends, so a job cancelled that way has none (read
+      # from the runner's code, and seen in a local run sent the same signals, 2026-10-16). uv runs `timeout`,
+      # and so stays outside the group: under `timeout ... uv run pytest`, uv passed pytest a second SIGINT
+      # during its shutdown, which then failed with a traceback and, in 4 of 7 local runs, no report; run this
+      # way, 10 of 10 wrote it (uv 0.13.0 and 0.11.15, 2026-10-17). `JOB_MINUTES` repeats the job's
+      # `timeout-minutes`, which no step can read, and tests/unit/test_ci_workflows.py holds the two equal for
+      # every event and combination.
       - id: pytest
-        run: uv run pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
+        run: >-
+          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
       # Where the time went, on the run's page, and the report kept for later runs to compare (no time fails
-      # the job): scripts/report_test_durations.py. Whenever pytest ran, passed, failed or cancelled, and not
-      # where a failed checkout or setup skipped it. A job its timeout cancels has no report: GitHub's runner
-      # interrupts, then ends, the step's shell and not pytest, which writes its report only as its run ends.
-      # Read from the runner's code, and seen in a local run sent the same signals (2026-10-16); not yet seen on
-      # CI. The durations step then says there is none, and the pytest step's log shows how far the run got.
+      # the job): scripts/report_test_durations.py. Whenever pytest ran, passed, failed, was interrupted before
+      # the job's timeout, or was cancelled, and not where a failed checkout or setup skipped it. A run cancelled
+      # from outside, or one that GitHub's timeout ends after all, has no report: the durations step then says
+      # there is none, and the pytest step's log shows how far the run got.
       - name: Test durations
         if: always() && steps.pytest.outcome != 'skipped'
         env:
@@ -311,6 +327,8 @@ jobs:
     # Measured on CI in its first run: 3.4 minutes on 3.11 and 2.3 on 3.15 (run 38954710616, 2026-10-16). The test
     # job's timeout, until more runs are measured.
     timeout-minutes: 40
+    env:
+      JOB_MINUTES: 40
     strategy:
       fail-fast: false
       matrix:
@@ -329,7 +347,9 @@ jobs:
       # The mutant searches and the audit controls alone (`--property-controls` in tests/conftest.py), under the
       # same profile as the test job.
       - id: pytest
-        run: uv run pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
+        run: >-
+          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
       - name: Test durations
@@ -392,6 +412,13 @@ jobs:
         shard: [json, records, writer, agreement, step8_mutants, conditions]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
+      # The job's `timeout-minutes`, as above, from which the pytest step's interrupt is set.
+      JOB_MINUTES: >-
+        ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180 || matrix.shard == 'agreement' && 360
+        || 45)
+        || (matrix.shard == 'writer' && 75 || matrix.shard == 'conditions' && 30 || matrix.shard == 'agreement'
+        && 45 || 20) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -424,7 +451,8 @@ jobs:
       - name: Property tests and mutants, with the draw-rejection and feature audits (tests/property/conftest.py)
         id: pytest
         run: >-
-          uv run pytest tests/property --shard ${{ matrix.shard }} -n auto --dist worksteal
+          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          pytest tests/property --shard ${{ matrix.shard }} -n auto --dist worksteal
           --hypothesis-show-statistics --junitxml="$RUNNER_TEMP/durations.xml"
       - name: Test durations
         if: always() && steps.pytest.outcome != 'skipped'
