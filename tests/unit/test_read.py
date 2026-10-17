@@ -7,6 +7,8 @@ import copy
 import importlib
 import inspect
 import json
+import math
+import struct
 from collections.abc import Callable, Collection
 from pathlib import Path
 from types import ModuleType
@@ -159,8 +161,6 @@ def test_steps_not_built_yet_raise_rather_than_answer() -> None:
             read(region | fault, store())
     with pytest.raises(NotImplementedError):
         read(with_members(acceptances=[{"acceptance": "pick", "index": 0.0}]), store())
-    with pytest.raises(NotImplementedError):
-        read(with_members(acceptances=[1.0], target=None), store())
     refused = read(with_members(acceptances={"acceptance": "pick"}), store())
     assert refused.reasons == (Reason("request_incomplete"),)
 
@@ -1028,19 +1028,47 @@ def test_an_implied_condition_that_keeps_its_shape_passes_step_0(request_value: 
     assert read(request_value, store()) == ABSENT
 
 
-def test_an_acceptance_of_another_kind_raises_whatever_else_the_request_holds() -> None:
-    """S2b-2 reads the other kinds and refuses a kind a read does not take (section 1)."""
-    others: list[JsonValue] = [
-        {"acceptance": "nominal", "value": 1.0},
-        {"acceptance": "waiver"},
-        1.0,
-        {"acceptance": "implied"},
-    ]
-    for other in others:
+# Acceptances a read does not take (`read_side_contract.md` section 1: "An acceptance of any other kind ...
+# gives `request_incomplete`"; PR-310's GAPS G11 arm, S2a-3's review I4), and those S3 and S4 apply.
+NOT_TAKEN: list[JsonValue] = [
+    {"acceptance": "waiver", "field": "fluid.dynamic_viscosity", "code": "condition_unstated"},
+    {"acceptance": "accepted_difference", "section": "fluid", "fact": "species", "value": "any"},
+    {"acceptance": "distribution", "field": "fluid.dynamic_viscosity", "distribution": "normal"},
+    {"acceptance": "overlay_scope", "overlay": {}, "accepts": ["model"]},
+    {"acceptance": "implied"},
+    {"acceptance": 1.0},
+    {"field": "fluid.dynamic_viscosity"},
+    1.0,
+    None,
+    [],
+]
+APPLIED_LATER: list[JsonValue] = [
+    {"acceptance": "pick", "index": 0.0},
+    {"acceptance": "overlay", "overlay": {}},
+    {"acceptance": "extrapolation", "method": "constant", "law": "the end value"},
+]
+
+
+@pytest.mark.parametrize("acceptance", NOT_TAKEN)
+def test_an_acceptance_of_a_kind_a_read_does_not_take_is_refused(acceptance: JsonValue) -> None:
+    """Exactly `request_incomplete`, alone and beside an implied condition the request takes."""
+    alone: list[JsonValue] = [acceptance]
+    beside: list[JsonValue] = [IMPLIED, acceptance]
+    for acceptances in (alone, beside):
+        refused = read(with_members(acceptances=acceptances), store())
+        assert (refused.status, refused.reasons) == ("not_met", (Reason("request_incomplete"),)), acceptances
+
+
+@pytest.mark.parametrize("acceptance", APPLIED_LATER)
+def test_a_pick_an_overlay_and_an_extrapolation_raise_whatever_else_the_request_holds(
+    acceptance: JsonValue,
+) -> None:
+    """S3 and S4 apply them, and each could change the answer: beside a refusal, beside another kind."""
+    for acceptances in ([acceptance], [*NOT_TAKEN, acceptance]):
         with pytest.raises(NotImplementedError):
-            read(with_members(acceptances=[IMPLIED, other]), store())
+            read(with_members(acceptances=acceptances), store())
         with pytest.raises(NotImplementedError):
-            read(with_members(acceptances=[other], target=None), store())
+            read(with_members(acceptances=acceptances, target=None), store())
 
 
 def test_a_request_keeps_its_implied_conditions_with_the_members_their_shape_names() -> None:
@@ -1827,6 +1855,187 @@ def test_evidence_takes_no_registered_condition_and_its_unit_is_a_status_object(
     assert (result.status, {reason.code for reason in result.reasons}) == (status, codes), members
 
 
+# Nominals (`declarations.md` section 4.1; `read_side_contract.md` sections 1, 2 and 6; SQ47).
+
+
+PINNED_AT_THE_READ = "the read's record"  # stands, in a nominal below, for the target's record and its pin
+
+
+def read_accepting(
+    field: JsonValue, acceptances: list[dict[str, JsonValue]], *, want: str = "value"
+) -> ReadResult:
+    """`field` read as `read_met` reads it, with `acceptances`, each located at the target's record where its
+    `record` is `PINNED_AT_THE_READ`."""
+    request, records = stored(with_field("fluid.dynamic_viscosity", field))
+    assert isinstance(request, dict)
+    request.update(copy.deepcopy(MET_REQUEST))
+    cast(dict[str, JsonValue], request["requirement"])["want"] = want
+    pin = cast(dict[str, JsonValue], request["target"])["record"]
+    request["acceptances"] = [
+        {**acceptance, "record": pin} if acceptance.get("record") == PINNED_AT_THE_READ else acceptance
+        for acceptance in acceptances
+    ]
+    return read(request, records)
+
+
+def nominal(value: JsonValue = 0.0007, **members: JsonValue) -> dict[str, JsonValue]:
+    """A nominal for the water field at the read's record, `members` changed in it, None removing one."""
+    acceptance: dict[str, JsonValue] = {
+        "acceptance": "nominal",
+        "record": PINNED_AT_THE_READ,
+        "field": "fluid.dynamic_viscosity",
+        "value": value,
+        "basis": "the midpoint of the limits",
+        "reason": "a fixture's",
+        **members,
+    }
+    return {name: member for name, member in acceptance.items() if member is not None}
+
+
+NONE: dict[str, JsonValue] = {"status": "none"}
+NOMINALS: list[tuple[dict[str, JsonValue], float, ReasonCode]] = [
+    ({"lower": 0.0006, "upper": 0.0008}, 0.0007, "want_mismatch"),
+    ({"lower": 0.0006, "upper": 0.0008}, 0.0006, "want_mismatch"),
+    ({"lower": 0.0006, "upper": 0.0008}, 0.0008, "want_mismatch"),
+    ({"lower": 0.0006, "upper": 0.0008}, math.nextafter(0.0008, 1.0), "nominal_invalid"),
+    ({"lower": 0.0006, "upper": 0.0008}, math.nextafter(0.0006, 0.0), "nominal_invalid"),
+    ({"lower": 0.0006, "upper": NONE}, 1.0e300, "want_mismatch"),
+    ({"lower": 0.0006, "upper": NONE}, 0.0005, "nominal_invalid"),
+    ({"lower": NONE, "upper": 0.0008}, -1.0, "want_mismatch"),
+    ({"lower": NONE, "upper": 0.0008}, 0.0009, "nominal_invalid"),
+    # Compared by value, as every number is: `-0` lies on the bound 0.
+    ({"lower": 0.0, "upper": 0.0008}, -0.0, "want_mismatch"),
+]
+
+
+@pytest.mark.parametrize(("bounds", "given", "code"), NOMINALS)
+def test_a_nominal_inside_or_on_an_intervals_bounds_supplies_the_value_and_one_outside_is_refused(
+    bounds: dict[str, JsonValue], given: float, code: ReasonCode
+) -> None:
+    """Section 6: under `want: value`, "a declared nominal inside or on the bounds supplies `value` and
+    `assumption`, and one outside them gives `nominal_invalid` in place of `want_mismatch`, with no value",
+    compared exactly, on the bounded side of a one-sided interval [PR-338]; section 2 item 3: the status stays
+    `not_met` [PR-302]; `applied` holds the nominal's index where it supplied the value."""
+    result = read_accepting(met_interval(**bounds, basis="specification_limits"), [IMPLIED, nominal(given)])
+    assert (result.status, result.reasons) == ("not_met", (Reason(code),))
+    written = json.loads(json.dumps(result.to_json()))
+    if code == "want_mismatch":
+        assert result.applied == (1,)
+        assert struct.pack(">d", written["value"]) == struct.pack(">d", given)
+        assert written["assumption"] == {"acceptance": "nominal", "value": given}
+        assert {"unit", "conditions", "specimen", "statistics", "provenance"} <= written.keys()
+        assert ReadResult.from_json(result.to_json()) == result
+    else:
+        assert result.applied == ()
+        assert {"value", "assumption", "unit", "statistics"}.isdisjoint(written)
+
+
+def test_a_nominal_is_unused_under_bounds_and_on_a_form_that_gives_its_value() -> None:
+    """Section 6: "under `want: bounds` it is not applied", and `applied` leaves it out; a constant gives its
+    own value, an interval read under `want: components` `want_mismatch` alone."""
+    interval = met_interval(lower=0.0006, upper=0.0008, basis="specification_limits")
+    bounds = read_accepting(interval, [nominal(0.0009)], want="bounds")
+    assert (bounds.status, bounds.reasons, bounds.applied, bounds.assumption) == ("met", (), (), None)
+    constant = read_accepting(met_field(), [nominal(0.0009)])
+    assert (constant.status, constant.value, constant.applied, constant.assumption) == (
+        "met",
+        0.000692,
+        (),
+        None,
+    )
+    components = read_accepting(interval, [nominal()], want="components")
+    assert (components.reasons, components.value, components.assumption) == (
+        (Reason("want_mismatch"),),
+        None,
+        None,
+    )
+
+
+NOMINALS_ELSEWHERE: list[dict[str, JsonValue]] = [
+    nominal(field="bulk.density"),
+    nominal(record=None),
+    nominal(record=None, region="lumen"),
+    nominal(interval="skin"),
+    nominal(region="lumen"),
+    nominal(record={"id": "conformance/water_fixture", "version": "2.0.0", "content_hash": PIN}),
+    nominal(record={"id": "conformance/water_fixture"}),
+    nominal(record=1.0),
+]
+
+
+@pytest.mark.parametrize("elsewhere", NOMINALS_ELSEWHERE)
+def test_a_nominal_naming_another_field_or_located_elsewhere_is_checked_and_not_applied(
+    elsewhere: dict[str, JsonValue],
+) -> None:
+    """Section 1: "One naming another field, another record or region, an `interval` ... or no location is
+    checked and not applied" [PR-338]; a location's shape is not checked, only compared."""
+    result = read_accepting(
+        met_interval(lower=0.0006, upper=0.0008, basis="specification_limits"), [elsewhere]
+    )
+    assert (result.status, result.reasons, result.value, result.applied) == (
+        "not_met",
+        (Reason("want_mismatch"),),
+        None,
+        (),
+    )
+
+
+NOMINAL_SHAPES: list[tuple[list[dict[str, JsonValue]], str]] = [
+    ([nominal(value=None)], "refused"),
+    ([nominal(value="0.0007")], "refused"),
+    ([nominal(value=True)], "refused"),
+    ([nominal(field="bulk.porosity")], "refused"),
+    ([nominal(field="viscosity")], "refused"),
+    ([nominal(field=None)], "refused"),
+    ([nominal(vaule=0.0007)], "refused"),
+    ([nominal(feild="fluid.dynamic_viscosity")], "refused"),
+    ([nominal(record={"id": "x", "versoin": "1.0.0"})], "refused"),
+    # "So do two acceptances of one kind, `nominal`, ... that name one field, whatever location or other
+    # members each holds."
+    ([nominal(), nominal(record=None, region="lumen", value="broken")], "refused"),
+    ([nominal(), nominal(field="bulk.density")], "read"),
+    # Its `reason` and `basis` are ignored; `params`, a parameter set's in place of a value, and a member no
+    # document names, too.
+    ([nominal(basis=1.0, reason=None, params={"a": 1.0}, x_unknown_member=1.0)], "read"),
+]
+
+
+@pytest.mark.parametrize(("acceptances", "outcome"), NOMINAL_SHAPES)
+def test_a_nominals_shape_is_checked_at_step_0_whatever_it_names(
+    acceptances: list[dict[str, JsonValue]], outcome: str
+) -> None:
+    """Section 1: "Each is checked here, whatever field or location it names: its `field` as the target's is
+    (the pattern, and a registered field), and its kind's own members, have their shapes; its `reason` and
+    `basis` are ignored" [PR-330]."""
+    result = read_accepting(
+        met_interval(lower=0.0006, upper=0.0008, basis="specification_limits"), acceptances
+    )
+    if outcome == "refused":
+        assert (result.status, result.reasons) == ("not_met", (Reason("request_incomplete"),)), acceptances
+    else:
+        assert result.reasons == (Reason("want_mismatch"),), acceptances
+        assert result.value == 0.0007
+
+
+WATER_PIN: dict[str, JsonValue] = {"id": "conformance/water_fixture", "version": "2.0.0", "content_hash": PIN}
+
+
+def test_a_request_keeps_its_nominals_with_the_members_their_shape_names() -> None:
+    request = with_members(acceptances=[nominal(record=WATER_PIN, params=[1.0]), IMPLIED])
+    checked = ReadRequest.from_json(request)
+    assert isinstance(checked, ReadRequest)
+    (given,) = checked.nominals
+    assert (given.index, checked.nominal()) == (0, given)
+    acceptances = cast(list[JsonValue], checked.to_json().get("acceptances"))
+    assert acceptances[0] == {
+        "acceptance": "nominal",
+        "record": WATER_PIN,
+        "field": "fluid.dynamic_viscosity",
+        "value": 0.0007,
+    }
+    assert ReadRequest.from_json(checked.to_json()) == checked
+
+
 DERIVED_INPUTS: dict[str, JsonValue] = {
     "origin": "derived",
     "review": {"status": "not_checked"},
@@ -1875,6 +2084,29 @@ def test_no_alternative_whose_form_want_can_give_is_want_mismatch_at_step_7() ->
     result = read_met({"alternatives": [met_field(), met_field()]}, want="bounds")
     assert (result.status, result.reasons, result.conditions) == ("not_met", (Reason("want_mismatch"),), None)
     assert set(json.loads(json.dumps(result.to_json()))) == {"status", "reasons", "labels"}
+
+
+def test_two_intervals_under_a_nominal_give_no_pick_with_no_nominal_applied() -> None:
+    """Section 3 step 7: "An interval counts as one `want: value` can give where a nominal the request carries
+    applies to the read"; section 6: "Under `no_pick` no nominal is applied, nor compared with the bounds, so
+    none gives `nominal_invalid`" [PR-338]. A nominal located elsewhere applies to no read."""
+    inside = met_interval(lower=0.0006, upper=0.0008, basis="specification_limits")
+    below = met_interval(lower=0.0001, upper=0.0002, basis="specification_limits")
+    field: dict[str, JsonValue] = {"alternatives": [inside, below]}
+    result = read_accepting(field, [nominal()])
+    assert (result.status, result.reasons, result.applied, result.assumption) == (
+        "unknown",
+        (Reason("no_pick"),),
+        (),
+        None,
+    )
+    written = json.loads(json.dumps(result.to_json()))
+    assert [entry["value"] for entry in written["alternative_values"]] == [
+        {"lower": 0.0006, "upper": 0.0008, "basis": "specification_limits"},
+        {"lower": 0.0001, "upper": 0.0002, "basis": "specification_limits"},
+    ]
+    elsewhere = read_accepting(field, [nominal(record=None)])
+    assert (elsewhere.status, elsewhere.reasons) == ("not_met", (Reason("want_mismatch"),))
 
 
 @pytest.mark.parametrize(

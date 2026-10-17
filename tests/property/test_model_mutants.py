@@ -149,11 +149,16 @@ PARSED = read._parsed  # pyright: ignore[reportPrivateUsage]
 
 
 def _request_faults_of_the_first_alternative(
-    field: RecordField, record: JsonObject, request: read.ReadRequest, claims: Any, labels: tuple[str, ...]
+    field: RecordField,
+    record: JsonObject,
+    request: read.ReadRequest,
+    claims: Any,
+    labels: tuple[str, ...],
+    nominal: read.Nominal | None,
 ) -> read.ReadResult:
     """Where a fault of the request inside the alternatives refuses the field, only the first faulted
     alternative's reasons given."""
-    result = READ_ALTERNATIVES(field, record, request, claims, labels)
+    result = READ_ALTERNATIVES(field, record, request, claims, labels, nominal)
     if result.status != "not_met" or any(reason.code != "request_incomplete" for reason in result.reasons):
         return result
     for alternative in a_list(an_object(field.value)["alternatives"]):
@@ -514,7 +519,7 @@ def agreement(example: Example) -> None:
 # The model's faults that no read S2 builds can show, each with its reason: phase 0's survivors, and those one
 # case file alone kills, beside the others above.
 EVIDENCE = "an evidence entry is read by S2b-2: the implementation raises at it"
-NOMINALS = "the implementation raises for any acceptance but an implied condition until S2b-2 reads nominals"
+NOMINALS = "no strategy draws a nominal yet: S2b-2's properties draw them"
 NOT_SHOWN: dict[str, str] = {
     "evidence_entry_provenance_unchecked": EVIDENCE,
     "entry_withheld_in_part_read": EVIDENCE,

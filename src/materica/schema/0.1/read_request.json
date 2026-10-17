@@ -13,7 +13,7 @@
       "additionalProperties": {"$ref": "#/$defs/operating_condition"}
     },
     "requirement": {"$ref": "#/$defs/requirement"},
-    "acceptances": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_object"}}
+    "acceptances": {"type": "array", "items": {"$ref": "#/$defs/acceptance"}}
   },
   "$defs": {
     "target": {"oneOf": [{"$ref": "#/$defs/record_target"}, {"$ref": "#/$defs/region_target"}]},
@@ -99,6 +99,70 @@
       "required": ["accept"],
       "properties": {"accept": {"type": "array", "items": {"type": "string"}}},
       "not": {"required": ["tolerance"]}
+    },
+    "acceptance": {
+      "description": "An acceptance of a kind a read takes (read_side_contract.md section 1; declarations.md section 4.1). An acceptance of any other kind, or one that breaks its shape, refuses the request.",
+      "oneOf": [
+        {"$ref": "#/$defs/nominal_acceptance"},
+        {"$ref": "#/$defs/implied_condition_acceptance"},
+        {"$ref": "#/$defs/pick_overlay_or_extrapolation"}
+      ]
+    },
+    "acceptance_members": {
+      "description": "What every acceptance holds beside its kind's own members (declarations.md section 4.1): the field it names, checked as a target's is; and where it applies, its record, region or interval. A read applies one only to a read of the field it names, at its own record: one located at a region, at an interval or nowhere is checked and not applied, and step 0 does not check a location's shape. A read ignores its reason and basis.",
+      "type": "object",
+      "required": ["field"],
+      "properties": {
+        "record": {"$ref": "record.writer.json#/$defs/json_value", "description": "The record it applies at, by id, version and content_hash, the members of a material reference."},
+        "region": {"$ref": "record.writer.json#/$defs/json_value", "description": "A region of a scene (geometry.md)."},
+        "interval": {"$ref": "record.writer.json#/$defs/json_value", "description": "An interval of a layered path (geometry.md), which no request targets."},
+        "field": {"$ref": "#/$defs/field_name"},
+        "reason": {"$ref": "record.writer.json#/$defs/json_value", "description": "Why the consumer declares it; a read ignores it."},
+        "basis": {"$ref": "record.writer.json#/$defs/json_value", "description": "What it rests on; a read ignores it."}
+      }
+    },
+    "pick_overlay_or_extrapolation": {
+      "description": "A pick, an overlay or an extrapolation (declarations.md section 4.1). Their own members are written with the steps that apply them: an extrapolation's with tables, a pick's and an overlay's with alternatives and overlays.",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/acceptance_members"}],
+      "required": ["acceptance"],
+      "properties": {"acceptance": {"enum": ["pick", "overlay", "extrapolation"]}}
+    },
+    "nominal_acceptance": {
+      "description": "A value for an interval, in the field's registered unit. A parameter set's nominal holds params in place of a value; no field of this version takes a parameter set, and a read ignores params.",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/acceptance_members"}],
+      "required": ["acceptance", "value"],
+      "properties": {
+        "acceptance": {"const": "nominal"},
+        "value": {"type": "number"},
+        "params": {"$ref": "record.writer.json#/$defs/json_value", "description": "A parameter set's nominal vector (model_families.md)."}
+      }
+    },
+    "implied_condition_acceptance": {
+      "description": "A value for each condition in implies, which fills a condition the record holds as unstated or does not hold, on a field whose specimen states the fact and its token.",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/acceptance_members"}],
+      "required": ["acceptance", "fact", "token", "implies"],
+      "properties": {
+        "acceptance": {"const": "implied_condition"},
+        "fact": {"description": "A specimen fact whose shape has a token member.", "type": "string"},
+        "token": {"description": "One of that fact's tokens.", "type": "string"},
+        "implies": {
+          "description": "Per registered condition, a record condition's shape of that condition's kind without basis, plus_minus or set_or_measured, and never a status object: a numeric condition's holds no token, and a token condition's no value, range or unit (read_side_contract.md section 1).",
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/implies_value"}
+        }
+      }
+    },
+    "implies_value": {
+      "description": "A value or a range with its unit, in the condition's registered unit, for a numeric condition; a token of its row for a token condition.",
+      "anyOf": [{"$ref": "#/$defs/operating_condition"}, {"$ref": "#/$defs/implies_token"}]
+    },
+    "implies_token": {
+      "type": "object",
+      "required": ["token"],
+      "properties": {"token": {"type": "string"}}
     }
   }
 }

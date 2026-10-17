@@ -9,10 +9,14 @@ finds the field (step 7, `fields.find_field`), and reads it (`read_value_field`)
 field, as far as S4's decision 12 lets S2 go: the list's shape, a fault of the request inside one alternative,
 and `no_pick` or `want_mismatch` where no alternative has a reason of its own.
 
+Of a request's acceptances, a read applies the two S2 builds (`declarations.md` section 4.1): an implied
+condition at step 10, and a nominal at step 13, which supplies the value of an interval under `want: value`.
+Step 0 refuses an acceptance of a kind a read does not take.
+
 Overlays (step 6), picks, the rest of step 7 over alternatives, and a table are not built yet. A read that
-would need one raises `NotImplementedError`, and so does a request whose answer a check still to come
-could change, whatever else is wrong with it: one with a region target, or an acceptance other than an
-implied condition. It raises rather than give an answer a later step would contradict.
+would need one raises `NotImplementedError`, and so does a request whose answer a check still to come could
+change, whatever else is wrong with it: one with a region target, or a pick, an overlay or an extrapolation
+among its acceptances. It raises rather than give an answer a later step would contradict.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -26,11 +30,17 @@ import types
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from functools import cache
-from typing import TypeGuard, Union, cast, get_args, get_origin, get_type_hints, is_typeddict
+from typing import Union, cast, get_args, get_origin, get_type_hints, is_typeddict
 
 from materica import shapes
 from materica.core import jsonio
-from materica.core.conditions import ConditionEntry, ImpliedCondition, check_conditions, operating_json
+from materica.core.conditions import (
+    ConditionEntry,
+    ImpliedCondition,
+    check_conditions,
+    located_at,
+    operating_json,
+)
 from materica.core.fields import (
     FIELD_SHAPES,
     RecordField,
@@ -106,6 +116,43 @@ _WANT_OF_FORM: dict[str, Want] = {
 }
 # The shape of each member of a field of each form step 8 reads, by name.
 _FIELD_HINTS = {form: get_type_hints(shape) for form, shape in FIELD_SHAPES.items()}
+# The kinds of acceptance a read takes but S2 does not apply (section 1): an extrapolation (S3), a pick and an
+# overlay (S4). A request holding one raises, whatever else it holds.
+_APPLIED_LATER = ("pick", "overlay", "extrapolation")
+# The members named at a nominal's place (`declarations.md` section 4.1): every acceptance's kind, location,
+# field, reason and basis, the last two of which a read ignores; its `value`; and `params`, which a parameter
+# set's nominal holds in place of a value, and which a read of this version, whose rows take no parameter set,
+# ignores.
+_NOMINAL = "nominal"
+_NOMINAL_MEMBERS = ("acceptance", *_LOCATION_MEMBERS, "field", "reason", "basis", "value", "params")
+
+
+@dataclass(frozen=True)
+class Nominal:
+    """A nominal of a request's `acceptances` that passed step 0 (`declarations.md` section 4.1): its index
+    there; the field it names; where it is located, as an implied condition's location is; and the value it
+    supplies for an interval, in the field's registered unit."""
+
+    index: int
+    field: str
+    location: JsonObject
+    value: float
+
+    def located_at(self, field: str, record: MaterialRef) -> bool:
+        return located_at(self.field, self.location, field, record)
+
+    def assumption(self) -> shapes.NominalAssumption:
+        """The declaration a value it supplies rests on, as the request gives it, `basis` aside (section
+        2)."""
+        return {"acceptance": "nominal", "value": self.value}
+
+    def to_json(self) -> JsonObject:
+        return {
+            "acceptance": _NOMINAL,
+            **copy.deepcopy(self.location),
+            "field": self.field,
+            "value": self.value,
+        }
 
 
 @dataclass(frozen=True)
@@ -118,6 +165,7 @@ class ReadRequest:
     operating_conditions: dict[str, shapes.OperatingCondition]
     conditions: dict[str, shapes.RequirementCondition]
     implied: tuple[ImpliedCondition, ...] = ()
+    nominals: tuple[Nominal, ...] = ()
 
     @classmethod
     def from_json(
@@ -127,8 +175,8 @@ class ReadRequest:
 
         `request` is JSON text, read by `record_format.md` section 1 item 6, as a `str` or bytes-like; any
         other value is read as the JSON text `json.dumps` writes of it. A request with a region target, or
-        with an acceptance other than an implied condition, raises `NotImplementedError`, and claims no reader
-        makes raise `ValueError`, as in `read`.
+        with a pick, an overlay or an extrapolation, raises `NotImplementedError`, and claims no reader makes
+        raise `ValueError`, as in `read`.
         """
         _check(claims)
         value = _parsed(request)
@@ -137,10 +185,8 @@ class ReadRequest:
         if not isinstance(value, dict):
             return (Reason("request_incomplete", detail="the request is not an object"),)
         acceptances = value.get("acceptances", [])
-        if isinstance(acceptances, list) and not all(map(_is_implied_condition, acceptances)):
-            raise NotImplementedError(
-                "a request's acceptances other than implied conditions are not read yet"
-            )
+        if isinstance(acceptances, list) and any(map(_applied_later, acceptances)):
+            raise NotImplementedError("a request's picks, overlays and extrapolations are not read yet")
         named = value.get("target")
         if isinstance(named, dict) and "region" in named:
             raise NotImplementedError("a region target resolves through a scene, which is not read yet")
@@ -169,15 +215,10 @@ class ReadRequest:
             for name, entry in conditions.items()
             if (required := _requirement_condition(name, entry, name in operating, found)) is not None
         }
-        implied = tuple(
-            acceptance
-            for index, entry in enumerate(acceptances if isinstance(acceptances, list) else [])
-            if _is_implied_condition(entry)
-            and (acceptance := _implied_condition(index, entry, found)) is not None
-        )
+        implied, nominals = _acceptances(acceptances if isinstance(acceptances, list) else [], found)
         if found or target is None or want is None:
             return merged(found)
-        return cls(target[0], target[1], want, checked_operating, checked_conditions, implied)
+        return cls(target[0], target[1], want, checked_operating, checked_conditions, implied, nominals)
 
     def to_json(self) -> shapes.ReadRequest:
         target: shapes.Target = {"record": self.target.to_json(), "field": self.field}
@@ -187,9 +228,21 @@ class ReadRequest:
         request: shapes.ReadRequest = {"target": target, "requirement": requirement}
         if self.operating_conditions:
             request["operating_conditions"] = dict(self.operating_conditions)
-        if self.implied:
-            request["acceptances"] = [condition.to_json() for condition in self.implied]
+        acceptances: list[ImpliedCondition | Nominal] = sorted(
+            (*self.implied, *self.nominals), key=lambda acceptance: acceptance.index
+        )
+        if acceptances:
+            request["acceptances"] = [
+                cast(shapes.Acceptance, acceptance.to_json()) for acceptance in acceptances
+            ]
         return request
+
+    def nominal(self) -> Nominal | None:
+        """The nominal that applies to this read: the one, if any, located at its field and record (two
+        nominals for one field are refused at step 0)."""
+        return next(
+            (nominal for nominal in self.nominals if nominal.located_at(self.field, self.target)), None
+        )
 
 
 @dataclass(frozen=True)
@@ -243,14 +296,15 @@ class ProvenanceSummary:
 class FieldRead:
     """Steps 8 to 13 of one value field, the field read or one of its alternatives (section 3).
 
-    `reasons` are those steps 8 to 12 found, and `want_mismatch` step 13's, kept apart since step 7 reports
-    it for no alternative under `no_pick`. `conditions` are present once step 10 has run to its end, and
-    `request_fault` says that step 10 ended on a fault of the request (section 1: two implied conditions
-    that disagree), which refuses a field holding alternatives whichever alternative found it. The other
-    members are those a read returns, once step 8 has passed, as stored and copied: the form's member
-    (`member`); the value as `want` shapes it, where it can (`value`); the unit, the specimen facts, the
-    statistics block (none for evidence) and the provenance; and the labels step 12 adds. `applied` holds the
-    indexes of the acceptances step 10 applied."""
+    `reasons` are those steps 8 to 12 found, and `want_mismatch` step 13's (`nominal_invalid` in its place
+    for a nominal outside an interval's bounds), kept apart since step 7 reports it for no alternative under
+    `no_pick`. `conditions` are present once step 10 has run to its end, and `request_fault` says that step
+    10 ended on a fault of the request (section 1: two implied conditions that disagree), which refuses a
+    field holding alternatives whichever alternative found it. The other members are those a read returns,
+    once step 8 has passed, as stored and copied: the form's member (`member`); the value as `want` shapes it,
+    or as a nominal supplies it with its `assumption`, where it can (`value`); the unit, the specimen facts,
+    the statistics block (none for evidence) and the provenance; and the labels step 12 adds. `applied` holds
+    the indexes of the acceptances steps 10 and 13 applied."""
 
     reasons: tuple[Reason, ...]
     conditions: tuple[ConditionEntry, ...] | None = None
@@ -259,6 +313,7 @@ class FieldRead:
     want_mismatch: Reason | None = None
     member: JsonValue = None
     value: JsonValue = None
+    assumption: shapes.NominalAssumption | None = None
     unit: JsonValue = None
     specimen: JsonObject | None = None
     statistics: JsonObject | None = None
@@ -291,8 +346,9 @@ class FieldRead:
 class ReadResult:
     """A read's result (section 2): its status, the worst of its reasons; every reason found; its labels;
     `conditions` once step 10 has run to its end (item 6); and the members that carry a value, each present
-    as item 6 says, as stored: `value` with its `unit`, `specimen`, `statistics` and `provenance`, or under
-    `no_pick` the `alternative_values`, each an alternative's read, with the `unit`."""
+    as item 6 says, as stored: `value` with its `unit`, `specimen`, `statistics` and `provenance`, and the
+    `assumption` a nominal's value rests on (item 3), or under `no_pick` the `alternative_values`, each an
+    alternative's read, with the `unit`."""
 
     status: ReadStatus
     reasons: tuple[Reason, ...]
@@ -300,14 +356,15 @@ class ReadResult:
     conditions: tuple[ConditionEntry, ...] | None = None
     applied: tuple[int, ...] = dataclasses.field(default=(), compare=False)
     """Outside `to_json`, and so outside equality, which compares what section 2 gives: the indexes, in the
-    request's `acceptances`, of those the read applied, the implied conditions that filled a condition so far,
-    which a build maps to what accepted the result."""
+    request's `acceptances`, of those the read applied, the implied conditions that filled a condition and the
+    nominal that supplied the value, which a build maps to what accepted the result."""
     value: JsonValue = dataclasses.field(default=None, kw_only=True)
     alternative_values: tuple[FieldRead, ...] | None = dataclasses.field(default=None, kw_only=True)
     unit: JsonValue = dataclasses.field(default=None, kw_only=True)
     specimen: JsonObject | None = dataclasses.field(default=None, kw_only=True)
     statistics: JsonObject | None = dataclasses.field(default=None, kw_only=True)
     provenance: ProvenanceSummary | None = dataclasses.field(default=None, kw_only=True)
+    assumption: shapes.Assumption | None = dataclasses.field(default=None, kw_only=True)
 
     @classmethod
     def from_json(cls, result: shapes.ReadResult) -> "ReadResult":
@@ -326,6 +383,7 @@ class ReadResult:
             specimen=cast(JsonObject | None, _stored(result.get("specimen"))),
             statistics=cast(JsonObject | None, _stored(result.get("statistics"))),
             provenance=None if provenance is None else ProvenanceSummary.from_json(provenance),
+            assumption=cast(shapes.Assumption | None, _stored(result.get("assumption"))),
         )
 
     def to_json(self) -> shapes.ReadResult:
@@ -354,6 +412,8 @@ class ReadResult:
         if self.provenance is not None:
             members["provenance"] = self.provenance.to_json()
         members["labels"] = list(self.labels)
+        if self.assumption is not None:
+            members["assumption"] = copy.deepcopy(self.assumption)
         return cast(shapes.ReadResult, members)
 
 
@@ -384,9 +444,10 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
     field = find_field(record, VOCABULARY.fields[request.field])
     if isinstance(field, Reason):
         return _refused((field,), resolved.labels)
+    nominal = request.nominal()
     if isinstance(field.value, dict) and "alternatives" in field.value:
-        return _read_alternatives(field, record, request, claims, resolved.labels)
-    found = read_value_field(field, record, request, claims)
+        return _read_alternatives(field, record, request, claims, resolved.labels, nominal)
+    found = read_value_field(field, record, request, claims, nominal)
     reasons = found.found
     status = _status(reasons)
     labels = tuple(dict.fromkeys((*resolved.labels, *found.labels)))
@@ -403,20 +464,27 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
         specimen=found.specimen,
         statistics=found.statistics,
         provenance=found.provenance,
+        assumption=found.assumption,
     )
 
 
 def _value_returned(status: ReadStatus, found: FieldRead) -> bool:
     """Section 2 item 3: a read that steps 8 to 13 shaped a value for returns it unless it is `not_met`, a
-    declared extrapolation or nominal aside, which this read applies neither of."""
-    return found.value is not None and status != "not_met"
+    declared nominal aside, whose value a `not_met` read carries with its `assumption` (an extrapolation waits
+    for S3)."""
+    return found.value is not None and (status != "not_met" or found.assumption is not None)
 
 
 def read_value_field(
-    field: RecordField, record: JsonObject, request: ReadRequest, claims: Collection[Suite]
+    field: RecordField,
+    record: JsonObject,
+    request: ReadRequest,
+    claims: Collection[Suite],
+    nominal: Nominal | None = None,
 ) -> FieldRead:
-    """Steps 8 to 13 of `field`, a value field of `record`: the field read, or one of its alternatives. A step
-    that finds a `not_met` reason ends the read (section 3)."""
+    """Steps 8 to 13 of `field`, a value field of `record`: the field read, or one of its alternatives, with
+    `nominal` applied at step 13, where one applies (none under `no_pick`, section 6). A step that finds a
+    `not_met` reason ends the read (section 3)."""
     found = form_problems(field, record, claims)
     if _ends(found):
         return FieldRead(merged(found))
@@ -441,13 +509,18 @@ def read_value_field(
     hints = _FIELD_HINTS[form]
     member = _counted_member(_returned(value[FORM_MEMBERS[form]], hints[FORM_MEMBERS[form]]))
     mismatch = _by_want(value, field.spec.name, form, request.want)
+    supplied = None
+    if mismatch is not None and nominal is not None and form == "interval" and request.want == "value":
+        mismatch, supplied = _nominal_read(an_object(value["interval"]), field.spec.name, nominal)
+    applied = checked.applied if supplied is None else tuple(sorted((*checked.applied, supplied.index)))
     return FieldRead(
         merged(found),
         checked.entries,
-        checked.applied,
+        applied,
         want_mismatch=mismatch,
         member=member,
-        value=None if mismatch is not None else copy.deepcopy(member),
+        value=_value(member, mismatch, supplied),
+        assumption=None if supplied is None else supplied.assumption(),
         unit=_returned(value["unit"], shapes.Unit),
         specimen=cast(JsonObject, _returned(field.specimen(), shapes.Specimen)),
         # Evidence has no statistics (section 2 item 6).
@@ -457,6 +530,14 @@ def read_value_field(
         provenance=ProvenanceSummary.of(provenance),
         labels=_labels(value, provenance),
     )
+
+
+def _value(member: JsonValue, mismatch: Reason | None, supplied: Nominal | None) -> JsonValue:
+    """The value as `want` shapes it: the form's member, or a nominal's value, or none where step 13 gave a
+    reason and no nominal supplied one."""
+    if supplied is not None:
+        return supplied.value
+    return copy.deepcopy(member) if mismatch is None else None
 
 
 def _origin(provenance: JsonObject, name: str) -> list[Reason]:
@@ -478,6 +559,26 @@ def _labels(field: JsonObject, provenance: JsonObject) -> tuple[str, ...]:
     return tuple(labels)
 
 
+def _is_interval(alternative: JsonValue) -> bool:
+    return an_object(alternative)["form"] == "interval"
+
+
+def _nominal_read(interval: JsonObject, name: str, nominal: Nominal) -> tuple[Reason, Nominal | None]:
+    """Step 13 under `want: value` of an interval with a nominal that applies to the read (section 6): inside
+    or on its bounds, compared exactly (a comparison of two doubles is), on the bounded side of a one-sided
+    interval, the nominal supplies the value and the assumption beside `want_mismatch`; outside them, it gives
+    `nominal_invalid` in place of `want_mismatch`, and no value."""
+    lower, upper, given = interval["lower"], interval["upper"], nominal.value
+    inside = (not isinstance(lower, float) or lower <= given) and (
+        not isinstance(upper, float) or given <= upper
+    )
+    if inside:
+        detail = f"want value cannot give {name}, an interval: the nominal {given!r} supplies it"
+        return Reason("want_mismatch", detail=detail), nominal
+    detail = f"the nominal {given!r} lies outside the bounds of {name}"
+    return Reason("nominal_invalid", detail=detail), None
+
+
 def _by_want(field: JsonObject, name: str, form: str, want: Want) -> Reason | None:
     """Step 13 (section 6): `want_mismatch` where `want` cannot give the field's form, none where it gives the
     form's own member as stored: a constant's number under `want: value`, an interval's bounds with their
@@ -497,12 +598,16 @@ def _read_alternatives(
     request: ReadRequest,
     claims: Collection[Suite],
     labels: tuple[str, ...],
+    nominal: Nominal | None,
 ) -> ReadResult:
     """Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (section 3, step 7):
     the list's shape (`form_invalid`); a fault of the request inside one alternative, where no alternative has
     a reason of its own, which refuses the field; and two or more alternatives none of which has a reason of
     its own: `want_mismatch` where none has a form `want` can give, else `no_pick`, each in
-    `alternative_values`. Any other outcome, which an alternative's own reasons decide, waits for S4."""
+    `alternative_values`, with no nominal applied, nor compared with the bounds (section 6). An interval
+    counts as a form `want: value` can give where `nominal`, the request's nominal that applies to the read,
+    is one, since a pick would let it apply. Any other outcome, which an alternative's own reasons decide,
+    waits for S4."""
     holder = an_object(field.value)
     shape = alternatives_problems(holder, field.spec.name)
     if shape:
@@ -525,7 +630,12 @@ def _read_alternatives(
         )
     if len(reads) == 1:
         raise NotImplementedError("the one alternative left is read at step 7 by S4, which is not built yet")
-    if all(read.want_mismatch is not None for read in reads):
+    gives = [
+        read.want_mismatch is None
+        or (nominal is not None and _is_interval(alternative) and request.want == "value")
+        for read, alternative in zip(reads, a_list(holder["alternatives"]), strict=True)
+    ]
+    if not any(gives):
         mismatch = Reason(
             "want_mismatch", detail=f"want {request.want} can give no alternative of {field.spec.name}"
         )
@@ -867,8 +977,61 @@ def _requirement_condition(
     return None
 
 
-def _is_implied_condition(entry: JsonValue) -> TypeGuard[dict[str, JsonValue]]:
-    return isinstance(entry, dict) and entry.get("acceptance") == _IMPLIED_CONDITION
+def _applied_later(entry: JsonValue) -> bool:
+    return isinstance(entry, dict) and entry.get("acceptance") in _APPLIED_LATER
+
+
+def _acceptances(
+    acceptances: list[JsonValue], found: list[Reason]
+) -> tuple[tuple[ImpliedCondition, ...], tuple[Nominal, ...]]:
+    """The implied conditions and nominals of a request's acceptances, each checked whatever field or location
+    it names (section 1): an acceptance of another kind, or not an object, is refused, and so are two nominals
+    that name one field, whatever else each holds. A pick, an overlay and an extrapolation raised before."""
+    implied: list[ImpliedCondition] = []
+    nominals: list[Nominal] = []
+    named: list[str] = []
+    for index, entry in enumerate(acceptances):
+        kind = entry.get("acceptance") if isinstance(entry, dict) else None
+        if isinstance(entry, dict) and kind == _IMPLIED_CONDITION:
+            if (condition := _implied_condition(index, entry, found)) is not None:
+                implied.append(condition)
+        elif isinstance(entry, dict) and kind == _NOMINAL:
+            if isinstance(field := entry.get("field"), str):
+                named.append(field)
+            if (nominal := _nominal(index, entry, found)) is not None:
+                nominals.append(nominal)
+        else:
+            found.append(
+                _incomplete(f"acceptances[{index}] is no acceptance of a kind a read takes: {kind!r}")
+            )
+    for field in sorted({field for field in named if named.count(field) > 1}):
+        found.append(_incomplete(f"acceptances hold two nominals for {field}"))
+    return tuple(implied), tuple(nominals)
+
+
+def _nominal(index: int, entry: dict[str, JsonValue], found: list[Reason]) -> Nominal | None:
+    """A nominal's shape (`declarations.md` section 4.1), whatever field or location it names: its field, as
+    the target's is, and its `value`, a number. None, its reasons in `found`, where it breaks its shape."""
+    where = f"acceptances[{index}]"
+    before = len(found)
+    _slips(entry, _NOMINAL_MEMBERS, where, found)
+    field, value = entry.get("field"), entry.get("value")
+    _acceptance_field(field, where, found)
+    location = _acceptance_location(entry, where, found)
+    if not isinstance(value, float):
+        found.append(_incomplete(f"{where}.value is missing or not a number"))
+    if len(found) > before or not (isinstance(field, str) and isinstance(value, float)):
+        return None
+    return Nominal(index, field, location, value)
+
+
+def _acceptance_field(field: JsonValue, where: str, found: list[Reason]) -> None:
+    if not (isinstance(field, str) and FIELD.fullmatch(field) and field in VOCABULARY.fields):
+        found.append(_incomplete(f"{where}.field is not a registered <section>.<field>: {field!r}"))
+
+
+def _acceptance_location(entry: dict[str, JsonValue], where: str, found: list[Reason]) -> JsonObject:
+    return {name: _location(name, entry[name], where, found) for name in _LOCATION_MEMBERS if name in entry}
 
 
 def _implied_condition(
@@ -882,16 +1045,13 @@ def _implied_condition(
     before = len(found)
     _slips(entry, _IMPLIED_OWN, where, found)
     field, fact, token, implies = (entry.get(name) for name in ("field", "fact", "token", "implies"))
-    if not (isinstance(field, str) and FIELD.fullmatch(field) and field in VOCABULARY.fields):
-        found.append(_incomplete(f"{where}.field is not a registered <section>.<field>: {field!r}"))
+    _acceptance_field(field, where, found)
     spec = VOCABULARY.facts.get(fact) if isinstance(fact, str) else None
     if spec is None or not spec.tokens:
         found.append(_incomplete(f"{where}.fact is not a specimen fact with tokens: {fact!r}"))
     elif token not in spec.tokens:
         found.append(_incomplete(f"{where}.token is not one of {fact}'s tokens: {token!r}"))
-    location = {
-        name: _location(name, entry[name], where, found) for name in _LOCATION_MEMBERS if name in entry
-    }
+    location = _acceptance_location(entry, where, found)
     values: dict[str, JsonObject] = {}
     if not isinstance(implies, dict):
         found.append(_incomplete(f"{where}.implies is missing or not an object"))

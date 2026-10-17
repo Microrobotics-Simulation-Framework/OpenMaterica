@@ -13,8 +13,9 @@ decides. Anything else fails, but the known divergences, each listed by kind wit
 exactly what each side gives there:
 
 - a step the implementation has not built that the model decides (`NOT_BUILT`): an overlay as the target,
-  an acceptance other than an implied condition; each found by the implementation's own words for what it
-  has not built, and held to what the draw holds and the model gives;
+  found by the implementation's own words for what it has not built, and held to what the draw holds and the
+  model gives (a pick, an overlay or an extrapolation in a request, which the implementation raises at, the
+  model gives no verdict on);
 - an open point on which the two read the text differently (`OPEN_POINTS`), planted by the draw alone: there
   the model must refuse, as its fail-closed reading does, and the model given the implementation's reading (a
   seeded fault of the model that is that reading, `tests/reference/mutants.py`) must agree with the
@@ -204,17 +205,6 @@ def an_overlay_as_the_target(example: Example, model: Outcome) -> bool:
     return refused and any(record.get("record_type") == "overlay" for record in targets(example))
 
 
-def an_acceptance_s2b_reads(example: Example, model: Outcome) -> bool:
-    """An acceptance other than an implied condition, whose checks S2b-2 (nominals), S3 and S4 build: the
-    implementation raises whatever else the request holds."""
-    request = request_of(example)
-    acceptances = request.get("acceptances") if isinstance(request, dict) else None
-    return isinstance(acceptances, list) and any(
-        not (isinstance(entry, dict) and entry.get("acceptance") == "implied_condition")
-        for entry in acceptances
-    )
-
-
 class NotBuilt(NamedTuple):
     said: str  # how the implementation's `NotImplementedError` begins
     holds: Callable[[Example, Outcome], bool]
@@ -226,11 +216,6 @@ NOT_BUILT = {
         "a read whose target is an overlay",
         an_overlay_as_the_target,
         "S4's decision 8: S4 builds step 5's refusal of an overlay as the target, which the model gives",
-    ),
-    "an acceptance S2b reads": NotBuilt(
-        "a request's acceptances other than implied conditions",
-        an_acceptance_s2b_reads,
-        "S2b-2 checks a nominal, S3 and S4 the others; the model refuses a broken one or an unknown kind",
     ),
 }
 
