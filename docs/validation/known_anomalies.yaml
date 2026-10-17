@@ -13,10 +13,10 @@
 # affected_versions: a PEP 440 specifier set, as in MADDENING (">=FIRST" while reachable,
 # ">=FIRST, <FIX" once fixed, "none" for a defect no release carried).
 #
-# No version has been released; materica_version names the development line.
+# materica_version is the version of the tree this registry ships in: the package's, in pyproject.toml.
 
 schema_version: "1.0"
-materica_version: "0.1.0.dev0"
-generated_date: "2026-10-11"
+materica_version: "0.1.0.dev1"
+generated_date: "2026-10-17"
 
 anomalies: []
