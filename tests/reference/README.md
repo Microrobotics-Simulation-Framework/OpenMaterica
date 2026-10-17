@@ -57,7 +57,7 @@ specification's README says ("Case files"), by the conformance runner's comparis
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 894 files, under every configuration each allows (6,776 runs), and gives no verdict on
+The model agrees with 915 files, under every configuration each allows (6,952 runs), and gives no verdict on
 329, each listed in `exceptions.py` under the kind its outcome names: a table its row allows (147), an overlay
 (71), an extrapolation (55), a pick (35), and an alternative with reasons of its own (21). It disagrees with
 none. A case file the model disagrees with, or gives no verdict on, fails unless a kind lists it, for the
@@ -69,9 +69,10 @@ detail that kind names; a listed one it agrees with fails as stale.
 exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
 of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
-measured 2026-10-17 on `main` at `6c9ab9f`. 75 faults: 60 killed, 15 survive; S2a-4's review added five
-survivors, each a rule no case pins (below the table), so 80 faults: 60 killed, 20 survive. The two cases of
-the maintainer's token ruling (2026-10-18) kill two of the survivors, so 62 killed, 18 survive.
+measured 2026-10-17 on `main` at `6c9ab9f`, but `member_checked_off_its_row`'s, which PR #37's review's cases
+kill (the same day). 75 faults: 61 killed, 14 survive; S2a-4's review added five survivors, each a rule no
+case pins (below the table), so 80 faults: 61 killed, 19 survive. The two cases of the maintainer's token
+ruling (2026-10-18) kill two of the survivors, so 63 killed, 17 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -101,7 +102,7 @@ the maintainer's token ruling (2026-10-18) kill two of the survivors, so 62 kill
 | `nominal_applied_under_no_pick` | a nominal applied to an interval alternative under `no_pick` | 1, `PR-338.no_pick_two_intervals_nominal` alone |
 | `unknown_tokens_read_as_shape_faults` | a token the reader knows for no member of that name gives `form_invalid` | 26 |
 | `status_tokens_unchecked` | a status object takes any token, in any member | 3 |
-| `member_checked_off_its_row` | the member of a form the row does not allow checked as on a row allowing it | survives: each member of a form its row does not allow is well formed in the cases |
+| `member_checked_off_its_row` | the member of a form the row does not allow checked as on a row allowing it | 2, `PR-036.broken_composition_on_density` and `PR-036.broken_interval_on_elemental_composition` |
 | `composition_checked_beyond_its_basis` | a composition whose basis the row does not allow checked further | survives: each composition whose basis its row does not allow is otherwise well formed in the cases |
 | `family_suite_ignored` | a parameter set read without the family evaluation suite not `family_suite_absent` | 7 |
 | `entry_withheld_in_part_read` | an evidence entry withheld in some members but not every one read | 1, `PR-052.entry_partly_withheld` alone |
@@ -157,20 +158,23 @@ the maintainer's token ruling (2026-10-18) kill two of the survivors, so 62 kill
 | `units_stored_differently_read_as_no_pick` | alternatives whose units are stored differently read as `no_pick`, which S4 decides | survives: no case holds such alternatives |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
-B should kill them as well. Of the nine survivors, three are the open points (`members_of_the_other_kind_read`,
+B should kill them as well. Of the eight survivors, three are the open points (`members_of_the_other_kind_read`,
 `slips_of_alternatives_ignored`, `evidence_entry_provenance_unchecked`), which no case pins because the text
 leaves them open; one is a rule of the text that no case pins either, since S2a-4's fix round
 (`declaration_names_not_named_in_a_request`: `read_side_contract.md:40-41` and `declarations.md:30` and `:64` name
 a requirement's `field` and its conditions' `reason` and `consequence`, and a read refuses a slip of one); one is
 the rule that a status object breaking its shape gives no reason of its own
 (`broken_status_object_reports_its_token`), a ruling the text took up with S3, whose example is a table's,
-on which the model gives no verdict; two are the rule that a form's member is unchecked off its row
-(`member_checked_off_its_row`, `composition_checked_beyond_its_basis`), which only S3's cases show, again
-for tables; one needs a plural of two characters or more (`plurals_not_slips`); and one cannot show through
-JSON at all (`results_share_the_record`, HP6's). The tenth, `input_specimens_optional`, is the model's own
+on which the model gives no verdict; one is the rule that a composition whose basis its row does not allow
+is checked no further (`composition_checked_beyond_its_basis`), which only S3's cases show, again for tables;
+one needs a plural of two characters or more (`plurals_not_slips`); and one cannot show through JSON at all
+(`results_share_the_record`, HP6's). The same rule for a form the row does not allow
+(`member_checked_off_its_row`) survived until PR #37's review added two cases that kill it, a composition with
+no component on `bulk.density` and an interval upside down on `bulk.elemental_composition`, each
+`form_not_registered` alone. The ninth, `input_specimens_optional`, is the model's own
 reading until S2a-4's phase B, whose agreement property (HP12) found that the text requires the list
 (`provenance.md` section 5 item 3, "A derived value carries the specimen facts of each input"); the model was
-fixed, and the fault seeded. The eleventh, `members_of_the_other_kind_ignored`, is the implementation's
+fixed, and the fault seeded. The tenth, `members_of_the_other_kind_ignored`, is the implementation's
 reading of that open point's record half (S2a-4's phase B): HP12 lists the point as a known divergence, held
 exactly by this fault (`tests/property/test_model_properties.py`). It and `members_of_the_other_kind_read` also
 ignore the implied half, since the model reads both halves by one function, and so the two cases of the
@@ -189,10 +193,11 @@ model's own reading until then (a reviewed review's `reason` was returned, which
 item 6 does not name for a reviewed review), fixed and seeded; the fifth is a step S4 owns, which no read S2
 builds reaches.
 
-The agreement property HP12 (`tests/property/test_model_properties.py`) kills 15 of the 18 survivors, the two
-the token ruling's cases kill, and 5 of the 10 faults one case file alone kills, each with the model given the
-fault and the core as it is (`tests/property/test_model_mutants.py`); the other eight are listed there with
-the reason no read S2 builds shows them: an evidence entry's (two) and nominals (three) wait for S2b-2, a unit
+The agreement property HP12 (`tests/property/test_model_properties.py`) kills 14 of the 17 survivors, the two
+the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two
+cases came to kill it, and 5 of the 10 faults one case file alone kills, each with the model given the fault
+and the core as it is (`tests/property/test_model_mutants.py`); the other eight are listed there with the
+reason no read S2 builds shows them: an evidence entry's (two) and nominals (three) wait for S2b-2, a unit
 held as a status object is registered only for evidence (two), and a shared object never shows in JSON.
 
 ## Running

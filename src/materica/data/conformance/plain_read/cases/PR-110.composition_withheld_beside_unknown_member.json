@@ -1,0 +1,48 @@
+{
+  "case": "PR-110",
+  "variant": "composition_withheld_beside_unknown_member",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "composition_reference_only_beside_unknown_member.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/composition_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:0a8b3ccea7dd5fe364652664103eca652347facdba5d8b6b6f308c56a6bb279b"
+      },
+      "field": "bulk.elemental_composition"
+    },
+    "requirement": {
+      "want": "components"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "withheld"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

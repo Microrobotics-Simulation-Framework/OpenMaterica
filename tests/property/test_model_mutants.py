@@ -451,7 +451,8 @@ class ModelFault(NamedTuple):
 
 
 MODEL = [
-    # No case file kills these (phase 0's survivors, and those seeded in phase B).
+    # No case file kills these (phase 0's survivors, and those seeded in phase B), but
+    # `member_checked_off_its_row`, which two of PR #37's review's cases came to kill: HP12 still searches it.
     ModelFault("plurals_not_slips", "unpinned", ("plural_of_two_characters",)),
     ModelFault("member_checked_off_its_row", "unpinned", ("form_off_its_row",)),
     ModelFault("composition_checked_beyond_its_basis", "unpinned", ("composition_basis_off_its_row",)),

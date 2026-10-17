@@ -1,0 +1,67 @@
+{
+  "case": "PR-045",
+  "variant": "interval_basis_of_a_statistics_block",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "grade_density_interval_basis_of_a_statistics_block.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/polymer_grade_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:30a973d9a048d61c0b42b3e9b2db09921e2565178dafcae37b2e858efcb8ba33"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "bounds",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

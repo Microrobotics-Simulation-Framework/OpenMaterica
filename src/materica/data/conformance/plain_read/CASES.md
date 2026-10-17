@@ -373,8 +373,10 @@ See `README.md` beside this file for how to read a case.
 |---|---|---|---|
 | `bounds_one_sided_lower_none` | `want: bounds` on a one-sided interval, `lower` `{"status": "none"}` and upper 1250 kg/m3: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": {"status": "none"}, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
 | `bounds_one_sided_upper_none` | `want: bounds` on a one-sided interval, lower 1150 kg/m3 and `upper` `{"status": "none"}`: `met`, the bounds with their basis, as stored, `upper` returned as that status object; it is also PR-100's status returned as a status, whose arm was the same file and is kept once | 13 | met; value `{"lower": 1150.0, "upper": {"status": "none"}, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+| `bounds_proxy_range` | `want: bounds` on a proxy range [1100, 1300] kg/m3, `basis` `proxy_range`, a token of the interval's list that a statistics block's `basis` does not hold, beside a block whose `basis` is `reported_range`: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": 1100.0, "upper": 1300.0, "basis": "proxy_range"}`; unit `"kg/m3"`; labels none |
 | `bounds_reported_range` | `want: bounds` on a reported range [1180, 1220]: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": 1180.0, "upper": 1220.0, "basis": "reported_range"}`; unit `"kg/m3"`; labels none |
 | `bounds_specification_limits` | `want: bounds` on the specification limits [1150, 1250] kg/m3: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
+| `bounds_stated_bound` | `want: bounds` on a one-sided stated bound, lower 1100 kg/m3, `upper` `{"status": "none"}` and `basis` `stated_bound`, a token of the interval's list that a statistics block's `basis` does not hold: `met`, the bounds with their basis, as stored | 13 | met; value `{"lower": 1100.0, "upper": {"status": "none"}, "basis": "stated_bound"}`; unit `"kg/m3"`; labels none |
 
 ## PR-023
 
@@ -441,6 +443,7 @@ See `README.md` beside this file for how to read a case.
 | `near_typo_section_specimens` | the `fluid` section holds `specimens`, one slip from `specimen`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_source_ranges` | a table holding `source_ranges`, one slip from `source_range`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_z` | a table holding `z`, one slip from `x` and from `y`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `slip_of_a_field_member_in_interval` | the `interval` holds `values`, one slip from `value`, a member the field's shape names but the interval's does not: ignored, the bounds returned without it, `met` | 13 | met; value `{"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
 | `table_unknown_member_ignored` | a table holding `curation_note`, a member the reader does not know and more than one slip from every member of a table: ignored; read at 310 K, `met` | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
 | `unknown_member_in_condition` | an unknown member, `curation_note`, in the temperature condition is ignored and not returned: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `unknown_member_in_fact` | an unknown member, `curation_note`, in a specimen fact is ignored and not returned | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
@@ -462,6 +465,7 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `bound_status_unknown` | `lower` holding `{"status": "unbounded"}`, a status token the reader does not know, beside `upper` `{"status": "none"}`: `unknown_token` alone, the unknown token never read as `none` | 8 | not_met; `unknown_token`; labels none |
 | `central_unknown` | the statistics block's `central` holds `mode`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `composition_basis_unknown` | a composition with the basis `weight_fraction`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `dispersion_unknown` | the statistics block's `dispersion` holds `estimated`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
@@ -475,6 +479,7 @@ See `README.md` beside this file for how to read a case.
 | `stated_as_unknown` | a `plus_minus` entry's `stated_as` holds `half_range`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `statistics_basis_unknown` | the statistics block's `basis` holds `reported_iqr`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `status_token_unknown` | the statistics block's `sd` holds the status token `pending`, a token the reader knows for no member of that name: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
+| `sum_rule_of_a_basis` | a composition with the sum rule `mass_fraction`, a token the reader knows for `basis`, not for `sum_rule`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `sum_rule_unknown` | a composition with the sum rule `approximate`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `table_axis_token_condition` | `axis` `density_kind`, a token condition's name: `unknown_token`, and not `form_invalid` for it, at step 8 | 8 | not_met; `unknown_token`; labels none |
 | `table_axis_unknown` | `axis` `frequency`, a condition of a later version: `unknown_token`, and not `form_invalid` for it, at step 8 | 8 | not_met; `unknown_token`; labels none |
@@ -513,6 +518,8 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `broken_composition_on_density` | a composition with no component, a shape error, on `bulk.density`, whose row allows a constant, a table or an interval: `form_not_registered` alone, its member not checked | 8 | not_met; `form_not_registered`; labels none |
+| `broken_interval_on_elemental_composition` | an interval with `lower` 0.2 above `upper` 0.1, a shape error, on `bulk.elemental_composition`, whose row allows only a composition: `form_not_registered` alone, its member not checked | 8 | not_met; `form_not_registered`; labels none |
 | `broken_table_on_magnetic_remanence` | a table without `edges` on `magnetic.remanence`, whose row does not allow a table: `form_not_registered` alone at step 8, the member of a form the row does not allow not being checked | 8 | not_met; `form_not_registered`; labels none |
 | `composition_basis_mole_fraction` | a composition with the basis `mole_fraction`, which the row does not allow: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
 | `composition_basis_volume_fraction` | a composition with the basis `volume_fraction`, which the row does not allow: `form_not_registered` | 8 | not_met; `form_not_registered`; labels none |
@@ -677,6 +684,9 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `component_fraction_missing` | a composition with a component holding `component` and no `fraction`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `composition_basis_missing` | a composition with no `basis`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `composition_sum_rule_missing` | a composition with no `sum_rule`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `condition_range_reversed` | the shear rate's stated range is [1000, 10], out of order: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `condition_token_of_another_row` | `density_kind` holds `tube`, a token the reader knows for `token` in `measurement_geometry`'s row, not this one's: `form_invalid`, not `unknown_token` | 8 | not_met; `form_invalid`; labels none |
 | `fact_other_without_text` | the fact `preservation` holds `other` with no `text`, which its row requires for `other`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
@@ -684,6 +694,8 @@ See `README.md` beside this file for how to read a case.
 | `fact_taxon_not_integer` | the fact `species` holds its `ncbi_taxon` as the string `9606`, not an integer: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `field_fault_other_field_read` | the record's `bulk.density` holds its value as a string; `fluid.dynamic_viscosity` is read: the water answer | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
 | `field_fault_refuses_that_field` | the same record's `bulk.density`, whose value is a string, is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `interval_basis_missing` | an interval holding `lower` and `upper` and no `basis`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `interval_basis_of_a_statistics_block` | the interval's `basis` holding `reported_sd`, a token the reader knows for `basis` in a statistics block, not in an interval: `form_invalid`, not `unknown_token` | 8 | not_met; `form_invalid`; labels none |
 | `section_specimen_fault_other_section_read` | the same record's `bulk.density`, in a section whose `specimen` is sound, is read: `met` | 13 | met; value `1261.0`; unit `"kg/m3"`; labels none |
 | `section_specimen_fault_refuses_section` | the `fluid` section's `specimen` holds `preparation` as a string, not its object: `fluid.dynamic_viscosity` is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 
@@ -797,15 +809,18 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `component_a_form_token` | a composition with the component `constant`, a token the reader knows for `form`, not for `component`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `component_of_another_kind` | a composition with the component `water`, of another kind than `element:`: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `component_statistics_broken` | a composition with a component whose statistics block holds a negative `sd`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `component_statistics_returned` | a component carrying its own statistics block: checked and returned with the components, `met` | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "partial", "components": [{"component": "element:H", "fraction": 0.11, "statistics": {"central": "mean", "n_specimens": 3.0, "n_donors": {"status": "not_applicable"}, "mean": 0.11, "sd": 0.01, "min": {"status": "unstated"}, "max": {"status": "unstated"}, "distribution": {"status": "unstated"}, "basis": "reported_sd", "represents": "measurement", "dispersion": "reported", "relative_uncertainty": {"status": "none"}, "expanded_uncertainty": {"status": "none"}, "precision_conditions": "repeatability"}}, {"component": "element:O", "fraction": 0.75}]}`; unit `"1"`; labels none |
+| `component_statistics_withheld` | a component whose `statistics` holds `{"status": "withheld"}`, a token a block's row allows: checked and returned with the component as that status object, `met` | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "partial", "components": [{"component": "element:H", "fraction": 0.11, "statistics": {"status": "withheld"}}, {"component": "element:O", "fraction": 0.75}]}`; unit `"1"`; labels none |
 | `element_xx` | a composition with `element:Xx`, a symbol not in the table: `unknown_token` | 8 | not_met; `unknown_token`; labels none |
 | `fraction_above_one` | a composition with a fraction of 1.5: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `fraction_below_zero` | a composition with a fraction of -0.1: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `fractions_zero_and_one` | fractions of exactly 1 and 0: checked and returned with the components, `met` | 13 | met; value `{"basis": "mass_fraction", "sum_rule": "sums_to_one", "components": [{"component": "element:Fe", "fraction": 1.0}, {"component": "element:C", "fraction": 0.0}]}`; unit `"1"`; labels none |
 | `no_component` | a composition with no component: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `repeated_component` | a composition with `element:H` twice: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `repeated_component_apart` | a composition with `element:H` twice, `element:O` between them: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 
 ## PR-052
 
@@ -900,6 +915,8 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `composition_withheld` | a reference-only composition: its `composition` and `statistics` hold `withheld`: `withheld` | 8 | not_met; `withheld`; labels none |
+| `interval_withheld` | a reference-only interval: its `interval` and `statistics` hold `withheld`: `withheld` | 8 | not_met; `withheld`; labels none |
 | `withheld_table` | a reference-only table: its `table` and `statistics` hold `withheld`: `withheld` at step 8 | 8 | not_met; `withheld`; labels none |
 | `withheld_value` | a reference-only value: its `value` and `statistics` hold `withheld`: `withheld` | 8 | not_met; `withheld`; labels none |
 | `withheld_value_with_reason` | a reference-only value: its `value` and `statistics` hold `withheld`, the value's status object with a `reason`: `withheld` | 8 | not_met; `withheld`; labels none |
@@ -973,6 +990,7 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `assistance_unstated_not_refused` | `assistance` holds `unstated`, a token its row does not allow, in a member step 8 does not check: nothing is refused | 13 | unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; labels `materica.fluid.newtonian.v1` |
+| `composition_withheld_beside_unknown_member` | the `composition` holds `{"status": "withheld"}` beside an unknown member, where the shape it stands in for is an object: a status object, so `withheld` | 8 | not_met; `withheld`; labels none |
 | `condition_status_beside_basis` | the shear rate holds `{"status": "unstated", "basis": "stated"}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `condition_status_beside_unit` | the shear rate holds `{"status": "unstated", "unit": "1/s"}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `constant_value_unstated` | the constant's `value` holds `{"status": "unstated"}`, a token its row does not allow: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
@@ -980,6 +998,7 @@ See `README.md` beside this file for how to read a case.
 | `evidence_unit_status_beside_other_member` | evidence with the unit `{"status": "not_applicable", "note": ...}`, a status object beside another member: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `interval_member_none` | the form's member `interval` holding `{"status": "none"}`, a token its row does not allow: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `interval_upper_status_beside_other_member` | `upper` holding `{"status": "none", "note": ...}`, a status object beside a member where a number belongs: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
+| `interval_withheld_beside_a_bound` | the `interval` holding `{"status": "withheld", "lower": 1150}`, a status object beside a member of the shape it stands in for, which breaks its shape: `form_invalid` alone, not `withheld` too | 8 | not_met; `form_invalid`; labels none |
 | `reason_not_string` | the shear rate holds `{"status": "unstated", "reason": 5}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `sd_status_beside_other_member` | the statistics `sd` holds `{"status": "none", "note": ...}`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `source_range_status_object` | `source_range` holding `{"status": "unstated"}`: `form_invalid` at step 8 | 8 | not_met; `form_invalid`; labels none |

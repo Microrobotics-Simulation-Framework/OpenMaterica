@@ -1,0 +1,67 @@
+{
+  "case": "PR-105",
+  "variant": "interval_withheld",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "interval_reference_only.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/polymer_grade_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:003f661dac0095c4db891e10f6dde67b7be2fe02092daaec2789d875b012633d"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "bounds",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "withheld"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}
