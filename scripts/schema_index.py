@@ -11,9 +11,16 @@ overwrite a file that would otherwise be published.
 
 The page of a schema version that is not yet released opens with a draft note: its files may change until the
 release, and the release freezes them. A version is released when `tests/spec_sync/released_schemas.json`
-lists it (`scripts/freeze_schema.py`), so the note leaves the page with the freezing commit, and the page of a
-released version has none. A `<MAJOR>.<MINOR>-dev` directory, the development of the next line, holds the
-note until its release, which publishes the schema as `<MAJOR>.<MINOR>/` (CONTRIBUTING, "Release gate").
+lists it (`scripts/freeze_schema.py`), and the page of a released version has none. The release's pull request
+carries that manifest and merges just before the tag, so the note leaves the site with that merge and not with
+the tag: from the merge CI holds the files, and for the interval until the tag the page shows no note. That is
+intended. Pages redeploys when the manifest changes
+(`.github/workflows/pages.yml`, whose `paths` a test holds to this script's inputs).
+
+A `<MAJOR>.<MINOR>-dev` directory, the development of the next line, holds the note until its release, which
+renames it `<MAJOR>.<MINOR>/` and freezes it (`src/materica/schema/README.md`, "Released versions",
+"The next line"; CONTRIBUTING, "Changing the schema"). A tree that holds both forms of one line, as a copy
+instead of a rename would leave, is refused.
 """
 
 import html
@@ -102,10 +109,23 @@ def write_indexes(root: Path, released: Collection[str]) -> list[Path]:
     existing = [directory / "index.html" for directory in directories if (directory / "index.html").exists()]
     if existing:
         raise ValueError(f"the tree already holds {', '.join(str(path) for path in existing)}")
+    _refuse_a_line_in_both_forms(root)
     pages = {directory / "index.html": _page(root, directory, released) for directory in directories}
     for path, text in pages.items():
         path.write_text(text, encoding="utf-8")
     return list(pages)
+
+
+def _refuse_a_line_in_both_forms(root: Path) -> None:
+    """Raise where `root` holds `<line>-dev/` and `<line>/`: the release renames the first, not copies it."""
+    names = {path.name for path in root.iterdir() if path.is_dir()}
+    for name in sorted(names):
+        found = VERSION.fullmatch(name)
+        if found is not None and found["development"] and found["line"] in names:
+            raise ValueError(
+                f"{name}/ and {found['line']}/ both exist: the release renames the development directory, "
+                "it does not copy it"
+            )
 
 
 def _page(root: Path, directory: Path, released: Collection[str]) -> str:
