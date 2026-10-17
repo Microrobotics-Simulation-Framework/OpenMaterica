@@ -96,10 +96,11 @@ def test_each_static_check_is_a_step_of_the_workflows_static_job(command: tuple[
     assert " ".join(command) in commands(checks, "fast")
 
 
-def test_the_confidential_and_sign_off_checks_are_the_gates_commands() -> None:
+def test_the_confidential_sign_off_and_anomaly_checks_are_the_gates_commands() -> None:
     assert 'python3 scripts/check_signoff.py "$BASE" "$HEAD"' in CI
     assert "python3 scripts/check_confidential.py" in CI
     assert "--messages" in CI
+    assert "python3 scripts/check_anomalies.py" in CI
 
 
 # --- the rules, each with a change that selects its check and one that does not ----------------------------
@@ -108,10 +109,11 @@ def test_the_confidential_and_sign_off_checks_are_the_gates_commands() -> None:
 @pytest.mark.parametrize(
     "path", ["CHANGELOG.md", "site/other.html", "src/materica/core/read.py", "scripts/x.sh"]
 )
-def test_every_change_runs_the_sign_off_scan_generators_and_freeze_checks(path: str) -> None:
+def test_every_change_runs_the_sign_off_scan_anomaly_generators_and_freeze_checks(path: str) -> None:
     fast = commands(plan(path)[0], "fast")
     assert "python3 scripts/check_signoff.py BASE HEAD" in fast
     assert f"python3 scripts/check_confidential.py --messages BASE..HEAD --key-file {KEY}" in fast
+    assert "python3 scripts/check_anomalies.py" in fast
     assert "python3 scripts/freeze_schema.py --check" in fast
     for generator in GENERATORS:
         assert any(command.endswith(f"scripts/{generator}.py --check") for command in fast)

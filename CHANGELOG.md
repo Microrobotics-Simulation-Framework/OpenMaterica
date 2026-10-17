@@ -591,6 +591,21 @@ every family entry goes in `families/CHANGELOG.md`.
   538 kill points did not move, and the latest of the 544 is now the 276th (`tests/property/README.md`).
   `examples_to_kill` no longer counts an error raised by the strategy itself as a kill (a kill at the 0th
   example); no kill point moved.
+- The known-anomalies registry is checked in CI, in the gate on every run, whatever the change touches, by
+  `scripts/check_anomalies.py`. It stands in for MADDENING's validator, which accepts `materica_version` from
+  MADDENING 0.4.0 but reads each `affected_components` entry as an importable Python name, which this
+  registry's component names are not. It checks MADDENING's record schema with this registry's prefix, version
+  field and component names: the top-level fields and no other, `materica_version` the package's version and
+  `generated_date` a date; in each entry MADDENING's required fields and no other, `OMAT-ANO-` and three
+  digits, each identifier once, the severity (`DOCUMENTATION_ARCHITECTURE.md` section 8.2), safety relevance
+  and resolution status among their values, `affected_versions` a PEP 440 version specifier set or `none`, and
+  each component `schema:`, `reader:`, `method:`, `model:` or `data:` and a name. It runs on the standard
+  library alone, so it reads the registry's YAML as a subset, as PyYAML reads it, and refuses the rest at its
+  line, an unquoted number or date and a key given twice among it. `tests/unit/test_check_anomalies.py`
+  fails a registry with each fault, one at a time, naming its rule, holds the specifier syntax to
+  `packaging`'s and the reader to PyYAML on each form it reads, and runs the check where no installed package
+  is importable; `tests/unit/test_ci_workflows.py` runs the gate's step as GitHub runs it, which passes a
+  registry at the package's version and fails one a version behind.
 
 ### Known Anomalies
 - The registry's `materica_version` is the package's version, `0.1.0.dev1`: it still read `0.1.0.dev0` after

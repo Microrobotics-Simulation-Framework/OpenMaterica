@@ -255,6 +255,8 @@ TREE_READERS = (
 # held by the trace in `test_pre_review.py`, which sees what it opens.)
 LOCATES_NO_RULED_DATA = {
     "scripts/check_confidential.py": "reads the tracked files and the digests, whose rule runs its tests",
+    "scripts/check_anomalies.py": "reads the anomaly registry and the package's version; the fast stage "
+    "runs it on every change, as CI's gate does",
     "scripts/gen_vocabulary.py": "reads the specification's tables; the specification rule runs its tests",
     "scripts/mutant_runs.py": "names its own copy for the mutant job's import check, and reads where each "
     "module it imports came from; it opens no data file",
@@ -610,6 +612,16 @@ def plan_checks(
             ),
             "no tracked file or commit message names a private project or path; CI's gate runs it",
             paths=("scripts/check_confidential.py",),
+        ),
+        "every change",
+    )
+    plan.add(
+        Planned(
+            "fast",
+            ("python3", "scripts/check_anomalies.py"),
+            "the known-anomalies registry keeps MADDENING's record schema and the package's version; CI's "
+            "gate runs it",
+            paths=("scripts/check_anomalies.py",),
         ),
         "every change",
     )
