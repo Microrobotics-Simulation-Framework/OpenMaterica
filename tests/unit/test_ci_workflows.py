@@ -7145,3 +7145,46 @@ def test_the_derandomized_warning_check_can_fail(tmp_path: Path, old: str, new: 
     collect["run"] = collect["run"].replace(old, new)
     found = derandomized_warning_problems(repeat, tmp_path)
     assert any(problem in line for line in found), found
+
+
+# Fuzz target 4's runs schedule its slow inputs less often (S2a-4's review B, M2): one seed of 261 KB costs
+# about 52 times the others' mean an input, and without the flag the target's corpus fills with its
+# derivatives and its speed falls through a run. The flag keeps every seed and every check; a length limit
+# would cut that seed.
+ENTROPIC = "-entropic_scale_per_exec_time=1"
+
+
+def target_4_problems(ci: Workflow) -> list[str]:
+    """Each run of fuzz target 4 on a corpus in the fuzz job without `ENTROPIC`, or none found."""
+    runs = [
+        line.strip()
+        for found in ci["jobs"]["fuzz"]["steps"]
+        for line in str(found.get("run", "")).replace("\\\n", " ").splitlines()
+        if "tests.fuzz.read_field_bytes" in line and "--seed" not in line and "--dict" not in line
+    ]
+    if not runs:
+        return ["no run of fuzz target 4"]
+    return [f"target 4 runs without {ENTROPIC}: {run[:80]}" for run in runs if ENTROPIC not in run.split()]
+
+
+def test_fuzz_target_4_schedules_its_slow_inputs_less_often() -> None:
+    ci = workflow("ci.yml")
+    assert target_4_problems(ci) == []
+    steps = [step for step in ci["jobs"]["fuzz"]["steps"] if "read_field_bytes" in str(step.get("run"))]
+    assert len(steps) == 2
+
+
+@pytest.mark.parametrize("name", ["Control", "Fuzz raw bytes into step 8"])
+def test_the_target_4_check_finds_a_run_without_the_flag(name: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    [step] = [step for step in ci["jobs"]["fuzz"]["steps"] if str(step.get("name", "")).startswith(name)]
+    step["run"] = step["run"].replace(f" {ENTROPIC}", "")
+    assert any("target 4 runs without" in problem for problem in target_4_problems(ci))
+
+
+def test_the_target_4_check_finds_no_run() -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    ci["jobs"]["fuzz"]["steps"] = [
+        step for step in ci["jobs"]["fuzz"]["steps"] if "read_field_bytes" not in str(step.get("run"))
+    ]
+    assert target_4_problems(ci) == ["no run of fuzz target 4"]

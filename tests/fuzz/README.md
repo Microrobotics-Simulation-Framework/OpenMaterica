@@ -48,7 +48,11 @@ two numbers of one seed, keeping the field through steps 8 and 9. Only the fourt
 property targets draw conditions too, and it is instrumented by Atheris, as the core is, so that each part met
 is new coverage. In ten local runs, six at a time, it was found after 84, 126, 147, 189, 216, 225, 236, 483,
 531 and 601 s (Python 3.14, 2026-10-16), so the control runs the target twice side by side, each for up to 900
-s, and passes where either finds it. Rarer conjunctions tried first were missed: a temperature stated as a
+s, and passes where either finds it. The target's runs, the control's and the weekly one, pass
+`-entropic_scale_per_exec_time=1`, which runs slow inputs less often and keeps every seed: one seed of 261 KB
+costs about 52 times the others' mean an input, and without the flag the corpus fills with its derivatives
+and a run slows as it goes (S2a-4's review B, M2). Four runs of 1,800 s each way, two at a time
+(2026-10-17): with the flag 528 inputs a second, the fault found in two runs; without it 237, found in none. Rarer conjunctions tried first were missed: a temperature stated as a
 range, with an `sd` entry, measured rather than set, in 600 s; one ending above 1000 1/s, in two runs of 600
 s, since libFuzzer picks the number it changes after a random offset and an upper end two bytes after its
 lower is seldom picked; one starting above 10 1/s, in one run of seven. The fault replaced, in S2a-3, the

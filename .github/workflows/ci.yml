@@ -918,11 +918,18 @@ jobs:
           uv run python -m tests.fuzz.read_field_bytes --dict "$control/value_field.dict"
           # Its fault is behind two changes to one seed: one run found it after 84 to 601 s in ten local runs, six
           # at a time (2026-10-16). Two runs side by side, each of up to 900 s, on the runner's cores: the control
-          # passes where either finds it.
+          # passes where either finds it. Each run, as the weekly one, schedules slow inputs less often
+          # (`-entropic_scale_per_exec_time=1`): one seed of 261 KB costs about 52 times the others' mean an
+          # input, and without the flag the corpus fills with its derivatives and the target slows through a run.
+          # Four local runs of 1,800 s each way, two at a time side by side (Python 3.14, 2026-10-17, S2a-4's
+          # review B, M2): with the flag, 528 inputs a second and the fault found in two runs (at 510 and 516 s,
+          # 0.82 finds a million inputs); without it, 237 a second and found in none. The control's runs and
+          # their length are the maintainer's to set.
           for worker in 1 2; do
             cp -r "$control/fields" "$control/fields-$worker"
             uv run python -m tests.fuzz.read_field_bytes "$control/fields-$worker" \
-              -dict="$control/value_field.dict" -max_total_time=900 -artifact_prefix="$control/findings/" \
+              -dict="$control/value_field.dict" -max_total_time=900 -entropic_scale_per_exec_time=1 \
+              -artifact_prefix="$control/findings/" \
               > "$control/read_field_bytes-$worker.log" 2>&1 &
           done
           wait || true
@@ -1032,7 +1039,7 @@ jobs:
           uv run python -m tests.fuzz.read_field_bytes --seed "$RUNNER_TEMP/fields"
           uv run python -m tests.fuzz.read_field_bytes --dict "$RUNNER_TEMP/value_field.dict"
           uv run python -m tests.fuzz.read_field_bytes "$RUNNER_TEMP/fields" -dict="$RUNNER_TEMP/value_field.dict" \
-            -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
+            -max_total_time="$FUZZ_SECONDS" -entropic_scale_per_exec_time=1 -artifact_prefix="$RUNNER_TEMP/findings/"
       # What the property target found is in the example database: replayed first here, and shrunk. The writer
       # schema's properties and the two JSON Schema libraries' agreement are no fuzz target, and their shards
       # keep their own databases; the mutant tables keep none, so they have nothing to replay.
