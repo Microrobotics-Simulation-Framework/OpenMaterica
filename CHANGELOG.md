@@ -352,6 +352,12 @@ every family entry goes in `families/CHANGELOG.md`.
   whenever the gate lists a commit. `tests/unit/test_ci_workflows.py` runs the gate's step on stacks of
   commits (in order, documentation alone, an empty commit, code a later commit undoes, a force-push, more
   commits than a matrix holds) and holds the job to its checks, its order and its key, each with a control.
+- A pre-push hook, `scripts/pre-push`, which refuses a push that would publish a private name or path:
+  `scripts/check_confidential.py --pre-push` reads git's pre-push input and checks what the push sends, every
+  file content and annotated tag the remote lacks (at each path it has in the commits pushed) and every
+  commit's message, so that a file a later commit removes is checked too. It checks the paths without the
+  key, and the names with the key file `git config openmaterica.scanKeyFile` names; CONTRIBUTING says how to
+  install it. Tested through `git push` in a throwaway repository with a bare remote.
 
 ## [0.1.0.dev1] - 2026-10-14
 

@@ -422,6 +422,7 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
         (["docs/specification/README.md"], "true", "true"),
         (["site/index.html"], "true", "false"),
         (["design/ARCHITECTURE_DRAFT.md", ".github/workflows/pages.yml"], "true", "false"),
+        (["scripts/pre-push", "scripts/check_confidential.py"], "true", "false"),
         # A path nobody listed is code, and runs the Hypothesis job; one path of either makes a change so.
         (["notes/plan.txt"], "true", "true"),
         (["CHANGELOG.md", "scripts/check_wheel.py"], "true", "false"),

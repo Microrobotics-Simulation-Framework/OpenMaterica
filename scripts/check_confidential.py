@@ -3,6 +3,7 @@
 private path.
 
     python scripts/check_confidential.py [--key-file KEY] [--messages RANGE]
+    python scripts/check_confidential.py [--key-file KEY] --pre-push REMOTE < UPDATES
     python scripts/check_confidential.py --key-file KEY --digest < TERMS > scripts/confidential_digests.txt
 
 The names cannot be listed in this public repository, and plain hashes of them would not hide them: they are
@@ -17,6 +18,10 @@ so.
 The private paths need no key: an absolute home directory, a session scratchpad, Claude Code's temporary
 directory, and the private planning directory, which only `CLAUDE.md` names, one level up. The tracked files
 are those of the repository in the working directory, read from its working tree.
+
+With `--pre-push`, as git's pre-push hook (`scripts/pre-push`), it scans what a push sends instead: every file
+content and annotated tag the remote lacks, as git itself lists what to send (`git rev-list --objects`), and
+the messages of the commits it brings, so that a name in a commit that a later one removes is found too.
 """
 
 import argparse
@@ -36,6 +41,8 @@ _WORD = re.compile(r"[a-z0-9]+")
 _HYPHENATED = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)+")
 _KEY = re.compile(r"[0-9a-fA-F]{64}")
 _DIGEST = re.compile(r"[0-9a-f]{64}")
+_OBJECT = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
+_NO_OBJECT = re.compile(r"0+")
 # Each written so that its own source does not match it: this file is scanned too.
 PATHS = {
     "an absolute home directory path": re.compile(r"/(?:home|Users)/[^/\s]+/"),
@@ -164,11 +171,9 @@ def tracked_texts() -> Iterator[tuple[str, str]]:
                 yield name, data.decode("utf-8", errors="replace")
 
 
-def commit_messages(revisions: str) -> Iterator[tuple[str, str]]:
-    """Each commit's message in `revisions`, as `git log` reads them, by its shortened hash."""
-    for entry in (
-        git("log", "-z", "--format=%H%n%B", "--end-of-options", revisions).decode("utf-8").split("\0")
-    ):
+def commit_messages(*revisions: str) -> Iterator[tuple[str, str]]:
+    """Each commit's message in `revisions`, `git log`'s arguments, by its shortened hash."""
+    for entry in git("log", "-z", "--format=%H%n%B", *revisions).decode("utf-8").split("\0"):
         commit, _, message = entry.partition("\n")
         if commit:
             yield commit[:12], message
@@ -178,7 +183,91 @@ def scan(scanner: Scanner, revisions: str | None) -> list[str]:
     found: list[str] = []
     for name, text in tracked_texts():
         found += scanner.findings(name, text, ALLOWED_PATHS.get(name))
-    for commit, message in commit_messages(revisions) if revisions else ():
+    for commit, message in commit_messages("--end-of-options", revisions) if revisions else ():
+        found += scanner.findings(f"commit {commit} message", message)
+    return found
+
+
+def is_object(name: str) -> bool:
+    """Whether this repository holds the object `name`: a remote may report one never fetched."""
+    return subprocess.run(["git", "cat-file", "-e", name], capture_output=True, check=False).returncode == 0
+
+
+def pushed_revisions(remote: str, updates: str) -> list[str]:
+    """The `git rev-list` arguments that select what a push sends, from git's pre-push input, a line
+    `<local ref> <local object> <remote ref> <remote object>` for each ref pushed: each object pushed, but
+    none the remote is known to hold, by its remote-tracking refs (when `remote` is a remote's name, not a
+    URL) and by the objects it reported. A ref deleted sends nothing."""
+    pushed: list[str] = []
+    held: list[str] = []
+    for line in updates.splitlines():
+        fields = line.split()
+        if not fields:
+            continue
+        if len(fields) != 4 or not all(_OBJECT.fullmatch(name) for name in fields[1::2]):
+            raise ScanError(f"not a line of git's pre-push input: {line!r}")
+        local, remote_object = fields[1], fields[3]
+        if not _NO_OBJECT.fullmatch(local):
+            pushed.append(local)
+        if not _NO_OBJECT.fullmatch(remote_object) and is_object(remote_object):
+            held.append(remote_object)
+    if not pushed:
+        return []
+    tracked = [f"--remotes={remote}"] if remote in git("remote").decode("utf-8").split() else []
+    return [*pushed, "--not", *held, *tracked]
+
+
+def pushed_objects(revisions: Sequence[str]) -> Iterator[tuple[str, str, str]]:
+    """Each file content and annotated tag that `revisions` select, as `git rev-list --objects` lists what a
+    push sends, by its kind (`blob` or `tag`), a name and its text, binary files left out. A content is given
+    once for each kind of place it has in the commits pushed, by its first path of that kind: its paths are
+    read from those commits' trees, since `git rev-list` names a content once though two files hold it, and
+    `CLAUDE.md` may name what another file may not."""
+    names: dict[str, str] = {}
+    for line in git("rev-list", "--objects", *revisions).decode("utf-8").splitlines():
+        name, _, path = line.partition(" ")
+        if path:
+            names.setdefault(name, path)
+    if not names:
+        return
+    paths: dict[str, set[str]] = {}
+    for commit in git("rev-list", *revisions).decode("ascii").split():
+        for entry in git("ls-tree", "-r", "-z", "--full-tree", commit).decode("utf-8").split("\0"):
+            described, _, path = entry.partition("\t")
+            if path and (name := described.split()[2]) in names:
+                paths.setdefault(name, set()).add(path)
+    batch = subprocess.run(
+        ["git", "cat-file", "--batch"], input="\n".join(names).encode(), capture_output=True, check=True
+    ).stdout
+    at = 0
+    while at < len(batch):
+        header_end = batch.index(b"\n", at)
+        name, kind, size = batch[at:header_end].decode("ascii").split()
+        data = batch[header_end + 1 : header_end + 1 + int(size)]
+        at = header_end + 1 + int(size) + 1
+        if kind == "tag" and b"\0" not in data:
+            yield kind, names[name], data.decode("utf-8", errors="replace")
+        elif kind == "blob" and b"\0" not in data:
+            text = data.decode("utf-8", errors="replace")
+            first: dict[re.Pattern[str] | None, str] = {}
+            for path in sorted(paths.get(name, {names[name]})):
+                first.setdefault(ALLOWED_PATHS.get(path), path)
+            for path in first.values():
+                yield kind, path, text
+
+
+def scan_push(scanner: Scanner, remote: str, updates: str) -> list[str]:
+    """Each finding in what a push sends: its files, its annotated tags and its commits' messages."""
+    revisions = pushed_revisions(remote, updates)
+    if not revisions:
+        return []
+    found: list[str] = []
+    for kind, name, text in pushed_objects(revisions):
+        if kind == "blob":
+            found += scanner.findings(f"{name} (pushed)", text, ALLOWED_PATHS.get(name))
+        else:
+            found += scanner.findings(f"tag {name}", text)
+    for commit, message in commit_messages(*revisions):
         found += scanner.findings(f"commit {commit} message", message)
     return found
 
@@ -186,7 +275,13 @@ def scan(scanner: Scanner, revisions: str | None) -> list[str]:
 def main(arguments: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Find private names and paths in tracked files and commits.")
     parser.add_argument("--key-file", type=Path, help=f"the key, instead of {KEY_VARIABLE}")
-    parser.add_argument("--messages", metavar="RANGE", help="scan the messages of the commits in RANGE too")
+    scanned = parser.add_mutually_exclusive_group()
+    scanned.add_argument("--messages", metavar="RANGE", help="scan the messages of the commits in RANGE too")
+    scanned.add_argument(
+        "--pre-push",
+        metavar="REMOTE",
+        help="scan what a push to REMOTE sends, from git's pre-push input on standard input, instead",
+    )
     parser.add_argument(
         "--digest",
         action="store_true",
@@ -201,7 +296,11 @@ def main(arguments: Sequence[str] | None = None) -> int:
             sys.stdout.write(digest_file(key, sys.stdin.read().splitlines()))
             return 0
         digests = read_digests(DIGESTS.read_text(encoding="utf-8"), key) if key else frozenset[str]()
-        found = scan(Scanner(key, digests), options.messages)
+        scanner = Scanner(key, digests)
+        if options.pre_push is not None:
+            found = scan_push(scanner, options.pre_push, sys.stdin.read())
+        else:
+            found = scan(scanner, options.messages)
     except ScanError as error:
         print(error, file=sys.stderr)
         return 2
