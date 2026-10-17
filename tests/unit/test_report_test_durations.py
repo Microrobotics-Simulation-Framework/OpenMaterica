@@ -272,9 +272,12 @@ def test_one(n):
 # Loaded by every process of that run, it writes `ready` once pytest-xdist's controller, which writes the
 # report, has taken in the ends of the two quick tests and the setup of a slow test from each worker: each
 # worker is then inside a slow test. It reads each report after every other plugin, the report's writer
-# included.
+# included. A worker notes when it is sent SIGINT, and then raises KeyboardInterrupt as it would without the
+# note.
 INTERRUPTED_CONFTEST = """
 import os
+import signal
+import time
 from pathlib import Path
 
 import pytest
@@ -282,6 +285,15 @@ import pytest
 QUICK = ("[0]", "[1]")
 ENDED = set()
 STARTED = set()
+
+
+def note_the_signal(signum, frame):
+    Path(f"worker-sigint-{os.getpid()}").write_text(str(time.time()), encoding="utf-8")
+    raise KeyboardInterrupt
+
+
+if "PYTEST_XDIST_WORKER" in os.environ:
+    signal.signal(signal.SIGINT, note_the_signal)
 
 
 @pytest.hookimpl(wrapper=True)
@@ -300,6 +312,10 @@ def pytest_runtest_logreport(report):
 # the run was ready in about 3 s.
 READY_WITHIN = 120.0
 ENDS_WITHIN = 60.0
+# A worker is sent SIGINT by `timeout` at once if `timeout` signals the group, and otherwise by pytest-xdist's
+# teardown, about 5 s after the controller stops. Load can only delay that, so a worker signalled within
+# this many seconds of the interrupt was signalled by `timeout`.
+NOT_BY_TIMEOUT_BEFORE = 2.0
 
 
 # How ci.yml and repeat.yml interrupt pytest (tests/unit/test_ci_workflows.py holds the two to these words).
@@ -315,7 +331,12 @@ def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_
 
     The run is interrupted once it is ready, whatever the load: GNU `timeout` takes SIGALRM, its timer's
     signal, as its limit reached, sends SIGINT as it would then, and exits 124. A fixed limit left the moment
-    to the load."""
+    to the load.
+
+    No worker is sent SIGINT by `timeout`: a worker notes the signal, and one that came within
+    `NOT_BY_TIMEOUT_BEFORE` of the interrupt came from `timeout` signalling the group, as it does without
+    `--foreground`, which is how the second SIGINT reaches the controller. Measured: 0.0002 s after the
+    interrupt without `--foreground`, 5.1 s with it (xdist's teardown)."""
     (tmp_path / "test_sample.py").write_text(INTERRUPTED_SAMPLE, encoding="utf-8")
     (tmp_path / "conftest.py").write_text(INTERRUPTED_CONFTEST, encoding="utf-8")
     report = tmp_path / "report.xml"
@@ -333,6 +354,7 @@ def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_
         "junit_family=xunit1",
     ]
     limit = f"{READY_WITHIN + ENDS_WITHIN:.0f}s"
+    interrupted_at = 0.0  # set where the run is interrupted; unused where it is not ready, which fails first
     with output.open("w", encoding="utf-8") as log:
         run = subprocess.Popen(
             [*INTERRUPT_AS_CI, limit, *pytest_run, f"--junitxml={report}", "test_sample.py"],
@@ -348,6 +370,7 @@ def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_
                 time.sleep(0.05)
             ready = (tmp_path / "ready").exists() and run.poll() is None
             if ready:
+                interrupted_at = time.time()
                 run.send_signal(signal.SIGALRM)
                 run.wait(timeout=ENDS_WITHIN)
         finally:
@@ -371,6 +394,12 @@ def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_
         "test_sample.py::test_one[1]",
     ], report_text
     assert stopped(report) == 2, report_text
+    signalled = sorted(
+        float(path.read_text(encoding="utf-8")) - interrupted_at for path in tmp_path.glob("worker-sigint-*")
+    )
+    assert all(after >= NOT_BY_TIMEOUT_BEFORE for after in signalled), (
+        f"`timeout` signalled a worker {signalled} s after the interrupt, not only pytest: " + printed
+    )
 
 
 @pytest.mark.parametrize(
