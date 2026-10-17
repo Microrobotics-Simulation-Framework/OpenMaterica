@@ -1170,6 +1170,14 @@ def test_a_met_constant_returns_its_value_and_the_members_beside_it() -> None:
     assert written["labels"] == ["materica.fluid.newtonian.v1"]
 
 
+@pytest.mark.parametrize("held", [{"status": "withheld"}, {"status": "withheld", "reason": "licensed"}])
+def test_a_statistics_block_held_as_a_status_object_is_returned_as_one(held: dict[str, JsonValue]) -> None:
+    """`provenance.md` section 1 item 4: a reader returns a status as a status, here the one a constant's
+    statistics row allows. Fuzz target 4 found it returned as an empty block, against the reference model."""
+    written = json.loads(json.dumps(read_met(met_field(statistics=held)).to_json()))
+    assert written["statistics"] == held
+
+
 def test_a_want_the_constant_cannot_give_keeps_the_conditions_and_labels_but_returns_no_value() -> None:
     for want in ("bounds", "components", "evidence"):
         result = read_met(met_field(), want=want)

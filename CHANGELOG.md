@@ -71,7 +71,8 @@ every family entry goes in `families/CHANGELOG.md`.
   as its item 6 says: the value with its unit, specimen facts, statistics block and provenance (the origin,
   the review as found or `not_checked`, the source's key, a derived value's derivation with its
   `assumptions`), each the members the reader's version defines, read from the generated shapes, as stored
-  and copied (the code design's rule 6). `to_json` writes numbers as stored, `-0` included, and each count
+  and copied (the code design's rule 6), a statistics block held as the status object its row allows
+  returned as one. `to_json` writes numbers as stored, `-0` included, and each count
   and index as an integer (rule 5). Intervals, compositions and evidence still raise at their member.
 - Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (`core/read.py`,
   `fields.alternatives_problems`): a list that breaks its shape is `form_invalid`, a member one slip from

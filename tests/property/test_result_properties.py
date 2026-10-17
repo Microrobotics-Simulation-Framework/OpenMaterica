@@ -345,6 +345,7 @@ def scrambled(value: object) -> None:
 
 @pytest.mark.chances(
     negative_zero=0.25,
+    statistics_withheld=0.25,
     unknown_member=0.5,
     review_anything=1 / 3,
     review_reviewed=1 / 3,
