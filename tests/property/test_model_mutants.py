@@ -419,16 +419,6 @@ MODEL = [
     ModelFault("member_checked_off_its_row", "unpinned", ("form_off_its_row",)),
     ModelFault("composition_checked_beyond_its_basis", "unpinned", ("composition_basis_off_its_row",)),
     ModelFault("broken_status_object_reports_its_token", "unpinned", ("broken_status_object",)),
-    ModelFault(
-        "members_of_the_other_kind_read",
-        "unpinned",
-        ("members_of_the_other_kind", "implied_member_of_the_other_kind"),
-    ),
-    ModelFault(
-        "members_of_the_other_kind_ignored",
-        "unpinned",
-        ("members_of_the_other_kind", "implied_member_of_the_other_kind"),
-    ),
     ModelFault("slips_of_alternatives_ignored", "unpinned", ("alternatives_slip_beside",)),
     ModelFault(
         "declaration_names_not_named_in_a_request", "unpinned", ("names_a_declaration_gives_a_requirement",)
@@ -453,6 +443,19 @@ MODEL = [
         "faults",
         ("derivation.input_specimens_missing",),
         ("derivation.input_specimens_missing",),
+    ),
+    # Open point 1's record half, read as the implementation reads it: the two cases of the maintainer's
+    # token ruling (2026-10-18) kill these by the implied half, which each breaks too; no case holds the
+    # record half.
+    ModelFault(
+        "members_of_the_other_kind_read",
+        "unpinned",
+        ("members_of_the_other_kind", "implied_member_of_the_other_kind"),
+    ),
+    ModelFault(
+        "members_of_the_other_kind_ignored",
+        "unpinned",
+        ("members_of_the_other_kind", "implied_member_of_the_other_kind"),
     ),
     # One case file alone kills these.
     ModelFault("hash_not_checked_before_step_4", "early", ("request", "before_step_4", "stores")),

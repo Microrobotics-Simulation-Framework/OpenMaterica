@@ -251,7 +251,7 @@ every family entry goes in `families/CHANGELOG.md`.
   with that condition) where `implies` gives a numeric condition a `token`, or a token condition a `value`,
   `range` or `unit`, whatever that member holds. The reader has refused both since S2a-4's review; the second
   rested on the shapes `declarations.md` section 4.1 names, and reversed S2a-3's reading of a `unit` beside a
-  token, which step 0 ignored.
+  token, which step 0 ignored. One PR-330 case for each direction comes with it.
 - `provenance.md` section 6.2 item 1 states the writer's rule for a specimen fact's unit (maintainer,
   2026-10-15): a fact whose row fixes its unit holds that unit, and one whose unit the source does not give is
   written as a status object in place of the fact.
@@ -371,12 +371,15 @@ every family entry goes in `families/CHANGELOG.md`.
 - 24 case files that end at step 0 or 8 on checks S2a-2 builds are run at S2a-2, two of them since its fix
   round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
   step (`tests/spec_sync/case_steps.json`).
-- S2a-3's 58 case files run and pass: 637 of 1258 case files pass, 621 wait for later steps.
-- S2a-4's 164 case files run and pass: 801 of 1258 case files pass, 457 wait for later steps. Two of them are
+- S2a-3's 58 case files run and pass: 637 of 1260 case files pass, 623 wait for later steps.
+- S2a-4's 166 case files run and pass: 803 of 1260 case files pass, 457 wait for later steps. Two of them are
   arms S4's decision 12 gives S2a-4, mapped to S4 until S2a-4's review (`PR-044.entry_holds_alternatives`,
-  `PR-336.want_mismatch_over_alternatives_no_hs`). The reason-step check gives steps 11 to 13 their codes and
-  loses its sets of codes no case returned: step 10's `unknown` codes, and step 7's `want_mismatch`, each now
-  returned.
+  `PR-336.want_mismatch_over_alternatives_no_hs`). Two more end at step 0, one for each direction of the
+  maintainer's token ruling (`PR-330.implied_token_for_numeric_condition`,
+  `PR-330.implied_unit_for_token_condition`); they kill the reference model's two faults that read open point
+  1's record half as the implementation does, by the implied half each breaks too. The reason-step check gives
+  steps 11 to 13 their codes and loses its sets of codes no case returned: step 10's `unknown` codes, and step
+  7's `want_mismatch`, each now returned.
 - The result's properties (`tests/property/test_result_properties.py`, in the `conditions` shard): HP1,
   totality and the reason table; HP2, the status law and the members item 6 gives; HP6, what a read returns
   as stored, by the generated shapes, sharing nothing; and HP11, the hash suite's label exactly where a read
