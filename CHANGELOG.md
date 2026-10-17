@@ -1057,8 +1057,10 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   35 files are reported on their own line, verified against the reference evaluator, never as passed. The
   evaluator also has an `exact` mode, for later pieces' properties.
 - Broken evaluators, one fault each, in `tests/conformance/test_runner_can_fail.py`: the fifteen of the S3
-  design's section 6.4 and five more the TE suite's README names, each failing its named TE file under every
-  precision and side it claims.
+  design's section 6.4, five more the TE suite's README names, and two more the text supports (a
+  `source_range` that widens the readable range, and a log-log derivative scaled at the lower knot), each
+  failing its named TE file under every precision and side it claims, by the difference named beside it and
+  never by raising.
 
 ### Known Anomalies
 - The registry's `materica_version` is the package's version (`0.1.0.dev2` at this release); it still read
