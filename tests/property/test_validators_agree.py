@@ -23,7 +23,7 @@ import copy
 from collections.abc import Callable, Iterable, Iterator
 from functools import cache
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, cast
 from urllib.parse import urljoin
 
 import pytest
@@ -70,12 +70,8 @@ class Pair(NamedTuple):
 
 def python_verdict(schema: Json, files: Iterable[Json] = ()) -> Verdict:
     checker = Draft202012Validator(schema, registry=registry(files))
-
-    def takes(value: JsonValue) -> bool:
-        # types-jsonschema types its second overload's instance as unknown.
-        return checker.is_valid(value)  # pyright: ignore[reportUnknownMemberType]
-
-    return takes
+    # types-jsonschema types its second overload's instance as unknown.
+    return cast(Verdict, checker.is_valid)  # pyright: ignore[reportUnknownMemberType]
 
 
 def pair(schema: Json, rust_files: Iterable[Json] = (), python_files: Iterable[Json] = ()) -> Pair:
@@ -434,6 +430,36 @@ def test_a_place_no_list_names_is_found(source: str) -> None:
     """The control: a new module that takes jsonschema-rs's verdict alone, in each form."""
     sources = sources_of_tests() | {"tests/new.py": source}
     assert len(alone_places(sources) - COMPARED.keys() - LEFT_OUT.keys()) == 1
+
+
+# Controls of the checks' own pieces. Every control below builds its pairs as the checks do (`pair`,
+# `places`); these hold the pieces they share with no control: the pairs the drawn properties use, and the
+# definitions T1's check judges an example by.
+
+
+def library(judge: Verdict) -> str:
+    """The library whose validator gives `judge`, the validator's own `is_valid`, by its top package."""
+    return type(getattr(judge, "__self__", None)).__module__.partition(".")[0]
+
+
+def test_each_pair_the_checks_use_is_of_both_libraries() -> None:
+    """A pair of one library twice agrees with itself on everything, and no control that builds its own pair
+    would see it."""
+    pairs = PLACES | {"T1's": pair({"$ref": urljoin(BASE, "record.writer.json#/$defs/value_field")})}
+    for name, both in pairs.items():
+        assert (library(both.rust), library(both.python)) == ("jsonschema_rs", "jsonschema"), name
+
+
+def test_t1s_inputs_name_each_definition_t1_judges_an_example_by() -> None:
+    """The form's definition, `value_field` and the specimen, of the writer and of the reader, and the row's
+    binding: those of `test_t1.py`'s `WRITER`, `READER` and `ROW`."""
+    example = next(example for example in t1.all_examples() if "specimen" in example.section)
+    definitions = (t1.field_shape(example.value), "value_field", "specimen")
+    assert {reference for reference, _ in t1_inputs(example)} == {
+        f"{file}#/$defs/{definition}"
+        for file in ("record.writer.json", "record.reader.json")
+        for definition in definitions
+    } | {f"vocabulary/fields.json#/$defs/{example.field}"}
 
 
 # Controls. A writer mutant of the table given to one side alone: M18, provenance that requires none of its
