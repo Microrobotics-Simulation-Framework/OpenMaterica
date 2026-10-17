@@ -181,15 +181,20 @@ every family entry goes in `families/CHANGELOG.md`.
 ### Schema
 - `read_result.json`'s members, placeholders until now, typed from the writer schema's `$defs` and the
   vocabulary (S2a-4): the value by `want` (a number, an interval, a composition, a list of test reports, a
-  form's member as stored, and the operations' content hash and listing), `alternative_values` and each
-  entry, the unit, the condition entry (`name`, `status`, `record`, `operating`: the record's entry, its status
+  form's member as stored, and the operations' content hash and listing), `alternative_values` and each entry,
+  the unit, the condition entry (`name`, `status`, `record`, `operating`: the record's entry, its status
   object or an implied value with basis `implied`), the specimen, the statistics block, the provenance a read
   returns (its review as found, other members as the record holds them), the labels and a nominal's
   `assumption` (an extrapolation's members wait for S3). `case.json`'s compared result takes the same shapes,
   and every case file's expected answer validates against them; `tests/spec_sync/test_schemas.py` holds the
-  condition entry's record to every condition shape and the returned review to the writer's members. Two
-  names take a meaning more, allowed with their reasons and safeguards (`tests/spec_sync/name_overlaps.json`):
-  `basis` (`implied`, in a result alone) and `source` (a result returns the key alone).
+  condition entry's record to every condition shape and the returned review to the writer's members. The
+  specimen and a derivation are `result_` twins of the writer's definitions, closed alike but without the
+  patterns of members a read checks only as strings (an anatomical site's UBERON identifier, a derivation
+  input's pinned record), so that a correct result of a record the writer refuses validates (S2a-4's review);
+  `test_schemas.py` holds each twin to the writer's, and every result the implementation gives a case file it
+  runs validates. Two names take a meaning more, allowed with their reasons and safeguards
+  (`tests/spec_sync/name_overlaps.json`): `basis` (`implied`, in a result alone) and `source` (a result
+  returns the key alone).
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
   the eight forms, or alternatives; the constant, interval, composition and evidence forms in full; conditions
   with `plus_minus` and `set_or_measured`, each token condition bound to its own row's tokens; the specimen

@@ -48,7 +48,9 @@ the fits and reference data suite too; the 35 of the table evaluation suite agre
 implementation claims no evaluator.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`
-names (`materica.load_records`), and passes its result through JSON text, as a consumer would receive it.
+names (`materica.load_records`), and passes its result through JSON text, as a consumer would receive it. Each
+result of a case file that runs validates against `read_result.json` too (`test_cases.py`, with a control), so
+the published schema takes what the implementation returns, not only each case file's expected answer.
 
 ## How a result is compared
 

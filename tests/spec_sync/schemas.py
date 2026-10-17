@@ -9,7 +9,8 @@ python-jsonschema, both development dependencies only:
   disagree, and the test fails at once.
 
 Every JSON file under `schema/`, the vocabulary included, is registered under its `$id`, so that a reference
-resolves to the file in this tree and never over a network.
+resolves to the file in this tree and never over a network. Beside them, `read_result.json`'s twins of the
+writer's definitions, which `test_schemas.py` and the name-overlap walk read alike.
 """
 
 from collections.abc import Callable, Iterable
@@ -98,3 +99,44 @@ def takes(reference: str, files: Iterable[Json] = ()) -> Callable[[JsonValue], b
     """Whether jsonschema-rs takes a value against the schema at `reference`, as `validator` reads it, with
     no messages: for a loop in which refusals are common."""
     return verdict(urljoin(BASE, reference), files)
+
+
+# The writer's definitions a result returns holding a member a read checks only as a string, and the patterns
+# that member's writer definition gives it (S2a-4's review, L1): an anatomical site's UBERON identifier, a
+# record check's (RC-039), and a derivation input's pinned record (`provenance.md` section 5, "`id`,
+# `version`, `content_hash` and `field` each a string"). In read_result.json each is a `result_` twin, closed
+# as the writer's, without them, so that a correct result of a record the writer refuses validates.
+RESULT_TWINS = (
+    "specimen",
+    "anatomical_site",
+    "derivation",
+    "derivation_input",
+    "pinned_record",
+    "input_specimen",
+)
+UNCHECKED_AT_READ = (
+    "vocabulary/specimen_facts.json#/$defs/anatomical_site_uberon",
+    "#/$defs/record_id",
+    "#/$defs/version",
+    "#/$defs/content_hash",
+)
+
+
+def as_returned(node: JsonValue) -> JsonValue:
+    """A part of a writer definition as read_result.json gives it: a reference to a pattern a read does not
+    check any string, to a definition of RESULT_TWINS its twin, to another of the writer's the writer's, and
+    to the vocabulary unchanged (both files sit beside it)."""
+    if isinstance(node, list):
+        return [as_returned(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+    reference = node.get("$ref")
+    if not isinstance(reference, str):
+        return {key: as_returned(value) for key, value in node.items()}
+    assert set(node) == {"$ref"}, node
+    name = reference.removeprefix("#/$defs/")
+    if reference in UNCHECKED_AT_READ:
+        return {"type": "string"}
+    if name == reference:
+        return node
+    return {"$ref": f"#/$defs/result_{name}" if name in RESULT_TWINS else f"record.writer.json{reference}"}

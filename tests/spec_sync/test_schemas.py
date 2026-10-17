@@ -20,7 +20,7 @@ from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from scripts.freeze_schema import misplaced_ids
 from scripts.gen_vocabulary import SPECIFICATION, codes, only_code, outside_parentheses, table
-from tests.spec_sync.schemas import BASE, SCHEMA
+from tests.spec_sync.schemas import BASE, RESULT_TWINS, SCHEMA, as_returned
 
 WRITER = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
 CASE = json.loads((SCHEMA / "case.json").read_text(encoding="utf-8"))
@@ -108,6 +108,57 @@ def test_a_result_shape_left_behind_is_found() -> None:
         "a condition entry's record does not take density_kind's shape #/$defs/condition_density_kind",
         "a review returned names ['result', 'reviewer', 'date', 'independent_of_extraction', 'checklist'], "
         "the writer's ['result', 'reviewer', 'orcid', 'date', 'independent_of_extraction', 'checklist']",
+    ]
+
+
+def references(node: JsonValue) -> list[str]:
+    if isinstance(node, list):
+        return [found for item in node for found in references(item)]
+    if not isinstance(node, dict):
+        return []
+    reference = node.get("$ref")
+    own = [reference] if isinstance(reference, str) else []
+    return own + [found for value in node.values() for found in references(value)]
+
+
+def result_twin_problems(result: dict[str, JsonValue], writer: dict[str, JsonValue]) -> list[str]:
+    """Each twin that is not its writer definition as a result returns it, and each place read_result.json
+    refers to a writer definition that has a twin."""
+    result_defs = cast(dict[str, JsonValue], result["$defs"])
+    writer_defs = cast(dict[str, JsonValue], writer["$defs"])
+    problems = [
+        f"result_{name} is not the writer's {name} without the patterns a read does not check"
+        for name in RESULT_TWINS
+        if result_defs.get(f"result_{name}") != as_returned(writer_defs[name])
+    ]
+    twinned = {f"record.writer.json#/$defs/{name}" for name in RESULT_TWINS}
+    return problems + [
+        f"read_result.json refers to {reference}, which a result returns as its twin"
+        for reference in references(result)
+        if reference in twinned
+    ]
+
+
+def test_the_results_twins_are_the_writers_definitions_without_what_a_read_does_not_check() -> None:
+    assert result_twin_problems(RESULT, WRITER) == []
+
+
+def test_a_twin_that_drifts_from_the_writer_is_found() -> None:
+    drifted = copy.deepcopy(RESULT)
+    del drifted["$defs"]["result_specimen"]["properties"]["lot"]
+    drifted["$defs"]["result_pinned_record"]["properties"]["id"] = {
+        "$ref": "record.writer.json#/$defs/record_id"
+    }
+    drifted["$defs"]["alternative_value"]["properties"]["specimen"] = {
+        "$ref": "record.writer.json#/$defs/specimen"
+    }
+    writer = copy.deepcopy(WRITER)
+    writer["$defs"]["derivation"]["properties"]["method"] = {"type": "string", "minLength": 1}
+    assert result_twin_problems(drifted, writer) == [
+        "result_specimen is not the writer's specimen without the patterns a read does not check",
+        "result_derivation is not the writer's derivation without the patterns a read does not check",
+        "result_pinned_record is not the writer's pinned_record without the patterns a read does not check",
+        "read_result.json refers to record.writer.json#/$defs/specimen, which a result returns as its twin",
     ]
 
 
