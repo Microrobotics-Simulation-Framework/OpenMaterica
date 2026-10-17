@@ -8,10 +8,11 @@ alike, and their feature audit holds each to its draw floor, so they meet them t
 schema dies when the acceptance property finds it refusing a field the text allows. The table is the S2a-1
 review's 29 mutants and its two controls (M1 to M31, its numbering kept), then one per constraint added since
 and a few that tighten, then those of the bindings the writer applies from the vocabulary (B1 to B12, TB1 to
-TB4, maintainer 2026-10-15; B13, B14 and TB5, a specimen fact's unit, 2026-10-15), which change the writer
-or a vocabulary file; and three bindings removed again (U1 to U3), each killed by the relation that what the
-writer takes, step 9 passes, searched on bodies with a unit changed where the binding held it. Each test
-records the examples its kill took as `examples_to_kill`.
+TB4, maintainer 2026-10-15; B13, B14 and TB5, a specimen fact's unit, 2026-10-15; B15, B16 and TB6, a
+label's forms, PR #37's review), which change the writer or a vocabulary file; and three bindings removed
+again (U1 to U3), each killed by the relation that what the writer takes, step 9 passes, searched on bodies
+with a unit changed where the binding held it. Each test records the examples its kill took as
+`examples_to_kill`.
 """
 
 import copy
@@ -634,6 +635,21 @@ MUTANTS = [
         "specimen",
         ("fact_unit_not_registered",),
     ),
+    # A row's label bound to the field but not to the forms its Label cell names (PR #37's review, M2).
+    WriterMutant(
+        "B15 a field's label bound to no form",
+        deleting(D, "fluid.dynamic_viscosity", "dependentSchemas"),
+        "binding",
+        ("label_off_its_forms", "alternative_label_off_its_forms"),
+        FIELDS_FILE,
+    ),
+    WriterMutant(
+        "B16 a label's table axis unbound",
+        deleting(D, "magnetic.volume_susceptibility", "dependentSchemas", "label", "then"),
+        "binding",
+        ("label_on_its_rows_axis", "alternative_label_on_its_rows_axis"),
+        FIELDS_FILE,
+    ),
     # Tightened: each refuses a field the text allows.
     WriterMutant(
         "T1 an interval's basis without stated_bound",
@@ -717,6 +733,15 @@ MUTANTS = [
         (REFUSED,),
         FACTS_FILE,
     ),
+    WriterMutant(
+        "TB6 a field's label refused on a table",
+        setting(
+            D, "fluid.dynamic_viscosity", "dependentSchemas", "label", P, "form", to={"enum": ["constant"]}
+        ),
+        TAKES,
+        (REFUSED,),
+        FIELDS_FILE,
+    ),
     # Bindings removed, each killed by the relation to step 9.
     WriterMutant(
         "U1 the writer applies no binding to the specimen facts, read at step 9",
@@ -767,6 +792,7 @@ SEARCHED_ON = {
     "TB3": Plan(registered="bulk.elemental_composition", place="fields"),
     "TB4": replace(CONSTANT, rich=frozenset({"conditions"})),
     "TB5": replace(CONSTANT, rich=frozenset({"specimen"})),
+    "TB6": Plan(registered="fluid.dynamic_viscosity", form="table", rich=frozenset({"label"})),
 }
 # The bodies a mutant killed by the relation to step 9 is searched on, where its binding is a field's.
 STEP_9_PLANS = {"U2": replace(WITH_EVERY_UNIT, registered="fluid.dynamic_viscosity")}

@@ -682,7 +682,15 @@ def provenances(
 
 # A value field: `record_format.md` section 5.
 
-LABELLED = ("constant", "table")
+
+def label_goes_on(row: Json, form: str, member: JsonValue) -> bool:
+    """Section 4.1's Label column: a row's label goes "on a constant, or on a table whose axis is not" the
+    condition its cell names, where it names one (`label_not_on_axis`), and on no other form."""
+    if form == "constant":
+        return True
+    axis = row.get("label_not_on_axis")
+    on_its_axis = isinstance(member, dict) and member.get("axis") == axis
+    return form == "table" and axis is not None and not on_its_axis
 
 
 @st.composite
@@ -725,9 +733,13 @@ def form_fields(draw: st.DrawFn, plan: Plan = ANY, size: Size = SIZE) -> Json:
         found["fit"] = draw(objects(size))
     if plan.full("specimen") or (not plan.minimal and draw(st.booleans())):
         found["specimen"] = draw(specimens(plan.full("specimen")))
-    # Section 4.1's Label column: a row's label goes "on a constant, or on a table" (a table's axis is S3a's).
+    member = found.get(form_member(form))
     labels = (
-        [str(label) for label in [row_of(plan.registered).get("label")] if label and form in LABELLED]
+        [
+            str(label)
+            for label in [row_of(plan.registered).get("label")]
+            if label and label_goes_on(row_of(plan.registered), form, member)
+        ]
         if plan.registered
         else LISTS["label"]
     )
@@ -1845,10 +1857,36 @@ def _label_unregistered(draw: st.DrawFn, value: Json, registered: str) -> str:
     return "label"
 
 
+def _label_off_its_forms(draw: st.DrawFn, value: Json, registered: str) -> str:
+    """The row's own label on an interval, a form its Label cell does not name (section 4.1, "a label it knows
+    that the row does not name for the field and its form refuses it as `form_invalid`")."""
+    value["label"] = row_of(registered)["label"]
+    return "label"
+
+
+def _label_on_its_rows_axis(draw: st.DrawFn, value: Json, registered: str) -> str:
+    """The row's own label on a table whose axis is the condition its Label cell names."""
+    mapping(value["table"])["axis"] = row_of(registered)["label_not_on_axis"]
+    value["label"] = row_of(registered)["label"]
+    return "label"
+
+
 for _alternative, _plan in ((False, ONE), (True, SEVERAL)):
     binding_fault("form_not_registered", _plan, _alternative, _form_unregistered)
     binding_fault("unit_not_registered", _plan, _alternative, _unit_unregistered)
     binding_fault("label_not_registered", _plan, _alternative, _label_unregistered)
+    binding_fault(
+        "label_off_its_forms",
+        replace(_plan, registered="fluid.dynamic_viscosity", form="interval"),
+        _alternative,
+        _label_off_its_forms,
+    )
+    binding_fault(
+        "label_on_its_rows_axis",
+        replace(_plan, registered="magnetic.volume_susceptibility", form="table", withheld=False),
+        _alternative,
+        _label_on_its_rows_axis,
+    )
 
 
 @fault(

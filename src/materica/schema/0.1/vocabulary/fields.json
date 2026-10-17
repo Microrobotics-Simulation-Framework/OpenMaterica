@@ -193,6 +193,41 @@
             "$ref": "#/$defs/fluid.dynamic_viscosity"
           }
         }
+      },
+      "dependentSchemas": {
+        "label": {
+          "properties": {
+            "form": {
+              "enum": [
+                "constant",
+                "table"
+              ]
+            }
+          },
+          "if": {
+            "required": [
+              "form"
+            ],
+            "properties": {
+              "form": {
+                "const": "table"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "table": {
+                "properties": {
+                  "axis": {
+                    "not": {
+                      "const": "shear_rate"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "magnetic.remanence": {
@@ -251,6 +286,41 @@
         "alternatives": {
           "items": {
             "$ref": "#/$defs/magnetic.volume_susceptibility"
+          }
+        }
+      },
+      "dependentSchemas": {
+        "label": {
+          "properties": {
+            "form": {
+              "enum": [
+                "constant",
+                "table"
+              ]
+            }
+          },
+          "if": {
+            "required": [
+              "form"
+            ],
+            "properties": {
+              "form": {
+                "const": "table"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "table": {
+                "properties": {
+                  "axis": {
+                    "not": {
+                      "const": "magnetic_flux_density"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
