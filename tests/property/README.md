@@ -461,6 +461,24 @@ tell it from the core, since step 10 returns a filled condition with the members
   other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,
   as the audit holds each parameter to its own.
 
+An audit judges random draws, so a sound property fails it now and then by chance. From `audits.py`'s figures,
+a run of every property at `dev` fails about once in 2,000 (5e-4, nearly all of it the json and records shards'
+least shares, `card_accepted`'s 4e-4 the most), and a run at `ci` about once in 500,000 (2e-6). CI draws at
+random since #38 ("Profiles and sizes"), so each of its `dev` runs is a sample of its own: the test matrix's
+five Pythons make a push red by chance about once in 400 (2.5e-3), and the per-commit job adds 5e-4 for each
+earlier commit it checks, about once in 220 for a pull request of five commits (4.5e-3); the Hypothesis job
+adds about 2e-6, and the controls job, derandomised, nothing (`.github/workflows/README.md`). An audit that
+fails a run Hypothesis drew at random names the seed of that run and how to draw it again: the failing job's
+own pytest command, at its profile and on its Python, with `-k <test> --hypothesis-seed=<seed>`, or with
+`@seed(<seed>)` on the test. A run that collects less draws other examples under the same seed, since
+Hypothesis also draws constants from the modules outside `tests/` that are loaded: on the whole suite, a
+property's run replayed exactly under the job's command with `-k`, on one worker or four, and drew 25 of its
+200 examples otherwise from its file alone (2026-10-17; `tests/unit/test_audit_replay.py` holds the message to
+this). To tell chance from a fault, dispatch `repeat.yml` on the failing test at its profile (`tests/README.md`,
+"Repeat runs on CI"): after a chance failure nearly every run passes, while a change that lowers a share fails
+most runs. It cannot measure rates this small, since 200 runs without a failure bound the rate at 1.5%; it
+tells a rare failure from a frequent one.
+
 ## Adding a property
 
 Write the check as a function of the implementation and the example, and the property as a `test_...` function

@@ -25,4 +25,7 @@ Tests by example, for what the conformance cases and the properties do not reach
   every phase); and on a runner two seeds draw different examples and one seed what it draws elsewhere. Each
   check runs in fresh processes with and without a runner's variables; its controls are the registration as
   it was before #38, `derandomize` put back, each fixed setting changed, and a deadline set in a hook on a
-  runner alone (`test_hypothesis_profiles.py`).
+  runner alone (`test_hypothesis_profiles.py`);
+- the audits' failure on a run Hypothesis drew at random, on a runner: it names the seed and the command that
+  draw the run again, and both replays draw its examples, where an unseeded run and one that loads another
+  module draw others (`test_audit_replay.py`).

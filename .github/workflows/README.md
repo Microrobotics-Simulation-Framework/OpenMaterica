@@ -20,6 +20,14 @@ selects; no job or step carries on after a failure (`continue-on-error`).
 | `fuzz` | after `hypothesis`, from the union of the shards' example databases: the Atheris targets of `tests/fuzz/`, after a control with seeded faults, for `fuzz_seconds` each; then the property tests, to replay and shrink what was found; on Python 3.14 | weekly; manual, alone with `fuzz_only` |
 | `result` | fails unless every job the gate asked for succeeded (a job skipped by its `if` reports success), and when any job failed or was cancelled: the one check the ruleset on main requires | always |
 
+The `tests` and `commit` jobs run the properties at `dev` on random draws, as a laptop does (since #38), so an
+audit can fail a sound property by chance: about once in 2,000 runs of the whole suite (5e-4,
+`tests/property/audits.py`). With five `tests` jobs a push, that makes a push red by chance about once in 400
+(2.5e-3), and the `commit` job adds 5e-4 for each earlier commit it checks: about once in 220 for a pull request
+of five commits (4.5e-3). The `hypothesis` job at `ci` adds about 2e-6, and the `controls` job, whose searches
+and controls are derandomised, nothing. Such a failure names the seed that draws its run again, and `repeat.yml`
+tells chance from a fault (`tests/property/README.md`, "Audits").
+
 Each pytest job but `commit`, which runs on each earlier commit the suite the head's jobs run, writes a JUnit
 report, summarised on the run's page (`scripts/report_test_durations.py`: the tests in each band of wall time, the
 slowest tests and files, and the total, wall time and CPU time, the tests' own and their child processes') and kept

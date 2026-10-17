@@ -10,6 +10,10 @@ from tests.conftest import PROFILE
 from tests.property import audits
 
 
+def replay(item: pytest.Item) -> str:
+    return audits.replay(getattr(item, "obj", None), getattr(item, "originalname", item.name), PROFILE)
+
+
 # Innermost of the wrappers, so that the audits' collector is the one Hypothesis calls; it passes the
 # statistics on to the plugin's.
 @pytest.hookimpl(wrapper=True, trylast=True)
@@ -22,7 +26,9 @@ def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
             pytest.fail("the audits saw no draws: has Hypothesis changed its statistics?")
         return
     if share > audits.MAX_REJECTION:
-        pytest.fail(f"rejected {share:.0%} of its draws, over the audit's {audits.MAX_REJECTION:.0%}")
+        pytest.fail(
+            f"rejected {share:.0%} of its draws, over the audit's {audits.MAX_REJECTION:.0%}" + replay(item)
+        )
     declared = item.get_closest_marker("features")
     drawn = item.get_closest_marker("drawn")
     chances = item.get_closest_marker("chances")
@@ -35,4 +41,4 @@ def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
         chance_floors=PROFILE in audits.CHANCE_FLOORS,
     )
     if problems:
-        pytest.fail("feature audit: " + "; ".join(problems))
+        pytest.fail("feature audit: " + "; ".join(problems) + replay(item))
