@@ -41,7 +41,8 @@ overlay or an extrapolation (S3 and S4), nor the one alternative left once the o
   interval is not a number; only a nominal the consumer declares inside the bounds supplies one
   (`declarations.md` section 4.1).
 
-`tests/examples/` checks these outcomes, so this list changes when the reader does.
+The [quickstart](../docs/user_guide/quickstart.md) writes a record holding one of the water example's values,
+and reads it. `tests/examples/` checks these outcomes, so this list changes when the reader does.
 
 ## How they were made
 

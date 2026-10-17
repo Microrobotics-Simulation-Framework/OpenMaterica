@@ -69,6 +69,7 @@ The command prints `OK` for a file built from this repository, and fails for any
 
 | Document | Description |
 |---|---|
+| [docs/user_guide/quickstart.md](docs/user_guide/quickstart.md) | Quickstart: write a record and read a value from it; this release reads constants, intervals, compositions and evidence, not yet tables or choosing between alternatives |
 | [examples/](examples/) | Three example records, cited (water, NdFeB grade N45, human blood plasma): examples, not reviewed library data, not yet fully human-reviewed, and they may change in a later commit |
 | [design/ARCHITECTURE_DRAFT.md](design/ARCHITECTURE_DRAFT.md) | Architecture concept: components, data model, model families, geometry and USD binding, library and licensing, MIME and Isaac for Healthcare interfaces |
 | [DOCUMENTATION_ARCHITECTURE.md](DOCUMENTATION_ARCHITECTURE.md) | How OpenMaterica is documented and verified, and its SOUP readiness |
