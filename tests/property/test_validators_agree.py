@@ -125,7 +125,8 @@ def t1_disagreements(
 
 
 # A whole pass over T1's examples, 5,066 of them, took 590 s and 760 s summed over 8 workers of a shared
-# machine, nearly all of it python-jsonschema's (2026-10-16). At `dev` and `ci` the share takes every
+# machine, nearly all of it python-jsonschema's (2026-10-16); S2b-1's full interval and composition among
+# T1's bases make them 5,383. At `dev` and `ci` the share takes every
 # STRIDE-th example of each group, from its first: the inputs that read each registered field, and the
 # variants of each base by each change and origin. So it holds each registered field the inputs read, each
 # base, each origin and each change, alone and beside each origin, which `share_misses` checks: T1's order
