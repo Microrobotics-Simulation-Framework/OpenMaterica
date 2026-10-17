@@ -352,6 +352,7 @@ def scrambled(value: object) -> None:
 # its floor at `ci` with a probability of at most about 1e-14; `dev` judges no chance below a half.
 @pytest.mark.chances(
     negative_zero=0.25,
+    statistics_withheld=0.25,
     unknown_member=0.33,
     review_anything=0.53,
     review_reviewed=0.24,

@@ -17,6 +17,7 @@ from typing import Any, NamedTuple
 import pytest
 from hypothesis import strategies as st
 
+from materica import shapes
 from materica.core import conditions, read, resolve
 from materica.core.jsonio import JsonValue
 from materica.core.read import FieldRead, ReadResult
@@ -255,6 +256,14 @@ MUTANTS = [
     # A review returned as the record holds it is caught as another review, or as the record's own object.
     Mutant("review_as_it_holds", "HP6", setting(read, "_review", _review_as_it_holds), REVIEWS),
     Mutant("counts_as_doubles", "HP6", setting(read, "_whole", _as_stored), ("met", "alternatives")),
+    # The fault fuzz target 4 found against the reference model: a constant's statistics read by the block's
+    # shape alone, so that the status object its row allows comes back empty.
+    Mutant(
+        "statistics_status_object_emptied",
+        "HP6",
+        setting(read, "_CONSTANT_STATISTICS", shapes.StatisticsBlock),
+        ("statistics_withheld",),
+    ),
     Mutant(
         "labelled_before_step_4",
         "HP11",
