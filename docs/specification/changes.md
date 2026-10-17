@@ -362,3 +362,10 @@ less (the TE suite's README). Outside a table's readable range, an evaluator's v
 each judged alone (maintainer, 2026-10-17): each is the expected number, or absent or NaN. So a NaN value
 beside a zero derivative passes (`read_side_contract.md` section 7 item 1). `in_range` is still compared there
 (`read_side_contract.md` section 7 item 7; TE-002, TE-003). This settles the S3 entry's "or no number".
+
+Settled with S2a-4's review (maintainer, 2026-10-18): an implied condition breaks its shape
+(`request_incomplete`, with that `condition`) where `implies` gives a numeric condition a `token`, or a token
+condition a `value`, `range` or `unit`, whatever that member holds, each being a member of the other kind of
+condition's shape (`read_side_contract.md` section 1; PR-330). The text refused the first already, as a token
+outside a numeric condition's row, and the second only through the shapes `declarations.md` section 4.1 names,
+so S2a-3's reader ignored a `unit` beside a token; one sentence now says both, and the reader refuses both.

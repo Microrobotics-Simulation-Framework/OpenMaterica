@@ -66,7 +66,7 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
 Status: TypeAlias = Literal["met", "unknown", "not_met"]
 
 # README.md:52 "A read gives `met`, `not_met` or `unknown`"
-# read_side_contract.md:127 "The status is the worst of them: `not_met` over `unknown` over `met`"
+# read_side_contract.md:130 "The status is the worst of them: `not_met` over `unknown` over `met`"
 STATUSES_BEST_FIRST: Final[tuple[Status, ...]] = ("met", "unknown", "not_met")
 
 # The text's tables
@@ -210,7 +210,7 @@ class ReasonRow:
     procedures: tuple[str, ...] = ()  # for a code no step gives
 
 
-# read_side_contract.md:358 "| Code | Status | Step | Meaning | Defined in |"
+# read_side_contract.md:361 "| Code | Status | Step | Meaning | Defined in |"
 REASONS: Final[Mapping[str, ReasonRow]] = {
     "malformed": ReasonRow("not_met", (1, 2, 3, 6)),
     "other_version": ReasonRow("not_met", (2, 6)),
@@ -355,23 +355,23 @@ ORIGINS: Final = (
 REVIEW_RESULTS: Final = ("reviewed",)
 # provenance.md:195 "`stated`, or `inferred` with an `inferred_from` text"
 CONDITION_BASES: Final = ("stated", "inferred")
-# read_side_contract.md:461 "with basis `implied`"
+# read_side_contract.md:464 "with basis `implied`"
 IMPLIED_BASIS: Final = "implied"
 # provenance.md:245-246 "`stated_as` is `bound`"
 STATED_AS: Final = ("bound", "sd")
 # provenance.md:253 "`set_or_measured` is `set_point`"
 SET_OR_MEASURED: Final = ("set_point", "measured")
 
-# read_side_contract.md:122 "the result's labels, from this list only: `user_extracted`"
+# read_side_contract.md:125 "the result's labels, from this list only: `user_extracted`"
 RESULT_LABELS: Final = (
     "user_extracted", "no_independent_witness", "mean_of_specimen_fits", "mixed_conditions",
     "hash_not_checked", "initial_value_only",
 )  # fmt: skip
-# read_side_contract.md:505 "| `want` | constant, table, power law | interval | composition | evidence |"
+# read_side_contract.md:508 "| `want` | constant, table, power law | interval | composition | evidence |"
 WANTS: Final = ("value", "bounds", "components", "evidence", "reference_data", "fit", "coverage")
-# read_side_contract.md:512-515 "the fits and reference data suite"
+# read_side_contract.md:515-518 "the fits and reference data suite"
 FITS_AND_REFERENCE_DATA_WANTS: Final = ("reference_data", "fit", "coverage")
-# Each want's row, the forms it gives: read_side_contract.md:507-510 "| `value` | the number at the operating
+# Each want's row, the forms it gives: read_side_contract.md:510-513 "| `value` | the number at the operating
 # conditions" and "| `bounds` | `not_met` (`want_mismatch`) | `{"lower", "upper", "basis"}`, as stored"
 GIVES: Final[Mapping[str, tuple[str, ...]]] = {
     "value": ("constant", "table", "power_law"),
@@ -401,7 +401,7 @@ ACCEPTANCE_OWN_NAMES: Final[Mapping[str, tuple[str, ...]]] = {
     "overlay_scope": ("overlay", "accepts"),
 }
 
-# read_side_contract.md:288-290 "a token the reader knows for a member of that name in a member whose row does
+# read_side_contract.md:291-293 "a token the reader knows for a member of that name in a member whose row does
 # not allow it (`form_invalid`), a token the reader knows for no member of that name (`unknown_token`)": every
 # token the version gives a member of each name, wherever it sits.
 KNOWN_TOKENS: Final[Mapping[str, frozenset[str]]] = {
@@ -436,7 +436,7 @@ KNOWN_TOKENS: Final[Mapping[str, frozenset[str]]] = {
 }
 
 # The members each shape names at its place, for the slips of record_format.md:568-569 "one slip (below) from
-# a member the shape names at that place" and the members a result returns, read_side_contract.md:150 "Every
+# a member the shape names at that place" and the members a result returns, read_side_contract.md:153 "Every
 # member a result returns from a record holds the members the reader's version defines".
 # record_format.md:85 "| Member | Required | Contents |"
 ENVELOPE_NAMES: Final = (
@@ -562,10 +562,10 @@ class Reason:
 
 
 class Reasons:
-    """The reasons a read has found, each once: read_side_contract.md:128-129 "A reason, identified by its
+    """The reasons a read has found, each once: read_side_contract.md:131-132 "A reason, identified by its
     `code`, its `condition` and its `alternative`, appears at most once in a result". No reason the model
     gives carries `alternative`, which only a reason found reading one alternative at steps 8 to 13 carries
-    (read_side_contract.md:135-137 "A reason carries `alternative` exactly when it was found at steps 8 to 13
+    (read_side_contract.md:138-140 "A reason carries `alternative` exactly when it was found at steps 8 to 13
     while reading one alternative"): the model decides no read that reports one (Open point:
     alternatives_within_decision_12)."""
 
@@ -590,7 +590,7 @@ class Reasons:
         return worst(REASONS[reason.code].status for reason in self._found)
 
     def end_the_read(self) -> bool:
-        # read_side_contract.md:169 "A step that gives `not_met` ends the read"
+        # read_side_contract.md:172 "A step that gives `not_met` ends the read"
         return self.status == "not_met"
 
     def to_json(self) -> list[JsonValue]:
@@ -700,7 +700,7 @@ def slipped(value: JsonObject, named: Iterable[str]) -> bool:
 
 
 def known_token(value: JsonValue, member: str, allowed: Iterable[str], faults: Reasons) -> None:
-    """A token in a member whose row allows `allowed`: read_side_contract.md:288-290 "a token the reader knows
+    """A token in a member whose row allows `allowed`: read_side_contract.md:291-293 "a token the reader knows
     for a member of that name in a member whose row does not allow it (`form_invalid`), a token the reader
     knows for no member of that name (`unknown_token`)"."""
     if not isinstance(value, str):
@@ -767,7 +767,7 @@ def copied(value: JsonValue) -> JsonValue:
 
 
 def status_returned(value: JsonObject) -> JsonObject:
-    # read_side_contract.md:151 "numbers as read, status objects as status objects"
+    # read_side_contract.md:154 "numbers as read, status objects as status objects"
     return {name: copied(value[name]) for name in ("status", "reason") if name in value}
 
 
@@ -1051,7 +1051,7 @@ def checked_acceptances(
 
 
 def at_the_read(acceptance: JsonObject, reference: Reference | None) -> bool:
-    # read_side_contract.md:79-86 "only at the read's own location: its `record`, its `region` or both, each
+    # read_side_contract.md:82-89 "only at the read's own location: its `record`, its `region` or both, each
     # the read's" ... "One naming another field, another record or region, an `interval`" ... "or no location
     # is checked and not applied"
     if "region" in acceptance or "interval" in acceptance or "record" not in acceptance:
@@ -1115,7 +1115,7 @@ def implied_value(name: str, value: JsonValue, reasons: Reasons) -> JsonObject |
     if holds_another_kind(value, ("token",)):
         reasons.add("request_incomplete", name)
         return None
-    # read_side_contract.md:76-77 "A value an implied condition supplies for a registered numeric condition is
+    # read_side_contract.md:79-80 "A value an implied condition supplies for a registered numeric condition is
     # checked as an operating condition is, its `unit` included"
     return numeric_value(value, condition, name, IMPLIED_VALUE_NAMES, reasons)
 
@@ -1130,7 +1130,7 @@ class Source:
 
 
 def sources_read(sources: Sequence[bytes]) -> list[Source]:
-    # read_side_contract.md:180 "Every supplied source is read as JSON (`record_format.md` section 1 item 6)."
+    # read_side_contract.md:183 "Every supplied source is read as JSON (`record_format.md` section 1 item 6)."
     found: list[Source] = []
     for data in sources:
         try:
@@ -1141,12 +1141,12 @@ def sources_read(sources: Sequence[bytes]) -> list[Source]:
 
 
 def set_aside(value: JsonValue | NotStrictJson) -> bool:
-    # read_side_contract.md:180-181 "An object with a `document_type` and no `record_type` is set aside"
+    # read_side_contract.md:183-184 "An object with a `document_type` and no `record_type` is set aside"
     return isinstance(value, dict) and "document_type" in value and "record_type" not in value
 
 
 def candidate(value: JsonValue | NotStrictJson) -> bool:
-    # read_side_contract.md:184 "Every other object whose `id` and `version` are strings is a **candidate**"
+    # read_side_contract.md:187 "Every other object whose `id` and `version` are strings is a **candidate**"
     return (
         isinstance(value, dict)
         and not set_aside(value)
@@ -1156,7 +1156,7 @@ def candidate(value: JsonValue | NotStrictJson) -> bool:
 
 
 def unreadable(value: JsonValue | NotStrictJson) -> bool:
-    # read_side_contract.md:181-183 "A source that did not parse, or parsed to a value that is neither a
+    # read_side_contract.md:184-186 "A source that did not parse, or parsed to a value that is neither a
     # set-aside document nor an object with a string `id` and a string `version`, is **unreadable**."
     return not (set_aside(value) or candidate(value))
 
@@ -1178,7 +1178,7 @@ def resolve(
         and (source.value["id"], source.value["version"]) == (reference.id, reference.version)
     ]
     if not candidates:
-        # read_side_contract.md:187-188 "the read gives `absent`, unless a supplied source is unreadable: then
+        # read_side_contract.md:190-191 "the read gives `absent`, unless a supplied source is unreadable: then
         # it gives `malformed`"
         reasons.add("malformed" if any_unreadable else "absent")
         return None
@@ -1186,13 +1186,13 @@ def resolve(
         (value, data) for value, data in candidates if value.get("content_hash") == reference.content_hash
     ]
     if not pinned:
-        # read_side_contract.md:193-196 "the read gives `malformed` when a supplied source is unreadable, or
+        # read_side_contract.md:196-199 "the read gives `malformed` when a supplied source is unreadable, or
         # when one of the candidates" ... "has a `content_hash` that is absent, not a string, or not
         # `sha256:`"
         ill_formed = any(not well_formed_hash(value.get("content_hash")) for value, _ in candidates)
         reasons.add("malformed" if any_unreadable or ill_formed else "pin_mismatch")
         return None
-    # read_side_contract.md:191-192 "With two or more whose bytes are all identical, it reads one; with two or
+    # read_side_contract.md:194-195 "With two or more whose bytes are all identical, it reads one; with two or
     # more whose bytes differ, the read gives `malformed`."
     if len({data for _, data in pinned}) > 1:
         reasons.add("malformed")
@@ -1200,7 +1200,7 @@ def resolve(
     record = pinned[0][0]
     if not version_and_structure_pass(record, reasons):
         return None
-    # read_side_contract.md:203-207 "A reader that claims the HS suite also recomputes the hash" ... "A reader
+    # read_side_contract.md:206-210 "A reader that claims the HS suite also recomputes the hash" ... "A reader
     # that does not claim HS labels `hash_not_checked` every result that reaches this step"
     if "hash" in claims:
         if content_hash(record) != record["content_hash"]:
@@ -1209,7 +1209,7 @@ def resolve(
             return None
     else:
         labels.append("hash_not_checked")
-    # read_side_contract.md:209-210 "Refuse a referenced record of a type the reader cannot read in its role
+    # read_side_contract.md:212-213 "Refuse a referenced record of a type the reader cannot read in its role
     # (`unknown_type`): a target's record that is not a `material`, however the target is named"
     if record["record_type"] != "material":
         reasons.add("unknown_type")
@@ -1222,7 +1222,7 @@ def well_formed_hash(value: JsonValue) -> bool:
 
 
 def version_and_structure_pass(record: JsonObject, reasons: Reasons) -> bool:
-    # read_side_contract.md:198-200 "Read `schema_version`: absent, not a string, or not matching" ... "gives
+    # read_side_contract.md:201-203 "Read `schema_version`: absent, not a string, or not matching" ... "gives
     # `malformed`; another `MAJOR.MINOR` (before 1.0.0) gives `other_version`"
     schema_version = record.get("schema_version")
     match = VERSION_PATTERN.fullmatch(schema_version) if isinstance(schema_version, str) else None
@@ -1232,7 +1232,7 @@ def version_and_structure_pass(record: JsonObject, reasons: Reasons) -> bool:
     if match.group(1, 2) != READER_MAJOR_MINOR:
         reasons.add("other_version")
         return False
-    # read_side_contract.md:201 "**Validate** the envelope and the body's structure against the reader schema"
+    # read_side_contract.md:204 "**Validate** the envelope and the body's structure against the reader schema"
     if not reader_schema_accepts(record):
         reasons.add("malformed")
         return False
@@ -1356,7 +1356,7 @@ def section_slips(section: JsonObject, section_name: str) -> bool:
     return slipped(section, SECTION_NAMES) or (isinstance(fields, dict) and slipped(fields, field_names))
 
 
-# Step 8: form and tokens, read_side_contract.md:284 "8. **Form and tokens.**"
+# Step 8: form and tokens, read_side_contract.md:287 "8. **Form and tokens.**"
 
 
 def check_value_field(
@@ -1371,11 +1371,11 @@ def check_value_field(
     faults = Reasons()
     if record_fault:
         faults.add("form_invalid")
-    # read_side_contract.md:284-285 "a value field, form or section `specimen` that breaks its shape"
+    # read_side_contract.md:287-288 "a value field, form or section `specimen` that breaks its shape"
     if "specimen" in section:
         check_specimen(section["specimen"], faults)
     if not isinstance(field_value, dict):
-        # read_side_contract.md:369 "a field that is not an object"
+        # read_side_contract.md:372 "a field that is not an object"
         faults.add("form_invalid")
         return faults, None
     row = FIELDS[field_name]
@@ -1389,17 +1389,17 @@ def check_value_field(
         known_token(form, "form", FORMS, faults)
     if known_form is not None:
         if known_form not in row.forms:
-            # read_side_contract.md:284 "Refuse a form the field's row does not allow (`form_not_registered`)"
-            # read_side_contract.md:292-294 "a form it does not allow is refused, `form_not_registered`, and
+            # read_side_contract.md:287 "Refuse a form the field's row does not allow (`form_not_registered`)"
+            # read_side_contract.md:295-297 "a form it does not allow is refused, `form_not_registered`, and
             # its member, which the read neither uses nor returns, is not checked"
             faults.add("form_not_registered")
         else:
             check_form_member(field_value, known_form, row, faults)
-        # read_side_contract.md:323-324 "A parameter set read without the family evaluation suite is refused
+        # read_side_contract.md:326-327 "A parameter set read without the family evaluation suite is refused
         # here"
         if known_form == "parameter_set" and "family_evaluation" not in claims:
             faults.add("family_suite_absent")
-    # read_side_contract.md:294 "`unit`, only as a string or a status object"
+    # read_side_contract.md:297 "`unit`, only as a string or a status object"
     if "unit" not in field_value:
         faults.add("form_invalid")
     else:
@@ -1481,7 +1481,7 @@ def check_conditions(field_value: JsonObject, faults: Reasons) -> None:
     if not isinstance(conditions, dict):
         faults.add("form_invalid")
         return
-    # read_side_contract.md:295-296 "each condition and specimen fact whose name the reader knows"
+    # read_side_contract.md:298-299 "each condition and specimen fact whose name the reader knows"
     for name, condition in conditions.items():
         if name in CONDITIONS:
             check_condition(name, condition, faults)
@@ -1528,7 +1528,7 @@ def holds_another_kind(value: JsonObject, members: tuple[str, ...]) -> bool:
 
 
 def check_value_or_range(value: JsonObject, faults: Reasons) -> None:
-    # provenance.md:226 "with `lo <= hi`"; read_side_contract.md:305 "a condition's or fact's `range`"
+    # provenance.md:226 "with `lo <= hi`"; read_side_contract.md:308 "a condition's or fact's `range`"
     if ("value" in value) == ("range" in value):
         faults.add("form_invalid")
     if "value" in value and not number(value["value"]):
@@ -1674,8 +1674,8 @@ def check_block_member(member: str, value: JsonValue, faults: Reasons) -> None:
     elif member == "population_level":
         check_population_level(value, faults)
     elif status_object(value, faults, allowed=ANY_STATUS, scalar=True) is None:
-        # read_side_contract.md:303 "counts (`n_specimens`, `n_donors`, `n_sources`" and "are whole and not
-        # negative"; read_side_contract.md:306-307 "a statistics block's `sd`" and "are not below zero"
+        # read_side_contract.md:306 "counts (`n_specimens`, `n_donors`, `n_sources`" and "are whole and not
+        # negative"; read_side_contract.md:309-310 "a statistics block's `sd`" and "are not below zero"
         if member in BLOCK_COUNTS:
             acceptable = whole(value) and value >= 0
         elif member == "sd":
@@ -1698,7 +1698,7 @@ def check_population_level(value: JsonValue, faults: Reasons) -> None:
         return
     if slipped(value, POPULATION_LEVEL_NAMES) or any(name not in value for name in POPULATION_LEVEL_NAMES):
         faults.add("form_invalid")
-    # read_side_contract.md:127-128 "Each step makes all its checks before the read stops": a member present
+    # read_side_contract.md:130-131 "Each step makes all its checks before the read stops": a member present
     # is checked whatever else the object misses.
     if "level" in value:
         known_token(value["level"], "level", LEVELS, faults)
@@ -1719,7 +1719,7 @@ def check_uncertainty(value: JsonValue, faults: Reasons) -> None:
         return
     if slipped(value, UNCERTAINTY_NAMES) or any(name not in value for name in UNCERTAINTY_MEMBERS):
         faults.add("form_invalid")
-    # read_side_contract.md:306 "a `plus_minus` entry's `value`, a statistics block's `sd` and an
+    # read_side_contract.md:309 "a `plus_minus` entry's `value`, a statistics block's `sd` and an
     # uncertainty's `value` are not below zero"
     if "value" in value and not not_negative(value["value"]):
         faults.add("form_invalid")
@@ -1727,12 +1727,12 @@ def check_uncertainty(value: JsonValue, faults: Reasons) -> None:
     for member in ("coverage_factor", "coverage_probability"):
         if member in value and status_object(value[member], faults, allowed=ANY_STATUS, scalar=True) is None:
             given = value[member]
-            # read_side_contract.md:307-308 "an uncertainty's `coverage_factor` and `dof` are above zero" and
+            # read_side_contract.md:310-311 "an uncertainty's `coverage_factor` and `dof` are above zero" and
             # "its `coverage_probability` is above zero and at most one"
             if not number(given) or given <= 0 or (member == "coverage_probability" and given > 1):
                 faults.add("form_invalid")
             coverage_is_a_number = coverage_is_a_number or number(given)
-    # read_side_contract.md:311-312 "an uncertainty has a numeric coverage factor or coverage probability"
+    # read_side_contract.md:314-315 "an uncertainty has a numeric coverage factor or coverage probability"
     if not coverage_is_a_number:
         faults.add("form_invalid")
     distribution = value.get("distribution")
@@ -1743,10 +1743,10 @@ def check_uncertainty(value: JsonValue, faults: Reasons) -> None:
         known_token(distribution, "distribution", UNCERTAINTY_DISTRIBUTIONS, faults)
     if "dof" in value:
         dof = value["dof"]
-        # A status object there has its token checked under any distribution (read_side_contract.md:127-128
+        # A status object there has its token checked under any distribution (read_side_contract.md:130-131
         # "Each step makes all its checks").
         held = status_object(dof, faults, allowed=ANY_STATUS, scalar=True)
-        # read_side_contract.md:312-313 "its `dof` is a number exactly where its `distribution` is
+        # read_side_contract.md:315-316 "its `dof` is a number exactly where its `distribution` is
         # `student_t`"
         if distribution == "student_t":
             if not (number(dof) and dof > 0):
@@ -1795,7 +1795,7 @@ def label_named(field_value: JsonObject, row: FieldRow, label: str) -> bool:
 
 
 def check_provenance(provenance: JsonValue, faults: Reasons) -> None:
-    # read_side_contract.md:297-298 "and in `provenance` its `origin`, its `source` (present for origin
+    # read_side_contract.md:300-301 "and in `provenance` its `origin`, its `source` (present for origin
     # `measured_by_source`, and its `key` wherever present) and its `derivation` for origin `derived`"
     if not isinstance(provenance, dict):
         faults.add("form_invalid")
@@ -2009,7 +2009,7 @@ def check_evidence(value: JsonValue, faults: Reasons) -> None:
         else:
             check_entry_provenance(entry["provenance"], faults)
         withheld_entries.append(withheld_whole(withheld_members, faults))
-    # read_side_contract.md:324-325 "An evidence list whose every entry is withheld gives `withheld`; one with
+    # read_side_contract.md:327-328 "An evidence list whose every entry is withheld gives `withheld`; one with
     # some entries withheld, `unknown` (`entries_withheld`)."
     if withheld_entries and all(withheld_entries):
         faults.add("withheld")
@@ -2038,12 +2038,12 @@ def check_standard(standard: JsonValue, faults: Reasons) -> None:
         return
     if slipped(standard, STANDARD_NAMES) or not isinstance(standard["designation"], str):
         faults.add("form_invalid")
-    # read_side_contract.md:303-304 "an evidence entry's `standard.year` is whole"
+    # read_side_contract.md:306-307 "an evidence entry's `standard.year` is whole"
     if not whole(standard["year"]):
         faults.add("form_invalid")
 
 
-# Step 9: units, read_side_contract.md:327 "9. **Units.** Refuse a field unit, `axis_unit` or condition unit
+# Step 9: units, read_side_contract.md:330 "9. **Units.** Refuse a field unit, `axis_unit` or condition unit
 # other than the registered one"
 
 
@@ -2066,19 +2066,19 @@ def check_units(field_value: JsonObject, section: JsonObject, field_name: str) -
         if row is None or not isinstance(condition, dict) or "status" in condition:
             continue
         if row.shape == "token":
-            # read_side_contract.md:328-329 "a `unit` on a token condition, which registers none"
+            # read_side_contract.md:331-332 "a `unit` on a token condition, which registers none"
             if "unit" in condition:
                 reasons.add("unit_mismatch", name)
             continue
         assert row.unit is not None
-        # read_side_contract.md:328 "a condition's `plus_minus` units included"
+        # read_side_contract.md:331 "a condition's `plus_minus` units included"
         units = [condition["unit"]]
         entries = condition.get("plus_minus", [])
         if isinstance(entries, list):
             units.extend(entry["unit"] for entry in entries if isinstance(entry, dict))
         if not all(same_unit(unit, row.unit) for unit in units):
             reasons.add("unit_mismatch", name)
-    # read_side_contract.md:332-334 "A specimen fact's `unit`, wherever step 8 checks the fact, is compared in
+    # read_side_contract.md:335-337 "A specimen fact's `unit`, wherever step 8 checks the fact, is compared in
     # the same way with the unit its row fixes"
     for specimen in checked_specimens(field_value, section):
         for name, fact in specimen.items():
@@ -2121,13 +2121,13 @@ def merged_specimen(section: JsonObject, field_value: JsonObject) -> JsonObject:
 
 
 def states(specimen: JsonObject, implied: ImpliedCondition) -> bool:
-    # read_side_contract.md:336-337 "whose fact and token the field's specimen states"
+    # read_side_contract.md:339-340 "whose fact and token the field's specimen states"
     fact = specimen.get(implied.fact)
     return isinstance(fact, dict) and "status" not in fact and fact.get("token") == implied.token
 
 
 def same_supplied_value(one: JsonObject, other: JsonObject) -> bool:
-    """read_side_contract.md:100-102 "Two values differ unless they are of one shape, a value, a range or a
+    """read_side_contract.md:103-105 "Two values differ unless they are of one shape, a value, a range or a
     token, and hold the same token or the same numbers bit for bit" ... "so `0` and `-0` differ, as a value
     and the range `[v, v]` do"."""
     return one.keys() == other.keys() and all(same_bits(one[member], other[member]) for member in one)
@@ -2161,7 +2161,7 @@ def check_against_request(
             if name in supplied and not same_supplied_value(supplied[name], value):
                 disagreeing.append(name)
             supplied.setdefault(name, value)
-    # read_side_contract.md:98-103 "two implied conditions that both apply to the field" ... "give
+    # read_side_contract.md:101-106 "two implied conditions that both apply to the field" ... "give
     # `request_incomplete` with that `condition`" ... "Step 10 makes this check first, and where it fails it
     # checks no condition"
     if disagreeing:
@@ -2182,7 +2182,7 @@ def unstated_or_absent(condition: JsonValue) -> bool:
 
 
 def conditions_checked(held: JsonObject, applied: Mapping[str, JsonObject], request: Request) -> list[str]:
-    # read_side_contract.md:443-446 "The conditions checked are those the record holds; those an implied
+    # read_side_contract.md:446-449 "The conditions checked are those the record holds; those an implied
     # condition the read applies fills" ... "those the field's row requires" ... "those another condition
     # requires with the token it holds" ... "and those the request's `requirement.conditions` names"
     names = dict.fromkeys((*held, *applied, *FIELDS[request.field].requires))
@@ -2204,12 +2204,12 @@ def token_held(name: str, held: JsonObject, applied: Mapping[str, JsonObject]) -
 def condition_entry(
     name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
 ) -> JsonObject:
-    """One entry of the result's `conditions`, its reason put in `reasons`: read_side_contract.md:158-159 "An
+    """One entry of the result's `conditions`, its reason put in `reasons`: read_side_contract.md:161-162 "An
     entry's `record` is the record's entry, or the value an implied condition supplies with basis
     `implied`"."""
     entry: JsonObject = {"name": name}
     if name in request.operating:
-        # read_side_contract.md:160-161 "its `operating` is the request's operating condition, omitted where
+        # read_side_contract.md:163-164 "its `operating` is the request's operating condition, omitted where
         # the request gives none"
         entry["operating"] = copied(request.operating[name])
 
@@ -2221,17 +2221,17 @@ def condition_entry(
             reasons.add(code, name)
         return entry
 
-    # read_side_contract.md:454 "| a name the reader does not know | anything | `unknown`
+    # read_side_contract.md:457 "| a name the reader does not know | anything | `unknown`
     # (`condition_unknown_name`)"
     if name not in CONDITIONS:
         return give("unknown", "condition_unknown_name")
     if name in applied:
-        # read_side_contract.md:461 "| a value implied by an acceptance (`declarations.md`) | as for a stated
+        # read_side_contract.md:464 "| a value implied by an acceptance (`declarations.md`) | as for a stated
         # value |"
         stated = applied[name]
         record = {**copied_object(stated), "basis": IMPLIED_BASIS}
     elif name not in held:
-        # read_side_contract.md:453 "| any other status object, on any condition; or the condition is absent"
+        # read_side_contract.md:456 "| any other status object, on any condition; or the condition is absent"
         return give("unknown", "condition_unstated")
     else:
         condition = held[name]
@@ -2240,12 +2240,12 @@ def condition_entry(
             return give("unknown", "condition_unstated", status_returned(condition))
         stated, record = condition, condition_returned(condition)
     if name in request.accepts:
-        # read_side_contract.md:460 "| a token | an accept list | `met` when the token is in the list"
+        # read_side_contract.md:463 "| a token | an accept list | `met` when the token is in the list"
         if stated.get("token") in request.accepts[name]:
             return give("met", record=record)
         return give("not_met", "condition_not_accepted", record)
     if name not in request.tolerances:
-        # read_side_contract.md:455 "| any stated value, range or token | no tolerance and no accept list for
+        # read_side_contract.md:458 "| any stated value, range or token | no tolerance and no accept list for
         # it |"
         return give("unknown", "condition_unchecked", record)
     status = within_tolerance(stated, request.operating[name], request.tolerances[name])
@@ -2266,35 +2266,35 @@ def ends(value: JsonObject) -> tuple[Fraction, Fraction]:
 
 
 def within_tolerance(stated: JsonObject, operating: JsonObject, tolerance: float) -> Status:
-    """read_side_contract.md:456 "`met` when `abs(r - v) <= t`, else `not_met` (`condition_outside`)" to
-    read_side_contract.md:459 "`met` when `a - t <= lo` and `hi <= b + t`", and a stated plus or minus as
-    read_side_contract.md:476-477 "Where `plus_minus` holds a `bound` entry, it decides" says, on the exact
-    values of the doubles: read_side_contract.md:465 "Every comparison in this table is made on the exact
+    """read_side_contract.md:459 "`met` when `abs(r - v) <= t`, else `not_met` (`condition_outside`)" to
+    read_side_contract.md:462 "`met` when `a - t <= lo` and `hi <= b + t`", and a stated plus or minus as
+    read_side_contract.md:479-480 "Where `plus_minus` holds a `bound` entry, it decides" says, on the exact
+    values of the doubles: read_side_contract.md:468 "Every comparison in this table is made on the exact
     values of the numbers as read"."""
     low, high = ends(stated)
     operating_low, operating_high = ends(operating)
     t = Fraction(tolerance)
-    # read_side_contract.md:457 "`met` when `r - t <= lo` and `hi <= r + t`", and its three other rows
+    # read_side_contract.md:460 "`met` when `r - t <= lo` and `hi <= r + t`", and its three other rows
     if not (low - t <= operating_low and operating_high <= high + t):
         return "not_met"
     entries = stated.get("plus_minus", [])
     entries = entries if isinstance(entries, list) else []
     bounds = [entry for entry in entries if isinstance(entry, dict) and entry.get("stated_as") == "bound"]
     if bounds:
-        # read_side_contract.md:476-481 "Where `plus_minus` holds a `bound` entry, it decides" ... "both ends
+        # read_side_contract.md:479-484 "Where `plus_minus` holds a `bound` entry, it decides" ... "both ends
         # move inward by u"
         bound = bounds[0]["value"]
         assert number(bound)
         u = Fraction(bound)
         return "met" if low + u - t <= operating_low and operating_high <= high - u + t else "unknown"
-    # read_side_contract.md:482-483 "an `sd` entry, or one of unstated kind, with a value above zero makes the
+    # read_side_contract.md:485-486 "an `sd` entry, or one of unstated kind, with a value above zero makes the
     # entry `unknown`"
     values = [entry.get("value") for entry in entries if isinstance(entry, dict)]
     return "unknown" if any(number(value) and value > 0 for value in values) else "met"
 
 
 # What a read returns from a record: the members the reader knows, each as stored,
-# read_side_contract.md:153-154 "A member the reader does not know is left out"
+# read_side_contract.md:156-157 "A member the reader does not know is left out"
 
 
 def copied_object(value: JsonObject) -> JsonObject:
@@ -2306,7 +2306,7 @@ def known_members(value: JsonObject, names: Iterable[str]) -> JsonObject:
 
 
 def unit_returned(unit: JsonValue) -> JsonValue:
-    # read_side_contract.md:117 "the field's unit, as stored: a unit held as a status object keeps its
+    # read_side_contract.md:120 "the field's unit, as stored: a unit held as a status object keeps its
     # `reason`"
     return status_returned(unit) if isinstance(unit, dict) else copied(unit)
 
@@ -2332,7 +2332,7 @@ def plus_minus_returned(entry: JsonObject) -> JsonValue:
 
 
 def specimen_returned(specimen: JsonObject) -> JsonObject:
-    # read_side_contract.md:119 "the field's specimen facts, the section's merged with the field's"
+    # read_side_contract.md:122 "the field's specimen facts, the section's merged with the field's"
     return {name: fact_returned(name, fact) for name, fact in specimen.items() if name in FACTS}
 
 
@@ -2348,7 +2348,7 @@ def fact_returned(name: str, fact: JsonValue) -> JsonValue:
 
 
 def block_returned(block: JsonValue) -> JsonValue:
-    # read_side_contract.md:120 "| `statistics` | as stored |"
+    # read_side_contract.md:123 "| `statistics` | as stored |"
     if not isinstance(block, dict):
         return copied(block)
     if "status" in block:
@@ -2406,7 +2406,7 @@ def review_read(provenance: JsonObject) -> JsonObject:
 
 
 def provenance_returned(provenance: JsonObject) -> JsonObject:
-    # read_side_contract.md:121 "| `provenance` |"
+    # read_side_contract.md:124 "| `provenance` |"
     returned: JsonObject = {"origin": copied(provenance["origin"]), "review": review_read(provenance)}
     source = provenance.get("source")
     if isinstance(source, dict) and isinstance(source.get("key"), str):
@@ -2418,7 +2418,7 @@ def provenance_returned(provenance: JsonObject) -> JsonObject:
 
 
 def derivation_returned(derivation: JsonObject) -> JsonObject:
-    # read_side_contract.md:121 "and for origin `derived` the `derivation`'s `method`, `inputs`,
+    # read_side_contract.md:124 "and for origin `derived` the `derivation`'s `method`, `inputs`,
     # `assumptions`, `input_specimens` and `mixed_conditions`"
     returned = known_members(derivation, DERIVATION_NAMES)
     inputs = derivation.get("inputs")
@@ -2452,7 +2452,7 @@ def form_member_returned(form: str, member: JsonValue) -> JsonValue:
     """A form's member as stored: a number, or the known members of an interval, a composition or a list of
     evidence."""
     if form == "interval" and isinstance(member, dict):
-        # read_side_contract.md:508 "| `bounds` |"
+        # read_side_contract.md:511 "| `bounds` |"
         return {
             side: status_returned(given) if isinstance(given, dict) else copied(given)
             for side, given in known_members(member, INTERVAL_NAMES).items()
@@ -2545,15 +2545,15 @@ def read_value_field(
     if checked.entries is None:
         read.request_fault = True
         return read
-    # read_side_contract.md:155-156 "`conditions` is present once step 10 has run to its end, and only then"
+    # read_side_contract.md:158-159 "`conditions` is present once step 10 has run to its end, and only then"
     read.conditions = checked.entries
     if read.own.end_the_read():
         return read
-    # read_side_contract.md:488-489 "A **constant's** range is its conditions: once they are met, it is read;
+    # read_side_contract.md:491-492 "A **constant's** range is its conditions: once they are met, it is read;
     # step 11 adds nothing."
     provenance = field_value["provenance"]
     assert isinstance(provenance, dict)
-    # read_side_contract.md:342 "Give `unknown` for a value stated without origin (`stated_without_origin`)"
+    # read_side_contract.md:345 "Give `unknown` for a value stated without origin (`stated_without_origin`)"
     if provenance["origin"] == "stated_without_origin":
         read.own.add("stated_without_origin")
     read.labels = step_12_labels(field_value, provenance)
@@ -2570,12 +2570,12 @@ def read_value_field(
 
 
 def step_12_labels(field_value: JsonObject, provenance: JsonObject) -> list[str]:
-    # read_side_contract.md:343-344 "add the labels of section 2"
+    # read_side_contract.md:346-347 "add the labels of section 2"
     labels: list[str] = []
     if isinstance(field_value.get("label"), str):
         labels.append(str(field_value["label"]))
     derivation = provenance.get("derivation")
-    # read_side_contract.md:122 "`mixed_conditions` (a derived value whose inputs' conditions differ)"
+    # read_side_contract.md:125 "`mixed_conditions` (a derived value whose inputs' conditions differ)"
     if (
         provenance["origin"] == "derived"
         and isinstance(derivation, dict)
@@ -2597,20 +2597,20 @@ def shape_by_want(read: FieldRead, field_value: JsonObject, request: Request, no
         member = field_value["interval"]
         assert isinstance(member, dict)
         lower, upper = member["lower"], member["upper"]
-        # read_side_contract.md:521-522 "A nominal applies only under `want: value`, inside or on the
+        # read_side_contract.md:524-525 "A nominal applies only under `want: value`, inside or on the
         # interval's bounds, compared exactly, on the bounded side of a one-sided interval"
         inside = (not isinstance(lower, float) or Fraction(lower) <= Fraction(nominal)) and (
             not isinstance(upper, float) or Fraction(nominal) <= Fraction(upper)
         )
         if inside:
-            # read_side_contract.md:507 "a declared nominal inside or on the bounds supplies `value` and
+            # read_side_contract.md:510 "a declared nominal inside or on the bounds supplies `value` and
             # `assumption`"
             read.by_want.add("want_mismatch")
             read.members["value"] = nominal
-            # read_side_contract.md:123 "the declaration it rests on"
+            # read_side_contract.md:126 "the declaration it rests on"
             read.members["assumption"] = {"acceptance": "nominal", "value": nominal}
         else:
-            # read_side_contract.md:507 "and one outside them gives `nominal_invalid` in place of
+            # read_side_contract.md:510 "and one outside them gives `nominal_invalid` in place of
             # `want_mismatch`"
             read.by_want.add("nominal_invalid")
         return
@@ -2655,7 +2655,7 @@ def read_decided(
     assert isinstance(sections, dict)
     section_name, _, field_key = checked.field.partition(".")
     section = sections.get(section_name)
-    # read_side_contract.md:222 "Find the field (`absent`)"
+    # read_side_contract.md:225 "Find the field (`absent`)"
     if not isinstance(section, dict):
         reasons.add("absent")
         return result(reasons, labels)
@@ -2683,14 +2683,14 @@ def read_decided(
 
 
 def value_returned(status: Status, members: JsonObject) -> bool:
-    # read_side_contract.md:115 "| `value` | present unless `not_met` without an assumption"
-    # read_side_contract.md:162-163 "`specimen` (an empty object where no fact is stated) and `provenance`
+    # read_side_contract.md:118 "| `value` | present unless `not_met` without an assumption"
+    # read_side_contract.md:165-166 "`specimen` (an empty object where no fact is stated) and `provenance`
     # exactly when `value` is"
     return "value" in members and (status != "not_met" or "assumption" in members)
 
 
 def result(reasons: Reasons, labels: Sequence[str], members: JsonObject | None = None) -> JsonObject:
-    # read_side_contract.md:155 "`reasons` and `labels` are always present, `labels` perhaps empty"
+    # read_side_contract.md:158 "`reasons` and `labels` are always present, `labels` perhaps empty"
     returned: JsonObject = {
         "status": reasons.status,
         "reasons": reasons.to_json(),
@@ -2729,13 +2729,13 @@ def read_alternatives(
     record_fault: bool,
 ) -> JsonObject:
     """Step 7 over alternatives, as far as decision 12 goes (Open point: alternatives_within_decision_12)."""
-    # read_side_contract.md:223-224 "A field whose `alternatives` breaks its shape is refused (`form_invalid`"
+    # read_side_contract.md:226-227 "A field whose `alternatives` breaks its shape is refused (`form_invalid`"
     if alternatives_broken(field_value):
         reasons.add("form_invalid")
         return result(reasons, labels)
     alternatives = field_value["alternatives"]
     assert isinstance(alternatives, list)
-    # read_side_contract.md:522-523 "Under `no_pick` no nominal is applied, nor compared with the bounds"
+    # read_side_contract.md:525-526 "Under `no_pick` no nominal is applied, nor compared with the bounds"
     reads = [
         read_value_field(alternative, section, request, claims, record_fault=record_fault, nominal=None)
         for alternative in alternatives
@@ -2747,7 +2747,7 @@ def read_alternatives(
         and not own_reasons
         and all(reason.code == "request_incomplete" for reason in request_faults)
     ):
-        # read_side_contract.md:105-107 "where either arises in one alternative it ends that alternative's
+        # read_side_contract.md:108-110 "where either arises in one alternative it ends that alternative's
         # read and refuses the field: the alternative is not set aside"
         reasons.extend(request_faults)
         return result(reasons, labels)
@@ -2762,19 +2762,19 @@ def read_alternatives(
         or (one.form == "interval" and request.want == "value" and request.nominal is not None)
     ]
     if not can_give:
-        # read_side_contract.md:269-270 "where two or more stay and none has a form `want` can give,
+        # read_side_contract.md:272-273 "where two or more stay and none has a form `want` can give,
         # `not_met`, with `want_mismatch`, since no pick could help"
         reasons.add("want_mismatch")
         return result(reasons, labels)
     units = [one.members["unit"] for one in reads]
     if any(unit != units[0] for unit in units):
         raise _Undecided("alternatives whose units are stored differently")
-    # read_side_contract.md:273 "otherwise `unknown`, with `no_pick`"
+    # read_side_contract.md:276 "otherwise `unknown`, with `no_pick`"
     reasons.add("no_pick")
     entries: list[JsonValue] = []
     for index, one in enumerate(reads):
         assert one.conditions is not None
-        # read_side_contract.md:116 "`value` is its value as `want` shapes it. Where `want` cannot give its
+        # read_side_contract.md:119 "`value` is its value as `want` shapes it. Where `want` cannot give its
         # form" ... "the entry holds its form's member as stored instead, with no nominal or extrapolation
         # applied": for the forms the model decides, the two are one.
         entry: JsonObject = {"alternative": float(index), "value": one.stored, "conditions": one.conditions}
@@ -2787,6 +2787,6 @@ def read_alternatives(
         )
         entry["labels"] = list(one.labels)
         entries.append(entry)
-    # read_side_contract.md:163-164 "Under `no_pick` the result holds none of `conditions`, `specimen`,
+    # read_side_contract.md:166-167 "Under `no_pick` the result holds none of `conditions`, `specimen`,
     # `statistics` and `provenance`"
     return result(reasons, labels, {"alternative_values": entries, "unit": units[0]})
