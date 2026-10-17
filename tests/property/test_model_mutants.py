@@ -144,6 +144,7 @@ def _as_written(name: str) -> bytes:
 READ_ALTERNATIVES = read._read_alternatives  # pyright: ignore[reportPrivateUsage]
 READ_VALUE_FIELD = read.read_value_field
 BY_WANT = read._by_want  # pyright: ignore[reportPrivateUsage]
+COUNTED_MEMBER = read._counted_member  # pyright: ignore[reportPrivateUsage]
 PARSED = read._parsed  # pyright: ignore[reportPrivateUsage]
 
 
@@ -170,18 +171,19 @@ def _first_alternative_in_every_entry(*arguments: Any) -> read.ReadResult:
     return dataclasses.replace(result, alternative_values=entries[:1] * len(entries))
 
 
-def _bounds_given_by_a_constant(field: JsonObject, name: str, want: Any) -> tuple[JsonValue, Reason | None]:
-    found: tuple[JsonValue, Reason | None] = BY_WANT(field, name, "value" if want == "bounds" else want)
-    return found
+def _bounds_given_by_a_constant(field: JsonObject, name: str, form: str, want: Any) -> Reason | None:
+    return BY_WANT(field, name, form, "value" if want == "bounds" and form == "constant" else want)
 
 
-def _minus_zero_given_as_zero(field: JsonObject, name: str, want: Any) -> tuple[JsonValue, Reason | None]:
-    shaped, mismatch = BY_WANT(field, name, want)
-    return (abs(shaped) if isinstance(shaped, float) and shaped == 0.0 else shaped), mismatch
+def _minus_zero_given_as_zero(member: JsonValue) -> JsonValue:
+    returned = COUNTED_MEMBER(member)
+    return abs(returned) if isinstance(returned, float) and returned == 0.0 else returned
 
 
-def _every_constant_not_built(field: JsonObject, name: str, want: Any) -> tuple[JsonValue, Reason | None]:
-    raise NotImplementedError("the member of a field of form constant is not read yet")
+def _every_constant_not_built(field: JsonObject, name: str, form: str, want: Any) -> Reason | None:
+    if form == "constant":
+        raise NotImplementedError("the member of a field of form constant is not read yet")
+    return BY_WANT(field, name, form, want)
 
 
 def _text_that_is_no_json_raises(request: Any) -> JsonValue | Reason:
@@ -384,7 +386,7 @@ IMPLEMENTATION = [
     Mutant(
         "minus_zero_given_as_zero",
         "values",
-        setting(read, "_by_want", _minus_zero_given_as_zero),
+        setting(read, "_counted_member", _minus_zero_given_as_zero),
         ("negative_zero",),
     ),
     Mutant(
