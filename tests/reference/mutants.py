@@ -51,6 +51,7 @@ _check_value_field = model.check_value_field
 _checked_acceptances = model.checked_acceptances
 _checked_requirement = model.checked_requirement
 _check_composition = model.check_composition
+_check_input_specimens = model.check_input_specimens
 _check_label = model.check_label
 _check_provenance = model.check_provenance
 _check_units = model.check_units
@@ -433,6 +434,11 @@ def block_unchecked(block: JsonValue, faults: Reasons, *, allowed: frozenset[str
 
 def unchecked(value: JsonValue, faults: Reasons) -> None:
     return None
+
+
+def input_specimens_optional(entries: JsonValue, inputs: int, faults: Reasons) -> None:
+    if entries is not None:
+        _check_input_specimens(entries, inputs, faults)
 
 
 def condition_unchecked(name: str, condition: JsonValue, faults: Reasons) -> None:
@@ -847,6 +853,12 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "derivation_unchecked": Mutant(
         "a derived value's derivation not checked", "provenance.md:185-189", {"check_derivation": unchecked}
+    ),
+    "input_specimens_optional": Mutant(
+        "a derivation without `input_specimens` read",
+        "provenance.md:185",
+        {"check_input_specimens": input_specimens_optional},
+        survives="every derivation in the cases holds `input_specimens`",
     ),
     "section_specimen_unchecked": Mutant(
         "a section's `specimen` not checked for a field read from it",

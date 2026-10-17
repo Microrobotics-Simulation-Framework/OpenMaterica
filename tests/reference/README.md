@@ -70,7 +70,7 @@ detail that kind names; a listed one it agrees with fails as stale.
 exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
 of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
-measured 2026-10-17 on `main` at `6c9ab9f`. 69 faults: 60 killed, 9 survive.
+measured 2026-10-17 on `main` at `6c9ab9f`. 70 faults: 60 killed, 10 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -110,6 +110,7 @@ measured 2026-10-17 on `main` at `6c9ab9f`. 69 faults: 60 killed, 9 survive.
 | `statistics_unchecked` | a statistics block not checked | 47 |
 | `uncertainties_unchecked` | a relative or expanded uncertainty not checked | 14 |
 | `derivation_unchecked` | a derived value's derivation not checked | 14 |
+| `input_specimens_optional` | a derivation without `input_specimens` read | survives: every derivation in the cases holds `input_specimens` |
 | `section_specimen_unchecked` | a section's `specimen` not checked for a field read from it | 3 |
 | `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 19 |
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | survives: no case holds a status object breaking its shape with a token the reader does not know |
@@ -153,7 +154,10 @@ the rule that a status object breaking its shape gives no reason of its own
 on which the model gives no verdict; two are the rule that a form's member is unchecked off its row
 (`member_checked_off_its_row`, `composition_checked_beyond_its_basis`), which only S3's cases show, again
 for tables; one needs a plural of two characters or more (`plurals_not_slips`); and one cannot show through
-JSON at all (`results_share_the_record`, HP6's).
+JSON at all (`results_share_the_record`, HP6's). The tenth, `input_specimens_optional`, is the model's own
+reading until S2a-4's phase B, whose agreement property (HP12) found that the text requires the list
+(`provenance.md` section 5 item 3, "A derived value carries the specimen facts of each input"); the model was
+fixed, and the fault seeded.
 
 ## Running
 
