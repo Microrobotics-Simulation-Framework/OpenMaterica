@@ -56,13 +56,15 @@ def test_without_the_conftest_no_test_has_a_cpu_time(tmp_path: Path) -> None:
 
 # Four tests, run in this order in one process: one that spins for `SPIN` seconds of its own CPU time, one
 # that does nothing, one that starts a process that spins as long, and one that waits as long. Each test's CPU
-# times are its own only if the spinning test's own is at least `SPIN` and hardly more than its wall time
-# (pytest's own work between a test's phases is in its CPU time and not in its wall time: about 0.01 s here),
-# the other three's own near nothing, and only the test that starts a process has its children's. A running
-# total gives the test that does nothing the spin's `SPIN` seconds before it, whatever the load; the bound by
-# the wall time catches one only while pytest's start-up outweighs what load adds to the spin's wall time,
-# and a loaded runner missed it (run 39006340233).
+# times are its own only if the spinning test's own is at least `SPIN` and at most `SPIN_AT_MOST` (the spin
+# ends at `SPIN` of CPU time, so what lies above is pytest's own work between a test's phases: about 0.01 s
+# here), the other three's own near nothing, and only the test that starts a process has its children's. A
+# running total gives the test that does nothing the spin's `SPIN` seconds before it, whatever the load. The
+# upper bound on the spinning test is on its CPU time alone: one by its wall time, plus a margin, caught an
+# inflated CPU time only where load had not stretched that wall time, and a loaded runner missed the running
+# total by it (run 39006340233).
 SPIN = 0.3
+SPIN_AT_MOST = 0.45
 SPINNING = f"""
 import time
 end = time.process_time() + {SPIN}
@@ -142,8 +144,8 @@ def recording_problems(tests: dict[str, Timing]) -> list[str]:
         if not children(test.children_cpu):
             problems.append(f"{name}: its children's CPU time, {test.children_cpu} s")
     spins = tests["test_spins"]
-    if spins.cpu is not None and spins.cpu > spins.wall + SPIN / 2:
-        problems.append(f"test_spins: its own CPU time, {spins.cpu} s, in {spins.wall} s")
+    if spins.cpu is not None and spins.cpu > SPIN_AT_MOST:
+        problems.append(f"test_spins: its own CPU time, {spins.cpu} s, is over {SPIN_AT_MOST} s")
     return problems
 
 
@@ -158,12 +160,25 @@ def test_each_test_records_its_own_cpu_time_and_its_childrens(tmp_path: Path) ->
         ("time.process_time() - own", "time.process_time()", "test_does_nothing: its own CPU time"),
         ("children_now - children", "children_now", "test_waits: its children's CPU time"),
         ("RUSAGE_CHILDREN", "RUSAGE_SELF", "test_starts_a_process_that_spins: its children's CPU time"),
+        (
+            "{time.process_time() - own:.3f}",
+            "{3 * (time.process_time() - own):.3f}",
+            "is over 0.45 s",
+        ),
     ],
-    ids=["wall-time", "the-workers-running-total", "the-childrens-running-total", "the-workers-own"],
+    ids=[
+        "wall-time",
+        "the-workers-running-total",
+        "the-childrens-running-total",
+        "the-workers-own",
+        "tripled",
+    ],
 )
 def test_the_cpu_time_check_can_fail(tmp_path: Path, old: str, new: str, problem: str) -> None:
     """The conftest with one fault: wall time recorded as CPU time, the process's running total, its
-    children's running total, or its own CPU time as its children's."""
+    children's running total, its own CPU time as its children's, or its own CPU time tripled, which no row of
+    `WANTED` sees (every test but the spinning one has none to triple) and the upper bound on the spinning
+    test's alone does."""
     conftest = CONFTEST.read_text(encoding="utf-8")
     assert old in conftest
     found = recording_problems(recorded(tmp_path, conftest.replace(old, new)))
