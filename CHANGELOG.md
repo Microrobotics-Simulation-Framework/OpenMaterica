@@ -1060,7 +1060,8 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   design's section 6.4, five more the TE suite's README names, and two more the text supports (a
   `source_range` that widens the readable range, and a log-log derivative scaled at the lower knot), each
   failing its named TE file under every precision and side it claims, by the difference named beside it and
-  never by raising.
+  never by raising. Each still fails one of its named files with that file's `binary32` tolerance ten times
+  as wide: the cap on a file's tolerance, restated per broken evaluator (maintainer, 2026-10-17).
 - The `evaluate` executor adapts a raised refusal, as the TE suite's README says a runner does: an evaluator
   that raises `Refusal` in place of reporting a refusal fails no TE file. It adapts no other exception, and a
   raised refusal where none is due fails.
