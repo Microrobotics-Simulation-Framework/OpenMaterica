@@ -13,6 +13,7 @@ SHOWN = {
     *strategies.KINDS,
     *strategies.VALUED_WAYS,
     *strategies.ALTERNATIVE_WAYS,
+    *strategies.APART_WAYS,
     *strategies.EARLY_WAYS,
     *strategies.PLANTS,
     *strategies.REQUEST_FAULTS,
@@ -23,6 +24,7 @@ SHOWN = {
     "negative_zero",
     "unknown_member",
     "another_section",
+    "not_json",
 }
 
 

@@ -22,7 +22,10 @@ from hypothesis import strategies as st
 
 from materica.core import canonical, conditions, fields, read, value_shapes
 from materica.core.conditions import ConditionsRead
-from materica.core.value_shapes import Found, JsonObject
+from materica.core.fields import RecordField
+from materica.core.jsonio import JsonValue
+from materica.core.reasons import Reason, merged
+from materica.core.value_shapes import Found, JsonObject, a_list, an_object
 from materica.core.vocabulary import STATUS_TOKENS
 from tests.property import model_strategies as strategies
 from tests.property import test_condition_mutants as condition_mutants
@@ -50,6 +53,8 @@ def shown(example: Example) -> set[str]:
 # Each part of HP12 that kills a mutant, by name: its examples at a size.
 KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     "values": lambda size: strategies.drawn(size, properties.PARTS["valued"]),
+    # A planned search of the first part: constants alone, under every `want`.
+    "constants": strategies.valued,
     # A planned search of the first part: constants at section 5's boundaries alone.
     "values at a boundary": lambda size: strategies.valued(size, ("at_a_boundary",)),
     "faults": lambda size: strategies.drawn(size, properties.PARTS["faults"]),
@@ -131,6 +136,59 @@ def _declaration_names_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _as_written(name: str) -> bytes:
     return b""
+
+
+# Step 7 over alternatives, step 13 for a constant, and step 0 on a text that is no JSON, each of which a
+# variety of HP12's draws must show (S2a-4's review B, L1 and L2).
+
+READ_ALTERNATIVES = read._read_alternatives  # pyright: ignore[reportPrivateUsage]
+READ_VALUE_FIELD = read.read_value_field
+BY_WANT = read._by_want  # pyright: ignore[reportPrivateUsage]
+PARSED = read._parsed  # pyright: ignore[reportPrivateUsage]
+
+
+def _request_faults_of_the_first_alternative(
+    field: RecordField, record: JsonObject, request: read.ReadRequest, claims: Any, labels: tuple[str, ...]
+) -> read.ReadResult:
+    """Where a fault of the request inside the alternatives refuses the field, only the first faulted
+    alternative's reasons given."""
+    result = READ_ALTERNATIVES(field, record, request, claims, labels)
+    if result.status != "not_met" or any(reason.code != "request_incomplete" for reason in result.reasons):
+        return result
+    for alternative in a_list(an_object(field.value)["alternatives"]):
+        one = READ_VALUE_FIELD(RecordField(field.spec, alternative, field.section), record, request, claims)
+        if one.request_fault:
+            return read.ReadResult("not_met", merged(one.reasons), labels)
+    return result
+
+
+def _first_alternative_in_every_entry(*arguments: Any) -> read.ReadResult:
+    result: read.ReadResult = READ_ALTERNATIVES(*arguments)
+    entries = result.alternative_values
+    if entries is None:
+        return result
+    return dataclasses.replace(result, alternative_values=entries[:1] * len(entries))
+
+
+def _bounds_given_by_a_constant(field: JsonObject, name: str, want: Any) -> tuple[JsonValue, Reason | None]:
+    found: tuple[JsonValue, Reason | None] = BY_WANT(field, name, "value" if want == "bounds" else want)
+    return found
+
+
+def _minus_zero_given_as_zero(field: JsonObject, name: str, want: Any) -> tuple[JsonValue, Reason | None]:
+    shaped, mismatch = BY_WANT(field, name, want)
+    return (abs(shaped) if isinstance(shaped, float) and shaped == 0.0 else shaped), mismatch
+
+
+def _every_constant_not_built(field: JsonObject, name: str, want: Any) -> tuple[JsonValue, Reason | None]:
+    raise NotImplementedError("the member of a field of form constant is not read yet")
+
+
+def _text_that_is_no_json_raises(request: Any) -> JsonValue | Reason:
+    value: JsonValue | Reason = PARSED(request)
+    if isinstance(value, Reason):
+        raise ValueError(f"the request is not JSON: {value.detail}")
+    return value
 
 
 # The design's mutants of HP1 to HP11, from the mutant modules of their properties.
@@ -303,6 +361,45 @@ IMPLEMENTATION = [
         taken(result_mutants.MUTANTS, "labelled_before_step_4"),
         ("before_step_4", "stores"),
     ),
+    # Step 7 over alternatives: each alternative's faults of the request, and each entry's own read.
+    Mutant(
+        "request_faults_of_the_first_alternative_alone",
+        "values",
+        setting(read, "_read_alternatives", _request_faults_of_the_first_alternative),
+        ("request_faults_apart",),
+    ),
+    Mutant(
+        "first_alternative_in_every_entry",
+        "values",
+        setting(read, "_read_alternatives", _first_alternative_in_every_entry),
+        ("alternatives",),
+    ),
+    # Step 13 for a constant: each `want`, a value's `-0`, and a constant read as S2 builds it.
+    Mutant(
+        "bounds_given_by_a_constant",
+        "constants",
+        setting(read, "_by_want", _bounds_given_by_a_constant),
+        ("valued", "alternatives"),
+    ),
+    Mutant(
+        "minus_zero_given_as_zero",
+        "values",
+        setting(read, "_by_want", _minus_zero_given_as_zero),
+        ("negative_zero",),
+    ),
+    Mutant(
+        "every_constant_not_built",
+        "values",
+        setting(read, "_by_want", _every_constant_not_built),
+        ("valued", "alternatives"),
+    ),
+    # Step 0 on a text that is no JSON, which refuses rather than raise.
+    Mutant(
+        "text_that_is_no_json_raises",
+        "early",
+        setting(read, "_parsed", _text_that_is_no_json_raises),
+        ("not_json",),
+    ),
 ]
 
 
@@ -378,6 +475,11 @@ NOT_SHOWN: dict[str, str] = {
     "results_share_the_record": (
         "a result that shares the record's objects reads as JSON as one that does not; HP6 holds the "
         "implementation to sharing nothing"
+    ),
+    "units_stored_differently_read_as_no_pick": (
+        "an alternative passes step 9 only where its unit is the one registered, so alternatives' units are "
+        "stored differently only where a status object is registered, which only `biocompatibility.evidence` "
+        "does, and evidence waits for S2b-2"
     ),
 }
 
