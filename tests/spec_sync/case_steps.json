@@ -868,6 +868,8 @@
     "PR-316.implied_two_disagree_in_alternative.json": "S2a-4",
     "PR-316.implied_two_disagree_in_alternative_beside_reasons.json": "S4",
     "PR-316.implied_two_disagree_record_states.json": "S2a-3",
+    "PR-316.implied_value_beside_its_range.json": "S2a-3",
+    "PR-316.implied_zero_beside_minus_zero.json": "S2a-3",
     "PR-317.axis_tolerance_never_widens.json": "S3b-2",
     "PR-317.constant_extrapolation_not_applied.json": "S3c",
     "PR-317.constant_outside_conditions_not_extrapolated.json": "S3c",
