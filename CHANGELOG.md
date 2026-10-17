@@ -592,6 +592,10 @@ every family entry goes in `families/CHANGELOG.md`.
   `examples_to_kill` no longer counts an error raised by the strategy itself as a kill (a kill at the 0th
   example); no kill point moved.
 
+### Known Anomalies
+- The registry's `materica_version` is the package's version, `0.1.0.dev1`: it still read `0.1.0.dev0` after
+  0.1.0.dev1 was released, and its header still said no version had been. No entries yet.
+
 ## [0.1.0.dev1] - 2026-10-14
 
 A development pre-release, published to rehearse the release workflow and to hold the name on PyPI. It holds
