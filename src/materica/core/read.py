@@ -5,12 +5,14 @@
 finds the field (step 7, `fields.find_field`), and reads it (`read_value_field`): its form and shape (step 8,
 `fields.form_problems`), its units (step 9, `fields.unit_problems`), its conditions (step 10,
 `conditions.check_conditions`), its range (step 11), its origin and labels (step 12) and its value by `want`
-(step 13), and gives a `ReadResult`.
+(step 13), and gives a `ReadResult`. A field holding alternatives is read at step 7, each alternative as a
+field, as far as S4's decision 12 lets S2 go: the list's shape, a fault of the request inside one alternative,
+and `no_pick` or `want_mismatch` where no alternative has a reason of its own.
 
-Overlays (step 6), alternatives (step 7) and every form but a constant are not built yet. A read that would
-need one raises `NotImplementedError`, and so does a request whose answer a check still to come could change,
-whatever else is wrong with it: one with a region target, or an acceptance other than an implied condition.
-It raises rather than give an answer a later step would contradict.
+Overlays (step 6), picks, the rest of step 7 over alternatives, and every form but a constant are not built
+yet. A read that would need one raises `NotImplementedError`, and so does a request whose answer a check
+still to come could change, whatever else is wrong with it: one with a region target, or an acceptance other
+than an implied condition. It raises rather than give an answer a later step would contradict.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -29,7 +31,7 @@ from typing import TypeGuard, Union, cast, get_args, get_origin, get_type_hints,
 from materica import shapes
 from materica.core import jsonio
 from materica.core.conditions import ConditionEntry, ImpliedCondition, check_conditions, operating_json
-from materica.core.fields import RecordField, find_field, form_problems, unit_problems
+from materica.core.fields import RecordField, alternatives_problems, find_field, form_problems, unit_problems
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason, merged
@@ -360,7 +362,7 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
     if isinstance(field, Reason):
         return _refused((field,), resolved.labels)
     if isinstance(field.value, dict) and "alternatives" in field.value:
-        raise NotImplementedError("a field holding alternatives is read at step 7, which is not built yet")
+        return _read_alternatives(field, record, request, claims, resolved.labels)
     found = read_value_field(field, record, request, claims)
     reasons = found.found
     status = _status(reasons)
@@ -456,6 +458,51 @@ def _by_want(field: JsonObject, name: str, want: Want) -> tuple[JsonValue, Reaso
     if want == "fit" and "fit" in field:
         raise NotImplementedError("want: fit on a field holding a fit record is not read yet")
     return None, Reason("want_mismatch", detail=f"want {want} cannot give {name}, a constant")
+
+
+def _read_alternatives(
+    field: RecordField,
+    record: JsonObject,
+    request: ReadRequest,
+    claims: Collection[Suite],
+    labels: tuple[str, ...],
+) -> ReadResult:
+    """Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (section 3, step 7):
+    the list's shape (`form_invalid`); a fault of the request inside one alternative, where no alternative has
+    a reason of its own, which refuses the field; and two or more alternatives none of which has a reason of
+    its own: `want_mismatch` where none has a form `want` can give, else `no_pick`, each in
+    `alternative_values`. Any other outcome, which an alternative's own reasons decide, waits for S4."""
+    holder = an_object(field.value)
+    shape = alternatives_problems(holder, field.spec.name)
+    if shape:
+        return _refused(merged(shape), labels)
+    reads = [
+        read_value_field(RecordField(field.spec, alternative, field.section), record, request, claims)
+        for alternative in a_list(holder["alternatives"])
+    ]
+    faults = [read for read in reads if read.request_fault]
+    own = [read for read in reads if not read.request_fault and read.reasons]
+    if (
+        faults
+        and not own
+        and all(reason.code == "request_incomplete" for read in faults for reason in read.reasons)
+    ):
+        return _refused(merged(reason for read in faults for reason in read.reasons), labels)
+    if faults or own:
+        raise NotImplementedError(
+            "an alternative's own reasons are read at step 7 by S4, which is not built yet"
+        )
+    if len(reads) == 1:
+        raise NotImplementedError("the one alternative left is read at step 7 by S4, which is not built yet")
+    if all(read.want_mismatch is not None for read in reads):
+        mismatch = Reason(
+            "want_mismatch", detail=f"want {request.want} can give no alternative of {field.spec.name}"
+        )
+        return _refused((mismatch,), labels)
+    if any(read.unit != reads[0].unit for read in reads):
+        raise NotImplementedError("alternatives whose units are stored differently wait for S4")
+    no_pick = Reason("no_pick", detail=f"{field.spec.name} holds {len(reads)} alternatives and no pick")
+    return ReadResult("unknown", (no_pick,), labels, alternative_values=tuple(reads), unit=reads[0].unit)
 
 
 # What a result returns from a record: the members the reader's version defines, as stored (section 2 item 5).
