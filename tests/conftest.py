@@ -45,9 +45,9 @@ if PROFILE not in EXAMPLES:
 settings.load_profile(PROFILE)
 
 
-# CI's Hypothesis job runs the property modules in four shards side by side, `--shard json`, `--shard
-# records`, `--shard writer` and `--shard step8_mutants`; `tests/unit/test_source_files.py` checks that each
-# module is in exactly one.
+# CI's Hypothesis job runs the property modules in five shards side by side, `--shard json`, `--shard
+# records`, `--shard writer`, `--shard agreement` and `--shard step8_mutants`;
+# `tests/unit/test_source_files.py` checks that each module is in exactly one.
 SHARDS = {
     "json": (
         "test_jsonio_properties",
@@ -64,12 +64,10 @@ SHARDS = {
         "test_record_mutants",
         "test_value_field_properties",
     ),
-    "writer": (
-        "test_writer_properties",
-        "test_writer_mutants",
-        "test_writer_mutant_table",
-        "test_validators_agree",
-    ),
+    "writer": ("test_writer_properties", "test_writer_mutants", "test_writer_mutant_table"),
+    # The two JSON Schema libraries' agreement, whose drawn properties run python-jsonschema on every example
+    # and were the writer shard's longest tests.
+    "agreement": ("test_validators_agree",),
     # Step 8's mutant searches, the longest part of the records shard, and their table's check; they keep no
     # example database.
     "step8_mutants": ("test_value_field_mutants", "test_value_field_mutant_table"),

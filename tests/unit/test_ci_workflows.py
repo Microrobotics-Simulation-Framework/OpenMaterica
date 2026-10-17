@@ -1265,12 +1265,13 @@ SELECTIONS = {
             "tests/property/test_hashing_properties.py",
             "tests/property/test_read_properties.py",
         ],
-        # The replay: the property tests, but the writer schema's, no fuzz target, and the mutant tables,
-        # which keep no example database.
+        # The replay: the property tests, but the writer schema's and the two JSON Schema libraries'
+        # agreement, no fuzz target, and the mutant tables, which keep no example database.
         [
             "tests/property",
             "--ignore=tests/property/test_writer_properties.py",
             "--ignore=tests/property/test_writer_mutants.py",
+            "--ignore=tests/property/test_validators_agree.py",
             "--ignore=tests/property/test_mutants.py",
             "--ignore=tests/property/test_record_mutants.py",
             "--ignore=tests/property/test_value_field_mutants.py",
@@ -1553,8 +1554,8 @@ def test_the_workflows_readme_names_the_jobs_and_shards_of_ci() -> None:
     ("old", "new", "problem"),
     [
         ("| `controls` |", "| `mutants` |", "the table's jobs are"),
-        ("four shards side by side", "three shards side by side", "the table's shards are three"),
-        (", `step8_mutants`)", ")", "the table's shards are four"),
+        ("five shards side by side", "four shards side by side", "the table's shards are four"),
+        (", `step8_mutants`)", ")", "the table's shards are five"),
         ("shards side by side", "shards", "names no shards"),
     ],
     ids=["a-job-renamed", "a-count-wrong", "a-shard-missing", "no-shards"],
