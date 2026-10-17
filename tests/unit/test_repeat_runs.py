@@ -382,7 +382,11 @@ def test_a_summary_of_runs_that_all_passed_passes_with_its_bound() -> None:
             "success",
             "3 of 6 runs",
         ),
-        (Sum(records(ALL_PASSED), [], ["seed 12 has two records"]), "success", "no run of 6 failed"),
+        (
+            Sum(records(ALL_PASSED), [], ["seed 12 has two records"]),
+            "success",
+            "at most 39.3 % (one-sided 95%); problems with the records: 1 (below)",
+        ),
         (Sum(records(ALL_PASSED), [], []), "failure", "the runs' jobs ended in 'failure'"),
         (Sum(records(ALL_PASSED), [], []), "cancelled", "the runs' jobs ended in 'cancelled'"),
         (Sum({}, list(range(10, 16)), []), "skipped", "no run passed or failed"),
@@ -410,7 +414,7 @@ def test_a_summary_fails_where_any_run_failed_or_did_not_finish(
         assert "<A>" not in text
 
 
-def write_records(directory: Path, job: int, lines: list[str]) -> None:
+def write_records(directory: Path, job: int | str, lines: list[str]) -> None:
     (directory / f"runs-{job}").mkdir(parents=True)
     (directory / f"runs-{job}" / "results.jsonl").write_text("".join(f"{line}\n" for line in lines), "utf-8")
 
@@ -432,6 +436,24 @@ def test_the_records_of_every_job_are_read_and_each_seed_counted_once(tmp_path: 
         "runs-3/results.jsonl:2 is not a run's record",
         "seeds outside the request have records: 99",
     ]
+
+
+@pytest.mark.parametrize("first", ["failed", "passed"])
+def test_of_a_seeds_two_records_the_one_that_did_not_pass_is_counted(tmp_path: Path, first: str) -> None:
+    """A job run again keeps its records beside its first attempt's (`runs-<job>-<attempt>`): a pass, read
+    before or after the failure of the same seed, does not hide it."""
+    second = "passed" if first == "failed" else "failed"
+    write_records(
+        tmp_path, "1-1", [json.dumps(each) for each in records(ALL_PASSED).values() if each["seed"] != 12]
+    )
+    write_records(tmp_path, "2-1", [json.dumps(records({12: first})[12])])
+    write_records(tmp_path, "2-2", [json.dumps(records({12: second})[12])])
+    read = repeat_runs.read_records(tmp_path, REQUEST)
+    assert read.records[12]["outcome"] == "failed"
+    assert read.problems == ["seed 12 has two records (runs-2-2/results.jsonl:1)"]
+    _, verdict, ok = repeat_runs.summary(REQUEST, read, "success")
+    assert not ok
+    assert verdict.startswith("1 of 6 runs failed"), verdict
 
 
 SUMMED = {
