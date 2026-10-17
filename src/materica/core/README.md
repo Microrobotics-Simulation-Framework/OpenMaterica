@@ -82,9 +82,11 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
 | `conditions.py` | step 10: the conditions checked, each against the request by section 5's table, on the exact values of the doubles, with a stated `plus_minus`, and the implied conditions the read applies (`declarations.md` section 4.1); a result's condition entries |
 | `read.py` | the request's own check (step 0), its implied conditions and nominals included, an acceptance of a kind a read does not take refused; the read of a value field, steps 8 to 13 (`read_value_field`), a nominal applied at step 13, and of alternatives at step 7 as far as S4's decision 12 goes; the result (`ReadResult`, `FieldRead`, `ProvenanceSummary`), its members as stored by the generated shapes, each count and index an integer, and the acceptances it applied (`applied`); picks, overlays, extrapolations and the rest of step 7 are not built yet |
+| `evaluate.py` | a table at an operating value of its axis (`record_format.md` section 6, table items 3 and 4; `read_side_contract.md` section 5): its readable range, its edges, the knots that bracket the value, and the number a read gives there, exactly, rounded once; step 11 is to use it, and nothing calls it yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the
-read, through step 13 for a constant, an interval, a composition and evidence (`tests/conformance/`).
+read, through step 13 for a constant, an interval, a composition and evidence (`tests/conformance/`). The table evaluation cases, which OpenMaterica claims none of, check
+`evaluate.py`'s numbers and refusals by a unit test (`tests/unit/test_evaluate.py`).
 
 ## Invariants
 

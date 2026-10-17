@@ -17,6 +17,10 @@ Tests by example, for what the conformance cases and the properties do not reach
 - the schema verdicts' switch point (`tests/verdicts.py`, `spec_sync/schemas.py`): a value the two JSON Schema
   libraries judge differently fails the test at once, naming both verdicts, a mutant search never takes it
   for a kill, and both read a resource at draft 2020-12 whatever it declares (`test_verdicts.py`);
+- the table evaluator against every table evaluation case, which the conformance runner never runs against
+  it, since OpenMaterica claims none (`test_evaluate.py`), and the edges of its text:
+  adjacent doubles, values spanning every double, `-0` at a knot and at an edge, an edge outside the readable
+  range;
 - the typed shapes against what the reader gives: each member the schemas declare whole admits the float a
   JSON number reads as (`test_shapes.py`);
 - the Hypothesis profiles: a runner's environment changes none of their settings, imported or as a property
