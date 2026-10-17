@@ -9,8 +9,8 @@ finds the field (step 7, `fields.find_field`), and reads it (`read_value_field`)
 field, as far as S4's decision 12 lets S2 go: the list's shape, a fault of the request inside one alternative,
 and `no_pick` or `want_mismatch` where no alternative has a reason of its own.
 
-Overlays (step 6), picks, the rest of step 7 over alternatives, a table and evidence are not built yet. A read
-that would need one raises `NotImplementedError`, and so does a request whose answer a check still to come
+Overlays (step 6), picks, the rest of step 7 over alternatives, and a table are not built yet. A read that
+would need one raises `NotImplementedError`, and so does a request whose answer a check still to come
 could change, whatever else is wrong with it: one with a region target, or an acceptance other than an
 implied condition. It raises rather than give an answer a later step would contradict.
 
@@ -98,7 +98,12 @@ _REVIEW_DEFINES = tuple(get_type_hints(shapes.Review))
 _REVIEW_MEMBERS = (*_REVIEW_DEFINES, *get_type_hints(shapes.StatusObject))
 _COUNTS = ("n_specimens", "n_donors", "n_sources")
 # What step 13 gives of each form step 8 reads, by `want` (section 6): its own member, as stored.
-_WANT_OF_FORM: dict[str, Want] = {"constant": "value", "interval": "bounds", "composition": "components"}
+_WANT_OF_FORM: dict[str, Want] = {
+    "constant": "value",
+    "interval": "bounds",
+    "composition": "components",
+    "evidence": "evidence",
+}
 # The shape of each member of a field of each form step 8 reads, by name.
 _FIELD_HINTS = {form: get_type_hints(shape) for form, shape in FIELD_SHAPES.items()}
 
@@ -244,8 +249,8 @@ class FieldRead:
     that disagree), which refuses a field holding alternatives whichever alternative found it. The other
     members are those a read returns, once step 8 has passed, as stored and copied: the form's member
     (`member`); the value as `want` shapes it, where it can (`value`); the unit, the specimen facts, the
-    statistics block and the provenance; and the labels step 12 adds. `applied` holds the indexes of the
-    acceptances step 10 applied."""
+    statistics block (none for evidence) and the provenance; and the labels step 12 adds. `applied` holds the
+    indexes of the acceptances step 10 applied."""
 
     reasons: tuple[Reason, ...]
     conditions: tuple[ConditionEntry, ...] | None = None
@@ -427,8 +432,8 @@ def read_value_field(
         return FieldRead(merged(found), request_fault=True)
     if _ends(found):
         return FieldRead(merged(found), checked.entries, checked.applied)
-    # Step 11: a constant's range is its conditions, once they are met, and an interval and a composition have
-    # none (section 5).
+    # Step 11: a constant's range is its conditions, once they are met, and an interval, a composition and
+    # evidence have none (section 5).
     value = an_object(field.value)
     form = str(value["form"])
     provenance = an_object(value["provenance"])
@@ -445,7 +450,10 @@ def read_value_field(
         value=None if mismatch is not None else copy.deepcopy(member),
         unit=_returned(value["unit"], shapes.Unit),
         specimen=cast(JsonObject, _returned(field.specimen(), shapes.Specimen)),
-        statistics=cast(JsonObject, _returned(value["statistics"], hints["statistics"])),
+        # Evidence has no statistics (section 2 item 6).
+        statistics=cast(JsonObject, _returned(value["statistics"], hints["statistics"]))
+        if "statistics" in hints
+        else None,
         provenance=ProvenanceSummary.of(provenance),
         labels=_labels(value, provenance),
     )
@@ -474,8 +482,8 @@ def _by_want(field: JsonObject, name: str, form: str, want: Want) -> Reason | No
     """Step 13 (section 6): `want_mismatch` where `want` cannot give the field's form, none where it gives the
     form's own member as stored: a constant's number under `want: value`, an interval's bounds with their
     basis under `want: bounds`, a composition's basis, sum rule, stated sum and components under `want:
-    components`. `want: fit` on a field holding a fit record is the fits and reference data suite's, not built
-    yet."""
+    components`, and evidence's list of reports under `want: evidence`. `want: fit` on a field holding a fit
+    record is the fits and reference data suite's, not built yet."""
     if want == _WANT_OF_FORM[form]:
         return None
     if want == "fit" and "fit" in field:
@@ -535,17 +543,25 @@ def _read_alternatives(
 
 def _returned(value: JsonValue, shape: object) -> JsonValue:
     """`value`, stored where `shape` describes it, holding at every depth only the members the shape defines,
-    each as stored, in a copy that shares nothing with the record. An object holding `status` is the status
-    object of a member whose row allows one; a member of a type no shape defines is returned whole."""
+    each as stored, in a copy that shares nothing with the record. A map's names are kept, each value as its
+    shape gives it. An object holding `status` is the status object of a member whose row allows one; a member
+    of a type no shape defines is returned whole."""
     if isinstance(value, list):
         items = [item for alternative in _alternatives(shape) for item in _item_types(alternative)]
         return [_returned(item, items[0] if items else None) for item in value]
     if not isinstance(value, dict):
         return value
+    if get_origin(shape) is dict:
+        return {name: _returned(member, get_args(shape)[1]) for name, member in value.items()}
     defined = _members(shape, status="status" in value)
     if defined is None:
         return copy.deepcopy(value)
-    return {name: _returned(member, defined[name]) for name, member in value.items() if name in defined}
+    returned = {name: _returned(member, defined[name]) for name, member in value.items() if name in defined}
+    if shape is shapes.Provenance:
+        # A provenance returned whole, an evidence entry's (`record_format.md` section 4.3 item 2): its review
+        # as `provenance.md` section 2 item 6 reads every review a reader returns.
+        returned["review"] = _review(value.get("review"))
+    return returned
 
 
 def _alternatives(shape: object) -> tuple[object, ...]:

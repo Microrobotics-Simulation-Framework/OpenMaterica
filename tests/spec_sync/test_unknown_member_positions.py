@@ -15,8 +15,8 @@
   as the row of a status object says; a member one slip from each named member (the name with a character
   added) is refused where the verdict is `ignored` or `refused` and ignored where it is `condition_names` or
   `not_checked`; and a status object beside a member of the shape it stands for is refused. A refusal adds
-  `form_invalid` (`request_incomplete` in a request) to what the host gave, and may take away a `withheld` the
-  changed status object no longer gives.
+  `form_invalid` (`request_incomplete` in a request) to what the host gave, and may take away a `withheld` or
+  an `entries_withheld` the changed status object no longer gives.
 - Every position is found in some host, so that no row is dead.
 
 The hosts are the full fields and forms of `tests/property/full_fields.py`, each in a record with a section
@@ -39,8 +39,8 @@ from typing import NamedTuple, cast
 
 import pytest
 
+from materica.core import fields, value_shapes
 from materica.core import read as read_module
-from materica.core import value_shapes
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.read import read
@@ -64,9 +64,12 @@ UNKNOWN = "x_unknown_member"
 UNSTATED: JsonObject = {"status": "unstated"}
 FIELD = "fluid.dynamic_viscosity"
 # What a read of each form wants, so that it reaches step 13 (`read_side_contract.md` section 6).
-WANT = {"constant": "value", "interval": "bounds", "composition": "components"}
+WANT = {"constant": "value", "interval": "bounds", "composition": "components", "evidence": "evidence"}
 PAST_STEP_8 = "past step 8"
 REFUSAL = {"record": "form_invalid", "request": "request_incomplete"}
+# The one `unknown` reason step 8 gives (`read_side_contract.md` section 4), which a refusal there keeps
+# beside it: some of an evidence list's entries withheld.
+STEP_8_UNKNOWN = frozenset({"entries_withheld"})
 
 
 def an_object(value: JsonValue) -> JsonObject:
@@ -111,7 +114,8 @@ def pin(record: JsonObject) -> JsonObject:
 @cache
 def hosts() -> tuple[Host, ...]:
     """Each full field and form in a record with a section specimen and extensions; and a request for the
-    first."""
+    first. A derivation input's fact holds its unit as a status object, a derived field's and a derived
+    evidence report's."""
     found: list[Host] = []
     fields = {name: (FIELD, field) for name, field in full_fields().items()} | full_forms()
     for name, (registered, field) in fields.items():
@@ -128,8 +132,13 @@ def hosts() -> tuple[Host, ...]:
             facts["post_mortem_interval"] = {"value": 60.0, "unit": UNSTATED, "basis": "stated"}
         if name == "measurement":
             section_specimen["donor_age"] = {"range": [1.0e9, 2.0e9], "unit": UNSTATED, "basis": "stated"}
-        if name == "across_sources":
-            derivation = an_object(an_object(field["provenance"])["derivation"])
+        if name in ("across_sources", "evidence"):
+            provenance = (
+                field["provenance"]
+                if name == "across_sources"
+                else an_object(a_list(field["evidence"])[1])["provenance"]
+            )
+            derivation = an_object(an_object(provenance)["derivation"])
             inputs = an_object(a_list(derivation["input_specimens"])[0])
             facts = an_object(inputs["specimen"])
             facts["post_mortem_interval"] = {"value": 60.0, "unit": UNSTATED, "basis": "stated"}
@@ -267,8 +276,10 @@ def definition_of(map_name: str, name: str) -> str:
 
 def parent(position: JsonObject, path: Path_) -> str:
     """The definition of the object holding a status object at `path`, which a status position's `schema`
-    names: the condition's or the fact's own where it says `per_condition` or `per_fact`."""
-    (schema,) = a_list(position["schema"])
+    names first: the condition's or the fact's own where it says `per_condition` or `per_fact`. Another it
+    names holds the same members, each a status object standing for the same shape (a withheld report's
+    beside a report's)."""
+    schema = a_list(position["schema"])[0]
     if schema in ("per_condition", "per_fact"):
         return definition_of("conditions" if schema == "per_condition" else "specimen", str(path[-2]))
     return str(schema)
@@ -339,7 +350,8 @@ def problems(position: JsonObject) -> list[str]:
                     else outcome(host.record, changed, host)
                 )
                 refusal = REFUSAL[str(position["in"])]
-                allowed = (before.codes if before.status == "not_met" else frozenset[str]()) | {refusal}
+                kept = before.codes if before.status == "not_met" else before.codes & STEP_8_UNKNOWN
+                allowed = kept | {refusal}
                 if refused:
                     meets = after.status == "not_met" and refusal in after.codes and after.codes <= allowed
                 elif position["verdict"] == "condition_names" and before.conditions:
@@ -384,7 +396,6 @@ def test_a_deferred_position_waits_for_a_piece_not_done() -> None:
     done = [str(piece) for piece in STEPS["done"]]
     assert done_too_soon(TABLE, done) == []
     assert done_too_soon(TABLE, [*done, "S2b-2"]) == [
-        "D03: S2b-2 is done, so the position needs its verdict",
         "D06: S2b-2 is done, so the position needs its verdict",
     ]
     assert done_too_soon([{**BY_ID["D04"], "deferred": ["S2c"]}], done) != []
@@ -568,6 +579,9 @@ BY_ID = {str(position["id"]): position for position in TABLE}
         pytest.param(value_shapes, "slips", _refusing_the_unknown, "R22", id="an_unknown_member_refused"),
         pytest.param(value_shapes, "slips", _refusing_the_unknown, "R47", id="in_an_interval"),
         pytest.param(value_shapes, "slips", _refusing_the_unknown, "R52", id="in_a_component"),
+        pytest.param(fields, "slips", _refusing_the_unknown, "R62", id="in_an_evidence_report"),
+        pytest.param(value_shapes, "slips", _refusing_the_unknown, "R65", id="in_a_reports_provenance"),
+        pytest.param(value_shapes, "slipped", _no_slip, "R64", id="a_slip_in_a_reports_standard_ignored"),
         pytest.param(value_shapes, "slipped", _no_slip, "R49", id="a_slip_in_a_composition_field_ignored"),
         pytest.param(value_shapes, "slipped", _no_slip, "R28", id="a_slip_ignored"),
         pytest.param(read_module, "slipped", _no_slip, "Q04", id="a_slip_in_a_request_ignored"),
@@ -593,6 +607,11 @@ def test_a_wrong_verdict_a_dead_row_and_a_lost_quote_are_found() -> None:
     }
     assert uncovered([position for position in TABLE if position["id"] not in ("R23", "R55")]) == {
         f"statistics_block.{member}" for member in status_members("statistics_block")
+    }
+    assert uncovered([position for position in TABLE if position["id"] != "R63"]) == {
+        f"{definition}.{member}"
+        for definition in ("evidence_entry", "withheld_evidence_entry")
+        for member in status_members(definition)
     }
     composition = ("R49", "R50", "R51", "R52", "R53")
     assert uncovered([position for position in TABLE if position["id"] not in composition]) == {

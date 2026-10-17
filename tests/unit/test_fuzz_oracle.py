@@ -412,9 +412,13 @@ def never(example: object) -> bool:
     return False
 
 
-def as_evidence(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
-    del field["value"], field["label"]
-    return {**field, "form": "evidence", "evidence": []}
+def as_a_table(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    del field["value"]
+    return {**field, "form": "table", "table": []}
+
+
+def _a_table_refused(*arguments: object) -> value_shapes.Found:
+    return [value_shapes.invalid("a table refused by a fault")]
 
 
 @pytest.mark.parametrize("held", sorted(OTHER_KIND))
@@ -433,13 +437,20 @@ def test_the_model_oracle_knows_the_other_kind_by_its_shape(
         against_the_model(sources, request)
 
 
-def test_the_model_oracle_keeps_a_step_not_built_beside_the_other_kind() -> None:
-    """Evidence holding the shape, on its row, is a step not built (`NOT_BUILT`), as HP12 lists it: a plant
-    would hold the core's "not yet" to a model that reads evidence. Evidence: S2b-1 reads an interval."""
-    field = as_evidence(with_the_other_kind(*OTHER_KIND["numeric-holding-token"]))
-    sources, request = form_read("biocompatibility.evidence", field, "evidence")
+def test_the_model_oracle_keeps_a_step_not_built_beside_the_other_kind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A table holding the shape, on its row, is a step neither side has built (S3): the core says "not yet"
+    and the model, given the plant's reading, gives no verdict, so the oracle passes it, and a core that
+    answered there fails. Evidence was that step until S2b-2 read it, as an interval was until S2b-1; HP12's
+    one step not built that the model decides, an overlay as the target, the target never reads."""
+    field = as_a_table(with_the_other_kind(*OTHER_KIND["numeric-holding-token"]))
+    sources, request = met_case(field)
     assert written_read(sources, request) == "not yet"
     against_the_model(sources, request)
+    monkeypatch.setattr("materica.core.read.form_problems", _a_table_refused)
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        against_the_model(sources, request)
 
 
 @pytest.mark.parametrize("held", sorted(OTHER_KIND))

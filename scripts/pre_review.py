@@ -151,6 +151,12 @@ DATA_RULES = (
         tests=("tests/unit/test_read.py",),
     ),
     DataRule(
+        "the evidence input the read tests load",
+        r"src/materica/data/conformance/plain_read/inputs/evidence_fixture\.json",
+        "the read tests load the evidence fixture directly, for step 8's and step 13's rows on evidence",
+        tests=("tests/unit/test_read.py",),
+    ),
+    DataRule(
         "a spec-sync table",
         r"tests/spec_sync/.+\.json",
         "the tables are checked against the text and the schemas",

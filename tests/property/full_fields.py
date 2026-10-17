@@ -3,7 +3,8 @@
 that hold them.
 
 A full field is valid against the writer schema and passes step 8 (`tests/spec_sync/test_t1.py` checks both).
-The full fields are constants of `fluid.dynamic_viscosity`; the full forms an interval and a composition.
+The full fields are constants of `fluid.dynamic_viscosity`; the full forms an interval, a composition and
+evidence.
 Between them the full fields hold each member of a value field, a condition, a specimen fact, a statistics
 block, an uncertainty and the provenance members a read uses, and each value-or-status member as a status
 object somewhere, so that a change at each of their places can be drawn or listed.
@@ -210,8 +211,10 @@ def full_fields() -> dict[str, JsonObject]:
 
 def full_forms() -> dict[str, tuple[str, JsonObject]]:
     """Full fields of the other forms step 8 reads, each with the registered field that holds it: an interval
-    with one bound `none`, and a composition with a stated sum whose components hold a full statistics block,
-    one of status objects, a withheld one and none; and each of them withheld."""
+    with one bound `none`; a composition with a stated sum whose components hold a full statistics block, one
+    of status objects, a withheld one and none; each of them withheld; and evidence whose reports hold a
+    status object in some members, one withheld, and each provenance a read checks (by a source, derived),
+    and the same with every report withheld."""
     interval = constant(PROVENANCE_BY_SOURCE, "population", label=False)
     del interval["value"]
     interval |= {
@@ -237,11 +240,44 @@ def full_forms() -> dict[str, tuple[str, JsonObject]]:
         "statistics": statistics("measurement"),
         "provenance": copy.deepcopy(PROVENANCE_BY_SOURCE),
     }
+    report: JsonObject = {
+        "endpoint": "cytotoxicity",
+        "standard": {"designation": "ISO 10993-5", "year": 2009.0},
+        "contact_category": "surface device, mucosal membrane",
+        "contact_duration": _status("unstated", "the report does not say"),
+        "material_form": _status("not_applicable"),
+        "processing": "machined, then sterilised",
+        "reported_result": "no cytotoxic effect at the extract concentrations tested",
+        "provenance": copy.deepcopy(PROVENANCE_BY_SOURCE),
+    }
+    derived: JsonObject = {
+        **report,
+        "standard": _status("unstated"),
+        "provenance": copy.deepcopy(PROVENANCE_DERIVED),
+    }
+    recipe: JsonObject = {"steps": "Table 3, row 2"}
+    withheld: JsonObject = {
+        **{name: _status("withheld") for name in report if name != "provenance"},
+        "provenance": copy.deepcopy({**PROVENANCE_BY_SOURCE, "recipe": recipe}),
+    }
+    evidence: JsonObject = {
+        "form": "evidence",
+        "unit": _status("not_applicable"),
+        "evidence": [copy.deepcopy(report), copy.deepcopy(derived), copy.deepcopy(withheld)],
+        "conditions": {},
+        "specimen": copy.deepcopy(SPECIMEN),
+        "provenance": copy.deepcopy(PROVENANCE_BY_SOURCE),
+    }
     return {
         "interval": ("fluid.dynamic_viscosity", interval),
         "interval_withheld": ("fluid.dynamic_viscosity", _withheld(interval, "interval", "reference-only")),
         "composition": ("bulk.elemental_composition", composition),
         "composition_withheld": ("bulk.elemental_composition", _withheld(composition, "composition")),
+        "evidence": ("biocompatibility.evidence", evidence),
+        "evidence_withheld": (
+            "biocompatibility.evidence",
+            {**evidence, "evidence": [copy.deepcopy(withheld)]},
+        ),
     }
 
 

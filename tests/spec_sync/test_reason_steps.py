@@ -184,6 +184,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("fields.py", "_form"): 8,
     ("fields.py", "_basis_allowed"): 8,
     ("fields.py", "_own_member"): 8,
+    ("fields.py", "evidence"): 8,
     ("fields.py", "_mismatch"): 9,
     ("conditions.py", "_entry"): 10,
     ("conditions.py", "_compared"): 10,
@@ -311,12 +312,11 @@ def test_each_reason_a_read_returns_was_constructed_at_a_step_that_gives_it(case
 
 
 # The codes the table gives at a step built in part, which the code of a step not built yet gives: at step 7,
-# a pick's (S4); at step 8, an evidence list's (S2b-2), and the refusal of a table that holds `points` (S3);
-# at step 11, a table's and a power law's range and the request's two faults there (S3), a constant's range
-# being its conditions; at step 12, a fill-in's (S4); at step 13, a nominal's (S2b-2).
+# a pick's (S4); at step 8, the refusal of a table that holds `points` (S3); at step 11, a table's and a power
+# law's range and the request's two faults there (S3), a constant's range being its conditions; at step 12, a
+# fill-in's (S4); at step 13, a nominal's (S2b-2).
 NOT_BUILT = {
     ("pick_invalid", 7),
-    ("entries_withheld", 8),
     ("points_unsupported", 8),
     ("outside_range", 11),
     ("at_edge", 11),
@@ -328,11 +328,11 @@ NOT_BUILT = {
 }
 BUILT = (0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13)
 # The codes of a step built that no read of a case file of a step done returns yet. Once one does, the test
-# fails, and the code leaves this set. Empty since S2a-4's fix round: step 7's `want_mismatch`, where no
-# alternative left has a form `want` can give, is PR-336's `want_mismatch_over_alternatives_no_hs`, which
+# fails, and the code leaves this set. Step 7's `want_mismatch` left it in S2a-4's fix round: where no
+# alternative left has a form `want` can give, it is PR-336's `want_mismatch_over_alternatives_no_hs`, which
 # S2a-4's code runs (`case_steps.json`); S2b-1's alternatives of an interval and a constant under `want:
-# components` (PR-013) return it too.
-NO_CASE_YET: set[tuple[str, int]] = set()
+# components` (PR-013) return it too. Step 8's `entries_withheld` waits for S2b-2's case files.
+NO_CASE_YET: set[tuple[str, int]] = {("entries_withheld", 8)}
 
 
 def test_the_reads_traced_reach_every_code_the_steps_built_give() -> None:
