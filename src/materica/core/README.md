@@ -59,7 +59,7 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
 | `read.py` | the request's own check (step 0), and the read through step 8; steps 9 to 13, overlays and alternatives are not built yet |
-| `evaluate.py` | a table at an operating value of its axis (`record_format.md` section 6, table items 3 and 4; `read_side_contract.md` section 5): its readable range, its edges, the knots that bracket the value, and the number a read gives there, exactly, rounded once; step 11 is to use it, and nothing calls it yet |
+| `evaluate.py` | a table at an operating value of its axis (`record_format.md` section 6, table items 3 and 4; `read_side_contract.md` section 5): its readable range, its edges, the knots that bracket the value, and the table's number there, the exact value rounded once to the nearest double, ties to even (a log-log one under the one assumption `loglog` states); step 11 is to use it, and nothing calls it yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the
 read up to step 5 (`tests/conformance/`). The table evaluation cases, which OpenMaterica claims none of, check

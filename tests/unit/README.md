@@ -17,6 +17,7 @@ Tests by example, for what the conformance cases and the properties do not reach
 - the table evaluator against every table evaluation case, which the conformance runner never runs against
   it, since OpenMaterica claims none (`test_evaluate.py`), and the edges of its text:
   adjacent doubles, values spanning every double, `-0` at a knot and at an edge, an edge outside the readable
-  range;
+  range, log-log values halfway between two doubles (rounded to even) and an irrational one (against
+  `sqrt`);
 - the typed shapes against what the reader gives: each member the schemas declare whole admits the float a
   JSON number reads as (`test_shapes.py`).
