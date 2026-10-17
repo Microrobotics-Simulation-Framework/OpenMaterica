@@ -327,18 +327,11 @@ NOT_BUILT = {
     ("nominal_invalid", 13),
 }
 BUILT = (0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13)
-# The codes of a step built that no read of a case file of a step done returns yet, until S2a-4's case files
-# run: step 7's over alternatives, step 10's `unknown` codes, which no case of S2a-3 holds beside a
-# `not_met`, and steps 12 and 13's. Once one does, the test fails, and the code leaves this set.
+# The codes of a step built that no read of a case file of a step done returns yet: step 7's `want_mismatch`,
+# where no alternative left has a form `want` can give, which S2a-4 gives and no case of a step done holds
+# (S2b's and S4's do). Once one does, the test fails, and the code leaves this set.
 NO_CASE_YET = {
-    ("no_pick", 7),
-    ("form_invalid", 7),
     ("want_mismatch", 7),
-    ("condition_unchecked", 10),
-    ("condition_unknown_name", 10),
-    ("condition_uncertain", 10),
-    ("stated_without_origin", 12),
-    ("want_mismatch", 13),
 }
 
 
