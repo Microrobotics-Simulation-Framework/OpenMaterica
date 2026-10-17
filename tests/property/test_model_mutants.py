@@ -26,6 +26,7 @@ from materica.core.value_shapes import Found, JsonObject
 from materica.core.vocabulary import STATUS_TOKENS
 from tests.property import model_strategies as strategies
 from tests.property import test_condition_mutants as condition_mutants
+from tests.property import test_invariance_mutants as invariance_mutants
 from tests.property import test_model_properties as properties
 from tests.property import test_result_mutants as result_mutants
 from tests.property import test_value_field_mutants as value_field_mutants
@@ -34,6 +35,12 @@ from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.test_condition_mutants import kill
 from tests.property.test_mutants import setting
 from tests.reference.mutants import MUTANTS as MODEL_FAULTS
+
+# A search stops at the first example that kills its mutant, which Hypothesis then writes out; those of these
+# properties can pass 30 kB, which Hypothesis warns of, and which nobody reads.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:Generating overly large repr:hypothesis.errors.HypothesisWarning"
+)
 
 
 def shown(example: Example) -> set[str]:
@@ -249,6 +256,13 @@ IMPLEMENTATION = [
         "values",
         taken(condition_mutants.MUTANTS, "section_facts_win"),
         ("valued", "alternatives"),
+    ),
+    # HP4
+    Mutant(
+        "specimen_facts_merged_across_sections",
+        "values",
+        taken(invariance_mutants.MUTANTS, "specimen_facts_merged_across_sections"),
+        ("another_section",),
     ),
     # HP10
     Mutant(
