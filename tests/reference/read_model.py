@@ -23,11 +23,13 @@ The model reads JSON as `strict_json.parse` does: every number a float. Its resu
 kind, so that a case compares them as it compares an implementation's result read back from its text.
 """
 
+import json
 import re
 import struct
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from fractions import Fraction
+from pathlib import Path
 from typing import Final, Literal, TypeAlias, TypeGuard
 
 from tests.reference.strict_json import JsonObject, JsonValue, NotStrictJson, content_hash, parse
@@ -57,9 +59,8 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "from any of them, beside either, is refused: fail closed"
     ),
     "evidence_entry_provenance": (
-        "an evidence entry's `provenance` is checked as the field's is (its origin, source and derivation) "
-        "and returned with every member the provenance table names, each as stored but its review, which "
-        "reads as `provenance.md` section 2 item 6 reads one: fail closed"
+        "an evidence entry's `provenance` is checked as the field's is (its origin, source and derivation): "
+        "fail closed"
     ),
 }
 
@@ -2479,17 +2480,91 @@ def component_returned(component: JsonObject) -> JsonValue:
     return returned
 
 
+# record_format.md:236-237 "A reader returns an entry with its statuses and its `provenance` whole" ...
+# "section 2 item 5 defines": read_side_contract.md:153 "Every member a result returns from a record holds
+# the members the reader's version defines", at every depth. Below the provenance table's own members the
+# text names their members in part only (an extraction's by its methods' rows, a locator's in provenance.md
+# section 2 item 2), so the model reads them where the version publishes them, its writer schema
+# (record_format.md:10-11 "published with the" ... "specification in `schema/`"): each definition's named
+# members, or, for an object it names none of, a map whose values it gives.
+WRITER: Final[JsonObject] = json.loads(
+    (
+        Path(__file__).resolve().parents[2] / "src" / "materica" / "schema" / "0.1" / "record.writer.json"
+    ).read_text(encoding="utf-8")
+)
+
+
+def definitions(node: JsonValue) -> list[JsonObject]:
+    """The definitions `node` stands for: through a local reference, and each choice of `anyOf` or `oneOf`."""
+    if not isinstance(node, dict):
+        return []
+    reference = node.get("$ref")
+    if isinstance(reference, str):
+        if not reference.startswith("#/$defs/"):
+            return []
+        defined = WRITER["$defs"]
+        assert isinstance(defined, dict)
+        return definitions(defined[reference.removeprefix("#/$defs/")])
+    choices = node.get("anyOf", node.get("oneOf"))
+    if isinstance(choices, list):
+        return [found for choice in choices for found in definitions(choice)]
+    return [node]
+
+
+def named_members(definition: JsonObject) -> dict[str, JsonValue]:
+    """A definition's members by name, those of each definition its `allOf` refers to included."""
+    found: dict[str, JsonValue] = {}
+    conjuncts = definition.get("allOf")
+    for conjunct in conjuncts if isinstance(conjuncts, list) else []:
+        for part in definitions(conjunct):
+            found.update(named_members(part))
+    properties = definition.get("properties")
+    found.update(properties if isinstance(properties, dict) else {})
+    return found
+
+
+def written_returned(value: JsonValue, nodes: Sequence[JsonValue]) -> JsonValue:
+    """`value`, where one of `nodes` defines it, holding at every depth the members the definitions name: an
+    object holding `status`, the status object's (`status`, `reason`) where a choice is one; and a member no
+    definition names anything of, whole."""
+    choices = [found for node in nodes for found in definitions(node)]
+    if isinstance(value, list):
+        items = [choice["items"] for choice in choices if "items" in choice]
+        return [written_returned(item, items[:1]) if items else copied(item) for item in value]
+    if not isinstance(value, dict):
+        return copied(value)
+    objects = [choice for choice in choices if named_members(choice)]
+    chosen = [
+        choice
+        for choice in objects
+        if (set(named_members(choice)) <= {"status", "reason"}) == ("status" in value)
+    ]
+    maps = [choice.get("additionalProperties") for choice in choices if not named_members(choice)]
+    maps = [held for held in maps if isinstance(held, dict)]
+    if not chosen and maps:
+        return {name: written_returned(member, maps[:1]) for name, member in value.items()}
+    members: dict[str, list[JsonValue]] = {}
+    for choice in chosen or objects:
+        for name, node in named_members(choice).items():
+            members.setdefault(name, []).append(node)
+    if not members:
+        return copied(value)
+    return {
+        name: written_returned(member, members[name]) for name, member in value.items() if name in members
+    }
+
+
 def evidence_entry_returned(entry: JsonObject) -> JsonValue:
-    # record_format.md:236-237 "A reader returns an entry with its statuses and its `provenance` whole,
-    # holding the members `read_side_contract.md`"
     returned: JsonObject = {}
     for name in EVIDENCE_ENTRY_NAMES:
         if name not in entry:
             continue
         given = entry[name]
         if name == "provenance" and isinstance(given, dict):
-            # Open point: evidence_entry_provenance.
-            returned[name] = {**known_members(given, PROVENANCE_NAMES), "review": review_read(given)}
+            # provenance.md:118-120 "A reader returns it as found in two cases only": every review it returns.
+            provenance = written_returned(given, [{"$ref": "#/$defs/provenance"}])
+            assert isinstance(provenance, dict)
+            returned[name] = {**provenance, "review": review_read(given)}
         elif isinstance(given, dict) and "status" in given:
             returned[name] = status_returned(given)
         elif name == "standard" and isinstance(given, dict):

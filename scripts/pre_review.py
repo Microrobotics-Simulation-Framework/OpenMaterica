@@ -123,6 +123,7 @@ DATA_RULES = (
             "tests/spec_sync/schemas.py",
             "tests/property/condition_oracle.py",
             "tests/verdicts.py",
+            "tests/reference/read_model.py",
             "scripts/check_wheel.py",
             "scripts/freeze_schema.py",
             "scripts/gen_reader_schema.py",

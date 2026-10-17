@@ -1780,6 +1780,25 @@ def test_evidence_returns_its_reports_as_stored_each_provenance_whole_and_no_sta
         )
 
 
+def test_a_reports_placeholder_comes_back_whole_and_a_named_member_by_its_shape() -> None:
+    """A provenance member whose members the version does not name yet, a placeholder (`assistance`: the
+    tool, model and provider as reported), holds any member, so it comes back whole; one whose members it
+    names (`extraction`) holds those alone (`read_side_contract.md` section 2 item 5)."""
+    assistance: dict[str, JsonValue] = {"tool": "a reader", "settings": {"temperature": 0.0}}
+    extraction: dict[str, JsonValue] = {
+        "method": "table",
+        "text_extraction": "a tool",
+        "x_unknown_member": 1.0,
+    }
+    report = report_with(
+        provenance={**EVIDENCE_PROVENANCE, "assistance": assistance, "extraction": extraction}
+    )
+    written = json.loads(json.dumps(read_evidence([report]).to_json()))
+    provenance = written["value"][0]["provenance"]
+    assert provenance["assistance"] == assistance
+    assert provenance["extraction"] == {"method": "table", "text_extraction": "a tool"}
+
+
 def report_with(**members: JsonValue) -> dict[str, JsonValue]:
     return {**REPORT, **members}
 
