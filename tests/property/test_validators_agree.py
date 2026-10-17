@@ -96,22 +96,63 @@ def t1_disagreements(
                 yield f"{example.name}, {reference}: {found}"
 
 
-# A whole pass over T1's examples, 5,066 of them, took 590 s summed over 8 workers of a shared machine, 110 s
-# of wall time, nearly all of it python-jsonschema's: every STRIDE-th one, a tenth, 60 to 80 s (2026-10-16).
-# The share takes them in turn through the bases and their changes, so that it holds each; a disagreement the
-# share misses is left to `deep`, weekly.
+# A whole pass over T1's examples, 5,066 of them, took 590 s and 760 s summed over 8 workers of a shared
+# machine, nearly all of it python-jsonschema's (2026-10-16). At `dev` and `ci` the share takes every
+# STRIDE-th example of each group, from its first: the inputs that read each registered field, and the
+# variants of each base by each change and origin. So it holds each registered field the inputs read, each
+# base, each origin and each change, alone and beside each origin, which `share_misses` checks: T1's order
+# cycles through the origins in a period of five, and a plain stride of 10 through all of T1 held none of the
+# 117 variants that set `measured_by_source`. A disagreement the share misses is left to `deep`, weekly.
 STRIDE = 1 if PROFILE == "deep" else 10
 PARTS = 12
 
 
+def t1_group(example: t1.Example) -> tuple[str, str, str]:
+    """An input example's registered field, or a variant's base, change and origin."""
+    return (example.base, example.change, example.origin) if example.change else (example.field, "", "")
+
+
 @cache
 def t1_share() -> list[t1.Example]:
-    return t1.all_examples()[::STRIDE]
+    groups: dict[tuple[str, str, str], list[t1.Example]] = {}
+    for example in t1.all_examples():
+        groups.setdefault(t1_group(example), []).append(example)
+    return [example for group in groups.values() for example in group[::STRIDE]]
+
+
+# The kinds of T1's examples a share must hold one of each, as the comment above names them.
+KINDS: dict[str, Callable[[t1.Example], object]] = {
+    "registered field of an input": lambda example: "" if example.change else example.field,
+    "base": lambda example: example.base,
+    "origin": lambda example: example.origin,
+    "change": lambda example: example.change,
+    "change beside an origin": lambda example: (example.change, example.origin) if example.change else "",
+}
+
+
+def kinds(examples: Iterable[t1.Example]) -> set[tuple[str, object]]:
+    return {(name, of(example)) for example in examples for name, of in KINDS.items()} - {
+        (name, "") for name in KINDS
+    }
+
+
+def share_misses(share: Iterable[t1.Example]) -> list[str]:
+    """Each kind of T1's examples, by `KINDS`, that `share` holds no example of."""
+    return sorted(f"{name} {value}" for name, value in kinds(t1.all_examples()) - kinds(share))
 
 
 @pytest.mark.parametrize("part", range(PARTS))
 def test_both_give_one_verdict_on_t1s_inputs(part: int) -> None:
     assert list(t1_disagreements(t1_share()[part::PARTS])) == []
+
+
+def test_t1s_share_holds_each_kind_of_example() -> None:
+    assert share_misses(t1_share()) == []
+
+
+def test_a_share_that_strides_through_t1s_order_misses_an_origin() -> None:
+    """The control: every tenth example of T1 in its order, the share before it was taken by group."""
+    assert "origin measured_by_source" in share_misses(t1.all_examples()[::10])
 
 
 def test_t1s_share_holds_both_verdicts() -> None:
