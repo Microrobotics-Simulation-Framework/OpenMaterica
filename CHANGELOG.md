@@ -334,6 +334,11 @@ every family entry goes in `families/CHANGELOG.md`.
   on 8 workers from 2,617 s to 1,620 s, and of the writer shard at `ci` on 4 from 2,956 s to 1,477 s; T1's
   tests ran about 25 times faster; on CI the writer shard's tests went from 649 s to 338 s
   (`tests/README.md`).
+- The Hypothesis job's gate fails closed, as the gate of the other jobs does: it lists, beside the
+  documentation, the paths no part of that job reads, and every other path runs the job, any test and the
+  conformance runner included, which every shard loads and which the old list of code had missed.
+  `tests/unit/test_ci_workflows.py` checks that no listed path is a module the property tests load or import,
+  however late, nor a path such a module names, nor one the job's steps, its build or its workflow read.
 
 ## [0.1.0.dev1] - 2026-10-14
 

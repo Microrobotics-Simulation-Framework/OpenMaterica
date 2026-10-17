@@ -5,8 +5,8 @@
 # also checks sign-offs and that nothing private is named. A merge to main runs every job, whatever it changed,
 # and the `result` job fails where a job the gate asked for did not succeed.
 # Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
-# per-push critical path is the Hypothesis job at the `ci` profile, which runs whenever the core, its schemas
-# and vocabulary, the property tests or their configuration change. Keep it short: work that would lengthen the
+# per-push critical path is the Hypothesis job at the `ci` profile, which runs on every change but one confined
+# to paths no part of it reads (the gate lists them). Keep it short: work that would lengthen the
 # longest job runs beside it as a job of its own (the generated files) or a shard (the property tests), so that
 # a push waits for the longest job only. The `deep` profile and Atheris fuzzing, slow by design, run weekly and
 # on manual runs only.
@@ -107,6 +107,11 @@ jobs:
       # code: README.md and LICENSE go into the wheel, typings/ to the type checkers, docs/specification/, the
       # architecture draft and the documentation plan to the spec-sync tests, and site/ to the Pages workflow.
       # tests/unit/test_ci_workflows.py checks that no test or script names a path listed here.
+      # The Hypothesis job's gate fails closed in the same way (maintainer, 2026-10-17): beside the documentation,
+      # it lists the paths that no part of that job reads, neither a module its property tests load or import,
+      # nor a path such a module names, nor the job's steps, its build (pyproject.toml's readme and licence, the
+      # lock file, src/) or this workflow, and every other path runs the job, a new one and any test included.
+      # tests/unit/test_ci_workflows.py checks each of those against the paths listed here.
       - name: Changed paths
         id: paths
         env:
@@ -116,7 +121,7 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           docs_paths='CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|docs/regulatory/.+|docs/validation/.+|\.github/ISSUE_TEMPLATE/.+|\.github/pull_request_template\.md'
-          hypothesis_paths='^(src/materica/(core/|schema/|shapes\.pyi?$)|tests/property/|tests/conftest\.py$|tests/spec_sync/schemas\.py$|pyproject\.toml$|uv\.lock$|\.github/workflows/ci\.yml$)'
+          hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_confidential|check_signoff|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
           if [ "$FUZZ_ONLY" = true ]; then
             # A manual run of the fuzz job alone.
             code=false
@@ -133,7 +138,11 @@ jobs:
             echo "::$stop::"
             # Documentation only when there are paths and each is listed: a diff that names none is code.
             if [ -n "$changed" ] && ! grep -qvxE "$docs_paths" <<< "$changed"; then code=false; else code=true; fi
-            grep -qE "$hypothesis_paths" <<< "$changed" && hypothesis=true || hypothesis=false
+            if [ -n "$changed" ] && ! grep -qvxE "$docs_paths|$hypothesis_free" <<< "$changed"; then
+              hypothesis=false
+            else
+              hypothesis=true
+            fi
           else
             # A merge to main, the weekly run and a manual run test everything, whatever changed.
             code=true

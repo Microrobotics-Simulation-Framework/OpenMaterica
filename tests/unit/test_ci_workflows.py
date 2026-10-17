@@ -8,6 +8,7 @@ would notice breaking, and each has a control in which the check must fail.
 import ast
 import copy
 import itertools
+import json
 import math
 import os
 import re
@@ -353,9 +354,11 @@ def commit(*paths: str) -> str:
     ).stdout.strip()
 
 
-def gate_outputs(repository: Path, context: dict[str, str]) -> dict[str, str]:
+def gate_outputs(
+    repository: Path, context: dict[str, str], gate: dict[str, Any] | None = None
+) -> dict[str, str]:
     status, outputs, printed = run_step(
-        step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP), context, repository
+        gate or step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP), context, repository
     )
     assert status == 0, printed
     return outputs
@@ -396,18 +399,27 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
     [
         pytest.param(list(DOCUMENTATION_EXAMPLES), "false", "false", id="documentation"),
         # Code, though written as documentation: what the wheel, the type checkers, the spec-sync tests and
-        # the Pages workflow read.
-        (["README.md"], "true", "false"),
-        (["LICENSE"], "true", "false"),
+        # the Pages workflow read. The Hypothesis job builds the wheel's metadata, and its properties read the
+        # specification.
+        (["README.md"], "true", "true"),
+        (["LICENSE"], "true", "true"),
         (["typings/atheris/__init__.pyi"], "true", "false"),
-        (["docs/specification/README.md"], "true", "false"),
+        (["docs/specification/README.md"], "true", "true"),
         (["site/index.html"], "true", "false"),
-        # A path nobody listed is code, and one path of code makes a change code.
-        (["notes/plan.txt"], "true", "false"),
+        (["design/ARCHITECTURE_DRAFT.md", ".github/workflows/pages.yml"], "true", "false"),
+        # A path nobody listed is code, and runs the Hypothesis job; one path of either makes a change so.
+        (["notes/plan.txt"], "true", "true"),
         (["CHANGELOG.md", "scripts/check_wheel.py"], "true", "false"),
+        (["scripts/check_wheel.py", "scripts/new_tool.py"], "true", "true"),
         # A diff with no path at all, as if the diff had gone wrong: the safe side.
-        ([], "true", "false"),
-        (["tests/unit/test_read.py"], "true", "false"),
+        ([], "true", "true"),
+        # What the Hypothesis job reads, though no property: the conformance runner, the read's modules, a
+        # generator, its durations step's script, and any test, whose source one property test reads.
+        (["tests/conformance/runner.py"], "true", "true"),
+        (["src/materica/io/plain.py"], "true", "true"),
+        (["scripts/gen_reader_schema.py"], "true", "true"),
+        (["scripts/report_test_durations.py"], "true", "true"),
+        (["tests/unit/test_read.py"], "true", "true"),
         (["src/materica/core/read.py"], "true", "true"),
     ],
     ids=lambda value: "+".join(cast(list[str], value)) or "nothing" if isinstance(value, list) else None,
@@ -423,13 +435,38 @@ def test_a_pull_request_runs_the_jobs_its_paths_need(
     }
 
 
+HYPOTHESIS_LINE = 'if [ -n "$changed" ] && ! grep -qvxE "$docs_paths|$hypothesis_free" <<< "$changed"; then'
+
+
+def test_without_failing_closed_the_gate_skips_the_hypothesis_job_for_a_path_it_does_not_name(
+    repository: Path,
+) -> None:
+    """The control of the cases above: the gate as it was, a list of what reaches a property, skips the job
+    for the conformance runner, which every shard loads, and for a path nobody listed."""
+    gate = copy.deepcopy(step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP))
+    assert gate["run"].count(HYPOTHESIS_LINE) == 1
+    listing_code = "src/materica/core/|tests/property/"
+    gate["run"] = gate["run"].replace(
+        HYPOTHESIS_LINE, f'if ! grep -qE "^({listing_code})" <<< "$changed"; then'
+    )
+    for paths in (["tests/conformance/runner.py"], ["notes/plan.txt"]):
+        base = commit()
+        head = commit(*paths)
+        assert (
+            gate_outputs(repository, gate_context("pull_request", base, head), gate)["hypothesis"] == "false"
+        )
+    base = commit()
+    head = commit("src/materica/core/read.py")
+    assert gate_outputs(repository, gate_context("pull_request", base, head), gate)["hypothesis"] == "true"
+
+
 @pytest.mark.parametrize(
     ("source", "destination", "also", "hypothesis"),
     [
         ("src/materica/core/read.py", "docs/regulatory/read.py", (), "true"),
         ("src/materica/core/read.py", "docs/validation/read.py", ("CHANGELOG.md",), "true"),
-        ("tests/unit/test_read.py", "docs/validation/test_read.py", (), "false"),
-        ("tests/unit/test_read.py", ".github/ISSUE_TEMPLATE/test_read.py", (), "false"),
+        ("tests/unit/test_read.py", "docs/validation/test_read.py", (), "true"),
+        ("tests/unit/test_read.py", ".github/ISSUE_TEMPLATE/test_read.py", (), "true"),
     ],
     ids=[
         "core-into-regulatory",
@@ -476,13 +513,17 @@ def test_the_gate_prints_the_paths_of_a_pull_request_with_workflow_commands_stop
     assert not printed_with_commands_stopped(printed_unstopped, "::warning::a name.md"), printed_unstopped
 
 
+def gate_pattern(variable: str, ci: Workflow | None = None) -> str:
+    """A pattern of paths the gate's step sets, as the step's shell variable `variable`, matched whole."""
+    gate = step((ci or workflow("ci.yml"))["jobs"]["gate"], GATE_STEP)
+    found = re.search(rf"^ *{variable}='([^']+)'$", gate["run"], re.M)
+    assert found, f"the gate's step sets no {variable}"
+    return found[1]
+
+
 def documentation_pattern() -> str:
     """The gate's pattern of the paths that are documentation only (`docs_paths`), matched whole."""
-    found = re.search(
-        r"^ *docs_paths='([^']+)'$", step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP)["run"], re.M
-    )
-    assert found, "the gate's step sets no docs_paths"
-    return found[1]
+    return gate_pattern("docs_paths")
 
 
 def checkout_files() -> list[str]:
@@ -678,6 +719,259 @@ def test_the_documentation_check_finds_an_exemption_gone_stale() -> None:
     named["scripts/check_confidential.py"].discard("CLAUDE.md")
     assert documentation_named(documentation_pattern(), checkout_files(), named) == [
         "scripts/check_confidential.py no longer names 'CLAUDE.md'"
+    ]
+
+
+# Collecting the property tests as CI's Hypothesis job does, the files of every module then loaded.
+LOADED_MODULES_PLUGIN = """
+import json, os, sys
+
+
+def pytest_collection_finish(session):
+    files = {getattr(module, "__file__", None) for module in list(sys.modules.values())}
+    with open(os.environ["LOADED_MODULES"], "w", encoding="utf-8") as written:
+        json.dump(sorted(name for name in files if name), written)
+"""
+COLLECTING_PLUGINS = ("-p", "no:cacheprovider", "-p", "loaded_modules")
+# Where the repository's modules are imported from: the root (`tests`, `scripts`) and `src/` (`materica`).
+IMPORT_ROOTS = (REPOSITORY, REPOSITORY / "src")
+
+
+def module_files(name: str) -> set[str]:
+    """The repository's files that importing the module `name` runs: each package's `__init__.py` on the way,
+    and the module's own file."""
+    found: set[str] = set()
+    parts = name.split(".")
+    for root in IMPORT_ROOTS:
+        for end in range(1, len(parts) + 1):
+            base = root.joinpath(*parts[:end])
+            for candidate in (base / "__init__.py", base.with_suffix(".py")):
+                if candidate.is_file():
+                    found.add(candidate.relative_to(REPOSITORY).as_posix())
+    return found
+
+
+def imported(path: str, source: str) -> set[str]:
+    """The repository's files that `source`, the module at `path`, imports anywhere in it, a function's body
+    included, each `from` import tried as a module too, since `from package import name` may import one."""
+    package = list(Path(path).parent.parts)
+    if package[:1] == ["src"]:
+        package = package[1:]
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                found |= module_files(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            base = package[: len(package) - node.level + 1] if node.level else []
+            module = ".".join([*base, *([node.module] if node.module else [])])
+            found |= module_files(module)
+            for alias in node.names:
+                found |= module_files(f"{module}.{alias.name}" if module else alias.name)
+    return found
+
+
+def with_imports(sources: dict[str, str]) -> dict[str, str]:
+    """`sources`, the modules by path, with every module of the repository they import, however deep, read
+    from the checkout."""
+    found = dict(sources)
+    unread = list(found)
+    while unread:
+        path = unread.pop()
+        for module in sorted(imported(path, found[path]) - found.keys()):
+            found[module] = (REPOSITORY / module).read_text("utf-8")
+            unread.append(module)
+    return found
+
+
+def hypothesis_job_modules(tmp_path: Path) -> dict[str, str]:
+    """Each module of the repository that the Hypothesis job runs, by path: those its collection of the
+    property tests loads, and every module they import, wherever in them, which a test may import late."""
+    (tmp_path / "loaded_modules.py").write_text(LOADED_MODULES_PLUGIN, encoding="utf-8")
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
+    environment["PYTHONPATH"] = os.pathsep.join([str(tmp_path), environment.get("PYTHONPATH", "")])
+    environment["LOADED_MODULES"] = str(tmp_path / "loaded.json")
+    ran = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/property", "--collect-only", "-q", *COLLECTING_PLUGINS],
+        cwd=REPOSITORY,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert ran.returncode == 0, (ran.stdout + ran.stderr)[-3000:]
+    loaded = [Path(name).resolve() for name in json.loads((tmp_path / "loaded.json").read_text("utf-8"))]
+    return with_imports(
+        {
+            path.relative_to(REPOSITORY).as_posix(): path.read_text("utf-8")
+            for path in loaded
+            if path.is_relative_to(REPOSITORY) and ".venv" not in path.relative_to(REPOSITORY).parts
+        }
+    )
+
+
+def step_words(job: dict[str, Any]) -> set[str]:
+    """What a job's steps could name a path by: each word of their scripts and of their actions' inputs that
+    holds a `/` or a `.`."""
+    texts = [str(found.get("run", "")) for found in job["steps"]]
+    texts += [str(value) for found in job["steps"] for value in found.get("with", {}).values()]
+    return {
+        word.strip("\"'") for text in texts for word in re.split(r"[\s=]+", text) if re.search(r"[/.]", word)
+    }
+
+
+def build_reads(path: str) -> bool:
+    """Whether `uv sync` reads `path` to install the project: pyproject.toml, its readme and licence files,
+    the lock file, or the package's sources."""
+    project = tomllib.loads((REPOSITORY / "pyproject.toml").read_text("utf-8"))["project"]
+    files = {"pyproject.toml", "uv.lock", project["readme"], *project["license-files"]}
+    return path in files or path.startswith("src/")
+
+
+# Where a module the Hypothesis job runs names a path the gate lets it skip, but does not read it, and why.
+HYPOTHESIS_NAMED_NOT_READ = {
+    (
+        "tests/property/test_validators_agree.py",
+        "*.py",
+    ): "a glob over tests/, for the modules that take a verdict from one JSON Schema library alone",
+    # Loaded through tests/property/test_condition_mutants.py, which takes two of its tables.
+    ("tests/unit/test_read.py", "*.py"): "a glob over src/materica/core/, for the core's modules",
+}
+
+
+def hypothesis_reads(pattern: str, files: list[str], modules: dict[str, str], ci: Workflow) -> list[str]:
+    """Each path that `pattern` lets the Hypothesis job skip, but which the job reads: a module it runs, a
+    path such a module names (but those `HYPOTHESIS_NAMED_NOT_READ` gives), a path its steps name, its build's
+    inputs or this workflow; and each exemption no longer found."""
+    listed = [path for path in files if re.fullmatch(pattern, path)]
+    problems = [
+        f"the Hypothesis job runs {path}, which the gate lets it skip"
+        for path in sorted(modules)
+        if path in listed
+    ]
+    found = {
+        (module, name, path)
+        for module, source in sorted(modules.items())
+        for name in named_paths(source)
+        for path in listed
+        if names(name, path)
+    }
+    problems += [
+        f"{module}, which the Hypothesis job runs, names {path} as {name!r}, which the gate lets it skip"
+        for module, name, path in sorted(found)
+        if (module, name) not in HYPOTHESIS_NAMED_NOT_READ
+    ]
+    still = {(module, name) for module, name, _ in found}
+    problems += [
+        f"{module} no longer names {name!r}"
+        for module, name in sorted(HYPOTHESIS_NAMED_NOT_READ.keys() - still)
+    ]
+    problems += [
+        f"the Hypothesis job's steps name {path} as {word!r}, which the gate lets it skip"
+        for word in sorted(step_words(ci["jobs"]["hypothesis"]))
+        for path in listed
+        if names(word, path)
+    ]
+    problems += [
+        f"the Hypothesis job's build reads {path}, which the gate lets it skip"
+        for path in listed
+        if build_reads(path)
+    ]
+    if re.fullmatch(pattern, ".github/workflows/ci.yml"):
+        problems.append("the gate lets the Hypothesis job skip a change to its own workflow")
+    return problems
+
+
+@pytest.fixture(scope="module")
+def hypothesis_modules(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
+    return hypothesis_job_modules(tmp_path_factory.mktemp("hypothesis_modules"))
+
+
+def hypothesis_pattern(ci: Workflow, also: str = "") -> str:
+    """The paths the gate lets the Hypothesis job skip: the documentation, and those it lists beside."""
+    return f"{documentation_pattern()}|{gate_pattern('hypothesis_free', ci)}{also}"
+
+
+def test_no_path_the_gate_lets_the_hypothesis_job_skip_is_one_it_reads(
+    hypothesis_modules: dict[str, str],
+) -> None:
+    """The gate skips the Hypothesis job only for paths it lists, and so must list none the job reads."""
+    ci = workflow("ci.yml")
+    assert hypothesis_reads(hypothesis_pattern(ci), checkout_files(), hypothesis_modules, ci) == []
+    # The modules are found: the property tests', and those they load though no property.
+    assert {
+        "tests/property/test_writer_properties.py",
+        "tests/conformance/runner.py",
+        "scripts/gen_reader_schema.py",
+        "src/materica/io/plain.py",
+    } <= hypothesis_modules.keys()
+
+
+@pytest.mark.parametrize(
+    ("listed", "problem"),
+    [
+        ("tests/conformance/.+", "the Hypothesis job runs tests/conformance/runner.py"),
+        ("scripts/gen_vocabulary\\.py", "the Hypothesis job runs scripts/gen_vocabulary.py"),
+        (
+            "docs/specification/.+",
+            "value_fields.py, which the Hypothesis job runs, names docs/specification/",
+        ),
+        (
+            "tests/spec_sync/case_steps\\.json",
+            "runner.py, which the Hypothesis job runs, names tests/spec_sync/case_steps.json",
+        ),
+        (
+            "scripts/report_test_durations\\.py",
+            "the Hypothesis job's steps name scripts/report_test_durations.py",
+        ),
+        ("README\\.md", "the Hypothesis job's build reads README.md"),
+        ("LICENSE", "the Hypothesis job's build reads LICENSE"),
+        ("src/materica/schema/.+", "the Hypothesis job's build reads src/materica/schema/"),
+        ("\\.github/workflows/ci\\.yml", "skip a change to its own workflow"),
+    ],
+    ids=[
+        "a-loaded-module",
+        "an-imported-script",
+        "a-named-document",
+        "a-named-file",
+        "a-steps-script",
+        "the-readme",
+        "the-licence",
+        "the-package",
+        "the-workflow",
+    ],
+)
+def test_the_hypothesis_check_can_fail(hypothesis_modules: dict[str, str], listed: str, problem: str) -> None:
+    ci = workflow("ci.yml")
+    found = hypothesis_reads(hypothesis_pattern(ci, f"|{listed}"), checkout_files(), hypothesis_modules, ci)
+    assert any(problem in line for line in found), found
+
+
+def test_the_hypothesis_check_finds_a_module_imported_late(hypothesis_modules: dict[str, str]) -> None:
+    """The control of the imports: a property module that imports, in a test's body, a script the gate lets
+    the job skip, which collecting the module does not load; and each form of import."""
+    late = "def test_later():\n    from scripts import check_wheel\n"
+    modules = with_imports(hypothesis_modules | {"tests/property/test_late.py": late})
+    ci = workflow("ci.yml")
+    found = hypothesis_reads(hypothesis_pattern(ci), checkout_files(), modules, ci)
+    assert "the Hypothesis job runs scripts/check_wheel.py, which the gate lets it skip" in found, found
+    forms = "import scripts.freeze_schema\nfrom . import strategies\nfrom ..conformance import runner\n"
+    assert imported("tests/property/test_late.py", forms) == {
+        "scripts/__init__.py",
+        "scripts/freeze_schema.py",
+        "tests/__init__.py",
+        "tests/property/__init__.py",
+        "tests/property/strategies.py",
+        "tests/conformance/__init__.py",
+        "tests/conformance/runner.py",
+    }
+
+
+def test_the_hypothesis_check_finds_an_exemption_gone_stale(hypothesis_modules: dict[str, str]) -> None:
+    ci = workflow("ci.yml")
+    modules = {path: source for path, source in hypothesis_modules.items() if "validators_agree" not in path}
+    assert hypothesis_reads(hypothesis_pattern(ci), checkout_files(), modules, ci) == [
+        "tests/property/test_validators_agree.py no longer names '*.py'"
     ]
 
 
