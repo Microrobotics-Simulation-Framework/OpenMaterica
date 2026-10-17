@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Each rule of the reference model cites the specification as `file:line` and a short quote; each quote is
-found at its line, so that a citation that drifts from the text fails. Each point the text leaves open is
-listed once in `OPEN_POINTS` and named where the model applies it, and the two agree."""
+found at its line, so that a citation that drifts from the text fails, and so does a `file:line` without a
+quote, which nothing could check. A quote holds `"` only inside a code span, as the text's JSON stands, so
+that it ends at the first `"` outside one. Each point the text leaves open is listed once in `OPEN_POINTS`
+and named where the model applies it, and the two agree."""
 
 import ast
 import io
@@ -17,11 +19,13 @@ from tests.reference import read_model
 REPOSITORY = Path(__file__).resolve().parents[2]
 SPECIFICATION = REPOSITORY / "docs" / "specification"
 SOURCES = [REPOSITORY / "tests" / "reference" / name for name in ("read_model.py", "strict_json.py")]
+# A quote's text: characters but `"` and a backtick, and code spans, which may hold `"`.
+QUOTED = r'"((?:[^"`]|`[^`]*`)+)"'
+REFERENCE = re.compile(r"(?P<file>[A-Za-z_]+\.md):(?P<start>\d+)(?:-(?P<end>\d+))?")
 CITATION = re.compile(
-    r'(?P<file>[A-Za-z_]+\.md):(?P<start>\d+)(?:-(?P<end>\d+))?\s+(?P<quotes>"[^"]+"'
-    r'(?:\s*(?:and|or|,|;|\.\.\.)\s*"[^"]+")*)'
+    REFERENCE.pattern + r"\s+(?P<quotes>" + QUOTED + r"(?:\s*(?:and|or|,|;|\.\.\.)\s*" + QUOTED + r")*)"
 )
-QUOTE = re.compile(r'"([^"]+)"')
+QUOTE = re.compile(QUOTED)
 OPEN_POINT = re.compile(r"Open point: (?P<name>[a-z0-9_]+)")
 
 
@@ -55,9 +59,15 @@ def specification_lines(file: str) -> list[str] | None:
 
 def citation_problems(texts: Iterable[str]) -> list[str]:
     """Each citation whose file is not in the specification, or whose quote is not at its lines (a quote may
-    run on to the line after the last one cited)."""
+    run on to the line after the last one cited); and each `file:line` with no quote."""
     problems: list[str] = []
     for text in texts:
+        quoted = {citation.start() for citation in CITATION.finditer(text)}
+        problems.extend(
+            f"{reference[0]}: no quote"
+            for reference in REFERENCE.finditer(text)
+            if reference.start() not in quoted
+        )
         for citation in CITATION.finditer(text):
             file, start = citation["file"], int(citation["start"])
             end = int(citation["end"] or start)
@@ -117,9 +127,22 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
         ('read_side_contract.md:222 "Find the field" and "a quote not there"', "'a quote not there'"),
         ('read_side_contracts.md:222 "Find the field"', "no file read_side_contracts.md"),
         (
-            'record_format.md:581 "Two names are **one slip** apart when one becomes the other by inserting,',
+            'record_format.md:581 "Two names are **one slip** apart when one becomes the other by '
+            'inserting,"',
             None,
         ),
+        ("read_side_contract.md:222, where the field is found", "read_side_contract.md:222: no quote"),
+        ('see read_side_contract.md:221-222 (step 7), "Find the field"', "read_side_contract.md:221-222: no"),
+        (
+            'provenance.md:246-247 "or `{"status": "unstated"}` (a ± whose kind the source does not state)"',
+            None,
+        ),
+        (
+            'provenance.md:246-247 "or `{"status": "unstated"}` (a ± whose kind the source does state)"',
+            "is not at lines 246 to 247",
+        ),
+        ('provenance.md:96 "`{"status": "not_checked"}`, or" and "with who checked"', None),
+        ('provenance.md:96 "`{"status": "not_checked"}`, or `{"result"" and "with who', "no quote"),
     ],
 )
 def test_a_citation_that_drifts_fails(text: str, problem: str | None) -> None:

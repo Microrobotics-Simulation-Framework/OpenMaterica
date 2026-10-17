@@ -77,7 +77,8 @@ STATUSES_BEST_FIRST: Final[tuple[Status, ...]] = ("met", "unknown", "not_met")
 
 @dataclass(frozen=True)
 class StatusUnit:
-    """A unit registered as a status object (README.md:44-46)."""
+    """A unit registered as a status object: README.md:45-46 "or `{"status": "not_applicable"}` for a field
+    with no unit"."""
 
     status: str
 
@@ -373,7 +374,8 @@ RESULT_LABELS: Final = (
 WANTS: Final = ("value", "bounds", "components", "evidence", "reference_data", "fit", "coverage")
 # read_side_contract.md:512-515 "the fits and reference data suite"
 FITS_AND_REFERENCE_DATA_WANTS: Final = ("reference_data", "fit", "coverage")
-# read_side_contract.md:507-510, each want's row: the forms it gives
+# Each want's row, the forms it gives: read_side_contract.md:507-510 "| `value` | the number at the operating
+# conditions" and "| `bounds` | `not_met` (`want_mismatch`) | `{"lower", "upper", "basis"}`, as stored"
 GIVES: Final[Mapping[str, tuple[str, ...]]] = {
     "value": ("constant", "table", "power_law"),
     "bounds": ("interval",),
@@ -436,8 +438,9 @@ KNOWN_TOKENS: Final[Mapping[str, frozenset[str]]] = {
     "label": frozenset(FIELD_LABELS),
 }
 
-# The members each shape names at its place, for the slips of record_format.md:568-573 and the members a
-# result returns (read_side_contract.md:150-154).
+# The members each shape names at its place, for the slips of record_format.md:568-569 "one slip (below) from
+# a member the shape names at that place" and the members a result returns, read_side_contract.md:150 "Every
+# member a result returns from a record holds the members the reader's version defines".
 # record_format.md:85 "| Member | Required | Contents |"
 ENVELOPE_NAMES: Final = (
     "schema_version", "record_type", "id", "version", "name", "licence", "content_hash", "card", "body"
@@ -475,7 +478,8 @@ CONDITIONAL_BLOCK_MEMBERS: Final[Mapping[str, str]] = {
     "precision_conditions": "measurement",
 }
 BLOCK_NAMES: Final = (*BLOCK_MEMBERS, *CONDITIONAL_BLOCK_MEMBERS)
-# provenance.md:26-29, the status tokens of each of a block's members that holds a token
+# The status tokens of each of a block's members that holds a token: provenance.md:27 "| in a statistics
+# block, `represents` | `unstated`, `not_applicable` |"
 BLOCK_TOKEN_MEMBERS: Final[Mapping[str, tuple[tuple[str, ...], frozenset[str]]]] = {
     "central": (CENTRALS, frozenset({"not_applicable"})),
     "basis": (BLOCK_BASES, frozenset({"not_applicable"})),
@@ -497,7 +501,9 @@ PROVENANCE_NAMES: Final = (
 )  # fmt: skip
 # provenance.md:92 "`key` in the source registry (section 8); `document`"
 SOURCE_NAMES: Final = ("key", "document", "locator")
-# provenance.md:83-85, the example review's members, with a status object's
+# The members a review names, as the example review holds them, with a status object's:
+# provenance.md:96 "with who checked the value against the source, their ORCID, the date, whether they are
+# independent of whoever or whatever extracted it, and the checklist items covered"
 REVIEW_NAMES: Final = (
     "status", "reason", "result", "reviewer", "orcid", "date", "independent_of_extraction", "checklist"
 )  # fmt: skip
@@ -518,7 +524,8 @@ EVIDENCE_ENTRY_NAMES: Final = (
 )  # fmt: skip
 STANDARD_NAMES: Final = ("designation", "year")
 
-# read_side_contract.md:11 "| Member | Contents |", and the shape at read_side_contract.md:19-27
+# read_side_contract.md:11 "| Member | Contents |", and the shape at read_side_contract.md:20-21 "Its shape,
+# apart from `records`, which is supplied beside it, is exactly this"
 REQUEST_NAMES: Final = ("records", "target", "operating_conditions", "requirement", "acceptances")
 TARGET_NAMES: Final = ("field", "record", "region")
 OPERATING_NAMES: Final = ("value", "range", "unit")
@@ -689,7 +696,9 @@ def slipped(value: JsonObject, named: Iterable[str]) -> bool:
 
 
 def known_token(value: JsonValue, member: str, allowed: Iterable[str], faults: Reasons) -> None:
-    """A token in a member whose row allows `allowed`: read_side_contract.md:288-290."""
+    """A token in a member whose row allows `allowed`: read_side_contract.md:288-290 "a token the reader knows
+    for a member of that name in a member whose row does not allow it (`form_invalid`), a token the reader
+    knows for no member of that name (`unknown_token`)"."""
     if not isinstance(value, str):
         faults.add("form_invalid")
     elif value not in tuple(allowed):
@@ -710,7 +719,8 @@ def status_object(
     scalar: bool = False,
     unit: bool = False,
 ) -> StatusObject | None:
-    """The status object `value` is, in a member that may hold one, or None (provenance.md:44-60).
+    """The status object `value` is, in a member that may hold one, or None: provenance.md:44 "In a member of
+    this table, an object holding `status` is a status object".
 
     `shape` names the members S defines; `scalar` says that S is a number, a string or a token; a unit's token
     is compared at step 9 alone.
@@ -875,7 +885,10 @@ def numeric_value(
     entry: JsonObject, row: ConditionRow, name: str, named: tuple[str, ...], reasons: Reasons
 ) -> JsonObject | None:
     """An operating condition, or the value an implied condition supplies, checked as
-    read_side_contract.md:23-25 and 43-44 say, its unit as 51-57 say; its known members where it is whole."""
+    read_side_contract.md:24-25 "exactly one of `{"value", "unit"}` and `{"range": [lo, hi], "unit"}`, with
+    numbers and a string unit" and read_side_contract.md:44 "an operating range whose `lo` is greater than its
+    `hi`" say, its unit as read_side_contract.md:52-53 "has a string `unit` other than the condition's
+    registered unit" says; its known members where it is whole."""
     if slipped(entry, named):
         reasons.add("request_incomplete", name)
     unit = entry.get("unit")
@@ -982,8 +995,8 @@ def checked_requirement(
 def checked_acceptances(
     request: JsonObject, field_name: str | None, reference: Reference | None, reasons: Reasons
 ) -> tuple[tuple[ImpliedCondition, ...], float | None]:
-    """read_side_contract.md:64-91: every acceptance checked, whatever field or location it names; those of
-    this read's field at its record returned."""
+    """read_side_contract.md:65-66 "Each is checked here, whatever field or location it names": every
+    acceptance checked; those of this read's field at its record returned."""
     given = request.get("acceptances", [])
     if not isinstance(given, list):
         reasons.add("request_incomplete")
@@ -1043,7 +1056,8 @@ def at_the_read(acceptance: JsonObject, reference: Reference | None) -> bool:
 
 
 def checked_implied_condition(acceptance: JsonObject, reasons: Reasons) -> ImpliedCondition | None:
-    """read_side_contract.md:73-78 and declarations.md:190: an implied condition's shape, and its units."""
+    """An implied condition's shape, and its units: read_side_contract.md:73 "An implied condition breaks its
+    shape" and declarations.md:190 "| `implied_condition` | `region`, `interval` or `record` |"."""
     whole_shape = True
     fact, token, implies = acceptance.get("fact"), acceptance.get("token"), acceptance.get("implies")
     # read_side_contract.md:73-74 "where its `fact` is not a specimen fact with tokens or its `token` is not
@@ -1217,7 +1231,8 @@ def version_and_structure_pass(record: JsonObject, reasons: Reasons) -> bool:
 
 
 def reader_schema_accepts(record: JsonObject) -> bool:
-    """record_format.md:14-25, the reader schema's checks of the envelope and the body's structure."""
+    """The reader schema's checks of the envelope and the body's structure: record_format.md:14 "the **reader
+    schema** is open. It checks the envelope"."""
     strings = ("schema_version", "record_type", "id", "version", "name", "content_hash")
     # record_format.md:14-15 "every member section 2 marks required is present and every member is of its JSON
     # type"
@@ -1281,7 +1296,8 @@ def overlay_body_accepted(body: JsonObject) -> bool:
 
 
 def list_records(sources: Sequence[bytes]) -> JsonObject:
-    """README.md:183-187: the identity of each candidate that passes steps 2, 3 and 5 on its own."""
+    """The identity of each candidate that passes steps 2, 3 and 5 on its own: README.md:187-189 "the `{"id",
+    "version"}` of exactly those sources that are candidates"."""
     listed: list[JsonValue] = []
     for source in sources_read(sources):
         value = source.value
@@ -1295,7 +1311,9 @@ def list_records(sources: Sequence[bytes]) -> JsonObject:
 
 
 def hash_operation(data: bytes) -> JsonObject:
-    """README.md:178-182: the content hash of any JSON value, `malformed` for bytes item 6 refuses."""
+    """The content hash of any JSON value, `malformed` for bytes item 6 refuses: README.md:182-184 "gives the
+    content hash of its value, whatever that value's JSON type" and "a file that breaks item 6 gives `not_met`
+    and `malformed`, and no value"."""
     try:
         value = parse(data)
     except NotStrictJson:
@@ -1329,7 +1347,7 @@ def section_slips(section: JsonObject, section_name: str) -> bool:
     return slipped(section, SECTION_NAMES) or (isinstance(fields, dict) and slipped(fields, field_names))
 
 
-# Step 8: form and tokens (read_side_contract.md:284-326)
+# Step 8: form and tokens, read_side_contract.md:284 "8. **Form and tokens.**"
 
 
 def check_value_field(
@@ -1541,7 +1559,7 @@ def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
             unstated = status_object(kind, faults, allowed=frozenset({"unstated"}), scalar=True)
             if unstated is not None:
                 # provenance.md:246-247 "or `{"status": "unstated"}` (a ± whose kind the source does not
-                # state)": another token is no kind of the list's rules, refused by its own.
+                # state)", so another token is no kind of the list's rules, refused by its own.
                 if unstated.token == "unstated":
                     kinds.append("unstated")
             else:
@@ -1684,7 +1702,7 @@ def check_population_level(value: JsonValue, faults: Reasons) -> None:
 
 
 def check_uncertainty(value: JsonValue, faults: Reasons) -> None:
-    """A relative or expanded uncertainty: uncertainty.md:41-51."""
+    """A relative or expanded uncertainty: uncertainty.md:44 "In a relative or expanded uncertainty"."""
     if status_object(value, faults, allowed=ANY_STATUS, shape=UNCERTAINTY_NAMES) is not None:
         return
     if not isinstance(value, dict):
@@ -1798,7 +1816,8 @@ def check_provenance(provenance: JsonValue, faults: Reasons) -> None:
 
 
 def check_derivation(derivation: JsonValue, faults: Reasons) -> None:
-    """provenance.md:180-189."""
+    """provenance.md:180 "A derived value's `derivation` holds `method`" and provenance.md:185-186 "a list of
+    `{"input": <index into inputs>, "specimen": {...}}`"."""
     if not isinstance(derivation, dict):
         faults.add("form_invalid")
         return
@@ -1851,7 +1870,7 @@ def check_input_specimens(entries: JsonValue, inputs: int, faults: Reasons) -> N
 
 
 def check_interval(value: JsonValue, faults: Reasons) -> None:
-    """record_format.md:446-450."""
+    """record_format.md:446 "`lower` and `upper` are numbers, at most one holds `{"status": "none"}`"."""
     stated = status_object(value, faults, allowed=frozenset({"withheld"}), shape=INTERVAL_NAMES)
     if stated is not None:
         withheld_value(stated, faults)
@@ -1882,7 +1901,8 @@ def check_interval(value: JsonValue, faults: Reasons) -> None:
 
 
 def check_composition(value: JsonValue, row: FieldRow, faults: Reasons) -> None:
-    """record_format.md:462-476."""
+    """record_format.md:462 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`" and
+    record_format.md:474-476 "`components` holds at least one component; no component appears twice"."""
     stated = status_object(value, faults, allowed=frozenset({"withheld"}), shape=COMPOSITION_NAMES)
     if stated is not None:
         withheld_value(stated, faults)
@@ -1941,7 +1961,7 @@ def check_composition(value: JsonValue, row: FieldRow, faults: Reasons) -> None:
 
 
 def check_evidence(value: JsonValue, faults: Reasons) -> None:
-    """record_format.md:220-240."""
+    """record_format.md:220 "`biocompatibility.evidence` is a value field of form `evidence`"."""
     # record_format.md:229-230 "The list holds at least one entry; an empty list is a shape error"
     if not (isinstance(value, list) and value):
         faults.add("form_invalid")
@@ -2014,7 +2034,8 @@ def check_standard(standard: JsonValue, faults: Reasons) -> None:
         faults.add("form_invalid")
 
 
-# Step 9: units (read_side_contract.md:327-335)
+# Step 9: units, read_side_contract.md:327 "9. **Units.** Refuse a field unit, `axis_unit` or condition unit
+# other than the registered one"
 
 
 def same_unit(stored: JsonValue, registered: str | StatusUnit) -> bool:
@@ -2174,7 +2195,9 @@ def token_held(name: str, held: JsonObject, applied: Mapping[str, JsonObject]) -
 def condition_entry(
     name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
 ) -> JsonObject:
-    """One entry of the result's `conditions` (read_side_contract.md:155-161), its reason put in `reasons`."""
+    """One entry of the result's `conditions`, its reason put in `reasons`: read_side_contract.md:158-159 "An
+    entry's `record` is the record's entry, or the value an implied condition supplies with basis
+    `implied`"."""
     entry: JsonObject = {"name": name}
     if name in request.operating:
         # read_side_contract.md:160-161 "its `operating` is the request's operating condition, omitted where
@@ -2234,9 +2257,11 @@ def ends(value: JsonObject) -> tuple[Fraction, Fraction]:
 
 
 def within_tolerance(stated: JsonObject, operating: JsonObject, tolerance: float) -> Status:
-    """read_side_contract.md:456-459 and 384-395, on the exact values of the doubles:
-    read_side_contract.md:465 "Every comparison in this table is made on the exact values of the numbers as
-    read"."""
+    """read_side_contract.md:456 "`met` when `abs(r - v) <= t`, else `not_met` (`condition_outside`)" to
+    read_side_contract.md:459 "`met` when `a - t <= lo` and `hi <= b + t`", and a stated plus or minus as
+    read_side_contract.md:476-477 "Where `plus_minus` holds a `bound` entry, it decides" says, on the exact
+    values of the doubles: read_side_contract.md:465 "Every comparison in this table is made on the exact
+    values of the numbers as read"."""
     low, high = ends(stated)
     operating_low, operating_high = ends(operating)
     t = Fraction(tolerance)
@@ -2259,8 +2284,8 @@ def within_tolerance(stated: JsonObject, operating: JsonObject, tolerance: float
     return "unknown" if any(number(value) and value > 0 for value in values) else "met"
 
 
-# What a read returns from a record: the members the reader knows, each as stored
-# (read_side_contract.md:150-154)
+# What a read returns from a record: the members the reader knows, each as stored,
+# read_side_contract.md:153-154 "A member the reader does not know is left out"
 
 
 def copied_object(value: JsonObject) -> JsonObject:
@@ -2348,8 +2373,8 @@ def uncertainty_returned(uncertainty: JsonValue) -> JsonValue:
 
 
 def review_read(provenance: JsonObject) -> JsonObject:
-    """provenance.md:118-123: a review as found, in two cases only, and otherwise as a status object holding
-    `not_checked`."""
+    """A review as found, in two cases only, and otherwise as a status object holding `not_checked`:
+    provenance.md:118 "A reader returns it as found in two cases only"."""
     review = provenance.get("review")
     not_checked: JsonObject = {"status": "not_checked"}
     if (
