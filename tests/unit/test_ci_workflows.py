@@ -21,7 +21,7 @@ import subprocess
 import sys
 import tomllib
 from collections import Counter
-from collections.abc import Callable, Mapping, Set
+from collections.abc import Callable, Mapping, Sequence, Set
 from pathlib import Path
 from typing import Any, NamedTuple, cast
 
@@ -2788,8 +2788,9 @@ CAPS = (
 )
 # Values of a cap's variable the check takes, beside its being unset, and values it refuses: out of range;
 # written otherwise than plainly as a whole number, which fromJSON may still parse (`6.0`, `1e1`, ` 6`); not a
-# number; a command; or a line break and a workflow command, which a refusal that printed the value as it is
-# would give the runner as a command of its own (`workflow_commands`).
+# number; a command; a line break and a workflow command, which a refusal that printed the value as it is
+# would give the runner as a command of its own (`workflow_commands`); or a digit of another script, which a
+# range such as `[1-9]` takes in a locale that collates it there (`CAP_LOCALES`), and fromJSON cannot parse.
 CAPS_TAKEN = ("1", "9", "10", "19", "20")
 CAPS_REFUSED = (
     "0",
@@ -2815,7 +2816,13 @@ CAPS_REFUSED = (
     "6\n::warning title=injected::x",
     "6\r::notice::x",
     "6\n##[warning]x",
+    "\u0666",
+    "\uff16",
+    "\u00b2",
 )
+# The locales each check runs under: GitHub's runner's, and one whose collation puts other scripts' digits in
+# bash's ranges (glibc's en_US.UTF-8 takes `\u0666`, ARABIC-INDIC DIGIT SIX, in `[1-9]`).
+CAP_LOCALES = ("C.UTF-8", "en_US.UTF-8")
 
 
 def workflow_commands(printed: str) -> list[str]:
@@ -2887,11 +2894,14 @@ def cap_used(written: object, context: Mapping[str, object]) -> object:
     return written
 
 
-def cap_check_problems(found: Workflow, cap: Cap, directory: Path) -> list[str]:
-    """Where the cap step, run as written, takes a value of the variable outside 1 to 20 or refuses one
-    inside, lets a value run a command, refuses one without naming the variable or with a workflow command
-    beside its own, or takes one that the capped job computes as another number, the variable unset
-    included."""
+def cap_check_problems(
+    found: Workflow, cap: Cap, directory: Path, locales: Sequence[str] = CAP_LOCALES
+) -> list[str]:
+    """Where the cap step, run as written under each of `locales`, takes a value of the variable outside 1
+    to 20 or refuses one inside, lets a value run a command, refuses one without naming the variable or with
+    a workflow command beside its own, or takes one that the capped job computes as another number, the
+    variable unset included; or where a locale is not installed, so that the check would run under bash's
+    fallback instead."""
     check = step(found["jobs"][cap.checker], CAP_STEP)
     written = found["jobs"][cap.job].get("strategy", {}).get("max-parallel")
     tree = directory / "tree"
@@ -2902,15 +2912,19 @@ def cap_check_problems(found: Workflow, cap: Cap, directory: Path) -> list[str]:
         *((value, True) for value in CAPS_TAKEN),
         *((value, False) for value in CAPS_REFUSED),
     ]
-    for value, taken in cases:
+    for (value, taken), locale in itertools.product(cases, locales):
         context = {f"vars.{cap.variable}": value}
-        status, _, printed = run_step(check, context, tree, scratch=directory)
+        base = dict(os.environ, LANG=locale, LC_ALL=locale)
+        status, _, printed = run_step(check, context, tree, base=base, scratch=directory)
+        if "setlocale" in printed:
+            problems.append(f"the locale {locale} is not installed here, so the check is not run under it")
+            continue
         if (tree / "ran").exists():
             problems.append(f"{cap.variable} {value!r} ran a command")
             (tree / "ran").unlink()
         if not taken:
             if status == 0:
-                problems.append(f"the check takes {cap.variable} {value!r}")
+                problems.append(f"the check takes {cap.variable} {value!r} under {locale}")
             elif CAP_REFUSAL.format(variable=cap.variable) not in printed:
                 problems.append(f"the check refuses {cap.variable} {value!r} without naming it: {printed!r}")
             elif len(commands := workflow_commands(printed)) != 1 or not commands[0].startswith(
@@ -2921,7 +2935,7 @@ def cap_check_problems(found: Workflow, cap: Cap, directory: Path) -> list[str]:
                     f"commands: {commands!r}"
                 )
         elif status != 0:
-            problems.append(f"the check refuses {cap.variable} {value!r}")
+            problems.append(f"the check refuses {cap.variable} {value!r} under {locale}")
         else:
             took = rendered(str(check.get("env", {}).get("MAX_PARALLEL")), context)
             used = cap_used(written, context)
@@ -3001,16 +3015,25 @@ def test_the_cap_check_can_fail(fault: Callable[[Workflow, Cap], None], problem:
     assert any(problem in line for line in problems), problems
 
 
-CAP_CONDITION = '[[ ! "$MAX_PARALLEL" =~ ^([1-9]|1[0-9]|20)$ ]]'
+CAP_CONDITION = '[[ ! "$MAX_PARALLEL" =~ ^([123456789]|1[0123456789]|20)$ ]]'
 
 
 @pytest.mark.parametrize("cap", CAPS, ids=lambda cap: cap.job)
 @pytest.mark.parametrize(
     ("old", "new", "problem"),
     [
-        ("|20)$", "|2[0-9])$", "the check takes {variable} '21'"),
-        ("^([1-9]|", "^([0-9]|", "the check takes {variable} '0'"),
-        ("^([1-9]|1[0-9]|20)$", "([1-9]|1[0-9]|20)", "the check takes {variable} '6.0'"),
+        ("|20)$", "|2[0123456789])$", "the check takes {variable} '21'"),
+        ("^([123456789]|", "^([0123456789]|", "the check takes {variable} '0'"),
+        (
+            "^([123456789]|1[0123456789]|20)$",
+            "([123456789]|1[0123456789]|20)",
+            "the check takes {variable} '6.0'",
+        ),
+        (
+            "^([123456789]|1[0123456789]|20)$",
+            "^([1-9]|1[0-9]|20)$",
+            "the check takes {variable} '\u0666' under en_US.UTF-8",
+        ),
         (
             CAP_CONDITION,
             "(( MAX_PARALLEL < 1 || MAX_PARALLEL > 20 ))",
@@ -3037,6 +3060,7 @@ CAP_CONDITION = '[[ ! "$MAX_PARALLEL" =~ ^([1-9]|1[0-9]|20)$ ]]'
         "a-ceiling-raised",
         "zero-taken",
         "unanchored",
+        "ranges",
         "bash-arithmetic",
         "refusal-ignored",
         "refusal-unnamed",
@@ -3051,6 +3075,15 @@ def test_the_cap_check_as_run_can_fail(old: str, new: str, problem: str, cap: Ca
     check["run"] = check["run"].replace(old, new)
     problems = cap_check_problems(found, cap, tmp_path)
     assert any(problem.format(variable=cap.variable) in line for line in problems), problems
+
+
+@pytest.mark.parametrize("cap", CAPS, ids=lambda cap: cap.job)
+def test_the_cap_check_finds_a_locale_not_installed(cap: Cap, tmp_path: Path) -> None:
+    """So that a runner without one of `CAP_LOCALES` fails the check, rather than run it under bash's
+    fallback, the C locale, and pass without trying the other."""
+    problems = cap_check_problems(workflow(cap.workflow), cap, tmp_path, ("C.UTF-8", "xx_XX.UTF-8"))
+    assert "the locale xx_XX.UTF-8 is not installed here, so the check is not run under it" in problems
+    assert not [line for line in problems if "xx_XX" not in line], problems
 
 
 def test_the_cap_check_finds_a_job_that_computes_another_cap(tmp_path: Path) -> None:

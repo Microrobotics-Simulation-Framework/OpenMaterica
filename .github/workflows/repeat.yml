@@ -127,7 +127,7 @@ jobs:
           VARIABLE: REPEAT_MAX_PARALLEL
           MAX_PARALLEL: ${{ vars.REPEAT_MAX_PARALLEL || '10' }}
         run: |
-          if [[ ! "$MAX_PARALLEL" =~ ^([1-9]|1[0-9]|20)$ ]]; then
+          if [[ ! "$MAX_PARALLEL" =~ ^([123456789]|1[0123456789]|20)$ ]]; then
             printf -v shown '%q' "$MAX_PARALLEL"
             echo "::error title=Runner cap::the repository variable $VARIABLE is $shown, not a whole number from 1 to 20: set it to one, or delete it for the workflow's default"
             exit 1
