@@ -5,10 +5,11 @@ which needs Atheris, so that a unit test can show each fails (`tests/unit/test_f
 The reference model (`tests/reference/read_model.py`) says what each read must give: the target holds every
 read to it as HP12 does (`check_against_the_model`), so that a refusal step 8 gives wrongly is seen, which no
 other oracle here can see (S2a-2's review, L3). Beside it, the target holds step 8 to T1's third relation
-(`tests/spec_sync/test_t1.py`): what the reader `$defs` refuse, step 8 refuses. A constant step 8 passes it
-holds to steps 9 and 10 as the text gives them: its units each compared with the one registered for it, code
-point for code point, written here from `record_format.md` section 4.2 and step 9; and its conditions against
-the request by `condition_oracle.py`, HP7's oracle, written from section 5 alone.
+(`tests/spec_sync/test_t1.py`): what the reader `$defs` refuse, step 8 refuses. A constant, an interval or a
+composition step 8 passes it holds to steps 9 and 10 as the text gives them: its units each compared with the
+one registered for it, code point for code point, written here from `record_format.md` section 4.2 and step
+9; and its conditions against the request by `condition_oracle.py`, HP7's oracle, written from section 5
+alone.
 """
 
 import json
@@ -36,11 +37,15 @@ from tests.spec_sync.schemas import BASE, takes, why_refused
 
 JsonObject = dict[str, JsonValue]
 
-CONSTANT = "record.reader.json#/$defs/constant_field"
-# jsonschema-rs alone, on every input the target reaches: T1 holds its verdicts on that definition to
-# python-jsonschema's (`tests/property/test_validators_agree.py`).
-READER_TAKES = takes(CONSTANT)
-WHY = why_refused({"$ref": urljoin(BASE, CONSTANT)})
+# The forms step 8 reads, each with its reader definition. jsonschema-rs alone, on every input the target
+# reaches: T1 holds its verdicts on those definitions to python-jsonschema's
+# (`tests/property/test_validators_agree.py`).
+READ_FORMS = ("constant", "interval", "composition")
+DEFINITIONS = {form: f"record.reader.json#/$defs/{form}_field" for form in READ_FORMS}
+READER_TAKES = {form: takes(definition) for form, definition in DEFINITIONS.items()}
+WHY = {form: why_refused({"$ref": urljoin(BASE, definition)}) for form, definition in DEFINITIONS.items()}
+# What a read of each form wants to get its own member (`read_side_contract.md` section 6).
+WANT_OF = {"constant": "value", "interval": "bounds", "composition": "components"}
 
 # The operating conditions and the requirement a read gives each condition a field's row may require: a
 # tolerance about a seed's usual value, or an accept list of some of the row's tokens.
@@ -59,8 +64,8 @@ REQUIRED: dict[str, JsonObject] = {
 }
 
 
-# The codes of steps 12 and 13 a constant's read gives (`read_side_contract.md` section 3), and those of step
-# 10. The target's requests want only what plain read gives, so `want_mismatch` comes from step 13 alone.
+# The codes of steps 12 and 13 a read of those forms gives (`read_side_contract.md` section 3), and those of
+# step 10. The target's requests want only what plain read gives, so `want_mismatch` comes from step 13 alone.
 STEPS_12_AND_13 = frozenset({"stated_without_origin", "want_mismatch"})
 STEP_10 = frozenset(code for code, row in REASONS["reasons"].items() if 10 in row.get("steps", []))
 
@@ -79,13 +84,22 @@ def passed_step_8(result: JsonValue) -> bool:
     return isinstance(reasons, list) and all(code in AFTER_STEP_8 | STEPS_12_AND_13 for code in codes)
 
 
+def read_form(field_name: str, field: JsonValue) -> str | None:
+    """The form of `field`, where it is one step 8 reads and its row allows, and it holds no alternatives."""
+    form = field.get("form") if isinstance(field, dict) else None
+    if not isinstance(form, str) or form not in READ_FORMS or form not in VOCABULARY.fields[field_name].forms:
+        return None
+    return form if isinstance(field, dict) and "alternatives" not in field else None
+
+
 def check_no_refusal_missing(field_name: str, field: JsonValue, result: JsonValue) -> None:
-    """A field step 8 lets through (`passed_step_8`), a constant its row allows that holds no alternatives,
-    is one the reader `$defs` take."""
-    if not (isinstance(field, dict) and passed_step_8(result) and field.get("form") == "constant"):
-        return
-    if "alternatives" not in field and "constant" in VOCABULARY.fields[field_name].forms:
-        assert READER_TAKES(field), f"step 8 passed a constant the reader $defs refuse: {WHY(field)[:1]}"
+    """A field step 8 lets through (`passed_step_8`), of a form it reads and its row allows, holding no
+    alternatives, is one the reader `$defs` take."""
+    form = read_form(field_name, field)
+    if form is not None and passed_step_8(result):
+        assert READER_TAKES[form](field), (
+            f"step 8 passed a field of form {form} the reader $defs refuse: {WHY[form](field)[:1]}"
+        )
 
 
 def same(stored: JsonValue, registered: JsonValue) -> bool:
@@ -146,14 +160,12 @@ def check_steps_9_and_10(
     required: Mapping[str, JsonObject],
     result: JsonValue,
 ) -> None:
-    """A constant step 8 passed, which its row allows and which holds no alternatives, read with
+    """A field step 8 passed, of a form it reads and its row allows, holding no alternatives, read with
     `operating` and `required`, is refused at step 9 exactly where a unit differs, with each of those reasons
     and no other; else gives step 10's reasons and entries as the oracle does, and is refused there exactly
     where the oracle gives a condition `not_met`; and else goes on to steps 12 and 13, whose reasons alone
     stand beside step 10's."""
-    if not (isinstance(field, dict) and passed_step_8(result) and field.get("form") == "constant"):
-        return
-    if "alternatives" in field or "constant" not in VOCABULARY.fields[field_name].forms:
+    if read_form(field_name, field) is None or not passed_step_8(result) or not isinstance(field, dict):
         return
     pairs = {(str(reason.get("code")), reason.get("condition")) for reason in objects(result, "reasons")}
     units = units_refused(field_name, field)
@@ -207,7 +219,8 @@ def check_result_laws(result: JsonValue) -> None:
     being in the target's requests: `value`, `specimen`, `statistics` and `provenance` exactly where the
     status is not `not_met` and the result rests on one value, `alternative_values` exactly under `no_pick`,
     `unit` beside either, no `assumption`, and `conditions` beside a value, never under `no_pick` or after a
-    refusal before step 10. A form without a statistics block is the target's "not yet" until S2b."""
+    refusal before step 10. Evidence, which holds no statistics block, is the target's "not yet" until
+    S2b-2."""
     if result == "not yet":
         return
     assert isinstance(result, dict), result
