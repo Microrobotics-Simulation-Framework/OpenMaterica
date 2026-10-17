@@ -431,11 +431,14 @@ def _ziv(compute: Callable[[_Arithmetic[Fraction]], Fraction], arithmetic: _Arit
 
 
 def _double(number: Fraction) -> float:
-    """`number` rounded to the nearest double, ties to even; infinite beyond the largest."""
+    """`number` rounded to the nearest double, ties to even: an infinity of its sign where that is beyond the
+    largest double, where `float` raises."""
     try:
         return float(number)
     except OverflowError:
-        return math.copysign(math.inf, number)
+        # record_format.md:64 "a number that rounds to an infinity: under IEEE 754 rounding to nearest, ties
+        # to even". `math.copysign` would take `number` as a float, and raise again.
+        return math.inf if number > 0 else -math.inf
 
 
 def _log_ratio(r: Fraction, s: Fraction) -> Fraction | None:
