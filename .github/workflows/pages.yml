@@ -1,6 +1,8 @@
 # Deploys site/, as it is, to GitHub Pages at https://openmaterica.org, with everything under src/materica/schema/
 # at /schema/. The only build step writes an index page into /schema/ and each directory under it
-# (scripts/schema_index.py, standard library only), since Pages lists no directory itself. The custom domain is
+# (scripts/schema_index.py, standard library only), since Pages lists no directory itself; it also puts a draft
+# note on the page of each schema version that tests/spec_sync/released_schemas.json does not list, so freezing
+# a version at its release (scripts/freeze_schema.py) redeploys the site without the note. The custom domain is
 # set in the repository's Pages settings: a site deployed by a workflow needs no CNAME file, and GitHub ignores
 # one ("Managing a custom domain for your GitHub Pages site", GitHub Docs).
 #
@@ -18,6 +20,7 @@ on:
       - "assets/images/**"
       - "src/materica/schema/**"
       - "scripts/schema_index.py"
+      - "tests/spec_sync/released_schemas.json"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
