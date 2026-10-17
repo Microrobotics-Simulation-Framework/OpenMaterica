@@ -25,6 +25,9 @@ SHOWN = {
     "unknown_member",
     "another_section",
     "not_json",
+    "form_constant",
+    "form_interval",
+    "form_composition",
 }
 
 

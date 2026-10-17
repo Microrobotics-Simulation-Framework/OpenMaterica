@@ -4,7 +4,7 @@ reads that end at each step S2 builds (`result_strategies.py`). The mutants they
 `test_result_mutants.py`.
 
 - **HP1, totality and the reason table.** A read gives a result, or `NotImplementedError` where a step not
-  built yet decides it, which only step 8's faults reach here (a form other than a constant); every code is in
+  built yet decides it, which only step 8's faults reach here (a table, evidence); every code is in
   the reason table; each `(code, condition)` appears once; and `condition` is present on every `condition_*`
   reason and on no reason of a code that never concerns one (section 2 item 2), the oracle the generated
   reason table.
@@ -18,7 +18,11 @@ reads that end at each step S2 builds (`result_strategies.py`). The mutants they
   for bit and status objects as status objects, holding the members the generated shapes define and no
   other (the oracle filters the stored value by the `TypedDict` keys itself, never by the reader's filter),
   each count and index an integer (the code design's rule 5); the review as `provenance.md` section 2 item 6
-  reads it; and changing what a result returns changes neither the store nor a later read (rule 6).
+  reads it; and changing what a result returns changes neither the store nor a later read (rule 6). The
+  value is the form's own member, under the `want` that gives it: a constant's number, an interval's bounds
+  with their basis, a `none` bound a status, never infinity (`record_format.md` section 6, interval item 3),
+  a composition with its basis, sum rule, stated sum and components, never normalised (composition item 4),
+  a component's statistics block's counts integers.
 - **HP11, claims.** Without the hash suite, `hash_not_checked` is present exactly where the read reached step
   4, which the draw knows; with a correct hash the two reads differ by that label alone.
 """
@@ -303,6 +307,30 @@ def check_members(expected: JsonObject, given: JsonObject, names: tuple[str, ...
             assert same(stated[str(entry["name"])], entry["record"]), entry
 
 
+# Each form's own member (`record_format.md` section 5) and its generated shape.
+OWN_MEMBERS = {"constant": "value", "interval": "interval", "composition": "composition"}
+FIELD_SHAPES = {
+    "constant": shapes.ConstantField,
+    "interval": shapes.IntervalField,
+    "composition": shapes.CompositionField,
+}
+
+
+def expected_value(field: JsonObject) -> JsonValue:
+    """The field's own member as a read returns it, a component's statistics block's counts integers."""
+    form = str(field["form"])
+    own = OWN_MEMBERS[form]
+    value = as_stored(field[own], get_type_hints(FIELD_SHAPES[form])[own])
+    components = value.get("components") if isinstance(value, dict) else None
+    for component in components if isinstance(components, list) else []:
+        statistics = component.get("statistics") if isinstance(component, dict) else None
+        if isinstance(statistics, dict):
+            for name in COUNTS:
+                if name in statistics:
+                    statistics[name] = whole(statistics[name])
+    return value
+
+
 def check_returned_as_stored(drawn: Drawn) -> None:
     store = stored(drawn)
     result = read_drawn(drawn, store=store)
@@ -311,13 +339,16 @@ def check_returned_as_stored(drawn: Drawn) -> None:
     held = field_at(drawn.record, drawn.field)
     section = at(drawn.record, "body", "sections", drawn.field.partition(".")[0])
     if "value" in members:
-        assert same(held["value"], members["value"]), (held["value"], members["value"])
+        assert same(expected_value(held), members["value"]), (expected_value(held), members["value"])
         check_members(expected_members(held, section), members)
     for index, entry in enumerate(cast(list[JsonObject], members.get("alternative_values", []))):
         alternative = at(held, "alternatives", index)
         assert type(entry["alternative"]) is int, entry
         assert entry["alternative"] == index, entry
-        assert same(alternative["value"], entry["value"]), (alternative["value"], entry["value"])
+        assert same(expected_value(alternative), entry["value"]), (
+            expected_value(alternative),
+            entry["value"],
+        )
         check_members(expected_members(alternative, section), entry, RETURNED[1:])
         assert same(expected_members(alternative, section)["unit"], members["unit"]), members["unit"]
     before = written(result)
@@ -356,6 +387,9 @@ def scrambled(value: object) -> None:
 # to 0.36 at `ci` and at `dev` over 20 to 40 runs (2026-10-18), by the draws before it. At 0.33 it falls below
 # its floor at `ci` with a probability of at most about 1e-14; `dev` judges no chance below a half.
 @pytest.mark.chances(
+    form_constant=0.5,
+    form_interval=0.25,
+    form_composition=0.25,
     negative_zero=0.25,
     statistics_withheld=0.25,
     unknown_member=0.33,

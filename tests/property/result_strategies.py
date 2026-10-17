@@ -3,14 +3,15 @@
 HP11: reads that end at each step S2 builds, each drawn by its kind first, so that the feature audit holds
 each kind to its draw floor.
 
-A kind is a read the steps built decide: one whose record passes steps 1 to 10, under each `want` of plain
-read; one with a fault of step 8's catalogue (`value_field_strategies.py`) or of steps 9 and 10's
-(`condition_strategies.py`), or of step 10's that leave the read to go on with their `unknown` reasons; one
-that ends before step 4 (no candidate, a pin no candidate states, an
-unreadable source beside none, another schema version, an ill-formed one, a broken envelope), at step 5 (a
-type no reader reads) or at step 7 (a field the record does not hold); and a field holding alternatives, each
-of which the request meets, or whose list breaks its shape. Each knows whether its read reaches step 4, where
-a reader without the hash suite labels it `hash_not_checked`.
+A kind is a read the steps built decide: one whose record passes steps 1 to 10, a constant, an interval or a
+composition, under each `want` of plain read; one with a fault of step 8's catalogue
+(`value_field_strategies.py`) or of steps 9 and 10's (`condition_strategies.py`), or of step 10's that leave
+the read to go on with their `unknown` reasons; one that ends before step 4 (no candidate, a pin no candidate
+states, an unreadable source beside none, another schema version, an ill-formed one, a broken envelope), at
+step 5 (a type no reader reads) or at step 7 (a field the record does not hold); and a field holding
+alternatives, each of which the request meets, or whose list breaks its shape. Each knows whether its read
+reaches step 4, where a reader without the hash suite labels it `hash_not_checked`, and a read of a value the
+form of its field.
 """
 
 import copy
@@ -33,14 +34,24 @@ from tests.property.condition_strategies import (
     reference,
 )
 from tests.property.strategies import DOUBLES, TEXT, Size
-from tests.property.value_field_strategies import faulty_records, pinned
+from tests.property.value_field_strategies import (
+    BASE_FORMS,
+    FORM_FIELDS,
+    OWN_MEMBERS,
+    faulty_records,
+    own_member,
+    pinned,
+)
+from tests.property.value_field_strategies import (
+    WANTS as FORM_WANTS,
+)
 
 JsonObject = dict[str, JsonValue]
 Draw = st.DrawFn
 
 WITH_HASH: frozenset[Suite] = frozenset({"plain_read", "hash"})
 WITHOUT_HASH: frozenset[Suite] = frozenset({"plain_read"})
-# The `want`s of plain read: a constant gives `value` alone.
+# The `want`s of plain read: a constant gives `value` alone, an interval `bounds`, a composition `components`.
 WANTS = ("value", "value", "value", "bounds", "components", "evidence")
 BEFORE_STEP_4 = (
     "no_candidate",
@@ -94,18 +105,26 @@ def with_want(request: JsonObject, want: str) -> JsonObject:
     return changed
 
 
-def from_read(kind: str, read: Read, want: str, claims: frozenset[Suite]) -> Drawn:
-    return Drawn(
-        kind, (as_source(read.record),), with_want(read.request, want), claims, True, read.record, read.field
-    )
+def from_read(kind: str, read: Read, want: str, claims: frozenset[Suite], *features: str) -> Drawn:
+    request = with_want(read.request, want)
+    return Drawn(kind, (as_source(read.record),), request, claims, True, read.record, read.field, features)
+
+
+@st.composite
+def form_reads(draw: Draw, size: Size) -> tuple[str, Read]:
+    """A base read of a field of a form drawn first, and the form."""
+    form = draw(st.sampled_from(BASE_FORMS))
+    return form, draw(base_reads(size, FORM_FIELDS[form], form))
 
 
 @st.composite
 def met_reads(draw: Draw, size: Size, wants: tuple[str, ...] = WANTS) -> Drawn:
-    read = draw(base_reads(size))
-    return from_read(
-        "met", read, draw(st.sampled_from(wants)), draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
-    )
+    """A read that passes steps 1 to 10, under the `want` its form gives in half the draws, so that an
+    interval and a composition return their member as often as a constant does, and under any other."""
+    form, read = draw(form_reads(size))
+    claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
+    want = FORM_WANTS[form] if draw(st.booleans()) else draw(st.sampled_from(wants))
+    return from_read("met", read, want, claims, f"form_{form}")
 
 
 @st.composite
@@ -222,19 +241,27 @@ def target_of(request: JsonObject, record: JsonObject) -> JsonObject:
     return changed
 
 
+def another_value(draw: Draw, field: JsonObject, name: str) -> JsonObject:
+    """`field` with an own member of its form drawn afresh."""
+    form = str(field["form"])
+    return {**copy.deepcopy(field), OWN_MEMBERS[form]: draw(own_member(form, name))}
+
+
 @st.composite
 def alternatives(draw: Draw, size: Size, wants: tuple[str, ...] = WANTS) -> Drawn:
     """Two or three alternatives, each the base read's field with a value of its own, which the request
-    meets: `no_pick` under `want: value`, `want_mismatch` under any other."""
-    read = draw(base_reads(size))
+    meets: `no_pick` under the `want` their form gives, `want_mismatch` under any other."""
+    form, read = draw(form_reads(size))
     field = field_at(read.record, read.field)
     without_origin_s_reason(field)
     count = draw(st.integers(2, 3))
-    held: list[JsonValue] = [{**copy.deepcopy(field), "value": draw(DOUBLES)} for _ in range(count)]
+    held: list[JsonValue] = [another_value(draw, field, read.field) for _ in range(count)]
     record = holding(read, {"alternatives": held})
     request = with_want(target_of(read.request, record), draw(st.sampled_from(wants)))
     claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
-    return Drawn("alternatives", (as_source(record),), request, claims, True, record, read.field)
+    return Drawn(
+        "alternatives", (as_source(record),), request, claims, True, record, read.field, (f"form_{form}",)
+    )
 
 
 @st.composite
@@ -283,20 +310,57 @@ BUILDERS = {
 }
 
 
-# What a field a read returns from is given to show, each in a share of draws: its value `-0`; a review of
-# each way `provenance.md` section 2 item 6 reads one (any value, a known result, a status object); its
-# statistics held as the status object its row allows; and a member the reader does not know, in its
-# statistics block, a fact of its specimen or a condition.
+# What a field a read returns from is given to show, each in a share of draws: its value `-0` (an interval's
+# lower bound, a composition's first fraction); a review of each way `provenance.md` section 2 item 6 reads
+# one (any value, a known result, a status object); its statistics held as the status object its row allows;
+# and a member the reader does not know, in its statistics block, a fact of its specimen, a condition, or its
+# own member (an interval, a composition's first component).
 REVIEWS = ("review_anything", "review_reviewed", "review_not_checked")
-UNKNOWN_PLACES = ("statistics", "fact", "condition")
+UNKNOWN_PLACES = ("statistics", "fact", "condition", "own_member")
+
+
+def with_negative_zero(field: JsonObject) -> None:
+    """`-0` where the field's form holds a number it returns as stored: a constant's value, an interval's
+    lower bound (its upper made at least `0`, or left `none`), or a composition's first fraction."""
+    form = str(field["form"])
+    if form == "constant":
+        field["value"] = -0.0
+    elif form == "interval":
+        bounds = at(field, "interval")
+        upper = bounds["upper"]
+        bounds["lower"] = -0.0
+        if isinstance(upper, float) and upper < 0:
+            bounds["upper"] = 0.0
+    else:
+        first = first_component(field)
+        first["fraction"] = -0.0
+
+
+def first_component(field: JsonObject) -> JsonObject:
+    components = at(field, "composition")["components"]
+    assert isinstance(components, list)
+    first = components[0]
+    assert isinstance(first, dict)
+    return first
+
+
+def own_member_place(field: JsonObject) -> JsonObject:
+    """An object of the field's own member a member the reader does not know may go in, or its statistics
+    block for a constant, which holds none."""
+    form = str(field["form"])
+    if form == "interval":
+        return at(field, "interval")
+    if form == "composition":
+        return first_component(field)
+    return at(field, "statistics")
 
 
 @st.composite
 def enriched(draw: Draw, field: JsonObject) -> tuple[str, ...]:
     """`field` changed to show what it is drawn to, which it returns, by name."""
-    shown: list[str] = []
+    shown: list[str] = [f"form_{field['form']}"]
     if draw(st.integers(0, 3)) == 0:
-        field["value"] = -0.0
+        with_negative_zero(field)
         shown.append("negative_zero")
     review = draw(st.sampled_from(REVIEWS))
     shown.append(review)
@@ -322,6 +386,7 @@ def enriched(draw: Draw, field: JsonObject) -> tuple[str, ...]:
             "statistics": lambda: at(field, "statistics"),
             "fact": lambda: at(field, "specimen", "post_mortem_interval"),
             "condition": lambda: at(field, "conditions", "measurement_geometry"),
+            "own_member": lambda: own_member_place(field),
         }[place]()
         holder["x_unknown_member"] = draw(DOUBLES)
         shown.append("unknown_member")
@@ -338,10 +403,10 @@ def drawn_reads(draw: Draw, size: Size, kinds: tuple[str, ...] = KINDS) -> Drawn
 
 @st.composite
 def valued_reads(draw: Draw, size: Size) -> Drawn:
-    """A read that returns a value or alternative values, under `want: value`, the kind drawn first: a met
-    constant, or alternatives, each the field `enriched` gave what it shows."""
+    """A read that returns a value or alternative values, under the `want` its form gives, the kind drawn
+    first, then the form: a met field, or alternatives, each the field `enriched` gave what it shows."""
     kind = draw(st.sampled_from(VALUED))
-    read = draw(base_reads(size))
+    form, read = draw(form_reads(size))
     field = field_at(read.record, read.field)
     without_origin_s_reason(field)
     shown = draw(enriched(field))
@@ -349,8 +414,8 @@ def valued_reads(draw: Draw, size: Size) -> Drawn:
         record = repinned(read.record)
     else:
         held: list[JsonValue] = [copy.deepcopy(field)]
-        held += [{**copy.deepcopy(field), "value": draw(DOUBLES)} for _ in range(draw(st.integers(1, 2)))]
+        held += [another_value(draw, field, read.field) for _ in range(draw(st.integers(1, 2)))]
         record = holding(read, {"alternatives": held})
     claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
-    request = with_want(target_of(read.request, record), "value")
+    request = with_want(target_of(read.request, record), FORM_WANTS[form])
     return Drawn(kind, (as_source(record),), request, claims, True, record, read.field, shown)
