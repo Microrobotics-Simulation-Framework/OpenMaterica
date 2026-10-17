@@ -1,0 +1,142 @@
+{
+  "case": "PR-022",
+  "variant": "bounds_proxy_range",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "grade_density_bounds_proxy_range.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/polymer_grade_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:f2218a3391ff61e5ff8c1569f0beb8d2992aa374c77a41c8c06dda1b0958d3d7"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "bounds",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": {
+      "lower": 1100.0,
+      "upper": 1300.0,
+      "basis": "proxy_range"
+    },
+    "unit": "kg/m3",
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "met",
+        "record": {
+          "value": 293.15,
+          "unit": "K",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 293.15,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "density_kind",
+        "status": "met",
+        "record": {
+          "token": "apparent",
+          "basis": "stated"
+        }
+      }
+    ],
+    "specimen": {
+      "lot": {
+        "status": "not_applicable"
+      }
+    },
+    "statistics": {
+      "central": {
+        "status": "not_applicable"
+      },
+      "n_specimens": {
+        "status": "unstated"
+      },
+      "n_donors": {
+        "status": "not_applicable"
+      },
+      "mean": {
+        "status": "not_applicable"
+      },
+      "sd": {
+        "status": "not_applicable"
+      },
+      "min": {
+        "status": "not_applicable"
+      },
+      "max": {
+        "status": "not_applicable"
+      },
+      "distribution": {
+        "status": "unstated"
+      },
+      "basis": "reported_range",
+      "represents": {
+        "status": "unstated"
+      },
+      "dispersion": "not_reported",
+      "relative_uncertainty": {
+        "status": "none"
+      },
+      "expanded_uncertainty": {
+        "status": "none"
+      }
+    },
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

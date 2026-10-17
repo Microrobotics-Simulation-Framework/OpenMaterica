@@ -1,0 +1,48 @@
+{
+  "case": "PR-036",
+  "variant": "broken_interval_on_elemental_composition",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "form_interval_on_bulk_elemental_composition_upside_down.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/form_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:9204bffb6455be02f9308164949327caf2b22bbcd68b7a92b58242fc30115926"
+      },
+      "field": "bulk.elemental_composition"
+    },
+    "requirement": {
+      "want": "bounds"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_not_registered"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

@@ -126,12 +126,14 @@ def t1_disagreements(
 
 # A whole pass over T1's examples, 5,066 of them, took 590 s and 760 s summed over 8 workers of a shared
 # machine, nearly all of it python-jsonschema's (2026-10-16); S2b-1's full interval and composition among
-# T1's bases make them 5,383. At `dev` and `ci` the share takes every
+# T1's bases make them 5,383, and its review's 19 case inputs 5,402. At `dev` and `ci` the share takes every
 # STRIDE-th example of each group, from its first: the inputs that read each registered field, and the
 # variants of each base by each change and origin. So it holds each registered field the inputs read, each
 # base, each origin and each change, alone and beside each origin, which `share_misses` checks: T1's order
 # cycles through the origins in a period of five, and a plain stride of 10 through all of T1 held none of the
-# 117 variants that set `measured_by_source`. A disagreement the share misses is left to `deep`, weekly.
+# 117 variants that set `measured_by_source`; from whichever of its first ten examples it starts, such a
+# stride misses the variants of some origin (with PR #37's review's 19 inputs ahead of them, the first holds
+# one that sets `measured_by_source`). A disagreement the share misses is left to `deep`, weekly.
 STRIDE = 1 if PROFILE == "deep" else 10
 PARTS = 12
 
@@ -180,8 +182,11 @@ def test_t1s_share_holds_each_kind_of_example() -> None:
 
 
 def test_a_share_that_strides_through_t1s_order_misses_an_origin() -> None:
-    """The control: every tenth example of T1 in its order, the share before it was taken by group."""
-    assert "origin measured_by_source" in share_misses(t1.all_examples()[::10])
+    """The control: every tenth example of T1 in its order, the share before it was taken by group, from any
+    of the first ten: each misses the variants of some origin."""
+    examples = t1.all_examples()
+    for start in range(10):
+        assert any("origin" in missed for missed in share_misses(examples[start::10])), start
 
 
 def test_t1s_share_holds_both_verdicts() -> None:

@@ -183,7 +183,10 @@ EXCEPTIONS: dict[str, Kind] = {
     ),
     "repeated_component": Kind(
         "a composition naming one component twice: a schema does not compare list items' members",
-        {1: ("PR-051.repeated_component",), 2: ("PR-051.repeated_component",)},
+        {
+            1: ("PR-051.repeated_component", "PR-051.repeated_component_apart"),
+            2: ("PR-051.repeated_component", "PR-051.repeated_component_apart"),
+        },
         mark=r"twice",
     ),
     "row_label": Kind(
@@ -205,6 +208,7 @@ EXCEPTIONS: dict[str, Kind] = {
         {
             2: (
                 "PR-045.condition_token_of_another_row",
+                "PR-045.interval_basis_of_a_statistics_block",
                 "PR-154.student_t_in_block",
                 "PR-154.uniform_in_block",
                 "PR-158.reported_uncertainty_in_block_basis",
@@ -231,6 +235,7 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-110.condition_status_beside_unit",
                 "PR-110.evidence_unit_status_beside_other_member",
                 "PR-110.interval_upper_status_beside_other_member",
+                "PR-110.interval_withheld_beside_a_bound",
                 "PR-110.sd_status_beside_other_member",
             ),
         },

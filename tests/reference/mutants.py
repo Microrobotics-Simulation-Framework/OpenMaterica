@@ -926,7 +926,6 @@ MUTANTS: Mapping[str, Mutant] = {
         "the member of a form the row does not allow checked as on a row allowing it",
         "read_side_contract.md:295-297",
         {"check_value_field": member_checked_off_its_row},
-        survives="each member of a form its row does not allow is well formed in the cases",
     ),
     "composition_checked_beyond_its_basis": Mutant(
         "a composition whose basis the row does not allow checked further",

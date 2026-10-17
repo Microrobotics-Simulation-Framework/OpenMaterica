@@ -62,15 +62,15 @@ def test_a_result_the_result_schema_refuses_is_found() -> None:
 
 def test_every_case_file_is_counted() -> None:
     runs = runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
-    assert len(runs) == 1260
+    assert len(runs) == 1279
     assert Counter(case_run.outcome for case_run in runs) == {
-        Outcome.PASSED: 838,
+        Outcome.PASSED: 857,
         Outcome.NOT_YET_RUNNABLE: 422,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
         (Outcome.PASSED, "content_hash"): 51,
-        (Outcome.PASSED, "read"): 762,
+        (Outcome.PASSED, "read"): 781,
         (Outcome.PASSED, "list_records"): 25,
         (Outcome.NOT_YET_RUNNABLE, "read"): 387,
         (Outcome.NOT_YET_RUNNABLE, "evaluate"): 35,
@@ -81,7 +81,7 @@ def test_each_configuration_runs_every_case_file_that_holds_for_it() -> None:
     claims = Counter(
         claimed for case_file in CASE_FILES for claimed in runner.agreeing(case_file, CONFIGURATIONS)
     )
-    assert claims == {CONFIGURATIONS[0]: 1210, CONFIGURATIONS[1]: 1152, CONFIGURATIONS[2]: 1210}
+    assert claims == {CONFIGURATIONS[0]: 1229, CONFIGURATIONS[1]: 1171, CONFIGURATIONS[2]: 1229}
 
 
 def test_a_case_passes_only_where_a_variant_ran() -> None:
