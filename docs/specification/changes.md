@@ -338,3 +338,9 @@ condition located there is not applied, and one located at the target's record a
 replaces (maintainer, 2026-10-15; PR-307). A `no_pick` entry carries the labels step 12 gives its alternative
 even where that alternative's read ended at step 11, so a table read over an operating range of its axis keeps
 `user_extracted` and the field's `label` (maintainer, 2026-10-15; PR-013).
+
+Settled with S3-te's review of the table evaluation suite. A file's `binary32` tolerance is capped per broken
+evaluator (maintainer, 2026-10-17): each broken evaluator the suite's verification names misses at least one
+of the files that should catch it by ten times that file's `binary32` tolerance. It need not miss every file
+by that much: NumPy's `interp` outside the readable range misses TE-003 `narrowed` by less (`README.md`, "Case
+files").
