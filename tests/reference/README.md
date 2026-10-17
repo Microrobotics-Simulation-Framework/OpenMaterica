@@ -70,7 +70,8 @@ exceptions does not (a disagreement, a no verdict no kind lists, or an agreement
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
 of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
 measured 2026-10-17 on `main` at `6c9ab9f`. 75 faults: 60 killed, 15 survive; S2a-4's review added five
-survivors, each a rule no case pins (below the table), so 80 faults: 60 killed, 20 survive.
+survivors, each a rule no case pins (below the table), so 80 faults: 60 killed, 20 survive. The two cases of
+the maintainer's token ruling (2026-10-18) kill two of the survivors, so 62 killed, 18 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -118,8 +119,8 @@ survivors, each a rule no case pins (below the table), so 80 faults: 60 killed, 
 | `section_specimen_unchecked` | a section's `specimen` not checked for a field read from it | 3 |
 | `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 19 |
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | survives: no case holds a status object breaking its shape with a token the reader does not know |
-| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | survives: no case holds a condition with a member of the other kind's shape, in a record or an implied condition: the text leaves the record half open |
-| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | survives: no case holds a condition with a member of the other kind's shape, in a record or an implied condition: the text leaves the record half open |
+| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | 2, `PR-330.implied_token_for_numeric_condition` and `PR-330.implied_unit_for_token_condition`: the implied half, which the token ruling settled; no case holds the record half, which the text leaves open |
+| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | 2, the same two: the implied half; no case holds the record half, which the text leaves open |
 | `slips_of_alternatives_ignored` | a member one slip from `alternatives` beside a value field's members ignored | survives: no case holds a member one slip from `alternatives`: the text leaves it open |
 | `evidence_entry_provenance_unchecked` | an evidence entry's `provenance` not checked | survives: each evidence entry's `provenance` in the cases is well formed: the text leaves it open |
 | `declaration_names_not_named_in_a_request` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | survives: no case holds a slip of `field`, `reason` or `consequence` in a requirement |
@@ -171,7 +172,9 @@ reading until S2a-4's phase B, whose agreement property (HP12) found that the te
 (`provenance.md` section 5 item 3, "A derived value carries the specimen facts of each input"); the model was
 fixed, and the fault seeded. The eleventh, `members_of_the_other_kind_ignored`, is the implementation's
 reading of that open point's record half (S2a-4's phase B): HP12 lists the point as a known divergence, held
-exactly by this fault (`tests/property/test_model_properties.py`). The last four are the model's readings until fuzz
+exactly by this fault (`tests/property/test_model_properties.py`). It and `members_of_the_other_kind_read` also
+ignore the implied half, since the model reads both halves by one function, and so the two cases of the
+maintainer's token ruling kill both; neither is a survivor since. The last four are the model's readings until fuzz
 target 4, held to the model, found them on its first minutes: a population level whose `within` is missing
 or slipped had its `level` token left unchecked, so did a `dof` status object under a Student's t
 distribution, against `read_side_contract.md` section 2 item 2, "Each step makes all its checks before the
@@ -186,11 +189,11 @@ model's own reading until then (a reviewed review's `reason` was returned, which
 item 6 does not name for a reviewed review), fixed and seeded; the fifth is a step S4 owns, which no read S2
 builds reaches.
 
-The agreement property HP12 (`tests/property/test_model_properties.py`) kills 17 of the 20 survivors and 5 of
-the 10 faults one case file alone kills, each with the model given the fault and the core as it is
-(`tests/property/test_model_mutants.py`); the other eight are listed there with the reason no read S2 builds
-shows them: an evidence entry's (two) and nominals (three) wait for S2b-2, a unit held as a status object is
-registered only for evidence (two), and a shared object never shows in JSON.
+The agreement property HP12 (`tests/property/test_model_properties.py`) kills 15 of the 18 survivors, the two
+the token ruling's cases kill, and 5 of the 10 faults one case file alone kills, each with the model given the
+fault and the core as it is (`tests/property/test_model_mutants.py`); the other eight are listed there with
+the reason no read S2 builds shows them: an evidence entry's (two) and nominals (three) wait for S2b-2, a unit
+held as a status object is registered only for evidence (two), and a shared object never shows in JSON.
 
 ## Running
 

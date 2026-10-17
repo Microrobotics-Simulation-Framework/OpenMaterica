@@ -1016,21 +1016,19 @@ MUTANTS: Mapping[str, Mutant] = {
         {"status_object": broken_status_reports_its_token},
         survives="no case holds a status object breaking its shape with a token the reader does not know",
     ),
-    # The points the text leaves open (`OPEN_POINTS`)
+    # The points the text leaves open (`OPEN_POINTS`). The first two break the implied half too, which the
+    # maintainer's token ruling settled (2026-10-18): its two cases kill both, while no case holds a record's
+    # condition with a member of the other kind.
     "members_of_the_other_kind_read": Mutant(
         "a numeric condition holding `token`, or a token condition holding `value`, read",
-        "OPEN_POINTS: members_of_the_other_kind",
+        "OPEN_POINTS: members_of_the_other_kind, in a record; read_side_contract.md:76-77, implied",
         {"holds_another_kind": holds_no_other_kind},
-        survives="no case holds a condition with a member of the other kind's shape, in a record or an "
-        "implied condition: the text leaves the record half open",
     ),
     "members_of_the_other_kind_ignored": Mutant(
         "a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does "
         "not know: not refused, and not returned",
-        "OPEN_POINTS: members_of_the_other_kind",
+        "OPEN_POINTS: members_of_the_other_kind, in a record; read_side_contract.md:76-77, implied",
         {"holds_another_kind": holds_no_other_kind, "condition_entry": entry_without_the_other_kind},
-        survives="no case holds a condition with a member of the other kind's shape, in a record or an "
-        "implied condition: the text leaves the record half open",
     ),
     "slips_of_alternatives_ignored": Mutant(
         "a member one slip from `alternatives` beside a value field's members ignored",
