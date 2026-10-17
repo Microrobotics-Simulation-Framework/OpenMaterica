@@ -677,6 +677,40 @@ def rounds_binary32_results_to_bfloat16(monkeypatch: pytest.MonkeyPatch) -> Tabl
     return table_evaluator.evaluate
 
 
+def takes_a_wider_source_range_as_the_readable_range(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """Where `source_range` reaches beyond `x`, `in_range` true out to its ends, with the end value and 0:
+    `source_range` extending the readable range, which it never does (record_format.md section 6 table item
+    4)."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        source_range = table.source_range
+        if found.in_range is False and source_range is not None and source_range[0] <= at <= source_range[1]:
+            return replace(found, in_range=True)
+        return found
+
+    return evaluate
+
+
+def scales_the_log_log_derivative_at_the_lower_knot(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """The log-log derivative's `y / x` taken at the interval's lower knot, not at the point."""
+    loglog_slope = table_evaluator._loglog_slope  # pyright: ignore[reportPrivateUsage]  # the function the fault replaces
+
+    def at_the_lower_knot(
+        x0: float,
+        x1: float,
+        y0: float,
+        y1: float,
+        point: float,
+        value: float,
+        arithmetic: table_evaluator._Arithmetic[float],  # pyright: ignore[reportPrivateUsage]
+    ) -> float:
+        return loglog_slope(x0, x1, y0, y1, x0, y0, arithmetic)
+
+    monkeypatch.setattr(table_evaluator, "_loglog_slope", at_the_lower_knot)
+    return table_evaluator.evaluate
+
+
 BINARY32_CLAIMS = tuple(claim for claim in EVALUATOR_CLAIMS if claim.precision == "binary32")
 
 # The differences a broken evaluator may be caught by, as the runner words them.
@@ -739,6 +773,10 @@ EVALUATOR_FAULTS: list[Caught] = [
     Caught(refuses_outside_the_range, "TE-003.just_outside_linear.json", REFUSAL_NOT_DUE),
     Caught(reads_outside_the_range_as_numpy_interp, "TE-002.source_range_narrow.json", VALUE),
     Caught(extrapolates_linearly, "TE-002.linear.json", VALUE),
+    # Two more the text supports: record_format.md section 6 table item 4 ("It never extends the readable
+    # range") and read_side_contract.md section 7 item 5 (`y / x` at the point).
+    Caught(takes_a_wider_source_range_as_the_readable_range, "TE-002.source_range_wide.json", IN_RANGE),
+    Caught(scales_the_log_log_derivative_at_the_lower_knot, "TE-008.loglog_interior.json", DERIVATIVE),
 ]
 
 # A difference the runner gives where an executor raised: no caught fault, unless raising is the fault.
