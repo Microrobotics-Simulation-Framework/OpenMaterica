@@ -146,23 +146,27 @@ HP3_CHANCES = {
     "field_slips_optional": 0.07,
     "field_form": 0.08,
     "record": 0.07,
-    # S2b-1's part, each at the least share of three runs at `ci` (2026-10-17), rounded down, where the first
-    # two parts' were measured over 64: 0.15 to 0.22 of its examples, and the component's region, which holds
-    # four of the part's seven token faults, 0.23 to 0.28.
-    "interval": 0.15,
-    "interval_tokens": 0.15,
-    "composition": 0.14,
-    "composition_tokens": 0.18,
-    "component": 0.23,
+    # S2b-1's part, each at its least share over 48 runs at `ci` (seeds 5001 to 5048, 2026-10-17, PR #37's
+    # review, L4), rounded down, below its nominal chance: 7/8 of a fifth, and the token regions an eighth of
+    # their share of the part's eight token faults beside it (interval_tokens and composition_tokens 0.21,
+    # component 0.24). Measured means 0.17 to 0.24, least shares 0.128 to 0.196; from the measured clusters,
+    # the part's regions fall below their draw floors with a probability below 1e-15 a run.
+    "interval": 0.12,
+    "interval_tokens": 0.16,
+    "composition": 0.13,
+    "composition_tokens": 0.14,
+    "component": 0.19,
 }
 # A part's drawn field's form, by its chance: the shared parts draw a constant as often as an interval and a
-# composition together, and the third takes its region's form. Over three runs at `ci` (2026-10-17): 0.48 to
-# 0.56, 0.24 to 0.32 and 0.19 to 0.26 of the first two parts' examples, and 0.31 to 0.43 and 0.57 to 0.69 of
-# the third's; each declared at its least, rounded down.
+# composition together, and the third takes its region's form. Over 48 runs of each part at `ci` (seeds 5001
+# to 5048, 2026-10-17, PR #37's review, L4), the first two parts' means 0.50, 0.24 to 0.25 and 0.25, their
+# least shares 0.446, 0.199 and 0.205, and the third's means 0.38 and 0.62, least shares 0.334 and 0.554; each
+# declared at the lesser part's least share, rounded down, below its nominal chance (0.5, 0.25, 0.25; 0.38,
+# 0.62). From the measured clusters, each falls below its draw floor with a probability below 1e-17 a run.
 FORM_CHANCES = (
-    {"form_constant": 0.48, "form_interval": 0.24, "form_composition": 0.19},
-    {"form_constant": 0.48, "form_interval": 0.24, "form_composition": 0.19},
-    {"form_interval": 0.31, "form_composition": 0.57},
+    {"form_constant": 0.44, "form_interval": 0.19, "form_composition": 0.2},
+    {"form_constant": 0.44, "form_interval": 0.19, "form_composition": 0.2},
+    {"form_interval": 0.33, "form_composition": 0.55},
 )
 # Least shares, about a third of those measured at `ci` and `deep` with HP3 whole (S2a-2's fix round); in each
 # part they fail a `ci` run with a probability below 1e-9 (measured 2026-10-15).
@@ -363,15 +367,20 @@ def check_ignored(unknowns: Unknowns) -> None:
 # `faulty_base` is declared by its chance: its share at `ci` over 64 runs (2026-10-15), rounded down to two
 # places. From the measured clusters, its least share failed a `dev` run with a probability of about 1.9e-3
 # (at most 4.5e-3); it is not judged at `dev` now, and at `ci` falls below its draw floor with a probability
-# below 1e-15.
+# below 1e-15. S2b-1 added places in lists and own members, and over 48 runs at `ci` (2026-10-17, PR #37's
+# review, M3) `field` fell to 0.099 of the additions on average (0.066 the least), where its least share,
+# 0.045, failed a run with a probability of 2.1e-5 (renewal: 1.6e-5), and `in_an_own_member` showed 0.084
+# (0.054 the least), where 0.025 failed one with 2.7e-7. Each declared at about a third of its mean share,
+# 0.03 and 0.02, they fail a `ci` run with 1.4e-8 and 1.1e-8 (renewal 9e-9 and 8e-9). Neither can be declared
+# by its chance: at 0.06 and 0.05, their floors are below `audits.LEAST_DRAWS`.
 @pytest.mark.chances(faulty_base=0.33)
 @pytest.mark.features(
     structure=0.25,
-    field=0.045,
+    field=0.03,
     inside_the_field=0.11,
     unchecked=0.065,
     two_slips=0.23,
-    in_an_own_member=0.025,
+    in_an_own_member=0.02,
 )
 @given(with_unknowns())
 def test_members_the_reader_does_not_know_change_nothing(unknowns: Unknowns) -> None:
