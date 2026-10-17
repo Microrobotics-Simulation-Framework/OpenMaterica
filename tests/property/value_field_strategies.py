@@ -841,6 +841,19 @@ def component_repeated(draw: Draw, example: Example) -> frozenset[str]:
     return INVALID
 
 
+def component_repeated_apart(draw: Draw, example: Example) -> frozenset[str]:
+    """The first component named again after another component, never next to itself (composition item 5:
+    "no component appears twice", wherever it stands)."""
+    found = components_of(example)
+    if len(found) == 1:
+        held = str(first_component(example)["component"])
+        others = [token for token in VOCABULARY.token_lists["component"] if token != held]
+        symbol = draw(st.sampled_from(others))
+        found.append({"component": symbol, "fraction": draw(FRACTIONS)})
+    found.append({**copy.deepcopy(first_component(example)), "fraction": draw(FRACTIONS)})
+    return INVALID
+
+
 def fractions_zero_and_one(draw: Draw, example: Example) -> frozenset[str]:
     """Fractions at both ends of item 5's range: the first component's 0, and another component's 1."""
     first_component(example)["fraction"] = 0.0
@@ -1228,6 +1241,9 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "basis_of_a_composition": setting(interval_of, "basis", "mass_fraction", INVALID),
         "basis_of_a_condition": setting(interval_of, "basis", "stated", INVALID),
         "basis_not_a_string": setting(interval_of, "basis", 5.0, INVALID),
+        # A status token the reader does not know, beside a `none`: `unknown_token` alone, since an unknown
+        # token is never read as one it knows (`record_format.md` section 10 item 3), here `none`.
+        "bound_status_unknown": bounds({"status": "unbounded"}, {"status": "none"}, UNKNOWN),
     },
     # A composition's own member (section 6, composition items 1 to 5), and the near misses: fractions 0, 1
     # and `-0`, and a sum no read checks.
@@ -1237,6 +1253,7 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
             composition_of, "components", {"component": "element:H", "fraction": 0.1}, INVALID
         ),
         "component_repeated": component_repeated,
+        "component_repeated_apart": component_repeated_apart,
         "fraction_above_one": in_the_first_component("fraction", 1.5),
         "fraction_negative": in_the_first_component("fraction", -0.01),
         "fraction_not_a_number": in_the_first_component("fraction", "0.1"),

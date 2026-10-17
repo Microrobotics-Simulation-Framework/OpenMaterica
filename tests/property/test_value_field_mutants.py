@@ -8,6 +8,7 @@ A fault is injected where the core looks a name up when it runs: a module-level 
 `value_shapes` or `fields`, or the `members` helper wrapped so that it checks one member otherwise.
 """
 
+import itertools
 import math
 import re
 from collections.abc import Callable, Collection, Iterable
@@ -504,6 +505,20 @@ def _each_component_once(value: JsonValue, where: str, found: Found) -> None:
         named = {str(item.get("component")): item for item in value if isinstance(item, dict)}
         value = [*named.values(), *(item for item in value if not isinstance(item, dict))]
     COMPONENTS(value, where, found)
+
+
+def _a_repeat_found_only_beside_itself(value: JsonValue, where: str, found: Found) -> None:
+    """A component named twice is found only where it follows itself."""
+    own: Found = []
+    COMPONENTS(value, where, own)
+    items = value if isinstance(value, list) else []
+    named = [item.get("component") for item in items if isinstance(item, dict)]
+    beside = {f"{first!r} twice" for first, then in itertools.pairwise(named) if first == then}
+    found.extend(
+        reason
+        for reason in own
+        if not str(reason.detail).endswith(" twice") or any(str(reason.detail).endswith(b) for b in beside)
+    )
 
 
 def _any_number(value: JsonValue, where: str, found: Found) -> None:
@@ -1032,6 +1047,20 @@ MUTANTS = [
         ("composition.sum_unflagged",),
     ),
     Mutant("unknown_members_refused_in_an_own_member", IGNORANCE, _unknown_members_refused_in_an_own_member),
+    # S2b-1's review (L3): a bound's status object of any token read as `none`, and a repeated component found
+    # only where it follows itself.
+    Mutant(
+        "any_bound_status_read_as_none",
+        ONE_FAULT,
+        setting(fields, "_none", value_shapes.is_status_object),
+        ("interval_tokens.bound_status_unknown",),
+    ),
+    Mutant(
+        "a_repeat_found_only_beside_itself",
+        ONE_FAULT,
+        setting(fields, "components", _a_repeat_found_only_beside_itself),
+        ("composition.component_repeated_apart",),
+    ),
 ]
 
 

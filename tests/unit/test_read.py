@@ -1462,7 +1462,9 @@ def met_composition(**composition: JsonValue) -> dict[str, JsonValue]:
     return {**COMPOSITION, "conditions": met_field()["conditions"], "composition": composition}
 
 
-def read_composition(field: JsonValue, *, want: str = "components") -> ReadResult:
+def read_composition(
+    field: JsonValue, *, want: str = "components", claims: Collection[Suite] = ("plain_read", "hash")
+) -> ReadResult:
     name = "bulk.elemental_composition"
     request, records = stored(with_field(name, field), name)
     assert isinstance(request, dict)
@@ -1470,7 +1472,7 @@ def read_composition(field: JsonValue, *, want: str = "components") -> ReadResul
     requirement = request["requirement"]
     assert isinstance(requirement, dict)
     requirement["want"] = want
-    return read(request, records)
+    return read(request, records, claims=claims)
 
 
 def test_an_interval_returns_its_bounds_with_their_basis_as_stored_and_a_none_as_a_status() -> None:
@@ -1531,6 +1533,10 @@ BOUND_ORDER: list[tuple[dict[str, JsonValue], ReasonCode | None]] = [
     ({"lower": 0.0, "upper": -0.0}, None),
     ({"lower": {"status": "none"}, "upper": 1.0}, None),
     ({"lower": 1.0e308, "upper": {"status": "none"}}, None),
+    # A status token the reader does not know is never read as one it knows, here `none` (`record_format.md`
+    # section 10 item 3), so beside a `none` it gives `unknown_token` alone (PR #37's review, H12).
+    ({"lower": {"status": "unbounded"}, "upper": {"status": "none"}}, "unknown_token"),
+    ({"lower": {"status": "none"}, "upper": {"status": "unbounded"}}, "unknown_token"),
 ]
 
 
@@ -1548,6 +1554,8 @@ COMPONENTS: list[tuple[JsonValue, ReasonCode | None]] = [
     ([], "form_invalid"),
     ({"component": "element:H", "fraction": 0.1}, "form_invalid"),
     ([HYDROGEN, {**HYDROGEN, "fraction": 0.2}], "form_invalid"),
+    # A repeat is found wherever it stands, not only next to its first (PR #37's review, H19).
+    ([HYDROGEN, {"component": "element:O", "fraction": 0.7}, {**HYDROGEN, "fraction": 0.2}], "form_invalid"),
     ([{**HYDROGEN, "fraction": -0.01}], "form_invalid"),
     ([{**HYDROGEN, "fraction": 1.01}], "form_invalid"),
     ([{**HYDROGEN, "fraction": "0.1"}], "form_invalid"),
@@ -1574,6 +1582,87 @@ def test_a_compositions_components_are_a_non_empty_list_each_once_a_known_elemen
     }
     result = read_composition(met_composition(**composition))
     assert result.reasons == ((Reason(code),) if code else ()), components
+
+
+# Each form step 8 reads: how a field of it is read, and the `want` that gives its own member.
+READERS: dict[str, tuple[Callable[..., ReadResult], str]] = {
+    "constant": (read_met, "value"),
+    "interval": (read_met, "bounds"),
+    "composition": (read_composition, "components"),
+}
+MEMBERS: dict[str, JsonValue] = {
+    "constant": 0.000692,
+    "interval": {"lower": 0.0006, "upper": 0.0008, "basis": "reported_range"},
+    "composition": {"basis": "mass_fraction", "sum_rule": "partial", "components": [HYDROGEN]},
+}
+
+
+def own_field(form: str, own: JsonValue) -> dict[str, JsonValue]:
+    """A field of `form` met by `MET_REQUEST`, its own member `own`."""
+    if form == "constant":
+        return met_field(value=own)
+    if form == "interval":
+        field = met_interval()
+        field["interval"] = own
+        return field
+    return {**met_composition(), "composition": own}
+
+
+@pytest.mark.parametrize(
+    ("form", "marker"),
+    [
+        ("constant", {"status": "withheld", "x_unknown_member": 1.0}),
+        ("interval", {"status": "withheld", "lower": 0.0006}),
+        ("composition", {"status": "withheld", "components": [HYDROGEN]}),
+    ],
+)
+def test_a_withheld_marker_that_breaks_its_shape_refuses_its_field_as_form_invalid_alone(
+    form: str, marker: dict[str, JsonValue]
+) -> None:
+    """`provenance.md` section 1 item 5: "A status object that breaks its shape is read for nothing else, so
+    its token gives no reason of its own": a constant's beside any member but `reason`, where S is a number,
+    an interval's or a composition's beside a member S defines (PR #37's review, H32)."""
+    reader, want = READERS[form]
+    result = reader(own_field(form, marker), want=want)
+    assert (result.status, result.reasons) == ("not_met", (Reason("form_invalid"),)), form
+
+
+@pytest.mark.parametrize("form", ["constant", "interval", "composition"])
+def test_want_fit_on_a_fitted_field_of_each_form_waits_for_the_fits_suite(form: str) -> None:
+    """`read_side_contract.md` section 6: `want: fit` returns a fitted field's `fit` record, which the fits
+    and reference data suite reads, not built yet; on a field without one it gives `want_mismatch` (PR #37's
+    review, H42)."""
+    claims: tuple[Suite, ...] = ("plain_read", "hash", "fits_and_reference_data")
+    reader, _ = READERS[form]
+    field = own_field(form, MEMBERS[form])
+    assert reader(field, want="fit", claims=claims).reasons == (Reason("want_mismatch"),)
+    with pytest.raises(NotImplementedError):
+        reader({**field, "fit": {"model": "a fit record"}}, want="fit", claims=claims)
+
+
+# Each own-member place, and a member there one slip from a member the field's own shape names, which the
+# member's shape does not (`record_format.md` section 10 items 1 and 5: a slip refuses only "from a member the
+# shape names at that place").
+SLIPS_NAMED_ELSEWHERE: list[tuple[str, str, str]] = [
+    ("interval", "interval", "values"),
+    ("interval", "interval", "forms"),
+    ("composition", "composition", "units"),
+    ("composition", "component", "values"),
+    ("composition", "component", "forms"),
+]
+
+
+@pytest.mark.parametrize(("form", "place", "slip"), SLIPS_NAMED_ELSEWHERE)
+def test_a_slip_of_a_member_named_at_another_place_is_ignored_in_an_own_member(
+    form: str, place: str, slip: str
+) -> None:
+    """Ignored, and left out of the value returned (PR #37's review, H10)."""
+    reader, want = READERS[form]
+    own = cast(dict[str, JsonValue], copy.deepcopy(MEMBERS[form]))
+    holder = own if place == form else cast(dict[str, JsonValue], cast(list[JsonValue], own["components"])[0])
+    holder[slip] = 1.0
+    result = reader(own_field(form, own), want=want)
+    assert (result.status, result.reasons, result.value) == ("met", (), MEMBERS[form]), (place, slip)
 
 
 DERIVED_INPUTS: dict[str, JsonValue] = {
