@@ -237,8 +237,11 @@ A released schema version's files never change: a change is a new minor version 
 (`tests/spec_sync/test_released_schemas.py`). Until its release, a version's files may change, and the
 version's index page on the site says so ("Draft until 0.1.0"; it leaves the page when the release freezes the
 version). Once 0.1.0 is released, the next line's schemas are written in `src/materica/schema/0.2-dev/`, with
-`$id`s under `https://w3id.org/materica/schema/0.2-dev/`; the 0.2.0 release renames the directory to `0.2/` and
-rewrites the `$id`s, then freezes it (`src/materica/schema/README.md`, "Released versions").
+`$id`s under `https://w3id.org/materica/schema/0.2-dev/`; the 0.2.0 release renames the directory to `0.2/`,
+rewrites the `$id`s, moves the files the generators write into it and points the paths wired to `0.1` (the
+generators, `tests/spec_sync/schemas.py`) at the new line, then freezes it (`src/materica/schema/README.md`,
+"Released versions"). That is the documented path; whether the address is instead redirected by a pull request
+to `perma-id/w3id.org` is decided at that release.
 
 ## Adding a model family
 
@@ -478,4 +481,6 @@ python3 scripts/freeze_schema.py --check   # fails where a released version diff
 
 It refuses a version whose `$id`s are not their paths, and never rewrites a version already listed. Commit the
 manifest with the release; from then on CI fails where a file of that version changes, and the version's page on
-the site loses its "draft until" note when Pages next deploys.
+the site loses its "draft until" note when Pages next deploys. The release's pull request carries the manifest and
+merges just before the tag, so the note leaves the site then and not at the tag: that is intended, since from the
+merge the files are frozen.

@@ -72,7 +72,9 @@ Read them in this order.
   they never change, and a later minor version gets a directory of its own. A reader validates against the
   schema files shipped with it and never fetches a schema by its `$id`, which is an identifier and need not
   resolve. The site's index page of a version not yet released says so; the page of a released version does
-  not. [not yet covered]
+  not. After 0.1.0 the next line's development files live in `schema/0.2-dev/`, renamed `0.2/` and frozen at
+  the 0.2.0 release; a redirect of the address instead is decided at that release
+  (`DOCUMENTATION_ARCHITECTURE.md` section 7.1). [not yet covered]
 
 ## Suites and case numbers
 
