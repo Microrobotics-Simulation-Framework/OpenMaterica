@@ -1,6 +1,6 @@
 # Property tests
 
-Hypothesis properties of the core, in five groups, and of the writer schema, in a sixth.
+Hypothesis properties of the core, in eight groups, and of the writer schema, in a ninth.
 
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
@@ -131,7 +131,45 @@ Hypothesis properties of the core, in five groups, and of the writer schema, in 
   store. Its draws give the field a value of `-0` in one in four, each way a review reads in one in three,
   and a member the reader does not know in its statistics block, a fact or a condition in one in two, each
   declared by its chance. HP11: without the hash suite, `hash_not_checked` marks exactly a read that reached
-  step 4, which the draw knows, and the two reads differ by that label alone.
+  step 4, which the draw knows, and the two reads differ by that label alone. Step 10's faults that leave the
+  read to go on (`unchecked`, `unstated`, `unknown_name`, `uncertain`) are a kind of their own, beside a token
+  the request does not accept in half its draws, so that a result holds reasons of both statuses; step 8's
+  kind draws two faults always in half its draws; and HP6 draws a constant's statistics held as the status
+  object its row allows in one draw in four (fuzz target 4 found it returned as an empty block).
+- **The reference model:** (12) the S2 design's HP12 (`test_model_properties.py`): the read agrees with the
+  test-only reference model (`tests/reference/read_model.py`), given the same sources, request text and
+  claims, compared as section 2 compares results (the status; the reasons as a set of their code, condition
+  and alternative; the labels as a set; condition entries by name; alternative values in order; every other
+  member bit for bit; counts and indexes as the integers rule 5 writes), or both "not yet" (a
+  `NotImplementedError`, a no verdict). Five parts, each drawing its kinds first (`model_strategies.py`):
+  values and alternatives (a constant met as drawn, at one of section 5's boundaries as HP7 draws them, or
+  filled by an implied condition, beside another section's specimen in one draw in three; alternatives met,
+  broken, or refused by a request fault); faults of steps 8 to 10, one or two; two faults of one of steps 0,
+  8, 9 and 10 that give two reasons (the design's B5, a step that stops at its first fault); step 0's
+  catalogue of 52 faults and near misses, and six texts that are no JSON, written from `read_side_contract.md`
+  section 1, and reads that end before step 8; and the rules no case file pins (the model's survivors), each
+  planted. The known divergences are listed by kind with their reasons and held exactly, failing on any other:
+  three steps not built that the model decides (an overlay as the target, S4's decision 8; a form S2b reads;
+  an acceptance other than an implied condition), found by the implementation's own `NotImplementedError` and
+  held to the draw and to what the model gives; and two open points on which the two read the text differently
+  (`members_of_the_other_kind`, `names_a_declaration_gives_a_requirement`), where the model must refuse as it
+  fails closed, and the model given the implementation's reading must agree with it. Can-fail controls of the
+  check itself: `test_model_controls.py`.
+- **What a read must not look at:** (13) the S2 design's HP4 and HP10 (`test_invariance_properties.py`,
+  `invariance_strategies.py`). HP4: a fault in another field, registered or not, or in another section's
+  specimen never changes a read (the oracle, the read of the record without it); one in the read field's own
+  section's specimen refuses it, `form_invalid` or `unknown_token` alone. HP10: sources and request written
+  again, members reordered and whitespace, escapes and number spellings drawn, give the original's result,
+  compared as section 2 compares; sources identical byte for byte are written again alike, since two copies
+  of a pin whose bytes differ are another read.
+- **Information monotonicity:** (14) the maintainer's "more checks of the same kind" (2026-10-14): the
+  fail-closed spike's relations S2's forms reach, each a property (`test_monotonicity_properties.py`), over a
+  world on the spike's grids, half cooperative, and one change (`monotonicity_strategies.py`): N1r, N2, N3r,
+  N4, N5r, N6, N8 (information lost never helps), P1 to P4 (added never hurts), S1 and S2 (must degrade) and
+  S5 (section 5's rows on the exact values), restricted as the spike's limits say. N7r, P5 to P7, S3 and S4
+  speak of tables, picks and alternatives set aside: S3's and S4's. Where a fault's trigger is rare on random
+  worlds, a relation draws its way first, a world the read meets with the trigger built in; each relation
+  holds, applied with a verdict on both sides and not vacuous, in a declared least share of its examples.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -167,18 +205,22 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the groups in six shards side by side, each in a job of its own: `pytest tests/property --shard json`,
-`--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the two
-validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
-database and were most of the records shard's time, and `--shard conditions`, steps 9 and 10's group and the
+CI runs the groups in seven shards side by side, each in a job of its own: `pytest tests/property --shard
+json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
+two validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
+database and were most of the records shard's time, `--shard conditions`, steps 9 and 10's group and the
 result's with their mutant searches, which take seconds and set no example database (112 s on four local
-workers at `ci`, 2026-10-16; 155 s with the result's, 2026-10-17; `SHARDS` in `tests/conftest.py`). Each family of faults is a property of its own, run in parallel.
-The agreement shard's drawn properties run python-jsonschema on every example, and are the longest tests of
-any shard: on 4 workers locally (2026-10-17), the shard took 4.0 and 8.0 minutes at `ci`, its longest property
-1.9 and 4.7 (at loads of 4 to 7 and 15 to 17), and 112 minutes at `deep`, its longest property 70 (load 18 to
-30). `deep` has not yet run on CI, whose cores are 1.6 to 4 times slower: there it may not fit in the 6 hours
-GitHub gives a job. Each module is in exactly one shard (`tests/unit/test_source_files.py`), and each shard
-but step 8's mutant searches' keeps its own example database in CI.
+workers at `ci`, 2026-10-16; 155 s with the result's, 2026-10-17; 151 s beside the relations' shard,
+2026-10-17), and `--shard relations`, the reference model's, isolation and byte form's, and monotonicity
+groups with their mutant searches, each example reading two records or a read twice (198 s on four local
+workers at `ci`, 2026-10-17; `SHARDS` in `tests/conftest.py`). Each family of faults is a property of its own,
+run in parallel. The agreement shard's drawn properties run python-jsonschema on every example, and are the
+longest tests of any shard: on 4 workers locally (2026-10-17), the shard took 4.0 and 8.0 minutes at `ci`, its
+longest property 1.9 and 4.7 (at loads of 4 to 7 and 15 to 17), and 112 minutes at `deep`, its longest
+property 70 (load 18 to 30). `deep` has not yet run on CI, whose cores are 1.6 to 4 times slower: there it may
+not fit in the 6 hours GitHub gives a job. Each module is in exactly one shard
+(`tests/unit/test_source_files.py`), and each shard but step 8's mutant searches' keeps its own example
+database in CI.
 
 ## The two validators
 
@@ -236,7 +278,9 @@ CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported ran
 (`--property-controls` in `tests/conftest.py`), so a mutant module holds mutant searches only. The checks of
 the mutants' own code, which run on every Python, are in modules of their own: `test_mutant_view.py` (the hash
 mutants' view, without a fault, is the core's), `test_value_field_mutant_table.py`,
-`test_writer_mutant_table.py` and `test_condition_mutant_table.py`.
+`test_writer_mutant_table.py`, `test_condition_mutant_table.py`, `test_result_mutant_table.py`,
+`test_model_mutant_table.py` with HP12's controls in `test_model_controls.py`,
+`test_invariance_mutant_table.py` and `test_monotonicity_mutant_table.py`.
 
 `test_mutants.py` also gives the one-slip relation twelve faults, each killed by (9) (its strategy has no size,
 so both sizes take the same examples; measured 2026-10-15):
@@ -440,30 +484,146 @@ tell it from the core, since step 10 returns a filled condition with the members
 
 `test_result_mutants.py`, injected as steps 9 and 10's are: a module-level function or name of `read`,
 `conditions` or `resolve`. Each names the property that kills it and the kinds or features (`-0`, an unknown
-member, a review's way) one of which the example that kills it must show. The kill is the examples the
-derandomised search took, at the small and the original size (measured 2026-10-17, S2a-4's phase A). The S2
-design's other HP6 mutant, an interval's `upper: none` read as infinity, waits for S2b-1, which reads
-intervals.
+member, a review's way, a statistics status object) one of which the example that kills it must show. The kill
+is the examples the derandomised search took, at the small and the original size (measured 2026-10-17, S2a-4's
+phase B, in the conditions shard). Phase A's `condition_unchecked_without_its_condition` died at 1,079 of
+2,000 at the small size; since its fault's kind is drawn as one of its own (`unknown_at_step_10`), over twelve
+random seeds a search it dies within 507, `reasons_not_merged` within 115 and `best_status` within 310 (they
+took up to 1,459 and 1,587 over 24). The S2 design's other HP6 mutant, an interval's `upper: none` read as
+infinity, waits for S2b-1, which reads intervals.
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
-| `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1 | `step_9_or_10_fault` | 1,079, 241 |
-| `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 | `met`, `step_9_or_10_fault` | 92, 80 |
-| `a_code_outside_the_table` | step 13's refusal under a code the table does not hold | HP1 | `met` | 65, 80 |
-| `reasons_not_merged` | a reason found twice given twice | HP1 | `step_8_fault` | 173, 59 |
-| `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault` | 254, 336 |
-| `best_status` | the status the best of the reasons' | HP2 | any kind | 326, 80 |
-| `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 | `alternatives` | 252, 3 |
-| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 | `alternatives` | 252, 3 |
-| `expanded_uncertainty_divided_by_its_k` | an expanded uncertainty returned divided by its coverage factor (the S2 design's) | HP6 | `met`, `alternatives` | 3, 51 |
+| `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1 | `step_9_or_10_fault`, `unknown_at_step_10` | 9, 173 |
+| `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 | `met`, `step_9_or_10_fault`, `unknown_at_step_10` | 186, 283 |
+| `a_code_outside_the_table` | step 13's refusal under a code the table does not hold | HP1 | `met` | 79, 11 |
+| `reasons_not_merged` | a reason found twice given twice | HP1 | `step_8_fault` | 55, 304 |
+| `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault`, `unknown_at_step_10` | 9, 146 |
+| `best_status` | the status the best of the reasons' | HP2 | any kind | 9, 468 |
+| `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 | `alternatives` | 97, 3 |
+| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 | `alternatives` | 97, 3 |
+| `expanded_uncertainty_divided_by_its_k` | an expanded uncertainty returned divided by its coverage factor (the S2 design's) | HP6 | `met`, `alternatives` | 11, 9 |
 | `results_share_the_record` | a member with nothing to leave out returned as the record's own object (the S2 design's) | HP6 | `met`, `alternatives` | 1, 1 |
 | `json_shares_the_result` | a result's JSON shares its objects with the result | HP6 | `met`, `alternatives` | 1, 1 |
 | `negative_zero_as_zero` | a value of `-0` returned as `0` | HP6 | `negative_zero` | 1, 1 |
-| `unknown_members_returned` | the members a returned object holds kept whole, those the reader does not know included | HP6 | `unknown_member` | 7, 57 |
-| `review_as_it_holds` | a review returned as the record holds it, whatever it holds | HP6 | a review's way | 7, 11 |
-| `counts_as_doubles` | a count or an index written as a double | HP6 | `met`, `alternatives` | 1, 1 |
+| `unknown_members_returned` | the members a returned object holds kept whole, those the reader does not know included | HP6 | `unknown_member` | 3, 9 |
+| `review_as_it_holds` | a review returned as the record holds it, whatever it holds | HP6 | a review's way | 5, 12 |
+| `counts_as_doubles` | a count or an index written as a double | HP6 | `met`, `alternatives` | 5, 9 |
+| `statistics_status_object_emptied` | a constant's statistics read by the block's shape alone, so that its status object comes back empty (the fault fuzz target 4 found) | HP6 | `statistics_withheld` | 1, 1 |
 | `labelled_before_step_4` | `hash_not_checked` on a read that ended before step 4 (the S2 design's HP11 mutant) | HP11 | `before_step_4` | 11, 6 |
 | `labelled_beside_the_hash_suite` | `hash_not_checked` on a read under the hash suite | HP11 | any kind that reaches step 4 | 1, 1 |
+
+### HP12's mutants
+
+`test_model_mutants.py`. Of the implementation, injected as the other groups' are: a step that stops at its
+first fault (the S2 design's HP12 mutant, killed on two faults of one step, B5), the design's mutants of HP1
+to HP11 that a result can show, taken from their modules, and the broken status object that reports its token,
+the fault HP12 found. Of the model, applied to `tests/reference/read_model.py` while the core stays as it is:
+its faults no case file kills, and five of the ten one case file alone kills. Each dies within the `ci`
+profile's examples at both sizes, at an example that shows one of the parts, ways, steps or planted rules it
+names; a search marked "planned" draws step 8's faults among those named first, or the first part's constants
+at a boundary, as HP3's planned searches do, where HP12's own draws meet the fault too seldom for a safe
+margin (each measured over six to twelve random seeds). Kills in the relations shard, 2026-10-17.
+
+| Mutant | Fault | Part | Dies at | Examples |
+|---|---|---|---|---|
+| `step_0_stops_at_its_first_fault` | step 0 gives its first reason only | two of one step | `step_0` | 1, 1 |
+| `step_8_stops_at_its_first_fault` | step 8 gives its first reason only | two of one step | `step_8` | 2, 2 |
+| `step_9_stops_at_its_first_fault` | step 9 gives its first reason only | two of one step | `step_9` | 6, 40 |
+| `step_10_stops_at_its_first_fault` | step 10 gives its first reason only | two of one step | `step_10` | 4, 5 |
+| `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` too | unpinned | `broken_status_object` | 91, 8 |
+| `condition_unchecked_without_its_condition` | HP1's | faults | `unchecked` | 661, 10 |
+| `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 149, 6 |
+| `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 90, 26 |
+| `missing_represents_accepted` | HP3's (planned) | faults | `statistics_members.represents_missing` | 1, 1 |
+| `null_read_as_absent` | HP3's (planned) | faults | `condition_tokens.set_or_measured_null`, `provenance.source_null` | 1, 1 |
+| `unknown_condition_names_checked` | HP3's (planned) | faults | `condition_tokens.name_unknown` | 1, 1 |
+| `specimen_facts_merged_across_sections` | HP4's | values | `another_section` | 82, 53 |
+| `unknown_members_returned` | HP5's and HP6's: an unknown member returned | values | `unknown_member` | 3, 3 |
+| `expanded_uncertainty_divided_by_its_k` | HP6's | values | `valued`, `alternatives` | 3, 3 |
+| `floating_point_as_written` | HP7's (planned) | values at a boundary | `at_a_boundary` | 9, 204 |
+| `strict_inequalities` | HP7's | values | `valued`, `alternatives` | 1, 1 |
+| `plus_minus_ignored` | HP7's (planned) | values at a boundary | `at_a_boundary` | 11, 79 |
+| `plus_minus_makes_not_met` | HP7's (planned) | values at a boundary | `at_a_boundary` | 11, 79 |
+| `nfkc_before_comparing` | HP8's | faults | `steps_9_and_10` | 2, 2 |
+| `case_folded` | HP8's | faults | `steps_9_and_10` | 2, 2 |
+| `section_facts_win` | HP9's | values | `valued`, `alternatives` | 281, 6 |
+| `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 11, 6 |
+| `labelled_before_step_4` | HP11's | early | `before_step_4`, `stores` | 2, 2 |
+
+| Fault of the model | Part | Dies at | Examples |
+|---|---|---|---|
+| `plurals_not_slips` | unpinned | `plural_of_two_characters` | 10, 3 |
+| `member_checked_off_its_row` | unpinned | `form_off_its_row` | 117, 6 |
+| `composition_checked_beyond_its_basis` | unpinned | `composition_basis_off_its_row` | 49, 7 |
+| `broken_status_object_reports_its_token` | unpinned | `broken_status_object` | 91, 8 |
+| `members_of_the_other_kind_read` | unpinned, at the open point's refusal | `members_of_the_other_kind` | 131, 5 |
+| `members_of_the_other_kind_ignored` | unpinned, at the open point's refusal | `members_of_the_other_kind` | 131, 5 |
+| `slips_of_alternatives_ignored` | unpinned | `alternatives_slip_beside` | 1, 1 |
+| `declaration_names_not_named_in_a_request` | unpinned, at the open point's refusal | `names_a_declaration_gives_a_requirement` | 77, 187 |
+| `population_level_checks_stop_at_a_missing_member` | unpinned | `checks_beside_a_broken_object` | 6, 37 |
+| `dof_token_unchecked_under_student_t` | unpinned | `checks_beside_a_broken_object` | 19, 59 |
+| `every_status_object_an_unstated_kind` | unpinned | `checks_beside_a_broken_object` | 7, 127 |
+| `every_forms_member_named_at_a_field` | unpinned | `another_forms_member_slipped` | 2, 2 |
+| `input_specimens_optional` | faults (planned) | `derivation.input_specimens_missing` | 1, 1 |
+| `hash_not_checked_before_step_4` | early | `request`, `before_step_4`, `stores` | 1, 1 |
+| `token_condition_unit_accepted` | faults | `unit_token_condition` | 58, 34 |
+| `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 8, 11 |
+| `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 4, 10 |
+| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 127, 209 |
+
+Listed, with the reason no read S2 builds shows them: `evidence_entry_provenance_unchecked` and
+`entry_withheld_in_part_read` (an evidence entry, read by S2b-2: the core raises at it),
+`unit_returned_without_its_reason` (only `biocompatibility.evidence` registers a unit held as a status
+object), `two_nominals_for_one_field`, `nominal_ignored_over_alternatives` and `nominal_applied_under_no_pick`
+(the core raises for any acceptance but an implied condition until S2b-2), and `results_share_the_record` (a
+shared object never shows in JSON; HP6 holds the core to sharing nothing). The design's other mutants not
+searched here: HP6's `upper: none` as infinity (S2b-1) and its result sharing the stored object (JSON again).
+
+### HP4 and HP10's mutants
+
+`test_invariance_mutants.py`, at the ways (HP4) and kinds (HP10) each names; relations shard, 2026-10-17.
+
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `specimen_facts_merged_across_sections` | a field's specimen holds every section's facts (the S2 design's HP4 mutant) | HP4 | `another_section_specimen` | 7, 66 |
+| `every_field_checked` | step 8 checks every field of the record | HP4 | `another_field` | 1, 1 |
+| `every_section_specimen_checked` | step 8 checks every section's specimen | HP4 | `another_section_specimen` | 6, 3 |
+| `section_specimen_unchecked` | the read field's own section's specimen not checked (HP3's) | HP4, refusal | `own_section_specimen` | 1, 1 |
+| `hash_over_members_as_written` | the recomputed hash taken over the members in the order the source writes them (the S2 design's HP10 mutant, B7) | HP10 | any kind | 3, 7 |
+| `integers_read_as_integers` | a number spelled without a fraction or exponent read as an integer | HP10 | any kind | 1, 1 |
+
+### The monotonicity relations' mutants
+
+`test_monotonicity_mutants.py`, each searched with the relation it names (the spike's mutants that S2's forms
+reach, under its names where the core has them; with a world's trigger built in where the relation draws a way
+first). Over twelve random seeds a search, each died within 927 examples, `floating_point_as_written` the
+slowest. Relations shard, 2026-10-17.
+
+| Mutant | Fault | Relation | Examples |
+|---|---|---|---|
+| `row_requirements_ignored` | a condition the row requires, absent, not checked (the spike's `absent_required_skipped`) | N1r | 2, 2 |
+| `required_with_ignored` | a condition another requires with its token not checked | N1r | 6, 4 |
+| `requested_absent_skipped` | a condition the request names and the record lacks skipped | N1r | 8, 6 |
+| `origin_default` | an absent origin read as `measured_by_contributor` | N2 | 454, 254 |
+| `status_object_passes` | a condition held as a status object gives a met entry | N3r | 77, 5 |
+| `status_in_any_member` | a status object in `origin` passes step 8 | N3r | 2, 2 |
+| `plus_minus_widens` | a bound widens the tolerance instead of narrowing it | N4 | 2, 2 |
+| `tolerance_inverted` | a value met where it lies outside the tolerance | N5r | 2, 2 |
+| `missing_operating_met` | a tolerance with no operating condition passes step 0 and gives a met entry | N6 | 170, 48 |
+| `implied_overrides_a_stated_value` | an implied condition overrides a stated one (`implied_overrides`) | N8 | 2, 2 |
+| `tolerance_inverted_widened` | as `tolerance_inverted` | P1 | 2, 2 |
+| `plus_minus_widens_removed` | as `plus_minus_widens` | P2 | 2, 2 |
+| `accept_list_as_its_last_token` | an accept list read as its last token alone | P3 | 2, 2 |
+| `operating_conditions_checked` | every condition the request operates checked, as one with no tolerance | P4 | 2, 2 |
+| `sd_ignored` | an `sd` or unstated plus or minus ignored | S1 | 3, 5 |
+| `status_object_read_as_met` | as `status_object_passes` | S2 | 1, 1 |
+| `not_applicable_anywhere` | `not_applicable` read as met on any condition | S2 | 3, 41 |
+| `floating_point_as_written` | section 5's comparisons in floating point (`float_compare`) | S5 | 209, 3 |
+
+The unrestricted twins, N1 (any condition removed) and N3 (any member made a status object), fail on the core
+as they must, by their counterexamples drawn first: an unchecked condition beside a met read, removed (1, 1);
+`unstated` where an implied condition fills it (12, 11).
 
 ## Audits
 
@@ -494,8 +654,12 @@ intervals.
   (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. Steps 9
   and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and declare it drawn;
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
-  window by the least share measured. The result's properties draw their kind first among at most eight, and
-  HP6 declares its field's `-0`, its review's way and its unknown member by their chances. For each such
+  window by the least share measured. The result's properties draw their kind first among at most nine, and
+  HP6 declares its field's `-0`, its review's way, its statistics status object and its unknown member by
+  their chances. HP12's parts draw their kinds, steps or planted rules first (at most ten), HP4 its ways and
+  HP10 its kinds, each declared drawn; each monotonicity relation declares the least share of its examples on
+  which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
+  and those that draw a way first declare their ways drawn. For each such
   property, five of steps 9 and 10's and two of the result's (HP1 by a kind, HP6 by a chance),
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone. One of the five runs a parametrised property, HP8's

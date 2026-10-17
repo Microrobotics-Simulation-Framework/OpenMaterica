@@ -300,6 +300,31 @@ every family entry goes in `families/CHANGELOG.md`.
   value, each way a review reads and an unknown member, each by its chance. 17 mutants, each killed at both
   sizes within the `ci` profile's examples (`test_result_mutants.py`); two audit controls. Fuzz target 4
   holds every result to HP1 and HP2 (`field_oracle.check_result_laws`, shown failing on each law broken).
+- HP12, the read agrees with the test-only reference model (`tests/property/test_model_properties.py`, in a
+  `relations` shard of its own): given the same sources, request text and claims, the two results are equal
+  as section 2 compares results, or both refuse to decide; five parts draw reads across every step S2 builds,
+  two faults of one step among them (the design's B5), a catalogue of 52 faults of step 0, and the rules no
+  case file pins. Its known divergences are listed by kind with their reasons and held exactly: three steps
+  the implementation has not built that the model decides (an overlay as the target, a form S2b reads, an
+  acceptance other than an implied condition), and two open points the implementation reads otherwise than
+  the model's fail-closed choice, for the maintainer. 23 mutants of the implementation (a step that stops at
+  its first fault at steps 0, 8, 9 and 10, and the design's mutants of HP1 to HP11 a result shows) and 18 of
+  the model (its survivors of the cases and the faults one case file alone kills), each killed at both sizes;
+  7 of the model's listed with the reason no read S2 builds shows them; controls of the check itself.
+- HP4, a fault in another field or section's specimen never changes a read, and one in its own section's
+  refuses it; HP10, a read's sources and request written in another byte form give its result
+  (`test_invariance_properties.py`): six mutants, the design's two among them.
+- Information monotonicity, the fail-closed spike's relations S2's forms reach (N1r, N2, N3r, N4, N5r, N6,
+  N8, P1 to P4, S1, S2, S5), each a property restricted as the spike's limits say, on worlds drawn on the
+  spike's grids, the rare triggers of its faults built in as drawn ways, each relation holding in a declared
+  least share (`test_monotonicity_properties.py`): 18 mutants, the spike's that S2's forms reach and new ones,
+  and the unrestricted twins N1 and N3 shown failing on the core.
+- Fuzz target 4 holds each read under `want: value` to the reference model, as HP12 does, which sees a
+  refusal step 8 gives wrongly (S2a-2's review, L3); it found a statistics status object returned as an empty
+  block (fixed) and four readings of the model the text does not take (fixed, each seeded). The record target
+  drives HP1, HP2, HP4, HP6, HP10, HP11 and HP12, and the control's replay runs HP12's and HP10's modules too.
+- The result's draws reach step 10's `unknown` reasons and two reasons a read more often: the HP1 mutant that
+  drops `condition_unchecked`'s condition, which took 1,079 examples, dies within 507 over twelve seeds.
 - Steps 9 and 10's properties (`tests/property/test_condition_properties.py`), in a shard of their own: HP7,
   each condition against an oracle written from section 5 alone, on exact rationals, at each boundary its
   exactness turns on, with a plus or minus of each kind, the table's other rows and implied conditions; HP8,
@@ -440,9 +465,10 @@ every family entry goes in `families/CHANGELOG.md`.
   exceptions (tables, overlays, extrapolations, picks, and alternatives with reasons of their own); it
   disagrees with none. The table evaluation suite's 35 files, which ask for no read, are left out, and a test
   holds those left out to the files whose operation is `evaluate`. Its tables are held to the generated
-  vocabulary; 69 faults seeded in it are each killed by a case file or listed as a survivor, a rule no case
-  pins, 9 of them; and a layering check, with a control, shows it reaches no `materica` module
-  (`tests/reference/`).
+  vocabulary; 75 faults seeded in it are each killed by a case file or listed as a survivor, a rule no case
+  pins, 15 of them, each killed by HP12 or listed with the reason no read S2 builds shows it; and a layering
+  check, with a control, shows it reaches no `materica` module (`tests/reference/`). Phase B fixed five of its
+  readings the text does not take, each found by HP12 or by fuzz target 4 held to it, each seeded since.
 
 ## [0.1.0.dev1] - 2026-10-14
 
