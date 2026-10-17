@@ -64,7 +64,10 @@ result of a case file that runs, a table evaluation case's excepted, validates a
 the published schema takes what the implementation returns, not only each case file's expected answer. The
 `evaluate` executor evaluates the case's table at each of its axis values, once under each precision and side
 the evaluator claims, and holds one run per claim; its numbers stay Python floats, since a refusal may return
-NaN, which JSON text cannot hold.
+NaN, which JSON text cannot hold. An evaluator may raise its refusal in place of reporting it, since "a raised
+refusal counts as reported" (`read_side_contract.md` section 7 item 7): the executor adapts a raised `Refusal`
+(`runner.py`) to the refusal reported, at that axis value. It adapts no other exception, which fails the case
+as any executor's does, so that a crash never passes as a refusal.
 
 ## How a result is compared
 

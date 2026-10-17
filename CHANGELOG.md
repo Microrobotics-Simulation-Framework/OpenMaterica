@@ -1061,6 +1061,9 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   `source_range` that widens the readable range, and a log-log derivative scaled at the lower knot), each
   failing its named TE file under every precision and side it claims, by the difference named beside it and
   never by raising.
+- The `evaluate` executor adapts a raised refusal, as the TE suite's README says a runner does: an evaluator
+  that raises `Refusal` in place of reporting a refusal fails no TE file. It adapts no other exception, and a
+  raised refusal where none is due fails.
 
 ### Known Anomalies
 - The registry's `materica_version` is the package's version (`0.1.0.dev2` at this release); it still read
