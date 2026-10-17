@@ -191,10 +191,12 @@ HELD = {
 # The shapes N1r's and N3r's restrictions are for, in the worlds each relation's drawn way starts from: an
 # implied condition that fills a condition of the field, and a numeric condition the read leaves unchecked.
 # The twins find theirs by ways of their own (`monotonicity_strategies.UNRESTRICTED_WAYS`); this audit sees
-# worlds that lost the shapes, which every relation's drawn way would then miss (S2a-4's review B, M3). Their
-# chances at both sizes, 1,000 worlds each (2026-10-17): 0.20 to 0.28, and 0.094 to 0.12; in a `ci` run,
-# 0.25 and 0.090.
-WORLD_SHAPES = {"implied_fills": 0.2, "unchecked_numeric": 0.08}
+# worlds that lost the shapes, which every relation's drawn way would then miss (S2a-4's review B, M3). And a
+# world the read meets, where the converse relations speak, which the cooperative half of the worlds is for:
+# without it, one world in forty (the review's S11). Their shares in eight `ci` runs (2026-10-17): 0.203 to
+# 0.248, mean 0.221; 0.064 to 0.117, mean 0.090; and in seven, 0.148 to 0.176, mean 0.166. Each chance is
+# declared at or below its mean.
+WORLD_SHAPES = {"implied_fills": 0.2, "unchecked_numeric": 0.08, "met": 0.15}
 
 
 @pytest.mark.chances(**WORLD_SHAPES)
@@ -202,6 +204,8 @@ WORLD_SHAPES = {"implied_fills": 0.2, "unchecked_numeric": 0.08}
 def test_the_worlds_hold_the_shapes_the_restrictions_are_for(world: World) -> None:
     feature("implied_fills", strategies.implied_applies(world, "temperature"))
     feature("unchecked_numeric", strategies.unchecked_numeric(world))
+    read = verdict(world)
+    feature("met", read is not None and read.status == "met")
 
 
 @pytest.mark.drawn(*strategies.REMOVAL_WAYS)
