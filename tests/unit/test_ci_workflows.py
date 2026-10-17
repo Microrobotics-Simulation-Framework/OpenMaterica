@@ -3907,7 +3907,10 @@ def repeat_timeout_problems(repeat: Workflow, ci: Workflow, directory: Path) -> 
         if head[:3] != ["run", "timeout", "--signal=INT"] or head[4:] != ["pytest"] or not left:
             problems.append(f"a run starts as {head}, not under `uv run timeout --signal=INT <seconds>`")
         elif not 7 * 60 - 30 <= int(left[1]) <= 7 * 60:
-            problems.append(f"a run of a job of 10 minutes is interrupted after {left[1]} s, not about 420")
+            when = "later" if int(left[1]) > 7 * 60 else "sooner"
+            problems.append(
+                f"a run of a job of 10 minutes is interrupted after {left[1]} s, {when} than about 420"
+            )
     if len(calls) != 3:
         problems.append(f"{len(calls)} runs of 3 started in a job of 10 minutes")
     status, calls, _, _ = run_the_runs(repeat, directory / "three", JOB_MINUTES="3")
@@ -3968,7 +3971,7 @@ def edited_step(repeat: Workflow, old: str, new: str) -> None:
     ("fault", "problem"),
     [
         (interrupted_by_term, "a run starts as ['run', 'timeout', '--signal=TERM'"),
-        (no_room_for_the_interrupt, "is interrupted after 60"),
+        (no_room_for_the_interrupt, "s, later than about 420"),
         (uv_under_timeout, "a run starts as ['run', 'pytest', '-n'"),
         (no_deadline, "in a job of 3 minutes 3 runs started"),
         (
