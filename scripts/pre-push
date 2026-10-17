@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
-# Git's pre-push hook: refuses a push that would publish a private name or path, in a file, an annotated tag or
-# a commit message of what it sends (scripts/check_confidential.py --pre-push; CONTRIBUTING,
+# Git's pre-push hook: refuses a push that would publish a private name or path, in a ref's name, a file, an
+# annotated tag or a commit message of what it sends (scripts/check_confidential.py --pre-push; CONTRIBUTING,
 # "Confidentiality"). Git gives it the remote's name and URL, and a line for each ref pushed on standard input,
 # which the scan reads. It runs the scan of the checkout being pushed from.
 #

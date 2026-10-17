@@ -6,6 +6,7 @@ The paths are built by concatenation, so that this file does not hold them for t
 """
 
 import io
+import os
 import subprocess
 from pathlib import Path
 
@@ -167,6 +168,22 @@ def test_the_command_scans_tracked_files_and_the_messages_in_a_range(
     assert check_confidential.main([*key_file, "--messages", "no-such-revision"]) == 2
 
 
+def test_the_command_scans_a_ref_name_it_is_given(
+    repository: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """CI gives a pull request's branch name, public from its push, which no tracked file holds. The control:
+    a plain name passes."""
+    (tmp_path / "key").write_text(KEY.hex(), encoding="utf-8")
+    key_file = ["--key-file", str(tmp_path / "key")]
+    commit("docs: the start", {"README.md": b"Nothing here.\n"})
+    assert check_confidential.main([*key_file, "--ref-name", "docs-fix"]) == 0
+    assert check_confidential.main([*key_file, "--ref-name", "fix/quux-widget-core"]) == 1
+    assert capsys.readouterr().err.splitlines() == [
+        "ref fix/quux-widget-core:1: a confidential term (q..., 11 characters)"
+    ]
+    assert check_confidential.main([*key_file, "--pre-push", "origin", "--ref-name", "x"]) == 2
+
+
 def test_the_digest_command_writes_the_digest_file(
     repository: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -246,12 +263,13 @@ def test_the_pre_push_scan_finds_what_the_push_sends_a_later_commit_undoes_inclu
 
 def test_the_pre_push_scan_reads_only_what_the_remote_lacks(
     remote: Path,
+    tmp_path: Path,
     key_file: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """What the remote holds is public already; a push to it is judged by what it adds. To a URL, with no
-    remote-tracking refs and no object the remote reported, the whole history is read: the control."""
+    """What the remote holds is public already; a push to it is judged by what it adds, by its name or its
+    URL. To a remote that holds nothing, the whole history is read: the control."""
     commit("docs: quux widget", {"old.md": b"By quux widget.\n"})
     subprocess.run(["git", "push", "-q", "origin", "main"], check=True)
     held = object_name()
@@ -259,10 +277,122 @@ def test_the_pre_push_scan_reads_only_what_the_remote_lacks(
     assert pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), held)) == (0, [])
     new_branch = update(object_name(), NO_OBJECT, "refs/heads/topic")
     assert pre_push(monkeypatch, capsys, key_file, "origin", new_branch) == (0, [])
-    status, found = pre_push(monkeypatch, capsys, key_file, str(remote), new_branch)
+    assert pre_push(monkeypatch, capsys, key_file, str(remote), new_branch) == (0, [])
+    empty = tmp_path / "empty.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(empty)], check=True)
+    status, found = pre_push(monkeypatch, capsys, key_file, str(empty), new_branch)
     assert status == 1
     assert "old.md (pushed):1: a confidential term (q..., 11 characters)" in found
-    assert pre_push(monkeypatch, capsys, key_file, str(remote), update(object_name(), held)) == (0, [])
+
+
+def test_the_pre_push_scan_reads_what_the_remote_lost_though_a_tracking_ref_still_names_it(
+    remote: Path,
+    key_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A branch deleted on the server, by another clone or the web page, leaves this clone's remote-tracking
+    ref behind until a prune; git sends what the remote advertises it lacks, so the scan reads that too. The
+    control: while the remote still holds the branch, the same push adds nothing."""
+    commit("docs: notes", {"leak.md": b"By Zorblax.\n"})
+    leak = object_name()
+    subprocess.run(["git", "push", "-q", "origin", "HEAD:refs/heads/leak"], check=True)
+    again = update(leak, NO_OBJECT, "refs/heads/again")
+    assert pre_push(monkeypatch, capsys, key_file, "origin", again) == (0, [])
+    subprocess.run(["git", "-C", str(remote), "update-ref", "-d", "refs/heads/leak"], check=True)
+    assert object_name("refs/remotes/origin/leak") == leak
+    status, found = pre_push(monkeypatch, capsys, key_file, "origin", again)
+    assert (status, found) == (1, ["leak.md (pushed):1: a confidential term (z..., 7 characters)"])
+
+
+@pytest.mark.parametrize(
+    ("ref", "place"),
+    [("refs/heads/zorblax-support", "ref zorblax-support"), ("refs/tags/v1-zorblax", "ref v1-zorblax")],
+    ids=["a-branch", "a-tag"],
+)
+def test_the_pre_push_scan_reads_the_name_of_each_ref_it_writes(
+    remote: Path,
+    key_file: Path,
+    ref: str,
+    place: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A ref's name is public from the moment it is pushed, and stays on the record after the ref is deleted.
+    The controls: the same commit under a plain name passes, and deleting the ref, which publishes nothing,
+    is not refused, so that a name pushed by mistake can be taken down."""
+    commit("docs: more", {"new.md": b"Nothing private.\n"})
+    status, found = pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), NO_OBJECT, ref))
+    assert (status, found) == (1, [f"{place}:1: a confidential term (z..., 7 characters)"])
+    plain = update(object_name(), NO_OBJECT, "refs/heads/topic")
+    assert pre_push(monkeypatch, capsys, key_file, "origin", plain) == (0, [])
+    deleted = f"(delete) {NO_OBJECT} {ref} {object_name()}"
+    assert pre_push(monkeypatch, capsys, key_file, "origin", deleted) == (0, [])
+
+
+def test_the_pre_push_scan_reads_contents_git_names_without_a_path(
+    remote: Path,
+    key_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`git rev-list --objects` names a content at a path holding a line break, and one directly under an
+    annotated tag, with nothing. The control: the same content under a plain name is found as before."""
+    start = object_name()
+    commit("docs: odd", {"\nnotes.md": f"In {HOME}x.\n".encode()})
+    status, found = pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), start))
+    assert (status, found) == (1, ["\\nnotes.md (pushed):1: an absolute home directory path"])
+    subprocess.run(["git", "reset", "-q", "--hard", start], check=True)
+    commit("docs: plain", {"notes.md": f"In {HOME}x.\n".encode()})
+    status, found = pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), start))
+    assert (status, found) == (1, ["notes.md (pushed):1: an absolute home directory path"])
+    blob = (
+        subprocess.run(
+            ["git", "hash-object", "-w", "--stdin"], input=b"By Zorblax.\n", capture_output=True, check=True
+        )
+        .stdout.decode()
+        .strip()
+    )
+    identity = ["-c", "user.name=Author", "-c", "user.email=author@example.org"]
+    subprocess.run(["git", *identity, "tag", "-a", "blobtag", blob, "-m", "a blob"], check=True)
+    status, found = pre_push(
+        monkeypatch,
+        capsys,
+        key_file,
+        "origin",
+        update(object_name("blobtag"), NO_OBJECT, "refs/tags/blobtag"),
+    )
+    assert (status, found) == (
+        1,
+        [f"object {blob[:12]} (pushed):1: a confidential term (z..., 7 characters)"],
+    )
+
+
+def test_a_name_that_is_not_utf_8_is_scanned_and_shown_escaped(
+    remote: Path,
+    key_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """git's paths, ref names and messages are bytes. A path that is not UTF-8 is read, by the pre-push scan
+    and the scan of the tracked files, and shown with its bytes escaped, rather than stop either with a
+    traceback; a message that is not UTF-8 is read too."""
+    start = object_name()
+    name = os.fsdecode(b"caf\xe9.md")
+    commit("docs: caf\xe9", {name: f"In {HOME}x.\n".encode()})
+    status, found = pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), start))
+    assert (status, found) == (1, ["caf\\xe9.md (pushed):1: an absolute home directory path"])
+    assert check_confidential.main(["--key-file", str(key_file)]) == 1
+    assert capsys.readouterr().err.splitlines() == ["caf\\xe9.md:1: an absolute home directory path"]
+    subprocess.run(["git", "reset", "-q", "--hard", start], check=True)
+    Path("message").write_bytes(b"docs: by Zorblax \xff\n")
+    Path("clean.md").write_text("Nothing.\n", encoding="utf-8")
+    subprocess.run(["git", "add", "clean.md"], check=True)
+    identity = ["-c", "user.name=Author", "-c", "user.email=author@example.org"]
+    subprocess.run(["git", *identity, "commit", "-q", "-F", "message"], check=True)
+    status, found = pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), start))
+    assert status == 1
+    assert found[0].endswith("message:1: a confidential term (z..., 7 characters)")
 
 
 def test_the_pre_push_scan_reads_an_annotated_tag_and_nothing_for_a_deleted_ref(

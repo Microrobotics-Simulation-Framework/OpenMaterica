@@ -77,13 +77,15 @@ jobs:
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: python3 scripts/check_signoff.py "$BASE" "$HEAD"
 
-      # The tracked files, and the messages of the commits this event brings (on a push, all of main's when the
-      # commit before it is unknown). Without the secret, as on a fork, the private paths are still checked and
-      # the names are not, with a warning (CONTRIBUTING, "Confidentiality").
+      # The tracked files, the messages of the commits this event brings (on a push, all of main's when the
+      # commit before it is unknown), and a pull request's branch name, public from its push. Without the
+      # secret, as on a fork, the private paths are still checked and the names are not, with a warning
+      # (CONTRIBUTING, "Confidentiality").
       - name: No private name or path in the tracked files or the commit messages
         env:
           CONFIDENTIAL_SCAN_KEY: ${{ secrets.CONFIDENTIAL_SCAN_KEY }}
           EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
@@ -99,7 +101,7 @@ jobs:
               if git cat-file -e "$PUSH_BEFORE^{commit}" 2>/dev/null; then range="$PUSH_BEFORE..$PUSH_AFTER"; fi ;;
             *) range="" ;;
           esac
-          python3 scripts/check_confidential.py ${range:+--messages "$range"}
+          python3 scripts/check_confidential.py ${range:+--messages "$range"} ${HEAD_REF:+--ref-name "$HEAD_REF"}
 
       # Its outputs decide which jobs run: `code` the static, generated-files, test and control jobs,
       # `hypothesis` the Hypothesis job, and `commits`, a JSON list, the commits the per-commit job checks.
