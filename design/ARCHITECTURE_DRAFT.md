@@ -5,7 +5,8 @@ moved here the same day, and revised the same day after a design
 review, on 2026-10-12 after a review against principles 9 and 10, again on 2026-10-12 after five prototypes
 and the maintainer's decisions on their findings, on 2026-10-12 and 2026-10-13 after an ecosystem survey, the
 maintainer's decisions on it and their reviews, on 2026-10-13 after the decisions taken before the first
-code, and on 2026-10-14 for the project's name (section 15). Referenced from
+code, on 2026-10-14 for the project's name, and on 2026-10-16 for the sibling distributions and the MCP
+server (section 15). Referenced from
 MIME's private 0.3.0 structure draft (the **structure draft**) and used there by direction, not decision: MIME
 0.3.0 aims between the realistic and ambitious sets of section 12.
 
@@ -76,6 +77,18 @@ MIME's private 0.3.0 structure draft (the **structure draft**) and used there by
   consumer or engine needs in-process (section 7.2).
 - Record checks that need the source registry, a source copy, the previous release or the repository's history
   run in the library's tooling, not in `materica check` (`DOCUMENTATION_ARCHITECTURE.md` section 6.5).
+
+**Decided (maintainer, 2026-10-16):**
+
+- One repository holds every Python distribution: the core at its root, `openmaterica-authoring` and
+  `openmaterica-families` in directories of their own, each with its own `pyproject.toml`, version line and
+  changelog, as a uv workspace with tag-prefixed releases. The curated library keeps a repository of its own
+  (section 7.2).
+- There is no separate MCP distribution. The core's `[mcp]` extra brings the one MCP server, which loads the
+  tools of whichever siblings are installed. A sibling's tools are plain typed functions registered through an
+  entry-point group, and no sibling imports an MCP library (sections 7.1, 8.1 and 8.2).
+- A sibling's MAJOR.MINOR is the core's MAJOR.MINOR it is built for, and its patch number is its own. A core
+  minor is a release train, and nothing updates itself (section 7.2).
 
 Everything else here is a proposal.
 
@@ -272,9 +285,10 @@ Rules:
 - Nothing imports a simulator. Adapters for a simulator import it lazily and live where their owners
   choose: MIME's adapter in MIME; exporters, importers and Isaac adapters in `openmaterica-authoring` until
   someone upstream wants them.
-- `openmaterica` holds L0 to L2, L4, L5 and the `check` command; `openmaterica-authoring` holds L3 and L6's
-  integrations. A consumer's product depends on the first, and on the second only when its build runs it, as
-  one that runs the engine adapter does (section 7.2).
+- `openmaterica` holds L0 to L2, L4, L5, the `check` command and the MCP server, which runs only with the
+  `[mcp]` extra (section 8.1); `openmaterica-authoring` holds L3 and L6's integrations. A consumer's product
+  depends on the first, and on the second only when its build runs it, as one that runs the engine adapter
+  does (section 7.2).
 - USD is an optional extra (section 7.2).
 
 ### 3.3 Two kinds of user
@@ -1553,14 +1567,18 @@ materica_authoring/       curation tooling, where records are written
                           after 0.1                                                             (L3)
 ```
 
-The MCP server is a separate distribution, `openmaterica-mcp` (section 8), so nothing in the core depends on
-it. The 0.1 module list was agreed before the first code (maintainer, 2026-10-13), together with making the
-writer JSON Schemas the single hand-edited source of structure: the reader schemas and the TypedDict shapes
-are generated from them, and the specification's member tables are checked against them.
+The MCP server is not in the 0.1 list; it comes with A9 (section 12.1). It is part of the core, in L6, and
+runs only with the `[mcp]` extra, which brings the MCP library. No other module of the core imports it, so
+the core's base install has no MCP dependency (section 8.1; maintainer, 2026-10-16). The 0.1 module list was
+agreed before the first code (maintainer, 2026-10-13), together with making the writer JSON Schemas the
+single hand-edited source of structure: the reader schemas and the TypedDict shapes are generated from them,
+and the specification's member tables are checked against them.
 
 Families, with their golden vectors and reference implementations, sit beside the core in the same
-repository and ship as `openmaterica-families` (section 3.1). The library repository has its own layout
-(`DOCUMENTATION_ARCHITECTURE.md` section 2).
+repository and ship as `openmaterica-families` (section 3.1). `materica_authoring` ships as
+`openmaterica-authoring`. Each sibling has a directory of its own in the repository (`authoring/`,
+`families/`) with its own `pyproject.toml`, version line and changelog (section 7.2). The library repository
+has its own layout (`DOCUMENTATION_ARCHITECTURE.md` section 2).
 
 ### 7.2 Dependencies and distribution
 
@@ -1568,7 +1586,9 @@ repository and ship as `openmaterica-families` (section 3.1). The library reposi
   reader's envelope checks are written by hand, which the specification's README allows
   (`docs/specification/README.md`, "Suites and case numbers"), so the core adds nothing to a consumer's SOUP
   list but OpenMaterica itself; each extra adds its own. Extras: `[check]` for `jsonschema` (`materica check`
-  and the writer schema), `[usd]` for `usd-core`, `[sample]` for numpy and whatever else L5 needs. Type
+  and the writer schema), `[usd]` for `usd-core`, `[sample]` for numpy and whatever else L5 needs, `[mcp]`
+  for the MCP server's library (section 8.1), and `[authoring]`, `[families]` and `[all]`, which pin the
+  matching siblings (below). Type
   checkers read `typing_extensions` through the `.pyi` files and `TYPE_CHECKING` imports; nothing imports it
   at run time. `openmaterica-authoring` carries the curation tools' heavier dependencies (PDF text extraction,
   the digitiser) and the only network access in the project (registry drafting from DOI and Crossref).
@@ -1587,6 +1607,32 @@ repository and ship as `openmaterica-families` (section 3.1). The library reposi
   and that a named consumer or engine needs in-process. OpenMaterica need not share an interpreter with an
   engine: it runs at the build and hands over data (JSON results and USD layers), so it can run in its own
   environment while the engine opens the files.
+- **One repository, three distributions** (maintainer, 2026-10-16). The core sits at the repository's root,
+  and `openmaterica-authoring` and `openmaterica-families` in directories of their own. Each has its own
+  `pyproject.toml`, version line and changelog. The repository is a uv workspace, and each distribution is
+  released from tags of its own prefix (`DOCUMENTATION_ARCHITECTURE.md` section 12). The curated library
+  keeps a repository of its own (section 6.7).
+- **The siblings' versions** (maintainer, 2026-10-16):
+  - A sibling's MAJOR.MINOR is the core's MAJOR.MINOR it is built for; its patch number is its own. It
+    depends on `openmaterica>=X.Y.F,<X.(Y+1)` before 1.0 and on `openmaterica>=X.Y.F,<(X+1)` after, X.Y.F
+    being the oldest core release it works with.
+  - A core minor is a release train: every sibling is released for it the same day. The core's extras
+    `[authoring]`, `[families]` and `[all]` pin the matching siblings, so one `pip install -U
+    "openmaterica[...]"` upgrades them consistently.
+  - A sibling refuses to import against a core of another MAJOR.MINOR, with a message naming the command
+    that fixes it. `python -m materica versions` lists the installed distributions, checks them against each
+    other, and says which siblings exist for the installed core. Nothing updates itself.
+  - CI tests each sibling against the oldest core in its range and against the current one.
+  - Each sibling's first real pre-release goes out early, to claim its name on PyPI. Before a sibling's first
+    real release, each earlier core minor gets an **explainer release** of it: versioned for that minor,
+    depending on that core minor, and holding only an import that raises a message naming the first core
+    minor the sibling exists for and the install that works. A resolver picks it only when the core is
+    pinned to that minor. So `openmaterica-families` 0.1.0, published at core 0.1.0a1 or 0.1.0, says that
+    families begin with 0.2 (R5, section 12.1) and claims the name. Not used: an sdist that fails its build
+    with the message, which `--only-binary` skips and whose message build output buries.
+  - The release workflow writes a compatibility table, each core version with its siblings' versions, into
+    the documentation.
+  - A regulated consumer pins exact versions all the same (sections 5.6 and 12.4).
 - Release artifacts: the wheels on PyPI, and the schemas (L0) and conformance data (L1) as a separate
   archive for projects in other languages to vendor. Golden vectors live only with their families; the
   archive cites each family version's hash. Library releases are separate (section 6.7).
@@ -1686,10 +1732,11 @@ drafted or on running any model again.
   Protocol (MCP). The researcher's own agent (any MCP client: a coding agent, an IDE assistant, a custom
   command-line tool) brings the model and the key. Bring-your-own-key holds by construction, not by
   configuration.
-- **The MCP server** (`openmaterica-mcp`, an optional separate distribution in L6) depends on the core and an
-  MCP server library only, with no model SDK. It makes no network requests and reads only files the user
-  points it at, such as their own copies of papers. Fetching papers is the agent's business, on the user's
-  request (`DOCUMENTATION_ARCHITECTURE.md` section 15, constraint 19).
+- **The MCP server** is part of the core, in L6, and runs only with the `[mcp]` extra, which adds an MCP
+  server library and no model SDK (maintainer, 2026-10-16). It loads the tools of whichever siblings are
+  installed (section 8.2). It makes no network requests and reads only files the user points it at, such as
+  their own copies of papers. Fetching papers is the agent's business, on the user's request
+  (`DOCUMENTATION_ARCHITECTURE.md` section 15, constraint 19).
 - **MCP sampling** would let the server request completions from the client's model, keeping
   bring-your-own-key while letting OpenMaterica sequence the steps. Client support was uneven when last
   recalled; the design assumes an agent-driven loop and does not use sampling at first (decided
@@ -1707,7 +1754,7 @@ building):
 |---|---|
 | Resources (read-only) | records, cards, `index.json`, family definitions, the source registry |
 | Tools (deterministic) | query the index; get a record (values bundled with conditions, specimen facts, tier and hash); compare sources on curves; gap analysis against a consumer's required properties; create a draft; attach and verify a quote; parse a unit string; run the convention checker; digitise with a stated axis calibration; run a fit; bake check points; run `materica check` |
-| Prompts | the extraction procedures and review checklists (section 8.3), versioned, so any MCP client gets them; the same text ships as agent skills |
+| Prompts | the extraction procedures and review checklists (section 8.3), versioned, so any MCP client gets them; the same text ships as skills (below) |
 
 - **Tools first, MCP second.** Every tool is first a plain library function in L3 and a command, usable by a
   person with no model at all; the MCP server only exposes them. Prototype P4's estimate of full provenance by
@@ -1718,6 +1765,14 @@ building):
   value's type and record "unstated" in structure; quote attach-and-verify, per copy; registry drafting from
   DOI, Crossref and licence pages; formulation evaluators and check-point bakers. They ship in
   `openmaterica-authoring` (section 7.2). The MCP server stays a later item (section 12).
+- **How the server finds the tools** (maintainer, 2026-10-16). A sibling's tools are plain typed functions,
+  registered through an entry-point group that the sibling declares whatever extras were chosen. No sibling
+  imports an MCP library; only the server does. The server loads the tools of whichever siblings are
+  installed: it skips a sibling that is not installed silently, and one built for another core MAJOR.MINOR
+  (section 7.2) with a logged reason. So the base install of every distribution stays free of MCP
+  dependencies.
+- **Skills** ship as package data (maintainer, 2026-10-16). The server exposes them as prompts, and a command
+  exports them for clients that read skill files.
 - **Capability scoping.** Draft tools write only to a drafts area of the user's working tree. No tool can
   merge, push or open a pull request on its own, set a record's review status, set or change a redistribution
   status, write a check point other than by baking it, or edit a released record. A person opens and
@@ -1793,11 +1848,12 @@ stays an option.
 - **The release fails closed.** `materica check --release` refuses any value without a review record.
   Drafts may exist in a working tree; they cannot enter a release.
 - **The MCP server and the curation tools in `openmaterica-authoring` are curation tooling, outside the SOUP
-  package**, like the CI scripts. Every value they helps draft is independently verified before release, which
-  is the usual argument for light validation of a tool used in a quality system (recalled: ISO 13485:2016
-  clause 4.1.6). OpenMaterica operates under no QMS, but a manufacturer reasoning about it will look for
-  exactly this argument. The SOUP package states how many library values were model-assisted and which
-  procedure versions drafted them (`DOCUMENTATION_ARCHITECTURE.md` section 10).
+  package**, like the CI scripts. The server ships in the core's wheel, but no reader, check or build imports
+  it, and its MCP library comes only with `[mcp]`. Every value they help draft is independently verified
+  before release, which is the usual argument for light validation of a tool used in a quality system
+  (recalled: ISO 13485:2016 clause 4.1.6). OpenMaterica operates under no QMS, but a manufacturer reasoning
+  about it will look for exactly this argument. The SOUP package states how many library values were
+  model-assisted and which procedure versions drafted them (`DOCUMENTATION_ARCHITECTURE.md` section 10).
 
 ### 8.6 Measuring it
 
@@ -1832,6 +1888,7 @@ on this literature. Three mechanisms measure them:
 | Legal: sending copyrighted papers to a model provider; mass extraction | the user's own copies, key and provider terms; primary literature only; tiers never set by a model; quotes in shipped records within the legal review (section 6.5) |
 | Leaking private overlays to a provider | excluded from tool output by default |
 | Query answers with numbers not from tools, or without their conditions and specimen facts | bundled tool outputs; the number checker; binding only by identifier and hash |
+| A sibling's tools run against a core of another minor version, whose records and checks they do not know | the sibling refuses to import against another core MAJOR.MINOR, and the server skips it with a logged reason (sections 7.2 and 8.2) |
 
 ## 9. Interface with MIME
 
@@ -2073,7 +2130,7 @@ Each set includes the one before it. A MIME row is done first as the spike named
 | M7 | Conformance cases as data files | OpenMaterica | AD 7.4 *Conformance*; DA 6.1 *Conformance suite (the read side)* |
 | M8 | `materica check`: schema, provenance, plausibility | OpenMaterica | DA 6.5 *CI checks* |
 | M9 | A seed library from primary sources (water as a table over temperature, evaluated from its reference formulation; SU-8, NdFeB grades, the tube materials); its source registry, per copy; the data licence (CC0-1.0, decided). MIME's current constants are not transcribed into it: they stay inline in MIME (M11) | library | AD 6.1 *Source registry*; AD 6.2 *Three tiers*; AD 6.4 *Licences*; AD 13 *Open questions* (no. 8) |
-| M10 | Tagged releases of the package, and tags of the library that MIME pins exactly: unpublished pins for MIME's spikes, not the first library release (R8; section 6.7) | OpenMaterica | AD 6.7 *Distribution and hosting*; DA 7.1 *Four version lines* |
+| M10 | Tagged releases of the packages, each from tags of its own prefix, with the explainer release `openmaterica-families` 0.1.0 (section 7.2), and tags of the library that MIME pins exactly: unpublished pins for MIME's spikes, not the first library release (R8; section 6.7) | OpenMaterica | AD 6.7 *Distribution and hosting*; AD 7.2 *Dependencies and distribution*; DA 7.1 *Four version lines* |
 | M11 | The seam: `Body` and `Medium` hold a material reference (identifier and hash) or an inline value labelled "declared in the experiment", with the origin "stated without an origin"; an adapter resolves either into what the nodes take today | MIME (S1) | SD 4.1 *Things*; AD 9.2 *What changes in MIME*; AD 4.7 *Provenance* |
 | M12 | Migration control: experiments built through the seam, from inline values, reproduce today's outputs exactly. Library values then replace inline ones one at a time, each a separate change with its measured effect | MIME (S1) | SD 8.2 *What is wrong with it* (point 4); RS *TODO: what it takes* (item 56, "results reproduce") |
 
@@ -2109,7 +2166,7 @@ Each set includes the one before it. A MIME row is done first as the spike named
 | A6 | Interface records for friction | OpenMaterica | AD 4.13 *Interfaces between materials*; SD 3.8 *Nodes planned for 0.3.0* (existing nodes: surface contact, the contact-friction stub) |
 | A7 | Transport records: a species' diffusivity in a medium; contrast agents | OpenMaterica | SD 3.8 *Nodes planned for 0.3.0* (row 9); AD A.4 *Prerequisites, in order* (item 2) |
 | A8 | Optical and thermal sections, for photoacoustics' cheap rungs: optical fields added to the radiological section's spectral machinery, optical composition by named component added to the bulk section, without breaking the schema | OpenMaterica | AD 4.2 *Sections*; AD 5.6 *Versions and hashes*; AD A.3 *A fidelity ladder (proposal)*; AD A.4 *Prerequisites, in order* (item 1) |
-| A9 | The MCP server, the extraction prompts and the gold set | `openmaterica-mcp` | AD 8 *Layer 6: MCP tooling and curation* |
+| A9 | The MCP server, the extraction prompts and the gold set | OpenMaterica (`openmaterica[mcp]`) | AD 8 *Layer 6: MCP tooling and curation* |
 | A10 | Anisotropic solids: a linear elastic family with a declared symmetry class, its constants in Voigt form in the material's principal axes; orientation fields for axes that vary in space; bone as its first material. Its consumer is MIME's acoustics through bone; stretch (maintainer, 2026-10-12). Measured speeds with their propagation direction come earlier, with R2 | OpenMaterica, library | AD 4.2 *Sections* (anisotropic solids); AD 4.5 *Model families*; AD 5.1 *The geometry ladder* (orientation) |
 
 Not in any set, for want of a MIME consumer (section 7.6): the dielectric section and a non-Newtonian blood
@@ -2238,7 +2295,7 @@ Each answer is written into the section named.
 | 13 | Temperature coupling | no new mechanism: a consumer evaluates a table over temperature at its simulated temperature, its evaluator returns whether the temperature is in range, and its monitors read that (4.4, 9.6); irreversible change is an evolution family with an event (4.5) |
 | 14 | Maintenance beyond the first version | one maintainer for now; reviewed at the first library release against the adoption criteria of section 10, with a co-maintainer sought from the first outside publisher |
 | 15 | The form of namespaces | short names, first come first served in the publishers file (4.1, 6.7) |
-| 16 | The MCP server's packaging | a separate distribution, no sampling at first; the tools exist first as library functions and commands (8.1, 8.2) |
+| 16 | The MCP server's packaging | no sampling at first; the tools exist first as library functions and commands (8.1, 8.2). First answered as a separate distribution; since 2026-10-16 the core's `[mcp]` extra, whose one server loads the tools of whichever siblings are installed (maintainer; 7.1, 8.1) |
 | 17 | Quotes for every extracted value | required for values extracted from text or tables in the curated library; optional elsewhere (4.7) |
 | 18 | Events: what takes over, and how a chain is recorded | the consumer declares the chain; a family never names its successor; the sheet and the run record it (3.5, 4.5) |
 | 19 | Check points for reference-only parameter sets | none shipped; the fill-in is checked against the witness locally (4.6) |
@@ -2301,6 +2358,9 @@ Still open:
 - No MCP server was prototyped. MCP's primitives and client support are recalled. The failure modes of
   section 8.7 come from general experience, not from measurements on tissue literature; the gold set
   exists to measure them.
+- Nothing of section 7.2's sibling machinery was built or tried: the uv workspace, the tag-prefixed releases,
+  the siblings' version checks, the server's entry-point discovery and the explainer release. That a resolver
+  picks an explainer release only when the core is pinned to its minor is reasoned, not run.
 - The papers, databases and ontologies named here are recalled, except where the survey checked them.
 - The photoacoustic figures in Appendix A are my arithmetic on assumed values.
 - MIME's material needs in section 12.1 were found by searching its node and experiment files. None of the
@@ -2311,7 +2371,7 @@ Still open:
   my arithmetic. The absorption edges, the Fåhræus-Lindqvist effect, ISO 10993-1's scope, USD's fallback
   behaviour and the units of `UsdPhysics` density are recalled.
 
-## 15. Revisions of 2026-10-11 to 2026-10-14
+## 15. Revisions of 2026-10-11 to 2026-10-16
 
 A design review, using an existing per-paper tissue calibration code base as a case study, changed the
 draft as follows. A follow-up the same day on distribution, drawing on the Hugging Face Hub, added four rows
@@ -2498,6 +2558,18 @@ practice; both are private working files.
 | acceptances in a read scheduled with alternatives and overlays | each step brings the acceptances it applies; a nominal outside the bounds is `nominal_invalid`; implied conditions that disagree are a fault of the request | the read of values applies implied conditions and nominals before overlays exist (maintainer, changing the schedule decided 2026-10-13) |
 | OpenMaterica's relation to materiomics unstated; the adoption history of earlier formats not researched | adjacent to materiomics, not its infrastructure (1); adoption evidence recorded (10, 14) | neither school of materiomics defines a record; the standards that spread had a gatekeeper and a validator |
 | a member the reader does not know ignored wherever it stands | ignored unless it is one slip from a member named at its place, which is refused; the names valid at one place kept more than one slip apart, now and in later minor versions (5.6) | a misspelt `plus_minus`, a field's `specimen` or a request's `acceptances` dropped what it held, and the read gave `met` (maintainer, 2026-10-14) |
+
+The maintainer's decisions of 2026-10-16 on the sibling distributions and the MCP server gave the rows below.
+
+| Before | After | Why |
+|---|---|---|
+| a separate MCP distribution, `openmaterica-mcp`, depending on the core and an MCP server library | no MCP distribution: the core's `[mcp]` extra brings the one server, in L6, which loads the tools of whichever siblings are installed; still curation tooling outside the SOUP package, since no reader, check or build imports it (7.1, 8.1, 8.5, 13) | one server whatever is installed, and the base install of every distribution free of MCP dependencies (maintainer) |
+| none | a sibling's tools are plain typed functions registered through an entry-point group, declared whatever extras were chosen, and no sibling imports an MCP library; the server skips a sibling that is not installed silently, and a mismatched one with a logged reason (8.2) | a sibling needs no extra of its own for the server to find its tools |
+| the prompts' text "ships as agent skills" | skills ship as package data; the server exposes them as prompts, and a command exports them for clients that read skill files (8.2) | one text for MCP clients and for clients that read skill files |
+| this repository holding the core and, at first, the families, with `authoring/` and `mcp/` beside them; how each is versioned and released unstated | one repository for every Python distribution, a uv workspace with tag-prefixed releases: the core at the root, `authoring/` and `families/` each with its own `pyproject.toml`, version line and changelog; the library in a repository of its own (7.1, 7.2; DA 2, DA 12) | the maintainer's call; each distribution still releases on its own, from tags of its own prefix |
+| a SemVer line for each Python distribution (DA 7.1), its relation to the core's unstated | a sibling's MAJOR.MINOR is the core's it is built for, its patch its own; `openmaterica>=X.Y.F,<X.(Y+1)` before 1.0 and `>=X.Y.F,<(X+1)` after; a core minor is a release train; `[authoring]`, `[families]` and `[all]` extras on the core; a sibling refuses a core of another MAJOR.MINOR, naming the fix; `python -m materica versions`; nothing updates itself; CI against the oldest core in range and the current one (7.2; DA 7.1) | a sibling's version says which core it works with, and one `pip install -U "openmaterica[...]"` upgrades consistently |
+| a sibling's PyPI name unclaimed until its first release | each sibling's first real pre-release goes out early; before it, an explainer release for each earlier core minor, today `openmaterica-families` 0.1.0 at core 0.1.0a1 or 0.1.0 (7.2; 12.1, M10) | it claims the name, and a user whose core is pinned to an earlier minor gets a message naming the install that works. An sdist that fails its build was not used: `--only-binary` skips it, and build output buries its message |
+| none | the release workflow writes a compatibility table of each core version and its siblings' versions into the documentation, and `python -m materica versions` says which siblings exist for the installed core (7.2; DA 7.1, DA 12) | which siblings exist for a core can be read without installing them |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 
