@@ -1,6 +1,6 @@
 # Property tests
 
-Hypothesis properties of the core, in eight groups, of the writer schema, in a ninth, and of the anomaly
+Hypothesis properties of the core, in nine groups, of the writer schema, in a tenth, and of the anomaly
 check's reader (the last bullet).
 
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
@@ -228,6 +228,23 @@ check's reader (the last bullet).
   must fail; and the worlds every relation draws are audited for the same shapes, by their chances: an
   implied condition that fills a condition of the field, and a numeric condition the read leaves unchecked;
   and for a world the read meets, which the cooperative half of the worlds is drawn for.
+- **Tables:** (15) the table evaluator (`core/evaluate.py`; `record_format.md` section 6, table items 3 and 4;
+  `read_side_contract.md` sections 5 and 7), the S3 design's HP17 to HP19, against an oracle written from the
+  text (`test_evaluate_properties.py`). HP17: the evaluator agrees with it over drawn tables and operating
+  values, never raising: where each value lies (at an edge, in the readable range, beyond an edge) exactly, and
+  the number, a linear one bit for bit and a log-log one within 1e-15. HP18: a read at a knot that is no edge,
+  or beyond the readable range's end where that is one, gives the stored `y` bit for bit, `-0` included. HP19:
+  the knots that bracket a read are the interval the text names and its value lies between their two `y`; and
+  over monotone `y` with no edge, reads are monotone. `tables.py` draws tables step 8 accepts by choices made
+  first (the scheme; the magnitude: ordinary, any double, doubles a few units apart, or subnormal; edges;
+  signed zeros; and a `source_range` absent, narrower, wider, across an end, or of one point), and reads each
+  at every place table item 3 tells apart: each knot and edge, the readable range's ends and `source_range`'s,
+  the double either side of each, both zeros, a value inside each interval with room, one beyond each end of
+  the readable range, and the largest doubles. Each property first checks its table against the text's rules
+  (`accepted`), a check that found two faults of the generator while it was written. The oracle compares as
+  fractions, finds a read's interval by scanning every pair of knots, and computes in another arrangement, a
+  linear value exactly and a log-log one in decimal at 80 digits where the evaluator works at 50; its own
+  control is that it gives every number and refusal of the table evaluation cases.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -283,7 +300,7 @@ failure prints a blob that replays it anywhere.
 ## Shards
 
 CI runs the groups in seven shards side by side, each in a job of its own: `pytest tests/property --shard
-json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
+json`, which also holds the tables group, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
 two validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
 database and were most of the records shard's time, `--shard conditions`, steps 9 and 10's group and the
 result's with their mutant searches, which take seconds and set no example database (112 s on four local
@@ -933,6 +950,39 @@ otherwise met (17, 6); N3, `unstated` where an implied condition fills it (9, 10
 those ways fails these searches; worlds that lost the shapes fail the worlds' audit
 (`test_the_worlds_hold_the_shapes_the_restrictions_are_for`).
 
+### The table evaluator's mutants
+
+`test_evaluate_mutants.py`. Each fault replaces one of `core/evaluate.py`'s module-level functions, which the
+evaluator looks up when it runs, and each mutant names the assertions its kill may fail: an assertion's
+message begins with its label, and the search fails where the first failure is another's. HP17 checks where
+every operating value lies before any number, so that a fault of range or edge dies as one, not by the end
+value it leads to. The first eight are the S3 design's (section 6.6). Of the other nine, six are broken
+evaluators of the table evaluation suite's README made a reader's, the text's rules since the design among
+them (no number beyond an edge, the readable range's end value); one raises where a read returns a refusal
+(the code design's rule 1); and two reach the assertions no design mutant does (`interval`, `monotone`). The
+kill is the examples the derandomised search took, at the small and the original size (measured 2026-10-17,
+the `json` shard at `ci`).
+
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `bracket_search_off_by_one_at_a_knot` | the bracket search one past a knot (`bisect_right`): a knot read through the interval above it, the last one past the end | HP17 | `raised`, `value` | 1, 1 |
+| `loglog_interpolated_linearly` | a log-log table interpolated linearly | HP17 | `value` | 3, 8 |
+| `log10_for_x_beside_ln_for_y` | the log-log slope taken with `log10` for `x` and `ln` for `y` | HP17 | `value` | 3, 8 |
+| `formulas_in_doubles` | `read_side_contract.md` section 7 item 2's formulas in doubles, as written, a knot read through the interval below it (one unit off at upper knots; dividing by zero between adjacent doubles) | HP17 | `raised`, `value` | 2, 2 |
+| `source_range_ignored` | the readable range is `[x[0], x[-1]]` | HP17 | `position` | 5, 5 |
+| `source_range_widening` | a `source_range` wider than `x` widens the readable range | HP17 | `position` | 5, 5 |
+| `knot_through_a_fraction` | a knot's `y` returned through a fraction, which loses `-0` | HP18 | `stored` | 11, 8 |
+| `t_from_the_upper_knot` | `t` computed as `(x - x1) / (x1 - x0)` | HP19 | `between` | 18, 5 |
+| `extrapolated_beyond_an_edge` | beyond an edge from the readable range, the end value | HP17 | `position` | 5, 7 |
+| `range_judged_before_the_edge` | the readable range judged before the edge, so that an edge outside it reads as outside (the S3 design's HP20 mutant) | HP17 | `position` | 5, 8 |
+| `edges_ignored` | no operating value lies at an edge | HP17 | `position` | 3, 7 |
+| `end_value_at_the_ends_of_x` | outside the readable range, the value at `x[0]` or `x[-1]`, as NumPy's `interp` clamps | HP17 | `value` | 5, 5 |
+| `refusal_raised` | at or beyond an edge, an exception in place of no number | HP17 | `raised` | 3, 7 |
+| `ends_excluded` | the readable range's ends excluded (`<`) | HP17 | `position` | 1, 1 |
+| `below_an_edge_from_the_interval_above` | just below an edge, the interval above it | HP17 | `value` | 3, 8 |
+| `between_knots_the_interval_above` | between two knots, the interval above them | HP19 | `interval` | 3, 5 |
+| `interval_read_backwards` | `t` computed as `(x1 - x) / (x1 - x0)`: inside its interval's `y`, run the wrong way | HP19 monotone | `monotone` | 20, 7 |
+
 ## Audits
 
 `conftest.py` runs every test here under the two audits of `audits.py`:
@@ -981,12 +1031,15 @@ those ways fails these searches; worlds that lost the shapes fail the worlds' au
   ways and
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
-  and those that draw a way first declare their ways drawn. For each such
+  and those that draw a way first declare their ways drawn. The table evaluator's properties declare every
+  feature by its chance: the least share it showed in eight runs of 2,000 examples (seeds 1 to 4, at both sizes,
+  2026-10-17), rounded down. For each such
   property, five of steps 9 and 10's, two of the result's (HP1 by a kind, HP6 by a chance) and two of HP4's
   (a form by its chance, in each of its two properties), and S2b-2's five (HP3's fourth part by a region,
   HP12, HP6 and HP4 by evidence's form, HP6's second property by a nominal's way and by `behind_another`),
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
-  those features: its audit fails, on that feature alone. One of the five runs a parametrised property, HP8's
+  those features: its audit fails, on that feature alone; each of the table evaluator's has a control, on a choice no other
+  feature it declares depends on. One of the five runs a parametrised property, HP8's
   other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,
   as the audit holds each parameter to its own;
 - **each profile's rule** (`audits.RULES`): `ci` holds the drawn features and those declared by their chances

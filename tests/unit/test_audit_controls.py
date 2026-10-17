@@ -19,6 +19,7 @@ from tests.conftest import EXAMPLES
 from tests.property import audits
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_condition_properties as condition_properties
+from tests.property import test_evaluate_properties as evaluate_properties
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_invariance_properties as invariance_properties
 from tests.property import test_jsonio_properties as jsonio_properties
@@ -189,6 +190,21 @@ CONTROLS = [
         invariance_properties.test_a_fault_in_another_field_or_section_never_changes_the_read,
         "form_evidence",
         ("check_isolated",),
+    ),
+    # The table evaluator's: each stops one choice that no other feature it declares depends on.
+    Control(
+        evaluate_properties.test_hp17_the_evaluator_agrees_with_the_oracle, "one_point", ("check_agreement",)
+    ),
+    Control(evaluate_properties.test_hp18_a_read_at_a_knot_gives_its_y_as_stored, "loglog", ("check_knots",)),
+    Control(
+        evaluate_properties.test_hp19_a_read_lies_between_the_y_of_the_knots_that_bracket_it,
+        "loglog",
+        ("check_bracketing",),
+    ),
+    Control(
+        evaluate_properties.test_hp19_reads_over_monotone_knots_are_monotone,
+        "non_increasing",
+        ("check_monotone",),
     ),
 ]
 

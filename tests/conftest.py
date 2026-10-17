@@ -72,6 +72,8 @@ SHARDS = {
         "test_slip_properties",
         "test_mutants",
         "test_mutant_view",
+        "test_evaluate_properties",
+        "test_evaluate_mutants",
     ),
     "records": (
         "test_envelope_properties",

@@ -539,9 +539,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Seven shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
-        # envelope checks, versions and the read; the writer schema's value fields; the two JSON Schema
-        # libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
+        # Seven shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785, the hash and the
+        # table evaluator; the envelope checks, versions and the read; the writer schema's value fields; the two
+        # JSON Schema libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
         # searches, which were most of the records shard's time; steps 9 and 10's properties and the result's,
         # with their mutant searches; and the read's relations (HP12, the agreement with the reference model,
         # HP4, HP10 and the information-monotonicity relations), with theirs.
@@ -1051,6 +1051,7 @@ jobs:
           --ignore=tests/property/test_validators_agree.py
           --ignore=tests/property/test_mutants.py --ignore=tests/property/test_record_mutants.py
           --ignore=tests/property/test_value_field_mutants.py --ignore=tests/property/test_condition_mutants.py
+          --ignore=tests/property/test_evaluate_mutants.py
       - name: Keep the inputs that failed
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
