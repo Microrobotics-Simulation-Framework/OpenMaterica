@@ -653,18 +653,20 @@ def _read_alternatives(
 
 def _returned(value: JsonValue, shape: object) -> JsonValue:
     """`value`, stored where `shape` describes it, holding at every depth only the members the shape defines,
-    each as stored, in a copy that shares nothing with the record. A map's names are kept, each value as its
-    shape gives it. An object holding `status` is the status object of a member whose row allows one; a member
-    of a type no shape defines is returned whole."""
+    each as stored, in a copy that shares nothing with the record. An object holding `status` is the status
+    object of a member whose row allows one. A map's names are kept, each value as its shape gives it, an
+    object no other shape among its alternatives defines included (a placeholder beside a status object); a
+    member of a type no shape defines is returned whole."""
     if isinstance(value, list):
         items = [item for alternative in _alternatives(shape) for item in _item_types(alternative)]
         return [_returned(item, items[0] if items else None) for item in value]
     if not isinstance(value, dict):
         return value
-    if get_origin(shape) is dict:
-        return {name: _returned(member, get_args(shape)[1]) for name, member in value.items()}
     defined = _members(shape, status="status" in value)
     if defined is None:
+        maps = [alternative for alternative in _alternatives(shape) if get_origin(alternative) is dict]
+        if maps:
+            return {name: _returned(member, get_args(maps[0])[1]) for name, member in value.items()}
         return copy.deepcopy(value)
     returned = {name: _returned(member, defined[name]) for name, member in value.items() if name in defined}
     if shape is shapes.Provenance:
@@ -690,11 +692,15 @@ def _item_types(shape: object) -> tuple[object, ...]:
 def _members(shape: object, *, status: bool) -> dict[str, object] | None:
     """The members the object shapes among `shape`'s alternatives define, by name, each with its own shape:
     those of the status objects where `status`, those of the others where not. None where no alternative is
-    an object shape."""
-    objects = [alternative for alternative in _alternatives(shape) if is_typeddict(alternative)]
-    if not objects:
+    an object shape, or none of the kind asked for where a map is one."""
+    alternatives = _alternatives(shape)
+    objects = [alternative for alternative in alternatives if is_typeddict(alternative)]
+    chosen = [shape_ for shape_ in objects if _is_status_shape(shape_) == status]
+    if not chosen and any(get_origin(alternative) is dict for alternative in alternatives):
         return None
-    chosen = [shape_ for shape_ in objects if _is_status_shape(shape_) == status] or objects
+    chosen = chosen or objects
+    if not chosen:
+        return None
     defined: dict[str, object] = {}
     for shape_ in chosen:
         for name, member in get_type_hints(shape_).items():
