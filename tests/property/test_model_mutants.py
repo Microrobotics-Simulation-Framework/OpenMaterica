@@ -202,7 +202,8 @@ IMPLEMENTATION = [
         "unknown_condition_names_checked",
         "faults",
         taken(value_field_mutants.MUTANTS, "unknown_condition_names_checked"),
-        ("step_8", "steps_9_and_10"),
+        ("condition_tokens.name_unknown",),
+        ("condition_tokens.name_unknown",),
     ),
     # HP5 (an unknown member returned) and HP6
     Mutant(
