@@ -18,11 +18,15 @@ CASE_FILES = runner.discover()
 SUITES = sorted(path.name for path in CONFORMANCE.iterdir() if path.is_dir())
 
 
-@functools.cache
 def sections(suite: str) -> Mapping[str, tuple[str, str, Sequence[Mapping[str, str]]]]:
     """Per case heading in the suite's CASES.md: the document and row it quotes, and its table.
 
     Read once per suite, not once per case file, and shared by every caller: so it is typed read-only."""
+    return _sections(suite)
+
+
+@functools.cache
+def _sections(suite: str) -> Mapping[str, tuple[str, str, Sequence[Mapping[str, str]]]]:
     text = (CONFORMANCE / suite / "CASES.md").read_text(encoding="utf-8")
     lines = text.splitlines()
     found: dict[str, tuple[str, str, list[Row]]] = {}
