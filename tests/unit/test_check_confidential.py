@@ -510,12 +510,16 @@ def push(*arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", "push", *arguments], capture_output=True, text=True, check=False)
 
 
-def test_the_hook_refuses_a_push_that_would_publish_a_private_path_or_name(
-    remote: Path, tmp_path: Path, key_file: Path
-) -> None:
-    """The hook as a person installs it, run by `git push`: the paths without the key, the names with the
-    key file the configuration names; and a push without a finding goes through."""
-    (Path("scripts")).mkdir()
+def install_hook(hooks: Path) -> None:
+    """The hook as a person installs it, in `hooks`, which the throwaway repository's configuration names."""
+    hooks.mkdir()
+    (hooks / "pre-push").write_bytes((SCRIPTS / "pre-push").read_bytes())
+    (hooks / "pre-push").chmod(0o755)
+    subprocess.run(["git", "config", "core.hooksPath", str(hooks)], check=True)
+
+
+def commit_the_scan() -> None:
+    Path("scripts").mkdir()
     commit(
         "build: the scan and its hook",
         {
@@ -524,11 +528,16 @@ def test_the_hook_refuses_a_push_that_would_publish_a_private_path_or_name(
             "scripts/confidential_digests.txt": check_confidential.digest_file(KEY, TERMS).encode(),
         },
     )
-    hooks = tmp_path / "hooks"
-    hooks.mkdir()
-    (hooks / "pre-push").write_bytes((SCRIPTS / "pre-push").read_bytes())
-    (hooks / "pre-push").chmod(0o755)
-    subprocess.run(["git", "config", "core.hooksPath", str(hooks)], check=True)
+
+
+def test_the_hook_refuses_a_push_that_would_publish_a_private_path_or_name(
+    remote: Path, tmp_path: Path, key_file: Path
+) -> None:
+    """The hook run by `git push`: the names with the key file the configuration names, the paths alone in a
+    clone that says it has no key; and a push without a finding goes through."""
+    commit_the_scan()
+    install_hook(tmp_path / "hooks")
+    subprocess.run(["git", "config", "openmaterica.scanWithoutKey", "true"], check=True)
     assert push("-q", "origin", "main").returncode == 0
     commit("docs: by Zorblax", {"notes.md": b"Nothing else.\n"})
     assert push("-q", "origin", "main").returncode == 0, "without the key, a name goes through"
@@ -545,6 +554,46 @@ def test_the_hook_refuses_a_push_that_would_publish_a_private_path_or_name(
     assert "warning: no key" not in refused.stderr
 
 
+@pytest.mark.parametrize("opt_out", [None, "false", "maybe"], ids=["unset", "false", "not-a-boolean"])
+def test_the_hook_refuses_a_push_without_a_key_unless_the_clone_says_it_has_none(
+    remote: Path, tmp_path: Path, opt_out: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A clone missing its key setting would let the names through unread; the hook refuses, and says how to
+    set either. The controls: the clone's opt-out, and the key in the environment, let a clean push pass."""
+    commit_the_scan()
+    install_hook(tmp_path / "hooks")
+    if opt_out is not None:
+        subprocess.run(["git", "config", "openmaterica.scanWithoutKey", opt_out], check=True)
+    refused = push("origin", "main")
+    assert refused.returncode != 0
+    assert "pre-push: no key" in refused.stderr
+    assert "git config openmaterica.scanKeyFile /path/to/confidential_scan.key" in refused.stderr
+    assert "git config openmaterica.scanWithoutKey true" in refused.stderr
+    monkeypatch.setenv(check_confidential.KEY_VARIABLE, KEY.hex())
+    assert push("-q", "origin", "main").returncode == 0
+    monkeypatch.delenv(check_confidential.KEY_VARIABLE)
+    commit("docs: more", {"more.md": b"Nothing.\n"})
+    subprocess.run(["git", "config", "openmaterica.scanWithoutKey", "true"], check=True)
+    assert push("-q", "origin", "main").returncode == 0
+
+
+def test_the_hook_expands_a_tilde_in_the_key_files_path(
+    remote: Path, tmp_path: Path, key_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`git config --get` gives `~` as it is written, so the key file was not found and every push was
+    refused. A clean push now goes through, and a name is found, so the key was read."""
+    commit_the_scan()
+    install_hook(tmp_path / "hooks")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    subprocess.run(["git", "config", "openmaterica.scanKeyFile", f"~/{key_file.name}"], check=True)
+    pushed = push("origin", "main")
+    assert pushed.returncode == 0, pushed.stderr
+    commit("docs: by Zorblax", {"notes.md": b"Nothing else.\n"})
+    refused = push("origin", "main")
+    assert refused.returncode != 0
+    assert "message:1: a confidential term (z..., 7 characters)" in refused.stderr
+
+
 def test_the_hook_refuses_to_push_from_a_checkout_whose_scan_predates_it(
     remote: Path, tmp_path: Path
 ) -> None:
@@ -552,11 +601,7 @@ def test_the_hook_refuses_to_push_from_a_checkout_whose_scan_predates_it(
     error; the hook says what to do instead."""
     (Path("scripts")).mkdir()
     commit("build: an old scan", {"scripts/check_confidential.py": b"import sys\nsys.exit(0)\n"})
-    hooks = tmp_path / "hooks"
-    hooks.mkdir()
-    (hooks / "pre-push").write_bytes((SCRIPTS / "pre-push").read_bytes())
-    (hooks / "pre-push").chmod(0o755)
-    subprocess.run(["git", "config", "core.hooksPath", str(hooks)], check=True)
+    install_hook(tmp_path / "hooks")
     refused = push("origin", "main")
     assert refused.returncode != 0
     assert "has no --pre-push; rebase it onto main" in refused.stderr
