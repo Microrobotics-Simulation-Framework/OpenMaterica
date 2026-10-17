@@ -3,13 +3,14 @@
 all: versions longer than `int` reads, the forms a request may be given in, the misuses that raise, and the
 steps not built yet, which raise rather than answer."""
 
+import copy
 import importlib
 import inspect
 import json
 from collections.abc import Collection
 from pathlib import Path
 from types import ModuleType
-from typing import get_type_hints
+from typing import Any, cast, get_type_hints
 
 import pytest
 
@@ -161,14 +162,6 @@ def test_steps_not_built_yet_raise_rather_than_answer() -> None:
         read(with_members(acceptances=[1.0], target=None), store())
     refused = read(with_members(acceptances={"acceptance": "pick"}), store())
     assert refused.reasons == (Reason("request_incomplete"),)
-    resolved = with_members(
-        target={
-            "record": {"id": "conformance/water_fixture", "version": "1.0.0", "content_hash": PIN},
-            "field": "fluid.dynamic_viscosity",
-        }
-    )
-    with pytest.raises(NotImplementedError):
-        read(resolved, store())
 
 
 INPUTS = WATER.parent
@@ -335,25 +328,15 @@ def test_a_specimen_fact_takes_its_rows_shape_and_fixed_members(
     object (maintainer, 2026-10-15)."""
     field: JsonValue = {**water_field(), "specimen": {name: fact}}
     if codes is None:
-        with pytest.raises(NotImplementedError):
-            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+        assert past_step_9(read(*stored(with_field("fluid.dynamic_viscosity", field))))
     else:
         refused = read(*stored(with_field("fluid.dynamic_viscosity", field)))
         assert {reason.code for reason in refused.reasons} == set(codes)
 
 
-def test_a_constant_that_passes_step_8_raises_rather_than_answer() -> None:
-    with pytest.raises(NotImplementedError):
-        read(*stored(water()))
-    with pytest.raises(NotImplementedError):
-        read(*stored(water()), claims={"plain_read", "fits_and_reference_data"})
-
-
-def test_a_field_holding_alternatives_raises_rather_than_answer() -> None:
-    fields: list[JsonValue] = [{"alternatives": [water_field()]}, {**water_field(), "alternatives": []}]
-    for field in fields:
-        with pytest.raises(NotImplementedError):
-            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+def past_step_9(result: ReadResult) -> bool:
+    """Whether steps 8 and 9 passed the read: step 10 then runs to its end, and gives `conditions`."""
+    return result.conditions is not None
 
 
 def test_a_read_whose_target_is_an_overlay_raises_rather_than_answer() -> None:
@@ -648,8 +631,7 @@ def test_each_rule_the_review_found_untested(
     rule: str, field: dict[str, JsonValue], codes: frozenset[str] | None
 ) -> None:
     if codes is None:
-        with pytest.raises(NotImplementedError):
-            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+        assert past_step_9(read(*stored(with_field("fluid.dynamic_viscosity", field))))
     else:
         refused = read(*stored(with_field("fluid.dynamic_viscosity", field)))
         assert {reason.code for reason in refused.reasons} == codes
@@ -796,10 +778,9 @@ def test_step_9_compares_each_unit_with_the_one_registered_for_it(
     units: str, field: dict[str, JsonValue], reasons: set[tuple[str, str | None]] | None
 ) -> None:
     """Code point for code point, a status object never equal to a string, each reason once with its
-    condition; a field that passes goes on to steps not built yet."""
+    condition; a field that passes goes on to step 10."""
     if reasons is None:
-        with pytest.raises(NotImplementedError):
-            read(*stored(with_field("fluid.dynamic_viscosity", field)))
+        assert past_step_9(read(*stored(with_field("fluid.dynamic_viscosity", field))))
         return
     result = read(*stored(with_field("fluid.dynamic_viscosity", field)))
     assert result.status == "not_met"
@@ -824,8 +805,7 @@ def test_step_9_compares_a_section_facts_unit_for_every_field_of_the_section(
     }
     record["body"] = {"sections": {"fluid": section}}
     if reasons is None:
-        with pytest.raises(NotImplementedError):
-            read(*stored(record))
+        assert past_step_9(read(*stored(record)))
         return
     assert {(reason.code, reason.condition) for reason in read(*stored(record)).reasons} == reasons
 
@@ -1101,3 +1081,137 @@ def test_an_implied_condition_at_the_reads_own_location_fills_its_condition() ->
     assert result.applied == (0,)
     with pytest.raises(AssertionError):
         check_located_elsewhere(AT_THE_READ)
+
+
+# Steps 11 to 13 for a constant, and the result (`read_side_contract.md` sections 2, 3 and 6).
+
+SHEAR_RATE: dict[str, JsonValue] = {"range": [10.0, 1000.0], "unit": "1/s", **STATED}
+MET_REQUEST: dict[str, JsonValue] = {
+    "operating_conditions": {
+        "temperature": {"value": 310.15, "unit": "K"},
+        "shear_rate": {"value": 100.0, "unit": "1/s"},
+    },
+    "requirement": {
+        "want": "value",
+        "conditions": {
+            "temperature": {"tolerance": {"value": 1.0, "unit": "K"}},
+            "shear_rate": {"tolerance": {"value": 0.0, "unit": "1/s"}},
+        },
+    },
+}
+
+
+def met_field(**members: JsonValue) -> dict[str, JsonValue]:
+    """The water constant, its every condition stated and met by `MET_REQUEST`, with `members` set."""
+    field = water_field()
+    conditions = field["conditions"]
+    assert isinstance(conditions, dict)
+    conditions["shear_rate"] = dict(SHEAR_RATE)
+    return field | members
+
+
+def read_met(
+    field: JsonValue, *, want: str = "value", claims: Collection[Suite] = ("plain_read", "hash")
+) -> ReadResult:
+    request, records = stored(with_field("fluid.dynamic_viscosity", field))
+    assert isinstance(request, dict)
+    request.update(copy.deepcopy(MET_REQUEST))
+    requirement = request["requirement"]
+    assert isinstance(requirement, dict)
+    requirement["want"] = want
+    return read(request, records, claims=claims)
+
+
+def test_a_met_constant_returns_its_value_and_the_members_beside_it() -> None:
+    result = read_met(met_field())
+    assert (result.status, result.reasons) == ("met", ())
+    written = json.loads(json.dumps(result.to_json()))
+    assert list(written) == [
+        "status", "reasons", "value", "unit", "conditions", "specimen", "statistics", "provenance", "labels"
+    ]  # fmt: skip
+    assert written["value"] == 0.000692
+    assert written["unit"] == "Pa.s"
+    assert written["specimen"] == {}
+    assert written["provenance"] == {
+        "origin": "measured_by_contributor",
+        "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement",
+        },
+    }
+    assert written["labels"] == ["materica.fluid.newtonian.v1"]
+
+
+def test_a_want_the_constant_cannot_give_keeps_the_conditions_and_labels_but_returns_no_value() -> None:
+    for want in ("bounds", "components", "evidence"):
+        result = read_met(met_field(), want=want)
+        assert (result.status, result.reasons) == ("not_met", (Reason("want_mismatch"),)), want
+        written = json.loads(json.dumps(result.to_json()))
+        assert set(written) == {"status", "reasons", "conditions", "labels"}, want
+        assert "materica.fluid.newtonian.v1" in written["labels"], want
+
+
+def test_the_suite_s_wants_on_a_constant_give_want_mismatch_but_fit_on_a_fitted_one_waits() -> None:
+    """`read_side_contract.md` section 6: reference data on any other form, and a fit or a coverage on a field
+    without one, give `want_mismatch`; reading a fitted field's fit record is the suite's, not built yet."""
+    claims: tuple[Suite, ...] = ("plain_read", "hash", "fits_and_reference_data")
+    for want in ("reference_data", "fit", "coverage"):
+        result = read_met(met_field(), want=want, claims=claims)
+        assert result.reasons == (Reason("want_mismatch"),), want
+    with pytest.raises(NotImplementedError):
+        read_met(met_field(fit={"model": "a fit record"}), want="fit", claims=claims)
+    assert read_met(met_field(fit={"model": "a fit record"}), claims=claims).value == 0.000692
+
+
+def test_a_result_writes_numbers_as_stored_and_each_count_and_index_as_an_integer() -> None:
+    """`-0` stays `-0` (PR-047), never RFC 8785's form; a statistics block's counts and a derivation's input
+    indexes are integers (the code design's rule 5)."""
+    field = met_field(value=-0.0)
+    statistics = field["statistics"]
+    assert isinstance(statistics, dict)
+    statistics["n_specimens"] = 3.0
+    statistics["n_donors"] = -0.0
+    field["provenance"] = DERIVED_INPUTS
+    text = json.dumps(read_met(field).to_json())
+    written = json.loads(text)
+    assert '"value": -0.0' in text
+    assert written["statistics"]["n_specimens"] == 3
+    assert type(written["statistics"]["n_specimens"]) is int
+    assert type(written["statistics"]["n_donors"]) is int
+    inputs = written["provenance"]["derivation"]["input_specimens"]
+    assert [entry["input"] for entry in inputs] == [0, 1]
+    assert all(type(entry["input"]) is int for entry in inputs)
+
+
+def test_a_result_shares_nothing_with_the_record_or_with_its_own_json() -> None:
+    """The code design's rule 6: a member returned is a deep copy, and so is each result's JSON."""
+    result = read_met(met_field())
+    first = cast(dict[str, Any], result.to_json())
+    first["statistics"]["central"] = "changed"
+    first["provenance"]["review"]["status"] = "changed"
+    again = cast(dict[str, Any], result.to_json())
+    assert again["statistics"]["central"] == "stated"
+    assert again["provenance"]["review"]["status"] == "not_checked"
+    assert read_met(met_field()).to_json() == result.to_json()
+    assert ReadResult.from_json(result.to_json()) == result
+
+
+DERIVED_INPUTS: dict[str, JsonValue] = {
+    "origin": "derived",
+    "review": {"status": "not_checked"},
+    "derivation": {
+        "method": "a mixing rule",
+        "inputs": [
+            {
+                "record": {"id": "example/MAT-1", "version": "1.0.0", "content_hash": "sha256:" + "1" * 64},
+                "field": "fluid.dynamic_viscosity",
+            },
+            {
+                "record": {"id": "example/MAT-2", "version": "1.0.0", "content_hash": "sha256:" + "2" * 64},
+                "field": "fluid.dynamic_viscosity",
+            },
+        ],
+        "assumptions": ["ideal mixing"],
+        "input_specimens": [{"input": 0.0, "specimen": {}}, {"input": 1.0, "specimen": {}}],
+    },
+}

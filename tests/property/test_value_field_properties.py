@@ -17,7 +17,7 @@
   added to a `conditions` map, where a new name is a condition, nor to a status object.
 
 A read that passes step 8 is refused at step 9 or 10, which a drawn field's units and conditions decide, or
-raises `NotImplementedError` until steps 11 to 13 are built: either is the outcome "past step 8".
+goes on to steps 11 to 13, which give a drawn constant's value: either is the outcome "past step 8".
 """
 
 import copy
