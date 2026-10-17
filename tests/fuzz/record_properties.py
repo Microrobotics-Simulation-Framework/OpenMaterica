@@ -94,6 +94,7 @@ def test_one_input(data: bytes) -> None:
 
 def main(arguments: list[str]) -> None:
     seeded_fault.seed_if_asked()
+    seeded_fault.seed_composition_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 

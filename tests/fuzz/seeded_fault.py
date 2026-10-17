@@ -17,11 +17,17 @@
   represents a population's spread), which no seed held two parts of either, when the target came to read
   steps 9 and 10.
 
+- In a composition's own member, the S2 design's control (section 1.7), for the third target and the fourth:
+  an exception escapes for a composition whose `components` is empty, which step 8 must refuse
+  (`record_format.md` section 6, composition item 5). The fourth target's seeds hold one (PR-051's
+  `no_component`), so it finds it at once; the third has to draw it.
+
 Each raises its own message, so that CI can tell which fault a run found.
 
 The first three targets seed the first two faults when `MATERICA_FUZZ_SEEDED_FAULT` is set, and pytest seeds
 them when loaded as a plugin, `python -m pytest -p tests.fuzz.seeded_fault`. Only the fourth target seeds the
-third, since the property targets draw conditions too and would find it before their own.
+third, since the property targets draw conditions too and would find it before their own. Set to
+`composition`, the variable seeds the composition's fault alone, in the third target and the fourth.
 """
 
 import os
@@ -30,7 +36,7 @@ from typing import Protocol, TypeVar
 
 import pytest
 
-from materica.core import conditions, jsonio, read
+from materica.core import conditions, fields, jsonio, read
 from materica.core.conditions import ConditionsRead, ImpliedCondition
 from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
@@ -38,7 +44,10 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
+from materica.core.value_shapes import Found
 from materica.shapes import OperatingCondition, RequirementCondition, Suite
+
+COMPOSITION = "composition"
 
 _parse = jsonio.parse
 
@@ -86,13 +95,22 @@ def faulty_check_conditions(
     return _check_conditions(field, operating, required, implied)
 
 
+_components = fields.components
+
+
+def faulty_components(value: JsonValue, where: str, found: Found) -> None:
+    if value == []:
+        raise IndexError("the seeded fault in a composition")
+    _components(value, where, found)
+
+
 def seed() -> None:
     jsonio.parse = faulty_parse
     read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
 
 
 def seed_if_asked() -> None:
-    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT"):
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") not in (None, "", COMPOSITION):
         seed()
 
 
@@ -107,8 +125,15 @@ def seed_step_10_if_asked(instrument: Instrument) -> None:
     """The fourth target's fault, which only it seeds, since the property targets draw fields too.
     `instrument` is Atheris's, so that each part of the conjunction the fuzzer meets is new coverage and each
     comparison a hint, as in a real fault of the core."""
-    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT"):
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") not in (None, "", COMPOSITION):
         read.check_conditions = instrument(faulty_check_conditions)  # type: ignore[attr-defined]  # read's own name
+
+
+def seed_composition_if_asked(instrument: Instrument) -> None:
+    """The S2 design's control, which the third target and the fourth seed where the variable asks for it
+    by name, instrumented as the fourth's own fault is."""
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == COMPOSITION:
+        fields.components = instrument(faulty_components)
 
 
 def pytest_configure(config: pytest.Config) -> None:
