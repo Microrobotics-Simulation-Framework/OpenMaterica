@@ -9,10 +9,10 @@ finds the field (step 7, `fields.find_field`), and reads it (`read_value_field`)
 field, as far as S4's decision 12 lets S2 go: the list's shape, a fault of the request inside one alternative,
 and `no_pick` or `want_mismatch` where no alternative has a reason of its own.
 
-Overlays (step 6), picks, the rest of step 7 over alternatives, and every form but a constant are not built
-yet. A read that would need one raises `NotImplementedError`, and so does a request whose answer a check
-still to come could change, whatever else is wrong with it: one with a region target, or an acceptance other
-than an implied condition. It raises rather than give an answer a later step would contradict.
+Overlays (step 6), picks, the rest of step 7 over alternatives, a table and evidence are not built yet. A read
+that would need one raises `NotImplementedError`, and so does a request whose answer a check still to come
+could change, whatever else is wrong with it: one with a region target, or an acceptance other than an
+implied condition. It raises rather than give an answer a later step would contradict.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -31,7 +31,14 @@ from typing import TypeGuard, Union, cast, get_args, get_origin, get_type_hints,
 from materica import shapes
 from materica.core import jsonio
 from materica.core.conditions import ConditionEntry, ImpliedCondition, check_conditions, operating_json
-from materica.core.fields import RecordField, alternatives_problems, find_field, form_problems, unit_problems
+from materica.core.fields import (
+    FIELD_SHAPES,
+    RecordField,
+    alternatives_problems,
+    find_field,
+    form_problems,
+    unit_problems,
+)
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason, merged
@@ -39,7 +46,7 @@ from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
 from materica.core.slips import slipped
 from materica.core.status import ReadStatus, worst
-from materica.core.value_shapes import JsonObject, a_list, an_object
+from materica.core.value_shapes import FORM_MEMBERS, JsonObject, a_list, an_object
 from materica.core.vocabulary import VOCABULARY, ConditionSpec
 from materica.shapes import Suite, Want
 
@@ -90,8 +97,10 @@ _OF_THE_OTHER_KIND: dict[str, tuple[str, ...]] = {"numeric": ("token",), "token"
 _REVIEW_DEFINES = tuple(get_type_hints(shapes.Review))
 _REVIEW_MEMBERS = (*_REVIEW_DEFINES, *get_type_hints(shapes.StatusObject))
 _COUNTS = ("n_specimens", "n_donors", "n_sources")
-# A constant's statistics: a block, or the status object its row allows in its place.
-_CONSTANT_STATISTICS = get_type_hints(shapes.ConstantField)["statistics"]
+# What step 13 gives of each form step 8 reads, by `want` (section 6): its own member, as stored.
+_WANT_OF_FORM: dict[str, Want] = {"constant": "value", "interval": "bounds", "composition": "components"}
+# The shape of each member of a field of each form step 8 reads, by name.
+_FIELD_HINTS = {form: get_type_hints(shape) for form, shape in FIELD_SHAPES.items()}
 
 
 @dataclass(frozen=True)
@@ -418,22 +427,25 @@ def read_value_field(
         return FieldRead(merged(found), request_fault=True)
     if _ends(found):
         return FieldRead(merged(found), checked.entries, checked.applied)
-    # Step 11: a constant's range is its conditions; once they are met, it is read (section 5).
+    # Step 11: a constant's range is its conditions, once they are met, and an interval and a composition have
+    # none (section 5).
     value = an_object(field.value)
+    form = str(value["form"])
     provenance = an_object(value["provenance"])
     found += _origin(provenance, field.spec.name)
-    member = copy.deepcopy(value["value"])
-    shaped, mismatch = _by_want(value, field.spec.name, request.want)
+    hints = _FIELD_HINTS[form]
+    member = _counted_member(_returned(value[FORM_MEMBERS[form]], hints[FORM_MEMBERS[form]]))
+    mismatch = _by_want(value, field.spec.name, form, request.want)
     return FieldRead(
         merged(found),
         checked.entries,
         checked.applied,
         want_mismatch=mismatch,
         member=member,
-        value=shaped,
+        value=None if mismatch is not None else copy.deepcopy(member),
         unit=_returned(value["unit"], shapes.Unit),
         specimen=cast(JsonObject, _returned(field.specimen(), shapes.Specimen)),
-        statistics=cast(JsonObject, _returned(value["statistics"], _CONSTANT_STATISTICS)),
+        statistics=cast(JsonObject, _returned(value["statistics"], hints["statistics"])),
         provenance=ProvenanceSummary.of(provenance),
         labels=_labels(value, provenance),
     )
@@ -458,15 +470,17 @@ def _labels(field: JsonObject, provenance: JsonObject) -> tuple[str, ...]:
     return tuple(labels)
 
 
-def _by_want(field: JsonObject, name: str, want: Want) -> tuple[JsonValue, Reason | None]:
-    """Step 13 for a constant (section 6): `want: value` gives its number as stored; `want: fit` on a field
-    holding a fit record is the fits and reference data suite's, not built yet; every other `want` gives
-    `want_mismatch`, a constant holding no bounds, components, evidence, reference data, fit or coverage."""
-    if want == "value":
-        return copy.deepcopy(field["value"]), None
+def _by_want(field: JsonObject, name: str, form: str, want: Want) -> Reason | None:
+    """Step 13 (section 6): `want_mismatch` where `want` cannot give the field's form, none where it gives the
+    form's own member as stored: a constant's number under `want: value`, an interval's bounds with their
+    basis under `want: bounds`, a composition's basis, sum rule, stated sum and components under `want:
+    components`. `want: fit` on a field holding a fit record is the fits and reference data suite's, not built
+    yet."""
+    if want == _WANT_OF_FORM[form]:
+        return None
     if want == "fit" and "fit" in field:
         raise NotImplementedError("want: fit on a field holding a fit record is not read yet")
-    return None, Reason("want_mismatch", detail=f"want {want} cannot give {name}, a constant")
+    return Reason("want_mismatch", detail=f"want {want} cannot give {name}, a field of form {form}")
 
 
 def _read_alternatives(
@@ -600,6 +614,18 @@ def _counted(statistics: JsonObject) -> JsonObject:
         if name in block:
             block[name] = _whole(block[name])
     return block
+
+
+def _counted_member(member: JsonValue) -> JsonValue:
+    """A form's own member as returned, the counts of a composition component's statistics block as
+    integers."""
+    if not isinstance(member, dict) or not isinstance(member.get("components"), list):
+        return member
+    for component in a_list(member["components"]):
+        statistics = an_object(component).get("statistics")
+        if isinstance(statistics, dict):
+            an_object(component)["statistics"] = _counted(statistics)
+    return member
 
 
 def _stored(value: object) -> JsonValue:

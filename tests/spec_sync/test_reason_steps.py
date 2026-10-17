@@ -183,7 +183,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("read.py", "_read_alternatives"): 7,
     ("fields.py", "_form"): 8,
     ("fields.py", "_basis_allowed"): 8,
-    ("fields.py", "_constant"): 8,
+    ("fields.py", "_own_member"): 8,
     ("fields.py", "_mismatch"): 9,
     ("conditions.py", "_entry"): 10,
     ("conditions.py", "_compared"): 10,

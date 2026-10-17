@@ -65,6 +65,8 @@ def injecting(*settings: Callable[[pytest.MonkeyPatch], None]) -> Callable[[pyte
 COMPARED = conditions._compared  # pyright: ignore[reportPrivateUsage]
 ORIGIN = read._origin  # pyright: ignore[reportPrivateUsage]
 BY_WANT = read._by_want  # pyright: ignore[reportPrivateUsage]
+COUNTED_MEMBER = read._counted_member  # pyright: ignore[reportPrivateUsage]
+FIELD_HINTS = read._FIELD_HINTS  # pyright: ignore[reportPrivateUsage]
 ENDS = read._ends  # pyright: ignore[reportPrivateUsage]
 STATUS = read._status  # pyright: ignore[reportPrivateUsage]
 READ_ALTERNATIVES = read._read_alternatives  # pyright: ignore[reportPrivateUsage]
@@ -89,9 +91,9 @@ def _origin_with_a_condition(provenance: JsonObject, name: str) -> list[Reason]:
     return [Reason(reason.code, "temperature", reason.detail) for reason in ORIGIN(provenance, name)]
 
 
-def _a_code_outside_the_table(field: JsonObject, name: str, want: Want) -> tuple[JsonValue, Reason | None]:
-    value, mismatch = BY_WANT(field, name, want)
-    return value, None if mismatch is None else Reason("want_unmet")  # type: ignore[arg-type]
+def _a_code_outside_the_table(field: JsonObject, name: str, form: str, want: Want) -> Reason | None:
+    mismatch = BY_WANT(field, name, form, want)
+    return None if mismatch is None else Reason("want_unmet")  # type: ignore[arg-type]
 
 
 def _unmerged(reasons: Collection[Reason]) -> tuple[Reason, ...]:
@@ -144,9 +146,9 @@ def _shared_where_nothing_is_left_out(value: JsonValue, shape: object) -> JsonVa
     return value if returned == value else returned
 
 
-def _negative_zero_as_zero(field: JsonObject, name: str, want: Want) -> tuple[JsonValue, Reason | None]:
-    value, mismatch = BY_WANT(field, name, want)
-    return (0.0 if value == 0.0 else value), mismatch
+def _negative_zero_as_zero(member: JsonValue) -> JsonValue:
+    returned = COUNTED_MEMBER(member)
+    return 0.0 if returned == 0.0 else returned
 
 
 def _every_member_kept(shape: object, *, status: bool) -> None:
@@ -248,7 +250,10 @@ MUTANTS = [
     ),
     Mutant("json_shares_the_result", "HP6", setting(read, "copy", SHALLOW), ("met", "alternatives")),
     Mutant(
-        "negative_zero_as_zero", "HP6", setting(read, "_by_want", _negative_zero_as_zero), ("negative_zero",)
+        "negative_zero_as_zero",
+        "HP6",
+        setting(read, "_counted_member", _negative_zero_as_zero),
+        ("negative_zero",),
     ),
     Mutant(
         "unknown_members_returned", "HP6", setting(read, "_members", _every_member_kept), ("unknown_member",)
@@ -256,12 +261,16 @@ MUTANTS = [
     # A review returned as the record holds it is caught as another review, or as the record's own object.
     Mutant("review_as_it_holds", "HP6", setting(read, "_review", _review_as_it_holds), REVIEWS),
     Mutant("counts_as_doubles", "HP6", setting(read, "_whole", _as_stored), ("met", "alternatives")),
-    # The fault fuzz target 4 found against the reference model: a constant's statistics read by the block's
+    # The fault fuzz target 4 found against the reference model: a field's statistics read by the block's
     # shape alone, so that the status object its row allows comes back empty.
     Mutant(
         "statistics_status_object_emptied",
         "HP6",
-        setting(read, "_CONSTANT_STATISTICS", shapes.StatisticsBlock),
+        setting(
+            read,
+            "_FIELD_HINTS",
+            {form: {**hints, "statistics": shapes.StatisticsBlock} for form, hints in FIELD_HINTS.items()},
+        ),
         ("statistics_withheld",),
     ),
     Mutant(
