@@ -236,15 +236,18 @@ check's reader (the last bullet).
   the readable range's end where that is one, gives the stored `y` bit for bit, `-0` included. HP19: the knots
   that bracket a read are the interval the text names and its value lies between their two `y`; and over
   monotone `y` with no edge, reads are monotone. `tables.py` draws tables step 8 accepts by choices made first
-  (the scheme; the magnitude: ordinary, any double, doubles a few units apart, or subnormal; edges; signed
-  zeros; and a `source_range` absent, narrower, wider, across an end, or of one point), and reads each at
-  every place table item 3 tells apart: each knot and edge, the readable range's ends and `source_range`'s,
-  the double either side of each, both zeros, a value inside each interval with room, one beyond each end of
-  the readable range, and the largest doubles. Each property first checks its table against the text's rules
-  (`accepted`), a check that found two faults of the generator while it was written. The oracle compares as
-  fractions, finds a read's interval by scanning every pair of knots, and computes in another arrangement: a
-  linear value exactly, and a log-log one in decimal at 100 digits, rounded at once where an error bound shows
-  that rounding is the value's, and near a point halfway between two doubles deciding over prime factors
+  (the scheme; the magnitude: ordinary, any double, doubles a few units apart, subnormal, or small multiples
+  of the least subnormal, where a log-log table follows `y = c / x` at its knots, so that about 40 of its
+  reads in a run at `ci` lie halfway between two doubles, where Hypothesis's draws alone reached about two;
+  edges; signed zeros; and a `source_range` absent, narrower, within one interval, wider, across an end, or of
+  one point), drawing only what the table needs, and reads each at every place table item 3 tells apart: each
+  knot and edge, the readable range's ends and `source_range`'s, the double either side of each, both zeros, a
+  value inside each interval with room, one beyond each end of the readable range, and the largest doubles.
+  Each property first checks its table against the text's rules (`accepted`), a check that found two faults of
+  the generator while it was written; its control is a table for each rule step 8 refuses. The oracle compares
+  as fractions, finds a read's interval by scanning every pair of knots, and computes in another arrangement:
+  a linear value exactly, and a log-log one in decimal at 100 digits, rounded at once where an error bound
+  shows that rounding is the value's, and near a point halfway between two doubles deciding over prime factors
   whether the value is that point. It shares no code with the evaluator, which decides rational values over a
   basis found by gcds and bounds the rest by directed rounding; both use the standard library's `fractions`
   and `decimal`. Its own controls: it gives every number and refusal of the table evaluation cases, and the
@@ -961,32 +964,34 @@ those ways fails these searches; worlds that lost the shapes fail the worlds' au
 evaluator looks up when it runs, and each mutant names the assertions its kill may fail: an assertion's
 message begins with its label, and the search fails where the first failure is another's. HP17 checks where
 every operating value lies before any number, so that a fault of range or edge dies as one, not by the end
-value it leads to. The first eight are the S3 design's (section 6.6). Of the other nine, six are broken
+value it leads to. The first eight are the S3 design's (section 6.6). Of the other ten, six are broken
 evaluators of the table evaluation suite's README made a reader's, the text's rules since the design among
 them (no number beyond an edge, the readable range's end value); one raises where a read returns a refusal
-(the code design's rule 1); and two reach the assertions no design mutant does (`interval`, `monotone`). The
-kill is the examples the derandomised search took, at the small and the original size (measured 2026-10-17,
-the `json` shard at `ci`).
+(the code design's rule 1); two reach the assertions no design mutant does (`interval`, `monotone`); and one
+is the evaluator before the S3b-1 review, whose log-log value, rounded from 50 digits, a halfway point may
+leave one unit off. The kill is the examples the derandomised search took, at the small and the original size (measured 2026-10-17 at
+the S3b-1 fix round's head, the `json` shard at `ci`).
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `bracket_search_off_by_one_at_a_knot` | the bracket search one past a knot (`bisect_right`): a knot read through the interval above it, the last one past the end | HP17 | `raised`, `value` | 1, 1 |
-| `loglog_interpolated_linearly` | a log-log table interpolated linearly | HP17 | `value` | 3, 8 |
-| `log10_for_x_beside_ln_for_y` | the log-log slope taken with `log10` for `x` and `ln` for `y` | HP17 | `value` | 3, 8 |
+| `loglog_interpolated_linearly` | a log-log table interpolated linearly | HP17 | `value` | 3, 10 |
+| `log10_for_x_beside_ln_for_y` | the log-log slope taken with `log10` for `x` and `ln` for `y` | HP17 | `value` | 3, 22 |
 | `formulas_in_doubles` | `read_side_contract.md` section 7 item 2's formulas in doubles, as written, a knot read through the interval below it (one unit off at upper knots; dividing by zero between adjacent doubles) | HP17 | `raised`, `value` | 2, 2 |
-| `source_range_ignored` | the readable range is `[x[0], x[-1]]` | HP17 | `position` | 5, 5 |
-| `source_range_widening` | a `source_range` wider than `x` widens the readable range | HP17 | `position` | 5, 5 |
-| `knot_through_a_fraction` | a knot's `y` returned through a fraction, which loses `-0` | HP18 | `stored` | 11, 8 |
-| `t_from_the_upper_knot` | `t` computed as `(x - x1) / (x1 - x0)` | HP19 | `between` | 18, 5 |
-| `extrapolated_beyond_an_edge` | beyond an edge from the readable range, the end value | HP17 | `position` | 5, 7 |
-| `range_judged_before_the_edge` | the readable range judged before the edge, so that an edge outside it reads as outside (the S3 design's HP20 mutant) | HP17 | `position` | 5, 8 |
-| `edges_ignored` | no operating value lies at an edge | HP17 | `position` | 3, 7 |
-| `end_value_at_the_ends_of_x` | outside the readable range, the value at `x[0]` or `x[-1]`, as NumPy's `interp` clamps | HP17 | `value` | 5, 5 |
-| `refusal_raised` | at or beyond an edge, an exception in place of no number | HP17 | `raised` | 3, 7 |
+| `source_range_ignored` | the readable range is `[x[0], x[-1]]` | HP17 | `position` | 7, 6 |
+| `source_range_widening` | a `source_range` wider than `x` widens the readable range | HP17 | `position` | 3, 6 |
+| `knot_through_a_fraction` | a knot's `y` returned through a fraction, which loses `-0` | HP18 | `stored` | 5, 5 |
+| `t_from_the_upper_knot` | `t` computed as `(x - x1) / (x1 - x0)` | HP19 | `between` | 5, 8 |
+| `extrapolated_beyond_an_edge` | beyond an edge from the readable range, the end value | HP17 | `position` | 7, 6 |
+| `range_judged_before_the_edge` | the readable range judged before the edge, so that an edge outside it reads as outside (the S3 design's HP20 mutant) | HP17 | `position` | 7, 6 |
+| `edges_ignored` | no operating value lies at an edge | HP17 | `position` | 3, 5 |
+| `end_value_at_the_ends_of_x` | outside the readable range, the value at `x[0]` or `x[-1]`, as NumPy's `interp` clamps | HP17 | `value` | 7, 6 |
+| `refusal_raised` | at or beyond an edge, an exception in place of no number | HP17 | `raised` | 3, 5 |
 | `ends_excluded` | the readable range's ends excluded (`<`) | HP17 | `position` | 1, 1 |
-| `below_an_edge_from_the_interval_above` | just below an edge, the interval above it (a log-log value read through it can lie beyond every double, where its exact value raises) | HP17 | `raised`, `value` | 3, 8 |
-| `between_knots_the_interval_above` | between two knots, the interval above them | HP19 | `interval` | 3, 5 |
-| `interval_read_backwards` | `t` computed as `(x1 - x) / (x1 - x0)`: inside its interval's `y`, run the wrong way | HP19 monotone | `monotone` | 20, 7 |
+| `below_an_edge_from_the_interval_above` | just below an edge, the interval above it (a log-log value read through it can lie beyond every double, where its exact value raises) | HP17 | `raised`, `value` | 3, 29 |
+| `between_knots_the_interval_above` | between two knots, the interval above them | HP19 | `interval` | 3, 6 |
+| `interval_read_backwards` | `t` computed as `(x1 - x) / (x1 - x0)`: inside its interval's `y`, run the wrong way | HP19 monotone | `monotone` | 32, 9 |
+| `loglog_not_exact_at_ties` | a log-log value in decimal at 50 digits, rounded once: one unit off at some values halfway between two doubles, which the least subnormals give | HP17 | `value` | 66, 96 |
 
 ## Audits
 
@@ -1038,13 +1043,14 @@ the `json` shard at `ci`).
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
   and those that draw a way first declare their ways drawn. The table evaluator's properties declare every
   feature by its chance: the least share it showed in eight runs of 2,000 examples (seeds 1 to 4, at both sizes,
-  2026-10-17), rounded down. For each such
+  2026-10-17, measured again after the S3b-1 review's strategy changes), rounded down. For each such
   property, five of steps 9 and 10's, two of the result's (HP1 by a kind, HP6 by a chance) and two of HP4's
   (a form by its chance, in each of its two properties), and S2b-2's five (HP3's fourth part by a region,
   HP12, HP6 and HP4 by evidence's form, HP6's second property by a nominal's way and by `behind_another`),
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone; each of the table evaluator's has a control, on a choice no other
-  feature it declares depends on. One of the five runs a parametrised property, HP8's
+  feature it declares depends on. Such a chance is a lower estimate of a share, held only to its floor, which
+  lies far below it. One of the five runs a parametrised property, HP8's
   other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,
   as the audit holds each parameter to its own;
 - **each profile's rule** (`audits.RULES`): `ci` holds the drawn features and those declared by their chances

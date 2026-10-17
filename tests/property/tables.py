@@ -3,11 +3,14 @@
 values at every place table item 3 tells apart, for the properties of `core/evaluate.py`.
 
 A table is drawn by choices made first, each kept beside it for the feature audit: its scheme; the magnitude
-of its numbers (ordinary, any double, doubles a few units apart, subnormal); whether it has edges; whether
-signed zeros sit among its knots and values (linear only: a log-log table's numbers are positive); and the
-kind of its `source_range`. Its operating values are its knots and edges, the readable range's ends and
+of its numbers (ordinary, any double, doubles a few units apart, subnormal, or small multiples of the least
+subnormal, where a log-log table follows `y = c / x` at its knots, so that its reads are rational and often
+halfway between two doubles, as among the least subnormals one unit is a large share); whether it has edges;
+whether signed zeros sit among its knots and values (linear only: a log-log table's numbers are positive); and
+the kind of its `source_range`. Its operating values are its knots and edges, the readable range's ends and
 `source_range`'s, the double either side of each, zero of each sign, a value inside each interval with room,
-one beyond each end of the readable range, and the largest doubles.
+one beyond each end of the readable range, and the largest doubles. Each draw is one the table needs, so that
+Hypothesis's copies of one part of an example over another of the same strategy keep the rest in step.
 
 The table evaluation cases are read here too, as tables and entries, for the oracle's control and the unit
 test of `core/evaluate.py`; and so are log-log values halfway between two doubles, with their exact values
@@ -33,10 +36,26 @@ LARGEST = sys.float_info.max
 SMALLEST_NORMAL = sys.float_info.min
 
 SCHEMES: tuple[Scheme, ...] = ("linear", "loglog")
-Magnitude: TypeAlias = Literal["ordinary", "any_double", "adjacent_doubles", "subnormal"]
-MAGNITUDES: tuple[Magnitude, ...] = ("ordinary", "any_double", "adjacent_doubles", "subnormal")
-RangeKind: TypeAlias = Literal["no_source_range", "narrower", "wider", "across_an_end", "one_point"]
-RANGE_KINDS: tuple[RangeKind, ...] = ("no_source_range", "narrower", "wider", "across_an_end", "one_point")
+Magnitude: TypeAlias = Literal["ordinary", "any_double", "adjacent_doubles", "subnormal", "least_subnormals"]
+MAGNITUDES: tuple[Magnitude, ...] = (
+    "ordinary",
+    "any_double",
+    "adjacent_doubles",
+    "subnormal",
+    "least_subnormals",
+)
+LEAST = 5e-324
+RangeKind: TypeAlias = Literal[
+    "no_source_range", "narrower", "within_an_interval", "wider", "across_an_end", "one_point"
+]
+RANGE_KINDS: tuple[RangeKind, ...] = (
+    "no_source_range",
+    "narrower",
+    "within_an_interval",
+    "wider",
+    "across_an_end",
+    "one_point",
+)
 Order: TypeAlias = Literal["non_decreasing", "non_increasing"]
 ORDERS: tuple[Order, ...] = ("non_decreasing", "non_increasing")
 
@@ -95,12 +114,13 @@ def numbers(magnitude: Magnitude, positive: bool) -> st.SearchStrategy[float]:
         return st.floats(
             0.0 if positive else -SMALLEST_NORMAL, SMALLEST_NORMAL, exclude_min=positive, exclude_max=True
         )
+    if magnitude == "least_subnormals":
+        return st.integers(1 if positive else -32, 32).map(lambda units: units * LEAST)
     if positive:
         return st.floats(min_value=0.0, exclude_min=True, allow_infinity=False)
     return st.floats(allow_nan=False, allow_infinity=False)
 
 
-@st.composite
 def chain(draw: st.DrawFn, count: int, positive: bool, ascending: bool) -> list[float]:
     """`count` doubles from a start, each one to three units in the last place from the one before, rising, or
     else each way at random."""
@@ -122,8 +142,8 @@ def knots(draw: st.DrawFn, magnitude: Magnitude, positive: bool, count: int) -> 
     """`count` distinct doubles of a magnitude, in ascending order. A value drawn twice is replaced by the
     double beside the others, so that no draw is thrown away."""
     if magnitude == "adjacent_doubles":
-        return draw(chain(count, positive, ascending=True))
-    found = sorted(set(draw(st.lists(numbers(magnitude, positive), min_size=count, max_size=count))))
+        return chain(draw, count, positive, ascending=True)
+    found = sorted({draw(numbers(magnitude, positive)) for _ in range(count)})
     while len(found) < count:
         lower, upper = math.nextafter(found[0], -math.inf), math.nextafter(found[-1], math.inf)
         if math.isfinite(lower) and (lower > 0 or not positive):
@@ -140,8 +160,8 @@ def knots(draw: st.DrawFn, magnitude: Magnitude, positive: bool, count: int) -> 
 def values(draw: st.DrawFn, magnitude: Magnitude, positive: bool, count: int) -> list[float]:
     """`count` values of a magnitude, any order."""
     if magnitude == "adjacent_doubles":
-        return draw(chain(count, positive, ascending=False))
-    return draw(st.lists(numbers(magnitude, positive), min_size=count, max_size=count))
+        return chain(draw, count, positive, ascending=False)
+    return [draw(numbers(magnitude, positive)) for _ in range(count)]
 
 
 def inside(draw: st.DrawFn, distinct: list[float]) -> list[float]:
@@ -174,11 +194,18 @@ def above(number: float) -> st.SearchStrategy[float]:
 def source_range(
     draw: st.DrawFn, kind: RangeKind, distinct: list[float], edges: list[float]
 ) -> tuple[float, float] | None:
-    """A `source_range` of a kind, sharing with `[x[0], x[-1]]` a value that is no edge (table item 4)."""
+    """A `source_range` of a kind, sharing with `[x[0], x[-1]]` a value that is no edge (table item 4). One
+    within an interval holds two doubles strictly between its knots, so that the readable range holds no knot
+    (the S3 design's S3Q8 rule 1); where no interval has room for two, it is one point."""
     first, last = distinct[0], distinct[-1]
-    candidates = inside(draw, distinct)
     if kind == "no_source_range":
         return None
+    if kind == "within_an_interval":
+        roomy = [(low, high) for low, high in itertools.pairwise(distinct) if two_between(low, high)]
+        if roomy:
+            return two_inside(draw, *draw(st.sampled_from(roomy)))
+        kind = "one_point"
+    candidates = inside(draw, distinct)
     if kind == "narrower":
         final = len(candidates) - 1
         low, high = draw(
@@ -208,11 +235,40 @@ def source_range(
     return point, point
 
 
+def two_between(low: float, high: float) -> bool:
+    """Whether two doubles lie strictly between `low` and `high`."""
+    return math.nextafter(math.nextafter(low, math.inf), math.inf) < high
+
+
+def two_inside(draw: st.DrawFn, low: float, high: float) -> tuple[float, float]:
+    """Two distinct doubles strictly between `low` and `high`, in order; a value drawn twice is replaced by
+    the double beside it, so that no draw is thrown away."""
+    between = st.floats(low, high, exclude_min=True, exclude_max=True)
+    first, second = draw(between), draw(between)
+    if first == second:
+        second = next(near for near in beside(first) if low < near < high)
+    return min(first, second), max(first, second)
+
+
 def shares_a_value(low: float, high: float, edges: list[float]) -> bool:
     """Whether `[low, high]`, `low < high`, holds a double that is no edge."""
     return math.nextafter(low, math.inf) < high or any(
         all(end != edge for edge in edges) for end in (low, high)
     )
+
+
+def hyperbola(distinct: list[float]) -> list[float]:
+    """At knots that are multiples of the least subnormal, `y = c / x` with `c` the least that makes every
+    value a multiple too (rounded where `c` is too large for that, which leaves the table valid)."""
+    units = [int(Fraction(knot) / Fraction(LEAST)) for knot in distinct]
+    common = math.lcm(*units)
+    return [float(Fraction(common, unit) * Fraction(LEAST)) for unit in units]
+
+
+def some(draw: st.DrawFn, indices: range) -> set[int]:
+    """One or more of `indices`: one drawn, then each other kept or not, so that no draw is thrown away."""
+    first = draw(st.sampled_from(indices))
+    return {first, *(index for index in indices if index != first and draw(BOOLEANS))}
 
 
 def signed_zero(draw: st.DrawFn) -> float:
@@ -242,10 +298,13 @@ def tables(
         distinct = sorted([*distinct, 0.0])
     if zeros:
         distinct = [signed_zero(draw) if knot == 0 else knot for knot in distinct]
-    edge_at: set[int] = draw(st.sets(st.integers(1, len(distinct) - 2), min_size=1)) if edged else set()
-    # One value for each knot, and a second, above it, for each edge.
-    below_or_at = draw(values(magnitude, positive, len(distinct)))
-    above_edge = iter(draw(values(magnitude, positive, len(edge_at))))
+    edge_at: set[int] = some(draw, range(1, len(distinct) - 1)) if edged else set()
+    # One value for each knot, and a second, above it, for each edge; a log-log table of the least subnormals
+    # takes its values at the knots from `y = c / x` instead.
+    follows = positive and magnitude == "least_subnormals"
+    drawn = draw(values(magnitude, positive, (0 if follows else len(distinct)) + len(edge_at)))
+    below_or_at = hyperbola(distinct) if follows else drawn[: len(distinct)]
+    above_edge = iter(drawn[len(drawn) - len(edge_at) :])
     x: list[float] = []
     y: list[float] = []
     for index, knot in enumerate(distinct):
@@ -255,7 +314,7 @@ def tables(
             x.append(signed_zero(draw) if knot == 0 else knot)
             y.append(next(above_edge))
     if zeros:
-        for index in draw(st.sets(st.integers(0, len(y) - 1), min_size=1)):
+        for index in some(draw, range(len(y))):
             y[index] = signed_zero(draw)
     if order is not None:
         y.sort(reverse=order == "non_increasing")

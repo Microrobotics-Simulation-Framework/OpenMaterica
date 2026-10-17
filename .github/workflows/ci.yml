@@ -528,6 +528,8 @@ jobs:
     # from 45 to 90 minutes on that run (the maintainer's default); agreement's stays 360 until a second run
     # agrees. tests/unit/test_ci_workflows.py holds each interrupt at twice the slowest run measured here, and
     # holds `conditions` once it has run on CI.
+    # The table evaluator's four properties, in the json shard, took 31 s of CPU at `ci` and 556 s at `deep` (262 s
+    # wall on four workers), locally (2026-10-17, S3b-1's fix round).
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
