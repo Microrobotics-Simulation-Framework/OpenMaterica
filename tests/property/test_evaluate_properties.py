@@ -5,8 +5,7 @@ the text alone (`record_format.md` section 6, table items 1 to 4; `read_side_con
 - HP17, agreement: over drawn tables (both schemes; edges; `source_range` absent, narrower, wider, across an
   end, of one point; every magnitude; subnormals; `-0`) and operating values at every place table item 3
   tells apart, the evaluator never raises; "at an edge", "in the readable range" and "no number" fall exactly
-  where the oracle puts them; and the number is the oracle's, rounded once: a linear one bit for bit, a
-  log-log one within 1e-15.
+  where the oracle puts them; and the number is the oracle's, the exact value rounded once, bit for bit.
 - HP18, knot exactness: a read at a knot that is no edge, or outside the readable range at an end that is
   one, gives the stored `y`, bit for bit, `-0` included.
 - HP19, bracketing and monotonicity: the knots that bracket a read are the interval table item 3 names, and
@@ -14,32 +13,52 @@ the text alone (`record_format.md` section 6, table items 1 to 4; `read_side_con
   the operating value.
 
 The oracle compares numbers as fractions, finds a read's interval by scanning every pair of knots, and
-computes a linear value exactly in another arrangement, `(y0 (x1 - x) + y1 (x - x0)) / (x1 - x0)`, and a
-log-log one in decimal at 80 digits as `y0 * (y1 / y0) ** (ln(x / x0) / ln(x1 / x0))`, where the evaluator
-works at 50 in the text's arrangement. It shares with the evaluator only the standard library's rounding of a
-fraction to a double. Its own control: it gives every number and refusal of the table evaluation cases.
+computes a linear value exactly in another arrangement, `(y0 (x1 - x) + y1 (x - x0)) / (x1 - x0)`. A log-log
+value it computes in decimal at 100 digits as `y0 * (y1 / y0) ** (ln(x / x0) / ln(x1 / x0))`, rounded at once
+where that is provably the value's rounding, and decides exactly whether the value is a point halfway between
+two doubles where it lies near one (`loglog`). It shares no code with the evaluator. It shares the standard
+library: `fractions` and the rounding of a fraction to a double, ties to even; `decimal`'s arithmetic,
+logarithm and exponential (the evaluator bounds the value with them, rounding each step down and up, where
+the oracle bounds its error by analysis) and the rounding of a decimal to a double. Where the evaluator
+decides that a value is rational over a basis found by gcds and integer roots, the oracle factors into primes.
+Its own controls: it gives every number and refusal of the table evaluation cases, and the exact value at
+constructed ties.
 
 The mutants it kills are in `test_evaluate_mutants.py`, each at the assertion it names: every assertion's
 message begins with its label.
 """
 
 import itertools
+import math
+import sys
+from collections import Counter
 from decimal import Context, Decimal, localcontext
 from fractions import Fraction
-from functools import lru_cache
+from functools import cache, lru_cache
 from typing import NamedTuple
 
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 
 from materica.core import evaluate
 from tests.property.support import feature, same
-from tests.property.tables import SMALLEST_NORMAL, Reading, Table, beside, case_entries, readings
+from tests.property.tables import (
+    SMALLEST_NORMAL,
+    Choices,
+    RangeKind,
+    Reading,
+    Table,
+    beside,
+    case_entries,
+    readings,
+    ties,
+)
 
-# How far a log-log number may lie from the oracle's: both are rounded once, from 50 digits and from 80, so
-# they differ only where a double rounding falls between them (the S3 design's HP17).
-LOGLOG_AGREEMENT = 1e-15
-_ORACLE = Context(prec=80)
+# The digits of the oracle's log-log number, and how near a point halfway between two doubles the number must
+# lie, relatively, for the oracle to decide exactly whether the value is that point (`loglog`).
+ORACLE_DIGITS = 100
+NEAR = Fraction(1, 10**70)
+_ORACLE = Context(prec=ORACLE_DIGITS)
 
 
 def accepted(table: Table) -> bool:
@@ -119,10 +138,127 @@ def bracket(table: Table, at: float) -> tuple[int, int]:
 
 
 @lru_cache(maxsize=4096)
-def _loglog(x0: float, x1: float, y0: float, y1: float, at: float) -> float:
+def loglog(x0: float, x1: float, y0: float, y1: float, at: float) -> float:
+    """The log-log value (`read_side_contract.md` section 7 item 2), rounded once to the nearest double, ties
+    to even.
+
+    The number is `y0 * c ** (ln a / ln b)`, with `a = x / x0`, `b = x1 / x0` and `c = y1 / y0`, in decimal at
+    100 digits, each step correctly rounded. A ratio of two distinct doubles lies at least 2^-53 from 1, so
+    each logarithm is at least 1.1e-16 in size where it is not 0, and within 4.5e-84 of its value, relatively;
+    the exponent within 1.4e-83, relatively, and, being at most 1455 in size, within 2.1e-80 absolutely; so
+    the number lies within 2.1e-80 of the value, relatively (the bound's arithmetic is the oracle's own,
+    checked by hand, not by a program). So where the number lies farther than `NEAR` from every halfway point,
+    the value lies on the same side of each, and the number rounds as the value does.
+
+    Nearer a halfway point `m`, whether the value is `m` is decided exactly (`is_the_value`). If it is, `m`
+    rounds to the even double beside it. If not, the number's rounding is the value's unless the value lies
+    within 2.1e-80 of `m` and is not `m`."""
     with localcontext(_ORACLE):
         share = (Decimal(at) / Decimal(x0)).ln() / (Decimal(x1) / Decimal(x0)).ln()
-        return float(Decimal(y0) * ((Decimal(y1) / Decimal(y0)).ln() * share).exp())
+        number = Decimal(y0) * ((Decimal(y1) / Decimal(y0)).ln() * share).exp()
+    nearest, approximate = float(number), Fraction(number)
+    halfway = min(halfway_points(nearest), key=lambda point: abs(point - approximate))
+    if abs(halfway - approximate) <= NEAR * approximate and is_the_value(x0, x1, y0, y1, at, halfway):
+        return float(halfway)
+    return nearest
+
+
+def halfway_points(number: float) -> list[Fraction]:
+    """The points halfway between `number`, a positive double, and the doubles either side of it."""
+    return [
+        (Fraction(number) + Fraction(near)) / 2
+        for near in (math.nextafter(number, 0.0), math.nextafter(number, math.inf))
+        if math.isfinite(near)
+    ]
+
+
+def is_the_value(x0: float, x1: float, y0: float, y1: float, at: float, point: Fraction) -> bool:
+    """Whether `point` is the log-log value `y0 a^(ln c / ln b)` (`loglog`), exactly: where
+    `ln(point / y0) ln b = ln a ln c`. Each logarithm of a positive rational is a sum of logarithms of primes
+    with integer coefficients, its prime factors' exponents (`logarithm`), so each side is a product of two
+    such sums (`product`), and the two sides are equal where their coefficients agree. Where they disagree,
+    the point is not the value, provided the logarithms of primes are algebraically independent, as Schanuel's
+    conjecture has it (unproven)."""
+    exact = [Fraction(number) for number in (x0, x1, y0, y1, at)]
+    left = product(logarithm(point / exact[2]), logarithm(exact[1] / exact[0]))
+    right = product(logarithm(exact[4] / exact[0]), logarithm(exact[3] / exact[2]))
+    return left == right
+
+
+def logarithm(number: Fraction) -> Counter[int]:
+    """The natural logarithm of a positive rational as the coefficients of the primes' logarithms."""
+    found = prime_factors(number.numerator)
+    found.subtract(prime_factors(number.denominator))
+    return found
+
+
+def product(first: Counter[int], second: Counter[int]) -> Counter[tuple[int, int]]:
+    """The product of two such sums, as the coefficients of `ln p ln q`, `p <= q`."""
+    found: Counter[tuple[int, int]] = Counter()
+    for p, i in first.items():
+        for q, j in second.items():
+            found[min(p, q), max(p, q)] += i * j
+    return found
+
+
+# Miller and Rabin's test with these witnesses tells every number below 3.3e24 prime or composite.
+_WITNESSES = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
+
+
+def prime_factors(number: int) -> Counter[int]:
+    """The prime factors of a positive integer, each with its exponent: here a power of 2 times an odd number
+    below 2^55, the numerator or denominator of a double or of a point halfway between two. The witnesses
+    divide out first, then Pollard's rho splits what is left until each part passes Miller and Rabin's
+    test."""
+    found = Counter[int]()
+    for prime in _WITNESSES:
+        while number % prime == 0:
+            number //= prime
+            found[prime] += 1
+    parts = [number] if number > 1 else []
+    while parts:
+        part = parts.pop()
+        if is_prime(part):
+            found[part] += 1
+        else:
+            factor = a_factor(part)
+            parts += [factor, part // factor]
+    return found
+
+
+@cache
+def is_prime(number: int) -> bool:
+    """Miller and Rabin's test of an odd number with no factor among the witnesses."""
+    odd, halvings = number - 1, 0
+    while odd % 2 == 0:
+        odd, halvings = odd // 2, halvings + 1
+    for witness in _WITNESSES:
+        power = pow(witness, odd, number)
+        if power in (1, number - 1):
+            continue
+        for _ in range(halvings - 1):
+            power = power * power % number
+            if power == number - 1:
+                break
+        else:
+            return False
+    return True
+
+
+def a_factor(number: int) -> int:
+    """A factor of a composite odd number other than 1 and itself: Pollard's rho, with Floyd's cycle finding,
+    the polynomial's constant raised until a step finds one."""
+    for constant in itertools.count(1):
+        slow = fast = 2
+        found = 1
+        while found == 1:
+            slow = (slow * slow + constant) % number
+            fast = (fast * fast + constant) % number
+            fast = (fast * fast + constant) % number
+            found = math.gcd(slow - fast, number)
+        if found != number:
+            return found
+    raise AssertionError("unreachable")
 
 
 def exact(table: Table, at: float) -> float:
@@ -134,17 +270,11 @@ def exact(table: Table, at: float) -> float:
         return table.y[below]
     x0, x1, y0, y1 = table.x[below], table.x[above], table.y[below], table.y[above]
     if table.scheme == "loglog":
-        return _loglog(x0, x1, y0, y1, at)
+        return loglog(x0, x1, y0, y1, at)
     point = Fraction(at)
     return float(
         (Fraction(y0) * (Fraction(x1) - point) + Fraction(y1) * (point - Fraction(x0)))
         / (Fraction(x1) - Fraction(x0))
-    )
-
-
-def agrees(scheme: str, number: float, oracle: float) -> bool:
-    return same(oracle, number) or (
-        scheme == "loglog" and abs(number - oracle) <= LOGLOG_AGREEMENT * abs(oracle)
     )
 
 
@@ -174,11 +304,22 @@ def check_agreement(reading: Reading) -> None:
         )
         if number is not None and expected.source is not None:
             oracle = exact(table, expected.source)
-            assert agrees(scheme, number, oracle), f"value: {number!r}, not {oracle!r}, at {at!r} on {table}"
+            assert same(oracle, number), f"value: {number!r}, not {oracle!r}, at {at!r} on {table}"
 
 
 def on_a_knot(table: Table, at: float) -> bool:
     return any(Fraction(knot) == Fraction(at) for knot in table.x)
+
+
+_U = 5e-324
+
+
+def subnormal_tie(table: Table, at: float) -> Reading:
+    """A read HP17 drew at the `ci` profile (the first three) or that is the least of its kind (the rest),
+    where the log-log value lies halfway between two subnormals; the S3b-1 review's R1. Bit for bit, it fails
+    an evaluator or an oracle that rounds such a value the wrong way."""
+    kind: RangeKind = "no_source_range" if table.source_range is None else "wider"
+    return Reading(table, Choices("subnormal", False, False, kind, None), (at,))
 
 
 # Every feature by its chance: the least share it showed in eight runs of 2,000 examples (seeds 1 to 4, at
@@ -206,6 +347,41 @@ def on_a_knot(table: Table, at: float) -> bool:
     subnormal_y=0.3,
     negative_zero_y=0.09,
 )
+@example(
+    subnormal_tie(
+        Table((_U, 2e-323, 3e-323), (_U, 1e-323, 1.5e-323), "loglog", (), (0.0, 9.716508993683519e307)),
+        2.5e-323,
+    )
+)
+@example(
+    subnormal_tie(
+        Table(
+            (_U, 3.0052337292636e-309, 2.0698175165701283e-308, 2.069817516570129e-308),
+            (3.0052337292636e-309, _U, 2.0698175165701283e-308, 3.0052337292636e-309),
+            "loglog",
+            (),
+            None,
+        ),
+        1e-323,
+    )
+)
+@example(
+    subnormal_tie(
+        Table(
+            (_U, 9.8819390526424e-310, 5.00570041176814e-309, 8.541824180569135e-309),
+            (9.8819390526424e-310, _U, 8.541824180569135e-309, 5.00570041176814e-309),
+            "loglog",
+            (),
+            None,
+        ),
+        1e-323,
+    )
+)
+@example(
+    subnormal_tie(Table((_U, 4.24436392890612e-309), (4.24436392890612e-309, _U), "loglog", (), None), 1e-323)
+)
+@example(subnormal_tie(Table((_U, 5 * _U), (5 * _U, _U), "loglog", (), None), 2 * _U))
+@example(subnormal_tie(Table((_U, 7 * _U), (7 * _U, _U), "loglog", (), None), 2 * _U))
 @given(readings())
 def test_hp17_the_evaluator_agrees_with_the_oracle(reading: Reading) -> None:
     table, choices = reading.table, reading.choices
@@ -346,5 +522,44 @@ def test_the_oracle_gives_every_number_and_refusal_of_the_table_evaluation_cases
         assert found.source is not None
         number = entry.expected["value"]
         assert isinstance(number, float), (entry.case, entry.at)
-        assert agrees(entry.table.scheme, exact(entry.table, found.source), number), (entry.case, entry.at)
+        assert same(number, exact(entry.table, found.source)), (entry.case, entry.at)
     assert len(entries) >= 100
+
+
+def test_the_oracle_gives_the_exact_value_where_it_is_halfway_between_two_doubles() -> None:
+    """Its control at constructed ties, each value computed in fractions alone and checked to be halfway."""
+    found = ties()
+    for tie in found:
+        nearest = float(tie.value)
+        other = math.nextafter(nearest, math.inf if tie.value > Fraction(nearest) else -math.inf)
+        assert 2 * tie.value == Fraction(nearest) + Fraction(other), tie
+        assert same(nearest, loglog(*tie.x, *tie.y, tie.at)), tie
+    assert len(found) >= 400
+
+
+def never(*_: object) -> bool:
+    return False
+
+
+def test_without_its_exact_decision_the_oracle_misses_ties(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control that the exact decision is what gives the ties: at 100 digits alone, the number falls on
+    either side of a halfway point."""
+    loglog.cache_clear()
+    monkeypatch.setattr(sys.modules[__name__], "is_the_value", never)
+    try:
+        missed = [tie for tie in ties() if not same(float(tie.value), loglog(*tie.x, *tie.y, tie.at))]
+    finally:
+        loglog.cache_clear()
+    assert len(missed) >= 50, len(missed)
+
+
+def test_the_exact_decision_tells_the_value_from_the_halfway_point_beside_it() -> None:
+    """`is_the_value` both ways: true at each tie's halfway point, false at the next halfway point up, a
+    rational that is not the value."""
+    for tie in ties():
+        nearest = float(tie.value)
+        assert is_the_value(*tie.x, *tie.y, tie.at, tie.value), tie
+        beyond = max(halfway_points(nearest)) if tie.value < Fraction(nearest) else None
+        other = beyond if beyond is not None else max(halfway_points(math.nextafter(nearest, math.inf)))
+        assert other != tie.value
+        assert not is_the_value(*tie.x, *tie.y, tie.at, other), tie

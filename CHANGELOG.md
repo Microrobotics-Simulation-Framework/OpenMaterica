@@ -51,10 +51,13 @@ every family entry goes in `families/CHANGELOG.md`.
   and 4); whether an operating value lies at a declared edge, wherever the edge lies, or beyond one from the
   range; the knots that bracket it, strictly beside an edge; and the number a read gives there: inside the
   range, the table's value, and outside it, the value at the range's nearest end, taken from inside
-  (`read_side_contract.md` section 5), or none at or beyond an edge. Numbers are compared exactly; a linear
-  value is computed in fractions and a log-log one in decimal at 50 digits, each rounded once, and a knot's
-  `y` is returned as stored, `-0` included (the S3 design's S3Q16), so it never raises and gives the same
-  double everywhere. It computes no derivative.
+  (`read_side_contract.md` section 5), or none at or beyond an edge. Numbers are compared exactly. A value is
+  the exact value of the text's formula rounded once to the nearest double, ties to even: a linear one is
+  computed in fractions; a log-log one in fractions where its exponent and itself are rational, and otherwise
+  bounded in decimal, from 50 digits to 1,600, until both bounds round to the same double. That rests on one
+  unproven assumption, the four exponentials conjecture, and past 1,600 digits the code returns its best
+  rounding (`loglog`'s docstring). A knot's `y` is returned as stored, `-0` included (the S3 design's S3Q16).
+  So it never raises and gives the same double everywhere. It computes no derivative.
 - The read's steps 7 and 8 (S2a-2; `read_side_contract.md` section 3). Step 7 finds the target field, and
   gives `absent` where the record holds none; a field holding alternatives raises `NotImplementedError`, since
   alternatives are read at step 7, with S2a-4 (`no_pick`) and S4. Step 8 refuses a form the field's row does
@@ -369,13 +372,18 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ### Verification
 - The table evaluator against every table evaluation case: each number and `in_range` at 1e-12 relative, and
-  each refusal, a broken evaluator failing each, and the edges of the text by example
-  (`tests/unit/test_evaluate.py`).
-- The S3 design's HP17 to HP19 for the table evaluator, against an oracle written from the text in fractions
-  and in decimal at 80 digits, over drawn tables of every magnitude, subnormals and `-0` included, and
-  operating values at every place table item 3 tells apart: agreement, knots as stored, bracketing and
-  monotonicity, each with its feature audit and an audit control, and seventeen mutants, each killed at the
-  assertion it names (`tests/property/test_evaluate_*.py`, in the `json` shard).
+  each refusal, a broken evaluator failing each, and the edges of the text by example; and log-log values
+  halfway between two doubles, rounded to even (`y = x^2` and `y = x^3` in the normal range and among
+  subnormals, `y = x^2` over [1, 3], `y = 3 x^(3/2)` and `y = 1 / x` among the least subnormals), with a
+  control in which the exact decision is switched off, and the bounds of the other values holding the exact
+  value where it is known (`tests/unit/test_evaluate.py`).
+- The S3 design's HP17 to HP19 for the table evaluator, against an oracle written from the text, exact in
+  fractions, and for a log-log value in decimal at 100 digits under an error bound, deciding over prime
+  factors whether a value near a halfway point is that point, over drawn tables of every magnitude,
+  subnormals and `-0` included, and operating values at every place table item 3 tells apart: agreement bit
+  for bit, knots as stored, bracketing and monotonicity, each with its feature audit and an audit control,
+  and seventeen mutants, each killed at the assertion it names (`tests/property/test_evaluate_*.py`, in the
+  `json` shard). The oracle's own controls are the table evaluation cases and the ties.
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that
   the members marked write-only are those step 8 does not check, that each token condition and fact binds its
   row's list and a fact's identifier the pattern of its row's form, that a member a row gives as present

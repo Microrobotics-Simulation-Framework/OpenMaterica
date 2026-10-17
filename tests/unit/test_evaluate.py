@@ -9,16 +9,21 @@ below.
 """
 
 import math
+import random
 from collections.abc import Callable, Sequence
+from decimal import ROUND_CEILING, ROUND_FLOOR, Context
+from fractions import Fraction
 
 import pytest
 
 from materica.core import evaluate
 from tests.conformance.runner import CONFORMANCE
-from tests.property.tables import CaseEntry, case_entries
+from tests.property.tables import CaseEntry, Tie, case_entries, ties
+from tests.property.test_evaluate_mutants import clamped_to_x
 
 TOLERANCE = 1e-12
 ENTRIES = case_entries()
+LOGLOG = evaluate.loglog
 
 
 def disagreements(entries: Sequence[CaseEntry] = ENTRIES) -> list[str]:
@@ -66,25 +71,6 @@ def _linear_in_log_space(x0: float, x1: float, y0: float, y1: float, at: float) 
     return LOGLOG(x0, x1, y0, y1, at)
 
 
-LOGLOG = evaluate.loglog
-TABLE_VALUE = evaluate.table_value
-
-
-def _clamped_to_x(
-    x: Sequence[float],
-    y: Sequence[float],
-    scheme: evaluate.Scheme,
-    edges: Sequence[float],
-    source_range: Sequence[float] | None,
-    at: float,
-) -> float | None:
-    """Outside the readable range, the value at `x[0]` or `x[-1]`, as NumPy's `interp` clamps."""
-    number = TABLE_VALUE(x, y, scheme, edges, source_range, at)
-    if number is None or evaluate.in_readable_range(x, source_range, at):
-        return number
-    return y[0] if at < evaluate.readable_range(x, source_range)[0] else y[-1]
-
-
 # What each broken evaluator replaces, its fault, the replacement, and what the comparison must report.
 CONTROLS: list[tuple[str, str, Callable[..., object], str]] = [
     ("readable_range", "source_range_ignored", _source_range_ignored, "in_range is not False"),
@@ -92,7 +78,7 @@ CONTROLS: list[tuple[str, str, Callable[..., object], str]] = [
     ("beyond_an_edge", "extrapolated_beyond_an_edge", lambda *_: False, "not refused"),
     ("loglog", "loglog_as_linear", evaluate.linear, "TE-004.loglog_values.json"),
     ("linear", "linear_in_log_space", _linear_in_log_space, "TE-004.linear_values.json"),
-    ("table_value", "clamped_to_x", _clamped_to_x, "TE-002.source_range_narrow.json at 285.0: 1000.0"),
+    ("table_value", "clamped_to_x", clamped_to_x, "TE-002.source_range_narrow.json at 285.0: 1000.0"),
 ]
 
 
@@ -165,3 +151,103 @@ def test_an_edge_outside_the_readable_range_is_at_an_edge_and_outside() -> None:
     assert evaluate.beyond_an_edge(x, edges, source_range, 272.0)
     assert evaluate.table_value(x, y, "linear", edges, source_range, 272.0) is None
     assert evaluate.table_value(x, y, "linear", edges, source_range, 274.0) == 999.9
+
+
+# Log-log values halfway between two doubles, and the rest.
+
+
+def test_a_log_log_value_halfway_between_two_doubles_is_rounded_to_even() -> None:
+    """The value is the exact one rounded once, ties to even (the S3b-1 review's M1), at the ties of
+    `tables.ties`: among them `y = 1 / x` among the least subnormals, where the text's 1e-12 against a
+    correctly rounded case would demand it. Each value, computed in fractions alone, is checked to be
+    halfway, the control that one unit off was possible."""
+    wrong: list[tuple[Tie, float | None]] = []
+    for tie in ties():
+        nearest = float(tie.value)
+        other = math.nextafter(nearest, math.inf if tie.value > Fraction(nearest) else -math.inf)
+        assert 2 * tie.value == Fraction(nearest) + Fraction(other), tie
+        number = evaluate.table_value(tie.x, tie.y, "loglog", (), None, tie.at)
+        if number != nearest:
+            wrong.append((tie, number))
+    assert wrong == []
+
+
+def test_an_irrational_log_log_value_is_rounded_correctly() -> None:
+    """Through x [1, 4], y [1, 2] the value is the square root, irrational at a double that is no square, and
+    IEEE 754 rounds `sqrt` correctly; `e = 1 / 2` is rational there, so the exact path decides and the bounds
+    settle. Among the points, ratios whose numerator alone is a square (9 / 8, ...)."""
+    rng = random.Random(3)
+    points = [rng.uniform(1.0, 4.0) for _ in range(300)]
+    points += [math.nextafter(2.25, math.inf), math.nextafter(2.25, -math.inf), math.nextafter(1.0, math.inf)]
+    points += [9 / 8, 25 / 8, 49 / 32, 81 / 32, 121 / 32]
+    for at in points:
+        assert evaluate.loglog(1.0, 4.0, 1.0, 2.0, at) == math.sqrt(at), at
+    assert evaluate.loglog(1.0, 4.0, 1.0, 2.0, 2.25) == 1.5
+
+
+def test_the_bounds_hold_the_exact_value() -> None:
+    """`loglog_bounds` bounds the value strictly, where it is known exactly: at every tie, rising and falling,
+    at the first two precisions and at each from 3 digits to 12, where a unit is large; and at random doubles
+    on `y = x^2` and `y = 1 / x`, at the first four, and at one of each at all six. A bound one unit astray,
+    which could change a rounding only within 1e-48 of a halfway point, shows here."""
+    rng = random.Random(4)
+    coarse = tuple(_contexts(digits) for digits in range(3, 13))
+    known: list[
+        tuple[tuple[float, float], tuple[float, float], float, Fraction, Sequence[tuple[Context, Context]]]
+    ]
+    known = [(tie.x, tie.y, tie.at, tie.value, evaluate.LOGLOG_CONTEXTS[:2] + coarse) for tie in ties()]
+    for count in range(10):
+        at = rng.uniform(1.0, 2.0)
+        contexts = evaluate.LOGLOG_CONTEXTS if count == 0 else evaluate.LOGLOG_CONTEXTS[:4]
+        known.append(((1.0, 2.0), (1.0, 4.0), at, Fraction(at) ** 2, contexts))
+        known.append(((1.0, 2.0), (1.0, 0.5), at, 1 / Fraction(at), contexts))
+    for x, y, at, exact, precisions in known:
+        for down, up in precisions:
+            low, high = (Fraction(bound) for bound in evaluate.loglog_bounds(down, up, *x, *y, at))
+            assert low < exact < high, (x, y, at, down.prec)
+            assert high - low < exact * Fraction(10) ** (20 - down.prec), (x, y, at, down.prec)
+
+
+def _contexts(digits: int) -> tuple[Context, Context]:
+    return Context(prec=digits, rounding=ROUND_FLOOR), Context(prec=digits, rounding=ROUND_CEILING)
+
+
+def test_bounds_that_do_not_settle_are_refined(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With the precisions cut to 3 digits and its doublings, where bounds seldom settle at first, every
+    square root still comes out correctly rounded: the code refines. Its control: kept at the first
+    precision, many do not."""
+    rng = random.Random(5)
+    points = [rng.uniform(1.0, 4.0) for _ in range(200)]
+    coarse = tuple(_contexts(3 * 2**step) for step in range(6))
+    monkeypatch.setattr(evaluate, "LOGLOG_CONTEXTS", coarse)
+    assert [evaluate.loglog(1.0, 4.0, 1.0, 2.0, at) for at in points] == [math.sqrt(at) for at in points]
+    monkeypatch.setattr(evaluate, "LOGLOG_CONTEXTS", coarse[:1])
+    wrong = [at for at in points if evaluate.loglog(1.0, 4.0, 1.0, 2.0, at) != math.sqrt(at)]
+    assert len(wrong) >= 100, len(wrong)
+
+
+def _never_exact(*_: object) -> None:
+    return None
+
+
+def test_without_the_exact_decision_a_tie_is_rounded_either_way_and_nothing_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The control that the exact decision is what rounds ties to even: bounds alone straddle a halfway point
+    at every precision, so the code returns the double nearest their middle. With the precisions cut to two,
+    some ties round the wrong way, and none raises."""
+    monkeypatch.setattr(evaluate, "exact_loglog", _never_exact)
+    monkeypatch.setattr(evaluate, "LOGLOG_CONTEXTS", evaluate.LOGLOG_CONTEXTS[:2])
+    found = ties()
+    wrong = [tie for tie in found if evaluate.loglog(*tie.x, *tie.y, tie.at) != float(tie.value)]
+    assert len(wrong) >= len(found) // 10, len(wrong)
+
+
+def test_past_the_last_precision_the_code_returns_rather_than_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """At every precision, up to `LOGLOG_DIGITS[-1]`, a tie's bounds straddle it; the code still returns one
+    of the two doubles beside it."""
+    monkeypatch.setattr(evaluate, "exact_loglog", _never_exact)
+    tie = ties()[0]
+    nearest = float(tie.value)
+    other = math.nextafter(nearest, math.inf if tie.value > Fraction(nearest) else -math.inf)
+    assert evaluate.loglog(*tie.x, *tie.y, tie.at) in {nearest, other}
