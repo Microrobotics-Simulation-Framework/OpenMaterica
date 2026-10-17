@@ -13,15 +13,16 @@ in a record that is valid otherwise; the record's hash is recomputed and pinned.
 `want` of plain read, at operating conditions with a tolerance or an accept list for each condition the
 field's row requires, twice, and once more without the hash suite. The target fails when a read raises
 anything but `NotImplementedError`, when two reads of one request differ, when a result is other than steps 7
-to 13 give (every code one of them gives, each code and condition once, the status the worst of the codes'),
+to 13 give (every code one of them gives, and HP1 and HP2: each code and condition once, `condition` where
+section 2 item 2 puts it, the status the worst of the codes', and the members present as item 6 says),
 when the read without the hash suite differs from the read with it by more than the
 label `hash_not_checked`, when step 8 lets through a constant its row allows that the reader `$defs` refuse
 (T1's third relation, but for one divergence of the `$defs` that `field_oracle.py` names: the one way this
 target sees a refusal step 8 is missing until the reference model of S2a-4 can say what each read must give),
 or when steps 9 and 10 read such a constant otherwise than their text, its units by code point and its
 conditions by HP7's oracle (`field_oracle.py`). `NotImplementedError` is a step not built yet: its form's own
-member waits for S2b or S3, or it holds alternatives. The seeds are every value field of every conformance
-input.
+member waits for S2b or S3, or it holds alternatives beyond what S4's decision 12 lets S2 read. The seeds are
+every value field of every conformance input.
 """
 
 import json
@@ -40,11 +41,17 @@ with atheris.instrument_imports(include=["materica"]):
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
-from materica.core.status import worst
 from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY
 from materica.shapes import Suite
 from tests.fuzz import seeded_fault
-from tests.fuzz.field_oracle import OPERATING, REQUIRED, check_no_refusal_missing, check_steps_9_and_10
+from tests.fuzz.field_oracle import (
+    OPERATING,
+    REQUIRED,
+    check_no_refusal_missing,
+    check_result_laws,
+    check_steps_9_and_10,
+    objects,
+)
 
 PACKAGE = Path(jsonio.__file__).parents[1]
 CONFORMANCE = PACKAGE / "data" / "conformance"
@@ -89,16 +96,12 @@ def read_json(request: JsonObject, store: RecordStore, claims: frozenset[Suite])
 
 
 def check_result(result: JsonValue) -> None:
+    """HP1 and HP2 (`field_oracle.check_result_laws`), every code one the steps built give."""
+    check_result_laws(result)
     if result == "not yet":
         return
-    assert isinstance(result, dict), result
-    reasons = result["reasons"]
-    assert isinstance(reasons, list), result
-    keys = [(reason["code"], reason.get("condition")) for reason in reasons if isinstance(reason, dict)]
-    assert len(set(keys)) == len(keys), f"a reason twice: {keys}"
-    codes = {str(code) for code, _ in keys}
+    codes = {str(reason.get("code")) for reason in objects(result, "reasons")}
     assert codes <= BUILT_CODES, f"codes steps 7 to 13 do not give: {sorted(codes - BUILT_CODES)}"
-    assert result["status"] == worst(VOCABULARY.reasons[code].status for code in codes), result
 
 
 def without_hash_label(result: JsonValue) -> JsonValue:
