@@ -201,11 +201,11 @@ Aligned with S2a-3's review (2026-10-16): step 8's list names a `derivation` for
 `provenance.md` sections 2 and 5 already did; the reader schema's value-field `$defs` check it so, and leave a
 derivation beside another origin unread, as a read does.
 
-Proposed with S2a-3's review (default, for the maintainer) (2026-10-16): two values implied for one condition
-differ unless they are of one shape, a value, a range or a token, and hold the same token or the same numbers
-bit for bit, so `0` and `-0` differ, as a value and the range `[v, v]` already did (S2a-3's reading, which
-the review agreed with); which of two that agree fills the condition then never depends on the order of the
-acceptances, and the read fails closed where they differ (`read_side_contract.md` section 1).
+Proposed with S2a-3's review (maintainer, 2026-10-16): two values implied for one condition differ unless they
+are of one shape, a value, a range or a token, and hold the same token or the same numbers bit for bit, so `0`
+and `-0` differ, as a value and the range `[v, v]` already did (S2a-3's reading, which the review agreed
+with); which of two that agree fills the condition then never depends on the order of the acceptances, and the
+read fails closed where they differ (`read_side_contract.md` section 1).
 
 Written with S2a-3's review (2026-10-16): `provenance.md` section 6.2 item 1 states the writer's rule for a
 specimen fact's unit that the maintainer's ruling of 2026-10-15 set and the writer schema already applied: a

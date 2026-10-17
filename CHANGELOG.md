@@ -134,10 +134,10 @@ every family entry goes in `families/CHANGELOG.md`.
   the typed shapes leave the binding out. Every other unit the writer takes was already bound to
   its registered unit wherever the row fixes one (a field's, a condition's, a `plus_minus` entry's, none on a
   token condition); a table's `axis_unit` waits for S3, which writes the table's shape.
-- A default for the maintainer, from S2a-3's review (`docs/specification/changes.md`): two values implied for
-  one condition differ unless they are of one shape and hold the same token or the same numbers bit for bit,
-  so `0` and `-0` differ, as a value and `[v, v]` do, and which of two that agree fills it never depends on
-  the order of the acceptances (`read_side_contract.md` section 1).
+- A default from S2a-3's review, kept (maintainer, 2026-10-16; `docs/specification/changes.md`): two values
+  implied for one condition differ unless they are of one shape and hold the same token or the same numbers
+  bit for bit, so `0` and `-0` differ, as a value and `[v, v]` do, and which of two that agree fills it never
+  depends on the order of the acceptances (`read_side_contract.md` section 1).
 - `provenance.md` section 6.2 item 1 states the writer's rule for a specimen fact's unit (maintainer,
   2026-10-15): a fact whose row fixes its unit holds that unit, and one whose unit the source does not give is
   written as a status object in place of the fact.
