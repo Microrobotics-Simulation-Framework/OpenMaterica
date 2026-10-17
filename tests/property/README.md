@@ -145,7 +145,9 @@ check's reader (the last bullet).
   `NotImplementedError`, a no verdict). Five parts, each drawing its kinds first (`model_strategies.py`):
   values and alternatives (a constant met as drawn, at one of section 5's boundaries as HP7 draws them, or
   filled by an implied condition, beside another section's specimen in one draw in three; alternatives met,
-  broken, or refused by a request fault); faults of steps 8 to 10, one or two; two faults of one of steps 0,
+  broken, or refused by a request fault, each further one apart from the first beside its value in one draw
+  in four: its unit spelled otherwise, a specimen fact of its own, or a request fault of its own); faults of
+  steps 8 to 10, one or two; two faults of one of steps 0,
   8, 9 and 10 that give two reasons (the design's B5, a step that stops at its first fault); step 0's
   catalogue of 52 faults and near misses, and six texts that are no JSON, written from `read_side_contract.md`
   section 1, and reads that end before step 8; and the rules no case file pins (the model's survivors), each
@@ -174,6 +176,9 @@ check's reader (the last bullet).
   speak of tables, picks and alternatives set aside: S3's and S4's. Where a fault's trigger is rare on random
   worlds, a relation draws its way first, a world the read meets with the trigger built in; each relation
   holds, applied with a verdict on both sides and not vacuous, in a declared least share of its examples.
+  N1r's and N3r's ways include the shapes their restrictions leave out, where the unrestricted twins N1 and N3
+  must fail; and the worlds every relation draws are audited for the same shapes, by their chances: an
+  implied condition that fills a condition of the field, and a numeric condition the read leaves unchecked.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -640,6 +645,12 @@ margin (each measured over six to twelve random seeds). Kills in the relations s
 | `section_facts_win` | HP9's | values | `valued`, `alternatives` | 281, 6 |
 | `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 11, 6 |
 | `labelled_before_step_4` | HP11's | early | `before_step_4`, `stores` | 2, 2 |
+| `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | values | `request_faults_apart` | 103, 37 |
+| `first_alternative_in_every_entry` | under `no_pick`, each entry the first alternative's read | values | `alternatives` | 2, 2 |
+| `bounds_given_by_a_constant` | step 13 gives a constant's value under `want: bounds` | constants (planned) | `valued`, `alternatives` | 57, 27 |
+| `minus_zero_given_as_zero` | a constant's `-0` given as `0` | values | `negative_zero` | 1, 1 |
+| `every_constant_not_built` | step 13 raises for a constant in S2b's words | values | `valued`, `alternatives` | 1, 1 |
+| `text_that_is_no_json_raises` | step 0 raises on a text that is no JSON, where it must refuse | early | `not_json` | 1, 1 |
 
 | Fault of the model | Part | Dies at | Examples |
 |---|---|---|---|
@@ -661,13 +672,20 @@ margin (each measured over six to twelve random seeds). Kills in the relations s
 | `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 8, 11 |
 | `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 4, 10 |
 | `stated_without_origin_unreported` | values | `valued`, `alternatives` | 127, 209 |
+| `ies_not_a_plural` | unpinned | `plural_of_two_characters` | 135, 138 |
+| `review_of_both_shapes_read_as_its_status` | unpinned | `review_of_both_shapes` | 7, 3 |
+| `reviewed_review_keeps_a_status_objects_members` | unpinned | `review_of_both_shapes` | 27, 4 |
+| `donor_age_of_neither_accepted` | faults (planned) | `specimen.fact_neither_value_nor_range` | 1, 1 |
 
 Listed, with the reason no read S2 builds shows them: `evidence_entry_provenance_unchecked` and
 `entry_withheld_in_part_read` (an evidence entry, read by S2b-2: the core raises at it),
 `unit_returned_without_its_reason` (only `biocompatibility.evidence` registers a unit held as a status
 object), `two_nominals_for_one_field`, `nominal_ignored_over_alternatives` and `nominal_applied_under_no_pick`
-(the core raises for any acceptance but an implied condition until S2b-2), and `results_share_the_record` (a
-shared object never shows in JSON; HP6 holds the core to sharing nothing). The design's other mutants not
+(the core raises for any acceptance but an implied condition until S2b-2), `results_share_the_record` (a
+shared object never shows in JSON; HP6 holds the core to sharing nothing), and
+`units_stored_differently_read_as_no_pick` (an alternative passes step 9 only where its unit is the one
+registered, so units are stored differently only where a status object is registered, which only
+`biocompatibility.evidence` does). The design's other mutants not
 searched here: HP6's `upper: none` as infinity (S2b-1) and its result sharing the stored object (JSON again).
 
 ### HP4 and HP10's mutants
@@ -710,10 +728,14 @@ slowest. Relations shard, 2026-10-17.
 | `status_object_read_as_met` | as `status_object_passes` | S2 | 1, 1 |
 | `not_applicable_anywhere` | `not_applicable` read as met on any condition | S2 | 3, 41 |
 | `floating_point_as_written` | section 5's comparisons in floating point (`float_compare`) | S5 | 209, 3 |
+| `implied_fills_any_status` | an implied condition fills a condition held as any status object (step 10's) | N3r | 10, 11 |
 
 The unrestricted twins, N1 (any condition removed) and N3 (any member made a status object), fail on the core
-as they must, by their counterexamples drawn first: an unchecked condition beside a met read, removed (1, 1);
-`unstated` where an implied condition fills it (12, 11).
+as they must, on N1r's and N3r's own draws, by one of the ways that hold their counterexamples
+(`UNRESTRICTED_WAYS`): N1, an unchecked condition or one an implied condition fills, removed from a world
+otherwise met (17, 6); N3, `unstated` where an implied condition fills it (9, 10). A generator that lost
+those ways fails these searches; worlds that lost the shapes fail the worlds' audit
+(`test_the_worlds_hold_the_shapes_the_restrictions_are_for`).
 
 ## Audits
 
@@ -749,7 +771,7 @@ as they must, by their counterexamples drawn first: an unchecked condition besid
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
   window by the least share measured. The result's properties draw their kind first among at most nine, and
   HP6 declares its field's `-0`, its review's way, its statistics status object and its unknown member by
-  their chances. HP12's parts draw their kinds, steps or planted rules first (at most ten), HP4 its ways and
+  their chances. HP12's parts draw their kinds, steps or planted rules first (at most twelve), HP4 its ways and
   HP10 its kinds, each declared drawn; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
   and those that draw a way first declare their ways drawn. For each such

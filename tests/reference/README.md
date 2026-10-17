@@ -70,7 +70,8 @@ detail that kind names; a listed one it agrees with fails as stale.
 exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
 of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
-measured 2026-10-17 on `main` at `6c9ab9f`. 75 faults: 60 killed, 15 survive.
+measured 2026-10-17 on `main` at `6c9ab9f`. 75 faults: 60 killed, 15 survive; S2a-4's review added five
+survivors, each a rule no case pins (below the table), so 80 faults: 60 killed, 20 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -149,6 +150,11 @@ measured 2026-10-17 on `main` at `6c9ab9f`. 75 faults: 60 killed, 15 survive.
 | `unit_returned_without_its_reason` | a unit held as a status object returned without its `reason` | 1, `PR-010.evidence_unit_status_with_reason` alone |
 | `section_facts_not_merged` | the result's `specimen` the field's facts alone | 26 |
 | `results_share_the_record` | a result shares its members with the record read | survives: a case compares a result's JSON, in which no object is shared |
+| `ies_not_a_plural` | a final `y` exchanged with `ies` not one slip | survives: no case holds a slip of a final `y` made `ies` |
+| `donor_age_of_neither_accepted` | a `donor_age` holding neither `value` nor `range` accepted | survives: no case holds one |
+| `review_of_both_shapes_read_as_its_status` | a review holding both `status` and `result` read as its status object | survives: no case holds one |
+| `reviewed_review_keeps_a_status_objects_members` | a reviewed review returned with a status object's members, its `reason` among them | survives: no case holds one |
+| `units_stored_differently_read_as_no_pick` | alternatives whose units are stored differently read as `no_pick`, which S4 decides | survives: no case holds such alternatives |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the nine survivors, four are the open points (`members_of_the_other_kind_read`,
@@ -174,11 +180,16 @@ slip of `table` refused it, where `record_format.md` section 5 names "the form's
 constant (step 8 names every form's member only beside a form the reader does not know). Each was fixed and
 seeded.
 
-The agreement property HP12 (`tests/property/test_model_properties.py`) kills 13 of the 15 survivors and 5 of
+S2a-4's review pinned the five it added: the first four are rules no case or HP12 draw held, the fourth the
+model's own reading until then (a reviewed review's `reason` was returned, which `provenance.md` section 2
+item 6 does not name for a reviewed review), fixed and seeded; the fifth is a step S4 owns, which no read S2
+builds reaches.
+
+The agreement property HP12 (`tests/property/test_model_properties.py`) kills 17 of the 20 survivors and 5 of
 the 10 faults one case file alone kills, each with the model given the fault and the core as it is
-(`tests/property/test_model_mutants.py`); the other seven are listed there with the reason no read S2 builds
+(`tests/property/test_model_mutants.py`); the other eight are listed there with the reason no read S2 builds
 shows them: an evidence entry's (two) and nominals (three) wait for S2b-2, a unit held as a status object is
-registered only for evidence, and a shared object never shows in JSON.
+registered only for evidence (two), and a shared object never shows in JSON.
 
 ## Running
 
