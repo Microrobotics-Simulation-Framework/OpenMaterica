@@ -163,12 +163,13 @@ IMPLEMENTATION = [
         setting(value_shapes, "status_object", _broken_status_reports_its_token),
         ("broken_status_object",),
     ),
-    # HP1
+    # HP1. A fault of step 8 that passes goes on to step 10, where the step-8 kind's request leaves every
+    # condition unchecked: S2b-1's passing faults of a form's own member came up first.
     Mutant(
         "condition_unchecked_without_its_condition",
         "faults",
         taken(result_mutants.MUTANTS, "condition_unchecked_without_its_condition"),
-        ("unchecked",),
+        ("unchecked", "step_8"),
     ),
     # HP2
     Mutant(
