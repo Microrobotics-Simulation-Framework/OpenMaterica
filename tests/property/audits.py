@@ -71,6 +71,27 @@ def rejection(draws: Counter[str]) -> float | None:
     return draws["invalid"] / decided if decided else None
 
 
+# Where Hypothesis 6.169 keeps the seed it drew a test's last run under, where it drew one at random
+# (`core.get_random_for_wrapped_test`); None where the run was derandomised or seeded by `@seed` or
+# `--hypothesis-seed`. Private state: `tests/unit/test_audit_replay.py` fails if it is gone.
+GENERATED_SEED = "_hypothesis_internal_use_generated_seed"
+
+
+def replay(test: object, name: str, profile: str) -> str:
+    """How to draw again a run whose audit failed, where Hypothesis drew it at random. An audit fails after
+    Hypothesis's run has passed, so Hypothesis prints no seed and stores no example: without this, the run is
+    lost. Hypothesis also draws constants from the modules outside `tests/` that are loaded, so a run that
+    collects less, as of the test's file alone, draws other examples under the same seed."""
+    seed = getattr(test, GENERATED_SEED, None)
+    if seed is None:
+        return ""
+    return (
+        f" (Hypothesis drew this run at random under the seed {seed}: to draw it again, run the same pytest "
+        f"command at MATERICA_HYPOTHESIS_PROFILE={profile} with -k {name} --hypothesis-seed={seed}, or with "
+        f"@seed({seed}) on the test; a run that collects less, as of this file alone, draws other examples)"
+    )
+
+
 # A share is judged only where the run's examples make at least this many expected at the least share. Each
 # least share is about a third of the share measured. Were the examples independent, a share at this gate
 # would fall below it by chance with a probability of about 1e-9 (Poisson, 60 expected, at most 20 seen). They
