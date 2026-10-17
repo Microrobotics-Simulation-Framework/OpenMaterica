@@ -9,10 +9,9 @@ this file differs.
 The implementation runs under several configurations of claims (`CONFIGURATIONS` in `runner.py`): plain read
 and the hash suite, as a read claims by default; plain read alone, as a reader without the hash suite; and
 with the fits and reference data suite too, whose `want`s step 0 then accepts. A read under the last ends by
-step 8 or raises, and steps 1 to 8 check the same under it as without it, so that claim gives no answer a step
-not built yet could change. Each case file runs under
-every configuration that claims its suite and agrees with every claim it states, and gets one outcome, decided
-in this order:
+step 10 or raises, and steps 1 to 10 check the same under it as without it, so that claim gives no answer a
+step not built yet could change. Each case file runs under every configuration that claims its suite and
+agrees with every claim it states, and gets one outcome, decided in this order:
 
 1. **not yet runnable**: no executor exists for its operation (`EXECUTORS` in `runner.py`), or a step of the
    implementation its arm needs is not done: `tests/spec_sync/case_steps.json` maps each case file to the step
