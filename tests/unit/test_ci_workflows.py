@@ -3193,6 +3193,80 @@ def test_the_cap_check_finds_a_job_that_computes_another_cap(tmp_path: Path) -> 
     )
 
 
+# A repository variable, as any of GitHub's expressions reads it: `vars.NAME`, `vars['NAME']` or `vars` whole.
+VARIABLE_READ = re.compile(r"\bvars\b")
+
+
+def unchecked_variables(loaded: dict[str, Workflow]) -> list[str]:
+    """Where a workflow reads a repository variable but in the step that checks a cap of it (`CAPS`), as
+    `cap_checked` gives it. The capped jobs read the checked value from that step's output, so a variable read
+    anywhere else, a new cap's or a capped job's own, is read unchecked. An `if` is read as an expression
+    whole, anything else for what its `${{ }}` hold."""
+    checked: set[tuple[str, tuple[str, ...], str]] = set()
+    for cap in CAPS:
+        steps = loaded.get(cap.workflow, {}).get("jobs", {}).get(cap.checker, {}).get("steps", [])
+        value = cap_checked(cap.variable, cap.default)
+        checked |= {
+            (cap.workflow, ("jobs", cap.checker, "steps", str(index), "env", "MAX_PARALLEL"), value)
+            for index, found in enumerate(steps)
+            if found.get("name") == CAP_STEP
+        }
+    problems: list[str] = []
+    for name, found in loaded.items():
+        for at, text in places(found):
+            expressions = re.findall(r"\$\{\{(.*?)\}\}", text, re.S) + ([text] if at[-1:] == ("if",) else [])
+            if any(VARIABLE_READ.search(each) for each in expressions) and (name, at, text) not in checked:
+                problems.append(f"{name} reads a repository variable at {'.'.join(at)}: {text!r}")
+    return problems
+
+
+def test_every_variable_a_workflow_reads_is_read_by_a_cap_check() -> None:
+    assert unchecked_variables(workflows()) == []
+
+
+def a_new_cap_unchecked(loaded: dict[str, Workflow]) -> None:
+    strategy = loaded["ci.yml"]["jobs"]["tests"]["strategy"]
+    strategy["max-parallel"] = "${{ fromJSON(vars.TESTS_MAX_PARALLEL || '5') }}"
+
+
+def a_capped_job_reading_its_variable(loaded: dict[str, Workflow]) -> None:
+    strategy = loaded["repeat.yml"]["jobs"]["runs"]["strategy"]
+    strategy["max-parallel"] = "${{ fromJSON(vars.REPEAT_MAX_PARALLEL || '10') }}"
+
+
+def a_job_run_by_a_variable(loaded: dict[str, Workflow]) -> None:
+    loaded["pages.yml"]["jobs"]["deploy"]["if"] = "vars['DEPLOY'] == 'true'"
+
+
+def the_variable_in_the_checks_script(loaded: dict[str, Workflow]) -> None:
+    check = step(loaded["ci.yml"]["jobs"]["gate"], CAP_STEP)
+    check["run"] = check["run"].replace('"$MAX_PARALLEL" =~', '"${{ vars.PER_COMMIT_MAX_PARALLEL }}" =~', 1)
+
+
+def another_default_checked_too(loaded: dict[str, Workflow]) -> None:
+    step(loaded["repeat.yml"]["jobs"]["request"], CAP_STEP)["env"]["MAX_PARALLEL"] = cap_checked(
+        "REPEAT_MAX_PARALLEL", "20"
+    )
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_new_cap_unchecked, "ci.yml reads a repository variable at jobs.tests.strategy.max-parallel"),
+        (a_capped_job_reading_its_variable, "repeat.yml reads a repository variable at jobs.runs.strategy"),
+        (a_job_run_by_a_variable, "pages.yml reads a repository variable at jobs.deploy.if"),
+        (the_variable_in_the_checks_script, "ci.yml reads a repository variable at jobs.gate.steps.1.run"),
+        (another_default_checked_too, "repeat.yml reads a repository variable at jobs.request.steps.5.env"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_variable_check_can_fail(fault: Callable[[dict[str, Workflow]], None], problem: str) -> None:
+    loaded = copy.deepcopy(workflows())
+    fault(loaded)
+    problems = unchecked_variables(loaded)
+    assert [line for line in problems if problem in line] == problems != [], problems
+
+
 # The per-commit job (ci.yml says why, above it): the checks an agent runs on a commit locally, every
 # commit but a pull request's head on its own, at most PER_COMMIT_MAX_PARALLEL at once (`CAPS`), and a pass
 # kept under the commit's tree and the workflow's blob, so that a tree passed under the same checks is not

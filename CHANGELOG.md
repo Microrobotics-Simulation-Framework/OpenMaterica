@@ -448,10 +448,10 @@ every family entry goes in `families/CHANGELOG.md`.
   `max-parallel` reaches them, and writes the value it took as that job's output, which the capped jobs parse
   (`fromJSON(needs.gate.outputs.per_commit_max_parallel)`): they never read the variable, so a value changed
   after the check does not reach them. `.github/workflows/README.md`, "Jobs at once", says when to raise or
-  lower each and how. `tests/unit/test_ci_workflows.py` holds each capped job to that expression and each
-  checker to that output, and runs each check as written, under two locales, on values inside and outside the
-  range, each with controls in which it fails; its evaluator of GitHub's expressions reads `fromJSON`, and it
-  reads a step's outputs as the runner does.
+  lower each and how. `tests/unit/test_ci_workflows.py` holds each capped job to that expression, each
+  checker to that output and every repository variable a workflow reads to a cap's check, and runs each check
+  as written, under two locales, on values inside and outside the range, each with controls in which it fails;
+  its evaluator of GitHub's expressions reads `fromJSON`, and it reads a step's outputs as the runner does.
 
 ## [0.1.0.dev1] - 2026-10-14
 

@@ -104,4 +104,6 @@ check does not reach a run already past it. "Re-run failed jobs" runs the capped
 checker gave when it passed, as it runs the per-commit job again on the gate's list of commits (GitHub does not
 document this; the per-commit matrix relies on it already); "Re-run all jobs" checks the variable again.
 `tests/unit/test_ci_workflows.py` holds each capped job to that expression and each checker to that output, and
-runs each check as written, under two locales, on values inside and outside the range.
+runs each check as written, under two locales, on values inside and outside the range. It also fails where a
+workflow reads a repository variable anywhere but in a cap's check: a new cap is added to its `CAPS`, with a
+check of its own.
