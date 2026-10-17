@@ -12,11 +12,11 @@ It evaluates in one of three precisions:
 - `binary64`: the text's formulas in doubles, in the text's order;
 - `binary32`: each number of the case rounded to binary32 first, then each operation's result rounded to
   binary32, as an evaluator running in binary32 computes;
-- `exact`: its numbers are `Fraction`s. A linear table's are exact. A log-log table's are exact where the
-  value is rational, as every double and every point halfway between two doubles is (`_exact_loglog`);
-  elsewhere the value is irrational, and comes from the text's formulas in `decimal`, worked at more digits
-  until two precisions in a row round to the same double (Ziv's strategy, `_ziv`). The pieces after S3-te
-  use it as an oracle.
+- `exact`: its numbers are `Fraction`s, but a knot's `-0`, which no `Fraction` holds, is returned as the
+  double `-0.0`. A linear table's are exact. A log-log table's are exact where the value is rational, as
+  every double and every point halfway between two doubles is (`_exact_loglog`); elsewhere the value is
+  irrational, and comes from the text's formulas in `decimal`, worked at more digits until two precisions in
+  a row round to the same double (Ziv's strategy, `_ziv`). The pieces after S3-te use it as an oracle.
 """
 
 import math
@@ -211,10 +211,21 @@ def _exact_exp(value: Fraction, digits: int) -> Fraction:
         return Fraction((Decimal(value.numerator) / Decimal(value.denominator)).exp())
 
 
+class _NegativeZero(Fraction):
+    """`-0` in `exact` mode, which a plain `Fraction` cannot hold: it equals 0 in every comparison, and
+    arithmetic on it gives plain `Fraction`s, as every result of the formulas is. So only a number returned as
+    stored keeps it: a knot's `y` (`_value`), which `_returned` gives as the double `-0.0`."""
+
+
+def _exact_number(value: float) -> Fraction:
+    # README.md:142 "so `-0` in one is negative zero"
+    return _NegativeZero(0) if value == 0 and math.copysign(1.0, value) < 0 else Fraction(value)
+
+
 def _exact_arithmetic(digits: int) -> "_Arithmetic[Fraction]":
     """`exact` mode's numbers, with logarithms and exponentials to `digits` significant digits."""
     return _Arithmetic(
-        number=Fraction, ln=partial(_exact_ln, digits=digits), exp=partial(_exact_exp, digits=digits)
+        number=_exact_number, ln=partial(_exact_ln, digits=digits), exp=partial(_exact_exp, digits=digits)
     )
 
 
@@ -290,7 +301,9 @@ def _value(knots: _Knots[N], point: N) -> N:
     """The value at `point`, a point of the table that is no edge."""
     if point in knots.x:
         # A knot that is no edge is in `x` once (record_format.md:336-337 "no other x value repeats"), and the
-        # formulas of both intervals beside it give its `y` there.
+        # formulas of both intervals beside it give its `y` there. The `y` is returned as stored, as the TE
+        # suite's README has it ("At a knot the value is that knot's `y`"), so a `-0` stays negative zero,
+        # in `exact` mode too (`_NegativeZero`).
         return knots.y[knots.x.index(point)]
     # record_format.md:353-354 "the interval used is the one whose two knots bracket the read"
     return _interpolate(knots, _interval(knots.x, point, "right"), point)
@@ -359,7 +372,10 @@ def _loglog_slope(x0: N, x1: N, y0: N, y1: N, point: N, value: N, arithmetic: _A
 
 
 def _returned(number: _Real | None) -> Fraction | float | None:
-    """A number as the evaluator returns it: a `Fraction` in `exact` mode, a plain float otherwise."""
+    """A number as the evaluator returns it: a `Fraction` in `exact` mode, but a knot's `-0` as the double
+    `-0.0`; a plain float otherwise."""
+    if isinstance(number, _NegativeZero):
+        return -0.0
     if number is None or isinstance(number, Fraction):
         return number
     return float(number)
