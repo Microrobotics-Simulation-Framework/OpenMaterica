@@ -359,10 +359,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Four shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
-        # envelope checks, versions and the read; the writer schema's value fields, whose validation with
-        # jsonschema makes them the longest; and step 8's mutant searches, which were most of the records
-        # shard's time.
+        # Four shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785, the hash and the
+        # table evaluator; the envelope checks, versions and the read; the writer schema's value fields, whose
+        # validation with jsonschema makes them the longest; and step 8's mutant searches, which were most of
+        # the records shard's time.
         shard: [json, records, writer, step8_mutants]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
@@ -616,6 +616,7 @@ jobs:
           --ignore=tests/property/test_writer_properties.py --ignore=tests/property/test_writer_mutants.py
           --ignore=tests/property/test_mutants.py --ignore=tests/property/test_record_mutants.py
           --ignore=tests/property/test_value_field_mutants.py
+          --ignore=tests/property/test_evaluate_mutants.py
       - name: Keep the inputs that failed
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

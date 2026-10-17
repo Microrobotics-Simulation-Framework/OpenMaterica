@@ -4,7 +4,7 @@
 |---|---|---|
 | `conformance/` | the specification's conformance cases, run by a runner that counts what it cannot run; the case files themselves | how cases are counted and compared; adding a case |
 | `spec_sync/` | what is written in two places: the specification's tables and the schemas, the envelope checks and the reader schema, `CASES.md` and the case files, the cases and the steps that run them, the specification's references and what they name | what each test holds together |
-| `property/` | Hypothesis properties of the reader, the canonical form, the hash, the one-slip relation, the envelope checks, versions, the read and its step 8, of the writer schema's value fields, and the mutants they kill | the profiles and sizes, the shards, the mutants, the audits; adding a property |
+| `property/` | Hypothesis properties of the reader, the canonical form, the hash, the one-slip relation, the table evaluator, the envelope checks, versions, the read and its step 8, of the writer schema's value fields, and the mutants they kill | the profiles and sizes, the shards, the mutants, the audits; adding a property |
 | `unit/` | examples at the edges, the rules over source files, and the scripts in `scripts/` | what belongs there |
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
@@ -36,8 +36,9 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
 - the conformance runner: broken implementations, one fault each (`conformance/test_runner_can_fail.py`), and
   a comparator fed wrong answers (`conformance/test_comparator.py`);
 - each property: mutants of the core, or of the writer schema, one fault each, that it must kill at both tree
-  sizes, a writer mutant at the assertion it names (`property/test_mutants.py`,
-  `property/test_record_mutants.py`, `property/test_value_field_mutants.py`, `property/test_writer_mutants.py`),
+  sizes, a writer mutant and a table evaluator's at the assertion it names (`property/test_mutants.py`,
+  `property/test_record_mutants.py`, `property/test_value_field_mutants.py`, `property/test_writer_mutants.py`,
+  `property/test_evaluate_mutants.py`),
   and a feature audit that fails when its examples stop reaching what the specification distinguishes;
 - the table evaluator's agreement with the table evaluation cases: an evaluator broken in its range, its
   edges, its formulas or its end values (`unit/test_evaluate.py`);
