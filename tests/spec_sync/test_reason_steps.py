@@ -485,9 +485,9 @@ def test_the_static_check_can_fail(module: str, old: str, new: str) -> None:
 def test_the_static_check_reads_a_module_the_core_gains() -> None:
     """A step's new module, which no list names, is read: its reason, in a function no step places, fails."""
     new_module = 'def outside() -> Reason:\n    return Reason("outside_range")\n'
-    assert "evaluate.py" not in SOURCES
+    assert "not_yet_written.py" not in SOURCES
     with pytest.raises(AssertionError, match="at no step this test knows"):
-        check_code(TABLE, {**SOURCES, "evaluate.py": new_module})
+        check_code(TABLE, {**SOURCES, "not_yet_written.py": new_module})
     assert set(MODULES) >= {
         *("read.py", "resolve.py", "record.py", "jsonio.py", "reasons.py"),
         *("fields.py", "value_shapes.py", "conditions.py"),
