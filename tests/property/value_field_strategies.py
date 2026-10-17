@@ -888,6 +888,10 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "fact_range_reversed": setting(
             specimen_of, "donor_age", {"range": [3.0e8, 1.0e8], "unit": "s", "basis": "stated"}, INVALID
         ),
+        # `provenance.md` section 6.2: a donor age holds exactly one of `value` and `range`.
+        "fact_neither_value_nor_range": setting(
+            specimen_of, "donor_age", {"unit": "s", "basis": "stated"}, INVALID
+        ),
         "fact_other_without_text": setting(
             specimen_of, "preservation", {"token": "other", "basis": "stated"}, INVALID
         ),

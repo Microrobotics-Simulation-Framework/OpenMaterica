@@ -507,6 +507,9 @@ SOURCE_NAMES: Final = ("key", "document", "locator")
 REVIEW_NAMES: Final = (
     "status", "reason", "result", "reviewer", "orcid", "date", "independent_of_extraction", "checklist"
 )  # fmt: skip
+# Those a reviewed review returns, a status object's aside: provenance.md:96 "or `{"result": "reviewed", ...}`
+# with who checked the value against the source"
+RESULT_REVIEW_NAMES: Final = tuple(name for name in REVIEW_NAMES if name not in ("status", "reason"))
 # provenance.md:180-182 "holds `method`, the method's identifier, a string; `inputs`"
 DERIVATION_NAMES: Final = ("method", "inputs", "assumptions", "input_specimens", "mixed_conditions")
 INPUT_NAMES: Final = ("record", "field")
@@ -2392,7 +2395,7 @@ def review_read(provenance: JsonObject) -> JsonObject:
         )
         return status_returned(review) if review["status"] == "not_checked" and not broken else not_checked
     if review.get("result") in REVIEW_RESULTS:
-        return known_members(review, REVIEW_NAMES)
+        return known_members(review, RESULT_REVIEW_NAMES)
     return not_checked
 
 
