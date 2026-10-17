@@ -1398,6 +1398,31 @@ def test_a_derivation_returned_shares_nothing_with_the_stored_record() -> None:
             assert each.provenance.derivation == DERIVED_INPUTS["derivation"]
 
 
+def test_a_review_returned_as_found_shares_nothing_with_the_stored_record() -> None:
+    """Rule 6 for a member no shape types: a review never refuses, so a reviewed review is returned as found
+    whatever its members hold, an object or a list of them included; a consumer that changes one through the
+    Python API changes no later read of the same store (S2a-4's fix round: hand mutant M45, which the
+    review's run saw killed by a monotonicity property, survived the whole suite here)."""
+    review: dict[str, JsonValue] = {
+        "result": "reviewed",
+        "reviewer": {"name": "a"},
+        "checklist": [{"item": "b"}],
+    }
+    field = met_field()
+    field["provenance"] = {**an_object(field["provenance"]), "review": review}
+    request, records = stored(with_field("fluid.dynamic_viscosity", field))
+    assert isinstance(request, dict)
+    request.update(copy.deepcopy(MET_REQUEST))
+    first = read(request, records)
+    assert first.provenance is not None
+    assert first.provenance.review == review
+    an_object(first.provenance.review["reviewer"])["name"] = "changed"
+    an_object(a_list(first.provenance.review["checklist"])[0])["item"] = "changed"
+    later = read(request, records)
+    assert later.provenance is not None
+    assert later.provenance.review == review
+
+
 def test_only_a_derived_value_returns_its_derivation_and_its_mixed_conditions_label() -> None:
     """`provenance.md` section 2 item 6 checks `derivation` for origin `derived` alone, and SQ45 labels a
     derived value whose inputs' conditions differ: a derivation beside another origin is a member the read
