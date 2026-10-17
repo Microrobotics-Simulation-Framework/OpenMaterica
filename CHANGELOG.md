@@ -257,7 +257,7 @@ every family entry goes in `families/CHANGELOG.md`.
 - 24 case files that end at step 0 or 8 on checks S2a-2 builds are run at S2a-2, two of them since its fix
   round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
   step (`tests/spec_sync/case_steps.json`).
-- S2a-3's 54 case files run and pass: 633 of 1254 case files pass, 621 wait for later steps.
+- S2a-3's 56 case files run and pass: 635 of 1256 case files pass, 621 wait for later steps.
 - Steps 9 and 10's properties (`tests/property/test_condition_properties.py`), in a shard of their own: HP7,
   each condition against an oracle written from section 5 alone, on exact rationals, at each boundary its
   exactness turns on, with a plus or minus of each kind, the table's other rows and implied conditions; HP8,

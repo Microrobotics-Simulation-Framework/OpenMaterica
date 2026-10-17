@@ -32,7 +32,7 @@ after every run that includes these tests:
 | reads S1 runs, which end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
-| S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 54 | run, passed |
+| S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 56 | run, passed |
 | S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, steps 11 to 13, or an acceptance other than an implied condition (plain read) | 248 | not yet runnable: the step that runs each is not done |
 | reads S3's pieces run (plain read): tables, and reads under an extrapolation | 180 | not yet runnable: the step that runs each is not done |
 | reads S4 runs (plain read): over alternatives, with a pick, or through an overlay | 158 | not yet runnable: S4, which runs each, is not done |
@@ -42,7 +42,7 @@ Each read is counted by the step whose code runs it (`case_steps.json`), not by 
 `PR-044.alternatives_beside_value` holds alternatives and is S2a-4's, and `PR-007.target_is_overlay` ends at
 step 5 and is S4's.
 
-Of the 1254 case files, 1204 agree with plain read and the hash suite, 1146 with plain read alone, and 1204 with
+Of the 1256 case files, 1206 agree with plain read and the hash suite, 1148 with plain read alone, and 1206 with
 the fits and reference data suite too; the 35 of the table evaluation suite agree with none, since this
 implementation claims no evaluator.
 
