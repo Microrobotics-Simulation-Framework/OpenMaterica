@@ -13,7 +13,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 import pytest
-from hypothesis import settings
+from hypothesis import HealthCheck, settings
 from hypothesis.database import DirectoryBasedExampleDatabase
 
 from tests.conformance import runner
@@ -31,12 +31,20 @@ EXAMPLES = {"dev": 200, "ci": 2_000, "deep": 20_000}
 for profile, examples in EXAMPLES.items():
     settings.register_profile(
         profile,
+        # Hypothesis's own defaults, not whatever profile is loaded: where `CI` is set, as on GitHub's
+        # runners, that is Hypothesis's built-in `ci` profile, whose `derandomize=True` draws the same
+        # examples on every run whatever `--hypothesis-seed` says. So no machine's environment changes a
+        # setting (`tests/unit/test_hypothesis_profiles.py`).
+        parent=settings.get_profile("default"),
         max_examples=examples,
         # Timing on a loaded runner is not a property of the code.
         deadline=None,
         # A CI failure can then be replayed on a machine without the database.
         print_blob=True,
         database=DirectoryBasedExampleDatabase(HYPOTHESIS_DATABASE),
+        # Nor is a slow draw on a loaded runner; CI had this from Hypothesis's `ci` profile, and every machine
+        # has it now.
+        suppress_health_check=[HealthCheck.too_slow],
     )
 
 PROFILE = os.environ.get("MATERICA_HYPOTHESIS_PROFILE", "dev")
