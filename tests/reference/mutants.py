@@ -1021,14 +1021,16 @@ MUTANTS: Mapping[str, Mutant] = {
         "a numeric condition holding `token`, or a token condition holding `value`, read",
         "OPEN_POINTS: members_of_the_other_kind",
         {"holds_another_kind": holds_no_other_kind},
-        survives="no case holds a condition with a member of the other kind's shape: the text leaves it open",
+        survives="no case holds a condition with a member of the other kind's shape, in a record or an "
+        "implied condition: the text leaves the record half open",
     ),
     "members_of_the_other_kind_ignored": Mutant(
         "a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does "
         "not know: not refused, and not returned",
         "OPEN_POINTS: members_of_the_other_kind",
         {"holds_another_kind": holds_no_other_kind, "condition_entry": entry_without_the_other_kind},
-        survives="no case holds a condition with a member of the other kind's shape: the text leaves it open",
+        survives="no case holds a condition with a member of the other kind's shape, in a record or an "
+        "implied condition: the text leaves the record half open",
     ),
     "slips_of_alternatives_ignored": Mutant(
         "a member one slip from `alternatives` beside a value field's members ignored",
@@ -1042,9 +1044,10 @@ MUTANTS: Mapping[str, Mutant] = {
         {"check_entry_provenance": entry_provenance_unchecked},
         survives="each evidence entry's `provenance` in the cases is well formed: the text leaves it open",
     ),
+    # Not an open point since the fix round: the text names the three, and no case holds a slip of one.
     "declaration_names_not_named_in_a_request": Mutant(
         "a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored",
-        "OPEN_POINTS: names_a_declaration_gives_a_requirement",
+        "read_side_contract.md:40-41, declarations.md:30 and :64 (the text names them in a requirement)",
         {
             "REQUIREMENT_NAMES": model.REQUIREMENT_NAMES[:-1],
             "REQUIREMENT_CONDITION_NAMES": model.REQUIREMENT_CONDITION_NAMES[:2],
