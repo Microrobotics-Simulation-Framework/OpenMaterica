@@ -1058,7 +1058,11 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   evaluator also has an `exact` mode, for later pieces' properties: exact for a linear table, and for a
   log-log one wherever the value is rational, every point halfway between two doubles included; elsewhere
   worked at more digits until two precisions in a row round to the same double. At a knot it returns the
-  knot's `y` as stored, so a `-0` there stays negative zero, as in the other two precisions.
+  knot's `y` as stored, so a `-0` there stays negative zero, as in the other two precisions. A log-log
+  derivative beyond the largest double is returned exactly, as a linear one is, and never raises.
+  Two limits are stated, not removed (S3Q29, maintainer, 2026-10-19): exact mode rests on Schanuel's conjecture,
+  and in `binary32` the evaluator raises on a log-log table with a number that rounds to zero there, which no TE
+  file holds (the evaluator's docstring; the TE suite's README, "What the cases cannot show").
 - Broken evaluators, one fault each, in `tests/conformance/test_runner_can_fail.py`: the fifteen of the S3
   design's section 6.4, five more the TE suite's README names, and two more the text supports (a
   `source_range` that widens the readable range, and a log-log derivative scaled at the lower knot), each

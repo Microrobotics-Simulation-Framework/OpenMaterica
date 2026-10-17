@@ -18,8 +18,10 @@ exactly.
 import itertools
 import math
 import re
+import sys
 from collections.abc import Callable
 from dataclasses import replace
+from decimal import Decimal, localcontext
 from fractions import Fraction
 from pathlib import Path
 
@@ -329,6 +331,57 @@ def test_ziv_s_strategy_gives_up_rather_than_guess() -> None:
 
     settled = table_evaluator._ziv(settling, table_evaluator._EXACT)  # pyright: ignore[reportPrivateUsage]
     assert float(settled) == 1 + 2.0**-52
+
+
+# x [5e-324, 1], y [1, 3], log-log: the derivative at 5e-324 is 2^1074 ln 3 / ln 2^1074, about 3e320, and at
+# 1e-323 about half that, both beyond the largest double; at 0.5 it is about 0.0088.
+STEEP = Table(x=(5e-324, 1.0), y=(1.0, 3.0), scheme="loglog")
+LARGEST = Fraction(sys.float_info.max)
+
+
+def steep_derivative(at: float) -> Fraction:
+    """`STEEP`'s derivative at `at` by read_side_contract.md section 7 items 2 and 5, in `decimal` at 100
+    digits, the text's order, without the evaluator."""
+    with localcontext(prec=100):
+        x0, x1, y0, y1, x = (Decimal(number) for number in (*STEEP.x, *STEEP.y, at))
+        exponent = (y1.ln() - y0.ln()) / (x1.ln() - x0.ln())
+        return Fraction((y0.ln() + (x.ln() - x0.ln()) * exponent).exp() / x * exponent)
+
+
+def test_exact_mode_returns_a_derivative_beyond_the_largest_double() -> None:
+    for at in (5e-324, 1e-323):
+        derivative = evaluate(STEEP, at, "exact").derivative
+        assert isinstance(derivative, Fraction)
+        assert derivative > LARGEST
+        assert abs(derivative / steep_derivative(at) - 1) < Fraction(1, 10**50)
+        # Rounded once it is an infinity, which the text's formulas in doubles give too.
+        assert evaluate(STEEP, at, "binary64").derivative == math.inf
+    # Control: where the derivative is below the largest double, exact mode gives it, rounding to its double.
+    below = evaluate(STEEP, 0.5, "exact").derivative
+    assert below is not None
+    assert below < LARGEST
+    assert float(below) == float(steep_derivative(0.5)) == pytest.approx(0.0088, rel=0.01)
+
+
+@pytest.mark.parametrize(
+    ("number", "rounded"),
+    [
+        # At a magnitude of 2^1024 - 2^970 and above, a number rounds to an infinity (record_format.md section
+        # 1 item 6, as `_double` cites it).
+        pytest.param(Fraction(2**1024 - 2**970), math.inf, id="halfway_to_infinity"),
+        pytest.param(Fraction(-(2**1024) + 2**970), -math.inf, id="negative_halfway_to_infinity"),
+        pytest.param(Fraction(10**400), math.inf, id="far_beyond"),
+        pytest.param(Fraction(-(10**400)), -math.inf, id="negative_far_beyond"),
+        # Controls: just below the halfway point, the largest double; and an ordinary number.
+        pytest.param(Fraction(2**1024 - 2**970 - 1), sys.float_info.max, id="below_halfway"),
+        pytest.param(Fraction(-(2**1024) + 2**970 + 1), -sys.float_info.max, id="negative_below_halfway"),
+        pytest.param(Fraction(1, 3), 1 / 3, id="a_third"),
+    ],
+)
+def test_exact_mode_rounds_a_number_beyond_the_largest_double_to_an_infinity(
+    number: Fraction, rounded: float
+) -> None:
+    assert table_evaluator._double(number) == rounded  # pyright: ignore[reportPrivateUsage]
 
 
 @pytest.mark.parametrize(
