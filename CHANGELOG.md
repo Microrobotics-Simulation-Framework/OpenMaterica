@@ -129,6 +129,11 @@ every family entry goes in `families/CHANGELOG.md`.
   validator until that accepts the registry's component names; MADDENING's validator accepts
   `materica_version` from MADDENING 0.4.0. They had said that CI checked the registry with MADDENING's
   validator, which no job did, and that the validator refused `materica_version`.
+- `CLAUDE.md` states the maintainer's review budget (maintainer, 2026-10-17) where it said that the maintainer
+  reviews every line of code in detail: the specification text and `changes.md`, the public API and the
+  schemas, the rulings, and each pull request's description and open points are reviewed closely; tests, case
+  files and generated files are sampled, and the independent review and CI are the line-level check.
+  `CONTRIBUTING.md`, the documentation plan and the pull request template made no such claim.
 
 ### Schema
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
