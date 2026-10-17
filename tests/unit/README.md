@@ -14,5 +14,9 @@ Tests by example, for what the conformance cases and the properties do not reach
   one shard, and that the classifiers and `requires-python` name the Pythons the `tests` job runs;
 - the scripts in `scripts/`, the generators included, and the audits of `tests/property/`, each against
   inputs it must refuse;
+- the table evaluator against every table evaluation case, which the conformance runner never runs against
+  it, since OpenMaterica claims none (`test_evaluate.py`), and the edges of its text:
+  adjacent doubles, values spanning every double, `-0` at a knot and at an edge, an edge outside the readable
+  range;
 - the typed shapes against what the reader gives: each member the schemas declare whole admits the float a
   JSON number reads as (`test_shapes.py`).

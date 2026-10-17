@@ -20,6 +20,15 @@ every family entry goes in `families/CHANGELOG.md`.
   (`video/logo-animation.mp4`). The logo heads the README and the site; the site serves the logo and favicons
   from its root, and its content security policy allows images and the web manifest from the site itself, and
   still nothing from elsewhere.
+- The table evaluator, `core/evaluate.py` (S3b-1), which the read's step 11 is to use; nothing calls it yet. It
+  gives a table's readable range, `x` narrowed by `source_range` (`record_format.md` section 6, table items 3
+  and 4); whether an operating value lies at a declared edge, wherever the edge lies, or beyond one from the
+  range; the knots that bracket it, strictly beside an edge; and the number a read gives there: inside the
+  range, the table's value, and outside it, the value at the range's nearest end, taken from inside
+  (`read_side_contract.md` section 5), or none at or beyond an edge. Numbers are compared exactly; a linear
+  value is computed in fractions and a log-log one in decimal at 50 digits, each rounded once, and a knot's
+  `y` is returned as stored, `-0` included (the S3 design's S3Q16), so it never raises and gives the same
+  double everywhere. It computes no derivative.
 - The read's steps 7 and 8 (S2a-2; `read_side_contract.md` section 3). Step 7 finds the target field, and
   gives `absent` where the record holds none; a field holding alternatives raises `NotImplementedError`, since
   alternatives are read at step 7, with S2a-4 (`no_pick`) and S4. Step 8 refuses a form the field's row does
@@ -135,6 +144,9 @@ every family entry goes in `families/CHANGELOG.md`.
   walk into such a member, as before.
 
 ### Verification
+- The table evaluator against every table evaluation case: each number and `in_range` at 1e-12 relative, and
+  each refusal, a broken evaluator failing each, and the edges of the text by example
+  (`tests/unit/test_evaluate.py`).
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that
   the members marked write-only are those step 8 does not check, that each token condition and fact binds its
   row's list and a fact's identifier the pattern of its row's form, that a member a row gives as present

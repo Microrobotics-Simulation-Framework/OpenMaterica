@@ -39,6 +39,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   sizes, a writer mutant at the assertion it names (`property/test_mutants.py`,
   `property/test_record_mutants.py`, `property/test_value_field_mutants.py`, `property/test_writer_mutants.py`),
   and a feature audit that fails when its examples stop reaching what the specification distinguishes;
+- the table evaluator's agreement with the table evaluation cases: an evaluator broken in its range, its
+  edges, its formulas or its end values (`unit/test_evaluate.py`);
 - the `CASES.md` check: a case file changed after its row (`spec_sync/test_cases_md.py`);
 - the value-field checks: a member table, a status row or a quote changed, the schema changed, and a binding
   of the vocabulary changed or no longer applied (`spec_sync/test_value_fields.py`);
