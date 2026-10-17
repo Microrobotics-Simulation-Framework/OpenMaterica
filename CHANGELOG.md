@@ -439,6 +439,17 @@ every family entry goes in `families/CHANGELOG.md`.
   (53,688) and of the `json` shard at `ci` (42,964) drew the same choices and arguments, with the same status,
   as before, and every test gave the same verdict; a change that swaps the two branches of `every_double`'s
   `one_of` changes the draws of 37 of the `json` shard's 100 traced tests and the verdict of one.
+- How many jobs run at once is set by repository variables (maintainer, 2026-10-17): `PER_COMMIT_MAX_PARALLEL`
+  caps the `commit` and `site_commit` jobs (6 where it is unset, the cap before) and `REPEAT_MAX_PARALLEL` the
+  repeat workflow's runs (10 where it is unset), so that the organisation's 60 runners, shared with MIME and
+  MADDENING, can be given to OpenMaterica while it works alone and taken back when they work beside it. Each
+  capped job parses the variable (`fromJSON(vars.NAME || 'default')`), and the job it needs, the gate or the
+  request job, checks the same value on every run and fails where it is not a whole number from 1 to 20, so
+  that no value GitHub does not document for `max-parallel` reaches it. `.github/workflows/README.md`, "Jobs at
+  once", says when to raise or lower each and how. `tests/unit/test_ci_workflows.py` holds each capped job to
+  that expression and each check to the same value, and runs each check as written on values inside and
+  outside the range, each with controls in which it fails; its evaluator of GitHub's expressions reads
+  `fromJSON`.
 
 ## [0.1.0.dev1] - 2026-10-14
 

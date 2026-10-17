@@ -8,15 +8,15 @@ selects; no job or step carries on after a failure (`continue-on-error`).
 
 | Job | Runs | When |
 |---|---|---|
-| `gate` | the sign-off check (`scripts/check_signoff.py`) on a pull request, and the confidentiality scan; decides which jobs run: on a pull request from the paths it touched, otherwise every job (no other job with `fuzz_only`) | always |
+| `gate` | the per-commit jobs' cap, `PER_COMMIT_MAX_PARALLEL` (below); the sign-off check (`scripts/check_signoff.py`) on a pull request, and the confidentiality scan; decides which jobs run: on a pull request from the paths it touched, otherwise every job (no other job with `fuzz_only`) | always |
 | `static` | ruff, mypy and pyright; `uv build` and the wheel check; the consumer snippet against the installed wheel, and its control | a pull request that changes code, which is any path the gate lists neither as documentation (`docs_paths` in its step) nor as the site's (`site_paths`: `site/`, `assets/`), and any Python file wherever it sits (`python_paths`), since ruff reads it; every merge to main; weekly; manual |
 | `generated` | every generator of `scripts/` with `--check`: the vocabulary, the reader schema, the typed shapes; on Python 3.11 | as `static` |
 | `tests` | `uv run pytest -n auto`, property tests at the `dev` profile, but the mutant searches and the audit controls (`--property-controls none`) | as `static`; Python 3.11 to 3.15, in parallel |
 | `controls` | the mutant searches and the audit controls alone (`--property-controls only`), which run at the `ci` profile's examples whatever the profile, so cost about as much as a Python's other tests: on the supported range's ends, the oldest Python and the newest, which bracket the versions between, each in a job beside that Python's `tests` job, so that neither is the longest | as `static`; Python 3.11 and 3.15 |
 | `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run, in six shards side by side (`json`, `records`, `writer`, `agreement`, `step8_mutants`, `conditions`), each with its own example database; on Python 3.15, a worker per vCPU | a pull request that changes any path but the documentation and those no part of the job reads (`hypothesis_free` in the gate's step), any test included; every merge to main; weekly; manual |
 | `site` | the site staged exactly as `pages.yml` stages it (its step, word for word), which fails where a file it copies is missing; then `scripts/check_site.py` on the copy: every local link, image and icon of each page and of the web manifest resolves, every page keeps one content security policy, before anything it loads, that lets nothing load from elsewhere, nothing loads from elsewhere, and the README's images name files of the tree; on the runner's Python, seconds long | a pull request that changes any path but documentation alone, `site/` and `assets/` included, which run this job and no code job; every merge to main; weekly; manual |
-| `commit` | each commit of a pull request but its head, checked out on its own: the site job's steps, ruff, mypy and pyright, `uv build` and the wheel check, every generator's `--check` (on Python 3.11, as `generated`), and the whole suite at the `dev` profile, the mutant searches and audit controls included, on Python 3.15 under `--dist worksteal`; at most six at once; a commit whose tree passed the same checks earlier in the pull request (kept in the cache under its tree, `ci.yml`'s blob and the runner's image version) is not checked again | a pull request of two commits or more: each commit before the head that changes code, as the gate counts it for `static` |
-| `site_commit` | each commit of a pull request but its head that changes the site alone (beside documentation or not), checked out on its own: the site job's steps, word for word; at most six at once | a pull request of two commits or more with such a commit before the head |
+| `commit` | each commit of a pull request but its head, checked out on its own: the site job's steps, ruff, mypy and pyright, `uv build` and the wheel check, every generator's `--check` (on Python 3.11, as `generated`), and the whole suite at the `dev` profile, the mutant searches and audit controls included, on Python 3.15 under `--dist worksteal`; at most `PER_COMMIT_MAX_PARALLEL` at once, 6 where it is unset (below); a commit whose tree passed the same checks earlier in the pull request (kept in the cache under its tree, `ci.yml`'s blob and the runner's image version) is not checked again | a pull request of two commits or more: each commit before the head that changes code, as the gate counts it for `static` |
+| `site_commit` | each commit of a pull request but its head that changes the site alone (beside documentation or not), checked out on its own: the site job's steps, word for word; at most `PER_COMMIT_MAX_PARALLEL` at once, as `commit` | a pull request of two commits or more with such a commit before the head |
 | `fuzz` | after `hypothesis`, from the union of the shards' example databases: the Atheris targets of `tests/fuzz/`, after a control with seeded faults, for `fuzz_seconds` each; then the property tests, to replay and shrink what was found; on Python 3.14 | weekly; manual, alone with `fuzz_only` |
 | `result` | fails unless every job the gate asked for succeeded (a job skipped by its `if` reports success), and when any job failed or was cancelled: the one check the ruleset on main requires | always |
 
@@ -51,8 +51,8 @@ the test matrix's; and extra pytest arguments, `--shard` and `--property-control
 
 | Job | Runs | When |
 |---|---|---|
-| `request` | checks the inputs (`scripts/repeat_runs.py request`, on the runner's Python) and writes them, checked, as its outputs, which the jobs after it read in place of the inputs; then collects the node with the extra arguments, so that a test that does not exist or a value pytest does not list fails before any run starts | every dispatch |
-| `runs` | each job its runs one after another, each under its own seed (`--hypothesis-seed`; job `j` of `r` runs from the first seed `s` takes the seeds `s + (j - 1) r` to `s + j r - 1`), `.hypothesis/` removed before each, as CI's test jobs run pytest; each run's record, with its failing examples, kept 90 days as the artifact `runs-<job>-<attempt>`, so that a job run again keeps its records beside its first attempt's; fails where any run failed or did not finish | after `request`, the jobs side by side, ten at most at once (`max-parallel`), none cancelled by another's failure (`fail-fast: false`) |
+| `request` | checks the inputs (`scripts/repeat_runs.py request`, on the runner's Python) and writes them, checked, as its outputs, which the jobs after it read in place of the inputs; then collects the node with the extra arguments, so that a test that does not exist or a value pytest does not list fails before any run starts; then checks the runs' cap, `REPEAT_MAX_PARALLEL` (below) | every dispatch |
+| `runs` | each job its runs one after another, each under its own seed (`--hypothesis-seed`; job `j` of `r` runs from the first seed `s` takes the seeds `s + (j - 1) r` to `s + j r - 1`), `.hypothesis/` removed before each, as CI's test jobs run pytest; each run's record, with its failing examples, kept 90 days as the artifact `runs-<job>-<attempt>`, so that a job run again keeps its records beside its first attempt's; fails where any run failed or did not finish | after `request`, the jobs side by side, at most `REPEAT_MAX_PARALLEL` at once (`max-parallel`), 10 where it is unset (below), none cancelled by another's failure (`fail-fast: false`) |
 | `summary` | sums every job's records on the run's page: the runs, the failures with their seeds and failing examples, and the failure rate with its exact one-sided 95 % upper bound (`scripts/repeat_runs.py summary`); fails where a run failed or did not finish, a seed has no record or two, a job of runs did not succeed, or the run is on an attempt but its first | after the runs, whatever their result, once the request was checked |
 
 No input reaches a profile's example count, deadline or health checks: the profile is chosen from
@@ -66,3 +66,39 @@ Each run draws what its seed draws on any machine. Until `tests/conftest.py`'s p
 Hypothesis's own `ci` profile, which `CI=true` loads on every runner and which sets `derandomize=True`, every run
 drew the same examples whatever its seed (`tests/README.md`, "Repeat runs on CI").
 `tests/unit/test_ci_workflows.py` holds it to each of these, running its steps as written.
+
+## Jobs at once (`PER_COMMIT_MAX_PARALLEL`, `REPEAT_MAX_PARALLEL`)
+
+The organisation's plan runs 60 jobs at once, which this repository's workflows share with MIME's and
+MADDENING's; a job beyond them waits for a runner. Two repository variables cap how many of this repository's
+matrix jobs run at once (maintainer, 2026-10-17):
+
+| Variable | Caps | Where it is unset |
+|---|---|---|
+| `PER_COMMIT_MAX_PARALLEL` | `ci.yml`'s `commit` job, and its `site_commit` job apart: each may run that many at once | 6 |
+| `REPEAT_MAX_PARALLEL` | `repeat.yml`'s `runs`, for each dispatch | 10 |
+
+Raise `PER_COMMIT_MAX_PARALLEL`, to 10 say, while OpenMaterica is the organisation's only repository at work,
+so that a pull request's commits are checked sooner; lower it again, to 6 or less, when MIME's or MADDENING's
+work runs at the same time, so that their jobs do not wait behind these. Count the rest too: beside the
+per-commit jobs, a push to a pull request runs, once the gate has passed, 16 jobs on its head at once
+(`static`, `generated`, `tests` on five Pythons, `controls` on two, `hypothesis` in six shards, `site`), and
+each repeat dispatch runs its own `REPEAT_MAX_PARALLEL`. Set, read or remove one with the GitHub CLI, as a
+maintainer of the repository:
+
+```sh
+gh variable set PER_COMMIT_MAX_PARALLEL --body 10 -R Microrobotics-Simulation-Framework/OpenMaterica
+gh variable list -R Microrobotics-Simulation-Framework/OpenMaterica
+gh variable delete PER_COMMIT_MAX_PARALLEL -R Microrobotics-Simulation-Framework/OpenMaterica  # the default again
+```
+
+Each takes a whole number from 1 to 20, written plainly. The capped job reads `fromJSON(vars.NAME || 'default')`,
+and a step of the job it needs, `gate` or `request`, checks that same value on every run (a push to main and the
+weekly run included) and fails on anything else, with "the repository variable NAME is ..., not a whole number
+from 1 to 20": 0, a negative number, more than 20, a fraction, `1e1`, a sign, a space or a leading zero, or text.
+The capped jobs then never start, and the run fails. GitHub documents no bound on `max-parallel`, nor what it does
+with such a value, so none reaches it. The variable is read twice, by the check and when the capped job starts: a
+value changed in between reaches the capped job unchecked, and so may one changed before its failed jobs are
+re-run, as GitHub does not say whether a re-run reads the variables anew; the next run's check fails on it.
+`tests/unit/test_ci_workflows.py` holds each capped job to its expression and runs each check as written on values
+inside and outside the range.

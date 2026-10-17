@@ -1499,10 +1499,11 @@ def site_commit_problems(ci: Workflow) -> list[str]:
     strategy = job.get("strategy", {})
     if strategy != {
         "fail-fast": False,
-        "max-parallel": 6,
+        "max-parallel": cap_expression("PER_COMMIT_MAX_PARALLEL", "6"),
         "matrix": {"sha": "${{ fromJSON(needs.gate.outputs.site_commits) }}"},
     }:
         problems.append(f"the site-commit job's strategy is {strategy!r}")
+    problems += cap_problems(ci, CAPS[1])
     checkout = {
         **jobs["site"]["steps"][0],
         "with": {"ref": "${{ matrix.sha }}", **jobs["site"]["steps"][0]["with"]},
@@ -1536,6 +1537,28 @@ def site_commit_of_the_code_commits(ci: Workflow) -> None:
     ci["jobs"]["site_commit"]["strategy"]["matrix"]["sha"] = "${{ fromJSON(needs.gate.outputs.commits) }}"
 
 
+def site_commit_uncapped(ci: Workflow) -> None:
+    del ci["jobs"]["site_commit"]["strategy"]["max-parallel"]
+
+
+def site_commit_capped_by_another_variable(ci: Workflow) -> None:
+    ci["jobs"]["site_commit"]["strategy"]["max-parallel"] = "${{ fromJSON(vars.REPEAT_MAX_PARALLEL || '6') }}"
+
+
+def site_commit_capped_by_another_default(ci: Workflow) -> None:
+    ci["jobs"]["site_commit"]["strategy"]["max-parallel"] = (
+        "${{ fromJSON(vars.PER_COMMIT_MAX_PARALLEL || '10') }}"
+    )
+
+
+def site_commit_capped_by_a_string(ci: Workflow) -> None:
+    ci["jobs"]["site_commit"]["strategy"]["max-parallel"] = "${{ vars.PER_COMMIT_MAX_PARALLEL || '6' }}"
+
+
+def site_commit_capped_at_six(ci: Workflow) -> None:
+    ci["jobs"]["site_commit"]["strategy"]["max-parallel"] = 6
+
+
 def commit_job_without_the_site_check(ci: Workflow) -> None:
     ci["jobs"]["commit"]["steps"] = [
         found for found in ci["jobs"]["commit"]["steps"] if found.get("name") != SITE_CHECK_STEP
@@ -1548,6 +1571,11 @@ def commit_job_without_the_site_check(ci: Workflow) -> None:
         (site_commit_on_the_merge, "the site-commit job's steps are not"),
         (site_commit_without_the_readme, "the site-commit job's steps are not"),
         (site_commit_of_the_code_commits, "the site-commit job's strategy is"),
+        (site_commit_uncapped, "the site_commit job runs None at once"),
+        (site_commit_capped_by_another_variable, 'the site_commit job runs "${{ fromJSON(vars.REPEAT_MAX'),
+        (site_commit_capped_by_another_default, "|| '10') }}\" at once, not"),
+        (site_commit_capped_by_a_string, 'the site_commit job runs "${{ vars.PER_COMMIT_MAX_PARALLEL'),
+        (site_commit_capped_at_six, "the site_commit job runs 6 at once"),
         (commit_job_without_the_site_check, "the per-commit job does not run the site job's steps"),
     ],
     ids=lambda value: value.__name__ if callable(value) else None,
@@ -2734,9 +2762,257 @@ def test_the_margin_check_finds_a_measured_shard_gone() -> None:
     assert "a measured shard the matrix no longer has: json" in margin_problems(ci)
 
 
+# The caps of jobs at once (maintainer, 2026-10-17). A capped job's `max-parallel` parses a repository
+# variable, or takes the workflow's default where it is unset, and a step of the job it needs checks that same
+# value on every run and fails where it is not a whole number from 1 to 20. GitHub documents no bound on
+# `max-parallel`, nor what it does with 0, a negative number or a fraction, so a capped job is given no value
+# the check refuses.
+CAP_STEP = "The cap of jobs at once is a whole number from 1 to 20"
+CAP_REFUSAL = "::error title=Runner cap::the repository variable {variable} is "
+
+
+class Cap(NamedTuple):
+    """A capped job of a workflow, the job that checks its cap, the variable and its default."""
+
+    workflow: str
+    job: str
+    checker: str
+    variable: str
+    default: str
+
+
+CAPS = (
+    Cap("ci.yml", "commit", "gate", "PER_COMMIT_MAX_PARALLEL", "6"),
+    Cap("ci.yml", "site_commit", "gate", "PER_COMMIT_MAX_PARALLEL", "6"),
+    Cap("repeat.yml", "runs", "request", "REPEAT_MAX_PARALLEL", "10"),
+)
+# Values of a cap's variable the check takes, beside its being unset, and values it refuses: out of range;
+# written otherwise than plainly as a whole number, which fromJSON may still parse (`6.0`, `1e1`, ` 6`); not a
+# number; or a command.
+CAPS_TAKEN = ("1", "9", "10", "19", "20")
+CAPS_REFUSED = (
+    "0",
+    "-1",
+    "21",
+    "100",
+    "6.0",
+    "1e1",
+    "010",
+    "+6",
+    "0x6",
+    " 6",
+    "6 ",
+    "6\n",
+    "six",
+    "true",
+    "null",
+    "[6]",
+    '"6"',
+    "$(touch ran)",
+    "a[$(touch ran)]",
+    "6;touch ran",
+)
+
+
+def cap_expression(variable: str, default: str) -> str:
+    """A capped job's `max-parallel`: the variable, parsed, or the default where it is unset."""
+    return f"${{{{ fromJSON(vars.{variable} || '{default}') }}}}"
+
+
+def cap_checked(variable: str, default: str) -> str:
+    """The value the cap step checks: the text `cap_expression` parses."""
+    return f"${{{{ vars.{variable} || '{default}' }}}}"
+
+
+def cap_problems(found: Workflow, cap: Cap) -> list[str]:
+    """Where the capped job's `max-parallel` is not its variable, parsed, with its default, exactly; it can
+    start though the job that checks its cap failed; or that job does not check the same value, in one step,
+    on every run."""
+    job = found["jobs"][cap.job]
+    problems: list[str] = []
+    expected = cap_expression(cap.variable, cap.default)
+    written = job.get("strategy", {}).get("max-parallel")
+    if written != expected:
+        problems.append(f"the {cap.job} job runs {written!r} at once, not {expected}")
+    needs = job.get("needs", [])
+    if cap.checker not in ([needs] if isinstance(needs, str) else needs) or re.search(
+        r"\b(?:always|failure|cancelled)\(\)", str(job.get("if", ""))
+    ):
+        problems.append(
+            f"the {cap.job} job can start without {cap.checker}, which checks its cap, succeeding"
+        )
+    checks = [each for each in found["jobs"][cap.checker]["steps"] if each.get("name") == CAP_STEP]
+    if len(checks) != 1:
+        return [*problems, f"{cap.checker} checks the cap in {len(checks)} steps"]
+    checked = {"VARIABLE": cap.variable, "MAX_PARALLEL": cap_checked(cap.variable, cap.default)}
+    if checks[0].get("env") != checked:
+        problems.append(f"{cap.checker} checks {checks[0].get('env')!r}, not {checked}")
+    if "if" in checks[0]:
+        problems.append(f"{cap.checker} checks the cap only if {checks[0]['if']!r}")
+    return problems
+
+
+def cap_used(written: object, context: Mapping[str, object]) -> object:
+    """A `max-parallel` as GitHub computes it in `context`."""
+    if isinstance(written, str) and (inner := re.fullmatch(r"\$\{\{(.*)\}\}", written, re.S)):
+        return evaluated(inner[1], context)
+    return written
+
+
+def cap_check_problems(found: Workflow, cap: Cap, directory: Path) -> list[str]:
+    """Where the cap step, run as written, takes a value of the variable outside 1 to 20 or refuses one
+    inside, lets a value run a command, refuses one without naming the variable, or takes one that the capped
+    job computes as another number, the variable unset included."""
+    check = step(found["jobs"][cap.checker], CAP_STEP)
+    written = found["jobs"][cap.job].get("strategy", {}).get("max-parallel")
+    tree = directory / "tree"
+    tree.mkdir(exist_ok=True)
+    problems: list[str] = []
+    cases = [
+        ("", True),
+        *((value, True) for value in CAPS_TAKEN),
+        *((value, False) for value in CAPS_REFUSED),
+    ]
+    for value, taken in cases:
+        context = {f"vars.{cap.variable}": value}
+        status, _, printed = run_step(check, context, tree, scratch=directory)
+        if (tree / "ran").exists():
+            problems.append(f"{cap.variable} {value!r} ran a command")
+            (tree / "ran").unlink()
+        if not taken:
+            if status == 0:
+                problems.append(f"the check takes {cap.variable} {value!r}")
+            elif CAP_REFUSAL.format(variable=cap.variable) not in printed:
+                problems.append(f"the check refuses {cap.variable} {value!r} without naming it: {printed!r}")
+        elif status != 0:
+            problems.append(f"the check refuses {cap.variable} {value!r}")
+        else:
+            took = rendered(str(check.get("env", {}).get("MAX_PARALLEL")), context)
+            used = cap_used(written, context)
+            if not took.isdigit() or type(used) is not int or used != int(took):
+                problems.append(f"the {cap.job} job runs {used!r} at once where the check took {took!r}")
+    return problems
+
+
+@pytest.mark.parametrize("cap", CAPS, ids=lambda cap: cap.job)
+def test_each_cap_is_a_whole_number_from_1_to_20_or_its_check_fails(cap: Cap, tmp_path: Path) -> None:
+    assert cap_problems(workflow(cap.workflow), cap) == []
+    assert cap_check_problems(workflow(cap.workflow), cap, tmp_path) == []
+
+
+def the_cap_check_left_out(found: Workflow, cap: Cap) -> None:
+    job = found["jobs"][cap.checker]
+    job["steps"] = [each for each in job["steps"] if each.get("name") != CAP_STEP]
+
+
+def another_default_checked(found: Workflow, cap: Cap) -> None:
+    step(found["jobs"][cap.checker], CAP_STEP)["env"]["MAX_PARALLEL"] = cap_checked(cap.variable, "20")
+
+
+def another_variable_checked(found: Workflow, cap: Cap) -> None:
+    step(found["jobs"][cap.checker], CAP_STEP)["env"] = {
+        "VARIABLE": "MAX_PARALLEL",
+        "MAX_PARALLEL": cap_checked("MAX_PARALLEL", cap.default),
+    }
+
+
+def the_check_on_a_push_alone(found: Workflow, cap: Cap) -> None:
+    step(found["jobs"][cap.checker], CAP_STEP)["if"] = "github.event_name == 'push'"
+
+
+def the_job_started_whatever_the_check(found: Workflow, cap: Cap) -> None:
+    job = found["jobs"][cap.job]
+    job["if"] = f"always() && ({job['if']})" if "if" in job else "always()"
+
+
+def the_job_needing_no_check(found: Workflow, cap: Cap) -> None:
+    found["jobs"][cap.job]["needs"] = []
+
+
+@pytest.mark.parametrize("cap", CAPS, ids=lambda cap: cap.job)
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (the_cap_check_left_out, "checks the cap in 0 steps"),
+        (another_default_checked, "|| '20' }}"),
+        (another_variable_checked, "vars.MAX_PARALLEL"),
+        (the_check_on_a_push_alone, "checks the cap only if"),
+        (the_job_started_whatever_the_check, "can start without"),
+        (the_job_needing_no_check, "can start without"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_cap_check_can_fail(fault: Callable[[Workflow, Cap], None], problem: str, cap: Cap) -> None:
+    found = copy.deepcopy(workflow(cap.workflow))
+    fault(found, cap)
+    problems = cap_problems(found, cap)
+    assert any(problem in line for line in problems), problems
+
+
+CAP_CONDITION = '[[ ! "$MAX_PARALLEL" =~ ^([1-9]|1[0-9]|20)$ ]]'
+
+
+@pytest.mark.parametrize("cap", CAPS, ids=lambda cap: cap.job)
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        ("|20)$", "|2[0-9])$", "the check takes {variable} '21'"),
+        ("^([1-9]|", "^([0-9]|", "the check takes {variable} '0'"),
+        ("^([1-9]|1[0-9]|20)$", "([1-9]|1[0-9]|20)", "the check takes {variable} '6.0'"),
+        (
+            CAP_CONDITION,
+            "(( MAX_PARALLEL < 1 || MAX_PARALLEL > 20 ))",
+            "{variable} 'a[$(touch ran)]' ran a command",
+        ),
+        ("exit 1", "exit 0", "the check takes {variable} '0'"),
+        (
+            "the repository variable $VARIABLE is",
+            "the cap is",
+            "the check refuses {variable} '0' without naming it",
+        ),
+    ],
+    ids=[
+        "a-ceiling-raised",
+        "zero-taken",
+        "unanchored",
+        "bash-arithmetic",
+        "refusal-ignored",
+        "refusal-unnamed",
+    ],
+)
+def test_the_cap_check_as_run_can_fail(old: str, new: str, problem: str, cap: Cap, tmp_path: Path) -> None:
+    found = copy.deepcopy(workflow(cap.workflow))
+    check = step(found["jobs"][cap.checker], CAP_STEP)
+    assert check["run"].count(old) == 1
+    check["run"] = check["run"].replace(old, new)
+    problems = cap_check_problems(found, cap, tmp_path)
+    assert any(problem.format(variable=cap.variable) in line for line in problems), problems
+
+
+def test_the_cap_check_finds_a_job_that_computes_another_cap(tmp_path: Path) -> None:
+    """The check of one default and the job's of another, and a job that runs a constant: each disagrees with
+    the check on some value it takes."""
+    cap = CAPS[0]
+    found = copy.deepcopy(workflow(cap.workflow))
+    step(found["jobs"][cap.checker], CAP_STEP)["env"]["MAX_PARALLEL"] = cap_checked(cap.variable, "20")
+    assert "the commit job runs 6 at once where the check took '20'" in cap_check_problems(
+        found, cap, tmp_path
+    )
+    found = copy.deepcopy(workflow(cap.workflow))
+    found["jobs"][cap.job]["strategy"]["max-parallel"] = 6
+    assert "the commit job runs 6 at once where the check took '10'" in cap_check_problems(
+        found, cap, tmp_path
+    )
+    found["jobs"][cap.job]["strategy"]["max-parallel"] = cap_checked(cap.variable, cap.default)
+    assert "the commit job runs '10' at once where the check took '10'" in cap_check_problems(
+        found, cap, tmp_path
+    )
+
+
 # The per-commit job (ci.yml says why, above it): the checks an agent runs on a commit locally, every
-# commit but a pull request's head on its own, at most six at once, and a pass kept under the commit's tree
-# and the workflow's blob, so that a tree passed under the same checks is not checked again.
+# commit but a pull request's head on its own, at most PER_COMMIT_MAX_PARALLEL at once (`CAPS`), and a pass
+# kept under the commit's tree and the workflow's blob, so that a tree passed under the same checks is not
+# checked again.
 PER_COMMIT_FAST_CHECKS = ("uv run ruff check", "uv run ruff format --check", "uv run mypy", "uv run pyright")
 CACHE_HIT = "steps.passed.outputs.cache-hit"
 # The steps that make the key of a pass and write the pass, which check nothing.
@@ -2766,9 +3042,9 @@ def per_commit_problems(ci: Workflow) -> list[str]:
     strategy = job.get("strategy", {})
     if strategy.get("matrix") != {"sha": "${{ fromJSON(needs.gate.outputs.commits) }}"}:
         problems.append(f"the per-commit job's matrix is {strategy.get('matrix')!r}")
-    if strategy.get("fail-fast") is not False or strategy.get("max-parallel") != 6:
-        parallel = f"fail-fast {strategy.get('fail-fast')!r}, {strategy.get('max-parallel')!r} at once"
-        problems.append(f"the per-commit job runs {parallel}")
+    if strategy.get("fail-fast") is not False:
+        problems.append(f"the per-commit job's fail-fast is {strategy.get('fail-fast')!r}")
+    problems += cap_problems(ci, CAPS[0])
     if not uses(steps[0], "actions/checkout") or steps[0].get("with", {}).get("ref") != "${{ matrix.sha }}":
         problems.append("the per-commit job does not check its commit out first")
     pythons = [
@@ -2863,8 +3139,28 @@ def matrix_of_one(ci: Workflow) -> None:
     ci["jobs"]["commit"]["strategy"]["matrix"] = {"sha": ["${{ github.sha }}"]}
 
 
+def fail_fast(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["strategy"]["fail-fast"] = True
+
+
 def no_cap(ci: Workflow) -> None:
     del ci["jobs"]["commit"]["strategy"]["max-parallel"]
+
+
+def a_cap_of_another_variable(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["strategy"]["max-parallel"] = "${{ fromJSON(vars.REPEAT_MAX_PARALLEL || '6') }}"
+
+
+def a_cap_of_another_default(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["strategy"]["max-parallel"] = "${{ fromJSON(vars.PER_COMMIT_MAX_PARALLEL || '10') }}"
+
+
+def a_cap_of_a_string(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["strategy"]["max-parallel"] = "${{ vars.PER_COMMIT_MAX_PARALLEL || '6' }}"
+
+
+def a_cap_of_six_always(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["strategy"]["max-parallel"] = 6
 
 
 def the_merge_checked_out(ci: Workflow) -> None:
@@ -2930,7 +3226,18 @@ def a_check_after_the_pass_is_kept(ci: Workflow) -> None:
     ("fault", "problem"),
     [
         (matrix_of_one, "the per-commit job's matrix is"),
-        (no_cap, "the per-commit job runs fail-fast False, None at once"),
+        (fail_fast, "the per-commit job's fail-fast is True"),
+        (no_cap, "the commit job runs None at once"),
+        (
+            a_cap_of_another_variable,
+            "the commit job runs \"${{ fromJSON(vars.REPEAT_MAX_PARALLEL || '6') }}\"",
+        ),
+        (
+            a_cap_of_another_default,
+            "the commit job runs \"${{ fromJSON(vars.PER_COMMIT_MAX_PARALLEL || '10')",
+        ),
+        (a_cap_of_a_string, "the commit job runs \"${{ vars.PER_COMMIT_MAX_PARALLEL || '6' }}\""),
+        (a_cap_of_six_always, "the commit job runs 6 at once"),
         (the_merge_checked_out, "does not check its commit out first"),
         (on_python_3_11, "installs Python ['3.11']"),
         (without_pyright, "does not run 'uv run pyright'"),
@@ -3850,27 +4157,21 @@ def test_the_route_check_can_fail(fault: Callable[[Workflow], None], problem: st
     assert any(problem in line for line in found), found
 
 
-# The most jobs of runs at once: the default request's, a sixth of the organisation's 60 concurrent jobs,
-# which this repository's CI and MIME's and MADDENING's share.
-MOST_RUNS_JOBS = 10
-
-
 def runner_share_problems(repeat: Workflow) -> list[str]:
     """Where a job of runs that fails cancels the others, whose seeds would then have no record, or the jobs
-    of runs could take more than `MOST_RUNS_JOBS` runners at once."""
+    of runs are not capped at REPEAT_MAX_PARALLEL at once, 10 where it is unset, as the request job checks it
+    (`CAPS`): the organisation's 60 concurrent jobs are shared by this repository's CI and MIME's and
+    MADDENING's."""
     strategy = repeat["jobs"]["runs"].get("strategy", {})
     problems: list[str] = []
     if strategy.get("fail-fast") is not False:
         problems.append(
             f"the runs' fail-fast is {strategy.get('fail-fast')!r}: a job that fails cancels the others"
         )
-    most = strategy.get("max-parallel")
-    if not (type(most) is int and 1 <= most <= MOST_RUNS_JOBS):
-        problems.append(f"the runs take {most!r} runners at once, not {MOST_RUNS_JOBS} at most")
-    return problems
+    return problems + cap_problems(repeat, CAPS[2])
 
 
-def test_the_runs_take_ten_runners_at_most_and_none_cancels_another() -> None:
+def test_the_runs_take_the_checked_cap_of_runners_and_none_cancels_another() -> None:
     assert runner_share_problems(workflow(REPEAT)) == []
 
 
@@ -3879,11 +4180,32 @@ def test_the_runs_take_ten_runners_at_most_and_none_cancels_another() -> None:
     [
         ({"fail-fast": True}, "the runs' fail-fast is True"),
         ({"fail-fast": None}, "the runs' fail-fast is None"),
-        ({"max-parallel": None}, "the runs take None runners at once"),
-        ({"max-parallel": 20}, "the runs take 20 runners at once"),
-        ({"max-parallel": "10"}, "the runs take '10' runners at once"),
+        ({"max-parallel": None}, "the runs job runs None at once"),
+        (
+            {"max-parallel": "${{ fromJSON(vars.PER_COMMIT_MAX_PARALLEL || '10') }}"},
+            "the runs job runs \"${{ fromJSON(vars.PER_COMMIT_MAX_PARALLEL || '10') }}\"",
+        ),
+        (
+            {"max-parallel": "${{ fromJSON(vars.REPEAT_MAX_PARALLEL || '20') }}"},
+            "the runs job runs \"${{ fromJSON(vars.REPEAT_MAX_PARALLEL || '20') }}\"",
+        ),
+        (
+            {"max-parallel": "${{ vars.REPEAT_MAX_PARALLEL || '10' }}"},
+            "the runs job runs \"${{ vars.REPEAT_MAX_PARALLEL || '10' }}\"",
+        ),
+        ({"max-parallel": 10}, "the runs job runs 10 at once"),
+        ({"max-parallel": "10"}, "the runs job runs '10' at once"),
     ],
-    ids=["fail-fast", "fail-fast-by-default", "no-cap", "twenty", "a-string"],
+    ids=[
+        "fail-fast",
+        "fail-fast-by-default",
+        "no-cap",
+        "another-variable",
+        "another-default",
+        "a-string-default",
+        "ten-always",
+        "a-string",
+    ],
 )
 def test_the_runner_share_check_can_fail(change: dict[str, object], problem: str) -> None:
     repeat = copy.deepcopy(workflow(REPEAT))

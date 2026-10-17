@@ -1,8 +1,9 @@
 # One pytest node run many times, each run under a seed of its own, in parallel jobs: how an agent or a person
 # measures how often a test fails (maintainer, 2026-10-17). GitHub's runners are free for this public
-# repository, and a request's jobs run ten at once, so a few hundred runs take minutes rather than the laptop's
-# hours; the examples are the same. Run by hand alone (`workflow_dispatch`), never on a push or a pull request;
-# tests/README.md, "Repeat runs on CI", says how to ask for one and how to read its summary.
+# repository, and a request's jobs run side by side, ten at once by default (REPEAT_MAX_PARALLEL, below), so a
+# few hundred runs take minutes rather than the laptop's hours; the examples are the same. Run by hand alone
+# (`workflow_dispatch`), never on a push or a pull request; tests/README.md, "Repeat runs on CI", says how to
+# ask for one and how to read its summary.
 # Rigour is the repository's own: the profile is one of tests/conftest.py's, whose example counts, deadline and
 # health checks no input reaches. Every input is checked by the request job, and the jobs after it read the
 # checked values alone; each reaches its steps through the environment, never through a script's text.
@@ -119,6 +120,19 @@ jobs:
             echo "::error title=Repeat request::pytest collected no test of the node with these arguments (exit $status)"
             exit 1
           fi
+      # The runs' cap, as ci.yml's gate checks the per-commit jobs' (its step says why), with the same script:
+      # the value the runs parse, the same expression's, a whole number from 1 to 20, or no run starts.
+      - name: The cap of jobs at once is a whole number from 1 to 20
+        env:
+          VARIABLE: REPEAT_MAX_PARALLEL
+          MAX_PARALLEL: ${{ vars.REPEAT_MAX_PARALLEL || '10' }}
+        run: |
+          if [[ ! "$MAX_PARALLEL" =~ ^([1-9]|1[0-9]|20)$ ]]; then
+            printf -v shown '%q' "$MAX_PARALLEL"
+            echo "::error title=Runner cap::the repository variable $VARIABLE is $shown, not a whole number from 1 to 20: set it to one, or delete it for the workflow's default"
+            exit 1
+          fi
+          echo "$VARIABLE: at most $MAX_PARALLEL jobs at once"
 
   runs:
     name: runs (job ${{ matrix.job }})
@@ -132,12 +146,13 @@ jobs:
     # The same minutes, from which the interrupt is set (below).
     env:
       JOB_MINUTES: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
-    # At most ten jobs at once, the default request's; more queue inside the run. The organisation's 60
-    # concurrent jobs (its plan's) are shared by this repository's CI and MIME's and MADDENING's. A job that
-    # fails cancels no other, so that every seed keeps its record.
+    # At most REPEAT_MAX_PARALLEL jobs at once, a repository variable, 10 where it is unset, which the request
+    # job checks; more queue inside the run. The organisation's 60 concurrent jobs (its plan's) are shared by
+    # this repository's CI and MIME's and MADDENING's (.github/workflows/README.md). A job that fails cancels
+    # no other, so that every seed keeps its record.
     strategy:
       fail-fast: false
-      max-parallel: 10
+      max-parallel: ${{ fromJSON(vars.REPEAT_MAX_PARALLEL || '10') }}
       matrix:
         job: ${{ fromJSON(needs.request.outputs.matrix) }}
     steps:

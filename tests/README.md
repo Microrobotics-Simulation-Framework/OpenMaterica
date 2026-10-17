@@ -59,9 +59,10 @@ The inputs: `node`, required; `profile`, `dev`, `ci` (the default) or `deep`, wh
 A request out of bounds, or a node pytest cannot collect with those arguments, fails the `request` job, and no
 run starts. A run takes about as long as the same tests in CI's jobs at that profile, and at `deep`, with ten
 times the examples, about ten times as long as at `ci`: choose the runs a job to fit its timeout (60 minutes at
-`dev`, 120 at `ci`, 360 at `deep`), and more jobs for more runs. At most ten jobs run at once, and more queue
-inside the run: the organisation's 60 concurrent jobs (its plan's) are shared by this repository's CI and MIME's
-and MADDENING's.
+`dev`, 120 at `ci`, 360 at `deep`), and more jobs for more runs. At most `REPEAT_MAX_PARALLEL` jobs run at once,
+a repository variable, 10 where it is unset, and more queue inside the run: the organisation's 60 concurrent jobs
+(its plan's) are shared by this repository's CI and MIME's and MADDENING's (`.github/workflows/README.md`, "Jobs
+at once", says when to change it).
 
 The summary, on the run's page, gives the runs that passed, failed, did not finish or have no record, and a
 verdict: "no run of 200 failed: the failure rate is at most 1.49 % (one-sided 95%)", or, with three failures,
