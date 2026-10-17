@@ -69,6 +69,10 @@ every family entry goes in `families/CHANGELOG.md`.
   suite name does not type-check.
 
 ### Changed
+- The README's code-licence badge reads PyPI's licence metadata (`img.shields.io/pypi/l/openmaterica`) where it
+  read GitHub's licence detection (`img.shields.io/github/license/...`). Shields.io draws the second through a
+  pool of GitHub API tokens and, on 2026-10-17, drew an error, which GitHub's image proxy then kept for four
+  hours; the first makes no GitHub request. Both name Apache-2.0; no licence file or declaration changed.
 - The sibling distributions and the MCP server (maintainer, 2026-10-16), with the maintainer's rulings of
   2026-10-17 on their open points, written into the architecture draft (the decisions, sections 3.1, 3.2, 7.1,
   7.2, 8, 12.1, 13, 14 and 15) and the documentation plan (the components, sections 2, 3.5, 5.1, 7.1, 7.4, 10,
