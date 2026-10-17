@@ -1215,3 +1215,68 @@ DERIVED_INPUTS: dict[str, JsonValue] = {
         "input_specimens": [{"input": 0.0, "specimen": {}}, {"input": 1.0, "specimen": {}}],
     },
 }
+
+
+# Step 7 over alternatives, as far as S4's decision 12 lets S2 go (`read_side_contract.md` section 3, step 7).
+
+
+def test_two_alternatives_with_no_reason_of_their_own_give_no_pick_each_in_alternative_values() -> None:
+    result = read_met({"alternatives": [met_field(), met_field(value=0.0007)]})
+    assert (result.status, result.reasons) == ("unknown", (Reason("no_pick"),))
+    written = json.loads(json.dumps(result.to_json()))
+    assert set(written) == {"status", "reasons", "alternative_values", "unit", "labels"}
+    assert [(entry["alternative"], entry["value"]) for entry in written["alternative_values"]] == [
+        (0, 0.000692),
+        (1, 0.0007),
+    ]
+    assert all(type(entry["alternative"]) is int for entry in written["alternative_values"])
+    assert written["labels"] == []
+
+
+def test_an_unknown_member_inside_an_alternative_is_ignored() -> None:
+    """`record_format.md` section 10 item 1, inside an alternative (D05's half that S2a-4 decides)."""
+    plain = read_met({"alternatives": [met_field(), met_field()]})
+    unknown = read_met({"alternatives": [met_field(x_unknown_member=1.0), met_field()]})
+    assert unknown == plain
+
+
+def test_no_alternative_whose_form_want_can_give_is_want_mismatch_at_step_7() -> None:
+    result = read_met({"alternatives": [met_field(), met_field()]}, want="bounds")
+    assert (result.status, result.reasons, result.conditions) == ("not_met", (Reason("want_mismatch"),), None)
+    assert set(json.loads(json.dumps(result.to_json()))) == {"status", "reasons", "labels"}
+
+
+@pytest.mark.parametrize(
+    ("field", "why"),
+    [
+        ({"alternatives": [met_field()]}, "the one alternative left"),
+        ({"alternatives": [met_field(), water_field()]}, "an alternative's own unknown reason"),
+        ({"alternatives": [met_field(), met_field(unit="mPa.s")]}, "an alternative's own refusal"),
+        (
+            {
+                "alternatives": [
+                    met_field(unit={"status": "unstated", "reason": "one"}),
+                    met_field(unit={"status": "unstated", "reason": "two"}),
+                ]
+            },
+            "units stored differently",
+        ),
+    ],
+)
+def test_what_step_7_decides_beyond_decision_12_raises(field: dict[str, JsonValue], why: str) -> None:
+    with pytest.raises(NotImplementedError):
+        read_met(field)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        {"alternatives": [met_field(), {"alternatives": [met_field()]}]},
+        {"alternatives": [met_field(), 1.0]},
+        {"alternatives": [met_field(), met_field()], "alternative": []},
+        {"alternatives": [met_field(), met_field()], "label": "materica.fluid.newtonian.v1"},
+    ],
+)
+def test_alternatives_that_break_their_shape_are_refused_at_step_7(field: dict[str, JsonValue]) -> None:
+    result = read_met(field)
+    assert (result.status, result.reasons, result.conditions) == ("not_met", (Reason("form_invalid"),), None)
