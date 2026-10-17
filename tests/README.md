@@ -9,11 +9,11 @@
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
 
-`conftest.py` here registers the Hypothesis profiles for every test and the property shards (`--shard`), selects
-the mutant searches and the audit controls (`--property-controls only`) or every other test (`none`), as CI's
-test matrix splits them, records each test's CPU time, its own and its child processes', for a JUnit report
-(`--junitxml`, which CI's durations report reads), and prints the count of conformance case files after a run
-that included them.
+`conftest.py` here registers the Hypothesis profiles for every test, on Hypothesis's own defaults, so that no
+machine's environment changes them, and the property shards (`--shard`), selects the mutant searches and the
+audit controls (`--property-controls only`) or every other test (`none`), as CI's test matrix splits them,
+records each test's CPU time, its own and its child processes', for a JUnit report (`--junitxml`, which CI's
+durations report reads), and prints the count of conformance case files after a run that included them.
 
 ## Running
 
@@ -29,11 +29,16 @@ file's tests in blocks, so that a file's slow tests (the audit controls, T1's sh
 while the others idle. There, at `dev` (2026-10-16): 6 workers took 6.0 minutes under `load` and 4.0 under
 `worksteal`, and 12 took 2.9 under `worksteal`; more than 12 gained nothing.
 
+CI draws as a local run does: new examples on every run, and under one `--hypothesis-seed` the same examples
+as any machine. Until 2026-10-17 it drew the same examples on every run of the same code, whatever the seed:
+GitHub sets `CI`, on which Hypothesis loads its own derandomised `ci` profile, and the profiles inherited it
+(`property/README.md`, "Profiles and sizes").
+
 ## Repeat runs on CI
 
 To show how often a test fails, run it many times on CI, not in a loop here (maintainer, 2026-10-17): GitHub's
 runners are free for this public repository, so a few hundred runs, ten jobs at a time, take minutes rather than
-hours, with the same examples (but see the last paragraph). The workflow `repeat.yml` runs a node, a test, a file
+hours, with the same examples. The workflow `repeat.yml` runs a node, a test, a file
 or a directory under `tests/`, under many seeds in parallel jobs (`.github/workflows/README.md` says what each job
 does). It runs on a pushed ref: an agent asks the main session to dispatch it on its pushed draft and waits on the
 result.
@@ -66,10 +71,10 @@ and the `@reproduce_failure` line Hypothesis printed, and fails the run where an
 Never re-run a repeat run's jobs: dispatch the request anew. Each attempt keeps its records under a name of its
 own (`runs-<job>-<attempt>`). The summary counts every record it finds, and of a seed recorded twice the record
 that did not pass, but fails on any attempt but the first.
-Once the profiles draw by seed on CI (below), a failing seed replays here with the same examples, whatever the
-machine: `MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest <node> --hypothesis-seed=<seed>`; until then, its
-`@reproduce_failure` line replays it. A run under a seed neither reads nor saves the example database, and
-`.hypothesis/` is removed before each run.
+A failing seed replays here with the same examples, whatever the machine:
+`MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest <node> --hypothesis-seed=<seed>`, as does its `@reproduce_failure`
+line. A run under a seed neither reads nor saves the example database, and `.hypothesis/` is removed before each
+run.
 
 A seed changes what a test draws only where Hypothesis draws at random. A derandomized test, which Hypothesis
 runs the same whatever `--hypothesis-seed` says (6.169 reads `derandomize=True` first), runs the same examples
@@ -78,12 +83,8 @@ under every seed: the mutant searches (`MUTANT_SEARCH` in `property/support.py`)
 `unit/test_audits.py`. So does a test under `@seed`, and a test without Hypothesis. Repeating those measures only
 what else varies between runs.
 
-On GitHub's runners, for now, so does every test. Every runner sets `CI=true`, so Hypothesis loads its own `ci`
-profile, which sets `derandomize=True` and suppresses the `too_slow` health check. The profiles of
-`tests/conftest.py` are registered without a parent, so they inherit both. Until they no longer do, every run of
-a repeat run draws the same examples whatever its seed. It then measures only what varies between runs of the
-same examples, such as timing and the order of xdist's workers, not a failure rate over its seeds' draws, and a
-seed that failed there draws other examples here. A repeat run's draws differ by seed only once that is fixed.
+Until the profiles stopped inheriting Hypothesis's own `ci` profile (above, "Running"), so did every test on
+GitHub's runners: every run of a repeat run drew the same examples whatever its seed.
 
 ## Schema verdicts
 

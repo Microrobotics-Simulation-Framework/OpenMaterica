@@ -141,6 +141,16 @@ section and null in each place the envelope checks leave alone. A record with a 
 varies in its structure, its unchecked places holding a few values of each JSON type; the record changed at
 random, and every change into a place left unchecked, draw full trees.
 
+Every profile takes Hypothesis's own defaults as its parent, so a machine's environment changes no setting
+(`tests/unit/test_hypothesis_profiles.py`). CI therefore draws new examples on every run, as a local run does,
+and a run given `--hypothesis-seed` draws there what it draws on any machine. Until 2026-10-17 it did not:
+GitHub sets `CI`, on which Hypothesis loads its built-in `ci` profile at import, and the profiles, registered
+without a parent, inherited its `derandomize=True`, which Hypothesis applies before any seed: the test matrix
+at `dev` and the Hypothesis job at `ci` drew, for each property, the same examples on every run of the same
+code. Every profile also suppresses the `too_slow` health check, as that built-in profile did on CI: a draw
+slowed by a loaded runner is not a fault of the code. The mutant searches, the audits' tests and controls, and
+T1's variants are derandomised by their own settings, on purpose.
+
 Every profile keeps its examples in `.hypothesis/examples` at the repository root (git-ignored, cached by CI),
 so an example that failed once, under `deep` or any other profile, is tried first on every later run; a
 failure prints a blob that replays it anywhere.
