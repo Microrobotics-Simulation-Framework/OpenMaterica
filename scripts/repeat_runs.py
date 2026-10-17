@@ -15,10 +15,11 @@ only, so that it runs on the runner's Python before anything is installed.
 - `record SEED STATUS REPORT` prints one run's record, a line of JSON: its seed, pytest's exit status, the
   outcome, the number of tests, and for each test that failed its node id, its message and each failing
   example Hypothesis reported.
-- `summary DIRECTORY` sums the records under `DIRECTORY`, a `results.jsonl` for each job: the runs, the
-  failures and their seeds and examples, and the failure rate with its one-sided 95 % upper bound, appended to
-  the step summary. It exits 1 where a run failed or did not finish, a seed has no record or two, or the
-  runs' jobs did not all succeed.
+- `summary DIRECTORY` sums the records under `DIRECTORY`, a `results.jsonl` for each job and each attempt
+  of it: the runs, the failures and their seeds and examples, and the failure rate with its one-sided 95 %
+  upper bound, appended to the step summary. It exits 1 where a run failed or did not finish, a seed has no
+  record or two, or the runs' jobs did not all succeed. Of a seed's two records, as from a job run again, the
+  one that did not pass is counted, so that no later record hides a failure.
 """
 
 import argparse
@@ -330,6 +331,8 @@ def read_records(directory: Path, request: Request) -> Sum:
                 continue
             if seed in records:
                 problems.append(f"seed {seed} has two records ({where})")
+                if records[seed]["outcome"] != PASSED:
+                    continue
             records[seed] = found
     expected = range(request.first_seed, request.first_seed + request.jobs * request.runs)
     unexpected = sorted(set(records) - set(expected))
@@ -382,6 +385,8 @@ def summary(request: Request, found: Sum, runs_result: str, commit: str = "") ->
         verdict = "no run passed or failed"
     if decided < total:
         verdict += f"; {total - decided} of {total} runs did not finish or have no record"
+    if found.problems:
+        verdict += f"; problems with the records: {len(found.problems)} (below)"
     if runs_result != "success":
         verdict += f"; the runs' jobs ended in {runs_result!r}"
     lines += [f"**{verdict[0].upper()}{verdict[1:]}.**", ""]
