@@ -138,7 +138,8 @@ tools, unpinned.
 This repository is public. It never names the maintainer's private projects, and never carries a private path:
 an absolute home directory, a session scratchpad, Claude Code's temporary directory, or the private planning
 directory beside the repository, which only `CLAUDE.md` names. `scripts/check_confidential.py` checks every
-tracked file, and CI also checks the message of every commit a pull request or a push brings.
+tracked file, and CI also checks the message of every commit a pull request or a push brings, and a pull
+request's branch name.
 
 The names cannot be listed here, and plain hashes of them would not hide them, since hashing a word list
 recovers short words. So `scripts/confidential_digests.txt` holds their HMAC-SHA256 under a secret key, 64
@@ -160,9 +161,10 @@ refused. A finding gives its file and line, and a term's first letter and length
   ```
 - **A new key** (`python3 -c "import secrets; print(secrets.token_hex(32))"`) needs the digests written again,
   and the secret set again: `gh secret set CONFIDENTIAL_SCAN_KEY < /path/to/confidential_scan.key`.
-- **As a pre-push hook**, which checks what each push would publish, before it does: every file content and
-  annotated tag the remote lacks, a file a later commit removes included, and every commit message it
-  brings, refusing the push on a finding. CI's scan runs only once a push is public. Install it once a clone
+- **As a pre-push hook**, which checks what each push would publish, before it does: the name of each branch
+  or tag it writes, every file content and annotated tag the remote lacks (by what the remote advertises at
+  that moment), a file a later commit removes included, and every commit message it brings, refusing the push
+  on a finding. Deleting a ref is never refused. CI's scan runs only once a push is public. Install it once a clone
   (hooks live in the common git directory, so every worktree shares it), and name the key file if you hold
   the key; without it, the hook checks the paths only, with a warning:
   ```sh

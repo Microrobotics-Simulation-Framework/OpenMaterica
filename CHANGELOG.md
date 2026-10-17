@@ -353,9 +353,12 @@ every family entry goes in `families/CHANGELOG.md`.
   commits (in order, documentation alone, an empty commit, code a later commit undoes, a force-push, more
   commits than a matrix holds) and holds the job to its checks, its order and its key, each with a control.
 - A pre-push hook, `scripts/pre-push`, which refuses a push that would publish a private name or path:
-  `scripts/check_confidential.py --pre-push` reads git's pre-push input and checks what the push sends, every
-  file content and annotated tag the remote lacks (at each path it has in the commits pushed) and every
-  commit's message, so that a file a later commit removes is checked too. It checks the paths without the
+  `scripts/check_confidential.py --pre-push` reads git's pre-push input and checks what the push publishes,
+  the name of each ref it writes, every file content and annotated tag the remote lacks by what it advertises
+  then (`git ls-remote`, not the remote-tracking refs, which a branch deleted on the server leaves behind), at
+  each path it has in the commits pushed, a content git names with no path included, and every commit's
+  message, so that a file a later commit removes is checked too. A path or message that is not UTF-8 is read
+  and shown escaped. CI's scan also checks a pull request's branch name (`--ref-name`). It checks the paths without the
   key, and the names with the key file `git config openmaterica.scanKeyFile` names; CONTRIBUTING says how to
   install it. Tested through `git push` in a throwaway repository with a bare remote.
 

@@ -13,6 +13,7 @@ import math
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -24,6 +25,7 @@ from typing import Any, cast
 import pytest
 import yaml
 
+from scripts import check_confidential
 from tests.unit.throwaway_git import throwaway_repository
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -610,6 +612,34 @@ def test_the_gate_prints_the_paths_of_a_pull_request_with_workflow_commands_stop
     assert removed == 2
     _, _, printed_unstopped = run_step(gate, gate_context("pull_request", base, head), repository)
     assert not printed_with_commands_stopped(printed_unstopped, "::warning::a name.md"), printed_unstopped
+
+
+SCAN_STEP = "No private name or path in the tracked files or the commit messages"
+
+
+@pytest.mark.parametrize(("branch", "status"), [("zorblax-support", 1), ("docs-fix", 0)])
+def test_the_gate_scans_a_pull_requests_branch_name(repository: Path, branch: str, status: int) -> None:
+    """A branch's name is public from its push, and no tracked file or message holds it. The gate's scan, run
+    as GitHub runs it, with the repository's scan, a scratch key and a scratch term, refuses a branch that
+    names the term; the control, a plain name, passes."""
+    key = bytes(range(32))
+    Path("scripts").mkdir()
+    shutil.copy(REPOSITORY / "scripts" / "check_confidential.py", "scripts/check_confidential.py")
+    Path("scripts/confidential_digests.txt").write_text(
+        check_confidential.digest_file(key, ["Zorblax"]), encoding="utf-8"
+    )
+    subprocess.run(["git", "add", "scripts"], check=True)
+    base = commit()
+    head = commit("src/materica/core/read.py")
+    context = gate_context("pull_request", base, head) | {
+        "secrets.CONFIDENTIAL_SCAN_KEY": key.hex(),
+        "github.event.before": "",
+        "github.sha": head,
+        "github.head_ref": branch,
+    }
+    ran, _, printed = run_step(step(workflow("ci.yml")["jobs"]["gate"], SCAN_STEP), context, repository)
+    assert ran == status, printed
+    assert ("ref zorblax-support:1: a confidential term (z..., 7 characters)" in printed) == bool(status)
 
 
 def gate_pattern(variable: str, ci: Workflow | None = None) -> str:
