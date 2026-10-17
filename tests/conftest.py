@@ -45,9 +45,9 @@ if PROFILE not in EXAMPLES:
 settings.load_profile(PROFILE)
 
 
-# CI's Hypothesis job runs the property modules in six shards side by side, `--shard json`, `--shard
-# records`, `--shard writer`, `--shard agreement`, `--shard step8_mutants` and `--shard conditions`;
-# `tests/unit/test_source_files.py` checks that each module is in exactly one.
+# CI's Hypothesis job runs the property modules in seven shards side by side, `--shard json`, `--shard
+# records`, `--shard writer`, `--shard agreement`, `--shard step8_mutants`, `--shard conditions` and `--shard
+# relations`; `tests/unit/test_source_files.py` checks that each module is in exactly one.
 SHARDS = {
     "json": (
         "test_jsonio_properties",
@@ -71,9 +71,34 @@ SHARDS = {
     # Step 8's mutant searches, the longest part of the records shard, and their table's check; they keep no
     # example database.
     "step8_mutants": ("test_value_field_mutants", "test_value_field_mutant_table"),
-    # Steps 9 and 10's properties, which read records end to end, their mutant searches, which take seconds
-    # and set no example database, so the shard's restored one is harmless to them, and their table's check.
-    "conditions": ("test_condition_properties", "test_condition_mutants", "test_condition_mutant_table"),
+    # Steps 9 and 10's properties and the result's (S2a-4: HP1, HP2, HP6 and HP11), which read records end to
+    # end, their mutant searches, which take seconds and set no example database, so the shard's restored one
+    # is harmless to them, and their tables' checks.
+    "conditions": (
+        "test_condition_properties",
+        "test_condition_mutants",
+        "test_condition_mutant_table",
+        "test_result_properties",
+        "test_result_mutants",
+        "test_result_mutant_table",
+    ),
+    # The read's relations (S2a-4's phase B): HP12, the agreement with the reference model, HP4 and HP10, and
+    # the information-monotonicity relations, each example reading two records or a read twice, with their
+    # mutant searches, which set no example database, their tables' checks and HP12's controls. A shard of
+    # their own: beside steps 9 and 10's they took 198 s at `ci` on four local workers, and `conditions` 151
+    # s (2026-10-17).
+    "relations": (
+        "test_model_properties",
+        "test_model_mutants",
+        "test_model_mutant_table",
+        "test_model_controls",
+        "test_invariance_properties",
+        "test_invariance_mutants",
+        "test_invariance_mutant_table",
+        "test_monotonicity_properties",
+        "test_monotonicity_mutants",
+        "test_monotonicity_mutant_table",
+    ),
 }
 
 

@@ -7,8 +7,8 @@ design's HP7, HP8 and HP9, and HP3 and HP5 for what steps 9 and 10 decide. The m
   read calls it) gives each condition the entry and reason `condition_oracle.py` gives, written from section 5
   alone: each numeric row at each boundary its exactness turns on, a stated plus or minus of each kind, the
   table's other rows, the conditions checked, and implied conditions that fill, never override, and disagree.
-  A read that step 10 does not end raises until steps 11 to 13 are built, so the entries are read from step 10
-  itself.
+  The entries are read from step 10 itself, as S2a-3 wrote it; HP3 below reads them end to end, where a read
+  step 10 does not end goes on to steps 11 to 13 and returns them beside step 10's `unknown` reasons.
 - **HP9, the specimen merge.** The facts an implied condition rests on are the section's, each overridden by
   the field's of its name (`record_format.md` section 4 item 2): `RecordField.specimen` is the merge a dict
   merge written here gives, and an implied condition applies exactly where it states the fact and token.
@@ -569,11 +569,15 @@ def test_the_boundaries_are_drawn_on_finite_doubles() -> None:
 # Reads end to end.
 
 PAST = "past step 10"
+# The codes only steps 11 to 13 give, which a read step 10 does not end may add beside step 10's reasons.
+AFTER_STEP_10 = frozenset(
+    code for code, row in oracle.REASONS["reasons"].items() if row.get("steps") and min(row["steps"]) > 10
+)
 
 
 class Outcome(NamedTuple):
-    status: str  # the result's, or PAST where steps not built yet decide the read
-    reasons: frozenset[tuple[str, str | None]]
+    status: str  # the result's, or PAST where step 10 did not end the read and steps 11 to 13 decide it
+    reasons: frozenset[tuple[str, str | None]]  # past step 10, those of the steps before 11 alone
     conditions: tuple[tuple[str, JsonValue], ...] | None  # each entry's name and JSON, where it has any
 
 
@@ -588,13 +592,19 @@ def outcome_of(record: JsonObject, request: JsonObject, text: bytes | None = Non
     written = json.loads(json.dumps(result.to_json()))
     entries = written.get("conditions")
     conditions = None if entries is None else tuple(sorted((entry["name"], entry) for entry in entries))
-    return Outcome(
-        result.status, frozenset((reason.code, reason.condition) for reason in result.reasons), conditions
-    )
+    pairs = frozenset((reason.code, reason.condition) for reason in result.reasons)
+    if result.status != "not_met":
+        return Outcome(PAST, frozenset(pair for pair in pairs if pair[0] not in AFTER_STEP_10), conditions)
+    return Outcome(result.status, pairs, conditions)
+
+
+def passed_steps_8_to_10(found: Outcome) -> bool:
+    """A read step 10 did not end, which gave no reason before step 11 and returned its conditions."""
+    return found.status == PAST and found.reasons == frozenset() and found.conditions is not None
 
 
 def check_base(read_case: Read) -> None:
-    assert outcome_of(read_case.record, read_case.request) == Outcome(PAST, frozenset(), None), read_case
+    assert passed_steps_8_to_10(outcome_of(read_case.record, read_case.request)), read_case
 
 
 @given(base_reads(SIZE))
@@ -642,7 +652,7 @@ def registered_units(draw: st.DrawFn, size: Size = SIZE) -> tuple[str, Read, byt
 
 def check_registered(drawn: tuple[str, Read, bytes]) -> None:
     _, read_case, text = drawn
-    assert outcome_of(read_case.record, read_case.request, text) == Outcome(PAST, frozenset(), None), text
+    assert passed_steps_8_to_10(outcome_of(read_case.record, read_case.request, text)), text
 
 
 @pytest.mark.drawn(*REGISTERED_PLACES)

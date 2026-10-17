@@ -6,6 +6,7 @@ prose (CONTRIBUTING, "Changing the schema"). The tokens the vocabulary holds are
 checks those files with `scripts/gen_vocabulary.py --check`.
 """
 
+import copy
 import json
 import re
 import sys
@@ -71,6 +72,43 @@ def test_a_cases_expected_members_are_the_results() -> None:
     assert compared["properties"] == _from_the_result(RESULT["properties"])
     assert "required" not in compared
     assert compared["additionalProperties"] is False
+
+
+def result_shape_problems(result: dict[str, JsonValue], writer: dict[str, JsonValue]) -> list[str]:
+    """Where the result's shapes repeat the writer's: a condition entry's `record` takes each shape the
+    writer's `conditions` gives a condition, and a review returned as found names the writer review's
+    members."""
+    result_defs = cast(dict[str, dict[str, JsonValue]], result["$defs"])
+    writer_defs = cast(dict[str, dict[str, JsonValue]], writer["$defs"])
+    record = cast(dict[str, dict[str, list[dict[str, str]]]], result_defs["condition_entry"]["properties"])
+    taken = {alternative["$ref"] for alternative in record["record"]["anyOf"]}
+    conditions = cast(dict[str, dict[str, list[dict[str, str]]]], writer_defs["conditions"]["properties"])
+    problems = [
+        f"a condition entry's record does not take {name}'s shape {alternative['$ref']}"
+        for name, given in conditions.items()
+        for alternative in given["anyOf"]
+        if f"record.writer.json{alternative['$ref']}" not in taken
+    ]
+    returned = cast(dict[str, JsonValue], result_defs["result_review"]["properties"])
+    written = cast(dict[str, JsonValue], writer_defs["review"]["properties"])
+    if list(returned) != list(written):
+        problems.append(f"a review returned names {list(returned)}, the writer's {list(written)}")
+    return problems
+
+
+def test_the_results_shapes_take_the_writers() -> None:
+    assert result_shape_problems(RESULT, WRITER) == []
+
+
+def test_a_result_shape_left_behind_is_found() -> None:
+    shapes = copy.deepcopy(RESULT)
+    del shapes["$defs"]["condition_entry"]["properties"]["record"]["anyOf"][1]
+    del shapes["$defs"]["result_review"]["properties"]["orcid"]
+    assert result_shape_problems(shapes, WRITER) == [
+        "a condition entry's record does not take density_kind's shape #/$defs/condition_density_kind",
+        "a review returned names ['result', 'reviewer', 'date', 'independent_of_extraction', 'checklist'], "
+        "the writer's ['result', 'reviewer', 'orcid', 'date', 'independent_of_extraction', 'checklist']",
+    ]
 
 
 def test_the_sections_are_the_field_tables() -> None:

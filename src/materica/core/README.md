@@ -14,7 +14,7 @@ bytes ─▶ jsonio.parse ─▶ value ─▶ hashing.hashable_view ─▶ view 
             └─▶ Reason("malformed")
 ```
 
-A read, steps 0 to 10 of `read_side_contract.md` section 3:
+A read, steps 0 to 13 of `read_side_contract.md` section 3:
 
 ```
 request ─▶ read.ReadRequest.from_json ─▶ step 0, the request on its own ─▶ reasons, or a ReadRequest
@@ -29,8 +29,13 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
                                                              between steps 3 and 5
                                                                   │
                                                            fields.find_field
-                                                           7 the field, or absent
+                                                           7 the field, or absent; a field holding
+                                                             alternatives (fields.alternatives_problems,
+                                                             read._read_alternatives) reads each by 8 to
+                                                             13, as far as S4's decision 12 goes
                                                                   │
+                                                           read.read_value_field, steps 8 to 13 of one
+                                                           value field:
                                                            fields.form_problems
                                                            8 the form token against its row; the record's
                                                              structure, the section and the members every
@@ -42,12 +47,16 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
                                                                   │
                                                            conditions.check_conditions
                                                           10 each condition against the request, exactly
+                                                          11 a constant's range is its conditions
+                                                          12 stated_without_origin; the field's label and
+                                                             mixed_conditions
+                                                          13 the value by want, or want_mismatch
                                                                   │
-               read.ReadResult (status, reasons, labels, ◀────────┘   the reasons of the step that ended
-                            and conditions after step 10)              the read, or NotImplementedError for
-                                                                       steps 11 to 13, an overlay,
-                                                                       alternatives and the other forms'
-                                                                       members
+          read.ReadResult (status, reasons, labels, ◀─────────────┘   every reason found, and the members
+          conditions once step 10 ran to its end, and                 section 2 gives, as stored and copied;
+          value, unit, specimen, statistics and                       or NotImplementedError for an overlay,
+          provenance, or alternative_values)                          a pick, the rest of step 7 and the other
+                                                                      forms' members
 ```
 
 | Module | Implements |
@@ -62,14 +71,14 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `vocabulary.py` | the tokens of the specification's tables, read from `schema/0.1/vocabulary/` |
 | `envelope.py` | the reader schema's checks by hand (`record_format.md` section 1 item 2) |
 | `value_shapes.py` | step 8's checks of what every form of a value field shares, by hand: a slip in the record's structure, a section's specimen, and a field's unit, conditions, specimen facts, statistics block, provenance members, label and status objects (`read_side_contract.md` section 3, step 8; `provenance.md`; `uncertainty.md` sections 1 and 4) |
-| `fields.py` | a value field: step 7 finds it, step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's so far; another form the row allows raises `NotImplementedError`), and step 9 compares its units with the registered ones; its specimen facts, the section's merged with the field's |
+| `fields.py` | a value field: step 7 finds it and checks the shape of the alternatives it may hold, step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's so far; another form the row allows raises `NotImplementedError`), and step 9 compares its units with the registered ones; its specimen facts, the section's merged with the field's |
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
 | `conditions.py` | step 10: the conditions checked, each against the request by section 5's table, on the exact values of the doubles, with a stated `plus_minus`, and the implied conditions the read applies (`declarations.md` section 4.1); a result's condition entries |
-| `read.py` | the request's own check (step 0), its implied conditions included, and the read through step 10; steps 11 to 13, the other acceptances, overlays and alternatives are not built yet |
+| `read.py` | the request's own check (step 0), its implied conditions included; the read of a value field, steps 8 to 13 (`read_value_field`), and of alternatives at step 7 as far as S4's decision 12 goes; the result (`ReadResult`, `FieldRead`, `ProvenanceSummary`), its members as stored by the generated shapes, each count and index an integer; the other acceptances, overlays, picks and the rest of step 7 are not built yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the
-read up to step 5 (`tests/conformance/`).
+read, through step 13 for a constant (`tests/conformance/`).
 
 ## Invariants
 
@@ -85,8 +94,10 @@ read up to step 5 (`tests/conformance/`).
 - **Every number is a float.** An integer reads as the nearest double; `JsonValue` has no `int`, and
   `canonicalize` refuses one. A request given as a Python value is read through JSON text, so its integers too.
   (The reader's properties compare types exactly; `tests/unit/test_canonical.py`.)
-- **Stored JSON is never mutated.** `hashable_view` builds new containers and leaves its argument as it was
-  (`tests/unit/test_hashing.py`); a `Record` keeps the value its bytes parse to as it is.
+- **Stored JSON is never mutated, and never shared.** `hashable_view` builds new containers and leaves its
+  argument as it was (`tests/unit/test_hashing.py`); a `Record` keeps the value its bytes parse to as it is;
+  what a result returns from a record is a copy, and so is each result's JSON (HP6,
+  `tests/property/test_result_properties.py`).
 - **Identifiers match in full**, by `re.fullmatch` with character classes written out
   (`tests/property/test_version_properties.py`).
 - **Step 8's shapes, by hand and in the schemas.** `value_shapes.py` and `fields.py` agree with the writer

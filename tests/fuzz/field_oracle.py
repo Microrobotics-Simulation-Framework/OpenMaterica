@@ -2,20 +2,27 @@
 """The oracles by which fuzz target 4 (`read_field_bytes.py`) sees a read go wrong, apart from the target,
 which needs Atheris, so that a unit test can show each fails (`tests/unit/test_fuzz_oracle.py`).
 
-Until S2a-4's reference model can say what each read must give, the target holds step 8 to T1's third relation
+The reference model (`tests/reference/read_model.py`) says what each read must give: the target holds every
+read to it as HP12 does (`check_against_the_model`), so that a refusal step 8 gives wrongly is seen, which no
+other oracle here can see (S2a-2's review, L3). Beside it, the target holds step 8 to T1's third relation
 (`tests/spec_sync/test_t1.py`): what the reader `$defs` refuse, step 8 refuses. A constant step 8 passes it
 holds to steps 9 and 10 as the text gives them: its units each compared with the one registered for it, code
 point for code point, written here from `record_format.md` section 4.2 and step 9; and its conditions against
 the request by `condition_oracle.py`, HP7's oracle, written from section 5 alone.
 """
 
-from collections.abc import Mapping
+import json
+from collections.abc import Callable, Mapping
 from urllib.parse import urljoin
 
 from materica.core.jsonio import JsonValue
+from materica.core.read import ReadResult
 from materica.core.vocabulary import VOCABULARY
+from materica.shapes import Suite
 from tests.property import condition_oracle
-from tests.property.condition_oracle import AFTER_STEP_8
+from tests.property.condition_oracle import AFTER_STEP_8, REASONS
+from tests.property.model_strategies import Example
+from tests.property.test_model_properties import Outcome, check_outcome, written_outcome
 from tests.spec_sync.schemas import BASE, takes, why_refused
 
 JsonObject = dict[str, JsonValue]
@@ -43,9 +50,15 @@ REQUIRED: dict[str, JsonObject] = {
 }
 
 
+# The codes of steps 12 and 13 a constant's read gives (`read_side_contract.md` section 3), and those of step
+# 10. The target's requests want only what plain read gives, so `want_mismatch` comes from step 13 alone.
+STEPS_12_AND_13 = frozenset({"stated_without_origin", "want_mismatch"})
+STEP_10 = frozenset(code for code, row in REASONS["reasons"].items() if 10 in row.get("steps", []))
+
+
 def passed_step_8(result: JsonValue) -> bool:
     """Whether a read's result, as the target takes it, is one of a field that passed step 8: "not yet", where
-    a step not built yet decides it, or a refusal of a later step alone."""
+    a step not built yet decides it, or a result whose every reason a later step gives, none included."""
     if result == "not yet":
         return True
     reasons = result.get("reasons") if isinstance(result, dict) else None
@@ -54,7 +67,7 @@ def passed_step_8(result: JsonValue) -> bool:
         if isinstance(reasons, list)
         else []
     )
-    return bool(codes) and all(code in AFTER_STEP_8 for code in codes)
+    return isinstance(reasons, list) and all(code in AFTER_STEP_8 | STEPS_12_AND_13 for code in codes)
 
 
 def check_no_refusal_missing(field_name: str, field: JsonValue, result: JsonValue) -> None:
@@ -126,8 +139,9 @@ def check_steps_9_and_10(
 ) -> None:
     """A constant step 8 passed, which its row allows and which holds no alternatives, read with
     `operating` and `required`, is refused at step 9 exactly where a unit differs, with each of those reasons
-    and no other; else at step 10 exactly where the oracle gives a condition `not_met`, with its reasons and
-    entries; and else goes on to steps not built yet."""
+    and no other; else gives step 10's reasons and entries as the oracle does, and is refused there exactly
+    where the oracle gives a condition `not_met`; and else goes on to steps 12 and 13, whose reasons alone
+    stand beside step 10's."""
     if not (isinstance(field, dict) and passed_step_8(result) and field.get("form") == "constant"):
         return
     if "alternatives" in field or "constant" not in VOCABULARY.fields[field_name].forms:
@@ -145,17 +159,96 @@ def check_steps_9_and_10(
     assert isinstance(specimen, dict)
     expected = condition_oracle.expected(field_name, conditions, specimen, operating, required)
     statuses = expected.statuses or {}
-    if "not_met" not in statuses.values():
-        assert result == "not yet", f"step 10 refused what its text does not: {result}"
-        return
-    assert pairs == expected.reasons, (
-        f"step 10 gave {sorted(pairs, key=str)}, its text {sorted(expected.reasons, key=str)}"
+    later = {pair for pair in pairs if pair[0] not in STEP_10}
+    assert pairs - later == expected.reasons, (
+        f"step 10 gave {sorted(pairs - later, key=str)}, its text {sorted(expected.reasons, key=str)}"
     )
+    if "not_met" in statuses.values():
+        assert not later, f"a read step 10 refused went on: {sorted(later, key=str)}"
+    else:
+        assert {code for code, _ in later} <= STEPS_12_AND_13, f"steps 11 to 13 gave {sorted(later, key=str)}"
     entries = objects(result, "conditions")
     assert {entry.get("name"): entry.get("status") for entry in entries} == statuses, entries
+
+
+# HP1 and HP2 (the S2 design), on any result as the target takes it: section 2 item 2's codes that carry
+# `condition` always, and those that may; the codes only steps before 10 give; and the statuses, best first.
+WITH_A_CONDITION = frozenset(code for code in REASONS["reasons"] if code.startswith("condition_"))
+PERHAPS_A_CONDITION = frozenset(
+    {
+        "request_incomplete",
+        "request_unit_mismatch",
+        "unit_mismatch",
+        "outside_range",
+        "at_edge",
+        "range_unstated",
+        "want_mismatch",
+    }
+)
+BEFORE_STEP_10 = frozenset(
+    code for code, row in REASONS["reasons"].items() if row.get("steps") and max(row["steps"]) < 10
+)
+BEST_FIRST = ("met", "unknown", "not_met")
+
+
+def check_result_laws(result: JsonValue) -> None:
+    """HP1: each code in the reason table, each `(code, condition)` once, `condition` on every `condition_*`
+    reason and on no reason of a code that never concerns one. HP2: the status the worst of the codes'
+    statuses, folded here from the table; and the members present as section 2 item 6 says, no declaration
+    being in the target's requests: `value`, `specimen`, `statistics` and `provenance` exactly where the
+    status is not `not_met` and the result rests on one value, `alternative_values` exactly under `no_pick`,
+    `unit` beside either, no `assumption`, and `conditions` beside a value, never under `no_pick` or after a
+    refusal before step 10. A form without a statistics block is the target's "not yet" until S2b."""
+    if result == "not yet":
+        return
+    assert isinstance(result, dict), result
+    pairs = [(str(reason.get("code")), reason.get("condition")) for reason in objects(result, "reasons")]
+    assert len(set(pairs)) == len(pairs), f"a reason twice: {pairs}"
+    for code, condition in pairs:
+        assert code in REASONS["reasons"], f"{code} is no code of the table"
+        if code in WITH_A_CONDITION:
+            assert isinstance(condition, str), f"{code} without its condition"
+        elif code not in PERHAPS_A_CONDITION:
+            assert condition is None, f"{code} with the condition {condition}"
+    statuses = [str(REASONS["reasons"][code]["status"]) for code, _ in pairs]
+    worst = max(statuses, key=BEST_FIRST.index, default="met")
+    assert result.get("status") == worst, f"the status {result.get('status')}, the worst reason's {worst}"
+    no_pick = any(code == "no_pick" for code, _ in pairs)
+    valued = worst != "not_met" and not no_pick
+    assert {"reasons", "labels"} <= result.keys(), result
+    for member in ("value", "specimen", "statistics", "provenance"):
+        assert (member in result) == valued, f"{member} where the status is {worst}: {result}"
+    assert ("alternative_values" in result) == no_pick, (
+        f"alternative_values, no_pick being {no_pick}: {result}"
+    )
+    assert ("unit" in result) == (valued or no_pick), f"unit where the status is {worst}: {result}"
+    assert "assumption" not in result, f"an assumption no declaration gives: {result}"
+    if valued:
+        assert "conditions" in result, f"no conditions beside the value: {result}"
+    if no_pick or {code for code, _ in pairs} & BEFORE_STEP_10:
+        assert "conditions" not in result, f"conditions after a refusal before step 10: {result}"
 
 
 def objects(result: JsonValue, member: str) -> list[JsonObject]:
     """The objects of the list `member` of a result as the target takes it, none where it holds none."""
     found = result.get(member) if isinstance(result, dict) else None
     return [item for item in found if isinstance(item, dict)] if isinstance(found, list) else []
+
+
+def check_against_the_model(
+    sources: tuple[bytes, ...], request: JsonObject, claims: frozenset[Suite], implementation: Outcome
+) -> None:
+    """HP12 on the target's read, whose outcome the target took once (`read_outcome`): the core and the
+    reference model agree, or diverge as a known divergence says (`test_model_properties.py`)."""
+    check_outcome(Example("fuzzed", sources, json.dumps(request).encode(), claims), implementation)
+
+
+def read_outcome(read: Callable[[], ReadResult]) -> tuple[JsonValue, Outcome]:
+    """A read's result as the target takes it, "not yet" where a step not built yet would decide it, and its
+    outcome as HP12 compares it; the read made once."""
+    try:
+        result = read()
+    except NotImplementedError as error:
+        return "not yet", Outcome("not_yet", why=str(error))
+    written: JsonValue = json.loads(json.dumps(result.to_json()))
+    return written, written_outcome(written)

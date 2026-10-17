@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://w3id.org/materica/schema/0.1/read_result.json",
-  "$comment": "Hand-edited. The members after status, reasons and labels are placeholders until the steps that give them are written.",
+  "$comment": "Hand-edited. Each member is typed from the writer schema's $defs and the vocabulary; a case's expected answer takes the same shapes (case.json).",
   "title": "ReadResult",
   "description": "read_side_contract.md section 2.",
   "type": "object",
@@ -9,15 +9,15 @@
   "properties": {
     "status": {"$ref": "#/$defs/read_status"},
     "reasons": {"type": "array", "items": {"$ref": "#/$defs/reason"}},
-    "value": {"$ref": "record.writer.json#/$defs/json_value"},
-    "alternative_values": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
-    "unit": {"$ref": "record.writer.json#/$defs/json_value"},
-    "conditions": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_object"}},
-    "specimen": {"$ref": "record.writer.json#/$defs/json_object"},
-    "statistics": {"$ref": "record.writer.json#/$defs/json_object"},
-    "provenance": {"$ref": "record.writer.json#/$defs/json_object"},
-    "labels": {"type": "array", "items": {"type": "string"}},
-    "assumption": {"$ref": "record.writer.json#/$defs/json_object"}
+    "value": {"$ref": "#/$defs/result_value"},
+    "alternative_values": {"type": "array", "items": {"$ref": "#/$defs/alternative_value"}},
+    "unit": {"$ref": "record.writer.json#/$defs/unit"},
+    "conditions": {"type": "array", "items": {"$ref": "#/$defs/condition_entry"}},
+    "specimen": {"$ref": "record.writer.json#/$defs/specimen"},
+    "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
+    "provenance": {"$ref": "#/$defs/result_provenance"},
+    "labels": {"type": "array", "items": {"$ref": "#/$defs/returned_label"}},
+    "assumption": {"$ref": "#/$defs/assumption"}
   },
   "additionalProperties": false,
   "$defs": {
@@ -33,6 +33,140 @@
         "detail": {"type": "string"}
       },
       "additionalProperties": false
+    },
+    "result_value": {
+      "description": "What a read gives (read_side_contract.md section 6), or in an alternative_values entry a form's member as stored; a content hash or a listing for the operations content_hash and list_records (README.md, \"Operations\").",
+      "anyOf": [
+        {"type": "number"},
+        {"$ref": "record.writer.json#/$defs/interval"},
+        {"$ref": "record.writer.json#/$defs/composition"},
+        {"type": "array", "items": {"anyOf": [{"$ref": "record.writer.json#/$defs/evidence_entry"}, {"$ref": "record.writer.json#/$defs/withheld_evidence_entry"}]}},
+        {"$ref": "record.writer.json#/$defs/placeholder"},
+        {"$ref": "record.writer.json#/$defs/content_hash"},
+        {"type": "array", "items": {"$ref": "#/$defs/listed_record"}}
+      ]
+    },
+    "listed_record": {
+      "description": "A record list_records gives, by its id and version (README.md, \"Operations\").",
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"$ref": "record.writer.json#/$defs/record_id"},
+        "version": {"$ref": "record.writer.json#/$defs/version"}
+      },
+      "additionalProperties": false
+    },
+    "alternative_value": {
+      "description": "An alternative that stays under no_pick (read_side_contract.md section 2): its index among the stored alternatives of the field read, and its members as a read of it alone gives them.",
+      "type": "object",
+      "required": ["alternative", "value", "conditions", "specimen", "provenance", "labels"],
+      "properties": {
+        "alternative": {"type": "integer", "minimum": 0},
+        "value": {"$ref": "#/$defs/result_value"},
+        "conditions": {"type": "array", "items": {"$ref": "#/$defs/condition_entry"}},
+        "specimen": {"$ref": "record.writer.json#/$defs/specimen"},
+        "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
+        "provenance": {"$ref": "#/$defs/result_provenance"},
+        "labels": {"type": "array", "items": {"$ref": "#/$defs/returned_label"}}
+      },
+      "additionalProperties": false
+    },
+    "condition_entry": {
+      "description": "One condition checked (read_side_contract.md section 2 item 6): record is the record's entry as read, its status object, or the value an implied condition supplies with basis implied; operating is the request's operating condition.",
+      "type": "object",
+      "required": ["name", "status"],
+      "properties": {
+        "name": {"type": "string"},
+        "status": {"$ref": "#/$defs/read_status"},
+        "record": {"anyOf": [{"$ref": "record.writer.json#/$defs/numeric_condition"}, {"$ref": "record.writer.json#/$defs/condition_density_kind"}, {"$ref": "record.writer.json#/$defs/condition_specimen_shape"}, {"$ref": "record.writer.json#/$defs/condition_measurement_geometry"}, {"$ref": "record.writer.json#/$defs/condition_test_method"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/implied_value"}]},
+        "operating": {"$ref": "read_request.json#/$defs/operating_condition"}
+      },
+      "additionalProperties": false
+    },
+    "implied_value": {
+      "description": "The value an implied condition supplies, as the request gives it, with basis implied (read_side_contract.md section 2 item 6; declarations.md section 4.1).",
+      "anyOf": [{"$ref": "#/$defs/implied_numeric_value"}, {"$ref": "#/$defs/implied_token_value"}]
+    },
+    "implied_numeric_value": {
+      "description": "A value or a range, with its unit.",
+      "type": "object",
+      "required": ["unit", "basis"],
+      "properties": {
+        "value": {"type": "number"},
+        "range": {"$ref": "record.writer.json#/$defs/range"},
+        "unit": {"type": "string"},
+        "basis": {"const": "implied"}
+      },
+      "if": {"required": ["value"]},
+      "then": {"not": {"required": ["range"]}},
+      "else": {"required": ["range"]},
+      "additionalProperties": false
+    },
+    "implied_token_value": {
+      "description": "A token.",
+      "type": "object",
+      "required": ["token", "basis"],
+      "properties": {
+        "token": {"type": "string"},
+        "basis": {"const": "implied"}
+      },
+      "additionalProperties": false
+    },
+    "result_provenance": {
+      "description": "The provenance a read returns (read_side_contract.md section 2): the origin token, the review as provenance.md section 2 item 6 reads it, the source's key, and a derived value's derivation.",
+      "type": "object",
+      "required": ["origin", "review"],
+      "properties": {
+        "origin": {"$ref": "vocabulary/provenance.json#/$defs/origin"},
+        "review": {"anyOf": [{"$ref": "#/$defs/result_review"}, {"$ref": "record.writer.json#/$defs/status_not_checked"}]},
+        "source": {"type": "string"},
+        "derivation": {"$ref": "record.writer.json#/$defs/derivation"}
+      },
+      "additionalProperties": false
+    },
+    "result_review": {
+      "description": "A review as found, its result a token the reader knows: a review never refuses, so the members a review names that the record holds are returned whatever they hold (provenance.md section 2 item 6).",
+      "type": "object",
+      "required": ["result"],
+      "properties": {
+        "result": {"$ref": "vocabulary/provenance.json#/$defs/review_result"},
+        "reviewer": {"$ref": "record.writer.json#/$defs/json_value"},
+        "orcid": {"$ref": "record.writer.json#/$defs/json_value"},
+        "date": {"$ref": "record.writer.json#/$defs/json_value"},
+        "independent_of_extraction": {"$ref": "record.writer.json#/$defs/json_value"},
+        "checklist": {"$ref": "record.writer.json#/$defs/json_value"}
+      },
+      "additionalProperties": false
+    },
+    "returned_label": {
+      "description": "A result's label: one of section 2's, or the field's label (record_format.md section 4.1).",
+      "anyOf": [
+        {"$ref": "vocabulary/labels.json#/$defs/result_label"},
+        {"$ref": "vocabulary/fields.json#/$defs/label"}
+      ]
+    },
+    "assumption": {
+      "description": "The declaration a value rests on, as the request gives it, basis aside (read_side_contract.md section 2): a nominal's value, or an extrapolation's method and law.",
+      "oneOf": [{"$ref": "#/$defs/nominal_assumption"}, {"$ref": "#/$defs/extrapolation_assumption"}]
+    },
+    "nominal_assumption": {
+      "description": "A nominal's value.",
+      "type": "object",
+      "required": ["acceptance", "value"],
+      "properties": {
+        "acceptance": {"const": "nominal"},
+        "value": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
+    "extrapolation_assumption": {
+      "description": "An extrapolation's members as the request gives them, method and law among them, which S3's extrapolations type.",
+      "type": "object",
+      "required": ["acceptance"],
+      "properties": {
+        "acceptance": {"const": "extrapolation"}
+      },
+      "additionalProperties": {"$ref": "record.writer.json#/$defs/json_value"}
     }
   }
 }

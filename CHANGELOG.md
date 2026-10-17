@@ -29,7 +29,9 @@ every family entry goes in `families/CHANGELOG.md`.
   member whose row does not allow it (`form_invalid`); a token it knows for no member of that name
   (`unknown_token`); and a withheld value (`withheld`), each check made and every reason given. Beyond shapes
   it checks counts, ranges in order, signs and bounds, a statistics block's conditional members, an
-  uncertainty's rules, and each status object's place and token (`provenance.md` section 1 item 5). A form
+  uncertainty's rules, and each status object's place and token (`provenance.md` section 1 item 5); one that
+  breaks its shape, a member one slip from one it names included, is read for nothing else, so its token
+  gives no reason of its own (`form_invalid` alone, never `unknown_token` beside it: S2a-4's HP12). A form
   the row allows whose own member waits for S2b or S3 (a table, an interval, a composition, evidence) raises
   `NotImplementedError` whatever its other members hold, since its own member could add a reason: so a
   composition's components and an evidence entry's withholding wait for S2b-1 and S2b-2. A form the row does
@@ -49,7 +51,7 @@ every family entry goes in `families/CHANGELOG.md`.
   those the request names, each by section 5's table, every comparison on the exact values of the doubles
   (`fractions.Fraction`), a stated `plus_minus` turning `met` into `unknown` alone (`condition_uncertain`),
   and gives the result's `conditions` once it has run to its end (`core/conditions.py`). A read step 10 does
-  not end raises `NotImplementedError` until S2a-4 builds steps 11 to 13.
+  not end goes on to steps 11 to 13, which S2a-4 builds (below).
 - Implied conditions (`declarations.md` section 4.1): step 0 checks each request's `implied_condition`,
   whatever field or location it names, its units as an operating condition's (`request_unit_mismatch`), and
   keeps only the members its shape names; step 10 applies one located at the read whose fact and token the
@@ -60,6 +62,25 @@ every family entry goes in `families/CHANGELOG.md`.
   `[v, v]`). A result's `applied`, outside its JSON and its equality, holds the indexes of the implied
   conditions that filled a condition. A request with any other
   acceptance still raises `NotImplementedError`.
+- The read's steps 11 to 13 for a constant, and its result (S2a-4; `read_side_contract.md` sections 2, 3 and
+  6). Step 11 adds nothing to a constant's conditions; step 12 gives `stated_without_origin` (`unknown`) and
+  the field's label and `mixed_conditions` for a derived value whose inputs' conditions differ; step 13 gives
+  a constant's value under `want: value` and `want_mismatch` under any other `want` (`want: fit` on a field
+  holding a fit record raises `NotImplementedError` until the fits and reference data suite). The result
+  (`ReadResult`, with `FieldRead` and `ProvenanceSummary`) holds the members section 2 gives, each present
+  as its item 6 says: the value with its unit, specimen facts, statistics block and provenance (the origin,
+  the review as found or `not_checked`, the source's key, a derived value's derivation with its
+  `assumptions`), each the members the reader's version defines, read from the generated shapes, as stored
+  and copied (the code design's rule 6), a statistics block held as the status object its row allows
+  returned as one. `to_json` writes numbers as stored, `-0` included, and each count
+  and index as an integer (rule 5). Intervals, compositions and evidence still raise at their member.
+- Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (`core/read.py`,
+  `fields.alternatives_problems`): a list that breaks its shape is `form_invalid`, a member one slip from
+  `alternatives` or a value field's beside it included; a fault of the request inside one alternative refuses
+  the field where no alternative has a reason of its own; and two or more alternatives none of which has a
+  reason of its own give `want_mismatch` where none has a form `want` can give, else `no_pick`, each in
+  `alternative_values` by its stored index. Any other outcome over alternatives raises `NotImplementedError`
+  until S4.
 - `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
   name-overlap check share. A word made plural or singular must be a word: the empty string between two
   underscores is none.
@@ -87,6 +108,17 @@ every family entry goes in `families/CHANGELOG.md`.
   built yet.
 
 ### Schema
+- `read_result.json`'s members, placeholders until now, typed from the writer schema's `$defs` and the
+  vocabulary (S2a-4): the value by `want` (a number, an interval, a composition, a list of test reports, a
+  form's member as stored, and the operations' content hash and listing), `alternative_values` and each
+  entry, the unit, the condition entry (`name`, `status`, `record`, `operating`: the record's entry, its status
+  object or an implied value with basis `implied`), the specimen, the statistics block, the provenance a read
+  returns (its review as found, other members as the record holds them), the labels and a nominal's
+  `assumption` (an extrapolation's members wait for S3). `case.json`'s compared result takes the same shapes,
+  and every case file's expected answer validates against them; `tests/spec_sync/test_schemas.py` holds the
+  condition entry's record to every condition shape and the returned review to the writer's members. Two
+  names take a meaning more, allowed with their reasons and safeguards (`tests/spec_sync/name_overlaps.json`):
+  `basis` (`implied`, in a result alone) and `source` (a result returns the key alone).
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
   the eight forms, or alternatives; the constant, interval, composition and evidence forms in full; conditions
   with `plus_minus` and `set_or_measured`, each token condition bound to its own row's tokens; the specimen
@@ -258,6 +290,41 @@ every family entry goes in `families/CHANGELOG.md`.
   round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
   step (`tests/spec_sync/case_steps.json`).
 - S2a-3's 58 case files run and pass: 637 of 1258 case files pass, 621 wait for later steps.
+- S2a-4's 162 case files run and pass: 799 of 1258 case files pass, 459 wait for later steps. The reason-step
+  check gives steps 11 to 13 their codes and loses its set of step 10's `unknown` codes no case returned, each
+  now returned; step 7's `want_mismatch` waits for a case of S2b or S4.
+- The result's properties (`tests/property/test_result_properties.py`, in the `conditions` shard): HP1,
+  totality and the reason table; HP2, the status law and the members item 6 gives; HP6, what a read returns
+  as stored, by the generated shapes, sharing nothing; and HP11, the hash suite's label exactly where a read
+  reached step 4. They draw reads that end at each step S2 builds, the kind first, and HP6's draws a `-0`
+  value, each way a review reads and an unknown member, each by its chance. 17 mutants, each killed at both
+  sizes within the `ci` profile's examples (`test_result_mutants.py`); two audit controls. Fuzz target 4
+  holds every result to HP1 and HP2 (`field_oracle.check_result_laws`, shown failing on each law broken).
+- HP12, the read agrees with the test-only reference model (`tests/property/test_model_properties.py`, in a
+  `relations` shard of its own): given the same sources, request text and claims, the two results are equal
+  as section 2 compares results, or both refuse to decide; five parts draw reads across every step S2 builds,
+  two faults of one step among them (the design's B5), a catalogue of 52 faults of step 0, and the rules no
+  case file pins. Its known divergences are listed by kind with their reasons and held exactly: three steps
+  the implementation has not built that the model decides (an overlay as the target, a form S2b reads, an
+  acceptance other than an implied condition), and two open points the implementation reads otherwise than
+  the model's fail-closed choice, for the maintainer. 23 mutants of the implementation (a step that stops at
+  its first fault at steps 0, 8, 9 and 10, and the design's mutants of HP1 to HP11 a result shows) and 18 of
+  the model (its survivors of the cases and the faults one case file alone kills), each killed at both sizes;
+  7 of the model's listed with the reason no read S2 builds shows them; controls of the check itself.
+- HP4, a fault in another field or section's specimen never changes a read, and one in its own section's
+  refuses it; HP10, a read's sources and request written in another byte form give its result
+  (`test_invariance_properties.py`): six mutants, the design's two among them.
+- Information monotonicity, the fail-closed spike's relations S2's forms reach (N1r, N2, N3r, N4, N5r, N6,
+  N8, P1 to P4, S1, S2, S5), each a property restricted as the spike's limits say, on worlds drawn on the
+  spike's grids, the rare triggers of its faults built in as drawn ways, each relation holding in a declared
+  least share (`test_monotonicity_properties.py`): 18 mutants, the spike's that S2's forms reach and new ones,
+  and the unrestricted twins N1 and N3 shown failing on the core.
+- Fuzz target 4 holds each read under `want: value` to the reference model, as HP12 does, which sees a
+  refusal step 8 gives wrongly (S2a-2's review, L3); it found a statistics status object returned as an empty
+  block (fixed) and four readings of the model the text does not take (fixed, each seeded). The record target
+  drives HP1, HP2, HP4, HP6, HP10, HP11 and HP12, and the control's replay runs HP12's and HP10's modules too.
+- The result's draws reach step 10's `unknown` reasons and two reasons a read more often: the HP1 mutant that
+  drops `condition_unchecked`'s condition, which took 1,079 examples, dies within 507 over twelve seeds.
 - Steps 9 and 10's properties (`tests/property/test_condition_properties.py`), in a shard of their own: HP7,
   each condition against an oracle written from section 5 alone, on exact rationals, at each boundary its
   exactness turns on, with a plus or minus of each kind, the table's other rows and implied conditions; HP8,
@@ -387,6 +454,21 @@ every family entry goes in `families/CHANGELOG.md`.
   elsewhere, holds pages.yml's job to deploying what the site job checks, and checks that no test or script
   names a path of the site but those the site job runs and a few listed with their reasons, beside #23's check
   for documentation.
+- A test-only reference model of the read, written from the specification's text and importing nothing from
+  `materica`, for HP12 and the fuzz targets (S2a-4, phase 0; the S2 design's SQ49): steps 0 to 13 for
+  constants, intervals, compositions and evidence, implied conditions and nominals, `list_records`,
+  `content_hash`, and alternatives as far as S4's decision 12 lets S2 go; anything else, a table, a pick, an
+  overlay or an extrapolation among them, gives no verdict, which a test never reads as a pass. Each rule
+  cites the text, a quote at its line, and each point the text leaves open is listed with the ruling or the
+  fail-closed choice taken. Of the 1,223 case files of a read, it agrees with 894 under every configuration
+  of claims each allows (6,776 runs) and gives no verdict on 329, each listed by kind in an exact list of
+  exceptions (tables, overlays, extrapolations, picks, and alternatives with reasons of their own); it
+  disagrees with none. The table evaluation suite's 35 files, which ask for no read, are left out, and a test
+  holds those left out to the files whose operation is `evaluate`. Its tables are held to the generated
+  vocabulary; 75 faults seeded in it are each killed by a case file or listed as a survivor, a rule no case
+  pins, 15 of them, each killed by HP12 or listed with the reason no read S2 builds shows it; and a layering
+  check, with a control, shows it reaches no `materica` module (`tests/reference/`). Phase B fixed five of its
+  readings the text does not take, each found by HP12 or by fuzz target 4 held to it, each seeded since.
 
 ## [0.1.0.dev1] - 2026-10-14
 

@@ -39,12 +39,23 @@
     {
       "rule": "A",
       "names": ["basis"],
-      "meanings": 6,
-      "reason": "Where a number comes from, with a vocabulary per place: a condition's or fact's (stated, inferred), a statistics block's spread, an uncertainty's, an interval's, a composition's fractions (mass, volume, mole), and free text in a declaration. Each list is closed where it sits.",
+      "meanings": 7,
+      "reason": "Where a number comes from, with a vocabulary per place: a condition's or fact's (stated, inferred), a statistics block's spread, an uncertainty's, an interval's, a composition's fractions (mass, volume, mole), free text in a declaration, and in a result's condition entry the value an implied condition supplies (implied), which a record never holds. Each list is closed where it sits.",
       "safeguard": {
         "document": "docs/specification/uncertainty.md",
         "quote": "a token it knows for a member of that name, in a member whose row does not allow it (`student_t` in a block's `distribution`, or `reported_uncertainty` in a block's `basis`), breaks the block's shape (`form_invalid`)",
         "what": "Section 4 (PR-154, PR-158): a token of another place's list is refused (form_invalid, or unknown_token for one known for no member of that name), never misread."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["source"],
+      "meanings": 2,
+      "reason": "A record's provenance holds its source as an object (its key, document and locator); a result's provenance returns the key alone, a string, which a read never reads back from a record.",
+      "safeguard": {
+        "document": "docs/specification/provenance.md",
+        "quote": "since a result returns the key alone",
+        "what": "Section 2 item 6: step 8 checks a record's source as an object whose key is a string, so a key written where the object goes is refused (form_invalid), never misread."
       }
     },
     {

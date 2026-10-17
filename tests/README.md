@@ -4,10 +4,11 @@
 |---|---|---|
 | `conformance/` | the specification's conformance cases, run by a runner that counts what it cannot run; the case files themselves | how cases are counted and compared; adding a case |
 | `spec_sync/` | what is written in two places: the specification's tables and the schemas, the envelope checks and the reader schema, `CASES.md` and the case files, the cases and the steps that run them, the specification's references and what they name | what each test holds together |
-| `property/` | Hypothesis properties of the reader, the canonical form, the hash, the one-slip relation, the envelope checks, versions, the read and its steps 8 to 10, of the writer schema's value fields, and the mutants they kill | the profiles and sizes, the shards, the mutants, the audits; adding a property |
+| `property/` | Hypothesis properties of the reader, the canonical form, the hash, the one-slip relation, the envelope checks, versions, the read and its steps 8 to 13 and its result, the read's agreement with the reference model, its isolation, byte form and information monotonicity, of the writer schema's value fields, and the mutants they kill | the profiles and sizes, the shards, the mutants, the audits; adding a property |
 | `unit/` | examples at the edges, the rules over source files, and the scripts in `scripts/` | what belongs there |
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
+| `reference/` | a test-only reference model of the read, written from the text, which imports nothing from `materica`; it agrees with every case file of a read or lists it, its tables with the vocabulary, its citations with the text | what it decides and what not; its open points; its exceptions; its mutant table |
 
 `conftest.py` here registers the Hypothesis profiles for every test and the property shards (`--shard`), selects
 the mutant searches and the audit controls (`--property-controls only`) or every other test (`none`), as CI's
@@ -52,9 +53,13 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   a comparator fed wrong answers (`conformance/test_comparator.py`);
 - each property: mutants of the core, or of the writer schema, one fault each, that it must kill at both tree
   sizes, a writer mutant at the assertion it names (`property/test_mutants.py`,
-  `property/test_record_mutants.py`, `property/test_value_field_mutants.py`, `property/test_condition_mutants.py`,
-  `property/test_writer_mutants.py`),
-  and a feature audit that fails when its examples stop reaching what the specification distinguishes;
+  `property/test_record_mutants.py`, `property/test_value_field_mutants.py`,
+  `property/test_condition_mutants.py`, `property/test_writer_mutants.py`, `property/test_result_mutants.py`,
+  `property/test_model_mutants.py`, which seeds faults in the reference model too,
+  `property/test_invariance_mutants.py`, `property/test_monotonicity_mutants.py`, whose unrestricted twins
+  must fail on the core), and a feature audit that fails when its examples stop reaching what the
+  specification distinguishes; and the agreement with the model fails on a divergence it does not list, or
+  one that does not hold as listed (`property/test_model_controls.py`);
 - the two validators' agreement: writer and reader mutants given to one side, each of the 12 writer mutants
   the drawn faults had missed among them; a pattern the two regex dialects read differently given to both; the
   pairs the properties use held to both libraries; and a module that takes jsonschema-rs's verdict alone
@@ -86,6 +91,11 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   no row and a repeated item (`spec_sync/test_references.py`);
 - the draw-rejection audit, the import, layer and SPDX rules and the scripts, generators included: inputs they
   must refuse (`unit/`);
+- the reference model: each case file it disagrees with or gives no verdict on, unless listed for that
+  outcome, and a listed one it agrees with; a read left out of its cases, or an evaluation kept; a fault
+  seeded in it, 75 of them, killed by a case file or listed as a survivor (and each survivor killed by HP12 or
+  listed with its reason, `property/test_model_mutant_table.py`); a table drifted from the
+  vocabulary; a citation off its line; a module that reaches `materica` (`reference/`);
 - the consumer snippet: CI deletes `py.typed` from the installed wheel and requires the snippet then to fail;
   and it removes `ReadOnly` from the installed `shapes.pyi` and requires both checkers then to report the
   ignore on the snippet's write into a result as unused (pyright by a setting in the snippet's first line).
