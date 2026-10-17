@@ -472,6 +472,19 @@ def holds_no_other_kind(value: JsonObject, members: tuple[str, ...]) -> bool:
     return False
 
 
+def entry_without_the_other_kind(
+    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+) -> JsonObject:
+    """A condition entry whose `record` leaves out the members of the other kind's shape, as members the
+    reader does not know at that place."""
+    entry = _condition_entry(name, held, applied, request, reasons)
+    record = entry.get("record")
+    if isinstance(record, dict) and name in model.CONDITIONS and "status" not in record:
+        other = ("token",) if model.CONDITIONS[name].shape == "numeric" else model.NUMERIC_CONDITION_ONLY
+        entry["record"] = {member: value for member, value in record.items() if member not in other}
+    return entry
+
+
 def entry_provenance_unchecked(provenance: JsonValue, faults: Reasons) -> None:
     return None
 
@@ -881,6 +894,13 @@ MUTANTS: Mapping[str, Mutant] = {
         "a numeric condition holding `token`, or a token condition holding `value`, read",
         "OPEN_POINTS: members_of_the_other_kind",
         {"holds_another_kind": holds_no_other_kind},
+        survives="no case holds a condition with a member of the other kind's shape: the text leaves it open",
+    ),
+    "members_of_the_other_kind_ignored": Mutant(
+        "a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does "
+        "not know: not refused, and not returned",
+        "OPEN_POINTS: members_of_the_other_kind",
+        {"holds_another_kind": holds_no_other_kind, "condition_entry": entry_without_the_other_kind},
         survives="no case holds a condition with a member of the other kind's shape: the text leaves it open",
     ),
     "slips_of_alternatives_ignored": Mutant(
