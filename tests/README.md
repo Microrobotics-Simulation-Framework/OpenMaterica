@@ -30,8 +30,8 @@ while the others idle. There, at `dev` (2026-10-16): 6 workers took 6.0 minutes 
 `worksteal`, and 12 took 2.9 under `worksteal`; more than 12 gained nothing.
 
 CI draws as a local run does: new examples on every run, and under one `--hypothesis-seed` the same examples
-as any machine. Until 2026-10-17 it drew the same examples on every run of the same code, whatever the seed:
-GitHub sets `CI`, on which Hypothesis loads its own derandomised `ci` profile, and the profiles inherited it
+as any machine. Until #38 it drew the same examples on every run of the same code, whatever the seed: GitHub
+sets `CI`, on which Hypothesis loads its own derandomised `ci` profile, and the profiles inherited it
 (`property/README.md`, "Profiles and sizes").
 
 ## Repeat runs on CI

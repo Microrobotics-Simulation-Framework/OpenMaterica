@@ -403,18 +403,25 @@ every family entry goes in `families/CHANGELOG.md`.
   each of these, running its steps as written with a stub in place of pytest, each check with controls in which
   it fails.
 - CI's Hypothesis runs drew fixed examples until this change. From the first CI run, with the profiles'
-  introduction in S1a (cd3d444, 2026-10-14), and so in the runs behind 0.1.0.dev1, every Hypothesis test on
-  GitHub, in the test matrix at `dev`, in the Hypothesis job at `ci` and in the one `deep` run so far (a
-  manual run on 2026-10-17), drew the same examples on every run
-  of the same code, whatever `--hypothesis-seed` said. GitHub sets `CI`, on which Hypothesis loads its
-  built-in `ci` profile at import, and the repository's profiles, registered without a parent, inherited its
-  `derandomize=True`, which Hypothesis applies before any seed, and its suppressed `too_slow` health check.
-  The profiles now take Hypothesis's own defaults as their parent and suppress `too_slow` themselves, so the
-  one change on CI is that every run draws new examples, those a laptop draws under the same seed; on a
-  laptop, the one change is that `too_slow` is suppressed. `tests/unit/test_hypothesis_profiles.py` checks, in
-  fresh processes with and without a runner's variables, that a runner changes no setting of any profile, that
-  none is derandomised, and that on a runner two seeds draw different examples and one seed those it draws
-  elsewhere; its controls, the registration as it was and `derandomize` put back, each fail it.
+  introduction in S1a (cd3d444, 2026-10-14), and so in the runs behind 0.1.0.dev1, every job that ran the
+  Hypothesis tests on GitHub drew the same examples on every run of the same code, whatever
+  `--hypothesis-seed` said: the test matrix and the per-commit job at `dev`, the Hypothesis job at `ci`, and
+  the one `deep` run before this change (by hand, 2026-10-17), with that run's fuzz job's replay at `ci`.
+  GitHub sets `CI`, on which Hypothesis loads its built-in `ci` profile at import, and the repository's
+  profiles, registered without a parent, inherited its `derandomize=True`, which Hypothesis applies before any
+  seed, and its suppressed `too_slow` health check. The profiles now take Hypothesis's own defaults as their
+  parent and suppress `too_slow` themselves, so the one change on CI is that every run draws new examples,
+  those a laptop draws under the same seed; on a laptop, the one change is that `too_slow` is suppressed.
+  `tests/unit/test_hypothesis_profiles.py` checks, in fresh processes with and without a runner's variables,
+  that a runner changes no setting of any profile, imported or as a property runs them after pytest's hooks;
+  that none is derandomised; that each keeps the settings the maintainer fixed (its example count, no deadline,
+  `too_slow` alone suppressed, the blob, the repository's example database and every phase); and that on a
+  runner two seeds draw different examples and one seed those it draws elsewhere. Its controls, the
+  registration as it was, `derandomize` put back, each fixed setting changed and a deadline set in a hook on a
+  runner alone, each fail it. Each `dev` run on CI is now a sample of its own, so an audit fails a sound
+  property by chance about once in 2,000 runs of the suite, which makes a push red about once in 400 from the
+  test matrix (`tests/property/README.md`, "Audits"). An audit's failure therefore names the seed Hypothesis
+  drew its run under and the command that draws it again (`tests/unit/test_audit_replay.py`).
 
 ## [0.1.0.dev1] - 2026-10-14
 
