@@ -13,8 +13,8 @@ decides. Anything else fails, but the known divergences, each listed by kind wit
 exactly what each side gives there:
 
 - a step the implementation has not built that the model decides (`NOT_BUILT`): an overlay as the target,
-  evidence, an acceptance other than an implied condition; each found by the implementation's own words
-  for what it has not built, and held to what the draw holds and the model gives;
+  an acceptance other than an implied condition; each found by the implementation's own words for what it
+  has not built, and held to what the draw holds and the model gives;
 - an open point on which the two read the text differently (`OPEN_POINTS`), planted by the draw alone: there
   the model must refuse, as its fail-closed reading does, and the model given the implementation's reading (a
   seeded fault of the model that is that reading, `tests/reference/mutants.py`) must agree with the
@@ -30,7 +30,6 @@ from hypothesis import given
 
 from materica.core.read import read
 from materica.core.record import RecordStore
-from materica.core.vocabulary import VOCABULARY
 from tests.property import model_strategies as strategies
 from tests.property.model_strategies import Example
 from tests.property.strategies import SIZE
@@ -205,33 +204,6 @@ def an_overlay_as_the_target(example: Example, model: Outcome) -> bool:
     return refused and any(record.get("record_type") == "overlay" for record in targets(example))
 
 
-def forms_held(example: Example) -> set[str]:
-    """The forms the read field, and each alternative it holds, hold where its row allows them."""
-    request = request_of(example)
-    target = request.get("target") if isinstance(request, dict) else None
-    name = target.get("field") if isinstance(target, dict) else None
-    if not isinstance(name, str) or name not in VOCABULARY.fields:
-        return set()
-    section, _, field_name = name.partition(".")
-    forms: set[str] = set()
-    for record in targets(example):
-        body = record.get("body")
-        sections = body.get("sections") if isinstance(body, dict) else None
-        held = sections.get(section) if isinstance(sections, dict) else None
-        fields = held.get("fields") if isinstance(held, dict) else None
-        field = fields.get(field_name) if isinstance(fields, dict) else None
-        values = field.get("alternatives") if isinstance(field, dict) else None
-        for value in values if isinstance(values, list) else [field]:
-            if isinstance(value, dict) and value.get("form") in VOCABULARY.fields[name].forms:
-                forms.add(str(value["form"]))
-    return forms
-
-
-def evidence_s2b_2_reads(example: Example, model: Outcome) -> bool:
-    """Evidence, on a row that allows it, whose own member S2b-2 reads."""
-    return "evidence" in forms_held(example)
-
-
 def an_acceptance_s2b_reads(example: Example, model: Outcome) -> bool:
     """An acceptance other than an implied condition, whose checks S2b-2 (nominals), S3 and S4 build: the
     implementation raises whatever else the request holds."""
@@ -254,12 +226,6 @@ NOT_BUILT = {
         "a read whose target is an overlay",
         an_overlay_as_the_target,
         "S4's decision 8: S4 builds step 5's refusal of an overlay as the target, which the model gives",
-    ),
-    "evidence": NotBuilt(
-        "the member of a field of form",
-        evidence_s2b_2_reads,
-        "S2b-2 reads evidence, which the model reads; S2b-1 read intervals and compositions, on which the two"
-        " now agree",
     ),
     "an acceptance S2b reads": NotBuilt(
         "a request's acceptances other than implied conditions",

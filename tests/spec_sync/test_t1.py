@@ -1,13 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """T1 (the S2 design, section 1.7): step 8's shapes, written by hand in `core/value_shapes.py` and
 `core/fields.py`, against the writer schema's value-field `$defs` and the reader `$defs` generated from them.
-Where a form's own member waits for a step not built yet (evidence, a table, which `form_problems` will not
-answer), the "step 8 verdict" is not the code's: it is what the case files reading that field expect, and with
-no such case file there is none. A table has none yet: the writer schema holds its member as a placeholder
-until S3a writes it, and with it T1 on the table fixtures (the S3 design, section 6.5). So for 21 conformance
-examples, all evidence, and for every variant of a drawn base of those forms, T1 holds the data to the
-schemas, not step 8; it holds step 8 itself on the constants, the intervals, the compositions and the forms a
-row does not allow.
+A table, whose own member waits for S3a (`form_problems` will not answer), has no step-8 verdict yet: the
+writer schema holds its member as a placeholder until S3a writes it, and with it T1 on the table fixtures (the
+S3 design, section 6.5). T1 holds step 8 itself on the constants, the intervals, the compositions, the
+evidence and the forms a row does not allow.
 
 It runs on every value field a registered field's row reads, with its section's `specimen`, in every material
 record among the conformance inputs, and on one-fault variants of its bases: the full fields and forms of
@@ -21,9 +18,8 @@ other token of the origin's row, alone and beside each change inside it. Each ex
 - the reader `$defs`', alike;
 - step 8's, read in the field's own record (so a slip in its envelope or section counts), which accepts where
   it gives none of `form_invalid`, `unknown_token` and `form_not_registered`. A `withheld` value is a refusal
-  to read, not of a shape, and `family_suite_absent` follows the claims. Where a form's own member waits for a
-  step not built yet, the verdict is as above: the case files' step-8 reasons where they end at step 8,
-  acceptance where they end later.
+  to read, not of a shape, nor is `entries_withheld`, and `family_suite_absent` follows the claims. A table
+  has none, as above.
 Three relations hold, each but for listed exceptions:
 1. what the writer schema accepts, step 8 accepts;
 2. what step 8 refuses with `form_invalid`, the reader `$defs` refuse;
@@ -173,10 +169,14 @@ EXCEPTIONS: dict[str, Kind] = {
             1: (
                 "across_sources removed provenance.derivation.inputs.0",
                 "across_sources removed provenance.derivation.inputs.1",
+                "evidence removed evidence.1.provenance.derivation.inputs.0",
+                "evidence removed evidence.1.provenance.derivation.inputs.1",
             ),
             2: (
                 "across_sources removed provenance.derivation.inputs.0",
                 "across_sources removed provenance.derivation.inputs.1",
+                "evidence removed evidence.1.provenance.derivation.inputs.0",
+                "evidence removed evidence.1.provenance.derivation.inputs.1",
             ),
         },
         mark=r"past the last input",
@@ -317,10 +317,8 @@ def step_8(example: Example) -> frozenset[str] | None:
             RecordField(spec, example.value, example.section), example.record, {"plain_read"}
         )
     except NotImplementedError:
-        if field_shape(example.value) == "table_field":
-            return None
-        expected = [verdict for _, verdict in readers().get(example.name, []) if verdict is not None]
-        return frozenset[str]().union(*expected) if expected else None
+        # A table its row allows, whose member S3a writes.
+        return None
     return frozenset(reason.code for reason in found)
 
 
@@ -777,12 +775,13 @@ def base_examples() -> list[Example]:
 
 
 def test_the_bases_are_valid_and_pass_step_8() -> None:
-    """Each base the variants change, the full fields and the drawn ones; a drawn field of a form whose own
-    member waits for S2b-2 or S3 (evidence, a table) has no step-8 verdict yet."""
+    """Each base the variants change, the full fields and the drawn ones; a drawn table, whose own member
+    waits for S3a, has no step-8 verdict yet."""
+    withholding = (frozenset({"withheld"}), frozenset({"entries_withheld"}))
     for example in base_examples():
         assert WRITER["value_field"](example.value), example.name
         assert ROW[example.field](example.value), example.name
-        assert step_8(example) in (frozenset(), frozenset({"withheld"}), None), example.name
+        assert step_8(example) in (frozenset(), *withholding, None), example.name
     forms = {str(example.value["form"]) for example in base_examples() if isinstance(example.value, dict)}
     assert forms == {"constant", "table", "interval", "composition", "evidence"}
 

@@ -201,23 +201,14 @@ def water_field() -> dict[str, JsonValue]:
     return found
 
 
-@pytest.mark.parametrize(
-    ("name", "form"),
-    [
-        ("fluid.dynamic_viscosity", "table"),
-        ("biocompatibility.evidence", "evidence"),
-    ],
-)
-def test_a_form_its_row_allows_whose_member_is_not_read_yet_raises_whatever_else_is_wrong(
-    name: str, form: str
-) -> None:
+def test_a_table_its_row_allows_raises_whatever_else_is_wrong() -> None:
     """Its own member could add a reason, and every reason found is reported (`read_side_contract.md` section
     2 item 2): a table's unknown `scheme` beside a broken `unit` gives `unknown_token` too, once read."""
-    field = {**water_field(), "form": form, form: {}}
+    field = {**water_field(), "form": "table", "table": {}}
     del field["label"]
     for broken in ({}, {"unit": None}, {"statistics": None, "label": "materica.fluid.newtonian.v1"}):
         with pytest.raises(NotImplementedError):
-            read(*stored(with_field(name, {**field, **broken}), name))
+            read(*stored(with_field("fluid.dynamic_viscosity", {**field, **broken})))
 
 
 @pytest.mark.parametrize(
@@ -1663,6 +1654,177 @@ def test_a_slip_of_a_member_named_at_another_place_is_ignored_in_an_own_member(
     holder[slip] = 1.0
     result = reader(own_field(form, own), want=want)
     assert (result.status, result.reasons, result.value) == ("met", (), MEMBERS[form]), (place, slip)
+
+
+# Evidence (`record_format.md` section 4.3; SQ44).
+
+
+EVIDENCE_FIXTURE = WATER.with_name("evidence_fixture.json")
+EVIDENCE_PROVENANCE: dict[str, JsonValue] = {
+    "origin": "measured_by_contributor",
+    "extraction": {"method": "own_measurement"},
+    "assistance": {"status": "none"},
+    "review": {"status": "not_checked"},
+}
+REPORT: dict[str, JsonValue] = {
+    "endpoint": "cytotoxicity",
+    "standard": {"designation": "ISO 10993-5", "year": 2009.0},
+    "contact_category": "the source's words",
+    "contact_duration": "the source's words",
+    "material_form": "the source's words",
+    "processing": "the source's words",
+    "reported_result": "the source's words",
+    "provenance": EVIDENCE_PROVENANCE,
+}
+WITHHELD_REPORT: dict[str, JsonValue] = {
+    **{name: {"status": "withheld"} for name in REPORT if name != "provenance"},
+    "provenance": {**EVIDENCE_PROVENANCE, "recipe": {"steps": "Table 3, row 2"}},
+}
+
+
+def read_evidence(
+    evidence: JsonValue, *, want: str = "evidence", members: dict[str, JsonValue] | None = None
+) -> ReadResult:
+    """The evidence fixture's field, holding `evidence` and `members`, read under `want`."""
+    name = "biocompatibility.evidence"
+    record: dict[str, JsonValue] = json.loads(EVIDENCE_FIXTURE.read_text(encoding="utf-8"))
+    field = cast(dict[str, Any], record)["body"]["sections"]["biocompatibility"]["fields"]["evidence"]
+    field.update({"evidence": evidence, **(members or {})})
+    request, records = stored(record, name)
+    assert isinstance(request, dict)
+    request["requirement"] = {"want": want}
+    del request["operating_conditions"]
+    return read(request, records)
+
+
+def test_evidence_returns_its_reports_as_stored_each_provenance_whole_and_no_statistics() -> None:
+    """`record_format.md` section 4.3 item 2: "A reader returns an entry with its statuses and its
+    `provenance` whole, holding the members `read_side_contract.md` section 2 item 5 defines": a member the
+    reader does not know left out at every depth, and the review as `provenance.md` section 2 item 6 reads
+    every review [PR-038] [PR-337]; section 2 item 6: evidence has no statistics."""
+    source: dict[str, JsonValue] = {
+        "key": "smith2019",
+        "document": {"identifier": "doi:10.1000/xyz123", "version": "version_of_record"},
+    }
+    provenance: dict[str, JsonValue] = {
+        **EVIDENCE_PROVENANCE,
+        "origin": "measured_by_source",
+        "source": source,
+    }
+    report: dict[str, JsonValue] = {
+        **REPORT,
+        "contact_duration": {"status": "unstated", "reason": "not in the report"},
+        "provenance": provenance,
+    }
+    unknown: dict[str, JsonValue] = {"x_unknown_member": 1.0}
+    document: dict[str, JsonValue] = {**cast(dict[str, JsonValue], source["document"]), **unknown}
+    stored_source: dict[str, JsonValue] = {**source, "document": document}
+    stored_provenance: dict[str, JsonValue] = {
+        **provenance,
+        **unknown,
+        "source": stored_source,
+        "review": {"status": "unstated"},
+    }
+    standard: dict[str, JsonValue] = {**cast(dict[str, JsonValue], REPORT["standard"]), **unknown}
+    stored_report: dict[str, JsonValue] = {
+        **report,
+        **unknown,
+        "standard": standard,
+        "provenance": stored_provenance,
+    }
+    result = read_evidence([stored_report, WITHHELD_REPORT], members={"statistics": {"central": "stated"}})
+    assert (result.status, result.reasons) == ("unknown", (Reason("entries_withheld"),))
+    written = json.loads(json.dumps(result.to_json()))
+    reviewed: dict[str, JsonValue] = {
+        **report,
+        "provenance": {**provenance, "review": {"status": "not_checked"}},
+    }
+    assert written["value"] == [reviewed, WITHHELD_REPORT]
+    assert "statistics" not in written
+    cast(list[Any], result.value)[0]["endpoint"] = "changed"
+    assert read_evidence([stored_report, WITHHELD_REPORT]).to_json() == written
+    for want in ("value", "bounds", "components"):
+        refused = read_evidence([REPORT], want=want)
+        assert (refused.status, refused.reasons, refused.value) == (
+            "not_met",
+            (Reason("want_mismatch"),),
+            None,
+        )
+
+
+def report_with(**members: JsonValue) -> dict[str, JsonValue]:
+    return {**REPORT, **members}
+
+
+EVIDENCE_LISTS: list[tuple[JsonValue, set[ReasonCode]]] = [
+    ([REPORT], set()),
+    ([], {"form_invalid"}),
+    # `provenance.md` section 1 item 5: the form's member, "except `evidence`, which never holds one".
+    ({"status": "withheld"}, {"form_invalid"}),
+    ([WITHHELD_REPORT], {"withheld"}),
+    ([WITHHELD_REPORT, WITHHELD_REPORT], {"withheld"}),
+    ([REPORT, WITHHELD_REPORT], {"entries_withheld"}),
+    # An entry that is not an object is not withheld, so not every entry is.
+    ([1.0, WITHHELD_REPORT], {"form_invalid", "entries_withheld"}),
+    # A withheld entry whose provenance breaks its shape is withheld still, its fault beside.
+    ([{**WITHHELD_REPORT, "provenance": {"origin": 1.0}}], {"form_invalid", "withheld"}),
+    # Withheld in part: "An entry is withheld whole, its provenance kept, or not at all".
+    ([report_with(endpoint={"status": "withheld"})], {"form_invalid"}),
+    (
+        [{**WITHHELD_REPORT, "endpoint": "cytotoxicity"}, WITHHELD_REPORT],
+        {"form_invalid", "entries_withheld"},
+    ),
+    # A marker that breaks its shape is read for nothing else, so it withholds nothing.
+    ([{**WITHHELD_REPORT, "endpoint": {"status": "withheld", "x": 1.0}}], {"form_invalid"}),
+    # Any other status stands in a report's member, `unstated` for a duration the source does not give.
+    ([report_with(contact_duration={"status": "unstated"})], set()),
+    ([report_with(standard={"status": "not_applicable", "x_unknown_member": 1.0})], set()),
+    ([report_with(standard={"status": "unstated", "year": 2009.0})], {"form_invalid"}),
+    ([report_with(endpoint={"status": "unstated", "x_unknown_member": 1.0})], {"form_invalid"}),
+    ([report_with(endpoint={"status": "untold"})], {"unknown_token"}),
+    ([report_with(endpoint=5.0)], {"form_invalid"}),
+    ([report_with(standard={"designation": "ISO 10993-5", "year": 2009.5})], {"form_invalid"}),
+    ([report_with(standard={"designation": "ISO 10993-5"})], {"form_invalid"}),
+    ([report_with(standard={"designation": "ISO 10993-5", "year": 2009.0, "yaer": 1.0})], {"form_invalid"}),
+    ([report_with(endpiont="cytotoxicity")], {"form_invalid"}),
+    ([{name: member for name, member in REPORT.items() if name != "processing"}], {"form_invalid"}),
+    ([{name: member for name, member in REPORT.items() if name != "provenance"}], {"form_invalid"}),
+    ([report_with(provenance={**EVIDENCE_PROVENANCE, "origin": "remembered"})], {"unknown_token"}),
+    ([report_with(provenance={**EVIDENCE_PROVENANCE, "origin": "measured_by_source"})], {"form_invalid"}),
+]
+
+
+@pytest.mark.parametrize(("evidence", "codes"), EVIDENCE_LISTS)
+def test_an_evidence_list_holds_one_report_or_more_each_withheld_whole_or_not_at_all(
+    evidence: JsonValue, codes: set[ReasonCode]
+) -> None:
+    """`record_format.md` section 4.3 items 1 and 2, `read_side_contract.md` section 3 step 8: every entry
+    withheld gives `withheld`, some `entries_withheld` [PR-052]; an entry's members by `provenance.md` section
+    1 item 5's row, "any; `withheld` only in every one of them at once"; an entry's provenance checked as a
+    field's is (the reference model's open point `evidence_entry_provenance`)."""
+    result = read_evidence(evidence)
+    assert {reason.code for reason in result.reasons} == codes, evidence
+
+
+EVIDENCE_MEMBERS: list[tuple[dict[str, JsonValue], str, set[ReasonCode]]] = [
+    ({"conditions": {"temperature": {"status": "unstated"}}}, "not_met", {"form_invalid"}),
+    ({"conditions": {"humidity": {"value": 0.5}}}, "unknown", {"condition_unknown_name"}),
+    ({"conditions": []}, "not_met", {"form_invalid"}),
+    ({"unit": "1"}, "not_met", {"unit_mismatch"}),
+    ({"unit": {"status": "not_applicable", "reason": "a list of reports"}}, "met", set()),
+    ({"statistics": {"status": "withheld"}}, "met", set()),
+]
+
+
+@pytest.mark.parametrize(("members", "status", "codes"), EVIDENCE_MEMBERS)
+def test_evidence_takes_no_registered_condition_and_its_unit_is_a_status_object(
+    members: dict[str, JsonValue], status: str, codes: set[ReasonCode]
+) -> None:
+    """`record_format.md` section 4.3 item 3: a registered condition is a shape error, a name the reader does
+    not know gives `unknown` [PR-052]; section 4.1: the unit `{"status": "not_applicable"}` [PR-010]; a
+    statistics block beside evidence, which has none, is a member a read neither checks nor returns."""
+    result = read_evidence([REPORT], members=members)
+    assert (result.status, {reason.code for reason in result.reasons}) == (status, codes), members
 
 
 DERIVED_INPUTS: dict[str, JsonValue] = {

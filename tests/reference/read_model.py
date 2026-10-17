@@ -1978,6 +1978,8 @@ def check_evidence(value: JsonValue, faults: Reasons) -> None:
     for entry in value:
         if not isinstance(entry, dict):
             faults.add("form_invalid")
+            # An entry that is not an object withholds nothing, so not every entry is withheld.
+            withheld_entries.append(False)
             continue
         if slipped(entry, EVIDENCE_ENTRY_NAMES):
             faults.add("form_invalid")

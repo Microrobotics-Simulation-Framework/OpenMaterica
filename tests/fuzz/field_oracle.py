@@ -193,7 +193,8 @@ def check_steps_9_and_10(
 
 
 # HP1 and HP2 (the S2 design), on any result as the target takes it: section 2 item 2's codes that carry
-# `condition` always, and those that may; the codes only steps before 10 give; and the statuses, best first.
+# `condition` always, and those that may; the refusals only steps before 10 give; and the statuses, best
+# first.
 WITH_A_CONDITION = frozenset(code for code in REASONS["reasons"] if code.startswith("condition_"))
 PERHAPS_A_CONDITION = frozenset(
     {
@@ -207,7 +208,9 @@ PERHAPS_A_CONDITION = frozenset(
     }
 )
 BEFORE_STEP_10 = frozenset(
-    code for code, row in REASONS["reasons"].items() if row.get("steps") and max(row["steps"]) < 10
+    code
+    for code, row in REASONS["reasons"].items()
+    if row.get("steps") and max(row["steps"]) < 10 and row["status"] == "not_met"
 )
 BEST_FIRST = ("met", "unknown", "not_met")
 
@@ -217,10 +220,9 @@ def check_result_laws(result: JsonValue) -> None:
     reason and on no reason of a code that never concerns one. HP2: the status the worst of the codes'
     statuses, folded here from the table; and the members present as section 2 item 6 says, no declaration
     being in the target's requests: `value`, `specimen`, `statistics` and `provenance` exactly where the
-    status is not `not_met` and the result rests on one value, `alternative_values` exactly under `no_pick`,
-    `unit` beside either, no `assumption`, and `conditions` beside a value, never under `no_pick` or after a
-    refusal before step 10. Evidence, which holds no statistics block, is the target's "not yet" until
-    S2b-2."""
+    status is not `not_met` and the result rests on one value, but `statistics` beside evidence, whose value
+    is its list of reports, `alternative_values` exactly under `no_pick`, `unit` beside either, no
+    `assumption`, and `conditions` beside a value, never under `no_pick` or after a refusal before step 10."""
     if result == "not yet":
         return
     assert isinstance(result, dict), result
@@ -238,8 +240,10 @@ def check_result_laws(result: JsonValue) -> None:
     no_pick = any(code == "no_pick" for code, _ in pairs)
     valued = worst != "not_met" and not no_pick
     assert {"reasons", "labels"} <= result.keys(), result
-    for member in ("value", "specimen", "statistics", "provenance"):
+    for member in ("value", "specimen", "provenance"):
         assert (member in result) == valued, f"{member} where the status is {worst}: {result}"
+    evidence = isinstance(result.get("value"), list)
+    assert ("statistics" in result) == (valued and not evidence), f"statistics, valued {valued}: {result}"
     assert ("alternative_values" in result) == no_pick, (
         f"alternative_values, no_pick being {no_pick}: {result}"
     )

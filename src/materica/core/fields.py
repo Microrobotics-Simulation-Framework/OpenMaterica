@@ -5,7 +5,7 @@ shape (step 8) and its units (step 9).
 
 Step 8 checks the form token against the field's row, a composition's basis included, then the members every
 form shares (`value_shapes.py`), then the form's own member, where the row allows the form. A constant's, an
-interval's and a composition's are read so far: a table or evidence the row allows raises
+interval's, a composition's and evidence's are read so far: a table the row allows raises
 `NotImplementedError`, whatever the other members hold, rather than give an answer its own member could add a
 reason to (every reason found is reported, `read_side_contract.md` section 2 item 2). A form the row does not
 allow is refused whatever its own member holds, which the read neither uses nor returns.
@@ -17,12 +17,14 @@ step 0 does a request's, and a unit registered as a status object by its token (
 
 from collections.abc import Collection
 from dataclasses import dataclass
+from typing import get_type_hints
 
 from materica import shapes
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.slips import slipped
 from materica.core.value_shapes import (
+    CONDITIONS,
     FIELD_MEMBERS,
     FORM_MEMBERS,
     Check,
@@ -37,12 +39,18 @@ from materica.core.value_shapes import (
     members,
     number,
     or_status,
+    provenance,
     record_problems,
     section_problems,
+    slips,
     statistics_block,
+    status_or,
+    status_row,
+    string,
     unknown_token,
+    whole,
 )
-from materica.core.vocabulary import VOCABULARY, RecordFieldSpec
+from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY, RecordFieldSpec
 from materica.shapes import Suite
 
 # The forms whose own member step 8 reads so far, each with the shape of a field of that form; another form a
@@ -51,6 +59,7 @@ FIELD_SHAPES: dict[str, type] = {
     "constant": shapes.ConstantField,
     "interval": shapes.IntervalField,
     "composition": shapes.CompositionField,
+    "evidence": shapes.EvidenceField,
 }
 FORMS_READ = tuple(FIELD_SHAPES)
 
@@ -120,6 +129,8 @@ def form_problems(field: RecordField, record: JsonObject, claims: Collection[Sui
     found += field_problems(field.value, field.spec, form)
     if form is not None and allowed:
         _own_member(field.value, field.spec.name, form, found)
+    if form == "evidence" and allowed:
+        _no_registered_condition(field.value.get("conditions"), f"{field.spec.name}.conditions", found)
     return found
 
 
@@ -224,12 +235,90 @@ SUM_RULE = listed("sum_rule", "sum_rule")
 COMPONENT: dict[str, Check] = {"component": listed("component", "component"), "fraction": fraction}
 COMPONENT_STATISTICS = or_status(statistics_block, shapes.CompositionComponent, "statistics")
 
+
+def evidence(value: JsonValue, where: str, found: Found) -> None:
+    """At least one entry, never a status, each withheld whole or not at all (`record_format.md` section 4.3
+    items 1 and 2): `withheld` where every entry is withheld, `entries_withheld` where some are
+    (`read_side_contract.md` section 3, step 8)."""
+    if not (isinstance(value, list) and value):
+        found.append(invalid(f"{where} is not a non-empty list"))
+        return
+    withheld = [evidence_entry(item, f"{where}[{index}]", found) for index, item in enumerate(value)]
+    if all(withheld):
+        found.append(Reason("withheld", detail=f"every entry of {where} is withheld"))
+    elif any(withheld):
+        found.append(
+            Reason(
+                "entries_withheld",
+                detail=f"{sum(withheld)} of the {len(value)} entries of {where} are withheld",
+            )
+        )
+
+
+def evidence_entry(value: JsonValue, where: str, found: Found) -> bool:
+    """A test report, holding every member; its provenance checked as a field's is (the open point
+    `evidence_entry_provenance` of `tests/reference/read_model.py`). Whether it is withheld: each member but
+    its provenance a withheld marker that keeps its shape."""
+    if not isinstance(value, dict):
+        found.append(invalid(f"{where} is not an object"))
+        return False
+    slips(value, (*REPORT, "provenance"), where, found)
+    withheld: list[bool] = []
+    for name, check in REPORT.items():
+        if name not in value:
+            found.append(invalid(f"{where} holds no {name}"))
+            continue
+        here: Found = []
+        check(value[name], f"{where}.{name}", here)
+        found += here
+        withheld.append(
+            not here and is_status_object(value[name]) and an_object(value[name])["status"] == "withheld"
+        )
+    if "provenance" in value:
+        provenance(value["provenance"], f"{where}.provenance", found)
+    else:
+        found.append(invalid(f"{where} holds no provenance"))
+    whole = len(withheld) == len(REPORT) and all(withheld)
+    if any(withheld) and not whole:
+        found.append(invalid(f"{where} is an entry withholding some of its members, not every one"))
+    return whole
+
+
+def _no_registered_condition(conditions: JsonValue, where: str, found: Found) -> None:
+    """Evidence's `conditions` hold no registered condition (`record_format.md` section 4.3 item 3); a name
+    the reader does not know gives `unknown` at step 10, as anywhere, and `conditions` that are not an object
+    are the shared checks' fault."""
+    if isinstance(conditions, dict) and (registered := [name for name in conditions if name in CONDITIONS]):
+        found.append(
+            invalid(f"{where} holds a registered condition, which evidence takes none of: {registered}")
+        )
+
+
+def standard(value: JsonValue, where: str, found: Found) -> None:
+    members(value, where, found, {"designation": string, "year": whole})
+
+
+def _report_member(name: str, check: Check) -> Check:
+    """A member of a test report: its shape, or a status object with any of the five tokens (`provenance.md`
+    section 1 item 5's table: "any; `withheld` only in every one of them at once", which `evidence_entry`
+    judges)."""
+    _, defines = status_row(shapes.EvidenceEntry, name)
+    return status_or(check, STATUS_TOKENS, defines)
+
+
+REPORT: dict[str, Check] = {
+    name: _report_member(name, standard if name == "standard" else string)
+    for name in get_type_hints(shapes.EvidenceEntry)
+    if name != "provenance"
+}
+
 # Each form's own member as a field of that form holds it: its shape, or `withheld` in a reference-only value
-# (`provenance.md` section 7).
+# (`provenance.md` section 7), but evidence, which never holds a status object (section 1 item 5).
 OWN_MEMBERS: dict[str, Check] = {
     "constant": or_status(number, shapes.ConstantField, "value"),
     "interval": or_status(interval, shapes.IntervalField, "interval"),
     "composition": or_status(composition, shapes.CompositionField, "composition"),
+    "evidence": evidence,
 }
 
 
