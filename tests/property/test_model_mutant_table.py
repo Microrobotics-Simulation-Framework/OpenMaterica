@@ -23,6 +23,9 @@ SHOWN = {
     "negative_zero",
     "unknown_member",
     "another_section",
+    "form_constant",
+    "form_interval",
+    "form_composition",
 }
 
 

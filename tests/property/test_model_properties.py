@@ -12,8 +12,8 @@ model gives no verdict, or both refuse claims without plain read as a misuse, th
 decides. Anything else fails, but the known divergences, each listed by kind with its reason and held to
 exactly what each side gives there:
 
-- a step the implementation has not built that the model decides (`NOT_BUILT`): an overlay as the target, a
-  form S2b reads, an acceptance other than an implied condition; each found by the implementation's own words
+- a step the implementation has not built that the model decides (`NOT_BUILT`): an overlay as the target,
+  evidence, an acceptance other than an implied condition; each found by the implementation's own words
   for what it has not built, and held to what the draw holds and the model gives;
 - an open point on which the two read the text differently (`OPEN_POINTS`), planted by the draw alone: there
   the model must refuse, as its fail-closed reading does, and the model given the implementation's reading (a
@@ -227,9 +227,9 @@ def forms_held(example: Example) -> set[str]:
     return forms
 
 
-def a_form_s2b_reads(example: Example, model: Outcome) -> bool:
-    """A form its row allows whose own member S2b-1 (intervals, compositions) or S2b-2 (evidence) reads."""
-    return bool(forms_held(example) & {"interval", "composition", "evidence"})
+def evidence_s2b_2_reads(example: Example, model: Outcome) -> bool:
+    """Evidence, on a row that allows it, whose own member S2b-2 reads."""
+    return "evidence" in forms_held(example)
 
 
 def an_acceptance_s2b_reads(example: Example, model: Outcome) -> bool:
@@ -255,10 +255,11 @@ NOT_BUILT = {
         an_overlay_as_the_target,
         "S4's decision 8: S4 builds step 5's refusal of an overlay as the target, which the model gives",
     ),
-    "a form S2b reads": NotBuilt(
+    "evidence": NotBuilt(
         "the member of a field of form",
-        a_form_s2b_reads,
-        "S2b-1 reads intervals and compositions, S2b-2 evidence; the model reads all three",
+        evidence_s2b_2_reads,
+        "S2b-2 reads evidence, which the model reads; S2b-1 read intervals and compositions, on which the two"
+        " now agree",
     ),
     "an acceptance S2b reads": NotBuilt(
         "a request's acceptances other than implied conditions",
@@ -341,9 +342,14 @@ def checked(example: Example, shown: str) -> None:
     check_agreement(example)
 
 
+# The form of the field read, drawn after the kind: a constant as often as an interval and a composition
+# together (`value_field_strategies.BASE_FORMS`).
+@pytest.mark.chances(form_constant=0.5, form_interval=0.25, form_composition=0.25)
 @pytest.mark.drawn(*PARTS["valued"])
 @given(strategies.drawn(SIZE, PARTS["valued"]))
 def test_the_read_agrees_with_the_model_on_values_and_alternatives(example: Example) -> None:
+    for planted in example.planted:
+        feature(planted, planted.startswith("form_"))
     checked(example, example.kind)
 
 
