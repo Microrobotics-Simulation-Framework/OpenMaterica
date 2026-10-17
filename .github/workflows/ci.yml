@@ -62,6 +62,8 @@ jobs:
     outputs:
       code: ${{ steps.paths.outputs.code }}
       hypothesis: ${{ steps.paths.outputs.hypothesis }}
+      commits: ${{ steps.paths.outputs.commits }}
+      workflow_blob: ${{ steps.paths.outputs.workflow_blob }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -100,8 +102,8 @@ jobs:
           python3 scripts/check_confidential.py ${range:+--messages "$range"}
 
       # Its outputs decide which jobs run: `code` the static, generated-files, test and control jobs,
-      # `hypothesis` the Hypothesis job. tests/unit/test_ci_workflows.py runs this step and holds each job's
-      # `if` to them.
+      # `hypothesis` the Hypothesis job, and `commits`, a JSON list, the commits the per-commit job checks.
+      # tests/unit/test_ci_workflows.py runs this step and holds each job's `if` to them.
       # The gate fails closed: it lists the paths that are documentation only, which no test, script, generator,
       # build or workflow reads, and counts every other path as code, a new one included. Some documents are
       # code: README.md and LICENSE go into the wheel, typings/ to the type checkers, docs/specification/, the
@@ -122,6 +124,8 @@ jobs:
         run: |
           docs_paths='CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|docs/regulatory/.+|docs/validation/.+|\.github/ISSUE_TEMPLATE/.+|\.github/pull_request_template\.md'
           hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_confidential|check_signoff|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
+          commits=()
+          workflow_blob=
           if [ "$FUZZ_ONLY" = true ]; then
             # A manual run of the fuzz job alone.
             code=false
@@ -143,13 +147,37 @@ jobs:
             else
               hypothesis=true
             fi
+            # Each commit but the head, oldest first, for the per-commit job, but one that changes documentation
+            # alone: its tree is its parent's but for paths no test reads, and its parent is listed too, or is
+            # the base. A commit that changes no path is listed, as a diff that names none is code. A force-push
+            # lists the commits the branch holds now. The list is taken apart from the loop, so that a failure
+            # of git fails the step rather than list nothing.
+            revisions=$(git rev-list --reverse "$PR_BASE..$PR_HEAD")
+            for sha in $revisions; do
+              [ "$sha" != "$PR_HEAD" ] || continue
+              own=$(git diff --no-renames --name-only "$sha^" "$sha")
+              if [ -z "$own" ] || grep -qvxE "$docs_paths" <<< "$own"; then commits+=("$sha"); fi
+            done
+            echo "${#commits[@]} commits before the head to check on their own"
+            # A matrix holds at most 256 jobs, and a run that left some out would pass without them.
+            if [ "${#commits[@]}" -gt 256 ]; then
+              echo "::error::${#commits[@]} commits to check on their own, more than the 256 jobs of a matrix: split the pull request"
+              exit 1
+            fi
+            # This workflow as it runs (the merge commit's), which the per-commit job's record of a passed tree
+            # names, so that a pass under other checks is never taken for one under these.
+            workflow_blob=$(git hash-object .github/workflows/ci.yml)
           else
             # A merge to main, the weekly run and a manual run test everything, whatever changed.
             code=true
             hypothesis=true
           fi
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "hypothesis=$hypothesis" >> "$GITHUB_OUTPUT"
+          {
+            echo "code=$code"
+            echo "hypothesis=$hypothesis"
+            echo "commits=$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1:]))' "${commits[@]}")"
+            echo "workflow_blob=$workflow_blob"
+          } >> "$GITHUB_OUTPUT"
 
   static:
     name: lint, types, wheel
@@ -474,13 +502,115 @@ jobs:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-${{ matrix.shard }}-${{ github.run_id }}
 
+  commit:
+    name: commit ${{ matrix.sha }} on its own
+    # Every commit of a pull request passes on its own before the merge, which CI checks commit by commit
+    # (maintainer, 2026-10-16): each commit but the head, checked out as it is, gets the checks an agent runs
+    # on a commit locally, on Python 3.15 alone, the fast checks and the whole suite at the `dev` profile, the
+    # mutant searches and audit controls included; the head keeps the jobs above, every Python and the `ci`
+    # profile. The gate lists the commits, but those that change documentation alone; a pull request of one
+    # commit lists none, and this job is skipped. At most six run at once: the organisation's 60 concurrent
+    # jobs are shared with its other repositories.
+    # A tree that passed these checks in an earlier run of the same pull request is not checked again. The
+    # pass is kept in the cache, under the tree and this workflow's blob, so that a push that adds commits or
+    # rewrites their messages, or one after a run it cancelled, checks only the trees not yet passed; a
+    # changed tree, or a change to this workflow, is checked again. The cost: `dev` draws fresh examples each
+    # run, and a tree not checked again forgoes another draw.
+    needs: gate
+    if: needs.gate.outputs.commits != '[]'
+    runs-on: ubuntu-24.04
+    # A Python 3.15 test job and controls job together: 3.8 and 2.6 minutes (run 39002323592, 2026-10-17). The
+    # test job's timeout, until measured.
+    timeout-minutes: 40
+    env:
+      JOB_MINUTES: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        sha: ${{ fromJSON(needs.gate.outputs.commits) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ matrix.sha }}
+          persist-credentials: false
+      - name: The key of a pass, from the commit's tree and this workflow's blob
+        id: tree
+        env:
+          WORKFLOW_BLOB: ${{ needs.gate.outputs.workflow_blob }}
+        run: |
+          if [ -z "$WORKFLOW_BLOB" ]; then
+            echo "::error::the gate gave no workflow_blob, so a pass under other checks could not be told apart"
+            exit 1
+          fi
+          echo "key=commit-passed-$(git rev-parse 'HEAD^{tree}')-$WORKFLOW_BLOB" >> "$GITHUB_OUTPUT"
+      # Every step after this one is skipped where the tree passed already.
+      - name: Whether the tree passed these checks already
+        id: passed
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/passed
+          key: ${{ steps.tree.outputs.key }}
+          lookup-only: true
+      - if: steps.passed.outputs.cache-hit != 'true'
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.15"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - if: steps.passed.outputs.cache-hit != 'true'
+        run: uv sync --locked
+      - name: Cache pyright's Node package
+        if: steps.passed.outputs.cache-hit != 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pyright-python
+          key: pyright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - if: steps.passed.outputs.cache-hit != 'true'
+        run: uv run ruff check
+      - if: steps.passed.outputs.cache-hit != 'true'
+        run: uv run ruff format --check
+      - if: steps.passed.outputs.cache-hit != 'true'
+        run: uv run mypy
+      - if: steps.passed.outputs.cache-hit != 'true'
+        run: uv run pyright
+      # On Python 3.11, as the generated-files job runs them: datamodel-code-generator, which gen_shapes.py
+      # runs, does not run on 3.15. An environment of its own, beside the 3.15 one.
+      - name: Every generator's check, on Python 3.11
+        if: steps.passed.outputs.cache-hit != 'true'
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/python-3.11
+        run: |
+          uv sync --locked --python 3.11
+          uv run --locked --python 3.11 python scripts/gen_vocabulary.py --check
+          uv run --locked --python 3.11 python scripts/gen_reader_schema.py --check
+          uv run --locked --python 3.11 python scripts/gen_shapes.py --check
+      # The whole suite, as an agent runs it locally, under the interrupt the tests job's comment describes.
+      - id: pytest
+        if: steps.passed.outputs.cache-hit != 'true'
+        run: >-
+          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          pytest -n auto --dist worksteal
+        env:
+          MATERICA_HYPOTHESIS_PROFILE: dev
+      - name: Keep the pass of this tree
+        id: keep
+        if: steps.passed.outputs.cache-hit != 'true'
+        run: git rev-parse HEAD > "$RUNNER_TEMP/passed"
+      - if: steps.passed.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/passed
+          key: ${{ steps.tree.outputs.key }}
+
   result:
     name: CI result
     # The one check the ruleset on main requires. A matrix job skipped by its `if` reports under another name, so
     # requiring the jobs by name would leave docs-only pull requests waiting. A job skipped by its `if` reports
     # success, so a gate wired wrongly (a renamed step id leaves its outputs empty) would skip every job and pass
     # a check that only looks for failures: this one fails unless every job the gate asked for succeeded.
-    needs: [gate, static, generated, tests, controls, hypothesis]
+    needs: [gate, static, generated, tests, controls, hypothesis, commit]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -490,16 +620,18 @@ jobs:
           GATE: ${{ needs.gate.result }}
           CODE: ${{ needs.gate.outputs.code }}
           HYPOTHESIS: ${{ needs.gate.outputs.hypothesis }}
+          COMMITS: ${{ needs.gate.outputs.commits }}
           STATIC_JOB: ${{ needs.static.result }}
           GENERATED_JOB: ${{ needs.generated.result }}
           TESTS_JOB: ${{ needs.tests.result }}
           CONTROLS_JOB: ${{ needs.controls.result }}
           HYPOTHESIS_JOB: ${{ needs.hypothesis.result }}
+          COMMIT_JOB: ${{ needs.commit.result }}
         run: |
           status=0
           fail() { echo "::error::$1"; status=1; }
           asked() { [ "$2" = success ] || fail "the gate asked for $1, which ended in '$2'"; }
-          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, controls $CONTROLS_JOB, hypothesis $HYPOTHESIS_JOB"
+          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS, commits $COMMITS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, controls $CONTROLS_JOB, hypothesis $HYPOTHESIS_JOB, commit $COMMIT_JOB"
           [ "$GATE" = success ] || fail "the gate ended in '$GATE'"
           case "$CODE $HYPOTHESIS" in
             "true true" | "true false" | "false true" | "false false") ;;
@@ -512,7 +644,13 @@ jobs:
             asked controls "$CONTROLS_JOB"
           fi
           if [ "$HYPOTHESIS" = true ]; then asked hypothesis "$HYPOTHESIS_JOB"; fi
-          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$CONTROLS_JOB" "$HYPOTHESIS_JOB"; do
+          # The commits to check on their own: none, or a list, which asks for the per-commit job.
+          case "$COMMITS" in
+            "[]") ;;
+            \[\"*\"\]) asked "the commits before the head" "$COMMIT_JOB" ;;
+            *) fail "the gate's commits are '$COMMITS', not a list" ;;
+          esac
+          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$CONTROLS_JOB" "$HYPOTHESIS_JOB" "$COMMIT_JOB"; do
             case "$result" in failure | cancelled) fail "a job ended in '$result'" ;; esac
           done
           exit "$status"

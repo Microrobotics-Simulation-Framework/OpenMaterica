@@ -123,6 +123,11 @@ Twelve workers suit a machine of 8 performance cores and 24 threads, as the main
 another heavy job shares it. Always `--dist worksteal`: xdist's default hands a worker a file's tests together,
 so a file's slow tests wait on one worker (`tests/README.md`, "Running").
 
+Every commit must pass on its own. On a pull request CI checks each commit but the head by itself, on Python
+3.15: the fast checks above, every generator's `--check` and the whole suite at `dev`; the head gets every
+Python and the `ci` profile (`.github/workflows/README.md`, the `commit` job). So while working, run the tests
+of what you touched and of what it feeds, and leave the rest of the stack to CI.
+
 Property tests take their depth from `MATERICA_HYPOTHESIS_PROFILE`: `dev` (the default), `ci` or `deep`
 (`tests/README.md`). Fuzzing needs Linux x86_64 and Python 3.12 to 3.14: `uv sync --group fuzz`, then
 `tests/fuzz/README.md`. Without uv, `pip install --group dev -e .` (pip 25.1 or later) installs the same
