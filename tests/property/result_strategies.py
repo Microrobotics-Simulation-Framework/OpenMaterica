@@ -284,8 +284,9 @@ BUILDERS = {
 
 
 # What a field a read returns from is given to show, each in a share of draws: its value `-0`; a review of
-# each way `provenance.md` section 2 item 6 reads one (any value, a known result, a status object); and a
-# member the reader does not know, in its statistics block, a fact of its specimen or a condition.
+# each way `provenance.md` section 2 item 6 reads one (any value, a known result, a status object); its
+# statistics held as the status object its row allows; and a member the reader does not know, in its
+# statistics block, a fact of its specimen or a condition.
 REVIEWS = ("review_anything", "review_reviewed", "review_not_checked")
 UNKNOWN_PLACES = ("statistics", "fact", "condition")
 
@@ -310,6 +311,11 @@ def enriched(draw: Draw, field: JsonObject) -> tuple[str, ...]:
         }
     elif review == "review_not_checked":
         provenance["review"] = {"status": "not_checked", "reason": draw(TEXT)}
+    if draw(st.integers(0, 3)) == 0:
+        field["statistics"] = (
+            {"status": "withheld"} if draw(st.booleans()) else {"status": "withheld", "reason": draw(TEXT)}
+        )
+        shown.append("statistics_withheld")
     if draw(st.booleans()):
         place = draw(st.sampled_from(UNKNOWN_PLACES))
         holder = {

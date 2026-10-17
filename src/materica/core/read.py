@@ -83,6 +83,8 @@ _IMPLIED_REFUSED = ("plus_minus", "set_or_measured", "status")
 # block's counts (section 3, step 8), which a result writes as integers.
 _REVIEW_MEMBERS = (*get_type_hints(shapes.Review), *get_type_hints(shapes.StatusObject))
 _COUNTS = ("n_specimens", "n_donors", "n_sources")
+# A constant's statistics: a block, or the status object its row allows in its place.
+_CONSTANT_STATISTICS = get_type_hints(shapes.ConstantField)["statistics"]
 
 
 @dataclass(frozen=True)
@@ -424,7 +426,7 @@ def read_value_field(
         value=shaped,
         unit=_returned(value["unit"], shapes.Unit),
         specimen=cast(JsonObject, _returned(field.specimen(), shapes.Specimen)),
-        statistics=cast(JsonObject, _returned(value["statistics"], shapes.StatisticsBlock)),
+        statistics=cast(JsonObject, _returned(value["statistics"], _CONSTANT_STATISTICS)),
         provenance=ProvenanceSummary.of(provenance),
         labels=_labels(value, provenance),
     )
