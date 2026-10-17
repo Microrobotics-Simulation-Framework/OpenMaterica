@@ -3,7 +3,9 @@
 one row per case file, its expected column what the file states, and each heading the specification's row.
 """
 
+import functools
 import json
+from collections.abc import Mapping, Sequence
 
 import pytest
 
@@ -16,8 +18,11 @@ CASE_FILES = runner.discover()
 SUITES = sorted(path.name for path in CONFORMANCE.iterdir() if path.is_dir())
 
 
-def sections(suite: str) -> dict[str, tuple[str, str, list[Row]]]:
-    """Per case heading in the suite's CASES.md: the document and row it quotes, and its table."""
+@functools.cache
+def sections(suite: str) -> Mapping[str, tuple[str, str, Sequence[Mapping[str, str]]]]:
+    """Per case heading in the suite's CASES.md: the document and row it quotes, and its table.
+
+    Read once per suite, not once per case file, and shared by every caller: so it is typed read-only."""
     text = (CONFORMANCE / suite / "CASES.md").read_text(encoding="utf-8")
     lines = text.splitlines()
     found: dict[str, tuple[str, str, list[Row]]] = {}
