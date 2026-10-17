@@ -246,6 +246,12 @@ every family entry goes in `families/CHANGELOG.md`.
   implied for one condition differ unless they are of one shape and hold the same token or the same numbers
   bit for bit, so `0` and `-0` differ, as a value and `[v, v]` do, and which of two that agree fills it never
   depends on the order of the acceptances (`read_side_contract.md` section 1).
+- The maintainer's ruling on S2a-4's review (2026-10-18; `docs/specification/changes.md`):
+  `read_side_contract.md` section 1 now says that an implied condition breaks its shape (`request_incomplete`,
+  with that condition) where `implies` gives a numeric condition a `token`, or a token condition a `value`,
+  `range` or `unit`, whatever that member holds. The reader has refused both since S2a-4's review; the second
+  rested on the shapes `declarations.md` section 4.1 names, and reversed S2a-3's reading of a `unit` beside a
+  token, which step 0 ignored.
 - `provenance.md` section 6.2 item 1 states the writer's rule for a specimen fact's unit (maintainer,
   2026-10-15): a fact whose row fixes its unit holds that unit, and one whose unit the source does not give is
   written as a status object in place of the fact.

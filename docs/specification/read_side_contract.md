@@ -73,7 +73,10 @@ fractional part, not below zero: `1.0` and `1e0` are 1, and `-0` is 0 (`record_f
 An implied condition breaks its shape where its `fact` is not a specimen fact with tokens or its `token` is
 not one of that fact's, and where `implies` names a condition that is not registered, or gives one a status
 object, `plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries that
-`condition` where the fault lies in one. A value an implied condition supplies for a registered numeric
+`condition` where the fault lies in one. It breaks its shape too (`request_incomplete`, with that `condition`)
+where `implies` gives a numeric condition a `token`, or a token condition a `value`, `range` or `unit`,
+whatever that member holds: each is a member of the other kind of condition's shape (`declarations.md` section
+4.1). A value an implied condition supplies for a registered numeric
 condition is checked as an operating condition is, its `unit` included (`request_unit_mismatch`, with that
 `condition`). An acceptance applies only to a read of the field it names and, an overlay aside (it names no
 location), only at the read's own location: its `record`, its `region` or both, each the read's (the record
