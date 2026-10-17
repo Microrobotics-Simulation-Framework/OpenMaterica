@@ -2988,8 +2988,8 @@ def test_the_workflows_readme_names_the_jobs_and_shards_of_ci() -> None:
     ("old", "new", "problem"),
     [
         ("| `controls` |", "| `mutants` |", "the table's jobs are"),
-        ("six shards side by side", "five shards side by side", "the table's shards are five"),
-        (", `conditions`)", ")", "the table's shards are six"),
+        ("seven shards side by side", "six shards side by side", "the table's shards are six"),
+        (", `relations`)", ")", "the table's shards are seven"),
         ("shards side by side", "shards", "names no shards"),
     ],
     ids=["a-job-renamed", "a-count-wrong", "a-shard-missing", "no-shards"],

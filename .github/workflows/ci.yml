@@ -450,6 +450,11 @@ jobs:
     # of it one worker's, S2a-3's relation of the writer to step 9; `conditions` at `deep`, ten times the
     # examples, about 17 minutes by my arithmetic, unmeasured. The result's laws (S2a-4: HP1, HP2, HP6, HP11)
     # joined `conditions`, which then took 155 s at `ci` on four local workers (Python 3.15, 2026-10-17).
+    # The read's relations (S2a-4's phase B: HP12, HP4, HP10 and the monotonicity relations, each reading two
+    # records or two reads an example) are a shard of their own, `relations`, its timeouts those of
+    # `conditions`: at `ci` on four local workers, 198 s, and `conditions` 151 s beside it (Python 3.15,
+    # 2026-10-17); together they would have taken 5.8 minutes, and at `deep` the relations' fourteen
+    # monotonicity properties alone about 30 minutes of a runner's four cores, by my arithmetic, unmeasured.
     # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
     # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
@@ -470,28 +475,31 @@ jobs:
     # holds `conditions` once it has run on CI.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-      && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180 || matrix.shard == 'agreement' && 360
+      && ((matrix.shard == 'writer' || matrix.shard == 'conditions' || matrix.shard == 'relations') && 180
+      || matrix.shard == 'agreement' && 360
       || matrix.shard == 'records' && 90 || 45)
-      || (matrix.shard == 'writer' && 75 || matrix.shard == 'conditions' && 30 || matrix.shard == 'agreement'
-      && 45 || 20) }}
+      || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || matrix.shard == 'relations') && 30
+      || matrix.shard == 'agreement' && 45 || 20) }}
     strategy:
       fail-fast: false
       matrix:
-        # Six shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
+        # Seven shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
         # envelope checks, versions and the read; the writer schema's value fields; the two JSON Schema
         # libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
-        # searches, which were most of the records shard's time; and steps 9 and 10's properties with their
-        # mutant searches.
-        shard: [json, records, writer, agreement, step8_mutants, conditions]
+        # searches, which were most of the records shard's time; steps 9 and 10's properties and the result's,
+        # with their mutant searches; and the read's relations (HP12, the agreement with the reference model,
+        # HP4, HP10 and the information-monotonicity relations), with theirs.
+        shard: [json, records, writer, agreement, step8_mutants, conditions, relations]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
       # The job's `timeout-minutes`, as above, from which the pytest step's interrupt is set.
       JOB_MINUTES: >-
         ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-        && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180 || matrix.shard == 'agreement' && 360
+        && ((matrix.shard == 'writer' || matrix.shard == 'conditions' || matrix.shard == 'relations') && 180
+        || matrix.shard == 'agreement' && 360
         || matrix.shard == 'records' && 90 || 45)
-        || (matrix.shard == 'writer' && 75 || matrix.shard == 'conditions' && 30 || matrix.shard == 'agreement'
-        && 45 || 20) }}
+        || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || matrix.shard == 'relations') && 30
+        || matrix.shard == 'agreement' && 45 || 20) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -907,6 +915,12 @@ jobs:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-conditions-${{ github.run_id }}
           restore-keys: hypothesis-${{ runner.os }}-conditions-
+      - name: Restore the example database of the relations shard
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-relations-${{ github.run_id }}
+          restore-keys: hypothesis-${{ runner.os }}-relations-
       # Target 1's corpus from earlier runs, so that its coverage builds up; it is seeded afresh as well.
       - name: Restore the raw-bytes corpus
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -998,3 +1012,9 @@ jobs:
         with:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-conditions-${{ github.run_id }}-fuzz
+      - name: Save the example database for the relations shard
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-relations-${{ github.run_id }}-fuzz
