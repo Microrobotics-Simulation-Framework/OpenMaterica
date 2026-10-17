@@ -34,7 +34,8 @@ after every run that includes these tests:
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
 | S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape (plain read) | 166 | run, passed |
-| S2's other reads, which need a form's member at step 8 other than a constant's, or an acceptance other than an implied condition (plain read) | 86 | not yet runnable: the step that runs each is not done |
+| S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 35 | run, passed |
+| S2's other reads, which need evidence's member at step 8, or an acceptance other than an implied condition (plain read) | 51 | not yet runnable: the step that runs each is not done |
 | reads S3's pieces run (plain read): tables, and reads under an extrapolation | 180 | not yet runnable: the step that runs each is not done |
 | reads S4 runs (plain read): over alternatives, with a pick, or through an overlay | 156 | not yet runnable: S4, which runs each, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | not yet runnable: no executor; S3-te adds one, which runs a test-only reference evaluator |
