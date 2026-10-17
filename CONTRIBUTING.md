@@ -15,7 +15,8 @@ live in a repository of its own; until it exists, its rules are kept here.
 3. **No simulator or ML-framework dependency at runtime.** Not MIME, MADDENING, JAX, PyTorch, Warp or Isaac.
    The core depends on Python's standard library only. `jsonschema`, USD and numpy are optional extras
    (`openmaterica[check]`, `openmaterica[usd]`, `openmaterica[sample]`), and code must work with whatever USD
-   build is installed, including the one Isaac Sim ships.
+   build is installed, including the one Isaac Sim ships. An MCP library comes only with `openmaterica[mcp]`:
+   no distribution's base install brings one, and no sibling imports one.
 4. **Keep the read side implementable without OpenMaterica code**, with a JSON parser or with USD; verifying a
    content hash also needs an RFC 8785 serialiser and SHA-256. Compute on the write side and store the
    result. Readers only read numbers, interpolate tables, evaluate power laws, apply the mixing rules their

@@ -90,7 +90,8 @@ This repository is public. Everything in it, this file and commit messages inclu
   AD 5.4). Do not add crosswalks for other engines to `materica`; improve the scaffold and the checks instead.
 - **The core has no run-time dependency** (maintainer, 2026-10-13, AD 7.1 and 7.2): Python's standard library
   only; `typing_extensions` is for type checkers only; `jsonschema`, `usd-core` and numpy come with the
-  `[check]`, `[usd]` and `[sample]` extras. Structure is edited in the writer JSON Schemas and tokens in the
+  `[check]`, `[usd]` and `[sample]` extras, and an MCP library only with `[mcp]`, which no sibling imports
+  (maintainer, 2026-10-16, AD 8.2). Structure is edited in the writer JSON Schemas and tokens in the
   specification's tables; the reader schemas, the vocabulary and the typed shapes are generated from them, and
   the specification's member tables are checked against the schemas.
 - **Names that clash are settled** (maintainer, 2026-10-13, AD 13 item 8): conformance *suites*, engine

@@ -29,11 +29,11 @@ OpenMaterica reads and writes files; it opens no network sockets and runs no cod
   drafts: they cannot publish, merge, set tiers or redistribution statuses, or write check points except by
   baking them. An agent acting on instructions injected through a document can at worst produce a bad
   draft, which review and `materica check` exist to stop. The MCP server makes no network requests and
-  holds no keys.
+  holds no keys. It comes with the core's `[mcp]` extra and loads the tools of the installed siblings.
 - **Silent data errors.** A wrong value, unit, convention or resolution is a correctness defect and is tracked
   in `docs/validation/known_anomalies.yaml`, not here, unless it can be triggered deliberately by a crafted
   file.
 - **Supply chain.** The core has no run-time dependency beyond Python's standard library; `jsonschema` comes
   only with the `[check]` extra and numpy with `[sample]`; OpenUSD with `[usd]` (`usd-core`) or from the host
-  application's own build. Security-relevant dependency updates are recorded in the **Security** section of
-  `CHANGELOG.md`.
+  application's own build; an MCP server library only with `[mcp]`. Security-relevant dependency updates are
+  recorded in the **Security** section of `CHANGELOG.md`.

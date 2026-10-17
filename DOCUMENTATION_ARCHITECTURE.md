@@ -35,11 +35,14 @@ OpenMaterica has these components, each with its own version (architecture draft
 
 | Component | What it is | Licence |
 |---|---|---|
-| Core, `openmaterica` | the specification, the record and USD schemas (L0), conformance data (L1), the reader and writer (L2, L4), label-volume fractions and the reference sampler (L5), and `materica check` | Apache-2.0 |
+| Core, `openmaterica` | the specification, the record and USD schemas (L0), conformance data (L1), the reader and writer (L2, L4), label-volume fractions and the reference sampler (L5), `materica check`, and, with the `[mcp]` extra, the MCP server, which exposes the installed siblings' curation tools to a user's own agent (architecture draft section 8) | Apache-2.0 |
 | Authoring, `openmaterica-authoring` | write-side tooling: authoring and the curation tools, check-point baking (L3), and the integrations (L6), including the generator of Isaac for Healthcare's material table | Apache-2.0 |
 | Families, `openmaterica-families` | model-family definitions: equations, golden test vectors, reference implementations; a content hash per family version | Apache-2.0 |
-| MCP server, `openmaterica-mcp` | exposes the curation tools to a user's own agent (architecture draft section 8) | Apache-2.0 |
 | Library | curated material and interface records, in a repository of its own, released as static archives with a DOI; no hosted service | CC0-1.0 |
+
+The core, `openmaterica-authoring` and `openmaterica-families` are the Python distributions. One repository
+holds all three, and each is released on its own; a sibling's MAJOR.MINOR is the core's it is built for
+(section 7.1; maintainer, 2026-10-16).
 
 **Why it is likely to become SOUP.** The values OpenMaterica ships and resolves feed simulations. When a
 regulated product is built on MIME, OpenMaterica is SOUP of SOUP, beside MADDENING. When a product built on
@@ -167,7 +170,10 @@ depends on it.
 
 ## 2. Documentation Structure
 
-This repository holds the core and, at first, the families, released as their own distribution:
+This repository holds every Python distribution, as one uv workspace (maintainer, 2026-10-16): the core at its
+root, with the MCP server behind its `[mcp]` extra, and `openmaterica-authoring` and `openmaterica-families`
+in directories of their own, each with its own `pyproject.toml`, version line and CHANGELOG, released from
+tags of its own prefix (section 12):
 
 ```
 OpenMaterica/
@@ -221,10 +227,10 @@ OpenMaterica/
 │   │   └── iec62304_mapping.md
 │   └── bibliography.bib               # every source the specification, methods or families cite
 │
-├── src/materica/                      # the core distribution, including `python -m materica check` (architecture draft section 7.1)
-├── authoring/                         # openmaterica-authoring: L3 with the curation tools and check-point baking; L6 integrations
-├── mcp/                               # openmaterica-mcp, the MCP server: a separate distribution (architecture draft section 8)
-├── families/                          # openmaterica-families, its own distribution: one directory per family (section 5.2)
+├── pyproject.toml                     # the core's, and the uv workspace that holds the two siblings below
+├── src/materica/                      # the core distribution, including `python -m materica check` and, with the `[mcp]` extra, the MCP server (architecture draft sections 7.1 and 8)
+├── authoring/                         # openmaterica-authoring, with its own pyproject.toml and CHANGELOG.md: L3 with the curation tools and check-point baking; L6 integrations
+├── families/                          # openmaterica-families, with its own pyproject.toml and CHANGELOG.md: one directory per family (section 5.2)
 │   └── materica/mechanical/<family>/
 │       ├── definition.md              # NORMATIVE for that family version
 │       ├── vectors/                   # golden test vectors, frozen per version
@@ -821,7 +827,7 @@ section, as MADDENING's do.
 
 | Version | Tracks | Where it appears |
 |---|---|---|
-| Package version (SemVer) | each Python distribution: the core, `openmaterica-authoring`, `openmaterica-families` and `openmaterica-mcp` | `pyproject.toml`, CHANGELOG, SOUP package |
+| Package version (SemVer) | each Python distribution: the core, `openmaterica-authoring` and `openmaterica-families`; a sibling's MAJOR.MINOR is the core's it is built for | each distribution's `pyproject.toml` and CHANGELOG; the SOUP package; the compatibility table in the documentation |
 | Schema version (SemVer) | the specification, the record schema and the USD schema | `docs/specification/changes.md`; recorded on every record |
 | Family version | one model family's definition, vectors and reference implementation; frozen once released, with its own content hash | the family identifier (`...v1`); recorded on every parameter set |
 | Record version | one record's values | the record; its card; its content hash (section 12); the library release that carries it |
@@ -836,6 +842,20 @@ A released schema version's files, under `schema/<MAJOR.MINOR>/`, never change, 
 or READMEs, and CI enforces it (`tests/spec_sync/test_released_schemas.py`). So a patch version changes the
 specification's wording only; a fix inside a schema file waits for the next minor version and its own
 directory (maintainer, 2026-10-15).
+
+**The siblings' versions** (maintainer, 2026-10-16; architecture draft section 7.2). A sibling's MAJOR.MINOR
+is the core's MAJOR.MINOR it is built for, and its patch number is its own. It depends on
+`openmaterica>=X.Y.F,<X.(Y+1)` before 1.0 and on `openmaterica>=X.Y.F,<(X+1)` after. A core minor is a release
+train: every sibling is released for it the same day, and the core's extras `[authoring]`, `[families]` and
+`[all]` pin the matching siblings. A sibling refuses to import against a core of another MAJOR.MINOR, naming
+the command that fixes it. `python -m materica versions` lists the installed distributions, checks them
+against each other and says which siblings exist for the installed core. Nothing updates itself. CI tests each
+sibling against the oldest core in its range and against the current one. Before a sibling's first real
+release, each earlier core minor gets an explainer release of it, whose only code is an import that raises a
+message naming the first core minor the sibling exists for and the install that works: today
+`openmaterica-families` 0.1.0, published at core 0.1.0a1 or 0.1.0, which also claims the name. The release
+workflow writes a compatibility table of each core version and its siblings' versions into the documentation.
+A regulated consumer pins exact versions all the same (architecture draft section 5.6).
 
 ### 7.2 Changes to the schema
 
@@ -869,7 +889,8 @@ deprecated.
 
 `CHANGELOG.md` follows Keep a Changelog with MADDENING's extra sections **Verification**, **Security** and
 **Known Anomalies**, plus OpenMaterica's own: **Schema**, **Families** and **Data**. The library repository
-keeps its own CHANGELOG with **Data** and **Known Anomalies**.
+keeps its own CHANGELOG with **Data** and **Known Anomalies**, and `openmaterica-authoring` and
+`openmaterica-families` keep their own in their directories, in the same format.
 
 Commit prefixes are MADDENING's (`feat`, `fix`, `refactor`, `docs`, `test`, `perf`, `verify`, `break`,
 `deprecate`, `security`) plus `schema:` for a schema change, `family:` for a family definition or vectors,
@@ -1019,7 +1040,7 @@ manufacturer assesses only the components it uses, so the package is organised p
 
 | Component | Licence | Assessed when |
 |---|---|---|
-| Core, `openmaterica` | Apache-2.0 | always. Its code runs at a consumer's build or setup (the reader, the requirement checks over domains, the material input sheet, label-volume fractions, the reference sampler) and never in a consumer's simulation step, compiled program or gradient path |
+| Core, `openmaterica` | Apache-2.0 | always. Its code runs at a consumer's build or setup (the reader, the requirement checks over domains, the material input sheet, label-volume fractions, the reference sampler) and never in a consumer's simulation step, compiled program or gradient path. Its MCP server, run only with the `[mcp]` extra, is curation tooling outside the package (below) |
 | `openmaterica-authoring` | Apache-2.0 | only when a product runs it, for instance a product whose build runs the engine adapter, or one that generates Isaac for Healthcare's material table at build; otherwise it is curation and write-side tooling, outside the package |
 | Each family version, in `openmaterica-families` | Apache-2.0 | when a product evaluates parameter sets of that family (its own evaluator is the product's code; the family's definition, vectors and check points are what it verifies against) |
 | Each library release | CC0-1.0 | when a product uses its materials; otherwise only the product's own records |
@@ -1047,17 +1068,18 @@ Contents, with the OpenMaterica-specific additions:
 8. **Dependencies (SOUP of SOUP)**: none at run time for the core, which uses Python's standard library only
    (maintainer, 2026-10-13); `jsonschema` and its dependencies only with the `[check]` extra; numpy only with
    `[sample]`; OpenUSD, either `usd-core` from PyPI or the host application's own build (Isaac Sim ships its
-   own), only with the `[usd]` extra. OpenUSD's licence is a modified Apache 2.0 (recalled; check the exact
-   text before the first release).
+   own), only with the `[usd]` extra; an MCP server library only with `[mcp]`. OpenUSD's licence is a modified
+   Apache 2.0 (recalled; check the exact text before the first release).
 
 **Material library contents table**: every material with identifier, version, content hash, sections present,
 tier, licence, specimen facts per section, family versions used, number of reviewed values, number of
 model-assisted values, and fit-reproduction and witness status (independent witness, or none).
 
-**Not in the package:** the MCP server, the curation tools in `openmaterica-authoring` and the extraction
-procedures are curation tooling (architecture draft section 8.5). Every value they help draft is reviewed
-against its source before release. The package states how many library values were model-assisted, which
-procedure versions drafted them, and those procedures' gold-set scores.
+**Not in the package:** the MCP server (in the core's wheel, but imported by no reader, check or build, and
+run only with `[mcp]`), the curation tools in `openmaterica-authoring` and the extraction procedures are
+curation tooling (architecture draft section 8.5). Every value they help draft is reviewed against its source
+before release. The package states how many library values were model-assisted, which procedure versions
+drafted them, and those procedures' gold-set scores.
 
 ---
 
@@ -1100,6 +1122,9 @@ OpenMaterica adds:
 - **static release archives**: each library release is one archive (records, generated layers, cards,
   index, shipped reference data), published on GitHub and archived on Zenodo with a DOI and a hash, so a
   simulation can cite the exact data it used and nothing in a release depends on a hosted service;
+- **tag-prefixed releases from one repository** (maintainer, 2026-10-16): a tag `openmaterica-v*`,
+  `openmaterica-authoring-v*` or `openmaterica-families-v*` releases that distribution alone, and the release
+  workflow writes the compatibility table of section 7.1 into the documentation;
 - **signed release tags** (recommended, as in MADDENING).
 
 ---
@@ -1154,7 +1179,9 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 2. **Apache-2.0** for all code contributions. No runtime dependency under a copyleft licence.
 3. **No runtime dependency on a simulator or ML framework**: not MIME, MADDENING, JAX, PyTorch, Warp or Isaac.
    Core: Python's standard library only (maintainer, 2026-10-13); `jsonschema`, numpy and USD come with the
-   `[check]`, `[sample]` and `[usd]` extras, and USD is imported from whatever build is installed.
+   `[check]`, `[sample]` and `[usd]` extras, and USD is imported from whatever build is installed. An MCP
+   library comes only with the core's `[mcp]` extra, and the base install of every distribution has none
+   (maintainer, 2026-10-16).
 4. **The read side stays implementable without OpenMaterica code**, with a JSON parser or with USD; verifying
    a content hash also needs an RFC 8785 serialiser and SHA-256. Anything that needs computing is baked when a
    record is written. A change that would require reader code beyond the specification is a major schema
@@ -1267,8 +1294,8 @@ source registry; the data entry standard, review process and takedown procedure;
 library checks of section 6.5; generated USD layers, cards and index; the legal review of the architecture
 draft, section 6.5. The publishers file and a template repository for other publishers come with the first
 library release; other hosting items (a data wheel, a viewer) follow their triggers in the architecture
-draft, section 6.7. Once the seed library exists: the MCP server, the extraction procedures as method
-entries, and the gold set (architecture draft section 8).
+draft, section 6.7. Once the seed library exists: the MCP server (the core's `[mcp]` extra), the extraction
+procedures as method entries, and the gold set (architecture draft section 8).
 
 **Phase 3, at the first release:** `CITATION.cff`; the SOUP package; the SBOM; `iec62304_mapping.md`;
 `downstream_integration.md`; signed tags; the library's first DOI.
@@ -1305,6 +1332,7 @@ Status at 2026-10-13.
   USD, and the Python runner in `tests/conformance/`
 - [ ] the first family definitions under `families/`, with golden vectors and reference implementations,
   released as the separate distribution `openmaterica-families`
+- [ ] the explainer release `openmaterica-families` 0.1.0, at core 0.1.0a1 or 0.1.0 (section 7.1)
 - [ ] `python -m materica check`, including the namespaced-identifier, self-contained-layer, fallback, table,
   witness, evidence and `--release` checks
 - [ ] `scripts/check_anomalies.py`, delegating to MADDENING's validator, run in CI on every push
@@ -1325,8 +1353,8 @@ Status at 2026-10-13.
 - [ ] the legal review, before the first library release
 - [ ] the first library material with a complete review record
 - [ ] the gold set and its deterministic scorer
-- [ ] `openmaterica-mcp` with capability-scoped tools; extraction procedures as `OMAT-MTH-` entries with
-  gold-set scores
+- [ ] the MCP server, with the core's `[mcp]` extra, loading the installed siblings' capability-scoped tools;
+  extraction procedures as `OMAT-MTH-` entries with gold-set scores
 
 **Phase 3**
 

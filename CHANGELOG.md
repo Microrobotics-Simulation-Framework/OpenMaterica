@@ -8,7 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Additional sections per release: **Schema**, **Families**, **Data**, **Verification**, **Security** and
 **Known Anomalies**. The schema, each model family and each library material carry their own versions; see
 `DOCUMENTATION_ARCHITECTURE.md` section 7. Once the material library has its own repository, its changes are
-recorded in that repository's CHANGELOG.
+recorded in that repository's CHANGELOG. This file is the core's: `openmaterica-authoring` and
+`openmaterica-families` keep changelogs of their own, in their directories, from their first releases.
 
 ## [Unreleased]
 
@@ -45,6 +46,18 @@ recorded in that repository's CHANGELOG.
   field's bases and where its label goes, and `STATUS_TOKENS`, the status tokens from the generated shapes
   (`core/vocabulary.py`). Every `claims` parameter of the core is typed by the suites, so that a misspelt
   suite name does not type-check.
+
+### Changed
+- The sibling distributions and the MCP server (maintainer, 2026-10-16), written into the architecture draft
+  (the decisions, sections 3.2, 7.1, 7.2, 8, 12.1, 13, 14 and 15) and the documentation plan (the components,
+  sections 2, 7.1, 7.4, 10, 12, 15 and the appendices), with `CONTRIBUTING.md` constraint 3 and
+  `SECURITY.md`. One repository holds every Python distribution, a uv workspace with tag-prefixed releases.
+  There is no `openmaterica-mcp`: the core's `[mcp]` extra brings the one server, which loads the tools the
+  installed siblings register through an entry-point group; no sibling imports an MCP library. A sibling's
+  MAJOR.MINOR is the core's it is built for, and a core minor is a release train; the core's `[authoring]`,
+  `[families]` and `[all]` extras pin the matching siblings; a sibling refuses a core of another MAJOR.MINOR,
+  and `python -m materica versions` checks them; an explainer release, first `openmaterica-families` 0.1.0,
+  stands in for a sibling at each core minor before its first. Text only: none of it is built yet.
 
 ### Schema
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
