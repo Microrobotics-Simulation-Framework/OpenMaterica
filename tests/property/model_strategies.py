@@ -509,7 +509,8 @@ def ends_early(draw: Draw, size: Size) -> Example:
 # The rules the model's case-agreement leaves unpinned (`tests/reference/README.md`, "The mutant table"), and
 # the open point the implementation and the model read differently: open point 1's record half, a record
 # condition holding a member of the other kind. Its request half, and a slip of a name a declaration gives a
-# requirement, the text decides, and both read them alike, failing closed (the fix round of S2a-4's review).
+# requirement, the text decides, and both read them alike (the fix round of S2a-4's review, and the
+# maintainer's ruling of 2026-10-18 for the request half).
 
 OPEN_POINTS = ("members_of_the_other_kind",)
 OTHER_KIND: dict[str, tuple[str, JsonValue]] = {
@@ -620,10 +621,10 @@ def other_kind(draw: Draw, read: Read) -> None:
 
 
 def implied_member_of_the_other_kind(draw: Draw, read: Read) -> None:
-    """Open point 1's request half, which the text decides (`read_side_contract.md` section 1, "a token
-    outside the condition's row") and both read alike, failing closed: an implied condition located at the
-    read that gives a numeric condition a `token`, or a token condition a `value`, `range` or `unit`, or a
-    member one slip from one, is refused at step 0 with that condition."""
+    """Open point 1's request half, which the text decides (`read_side_contract.md` section 1, "It breaks
+    its shape too", the maintainer's ruling of 2026-10-18) and both read alike: an implied condition located
+    at the read that gives a numeric condition a `token`, or a token condition a `value`, `range` or `unit`,
+    or a member one slip from one, is refused at step 0 with that condition."""
     in_vivo(read)
     implied = implying(read, "tissue_state", "in_vivo", 310.15)
     name = draw(st.sampled_from(sorted(IMPLIED_OTHER_KIND)))

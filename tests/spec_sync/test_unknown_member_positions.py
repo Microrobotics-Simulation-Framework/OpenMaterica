@@ -673,10 +673,21 @@ IMPLIED_NAMES = [
     ),
     Named(A_NUMERIC_VALUE, "read", ("value", "range", "unit"), "declarations.md", SHAPES),
     Named(A_TOKEN_VALUE, "read", ("token",), "declarations.md", TOKEN_SHAPE),
-    # The other kind's shape, refused: a token outside a numeric condition's row (`read_side_contract.md`
-    # section 1), and a token condition's value, range or unit, failing closed (S2a-4's fix round).
-    Named(A_NUMERIC_VALUE, "other kind", ("token",), "declarations.md", TOKEN_SHAPE),
-    Named(A_TOKEN_VALUE, "other kind", ("value", "range", "unit"), "declarations.md", SHAPES),
+    # The other kind's shape, refused (the maintainer's ruling of 2026-10-18).
+    Named(
+        A_NUMERIC_VALUE,
+        "other kind",
+        ("token",),
+        "read_side_contract.md",
+        "gives a numeric condition a `token`",
+    ),
+    Named(
+        A_TOKEN_VALUE,
+        "other kind",
+        ("value", "range", "unit"),
+        "read_side_contract.md",
+        "or a token condition a `value`, `range` or `unit`",
+    ),
     *(
         named_here
         for place in (A_NUMERIC_VALUE, A_TOKEN_VALUE)
@@ -792,3 +803,27 @@ def test_an_implied_conditions_member_dropped_or_its_quote_lost_is_found() -> No
     ]
     lost = [named._replace(quote="its `reason` and `basis` are read") for named in IMPLIED_NAMES[2:3]]
     assert implied_name_problems([*IMPLIED_NAMES[:2], *lost, *IMPLIED_NAMES[3:]], BY_ID, READ_NAMES, document)
+
+
+# The sentence that refuses an implied value a member of the other kind of condition's shape.
+THE_RULING = (
+    "It breaks its shape too (`request_incomplete`, with that `condition`) where `implies` gives a numeric "
+    "condition a `token`, or a token condition a `value`, `range` or `unit`, whatever that member holds"
+)
+
+
+def test_an_implied_value_refused_the_other_kinds_members_by_no_sentence_is_found() -> None:
+    """Without the sentence, nothing in the text refuses them: the shapes `declarations.md` section 4.1 names
+    are not a refusal, and the check names both directions."""
+
+    def without_the_ruling(name: str) -> str:
+        return flowing(document(name)).replace(THE_RULING, "")
+
+    assert THE_RULING in flowing(document("read_side_contract.md"))
+    assert implied_name_problems(IMPLIED_NAMES, BY_ID, READ_NAMES, without_the_ruling) == [
+        f"{members} at {place}: read_side_contract.md no longer says {quote!r}"
+        for members, place, quote in [
+            (("token",), A_NUMERIC_VALUE, "gives a numeric condition a `token`"),
+            (("value", "range", "unit"), A_TOKEN_VALUE, "or a token condition a `value`, `range` or `unit`"),
+        ]
+    ]

@@ -76,9 +76,8 @@ _DECLARATIONS_ONLY = ("label", "represents", "population_level")
 # place in its `implies`, those of a record condition's shapes of either kind (`provenance.md` section 6.1),
 # the `basis` and `inferred_from` a read ignores among them, and those an implied value may not hold, which
 # are refused: a status object's, its `reason` ignored, `plus_minus`, `set_or_measured`, and those of the
-# other kind of condition's shape. A numeric condition's row holds no token, so a `token` given one is a token
-# outside its row (`read_side_contract.md` section 1); a token condition's `value`, `range` or `unit` is
-# refused alike, failing closed.
+# other kind of condition's shape, a `token` for a numeric condition and a `value`, `range` or `unit` for a
+# token one (`read_side_contract.md` section 1).
 _IMPLIED_CONDITION = "implied_condition"
 _IMPLIED_MEMBERS = ("acceptance", "record", "region", "interval", "field", "reason", "basis", "fact", "token")
 _IMPLIED_OWN = (*_IMPLIED_MEMBERS, "implies")
