@@ -51,6 +51,13 @@ def written(sources: tuple[bytes, ...], request: bytes, claims: frozenset[Suite]
 
 # HP4.
 
+# The read field's form, drawn as HP6's is, a constant as often as an interval and a composition together, so
+# that HP4 is held to the forms S2b-1 reads (PR #37's review, L2). Each is declared by its chance: over 48
+# runs of each property at `ci` (seeds 6001 to 6048, 2026-10-17), means 0.50, 0.25 and 0.25 and least shares
+# 0.432, 0.162 and 0.188, each declared at the lesser property's least share, rounded down. From the measured
+# clusters, each falls below its draw floor with a probability below 1e-19 a run.
+FORM_CHANCES = {"form_constant": 0.43, "form_interval": 0.16, "form_composition": 0.18}
+
 
 def check_isolated(isolated: Isolated) -> None:
     base = isolated.base
@@ -65,10 +72,12 @@ def check_isolated(isolated: Isolated) -> None:
     assert same(unchanged, changed), (unchanged, changed)
 
 
+@pytest.mark.chances(**FORM_CHANCES)
 @pytest.mark.drawn(*strategies.ELSEWHERE)
 @given(strategies.isolated(SIZE))
 def test_a_fault_in_another_field_or_section_never_changes_the_read(isolated: Isolated) -> None:
     feature(isolated.way)
+    feature(f"form_{isolated.form}")
     check_isolated(isolated)
 
 
@@ -88,8 +97,10 @@ def check_refused(isolated: Isolated) -> None:
     assert "value" not in changed, changed
 
 
+@pytest.mark.chances(**FORM_CHANCES)
 @given(strategies.own_section_faulted(SIZE))
 def test_a_fault_in_the_read_fields_section_specimen_refuses_it(isolated: Isolated) -> None:
+    feature(f"form_{isolated.form}")
     check_refused(isolated)
 
 

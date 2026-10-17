@@ -46,6 +46,7 @@ class Isolated(NamedTuple):
     claims: frozenset[Suite]
     base: Read  # the read with nothing changed elsewhere
     changed: JsonObject  # its record, changed where the way says, and pinned again
+    form: str  # the read field's form
 
 
 def changed_record(read: Read, change: JsonObject) -> JsonObject:
@@ -102,29 +103,29 @@ def fault_elsewhere(draw: Draw, way: str, read: Read, size: Size) -> JsonObject:
 
 
 @st.composite
-def form_read(draw: Draw, size: Size) -> Read:
-    """A read of a field of a form drawn first, under the `want` its form gives."""
+def form_read(draw: Draw, size: Size) -> tuple[str, Read]:
+    """A read of a field of a form drawn first, under the `want` its form gives, and the form."""
     form, read = draw(results.form_reads(size))
-    return read._replace(request=results.with_want(read.request, WANTS[form]))
+    return form, read._replace(request=results.with_want(read.request, WANTS[form]))
 
 
 @st.composite
 def isolated(draw: Draw, size: Size) -> Isolated:
     way = draw(st.sampled_from(ELSEWHERE))
-    read = draw(form_read(size))
+    form, read = draw(form_read(size))
     changed = changed_record(read, draw(fault_elsewhere(way, read, size)))
     claims = draw(st.sampled_from(model_strategies.CLAIMS))
-    return Isolated(way, claims, read, changed)
+    return Isolated(way, claims, read, changed, form)
 
 
 @st.composite
 def own_section_faulted(draw: Draw, size: Size) -> Isolated:
     """A fault in the read field's own section's `specimen`."""
-    read = draw(form_read(size))
+    form, read = draw(form_read(size))
     section, _, _ = read.field.partition(".")
     change: JsonObject = {section: {"specimen": copy.deepcopy(draw(st.sampled_from(FAULTY_SPECIMENS)))}}
     claims = draw(st.sampled_from(model_strategies.CLAIMS))
-    return Isolated("own_section_specimen", claims, read, changed_record(read, change))
+    return Isolated("own_section_specimen", claims, read, changed_record(read, change), form)
 
 
 def repointed(request: JsonObject, record: JsonObject) -> bytes:
