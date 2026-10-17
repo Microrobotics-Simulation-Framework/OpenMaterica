@@ -152,7 +152,8 @@ jobs:
           save-cache: false
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
-      # Each of the job's seeds in turn (scripts/repeat_runs.py, `seeds`), as CI's test jobs run pytest: a
+      # Each of the job's seeds in turn (scripts/repeat_runs.py, `seeds`, whose refusal the step prints and
+      # fails on, though the request job has checked its values), as CI's test jobs run pytest: a
       # worker per vCPU, under `worksteal`. A run under `--hypothesis-seed` neither reads nor saves the example
       # database, and `.hypothesis/` is removed before each, so that no run replays another's examples. Each run's
       # record, its failing examples among it, goes to `results.jsonl`, whatever its outcome; the step fails
@@ -174,7 +175,7 @@ jobs:
           records="$RUNNER_TEMP/runs"
           mkdir -p "$records"
           read -ra extra <<< "$EXTRA"
-          listed=$(python3 scripts/repeat_runs.py seeds)
+          listed=$(python3 scripts/repeat_runs.py seeds) || { printf '%s\n' "$listed"; exit 1; }
           mapfile -t seeds <<< "$listed"
           deadline=$(($(date +%s) + (JOB_MINUTES - 3) * 60))
           failed=0
