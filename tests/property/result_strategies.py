@@ -5,7 +5,8 @@ each kind to its draw floor.
 
 A kind is a read the steps built decide: one whose record passes steps 1 to 10, under each `want` of plain
 read; one with a fault of step 8's catalogue (`value_field_strategies.py`) or of steps 9 and 10's
-(`condition_strategies.py`); one that ends before step 4 (no candidate, a pin no candidate states, an
+(`condition_strategies.py`), or of step 10's that leave the read to go on with their `unknown` reasons; one
+that ends before step 4 (no candidate, a pin no candidate states, an
 unreadable source beside none, another schema version, an ill-formed one, a broken envelope), at step 5 (a
 type no reader reads) or at step 7 (a field the record does not hold); and a field holding alternatives, each
 of which the request meets, or whose list breaks its shape. Each knows whether its read reaches step 4, where
@@ -22,7 +23,15 @@ from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite
-from tests.property.condition_strategies import FAULTS, Read, at, base_reads, faulty_reads, reference
+from tests.property.condition_strategies import (
+    FAULTS,
+    Read,
+    at,
+    base_reads,
+    faulty_reads,
+    not_accepted,
+    reference,
+)
 from tests.property.strategies import DOUBLES, TEXT, Size
 from tests.property.value_field_strategies import faulty_records, pinned
 
@@ -46,6 +55,7 @@ KINDS = (
     "met",
     "step_8_fault",
     "step_9_or_10_fault",
+    "unknown_at_step_10",
     "before_step_4",
     "step_5",
     "step_7",
@@ -100,7 +110,9 @@ def met_reads(draw: Draw, size: Size, wants: tuple[str, ...] = WANTS) -> Drawn:
 
 @st.composite
 def step_8_faults(draw: Draw, size: Size) -> Drawn:
-    example = draw(faulty_records(size))
+    """A record with one fault of step 8's catalogue, or two in one draw in four; or, in half the draws, two
+    always, so that a reason step 8 finds twice comes up often enough for its merging to show."""
+    example = draw(faulty_records(size, faults=draw(st.sampled_from([None, 2]))))
     record = pinned(example.record)
     request: JsonObject = {
         "target": {"record": reference(record), "field": example.field},
@@ -115,6 +127,25 @@ def step_9_or_10_faults(draw: Draw, size: Size) -> Drawn:
     faulty = draw(faulty_reads(tuple(FAULTS), size))
     return from_read(
         "step_9_or_10_fault", faulty.read, "value", draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
+    )
+
+
+# Step 10's faults that leave the read to go on, each giving its `unknown` reason with its condition: drawn
+# as a kind of their own, so that each `condition_*` code that never ends a read comes up in about one example
+# in 36, where among every fault of steps 9 and 10 the one that gives `condition_unchecked` came up in one in
+# 128, and the HP1 mutant that drops its condition took up to 1,079 examples to die (2026-10-17).
+UNKNOWN_AT_STEP_10 = ("unchecked", "unstated", "unknown_name", "uncertain")
+
+
+@st.composite
+def unknown_at_step_10(draw: Draw, size: Size) -> Drawn:
+    """One of those faults, beside, in half the draws, a token the request does not accept, which ends the
+    read at step 10 (`not_met`): a result that holds reasons of both statuses."""
+    faulty = draw(faulty_reads(UNKNOWN_AT_STEP_10, size))
+    if draw(st.booleans()):
+        not_accepted(draw, faulty.read)
+    return from_read(
+        "unknown_at_step_10", faulty.read, "value", draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
     )
 
 
@@ -243,6 +274,7 @@ BUILDERS = {
     "met": met_reads,
     "step_8_fault": step_8_faults,
     "step_9_or_10_fault": step_9_or_10_faults,
+    "unknown_at_step_10": unknown_at_step_10,
     "before_step_4": before_step_4,
     "step_5": at_step_5,
     "step_7": at_step_7,
