@@ -1,6 +1,6 @@
 # Property tests
 
-Hypothesis properties of the core, in four groups, and of the writer schema, in a fifth.
+Hypothesis properties of the core, in five groups, and of the writer schema, in a sixth.
 
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
@@ -112,6 +112,26 @@ Hypothesis properties of the core, in four groups, and of the writer schema, in 
   first row as written, `|r - v| <= t`, also in `mixed_magnitudes_outside` (1,127 of 3,000 value rows): the
   kinds those mutants die at. Which end of the stated span the boundary sits at, and a bound's window, are
   features declared by their chances.
+- **The result:** (11) the laws of a read's result (`read_side_contract.md` section 2), the S2 design's HP1,
+  HP2, HP6 and HP11 (`test_result_properties.py`), over reads that end at each step S2 builds, the kind drawn
+  first (`result_strategies.py`): a record that passes steps 1 to 10, under each `want` of plain read; a
+  fault of step 8's catalogue or of steps 9 and 10's; a read that ends before step 4, at step 5 or at step 7;
+  and alternatives the request meets, or whose list breaks its shape. HP1: the read gives a result, raising
+  `NotImplementedError` for a step not built yet alone, which only step 8's faults reach here; every code is
+  the table's, each `(code, condition)` once, `condition` on every `condition_*` reason and on no reason of a
+  code that never concerns one. HP2: the status is the worst of the reasons' statuses, which the oracle folds
+  from the vocabulary itself, and the members are present as item 6 says (a value with its unit, specimen,
+  statistics and provenance exactly where the status is not `not_met` and one value stands; the alternative
+  values exactly under `no_pick`; `conditions` beside a value, never under `no_pick` or after a refusal
+  before step 10). HP6: what a read returns of a met constant, or of each alternative under `no_pick`,
+  equals the stored member, numbers bit for bit and status objects as status objects, holding the members
+  the generated `TypedDict`s define (the oracle walks the shapes itself, never the reader's filter), each
+  count and index an integer, the review as `provenance.md` section 2 item 6 reads it; and emptying what a
+  result returns, its JSON or its members, changes neither a later JSON of it nor a later read of the same
+  store. Its draws give the field a value of `-0` in one in four, each way a review reads in one in three,
+  and a member the reader does not know in its statistics block, a fact or a condition in one in two, each
+  declared by its chance. HP11: without the hash suite, `hash_not_checked` marks exactly a read that reached
+  step 4, which the draw knows, and the two reads differ by that label alone.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),
@@ -150,9 +170,9 @@ failure prints a blob that replays it anywhere.
 CI runs the groups in six shards side by side, each in a job of its own: `pytest tests/property --shard json`,
 `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the two
 validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
-database and were most of the records shard's time, and `--shard conditions`, steps 9 and 10's group with its
-mutant searches, which take seconds and set no example database (112 s on four local workers at `ci`,
-2026-10-16; `SHARDS` in `tests/conftest.py`). Each family of faults is a property of its own, run in parallel.
+database and were most of the records shard's time, and `--shard conditions`, steps 9 and 10's group and the
+result's with their mutant searches, which take seconds and set no example database (112 s on four local
+workers at `ci`, 2026-10-16; 155 s with the result's, 2026-10-17; `SHARDS` in `tests/conftest.py`). Each family of faults is a property of its own, run in parallel.
 The agreement shard's drawn properties run python-jsonschema on every example, and are the longest tests of
 any shard: on 4 workers locally (2026-10-17), the shard took 4.0 and 8.0 minutes at `ci`, its longest property
 1.9 and 4.7 (at loads of 4 to 7 and 15 to 17), and 112 minutes at `deep`, its longest property 70 (load 18 to
@@ -416,6 +436,35 @@ place the unit in either entry of two.
 A mutant first written for HP5, step 0 keeping an implied value's unknown members, was dropped: no read can
 tell it from the core, since step 10 returns a filled condition with the members the reader knows alone.
 
+### The result's mutants
+
+`test_result_mutants.py`, injected as steps 9 and 10's are: a module-level function or name of `read`,
+`conditions` or `resolve`. Each names the property that kills it and the kinds or features (`-0`, an unknown
+member, a review's way) one of which the example that kills it must show. The kill is the examples the
+derandomised search took, at the small and the original size (measured 2026-10-17, S2a-4's phase A). The S2
+design's other HP6 mutant, an interval's `upper: none` read as infinity, waits for S2b-1, which reads
+intervals.
+
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1 | `step_9_or_10_fault` | 1,079, 241 |
+| `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 | `met`, `step_9_or_10_fault` | 92, 80 |
+| `a_code_outside_the_table` | step 13's refusal under a code the table does not hold | HP1 | `met` | 65, 80 |
+| `reasons_not_merged` | a reason found twice given twice | HP1 | `step_8_fault` | 173, 59 |
+| `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault` | 254, 336 |
+| `best_status` | the status the best of the reasons' | HP2 | any kind | 326, 80 |
+| `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 | `alternatives` | 252, 3 |
+| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 | `alternatives` | 252, 3 |
+| `expanded_uncertainty_divided_by_its_k` | an expanded uncertainty returned divided by its coverage factor (the S2 design's) | HP6 | `met`, `alternatives` | 3, 51 |
+| `results_share_the_record` | a member with nothing to leave out returned as the record's own object (the S2 design's) | HP6 | `met`, `alternatives` | 1, 1 |
+| `json_shares_the_result` | a result's JSON shares its objects with the result | HP6 | `met`, `alternatives` | 1, 1 |
+| `negative_zero_as_zero` | a value of `-0` returned as `0` | HP6 | `negative_zero` | 1, 1 |
+| `unknown_members_returned` | the members a returned object holds kept whole, those the reader does not know included | HP6 | `unknown_member` | 7, 57 |
+| `review_as_it_holds` | a review returned as the record holds it, whatever it holds | HP6 | a review's way | 7, 11 |
+| `counts_as_doubles` | a count or an index written as a double | HP6 | `met`, `alternatives` | 1, 1 |
+| `labelled_before_step_4` | `hash_not_checked` on a read that ended before step 4 (the S2 design's HP11 mutant) | HP11 | `before_step_4` | 11, 6 |
+| `labelled_beside_the_hash_suite` | `hash_not_checked` on a read under the hash suite | HP11 | any kind that reaches step 4 | 1, 1 |
+
 ## Audits
 
 `conftest.py` runs every test here under the two audits of `audits.py`:
@@ -445,7 +494,9 @@ tell it from the core, since step 10 returns a filled condition with the members
   (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. Steps 9
   and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and declare it drawn;
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
-  window by the least share measured. For each such property, and five of steps 9 and 10's,
+  window by the least share measured. The result's properties draw their kind first among at most eight, and
+  HP6 declares its field's `-0`, its review's way and its unknown member by their chances. For each such
+  property, five of steps 9 and 10's and two of the result's (HP1 by a kind, HP6 by a chance),
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone. One of the five runs a parametrised property, HP8's
   other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,
