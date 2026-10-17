@@ -7,8 +7,9 @@ python-jsonschema stays in two roles: a second, independent implementation, whic
 test prints (`tests/spec_sync/schemas.py`). Both read the documents here.
 
 Every JSON file under `schema/`, the vocabulary included, is registered under its `$id`, so that a reference
-resolves to the file in this tree and never over a network. A `format` is an annotation, as python-jsonschema
-reads it without a format checker.
+resolves to the file in this tree and never over a network. Every resource is read at draft 2020-12, as
+python-jsonschema reads it, whatever its `$schema`. A `format` is an annotation, as python-jsonschema reads it
+without a format checker.
 """
 
 import json
@@ -29,7 +30,7 @@ DOCUMENTS: dict[str, Json] = {
         for path in sorted((Path(materica.__file__).parent / "schema").rglob("*.json"))
     )
 }
-REGISTRY = jsonschema_rs.Registry([(uri, document) for uri, document in DOCUMENTS.items()])
+REGISTRY = jsonschema_rs.Registry(list(DOCUMENTS.items()), draft=jsonschema_rs.Draft202012)
 
 
 def verdict(schema: str | Json, files: Iterable[Json] = ()) -> Callable[[JsonValue], bool]:
@@ -37,7 +38,7 @@ def verdict(schema: str | Json, files: Iterable[Json] = ()) -> Callable[[JsonVal
     of `files` (a schema file, a mutant of it) in place of the package's file of its `$id`."""
     replaced = {str(file["$id"]): file for file in files}
     registry = (
-        jsonschema_rs.Registry([(uri, document) for uri, document in (DOCUMENTS | replaced).items()])
+        jsonschema_rs.Registry(list((DOCUMENTS | replaced).items()), draft=jsonschema_rs.Draft202012)
         if replaced
         else REGISTRY
     )
