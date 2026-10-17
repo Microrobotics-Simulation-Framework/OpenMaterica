@@ -2071,6 +2071,74 @@ def test_the_interrupt_check_can_fail(fault: Callable[[Workflow], None], problem
     assert any(problem in line for line in found), found
 
 
+# The slowest run of each Hypothesis shard measured on CI, in minutes, by profile, with the five shards of
+# today's map (ci.yml, above the job): at `ci` in run 39002323592, at `deep` in manual run 39002750375, both
+# 2026-10-17. A shard not measured yet is not held.
+MEASURED_ON_CI = {
+    "ci": {"agreement": 5.93, "writer": 5.17, "records": 2.48, "json": 1.62, "step8_mutants": 1.62},
+    "deep": {"writer": 63.63, "agreement": 47.02, "records": 31.40, "json": 14.13, "step8_mutants": 1.55},
+}
+PROFILE_EVENTS = {"ci": "pull_request", "deep": "schedule"}
+
+
+def margin_problems(ci: Workflow) -> list[str]:
+    """Where a Hypothesis shard's interrupt, three minutes before its timeout, leaves less than twice its
+    slowest run measured on CI: a runner half as fast would lose the run."""
+    job = ci["jobs"]["hypothesis"]
+    problems: list[str] = []
+    for profile, measured in MEASURED_ON_CI.items():
+        for shard, minutes in measured.items():
+            context = {"github.event_name": PROFILE_EVENTS[profile], "matrix.shard": shard}
+            interrupt = as_number(setting(job["timeout-minutes"], context)) - 3
+            if interrupt < 2 * minutes:
+                problems.append(
+                    f"hypothesis ({profile}, {shard}) is interrupted at {interrupt:g} minutes, less than "
+                    f"twice its {minutes:g} measured on CI"
+                )
+    shards = set(job["strategy"]["matrix"]["shard"])
+    problems += [
+        f"a measured shard the matrix no longer has: {shard}"
+        for profile in MEASURED_ON_CI.values()
+        for shard in sorted(profile.keys() - shards)
+    ]
+    return problems
+
+
+def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
+    assert margin_problems(workflow("ci.yml")) == []
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        (
+            "matrix.shard == 'records' && 90 || 45",
+            "45",
+            "hypothesis (deep, records) is interrupted at 42 minutes, less than twice its 31.4 ",
+        ),
+        (
+            "matrix.shard == 'writer' && 75",
+            "matrix.shard == 'writer' && 12",
+            "hypothesis (ci, writer) is interrupted at 9 minutes, less than twice its 5.17",
+        ),
+    ],
+    ids=["records-deep-at-45", "writer-ci-at-12"],
+)
+def test_the_margin_check_can_fail(old: str, new: str, problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    job = ci["jobs"]["hypothesis"]
+    assert job["timeout-minutes"].count(old) == 1
+    job["timeout-minutes"] = job["timeout-minutes"].replace(old, new)
+    found = margin_problems(ci)
+    assert any(problem in line for line in found), found
+
+
+def test_the_margin_check_finds_a_measured_shard_gone() -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"].remove("json")
+    assert "a measured shard the matrix no longer has: json" in margin_problems(ci)
+
+
 # The per-commit job (ci.yml says why, above it): the checks an agent runs on a commit locally, every
 # commit but a pull request's head on its own, at most six at once, and a pass kept under the commit's tree
 # and the workflow's blob, so that a tree passed under the same checks is not checked again.

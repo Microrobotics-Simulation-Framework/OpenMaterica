@@ -344,6 +344,8 @@ every family entry goes in `families/CHANGELOG.md`.
   job's timeout for every event and matrix combination, the fuzz job's excepted with its reason. The durations
   report counts the tests the interrupt stopped, which pytest-xdist writes with a time alone, and leaves them
   out (`scripts/report_test_durations.py`); a test runs pytest under the same interrupt and reads its report.
+  The records shard's `deep` timeout is 90 minutes, from 45, after it took 31 on the first `deep` run on CI;
+  a guard holds each shard's interrupt at twice its slowest run measured there.
 - Every commit of a pull request but its head is checked on its own (the `commit` job): checked out as it is,
   on Python 3.15, ruff, mypy and pyright, the wheel's build and check, every generator's `--check` and the
   whole suite at `dev`, at most six at once. The gate lists the commits, but those that change documentation
