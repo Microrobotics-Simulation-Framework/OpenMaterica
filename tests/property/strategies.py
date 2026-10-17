@@ -7,7 +7,7 @@ import math
 import random
 import struct
 from decimal import Decimal
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 from hypothesis import settings
 from hypothesis import strategies as st
@@ -17,12 +17,19 @@ from materica.core.jsonio import JsonValue
 # Values
 
 
+# A double's three fields. Strategies are built once, here or by their arguments: Hypothesis spends more
+# building and checking a strategy than drawing from it.
+_SIGN = st.integers(0, 1)
+_EXPONENT = st.one_of(st.just(0), st.integers(0, 2046))
+_FRACTION = st.integers(0, 2**52 - 1)
+
+
 @st.composite
 def every_double(draw: st.DrawFn) -> float:
     """Any finite double from its bits, with zeros and subnormals (exponent field 0) drawn half the time."""
-    sign = draw(st.integers(0, 1))
-    exponent = draw(st.one_of(st.just(0), st.integers(0, 2046)))
-    fraction = draw(st.integers(0, 2**52 - 1))
+    sign = draw(_SIGN)
+    exponent = draw(_EXPONENT)
+    fraction = draw(_FRACTION)
     bits = sign << 63 | exponent << 52 | fraction
     number: float = struct.unpack(">d", bits.to_bytes(8, "big"))[0]
     return number
@@ -76,6 +83,23 @@ SIZE = {"dev": SMALL, "ci": SMALL, "deep": ORIGINAL}[settings.get_current_profil
 # containers grow rarer with depth, as the trees st.recursive drew before (mean depth 2.1, at most 5).
 _SCALAR_SHARE = (4, 55, 60, 65, 70, 75)
 
+# json_values's strategy for each distinct set of arguments, kept with the arguments, so that no `id` in a key
+# is reused while the key is held.
+_JSON_VALUES: dict[object, tuple[st.SearchStrategy[JsonValue], tuple[object, ...]]] = {}
+
+
+def _strict_key(value: object) -> object:
+    """`value` as a key that tells apart what `==` does not: 0.0 and -0.0, and True, 1 and 1.0, are equal and
+    hash alike. A float by its bits, a strategy by its identity, a tuple (a `Size`) by its type and items."""
+    kind = type(value)
+    if isinstance(value, float):
+        return kind, struct.pack(">d", value)
+    if isinstance(value, tuple):
+        return kind, tuple(_strict_key(item) for item in cast(tuple[object, ...], value))
+    if isinstance(value, st.SearchStrategy):
+        return kind, id(cast(object, value))
+    return kind, value
+
 
 def json_values(
     strings: st.SearchStrategy[str] | None = None,
@@ -87,26 +111,33 @@ def json_values(
 
     They are drawn top-down with the remaining leaf budget passed down, so that no draw is thrown away. Each
     node's kind and child count are one integer each, which shrink towards a `null` and fewer children.
+
+    Built once for each set of arguments (`_strict_key`), since callers ask for it in every draw.
     """
     strings = TEXT if strings is None else strings
     names = TEXT if names is None else names
+    arguments = (strings, names, numbers, size)
+    key = _strict_key(arguments)
+    if key in _JSON_VALUES:
+        return _JSON_VALUES[key][0]
+    rolls, counts, booleans = st.integers(0, 99), st.integers(0, size.members), st.booleans()
 
     @st.composite
     def trees(draw: st.DrawFn) -> JsonValue:
         budget = [size.leaves]
 
         def node(depth: int) -> JsonValue:
-            roll = draw(st.integers(0, 99))
+            roll = draw(rolls)
             if roll < (_SCALAR_SHARE[depth] if depth < size.depth else 100):
                 budget[0] -= 1
                 kind = roll % 4
                 if kind == 0:
                     return None
                 if kind == 1:
-                    return draw(st.booleans())
+                    return draw(booleans)
                 return draw(numbers) if kind == 2 else draw(strings)
             children: list[JsonValue] = []
-            for _ in range(draw(st.integers(0, size.members))):
+            for _ in range(draw(counts)):
                 if budget[0] == 0:
                     break
                 children.append(node(depth + 1))
@@ -117,7 +148,8 @@ def json_values(
 
         return node(0)
 
-    return trees()
+    _JSON_VALUES[key] = (trees(), arguments)
+    return _JSON_VALUES[key][0]
 
 
 SCALARS: st.SearchStrategy[JsonValue] = st.one_of(st.none(), st.booleans(), DOUBLES, TEXT)
