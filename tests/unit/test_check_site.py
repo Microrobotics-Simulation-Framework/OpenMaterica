@@ -401,6 +401,32 @@ def test_the_readmes_images_name_files_of_the_tree(tree: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    "readme",
+    [
+        "![logo][art]\n\n[art]: art/missing.png\n",
+        "![The Logo][]\n\n[the  logo]: <art/missing.png>\n",
+        '![logo]\n\n   [LOGO]: art/missing.png "The logo"\n',
+    ],
+    ids=["full", "collapsed", "shortcut"],
+)
+def test_a_reference_style_image_of_the_readme_names_a_file_of_the_tree(tree: Path, readme: str) -> None:
+    (tree / "README.md").write_text(readme, encoding="utf-8")
+    assert check_site.readme_problems(tree / "README.md") == [
+        "README.md: its image 'art/missing.png' names art/missing.png, which the tree does not hold"
+    ]
+    (tree / "README.md").write_text(readme.replace("missing", "logo"), encoding="utf-8")
+    assert check_site.readme_problems(tree / "README.md") == []
+
+
+def test_a_reference_style_link_of_the_readme_is_not_an_image(tree: Path) -> None:
+    """The control: a link, not an image, to a label naming a missing file, and an image of no label."""
+    (tree / "README.md").write_text(
+        "[the notes][n] and ![alt][none]\n\n[n]: art/missing.md\n", encoding="utf-8"
+    )
+    assert check_site.readme_problems(tree / "README.md") == []
+
+
+@pytest.mark.parametrize(
     ("url", "path"),
     [
         (
