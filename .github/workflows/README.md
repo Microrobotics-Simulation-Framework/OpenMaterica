@@ -83,8 +83,14 @@ so that a pull request's commits are checked sooner; lower it again, to 6 or les
 work runs at the same time, so that their jobs do not wait behind these. Count the rest too: beside the
 per-commit jobs, a push to a pull request runs, once the gate has passed, 16 jobs on its head at once
 (`static`, `generated`, `tests` on five Pythons, `controls` on two, `hypothesis` in six shards, `site`), and
-each repeat dispatch runs its own `REPEAT_MAX_PARALLEL`. Set, read or remove one with the GitHub CLI, as a
-maintainer of the repository:
+each repeat dispatch runs its own `REPEAT_MAX_PARALLEL`. `PER_COMMIT_MAX_PARALLEL` caps `commit` and
+`site_commit` each apart, so at the ceiling of 20 one push can hold 16 + 20 + 20 = 56 of the organisation's 60
+runners, and each repeat dispatch 20 more; a commit that changes the site alone is rare, so the usual peak of one
+push is 16 + 20 = 36.
+
+Anyone with write access to the repository can set these variables, not its maintainers alone (GitHub's "Use
+variables": write access suffices for a repository of an organisation), which is why the check bounds them. Set,
+read or remove one with the GitHub CLI:
 
 ```sh
 gh variable set PER_COMMIT_MAX_PARALLEL --body 10 -R Microrobotics-Simulation-Framework/OpenMaterica
