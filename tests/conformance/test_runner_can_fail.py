@@ -990,6 +990,39 @@ def scales_the_log_log_derivative_at_the_lower_knot(monkeypatch: pytest.MonkeyPa
     return table_evaluator.evaluate
 
 
+def raises_its_refusals(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+    """The reference evaluator, raising each refusal in place of reporting it, which the text allows
+    (read_side_contract.md section 7 item 7, "a raised refusal counts as reported")."""
+    found = reference(table, at, precision, side)
+    if found.refused:
+        raise runner.Refusal(f"at {at!r}")
+    return found
+
+
+def raises_another_exception_at_a_refusal(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """At a refusal, `ValueError` raised, which is no refusal: the runner adapts `Refusal` alone."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if found.refused:
+            raise ValueError(f"at {at!r}")
+        return found
+
+    return evaluate
+
+
+def raises_a_refusal_outside_the_range(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """A raised refusal where none is due: outside the readable range, off every edge."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if found.in_range is False:
+            raise runner.Refusal(f"at {at!r}")
+        return found
+
+    return evaluate
+
+
 BINARY32_CLAIMS = tuple(claim for claim in EVALUATOR_CLAIMS if claim.precision == "binary32")
 
 # The differences a broken evaluator may be caught by, as the runner words them.
@@ -1056,6 +1089,9 @@ EVALUATOR_FAULTS: list[Caught] = [
     # range") and read_side_contract.md section 7 item 5 (`y / x` at the point).
     Caught(takes_a_wider_source_range_as_the_readable_range, "TE-002.source_range_wide.json", IN_RANGE),
     Caught(scales_the_log_log_derivative_at_the_lower_knot, "TE-008.loglog_interior.json", DERIVATIVE),
+    # Raised refusals: the runner adapts `Refusal` alone, and only where a refusal is due.
+    Caught(raises_another_exception_at_a_refusal, "TE-010.linear_edge.json", "raised ValueError"),
+    Caught(raises_a_refusal_outside_the_range, "TE-003.just_outside_linear.json", REFUSAL_NOT_DUE),
 ]
 
 # A difference the runner gives where an executor raised: no caught fault, unless raising is the fault.
@@ -1096,6 +1132,27 @@ def test_a_broken_implementation_fails_a_real_case(
 @pytest.mark.parametrize("operation", sorted(EXECUTORS))
 def test_the_implementation_itself_fails_none(operation: str) -> None:
     assert failed_cases(operation, EXECUTORS[operation]) == set()
+
+
+def test_an_evaluator_that_raises_its_refusals_fails_no_te_file() -> None:
+    raised: list[float] = []
+
+    def counted(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        try:
+            return raises_its_refusals(table, at, precision, side)
+        except runner.Refusal:
+            raised.append(at)
+            raise
+
+    assert failed_cases("evaluate", runner.evaluate_executor(counted)) == set()
+    # It raised in place of every refusal the TE files hold, under each of the four configurations.
+    assert len(raised) == 4 * sum(map(refusals_expected, CASE_FILES.values())) > 0
+
+
+def refusals_expected(case_file: runner.CaseFile) -> int:
+    evaluations = case_file.expected.get("evaluations", [])
+    assert isinstance(evaluations, list)
+    return sum(1 for entry in evaluations if isinstance(entry, dict) and entry.get("refused") is True)
 
 
 @pytest.mark.parametrize(

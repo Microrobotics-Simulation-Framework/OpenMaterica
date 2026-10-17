@@ -557,6 +557,12 @@ EVALUATOR_CLAIMS: tuple[EvaluatorClaim, ...] = (
 TableEvaluator = Callable[[Table, float, EvaluatorPrecision, Side], Evaluation]
 
 
+class Refusal(Exception):
+    """A refusal an evaluator raises in place of reporting it: `read_side_contract.md` section 7 item 7, "a
+    raised refusal counts as reported". The `evaluate` executor adapts it to the refusal reported, at that
+    axis value; any other exception fails the case, as an executor that raises does."""
+
+
 def evaluate_executor(
     evaluator: TableEvaluator = table_evaluator.evaluate,
     claims: Sequence[EvaluatorClaim] = EVALUATOR_CLAIMS,
@@ -570,12 +576,21 @@ def evaluate_executor(
         runs: list[JsonValue] = []
         for claim in claims:
             evaluations: list[JsonValue] = [
-                _evaluation_json(evaluator(table, at, claim.precision, claim.side)) for at in points
+                _evaluation_json(_reported(evaluator, table, at, claim)) for at in points
             ]
             runs.append({"precision": claim.precision, "side": claim.side, "evaluations": evaluations})
         return {"runs": runs}
 
     return execute
+
+
+def _reported(evaluator: TableEvaluator, table: Table, at: float, claim: EvaluatorClaim) -> Evaluation:
+    """The evaluation at `at`, a raised `Refusal` adapted to the refusal reported, with no number (the TE
+    suite's README: "Both count as reported; a runner adapts each")."""
+    try:
+        return evaluator(table, at, claim.precision, claim.side)
+    except Refusal:
+        return Evaluation(refused=True)
 
 
 def _evaluate_request(case_file: CaseFile) -> tuple[Table, list[float]]:
