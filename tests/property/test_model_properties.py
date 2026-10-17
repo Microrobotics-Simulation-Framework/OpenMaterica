@@ -46,9 +46,30 @@ class Outcome(NamedTuple):
     why: str = ""
 
 
+# The counts a result writes as integers (the code design's rule 5), where an integer has no sign for zero.
+COUNTS = ("n_specimens", "n_donors", "n_sources")
+
+
+def counted(value: JsonValue) -> JsonValue:
+    """`value` with each count of a statistics block, an input specimen's `input` and an alternative value's
+    index as the integer rule 5 writes it: `-0` is 0."""
+    if isinstance(value, list):
+        return [counted(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    whole = {
+        name: member + 0.0
+        if name in (*COUNTS, "input", "alternative") and isinstance(member, float)
+        else member
+        for name, member in value.items()
+    }
+    return {name: counted(member) for name, member in whole.items()}
+
+
 def compared(result: JsonObject) -> JsonObject:
     """`result` with its sets in one order: the reasons without their details, the labels, each condition
-    entry by name, and within each alternative value its labels and entries."""
+    entry by name, and within each alternative value its labels and entries; and its counts and indexes as
+    rule 5 writes them (`counted`)."""
 
     def key(value: JsonValue) -> str:
         return json.dumps(value, sort_keys=True)
@@ -86,7 +107,9 @@ def compared(result: JsonObject) -> JsonObject:
             for entry in values
             if isinstance(entry, dict)
         ]
-    return found
+    written = counted(found)
+    assert isinstance(written, dict)
+    return written
 
 
 def implementation_outcome(example: Example) -> Outcome:

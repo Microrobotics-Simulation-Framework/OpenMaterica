@@ -292,7 +292,7 @@ class ModelFault(NamedTuple):
 
 
 MODEL = [
-    # No case file kills these (phase 0's survivors, and the two seeded in phase B).
+    # No case file kills these (phase 0's survivors, and those seeded in phase B).
     ModelFault("plurals_not_slips", "unpinned", ("plural_of_two_characters",)),
     ModelFault("member_checked_off_its_row", "unpinned", ("form_off_its_row",)),
     ModelFault("composition_checked_beyond_its_basis", "unpinned", ("composition_basis_off_its_row",)),
@@ -303,6 +303,11 @@ MODEL = [
     ModelFault(
         "declaration_names_not_named_in_a_request", "unpinned", ("names_a_declaration_gives_a_requirement",)
     ),
+    ModelFault(
+        "population_level_checks_stop_at_a_missing_member", "unpinned", ("checks_beside_a_broken_object",)
+    ),
+    ModelFault("dof_token_unchecked_under_student_t", "unpinned", ("checks_beside_a_broken_object",)),
+    ModelFault("every_status_object_an_unstated_kind", "unpinned", ("checks_beside_a_broken_object",)),
     ModelFault(
         "input_specimens_optional",
         "faults",

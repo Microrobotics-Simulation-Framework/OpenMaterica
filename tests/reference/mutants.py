@@ -52,6 +52,9 @@ _checked_acceptances = model.checked_acceptances
 _checked_requirement = model.checked_requirement
 _check_composition = model.check_composition
 _check_input_specimens = model.check_input_specimens
+_check_population_level = model.check_population_level
+_check_plus_minus = model.check_plus_minus
+_check_uncertainty = model.check_uncertainty
 _check_label = model.check_label
 _check_provenance = model.check_provenance
 _check_units = model.check_units
@@ -434,6 +437,39 @@ def block_unchecked(block: JsonValue, faults: Reasons, *, allowed: frozenset[str
 
 def unchecked(value: JsonValue, faults: Reasons) -> None:
     return None
+
+
+def population_level_checks_stop_at_a_missing_member(value: JsonValue, faults: Reasons) -> None:
+    if isinstance(value, dict) and not all(name in value for name in model.POPULATION_LEVEL_NAMES):
+        if model.status_object(value, faults, allowed=frozenset({"unstated"})) is None:
+            faults.add("form_invalid")
+        return
+    _check_population_level(value, faults)
+
+
+def dof_token_unchecked_under_student_t(value: JsonValue, faults: Reasons) -> None:
+    dof = value.get("dof") if isinstance(value, dict) else None
+    if isinstance(value, dict) and value.get("distribution") == "student_t" and isinstance(dof, dict):
+        _check_uncertainty({**value, "dof": -1.0}, faults)
+        return
+    _check_uncertainty(value, faults)
+
+
+def every_status_object_an_unstated_kind(entries: JsonValue, faults: Reasons) -> None:
+    unstated: JsonValue = {"status": "unstated"}
+    read_as: JsonValue = entries
+    if isinstance(entries, list):
+        each: list[JsonValue] = [
+            {**entry, "stated_as": unstated}
+            if isinstance(entry, dict) and isinstance(entry.get("stated_as"), dict)
+            else entry
+            for entry in entries
+        ]
+        read_as = each
+    _check_plus_minus(read_as, faults)
+    for entry in entries if isinstance(entries, list) else []:
+        if isinstance(entry, dict) and isinstance(entry.get("stated_as"), dict):
+            model.status_object(entry["stated_as"], faults, allowed=frozenset({"unstated"}), scalar=True)
 
 
 def input_specimens_optional(entries: JsonValue, inputs: int, faults: Reasons) -> None:
@@ -866,6 +902,24 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "derivation_unchecked": Mutant(
         "a derived value's derivation not checked", "provenance.md:185-189", {"check_derivation": unchecked}
+    ),
+    "population_level_checks_stop_at_a_missing_member": Mutant(
+        "a population level missing a member has its `level` and `within` left unchecked",
+        "read_side_contract.md:127-128",
+        {"check_population_level": population_level_checks_stop_at_a_missing_member},
+        survives="no case holds a population level missing a member beside a token of its own",
+    ),
+    "dof_token_unchecked_under_student_t": Mutant(
+        "a `dof` held as a status object under a Student's t distribution has its token left unchecked",
+        "read_side_contract.md:127-128",
+        {"check_uncertainty": dof_token_unchecked_under_student_t},
+        survives="no case holds a `dof` status object of an unknown token under a Student's t distribution",
+    ),
+    "every_status_object_an_unstated_kind": Mutant(
+        "a `plus_minus` entry whose `stated_as` holds any status object counted as of unstated kind",
+        "provenance.md:246-247",
+        {"check_plus_minus": every_status_object_an_unstated_kind},
+        survives="no case holds a `stated_as` of another status token beside an entry of a stated kind",
     ),
     "input_specimens_optional": Mutant(
         "a derivation without `input_specimens` read",

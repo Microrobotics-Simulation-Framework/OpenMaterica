@@ -590,8 +590,38 @@ def implied_zero_beside_minus_zero(draw: Draw, read: Read) -> None:
     read.request["acceptances"] = [first, second]
 
 
+def checks_beside_a_broken_object(draw: Draw, read: Read) -> None:
+    """A token the reader does not know beside a fault of the object that holds it, both of which step 8
+    checks (`read_side_contract.md` section 2 item 2, "Each step makes all its checks"): a population level's
+    unknown `level` beside a slip of `within`, or an uncertainty's `dof` held as a status object of an unknown
+    token under a Student's t distribution, which wants a number; or a `plus_minus` entry whose `stated_as`
+    holds a status token the reader does not know, beside an entry of a stated kind, which is no entry of
+    unstated kind (`provenance.md` section 6.1 item 6). Fuzz target 4 found the model reading the three
+    otherwise."""
+    statistics = at(field_of(read), "statistics")
+    way = draw(st.sampled_from(["population_level", "dof", "plus_minus"]))
+    if way == "population_level":
+        statistics["represents"] = "population"
+        statistics["population_level"] = {"level": "patient", "w[thin": {"status": "none"}}
+    elif way == "plus_minus":
+        at(field_of(read), "conditions", "measurement_dimension")["plus_minus"] = [
+            {"stated_as": {"status": "x_unknown"}, "value": 0.0, "unit": "m"},
+            {"stated_as": "sd", "value": 0.0, "unit": "m"},
+        ]
+    else:
+        statistics["expanded_uncertainty"] = {
+            "value": 4e-06,
+            "coverage_factor": 2.3,
+            "distribution": "student_t",
+            "dof": {"status": "x_unknown"},
+            "basis": "reported_uncertainty",
+            "represents": "estimate",
+        }
+
+
 PLANTS: dict[str, Callable[[Draw, Read], None]] = {
     "plural_of_two_characters": plural_of_two_characters,
+    "checks_beside_a_broken_object": checks_beside_a_broken_object,
     "form_off_its_row": form_off_its_row,
     "composition_basis_off_its_row": composition_basis_off_its_row,
     "broken_status_object": broken_status_object,
