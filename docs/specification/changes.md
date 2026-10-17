@@ -339,11 +339,12 @@ replaces (maintainer, 2026-10-15; PR-307). A `no_pick` entry carries the labels 
 even where that alternative's read ended at step 11, so a table read over an operating range of its axis keeps
 `user_extracted` and the field's `label` (maintainer, 2026-10-15; PR-013).
 
-Settled with S3-te's review of the table evaluation suite. A file's `binary32` tolerance is capped per broken
+Settled with S3-te's review of the table evaluation suite. The `binary32` tolerances are capped per broken
 evaluator (maintainer, 2026-10-17): each broken evaluator the suite's verification names misses at least one
-of the files that should catch it by ten times that file's `binary32` tolerance. It need not miss every file
-by that much: NumPy's `interp` outside the readable range misses TE-003 `narrowed` by less (`README.md`, "Case
-files"). Outside a table's readable range, an evaluator's value and its derivative are each judged alone
-(maintainer, 2026-10-17): each is the expected number, or absent or NaN. So a NaN value beside a zero
-derivative passes, and `in_range` is still compared (`read_side_contract.md` section 7 item 1; TE-002,
-TE-003). This settles the S3 entry's "or no number".
+of the files that should catch it by ten times that file's `binary32` tolerance (`README.md`, "Case files").
+The TE suite's README lists each broken evaluator beside the files that should catch it. A broken evaluator
+need not miss every file by that much: NumPy's `interp` outside the readable range misses TE-003 `narrowed` by
+less (the TE suite's README). Outside a table's readable range, an evaluator's value and its derivative are
+each judged alone (maintainer, 2026-10-17): each is the expected number, or absent or NaN. So a NaN value
+beside a zero derivative passes, and `in_range` is still compared (`read_side_contract.md` section 7 item 1;
+TE-002, TE-003). This settles the S3 entry's "or no number".

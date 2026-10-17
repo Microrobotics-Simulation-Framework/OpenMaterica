@@ -70,9 +70,10 @@ combination tried, as a library within one unit of the true value may round each
 way, since a library is a function); and at a knot, both the knot's `y` and the formula there. A correctly
 rounded `ln` and `exp` alone understated NumPy's real `float32` error 2.3 times on one file, and `ln` and
 `exp` rounded the same way throughout a run understated a faithful library's worst case up to 3.4 times. The
-README's cap holds per broken evaluator: each one listed below misses at least one of the files that should
-catch it by ten times that file's tolerance. It need not miss every file by that much: NumPy's `interp`
-outside the readable range misses TE-003 `narrowed` by at most 0.021 times that file's tolerance.
+README's cap holds per broken evaluator: each one in "The broken evaluators" below misses at least one of the
+files that should catch it, those named beside it there, by ten times that file's tolerance. It need not miss
+every file by that much: NumPy's `interp` outside the readable range misses TE-003 `narrowed` by at most 0.021
+times that file's tolerance.
 
 ## How they were checked
 
@@ -89,23 +90,60 @@ In scratch harnesses, not part of the repository, written from the text:
   refusal at an edge outside the readable range, below it or above it, extrapolates across an edge on either
   side, returns a derivative where the range is one point, or reports a refusal where none is due; and by a
   number for one that returns the side it did not declare, the outside derivative at an end, the declared side
-  at a range end on an interior knot, the interval above just below an edge, log-log linearly, linear in log
-  space, the linear slope as a log-log derivative, NumPy's `interp` outside the readable range, a linear
-  extrapolation, or `bfloat16` intermediates. Each of these misses the best of the files that should catch it
-  by at least ten times that file's tolerance, under every configuration it claims: by a flag, which no
-  tolerance passes, or by a number. Of those caught by a number, `bfloat16` misses by the least, 1,357 times,
-  at TE-012 `decimal_knots_linear`; NumPy's `interp` by 3,373 times, at TE-002 `source_range_narrow`; a
-  linear table read as log-log by 35,586 times, at TE-004 `linear_values`; and every other by at least
-  144,000 times (the linear slope as a log-log derivative, at TE-008 `loglog_interior`). These margins come
-  from S3-te's reference evaluator and broken evaluators (2026-10-17): at each file that should catch a
-  fault, its relative difference from the expected answer at the compared number where they differ most, over
-  that file's tolerance; a fault's margin is its best file's, the least over the configurations it claims.
+  at a range end on an interior knot, the interval above just below an edge, log-log linearly, a linear table
+  read as log-log, the linear slope as a log-log derivative, NumPy's `interp` outside the readable range, a
+  linear extrapolation, or `bfloat16` intermediates.
 
 Two passes independent of the author, one told to break the cases and one to check them, each wrote its own
 evaluator from the text and checked these files with it; after the fixes they led to, their tools, rerun on
 these files under the comparison rules the text now states, agree with every one: the expected numbers bit for
 bit, each tolerance by the rule above. The scripts that generated these files are not part of the repository;
 the files are the source.
+
+## The broken evaluators
+
+The suite's verification names these broken evaluators, one fault each. Beside each are the files that should
+catch it, and the difference it must fail each of them by, under every precision and side it claims (the
+`bfloat16` one claims `binary32` only). The list is taken from S3-te's verification (2026-10-17). These are
+the only files the README's cap counts for a fault: a file named beside no broken evaluator has no cap from
+that rule.
+
+| Fault | Fails by | Files that should catch it |
+|---|---|---|
+| clamps, with `in_range` always true | `in_range` | TE-002 `linear`, TE-003 `just_outside_linear` |
+| takes `in_range` by `<` at the ends | `in_range` | TE-002 `linear` |
+| ignores a narrower `source_range` | `in_range` | TE-002 `source_range_narrow`, TE-003 `narrowed` |
+| takes a wider `source_range` as the readable range | `in_range` | TE-002 `source_range_wide` |
+| reads an edge from the interval above | no refusal | TE-010 `linear_edge` |
+| reports a refusal at an edge, but returns the interval above's numbers | a number beside the refusal | TE-010 `linear_edge` |
+| reports a refusal at an edge, but returns infinite numbers | a number beside the refusal | TE-010 `linear_edge` |
+| raises another exception in place of a refusal | raising | TE-010 `linear_edge` |
+| gives `in_range` false and no refusal at an edge outside the readable range, below it or above it | no refusal | TE-010 `edge_outside_readable_range`, `edge_outside_readable_range_above` |
+| extrapolates across an edge, on either side | no refusal | TE-010 `edge_outside_readable_range`, `edge_outside_readable_range_above`, `edge_on_readable_range_end`, `edge_on_readable_range_end_above` |
+| returns a derivative where the range is one point | a derivative where none is due | TE-007 `one_point_range_end`, `one_point_range_inside` |
+| reports a refusal where none is due | a refusal where none is due | TE-003 `just_outside_linear` |
+| raises a refusal where none is due | a refusal where none is due | TE-003 `just_outside_linear` |
+| returns the side it did not declare | the derivative | TE-006 `close_sides`, `far_sides` |
+| the outside derivative at an end | the derivative | TE-007 `linear_ends` |
+| the declared side at a range end on an interior knot | the derivative | TE-007 `readable_range_knot_ends` |
+| the interval above just below an edge | the value | TE-011 `linear_sides` |
+| log-log linearly | the value | TE-004 `loglog_values`, TE-008 `loglog_interior` |
+| a linear table read as log-log | the value | TE-004 `linear_values` |
+| the linear slope as a log-log derivative | the derivative | TE-008 `loglog_interior` |
+| the log-log derivative's `y / x` at the interval's lower knot, not at the point | the derivative | TE-008 `loglog_interior` |
+| NumPy's `interp` outside the readable range | the value | TE-002 `source_range_narrow` |
+| a linear extrapolation | the value | TE-002 `linear` |
+| `bfloat16` intermediates | the value | TE-012 `decimal_knots_linear`, `decimal_knots_loglog` |
+
+Each also misses at least one of the files named beside it by ten times that file's tolerance, under every
+configuration it claims: by a flag, which no tolerance passes, or by a number. Of those caught by a number,
+`bfloat16` misses by the least, 1,357 times, at TE-012 `decimal_knots_linear`; NumPy's `interp` by 3,373
+times, at TE-002 `source_range_narrow`; a linear table read as log-log by 35,586 times, at TE-004
+`linear_values`, in its derivative (in its value, the difference named beside it, by 176 times); and every
+other by at least 144,000 times (the linear slope as a log-log derivative, at TE-008 `loglog_interior`). These
+margins come from S3-te's reference evaluator and broken evaluators (2026-10-17): at each file named beside a
+fault, its relative difference from the expected answer at the compared number where they differ most, over
+that file's tolerance; a fault's margin is its best file's, the least over the configurations it claims.
 
 ## What the cases cannot show
 
