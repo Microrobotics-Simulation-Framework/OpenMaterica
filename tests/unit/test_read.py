@@ -24,7 +24,7 @@ from materica.core.read import ReadRequest, ReadResult, read
 from materica.core.reasons import Reason, merged
 from materica.core.record import RecordStore
 from materica.core.status import worst
-from materica.core.value_shapes import FORM_MEMBERS, an_object
+from materica.core.value_shapes import FORM_MEMBERS, a_list, an_object
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite
 from tests.spec_sync.schemas import validator
@@ -1376,6 +1376,57 @@ def test_a_result_shares_nothing_with_the_record_or_with_its_own_json() -> None:
     assert ReadResult.from_json(result.to_json()) == result
 
 
+def test_a_derivation_returned_shares_nothing_with_the_stored_record() -> None:
+    """Rule 6 through the Python API: a consumer that changes the derivation a result holds, the field's or
+    an alternative's, changes no later read of the same store (S2a-4's review, L3's M51)."""
+    alternatives: list[JsonValue] = [met_field(provenance=DERIVED_INPUTS)] * 2
+    fields: list[JsonValue] = [met_field(provenance=DERIVED_INPUTS), {"alternatives": alternatives}]
+    for field in fields:
+        request, records = stored(with_field("fluid.dynamic_viscosity", field))
+        assert isinstance(request, dict)
+        request.update(copy.deepcopy(MET_REQUEST))
+        first = read(request, records)
+        reads = first.alternative_values or (first,)
+        for each in reads:
+            assert each.provenance is not None
+            assert each.provenance.derivation is not None
+            each.provenance.derivation["method"] = "changed"
+            an_object(a_list(each.provenance.derivation["inputs"])[0])["field"] = "changed"
+        later = read(request, records)
+        for each in later.alternative_values or (later,):
+            assert each.provenance is not None
+            assert each.provenance.derivation == DERIVED_INPUTS["derivation"]
+
+
+def test_only_a_derived_value_returns_its_derivation_and_its_mixed_conditions_label() -> None:
+    """`provenance.md` section 2 item 6 checks `derivation` for origin `derived` alone, and SQ45 labels a
+    derived value whose inputs' conditions differ: a derivation beside another origin is a member the read
+    does not check, neither returned nor labelled (S2a-4's review, L3's M04 and M21)."""
+    derivation = {**an_object(DERIVED_INPUTS["derivation"]), "mixed_conditions": True}
+    for origin in ("derived", "measured_by_contributor"):
+        provenance: dict[str, JsonValue] = {
+            **an_object(met_field()["provenance"]),
+            "origin": origin,
+            "derivation": derivation,
+        }
+        written = json.loads(json.dumps(read_met(met_field(provenance=provenance)).to_json()))
+        derived = origin == "derived"
+        assert ("derivation" in written["provenance"]) is derived, origin
+        assert ("mixed_conditions" in written["labels"]) is derived, origin
+
+
+def test_a_derivation_inputs_reference_holding_status_returns_its_three_members() -> None:
+    """A member named `status` where no status object stands is one the reader does not know (`provenance.md`
+    section 1 item 5), left out of the reference returned (S2a-4's review, L3's M29)."""
+    derivation = copy.deepcopy(an_object(DERIVED_INPUTS["derivation"]))
+    reference = an_object(an_object(a_list(derivation["inputs"])[0])["record"])
+    pin = dict(reference)
+    reference["status"] = "not_checked"
+    provenance: dict[str, JsonValue] = {**DERIVED_INPUTS, "derivation": derivation}
+    written = json.loads(json.dumps(read_met(met_field(provenance=provenance)).to_json()))
+    assert written["provenance"]["derivation"]["inputs"][0]["record"] == pin
+
+
 DERIVED_INPUTS: dict[str, JsonValue] = {
     "origin": "derived",
     "review": {"status": "not_checked"},
@@ -1439,13 +1490,50 @@ def test_no_alternative_whose_form_want_can_give_is_want_mismatch_at_step_7() ->
                     met_field(unit={"status": "unstated", "reason": "two"}),
                 ]
             },
-            "units stored differently",
+            "each alternative's own refusal, its unit held as a status object",
         ),
     ],
 )
 def test_what_step_7_decides_beyond_decision_12_raises(field: dict[str, JsonValue], why: str) -> None:
     with pytest.raises(NotImplementedError):
         read_met(field)
+
+
+PR_316_CASE = INPUTS.parent / "cases" / "PR-316.implied_two_disagree_in_alternative.json"
+PR_316_RECORD = INPUTS / "water_alternatives_in_vivo_normal.json"
+
+
+def disagreeing_in_one_alternative(other: dict[str, JsonValue]) -> tuple[JsonValue, RecordStore]:
+    """PR-316's two implied conditions that disagree, which apply in the one alternative whose specimen states
+    their facts (a fault of the request there), with `other` set in the provenance of the alternative they do
+    not apply in."""
+    record: dict[str, Any] = json.loads(PR_316_RECORD.read_text(encoding="utf-8"))
+    alternatives = record["body"]["sections"]["fluid"]["fields"]["dynamic_viscosity"]["alternatives"]
+    assert [bool(alternative.get("specimen")) for alternative in alternatives] == [True, False]
+    alternatives[1]["provenance"].update(other)
+    request, records = stored(record)
+    case = json.loads(PR_316_CASE.read_text(encoding="utf-8"))
+    assert isinstance(request, dict)
+    pin = cast(dict[str, Any], request["target"])["record"]
+    request.update({name: case["request"][name] for name in ("operating_conditions", "requirement")})
+    request["acceptances"] = [{**acceptance, "record": pin} for acceptance in case["request"]["acceptances"]]
+    return request, records
+
+
+def test_a_request_fault_inside_one_alternative_refuses_the_field_where_no_other_has_a_reason() -> None:
+    """S4's decision 12 (a): PR-316's arm, as its case file gives it."""
+    refused = read(*disagreeing_in_one_alternative({}))
+    assert (refused.status, refused.reasons) == ("not_met", (Reason("request_incomplete", "temperature"),))
+
+
+def test_a_request_fault_inside_one_alternative_beside_anothers_own_reason_raises() -> None:
+    """S4's decision 12 (a) gives S2 "a request fault inside one alternative"; S2a-4 builds that arm only
+    where no alternative has a reason of its own, as the decision does `no_pick` and `want_mismatch` (S2a-4's
+    decision log, phase A item 10, and its fix round, I2). Where another alternative has one, here
+    `stated_without_origin`, PR-316's row reports it beside the refusal, carrying its `alternative`, which
+    S4 gives a reason: so the read raises rather than drop it (S2a-4's review, L3's M09)."""
+    with pytest.raises(NotImplementedError, match="an alternative's own reasons"):
+        read(*disagreeing_in_one_alternative({"origin": "stated_without_origin"}))
 
 
 @pytest.mark.parametrize(

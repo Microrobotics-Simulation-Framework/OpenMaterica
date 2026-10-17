@@ -20,7 +20,7 @@ from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from scripts.freeze_schema import misplaced_ids
 from scripts.gen_vocabulary import SPECIFICATION, codes, only_code, outside_parentheses, table
-from tests.spec_sync.schemas import BASE, RESULT_TWINS, SCHEMA, as_returned
+from tests.spec_sync.schemas import BASE, RESULT_TWINS, SCHEMA, as_returned, validator
 
 WRITER = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
 CASE = json.loads((SCHEMA / "case.json").read_text(encoding="utf-8"))
@@ -160,6 +160,35 @@ def test_a_twin_that_drifts_from_the_writer_is_found() -> None:
         "result_pinned_record is not the writer's pinned_record without the patterns a read does not check",
         "read_result.json refers to record.writer.json#/$defs/specimen, which a result returns as its twin",
     ]
+
+
+def test_the_result_takes_an_alternatives_index_only_from_zero() -> None:
+    """An index among the stored alternatives, in an entry of `alternative_values` or a reason, is a whole
+    number from 0 (`read_side_contract.md` section 2): the result schema refuses `-1` and takes 0 (S2a-4's
+    review, L3's M42)."""
+    refused = validator("read_result.json")
+    entry: dict[str, JsonValue] = {
+        "alternative": 0,
+        "value": 1.0,
+        "conditions": [],
+        "specimen": {},
+        "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked"}},
+        "labels": [],
+    }
+    reason: dict[str, JsonValue] = {"code": "no_pick", "alternative": 0}
+
+    def result(index: int) -> dict[str, JsonValue]:
+        return {
+            "status": "unknown",
+            "reasons": [{**reason, "alternative": index}],
+            "alternative_values": [{**entry, "alternative": index}],
+            "unit": "Pa.s",
+            "labels": [],
+        }
+
+    assert refused(result(0)) == []
+    assert refused({**result(0), "alternative_values": [{**entry, "alternative": -1}]}) != []
+    assert refused({**result(0), "reasons": [{**reason, "alternative": -1}]}) != []
 
 
 def test_the_sections_are_the_field_tables() -> None:
