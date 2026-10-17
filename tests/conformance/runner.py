@@ -666,11 +666,14 @@ def _evaluation_differs(wanted: JsonObject, got: JsonValue, tolerance: float, si
         return f"the refusal is not reported as true or false: {refused!r}"
     if wanted.get("refused") is True:
         # A refused entry "passes only where the evaluator reports the refusal and each number it returns
-        # there is absent or NaN, never finite and never infinite".
+        # there is absent or NaN, never finite and never infinite". A JSON `null` is no number returned, and
+        # reads as absent here as in every other entry.
         if not refused:
             return "expected the refusal, got none"
         beside = [
-            f"{name} {got[name]!r}" for name in ("value", "derivative") if name in got and not _nan(got[name])
+            f"{name} {got[name]!r}"
+            for name in ("value", "derivative")
+            if got.get(name) is not None and not _nan(got[name])
         ]
         return f"a number beside the refusal: {', '.join(beside)}" if beside else None
     # Any other entry passes "only where the evaluator reports no refusal".

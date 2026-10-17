@@ -88,7 +88,8 @@ files"): an entry compares only the members it holds and whether a refusal is re
 only where the refusal is reported and each number is absent or NaN, and any other only where none is; the
 derivative is compared by the side the run declares, `"none"` passes only absent or NaN, and outside the
 readable range each number may be absent or NaN; an expected derivative of 0 passes only at zero, of either
-sign; and numbers are compared at the tolerance of the run's precision. `test_comparator.py` feeds this
+sign; and numbers are compared at the tolerance of the run's precision. A JSON `null` in place of a number is
+no number returned, and reads as absent everywhere, beside a refusal too. `test_comparator.py` feeds this
 comparison wrong answers of each kind.
 
 ## The case files themselves
