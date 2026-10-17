@@ -8,6 +8,7 @@ would notice breaking, and each has a control in which the check must fail.
 import ast
 import copy
 import fnmatch
+import functools
 import glob
 import itertools
 import json
@@ -78,7 +79,14 @@ DOCUMENTATION_EXAMPLES = (
 
 
 def workflow(name: str) -> Workflow:
-    loaded: Workflow = yaml.safe_load((WORKFLOWS / name).read_text(encoding="utf-8"))
+    """The workflow as PyYAML reads it, each file parsed once: each caller gets a deep copy of its own, since
+    callers change what they get."""
+    return copy.deepcopy(_parsed_workflow(WORKFLOWS / name))
+
+
+@functools.cache
+def _parsed_workflow(path: Path) -> Workflow:
+    loaded: Workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
     return loaded
 
 
@@ -785,7 +793,14 @@ GLOBBING = {"glob", "rglob", "iglob"}
 def named_paths(source: str) -> set[str]:
     """What a Python module could name a path by: each string, each run of strings joined by `/`, as in
     `REPOSITORY / "docs" / "specification"`, and each glob a call of `glob` or `rglob` is given, as in
-    `ROOT.glob("*.md")`; a string with wildcards that no glob is given is a pattern of another kind."""
+    `ROOT.glob("*.md")`; a string with wildcards that no glob is given is a pattern of another kind.
+
+    Each source is parsed once: each caller gets a set of its own, since callers change it."""
+    return set(_named_paths(source))
+
+
+@functools.cache
+def _named_paths(source: str) -> frozenset[str]:
     names: set[str] = set()
     in_a_join: set[int] = set()
     globs: set[int] = set()
@@ -816,7 +831,7 @@ def named_paths(source: str) -> set[str]:
         elif isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in in_a_join:
             if id(node) in globs or not WILDCARD.search(node.value):
                 names.add(node.value)
-    return names
+    return frozenset(names)
 
 
 def strings(value: object) -> set[str]:
