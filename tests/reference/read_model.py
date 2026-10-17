@@ -1352,10 +1352,10 @@ def check_value_field(
         faults.add("form_invalid")
         return faults, None
     row = FIELDS[field_name]
-    if slipped(field_value, FIELD_PLACE_NAMES):
-        faults.add("form_invalid")
     form = field_value.get("form")
     known_form = form if isinstance(form, str) and form in FORMS else None
+    if slipped(field_value, named_at_a_field(known_form)):
+        faults.add("form_invalid")
     if "form" not in field_value:
         faults.add("form_invalid")
     else:
@@ -1394,6 +1394,16 @@ def check_value_field(
     else:
         check_provenance(field_value["provenance"], faults)
     return faults, known_form
+
+
+def named_at_a_field(form: str | None) -> tuple[str, ...]:
+    """The members named at a value field's place: record_format.md:311 "| the form's member | yes | `value`
+    for a constant; otherwise the member named like the form", the field's own form's member alone; beside a
+    form the reader does not know, every form's member, which any of them might be (fail closed)."""
+    if form is None:
+        return FIELD_PLACE_NAMES
+    others = set(FORM_MEMBERS.values()) - {FORM_MEMBERS[form]}
+    return tuple(name for name in FIELD_PLACE_NAMES if name not in others)
 
 
 def check_form_member(field_value: JsonObject, form: str, row: FieldRow, faults: Reasons) -> None:
