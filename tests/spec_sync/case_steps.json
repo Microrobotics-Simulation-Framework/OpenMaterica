@@ -4,7 +4,8 @@
     "S1",
     "S2a-1",
     "S2a-2",
-    "S2a-3"
+    "S2a-3",
+    "S2a-4"
   ],
   "case_files": {
     "HS-001.escaped_names.json": "S1",

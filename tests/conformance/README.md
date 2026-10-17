@@ -33,7 +33,8 @@ after every run that includes these tests:
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
-| S2's other reads, which need alternatives at step 7, a form's member at step 8 other than a constant's, steps 11 to 13, or an acceptance other than an implied condition (plain read) | 248 | not yet runnable: the step that runs each is not done |
+| S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go (plain read) | 162 | run, passed |
+| S2's other reads, which need a form's member at step 8 other than a constant's, or an acceptance other than an implied condition (plain read) | 86 | not yet runnable: the step that runs each is not done |
 | reads S3's pieces run (plain read): tables, and reads under an extrapolation | 180 | not yet runnable: the step that runs each is not done |
 | reads S4 runs (plain read): over alternatives, with a pick, or through an overlay | 158 | not yet runnable: S4, which runs each, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | not yet runnable: no executor; S3-te adds one, which runs a test-only reference evaluator |
