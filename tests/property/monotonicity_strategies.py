@@ -216,8 +216,9 @@ def requested(draw: Draw, world: World, cooperative: bool) -> None:
 
 ORIGINS = ("measured_by_contributor",) * 3 + ("stated_without_origin",) * 2 + ("measured_by_source",)
 # Conditions beside the row's: a geometry, which may require a dimension with its token; a size no row
-# requires; and a name the reader does not know.
-EXTRAS = ("none", "none", "geometry", "size", "unknown_name")
+# requires, drawn twice as often as the others, so that a numeric condition the read leaves unchecked is in
+# about one world in ten (`unchecked_numeric`); and a name the reader does not know.
+EXTRAS = ("none", "none", "geometry", "size", "size", "unknown_name")
 
 
 @st.composite
@@ -291,6 +292,15 @@ def implied_applies(world: World, name: str) -> bool:
     assert isinstance(acceptances, list)
     return in_vivo and any(
         isinstance(acceptance, dict) and name in at(acceptance, "implies") for acceptance in acceptances
+    )
+
+
+def unchecked_numeric(world: World) -> bool:
+    """Whether the field holds a numeric condition the reader knows that the read leaves unchecked
+    (`condition_unchecked`): N1's shape, which N1r leaves out."""
+    return any(
+        name in CONDITIONS and CONDITIONS[name].shape == "numeric" and not checked_by_the_read(world, name)
+        for name in conditions_of(world)
     )
 
 
@@ -637,8 +647,38 @@ def removed(world: World, name: str, facts: JsonObject) -> Changed:
     return Changed(repinned(new), facts)
 
 
-REMOVAL_WAYS = ("drawn", "row_required_unnamed", "required_with_unnamed", "named_only")
-STATUS_WAYS = ("drawn", "origin", "condition_outside")
+def stated_outside_in_vivo(world: World) -> None:
+    """An in-vivo field whose temperature is stated outside its tolerance, 300.0 K against 310.15 within 1.0:
+    a read `not_met` that an implied condition at the operating temperature would make `met` in its place."""
+    at(field_of(world), "specimen")["tissue_state"] = {"token": "in_vivo", "basis": "stated"}
+    conditions_of(world)["temperature"] = {"value": 300.0, "unit": "K", "basis": "stated"}
+    operating_of(world)["temperature"] = {"value": 310.15, "unit": "K"}
+    requirement_of(world)["temperature"] = {"tolerance": {"value": 1.0, "unit": "K"}}
+
+
+def implied_beside_it(world: World) -> World:
+    """`stated_outside_in_vivo`, the request carrying an implied condition at the operating temperature,
+    which applies to the field (`implied_applies`); repinned."""
+    stated_outside_in_vivo(world)
+    world.request["acceptances"] = [implied_temperature(world, 310.15)]
+    assert implied_applies(world, "temperature")
+    assert checked_by_the_read(world, "temperature")
+    return repinned(world)
+
+
+# The ways of N1r's and N3r's draws that hold their unrestricted twins' counterexamples, which the twins'
+# searches must find (`test_monotonicity_mutants.py`): a condition the read leaves unchecked removed, and one
+# an implied condition fills removed, each from a world the read otherwise meets; and a status object, of any
+# token, `unstated` included, in the place of a condition an implied condition fills.
+UNRESTRICTED_WAYS = {"N1": ("unchecked", "implied_fills"), "N3": ("implied",)}
+REMOVAL_WAYS = (
+    "drawn",
+    "row_required_unnamed",
+    "required_with_unnamed",
+    "named_only",
+    *UNRESTRICTED_WAYS["N1"],
+)
+STATUS_WAYS = ("drawn", "origin", "condition_outside", *UNRESTRICTED_WAYS["N3"])
 OUTSIDE_WAYS = ("drawn", "just_outside")
 IMPLIED_WAYS = ("drawn", "stated_outside")
 BOUNDARY_WAYS = ("drawn", "at_a_boundary")
@@ -652,12 +692,25 @@ ACCEPT_WAYS = ("drawn", "met")
 def removed_conditions(draw: Draw, size: Size) -> Drawn:
     """N1r's change, the way drawn first: a condition the row requires that the request leaves out; the
     dimension a tube requires, which the request leaves out; a condition the request names that no row
-    requires, stated outside its tolerance; or a condition of a world as drawn."""
+    requires, stated outside its tolerance; or a condition of a world as drawn. Or N1's, which N1r leaves
+    out: a condition no row requires and the request leaves out (`condition_unchecked`); or the temperature,
+    stated outside its tolerance, which an implied condition fills once it is removed."""
     way = draw(st.sampled_from(REMOVAL_WAYS))
     if way == "drawn":
         world = draw(worlds(size))
         return Drawn(world, remove_condition(draw, world), way)
     world = met_world(draw, size)
+    if way == "unchecked":
+        conditions_of(world)["specimen_size"] = {"value": 0.005, "unit": "m", "basis": "stated"}
+        unnamed(world, "specimen_size")
+        world = repinned(world)
+        facts: JsonObject = {"condition": "specimen_size", "checked": False, "implied": False}
+        assert not checked_by_the_read(world, "specimen_size")
+        return Drawn(world, removed(world, "specimen_size", facts), way)
+    if way == "implied_fills":
+        world = implied_beside_it(world)
+        facts = {"condition": "temperature", "checked": True, "implied": True}
+        return Drawn(world, removed(world, "temperature", facts), way)
     if way == "row_required_unnamed":
         name = draw(st.sampled_from(sorted(VOCABULARY.fields[world.field].requires)))
         unnamed(world, name)
@@ -670,24 +723,37 @@ def removed_conditions(draw: Draw, size: Size) -> Drawn:
         operating_of(world)[name] = {"value": 0.01, "unit": "m"}
         requirement_of(world)[name] = {"tolerance": {"value": 0.0, "unit": "m"}}
     world = repinned(world)
-    facts: JsonObject = {"condition": name, "checked": True, "implied": False}
+    facts = {"condition": name, "checked": True, "implied": False}
     return Drawn(world, removed(world, name, facts), way)
 
 
 @st.composite
 def status_objects(draw: Draw, size: Size) -> Drawn:
     """N3r's change, the way drawn first: a status object in `origin` beside a value stated without origin; in
-    a condition stated outside its tolerance; or anywhere in a world as drawn."""
+    a condition stated outside its tolerance; in the temperature, stated outside its tolerance, which an
+    implied condition fills where the status is `unstated` (N3's shape, which N3r leaves out) and must not
+    where it is another; or anywhere in a world as drawn."""
     way = draw(st.sampled_from(STATUS_WAYS))
     if way == "drawn":
         world = draw(worlds(size))
         return Drawn(world, status_object(draw, world), way)
     world = met_world(draw, size)
     token = draw(st.sampled_from(STATUS_TOKENS))
+    if way == "implied":
+        world = implied_beside_it(world)
+        facts: JsonObject = {
+            "place": "conditions.temperature",
+            "token": token,
+            "condition": "temperature",
+            "implied": True,
+        }
+        new = changed(world)
+        conditions_of(new)["temperature"] = {"status": token}
+        return Drawn(world, Changed(repinned(new), facts), way)
     if way == "origin":
         at(field_of(world), "provenance")["origin"] = "stated_without_origin"
         place = ("provenance", "origin")
-        facts: JsonObject = {
+        facts = {
             "place": "provenance.origin",
             "token": token,
             "condition": None,
@@ -753,10 +819,7 @@ def implied_added(draw: Draw, size: Size) -> Drawn:
         world = draw(worlds(size))
         return Drawn(world, add_implied(draw, world), way)
     world = met_world(draw, size)
-    at(field_of(world), "specimen")["tissue_state"] = {"token": "in_vivo", "basis": "stated"}
-    conditions_of(world)["temperature"] = {"value": 300.0, "unit": "K", "basis": "stated"}
-    operating_of(world)["temperature"] = {"value": 310.15, "unit": "K"}
-    requirement_of(world)["temperature"] = {"tolerance": {"value": 1.0, "unit": "K"}}
+    stated_outside_in_vivo(world)
     world = repinned(world)
     new = changed(world)
     new.request["acceptances"] = [implied_temperature(new, 310.15)]
