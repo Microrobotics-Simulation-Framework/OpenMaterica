@@ -632,7 +632,7 @@ A_TOKEN_VALUE = "a value of `implies` for a token condition"
 
 class Named(NamedTuple):
     place: str
-    use: str  # `read`, a `location`, `ignored` or `refused`
+    use: str  # `read`, a `location`, `ignored`, `refused`, or refused as the `other kind`'s
     members: tuple[str, ...]
     cite: str
     quote: str  # names each member, in backticks or in double quotes
@@ -645,6 +645,10 @@ WITHOUT = (
 # Ignored with the basis it goes with: S2a-3's reading.
 INFERRED = "or `inferred` with an `inferred_from` text"
 STATUS = "an object holding `status` is a status object"
+# A status object's other member, which an implied value may not be: named there, so a slip of it is refused
+# (S2a-4's fix round, as the reference model reads it).
+STATUS_REASON = "where its `status` or `reason` is not a string"
+TOKEN_SHAPE = '`{"token"}`, with a token of its row'
 IMPLIED_NAMES = [
     Named(AN_IMPLIED_CONDITION, "read", ("acceptance",), "declarations.md", "Every entry has `acceptance`"),
     Named(AN_IMPLIED_CONDITION, "read", ("field",), "declarations.md", "names the `field`"),
@@ -668,13 +672,18 @@ IMPLIED_NAMES = [
         AN_IMPLIED_CONDITION, "read", ("implies",), "declarations.md", "`implies`, per registered condition"
     ),
     Named(A_NUMERIC_VALUE, "read", ("value", "range", "unit"), "declarations.md", SHAPES),
-    Named(A_TOKEN_VALUE, "read", ("token",), "declarations.md", '`{"token"}`, with a token of its row'),
+    Named(A_TOKEN_VALUE, "read", ("token",), "declarations.md", TOKEN_SHAPE),
+    # The other kind's shape, refused: a token outside a numeric condition's row (`read_side_contract.md`
+    # section 1), and a token condition's value, range or unit, failing closed (S2a-4's fix round).
+    Named(A_NUMERIC_VALUE, "other kind", ("token",), "declarations.md", TOKEN_SHAPE),
+    Named(A_TOKEN_VALUE, "other kind", ("value", "range", "unit"), "declarations.md", SHAPES),
     *(
         named_here
         for place in (A_NUMERIC_VALUE, A_TOKEN_VALUE)
         for named_here in (
             Named(place, "ignored", ("basis",), "declarations.md", WITHOUT),
             Named(place, "ignored", ("inferred_from",), "provenance.md", INFERRED),
+            Named(place, "ignored", ("reason",), "provenance.md", STATUS_REASON),
             Named(place, "refused", ("plus_minus", "set_or_measured"), "declarations.md", WITHOUT),
             Named(place, "refused", ("status",), "provenance.md", STATUS),
         )
@@ -689,6 +698,7 @@ class ReadNames(NamedTuple):
     locations: tuple[str, ...]
     ignored: tuple[str, ...]
     refused: tuple[str, ...]
+    other_kind: dict[str, tuple[str, ...]]
 
 
 READ_NAMES = ReadNames(
@@ -696,6 +706,7 @@ READ_NAMES = ReadNames(
     read_module._LOCATION_MEMBERS,  # pyright: ignore[reportPrivateUsage]
     read_module._IMPLIED_IGNORED,  # pyright: ignore[reportPrivateUsage]
     read_module._IMPLIED_REFUSED,  # pyright: ignore[reportPrivateUsage]
+    read_module._OF_THE_OTHER_KIND,  # pyright: ignore[reportPrivateUsage]
 )
 
 
@@ -738,6 +749,11 @@ def implied_name_problems(
         "read._LOCATION_MEMBERS": (set(read_names.locations), at(acceptance, "location")),
         "read._IMPLIED_IGNORED": (set(read_names.ignored), at(values, "ignored")),
         "read._IMPLIED_REFUSED": (set(read_names.refused), at(values, "refused")),
+        "read._OF_THE_OTHER_KIND's numeric": (
+            set(read_names.other_kind["numeric"]),
+            at(numeric, "other kind"),
+        ),
+        "read._OF_THE_OTHER_KIND's token": (set(read_names.other_kind["token"]), at(token, "other kind")),
     }
     found += [
         f"{where} names {sorted(held - named)} beyond the text and lacks {sorted(named - held)}"
@@ -767,5 +783,12 @@ def test_an_implied_conditions_member_dropped_or_its_quote_lost_is_found() -> No
     assert implied_name_problems(IMPLIED_NAMES, BY_ID, unrefusing, document)
     elsewhere = READ_NAMES._replace(locations=("record", "region"))
     assert implied_name_problems(IMPLIED_NAMES, BY_ID, elsewhere, document)
+    of_one_kind = READ_NAMES._replace(other_kind={"numeric": (), "token": ("value", "range", "unit")})
+    assert implied_name_problems(IMPLIED_NAMES, BY_ID, of_one_kind, document) == [
+        "read._OF_THE_OTHER_KIND's numeric names [] beyond the text and lacks ['token']"
+    ]
+    assert implied_name_problems(IMPLIED_NAMES, without_also("Q14", "unit"), READ_NAMES, document) == [
+        "Q14's also names [] beyond the text and lacks ['unit']"
+    ]
     lost = [named._replace(quote="its `reason` and `basis` are read") for named in IMPLIED_NAMES[2:3]]
     assert implied_name_problems([*IMPLIED_NAMES[:2], *lost, *IMPLIED_NAMES[3:]], BY_ID, READ_NAMES, document)

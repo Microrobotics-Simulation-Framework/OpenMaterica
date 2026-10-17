@@ -66,8 +66,10 @@ every family entry goes in `families/CHANGELOG.md`.
   generated shapes; a specimen fact's unit as it reads every unit, a string or a status object, step 9 alone
   comparing it; `mimics`'s fixed basis and a disease or treatment state's text as the maintainer's rulings
   settle them; and where a field's label goes from its row (`vocabulary/fields.json`).
-- Step 0 refuses, as `request_incomplete`, a request member one slip from one the request's shape names, a
-  field the vocabulary does not register, and a requirement holding a declaration's members.
+- Step 0 refuses, as `request_incomplete`, a request member one slip from one the request's shape names, or
+  one `declarations.md` names there (a requirement's `field`, a requirement condition's `reason` and
+  `consequence`, each ignored itself: S2a-4's review), a field the vocabulary does not register, and a
+  requirement holding a declaration's members.
 - The read's steps 9 and 10 (S2a-3; `read_side_contract.md` sections 3 and 5). Step 9 compares each unit a
   field states with the one registered for it, code point for code point, and a unit registered as a status
   object by its token alone: the field's, a known numeric condition's and its `plus_minus` entries', with that
@@ -80,7 +82,9 @@ every family entry goes in `families/CHANGELOG.md`.
   not end goes on to steps 11 to 13, which S2a-4 builds (below).
 - Implied conditions (`declarations.md` section 4.1): step 0 checks each request's `implied_condition`,
   whatever field or location it names, its units as an operating condition's (`request_unit_mismatch`), and
-  keeps only the members its shape names; step 10 applies one located at the read whose fact and token the
+  keeps only the members its shape names; a value holding a member of the other kind of condition's shape
+  breaks its shape (a `token` for a numeric condition, a token outside its row; a `value`, `range` or `unit`
+  for a token condition, failing closed), and so does a member one slip from one (S2a-4's review); step 10 applies one located at the read whose fact and token the
   field's specimen states, the section's facts merged with the field's (`RecordField.specimen`), filling a
   condition the record leaves unstated or does not hold, with the basis `implied`; two that disagree end the
   read there with `request_incomplete` for that condition and no `conditions`, values differing unless of one

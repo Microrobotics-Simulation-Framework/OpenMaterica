@@ -367,7 +367,8 @@ def with_member(place: tuple[str, ...], name: str, value: JsonValue = 1.0) -> di
 
 
 TEMPERATURE = ("requirement", "conditions", "temperature")
-# A member one slip from one section 1 names at each place of a request, and the condition the place concerns.
+# A member one slip from one section 1 or `declarations.md` names at each place of a request, and the
+# condition the place concerns.
 SLIPS = [
     pytest.param((), "requirment", None, id="top"),
     pytest.param((), "record", None, id="top_records"),
@@ -376,9 +377,14 @@ SLIPS = [
     pytest.param(("target", "record"), "versions", None, id="target_record"),
     pytest.param(("requirement",), "wants", None, id="requirement"),
     pytest.param(("requirement",), "labels", None, id="requirement_refused_member"),
+    pytest.param(("requirement",), "feild", None, id="requirement_declarations_field"),
     pytest.param(("operating_conditions", "temperature"), "units", "temperature", id="operating"),
     pytest.param(TEMPERATURE, "tolerances", "temperature", id="requirement_condition"),
     pytest.param(TEMPERATURE, "accepts", "temperature", id="requirement_condition_refused_member"),
+    pytest.param(TEMPERATURE, "reasn", "temperature", id="requirement_condition_declarations_reason"),
+    pytest.param(
+        TEMPERATURE, "consequences", "temperature", id="requirement_condition_declarations_consequence"
+    ),
     pytest.param((*TEMPERATURE, "tolerance"), "vaule", "temperature", id="tolerance"),
 ]
 
@@ -406,6 +412,15 @@ def test_a_field_the_vocabulary_does_not_register_is_refused(field: str) -> None
 @pytest.mark.parametrize("name", ["label", "represents", "population_level"])
 def test_a_requirement_holding_a_declarations_member_is_refused(name: str) -> None:
     assert read(with_member(("requirement",), name, "x"), store()).reasons == (Reason("request_incomplete"),)
+
+
+@pytest.mark.parametrize(
+    ("place", "name"), [(("requirement",), "field"), (TEMPERATURE, "reason"), (TEMPERATURE, "consequence")]
+)
+def test_a_declarations_member_a_read_never_checks_is_ignored(place: tuple[str, ...], name: str) -> None:
+    """`declarations.md` section 1 names a requirement's `field`, and a requirement condition's `reason` and
+    `consequence`: a read ignores each, and refuses a member one slip from one (above)."""
+    assert read(with_member(place, name, "fluid.dynamic_viscosity"), store()) == ABSENT
 
 
 def test_a_result_reads_back_from_its_json() -> None:
@@ -923,6 +938,36 @@ IMPLIED_AT_STEP_0: list[tuple[str, JsonValue, set[tuple[str, str | None]]]] = [
         {("request_incomplete", "density_kind")},
     ),
     (
+        "a token beside a numeric value, outside its row",
+        implied_with(implies={"temperature": {"value": 310.15, "unit": "K", "token": "matrix"}}),
+        {("request_incomplete", "temperature")},
+    ),
+    (
+        "a slip of a token beside a numeric value",
+        implied_with(implies={"temperature": {"value": 310.15, "unit": "K", "tokens": "matrix"}}),
+        {("request_incomplete", "temperature")},
+    ),
+    (
+        "a unit beside a token",
+        implied_with(implies={"density_kind": {"token": "matrix", "unit": "K"}}),
+        {("request_incomplete", "density_kind")},
+    ),
+    (
+        "a range beside a token",
+        implied_with(implies={"density_kind": {"token": "matrix", "range": [1.0, 2.0]}}),
+        {("request_incomplete", "density_kind")},
+    ),
+    (
+        "a slip of a value beside a token",
+        implied_with(implies={"density_kind": {"token": "matrix", "valeu": 1.0}}),
+        {("request_incomplete", "density_kind")},
+    ),
+    (
+        "a slip of a status object's reason in a value",
+        implied_with(implies={"temperature": {"value": 310.15, "unit": "K", "reasons": "x"}}),
+        {("request_incomplete", "temperature")},
+    ),
+    (
         "two faults in two conditions",
         implied_with(implies={"temperature": {"range": [2.0, 1.0], "unit": "K"}, "pressure": {}}),
         {("request_incomplete", "temperature"), ("request_incomplete", "pressure")},
@@ -955,8 +1000,12 @@ def check_refused_at_step_0(request_value: JsonValue, reasons: set[tuple[str, st
             id="a_basis_in_a_value",
         ),
         pytest.param(
-            implied_with(implies={"density_kind": {"token": "matrix", "unit": "K"}}),
-            id="a_unit_beside_a_token",
+            implied_with(implies={"temperature": {"value": 310.15, "unit": "K", "reason": "x"}}),
+            id="a_reason_in_a_value",
+        ),
+        pytest.param(
+            implied_with(implies={"density_kind": {"token": "matrix", "inferred_from": "x"}}),
+            id="an_inferred_from_beside_a_token",
         ),
         pytest.param(implied_with(record=None, region="lumen"), id="at_a_region"),
         pytest.param(implied_with(record="a reference of no shape"), id="at_no_reference"),

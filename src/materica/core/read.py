@@ -58,27 +58,34 @@ _WANT_SUITES: dict[Want, Suite] = {
     "fit": "fits_and_reference_data",
     "coverage": "fits_and_reference_data",
 }
-# The members section 1 names at each place of a request, those it refuses included: a member one slip from
-# one of them is refused too, so that a misspelt member never drops what it holds.
+# The members section 1 or `declarations.md` names at each place of a request, those it refuses included: a
+# member one slip from one of them is refused too, so that a misspelt member never drops what it holds. A
+# declaration's requirement names its `field`, and each of its conditions a `reason` and a `consequence`
+# (`declarations.md` section 1), which a read ignores.
 _REQUEST_MEMBERS = ("records", "target", "operating_conditions", "requirement", "acceptances")
 _TARGET_MEMBERS = ("record", "region", "field")
 _RECORD_MEMBERS = ("id", "version", "content_hash")
-_REQUIREMENT_MEMBERS = ("want", "conditions", "label", "represents", "population_level")
+_REQUIREMENT_MEMBERS = ("want", "conditions", "label", "represents", "population_level", "field")
 _OPERATING_MEMBERS = ("value", "range", "unit")
-_REQUIREMENT_CONDITION_MEMBERS = ("tolerance", "accept")
+_REQUIREMENT_CONDITION_MEMBERS = ("tolerance", "accept", "reason", "consequence")
 _TOLERANCE_MEMBERS = ("value", "unit")
 # What a declaration's requirement holds and a read checks none of (`declarations.md` section 1).
 _DECLARATIONS_ONLY = ("label", "represents", "population_level")
 # The members named at an implied condition's place (`declarations.md` section 4.1): every acceptance's
 # kind, location, field and reason, the basis a read ignores (section 1), and its own; and at a condition's
-# place in its `implies`, those of a record condition's shapes (`provenance.md` section 6.1), the `basis` and
-# `inferred_from` a read ignores among them, and those an implied value may not hold, which are refused.
+# place in its `implies`, those of a record condition's shapes of either kind (`provenance.md` section 6.1),
+# the `basis` and `inferred_from` a read ignores among them, and those an implied value may not hold, which
+# are refused: a status object's, its `reason` ignored, `plus_minus`, `set_or_measured`, and those of the
+# other kind of condition's shape. A numeric condition's row holds no token, so a `token` given one is a token
+# outside its row (`read_side_contract.md` section 1); a token condition's `value`, `range` or `unit` is
+# refused alike, failing closed.
 _IMPLIED_CONDITION = "implied_condition"
 _IMPLIED_MEMBERS = ("acceptance", "record", "region", "interval", "field", "reason", "basis", "fact", "token")
 _IMPLIED_OWN = (*_IMPLIED_MEMBERS, "implies")
 _LOCATION_MEMBERS = ("record", "region", "interval")
-_IMPLIED_IGNORED = ("basis", "inferred_from")
+_IMPLIED_IGNORED = ("basis", "inferred_from", "reason")
 _IMPLIED_REFUSED = ("plus_minus", "set_or_measured", "status")
+_OF_THE_OTHER_KIND: dict[str, tuple[str, ...]] = {"numeric": ("token",), "token": _OPERATING_MEMBERS}
 # The members a review names, a status object's included (`provenance.md` section 2 item 6), and a statistics
 # block's counts (section 3, step 8), which a result writes as integers.
 _REVIEW_MEMBERS = (*get_type_hints(shapes.Review), *get_type_hints(shapes.StatusObject))
@@ -859,25 +866,33 @@ def _location(name: str, value: JsonValue, where: str, found: list[Reason]) -> J
 
 
 def _implied_value(name: str, value: JsonValue, where: str, found: list[Reason]) -> JsonObject | None:
-    """The value an implied condition gives a registered condition: a record condition's shape without its
-    `basis`, never a status object, `plus_minus` or `set_or_measured`; a numeric one's unit compared as an
-    operating condition's is."""
+    """The value an implied condition gives a registered condition: a record condition's shape of its own
+    kind without its `basis`, never a status object, `plus_minus`, `set_or_measured` or a member of the other
+    kind's shape; a numeric one's unit compared as an operating condition's is."""
     spec = _registered(name, found)
     if spec is None:
         return None
     if not isinstance(value, dict):
         found.append(_incomplete(f"{where} is not an object", name))
         return None
+    other = _OF_THE_OTHER_KIND[spec.shape]
     if refused := [member for member in _IMPLIED_REFUSED if member in value]:
         found.append(
             _incomplete(f"{where} holds {', '.join(refused)}, which an implied value never holds", name)
         )
+    if another := [member for member in other if member in value]:
+        found.append(
+            _incomplete(
+                f"{where} holds {', '.join(another)}, which a {spec.shape} condition never holds", name
+            )
+        )
+    named = (*other, *_IMPLIED_IGNORED, *_IMPLIED_REFUSED)
     if spec.shape == "token":
-        _slips(value, ("token", *_IMPLIED_IGNORED, *_IMPLIED_REFUSED), where, found, name)
+        _slips(value, ("token", *named), where, found, name)
         token = value.get("token")
         if not (isinstance(token, str) and token in spec.tokens):
             found.append(_incomplete(f"{where}.token is not one of {name}'s tokens: {token!r}", name))
             return None
-        return None if refused else {"token": token}
-    checked = _numeric(spec, value, where, found, (*_IMPLIED_IGNORED, *_IMPLIED_REFUSED))
-    return None if checked is None or refused else operating_json(checked)
+        return None if refused or another else {"token": token}
+    checked = _numeric(spec, value, where, found, named)
+    return None if checked is None or refused or another else operating_json(checked)

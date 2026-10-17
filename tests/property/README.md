@@ -152,9 +152,12 @@ check's reader (the last bullet).
   planted. The known divergences are listed by kind with their reasons and held exactly, failing on any other:
   three steps not built that the model decides (an overlay as the target, S4's decision 8; a form S2b reads;
   an acceptance other than an implied condition), found by the implementation's own `NotImplementedError` and
-  held to the draw and to what the model gives; and two open points on which the two read the text differently
-  (`members_of_the_other_kind`, `names_a_declaration_gives_a_requirement`), where the model must refuse as it
-  fails closed, and the model given the implementation's reading must agree with it. Can-fail controls of the
+  held to the draw and to what the model gives; and one open point on which the two read the text differently,
+  open point 1's record half (`members_of_the_other_kind`: a record condition holding a member of the other
+  kind), where the model must refuse as it fails closed, and the model given the implementation's reading must
+  agree with it. Open point 1's request half (an implied value holding a member of the other kind's shape) and
+  a slip of a name a declaration gives a requirement (`names_a_declaration_gives_a_requirement`), which the
+  text decides, are planted too, and the two must agree on them (S2a-4's fix round). Can-fail controls of the
   check itself: `test_model_controls.py`.
 - **What a read must not look at:** (13) the S2 design's HP4 and HP10 (`test_invariance_properties.py`,
   `invariance_strategies.py`). HP4: a fault in another field, registered or not, or in another section's
@@ -601,8 +604,9 @@ which reads intervals.
 
 `test_model_mutants.py`. Of the implementation, injected as the other groups' are: a step that stops at its
 first fault (the S2 design's HP12 mutant, killed on two faults of one step, B5), the design's mutants of HP1
-to HP11 that a result can show, taken from their modules, and the broken status object that reports its token,
-the fault HP12 found. Of the model, applied to `tests/reference/read_model.py` while the core stays as it is:
+to HP11 that a result can show, taken from their modules, the broken status object that reports its token,
+the fault HP12 found, and open point 1's request half as the implementation read it before S2a-4's fix round.
+Of the model, applied to `tests/reference/read_model.py` while the core stays as it is:
 its faults no case file kills, and five of the ten one case file alone kills. Each dies within the `ci`
 profile's examples at both sizes, at an example that shows one of the parts, ways, steps or planted rules it
 names; a search marked "planned" draws step 8's faults among those named first, or the first part's constants
@@ -616,6 +620,8 @@ margin (each measured over six to twelve random seeds). Kills in the relations s
 | `step_9_stops_at_its_first_fault` | step 9 gives its first reason only | two of one step | `step_9` | 6, 40 |
 | `step_10_stops_at_its_first_fault` | step 10 gives its first reason only | two of one step | `step_10` | 4, 5 |
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` too | unpinned | `broken_status_object` | 91, 8 |
+| `declaration_names_ignored` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | unpinned | `names_a_declaration_gives_a_requirement` | 50, 60 |
+| `implied_members_of_the_other_kind_ignored` | an implied value's member of the other kind's shape, and a slip of one, ignored | unpinned | `implied_member_of_the_other_kind` | 41, 6 |
 | `condition_unchecked_without_its_condition` | HP1's | faults | `unchecked` | 661, 10 |
 | `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 149, 6 |
 | `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 90, 26 |
@@ -641,10 +647,10 @@ margin (each measured over six to twelve random seeds). Kills in the relations s
 | `member_checked_off_its_row` | unpinned | `form_off_its_row` | 117, 6 |
 | `composition_checked_beyond_its_basis` | unpinned | `composition_basis_off_its_row` | 49, 7 |
 | `broken_status_object_reports_its_token` | unpinned | `broken_status_object` | 91, 8 |
-| `members_of_the_other_kind_read` | unpinned, at the open point's refusal | `members_of_the_other_kind` | 131, 5 |
-| `members_of_the_other_kind_ignored` | unpinned, at the open point's refusal | `members_of_the_other_kind` | 131, 5 |
+| `members_of_the_other_kind_read` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 41, 5 |
+| `members_of_the_other_kind_ignored` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 41, 5 |
 | `slips_of_alternatives_ignored` | unpinned | `alternatives_slip_beside` | 1, 1 |
-| `declaration_names_not_named_in_a_request` | unpinned, at the open point's refusal | `names_a_declaration_gives_a_requirement` | 77, 187 |
+| `declaration_names_not_named_in_a_request` | unpinned | `names_a_declaration_gives_a_requirement` | 50, 60 |
 | `population_level_checks_stop_at_a_missing_member` | unpinned | `checks_beside_a_broken_object` | 6, 37 |
 | `dof_token_unchecked_under_student_t` | unpinned | `checks_beside_a_broken_object` | 19, 59 |
 | `every_status_object_an_unstated_kind` | unpinned | `checks_beside_a_broken_object` | 7, 127 |
