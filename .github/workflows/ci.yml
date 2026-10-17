@@ -353,17 +353,22 @@ jobs:
     # runner, not the code, made the difference. At S2a-2's head json took 0.9 to 1.4 minutes, records 2.3 to 2.5
     # and step 8's mutants 1.6 to 2.1. Each `ci` timeout is set well above the slowest measured run; `deep` has not
     # yet run on CI.
+    # The agreement shard, on four workers locally (PR #24's fix round, 2026-10-17): at `ci`, 8.0 minutes, its
+    # longest property 4.7 (load 15 to 17); at `deep`, 112 minutes, its longest property 70 (load 18 to 30). A
+    # runner 1.6 to 4 times slower a core would take 13 to 32 minutes at `ci`, and 3 to 7.5 hours at `deep`, so
+    # its `deep` timeout is GitHub's limit for a job on a hosted runner, which it may not fit.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-      && (matrix.shard == 'writer' && 180 || 45) || (matrix.shard == 'writer' && 75 || 20) }}
+      && (matrix.shard == 'writer' && 180 || matrix.shard == 'agreement' && 360 || 45)
+      || (matrix.shard == 'writer' && 75 || matrix.shard == 'agreement' && 45 || 20) }}
     strategy:
       fail-fast: false
       matrix:
-        # Four shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
-        # envelope checks, versions and the read; the writer schema's value fields, whose validation with
-        # jsonschema makes them the longest; and step 8's mutant searches, which were most of the records
-        # shard's time.
-        shard: [json, records, writer, step8_mutants]
+        # Five shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785 and the hash; the
+        # envelope checks, versions and the read; the writer schema's value fields; the two JSON Schema
+        # libraries' agreement, whose python-jsonschema validations make it the longest; and step 8's mutant
+        # searches, which were most of the records shard's time.
+        shard: [json, records, writer, agreement, step8_mutants]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
     steps:
@@ -607,13 +612,14 @@ jobs:
           uv run python -m tests.fuzz.read_field_bytes "$RUNNER_TEMP/fields" -dict="$RUNNER_TEMP/value_field.dict" \
             -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
       # What the property target found is in the example database: replayed first here, and shrunk. The writer
-      # schema's properties are no fuzz target, and their shard keeps its own database; the mutant tables keep
-      # none, so they have nothing to replay.
+      # schema's properties and the two JSON Schema libraries' agreement are no fuzz target, and their shards
+      # keep their own databases; the mutant tables keep none, so they have nothing to replay.
       - name: Replay and shrink what was found
         if: success() || failure()
         run: >-
           uv run pytest tests/property -n auto --dist worksteal
           --ignore=tests/property/test_writer_properties.py --ignore=tests/property/test_writer_mutants.py
+          --ignore=tests/property/test_validators_agree.py
           --ignore=tests/property/test_mutants.py --ignore=tests/property/test_record_mutants.py
           --ignore=tests/property/test_value_field_mutants.py
       - name: Keep the inputs that failed

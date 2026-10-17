@@ -90,16 +90,16 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the groups in four shards side by side, each in a job of its own: `pytest tests/property --shard
-json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, and `--shard
-step8_mutants`, step 8's mutant searches, which keep no example database and were most of the records shard's
-time (`SHARDS` in `tests/conftest.py`). Each family of faults is a property of its own, run in parallel. The
-writer shard also holds the two validators' agreement (below), whose python-jsonschema validations cost about
-30 ms a field against the writer's value field, a choice among eight forms. At `deep` each of its drawn
-properties would take 30 to 45 minutes locally (ten times its 155 to 262 s at `ci`, an estimate), more than the
-other shards' 45-minute timeout on CI's slower cores; the writer shard's is 180. Each module is in exactly one
-shard (`tests/unit/test_source_files.py`), and each shard but the mutant searches' keeps its own example
-database in CI.
+CI runs the groups in five shards side by side, each in a job of its own: `pytest tests/property --shard
+json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
+two validators' agreement (below), and `--shard step8_mutants`, step 8's mutant searches, which keep no example
+database and were most of the records shard's time (`SHARDS` in `tests/conftest.py`). Each family of faults is
+a property of its own, run in parallel. The agreement shard's drawn properties run python-jsonschema on every
+example, and are the longest tests of any shard: on 4 workers locally (2026-10-17), the shard took 8.0 minutes
+at `ci`, its longest property 4.7 (load 15 to 17), and 112 minutes at `deep`, its longest property 70 (load 18
+to 30). `deep` has not yet run on CI, whose cores are 1.6 to 4 times slower: there it may not fit in the
+6 hours GitHub gives a job. Each module is in exactly one shard (`tests/unit/test_source_files.py`), and each
+shard but the mutant searches' keeps its own example database in CI.
 
 ## The two validators
 
