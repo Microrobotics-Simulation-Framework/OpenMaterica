@@ -54,7 +54,7 @@ running (`uv run timeout --signal=INT`, as `ci.yml`'s jobs do), three minutes be
 `dev`, 120 at `ci`, 360 at `deep`. The workflow reads the repository alone (`contents: read`), reads no secret,
 and restores the uv cache CI saved but saves none. A dispatch waits behind a running one of the same inputs on the
 same ref, whose seeds it would repeat; one of other inputs runs beside it, and none is cancelled.
-Until `tests/conftest.py`'s profiles stop inheriting Hypothesis's own `ci` profile, which `CI=true` loads on every
-runner and which sets `derandomize=True`, every run draws the same examples whatever its seed: a repeat run's
-draws differ by seed only once that is fixed (`tests/README.md`, "Repeat runs on CI").
+Each run draws what its seed draws on any machine. Until `tests/conftest.py`'s profiles stopped inheriting
+Hypothesis's own `ci` profile, which `CI=true` loads on every runner and which sets `derandomize=True`, every run
+drew the same examples whatever its seed (`tests/README.md`, "Repeat runs on CI").
 `tests/unit/test_ci_workflows.py` holds it to each of these, running its steps as written.
