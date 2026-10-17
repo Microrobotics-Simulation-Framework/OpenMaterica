@@ -52,11 +52,14 @@ def test_without_the_conftest_no_test_has_a_cpu_time(tmp_path: Path) -> None:
     assert all(test.cpu is None and test.children_cpu is None for test in tests)
 
 
-# Three tests, run in this order in one process: one that spins for `SPIN` seconds of its own CPU time, one
-# that starts a process that spins as long, and one that waits as long. Each test's CPU times are its own only
-# if the spinning test's own is at least `SPIN` and hardly more than its wall time (pytest's own work between
-# a test's phases is in its CPU time and not in its wall time: about 0.01 s here), the other two's own near
-# nothing, and only the test that starts a process has its children's.
+# Four tests, run in this order in one process: one that spins for `SPIN` seconds of its own CPU time, one
+# that does nothing, one that starts a process that spins as long, and one that waits as long. Each test's CPU
+# times are its own only if the spinning test's own is at least `SPIN` and hardly more than its wall time
+# (pytest's own work between a test's phases is in its CPU time and not in its wall time: about 0.01 s here),
+# the other three's own near nothing, and only the test that starts a process has its children's. A running
+# total gives the test that does nothing the spin's `SPIN` seconds before it, whatever the load; the bound by
+# the wall time catches one only while pytest's start-up outweighs what load adds to the spin's wall time,
+# and a loaded runner missed it (run 39006340233).
 SPIN = 0.3
 SPINNING = f"""
 import time
@@ -74,6 +77,10 @@ SPINNING = {SPINNING!r}
 
 def test_spins():
     exec(SPINNING)
+
+
+def test_does_nothing():
+    pass
 
 
 def test_starts_a_process_that_spins():
@@ -118,6 +125,7 @@ def idle(seconds: float | None) -> bool:
 # What each test must record: of its own CPU time, and of its children's.
 WANTED = {
     "test_spins": (spent, idle),
+    "test_does_nothing": (idle, idle),
     "test_starts_a_process_that_spins": (idle, spent),
     "test_waits": (idle, idle),
 }
@@ -145,7 +153,7 @@ def test_each_test_records_its_own_cpu_time_and_its_childrens(tmp_path: Path) ->
     ("old", "new", "problem"),
     [
         ("time.process_time()", "time.perf_counter()", "test_waits: its own CPU time"),
-        ("time.process_time() - own", "time.process_time()", "test_spins: its own CPU time"),
+        ("time.process_time() - own", "time.process_time()", "test_does_nothing: its own CPU time"),
         ("children_now - children", "children_now", "test_waits: its children's CPU time"),
         ("RUSAGE_CHILDREN", "RUSAGE_SELF", "test_starts_a_process_that_spins: its children's CPU time"),
     ],
