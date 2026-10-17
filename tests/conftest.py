@@ -26,6 +26,8 @@ if sys.platform != "win32":
 # is git-ignored.
 HYPOTHESIS_DATABASE = Path(__file__).resolve().parent.parent / ".hypothesis" / "examples"
 
+# The maintainer's counts: rigour is fixed. `tests/unit/test_hypothesis_profiles.py` holds them, and the
+# settings below, to their values, and its controls find these lines by their text.
 EXAMPLES = {"dev": 200, "ci": 2_000, "deep": 20_000}
 
 for profile, examples in EXAMPLES.items():
