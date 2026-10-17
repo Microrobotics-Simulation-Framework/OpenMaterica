@@ -1,7 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""JSON Schema validators for the package's schemas: the verdict jsonschema-rs gives (`tests/verdicts.py`),
-and, for a value it refuses, the messages python-jsonschema gives. Both are development dependencies only.
-Where python-jsonschema, run for its messages, finds none, the two disagree, and the test fails at once.
+"""JSON Schema validators for the package's schemas, from jsonschema-rs (`tests/verdicts.py`) and
+python-jsonschema, both development dependencies only:
+- `validator` and `agreed`, for a test that takes few verdicts: both libraries judge every value, and a
+  Disagreement fails the test where they differ; `validator` gives python-jsonschema's messages;
+- `takes`, for a loop: jsonschema-rs alone, its verdicts held to python-jsonschema's by
+  `tests/property/test_validators_agree.py`, which lists every place that calls it;
+- `why_refused`: python-jsonschema's messages for a value jsonschema-rs refuses; where it finds none, the two
+  disagree, and the test fails at once.
 
 Every JSON file under `schema/`, the vocabulary included, is registered under its `$id`, so that a reference
 resolves to the file in this tree and never over a network.
@@ -57,18 +62,36 @@ def why_refused(schema: Json, files: Iterable[Json] = ()) -> Callable[[JsonValue
     return messages
 
 
-def validator(reference: str, files: Iterable[Json] = ()) -> Callable[[JsonValue], list[str]]:
-    """The errors a value has against the schema at `reference`, relative to schema 0.1's
-    (`case.json#/$defs/reason`), with `files` as in `registry`: none where jsonschema-rs takes it, and
-    python-jsonschema's messages where it does not."""
+def both(schema: str | Json, files: Iterable[Json] = ()) -> Callable[[JsonValue], list[str]]:
+    """python-jsonschema's messages for a value against `schema`, a schema object or a reference relative to
+    schema 0.1's (`case.json#/$defs/reason`), with `files` as in `registry`: a Disagreement where
+    jsonschema-rs's verdict differs."""
     files = tuple(files)
-    schema: Json = {"$ref": urljoin(BASE, reference)}
-    accepts, messages = verdict(schema, files), why_refused(schema, files)
+    root: Json = {"$ref": urljoin(BASE, schema)} if isinstance(schema, str) else schema
+    rust, checker = verdict(root, files), Draft202012Validator(root, registry=registry(files))
 
-    def errors(value: JsonValue) -> list[str]:
-        return [] if accepts(value) else messages(value)
+    def messages(value: JsonValue) -> list[str]:
+        # types-jsonschema types its second overload's instance as unknown.
+        found = checker.iter_errors(value)  # pyright: ignore[reportUnknownMemberType]
+        said = [error.message for error in found]
+        if rust(value) == bool(said):
+            verdicts = "takes, python-jsonschema refuses" if said else "refuses, python-jsonschema takes"
+            raise Disagreement(f"jsonschema-rs {verdicts} {value!r:.300} against {schema}")
+        return said
 
-    return errors
+    return messages
+
+
+def validator(reference: str, files: Iterable[Json] = ()) -> Callable[[JsonValue], list[str]]:
+    """The errors a value has against the schema at `reference`, as in `both`: python-jsonschema's messages,
+    none where both libraries take it, and a Disagreement where they differ."""
+    return both(reference, files)
+
+
+def agreed(schema: str | Json, files: Iterable[Json] = ()) -> Callable[[JsonValue], bool]:
+    """Whether a value is valid against `schema`, as in `both`: a Disagreement where the libraries differ."""
+    messages = both(schema, files)
+    return lambda value: messages(value) == []
 
 
 def takes(reference: str, files: Iterable[Json] = ()) -> Callable[[JsonValue], bool]:
