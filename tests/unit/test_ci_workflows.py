@@ -29,6 +29,7 @@ import pytest
 import yaml
 
 from scripts import check_confidential, repeat_runs
+from tests.unit.test_report_test_durations import INTERRUPT_AS_CI
 from tests.unit.throwaway_git import throwaway_repository
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -2609,11 +2610,12 @@ def test_the_durations_check_fails_on_another_steps_outcome() -> None:
         report_problems(ci)
 
 
-# How each pytest command starts: interrupted by SIGINT to its whole process group three minutes before its
-# job's timeout, so that it writes the report of the tests that finished, with uv outside that group (ci.yml
-# says why, above the tests job's pytest step). `JOB_MINUTES` repeats the job's `timeout-minutes`, which a
-# step cannot read.
-INTERRUPTED = 'uv run timeout --signal=INT "$((JOB_MINUTES - 3))m" pytest '
+# How each pytest command starts: sent one SIGINT three minutes before its job's timeout, so that it writes
+# the report of the tests that finished, with uv outside `timeout` (ci.yml says why, above the tests job's
+# pytest step). `--foreground` is what makes it one: without it `timeout` signals its child and then its whole
+# process group, and a second SIGINT in pytest-xdist's controller can end the run in an internal error.
+# `JOB_MINUTES` repeats the job's `timeout-minutes`, which a step cannot read.
+INTERRUPTED = 'uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m" pytest '
 # Jobs whose pytest commands run without the interrupt, and why.
 NOT_INTERRUPTED = {
     "fuzz": "its pytest commands write no report, and start late among the job's many steps",
@@ -2673,15 +2675,33 @@ def interrupt_by_another_signal(ci: Workflow) -> None:
 
 def no_interrupt(ci: Workflow) -> None:
     found = pytest_step(ci["jobs"]["tests"])
-    found["run"] = found["run"].replace(' timeout --signal=INT "$((JOB_MINUTES - 3))m"', "")
+    found["run"] = found["run"].replace(' timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"', "")
 
 
 def uv_in_the_group(ci: Workflow) -> None:
     found = pytest_step(ci["jobs"]["controls"])
     found["run"] = found["run"].replace(
-        'uv run timeout --signal=INT "$((JOB_MINUTES - 3))m" pytest',
-        'timeout --signal=INT "$((JOB_MINUTES - 3))m" uv run pytest',
+        'uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m" pytest',
+        'timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m" uv run pytest',
     )
+
+
+def interrupted_jobs(ci: Workflow) -> list[str]:
+    """The jobs whose pytest commands run under the interrupt."""
+    return [
+        job_id for job_id, job in ci["jobs"].items() if pytest_commands(job) and job_id not in NOT_INTERRUPTED
+    ]
+
+
+def the_group_signalled_in(job_id: str) -> Callable[[Workflow], None]:
+    """A fault: `--foreground` dropped from every pytest command of one job."""
+
+    def fault(ci: Workflow) -> None:
+        for found in ci["jobs"][job_id]["steps"]:
+            if "run" in found:
+                found["run"] = found["run"].replace(" --foreground", "")
+
+    return fault
 
 
 def a_second_command_without_it(ci: Workflow) -> None:
@@ -2730,6 +2750,44 @@ def test_the_interrupt_check_can_fail(fault: Callable[[Workflow], None], problem
     fault(ci)
     found = interrupt_problems(ci)
     assert any(problem in line for line in found), found
+
+
+def interrupt_drift(words: Sequence[str]) -> bool:
+    """Whether a test that interrupts pytest with `words` interrupts it otherwise than the workflows do."""
+    return f"uv run {' '.join(words)} " not in INTERRUPTED
+
+
+@pytest.mark.parametrize(
+    ("words", "drifts"),
+    [
+        (INTERRUPT_AS_CI, False),
+        (tuple(word for word in INTERRUPT_AS_CI if word != "--foreground"), True),
+        (("timeout", "--signal=INT"), True),
+        (("timeout", "--foreground", "--signal=TERM"), True),
+    ],
+    ids=["as-the-test-does", "without-foreground", "the-old-words", "another-signal"],
+)
+def test_the_interrupted_run_test_interrupts_as_the_workflows_do(words: Sequence[str], drifts: bool) -> None:
+    """tests/unit/test_report_test_durations.py interrupts a sample run with `INTERRUPT_AS_CI`; the first
+    case holds those words to the workflows' (`INTERRUPTED`), the others that the comparison can fail."""
+    assert interrupt_drift(words) is drifts
+
+
+def test_every_pytest_job_with_the_interrupt_is_one_the_foreground_control_drops_it_from() -> None:
+    """The control below runs once per job that has the interrupt; this holds it to every such job, so that a
+    job added later is dropped from too, and there are jobs to drop it from."""
+    assert interrupted_jobs(workflow("ci.yml")) == ["tests", "controls", "hypothesis", "commit"]
+
+
+@pytest.mark.parametrize("job_id", interrupted_jobs(workflow("ci.yml")))
+def test_a_job_whose_timeout_signals_the_group_fails_the_interrupt_check(job_id: str) -> None:
+    """Without `--foreground`, `timeout` signals pytest and then its process group, and the controller of
+    pytest-xdist can meet the second SIGINT inside a lock: dropped from any one job, the check names it."""
+    ci = copy.deepcopy(workflow("ci.yml"))
+    the_group_signalled_in(job_id)(ci)
+    found = interrupt_problems(ci)
+    assert [line for line in found if line.startswith(f"{job_id} runs pytest without")], found
+    assert [line for line in found if not line.startswith(f"{job_id} ")] == [], found
 
 
 # The slowest run of each Hypothesis shard measured on CI, in minutes, by profile, with the five shards of
@@ -4135,7 +4193,7 @@ def run_the_runs(repeat: Workflow, directory: Path, failing: str = "", job: int 
 
 
 def run_words(directory: Path, seed: int) -> list[str]:
-    """The words of a run of seed `seed` after `uv run timeout --signal=INT <seconds>`."""
+    """The words of a run of seed `seed` after `uv run timeout --foreground --signal=INT <seconds>`."""
     return [
         *("pytest", "-n", "auto", "--dist", "worksteal", RUN_OUTPUTS["node"], *RUN_OUTPUTS["extra"].split()),
         f"--hypothesis-seed={seed}",
@@ -4214,7 +4272,7 @@ def reach_problems(repeat: Workflow, ci: Workflow, directory: Path) -> list[str]
         problems.append(f"the workflow's, the script's and ci.yml's test matrix's Pythons are {pythons}")
     calls = run_the_runs(repeat, directory).calls
     for seed, call in enumerate(calls, 1):
-        if call["arguments"][4:] != run_words(directory, seed) or call["environment"]:
+        if call["arguments"][5:] != run_words(directory, seed) or call["environment"]:
             problems.append(
                 f"the run of seed {seed} is given {call['arguments'][4:]} and {call['environment']}"
             )
@@ -4491,8 +4549,8 @@ def repeat_timeout_problems(repeat: Workflow, ci: Workflow, directory: Path) -> 
     """Where a job has no timeout, or one that syncs the environment has less time, at some profile, than the
     shortest of ci.yml's jobs that do; the runs' timeout, at some profile, is not the minutes their interrupt
     is set from, or leaves no room for it; or, run as written with the stub `uv`, a run does not start under
-    `uv run timeout --signal=INT` until three minutes before the job's timeout, counted from the step's start,
-    or one starts with no time left."""
+    `uv run timeout --foreground --signal=INT` until three minutes before the job's timeout, counted from the
+    step's start, or one starts with no time left."""
     problems = [
         f"{job_id} has no timeout" for job_id, job in repeat["jobs"].items() if "timeout-minutes" not in job
     ]
@@ -4519,10 +4577,16 @@ def repeat_timeout_problems(repeat: Workflow, ci: Workflow, directory: Path) -> 
             )
     calls = run_the_runs(repeat, directory / "ten", JOB_MINUTES="10").calls
     for call in calls:
-        head = call["arguments"][:5]
-        left = re.fullmatch(r"(\d+)s", head[3]) if len(head) == 5 else None
-        if head[:3] != ["run", "timeout", "--signal=INT"] or head[4:] != ["pytest"] or not left:
-            problems.append(f"a run starts as {head}, not under `uv run timeout --signal=INT <seconds>`")
+        head = call["arguments"][:6]
+        left = re.fullmatch(r"(\d+)s", head[4]) if len(head) == 6 else None
+        if (
+            head[:4] != ["run", "timeout", "--foreground", "--signal=INT"]
+            or head[5:] != ["pytest"]
+            or not left
+        ):
+            problems.append(
+                f"a run starts as {head}, not under `uv run timeout --foreground --signal=INT <seconds>`"
+            )
         elif not 7 * 60 - 30 <= int(left[1]) <= 7 * 60:
             when = "later" if int(left[1]) > 7 * 60 else "sooner"
             problems.append(
@@ -4544,6 +4608,10 @@ def interrupted_by_term(repeat: Workflow) -> None:
     edited_step(repeat, "--signal=INT", "--signal=TERM")
 
 
+def interrupting_the_group(repeat: Workflow) -> None:
+    edited_step(repeat, " --foreground", "")
+
+
 def no_room_for_the_interrupt(repeat: Workflow) -> None:
     edited_step(repeat, "(JOB_MINUTES - 3)", "JOB_MINUTES")
 
@@ -4551,8 +4619,8 @@ def no_room_for_the_interrupt(repeat: Workflow) -> None:
 def uv_under_timeout(repeat: Workflow) -> None:
     edited_step(
         repeat,
-        'uv run timeout --signal=INT "${left}s" pytest',
-        'timeout --signal=INT "${left}s" uv run pytest',
+        'uv run timeout --foreground --signal=INT "${left}s" pytest',
+        'timeout --foreground --signal=INT "${left}s" uv run pytest',
     )
 
 
@@ -4587,7 +4655,8 @@ def edited_step(repeat: Workflow, old: str, new: str) -> None:
 @pytest.mark.parametrize(
     ("fault", "problem"),
     [
-        (interrupted_by_term, "a run starts as ['run', 'timeout', '--signal=TERM'"),
+        (interrupted_by_term, "a run starts as ['run', 'timeout', '--foreground', '--signal=TERM'"),
+        (interrupting_the_group, "a run starts as ['run', 'timeout', '--signal=INT'"),
         (no_room_for_the_interrupt, "s, later than about 420"),
         (uv_under_timeout, "a run starts as ['run', 'pytest', '-n'"),
         (no_deadline, "in a job of 3 minutes 3 runs started"),

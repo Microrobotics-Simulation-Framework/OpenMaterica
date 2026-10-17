@@ -368,21 +368,29 @@ jobs:
       # Every test but the mutant searches and the audit controls, which the next job runs; the property tests
       # at the `dev` profile: Python's json differs between versions, so the properties run on each; their
       # depth is the Hypothesis job's. A worker per vCPU, as in that job.
-      # Each pytest command runs under `timeout --signal=INT`, three minutes before its job's limit (maintainer,
-      # 2026-10-17; all but the fuzz job's, which write no report and start late among its steps). `timeout`
-      # sends SIGINT to pytest's whole process group, its workers included, as Ctrl-C does, so that pytest
-      # stops, writes the report of the tests that finished, and fails the step (`timeout` exits 124); the
-      # durations steps then read that report. GitHub's own timeout would interrupt, then end, the step's shell
+      # Each pytest command runs under `timeout --foreground --signal=INT`, three minutes before its job's limit
+      # (maintainer, 2026-10-17; all but the fuzz job's, which write no report and start late among its steps).
+      # `timeout` sends pytest one SIGINT, as Ctrl-C does to a process, so that pytest stops, writes the report
+      # of the tests that finished, and fails the step (`timeout` exits 124); the durations steps then read that
+      # report. `--foreground` is what makes it one: `timeout` otherwise signals its child and then its whole
+      # process group, so that pytest-xdist's controller met a second SIGINT, and when that came while it
+      # unwound the first, inside `threading.Condition.wait` under `queue.get`, Python raised `RuntimeError:
+      # release unlocked lock` and pytest ended in an internal error: a report with a case no test owns, which
+      # the durations step refuses (8 of 200 runs of one test on Python 3.15 on CI, 1 of 200 on 3.13; run
+      # 39067401383). With one SIGINT the workers get none; the controller's teardown ends them, and execnet
+      # interrupts one that has not ended after about 5 s, so the report is written about 5 s after the limit.
+      # Give `timeout` no `--kill-after` under about 15 s: it kills the controller during that teardown, and
+      # the report is lost. GitHub's own timeout would interrupt, then end, the step's shell
       # and not pytest, which writes its report only as its run ends, so a job cancelled that way has none (read
       # from the runner's code, and seen in a local run sent the same signals, 2026-10-16). uv runs `timeout`,
-      # and so stays outside the group: under `timeout ... uv run pytest`, uv passed pytest a second SIGINT
-      # during its shutdown, which then failed with a traceback and, in 4 of 7 local runs, no report; run this
-      # way, 10 of 10 wrote it (uv 0.13.0 and 0.11.15, 2026-10-17). `JOB_MINUTES` repeats the job's
-      # `timeout-minutes`, which no step can read, and tests/unit/test_ci_workflows.py holds the two equal for
-      # every event and combination.
+      # and so stays outside it: under `timeout ... uv run pytest` (without `--foreground`), uv passed pytest a
+      # second SIGINT during its shutdown, which then failed with a traceback and, in 4 of 7 local runs, no
+      # report; run this way, 10 of 10 wrote it (uv 0.13.0 and 0.11.15, 2026-10-17). `JOB_MINUTES` repeats the
+      # job's `timeout-minutes`, which no step can read, and tests/unit/test_ci_workflows.py holds the two equal
+      # for every event and combination.
       - id: pytest
         run: >-
-          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"
           pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
@@ -441,7 +449,7 @@ jobs:
       # same profile as the test job.
       - id: pytest
         run: >-
-          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"
           pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
@@ -550,7 +558,7 @@ jobs:
       - name: Property tests and mutants, with the draw-rejection and feature audits (tests/property/conftest.py)
         id: pytest
         run: >-
-          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"
           pytest tests/property --shard ${{ matrix.shard }} -n auto --dist worksteal
           --hypothesis-show-statistics --junitxml="$RUNNER_TEMP/durations.xml"
       - name: Test durations
@@ -719,7 +727,7 @@ jobs:
       - id: pytest
         if: steps.passed.outputs.cache-hit != 'true'
         run: >-
-          uv run timeout --signal=INT "$((JOB_MINUTES - 3))m"
+          uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"
           pytest -n auto --dist worksteal
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev

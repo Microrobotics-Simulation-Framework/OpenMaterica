@@ -303,9 +303,9 @@ every family entry goes in `families/CHANGELOG.md`.
   check fails unless every job the gate asked for succeeded, so that a job skipped by mistake no longer
   passes. Every job runs on the image `ubuntu-24.04`, and every step under bash with `-eo pipefail`. Each
   pytest job writes a JUnit report, summarised on the run's page and kept 90 days
-  (`scripts/report_test_durations.py`), whenever pytest ran; pytest runs under `timeout --signal=INT`, three
-  minutes before its job's timeout, so that a job out of time stops, writes the report of the tests that
-  finished and fails, rather than be cancelled without one; each test records its CPU time beside its wall
+  (`scripts/report_test_durations.py`), whenever pytest ran; pytest runs under `timeout --foreground
+  --signal=INT`, three minutes before its job's timeout, so that a job out of time is sent one SIGINT, stops,
+  writes the report of the tests that finished and fails, rather than be cancelled without one; each test records its CPU time beside its wall
   time, its own and that of the processes it started. The mutant searches and the audit controls run on Python 3.11 and 3.15, the supported
   range's ends, in jobs of their own (`--property-controls`), and every other test on all five Pythons.
   `tests/unit/test_ci_workflows.py` holds the workflows to their comments: the image, the gate's step, each
@@ -345,7 +345,12 @@ every family entry goes in `families/CHANGELOG.md`.
   `tests/unit/test_ci_workflows.py` checks that no listed path is a module the property tests load or import,
   however late, nor a path such a module names, nor one the job's steps, its build or its workflow read.
 - `tests/unit/test_ci_workflows.py` also holds each pytest command to its interrupt, three minutes before its
-  job's timeout for every event and matrix combination, the fuzz job's excepted with its reason. The durations
+  job's timeout for every event and matrix combination, the fuzz job's excepted with its reason, and `--foreground`
+  at every one of them, in `ci.yml` and in `repeat.yml`: without it `timeout` signalled pytest's whole process
+  group as well as pytest, and a second SIGINT in pytest-xdist's controller could end the run in an internal error
+  (`RuntimeError: release unlocked lock`) and cost the durations summary (the interrupted-run test failed in 8 of
+  200 runs on Python 3.15 on CI). With one SIGINT the controller's teardown ends the workers, so the report is
+  written about 5 s after the limit. The durations
   report counts the tests the interrupt stopped, which pytest-xdist writes with a time alone, and leaves them
   out (`scripts/report_test_durations.py`); a test runs pytest under the same interrupt and reads its report.
   The records shard's `deep` timeout is 90 minutes, from 45, after it took 31 on the first `deep` run on CI;

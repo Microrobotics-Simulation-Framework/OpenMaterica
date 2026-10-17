@@ -177,8 +177,8 @@ jobs:
       # database, and `.hypothesis/` is removed before each, so that no run replays another's examples. Each run's
       # record, its failing examples among it, goes to `results.jsonl`, whatever its outcome; the step fails
       # where any run failed or did not finish, after the last.
-      # Each pytest runs under `uv run timeout --signal=INT`, as ci.yml's do, until three minutes before the
-      # job's timeout, counted from this step's start: `timeout` interrupts pytest's process group, uv outside
+      # Each pytest runs under `uv run timeout --foreground --signal=INT`, as ci.yml's do, until three minutes
+      # before the job's timeout, counted from this step's start: `timeout` sends pytest one SIGINT, uv outside
       # it, so that pytest stops and writes the report of the tests that finished (ci.yml says why). No run
       # starts after that.
       - name: Run the node under each seed
@@ -207,7 +207,7 @@ jobs:
             fi
             rm -rf .hypothesis
             status=0
-            uv run timeout --signal=INT "${left}s" pytest -n auto --dist worksteal "$NODE" "${extra[@]}" \
+            uv run timeout --foreground --signal=INT "${left}s" pytest -n auto --dist worksteal "$NODE" "${extra[@]}" \
               --hypothesis-seed="$seed" --junitxml="$records/$seed.xml" || status=$?
             python3 scripts/repeat_runs.py record "$seed" "$status" "$records/$seed.xml" >> "$records/results.jsonl"
             [ "$status" -eq 0 ] || failed=1
