@@ -10,13 +10,16 @@ kind of its `source_range`. Its operating values are its knots and edges, the re
 one beyond each end of the readable range, and the largest doubles.
 
 The table evaluation cases are read here too, as tables and entries, for the oracle's control and the unit
-test of `core/evaluate.py`.
+test of `core/evaluate.py`; and so are log-log values halfway between two doubles, with their exact values
+(`ties`).
 """
 
 import functools
 import itertools
 import math
+import random
 import sys
+from fractions import Fraction
 from typing import Literal, NamedTuple, TypeAlias
 
 from hypothesis import strategies as st
@@ -332,3 +335,59 @@ def case_entries() -> list[CaseEntry]:
             assert isinstance(expected, dict), case_file.path.name
             found.append(CaseEntry(case_file.path.name, read, at, expected))
     return found
+
+
+class Tie(NamedTuple):
+    family: str
+    x: tuple[float, float]
+    y: tuple[float, float]
+    at: float
+    value: Fraction  # the exact value, halfway between two doubles
+
+
+def ties() -> list[Tie]:
+    """Log-log tables through two knots of `y = y0 (x / x0)^k`, a power law the log-log formula follows
+    exactly, read where the exact value `y0 (at / x0)^k`, computed in fractions alone, lies halfway between
+    two doubles: `y = x^2` and `y = x^3` in the normal range and among subnormals; `y = 1 / x` among the
+    least subnormals, where one unit is a large share of the value; `y = x^2` over [1, 3], whose ratios 3 and
+    9 share a factor; and `y = 3 x^(3/2)`, whose exponent is no integer and whose square roots lie in the
+    lower half of an octave, where a root search started from the bit count alone begins below them. A fixed
+    seed draws the operating values."""
+    u = 5e-324
+    rng = random.Random(1)
+    found: list[Tie] = []
+
+    def add(family: str, x: tuple[float, float], y0: float, k: Fraction, at: float) -> None:
+        y1 = float(Fraction(y0) * power(Fraction(x[1]) / Fraction(x[0]), k))
+        found.append(Tie(family, x, (y0, y1), at, Fraction(y0) * power(Fraction(at) / Fraction(x[0]), k)))
+
+    # at = a / 2^26, a odd and at least 2^26.5, so that at^2 needs 54 bits.
+    for a in (rng.randrange(94906267, 2**27, 2) for _ in range(100)):
+        add("y = x^2", (1.0, 2.0), 1.0, Fraction(2), a / 2**26)
+    # at = n / 2^23, n odd and at least 208065 (2^17.67), so that at^3 needs 54 bits.
+    for n in (rng.randrange(208065, 2**18, 2) for _ in range(100)):
+        add("y = x^3", (2.0**-6, 2.0**-5), 2.0**-18, Fraction(3), n / 2**23)
+    # at = 1 + j / 2^m, j odd: y0 (at)^k is (2^m + j)^k / 2 units of the least subnormal.
+    for m in range(1, 26):
+        for j in sorted({rng.randrange(1, 2**m, 2) for _ in range(4)}):
+            add("y = x^2 among subnormals", (1.0, 2.0), 2.0 ** (2 * m - 1) * u, Fraction(2), 1 + j / 2**m)
+    for m in range(1, 17):
+        for j in sorted({rng.randrange(1, 2**m, 2) for _ in range(6)}):
+            add("y = x^3 among subnormals", (1.0, 2.0), 2.0 ** (3 * m - 1) * u, Fraction(3), 1 + j / 2**m)
+    for k in range(3, 200, 2):
+        add("y = 1 / x among subnormals", (u, k * u), k * u, Fraction(-1), 2 * u)
+    for a in (rng.randrange(94906267, 2**27, 2) for _ in range(100)):
+        add("y = x^2 over [1, 3]", (1.0, 3.0), 1.0, Fraction(2), a / 2**26)
+    # at = p^2 / 2^34, p odd with 2^53 <= 3 p^3 < 2^54, so that 3 at^(3/2) = 3 p^3 / 2^51 needs 54 bits; p
+    # lies below 2^17.5, in the lower half of its octave.
+    for p in (rng.randrange(144265, 181761, 2) for _ in range(100)):
+        add("y = 3 x^(3/2)", (1.0, 4.0), 3.0, Fraction(3, 2), p * p / 2**34)
+    return found
+
+
+def power(base: Fraction, exponent: Fraction) -> Fraction:
+    """`base` to a rational power with denominator 1 or 2, where the result is rational."""
+    roots = [math.isqrt(part) if exponent.denominator == 2 else part for part in base.as_integer_ratio()]
+    root = Fraction(*roots)
+    assert root**exponent.denominator == base, (base, exponent)
+    return root**exponent.numerator

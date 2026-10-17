@@ -11,24 +11,33 @@ no edge. Its numbers and the operating value are finite doubles (`record_format.
 Outside that contract the functions here may raise or return any number.
 
 Numbers are compared by value and exactly, as Python compares doubles, so `-0` lies at an end, a knot or an
-edge at `0` (table item 3). A value is computed exactly and rounded once, so it never raises and is the same
-double on every platform: a linear one with `fractions`, a log-log one in `decimal` at 50 significant digits;
-at a knot that is no edge it is that knot's `y` as stored, `-0` included (the S3 design, S3Q16). No
-derivative is computed: a read returns none, and a consumer's evaluator is its own (`read_side_contract.md`
-section 7).
+edge at `0` (table item 3). A value is the exact value of the text's formula rounded once to the nearest
+double, ties to even, so it never raises and is the same double on every platform: a linear one computed in
+`fractions`; a log-log one computed in `fractions` where it is rational, and elsewhere bounded in `decimal`
+until both bounds round to the same double (`loglog`, which states the one assumption this rests on); at a
+knot that is no edge, that knot's `y` as stored, `-0` included (the S3 design, S3Q16). No derivative is
+computed: a read returns none, and a consumer's evaluator is its own (`read_side_contract.md` section 7).
 """
 
 from bisect import bisect_left
 from collections.abc import Collection, Sequence
-from decimal import Context, Decimal, localcontext
+from decimal import ROUND_CEILING, ROUND_FLOOR, Context, Decimal
 from fractions import Fraction
+from itertools import combinations
+from math import gcd
 from typing import Literal, TypeAlias
 
 Scheme: TypeAlias = Literal["linear", "loglog"]
 
-# A log-log value's significant digits before its one rounding to a double (S3Q16).
-LOGLOG_DIGITS = 50
-_LOGLOG = Context(prec=LOGLOG_DIGITS)
+# The significant digits at which a log-log value is bounded, in turn, until both bounds round to the same
+# double: S3Q16's 50 first, then twice as many each time, up to a cap.
+LOGLOG_DIGITS = (50, 100, 200, 400, 800, 1600)
+# Each as two contexts: one rounding every step down, for the lower bound, and one rounding it up.
+LOGLOG_CONTEXTS = tuple(
+    (Context(prec=digits, rounding=ROUND_FLOOR), Context(prec=digits, rounding=ROUND_CEILING))
+    for digits in LOGLOG_DIGITS
+)
+_ZERO, _ONE = Decimal(0), Decimal(1)
 
 
 def readable_range(x: Sequence[float], source_range: Sequence[float] | None) -> tuple[float, float]:
@@ -99,14 +108,145 @@ def linear(x0: float, x1: float, y0: float, y1: float, at: float) -> float:
 
 def loglog(x0: float, x1: float, y0: float, y1: float, at: float) -> float:
     """The log-log formula, "`exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) / (ln x1 - ln x0))`, in natural
-    logarithms" (`read_side_contract.md` section 7 item 2), in decimal at `LOGLOG_DIGITS` significant digits,
-    rounded once to the nearest double. A double converts to a decimal exactly, and the logarithms of two
-    distinct positive doubles differ within those digits, so nothing divides by zero; the result lies between
-    `y0` and `y1`, so nothing overflows."""
-    with localcontext(_LOGLOG):
-        ln_x0, ln_y0 = Decimal(x0).ln(), Decimal(y0).ln()
-        slope = (Decimal(y1).ln() - ln_y0) / (Decimal(x1).ln() - ln_x0)
-        return float((ln_y0 + (Decimal(at).ln() - ln_x0) * slope).exp())
+    logarithms" (`read_side_contract.md` section 7 item 2), its exact value rounded once to the nearest
+    double, ties to even.
+
+    With `a = x / x0`, `b = x1 / x0` and `c = y1 / y0`, the value is `y0 a^e` with `e = ln c / ln b`, and
+    also `y0^(1 - t) y1^t` with `t = ln a / ln b`. Where `e` is rational, whether the value is rational is
+    decided exactly, and a rational value is computed in fractions (`exact_loglog`). No other value is
+    halfway between two doubles:
+    - where `e` is rational, it is irrational;
+    - where `e` is irrational and `t = r / s` rational, a rational value is a double: its `s`-th power is
+      `y0^(s - r) y1^r`, so its exponent of each prime lies between `y0`'s and `y1`'s; its odd part is then at
+      most the larger of theirs, below 2^53, its exponent of 2 at least -1074, and it lies between `y0` and
+      `y1`;
+    - where `e` and `t` are both irrational, the value is irrational: rational, `a`, `b`, `a^e` and `b^e`
+      would all be rational with `1, e` and `ln a, ln b` each linearly independent over the rationals, against
+      the four exponentials conjecture (which Schanuel's implies; neither is proven).
+
+    So any other value is bounded in decimal at each of `LOGLOG_DIGITS` in turn (`loglog_bounds`) until both
+    bounds round to the same double, which is then the value's rounding, since rounding to the nearest double
+    never decreases; a value no halfway point holds settles in the end. Past the last, the code returns the
+    double nearest the middle of the bounds, which may be one unit off: that would take a value within about
+    1e-1580 of a halfway point, relatively, and not on it, or a rational one against the conjecture. No such
+    value is known.
+    """
+    exact = exact_loglog(x0, x1, y0, y1, at)
+    if exact is not None:
+        return float(exact)
+    low, high = loglog_bounds(*LOGLOG_CONTEXTS[0], x0, x1, y0, y1, at)
+    for down, up in LOGLOG_CONTEXTS[1:]:
+        if float(low) == float(high):
+            break
+        low, high = loglog_bounds(down, up, x0, x1, y0, y1, at)
+    return float((Fraction(low) + Fraction(high)) / 2)
+
+
+def loglog_bounds(
+    down: Context, up: Context, x0: float, x1: float, y0: float, y1: float, at: float
+) -> tuple[Decimal, Decimal]:
+    """A lower and an upper bound on the log-log value, at the contexts' precision. A double converts to a
+    decimal exactly; `decimal`'s logarithm and exponential are correctly rounded, so each true value lies
+    strictly within a unit of the rounded one; every other step rounds down (`down`) for the lower bound and
+    up (`up`) for the upper. The share `(ln x - ln x0) / (ln x1 - ln x0)` lies in (0, 1), since
+    `x0 < x < x1`, so its bounds are kept there: nothing divides by zero, however close the logarithms."""
+
+    def ln(number: float) -> tuple[Decimal, Decimal]:
+        rounded = down.ln(Decimal(number))
+        return down.next_minus(rounded), up.next_plus(rounded)
+
+    ln_x0, ln_x1, ln_y0, ln_y1, ln_at = ln(x0), ln(x1), ln(y0), ln(y1), ln(at)
+    rise = down.subtract(ln_at[0], ln_x0[1]), up.subtract(ln_at[1], ln_x0[0])
+    run = down.subtract(ln_x1[0], ln_x0[1]), up.subtract(ln_x1[1], ln_x0[0])
+    gain = down.subtract(ln_y1[0], ln_y0[1]), up.subtract(ln_y1[1], ln_y0[0])
+    share = (
+        down.divide(rise[0], run[1]) if rise[0] > 0 else _ZERO,
+        min(up.divide(rise[1], run[0]), _ONE) if run[0] > 0 else _ONE,
+    )
+    # The share times the gain: least at the gain's lower bound and greatest at its upper, the share being
+    # positive.
+    step = (
+        down.multiply(share[1] if gain[0] < 0 else share[0], gain[0]),
+        up.multiply(share[1] if gain[1] > 0 else share[0], gain[1]),
+    )
+    low = down.next_minus(down.exp(down.add(ln_y0[0], step[0])))
+    high = up.next_plus(up.exp(up.add(ln_y0[1], step[1])))
+    return low, high
+
+
+def exact_loglog(x0: float, x1: float, y0: float, y1: float, at: float) -> Fraction | None:
+    """The log-log value `y0 a^e` (`loglog`), exactly, where `e` and the value are both rational; else None.
+
+    Write `b` and `c` as products of powers of integers above 1 that are pairwise coprime (`coprime_base`).
+    Their logarithms are linearly independent over the rationals (a relation among them would make two equal
+    products with no factor in common), so `e` is rational exactly where `c`'s exponents are a rational
+    multiple of `b`'s. Then, with `e = r / s` in lowest terms, `a^e` is rational exactly where `a` is the
+    `s`-th power of a rational: were `a^(r / s)` rational, so would be `a^(1 / s)`, a product of integer
+    powers of it and of `a`."""
+    b, c = Fraction(x1) / Fraction(x0), Fraction(y1) / Fraction(y0)
+    base = coprime_base([b.numerator, b.denominator, c.numerator, c.denominator])
+    e = multiple(exponents(c, base), exponents(b, base))
+    if e is None:
+        return None
+    root = rational_root(Fraction(at) / Fraction(x0), e.denominator)
+    return None if root is None else Fraction(y0) * root**e.numerator
+
+
+def coprime_base(numbers: Sequence[int]) -> list[int]:
+    """2 and odd integers above 1, pairwise coprime, such that each of `numbers` (positive) is a product of
+    their powers: the odd parts, with each two that share a factor `g` replaced by their quotients by `g` and
+    `g` itself, until no two do. Each replacement leaves every number a product of the base and shrinks the
+    base's product, so it ends."""
+    base = {number >> twos(number) for number in numbers} - {1}
+    while shared := next(((p, q) for p, q in combinations(sorted(base), 2) if gcd(p, q) > 1), None):
+        p, q = shared
+        factor = gcd(p, q)
+        base = (base - {p, q}) | ({p // factor, q // factor, factor} - {1})
+    return [2, *sorted(base)]
+
+
+def twos(number: int) -> int:
+    """The exponent of 2 in `number`, a positive integer."""
+    return (number & -number).bit_length() - 1
+
+
+def exponents(ratio: Fraction, base: Sequence[int]) -> list[int]:
+    """The exponent of each of `base` (a `coprime_base`) in `ratio`, a product of their powers."""
+
+    def exponent(number: int, factor: int) -> int:
+        if factor == 2:
+            return twos(number)
+        count = 0
+        while number % factor == 0:
+            number //= factor
+            count += 1
+        return count
+
+    return [exponent(ratio.numerator, factor) - exponent(ratio.denominator, factor) for factor in base]
+
+
+def multiple(numbers: Sequence[int], of: Sequence[int]) -> Fraction | None:
+    """The rational `r` with `numbers` equal to `r` times `of`, term by term, where there is one; `of` is not
+    all zero."""
+    first = next(index for index, number in enumerate(of) if number)
+    ratio = Fraction(numbers[first], of[first])
+    return ratio if all(n == ratio * o for n, o in zip(numbers, of, strict=True)) else None
+
+
+def rational_root(ratio: Fraction, degree: int) -> Fraction | None:
+    """The rational whose `degree`-th power is `ratio` (positive), where there is one: in lowest terms, both
+    its numerator and its denominator are `degree`-th powers."""
+    top, bottom = integer_root(ratio.numerator, degree), integer_root(ratio.denominator, degree)
+    return None if top is None or bottom is None else Fraction(top, bottom)
+
+
+def integer_root(number: int, degree: int) -> int | None:
+    """The integer whose `degree`-th power is `number` (positive), where there is one: Newton's method in
+    integers, from a power of 2 above the root, falls to the root's floor and stops there."""
+    root = 1 << -(-number.bit_length() // degree)
+    while (lower := ((degree - 1) * root + number // root ** (degree - 1)) // degree) < root:
+        root = lower
+    return root if root**degree == number else None
 
 
 def table_value(
@@ -117,7 +257,8 @@ def table_value(
     source_range: Sequence[float] | None,
     at: float,
 ) -> float | None:
-    """The number a read of the table gives at `at`, or None where it gives none.
+    """The table's number at `at`: its value inside the readable range, the value at the range's nearest end
+    outside it, and None at or beyond an edge.
 
     - Inside the readable range, the table's value at `at` (`value`).
     - Outside it, "the value at the range's nearest end, taken from inside the range"

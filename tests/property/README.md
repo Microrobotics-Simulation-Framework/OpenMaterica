@@ -231,20 +231,25 @@ check's reader (the last bullet).
 - **Tables:** (15) the table evaluator (`core/evaluate.py`; `record_format.md` section 6, table items 3 and 4;
   `read_side_contract.md` sections 5 and 7), the S3 design's HP17 to HP19, against an oracle written from the
   text (`test_evaluate_properties.py`). HP17: the evaluator agrees with it over drawn tables and operating
-  values, never raising: where each value lies (at an edge, in the readable range, beyond an edge) exactly, and
-  the number, a linear one bit for bit and a log-log one within 1e-15. HP18: a read at a knot that is no edge,
-  or beyond the readable range's end where that is one, gives the stored `y` bit for bit, `-0` included. HP19:
-  the knots that bracket a read are the interval the text names and its value lies between their two `y`; and
-  over monotone `y` with no edge, reads are monotone. `tables.py` draws tables step 8 accepts by choices made
-  first (the scheme; the magnitude: ordinary, any double, doubles a few units apart, or subnormal; edges;
-  signed zeros; and a `source_range` absent, narrower, wider, across an end, or of one point), and reads each
-  at every place table item 3 tells apart: each knot and edge, the readable range's ends and `source_range`'s,
+  values, never raising: where each value lies (at an edge, in the readable range, beyond an edge) exactly,
+  and the number, the exact value rounded once, bit for bit. HP18: a read at a knot that is no edge, or beyond
+  the readable range's end where that is one, gives the stored `y` bit for bit, `-0` included. HP19: the knots
+  that bracket a read are the interval the text names and its value lies between their two `y`; and over
+  monotone `y` with no edge, reads are monotone. `tables.py` draws tables step 8 accepts by choices made first
+  (the scheme; the magnitude: ordinary, any double, doubles a few units apart, or subnormal; edges; signed
+  zeros; and a `source_range` absent, narrower, wider, across an end, or of one point), and reads each at
+  every place table item 3 tells apart: each knot and edge, the readable range's ends and `source_range`'s,
   the double either side of each, both zeros, a value inside each interval with room, one beyond each end of
   the readable range, and the largest doubles. Each property first checks its table against the text's rules
   (`accepted`), a check that found two faults of the generator while it was written. The oracle compares as
-  fractions, finds a read's interval by scanning every pair of knots, and computes in another arrangement, a
-  linear value exactly and a log-log one in decimal at 80 digits where the evaluator works at 50; its own
-  control is that it gives every number and refusal of the table evaluation cases.
+  fractions, finds a read's interval by scanning every pair of knots, and computes in another arrangement: a
+  linear value exactly, and a log-log one in decimal at 100 digits, rounded at once where an error bound shows
+  that rounding is the value's, and near a point halfway between two doubles deciding over prime factors
+  whether the value is that point. It shares no code with the evaluator, which decides rational values over a
+  basis found by gcds and bounds the rest by directed rounding; both use the standard library's `fractions`
+  and `decimal`. Its own controls: it gives every number and refusal of the table evaluation cases, and the
+  exact value at constructed ties, which it misses with its exact decision switched off. HP17 also holds, as
+  explicit examples, six reads at log-log values halfway between two subnormals, which its own draws reach.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -979,7 +984,7 @@ the `json` shard at `ci`).
 | `end_value_at_the_ends_of_x` | outside the readable range, the value at `x[0]` or `x[-1]`, as NumPy's `interp` clamps | HP17 | `value` | 5, 5 |
 | `refusal_raised` | at or beyond an edge, an exception in place of no number | HP17 | `raised` | 3, 7 |
 | `ends_excluded` | the readable range's ends excluded (`<`) | HP17 | `position` | 1, 1 |
-| `below_an_edge_from_the_interval_above` | just below an edge, the interval above it | HP17 | `value` | 3, 8 |
+| `below_an_edge_from_the_interval_above` | just below an edge, the interval above it (a log-log value read through it can lie beyond every double, where its exact value raises) | HP17 | `raised`, `value` | 3, 8 |
 | `between_knots_the_interval_above` | between two knots, the interval above them | HP19 | `interval` | 3, 5 |
 | `interval_read_backwards` | `t` computed as `(x1 - x) / (x1 - x0)`: inside its interval's `y`, run the wrong way | HP19 monotone | `monotone` | 20, 7 |
 

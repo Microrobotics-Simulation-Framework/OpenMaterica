@@ -70,7 +70,7 @@ def _knot_test_off_by_one(x: Sequence[float], at: float) -> tuple[int, int]:
 
 
 def _log10_for_x(x0: float, x1: float, y0: float, y1: float, at: float) -> float:
-    with localcontext(Context(prec=evaluate.LOGLOG_DIGITS)):
+    with localcontext(Context(prec=evaluate.LOGLOG_DIGITS[0])):
         slope = (Decimal(y1).ln() - Decimal(y0).ln()) / (Decimal(x1).log10() - Decimal(x0).log10())
         return float((Decimal(y0).ln() + (Decimal(at).ln() - Decimal(x0).ln()) * slope).exp())
 
@@ -117,7 +117,7 @@ def _range_before_the_edge(
     return evaluate.value(x, y, scheme, low if at < low else high)
 
 
-def _clamped_to_x(
+def clamped_to_x(
     x: Sequence[float],
     y: Sequence[float],
     scheme: Scheme,
@@ -222,14 +222,16 @@ MUTANTS = [
         ("position",),
     ),
     Mutant("edges_ignored", "HP17", setting(evaluate, "on_edge", _never), ("position",)),
-    Mutant("end_value_at_the_ends_of_x", "HP17", setting(evaluate, "table_value", _clamped_to_x), ("value",)),
+    Mutant("end_value_at_the_ends_of_x", "HP17", setting(evaluate, "table_value", clamped_to_x), ("value",)),
     Mutant("refusal_raised", "HP17", setting(evaluate, "table_value", _refusal_raised), ("raised",)),
     Mutant("ends_excluded", "HP17", setting(evaluate, "in_readable_range", _ends_excluded), ("position",)),
+    # Read through the interval above, a log-log value can lie beyond every double, and its exact value then
+    # raises: outside the evaluator's contract, any outcome is allowed.
     Mutant(
         "below_an_edge_from_the_interval_above",
         "HP17",
         setting(evaluate, "interval", _below_an_edge_from_above),
-        ("value",),
+        ("raised", "value"),
     ),
     Mutant(
         "between_knots_the_interval_above",
