@@ -29,7 +29,14 @@ from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.status import ReadStatus
-from materica.core.value_shapes import JsonObject, a_list, an_object, is_status_object, status_row
+from materica.core.value_shapes import (
+    IMPLIED_BASIS,
+    JsonObject,
+    a_list,
+    an_object,
+    is_status_object,
+    status_row,
+)
 from materica.core.vocabulary import VOCABULARY
 
 
@@ -175,7 +182,7 @@ def _filled(stored: JsonObject, applying: Sequence[ImpliedCondition]) -> tuple[J
     for condition in applying:
         for name, value in condition.implies.items():
             if _fillable(stored.get(name)):
-                filled.setdefault(name, {**copy.deepcopy(value), "basis": "implied"})
+                filled.setdefault(name, {**copy.deepcopy(value), "basis": IMPLIED_BASIS})
                 applied.append(condition.index)
     return filled, tuple(dict.fromkeys(applied))
 

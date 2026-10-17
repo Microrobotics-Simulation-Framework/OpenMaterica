@@ -115,8 +115,13 @@ ROW_TOKENS = frozenset(
     {token for spec in VOCABULARY.conditions.values() for token in spec.tokens}
     | {token for spec in VOCABULARY.facts.values() for token in spec.tokens}
 )
+# The basis a result's condition entry gives the value an implied condition supplies (`read_side_contract.md`
+# section 2 item 6): a token the reader writes, and so knows, for a member named `basis`, which no row of a
+# record allows (`form_invalid` there, never `unknown_token`).
+IMPLIED_BASIS = "implied"
 KNOWN: dict[str, frozenset[str]] = {
     member: frozenset(token for name in lists for token in VOCABULARY.token_lists[name])
+    | frozenset({IMPLIED_BASIS} if member == "basis" else ())
     for member, lists in BOUND.items()
 } | {"token": ROW_TOKENS}
 
