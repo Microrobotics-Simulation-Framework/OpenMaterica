@@ -37,7 +37,7 @@ from tests.property import result_strategies as results
 from tests.property import stores
 from tests.property.condition_strategies import Read, at, base_reads, implying, in_vivo, repinned
 from tests.property.strategies import DOUBLES, Size
-from tests.property.value_field_strategies import faulty_records, pinned, slipped
+from tests.property.value_field_strategies import faulty_records, pinned, slipped, specimen
 
 JsonObject = dict[str, JsonValue]
 Draw = st.DrawFn
@@ -132,8 +132,19 @@ def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS) -> Examp
         at_a_boundary(draw, read)
     elif way == "implied":
         with_implied_temperature(draw, read)
+    if draw(st.integers(0, 2)) == 0:
+        beside_another_section(draw, read)
+        shown = (*shown, "another_section")
     read = wanting(repinned(read), draw(st.sampled_from(WANTS)))
     return example("valued", read, draw(st.sampled_from(CLAIMS)), way, *shown)
+
+
+def beside_another_section(draw: Draw, read: Read) -> None:
+    """Another registered section, holding no field and a specimen of its own, which no read of this field
+    looks at (HP4)."""
+    sections = at(read.record, "body", "sections")
+    others = sorted(set(VOCABULARY.sections) - set(sections))
+    sections[draw(st.sampled_from(others))] = {"fields": {}, "specimen": draw(specimen())}
 
 
 # Alternatives.

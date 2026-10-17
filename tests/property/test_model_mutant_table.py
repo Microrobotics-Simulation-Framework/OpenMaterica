@@ -22,6 +22,7 @@ SHOWN = {
     *REVIEWS,
     "negative_zero",
     "unknown_member",
+    "another_section",
 }
 
 
