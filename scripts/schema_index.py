@@ -8,14 +8,25 @@ directory by itself. Each page links what its directory holds, and gives each JS
 identifier, with the schema's `title` and `description` where it has them. It uses the standard library only,
 so the workflow needs no environment, and it refuses a tree that already holds an `index.html`, rather than
 overwrite a file that would otherwise be published.
+
+The page of a schema version that is not yet released opens with a draft note: its files may change until the
+release, and the release freezes them. A version is released when `tests/spec_sync/released_schemas.json`
+lists it (`scripts/freeze_schema.py`), so the note leaves the page with the freezing commit, and the page of a
+released version has none. A `<MAJOR>.<MINOR>-dev` directory, the development of the next line, holds the
+note until its release, which publishes the schema as `<MAJOR>.<MINOR>/` (CONTRIBUTING, "Release gate").
 """
 
 import html
 import json
+import re
 import sys
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from pathlib import Path
 from typing import cast
+
+MANIFEST = Path(__file__).resolve().parents[1] / "tests" / "spec_sync" / "released_schemas.json"
+# A schema version's directory: the version, or the development of the line that will release it.
+VERSION = re.compile(r"(?P<line>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?P<development>-dev)?")
 
 # The landing page's policy (site/index.html): nothing is fetched from anywhere.
 POLICY = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"
@@ -39,6 +50,7 @@ STYLE = """
   ul { padding-left: 1.25rem; }
   li { margin: 0.75rem 0; }
   .muted { color: var(--muted); }
+  .draft { border-left: 0.25rem solid var(--link); padding-left: 0.75rem; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
          font-size: 0.85em; background: var(--surface); padding: 0.05em 0.2em; border-radius: 0.2em;
          overflow-wrap: anywhere; }
@@ -50,19 +62,53 @@ STYLE = """
 """
 
 
-def write_indexes(root: Path) -> list[Path]:
-    """Write every directory's `index.html` and return their paths, or raise before writing any."""
+def released_versions(manifest: Path) -> frozenset[str]:
+    """The schema versions the manifest lists as released."""
+    try:
+        value: object = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ValueError(f"{manifest}: {error}") from error
+    released = cast(dict[str, object], value).get("released") if isinstance(value, dict) else None
+    if not isinstance(released, dict):
+        raise ValueError(f"{manifest} holds no `released` object")
+    return frozenset(cast(dict[str, object], released))
+
+
+def draft_note(version: str) -> str:
+    """The note on the page of a version that is not released, as HTML."""
+    match = VERSION.fullmatch(version)
+    if match is None:
+        raise ValueError(f"{version} is not a schema version's directory")
+    line = html.escape(match["line"])
+    if match["development"]:
+        return (
+            f'<p class="draft"><strong>Draft until {line}.0.</strong> These files are the development of '
+            f"schema {line} and may change until OpenMaterica {line}.0 is released. At that release schema "
+            f"{line} is frozen as <code>{line}/</code>.</p>"
+        )
+    return (
+        f'<p class="draft"><strong>Draft until {line}.0.</strong> These {line} schema files may change until '
+        f"OpenMaterica {line}.0 is released. From that release they are frozen: CI fails any change to them, "
+        "and a change is a new minor version in a new directory.</p>"
+    )
+
+
+def write_indexes(root: Path, released: Collection[str]) -> list[Path]:
+    """Write every directory's `index.html` and return their paths, or raise before writing any.
+
+    `released` names the versions whose pages carry no draft note.
+    """
     directories = [root, *sorted(path for path in root.rglob("*") if path.is_dir())]
     existing = [directory / "index.html" for directory in directories if (directory / "index.html").exists()]
     if existing:
         raise ValueError(f"the tree already holds {', '.join(str(path) for path in existing)}")
-    pages = {directory / "index.html": _page(root, directory) for directory in directories}
+    pages = {directory / "index.html": _page(root, directory, released) for directory in directories}
     for path, text in pages.items():
         path.write_text(text, encoding="utf-8")
     return list(pages)
 
 
-def _page(root: Path, directory: Path) -> str:
+def _page(root: Path, directory: Path, released: Collection[str]) -> str:
     parts = directory.relative_to(root).parts
     where = "/schema/" + "".join(f"{part}/" for part in parts)
     crumbs = ['<a href="' + "../" * (len(parts) + 1) + '">OpenMaterica</a>']
@@ -79,9 +125,11 @@ def _page(root: Path, directory: Path) -> str:
     listing = "\n    ".join(entries)
     intro = (
         "<p>The JSON Schemas and vocabulary of each schema version. A file's permanent identifier is its "
-        "<code>$id</code>, under <code>https://w3id.org/materica/schema/</code>. OpenMaterica is "
-        "pre-release, and until a version is released its files here may change.</p>"
+        "<code>$id</code>, under <code>https://w3id.org/materica/schema/</code>. Until a version is released "
+        "its files here may change, and its page says so.</p>"
         if not parts
+        else draft_note(parts[0])
+        if len(parts) == 1 and parts[0] not in released
         else ""
     )
     return f"""<!doctype html>
@@ -139,7 +187,7 @@ def main(argv: Sequence[str]) -> int:
         print("usage: schema_index.py <directory>", file=sys.stderr)
         return 2
     try:
-        written = write_indexes(Path(argv[0]))
+        written = write_indexes(Path(argv[0]), released_versions(MANIFEST))
     except ValueError as error:
         print(error, file=sys.stderr)
         return 1
