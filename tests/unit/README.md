@@ -18,4 +18,8 @@ Tests by example, for what the conformance cases and the properties do not reach
   libraries judge differently fails the test at once, naming both verdicts, a mutant search never takes it
   for a kill, and both read a resource at draft 2020-12 whatever it declares (`test_verdicts.py`);
 - the typed shapes against what the reader gives: each member the schemas declare whole admits the float a
-  JSON number reads as (`test_shapes.py`).
+  JSON number reads as (`test_shapes.py`);
+- the Hypothesis profiles: a runner's environment changes none of their settings, none is derandomised, and on
+  a runner two seeds draw different examples and one seed what it draws elsewhere, each check run in fresh
+  processes with and without a runner's variables, its controls the registration as it was before
+  2026-10-17 and `derandomize` put back (`test_hypothesis_profiles.py`).
