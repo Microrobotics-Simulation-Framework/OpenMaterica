@@ -14,20 +14,24 @@ in a record that is valid otherwise; the record's hash is recomputed and pinned.
 field's row requires, twice, and once more without the hash suite. The target fails when a read raises
 anything but `NotImplementedError`, when two reads of one request differ, when a result is other than steps 7
 to 13 give (every code one of them gives, and HP1 and HP2: each code and condition once, `condition` where
-section 2 item 2 puts it, the status the worst of the codes', and the members present as item 6 says),
-when the read without the hash suite differs from the read with it by more than the
-label `hash_not_checked`, when step 8 lets through a constant its row allows that the reader `$defs` refuse
-(T1's third relation, but for one divergence of the `$defs` that `field_oracle.py` names: the one way this
-target sees a refusal step 8 is missing until the reference model of S2a-4 can say what each read must give),
-or when steps 9 and 10 read such a constant otherwise than their text, its units by code point and its
-conditions by HP7's oracle (`field_oracle.py`). `NotImplementedError` is a step not built yet: its form's own
-member waits for S2b or S3, or it holds alternatives beyond what S4's decision 12 lets S2 read. The seeds are
-every value field of every conformance input.
+section 2 item 2 puts it, the status the worst of the codes', and the members present as item 6 says), when
+the read without the hash suite differs from the read with it by more than the label `hash_not_checked`, when
+the read under `want: value`, the `want` every step decides under, and the reference model disagree but as
+HP12 lists (a refusal step 8 misses or gives wrongly among them: held under every `want`, the model's read
+slowed the target so that the control's seeded fault went unfound in five local runs of six, where under
+`want: value` alone it is found as often as without the model), when step 8 lets through a constant its row
+allows that the reader `$defs` refuse (T1's third relation, but for one divergence of the `$defs` that
+`field_oracle.py` names), or when steps 9 and 10 read such a constant otherwise than their text, its units by
+code point and its conditions by HP7's oracle (`field_oracle.py`). `NotImplementedError` is a step not built
+yet: its form's own member waits for S2b or S3, or it holds alternatives beyond what S4's decision 12 lets S2
+read. The seeds are every value field of every conformance input.
 """
 
+import importlib
 import json
 import sys
 from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 
 import atheris
@@ -43,14 +47,21 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY
 from materica.shapes import Suite
-from tests.fuzz import seeded_fault
-from tests.fuzz.field_oracle import (
+
+# The Hypothesis profiles, as under pytest: HP12's check, which the oracle takes, imports the property tests'
+# strategies, whose sizes come from the profile.
+importlib.import_module("tests.conftest")
+
+from tests.fuzz import seeded_fault  # noqa: E402
+from tests.fuzz.field_oracle import (  # noqa: E402
     OPERATING,
     REQUIRED,
+    check_against_the_model,
     check_no_refusal_missing,
     check_result_laws,
     check_steps_9_and_10,
     objects,
+    read_outcome,
 )
 
 PACKAGE = Path(jsonio.__file__).parents[1]
@@ -119,8 +130,9 @@ def test_one_input(data: bytes) -> None:
     if isinstance(field, Reason):
         return
     record = record_holding(field_name, field)
+    data = json.dumps(record).encode()
     store = RecordStore()
-    store.add("record", json.dumps(record).encode())
+    store.add("record", data)
     pin = {member: record[member] for member in ("id", "version", "content_hash")}
     requires = VOCABULARY.fields[field_name].requires
     operating = {name: value for name, value in OPERATING.items() if name in requires}
@@ -131,11 +143,13 @@ def test_one_input(data: bytes) -> None:
             "operating_conditions": dict(operating),
             "requirement": {"want": want, "conditions": dict(required)},
         }
-        first = read_json(request, store, WITH_HASH)
+        first, outcome = read_outcome(partial(read, request, store, claims=WITH_HASH))
         assert read_json(request, store, WITH_HASH) == first, "two reads differ"
         check_result(first)
         check_no_refusal_missing(field_name, field, first)
         check_steps_9_and_10(field_name, field, operating, required, first)
+        if want == "value":
+            check_against_the_model((data,), request, WITH_HASH, outcome)
         plain = read_json(request, store, WITHOUT_HASH)
         assert without_hash_label(plain) == first, "the hash suite changed more than its label"
 

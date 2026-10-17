@@ -2514,7 +2514,8 @@ SELECTIONS: dict[str, list[list[str]]] = {
     "commit": [[]],
     "fuzz": [
         # The control's replay: the properties of the faults seeded in parse and in the read, which a plugin
-        # seeds.
+        # seeds, and the agreement with the reference model and the byte form, which draw the stores the
+        # fault in the read lives in.
         [
             "-p",
             "tests.fuzz.seeded_fault",
@@ -2522,6 +2523,8 @@ SELECTIONS: dict[str, list[list[str]]] = {
             "tests/property/test_canonical_properties.py",
             "tests/property/test_hashing_properties.py",
             "tests/property/test_read_properties.py",
+            "tests/property/test_model_properties.py",
+            "tests/property/test_invariance_properties.py",
         ],
         # The replay: the property tests, but the writer schema's and the two JSON Schema libraries'
         # agreement, no fuzz target, and the mutant tables, which keep no example database.
