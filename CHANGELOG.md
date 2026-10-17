@@ -345,10 +345,11 @@ every family entry goes in `families/CHANGELOG.md`.
   report counts the tests the interrupt stopped, which pytest-xdist writes with a time alone, and leaves them
   out (`scripts/report_test_durations.py`); a test runs pytest under the same interrupt and reads its report.
 - Every commit of a pull request but its head is checked on its own (the `commit` job): checked out as it is,
-  on Python 3.15, ruff, mypy and pyright, every generator's `--check` and the whole suite at `dev`, at most six
-  at once. The gate lists the commits, but those that change documentation alone, so a pull request of one
-  commit runs none; a tree that passed the same checks earlier in the pull request is not checked again, its
-  pass kept in the cache under the tree and the workflow's blob. The one required check requires the job
+  on Python 3.15, ruff, mypy and pyright, the wheel's build and check, every generator's `--check` and the
+  whole suite at `dev`, at most six at once. The gate lists the commits, but those that change documentation
+  alone, so a pull request of one commit runs none; a tree that passed the same checks earlier in the pull
+  request is not checked again, its pass kept in the cache under the tree, the workflow's blob and the
+  runner's image version. The one required check requires the job
   whenever the gate lists a commit. `tests/unit/test_ci_workflows.py` runs the gate's step on stacks of
   commits (in order, documentation alone, an empty commit, code a later commit undoes, a force-push, more
   commits than a matrix holds) and holds the job to its checks, its order and its key, each with a control.
