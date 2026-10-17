@@ -464,7 +464,35 @@ SUMMED = {
     "RUNS": "3",
     "FIRST_SEED": "10",
     "EXTRA": "--shard=records",
+    "ATTEMPT": "1",
 }
+
+
+def test_a_summary_of_any_attempt_but_the_first_fails() -> None:
+    """A job run again adds its records to its first attempt's, or, should GitHub list a later attempt's
+    alone, replaces them: no summary but the first attempt's can pass."""
+    _, verdict, ok = repeat_runs.summary(REQUEST, Sum(records(ALL_PASSED), [], []), "success", attempt=2)
+    assert not ok
+    assert verdict.endswith(
+        "; this is attempt 2 of the run, which counts only a first: dispatch the request anew"
+    )
+
+
+@pytest.mark.parametrize(("attempt", "status"), [("1", 0), ("2", 1), ("", 1), ("0", 1), ("01", 1)])
+def test_the_summary_command_passes_on_the_first_attempt_alone(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    attempt: str,
+    status: int,
+) -> None:
+    write_records(tmp_path, 1, [json.dumps(each) for each in records(ALL_PASSED).values()])
+    for name, value in (SUMMED | {"ATTEMPT": attempt, "RUNS_RESULT": "success"}).items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    assert repeat_runs.main(["summary", str(tmp_path)]) == status
+    printed = capsys.readouterr().out
+    assert ("::error title=Repeat request::the run's attempt" in printed) == (attempt not in {"1", "2"})
 
 
 @pytest.mark.parametrize(("outcomes", "status"), [(ALL_PASSED, 0), (ALL_PASSED | {11: "failed"}, 1)])

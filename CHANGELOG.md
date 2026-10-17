@@ -396,6 +396,8 @@ every family entry goes in `families/CHANGELOG.md`.
   profile's example count, deadline or health checks. Each run's record keeps its seed, its outcome and each
   failing example Hypothesis reported; a summary gives the runs, the failing seeds with their examples and the
   failure rate with its one-sided 95 % upper bound, and fails the run where any run failed or did not finish.
+  Each attempt of a job keeps its records under a name of its own, and the summary fails on any attempt of the
+  run but the first, so that a job run again cannot replace a failure.
   It reads the repository alone, reads no secret, saves no cache, interrupts a job's last run three minutes
   before its timeout as CI's jobs do, and never cancels another dispatch. `tests/unit/test_ci_workflows.py`
   holds it to each of these, running its steps as written with a stub in place of pytest, each check with

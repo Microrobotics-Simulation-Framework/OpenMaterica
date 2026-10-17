@@ -18,8 +18,9 @@ only, so that it runs on the runner's Python before anything is installed.
 - `summary DIRECTORY` sums the records under `DIRECTORY`, a `results.jsonl` for each job and each attempt
   of it: the runs, the failures and their seeds and examples, and the failure rate with its one-sided 95 %
   upper bound, appended to the step summary. It exits 1 where a run failed or did not finish, a seed has no
-  record or two, or the runs' jobs did not all succeed. Of a seed's two records, as from a job run again, the
-  one that did not pass is counted, so that no later record hides a failure.
+  record or two, the runs' jobs did not all succeed, or the run's attempt (`ATTEMPT`) is not its first. Of a
+  seed's two records, as from a job run again, the one that did not pass is counted, so that no later record
+  hides a failure.
 """
 
 import argparse
@@ -351,8 +352,11 @@ def failure_details(found: dict[str, Any]) -> list[str]:
     return lines or ["No test is named: the report is missing or holds no failure.", ""]
 
 
-def summary(request: Request, found: Sum, runs_result: str, commit: str = "") -> tuple[str, str, bool]:
-    """The step summary's Markdown, its one-line verdict, and whether the request passed."""
+def summary(
+    request: Request, found: Sum, runs_result: str, commit: str = "", attempt: int = 1
+) -> tuple[str, str, bool]:
+    """The step summary's Markdown, its one-line verdict, and whether the request passed: never on an attempt
+    of the run but the first, whose records a job run again would add to its first attempt's or replace."""
     passed, failed = found.seeds(PASSED), found.seeds(FAILED)
     unfinished = [
         seed for seed, each in sorted(found.records.items()) if each["outcome"] not in {PASSED, FAILED}
@@ -389,6 +393,10 @@ def summary(request: Request, found: Sum, runs_result: str, commit: str = "") ->
         verdict += f"; problems with the records: {len(found.problems)} (below)"
     if runs_result != "success":
         verdict += f"; the runs' jobs ended in {runs_result!r}"
+    if attempt != 1:
+        verdict += (
+            f"; this is attempt {attempt} of the run, which counts only a first: dispatch the request anew"
+        )
     lines += [f"**{verdict[0].upper()}{verdict[1:]}.**", ""]
     if failed:
         lines += [f"### Failing seeds: {seed_ranges(failed)}", ""]
@@ -419,7 +427,11 @@ def summary(request: Request, found: Sum, runs_result: str, commit: str = "") ->
             *[f"- {html.escape(problem)}" for problem in found.problems],
             "",
         ]
-    ok = not (failed or unfinished or found.missing or found.problems) and runs_result == "success"
+    ok = (
+        not (failed or unfinished or found.missing or found.problems)
+        and runs_result == "success"
+        and attempt == 1
+    )
     return "\n".join(lines), verdict, ok
 
 
@@ -482,11 +494,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(record(arguments.seed, arguments.status, arguments.report)))
         else:
             request = summed_request(os.environ)
+            problems: list[str] = []
+            attempt = whole_number(
+                "the run's attempt", os.environ.get("ATTEMPT", ""), 1, sys.maxsize, problems
+            )
+            if problems:
+                raise RequestError(problems)
             text, verdict, ok = summary(
                 request,
                 read_records(arguments.directory, request),
                 os.environ.get("RUNS_RESULT", ""),
                 os.environ.get("GITHUB_SHA", ""),
+                attempt,
             )
             print(text)
             if target := os.environ.get("GITHUB_STEP_SUMMARY"):
