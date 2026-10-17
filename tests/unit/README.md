@@ -14,5 +14,8 @@ Tests by example, for what the conformance cases and the properties do not reach
   one shard, and that the classifiers and `requires-python` name the Pythons the `tests` job runs;
 - the scripts in `scripts/`, the generators included, and the audits of `tests/property/`, each against
   inputs it must refuse;
+- the schema verdicts' switch point (`tests/verdicts.py`, `spec_sync/schemas.py`): a value the two JSON Schema
+  libraries judge differently fails the test at once, naming both verdicts, and a mutant search never takes it
+  for a kill (`test_verdicts.py`);
 - the typed shapes against what the reader gives: each member the schemas declare whole admits the float a
   JSON number reads as (`test_shapes.py`).
