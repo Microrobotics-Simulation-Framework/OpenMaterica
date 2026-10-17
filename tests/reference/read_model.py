@@ -1530,7 +1530,10 @@ def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
             kind = entry["stated_as"]
             unstated = status_object(kind, faults, allowed=frozenset({"unstated"}), scalar=True)
             if unstated is not None:
-                kinds.append("unstated")
+                # provenance.md:246-247 "or `{"status": "unstated"}` (a ± whose kind the source does not
+                # state)": another token is no kind of the list's rules, refused by its own.
+                if unstated.token == "unstated":
+                    kinds.append("unstated")
             else:
                 known_token(kind, "stated_as", STATED_AS, faults)
                 if isinstance(kind, str):
@@ -1653,14 +1656,20 @@ def check_population_level(value: JsonValue, faults: Reasons) -> None:
         is not None
     ):
         return
-    if not isinstance(value, dict) or any(name not in value for name in POPULATION_LEVEL_NAMES):
+    if not isinstance(value, dict):
         faults.add("form_invalid")
         return
-    if slipped(value, POPULATION_LEVEL_NAMES):
+    if slipped(value, POPULATION_LEVEL_NAMES) or any(name not in value for name in POPULATION_LEVEL_NAMES):
         faults.add("form_invalid")
-    known_token(value["level"], "level", LEVELS, faults)
+    # read_side_contract.md:127-128 "Each step makes all its checks before the read stops": a member present
+    # is checked whatever else the object misses.
+    if "level" in value:
+        known_token(value["level"], "level", LEVELS, faults)
     # provenance.md:29 "in its `within`, `none`"
-    if status_object(value["within"], faults, allowed=frozenset({"none"}), scalar=True) is None:
+    if (
+        "within" in value
+        and status_object(value["within"], faults, allowed=frozenset({"none"}), scalar=True) is None
+    ):
         known_token(value["within"], "within", LEVELS, faults)
 
 
@@ -1697,12 +1706,15 @@ def check_uncertainty(value: JsonValue, faults: Reasons) -> None:
         known_token(distribution, "distribution", UNCERTAINTY_DISTRIBUTIONS, faults)
     if "dof" in value:
         dof = value["dof"]
+        # A status object there has its token checked under any distribution (read_side_contract.md:127-128
+        # "Each step makes all its checks").
+        held = status_object(dof, faults, allowed=ANY_STATUS, scalar=True)
         # read_side_contract.md:312-313 "its `dof` is a number exactly where its `distribution` is
         # `student_t`"
         if distribution == "student_t":
             if not (number(dof) and dof > 0):
                 faults.add("form_invalid")
-        elif status_object(dof, faults, allowed=ANY_STATUS, scalar=True) is None:
+        elif held is None:
             faults.add("form_invalid")
     if "basis" in value:
         known_token(value["basis"], "basis", UNCERTAINTY_BASES, faults)
