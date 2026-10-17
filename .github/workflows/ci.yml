@@ -110,7 +110,9 @@ jobs:
       # build or workflow reads, and counts every other path as code, a new one included. Some documents are
       # code: README.md and LICENSE go into the wheel, typings/ to the type checkers, docs/specification/, the
       # architecture draft and the documentation plan to the spec-sync tests, and site/ to the Pages workflow.
-      # tests/unit/test_ci_workflows.py checks that no test or script names a path listed here.
+      # tests/unit/test_ci_workflows.py checks that no test or script names a path listed here. A Python file
+      # is code wherever it sits, a listed directory included (`python_paths`): ruff, run without paths, reads
+      # every file pyproject.toml's `include` matches, which the same tests hold to this pattern.
       # The Hypothesis job's gate fails closed in the same way (maintainer, 2026-10-17): beside the documentation,
       # it lists the paths that no part of that job reads, neither a module its property tests load or import,
       # nor a path such a module names, nor the job's steps, its build (pyproject.toml's readme and licence, the
@@ -125,6 +127,7 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           docs_paths='CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|docs/regulatory/.+|docs/validation/.+|\.github/ISSUE_TEMPLATE/.+|\.github/pull_request_template\.md'
+          python_paths='.*\.pyi?'
           hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_confidential|check_signoff|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|scripts/pre-push|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
           commits=()
           workflow_blob=
@@ -142,8 +145,13 @@ jobs:
             echo "::stop-commands::$stop"
             printf '%s\n' "$changed"
             echo "::$stop::"
-            # Documentation only when there are paths and each is listed: a diff that names none is code.
-            if [ -n "$changed" ] && ! grep -qvxE "$docs_paths" <<< "$changed"; then code=false; else code=true; fi
+            # Documentation only when there are paths, none a Python file, and each is listed: a diff that names
+            # none is code.
+            if [ -n "$changed" ] && ! grep -qxE "$python_paths" <<< "$changed" && ! grep -qvxE "$docs_paths" <<< "$changed"; then
+              code=false
+            else
+              code=true
+            fi
             if [ -n "$changed" ] && ! grep -qvxE "$docs_paths|$hypothesis_free" <<< "$changed"; then
               hypothesis=false
             else
@@ -151,14 +159,15 @@ jobs:
             fi
             # Each commit but the head, oldest first, for the per-commit job, but one that changes documentation
             # alone: its tree is its parent's but for paths no test reads, and its parent is listed too, or is
-            # the base. A commit that changes no path is listed, as a diff that names none is code. A force-push
-            # lists the commits the branch holds now. The list is taken apart from the loop, so that a failure
-            # of git fails the step rather than list nothing.
+            # the base. A commit that changes no path is listed, as a diff that names none is code: grep reads
+            # its empty diff as one empty line, which no pattern lists. A force-push lists the commits the
+            # branch holds now. The list is taken apart from the loop, so that a failure of git fails the step
+            # rather than list nothing.
             revisions=$(git rev-list --reverse "$PR_BASE..$PR_HEAD")
             for sha in $revisions; do
               [ "$sha" != "$PR_HEAD" ] || continue
               own=$(git diff --no-renames --name-only "$sha^" "$sha")
-              if [ -z "$own" ] || grep -qvxE "$docs_paths" <<< "$own"; then commits+=("$sha"); fi
+              if grep -qxE "$python_paths" <<< "$own" || grep -qvxE "$docs_paths" <<< "$own"; then commits+=("$sha"); fi
             done
             echo "${#commits[@]} commits before the head to check on their own"
             # A matrix holds at most 256 jobs, and a run that left some out would pass without them.

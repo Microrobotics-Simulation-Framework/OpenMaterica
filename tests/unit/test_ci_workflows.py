@@ -429,6 +429,9 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
         (["notes/plan.txt"], "true", "true"),
         (["CHANGELOG.md", "scripts/check_wheel.py"], "true", "false"),
         (["scripts/check_wheel.py", "scripts/new_tool.py"], "true", "true"),
+        # A Python file is code wherever it sits, since ruff reads it; no part of the Hypothesis job does.
+        (["docs/validation/make_table.py"], "true", "false"),
+        (["CHANGELOG.md", ".github/ISSUE_TEMPLATE/form.pyi"], "true", "false"),
         # A diff with no path at all, as if the diff had gone wrong: the safe side.
         ([], "true", "true"),
         # What the Hypothesis job reads, though no property: the conformance runner, the read's modules, a
@@ -519,11 +522,13 @@ def listed(repository: Path, base: str, head: str) -> list[str]:
 
 
 def test_each_commit_but_the_head_is_listed_oldest_first(repository: Path) -> None:
+    """Code that is not Python too, which the Python rule does not list."""
     base = commit()
     first = commit("src/materica/core/read.py")
     second = commit("tests/unit/test_read.py")
+    third = commit("src/materica/schema/0.1/record.writer.json")
     head = commit("scripts/check_wheel.py")
-    assert listed(repository, base, head) == [first, second]
+    assert listed(repository, base, head) == [first, second, third]
 
 
 def test_a_pull_request_of_one_commit_lists_none(repository: Path) -> None:
@@ -540,6 +545,61 @@ def test_a_commit_that_changes_documentation_alone_is_not_listed(repository: Pat
     commit("CONTRIBUTING.md")
     head = commit("CHANGELOG.md")
     assert listed(repository, base, head) == [code]
+
+
+def test_a_commit_that_adds_a_python_file_to_documentation_is_listed(repository: Path) -> None:
+    """ruff reads it, as every Python file."""
+    base = commit()
+    python = commit("docs/validation/make_table.py")
+    head = commit("CHANGELOG.md")
+    assert listed(repository, base, head) == [python]
+
+
+def test_without_its_python_rule_the_gate_skips_the_code_jobs_for_a_python_file_in_documentation(
+    repository: Path,
+) -> None:
+    """The control of the cases above: the gate without `python_paths` calls the file documentation."""
+    gate = copy.deepcopy(step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP))
+    python_rules = (
+        '! grep -qxE "$python_paths" <<< "$changed" && ',
+        'grep -qxE "$python_paths" <<< "$own" || ',
+    )
+    for rule in python_rules:
+        assert rule in gate["run"]
+        gate["run"] = gate["run"].replace(rule, "")
+    base = commit()
+    head = commit("docs/validation/make_table.py")
+    outputs = gate_outputs(repository, gate_context("pull_request", base, head), gate)
+    assert outputs["code"] == "false"
+
+
+RUFF_INCLUDE = tomllib.loads((REPOSITORY / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["ruff"][
+    "include"
+]
+
+
+def python_problems(include: list[str], pattern: str) -> list[str]:
+    """Where a file ruff's `include` matches, at the root or in a directory the gate lists, is not code to the
+    gate."""
+    places = sorted(
+        {f"{Path(example).parent.as_posix()}/".removeprefix("./") for example in DOCUMENTATION_EXAMPLES}
+    )
+    return [
+        f"ruff reads {place}{glob}, which the gate's python_paths does not match"
+        for glob in include
+        for place in places
+        if not re.fullmatch(pattern, place + glob.replace("*", "x"))
+    ]
+
+
+def test_every_file_ruff_reads_is_code_to_the_gate() -> None:
+    assert python_problems(RUFF_INCLUDE, gate_pattern("python_paths")) == []
+
+
+def test_the_python_check_can_fail() -> None:
+    assert python_problems([*RUFF_INCLUDE, "*.ipynb"], gate_pattern("python_paths"))[0] == (
+        "ruff reads *.ipynb, which the gate's python_paths does not match"
+    )
 
 
 def test_a_commit_that_changes_nothing_is_listed(repository: Path) -> None:
