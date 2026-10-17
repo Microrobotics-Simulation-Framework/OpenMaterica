@@ -156,10 +156,12 @@ every family entry goes in `families/CHANGELOG.md`.
 - The S3 design's HP17 to HP19 for the table evaluator, against an oracle written from the text, exact in
   fractions, and for a log-log value in decimal at 100 digits under an error bound, deciding over prime
   factors whether a value near a halfway point is that point, over drawn tables of every magnitude,
-  subnormals and `-0` included, and operating values at every place table item 3 tells apart: agreement bit
-  for bit, knots as stored, bracketing and monotonicity, each with its feature audit and an audit control,
-  and seventeen mutants, each killed at the assertion it names (`tests/property/test_evaluate_*.py`, in the
-  `json` shard). The oracle's own controls are the table evaluation cases and the ties.
+  subnormals and `-0` included, the least subnormals following `y = c / x` so that reads fall halfway between
+  two doubles, a `source_range` within one interval among them, and operating values at every place table
+  item 3 tells apart: agreement bit for bit, knots as stored, bracketing and monotonicity, each with its
+  feature audit and an audit control, and eighteen mutants, each killed at the assertion it names
+  (`tests/property/test_evaluate_*.py`, in the `json` shard). The oracle's own controls are the table
+  evaluation cases and the ties; the generator's self-check has a table for each rule step 8 refuses.
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that
   the members marked write-only are those step 8 does not check, that each token condition and fact binds its
   row's list and a fact's identifier the pattern of its row's form, that a member a row gives as present

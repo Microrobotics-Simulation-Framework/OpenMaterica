@@ -43,8 +43,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
 - the table evaluator's agreement with the table evaluation cases: an evaluator broken in its range, its
   edges, its formulas or its end values; and its log-log values at ties, with the exact decision switched off
   (`unit/test_evaluate.py`);
-- the table evaluator's oracle at ties, with its exact decision switched off
-  (`property/test_evaluate_properties.py`);
+- the table evaluator's oracle at ties, with its exact decision switched off, and the generator's self-check,
+  fed a table for each rule step 8 refuses (`property/test_evaluate_properties.py`);
 - the `CASES.md` check: a case file changed after its row (`spec_sync/test_cases_md.py`);
 - the value-field checks: a member table, a status row or a quote changed, the schema changed, and a binding
   of the vocabulary changed or no longer applied (`spec_sync/test_value_fields.py`);

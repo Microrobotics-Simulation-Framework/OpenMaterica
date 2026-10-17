@@ -352,7 +352,8 @@ jobs:
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
     # runner, not the code, made the difference. At S2a-2's head json took 0.9 to 1.4 minutes, records 2.3 to 2.5
     # and step 8's mutants 1.6 to 2.1. Each `ci` timeout is set well above the slowest measured run; `deep` has not
-    # yet run on CI.
+    # yet run on CI. The table evaluator's four properties, in the json shard, took 31 s of CPU at `ci` and 556 s
+    # at `deep` (262 s wall on four workers), locally (2026-10-17, S3b-1's fix round).
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && (matrix.shard == 'writer' && 180 || 45) || (matrix.shard == 'writer' && 75 || 20) }}

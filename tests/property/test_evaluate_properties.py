@@ -2,10 +2,12 @@
 """(10) The table evaluator (`core/evaluate.py`), the S3 design's HP17 to HP19, against an oracle written from
 the text alone (`record_format.md` section 6, table items 1 to 4; `read_side_contract.md` sections 5 and 7):
 
-- HP17, agreement: over drawn tables (both schemes; edges; `source_range` absent, narrower, wider, across an
-  end, of one point; every magnitude; subnormals; `-0`) and operating values at every place table item 3
-  tells apart, the evaluator never raises; "at an edge", "in the readable range" and "no number" fall exactly
-  where the oracle puts them; and the number is the oracle's, the exact value rounded once, bit for bit.
+- HP17, agreement: over drawn tables (both schemes; edges; `source_range` absent, narrower, within one
+  interval, wider, across an end, of one point; every magnitude; subnormals, the least of them following
+  `y = c / x` so that reads fall halfway between two doubles; `-0`) and operating values at every place
+  table item 3 tells apart, the evaluator never raises; "at an edge", "in the readable range" and "no
+  number" fall exactly where the oracle puts them; and the number is the oracle's, the exact value rounded
+  once, bit for bit.
 - HP18, knot exactness: a read at a knot that is no edge, or outside the readable range at an end that is
   one, gives the stored `y`, bit for bit, `-0` included.
 - HP19, bracketing and monotonicity: the knots that bracket a read are the interval table item 3 names, and
@@ -311,6 +313,12 @@ def on_a_knot(table: Table, at: float) -> bool:
     return any(Fraction(knot) == Fraction(at) for knot in table.x)
 
 
+def without_a_knot(table: Table) -> bool:
+    """Whether the readable range is more than one point and holds no knot (the S3 design's S3Q8 rule 1)."""
+    low, high = (Fraction(end) for end in ends(table))
+    return low < high and not any(low <= Fraction(knot) <= high for knot in table.x)
+
+
 _U = 5e-324
 
 
@@ -323,29 +331,33 @@ def subnormal_tie(table: Table, at: float) -> Reading:
 
 
 # Every feature by its chance: the least share it showed in eight runs of 2,000 examples (seeds 1 to 4, at
-# the small size and the original one, 2026-10-17), rounded down. A choice's chance is near the share it is
-# drawn with, but Hypothesis draws the first of a choice more often.
+# the small size and the original one; 2026-10-17, measured again after the S3b-1 review's strategy changes),
+# rounded down. A choice's chance is near the share it is drawn with, but Hypothesis draws the first of a
+# choice more often.
 @pytest.mark.chances(
-    linear=0.45,
+    linear=0.47,
     loglog=0.45,
-    ordinary=0.2,
-    any_double=0.2,
-    adjacent_doubles=0.19,
-    subnormal=0.2,
-    with_edges=0.42,
-    signed_zeros=0.18,
-    no_source_range=0.15,
-    narrower=0.15,
-    wider=0.17,
-    across_an_end=0.16,
-    one_point=0.15,
-    at_an_edge_inside=0.23,
-    at_an_edge_outside=0.18,
-    beyond_an_edge=0.2,
-    end_between_knots=0.19,
-    end_on_a_knot=0.9,
-    subnormal_y=0.3,
-    negative_zero_y=0.09,
+    ordinary=0.18,
+    any_double=0.15,
+    adjacent_doubles=0.16,
+    subnormal=0.17,
+    least_subnormals=0.13,
+    with_edges=0.4,
+    signed_zeros=0.21,
+    no_source_range=0.16,
+    narrower=0.12,
+    within_an_interval=0.16,
+    wider=0.14,
+    across_an_end=0.09,
+    one_point=0.14,
+    at_an_edge_inside=0.21,
+    at_an_edge_outside=0.21,
+    beyond_an_edge=0.24,
+    end_between_knots=0.33,
+    end_on_a_knot=0.7,
+    subnormal_y=0.4,
+    negative_zero_y=0.17,
+    range_without_a_knot=0.14,
 )
 @example(
     subnormal_tie(
@@ -399,6 +411,7 @@ def test_hp17_the_evaluator_agrees_with_the_oracle(reading: Reading) -> None:
     feature("end_on_a_knot", any(on_a_knot(table, end) for end in ends_read))
     feature("subnormal_y", any(0 < abs(number) < SMALLEST_NORMAL for number in table.y))
     feature("negative_zero_y", any(same(-0.0, number) for number in table.y))
+    feature("range_without_a_knot", without_a_knot(table))
     check_agreement(reading)
 
 
@@ -421,12 +434,12 @@ def check_knots(reading: Reading) -> None:
 
 
 @pytest.mark.chances(
-    linear=0.45,
-    loglog=0.44,
-    negative_zero_at_a_knot=0.16,
-    zero_knot=0.36,
-    knot_beside_an_edge=0.46,
-    end_on_a_knot=0.9,
+    linear=0.47,
+    loglog=0.45,
+    negative_zero_at_a_knot=0.26,
+    zero_knot=0.35,
+    knot_beside_an_edge=0.41,
+    end_on_a_knot=0.7,
 )
 @given(readings(signed_zeros=True))
 def test_hp18_a_read_at_a_knot_gives_its_y_as_stored(reading: Reading) -> None:
@@ -466,7 +479,13 @@ def check_bracketing(reading: Reading) -> None:
 
 
 @pytest.mark.chances(
-    linear=0.45, loglog=0.47, with_edges=0.42, rising=0.74, falling=0.76, flat=0.2, beside_an_edge=0.42
+    linear=0.47,
+    loglog=0.45,
+    with_edges=0.4,
+    rising=0.78,
+    falling=0.8,
+    flat=0.27,
+    beside_an_edge=0.4,
 )
 @given(readings())
 def test_hp19_a_read_lies_between_the_y_of_the_knots_that_bracket_it(reading: Reading) -> None:
@@ -494,7 +513,12 @@ def check_monotone(reading: Reading) -> None:
 
 
 @pytest.mark.chances(
-    non_decreasing=0.47, non_increasing=0.47, linear=0.42, loglog=0.48, flat_run=0.27, narrower=0.15
+    non_decreasing=0.47,
+    non_increasing=0.43,
+    linear=0.47,
+    loglog=0.43,
+    flat_run=0.34,
+    narrower=0.14,
 )
 @given(readings(order="non_decreasing") | readings(order="non_increasing"))
 def test_hp19_reads_over_monotone_knots_are_monotone(reading: Reading) -> None:
@@ -563,3 +587,41 @@ def test_the_exact_decision_tells_the_value_from_the_halfway_point_beside_it() -
         other = beyond if beyond is not None else max(halfway_points(math.nextafter(nearest, math.inf)))
         assert other != tie.value
         assert not is_the_value(*tie.x, *tie.y, tie.at, other), tie
+
+
+REFUSED = {
+    "one knot": Table((1.0,), (1.0,), "linear", (), None),
+    "one distinct x": Table((1.0, 1.0), (1.0, 2.0), "linear", (), None),
+    "x decreasing": Table((1.0, 3.0, 2.0), (1.0, 2.0, 3.0), "linear", (), None),
+    "y one short": Table((1.0, 2.0, 3.0), (1.0, 2.0), "linear", (), None),
+    "an edge listed twice, by value": Table(
+        (-1.0, 0.0, 0.0, 1.0), (1.0, 2.0, 3.0, 4.0), "linear", (0.0, -0.0), None
+    ),
+    "an edge at x[0]": Table((1.0, 1.0, 2.0), (1.0, 2.0, 3.0), "linear", (1.0,), None),
+    "an edge in x once": Table((1.0, 2.0, 3.0), (1.0, 2.0, 3.0), "linear", (2.0,), None),
+    "an edge in x three times": Table(
+        (1.0, 2.0, 2.0, 2.0, 3.0), (1.0, 2.0, 3.0, 4.0, 5.0), "linear", (2.0,), None
+    ),
+    "a repeated x that is no edge": Table((-1.0, -0.0, 0.0, 1.0), (1.0, 2.0, 3.0, 4.0), "linear", (), None),
+    "a log-log x of 0": Table((0.0, 1.0), (1.0, 2.0), "loglog", (), None),
+    "a log-log y below 0": Table((1.0, 2.0), (1.0, -2.0), "loglog", (), None),
+    "source_range out of order": Table((1.0, 3.0), (1.0, 2.0), "linear", (), (2.5, 1.5)),
+    "source_range disjoint": Table((1.0, 3.0), (1.0, 2.0), "linear", (), (4.0, 5.0)),
+    "source_range meeting x only at an edge": Table(
+        (1.0, 2.0, 2.0, 3.0), (1.0, 2.0, 3.0, 4.0), "linear", (2.0,), (2.0, 2.0)
+    ),
+}
+
+
+@pytest.mark.parametrize("table", REFUSED.values(), ids=REFUSED.keys())
+def test_the_generator_self_check_refuses_each_table_step_8_refuses(table: Table) -> None:
+    """`accepted`'s control (the S3b-1 review's L1): one table for each rule of table items 1, 2 and 4 that
+    step 8 refuses. Each rule dropped from `accepted` lets one of them through, but three that others imply:
+    distinct edges (the repeated values are a set), repeated values side by side (`x` is in order) and
+    `source_range` in order (no value is shared otherwise)."""
+    assert not accepted(table)
+
+
+def test_the_generator_self_check_accepts_a_table_step_8_accepts() -> None:
+    """Beside its control: an edge, and a `source_range` narrower at one end and meeting `x[-1]`."""
+    assert accepted(Table((1.0, 2.0, 2.0, 3.0), (1.0, 2.0, 3.0, 4.0), "linear", (2.0,), (1.5, 3.0)))
