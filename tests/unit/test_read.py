@@ -7,7 +7,7 @@ import copy
 import importlib
 import inspect
 import json
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from pathlib import Path
 from types import ModuleType
 from typing import Any, cast, get_type_hints
@@ -650,6 +650,27 @@ def test_each_rule_the_review_found_untested(
     else:
         refused = read(*stored(with_field("fluid.dynamic_viscosity", field)))
         assert {reason.code for reason in refused.reasons} == codes
+
+
+TEMPERATURE_STATED: dict[str, JsonValue] = {"value": 310.15, "unit": "K"}
+# Places a record names `basis` at, each with the field holding a token there.
+BASES: list[tuple[str, Callable[[str], dict[str, JsonValue]]]] = [
+    ("a condition's", lambda basis: with_condition("temperature", {**TEMPERATURE_STATED, "basis": basis})),
+    ("a fact's", lambda basis: with_fact("tissue_state", {"token": "in_vivo", "basis": basis})),
+    ("a statistics block's", lambda basis: with_block(basis=basis)),
+]
+
+
+@pytest.mark.parametrize(("place", "field"), BASES, ids=[place for place, _ in BASES])
+def test_a_records_basis_implied_is_a_token_the_reader_knows_that_no_row_allows(
+    place: str, field: Callable[[str], dict[str, JsonValue]]
+) -> None:
+    """A result's condition entry gives the basis `implied` (`read_side_contract.md` section 2 item 6), so the
+    reader knows it for a member named `basis`: in a record it is `form_invalid`, as one the reader knows
+    for no `basis` is `unknown_token` (section 3, step 8). S2a-4's review, L4."""
+    for basis, code in [("implied", "form_invalid"), ("x_unknown", "unknown_token")]:
+        refused = read(*stored(with_field("fluid.dynamic_viscosity", field(basis))))
+        assert [reason.code for reason in refused.reasons] == [code], basis
 
 
 @pytest.mark.parametrize(("axis", "allowed"), [("shear_rate", False), ("temperature", True)])
