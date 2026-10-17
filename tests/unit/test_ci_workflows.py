@@ -3819,14 +3819,78 @@ def test_the_route_check_can_fail(fault: Callable[[Workflow], None], problem: st
     assert any(problem in line for line in found), found
 
 
-def repeat_timeout_problems(repeat: Workflow, directory: Path) -> list[str]:
-    """Where a job has no timeout; the runs' timeout, at some profile, is not the minutes their interrupt is
-    set from, or leaves no room for it; or, run as written with the stub `uv`, a run does not start under
+# The most jobs of runs at once: the default request's, a sixth of the organisation's 60 concurrent jobs,
+# which this repository's CI and MIME's and MADDENING's share.
+MOST_RUNS_JOBS = 10
+
+
+def runner_share_problems(repeat: Workflow) -> list[str]:
+    """Where a job of runs that fails cancels the others, whose seeds would then have no record, or the jobs
+    of runs could take more than `MOST_RUNS_JOBS` runners at once."""
+    strategy = repeat["jobs"]["runs"].get("strategy", {})
+    problems: list[str] = []
+    if strategy.get("fail-fast") is not False:
+        problems.append(
+            f"the runs' fail-fast is {strategy.get('fail-fast')!r}: a job that fails cancels the others"
+        )
+    most = strategy.get("max-parallel")
+    if not (type(most) is int and 1 <= most <= MOST_RUNS_JOBS):
+        problems.append(f"the runs take {most!r} runners at once, not {MOST_RUNS_JOBS} at most")
+    return problems
+
+
+def test_the_runs_take_ten_runners_at_most_and_none_cancels_another() -> None:
+    assert runner_share_problems(workflow(REPEAT)) == []
+
+
+@pytest.mark.parametrize(
+    ("change", "problem"),
+    [
+        ({"fail-fast": True}, "the runs' fail-fast is True"),
+        ({"fail-fast": None}, "the runs' fail-fast is None"),
+        ({"max-parallel": None}, "the runs take None runners at once"),
+        ({"max-parallel": 20}, "the runs take 20 runners at once"),
+        ({"max-parallel": "10"}, "the runs take '10' runners at once"),
+    ],
+    ids=["fail-fast", "fail-fast-by-default", "no-cap", "twenty", "a-string"],
+)
+def test_the_runner_share_check_can_fail(change: dict[str, object], problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    strategy = repeat["jobs"]["runs"]["strategy"]
+    for key, value in change.items():
+        if value is None:
+            del strategy[key]
+        else:
+            strategy[key] = value
+    found = runner_share_problems(repeat)
+    assert any(problem in line for line in found), found
+
+
+def syncs(job: dict[str, Any]) -> bool:
+    return any(str(found.get("run", "")).startswith("uv sync") for found in job.get("steps", []))
+
+
+def repeat_timeout_problems(repeat: Workflow, ci: Workflow, directory: Path) -> list[str]:
+    """Where a job has no timeout, or one that syncs the environment has less time, at some profile, than the
+    shortest of ci.yml's jobs that do; the runs' timeout, at some profile, is not the minutes their interrupt
+    is set from, or leaves no room for it; or, run as written with the stub `uv`, a run does not start under
     `uv run timeout --signal=INT` until three minutes before the job's timeout, counted from the step's start,
     or one starts with no time left."""
     problems = [
         f"{job_id} has no timeout" for job_id, job in repeat["jobs"].items() if "timeout-minutes" not in job
     ]
+    least = min(
+        job["timeout-minutes"]
+        for job in ci["jobs"].values()
+        if syncs(job) and isinstance(job.get("timeout-minutes"), int)
+    )
+    for job_id, job in repeat["jobs"].items():
+        for profile in repeat_runs.PROFILES if syncs(job) else ():
+            given = as_number(setting(job.get("timeout-minutes"), {"needs.request.outputs.profile": profile}))
+            if not given >= least:
+                problems.append(
+                    f"{job_id} syncs in {given} minutes at {profile}, ci.yml's jobs in {least} or more"
+                )
     runs = repeat["jobs"]["runs"]
     for profile in repeat_runs.PROFILES:
         context = {"needs.request.outputs.profile": profile}
@@ -3853,7 +3917,7 @@ def repeat_timeout_problems(repeat: Workflow, directory: Path) -> list[str]:
 
 
 def test_each_run_is_interrupted_three_minutes_before_its_job_times_out(tmp_path: Path) -> None:
-    assert repeat_timeout_problems(workflow(REPEAT), tmp_path) == []
+    assert repeat_timeout_problems(workflow(REPEAT), workflow("ci.yml"), tmp_path) == []
 
 
 def interrupted_by_term(repeat: Workflow) -> None:
@@ -3885,6 +3949,15 @@ def a_summary_without_a_timeout(repeat: Workflow) -> None:
     del repeat["jobs"]["summary"]["timeout-minutes"]
 
 
+def a_request_of_a_minute(repeat: Workflow) -> None:
+    repeat["jobs"]["request"]["timeout-minutes"] = 1
+
+
+def runs_of_a_minute_at_dev(repeat: Workflow) -> None:
+    runs = repeat["jobs"]["runs"]
+    runs["timeout-minutes"] = runs["timeout-minutes"].replace("|| 60 }}", "|| 1 }}")
+
+
 def edited_step(repeat: Workflow, old: str, new: str) -> None:
     runs = step(repeat["jobs"]["runs"], RUNS_STEP)
     assert runs["run"].count(old) == 1, old
@@ -3903,6 +3976,8 @@ def edited_step(repeat: Workflow, old: str, new: str) -> None:
             "at deep the runs time out at 360.0 minutes, their JOB_MINUTES are 350.0",
         ),
         (a_summary_without_a_timeout, "summary has no timeout"),
+        (a_request_of_a_minute, "request syncs in 1.0 minutes at dev, ci.yml's jobs in 5 or more"),
+        (runs_of_a_minute_at_dev, "runs syncs in 1.0 minutes at dev, ci.yml's jobs in 5 or more"),
     ],
 )
 def test_the_repeat_interrupt_check_can_fail(
@@ -3910,7 +3985,7 @@ def test_the_repeat_interrupt_check_can_fail(
 ) -> None:
     repeat = copy.deepcopy(workflow(REPEAT))
     fault(repeat)
-    found = repeat_timeout_problems(repeat, tmp_path)
+    found = repeat_timeout_problems(repeat, workflow("ci.yml"), tmp_path)
     assert any(problem in line for line in found), found
 
 
