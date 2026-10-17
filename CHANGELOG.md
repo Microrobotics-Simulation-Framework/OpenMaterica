@@ -422,6 +422,23 @@ every family entry goes in `families/CHANGELOG.md`.
   property by chance about once in 2,000 runs of the suite, which makes a push red about once in 400 from the
   test matrix (`tests/property/README.md`, "Audits"). An audit's failure therefore names the seed Hypothesis
   drew its run under and the command that draws it again (`tests/unit/test_audit_replay.py`).
+- Three test helpers that rebuilt the same thing on every call build it once, and no draw or verdict changes:
+  `tests/spec_sync/test_cases_md.py` reads each suite's `CASES.md` once, not once for each of its 1258 case
+  files, and types the result read-only, since every caller shares it, and keeps its argument typed;
+  `tests/unit/test_ci_workflows.py` parses each workflow once, handing each caller a deep copy of its own, and
+  each module's source once; and `tests/property/strategies.py` builds `json_values`'s strategy once for each
+  set of arguments, keyed so that arguments `==` does not tell apart (0.0 and -0.0, `True` and 1) never share
+  one, and `every_double`'s three strategies once; `tests/unit/test_strategy_key.py` holds that key's cases,
+  with a control under a key by `==`. Measured on a loaded 16-core machine, each change's tests run at the
+  same time as the same tests without it: `test_cases_md.py` took 0.9 to 1.3 s of CPU where it took 62 to 69
+  s; `test_ci_workflows.py` 0.22 to 0.27 of its own CPU, the bash and git it runs unchanged; the `json` shard
+  0.72 to 0.79 of its CPU at `dev` and 0.69 at `ci`, and the `writer` shard 0.78 to 0.82 at `dev`, against
+  1.29 and 0.95 for two unchanged runs paired; the `agreement` shard (0.98 and 1.12, against 1.16 unchanged)
+  and the audit controls (0.98) changed by no more than that noise. Under a fixed seed, every Hypothesis test
+  case of the property suite and the tests that draw from its strategies (37,786), of the audit controls
+  (53,688) and of the `json` shard at `ci` (42,964) drew the same choices and arguments, with the same status,
+  as before, and every test gave the same verdict; a change that swaps the two branches of `every_double`'s
+  `one_of` changes the draws of 37 of the `json` shard's 100 traced tests and the verdict of one.
 
 ## [0.1.0.dev1] - 2026-10-14
 
