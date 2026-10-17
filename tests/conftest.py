@@ -104,6 +104,9 @@ SHARDS = {
         "test_invariance_properties",
         "test_invariance_mutants",
         "test_invariance_mutant_table",
+        "test_monotonicity_properties",
+        "test_monotonicity_mutants",
+        "test_monotonicity_mutant_table",
     ),
 }
 
