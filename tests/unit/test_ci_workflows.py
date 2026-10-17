@@ -932,11 +932,9 @@ def test_the_documentation_check_finds_an_exemption_gone_stale() -> None:
 # site job runs whatever reads them, and the gate runs it on every change to them.
 SITE_NAMED_NOT_READ = {
     ("scripts/check_site.py", "site"): "the name of its argument, the staged copy it checks",
-    ("scripts/check_site.py", "*.html"): "the pages of the staged copy it checks",
     ("scripts/check_site.py", "index.html"): "a directory's page, in the staged copy it checks",
     ("scripts/schema_index.py", "index.html"): "the pages it writes into the staged schemas, for Pages",
     ("tests/unit/test_check_site.py", "site"): "a copy of a site it writes in tmp_path",
-    ("tests/unit/test_check_site.py", "*.html"): "the pages of a copy it writes in tmp_path",
     ("tests/unit/test_check_site.py", "logo.png"): "an image of a copy it writes in tmp_path",
     ("tests/unit/test_schema_index.py", "index.html"): "the pages schema_index.py writes in tmp_path",
     ("tests/unit/test_ci_workflows.py", "site"): "the site job's name",

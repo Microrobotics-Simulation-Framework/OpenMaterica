@@ -375,7 +375,10 @@ every family entry goes in `families/CHANGELOG.md`.
   where a file it copies is missing, then runs `scripts/check_site.py` on the copy: every local link, image
   and icon, the web manifest's included, resolves; every page keeps one content security policy, in its head
   as a browser reads it and before anything it loads, that gives no directive twice and allows only `'none'`,
-  `'self'`, `'unsafe-inline'`, hashes, nonces and `data:`, and nothing loads from elsewhere; and the README's images name
+  `'self'`, `'unsafe-inline'`, hashes, nonces and `data:`, and nothing loads from elsewhere, an SVG image, a
+  `background` or a stylesheet of the copy included, whose local addresses resolve too; no page has a
+  `<base>`; the copy holds no symbolic link or hidden path, which the Pages artifact would publish
+  dereferenced or leave out; and the README's images name
   files of the tree. It runs on every change but one to documentation alone, and the one required check
   requires it then. `tests/unit/test_ci_workflows.py` holds the job's staging step to Pages', shows that
   leaving out any file the step copies fails it, and checks that no test or script names a path of the site
