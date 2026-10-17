@@ -1,0 +1,229 @@
+# One pytest node run many times, each run under a seed of its own, in parallel jobs: how an agent or a person
+# measures how often a test fails (maintainer, 2026-10-17). GitHub's runners are free for this public
+# repository and run about 20 jobs at once, so a few hundred runs take minutes rather than the laptop's hours;
+# the examples are the same. Run by hand alone (`workflow_dispatch`), never on a push or a pull request;
+# tests/README.md, "Repeat runs on CI", says how to ask for one and how to read its summary.
+# Rigour is the repository's own: the profile is one of tests/conftest.py's, whose example counts, deadline and
+# health checks no input reaches. Every input is checked by the request job, and the jobs after it read the
+# checked values alone; each reaches its steps through the environment, never through a script's text.
+# tests/unit/test_ci_workflows.py holds each of these.
+
+name: Repeat
+
+run-name: "Repeat ${{ inputs.node }} (${{ inputs.profile }}, ${{ inputs.jobs }} x ${{ inputs.runs }} runs from seed ${{ inputs.first_seed }})"
+
+on:
+  workflow_dispatch:
+    inputs:
+      node:
+        description: "The test, file or directory to run, under tests/, as pytest names it (tests/property/test_x.py::test_y)"
+        type: string
+        required: true
+      profile:
+        description: The Hypothesis profile, one of the repository's own (tests/conftest.py)
+        type: choice
+        options: [dev, ci, deep]
+        default: ci
+      jobs:
+        description: Jobs side by side, 1 to 20
+        type: number
+        default: 10
+      runs:
+        description: Runs in each job, one after another, 1 to 25
+        type: number
+        default: 20
+      first_seed:
+        description: The first run's seed (0 to 999999999); each run after it takes the next
+        type: number
+        default: 1
+      python:
+        description: The Python
+        type: choice
+        options: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        default: "3.15"
+      extra:
+        description: "Extra pytest arguments, of these alone: --shard NAME, --property-controls only|none"
+        type: string
+        default: ""
+
+# A dispatch waits while another of the same inputs runs on the same ref, whose seeds it would repeat; one of
+# other inputs runs beside it. None is ever cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.node }}-${{ inputs.profile }}-${{ inputs.python }}-${{ inputs.jobs }}-${{ inputs.runs }}-${{ inputs.first_seed }}-${{ inputs.extra }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.13.0"
+
+# Under bash with `-eo pipefail`, as every workflow here (ci.yml says why).
+defaults:
+  run:
+    shell: bash
+
+# On ubuntu-24.04, as every job of every workflow here (ci.yml says why, above its jobs).
+jobs:
+  request:
+    name: the request, checked
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      node: ${{ steps.checked.outputs.node }}
+      profile: ${{ steps.checked.outputs.profile }}
+      python: ${{ steps.checked.outputs.python }}
+      jobs: ${{ steps.checked.outputs.jobs }}
+      matrix: ${{ steps.checked.outputs.matrix }}
+      runs: ${{ steps.checked.outputs.runs }}
+      first_seed: ${{ steps.checked.outputs.first_seed }}
+      extra: ${{ steps.checked.outputs.extra }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The only step that reads an input (scripts/repeat_runs.py says what it refuses), on the runner's Python.
+      - name: The inputs, checked
+        id: checked
+        env:
+          NODE: ${{ inputs.node }}
+          PROFILE: ${{ inputs.profile }}
+          PYTHON_VERSION: ${{ inputs.python }}
+          JOBS: ${{ inputs.jobs }}
+          RUNS: ${{ inputs.runs }}
+          FIRST_SEED: ${{ inputs.first_seed }}
+          EXTRA: ${{ inputs.extra }}
+        run: python3 scripts/repeat_runs.py request
+      # The uv cache CI saved is restored, and none is saved: no other run reads what this workflow writes.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ steps.checked.outputs.python }}
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # pytest refuses a test the node does not name and an extra argument's value its option does not list,
+      # and finds none in a path that holds none: before any runner starts a run.
+      - name: The node collects a test
+        env:
+          NODE: ${{ steps.checked.outputs.node }}
+          EXTRA: ${{ steps.checked.outputs.extra }}
+          MATERICA_HYPOTHESIS_PROFILE: ${{ steps.checked.outputs.profile }}
+        run: |
+          read -ra extra <<< "$EXTRA"
+          status=0
+          collected=$(uv run pytest --collect-only -q "$NODE" "${extra[@]}") || status=$?
+          tail -n 5 <<< "$collected"
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Repeat request::pytest collected no test of the node with these arguments (exit $status)"
+            exit 1
+          fi
+
+  runs:
+    name: runs (job ${{ matrix.job }})
+    needs: request
+    runs-on: ubuntu-24.04
+    # A job stops starting runs, and interrupts the one running, three minutes before this, so that it keeps
+    # the records of the runs that finished. Set by profile, as a run at `deep` takes ten times one at `ci`:
+    # a shard's run at `ci` has taken 1.6 to 5.9 minutes on CI and at `deep` 1.6 to 64 (ci.yml's Hypothesis
+    # job); a single property's at `ci`, seconds. Choose runs a job to fit, and more jobs for more runs.
+    timeout-minutes: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
+    # The same minutes, from which the interrupt is set (below).
+    env:
+      JOB_MINUTES: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJSON(needs.request.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ needs.request.outputs.python }}
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # Each of the job's seeds in turn (scripts/repeat_runs.py, `seeds`), as CI's test jobs run pytest: a
+      # worker per vCPU, under `worksteal`. A run under `--hypothesis-seed` neither reads nor saves the example
+      # database, and `.hypothesis/` is removed before each, so that no run replays another's examples. Each run's
+      # record, its failing examples among it, goes to `results.jsonl`, whatever its outcome; the step fails
+      # where any run failed or did not finish, after the last.
+      # Each pytest runs under `uv run timeout --signal=INT`, as ci.yml's do, until three minutes before the
+      # job's timeout, counted from this step's start: `timeout` interrupts pytest's process group, uv outside
+      # it, so that pytest stops and writes the report of the tests that finished (ci.yml says why). No run
+      # starts after that.
+      - name: Run the node under each seed
+        id: runs
+        env:
+          NODE: ${{ needs.request.outputs.node }}
+          EXTRA: ${{ needs.request.outputs.extra }}
+          RUNS: ${{ needs.request.outputs.runs }}
+          FIRST_SEED: ${{ needs.request.outputs.first_seed }}
+          JOB: ${{ matrix.job }}
+          MATERICA_HYPOTHESIS_PROFILE: ${{ needs.request.outputs.profile }}
+        run: |
+          records="$RUNNER_TEMP/runs"
+          mkdir -p "$records"
+          read -ra extra <<< "$EXTRA"
+          listed=$(python3 scripts/repeat_runs.py seeds)
+          mapfile -t seeds <<< "$listed"
+          deadline=$(($(date +%s) + (JOB_MINUTES - 3) * 60))
+          failed=0
+          for seed in "${seeds[@]}"; do
+            left=$((deadline - $(date +%s)))
+            if [ "$left" -le 0 ]; then
+              echo "::error title=Repeat runs::the job's time ran out before the run of seed $seed and those after it"
+              failed=1
+              break
+            fi
+            rm -rf .hypothesis
+            status=0
+            uv run timeout --signal=INT "${left}s" pytest -n auto --dist worksteal "$NODE" "${extra[@]}" \
+              --hypothesis-seed="$seed" --junitxml="$records/$seed.xml" || status=$?
+            python3 scripts/repeat_runs.py record "$seed" "$status" "$records/$seed.xml" >> "$records/results.jsonl"
+            [ "$status" -eq 0 ] || failed=1
+          done
+          exit "$failed"
+      - name: Keep the records
+        if: always() && steps.runs.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runs-${{ matrix.job }}
+          path: ${{ runner.temp }}/runs
+          if-no-files-found: error
+          retention-days: 90
+
+  summary:
+    name: summary
+    needs: [request, runs]
+    # After every job of runs, whatever their outcome, once the request was checked.
+    if: always() && needs.request.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: runs-*
+          path: ${{ runner.temp }}/runs
+      # The runs, the failures and their seeds and examples, and the failure rate with its one-sided 95 % upper
+      # bound, on the run's page; fails where any run failed or did not finish, a seed has no record, or a job of
+      # runs did not succeed (scripts/repeat_runs.py, `summary`).
+      - name: Sum the runs
+        env:
+          NODE: ${{ needs.request.outputs.node }}
+          PROFILE: ${{ needs.request.outputs.profile }}
+          PYTHON_VERSION: ${{ needs.request.outputs.python }}
+          JOBS: ${{ needs.request.outputs.jobs }}
+          RUNS: ${{ needs.request.outputs.runs }}
+          FIRST_SEED: ${{ needs.request.outputs.first_seed }}
+          EXTRA: ${{ needs.request.outputs.extra }}
+          RUNS_RESULT: ${{ needs.runs.result }}
+        run: python3 scripts/repeat_runs.py summary "$RUNNER_TEMP/runs"
