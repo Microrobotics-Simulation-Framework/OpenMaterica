@@ -85,6 +85,9 @@ SHARDS = {
         "test_model_mutants",
         "test_model_mutant_table",
         "test_model_controls",
+        "test_invariance_properties",
+        "test_invariance_mutants",
+        "test_invariance_mutant_table",
     ),
 }
 
