@@ -92,13 +92,16 @@ gh variable list -R Microrobotics-Simulation-Framework/OpenMaterica
 gh variable delete PER_COMMIT_MAX_PARALLEL -R Microrobotics-Simulation-Framework/OpenMaterica  # the default again
 ```
 
-Each takes a whole number from 1 to 20, written plainly. The capped job reads `fromJSON(vars.NAME || 'default')`,
-and a step of the job it needs, `gate` or `request`, checks that same value on every run (a push to main and the
-weekly run included) and fails on anything else, with "the repository variable NAME is ..., not a whole number
-from 1 to 20": 0, a negative number, more than 20, a fraction, `1e1`, a sign, a space or a leading zero, or text.
-The capped jobs then never start, and the run fails. GitHub documents no bound on `max-parallel`, nor what it does
-with such a value, so none reaches it. The variable is read twice, by the check and when the capped job starts: a
-value changed in between reaches the capped job unchecked, and so may one changed before its failed jobs are
-re-run, as GitHub does not say whether a re-run reads the variables anew; the next run's check fails on it.
-`tests/unit/test_ci_workflows.py` holds each capped job to its expression and runs each check as written on values
-inside and outside the range.
+Each takes a whole number from 1 to 20, written plainly in ASCII digits. A step of the job the capped jobs need,
+`gate` or `request`, reads the variable on every run (a push to main and the weekly run included) and fails on
+anything else, with "the repository variable NAME is ..., not a whole number from 1 to 20": 0, a negative number,
+more than 20, a fraction, `1e1`, a sign, a space or a leading zero, another script's digit, or text. The capped
+jobs then never start, and the run fails. GitHub documents no bound on `max-parallel`, nor what it does with such
+a value, so none reaches it. The step writes the value it took as an output of its job (the gate's
+`per_commit_max_parallel`, the request job's `max_parallel`), and the capped jobs parse that output
+(`fromJSON(needs.gate.outputs.per_commit_max_parallel)`) and never read the variable: a value changed after the
+check does not reach a run already past it. "Re-run failed jobs" runs the capped jobs again on the output their
+checker gave when it passed, as it runs the per-commit job again on the gate's list of commits (GitHub does not
+document this; the per-commit matrix relies on it already); "Re-run all jobs" checks the variable again.
+`tests/unit/test_ci_workflows.py` holds each capped job to that expression and each checker to that output, and
+runs each check as written, under two locales, on values inside and outside the range.
