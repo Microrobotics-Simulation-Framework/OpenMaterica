@@ -17,9 +17,10 @@ selects; no job or step carries on after a failure (`continue-on-error`).
 | `fuzz` | after `hypothesis`, from the union of the shards' example databases: the Atheris targets of `tests/fuzz/`, after a control with seeded faults, for `fuzz_seconds` each; then the property tests, to replay and shrink what was found; on Python 3.14 | weekly; manual, alone with `fuzz_only` |
 | `result` | fails unless every job the gate asked for succeeded (a job skipped by its `if` reports success), and when any job failed or was cancelled: the one check the ruleset on main requires | always |
 
-Each pytest job writes a JUnit report, summarised on the run's page (`scripts/report_test_durations.py`: the tests
-in each band of wall time, the slowest tests and files, and the total, wall time and CPU time, the tests' own and
-their child processes') and kept 90 days as the artifact `durations-<job>-<Python or shard>`, whenever pytest ran.
+Each pytest job but `commit`, which runs on each earlier commit the suite the head's jobs run, writes a JUnit
+report, summarised on the run's page (`scripts/report_test_durations.py`: the tests in each band of wall time, the
+slowest tests and files, and the total, wall time and CPU time, the tests' own and their child processes') and kept
+90 days as the artifact `durations-<job>-<Python or shard>`, whenever pytest ran.
 pytest runs under `timeout --signal=INT`, three minutes before its job's timeout, so that a run out of time stops,
 writes the report of the tests that finished and fails, rather than be cancelled without one (`ci.yml` says why).
 No duration fails a job.
