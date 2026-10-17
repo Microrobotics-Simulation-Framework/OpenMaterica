@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """The controls of the feature audits of the json and records shards' properties that declare features by
 their chances (`@pytest.mark.chances`), of the conditions shard's, steps 9 and 10's and the result's, which
-declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12's form of the field read
-(S2b-1), and of the relations shard's audit of the monotonicity relations' worlds, by their chances: run at
-the `ci` profile's examples with a generator that stops producing one of them, each property fails its audit,
-on that feature alone; a parametrised property, on one of its parameters, by the marks that parameter
-carries. Outside `tests/property/`, whose audits would fail these runs too."""
+declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12's and HP4's form of the
+field read (S2b-1, and PR #37's review), and of the relations shard's audit of the monotonicity relations'
+worlds, by their chances: run at the `ci` profile's examples with a generator that stops producing one of
+them, each property fails its audit, on that feature alone; a parametrised property, on one of its
+parameters, by the marks that parameter carries. Outside `tests/property/`, whose audits would fail these
+runs too."""
 
 import sys
 from collections.abc import Callable
@@ -19,6 +20,7 @@ from tests.property import audits
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_condition_properties as condition_properties
 from tests.property import test_hashing_properties as hashing_properties
+from tests.property import test_invariance_properties as invariance_properties
 from tests.property import test_jsonio_properties as jsonio_properties
 from tests.property import test_model_properties as model_properties
 from tests.property import test_monotonicity_properties as monotonicity_properties
@@ -147,6 +149,16 @@ CONTROLS = [
         model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
         "form_composition",
         ("check_agreement",),
+    ),
+    Control(
+        invariance_properties.test_a_fault_in_another_field_or_section_never_changes_the_read,
+        "form_interval",
+        ("check_isolated",),
+    ),
+    Control(
+        invariance_properties.test_a_fault_in_the_read_fields_section_specimen_refuses_it,
+        "form_composition",
+        ("check_refused",),
     ),
 ]
 

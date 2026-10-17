@@ -46,6 +46,7 @@ class Mutant(NamedTuple):
     killer: str  # a key of KILLERS
     inject: Callable[[pytest.MonkeyPatch], None]
     dies_at: tuple[str, ...]  # ways or kinds, one of which the example that kills it must show
+    form: str | None = None  # of HP4's, the form the read field of the example that kills it must hold
 
 
 FIND_FIELD = fields.find_field
@@ -94,6 +95,20 @@ def _every_section_checked(field: RecordField, record: JsonObject, claims: Colle
     return found
 
 
+def beside(
+    form: str, problems: Callable[[RecordField, JsonObject, Collection[Suite]], Found]
+) -> Callable[[RecordField, JsonObject, Collection[Suite]], Found]:
+    """`problems` where the read field holds `form`, step 8's own elsewhere: a fault that only a read of that
+    form shows (PR #37's review, L2)."""
+
+    def checked(field: RecordField, record: JsonObject, claims: Collection[Suite]) -> Found:
+        if isinstance(field.value, dict) and field.value.get("form") == form:
+            return problems(field, record, claims)
+        return FORM_PROBLEMS(field, record, claims)
+
+    return checked
+
+
 def taken(name: str) -> Callable[[pytest.MonkeyPatch], None]:
     (found,) = [mutant for mutant in value_field_mutants.MUTANTS if mutant.name == name]
     inject: Callable[[pytest.MonkeyPatch], None] = found.inject
@@ -131,6 +146,20 @@ MUTANTS = [
         ("another_section_specimen",),
     ),
     Mutant(
+        "every_field_checked_beside_an_interval",
+        "HP4",
+        setting(read, "form_problems", beside("interval", _every_field_checked)),
+        ("another_field",),
+        "interval",
+    ),
+    Mutant(
+        "every_section_specimen_checked_beside_a_composition",
+        "HP4",
+        setting(read, "form_problems", beside("composition", _every_section_checked)),
+        ("another_section_specimen",),
+        "composition",
+    ),
+    Mutant(
         "section_specimen_unchecked",
         "HP4 refusal",
         taken("section_specimen_unchecked"),
@@ -164,3 +193,4 @@ def test_the_invariance_mutant_is_killed(
     tried, example = kill(examples(size), check)
     record_property("examples_to_kill", tried)
     assert shown(example) in mutant.dies_at, shown(example)
+    assert mutant.form is None or example.form == mutant.form, example.form
