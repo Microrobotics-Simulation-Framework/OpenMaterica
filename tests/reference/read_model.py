@@ -1804,8 +1804,10 @@ def check_derivation(derivation: JsonValue, faults: Reasons) -> None:
     assumptions = derivation.get("assumptions")
     if not (isinstance(assumptions, list) and all(isinstance(text, str) for text in assumptions)):
         faults.add("form_invalid")
-    if "input_specimens" in derivation:
-        check_input_specimens(derivation["input_specimens"], len(inputs), faults)
+    # provenance.md:185 "A derived value carries the specimen facts of each input in
+    # `derivation.input_specimens`": required, as `mixed_conditions` is not (provenance.md:188 "where present,
+    # the member is a boolean").
+    check_input_specimens(derivation.get("input_specimens"), len(inputs), faults)
     if "mixed_conditions" in derivation and not isinstance(derivation["mixed_conditions"], bool):
         faults.add("form_invalid")
 
