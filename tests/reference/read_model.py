@@ -49,8 +49,8 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "in a record, a numeric condition holding `token`, and a token condition holding `value`, `range`, "
         "`plus_minus` or `set_or_measured`, break the condition's shape (`form_invalid`): fail closed, since "
         "each kind has a shape of its own and only a token condition's `unit` has a rule of its own. Its "
-        "request half, the same members in an implied condition (`request_incomplete`), is not open: the "
-        "text names the shapes, where `implied_value` applies them"
+        "request half, the same members in an implied condition (`request_incomplete`), is not open: "
+        "`read_side_contract.md` section 1 refuses them (maintainer, 2026-10-18), as `implied_value` does"
     ),
     "alternatives_named_at_a_field": (
         "`alternatives` is named at a field's place beside the value field's members, so a member one slip "
@@ -1098,11 +1098,10 @@ def implied_value(name: str, value: JsonValue, reasons: Reasons) -> JsonObject |
     if "plus_minus" in value or "set_or_measured" in value:
         reasons.add("request_incomplete", name)
         return None
-    # declarations.md:190 "for a numeric one and `{"token"}`, with a token of its row, for a token one" names
-    # the shape of an implied value of each kind, and read_side_contract.md:73 "An implied condition breaks
-    # its shape" refuses a member outside it: a numeric condition's `token` (also read_side_contract.md:74-75
-    # "a token outside the condition's row"), and a token condition's `value`, `range` or `unit`. Not open,
-    # as the same members are in a record.
+    # read_side_contract.md:76-77 "It breaks its shape too (`request_incomplete`, with that `condition`) where
+    # `implies` gives a numeric condition a `token`, or a token condition a `value`, `range` or `unit`" (the
+    # maintainer's ruling, 2026-10-18): not open, though the same members in a record are
+    # (`holds_another_kind`).
     if condition.shape == "token":
         if slipped(value, IMPLIED_VALUE_NAMES) or holds_another_kind(value, ("value", "range", "unit")):
             reasons.add("request_incomplete", name)

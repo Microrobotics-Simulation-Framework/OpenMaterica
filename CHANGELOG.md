@@ -83,8 +83,8 @@ every family entry goes in `families/CHANGELOG.md`.
 - Implied conditions (`declarations.md` section 4.1): step 0 checks each request's `implied_condition`,
   whatever field or location it names, its units as an operating condition's (`request_unit_mismatch`), and
   keeps only the members its shape names; a value holding a member of the other kind of condition's shape
-  breaks its shape (a `token` for a numeric condition, a token outside its row; a `value`, `range` or `unit`
-  for a token condition, failing closed), and so does a member one slip from one (S2a-4's review); step 10
+  breaks its shape (a `token` for a numeric condition, a `value`, `range` or `unit` for a token one:
+  S2a-4's review, and the maintainer's ruling of 2026-10-18), and so does a member one slip from one; step 10
   applies one located at the read whose fact and token the field's specimen states, the section's facts merged
   with the field's (`RecordField.specimen`), filling a condition the record leaves unstated or does not hold,
   with the basis `implied`, a token a record's `basis` never holds (`form_invalid`, not `unknown_token`:

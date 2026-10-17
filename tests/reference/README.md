@@ -37,7 +37,7 @@ named where it is applied:
 |---|---|
 | `form_not_allowed_by_its_row` | a composition whose basis the row does not allow is refused as a form the row does not allow is: `form_not_registered` and the shared checks' reasons, its member not checked (maintainer, 2026-10-15; the text says so of a form) |
 | `alternatives_within_decision_12` | decision 12's three cases only (maintainer, 2026-10-15) |
-| `members_of_the_other_kind` | in a record, `token` on a numeric condition, or `value`, `range`, `plus_minus` or `set_or_measured` on a token condition, breaks its shape (fail closed); a token condition's `unit` keeps its own rule, step 9's `unit_mismatch`. The same members in an implied condition are not open: `declarations.md:190` names each kind's shape, and the model refuses a member outside it |
+| `members_of_the_other_kind` | in a record, `token` on a numeric condition, or `value`, `range`, `plus_minus` or `set_or_measured` on a token condition, breaks its shape (fail closed); a token condition's `unit` keeps its own rule, step 9's `unit_mismatch`. The same members in an implied condition are not open: `read_side_contract.md` section 1 refuses them (maintainer, 2026-10-18), and so does the model |
 | `alternatives_named_at_a_field` | `alternatives` is named at a field's place, so a slip of it is refused (fail closed) |
 | `evidence_entry_provenance` | an entry's `provenance` is checked as the field's is, and returned with every member the provenance table names, its review read as `provenance.md` section 2 item 6 reads one (fail closed) |
 
