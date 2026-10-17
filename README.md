@@ -1,4 +1,4 @@
-<h1 align="center"><img src="https://raw.githubusercontent.com/Microrobotics-Simulation-Framework/OpenMaterica/main/assets/images/logo.png" alt="OpenMaterica" width="100%"></h1>
+<h1 align="center"><img src="https://raw.githubusercontent.com/Microrobotics-Simulation-Framework/OpenMaterica/main/assets/images/logo.png" alt="OpenMaterica" width="70%"></h1>
 
 [![CI](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml?query=branch%3Amain)
 [![PyPI](https://img.shields.io/pypi/v/openmaterica?include_prereleases)](https://pypi.org/project/openmaterica/)
