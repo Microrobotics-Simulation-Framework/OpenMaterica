@@ -4,11 +4,11 @@ the shape of the alternatives it may hold (step 7 of `read_side_contract.md` sec
 shape (step 8) and its units (step 9).
 
 Step 8 checks the form token against the field's row, a composition's basis included, then the members every
-form shares (`value_shapes.py`), then the form's own member, where the row allows the form. Only a constant's
-is read so far: a table, an interval, a composition or evidence the row allows raises `NotImplementedError`,
-whatever the other members hold, rather than give an answer its own member could add a reason to (every reason
-found is reported, `read_side_contract.md` section 2 item 2). A form the row does not allow is refused
-whatever its own member holds, which the read neither uses nor returns.
+form shares (`value_shapes.py`), then the form's own member, where the row allows the form. A constant's, an
+interval's and a composition's are read so far: a table or evidence the row allows raises
+`NotImplementedError`, whatever the other members hold, rather than give an answer its own member could add a
+reason to (every reason found is reported, `read_side_contract.md` section 2 item 2). A form the row does not
+allow is refused whatever its own member holds, which the read neither uses nor returns.
 
 Step 9 compares each unit the field states with the one registered for it, code point for code point, as
 step 0 does a request's, and a unit registered as a status object by its token (`record_format.md` section
@@ -25,6 +25,7 @@ from materica.core.slips import slipped
 from materica.core.value_shapes import (
     FIELD_MEMBERS,
     FORM_MEMBERS,
+    Check,
     Found,
     JsonObject,
     a_list,
@@ -32,17 +33,26 @@ from materica.core.value_shapes import (
     field_problems,
     invalid,
     is_status_object,
+    listed,
+    members,
     number,
     or_status,
     record_problems,
     section_problems,
+    statistics_block,
     unknown_token,
 )
 from materica.core.vocabulary import VOCABULARY, RecordFieldSpec
 from materica.shapes import Suite
 
-# The forms whose own member step 8 reads so far; another form a row allows waits for a step not built yet.
-FORMS_READ = ("constant",)
+# The forms whose own member step 8 reads so far, each with the shape of a field of that form; another form a
+# row allows waits for a step not built yet.
+FIELD_SHAPES: dict[str, type] = {
+    "constant": shapes.ConstantField,
+    "interval": shapes.IntervalField,
+    "composition": shapes.CompositionField,
+}
+FORMS_READ = tuple(FIELD_SHAPES)
 
 
 @dataclass(frozen=True)
@@ -108,8 +118,8 @@ def form_problems(field: RecordField, record: JsonObject, claims: Collection[Sui
     if allowed and form not in FORMS_READ:
         raise NotImplementedError(f"the member of a field of form {form} is not read yet")
     found += field_problems(field.value, field.spec, form)
-    if form == "constant" and allowed:
-        _constant(field.value, field.spec.name, found)
+    if form is not None and allowed:
+        _own_member(field.value, field.spec.name, form, found)
     return found
 
 
@@ -147,14 +157,92 @@ def _basis_allowed(field: JsonObject, spec: RecordFieldSpec, form: str, found: F
     return False
 
 
-def _constant(field: JsonObject, name: str, found: Found) -> None:
-    """A constant's `value`: a number, or `withheld` in a reference-only value (`provenance.md` section 7)."""
-    if "value" not in field:
-        found.append(invalid(f"{name} holds no value"))
+# The forms' own members (`record_format.md` section 6).
+
+
+def interval(value: JsonValue, where: str, found: Found) -> None:
+    """`lower` and `upper`, each a number or `{"status": "none"}`, not both `none`, and `lower <= upper`
+    where both are numbers; and `basis`, a token of the interval's list (`record_format.md` section 6,
+    interval items 1 and 2)."""
+    entry = members(
+        value, where, found, {"lower": INTERVAL_BOUND, "upper": INTERVAL_BOUND, "basis": INTERVAL_BASIS}
+    )
+    if entry is None:
         return
-    value = field["value"]
+    lower, upper = entry.get("lower"), entry.get("upper")
+    if _none(lower) and _none(upper):
+        found.append(invalid(f"{where} holds none for both bounds"))
+    elif isinstance(lower, float) and isinstance(upper, float) and lower > upper:
+        found.append(invalid(f"{where} has its lower bound above its upper"))
+
+
+def _none(bound: JsonValue) -> bool:
+    return is_status_object(bound) and an_object(bound)["status"] == "none"
+
+
+INTERVAL_BOUND = or_status(number, shapes.Interval, "lower")
+INTERVAL_BASIS = listed("basis", "interval_basis")
+
+
+def composition(value: JsonValue, where: str, found: Found) -> None:
+    """`basis` and `sum_rule`, tokens of their lists; `stated_sum`, where present, a number; and `components`
+    (`record_format.md` section 6, composition items 1 to 3 and 5). A basis of the composition's list that the
+    row does not allow was refused before, as a form the row does not allow."""
+    members(
+        value,
+        where,
+        found,
+        {"basis": COMPOSITION_BASIS, "sum_rule": SUM_RULE, "components": components},
+        {"stated_sum": number},
+    )
+
+
+def components(value: JsonValue, where: str, found: Found) -> None:
+    """At least one component, none twice, each `element:<symbol>` of the table, its `fraction` a number
+    from 0 to 1, and its own statistics block, where it has one, checked as a field's."""
+    if not (isinstance(value, list) and value):
+        found.append(invalid(f"{where} is not a non-empty list"))
+        return
+    seen: set[str] = set()
+    for index, item in enumerate(value):
+        here = f"{where}[{index}]"
+        entry = members(item, here, found, COMPONENT, {"statistics": COMPONENT_STATISTICS})
+        name = entry.get("component") if entry is not None else None
+        if isinstance(name, str) and name in seen:
+            found.append(invalid(f"{where} names {name!r} twice"))
+        if isinstance(name, str):
+            seen.add(name)
+
+
+def fraction(value: JsonValue, where: str, found: Found) -> None:
+    if not isinstance(value, float) or not 0 <= value <= 1:
+        found.append(invalid(f"{where} is not a number from zero to one"))
+
+
+COMPOSITION_BASIS = listed("basis", "composition_basis")
+SUM_RULE = listed("sum_rule", "sum_rule")
+COMPONENT: dict[str, Check] = {"component": listed("component", "component"), "fraction": fraction}
+COMPONENT_STATISTICS = or_status(statistics_block, shapes.CompositionComponent, "statistics")
+
+# Each form's own member as a field of that form holds it: its shape, or `withheld` in a reference-only value
+# (`provenance.md` section 7).
+OWN_MEMBERS: dict[str, Check] = {
+    "constant": or_status(number, shapes.ConstantField, "value"),
+    "interval": or_status(interval, shapes.IntervalField, "interval"),
+    "composition": or_status(composition, shapes.CompositionField, "composition"),
+}
+
+
+def _own_member(field: JsonObject, name: str, form: str, found: Found) -> None:
+    """The form's own member: its shape, and `withheld` where it holds a withheld marker that keeps its shape
+    (`provenance.md` section 1 item 5)."""
+    member = FORM_MEMBERS[form]
+    if member not in field:
+        found.append(invalid(f"{name} holds no {member}"))
+        return
+    value = field[member]
     before = len(found)
-    or_status(number, shapes.ConstantField, "value")(value, f"{name}.value", found)
+    OWN_MEMBERS[form](value, f"{name}.{member}", found)
     if isinstance(value, dict) and value.get("status") == "withheld" and len(found) == before:
         found.append(Reason("withheld", detail=f"{name} is a reference-only value"))
 

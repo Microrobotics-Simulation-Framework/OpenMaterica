@@ -26,7 +26,7 @@ from materica.core.record import RecordStore
 from materica.core.status import worst
 from materica.core.value_shapes import FORM_MEMBERS
 from materica.core.vocabulary import VOCABULARY
-from materica.shapes import Suite
+from materica.shapes import ReasonCode, Suite
 
 WATER = (
     Path(materica.__file__).parent / "data" / "conformance" / "plain_read" / "inputs" / "water_fixture.json"
@@ -204,8 +204,6 @@ def water_field() -> dict[str, JsonValue]:
     ("name", "form"),
     [
         ("fluid.dynamic_viscosity", "table"),
-        ("fluid.dynamic_viscosity", "interval"),
-        ("bulk.elemental_composition", "composition"),
         ("biocompatibility.evidence", "evidence"),
     ],
 )
@@ -213,7 +211,7 @@ def test_a_form_its_row_allows_whose_member_is_not_read_yet_raises_whatever_else
     name: str, form: str
 ) -> None:
     """Its own member could add a reason, and every reason found is reported (`read_side_contract.md` section
-    2 item 2): an interval's unknown `basis` beside a broken `unit` gives `unknown_token` too, once read."""
+    2 item 2): a table's unknown `scheme` beside a broken `unit` gives `unknown_token` too, once read."""
     field = {**water_field(), "form": form, form: {}}
     del field["label"]
     for broken in ({}, {"unit": None}, {"statistics": None, "label": "materica.fluid.newtonian.v1"}):
@@ -242,6 +240,7 @@ def test_a_form_its_row_does_not_allow_is_refused_with_every_shared_reason_and_n
     assert {reason.code for reason in refused.reasons} == {"form_not_registered", "form_invalid"}
 
 
+HYDROGEN: dict[str, JsonValue] = {"component": "element:H", "fraction": 0.102}
 COMPOSITION: dict[str, JsonValue] = {
     "form": "composition",
     "unit": "1",
@@ -256,31 +255,29 @@ COMPOSITION: dict[str, JsonValue] = {
     [
         ("mole_fraction", {"form_not_registered"}),
         ("volume_fraction", {"form_not_registered"}),
-        ("mass_fraction", None),
-        ("stated", None),
-        ("bogus", None),
-        (5.0, None),
+        ("mass_fraction", set[str]()),
+        ("stated", {"form_invalid"}),
+        ("bogus", {"unknown_token"}),
+        (5.0, {"form_invalid"}),
     ],
 )
-def test_a_compositions_basis_is_checked_with_its_form_token(
-    basis: JsonValue, codes: set[str] | None
-) -> None:
+def test_a_compositions_basis_is_checked_with_its_form_token(basis: JsonValue, codes: set[str]) -> None:
     """A basis of a composition's own list that the row does not allow is `form_not_registered`, as a form the
     row does not allow is (the S2 design's section 1.4, SQ43), beside every shared reason; any other basis is
-    the composition's own member's to judge, which S2b-1 reads."""
+    the composition's own member's to judge (`record_format.md` section 6, composition item 1)."""
     name = "bulk.elemental_composition"
-    field: dict[str, JsonValue] = {
-        **COMPOSITION,
-        "composition": {"basis": basis, "sum_rule": "partial", "components": []},
-    }
-    if codes is None:
-        with pytest.raises(NotImplementedError):
-            read(*stored(with_field(name, field), name))
-        return
-    assert {reason.code for reason in read(*stored(with_field(name, field), name)).reasons} == codes
+    composition: dict[str, JsonValue] = {"basis": basis, "sum_rule": "partial", "components": [HYDROGEN]}
+    field: dict[str, JsonValue] = {**COMPOSITION, "composition": composition}
+    request, records = stored(with_field(name, field), name)
+    assert isinstance(request, dict)
+    request["requirement"] = {"want": "components"}
+    # Past step 8, the read's one reason is step 10's for the temperature the request names and the field does
+    # not state.
+    found = {reason.code for reason in read(request, records).reasons} - {"condition_unstated"}
+    assert found == codes
     statistics = {**COMPOSITION["statistics"], "n_specimens": -1.0}  # type: ignore[dict-item]
-    refused = read(*stored(with_field(name, {**field, "statistics": statistics}), name))
-    assert {reason.code for reason in refused.reasons} == codes | {"form_invalid"}
+    request, records = stored(with_field(name, {**field, "statistics": statistics}), name)
+    assert {reason.code for reason in read(request, records).reasons} == codes | {"form_invalid"}
 
 
 STATED: dict[str, JsonValue] = {"basis": "stated"}
@@ -1230,6 +1227,133 @@ def test_a_result_shares_nothing_with_the_record_or_with_its_own_json() -> None:
     assert again["provenance"]["review"]["status"] == "not_checked"
     assert read_met(met_field()).to_json() == result.to_json()
     assert ReadResult.from_json(result.to_json()) == result
+
+
+def met_interval(**interval: JsonValue) -> dict[str, JsonValue]:
+    """The water field as an interval met by `MET_REQUEST`, holding `interval`, and no label, which only a
+    constant or a table may carry."""
+    field = met_field(form="interval", interval=interval)
+    del field["value"], field["label"]
+    return field
+
+
+def met_composition(**composition: JsonValue) -> dict[str, JsonValue]:
+    """A composition read as `fluid.dynamic_viscosity` is, but for its row: `bulk.elemental_composition`."""
+    return {**COMPOSITION, "conditions": met_field()["conditions"], "composition": composition}
+
+
+def read_composition(field: JsonValue, *, want: str = "components") -> ReadResult:
+    name = "bulk.elemental_composition"
+    request, records = stored(with_field(name, field), name)
+    assert isinstance(request, dict)
+    request.update(copy.deepcopy(MET_REQUEST))
+    requirement = request["requirement"]
+    assert isinstance(requirement, dict)
+    requirement["want"] = want
+    return read(request, records)
+
+
+def test_an_interval_returns_its_bounds_with_their_basis_as_stored_and_a_none_as_a_status() -> None:
+    """`read_side_contract.md` section 6: `want: bounds` gives `{"lower", "upper", "basis"}`, as stored
+    [PR-022]; section 2 item 5: numbers as read, status objects as status objects, a member the reader does
+    not know left out."""
+    stored_interval: dict[str, JsonValue] = {
+        "lower": -0.0,
+        "upper": {"status": "none"},
+        "basis": "stated_bound",
+    }
+    result = read_met(met_interval(**stored_interval, x_unknown_member=1.0), want="bounds")
+    assert (result.status, result.reasons) == ("met", ())
+    text = json.dumps(result.to_json())
+    assert json.loads(text)["value"] == stored_interval
+    assert '"lower": -0.0' in text
+    for want in ("value", "components", "evidence"):
+        refused = read_met(met_interval(**stored_interval), want=want)
+        assert (refused.status, refused.reasons, refused.value) == (
+            "not_met",
+            (Reason("want_mismatch"),),
+            None,
+        )
+
+
+def test_a_composition_is_returned_as_stored_never_normalised_its_component_counts_as_integers() -> None:
+    """`record_format.md` section 6, composition items 2 to 4: the basis, the sum rule, a stated sum and the
+    components as stored, nothing normalised [PR-023], a component's statistics returned with it [PR-051];
+    the code design's rule 5: a count is written as an integer, wherever its block sits."""
+    statistics = {**cast(dict[str, JsonValue], COMPOSITION["statistics"]), "n_specimens": 3.0}
+    oxygen: dict[str, JsonValue] = {"component": "element:O", "fraction": 0.723, "statistics": statistics}
+    composition: dict[str, JsonValue] = {
+        "basis": "mass_fraction",
+        "sum_rule": "sums_to_one",
+        "stated_sum": 0.825,
+        "components": [HYDROGEN, {**oxygen, "x_unknown_member": 1.0}],
+    }
+    result = read_composition(met_composition(**composition))
+    assert (result.status, result.reasons) == ("met", ())
+    written = json.loads(json.dumps(result.to_json()))
+    assert written["value"] == {**composition, "components": [HYDROGEN, {**oxygen, "statistics": statistics}]}
+    assert type(written["value"]["components"][1]["statistics"]["n_specimens"]) is int
+    for want in ("value", "bounds", "evidence"):
+        refused = read_composition(met_composition(**composition), want=want)
+        assert (refused.status, refused.reasons, refused.value) == (
+            "not_met",
+            (Reason("want_mismatch"),),
+            None,
+        )
+
+
+BOUND_ORDER: list[tuple[dict[str, JsonValue], ReasonCode | None]] = [
+    ({"lower": 2.0, "upper": 1.0}, "form_invalid"),
+    ({"lower": {"status": "none"}, "upper": {"status": "none"}}, "form_invalid"),
+    ({"lower": "0.4", "upper": 1.0}, "form_invalid"),
+    ({"lower": {"status": "unstated"}, "upper": 1.0}, "form_invalid"),
+    ({"lower": 1.0, "upper": 1.0}, None),
+    ({"lower": 0.0, "upper": -0.0}, None),
+    ({"lower": {"status": "none"}, "upper": 1.0}, None),
+    ({"lower": 1.0e308, "upper": {"status": "none"}}, None),
+]
+
+
+@pytest.mark.parametrize(("bounds", "code"), BOUND_ORDER)
+def test_an_intervals_bounds_are_numbers_at_most_one_none_and_in_order(
+    bounds: dict[str, JsonValue], code: ReasonCode | None
+) -> None:
+    """`record_format.md` section 6, interval item 1 [PR-050]; numbers compare by value, so `-0` equals
+    `0`."""
+    result = read_met(met_interval(**bounds, basis="reported_range"), want="bounds")
+    assert result.reasons == ((Reason(code),) if code else ()), bounds
+
+
+COMPONENTS: list[tuple[JsonValue, ReasonCode | None]] = [
+    ([], "form_invalid"),
+    ({"component": "element:H", "fraction": 0.1}, "form_invalid"),
+    ([HYDROGEN, {**HYDROGEN, "fraction": 0.2}], "form_invalid"),
+    ([{**HYDROGEN, "fraction": -0.01}], "form_invalid"),
+    ([{**HYDROGEN, "fraction": 1.01}], "form_invalid"),
+    ([{**HYDROGEN, "fraction": "0.1"}], "form_invalid"),
+    ([{"component": "element:H"}], "form_invalid"),
+    ([{**HYDROGEN, "statistics": {"central": "stated"}}], "form_invalid"),
+    ([{**HYDROGEN, "component": "element:Xx"}], "unknown_token"),
+    ([{**HYDROGEN, "component": "water"}], "unknown_token"),
+    ([{**HYDROGEN, "component": "element:h"}], "unknown_token"),
+    ([{**HYDROGEN, "fraction": 0.0}, {"component": "element:O", "fraction": 1.0}], None),
+    ([{**HYDROGEN, "fraction": -0.0}], None),
+    ([{**HYDROGEN, "statistics": {"status": "withheld"}}], None),
+]
+
+
+@pytest.mark.parametrize(("components", "code"), COMPONENTS)
+def test_a_compositions_components_are_a_non_empty_list_each_once_a_known_element_a_fraction_in_0_1(
+    components: JsonValue, code: ReasonCode | None
+) -> None:
+    """`record_format.md` section 6, composition items 1, 3 and 5 [PR-051]."""
+    composition: dict[str, JsonValue] = {
+        "basis": "mass_fraction",
+        "sum_rule": "partial",
+        "components": components,
+    }
+    result = read_composition(met_composition(**composition))
+    assert result.reasons == ((Reason(code),) if code else ()), components
 
 
 DERIVED_INPUTS: dict[str, JsonValue] = {

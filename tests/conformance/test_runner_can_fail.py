@@ -326,10 +326,10 @@ def reads_null_as_absent(monkeypatch: pytest.MonkeyPatch) -> Executor:
 
 
 def reads_a_withheld_value(monkeypatch: pytest.MonkeyPatch) -> Executor:
-    def no_member_check(field: dict[str, JsonValue], name: str, found: list[Reason]) -> None:
+    def no_member_check(field: dict[str, JsonValue], name: str, form: str, found: list[Reason]) -> None:
         pass
 
-    monkeypatch.setattr(fields, "_constant", no_member_check)
+    monkeypatch.setattr(fields, "_own_member", no_member_check)
     return EXECUTORS["read"]
 
 

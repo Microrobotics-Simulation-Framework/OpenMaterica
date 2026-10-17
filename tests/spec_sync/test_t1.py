@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """T1 (the S2 design, section 1.7): step 8's shapes, written by hand in `core/value_shapes.py` and
 `core/fields.py`, against the writer schema's value-field `$defs` and the reader `$defs` generated from them.
-Where a form's own member waits for a step not built yet (an interval, a composition, evidence, a table, which
-`form_problems` will not answer), the "step 8 verdict" is not the code's: it is what the case files reading
-that field expect, and with no such case file there is none. A table has none yet: the writer schema holds its
-member as a placeholder until S3a writes it, and with it T1 on the table fixtures (the S3 design, section
-6.5). So for 51 conformance examples, and for every variant of a drawn base of those forms, T1 holds the data
-to the schemas, not step 8; it holds step 8 itself on the constants and on the forms a row does not allow.
+Where a form's own member waits for a step not built yet (evidence, a table, which `form_problems` will not
+answer), the "step 8 verdict" is not the code's: it is what the case files reading that field expect, and with
+no such case file there is none. A table has none yet: the writer schema holds its member as a placeholder
+until S3a writes it, and with it T1 on the table fixtures (the S3 design, section 6.5). So for 21 conformance
+examples, all evidence, and for every variant of a drawn base of those forms, T1 holds the data to the
+schemas, not step 8; it holds step 8 itself on the constants, the intervals, the compositions and the forms a
+row does not allow.
 
 It runs on every value field a registered field's row reads, with its section's `specimen`, in every material
-record among the conformance inputs, and on one-fault variants of its bases: the full fields of
+record among the conformance inputs, and on one-fault variants of its bases: the full fields and forms of
 `tests/property/full_fields.py`, and one field of each row and each form it allows, drawn by the writer's
 strategies (`tests/property/value_fields.py`), derandomised, so that every row's binding is varied. A variant
 removes each member and list item, makes it `null` or gives it another JSON type, or renames a member by one
@@ -59,7 +60,7 @@ from materica.core.vocabulary import VOCABULARY
 from scripts import gen_reader_schema
 from tests.conformance import runner
 from tests.property import value_fields
-from tests.property.full_fields import full_fields, record_of
+from tests.property.full_fields import full_fields, full_forms, record_of
 from tests.property.strategies import SMALL
 from tests.spec_sync.schemas import SCHEMA, takes
 from tests.spec_sync.test_cases_md import sections
@@ -159,7 +160,7 @@ EXCEPTIONS: dict[str, Kind] = {
             1: ("PR-045.condition_range_reversed", "PR-045.fact_range_reversed", "PR-050.lower_above_upper"),
             2: ("PR-045.condition_range_reversed", "PR-045.fact_range_reversed", "PR-050.lower_above_upper"),
         },
-        mark=r"lo above hi|`lower` \d+ above `upper`",
+        mark=r"lo above hi|lower bound above its upper",
     ),
     "input_index": Kind(
         "an `input_specimens` entry's `input` past the last input: a schema does not compare a member with "
@@ -652,9 +653,10 @@ def drawn(name: str, form: str) -> JsonObject:
 
 @cache
 def bases() -> dict[str, tuple[str, JsonObject]]:
-    """The fields varied, by name: the full fields, then one field of each row and each form it allows,
-    drawn (S2a-2's review, L2: S2's inputs vary every row's binding, not one field's)."""
+    """The fields varied, by name: the full fields and forms, then one field of each row and each form it
+    allows, drawn (S2a-2's review, L2: S2's inputs vary every row's binding, not one field's)."""
     found = {name: ("fluid.dynamic_viscosity", field) for name, field in full_fields().items()}
+    found |= full_forms()
     for name, spec in VOCABULARY.fields.items():
         for form in spec.forms:
             found[f"{name} {form}"] = (name, drawn(name, form))
@@ -771,7 +773,7 @@ def base_examples() -> list[Example]:
 
 def test_the_bases_are_valid_and_pass_step_8() -> None:
     """Each base the variants change, the full fields and the drawn ones; a drawn field of a form whose own
-    member waits for S2b or S3 has no step-8 verdict yet."""
+    member waits for S2b-2 or S3 (evidence, a table) has no step-8 verdict yet."""
     for example in base_examples():
         assert WRITER["value_field"](example.value), example.name
         assert ROW[example.field](example.value), example.name
@@ -922,8 +924,6 @@ def test_an_exception_missing_stale_misplaced_twice_or_unreasoned_is_found() -> 
 
 # Member names the writer binds to a token list that step 8 does not read from, with the reason.
 NOT_READ = {
-    "component": "a composition's member, read with the form's own member (S2b-1)",
-    "sum_rule": "a composition's member, read with the form's own member (S2b-1)",
     "inputs": "a search's, which a read does not check",
     "method": "an extraction's, which a read does not check",
     "result": "a review's, which never refuses a field",

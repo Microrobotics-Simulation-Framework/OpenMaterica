@@ -6,8 +6,8 @@
 - The members named at a position are the schema's (the writer schema's for a record, `read_request.json`'s
   for a request), with any other member the text names there given with its reason. Every object definition a
   read reaches in a record has a position, and every member of one that may hold a status object a status
-  position, but where a `deferred` position names the piece that will read it (an interval, a composition,
-  evidence, a table, alternatives, a request's acceptances): it fails once that piece is done. Every object in
+  position, but where a `deferred` position names the piece that will read it (evidence, a table,
+  alternatives, a request's acceptances): it fails once that piece is done. Every object in
   a host is found by a position's path. An implied condition's members, which no schema gives yet, are those
   the text names at each place, in its rows' `also` and in the read's tuples.
 - At each position of a few valid records and a valid request, at every place the pattern finds, the read
@@ -19,9 +19,11 @@
   changed status object no longer gives.
 - Every position is found in some host, so that no row is dead.
 
-The hosts are the full fields of `tests/property/full_fields.py`, each in a record with a section specimen
-and extensions, and a request for one of them; three of them also hold a unit as a status object in a token
-condition, a field's, a section's and a derivation input's fact, which the writer refuses. A read that passes
+The hosts are the full fields and forms of `tests/property/full_fields.py`, each in a record with a section
+specimen and extensions, read under the `want` its form gives, and a request for one of them; three of them
+also hold a unit as a status object in a token condition, a field's, a section's and a derivation input's
+fact, which the writer refuses. A position that names a `form` is read in the hosts of that form. A read that
+passes
 steps 8 and 9 goes on to steps 10 to 13, where a name `condition_names` leaves to step 10 adds its
 `condition_unknown_name` and nothing else; one that raises `NotImplementedError`, a step not built yet, has
 the outcome "past step 8".
@@ -46,7 +48,7 @@ from materica.core.record import RecordStore
 from materica.core.status import ReadStatus, worst
 from materica.core.vocabulary import VOCABULARY
 from scripts.gen_vocabulary import SPECIFICATION
-from tests.property.full_fields import SPECIMEN, full_fields, record_of
+from tests.property.full_fields import SPECIMEN, full_fields, full_forms, record_of
 from tests.spec_sync import status_rows
 from tests.spec_sync.schemas import SCHEMA
 from tests.spec_sync.test_case_steps import KNOWN, STEPS
@@ -61,6 +63,8 @@ SCHEMAS = {
 UNKNOWN = "x_unknown_member"
 UNSTATED: JsonObject = {"status": "unstated"}
 FIELD = "fluid.dynamic_viscosity"
+# What a read of each form wants, so that it reaches step 13 (`read_side_contract.md` section 6).
+WANT = {"constant": "value", "interval": "bounds", "composition": "components"}
 PAST_STEP_8 = "past step 8"
 REFUSAL = {"record": "form_invalid", "request": "request_incomplete"}
 
@@ -96,6 +100,8 @@ class Host(NamedTuple):
     name: str
     record: JsonObject
     request: JsonObject | None  # a request host's request, its target pinned to `record`
+    field: str = FIELD  # the registered field read
+    form: str = "constant"  # the form of the field read
 
 
 def pin(record: JsonObject) -> JsonObject:
@@ -104,9 +110,11 @@ def pin(record: JsonObject) -> JsonObject:
 
 @cache
 def hosts() -> tuple[Host, ...]:
-    """Each full field in a record with a section specimen and extensions; and a request for the first."""
+    """Each full field and form in a record with a section specimen and extensions; and a request for the
+    first."""
     found: list[Host] = []
-    for name, field in full_fields().items():
+    fields = {name: (FIELD, field) for name, field in full_fields().items()} | full_forms()
+    for name, (registered, field) in fields.items():
         section_specimen = copy.deepcopy(SPECIMEN)
         if name == "statuses":
             # A condition's unit as a status object: the text allows one on a numeric condition
@@ -125,12 +133,12 @@ def hosts() -> tuple[Host, ...]:
             inputs = an_object(a_list(derivation["input_specimens"])[0])
             facts = an_object(inputs["specimen"])
             facts["post_mortem_interval"] = {"value": 60.0, "unit": UNSTATED, "basis": "stated"}
-        record = record_of(field, specimen=section_specimen)
+        record = record_of(field, registered, specimen=section_specimen)
         record_body = record["body"]
         assert isinstance(record_body, dict)
         record_body["extensions"] = {"acme": {"sections": {"x": 1.0}}}
         record["content_hash"] = content_hash(record)
-        found.append(Host(name, record, None))
+        found.append(Host(name, record, None, registered, str(field["form"])))
     # An implied condition the read applies (its fact and token are the field's), holding a numeric and a
     # token condition the record does not.
     implied: JsonObject = {
@@ -162,11 +170,12 @@ def hosts() -> tuple[Host, ...]:
     return tuple(found)
 
 
-def outcome(record: JsonObject, request: JsonObject | None) -> Outcome:
-    """The read of `request`, or of the host field of `record` pinned by its recomputed hash."""
+def outcome(record: JsonObject, request: JsonObject | None, host: Host) -> Outcome:
+    """The read of `request`, or of `host`'s field of `record` pinned by its recomputed hash."""
     if request is None:
         record = {**record, "content_hash": content_hash(record)}
-        request = {"target": {"record": pin(record), "field": FIELD}, "requirement": {"want": "value"}}
+        target: JsonObject = {"record": pin(record), "field": host.field}
+        request = {"target": target, "requirement": {"want": WANT[host.form]}}
     store = RecordStore()
     store.add("record", json.dumps(record).encode())
     try:
@@ -187,13 +196,13 @@ def unknown_name_added(before: Outcome) -> Outcome:
 # Where a position is in a host.
 
 
-def fits(step: str, key: str, member: JsonValue) -> bool:
+def fits(step: str, key: str, member: JsonValue, field: str) -> bool:
     held = isinstance(member, dict) and "status" not in member
     condition = VOCABULARY.conditions.get(key)
     if step == "{section}":
-        return key == FIELD.partition(".")[0]
+        return key == field.partition(".")[0]
     if step == "{field}":
-        return key == FIELD.partition(".")[2]
+        return key == field.partition(".")[2]
     if step in ("{numeric}", "{token}", "{condition}"):
         return held and condition is not None and step in ("{condition}", f"{{{condition.shape}}}")
     if step == "{fact}":
@@ -203,8 +212,16 @@ def fits(step: str, key: str, member: JsonValue) -> bool:
     return key in step.split("|")
 
 
-def places(value: JsonValue, pattern: list[str], here: Path_ = ()) -> Iterator[Path_]:
-    """Each path in `value` the position's pattern finds, to an object."""
+def places(position: JsonObject, host: Host) -> Iterator[Path_]:
+    """Each path in `host`'s record or request, as the position's `in` says, that its pattern finds, to an
+    object: none in a host of another form than the position names."""
+    if position.get("form", host.form) != host.form or (host.request is None) != (position["in"] == "record"):
+        return
+    document = host.request if host.request is not None else host.record
+    yield from found_by(document, [str(step) for step in a_list(position["path"])], host.field)
+
+
+def found_by(value: JsonValue, pattern: list[str], field: str, here: Path_ = ()) -> Iterator[Path_]:
     if not pattern:
         if isinstance(value, dict):
             yield here
@@ -214,11 +231,11 @@ def places(value: JsonValue, pattern: list[str], here: Path_ = ()) -> Iterator[P
         kinds = step[1:-1].split("|")
         for index, item in enumerate(value):
             if step == "[*]" or (isinstance(item, dict) and item.get("acceptance") in kinds):
-                yield from places(item, rest, (*here, index))
+                yield from found_by(item, rest, field, (*here, index))
     elif isinstance(value, dict):
         for key, member in value.items():
-            if not step.startswith("[") and fits(step, key, member):
-                yield from places(member, rest, (*here, key))
+            if not step.startswith("[") and fits(step, key, member, field):
+                yield from found_by(member, rest, field, (*here, key))
 
 
 def at(value: JsonValue, path: Path_) -> JsonValue:
@@ -307,18 +324,20 @@ def problems(position: JsonObject) -> list[str]:
     found: list[str] = []
     reached = False
     for host in hosts():
-        if (host.request is None) != (position["in"] == "record"):
-            continue
         document = host.request if host.request is not None else host.record
-        before = outcome(host.record, host.request)
-        for path in places(document, [str(step) for step in a_list(position["path"])]):
+        before = outcome(host.record, host.request, host)
+        for path in places(position, host):
             reached = True
             for name, value, refused in injections(position, host, path):
                 changed = copy.deepcopy(document)
                 parent = at(changed, path)
                 assert isinstance(parent, dict)
                 parent[name] = value
-                after = outcome(changed, None) if host.request is None else outcome(host.record, changed)
+                after = (
+                    outcome(changed, None, host)
+                    if host.request is None
+                    else outcome(host.record, changed, host)
+                )
                 refusal = REFUSAL[str(position["in"])]
                 allowed = (before.codes if before.status == "not_met" else frozenset[str]()) | {refusal}
                 if refused:
@@ -364,9 +383,9 @@ def test_a_deferred_position_waits_for_a_piece_not_done() -> None:
     done, until the position gets its verdict and is read."""
     done = [str(piece) for piece in STEPS["done"]]
     assert done_too_soon(TABLE, done) == []
-    assert done_too_soon(TABLE, [*done, "S2b-1"]) == [
-        "D01: S2b-1 is done, so the position needs its verdict",
-        "D02: S2b-1 is done, so the position needs its verdict",
+    assert done_too_soon(TABLE, [*done, "S2b-2"]) == [
+        "D03: S2b-2 is done, so the position needs its verdict",
+        "D06: S2b-2 is done, so the position needs its verdict",
     ]
     assert done_too_soon([{**BY_ID["D04"], "deferred": ["S2c"]}], done) != []
 
@@ -547,6 +566,9 @@ BY_ID = {str(position["id"]): position for position in TABLE}
     ("module", "name", "value", "position"),
     [
         pytest.param(value_shapes, "slips", _refusing_the_unknown, "R22", id="an_unknown_member_refused"),
+        pytest.param(value_shapes, "slips", _refusing_the_unknown, "R47", id="in_an_interval"),
+        pytest.param(value_shapes, "slips", _refusing_the_unknown, "R52", id="in_a_component"),
+        pytest.param(value_shapes, "slipped", _no_slip, "R49", id="a_slip_in_a_composition_field_ignored"),
         pytest.param(value_shapes, "slipped", _no_slip, "R28", id="a_slip_ignored"),
         pytest.param(read_module, "slipped", _no_slip, "Q04", id="a_slip_in_a_request_ignored"),
         pytest.param(read_module, "slipped", _no_slip, "Q13", id="a_slip_in_an_implied_value_ignored"),
@@ -566,11 +588,14 @@ def test_a_wrong_verdict_a_dead_row_and_a_lost_quote_are_found() -> None:
     assert problems({**BY_ID["Q10"], "path": ["acceptances", "[nominal]"]}) == ["Q10: found in no host"]
     assert problems({**BY_ID["Q12"], "verdict": "ignored"}) != []
     assert unquoted([{**BY_ID["R01"], "quote": "A reader ignores every member"}], document) == ["R01"]
-    assert uncovered([position for position in TABLE if position["id"] != "R26"]) == {"uncertainty"}
-    assert uncovered([position for position in TABLE if position["id"] != "R23"]) == {
+    assert uncovered([position for position in TABLE if position["id"] not in ("R26", "R58")]) == {
+        "uncertainty"
+    }
+    assert uncovered([position for position in TABLE if position["id"] not in ("R23", "R55")]) == {
         f"statistics_block.{member}" for member in status_members("statistics_block")
     }
-    assert uncovered([position for position in TABLE if position["id"] != "D02"]) == {
+    composition = ("R49", "R50", "R51", "R52", "R53")
+    assert uncovered([position for position in TABLE if position["id"] not in composition]) == {
         "composition_field",
         "composition",
         "composition_component",
@@ -595,15 +620,13 @@ def unfound(positions: list[JsonObject]) -> list[str]:
     found: list[str] = []
     for host in hosts():
         document = host.request if host.request is not None else host.record
-        kind = "record" if host.request is None else "request"
         reached: set[Path_] = set()
         unchecked: set[Path_] = set()
         for position in positions:
-            if position["in"] == kind:
-                paths = set(places(document, [str(step) for step in a_list(position["path"])]))
-                reached |= paths
-                if position.get("verdict") == "not_checked":
-                    unchecked |= paths
+            paths = set(places(position, host))
+            reached |= paths
+            if position.get("verdict") == "not_checked":
+                unchecked |= paths
         for path in objects_in(document):
             inside = any(path[: len(place)] == place for place in unchecked)
             if path not in reached and not inside:
