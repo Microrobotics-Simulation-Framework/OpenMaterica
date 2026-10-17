@@ -32,8 +32,9 @@ Each pytest job but `commit`, which runs on each earlier commit the suite the he
 report, summarised on the run's page (`scripts/report_test_durations.py`: the tests in each band of wall time, the
 slowest tests and files, and the total, wall time and CPU time, the tests' own and their child processes') and kept
 90 days as the artifact `durations-<job>-<Python or shard>`, whenever pytest ran.
-pytest runs under `timeout --signal=INT`, three minutes before its job's timeout, so that a run out of time stops,
-writes the report of the tests that finished and fails, rather than be cancelled without one (`ci.yml` says why).
+pytest runs under `timeout --foreground --signal=INT`, three minutes before its job's timeout, so that a run out of
+time is sent one SIGINT, stops, writes the report of the tests that finished (about 5 s later, after pytest-xdist
+ends its workers) and fails, rather than be cancelled without one (`ci.yml` says why).
 No duration fails a job.
 
 Every action is pinned to a commit, uv to one version (`UV_VERSION`), and every job of every workflow to the runner
@@ -58,7 +59,7 @@ the test matrix's; and extra pytest arguments, `--shard` and `--property-control
 No input reaches a profile's example count, deadline or health checks: the profile is chosen from
 `tests/conftest.py`'s own, each input reaches a step through its environment alone and is checked before any job
 reads it, and no extra argument but the two listed is taken. A job of runs starts no run, and interrupts the one
-running (`uv run timeout --signal=INT`, as `ci.yml`'s jobs do), three minutes before its timeout: 60 minutes at
+running (`uv run timeout --foreground --signal=INT`, as `ci.yml`'s jobs do), three minutes before its timeout: 60 minutes at
 `dev`, 120 at `ci`, 360 at `deep`. The workflow reads the repository alone (`contents: read`), reads no secret,
 and restores the uv cache CI saved but saves none. A dispatch waits behind a running one of the same inputs on the
 same ref, whose seeds it would repeat; one of other inputs runs beside it, and none is cancelled.

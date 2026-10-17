@@ -287,10 +287,16 @@ READY_WITHIN = 120.0
 ENDS_WITHIN = 60.0
 
 
+# How ci.yml and repeat.yml interrupt pytest (tests/unit/test_ci_workflows.py holds the two to these words).
+INTERRUPT_AS_CI = ("timeout", "--foreground", "--signal=INT")
+
+
 def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_path: Path) -> None:
-    """`timeout --signal=INT`, as ci.yml runs each pytest command, sends SIGINT to pytest and then to its
-    whole process group, xdist's workers included: pytest writes the report of the tests that ended, and one
-    test case holding a time alone for each test still running.
+    """`timeout --foreground --signal=INT`, as ci.yml runs each pytest command, sends SIGINT to pytest alone,
+    once: xdist's controller stops its workers, and pytest writes the report of the tests that ended, and one
+    test case holding a time alone for each test still running. Without `--foreground` `timeout` signals
+    pytest's process group as well, and a second SIGINT in the controller can end the run in an internal
+    error, a case no test owns, which the report is refused for.
 
     The run is interrupted once it is ready, whatever the load: GNU `timeout` takes SIGALRM, its timer's
     signal, as its limit reached, sends SIGINT as it would then, and exits 124. A fixed limit left the moment
@@ -314,11 +320,12 @@ def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_
     limit = f"{READY_WITHIN + ENDS_WITHIN:.0f}s"
     with output.open("w", encoding="utf-8") as log:
         run = subprocess.Popen(
-            ["timeout", "--signal=INT", limit, *pytest_run, f"--junitxml={report}", "test_sample.py"],
+            [*INTERRUPT_AS_CI, limit, *pytest_run, f"--junitxml={report}", "test_sample.py"],
             cwd=tmp_path,
             env=environment,
             stdout=log,
             stderr=subprocess.STDOUT,
+            start_new_session=True,  # `--foreground` makes no group of its own: this run's is its own
         )
         try:
             deadline = time.monotonic() + READY_WITHIN
@@ -331,7 +338,7 @@ def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_
         finally:
             if run.poll() is None:
                 try:
-                    os.killpg(run.pid, signal.SIGKILL)  # `timeout` leads the run's process group
+                    os.killpg(run.pid, signal.SIGKILL)  # `timeout` leads the run's session and group
                 except ProcessLookupError:
                     run.kill()
                 run.wait()
