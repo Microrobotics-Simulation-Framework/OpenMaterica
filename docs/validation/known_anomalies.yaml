@@ -3,17 +3,21 @@
 # Schema: the anomaly records are identical to MADDENING's (MADDENING DOCUMENTATION_ARCHITECTURE.md
 # section 9.7). Do not add fields; name affected components as schema:<API>, reader:<function>,
 # method:<OMAT-MTH id>, model:<family identifier> or data:<MAT id> (CONTRIBUTING.md).
-# Checked in CI with MADDENING's validator (a development-time dependency only):
-#   python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml --prefix OMAT-ANO-
-# The version field is materica_version. MADDENING's validator (at f2aa830e) accepts only
-# maddening_version; accepting a project version field has been requested of MADDENING
-# (DOCUMENTATION_ARCHITECTURE.md section 8.1).
+# Checked in CI, in its first job on every run, by scripts/check_anomalies.py, which stands in for
+# MADDENING's validator until that accepts this registry's component names; CI switches to it then:
+#   python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml \
+#     --prefix OMAT-ANO- --version-field materica_version
+# The version field is materica_version, which MADDENING's validator accepts from MADDENING 0.4.0; but it
+# reads each affected_components entry as an importable Python name, which schema:<API> and the others
+# are not (DOCUMENTATION_ARCHITECTURE.md section 8.1). The stand-in holds affected_versions to PEP 440's
+# syntax, not to the order the convention below gives it.
 #
 # Severity definitions, applied to data: DOCUMENTATION_ARCHITECTURE.md section 8.2.
 # affected_versions: a PEP 440 specifier set, as in MADDENING (">=FIRST" while reachable,
 # ">=FIRST, <FIX" once fixed, "none" for a defect no release carried).
 #
-# materica_version is the version of the tree this registry ships in: the package's, in pyproject.toml.
+# materica_version is the version of the tree this registry ships in, the package's in pyproject.toml;
+# the check fails where the two differ, so a version's bump updates it.
 
 schema_version: "1.0"
 materica_version: "0.1.0.dev1"

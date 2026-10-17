@@ -10,7 +10,7 @@ one table of what became of each, when dispatched by hand (below).
 
 | Job | Runs | When |
 |---|---|---|
-| `gate` | the per-commit jobs' cap, `PER_COMMIT_MAX_PARALLEL` (below); the sign-off check (`scripts/check_signoff.py`) on a pull request, and the confidentiality scan; decides which jobs run: on a pull request from the paths it touched, otherwise every job (no other job with `fuzz_only`) | always |
+| `gate` | the per-commit jobs' cap, `PER_COMMIT_MAX_PARALLEL` (below); the sign-off check (`scripts/check_signoff.py`) on a pull request, the confidentiality scan, and the known-anomalies registry's check (`scripts/check_anomalies.py`); decides which jobs run: on a pull request from the paths it touched, otherwise every job (no other job with `fuzz_only`) | always |
 | `static` | ruff, mypy and pyright; `uv build` and the wheel check; the consumer snippet against the installed wheel, and its control | a pull request that changes code, which is any path the gate lists neither as documentation (`docs_paths` in its step) nor as the site's (`site_paths`: `site/`, `assets/`), and any Python file wherever it sits (`python_paths`), since ruff reads it; every merge to main; weekly; manual |
 | `generated` | every generator of `scripts/` with `--check`: the vocabulary, the reader schema, the typed shapes; on Python 3.11 | as `static` |
 | `tests` | `uv run pytest -n auto`, property tests at the `dev` profile, but the mutant searches and the audit controls (`--property-controls none`) | as `static`; Python 3.11 to 3.15, in parallel; on 3.15 alone also the pre-review script's trace test (`MATERICA_TRACE_SELECTION=1`, which no other job sets) |

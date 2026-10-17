@@ -133,6 +133,13 @@ jobs:
           esac
           python3 scripts/check_confidential.py ${range:+--messages "$range"} ${HEAD_REF:+--ref-name "$HEAD_REF"}
 
+      # The known-anomalies registry against MADDENING's record schema, and its version against the package's,
+      # on every run whatever the change touches, so that the step below may call the registry documentation.
+      # scripts/check_anomalies.py stands in for MADDENING's validator (the registry's header says why and
+      # until when), on the standard library alone, as this job installs nothing.
+      - name: The known-anomalies registry keeps MADDENING's record schema and the package's version
+        run: python3 scripts/check_anomalies.py
+
       # Its outputs decide which jobs run: `code` the static, generated-files, test and control jobs,
       # `hypothesis` the Hypothesis job, `site` the site job, `commits`, a JSON list, the commits the
       # per-commit job checks, and `site_commits` those whose site alone the site-commit job checks.
@@ -167,7 +174,7 @@ jobs:
           site_paths='site/.+|assets/.+'
           docs_paths='CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|docs/regulatory/.+|docs/validation/.+|\.github/ISSUE_TEMPLATE/.+|\.github/pull_request_template\.md'
           python_paths='.*\.pyi?'
-          hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_confidential|check_signoff|check_site|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|scripts/pre-push|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
+          hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_anomalies|check_confidential|check_signoff|check_site|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|scripts/pre-push|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
           commits=()
           site_commits=()
           workflow_blob=

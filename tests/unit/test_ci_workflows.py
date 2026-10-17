@@ -809,6 +809,32 @@ def test_the_gate_scans_a_pull_requests_branch_name(repository: Path, branch: st
     assert ("ref zorblax-support:1: a confidential term (z..., 7 characters)" in printed) == bool(status)
 
 
+ANOMALY_STEP = "The known-anomalies registry keeps MADDENING's record schema and the package's version"
+
+
+@pytest.mark.parametrize(("registered", "status"), [("0.1.0.dev1", 0), ("0.1.0.dev0", 1)])
+def test_the_gate_checks_the_anomaly_registry_on_every_run(
+    repository: Path, registered: str, status: int
+) -> None:
+    """The registry is documentation to the gate, so the gate checks it itself, in a step with no condition.
+    Run as GitHub runs it, with the repository's script, the step passes a registry at the package's version;
+    the control, a registry a version behind, fails it."""
+    found = step(workflow("ci.yml")["jobs"]["gate"], ANOMALY_STEP)
+    assert "if" not in found
+    Path("scripts").mkdir()
+    shutil.copy(REPOSITORY / "scripts" / "check_anomalies.py", "scripts/check_anomalies.py")
+    Path("pyproject.toml").write_text(
+        '[project]\nname = "openmaterica"\nversion = "0.1.0.dev1"\n', encoding="utf-8"
+    )
+    registry = Path("docs/validation/known_anomalies.yaml")
+    registry.parent.mkdir(parents=True)
+    header = f'schema_version: "1.0"\nmaterica_version: "{registered}"\ngenerated_date: "2026-10-17"\n'
+    registry.write_text(f"{header}anomalies: []\n", encoding="utf-8")
+    ran, _, printed = run_step(found, gate_context("pull_request"), repository)
+    assert ran == status, printed
+    assert ("materica_version is '0.1.0.dev0', but the package's version" in printed) == bool(status)
+
+
 def gate_pattern(variable: str, ci: Workflow | None = None) -> str:
     """A pattern of paths the gate's step sets, as the step's shell variable `variable`, matched whole."""
     gate = step((ci or workflow("ci.yml"))["jobs"]["gate"], GATE_STEP)
@@ -918,8 +944,13 @@ def names(name: str, path: str) -> bool:
     return bool(name) and (path == name or path.endswith(f"/{name}") or path.startswith(f"{name}/"))
 
 
-# Where a test or script names documentation without reading it, and why.
+# Where a test or script names documentation without reading it, or reads it only in the gate, which runs on
+# every change, and why.
 NAMED_NOT_READ = {
+    (
+        "scripts/check_anomalies.py",
+        "docs/validation/known_anomalies.yaml",
+    ): "the registry it checks; the gate runs the check on every change, documentation included",
     (
         "scripts/check_confidential.py",
         "CLAUDE.md",
