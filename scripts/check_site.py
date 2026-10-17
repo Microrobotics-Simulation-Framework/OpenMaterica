@@ -25,8 +25,8 @@ is not what Pages serves. And where, in any page of the copy (`*.html`, `*.htm`,
   sites (`<a href>`) are navigation, not loads, and are not checked;
 - there is a `<base>`, which changes where every address of the page resolves;
 
-and where an image of the README, by a path or by a URL into this repository, names a file the tree does not
-hold. Standard library only, so the job needs no environment.
+and where an image of the README, inline, as HTML or by a reference, by a path or by a URL into this
+repository, names a file the tree does not hold. Standard library only, so the job needs no environment.
 """
 
 import argparse
@@ -93,6 +93,9 @@ REPOSITORY_URLS = (
     "https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/blob/",
 )
 README_IMAGE = re.compile(r"""<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']|!\[[^\]]*\]\(\s*<?([^)\s>]+)""", re.I)
+# A reference-style image of the README (`![alt][label]`, `![alt][]`, `![alt]`) and a definition of a label.
+README_IMAGE_REFERENCE = re.compile(r"!\[([^\]]*)\](?:\[([^\]]*)\])?(?![(\[])")
+README_DEFINITION = re.compile(r"^ {0,3}\[([^\]]+)\]:\s*<?([^\s>]+)>?", re.M)
 
 
 class Page(HTMLParser):
@@ -342,10 +345,24 @@ def repository_path(url: str) -> str | None:
     return unquote(urlsplit(url).path) if is_local(url) else None
 
 
+def label(text: str) -> str:
+    """A reference's label as Markdown matches it: whatever its case and runs of white space."""
+    return " ".join(text.split()).casefold()
+
+
+def readme_images(text: str) -> list[str]:
+    """The address of each image of the README: inline, as HTML, or by a reference to a label it defines."""
+    images = [match[1] or match[2] for match in README_IMAGE.finditer(text)]
+    defined: dict[str, str] = {}
+    for match in README_DEFINITION.finditer(text):
+        defined.setdefault(label(match[1]), match[2])
+    references = [label(match[2] or match[1]) for match in README_IMAGE_REFERENCE.finditer(text)]
+    return images + [defined[name] for name in references if name in defined]
+
+
 def readme_problems(readme: Path) -> list[str]:
     problems: list[str] = []
-    for match in README_IMAGE.finditer(readme.read_text(encoding="utf-8")):
-        url = match[1] or match[2]
+    for url in readme_images(readme.read_text(encoding="utf-8")):
         path = repository_path(url)
         if path is not None and not (readme.parent / path).is_file():
             problems.append(f"{readme.name}: its image {url!r} names {path}, which the tree does not hold")
