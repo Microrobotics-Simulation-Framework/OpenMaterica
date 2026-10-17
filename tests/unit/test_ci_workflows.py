@@ -2115,9 +2115,14 @@ def per_commit_problems(ci: Workflow) -> list[str]:
         problems.append(f"the per-commit job installs Python {pythons}")
     ran = commands(job)
     generators = [line for line in commands(ci["jobs"]["generated"]) if "scripts/gen_" in line]
+    wheel = [
+        line for line in commands(ci["jobs"]["static"]) if line == "uv build" or "check_wheel.py" in line
+    ]
+    if len(wheel) != 2:
+        problems.append(f"the static job builds and checks the wheel by {wheel!r}")
     problems += [
         f"the per-commit job does not run {line!r}"
-        for line in [*PER_COMMIT_FAST_CHECKS, *generators]
+        for line in [*PER_COMMIT_FAST_CHECKS, *generators, *wheel]
         if line not in ran
     ]
     if pytest_step(job).get("env", {}).get("MATERICA_HYPOTHESIS_PROFILE") != "dev":
@@ -2164,23 +2169,31 @@ def test_the_per_commit_job_checks_each_listed_commit_as_an_agent_does_locally()
     assert per_commit_problems(workflow("ci.yml")) == []
 
 
-def test_the_per_commit_jobs_key_names_the_tree_and_the_workflow(repository: Path) -> None:
-    """The key step, run as GitHub runs it: the commit's tree and the workflow's blob, and a failure where the
-    gate gave no blob, rather than a key every workflow shares."""
+KEY_STEP = "The key of a pass, from the commit's tree, this workflow's blob and the runner's image"
+
+
+def test_the_per_commit_jobs_key_names_the_tree_the_workflow_and_the_image(
+    repository: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The key step, run as GitHub runs it: the commit's tree, the workflow's blob and the runner's image
+    version, which GitHub changes weekly under the same label; and a failure where the gate gave no blob or
+    the runner no image version, rather than a key that two workflows or two images share."""
     head = commit("src/materica/core/read.py")
     tree = subprocess.run(
         ["git", "rev-parse", f"{head}^{{tree}}"], capture_output=True, text=True, check=True
     )
-    found = step(
-        workflow("ci.yml")["jobs"]["commit"],
-        "The key of a pass, from the commit's tree and this workflow's blob",
-    )
+    found = step(workflow("ci.yml")["jobs"]["commit"], KEY_STEP)
+    monkeypatch.setenv("ImageVersion", "20261012.1.0")
     status, outputs, printed = run_step(found, {"needs.gate.outputs.workflow_blob": "f" * 40}, repository)
     assert status == 0, printed
-    assert outputs == {"key": f"commit-passed-{tree.stdout.strip()}-{'f' * 40}"}
+    assert outputs == {"key": f"commit-passed-{tree.stdout.strip()}-{'f' * 40}-20261012.1.0"}
     status, _, printed = run_step(found, {"needs.gate.outputs.workflow_blob": ""}, repository)
     assert status == 1
     assert "::error::the gate gave no workflow_blob" in printed
+    monkeypatch.delenv("ImageVersion")
+    status, _, printed = run_step(found, {"needs.gate.outputs.workflow_blob": "f" * 40}, repository)
+    assert status == 1
+    assert "::error::the runner gives no ImageVersion" in printed
 
 
 def matrix_of_one(ci: Workflow) -> None:
@@ -2203,6 +2216,12 @@ def on_python_3_11(ci: Workflow) -> None:
 def without_pyright(ci: Workflow) -> None:
     ci["jobs"]["commit"]["steps"] = [
         found for found in ci["jobs"]["commit"]["steps"] if found.get("run") != "uv run pyright"
+    ]
+
+
+def without_the_wheel_check(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["steps"] = [
+        found for found in ci["jobs"]["commit"]["steps"] if "check_wheel.py" not in str(found.get("run"))
     ]
 
 
@@ -2253,6 +2272,7 @@ def a_check_after_the_pass_is_kept(ci: Workflow) -> None:
         (on_python_3_11, "installs Python ['3.11']"),
         (without_pyright, "does not run 'uv run pyright'"),
         (without_a_generator, "does not run 'uv run python scripts/gen_shapes.py --check'"),
+        (without_the_wheel_check, "does not run 'uv run python scripts/check_wheel.py dist/*.whl'"),
         (at_the_ci_profile, "not run at the `dev` profile"),
         (no_blob_from_the_gate, "the gate does not give its workflow's blob"),
         (kept_under_another_key, "keeps a pass under another key or path"),

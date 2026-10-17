@@ -508,16 +508,21 @@ jobs:
     name: commit ${{ matrix.sha }} on its own
     # Every commit of a pull request passes on its own before the merge, which CI checks commit by commit
     # (maintainer, 2026-10-16): each commit but the head, checked out as it is, gets the checks an agent runs
-    # on a commit locally, on Python 3.15 alone, the fast checks and the whole suite at the `dev` profile, the
-    # mutant searches and audit controls included; the head keeps the jobs above, every Python and the `ci`
-    # profile. The gate lists the commits, but those that change documentation alone; a pull request of one
+    # on a commit locally, on Python 3.15 alone, the fast checks, the wheel and its check, and the whole suite at
+    # the `dev` profile, the mutant searches and audit controls included; the head keeps the jobs above, every
+    # Python and the `ci` profile. The gate lists the commits, but those that change documentation alone; a pull request of one
     # commit lists none, and this job is skipped. At most six run at once: the organisation's 60 concurrent
     # jobs are shared with its other repositories.
     # A tree that passed these checks in an earlier run of the same pull request is not checked again. The
-    # pass is kept in the cache, under the tree and this workflow's blob, so that a push that adds commits or
-    # rewrites their messages, or one after a run it cancelled, checks only the trees not yet passed; a
-    # changed tree, or a change to this workflow, is checked again. The cost: `dev` draws fresh examples each
-    # run, and a tree not checked again forgoes another draw.
+    # pass is kept in the cache, under the tree, this workflow's blob and the runner's image version, so that a
+    # push that adds commits or rewrites their messages, or one after a run it cancelled, checks only the trees
+    # not yet passed; a changed tree, a change to this workflow (the lock file, the tests, uv's version and
+    # every action's pin among what the tree and the blob cover), or a new image under the same label (its git
+    # and system libraries), is checked again. No test reads the date, the network or the repository's
+    # history. The costs: `dev` draws fresh examples each run, and a tree not checked again forgoes another
+    # draw; and a pass is only as good as every workflow the pull request's runs used, since a run whose
+    # workflow a commit of the pull request edits can save an entry under any key, which a later run of the
+    # same pull request trusts. Entries are read by the pull request that wrote them alone.
     needs: gate
     if: needs.gate.outputs.commits != '[]'
     runs-on: ubuntu-24.04
@@ -536,7 +541,8 @@ jobs:
         with:
           ref: ${{ matrix.sha }}
           persist-credentials: false
-      - name: The key of a pass, from the commit's tree and this workflow's blob
+      # ImageVersion is set by GitHub's hosted runners.
+      - name: The key of a pass, from the commit's tree, this workflow's blob and the runner's image
         id: tree
         env:
           WORKFLOW_BLOB: ${{ needs.gate.outputs.workflow_blob }}
@@ -545,7 +551,11 @@ jobs:
             echo "::error::the gate gave no workflow_blob, so a pass under other checks could not be told apart"
             exit 1
           fi
-          echo "key=commit-passed-$(git rev-parse 'HEAD^{tree}')-$WORKFLOW_BLOB" >> "$GITHUB_OUTPUT"
+          if [ -z "${ImageVersion:-}" ]; then
+            echo "::error::the runner gives no ImageVersion, so a pass on another image could not be told apart"
+            exit 1
+          fi
+          echo "key=commit-passed-$(git rev-parse 'HEAD^{tree}')-$WORKFLOW_BLOB-$ImageVersion" >> "$GITHUB_OUTPUT"
       # Every step after this one is skipped where the tree passed already.
       - name: Whether the tree passed these checks already
         id: passed
@@ -577,6 +587,11 @@ jobs:
         run: uv run mypy
       - if: steps.passed.outputs.cache-hit != 'true'
         run: uv run pyright
+      - if: steps.passed.outputs.cache-hit != 'true'
+        run: uv build
+      - name: The wheel holds py.typed, the conformance data byte for byte, and its PEP 639 licence
+        if: steps.passed.outputs.cache-hit != 'true'
+        run: uv run python scripts/check_wheel.py dist/*.whl
       # On Python 3.11, as the generated-files job runs them: datamodel-code-generator, which gen_shapes.py
       # runs, does not run on 3.15. An environment of its own, beside the 3.15 one.
       - name: Every generator's check, on Python 3.11
