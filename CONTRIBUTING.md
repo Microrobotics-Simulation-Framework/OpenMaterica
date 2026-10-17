@@ -58,7 +58,8 @@ live in a repository of its own; until it exists, its rules are kept here.
     record. A quote kept as evidence is the source's text and is not relicensed.
 18. **Shipped USD layers are self-contained**: no composition arcs and no asset paths.
 19. **Static releases.** No feature may require a hosted service, and nothing is fetched from the network
-    unless the user asks.
+    unless the user asks. No tool the MCP server loads may make a network request; registry drafting, the one
+    tool that goes online, is a command a person runs with an explicit flag.
 20. **No model on the read side.** No language model in a reader, in `materica check`, in a release build
     or in any consumer's build. OpenMaterica calls no model and holds no keys.
 21. **Quotes and human review.** Every value in the curated library that was extracted from text or a
@@ -235,7 +236,7 @@ namespace. Anyone may publish families in their own namespace with the same chec
 from this project; the library's CI runs no code of yours, so your family's check points are reported there as
 "not checked (third-party family)". A released version never changes: a correction is a new version, and the
 old one is deprecated with a pointer to it. A family with no consumer for two releases is deprecated. Record
-the change under **Families** in the CHANGELOG.
+the change under **Families** in `families/CHANGELOG.md`.
 
 **A consumer that cannot be named.** A family under `materica.` may be admitted for a consumer that cannot
 be named publicly, on three conditions. The maintainer attests that the consumer exists and says nothing
@@ -360,9 +361,9 @@ version learn of it from the advisory index (architecture draft section 5.6).
 
 ### Model-assisted extraction
 
-You may draft values with a language model through the curation tools (architecture draft section 8),
-using your own agent and key. The tools are library functions with a command line; the MCP server only
-exposes them to an agent. Then:
+You may draft values with a language model through the curation tools (architecture draft section 8), using
+your own agent and key. The tools are library functions with a command line; the MCP server only exposes them
+to an agent, except registry drafting, which goes online and stays a command you run yourself. Then:
 
 - record the assistance: tool, model and provider as reported, the procedure's `OMAT-MTH-` entry and
   version, and the date;
