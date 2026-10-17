@@ -12,17 +12,21 @@ It evaluates in one of three precisions:
 - `binary64`: the text's formulas in doubles, in the text's order;
 - `binary32`: each number of the case rounded to binary32 first, then each operation's result rounded to
   binary32, as an evaluator running in binary32 computes;
-- `exact`: linear tables in `fractions`, log-log ones with `decimal` at 60 digits; its numbers are
-  `Fraction`s. The pieces after S3-te use it as an oracle.
+- `exact`: its numbers are `Fraction`s. A linear table's are exact. A log-log table's are exact where the
+  value is rational, as every double and every point halfway between two doubles is (`_exact_loglog`);
+  elsewhere the value is irrational, and comes from the text's formulas in `decimal`, worked at more digits
+  until two precisions in a row round to the same double (Ziv's strategy, `_ziv`). The pieces after S3-te
+  use it as an oracle.
 """
 
 import math
 import struct
 from bisect import bisect_left, bisect_right
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, replace
 from decimal import Decimal, localcontext
 from fractions import Fraction
+from functools import partial
 from itertools import pairwise
 from typing import Generic, Literal, Protocol, Self, TypeVar
 
@@ -30,8 +34,10 @@ Precision = Literal["exact", "binary64", "binary32"]
 Side = Literal["left", "right"]
 Scheme = Literal["linear", "loglog"]
 
-# The digits of `exact` mode's logarithms and exponentials (S3Q15).
+# The digits `exact` mode's logarithms and exponentials start at (S3Q15), and the most Ziv's strategy doubles
+# them to before it gives up (`_ziv`).
 EXACT_DIGITS = 60
+EXACT_DIGITS_CAP = 60 * 2**5
 
 
 @dataclass(frozen=True)
@@ -149,11 +155,15 @@ N = TypeVar("N", bound=_Real)
 
 @dataclass(frozen=True)
 class _Arithmetic(Generic[N]):
-    """One precision: how a number of the case enters it, and its natural logarithm and exponential."""
+    """One precision: how a number of the case enters it, and its natural logarithm and exponential. Where
+    `loglog` and `loglog_slope` are set (`exact` mode), they compute the log-log value and derivative in place
+    of the text's formulas in their order (`_loglog`, `_loglog_slope`), with the same arguments."""
 
     number: Callable[[float], N]
     ln: Callable[[N], N]
     exp: Callable[[N], N]
+    loglog: "Callable[[N, N, N, N, N, _Arithmetic[N]], N] | None" = None
+    loglog_slope: "Callable[[N, N, N, N, N, N, _Arithmetic[N]], N] | None" = None
 
 
 class _Binary32(float):
@@ -191,20 +201,26 @@ def _binary32_exp(value: _Binary32) -> _Binary32:
     return _binary32_result(math.exp(value))
 
 
-def _exact_ln(value: Fraction) -> Fraction:
-    with localcontext(prec=EXACT_DIGITS):
+def _exact_ln(value: Fraction, digits: int) -> Fraction:
+    with localcontext(prec=digits):
         return Fraction((Decimal(value.numerator) / Decimal(value.denominator)).ln())
 
 
-def _exact_exp(value: Fraction) -> Fraction:
-    with localcontext(prec=EXACT_DIGITS):
+def _exact_exp(value: Fraction, digits: int) -> Fraction:
+    with localcontext(prec=digits):
         return Fraction((Decimal(value.numerator) / Decimal(value.denominator)).exp())
+
+
+def _exact_arithmetic(digits: int) -> "_Arithmetic[Fraction]":
+    """`exact` mode's numbers, with logarithms and exponentials to `digits` significant digits."""
+    return _Arithmetic(
+        number=Fraction, ln=partial(_exact_ln, digits=digits), exp=partial(_exact_exp, digits=digits)
+    )
 
 
 _BINARY64 = _Arithmetic[float](number=float, ln=math.log, exp=math.exp)
 # README.md:212 "a `binary32` evaluator first rounds each number of the case to the nearest `binary32`"
 _BINARY32 = _Arithmetic[_Binary32](number=_Binary32, ln=_binary32_ln, exp=_binary32_exp)
-_EXACT = _Arithmetic[Fraction](number=Fraction, ln=_exact_ln, exp=_exact_exp)
 
 
 @dataclass(frozen=True)
@@ -308,11 +324,16 @@ def _interval(x: tuple[N, ...], point: N, side: Side) -> int:
 
 def _interpolate(knots: _Knots[N], i: int, point: N) -> N:
     x0, x1, y0, y1 = knots.x[i], knots.x[i + 1], knots.y[i], knots.y[i + 1]
-    ln, exp = knots.arithmetic.ln, knots.arithmetic.exp
     if knots.scheme == "linear":
         # read_side_contract.md:470 "Linear interpolation within `[x0, x1]` is `y0 + (x - x0) * (y1 - y0) /
         # (x1 - x0)`"
         return y0 + (point - x0) * (y1 - y0) / (x1 - x0)
+    loglog = knots.arithmetic.loglog or _loglog
+    return loglog(x0, x1, y0, y1, point, knots.arithmetic)
+
+
+def _loglog(x0: N, x1: N, y0: N, y1: N, point: N, arithmetic: _Arithmetic[N]) -> N:
+    ln, exp = arithmetic.ln, arithmetic.exp
     # read_side_contract.md:470-471 "Log-log interpolation is `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) /
     # (ln x1 - ln x0))`, in natural logarithms"
     return exp(ln(y0) + (ln(point) - ln(x0)) * (ln(y1) - ln(y0)) / (ln(x1) - ln(x0)))
@@ -320,7 +341,7 @@ def _interpolate(knots: _Knots[N], i: int, point: N) -> N:
 
 def _slope(knots: _Knots[N], i: int, point: N, value: N) -> N:
     """The derivative within the interval `[x[i], x[i + 1]]` at `point`, where the value is `value`."""
-    slope = _linear_slope if knots.scheme == "linear" else _loglog_slope
+    slope = _linear_slope if knots.scheme == "linear" else knots.arithmetic.loglog_slope or _loglog_slope
     return slope(knots.x[i], knots.x[i + 1], knots.y[i], knots.y[i + 1], point, value, knots.arithmetic)
 
 
@@ -342,3 +363,124 @@ def _returned(number: _Real | None) -> Fraction | float | None:
     if number is None or isinstance(number, Fraction):
         return number
     return float(number)
+
+
+# `exact` mode's log-log formulas. With a = point / x0, b = x1 / x0 and c = y1 / y0, item 2's value is
+# y0 * a ** e with e = ln c / ln b, and also y0 * c ** t with t = ln a / ln b, and item 5's derivative is
+# (value / point) * e (algebra, not quoted). Where e or t is rational, the value is computed exactly wherever
+# it is rational, and the derivative too where e is. A rational value with e and t both irrational, that is
+# with neither c nor a a rational power of b, would make ln(value / y0) * ln b equal ln a * ln c, which
+# Schanuel's conjecture (unproven, never contradicted) rules out. Elsewhere the value is irrational, so no
+# double and no point halfway between two, and the text's formulas are worked in `decimal` by Ziv's
+# strategy. At a halfway point that strategy alone could only land on either side, or give up.
+
+
+def _exact_loglog(
+    x0: Fraction, x1: Fraction, y0: Fraction, y1: Fraction, point: Fraction, arithmetic: _Arithmetic[Fraction]
+) -> Fraction:
+    a, b, c = point / x0, x1 / x0, y1 / y0
+    for base, exponent in ((a, _log_ratio(c, b)), (c, _log_ratio(a, b))):
+        power = None if exponent is None else _rational_power(base, exponent)
+        if power is not None:
+            return y0 * power
+    return _ziv(partial(_loglog, x0, x1, y0, y1, point), arithmetic)
+
+
+def _exact_loglog_slope(
+    x0: Fraction,
+    x1: Fraction,
+    y0: Fraction,
+    y1: Fraction,
+    point: Fraction,
+    value: Fraction,
+    arithmetic: _Arithmetic[Fraction],
+) -> Fraction:
+    exponent = _log_ratio(y1 / y0, x1 / x0)
+    if exponent is not None:
+        return value / point * exponent
+    return _ziv(partial(_loglog_slope, x0, x1, y0, y1, point, value), arithmetic)
+
+
+def _ziv(compute: Callable[[_Arithmetic[Fraction]], Fraction], arithmetic: _Arithmetic[Fraction]) -> Fraction:
+    """`compute` in `arithmetic`, at `EXACT_DIGITS` digits, then again at twice the digits, and so on, until
+    two in a row round to the same double; past `EXACT_DIGITS_CAP`, an `ArithmeticError`, never a guess."""
+    found, digits = compute(arithmetic), EXACT_DIGITS
+    while digits < EXACT_DIGITS_CAP:
+        digits *= 2
+        refined = compute(_exact_arithmetic(digits))
+        if _double(refined) == _double(found):
+            return refined
+        found = refined
+    raise ArithmeticError(f"no two successive precisions up to {digits} digits round to the same double")
+
+
+def _double(number: Fraction) -> float:
+    """`number` rounded to the nearest double, ties to even; infinite beyond the largest."""
+    try:
+        return float(number)
+    except OverflowError:
+        return math.copysign(math.inf, number)
+
+
+def _log_ratio(r: Fraction, s: Fraction) -> Fraction | None:
+    """`ln r / ln s`, `r` and `s` positive and `s` not 1, where it is rational, else None. The logarithms of
+    pairwise coprime integers above 1 are independent over the rationals (by unique factorization), so the
+    ratio is rational exactly where `r`'s and `s`'s exponents over such integers are proportional."""
+    base = _coprime_base((r.numerator, r.denominator, s.numerator, s.denominator))
+    of_r, of_s = _exponents(r, base), _exponents(s, base)
+    ratio = next(Fraction(in_r, in_s) for in_r, in_s in zip(of_r, of_s, strict=True) if in_s)
+    return ratio if all(in_r == ratio * in_s for in_r, in_s in zip(of_r, of_s, strict=True)) else None
+
+
+def _coprime_base(numbers: Iterable[int]) -> list[int]:
+    """Pairwise coprime integers above 1 of which each of `numbers`, all positive, is a product of powers:
+    each shared divisor split off in turn, with no factoring into primes."""
+    base: list[int] = []
+    pending = [number for number in numbers if number > 1]
+    while pending:
+        number = pending.pop()
+        shared = next((element for element in base if math.gcd(number, element) > 1), None)
+        if shared is None:
+            base.append(number)
+        elif shared != number:
+            base.remove(shared)
+            divisor = math.gcd(number, shared)
+            pending += [part for part in (divisor, number // divisor, shared // divisor) if part > 1]
+    return base
+
+
+def _exponents(r: Fraction, base: list[int]) -> list[int]:
+    """The exponent of each element of `base` in `r`, a product of their powers."""
+    return [_multiplicity(r.numerator, element) - _multiplicity(r.denominator, element) for element in base]
+
+
+def _multiplicity(number: int, element: int) -> int:
+    count = 0
+    while number % element == 0:
+        number //= element
+        count += 1
+    return count
+
+
+def _rational_power(r: Fraction, exponent: Fraction) -> Fraction | None:
+    """`r ** exponent`, `r` positive, where it is rational, else None: with `exponent` `p / q` in lowest
+    terms, exactly where `r`'s numerator and denominator are `q`-th powers of integers."""
+    numerator = _integer_root(r.numerator, exponent.denominator)
+    denominator = _integer_root(r.denominator, exponent.denominator)
+    if numerator is None or denominator is None:
+        return None
+    return Fraction(numerator, denominator) ** exponent.numerator
+
+
+def _integer_root(number: int, degree: int) -> int | None:
+    """The `degree`-th root of `number`, positive, where it is an integer, else None: Newton's method on
+    integers, from above."""
+    root = 1 << -(-number.bit_length() // degree)
+    while True:
+        better = ((degree - 1) * root + number // root ** (degree - 1)) // degree
+        if better >= root:
+            return root if root**degree == number else None
+        root = better
+
+
+_EXACT = replace(_exact_arithmetic(EXACT_DIGITS), loglog=_exact_loglog, loglog_slope=_exact_loglog_slope)
