@@ -366,9 +366,11 @@ every family entry goes in `families/CHANGELOG.md`.
   round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
   step (`tests/spec_sync/case_steps.json`).
 - S2a-3's 58 case files run and pass: 637 of 1258 case files pass, 621 wait for later steps.
-- S2a-4's 162 case files run and pass: 799 of 1258 case files pass, 459 wait for later steps. The reason-step
-  check gives steps 11 to 13 their codes and loses its set of step 10's `unknown` codes no case returned, each
-  now returned; step 7's `want_mismatch` waits for a case of S2b or S4.
+- S2a-4's 164 case files run and pass: 801 of 1258 case files pass, 457 wait for later steps. Two of them are
+  arms S4's decision 12 gives S2a-4, mapped to S4 until S2a-4's review (`PR-044.entry_holds_alternatives`,
+  `PR-336.want_mismatch_over_alternatives_no_hs`). The reason-step check gives steps 11 to 13 their codes and
+  loses its sets of codes no case returned: step 10's `unknown` codes, and step 7's `want_mismatch`, each now
+  returned.
 - The result's properties (`tests/property/test_result_properties.py`, in the `conditions` shard): HP1,
   totality and the reason table; HP2, the status law and the members item 6 gives; HP6, what a read returns
   as stored, by the generated shapes, sharing nothing; and HP11, the hash suite's label exactly where a read

@@ -33,15 +33,17 @@ after every run that includes these tests:
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
-| S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go (plain read) | 162 | run, passed |
+| S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go (plain read) | 164 | run, passed |
 | S2's other reads, which need a form's member at step 8 other than a constant's, or an acceptance other than an implied condition (plain read) | 86 | not yet runnable: the step that runs each is not done |
 | reads S3's pieces run (plain read): tables, and reads under an extrapolation | 180 | not yet runnable: the step that runs each is not done |
-| reads S4 runs (plain read): over alternatives, with a pick, or through an overlay | 158 | not yet runnable: S4, which runs each, is not done |
+| reads S4 runs (plain read): over alternatives, with a pick, or through an overlay | 156 | not yet runnable: S4, which runs each, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | not yet runnable: no executor; S3-te adds one, which runs a test-only reference evaluator |
 
 Each read is counted by the step whose code runs it (`case_steps.json`), not by what it reads:
 `PR-044.alternatives_beside_value` holds alternatives and is S2a-4's, and `PR-007.target_is_overlay` ends at
-step 5 and is S4's.
+step 5 and is S4's. Two arms S4's decision 12 gives S2a-4, `PR-044.entry_holds_alternatives` (the shape of
+`alternatives`) and `PR-336.want_mismatch_over_alternatives_no_hs` (step 7's `want_mismatch`), are S2a-4's
+since its fix round.
 
 Of the 1258 case files, 1208 agree with plain read and the hash suite, 1150 with plain read alone, and 1208 with
 the fits and reference data suite too; the 35 of the table evaluation suite agree with none, since this
