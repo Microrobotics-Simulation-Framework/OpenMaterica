@@ -371,6 +371,11 @@ every family entry goes in `families/CHANGELOG.md`.
 - The table evaluator against every table evaluation case: each number and `in_range` at 1e-12 relative, and
   each refusal, a broken evaluator failing each, and the edges of the text by example
   (`tests/unit/test_evaluate.py`).
+- The S3 design's HP17 to HP19 for the table evaluator, against an oracle written from the text in fractions
+  and in decimal at 80 digits, over drawn tables of every magnitude, subnormals and `-0` included, and
+  operating values at every place table item 3 tells apart: agreement, knots as stored, bracketing and
+  monotonicity, each with its feature audit and an audit control, and seventeen mutants, each killed at the
+  assertion it names (`tests/property/test_evaluate_*.py`, in the `json` shard).
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that
   the members marked write-only are those step 8 does not check, that each token condition and fact binds its
   row's list and a fact's identifier the pattern of its row's form, that a member a row gives as present

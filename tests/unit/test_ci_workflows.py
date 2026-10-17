@@ -2537,6 +2537,7 @@ SELECTIONS: dict[str, list[list[str]]] = {
             "--ignore=tests/property/test_record_mutants.py",
             "--ignore=tests/property/test_value_field_mutants.py",
             "--ignore=tests/property/test_condition_mutants.py",
+            "--ignore=tests/property/test_evaluate_mutants.py",
         ],
     ],
 }
