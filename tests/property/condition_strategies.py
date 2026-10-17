@@ -654,7 +654,8 @@ class Faulty(NamedTuple):
 
 def combined(names: tuple[str, ...], pairs: list[Pairs]) -> tuple[str, Pairs, bool]:
     """What a read with these faults gives: the reasons of step 9's where there are any; else those of two
-    implied conditions that disagree; else every reason of step 10, `conditions` held where one ends it."""
+    implied conditions that disagree; else every reason of step 10, `conditions` held, and "past" step 10
+    where none ends it."""
     faults = [FAULTS[name] for name in names]
     step_9 = [found for fault, found in zip(faults, pairs, strict=True) if fault.step == 9]
     nothing: Pairs = frozenset()
@@ -664,7 +665,7 @@ def combined(names: tuple[str, ...], pairs: list[Pairs]) -> tuple[str, Pairs, bo
         return "not_met", pairs[names.index("disagreeing")], False
     if any(fault.ends for fault in faults):
         return "not_met", nothing.union(*pairs), True
-    return "past", nothing, False
+    return "past", nothing.union(*pairs), True
 
 
 @st.composite

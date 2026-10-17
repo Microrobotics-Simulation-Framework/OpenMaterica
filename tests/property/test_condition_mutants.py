@@ -28,6 +28,7 @@ from materica.core.value_shapes import Found, JsonObject
 from materica.core.vocabulary import VOCABULARY
 from tests.property import test_condition_properties as properties
 from tests.property.condition_strategies import (
+    ENDING,
     FAULTS,
     ROWS,
     STEP_9_FAULTS,
@@ -106,6 +107,14 @@ KILLERS: dict[
     "HP8 other": (drawn_places, properties.check_refused, lambda drawn: {drawn.place, drawn.kind}),
     "HP3": (
         lambda size: faulty_reads(tuple(FAULTS), size),
+        properties.check_one_fault,
+        lambda faulty: set(faulty.faults),
+    ),
+    # A planned search of HP3: reads whose first fault is one of step 10's that end the read and keep its
+    # `conditions`. A mutant that leaves step 10's entries empty also ends a read step 10 does not end, as two
+    # disagreeing implied conditions do, which HP3 whole catches on its reads past step 10 first.
+    "HP3, a refusal at step 10": (
+        lambda size: faulty_reads(ENDING, size),
         properties.check_one_fault,
         lambda faulty: set(faulty.faults),
     ),
@@ -802,9 +811,9 @@ MUTANTS = [
     ),
     Mutant(
         "conditions_withheld_from_a_refusal",
-        "HP3",
+        "HP3, a refusal at step 10",
         setting(read, "check_conditions", _conditions_withheld),
-        ("outside", "range_outside", "not_accepted", "implied_outside"),
+        ENDING,
     ),
     Mutant(
         "disagreement_checks_the_others",

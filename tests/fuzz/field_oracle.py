@@ -15,7 +15,7 @@ from urllib.parse import urljoin
 from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from tests.property import condition_oracle
-from tests.property.condition_oracle import AFTER_STEP_8
+from tests.property.condition_oracle import AFTER_STEP_8, REASONS
 from tests.spec_sync.schemas import BASE, takes, why_refused
 
 JsonObject = dict[str, JsonValue]
@@ -43,9 +43,15 @@ REQUIRED: dict[str, JsonObject] = {
 }
 
 
+# The codes of steps 12 and 13 a constant's read gives (`read_side_contract.md` section 3), and those of step
+# 10. The target's requests want only what plain read gives, so `want_mismatch` comes from step 13 alone.
+STEPS_12_AND_13 = frozenset({"stated_without_origin", "want_mismatch"})
+STEP_10 = frozenset(code for code, row in REASONS["reasons"].items() if 10 in row.get("steps", []))
+
+
 def passed_step_8(result: JsonValue) -> bool:
     """Whether a read's result, as the target takes it, is one of a field that passed step 8: "not yet", where
-    a step not built yet decides it, or a refusal of a later step alone."""
+    a step not built yet decides it, or a result whose every reason a later step gives, none included."""
     if result == "not yet":
         return True
     reasons = result.get("reasons") if isinstance(result, dict) else None
@@ -54,7 +60,7 @@ def passed_step_8(result: JsonValue) -> bool:
         if isinstance(reasons, list)
         else []
     )
-    return bool(codes) and all(code in AFTER_STEP_8 for code in codes)
+    return isinstance(reasons, list) and all(code in AFTER_STEP_8 | STEPS_12_AND_13 for code in codes)
 
 
 def check_no_refusal_missing(field_name: str, field: JsonValue, result: JsonValue) -> None:
@@ -126,8 +132,9 @@ def check_steps_9_and_10(
 ) -> None:
     """A constant step 8 passed, which its row allows and which holds no alternatives, read with
     `operating` and `required`, is refused at step 9 exactly where a unit differs, with each of those reasons
-    and no other; else at step 10 exactly where the oracle gives a condition `not_met`, with its reasons and
-    entries; and else goes on to steps not built yet."""
+    and no other; else gives step 10's reasons and entries as the oracle does, and is refused there exactly
+    where the oracle gives a condition `not_met`; and else goes on to steps 12 and 13, whose reasons alone
+    stand beside step 10's."""
     if not (isinstance(field, dict) and passed_step_8(result) and field.get("form") == "constant"):
         return
     if "alternatives" in field or "constant" not in VOCABULARY.fields[field_name].forms:
@@ -145,12 +152,14 @@ def check_steps_9_and_10(
     assert isinstance(specimen, dict)
     expected = condition_oracle.expected(field_name, conditions, specimen, operating, required)
     statuses = expected.statuses or {}
-    if "not_met" not in statuses.values():
-        assert result == "not yet", f"step 10 refused what its text does not: {result}"
-        return
-    assert pairs == expected.reasons, (
-        f"step 10 gave {sorted(pairs, key=str)}, its text {sorted(expected.reasons, key=str)}"
+    later = {pair for pair in pairs if pair[0] not in STEP_10}
+    assert pairs - later == expected.reasons, (
+        f"step 10 gave {sorted(pairs - later, key=str)}, its text {sorted(expected.reasons, key=str)}"
     )
+    if "not_met" in statuses.values():
+        assert not later, f"a read step 10 refused went on: {sorted(later, key=str)}"
+    else:
+        assert {code for code, _ in later} <= STEPS_12_AND_13, f"steps 11 to 13 gave {sorted(later, key=str)}"
     entries = objects(result, "conditions")
     assert {entry.get("name"): entry.get("status") for entry in entries} == statuses, entries
 

@@ -22,7 +22,9 @@
 The hosts are the full fields of `tests/property/full_fields.py`, each in a record with a section specimen
 and extensions, and a request for one of them; three of them also hold a unit as a status object in a token
 condition, a field's, a section's and a derivation input's fact, which the writer refuses. A read that passes
-steps 8 and 9 raises `NotImplementedError` until steps 10 to 13 are built: the outcome "past step 8".
+steps 8 and 9 goes on to steps 10 to 13, where a name `condition_names` leaves to step 10 adds its
+`condition_unknown_name` and nothing else; one that raises `NotImplementedError`, a step not built yet, has
+the outcome "past step 8".
 """
 
 import copy
@@ -31,7 +33,7 @@ import re
 from collections.abc import Callable, Iterator
 from functools import cache
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 import pytest
 
@@ -41,6 +43,7 @@ from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.read import read
 from materica.core.record import RecordStore
+from materica.core.status import ReadStatus, worst
 from materica.core.vocabulary import VOCABULARY
 from scripts.gen_vocabulary import SPECIFICATION
 from tests.property.full_fields import SPECIMEN, full_fields, record_of
@@ -83,6 +86,7 @@ TABLE = table()
 class Outcome(NamedTuple):
     status: str
     codes: frozenset[str]
+    conditions: bool = False  # step 10 ran to its end
 
 
 # The hosts, and the read of one.
@@ -169,7 +173,15 @@ def outcome(record: JsonObject, request: JsonObject | None) -> Outcome:
         result = read(request, store)
     except NotImplementedError:
         return Outcome(PAST_STEP_8, frozenset())
-    return Outcome(result.status, frozenset(reason.code for reason in result.reasons))
+    codes = frozenset(reason.code for reason in result.reasons)
+    return Outcome(result.status, codes, result.conditions is not None)
+
+
+def unknown_name_added(before: Outcome) -> Outcome:
+    """What a read gives once a condition name it does not know is added: step 10's `unknown` reason for it
+    beside what it gave (section 5, first row)."""
+    statuses = cast(tuple[ReadStatus, ...], (before.status, "unknown"))
+    return Outcome(worst(statuses), before.codes | {"condition_unknown_name"}, conditions=True)
 
 
 # Where a position is in a host.
@@ -309,11 +321,12 @@ def problems(position: JsonObject) -> list[str]:
                 after = outcome(changed, None) if host.request is None else outcome(host.record, changed)
                 refusal = REFUSAL[str(position["in"])]
                 allowed = (before.codes if before.status == "not_met" else frozenset[str]()) | {refusal}
-                meets = (
-                    after.status == "not_met" and refusal in after.codes and after.codes <= allowed
-                    if refused
-                    else after == before
-                )
+                if refused:
+                    meets = after.status == "not_met" and refusal in after.codes and after.codes <= allowed
+                elif position["verdict"] == "condition_names" and before.conditions:
+                    meets = after == unknown_name_added(before)
+                else:
+                    meets = after == before
                 if not meets:
                     found.append(
                         f"{position['id']} {host.name} {'.'.join(map(str, path)) or '$'} {name}: {after}"
