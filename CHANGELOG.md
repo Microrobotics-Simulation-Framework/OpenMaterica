@@ -246,6 +246,12 @@ every family entry goes in `families/CHANGELOG.md`.
   so that another unit, or a status object with any token, gives `unit_mismatch`, and step 8 checks it only as
   a string or a status object (`read_side_contract.md` section 3, step 9; three PR-037 arms, for S2a-3); and
   `mimics`, whose row fixes its basis to `stated`, takes no `inferred_from` (`provenance.md` section 6.2).
+- The writer binds a row's label to the forms its Label cell names (`record_format.md` section 4.1; PR #37's
+  review): where a field holds its row's label, its form is a constant, or a table where the cell names one,
+  and that table's `axis` is not the cell's condition, so that the writer no longer takes a viscosity interval
+  carrying the Newtonian label, which every reader refuses. `gen_vocabulary.py` writes it from the Label cell
+  into each labelled field's binding (`fields.json`), and stops on a cell naming a form its row does not
+  allow.
 - The writer binds a specimen fact's unit to the one its row fixes (`"s"`), a status object there refused, as
   a numeric condition's unit is bound, so that no record step 9 refuses is written; a fact whose unit the
   source does not give is written as a status object (maintainer, 2026-10-15). The vocabulary generates the
@@ -392,24 +398,36 @@ every family entry goes in `families/CHANGELOG.md`.
   1's record half as the implementation does, by the implied half each breaks too. The reason-step check gives
   steps 11 to 13 their codes and loses its sets of codes no case returned: step 10's `unknown` codes, and step
   7's `want_mismatch`, each now returned.
-- S2b-1's 35 case files run and pass: 838 of 1260 case files pass, 422 wait for later steps. Five broken
+- S2b-1's 54 case files run and pass: 857 of 1279 case files pass, 422 wait for later steps. Five broken
   implementations show the runner fails on them: bounds without their basis, an upper `none` read as the
   largest double, components normalised, bounds out of order and a component taken twice. PR-013's interval
-  beside a constant under `want: components` returns step 7's `want_mismatch` too.
+  beside a constant under `want: components` returns step 7's `want_mismatch` too. 19 of the 54 came with
+  PR #37's review, each killing a fault of the read that every other case let through: an interval's
+  `stated_bound` and `proxy_range`, which a statistics block's `basis` does not hold, and a block's
+  `reported_sd` in an interval; an interval's `basis`, a composition's `basis` or `sum_rule` and a component's
+  `fraction` missing; a withheld interval and composition, one beside an unknown member, one beside a bound; a
+  component's statistics withheld; a sum rule and a component of another member's tokens; a broken form its
+  row does not allow; a component repeated after another; an unknown status token in a bound; and a slip of
+  the field's `value` inside an interval.
 - Intervals and compositions in the checks of step 8 (S2b-1): T1 holds step 8 itself on both, its bases
   gaining a full interval and composition (`tests/property/full_fields.py`'s `full_forms`), and the 21
   conformance examples of evidence alone keep their case files' verdict; the writer strategies give a row's
-  label to a constant or a table only, as section 4.1's Label column says, which T1's drawn intervals had
-  broken once step 8 read them; and the unknown-member positions D01 and D02 have their verdicts, R45 to R59,
-  each read in a host of its form (a position may name the `form` it applies to).
+  label only where section 4.1's Label column puts it, a constant or a table off the cell's axis, which T1's
+  drawn intervals had broken once step 8 read them, and the binding family two faults that put it elsewhere,
+  on an interval and on a table on the cell's axis, which the writer now refuses (below); and the
+  unknown-member positions D01 and D02 have their verdicts, R45 to R59, each read in a host of its form (a
+  position may name the `form` it applies to).
 - The properties over intervals and compositions (S2b-1). Step 8's: a field of each form drawn, a constant as
-  often as the other two together; HP3's catalogue gains five regions of an own member, 46 faults among them
+  often as the other two together; HP3's catalogue gains five regions of an own member, 48 faults among them
   the cross-member rules no schema states and their near misses, in a third part with its regions and forms
-  declared by their chances; HP5 adds its members inside lists and own members. The result's HP1, HP2 and HP6,
-  HP4 and HP12 draw each form, HP6 holding an interval's bounds and a composition as stored; HP12's known
-  divergence for a form not built yet shrinks to evidence. 17 mutants of step 8 planned at their faults and
-  one of HP5, six of the result's (the S2 design's `upper: none` read as infinity among them), five of the
-  implementation and two of the model for HP12, each killed at both sizes, and four audit controls for the
+  declared by their chances, measured over 48 runs at `ci`; HP5 adds its members inside lists and own
+  members, its least shares lowered where 48 runs showed them failing a `ci` run more often than 1e-6. The
+  result's HP1, HP2 and HP6, HP4 and HP12 draw each form, HP6 holding an interval's bounds and a composition
+  as stored, and HP1, HP2 and HP11 a met read of an interval or a composition under its own `want` as a kind
+  of its own; HP4's audit holds it to the forms; HP12's known divergence for a form not built yet shrinks to
+  evidence. 19 mutants of step 8 planned at their faults and one of HP5, six of the result's (the S2 design's
+  `upper: none` read as infinity among them), two of HP4's, five of the implementation and two of the model
+  for HP12, each killed at both sizes, HP1's at the reason table's assertion, and six audit controls for the
   new features. Fuzz target 4 holds an interval and a composition to the reader `$defs`, steps 9 and 10's
   oracle and the model, under the `want` its form gives; target 3 takes HP3's third part; and
   `MATERICA_FUZZ_SEEDED_FAULT=composition` seeds the S2 design's control, a composition whose `components`
