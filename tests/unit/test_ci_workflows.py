@@ -45,7 +45,10 @@ GATED = {
     "tests": "code",
     "controls": "code",
     "hypothesis": "hypothesis",
+    "commit": "commits",
 }
+# How each output runs its jobs: `code` and `hypothesis` when true, `commits` when it lists any commit.
+RUNS_WHEN = {"code": "== 'true'", "hypothesis": "== 'true'", "commits": "!= '[]'"}
 # Jobs the gate does not decide: the gate itself, the result, and the weekly and manual fuzz job.
 UNGATED = {"gate", "result", "fuzz"}
 # A path of each kind the gate calls documentation, as its tests commit them in a throwaway repository.
@@ -357,10 +360,20 @@ def commit(*paths: str) -> str:
 def gate_outputs(
     repository: Path, context: dict[str, str], gate: dict[str, Any] | None = None
 ) -> dict[str, str]:
+    """The gate's outputs that decide the jobs, once its workflow's blob is checked: on a pull request, that
+    of the checkout's `ci.yml`, which the per-commit job's key carries; otherwise none."""
     status, outputs, printed = run_step(
         gate or step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP), context, repository
     )
     assert status == 0, printed
+    blob = outputs.pop("workflow_blob")
+    if context["github.event_name"] == "pull_request":
+        written = subprocess.run(
+            ["git", "hash-object", ".github/workflows/ci.yml"], capture_output=True, text=True, check=True
+        )
+        assert blob == written.stdout.strip()
+    else:
+        assert blob == ""
     return outputs
 
 
@@ -368,7 +381,7 @@ def gate_outputs(
 def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (tmp_path / "repository").mkdir()
     root = throwaway_repository(tmp_path / "repository", monkeypatch)
-    commit("src/materica/core/read.py", "README.md", "CHANGELOG.md")
+    commit("src/materica/core/read.py", "README.md", "CHANGELOG.md", ".github/workflows/ci.yml")
     return root
 
 
@@ -384,6 +397,7 @@ def test_a_merge_to_main_and_every_run_but_a_pull_request_run_every_job(
     assert gate_outputs(repository, gate_context(event, fuzz_only=fuzz_only)) == {
         "code": "true",
         "hypothesis": "true",
+        "commits": "[]",
     }
 
 
@@ -391,6 +405,7 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
     assert gate_outputs(repository, gate_context("workflow_dispatch", fuzz_only="true")) == {
         "code": "false",
         "hypothesis": "false",
+        "commits": "[]",
     }
 
 
@@ -432,6 +447,7 @@ def test_a_pull_request_runs_the_jobs_its_paths_need(
     assert gate_outputs(repository, gate_context("pull_request", base, head)) == {
         "code": code,
         "hypothesis": hypothesis,
+        "commits": "[]",
     }
 
 
@@ -487,7 +503,89 @@ def test_a_pull_request_that_moves_code_into_documentation_runs_the_jobs_of_the_
     assert gate_outputs(repository, gate_context("pull_request", base, head)) == {
         "code": "true",
         "hypothesis": hypothesis,
+        "commits": "[]",
     }
+
+
+def listed(repository: Path, base: str, head: str) -> list[str]:
+    """The commits the gate gives the per-commit job for a pull request from `base` to `head`."""
+    commits: list[str] = json.loads(
+        gate_outputs(repository, gate_context("pull_request", base, head))["commits"]
+    )
+    return commits
+
+
+def test_each_commit_but_the_head_is_listed_oldest_first(repository: Path) -> None:
+    base = commit()
+    first = commit("src/materica/core/read.py")
+    second = commit("tests/unit/test_read.py")
+    head = commit("scripts/check_wheel.py")
+    assert listed(repository, base, head) == [first, second]
+
+
+def test_a_pull_request_of_one_commit_lists_none(repository: Path) -> None:
+    base = commit()
+    head = commit("src/materica/core/read.py")
+    assert listed(repository, base, head) == []
+
+
+def test_a_commit_that_changes_documentation_alone_is_not_listed(repository: Path) -> None:
+    """Its tree is its parent's but for paths no test reads; README.md is code."""
+    base = commit()
+    commit("CHANGELOG.md", "docs/regulatory/intended_use.md")
+    code = commit("README.md")
+    commit("CONTRIBUTING.md")
+    head = commit("CHANGELOG.md")
+    assert listed(repository, base, head) == [code]
+
+
+def test_a_commit_that_changes_nothing_is_listed(repository: Path) -> None:
+    """As a diff that names no path is code."""
+    base = commit()
+    empty = commit()
+    head = commit("CHANGELOG.md")
+    assert listed(repository, base, head) == [empty]
+
+
+def test_a_commit_of_code_the_pull_request_undoes_is_listed_though_its_diff_is_documentation(
+    repository: Path,
+) -> None:
+    """The pull request's diff runs no job, yet the commit that added code would land with it."""
+    base = commit()
+    added = commit("src/materica/core/new.py", "CHANGELOG.md")
+    subprocess.run(["git", "rm", "-q", "src/materica/core/new.py"], check=True)
+    head = commit()
+    outputs = gate_outputs(repository, gate_context("pull_request", base, head))
+    assert (outputs["code"], outputs["hypothesis"], json.loads(outputs["commits"])) == (
+        "false",
+        "false",
+        [added],
+    )
+
+
+def test_after_a_force_push_the_commits_the_branch_holds_now_are_listed(repository: Path) -> None:
+    base = commit()
+    first = commit("src/materica/core/a.py")
+    commit("src/materica/core/b.py")
+    commit("src/materica/core/c.py")
+    subprocess.run(["git", "reset", "-q", "--hard", first], check=True)
+    rewritten = commit("src/materica/core/b.py")
+    head = commit("src/materica/core/c.py")
+    assert listed(repository, base, head) == [first, rewritten]
+
+
+def test_more_commits_than_a_matrix_holds_fail_the_gate(repository: Path) -> None:
+    """GitHub makes at most 256 jobs of a matrix; a run that left commits out would pass without them."""
+    base = commit()
+    for _ in range(256):
+        commit()
+    head = commit()
+    assert len(listed(repository, base, head)) == 256
+    head = commit()
+    gate = step(workflow("ci.yml")["jobs"]["gate"], GATE_STEP)
+    status, _, printed = run_step(gate, gate_context("pull_request", base, head), repository)
+    assert status == 1
+    assert "::error::257 commits to check on their own, more than the 256 jobs of a matrix" in printed
 
 
 def printed_with_commands_stopped(printed: str, name: str) -> bool:
@@ -976,13 +1074,20 @@ def test_the_hypothesis_check_finds_an_exemption_gone_stale(hypothesis_modules: 
 
 
 def result_status(
-    gate: str, code: str, hypothesis: str, jobs: dict[str, str], tmp_path: Path, ci: Workflow | None = None
+    gate: str,
+    code: str,
+    hypothesis: str,
+    jobs: dict[str, str],
+    tmp_path: Path,
+    ci: Workflow | None = None,
+    commits: str = "[]",
 ) -> int:
     """The result step's exit status, for the gate's result and outputs and each other job's result."""
     context = {
         "needs.gate.result": gate,
         "needs.gate.outputs.code": code,
         "needs.gate.outputs.hypothesis": hypothesis,
+        "needs.gate.outputs.commits": commits,
     } | {f"needs.{job}.result": result for job, result in jobs.items()}
     found = step((ci or workflow("ci.yml"))["jobs"]["result"], RESULT_STEP)
     status, _, _ = run_step(found, context, tmp_path)
@@ -1039,6 +1144,39 @@ def test_the_result_fails_when_a_job_the_gate_asked_for_did_not_succeed(
     assert result_status(gate, code, hypothesis, jobs, tmp_path) == 1
 
 
+TWO_COMMITS = json.dumps(["a" * 40, "b" * 40])
+
+
+@pytest.mark.parametrize(
+    ("commits", "commit_job", "status"),
+    [
+        ("[]", "skipped", 0),
+        (TWO_COMMITS, "success", 0),
+        (TWO_COMMITS, "skipped", 1),
+        (TWO_COMMITS, "failure", 1),
+        (TWO_COMMITS, "cancelled", 1),
+        ("[]", "failure", 1),
+        ("", "skipped", 1),
+        ("a list", "skipped", 1),
+    ],
+    ids=[
+        "none-to-check",
+        "checked",
+        "asked-for-and-skipped",
+        "asked-for-and-failed",
+        "asked-for-and-cancelled",
+        "not-asked-for-and-failed",
+        "output-empty",
+        "output-no-list",
+    ],
+)
+def test_the_result_requires_the_per_commit_job_when_the_gate_lists_commits(
+    tmp_path: Path, commits: str, commit_job: str, status: int
+) -> None:
+    jobs = all_jobs("success", commit=commit_job)
+    assert result_status("success", "true", "true", jobs, tmp_path, commits=commits) == status
+
+
 def test_without_its_check_of_the_gate_the_result_passes_a_failed_gate_with_outputs(tmp_path: Path) -> None:
     """The control of `gate-failed-with-its-outputs`: no line but the gate's own check fails that case. A
     failed gate has no outputs today, since its sign-off and scan run first; this holds if they move."""
@@ -1069,7 +1207,7 @@ def wiring_problems(ci: Workflow) -> list[str]:
         job = jobs.get(job_id, {})
         if job.get("needs") != "gate":
             problems.append(f"{job_id} needs {job.get('needs')!r}, not the gate alone")
-        if job.get("if") != f"needs.gate.outputs.{output} == 'true'":
+        if job.get("if") != f"needs.gate.outputs.{output} {RUNS_WHEN[output]}":
             problems.append(f"{job_id} runs if {job.get('if')!r}")
     result = jobs["result"]
     if result.get("needs") != ["gate", *GATED] or result.get("if") != "always()":
@@ -1541,13 +1679,15 @@ def test_the_matrix_check_can_fail(
 # What each job's pytest commands select, in order, as the comment above each says: every argument that is
 # not in `NOT_SELECTING`. A stray `-k`, `-m`, `--ignore`, plugin (`-p`, which can deselect anything) or other
 # argument fails the check until it is written here too, beside the comment that gives its reason.
-SELECTIONS = {
+SELECTIONS: dict[str, list[list[str]]] = {
     # Every test but the mutant searches and the audit controls.
     "tests": [["--property-controls", "none"]],
     # The mutant searches and the audit controls alone.
     "controls": [["--property-controls", "only"]],
     # The property tests of one shard.
     "hypothesis": [["tests/property", "--shard", "${{matrix.shard}}"]],
+    # Each commit before a pull request's head: the whole suite.
+    "commit": [[]],
     "fuzz": [
         # The control's replay: the properties of the faults seeded in parse and in the read, which a plugin
         # seeds.
@@ -1789,8 +1929,12 @@ NOT_INTERRUPTED = {
 
 
 def matrix_contexts(job: dict[str, Any]) -> list[dict[str, object]]:
-    """The context of each combination of a job's matrix, for each event that runs the workflow."""
+    """The context of each combination of a job's matrix, for each event that runs the workflow; a list that
+    an expression computes (`fromJSON(...)`) stands as one value, its text."""
     matrix = job.get("strategy", {}).get("matrix")
+    if isinstance(matrix, dict):
+        written = cast(dict[str, object], matrix)
+        matrix = {key: [value] if isinstance(value, str) else value for key, value in written.items()}
     combinations_there: list[dict[str, object]] = combinations(matrix) if matrix is not None else [{}]
     return [
         {f"matrix.{key}": value for key, value in combination.items()} | {"github.event_name": event}
@@ -1893,6 +2037,204 @@ def test_the_interrupt_check_can_fail(fault: Callable[[Workflow], None], problem
     ci = copy.deepcopy(workflow("ci.yml"))
     fault(ci)
     found = interrupt_problems(ci)
+    assert any(problem in line for line in found), found
+
+
+# The per-commit job (ci.yml says why, above it): the checks an agent runs on a commit locally, every
+# commit but a pull request's head on its own, at most six at once, and a pass kept under the commit's tree
+# and the workflow's blob, so that a tree passed under the same checks is not checked again.
+PER_COMMIT_FAST_CHECKS = ("uv run ruff check", "uv run ruff format --check", "uv run mypy", "uv run pyright")
+CACHE_HIT = "steps.passed.outputs.cache-hit"
+# The steps that make the key of a pass and write the pass, which check nothing.
+KEYING = {"tree", "keep"}
+
+
+def commands(job: dict[str, Any]) -> list[str]:
+    """Each line of the job's scripts, with `uv run`'s choice of lock and Python left out."""
+    return [
+        re.sub(r"^uv run (--locked )?(--python [\d.]+ )?", "uv run ", line.strip())
+        for found in job["steps"]
+        for line in str(found.get("run", "")).splitlines()
+        if line.strip()
+    ]
+
+
+def uses(found: dict[str, Any], action: str) -> bool:
+    return str(found.get("uses", "")).startswith(f"{action}@")
+
+
+def per_commit_problems(ci: Workflow) -> list[str]:
+    """Where the per-commit job does not check each listed commit on its own, as an agent does locally, or
+    could take a pass under other checks, or of another tree, for this one's."""
+    job = ci["jobs"]["commit"]
+    steps: list[dict[str, Any]] = job["steps"]
+    problems: list[str] = []
+    strategy = job.get("strategy", {})
+    if strategy.get("matrix") != {"sha": "${{ fromJSON(needs.gate.outputs.commits) }}"}:
+        problems.append(f"the per-commit job's matrix is {strategy.get('matrix')!r}")
+    if strategy.get("fail-fast") is not False or strategy.get("max-parallel") != 6:
+        parallel = f"fail-fast {strategy.get('fail-fast')!r}, {strategy.get('max-parallel')!r} at once"
+        problems.append(f"the per-commit job runs {parallel}")
+    if not uses(steps[0], "actions/checkout") or steps[0].get("with", {}).get("ref") != "${{ matrix.sha }}":
+        problems.append("the per-commit job does not check its commit out first")
+    pythons = [
+        found.get("with", {}).get("python-version") for found in steps if uses(found, "astral-sh/setup-uv")
+    ]
+    if pythons != ["3.15"]:
+        problems.append(f"the per-commit job installs Python {pythons}")
+    ran = commands(job)
+    generators = [line for line in commands(ci["jobs"]["generated"]) if "scripts/gen_" in line]
+    problems += [
+        f"the per-commit job does not run {line!r}"
+        for line in [*PER_COMMIT_FAST_CHECKS, *generators]
+        if line not in ran
+    ]
+    if pytest_step(job).get("env", {}).get("MATERICA_HYPOTHESIS_PROFILE") != "dev":
+        problems.append("the per-commit job's pytest does not run at the `dev` profile")
+    if (
+        ci["jobs"]["gate"]["outputs"].get("workflow_blob")
+        != f"${{{{ steps.{GATE_STEP_ID}.outputs.workflow_blob }}}}"
+    ):
+        problems.append("the gate does not give its workflow's blob")
+    lookups = [index for index, found in enumerate(steps) if uses(found, "actions/cache/restore")]
+    saves = [index for index, found in enumerate(steps) if uses(found, "actions/cache/save")]
+    if len(lookups) != 1 or len(saves) != 1:
+        return [
+            *problems,
+            f"the per-commit job looks a pass up {len(lookups)} times and keeps it {len(saves)}",
+        ]
+    lookup, save = steps[lookups[0]], steps[saves[0]]
+    if lookup.get("id") != "passed" or lookup.get("with", {}).get("lookup-only") is not True:
+        problems.append("the per-commit job's lookup is not `passed`, looking up only")
+    if {key: lookup["with"].get(key) for key in ("key", "path")} != {
+        key: save["with"].get(key) for key in ("key", "path")
+    }:
+        problems.append("the per-commit job keeps a pass under another key or path than it looks up")
+    # Every step that runs a command, but the key's and the one that writes the pass, is a check: each comes
+    # after the lookup and before the pass is written and kept.
+    written = [index for index, found in enumerate(steps) if found.get("id") == "keep"]
+    checks = [index for index, found in enumerate(steps) if "run" in found and found.get("id") not in KEYING]
+    if len(written) != 1 or not all(lookups[0] < index < written[0] < saves[0] for index in checks):
+        problems.append("the per-commit job checks something outside its lookup and its keeping of the pass")
+    for index, found in enumerate(steps[lookups[0] + 1 :], lookups[0] + 1):
+        context = SO_FAR_SUCCEEDED | {"matrix.sha": "0" * 40}
+        on_hit = truthy(evaluated(condition(found), context | {CACHE_HIT: "true"}))
+        misses = [truthy(evaluated(condition(found), context | {CACHE_HIT: miss})) for miss in ("false", "")]
+        if on_hit or not all(misses):
+            runs = "on a pass found" if on_hit else "not on a miss"
+            problems.append(f"the per-commit job's step {index} runs {runs}: if {found.get('if')!r}")
+    failed = {"success()": False, "failure()": True, "cancelled()": False, "always()": True, CACHE_HIT: ""}
+    if truthy(evaluated(condition(save), failed | {"matrix.sha": "0" * 40})):
+        problems.append(f"the per-commit job keeps a pass after a failure: if {save.get('if')!r}")
+    return problems
+
+
+def test_the_per_commit_job_checks_each_listed_commit_as_an_agent_does_locally() -> None:
+    assert per_commit_problems(workflow("ci.yml")) == []
+
+
+def test_the_per_commit_jobs_key_names_the_tree_and_the_workflow(repository: Path) -> None:
+    """The key step, run as GitHub runs it: the commit's tree and the workflow's blob, and a failure where the
+    gate gave no blob, rather than a key every workflow shares."""
+    head = commit("src/materica/core/read.py")
+    tree = subprocess.run(
+        ["git", "rev-parse", f"{head}^{{tree}}"], capture_output=True, text=True, check=True
+    )
+    found = step(
+        workflow("ci.yml")["jobs"]["commit"],
+        "The key of a pass, from the commit's tree and this workflow's blob",
+    )
+    status, outputs, printed = run_step(found, {"needs.gate.outputs.workflow_blob": "f" * 40}, repository)
+    assert status == 0, printed
+    assert outputs == {"key": f"commit-passed-{tree.stdout.strip()}-{'f' * 40}"}
+    status, _, printed = run_step(found, {"needs.gate.outputs.workflow_blob": ""}, repository)
+    assert status == 1
+    assert "::error::the gate gave no workflow_blob" in printed
+
+
+def matrix_of_one(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["strategy"]["matrix"] = {"sha": ["${{ github.sha }}"]}
+
+
+def no_cap(ci: Workflow) -> None:
+    del ci["jobs"]["commit"]["strategy"]["max-parallel"]
+
+
+def the_merge_checked_out(ci: Workflow) -> None:
+    del ci["jobs"]["commit"]["steps"][0]["with"]["ref"]
+
+
+def on_python_3_11(ci: Workflow) -> None:
+    [setup] = [found for found in ci["jobs"]["commit"]["steps"] if uses(found, "astral-sh/setup-uv")]
+    setup["with"]["python-version"] = "3.11"
+
+
+def without_pyright(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["steps"] = [
+        found for found in ci["jobs"]["commit"]["steps"] if found.get("run") != "uv run pyright"
+    ]
+
+
+def without_a_generator(ci: Workflow) -> None:
+    found = step(ci["jobs"]["commit"], "Every generator's check, on Python 3.11")
+    found["run"] = found["run"].replace("gen_shapes.py --check", "gen_shapes.py")
+
+
+def at_the_ci_profile(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["commit"])["env"]["MATERICA_HYPOTHESIS_PROFILE"] = "ci"
+
+
+def no_blob_from_the_gate(ci: Workflow) -> None:
+    del ci["jobs"]["gate"]["outputs"]["workflow_blob"]
+
+
+def kept_under_another_key(ci: Workflow) -> None:
+    [save] = [found for found in ci["jobs"]["commit"]["steps"] if uses(found, "actions/cache/save")]
+    save["with"]["key"] = "commit-passed-${{ matrix.sha }}"
+
+
+def a_lookup_that_restores(ci: Workflow) -> None:
+    [lookup] = [found for found in ci["jobs"]["commit"]["steps"] if uses(found, "actions/cache/restore")]
+    del lookup["with"]["lookup-only"]
+
+
+def a_check_run_on_a_pass_found(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["commit"]).pop("if")
+
+
+def kept_after_a_failure(ci: Workflow) -> None:
+    [save] = [found for found in ci["jobs"]["commit"]["steps"] if uses(found, "actions/cache/save")]
+    save["if"] = "always() && steps.passed.outputs.cache-hit != 'true'"
+
+
+def a_check_after_the_pass_is_kept(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["steps"].append(
+        {"if": "steps.passed.outputs.cache-hit != 'true'", "run": "uv run mypy"}
+    )
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (matrix_of_one, "the per-commit job's matrix is"),
+        (no_cap, "the per-commit job runs fail-fast False, None at once"),
+        (the_merge_checked_out, "does not check its commit out first"),
+        (on_python_3_11, "installs Python ['3.11']"),
+        (without_pyright, "does not run 'uv run pyright'"),
+        (without_a_generator, "does not run 'uv run python scripts/gen_shapes.py --check'"),
+        (at_the_ci_profile, "not run at the `dev` profile"),
+        (no_blob_from_the_gate, "the gate does not give its workflow's blob"),
+        (kept_under_another_key, "keeps a pass under another key or path"),
+        (a_lookup_that_restores, "looking up only"),
+        (a_check_run_on_a_pass_found, "runs on a pass found"),
+        (kept_after_a_failure, "keeps a pass after a failure"),
+        (a_check_after_the_pass_is_kept, "checks something outside its lookup"),
+    ],
+)
+def test_the_per_commit_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    fault(ci)
+    found = per_commit_problems(ci)
     assert any(problem in line for line in found), found
 
 
