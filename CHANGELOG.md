@@ -55,7 +55,9 @@ every family entry goes in `families/CHANGELOG.md`.
   member whose row does not allow it (`form_invalid`); a token it knows for no member of that name
   (`unknown_token`); and a withheld value (`withheld`), each check made and every reason given. Beyond shapes
   it checks counts, ranges in order, signs and bounds, a statistics block's conditional members, an
-  uncertainty's rules, and each status object's place and token (`provenance.md` section 1 item 5). A form
+  uncertainty's rules, and each status object's place and token (`provenance.md` section 1 item 5); one that
+  breaks its shape, a member one slip from one it names included, is read for nothing else, so its token
+  gives no reason of its own (`form_invalid` alone, never `unknown_token` beside it: S2a-4's HP12). A form
   the row allows whose own member waits for S2b or S3 (a table, an interval, a composition, evidence) raises
   `NotImplementedError` whatever its other members hold, since its own member could add a reason: so a
   composition's components and an evidence entry's withholding wait for S2b-1 and S2b-2. A form the row does
