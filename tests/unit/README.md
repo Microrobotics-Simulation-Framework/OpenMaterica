@@ -28,4 +28,7 @@ Tests by example, for what the conformance cases and the properties do not reach
   runner alone (`test_hypothesis_profiles.py`);
 - the audits' failure on a run Hypothesis drew at random, on a runner: it names the seed and the command that
   draw the run again, and both replays draw its examples, where an unseeded run and one that loads another
-  module draw others (`test_audit_replay.py`).
+  module draw others (`test_audit_replay.py`);
+- the key under which `tests/property/strategies.py` caches `json_values`'s strategy: it tells apart 0.0 and
+  -0.0, `True`, 1 and 1.0, strategies that compare equal, and a `Size` from a tuple of its items, where a key
+  by `==` merges each pair; its control runs each pair under that key (`test_strategy_key.py`).
