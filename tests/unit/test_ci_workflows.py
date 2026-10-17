@@ -3992,9 +3992,17 @@ def test_the_repeat_interrupt_check_can_fail(
 def records_problems(repeat: Workflow, directory: Path) -> list[str]:
     """Where the runs step, run as written with the stub `uv` and seed 2 failing, passes; keeps other records
     than each run's, in order, or the failed run's without its failing example; lets a run find the example
-    database of a run before it; or where the records are not kept whenever the step ran."""
-    status, calls, records, _ = run_the_runs(repeat, directory, failing="2")
+    database of a run before it; given a count of runs that the script's `seeds` refuses, starts a run, passes
+    or does not print why; or where the records are not kept whenever the step ran."""
+    status, calls, records, _ = run_the_runs(repeat, directory / "seed-2-failing", failing="2")
     problems: list[str] = []
+    refused = run_the_runs(repeat, directory / "refused", RUNS="0")
+    why = "::error title=Repeat request::the number of runs a job 0 is not from 1 to 25"
+    if refused.calls or refused.status == 0 or why not in refused.printed:
+        problems.append(
+            f"the seeds refused, the step started {len(refused.calls)} runs, exited {refused.status} and "
+            f"printed {refused.printed[-300:]!r}"
+        )
     if status == 0:
         problems.append("the runs step passes with a run failed")
     kept = [(found["seed"], found["outcome"]) for found in records]
@@ -4024,6 +4032,10 @@ def a_failure_forgotten(repeat: Workflow) -> None:
     edited_step(repeat, '[ "$status" -eq 0 ] || failed=1', "true")
 
 
+def a_refusal_unprinted(repeat: Workflow) -> None:
+    edited_step(repeat, """ || { printf '%s\\n' "$listed"; exit 1; }""", "")
+
+
 def the_records_kept_on_success_alone(repeat: Workflow) -> None:
     step(repeat["jobs"]["runs"], KEEP_STEP)["if"] = "success()"
 
@@ -4034,6 +4046,7 @@ def the_records_kept_on_success_alone(repeat: Workflow) -> None:
         (the_database_kept, "run 2 found an example database"),
         (a_failure_forgotten, "the runs step passes with a run failed"),
         (the_records_kept_on_success_alone, "the records are not kept when the runs step ends in failure"),
+        (a_refusal_unprinted, "the seeds refused, the step started 0 runs, exited 1 and printed ''"),
     ],
 )
 def test_the_records_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], None], problem: str) -> None:
