@@ -173,6 +173,32 @@ def test_an_edge_outside_the_range_refuses_at_it_and_across_it(precision: Precis
     assert evaluate(replace(LINEAR, source_range=(1.5, 3.0)), 0.5, precision).refused is False
 
 
+# x [0, 1, 2], y [0, -0, 3]: `-0` at the interior knot, `0` at the first.
+SIGNED_ZEROS = Table(x=(0.0, 1.0, 2.0), y=(0.0, -0.0, 3.0), scheme="linear")
+
+
+def sign(number: Fraction | float | None) -> float:
+    return math.copysign(1.0, as_double(number))
+
+
+@pytest.mark.parametrize("precision", PRECISIONS)
+@pytest.mark.parametrize("side", SIDES)
+def test_a_knot_s_minus_zero_is_returned_as_negative_zero(precision: Precision, side: Side) -> None:
+    at_the_knot = evaluate(SIGNED_ZEROS, 1.0, precision, side)
+    assert at_the_knot.value == 0
+    assert sign(at_the_knot.value) == -1.0
+    # Outside a readable range that ends on that knot, the end value is the knot's.
+    outside = evaluate(replace(SIGNED_ZEROS, source_range=(0.0, 1.0)), 1.5, precision, side)
+    assert (outside.in_range, outside.value) == (False, 0)
+    assert sign(outside.value) == -1.0
+    # Controls: a knot's `0` stays positive, and between the knots, where no knot is read, the formula's 0 is
+    # positive in every precision (`0 + 0.5 * (-0 - 0) / 1` in doubles).
+    assert sign(evaluate(SIGNED_ZEROS, 0.0, precision, side).value) == 1.0
+    between = evaluate(SIGNED_ZEROS, 0.5, precision, side).value
+    assert between == 0
+    assert sign(between) == 1.0
+
+
 def test_binary32_rounds_the_case_s_numbers_first() -> None:
     beside_the_knot = math.nextafter(1.0, 2.0)
     # In binary32 the point is the knot 1, so the declared side decides.
