@@ -178,7 +178,8 @@ check's reader (the last bullet).
   holds, applied with a verdict on both sides and not vacuous, in a declared least share of its examples.
   N1r's and N3r's ways include the shapes their restrictions leave out, where the unrestricted twins N1 and N3
   must fail; and the worlds every relation draws are audited for the same shapes, by their chances: an
-  implied condition that fills a condition of the field, and a numeric condition the read leaves unchecked.
+  implied condition that fills a condition of the field, and a numeric condition the read leaves unchecked;
+  and for a world the read meets, which the cooperative half of the worlds is drawn for.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
