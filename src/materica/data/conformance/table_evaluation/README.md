@@ -70,8 +70,9 @@ combination tried, as a library within one unit of the true value may round each
 way, since a library is a function); and at a knot, both the knot's `y` and the formula there. A correctly
 rounded `ln` and `exp` alone understated NumPy's real `float32` error 2.3 times on one file, and `ln` and
 `exp` rounded the same way throughout a run understated a faithful library's worst case up to 3.4 times. The
-README's cap holds for every file: the tolerance is at most a tenth of the largest relative difference between
-the expected answer and that of each broken evaluator listed below, in each file where the two differ.
+README's cap holds per broken evaluator: each one listed below misses at least one of the files that should
+catch it by ten times that file's tolerance. It need not miss every file by that much: NumPy's `interp`
+outside the readable range misses TE-003 `narrowed` by at most 0.021 times that file's tolerance.
 
 ## How they were checked
 
@@ -90,11 +91,15 @@ In scratch harnesses, not part of the repository, written from the text:
   number for one that returns the side it did not declare, the outside derivative at an end, the declared side
   at a range end on an interior knot, the interval above just below an edge, log-log linearly, linear in log
   space, the linear slope as a log-log derivative, NumPy's `interp` outside the readable range, a linear
-  extrapolation, or `bfloat16` intermediates. In every file where one of these differs from the expected
-  answer, its largest difference is at least ten times the file's tolerance (the weakest, 122 times, a linear
-  table read as log-log at TE-003 `narrowed`; at the log-log tolerances 557 times, at TE-012
-  `decimal_knots_loglog`), and at the file that catches it best at least 8,000 times (`bfloat16`; every other
-  at least a million).
+  extrapolation, or `bfloat16` intermediates. Each of these misses the best of the files that should catch it
+  by at least ten times that file's tolerance, under every configuration it claims: by a flag, which no
+  tolerance passes, or by a number. Of those caught by a number, `bfloat16` misses by the least, 1,357 times,
+  at TE-012 `decimal_knots_linear`; NumPy's `interp` by 3,373 times, at TE-002 `source_range_narrow`; a
+  linear table read as log-log by 35,586 times, at TE-004 `linear_values`; and every other by at least
+  144,000 times (the linear slope as a log-log derivative, at TE-008 `loglog_interior`). These margins come
+  from S3-te's reference evaluator and broken evaluators (2026-10-17): at each file that should catch a
+  fault, its relative difference from the expected answer at the compared number where they differ most, over
+  that file's tolerance; a fault's margin is its best file's, the least over the configurations it claims.
 
 Two passes independent of the author, one told to break the cases and one to check them, each wrote its own
 evaluator from the text and checked these files with it; after the fixes they led to, their tools, rerun on
