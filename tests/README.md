@@ -29,6 +29,49 @@ file's tests in blocks, so that a file's slow tests (the audit controls, T1's sh
 while the others idle. There, at `dev` (2026-10-16): 6 workers took 6.0 minutes under `load` and 4.0 under
 `worksteal`, and 12 took 2.9 under `worksteal`; more than 12 gained nothing.
 
+## Repeat runs on CI
+
+To show how often a test fails, run it many times on CI, not in a loop here (maintainer, 2026-10-17): GitHub's
+runners are free for this repository and run about 20 jobs at once, so a few hundred runs take minutes rather
+than hours, with the same examples. The workflow `repeat.yml` runs a node, a test, a file or a directory under
+`tests/`, under many seeds in parallel jobs (`.github/workflows/README.md` says what each job does). It runs on a
+pushed ref: an agent asks the main session to dispatch it on its pushed draft and waits on the result.
+
+```sh
+gh workflow run repeat.yml --ref <branch> -f node=tests/property/test_x.py::test_y -f profile=ci \
+  -f jobs=10 -f runs=20 -f first_seed=1          # 200 runs, seeds 1 to 200
+gh run list --workflow repeat.yml --limit 3      # the run's id
+gh run watch <id> --exit-status                  # waits; exits non-zero where any run failed
+gh run view <id>                                 # the verdict, among the annotations
+gh run download <id> -n runs-3                   # job 3's records: results.jsonl and each run's JUnit report
+```
+
+The inputs: `node`, required; `profile`, `dev`, `ci` (the default) or `deep`, whose example counts are
+`tests/conftest.py`'s and nothing else's; `jobs`, 1 to 20 (default 10), and `runs` in each, 1 to 25 (default 20);
+`first_seed`, 0 to 999999999 (default 1), the runs taking the seeds from it to `first_seed + jobs × runs − 1`;
+`python`, 3.11 to 3.15 (default 3.15); and `extra`, of `--shard NAME` and `--property-controls only|none` alone.
+A request out of bounds, or a node pytest cannot collect with those arguments, fails the `request` job, and no
+run starts. A run takes about as long as the same tests in CI's jobs at that profile, and at `deep`, with ten
+times the examples, about ten times as long as at `ci`: choose the runs a job to fit its timeout (60 minutes at
+`dev`, 120 at `ci`, 360 at `deep`), and more jobs for more runs. Twenty jobs can take every runner the
+repository gets at once (about 20), and CI's own jobs then wait behind them.
+
+The summary, on the run's page, gives the runs that passed, failed, did not finish or have no record, and a
+verdict: "no run of 200 failed: the failure rate is at most 1.49 % (one-sided 95%)", or, with three failures,
+"3 of 200 runs failed (1.5 %); the failure rate is at most 3.83 % (one-sided 95%)" (the exact Clopper-Pearson
+bound; with none failed in `n` runs it is about `3 / n`). It shows each failing seed with its failing example
+and the `@reproduce_failure` line Hypothesis printed, and fails the run where any run failed or did not finish.
+A failing seed replays here with the same examples, whatever the machine:
+`MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest <node> --hypothesis-seed=<seed>`. A run under a seed neither reads
+nor saves the example database, and `.hypothesis/` is removed before each run.
+
+A seed changes what a test draws only where Hypothesis draws at random. A derandomized test, which Hypothesis
+runs the same whatever `--hypothesis-seed` says (6.169 reads `derandomize=True` first), runs the same examples
+under every seed: the mutant searches (`MUTANT_SEARCH` in `property/support.py`), the audit controls
+(`unit/test_audit_controls.py`), which are what `--property-controls only` selects, and some tests of
+`unit/test_audits.py`. So does a test under `@seed`, and a test without Hypothesis. Repeating those measures only
+what else varies between runs.
+
 ## Schema verdicts
 
 Every verdict the tests take from the package's JSON Schemas comes from jsonschema-rs (`verdicts.py`), alone
