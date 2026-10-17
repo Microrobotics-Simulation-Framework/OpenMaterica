@@ -30,6 +30,7 @@ FILES = ("water.json", "ndfeb_n45.json", "human_plasma.json")
 DOCUMENTED = (
     REPOSITORY / "README.md",
     REPOSITORY / "examples" / "README.md",
+    REPOSITORY / "docs" / "user_guide" / "quickstart.md",
 )
 NOTE = ("not reviewed library data", "not yet fully human-reviewed", "may change in a later commit")
 WRITER = validator("record.writer.json")

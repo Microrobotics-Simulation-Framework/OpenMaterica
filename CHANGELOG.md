@@ -159,6 +159,11 @@ every family entry goes in `families/CHANGELOG.md`.
   field's bases and where its label goes, and `STATUS_TOKENS`, the status tokens from the generated shapes
   (`core/vocabulary.py`). Every `claims` parameter of the core is typed by the suites, so that a misspelt
   suite name does not type-check.
+- A quickstart (`docs/user_guide/quickstart.md`): it writes a record holding one of the water example's
+  values, reads it to a `met` result, and shows a refusal with its reasons. It says plainly that this release
+  reads constants, intervals, compositions and evidence, and not yet tables or choosing between alternatives
+  (S3 and S4), and a test runs its code and compares every output it shows (`tests/examples/`). The
+  README's documentation table links it and the examples.
 
 ### Changed
 - The pre-review script's trace test (`tests/unit/test_pre_review.py`, run where `MATERICA_TRACE_SELECTION=1`)

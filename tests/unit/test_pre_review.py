@@ -204,6 +204,17 @@ def test_a_core_module_runs_the_property_shards_and_the_unit_test_of_what_import
     )  # control: nothing there imports hashing
 
 
+def test_a_core_module_the_quickstart_runs_selects_the_quickstarts_test() -> None:
+    """The quickstart's doctest imports the package at run time, which the import graph cannot see, so its
+    test imports the same names at module level: without that, a change to the read leaves the page's test
+    out of the selection and a wrong output shown on the page fails only in CI."""
+    for module in ("read", "hashing"):
+        assert "tests/examples/test_quickstart.py" in run_paths(plan(f"src/materica/core/{module}.py")[0])
+    assert "tests/examples/test_quickstart.py" not in run_paths(
+        plan("scripts/check_signoff.py")[0]
+    )  # control: a script nothing there imports
+
+
 def test_a_conftest_applies_to_every_shard_and_the_top_one_to_every_test() -> None:
     assert shards(plan("tests/property/conftest.py")[0]) == set(TREE.shards())
     assert "tests/unit/test_read.py" not in run_paths(plan("tests/property/conftest.py")[0])
@@ -442,6 +453,10 @@ SCHEMA_READERS = ("tests/unit/test_freeze_schema.py", "tests/unit/test_schema_in
         ("examples/records/water.json", ("tests/examples/test_example_records.py",)),
         ("examples/README.md", ("tests/examples/test_example_records.py",)),
         ("README.md", ("tests/examples/test_example_records.py",)),
+        (
+            "docs/user_guide/quickstart.md",
+            ("tests/examples/test_quickstart.py", "tests/examples/test_example_records.py"),
+        ),
         ("scripts/pre-push", ("tests/unit/test_check_confidential.py",)),
         (
             ".github/workflows/ci.yml",

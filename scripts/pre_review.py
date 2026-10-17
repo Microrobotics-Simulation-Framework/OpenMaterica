@@ -171,6 +171,12 @@ DATA_RULES = (
         tests=("tests/examples/test_example_records.py",),
     ),
     DataRule(
+        "the quickstart",
+        r"docs/user_guide/quickstart\.md",
+        "it is run as a doctest, and it documents the example records, so it holds their note",
+        tests=("tests/examples/test_quickstart.py", "tests/examples/test_example_records.py"),
+    ),
+    DataRule(
         "a spec-sync table",
         r"tests/spec_sync/.+\.json",
         "the tables are checked against the text and the schemas",
