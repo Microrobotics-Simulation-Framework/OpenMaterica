@@ -12,6 +12,7 @@ or `conditions`.
 import copy
 import dataclasses
 import math
+import re
 import types
 from collections.abc import Callable, Collection
 from typing import Any, NamedTuple
@@ -25,8 +26,9 @@ from materica.core.jsonio import JsonValue
 from materica.core.read import FieldRead, ReadResult
 from materica.core.reasons import Reason
 from materica.core.resolve import Refused
-from materica.core.status import ReadStatus
+from materica.core.status import ReadStatus, worst
 from materica.core.value_shapes import JsonObject
+from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite, Want
 from tests.property import test_result_properties as properties
 from tests.property.result_strategies import KINDS, REVIEWS, Drawn, drawn_reads, valued_reads
@@ -53,6 +55,7 @@ class Mutant(NamedTuple):
     killer: str  # a key of KILLERS
     inject: Callable[[pytest.MonkeyPatch], None]
     dies_at: tuple[str, ...]  # kinds or features, one of which the example that kills it must show
+    says: str = ""  # a pattern the message of the assertion that kills it must hold, where one is given
 
 
 def injecting(*settings: Callable[[pytest.MonkeyPatch], None]) -> Callable[[pytest.MonkeyPatch], None]:
@@ -92,6 +95,15 @@ def _unchecked_without_its_condition(
 
 def _origin_with_a_condition(provenance: JsonObject, name: str) -> list[Reason]:
     return [Reason(reason.code, "temperature", reason.detail) for reason in ORIGIN(provenance, name)]
+
+
+def _status_of_any_code(reasons: Collection[Reason]) -> ReadStatus:
+    """A status for a code the table does not hold too, `not_met`, so that the code reaches the result and the
+    reason table's assertion, not the read's own look-up, finds it."""
+    return worst(
+        VOCABULARY.reasons[reason.code].status if reason.code in VOCABULARY.reasons else "not_met"
+        for reason in reasons
+    )
 
 
 def _a_code_outside_the_table(field: JsonObject, name: str, form: str, want: Want) -> Reason | None:
@@ -239,6 +251,9 @@ def _labelled_beside_the_hash_suite(reference: Any, store: Any, claims: Collecti
     return resolved
 
 
+# HP1's reason-table assertion, which a code outside the table must reach (PR #37's review, L1).
+OUTSIDE_THE_TABLE = r"is no code of the table"
+
 MUTANTS = [
     # `condition` is on "every `condition_*` reason" (`read_side_contract.md` section 2 item 2), whatever
     # the read's kind: a fault of step 8's catalogue that step 8 passes (an unknown condition name) reaches
@@ -265,8 +280,12 @@ MUTANTS = [
     Mutant(
         "a_code_outside_the_table",
         "HP1",
-        setting(read, "_by_want", _a_code_outside_the_table),
+        injecting(
+            setting(read, "_by_want", _a_code_outside_the_table),
+            setting(read, "_status", _status_of_any_code),
+        ),
         ("met", "step_8_fault"),
+        OUTSIDE_THE_TABLE,
     ),
     # A reason "appears at most once in a result" (section 2 item 2), at any step: step 9's faults of the
     # field's unit and of a fact's each give `unit_mismatch` with no condition, one reason found twice, so
@@ -282,8 +301,12 @@ MUTANTS = [
     Mutant(
         "a_forms_mismatch_outside_the_table",
         "HP1",
-        setting(read, "_by_want", _a_forms_mismatch_outside_the_table),
+        injecting(
+            setting(read, "_by_want", _a_forms_mismatch_outside_the_table),
+            setting(read, "_status", _status_of_any_code),
+        ),
         ("form_interval", "form_composition", "step_8_fault"),
+        OUTSIDE_THE_TABLE,
     ),
     Mutant(
         "value_beside_condition_outside",
@@ -406,9 +429,20 @@ def test_the_result_mutant_is_killed(
     monkeypatch: pytest.MonkeyPatch,
     record_property: Callable[[str, object], None],
 ) -> None:
-    """At an example of one of the kinds or features it names."""
+    """At an example of one of the kinds or features it names, and at the assertion it names, where it names
+    one."""
     mutant.inject(monkeypatch)
     examples, check = KILLERS[mutant.killer]
-    tried, example = kill(examples(size), check)
+    said: list[str] = []
+
+    def checked(drawn: Drawn) -> None:
+        try:
+            check(drawn)
+        except AssertionError as error:
+            said.append(str(error))
+            raise
+
+    tried, example = kill(examples(size), checked)
     record_property("examples_to_kill", tried)
     assert kind(example) & set(mutant.dies_at), kind(example)
+    assert re.search(mutant.says, said[0]), said[0]
