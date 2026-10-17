@@ -863,6 +863,8 @@
     "PR-316.implied_other_version.json": "S2a-4",
     "PR-316.implied_range_met.json": "S2a-4",
     "PR-316.implied_range_not_met.json": "S2a-3",
+    "PR-316.implied_ranges_differ_at_hi.json": "S2a-3",
+    "PR-316.implied_tokens_differ.json": "S2a-3",
     "PR-316.implied_two_agree.json": "S2a-4",
     "PR-316.implied_two_disagree.json": "S2a-3",
     "PR-316.implied_two_disagree_in_alternative.json": "S2a-4",
