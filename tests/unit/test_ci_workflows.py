@@ -3056,11 +3056,29 @@ def test_a_job_whose_timeout_signals_the_group_fails_the_interrupt_check(job_id:
 
 # The slowest run of each Hypothesis shard measured on CI, in minutes, by profile, with the five shards of
 # today's map (ci.yml, above the job): at `ci` in run 39002323592, at `deep` in manual run 39002750375, both
-# 2026-10-17. A shard not measured yet is not held.
+# 2026-10-17; `conditions` and `relations` at `ci` in run 39039695416, the same day. A shard not measured yet
+# is not held, but to the estimate ci.yml gives it, where it gives one (`ESTIMATED_ON_CI`).
 MEASURED_ON_CI = {
-    "ci": {"agreement": 5.93, "writer": 5.17, "records": 2.48, "json": 1.62, "step8_mutants": 1.62},
-    "deep": {"writer": 63.63, "agreement": 47.02, "records": 31.40, "json": 14.13, "step8_mutants": 1.55},
+    "ci": {
+        "agreement": 5.93,
+        "writer": 5.17,
+        "records": 2.48,
+        "json": 1.62,
+        "step8_mutants": 1.62,
+        "relations": 7.42,
+        "conditions": 5.09,
+    },
+    "deep": {
+        "writer": 63.63,
+        "agreement": 47.02,
+        "records": 31.40,
+        "json": 14.13,
+        "step8_mutants": 1.55,
+    },
 }
+# `relations` at `deep`: 108 to 140 minutes, from its `ci` run's times by module (S2a-4's review B, L5), until
+# a manual run measures it.
+ESTIMATED_ON_CI = {"deep": {"relations": 140.0}}
 PROFILE_EVENTS = {"ci": "pull_request", "deep": "schedule"}
 
 
@@ -3069,19 +3087,21 @@ def margin_problems(ci: Workflow) -> list[str]:
     slowest run measured on CI: a runner half as fast would lose the run."""
     job = ci["jobs"]["hypothesis"]
     problems: list[str] = []
-    for profile, measured in MEASURED_ON_CI.items():
-        for shard, minutes in measured.items():
-            context = {"github.event_name": PROFILE_EVENTS[profile], "matrix.shard": shard}
-            interrupt = as_number(setting(job["timeout-minutes"], context)) - 3
-            if interrupt < 2 * minutes:
-                problems.append(
-                    f"hypothesis ({profile}, {shard}) is interrupted at {interrupt:g} minutes, less than "
-                    f"twice its {minutes:g} measured on CI"
-                )
+    for how, runs in (("measured", MEASURED_ON_CI), ("estimated", ESTIMATED_ON_CI)):
+        for profile, slowest in runs.items():
+            for shard, minutes in slowest.items():
+                context = {"github.event_name": PROFILE_EVENTS[profile], "matrix.shard": shard}
+                interrupt = as_number(setting(job["timeout-minutes"], context)) - 3
+                if interrupt < 2 * minutes:
+                    problems.append(
+                        f"hypothesis ({profile}, {shard}) is interrupted at {interrupt:g} minutes, less than "
+                        f"twice its {minutes:g} {how} on CI"
+                    )
     shards = set(job["strategy"]["matrix"]["shard"])
     problems += [
         f"a measured shard the matrix no longer has: {shard}"
-        for profile in MEASURED_ON_CI.values()
+        for runs in (MEASURED_ON_CI, ESTIMATED_ON_CI)
+        for profile in runs.values()
         for shard in sorted(profile.keys() - shards)
     ]
     return problems
@@ -3104,8 +3124,13 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
             "matrix.shard == 'writer' && 12",
             "hypothesis (ci, writer) is interrupted at 9 minutes, less than twice its 5.17",
         ),
+        (
+            "matrix.shard == 'relations' && 300",
+            "matrix.shard == 'relations' && 180",
+            "hypothesis (deep, relations) is interrupted at 177 minutes, less than twice its 140 estimated",
+        ),
     ],
-    ids=["records-deep-at-45", "writer-ci-at-12"],
+    ids=["records-deep-at-45", "writer-ci-at-12", "relations-deep-at-180"],
 )
 def test_the_margin_check_can_fail(old: str, new: str, problem: str) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))

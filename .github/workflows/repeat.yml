@@ -151,8 +151,9 @@ jobs:
     runs-on: ubuntu-24.04
     # A job stops starting runs, and interrupts the one running, three minutes before this, so that it keeps
     # the records of the runs that finished. Set by profile, as a run at `deep` takes ten times one at `ci`:
-    # a shard's run at `ci` has taken 1.6 to 5.9 minutes on CI and at `deep` 1.6 to 64 (ci.yml's Hypothesis
-    # job); a single property's at `ci`, seconds. Choose runs a job to fit, and more jobs for more runs.
+    # a shard's run at `ci` has taken 1.6 to 7.4 minutes on CI and at `deep` 1.6 to 64, and `relations`, not run
+    # at `deep` yet, is estimated at up to 140 there (ci.yml's Hypothesis job); a single property's at `ci`,
+    # seconds. Choose runs a job to fit, and more jobs for more runs.
     timeout-minutes: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
     # The same minutes, from which the interrupt is set (below).
     env:

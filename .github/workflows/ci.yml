@@ -503,10 +503,13 @@ jobs:
     # examples, about 17 minutes by my arithmetic, unmeasured. The result's laws (S2a-4: HP1, HP2, HP6, HP11)
     # joined `conditions`, which then took 155 s at `ci` on four local workers (Python 3.15, 2026-10-17).
     # The read's relations (S2a-4's phase B: HP12, HP4, HP10 and the monotonicity relations, each reading two
-    # records or two reads an example) are a shard of their own, `relations`, its timeouts those of
-    # `conditions`: at `ci` on four local workers, 198 s, and `conditions` 151 s beside it (Python 3.15,
-    # 2026-10-17); together they would have taken 5.8 minutes, and at `deep` the relations' fourteen
-    # monotonicity properties alone about 30 minutes of a runner's four cores, by my arithmetic, unmeasured.
+    # records or two reads an example) are a shard of their own, `relations`: at `ci` on four local workers,
+    # 198 s, and `conditions` 151 s beside it (Python 3.15, 2026-10-17). Measured on CI at `ci` (run
+    # 39039695416, 2026-10-17): `relations` 7.4 minutes, `conditions` 5.1. `relations` has not run at `deep`.
+    # From that run's times by module, ten times the examples and an example at `deep`'s size costing 1.7 to
+    # 2.2 times one at `ci`'s (S2a-4's review B, L5), it would take 108 to 140 minutes on a runner's four
+    # cores, the fourteen monotonicity properties alone 65 to 84; so its `deep` timeout is 300 minutes, twice
+    # the estimate's upper end with the interrupt's three to spare, until a manual `deep` run measures it.
     # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
     # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
@@ -527,7 +530,8 @@ jobs:
     # holds `conditions` once it has run on CI.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-      && ((matrix.shard == 'writer' || matrix.shard == 'conditions' || matrix.shard == 'relations') && 180
+      && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
+      || matrix.shard == 'relations' && 300
       || matrix.shard == 'agreement' && 360
       || matrix.shard == 'records' && 90 || 45)
       || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || matrix.shard == 'relations') && 30
@@ -547,7 +551,8 @@ jobs:
       # The job's `timeout-minutes`, as above, from which the pytest step's interrupt is set.
       JOB_MINUTES: >-
         ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
-        && ((matrix.shard == 'writer' || matrix.shard == 'conditions' || matrix.shard == 'relations') && 180
+        && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
+        || matrix.shard == 'relations' && 300
         || matrix.shard == 'agreement' && 360
         || matrix.shard == 'records' && 90 || 45)
         || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || matrix.shard == 'relations') && 30
