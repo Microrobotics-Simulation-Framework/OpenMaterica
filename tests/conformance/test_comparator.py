@@ -446,6 +446,17 @@ def test_an_entry_compares_only_what_it_holds_and_a_number_may_be_absent_or_nan_
         pytest.param(4, {"in_range": False}, id="refusal_unreported"),
         pytest.param(1, {"refused": True}, id="refused_where_none_is_due"),
         pytest.param(3, {"refused": True}, id="refused_outside"),
+        # The right answer but for the refusal, so that only the refusal can fail it.
+        pytest.param(
+            1,
+            {"refused": True, "in_range": True, "value": 992.85, "derivative": -0.3},
+            id="refused_beside_the_right_answer",
+        ),
+        pytest.param(
+            3,
+            {"refused": True, "in_range": False, "value": 1000.0, "derivative": 0.0},
+            id="refused_beside_the_right_answer_outside",
+        ),
         pytest.param(
             3, {"refused": False, "in_range": True, "value": 1000.0, "derivative": 0.0}, id="in_range"
         ),
