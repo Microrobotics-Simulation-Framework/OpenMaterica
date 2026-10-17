@@ -9,8 +9,9 @@ checks those files with `scripts/gen_vocabulary.py --check`.
 import json
 import re
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -186,3 +187,193 @@ def test_the_id_check_can_fail(tmp_path: Path) -> None:
     )
     (tmp_path / "none.json").write_text("{}", encoding="utf-8")
     assert misplaced_ids(tmp_path, base) == ["none.json: None", f"vocabulary/moved.json: {base}moved.json"]
+
+
+# What both libraries read alike (`tests/verdicts.py`, `tests/property/test_validators_agree.py`).
+# jsonschema-rs reads a resource's `$schema` unless told the draft, and applies `dependencies`, a keyword
+# draft 2020-12 dropped, even at 2020-12; python-jsonschema reads every file at 2020-12. So every file
+# declares 2020-12 or nothing, and uses no keyword outside 2020-12's but the package's own `x-materica-*`
+# and, at a vocabulary file's root, its table.
+DRAFT = "https://json-schema.org/draft/2020-12/schema"
+# Keywords whose value is a schema, a map of schemas by name, or a list of schemas.
+IN_PLACE = {
+    "items",
+    "additionalProperties",
+    "unevaluatedProperties",
+    "unevaluatedItems",
+    "not",
+    "if",
+    "then",
+    "else",
+    "contains",
+    "propertyNames",
+    "contentSchema",
+}
+BY_NAME = {"properties", "patternProperties", "$defs", "dependentSchemas"}
+LISTED = {"allOf", "anyOf", "oneOf", "prefixItems"}
+KEYWORDS = (
+    IN_PLACE
+    | BY_NAME
+    | LISTED
+    | {"$schema", "$id", "$ref", "$anchor", "$dynamicRef", "$dynamicAnchor", "$vocabulary", "$comment"}
+    | {"type", "enum", "const", "multipleOf", "maximum", "exclusiveMaximum", "minimum", "exclusiveMinimum"}
+    | {"maxLength", "minLength", "pattern", "maxItems", "minItems", "uniqueItems", "maxContains"}
+    | {"minContains", "maxProperties", "minProperties", "required", "dependentRequired"}
+    | {"title", "description", "default", "deprecated", "readOnly", "writeOnly", "examples"}
+    | {"format", "contentEncoding", "contentMediaType"}
+)
+VOCABULARY_TABLES = {
+    "vocabulary/acceptances.json": "kinds",
+    "vocabulary/conditions.json": "conditions",
+    "vocabulary/fields.json": "fields",
+    "vocabulary/reasons.json": "reasons",
+    "vocabulary/specimen_facts.json": "facts",
+}
+
+
+def schema_files(root: Path = SCHEMA) -> dict[str, dict[str, object]]:
+    return {
+        path.relative_to(root).as_posix(): json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(root.rglob("*.json"))
+    }
+
+
+def subschemas(schema: object, where: str = "") -> Iterator[tuple[str, dict[str, object]]]:
+    """Each schema object in `schema`, with its JSON pointer: those its keywords hold, at any depth."""
+    if not isinstance(schema, dict):
+        return
+    found = cast(dict[str, object], schema)
+    yield where, found
+    for keyword, value in found.items():
+        if keyword in IN_PLACE:
+            yield from subschemas(value, f"{where}/{keyword}")
+        elif keyword in BY_NAME and isinstance(value, dict):
+            for name, held in cast(dict[str, object], value).items():
+                yield from subschemas(held, f"{where}/{keyword}/{name}")
+        elif keyword in LISTED and isinstance(value, list):
+            for index, held in enumerate(cast(list[object], value)):
+                yield from subschemas(held, f"{where}/{keyword}/{index}")
+
+
+def draft_problems(files: dict[str, dict[str, object]]) -> list[str]:
+    """Each file that declares another draft than 2020-12, and each keyword outside 2020-12's."""
+    problems = [
+        f"{name} declares {file['$schema']}"
+        for name, file in files.items()
+        if file.get("$schema", DRAFT) != DRAFT
+    ]
+    for name, file in files.items():
+        for where, schema in subschemas(file):
+            own = {VOCABULARY_TABLES[name]} if where == "" and name in VOCABULARY_TABLES else set[str]()
+            problems += [
+                f"{name}#{where}: {keyword}"
+                for keyword in schema
+                if keyword not in KEYWORDS | own and not keyword.startswith("x-materica-")
+            ]
+    return problems
+
+
+def test_every_schema_file_is_read_at_2020_12() -> None:
+    assert draft_problems(schema_files()) == []
+
+
+@pytest.mark.parametrize(
+    ("path", "value", "problem"),
+    [
+        (
+            ("$schema",),
+            "http://json-schema.org/draft-07/schema#",
+            "case.json declares http://json-schema.org/",
+        ),
+        (("dependencies",), {"case": ["inputs"]}, "case.json#: dependencies"),
+        (("properties", "case", "definitions"), {}, "case.json#/properties/case: definitions"),
+    ],
+    ids=["draft-07", "dependencies", "nested"],
+)
+def test_the_draft_check_can_fail(path: tuple[str, ...], value: object, problem: str) -> None:
+    files = schema_files()
+    changed = files["case.json"]
+    for step in path[:-1]:
+        changed = cast(dict[str, object], changed[step])
+    changed[path[-1]] = value
+    assert any(found.startswith(problem) for found in draft_problems(files)), draft_problems(files)
+
+
+# Every pattern starts with `^` and ends with `(?![\s\S])`, which both libraries read alike, as matching in
+# full; a validator's `$` also matches before a final newline in python-jsonschema and not in jsonschema-rs.
+# Between, no escape of a letter or digit (`\d`, `\w` and `\s` are ASCII in one library and Unicode in the
+# other, and differently inside a lookaround), no `.` outside a class, no `$` and no POSIX class
+# (`[[:alpha:]]` is a class in jsonschema-rs and a set of characters in python-jsonschema).
+END = "(?![\\s\\S])"
+
+
+def pattern_problems(pattern: str) -> list[str]:
+    problems = [] if pattern.startswith("^") else ["no `^` at its start"]
+    problems += [] if pattern.endswith(END) else [f"no `{END}` at its end"]
+    body = pattern.removeprefix("^").removesuffix(END)
+    in_class, index = False, 0
+    while index < len(body):
+        character = body[index]
+        if character == "\\":
+            escaped = body[index + 1 : index + 2]
+            if escaped.isalnum():
+                problems.append(f"the escape `\\{escaped}`")
+            index += 2
+            continue
+        if body.startswith("[[:", index) or (in_class and body.startswith("[:", index)):
+            problems.append("a POSIX class")
+        if character == "[" and not in_class:
+            in_class = True
+        elif character == "]" and in_class:
+            in_class = False
+        elif character in ".$" and not in_class:
+            problems.append(f"`{character}` outside a class")
+        index += 1
+    return problems
+
+
+def patterns(files: dict[str, dict[str, object]]) -> Iterator[tuple[str, str]]:
+    """Each pattern in `files`, a `pattern`'s or a `patternProperties` name, with where it is."""
+    for name, file in files.items():
+        for where, schema in subschemas(file):
+            if isinstance(schema.get("pattern"), str):
+                yield f"{name}#{where}/pattern", cast(str, schema["pattern"])
+            for held in cast(dict[str, object], schema.get("patternProperties", {})):
+                yield f"{name}#{where}/patternProperties", held
+
+
+def test_every_pattern_reads_alike_in_both_libraries() -> None:
+    found = dict(patterns(schema_files()))
+    assert len(found) >= 13
+    assert {
+        where: pattern_problems(pattern) for where, pattern in found.items() if pattern_problems(pattern)
+    } == {}
+
+
+@pytest.mark.parametrize(
+    ("pattern", "problem"),
+    [
+        ("^[0-9]+$", f"no `{END}` at its end"),
+        ("[0-9]+(?![\\s\\S])", "no `^` at its start"),
+        ("^\\d+(?![\\s\\S])", "the escape `\\d`"),
+        ("^a\\wb(?![\\s\\S])", "the escape `\\w`"),
+        ("^a\\sb(?![\\s\\S])", "the escape `\\s`"),
+        ("^a.b(?![\\s\\S])", "`.` outside a class"),
+        ("^a$b(?![\\s\\S])", "`$` outside a class"),
+        ("^[[:alpha:]]+(?![\\s\\S])", "a POSIX class"),
+    ],
+)
+def test_the_pattern_check_can_fail(pattern: str, problem: str) -> None:
+    assert problem in pattern_problems(pattern)
+
+
+def test_the_pattern_check_reads_every_file() -> None:
+    """The control for the files: a pattern of `case.json` and one of `read_request.json`, changed, are
+    found."""
+    files = schema_files()
+    case_properties = cast(dict[str, dict[str, object]], files["case.json"]["properties"])
+    case_properties["case"]["pattern"] = "^[A-Z]{2}-\\d{3}(?![\\s\\S])"
+    request_definitions = cast(dict[str, dict[str, object]], files["read_request.json"]["$defs"])
+    request_definitions["field_name"]["pattern"] = "^[a-z0-9_]+.[a-z0-9_]+(?![\\s\\S])"
+    found = {where for where, pattern in patterns(files) if pattern_problems(pattern)}
+    assert found == {"case.json#/properties/case/pattern", "read_request.json#/$defs/field_name/pattern"}
