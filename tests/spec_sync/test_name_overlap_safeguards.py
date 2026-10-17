@@ -19,7 +19,7 @@ import pytest
 
 from materica.core.jsonio import JsonValue
 from tests.spec_sync import name_overlaps
-from tests.spec_sync.schemas import takes
+from tests.spec_sync.schemas import agreed
 from tests.verdicts import Json
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -153,13 +153,13 @@ def check_refusals(name: str, files: tuple[Json, ...] = ()) -> None:
     files of their `$id`s."""
     for label, meaning in MEANINGS[name].items():
         if meaning.home is not None:
-            assert takes(meaning.home, files)(meaning.value), (name, label)
+            assert agreed(meaning.home, files)(meaning.value), (name, label)
         else:
             assert meaning.text, (name, label)
     assert any(REFUSES[name].values()), name
     for place, refused in REFUSES[name].items():
         for label in refused:
-            assert not takes(place, files)(MEANINGS[name][label].value), (name, place, label)
+            assert not agreed(place, files)(MEANINGS[name][label].value), (name, place, label)
 
 
 def places(root: Path, name: str) -> set[str]:

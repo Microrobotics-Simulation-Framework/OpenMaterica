@@ -13,7 +13,7 @@ import pytest
 from scripts import gen_reader_schema, gen_shapes, gen_vocabulary
 from scripts.gen_reader_schema import Json, SchemaError, reader_schema
 from scripts.gen_vocabulary import TableError, cells, table
-from tests.verdicts import verdict
+from tests.spec_sync.schemas import agreed
 
 
 def test_a_table_is_read_by_its_headers_with_escaped_pipes() -> None:
@@ -934,7 +934,7 @@ DETAIL_WHERE_STATED: Json = {"if": STATED, "then": {"properties": {"detail": {"$
 def reader_takes(writer: dict[str, Json], field: Json) -> bool:
     """Whether the value field of the reader `$defs` `writer` gives takes `field`."""
     reader = {"$defs": reader_schema(writer, VOCABULARY)["$defs"], "$ref": "#/$defs/value_field"}
-    return verdict(reader)(field)
+    return agreed(reader)(field)
 
 
 def test_a_member_a_read_checks_under_a_condition_is_checked_there_alone() -> None:

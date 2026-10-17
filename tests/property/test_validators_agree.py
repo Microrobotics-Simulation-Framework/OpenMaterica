@@ -11,13 +11,18 @@ give the same verdict:
   fields (`tests/property/value_fields.py`, `records.py`), as many as the profile gives a property;
 - along each writer mutant's own search (`test_writer_mutants.py`), up to the example at which the mutant's
   verdict first differs from the package's.
-A disagreement fails whichever side is right. Controls: one side given a writer mutant or a reader mutant, and
-both sides given a `pattern` the two regex dialects read differently, must each make the check fail.
+Every place in the tests that takes jsonschema-rs's verdict alone is listed here, with the tests that compare
+its schema, or with the reason it is left out; the other places take both libraries' verdicts
+(`tests/spec_sync/schemas.py`). A disagreement fails whichever side is right. Controls: one side given a
+writer mutant or a reader mutant, and both sides given a `pattern` the two regex dialects read differently,
+must each make the check fail.
 """
 
+import ast
 import copy
 from collections.abc import Callable, Iterable, Iterator
 from functools import cache
+from pathlib import Path
 from typing import NamedTuple
 from urllib.parse import urljoin
 
@@ -307,6 +312,128 @@ def along(
 @pytest.mark.parametrize("mutant", MUTANTS, ids=[identifier(mutant) for mutant in MUTANTS])
 def test_both_give_one_verdict_along_each_writer_mutants_search(mutant: WriterMutant, size: Size) -> None:
     along(mutant, size)
+
+
+# Every place outside the switch point that takes jsonschema-rs's verdict alone (`takes`, `verdict`, and the
+# writer properties' `Writer`), by module and the function, class or name it is in, and what holds that
+# verdict to python-jsonschema's: the tests here that compare the same schema, or nothing, with the reason.
+# `validator` and `agreed` take both libraries' verdicts on every value, so their callers need no entry.
+COMPARED = {
+    "tests/spec_sync/test_t1.py::WRITER": ("test_both_give_one_verdict_on_t1s_inputs",),
+    "tests/spec_sync/test_t1.py::READER": ("test_both_give_one_verdict_on_t1s_inputs",),
+    "tests/spec_sync/test_t1.py::ROW": ("test_both_give_one_verdict_on_t1s_inputs",),
+    # The reader `$defs`' constant field, which T1 compares on its constants.
+    "tests/fuzz/field_oracle.py::READER_TAKES": ("test_both_give_one_verdict_on_t1s_inputs",),
+    "tests/spec_sync/test_envelope.py::READER": ("test_both_give_one_verdict_on_the_conformance_inputs",),
+    "tests/property/test_envelope_properties.py::READER": ("test_both_give_one_verdict_on_drawn_records",),
+    "tests/property/test_writer_properties.py::WRITER": (
+        "test_both_give_one_verdict_on_drawn_fields",
+        "test_both_give_one_verdict_on_each_fault_familys_fields",
+    ),
+    "tests/property/test_writer_properties.py::PLACED": (
+        "test_both_give_one_verdict_on_drawn_bodies",
+        "test_both_give_one_verdict_on_each_fault_familys_fields",
+    ),
+}
+SWITCH_POINTS_TEST = "the switch point's own test, on a vocabulary file changed so that the two disagree"
+LEFT_OUT = {
+    "tests/spec_sync/test_t1.py::reader_before_the_condition": (
+        "the reader `$defs` of b8a597d, which T1 keeps as its origin variants' control: not the package's"
+    ),
+    "tests/property/test_writer_mutants.py::test_the_writer_mutant_is_killed_at_its_assertion": (
+        "the writer's mutants, the table's subject; the package's schema is compared along each one's search"
+    ),
+    "tests/unit/test_verdicts.py::test_a_search_never_takes_a_disagreement_for_a_mutants_death": (
+        SWITCH_POINTS_TEST
+    ),
+    "tests/unit/test_verdicts.py::test_a_search_still_kills_where_both_refuse": SWITCH_POINTS_TEST,
+}
+TESTS = Path(__file__).resolve().parent.parent
+# The names that give jsonschema-rs's verdict alone, by the module that defines them.
+ALONE = {
+    "tests.verdicts": {"verdict"},
+    "tests.spec_sync.schemas": {"takes"},
+    "tests.property.test_writer_properties": {"Writer"},
+}
+SWITCH_POINT = {
+    "tests/verdicts.py",
+    "tests/spec_sync/schemas.py",
+    "tests/property/test_writer_properties.py::Writer",
+    "tests/property/test_validators_agree.py",
+}
+
+
+def scope(statement: ast.stmt) -> str:
+    """The name a module-level statement defines or assigns, or its line."""
+    if isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        return statement.name
+    targets = statement.targets if isinstance(statement, ast.Assign) else []
+    if isinstance(statement, ast.AnnAssign):
+        targets = [statement.target]
+    names = [target.id for target in targets if isinstance(target, ast.Name)]
+    return names[0] if names else f"line {statement.lineno}"
+
+
+def alone_places(sources: dict[str, str]) -> set[str]:
+    """Each place, `<module path>::<scope>`, in `sources` (by path) that calls a name of `ALONE`."""
+    found: set[str] = set()
+    for path, source in sources.items():
+        if path in SWITCH_POINT:
+            continue
+        tree = ast.parse(source)
+        module = path.removesuffix(".py").replace("/", ".")
+        giving, modules = set(ALONE.get(module, set())), dict[str, str]()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                given_here = ALONE.get(node.module or "", set())
+                giving |= {alias.asname or alias.name for alias in node.names if alias.name in given_here}
+            elif isinstance(node, ast.Import):
+                modules |= {
+                    alias.asname or alias.name: alias.name for alias in node.names if alias.name in ALONE
+                }
+        for statement in tree.body:
+            place = f"{path}::{scope(statement)}"
+            calls = [node.func for node in ast.walk(statement) if isinstance(node, ast.Call)]
+            if place not in SWITCH_POINT and any(
+                (isinstance(call, ast.Name) and call.id in giving)
+                or (
+                    isinstance(call, ast.Attribute)
+                    and call.attr in ALONE.get(modules.get(ast.unparse(call.value), ""), set())
+                )
+                for call in calls
+            ):
+                found.add(place)
+    return found
+
+
+def sources_of_tests() -> dict[str, str]:
+    return {
+        path.relative_to(TESTS.parent).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted(TESTS.rglob("*.py"))
+    }
+
+
+def test_every_verdict_jsonschema_rs_gives_alone_is_compared_or_listed() -> None:
+    assert sorted(alone_places(sources_of_tests())) == sorted(COMPARED.keys() | LEFT_OUT.keys())
+    assert not COMPARED.keys() & LEFT_OUT.keys()
+    for names in COMPARED.values():
+        assert all(callable(globals().get(name)) for name in names), names
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from tests.spec_sync.schemas import takes\nNEW = takes('case.json')\n",
+        "from tests.verdicts import verdict as judged\ndef new():\n    return judged('case.json')\n",
+        "import tests.verdicts\nNEW = tests.verdicts.verdict('case.json')\n",
+        "from tests.property.test_writer_properties import Writer\nclass New:\n    writer = Writer()\n",
+    ],
+    ids=["takes", "verdict-renamed", "verdict-by-module", "writer"],
+)
+def test_a_place_no_list_names_is_found(source: str) -> None:
+    """The control: a new module that takes jsonschema-rs's verdict alone, in each form."""
+    sources = sources_of_tests() | {"tests/new.py": source}
+    assert len(alone_places(sources) - COMPARED.keys() - LEFT_OUT.keys()) == 1
 
 
 # Controls. A writer mutant of the table given to one side alone: M18, provenance that requires none of its
