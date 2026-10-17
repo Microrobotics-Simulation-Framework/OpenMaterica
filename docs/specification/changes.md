@@ -346,5 +346,5 @@ The TE suite's README lists each broken evaluator beside the files that should c
 need not miss every file by that much: NumPy's `interp` outside the readable range misses TE-003 `narrowed` by
 less (the TE suite's README). Outside a table's readable range, an evaluator's value and its derivative are
 each judged alone (maintainer, 2026-10-17): each is the expected number, or absent or NaN. So a NaN value
-beside a zero derivative passes, and `in_range` is still compared (`read_side_contract.md` section 7 item 1;
-TE-002, TE-003). This settles the S3 entry's "or no number".
+beside a zero derivative passes (`read_side_contract.md` section 7 item 1). `in_range` is still compared there
+(`read_side_contract.md` section 7 item 7; TE-002, TE-003). This settles the S3 entry's "or no number".
