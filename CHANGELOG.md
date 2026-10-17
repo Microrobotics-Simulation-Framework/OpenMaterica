@@ -242,9 +242,12 @@ every family entry goes in `families/CHANGELOG.md`.
   pytest command selects, that the controls' modules hold mutant searches and audit controls only, no
   `continue-on-error`, `PYTEST_ADDOPTS` or `PYTEST_PLUGINS`, no pytest setting in `pyproject.toml` that
   chooses tests, and the workflows README's jobs and shards; each check with a control in which it must fail.
-- Two of step 8's mutants, `missing_represents_accepted` and `named_state_text_unchecked`, are searched among
-  their own faults: searched whole, their kills changed with the constants Hypothesis draws from the modules a
-  process has loaded (`tests/property/README.md`).
+- Each of step 8's mutants that HP3 kills is searched among its own faults: `missing_represents_accepted` and
+  `named_state_text_unchecked` first, whose kills, searched whole, changed with the constants Hypothesis draws
+  from the modules a process has loaded, then the other 21 searched whole, which could meet the same at any
+  change (maintainer, 2026-10-16). Each dies at its first example at both sizes, alone and after the whole
+  suite's collection, on Python 3.11 and 3.15; HP5's two are still searched whole
+  (`tests/property/README.md`).
 - Every verdict the tests take from the package's JSON Schemas comes from jsonschema-rs, a development
   dependency only (0.58.4; `tests/verdicts.py`), where it was python-jsonschema's alone. Tests that take few
   verdicts take both libraries' and fail with a `Disagreement` where they differ; loops take jsonschema-rs's

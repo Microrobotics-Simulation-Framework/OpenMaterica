@@ -194,51 +194,59 @@ entry's other statuses, also takes a withheld entry without its recipe.
 
 `test_value_field_mutants.py`. Each fault is injected where the core looks a name up when it runs, or in the
 tables it builds, rebuilt under the fault. The first 25 (S2a-2's 24, and its fix round's
-`fact_unit_judged_at_step_8`) are searched with their property whole. The other 22 are the fix round's: the
-eleven rules S2a-2's review found no test checked (M1; the fact unit's is `fact_unit_judged_at_step_8`), and
-parts of the text HP3 had no fault for or could not tell from a missing member (M2). One,
-`label_on_any_table`, dies to the label's rule. The other 21 each name the faults they must die at, and their
-search is planned, as the writer's are: HP3 draws its first fault among them, and the kill must hold one.
-Drawn with HP3 whole, 17 of those 21 were measured: each died within its 2,000 examples at both sizes but
-`within_any_status` and `label_beside_an_unknown_form_as_on_a_constant`, which died at the original size alone
-(884 and 845). HP3 whole meets one fault of 154 too seldom to kill each such mutant every time at `ci`, so the
-planned search is what shows HP3 refuses each fault, and the region audit that HP3 draws it; each of the
-review's eleven rules also has a deterministic read in `tests/unit/test_read.py`. The kill is the examples the
-derandomised search took, at the small and the original size (measured 2026-10-15, S2a-2's fix round).
+`fact_unit_judged_at_step_8`) were searched with their property whole; the 23 of them HP3 kills are now
+planned too (below), and HP5's two are still searched whole. The other 22 are the fix round's: the eleven
+rules S2a-2's review found no test checked (M1; the fact unit's is `fact_unit_judged_at_step_8`), and parts of
+the text HP3 had no fault for or could not tell from a missing member (M2). One, `label_on_any_table`, dies to
+the label's rule. The other 21 each name the faults they must die at, and their search is planned, as the
+writer's are: HP3 draws its first fault among them, and the kill must hold one. Drawn with HP3 whole, 17 of
+those 21 were measured: each died within its 2,000 examples at both sizes but `within_any_status` and
+`label_beside_an_unknown_form_as_on_a_constant`, which died at the original size alone (884 and 845). HP3
+whole meets one fault of 154 too seldom to kill each such mutant every time at `ci`, so the planned search is
+what shows HP3 refuses each fault, and the region audit that HP3 draws it; each of the review's eleven rules
+also has a deterministic read in `tests/unit/test_read.py`. The kill is the examples the derandomised search
+took, at the small and the original size (measured 2026-10-15, S2a-2's fix round).
 
 Two of the first 25, `missing_represents_accepted` and `named_state_text_unchecked`, have had planned searches
 since 2026-10-16: searched with HP3 whole, each survived 2,000 examples at the small size once the suite held
 `scripts/report_test_durations.py`, which its unit tests import, and died where their module ran alone.
-Hypothesis (6.169) draws, among its values, constants it finds in the project's modules the process has loaded,
-test modules aside, so the examples a derandomised search meets change with the code and with what else a
-process imported. Planned, each dies at its first example at both sizes, alone, after the whole suite's
-collection, on Python 3.11 and 3.15. The other 23 searched whole may meet the same at any change.
+Hypothesis (6.169) draws, among its values, constants it finds in the project's modules the process has
+loaded, test modules aside, so the examples a derandomised search meets change with the code and with what
+else a process imported. Planned, each dies at its first example at both sizes, alone, after the whole suite's
+collection, on Python 3.11 and 3.15. The other 21 that HP3 kills, which could each meet the same at any
+change, have been planned since S2a-3 came onto main (maintainer, 2026-10-16): each names the faults of HP3's
+catalogue that test the rule it breaks, chosen from a search on each of the 154 faults alone against each
+mutant at both sizes (a fault that killed it only beside a second fault was left out), and dies at its first
+example at both sizes, alone and after the whole suite's collection, on Python 3.11 and 3.15 (measured
+2026-10-17). Searched whole, they had died after 3 to 1,297 examples. HP5's two, `unknown_members_refused` and
+`two_slips_refused`, are still searched whole: HP5 draws no fault of the catalogue to name, and nearly every
+example it draws kills each, at the second example at both sizes in each of those runs.
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
-| `unknown_tokens_ignored` | a token the reader knows for no member of its name is accepted | HP3 | any of its property | 3, 12 |
-| `unknown_token_read_as_a_shape_fault` | such a token gives `form_invalid` | HP3 | any of its property | 3, 12 |
-| `status_tokens_unchecked` | a status object takes any status token | HP3 | any of its property | 11, 137 |
-| `members_beside_a_status_ignored` | a status object beside a member of the shape it stands for is read as one | HP3 | any of its property | 121, 12 |
+| `unknown_tokens_ignored` | a token the reader knows for no member of its name is accepted | HP3 | the 13 faults of a token unknown to its member (`UNKNOWN_TOKENS`) | 1, 1 |
+| `unknown_token_read_as_a_shape_fault` | such a token gives `form_invalid` | HP3 | those 13, `statistics_statuses.status_unknown` and `field.label_unknown` | 1, 1 |
+| `status_tokens_unchecked` | a status object takes any status token | HP3 | `statistics_statuses.block_status_not_allowed`, `.status_not_allowed`, `.status_unknown`, `.within_status_not_allowed`, `field.value_status_not_allowed` | 1, 1 |
+| `members_beside_a_status_ignored` | a status object beside a member of the shape it stands for is read as one | HP3 | `statistics_statuses.uncertainty_status_beside_a_member`, `condition_tokens.status_beside_a_token`, `.status_beside_unit`, `specimen_tokens.fact_status_beside_its_token` | 1, 1 |
 | `missing_represents_accepted` | a statistics block without `represents` passes (the S2 design's HP3 mutant) | HP3 | `statistics_members.represents_missing` | 1, 1 |
-| `null_read_as_absent` | `null` in an optional member reads as the member absent (HP3's) | HP3 | any of its property | 322, 401 |
-| `unknown_condition_names_checked` | a condition name the reader does not know is checked as a numeric condition (HP3's "read as known") | HP3 | any of its property | 128, 30 |
-| `plus_minus_kinds_unchecked` | a `plus_minus` list is checked only as a list | HP3 | any of its property | 3, 24 |
-| `range_order_unchecked` | a range's `lo` may lie above its `hi` | HP3 | any of its property | 534, 139 |
-| `counts_not_whole` | `n_specimens` takes any number | HP3 | any of its property | 192, 318 |
-| `conditional_members_unchecked` | `population_level`, `n_sources` and `precision_conditions` may sit beside any `represents` | HP3 | any of its property | 170, 48 |
-| `uncertainty_rules_unchecked` | an uncertainty's coverage, `dof` and precision rules go | HP3 | any of its property | 20, 125 |
+| `null_read_as_absent` | `null` in an optional member reads as the member absent (HP3's) | HP3 | `condition_tokens.set_or_measured_null`, `provenance.source_null` | 1, 1 |
+| `unknown_condition_names_checked` | a condition name the reader does not know is checked as a numeric condition (HP3's "read as known") | HP3 | `condition_tokens.name_unknown` | 1, 1 |
+| `plus_minus_kinds_unchecked` | a `plus_minus` list is checked only as a list | HP3 | `conditions.plus_minus_empty`, `.plus_minus_negative`, `.plus_minus_two_bounds`, `.plus_minus_unit_not_a_string`, `.plus_minus_unstated_beside_sd` | 1, 1 |
+| `range_order_unchecked` | a range's `lo` may lie above its `hi` | HP3 | `conditions.range_reversed`, `.range_reversed_on_shear_rate`, `specimen.fact_range_reversed` | 1, 1 |
+| `counts_not_whole` | `n_specimens` takes any number | HP3 | `statistics_numbers.count_not_whole` | 1, 1 |
+| `conditional_members_unchecked` | `population_level`, `n_sources` and `precision_conditions` may sit beside any `represents` | HP3 | `statistics_members.n_sources_elsewhere`, `.population_level_elsewhere`, `.population_level_missing`, `.precision_conditions_missing`, `uncertainty.uncertainty_precision_missing` | 1, 1 |
+| `uncertainty_rules_unchecked` | an uncertainty's coverage, `dof` and precision rules go | HP3 | `uncertainty.dof_status_under_student_t`, `.dof_under_normal`, `.no_coverage_number`, `.uncertainty_precision_missing` | 1, 1 |
 | `named_state_text_unchecked` | a disease or treatment state's text may sit beside any token, or be missing | HP3 | `specimen.fact_text_beside_normal`, `specimen.fact_treated_without_text` | 1, 1 |
-| `fixed_basis_unchecked` | `mimics`'s basis takes either token, not the one its row fixes | HP3 | any of its property | 360, 98 |
-| `fact_unit_judged_at_step_8` | a fact's unit is judged at step 8, `s` alone and a status object of the five tokens only, where step 9 alone compares it (a default for the maintainer, 2026-10-15) | HP3 | any of its property | 224, 1297 |
-| `record_structure_unchecked` | a slip in the envelope, the body or a section is ignored | HP3 | any of its property | 58, 111 |
-| `section_specimen_unchecked` | a section's `specimen` is not checked | HP3 | any of its property | 70, 4 |
-| `first_refusal_only` | step 8 gives its first reason only (the S2 design's HP12 mutant, on HP3's two-fault draws) | HP3 | any of its property | 3, 12 |
-| `slip_by_substitution_missed` | the one-slip relation misses a character substituted | HP3 | any of its property | 102, 111 |
-| `slip_by_insertion_missed` | it misses a character inserted or deleted | HP3 | any of its property | 22, 57 |
-| `slip_by_swap_missed` | it misses two adjacent characters swapped | HP3 | any of its property | 9, 83 |
-| `slip_by_plural_missed` | it misses a word made plural or singular | HP3 | any of its property | 36, 6 |
-| `slip_by_underscore_missed` | it misses an underscore added or removed | HP3 | any of its property | 237, 188 |
+| `fixed_basis_unchecked` | `mimics`'s basis takes either token, not the one its row fixes | HP3 | `specimen_tokens.fact_basis_not_its_rows` | 1, 1 |
+| `fact_unit_judged_at_step_8` | a fact's unit is judged at step 8, `s` alone and a status object of the five tokens only, where step 9 alone compares it (a default for the maintainer, 2026-10-15) | HP3 | `specimen.fact_unit_not_its_rows`, `.fact_unit_status_any_token` | 1, 1 |
+| `record_structure_unchecked` | a slip in the envelope, the body or a section is ignored | HP3 | `record.body_slip`, `.envelope_slip`, `.licence_slip`, `.section_name_slip` | 1, 1 |
+| `section_specimen_unchecked` | a section's `specimen` is not checked | HP3 | `section_specimen.section_fact_name_slip`, `.section_fact_not_its_shape` | 1, 1 |
+| `first_refusal_only` | step 8 gives its first reason only (the S2 design's HP12 mutant) | HP3 | `field_form.form_unknown_beside_a_slip`, one fault that gives two reasons | 1, 1 |
+| `slip_by_substitution_missed` | the one-slip relation misses a character substituted | HP3 | `statistics_slips_beside.slip_beside_substituted`, `field_slips_optional.slip_substituted` | 1, 1 |
+| `slip_by_insertion_missed` | it misses a character inserted or deleted | HP3 | `statistics_slips_beside.slip_beside_inserted`, `.slip_beside_deleted`, `field_slips_optional.slip_inserted`, `.slip_deleted` | 1, 1 |
+| `slip_by_swap_missed` | it misses two adjacent characters swapped | HP3 | `statistics_slips_beside.slip_beside_swapped`, `conditions.plus_minus_slip`, `field_slips_optional.slip_swapped` | 1, 1 |
+| `slip_by_plural_missed` | it misses a word made plural or singular | HP3 | `statistics_slips_beside.slip_beside_plural`, `field_slips_optional.slip_plural` | 1, 1 |
+| `slip_by_underscore_missed` | it misses an underscore added or removed | HP3 | `statistics_slips_beside.slip_beside_underscore`, `field_slips_optional.slip_underscore` | 1, 1 |
 | `unknown_members_refused` | every member a place does not name is refused | HP5 | any of its property | 2, 2 |
 | `two_slips_refused` | names two characters off a named member are refused too | HP5 | any of its property | 2, 2 |
 | `within_any_status` | a population level's `within` takes any status token, where `none` alone is allowed | HP3 | `statistics_statuses.within_status_not_allowed` | 1, 1 |

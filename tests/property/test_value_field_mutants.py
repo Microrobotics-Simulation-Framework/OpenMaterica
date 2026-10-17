@@ -430,22 +430,59 @@ def _status_slips_ignored(
     found += [reason for reason in mine if "one slip" not in str(reason.detail)]
 
 
+# The faults of a token the reader knows for no member of its name, each where `token_problems` finds it.
+UNKNOWN_TOKENS = (
+    "statistics_tokens.central_unknown",
+    "statistics_tokens.distribution_unknown",
+    "statistics_tokens.level_unknown",
+    "statistics_tokens.precision_conditions_unknown",
+    "statistics_tokens.within_unknown",
+    "uncertainty_tokens.uncertainty_basis_unknown",
+    "uncertainty_tokens.uncertainty_precision_unknown",
+    "uncertainty_tokens.uncertainty_represents_unknown",
+    "condition_tokens.basis_unknown",
+    "condition_tokens.set_or_measured_unknown",
+    "condition_tokens.token_unknown",
+    "specimen_tokens.fact_token_unknown",
+    "provenance.origin_unknown",
+)
+
+
 MUTANTS = [
     Mutant(
-        "unknown_tokens_ignored", ONE_FAULT, setting(value_shapes, "token_problems", _unknown_tokens_ignored)
+        "unknown_tokens_ignored",
+        ONE_FAULT,
+        setting(value_shapes, "token_problems", _unknown_tokens_ignored),
+        UNKNOWN_TOKENS,
     ),
     Mutant(
         "unknown_token_read_as_a_shape_fault",
         ONE_FAULT,
         setting(value_shapes, "unknown_token", _unknown_token_read_as_a_shape_fault),
+        (*UNKNOWN_TOKENS, "statistics_statuses.status_unknown", "field.label_unknown"),
     ),
     Mutant(
-        "status_tokens_unchecked", ONE_FAULT, setting(value_shapes, "status_object", _status_tokens_unchecked)
+        "status_tokens_unchecked",
+        ONE_FAULT,
+        setting(value_shapes, "status_object", _status_tokens_unchecked),
+        (
+            "statistics_statuses.block_status_not_allowed",
+            "statistics_statuses.status_not_allowed",
+            "statistics_statuses.status_unknown",
+            "statistics_statuses.within_status_not_allowed",
+            "field.value_status_not_allowed",
+        ),
     ),
     Mutant(
         "members_beside_a_status_ignored",
         ONE_FAULT,
         setting(value_shapes, "status_object", _members_beside_a_status_ignored),
+        (
+            "statistics_statuses.uncertainty_status_beside_a_member",
+            "condition_tokens.status_beside_a_token",
+            "condition_tokens.status_beside_unit",
+            "specimen_tokens.fact_status_beside_its_token",
+        ),
     ),
     Mutant(
         "missing_represents_accepted",
@@ -453,44 +490,142 @@ MUTANTS = [
         members_with(optional("represents")),
         ("statistics_members.represents_missing",),
     ),
-    Mutant("null_read_as_absent", ONE_FAULT, setting(value_shapes, "members", _without_nulls)),
+    Mutant(
+        "null_read_as_absent",
+        ONE_FAULT,
+        setting(value_shapes, "members", _without_nulls),
+        ("condition_tokens.set_or_measured_null", "provenance.source_null"),
+    ),
     Mutant(
         "unknown_condition_names_checked",
         ONE_FAULT,
         setting(value_shapes, "conditions", _unknown_condition_names_checked),
+        ("condition_tokens.name_unknown",),
     ),
-    Mutant("plus_minus_kinds_unchecked", ONE_FAULT, members_with(replacing("plus_minus", _lists))),
-    Mutant("range_order_unchecked", ONE_FAULT, members_with(replacing("range", _any))),
-    Mutant("counts_not_whole", ONE_FAULT, members_with(replacing("n_specimens", COUNT_AS_NUMBER))),
     Mutant(
-        "conditional_members_unchecked", ONE_FAULT, setting(value_shapes, "present_exactly_where", _nothing)
+        "plus_minus_kinds_unchecked",
+        ONE_FAULT,
+        members_with(replacing("plus_minus", _lists)),
+        (
+            "conditions.plus_minus_empty",
+            "conditions.plus_minus_negative",
+            "conditions.plus_minus_two_bounds",
+            "conditions.plus_minus_unit_not_a_string",
+            "conditions.plus_minus_unstated_beside_sd",
+        ),
     ),
-    Mutant("uncertainty_rules_unchecked", ONE_FAULT, setting(value_shapes, "uncertainty_rules", _nothing)),
+    Mutant(
+        "range_order_unchecked",
+        ONE_FAULT,
+        members_with(replacing("range", _any)),
+        (
+            "conditions.range_reversed",
+            "conditions.range_reversed_on_shear_rate",
+            "specimen.fact_range_reversed",
+        ),
+    ),
+    Mutant(
+        "counts_not_whole",
+        ONE_FAULT,
+        members_with(replacing("n_specimens", COUNT_AS_NUMBER)),
+        ("statistics_numbers.count_not_whole",),
+    ),
+    Mutant(
+        "conditional_members_unchecked",
+        ONE_FAULT,
+        setting(value_shapes, "present_exactly_where", _nothing),
+        (
+            "statistics_members.n_sources_elsewhere",
+            "statistics_members.population_level_elsewhere",
+            "statistics_members.population_level_missing",
+            "statistics_members.precision_conditions_missing",
+            "uncertainty.uncertainty_precision_missing",
+        ),
+    ),
+    Mutant(
+        "uncertainty_rules_unchecked",
+        ONE_FAULT,
+        setting(value_shapes, "uncertainty_rules", _nothing),
+        (
+            "uncertainty.dof_status_under_student_t",
+            "uncertainty.dof_under_normal",
+            "uncertainty.no_coverage_number",
+            "uncertainty.uncertainty_precision_missing",
+        ),
+    ),
     Mutant(
         "named_state_text_unchecked",
         ONE_FAULT,
         setting(value_shapes, "FACTS", TEXT_ANYWHERE),
         ("specimen.fact_text_beside_normal", "specimen.fact_treated_without_text"),
     ),
-    Mutant("fixed_basis_unchecked", ONE_FAULT, setting(value_shapes, "FACTS", MIMICS_EITHER_BASIS)),
-    Mutant("fact_unit_judged_at_step_8", ONE_FAULT, setting(value_shapes, "FACTS", FACT_UNIT_JUDGED)),
-    Mutant("record_structure_unchecked", ONE_FAULT, setting(fields, "record_problems", _no_record_problems)),
+    Mutant(
+        "fixed_basis_unchecked",
+        ONE_FAULT,
+        setting(value_shapes, "FACTS", MIMICS_EITHER_BASIS),
+        ("specimen_tokens.fact_basis_not_its_rows",),
+    ),
+    Mutant(
+        "fact_unit_judged_at_step_8",
+        ONE_FAULT,
+        setting(value_shapes, "FACTS", FACT_UNIT_JUDGED),
+        ("specimen.fact_unit_not_its_rows", "specimen.fact_unit_status_any_token"),
+    ),
+    Mutant(
+        "record_structure_unchecked",
+        ONE_FAULT,
+        setting(fields, "record_problems", _no_record_problems),
+        ("record.body_slip", "record.envelope_slip", "record.licence_slip", "record.section_name_slip"),
+    ),
     Mutant(
         "section_specimen_unchecked",
         ONE_FAULT,
         setting(fields, "section_problems", _section_specimen_unchecked),
+        ("section_specimen.section_fact_name_slip", "section_specimen.section_fact_not_its_shape"),
     ),
-    Mutant("first_refusal_only", ONE_FAULT, setting(read, "form_problems", _first_refusal_only)),
+    Mutant(
+        "first_refusal_only",
+        ONE_FAULT,
+        setting(read, "form_problems", _first_refusal_only),
+        ("field_form.form_unknown_beside_a_slip",),
+    ),
     *[
         Mutant(
-            f"slip_by_{name}_missed", ONE_FAULT, setting(value_shapes, "slipped", slipped_by(without(*kinds)))
+            f"slip_by_{name}_missed",
+            ONE_FAULT,
+            setting(value_shapes, "slipped", slipped_by(without(*kinds))),
+            dies_at,
         )
-        for name, kinds in {
-            "substitution": ("a character substituted",),
-            "insertion": ("a character added",),
-            "swap": ("two characters swapped",),
-            "plural": ("singular or plural",),
-            "underscore": ("an underscore added",),
+        for name, (kinds, dies_at) in {
+            "substitution": (
+                ("a character substituted",),
+                ("statistics_slips_beside.slip_beside_substituted", "field_slips_optional.slip_substituted"),
+            ),
+            "insertion": (
+                ("a character added",),
+                (
+                    "statistics_slips_beside.slip_beside_inserted",
+                    "statistics_slips_beside.slip_beside_deleted",
+                    "field_slips_optional.slip_inserted",
+                    "field_slips_optional.slip_deleted",
+                ),
+            ),
+            "swap": (
+                ("two characters swapped",),
+                (
+                    "statistics_slips_beside.slip_beside_swapped",
+                    "conditions.plus_minus_slip",
+                    "field_slips_optional.slip_swapped",
+                ),
+            ),
+            "plural": (
+                ("singular or plural",),
+                ("statistics_slips_beside.slip_beside_plural", "field_slips_optional.slip_plural"),
+            ),
+            "underscore": (
+                ("an underscore added",),
+                ("statistics_slips_beside.slip_beside_underscore", "field_slips_optional.slip_underscore"),
+            ),
         }.items()
     ],
     Mutant(
