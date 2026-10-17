@@ -23,7 +23,9 @@ no relation can be for a comparison made in floating point.
 
 Relations over tables, picks and alternatives set aside (N7r, P5 to P7, S3, S4) are S3's and S4's. The
 unrestricted twins N1 and N3 do not hold, by design: the mutant searches show each failing on the
-implementation, so that a generator that lost the shapes that matter is seen (`test_monotonicity_mutants.py`).
+implementation, on N1r's and N3r's own draws, by the ways that hold their counterexamples, so that draws
+that lost those shapes are seen (`test_monotonicity_mutants.py`); and an audit of the worlds every relation
+draws sees worlds that lost them.
 """
 
 import json
@@ -163,9 +165,13 @@ def checked(name: str, drawn: Drawn) -> None:
 
 # Each relation is a property of its own, run in parallel. The least share of its examples on which it held,
 # applied with a verdict on both sides where the base is where the relation speaks: about a third of the share
-# measured at both sizes (2026-10-17).
+# measured at both sizes (2026-10-17). N1r's two ways for N1, where it does not apply, took its share from
+# about 0.9 to 0.63 (seed 1, 2,000 examples at both sizes), and its least share is a third of that: over 24
+# runs at each profile (2026-10-18) the share was 0.60 at `dev` and 0.62 at `ci`, and at 0.3, which `dev`
+# holds to 60 of 200 examples, a correct run fell short with a probability of about 5e-5 at its measured
+# clusters and 1e-3 at `audits.CLUSTER`, above `audits.FALSE_FAILURE`; at 0.2 (20 of 200), below 1e-7.
 HELD = {
-    "N1r": 0.3,
+    "N1r": 0.2,
     "N2": 0.25,
     "N3r": 0.3,
     "N4": 0.24,
@@ -180,6 +186,22 @@ HELD = {
     "S2": 0.32,
     "S5": 0.23,
 }
+
+
+# The shapes N1r's and N3r's restrictions are for, in the worlds each relation's drawn way starts from: an
+# implied condition that fills a condition of the field, and a numeric condition the read leaves unchecked.
+# The twins find theirs by ways of their own (`monotonicity_strategies.UNRESTRICTED_WAYS`); this audit sees
+# worlds that lost the shapes, which every relation's drawn way would then miss (S2a-4's review B, M3). Their
+# chances at both sizes, 1,000 worlds each (2026-10-17): 0.20 to 0.28, and 0.094 to 0.12; in a `ci` run,
+# 0.25 and 0.090.
+WORLD_SHAPES = {"implied_fills": 0.2, "unchecked_numeric": 0.08}
+
+
+@pytest.mark.chances(**WORLD_SHAPES)
+@given(strategies.worlds(SIZE))
+def test_the_worlds_hold_the_shapes_the_restrictions_are_for(world: World) -> None:
+    feature("implied_fills", strategies.implied_applies(world, "temperature"))
+    feature("unchecked_numeric", strategies.unchecked_numeric(world))
 
 
 @pytest.mark.drawn(*strategies.REMOVAL_WAYS)

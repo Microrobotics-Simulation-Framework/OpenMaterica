@@ -10,7 +10,6 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 from typing import Any, NamedTuple, cast
 
 import pytest
-from hypothesis import strategies as st
 
 from materica import shapes
 from materica.core import conditions, read, value_shapes
@@ -22,7 +21,7 @@ from materica.core.value_shapes import Found, JsonObject, an_object, is_status_o
 from tests.property import monotonicity_strategies as strategies
 from tests.property import test_condition_mutants as condition_mutants
 from tests.property import test_monotonicity_properties as properties
-from tests.property.monotonicity_strategies import Changed, Drawn
+from tests.property.monotonicity_strategies import Drawn
 from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.test_condition_mutants import kill
 from tests.property.test_mutants import setting
@@ -206,6 +205,8 @@ MUTANTS = [
     # N3r
     Mutant("status_object_passes", "N3r", setting(conditions, "_entry", _status_object_passes)),
     Mutant("status_in_any_member", "N3r", setting(value_shapes, "provenance", _status_in_any_member)),
+    # Step 10's, at N3r's boundary: a status object other than `unstated` under an implied condition.
+    Mutant("implied_fills_any_status", "N3r", taken("implied_fills_any_status")),
     # N4
     Mutant("plus_minus_widens", "N4", setting(conditions, "_compared", _plus_minus_widens)),
     # N5r
@@ -247,7 +248,9 @@ MUTANTS = [
 ]
 
 
-# The unrestricted twins, which do not hold: each, with its restriction dropped, must fail on the core.
+# The unrestricted twins, which do not hold: each, with its restriction dropped, must fail on the core, on its
+# restricted relation's own draws, by a way that holds its counterexample (`UNRESTRICTED_WAYS`): the spike's
+# control (1), which fails where the generator has lost the shapes the restrictions are for.
 
 
 def _always(facts: JsonObject) -> bool:
@@ -255,48 +258,6 @@ def _always(facts: JsonObject) -> bool:
 
 
 TWINS = {"N1": "N1r", "N3": "N3r"}
-
-
-@st.composite
-def unstated_under_an_implied_condition(draw: st.DrawFn, size: Size) -> Drawn:
-    """N3's counterexample, drawn first: an in-vivo field whose temperature an implied condition at the
-    operating value would fill, made `unstated`."""
-    world = draw(strategies.worlds(size))
-    new = strategies.changed(world)
-    field = strategies.field_of(new)
-    an_object(field["specimen"])["tissue_state"] = {"token": "in_vivo", "basis": "stated"}
-    operating = strategies.operating_of(new).get("temperature")
-    value = an_object(operating).get("value") if isinstance(operating, dict) else None
-    new.request["acceptances"] = [
-        strategies.implied_temperature(new, value if isinstance(value, float) else 310.15)
-    ]
-    base = strategies.repinned(new)
-    after = strategies.changed(base)
-    strategies.conditions_of(after)["temperature"] = {"status": "unstated"}
-    facts: JsonObject = {
-        "place": "conditions.temperature",
-        "token": "unstated",
-        "condition": "temperature",
-        "implied": True,
-    }
-    return Drawn(base, Changed(strategies.repinned(after), facts))
-
-
-@st.composite
-def unchecked_beside_a_met_read(draw: st.DrawFn, size: Size) -> Drawn:
-    """N1's counterexample, drawn first: a condition no row requires and the request leaves out, stated in a
-    world the read otherwise meets (`condition_unchecked`), removed."""
-    world = strategies.met_world(draw, size)
-    strategies.conditions_of(world)["specimen_size"] = {"value": 0.005, "unit": "m", "basis": "stated"}
-    world = strategies.repinned(world)
-    facts: JsonObject = {"condition": "specimen_size", "checked": False, "implied": False}
-    return Drawn(world, strategies.removed(world, "specimen_size", facts))
-
-
-TWIN_SEARCHES: dict[str, Callable[[Size], st.SearchStrategy[Drawn]]] = {
-    "N1": unchecked_beside_a_met_read,
-    "N3": unstated_under_an_implied_condition,
-}
 
 
 SIZES = [pytest.param(SMALL, id="small"), pytest.param(ORIGINAL, id="original")]
@@ -327,10 +288,10 @@ def test_the_unrestricted_twins_mutant_is_killed_by_the_core(
     """N1 and N3 do not hold: a relation that held them would have lost the shapes their restrictions are
     for."""
     restricted = TWINS[twin]
-    monkeypatch.setitem(
-        properties.RELATIONS, restricted, properties.RELATIONS[restricted]._replace(applies=_always)
-    )
-    tried, _ = kill(TWIN_SEARCHES[twin](size), lambda drawn: checked(restricted, drawn))
+    relation = properties.RELATIONS[restricted]
+    monkeypatch.setitem(properties.RELATIONS, restricted, relation._replace(applies=_always))
+    tried, drawn = kill(strategies.drawn(size, relation.change), lambda drawn: checked(restricted, drawn))
+    assert drawn.way in strategies.UNRESTRICTED_WAYS[twin], f"{twin} failed by the way {drawn.way}"
     record_property("examples_to_kill", tried)
 
 

@@ -2,7 +2,8 @@
 """The monotonicity relations' mutant table (`test_monotonicity_mutants.py`) read whole, in a module apart
 from its searches, so that it runs on every Python (`--property-controls` in `tests/conftest.py`)."""
 
-from tests.property.test_monotonicity_mutants import MUTANTS, TWIN_SEARCHES, TWINS
+from tests.property.monotonicity_strategies import UNRESTRICTED_WAYS, WAYS
+from tests.property.test_monotonicity_mutants import MUTANTS, TWINS
 from tests.property.test_monotonicity_properties import RELATIONS
 
 # The spike's relations that S2's forms reach (the S2a-4 brief, phase B item 3).
@@ -16,5 +17,8 @@ def test_each_relation_s2_reaches_is_a_property_with_a_mutant_it_must_kill() -> 
 
 
 def test_each_unrestricted_twin_is_searched_against_its_restricted_relation() -> None:
-    assert set(TWINS) == set(TWIN_SEARCHES) == {"N1", "N3"}
-    assert set(TWINS.values()) <= set(RELATIONS)
+    """On the restricted relation's own draws, among whose ways are those that hold the twin's
+    counterexample."""
+    assert set(TWINS) == set(UNRESTRICTED_WAYS) == {"N1", "N3"}
+    for twin, restricted in TWINS.items():
+        assert set(UNRESTRICTED_WAYS[twin]) < set(WAYS[RELATIONS[restricted].change]), twin
