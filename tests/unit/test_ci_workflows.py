@@ -3034,6 +3034,9 @@ INPUTS_READ_AT = (("run-name",), ("concurrency", "group"))
 INPUT = re.compile(r"\$\{\{[^}]*\binputs\.")
 # The checked profile, as the request job's steps and the jobs after it read it.
 PROFILE_SOURCES = ("${{ steps.checked.outputs.profile }}", "${{ needs.request.outputs.profile }}")
+# The routes by which a job reads the checked request: the request job's steps after the check from the
+# check's outputs, and the jobs after it from the request job's.
+CHECKED_IN_REQUEST, CHECKED_AFTER = "steps.checked.outputs.", "needs.request.outputs."
 
 
 def dispatch(found: Workflow) -> dict[str, Any]:
@@ -3042,19 +3045,27 @@ def dispatch(found: Workflow) -> dict[str, Any]:
     return cast(dict[str, Any], triggers) if isinstance(triggers, dict) else {}
 
 
-def repeat_context(outputs: Mapping[str, str]) -> dict[str, object]:
-    """The context of a step after the request's check: the dispatch's inputs, which every job can read, and
-    the checked request as the request job's own steps read it and as the jobs after it do."""
+def checked_route(job_id: str) -> tuple[str, str]:
+    """The route by which the job `job_id` reads the checked request, and the route it cannot."""
+    return (CHECKED_IN_REQUEST, CHECKED_AFTER) if job_id == "request" else (CHECKED_AFTER, CHECKED_IN_REQUEST)
+
+
+def job_context(job_id: str, outputs: Mapping[str, str]) -> dict[str, object]:
+    """The context of a step of the job `job_id` after the request's check, as GitHub gives it: the dispatch's
+    inputs, which every job can read; the checked request by the job's own route (`checked_route`); and null
+    by the other, as GitHub gives a step or a job that the job does not have, which renders empty."""
     context: dict[str, object] = {f"inputs.{name}": value for name, value in REQUESTED.items()}
+    own, other = checked_route(job_id)
     for name, value in outputs.items():
-        context[f"steps.checked.outputs.{name}"] = context[f"needs.request.outputs.{name}"] = value
+        context[own + name], context[other + name] = value, None
     return context
 
 
 def runner(directory: Path, uv: str) -> dict[str, str]:
     """An environment as a runner's: `python3` the Python running these tests and `uv` a Python program,
-    first on the path; `RUNNER_TEMP`; and no variable of pytest's, Hypothesis's or the profiles' from this
-    run's own."""
+    first on the path; `RUNNER_TEMP`; a step summary of its own; and no variable of pytest's, Hypothesis's,
+    the profiles' or GitHub's from this run's own, so that a step run here on CI neither reads this run's
+    attempt or commit nor writes to its job's summary."""
     tools = directory / "bin"
     tools.mkdir(parents=True, exist_ok=True)
     (directory / "uv.py").write_text(uv, encoding="utf-8")
@@ -3063,11 +3074,12 @@ def runner(directory: Path, uv: str) -> dict[str, str]:
         (tools / name).write_text(f'#!/bin/sh\nexec {command} "$@"\n', encoding="utf-8")
         (tools / name).chmod(0o755)
     (directory / "runner").mkdir(exist_ok=True)
-    own = ("PYTEST_", "HYPOTHESIS_", "MATERICA_")
+    own = ("PYTEST_", "HYPOTHESIS_", "MATERICA_", "GITHUB_")
     environment = {name: value for name, value in os.environ.items() if not name.startswith(own)}
     return environment | {
         "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}",
         "RUNNER_TEMP": str(directory / "runner"),
+        "GITHUB_STEP_SUMMARY": str(directory / "step_summary.md"),
         "STUB_CALLS": str(directory / "calls.jsonl"),
     }
 
@@ -3424,7 +3436,7 @@ def collect_problems(repeat: Workflow, directory: Path, cases: list[tuple[str, s
     collect = step(repeat["jobs"]["request"], COLLECT_STEP)
     problems: list[str] = []
     for node, extra, taken in cases:
-        context = repeat_context(CHECKED | {"node": node, "extra": extra})
+        context = job_context("request", CHECKED | {"node": node, "extra": extra})
         status, _, printed = run_step(collect, context, REPOSITORY, base=environment, scratch=directory)
         if (status == 0) != taken:
             verb = "refuses" if taken else "takes"
@@ -3503,7 +3515,7 @@ def run_the_runs(
     job = repeat["jobs"]["runs"]
     found = step(job, RUNS_STEP)
     found = dict(found, env=job.get("env", {}) | found.get("env", {}) | overrides)
-    context = repeat_context(RUN_OUTPUTS) | {"matrix.job": 1}
+    context = job_context("runs", RUN_OUTPUTS) | {"matrix.job": 1}
     status, _, _ = run_step(found, context, tree, base=environment, scratch=directory)
 
     def lines(path: Path) -> list[dict[str, Any]]:
@@ -3666,6 +3678,134 @@ def test_the_reach_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], No
     repeat = copy.deepcopy(workflow(REPEAT))
     fault(repeat)
     found = reach_problems(repeat, workflow("ci.yml"), tmp_path)
+    assert any(problem in line for line in found), found
+
+
+# The variables, and setup-uv's setting, that carry a part of the checked request into a step, and that part.
+CARRIERS = {
+    "NODE": "node",
+    "PROFILE": "profile",
+    "MATERICA_HYPOTHESIS_PROFILE": "profile",
+    "PYTHON_VERSION": "python",
+    "JOBS": "jobs",
+    "RUNS": "runs",
+    "FIRST_SEED": "first_seed",
+    "EXTRA": "extra",
+    "python-version": "python",
+}
+
+
+def route_problems(repeat: Workflow) -> list[str]:
+    """Where a job reads the checked request by the other route than its own (`checked_route`), which renders
+    empty on GitHub; names an output the request job does not write; or carries a part of the request, in a
+    variable or in setup-uv's Python, as anything but that part's checked value by its own route; or where the
+    request job's outputs are not its check's. So the runs and the summary run and name the request that the
+    request job checked, which they read from one place."""
+    problems: list[str] = []
+    written: dict[str, object] = repeat["jobs"]["request"].get("outputs", {})
+    problems += [
+        f"the request job's output {name} is {value!r}"
+        for name, value in written.items()
+        if value != f"${{{{ {CHECKED_IN_REQUEST}{name} }}}}"
+    ]
+    for job_id, job in repeat["jobs"].items():
+        own, other = checked_route(job_id)
+        for at, text in places(job):
+            if other in text:
+                problems.append(f"{job_id} reads the request through {other} at {'.'.join(at)}")
+            problems += [
+                f"{job_id} reads {CHECKED_AFTER}{name}, which the request job does not write"
+                for name in re.findall(rf"\b{re.escape(CHECKED_AFTER)}(\w+)", text)
+                if name not in written
+            ]
+        carriers = [("its env", job.get("env", {}))]
+        for index, found in enumerate(job.get("steps", [])):
+            if found.get("name") == CHECK_STEP:
+                continue
+            carried = dict(found.get("env", {}))
+            if str(found.get("uses", "")).startswith("astral-sh/setup-uv@"):
+                carried["python-version"] = found.get("with", {}).get("python-version")
+            carriers.append((f"step {index}", carried))
+        for where, carried in carriers:
+            for key, value in carried.items():
+                expected = f"${{{{ {own}{CARRIERS[key]} }}}}" if key in CARRIERS else value
+                if value != expected:
+                    problems.append(f"{where} of {job_id} sets {key} to {value!r}, not {expected}")
+    return problems
+
+
+def test_each_job_reads_the_checked_request_from_one_place() -> None:
+    assert route_problems(workflow(REPEAT)) == []
+
+
+def runs_on_a_python_of_their_own(repeat: Workflow) -> None:
+    repeat["jobs"]["runs"]["steps"][1]["with"]["python-version"] = "3.15"
+
+
+def runs_with_the_profile_of_the_request_jobs_step(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], RUNS_STEP)["env"]["MATERICA_HYPOTHESIS_PROFILE"] = (
+        "${{ steps.checked.outputs.profile }}"
+    )
+
+
+def a_summary_named_by_a_constant(repeat: Workflow) -> None:
+    step(repeat["jobs"]["summary"], SUM_STEP)["env"]["PROFILE"] = "ci"
+
+
+def a_summary_of_a_constant_python(repeat: Workflow) -> None:
+    step(repeat["jobs"]["summary"], SUM_STEP)["env"]["PYTHON_VERSION"] = "3.15"
+
+
+def the_request_job_reading_its_own_outputs(repeat: Workflow) -> None:
+    step(repeat["jobs"]["request"], COLLECT_STEP)["env"]["NODE"] = "${{ needs.request.outputs.node }}"
+
+
+def a_python_left_to_uv(repeat: Workflow) -> None:
+    del repeat["jobs"]["request"]["steps"][2]["with"]["python-version"]
+
+
+def an_output_of_another_step(repeat: Workflow) -> None:
+    repeat["jobs"]["request"]["outputs"]["profile"] = "${{ steps.collect.outputs.profile }}"
+
+
+def an_output_never_written(repeat: Workflow) -> None:
+    repeat["jobs"]["runs"]["steps"][1]["with"]["python-version"] = "${{ needs.request.outputs.pyton }}"
+
+
+def a_part_carried_by_another(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], RUNS_STEP)["env"]["RUNS"] = "${{ needs.request.outputs.jobs }}"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (runs_on_a_python_of_their_own, "step 1 of runs sets python-version to '3.15'"),
+        (
+            runs_with_the_profile_of_the_request_jobs_step,
+            "runs reads the request through steps.checked.outputs. at steps.3.env.MATERICA_HYPOTHESIS",
+        ),
+        (a_summary_named_by_a_constant, "step 2 of summary sets PROFILE to 'ci'"),
+        (a_summary_of_a_constant_python, "step 2 of summary sets PYTHON_VERSION to '3.15'"),
+        (
+            the_request_job_reading_its_own_outputs,
+            "request reads the request through needs.request.outputs. at steps.4.env.NODE",
+        ),
+        (a_python_left_to_uv, "step 2 of request sets python-version to None"),
+        (
+            an_output_of_another_step,
+            "the request job's output profile is '${{ steps.collect.outputs.profile }}'",
+        ),
+        (
+            an_output_never_written,
+            "runs reads needs.request.outputs.pyton, which the request job does not write",
+        ),
+        (a_part_carried_by_another, "of runs sets RUNS to '${{ needs.request.outputs.jobs }}'"),
+    ],
+)
+def test_the_route_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat)
+    found = route_problems(repeat)
     assert any(problem in line for line in found), found
 
 
@@ -3834,7 +3974,8 @@ STATUSES = {"passed": 0, "failed": 1, "interrupted": 124}
 def summary_problems(repeat: Workflow, directory: Path) -> list[str]:
     """Where the summary job does not wait for the runs, does not run whatever their result once the request
     was checked, or, run as written on each set of records, passes where a run failed, did not finish or left
-    no record, or the runs' jobs did not succeed, or fails where every run passed."""
+    no record, or the runs' jobs did not succeed, fails where every run passed, or names another request than
+    the request job wrote, of a profile and a Python other than the defaults."""
     job = repeat["jobs"]["summary"]
     problems: list[str] = []
     if "runs" not in job.get("needs", []):
@@ -3852,7 +3993,12 @@ def summary_problems(repeat: Workflow, directory: Path) -> list[str]:
         }
         if not truthy(evaluated(condition(job), context)):
             problems.append(f"the summary does not run when the runs end in {result}")
-    outputs = CHECKED | {"jobs": "2", "runs": "3", "matrix": "[1, 2]"}
+    outputs = CHECKED | {"profile": "deep", "python": "3.12", "jobs": "2", "runs": "3", "matrix": "[1, 2]"}
+    extra = ", ".join(map(repeat_runs.code, outputs["extra"].split()))
+    named = (
+        f"## Repeat runs of {repeat_runs.code(outputs['node'])}\n\nProfile {repeat_runs.code('deep')}, "
+        f"Python 3.12, extra arguments: {extra}. 2 jobs of 3 runs, 6 in all, seeds 1 to 6."
+    )
     for index, (case, (outcomes, result, passes)) in enumerate(SUMMED.items()):
         tree = checkout(directory / str(index))
         environment = runner(directory / str(index), "")
@@ -3868,14 +4014,16 @@ def summary_problems(repeat: Workflow, directory: Path) -> list[str]:
             }
             with (kept / "results.jsonl").open("a", encoding="utf-8") as lines:
                 lines.write(json.dumps(record) + "\n")
-        context = repeat_context(outputs) | {
+        context = job_context("summary", outputs) | {
             "needs.runs.result": result if "runs" in job.get("needs", []) else None
         }
-        status, _, _ = run_step(
+        status, _, printed = run_step(
             step(job, SUM_STEP), context, tree, base=environment, scratch=directory / str(index)
         )
         if (status == 0) != passes:
             problems.append(f"the summary {'fails' if passes else 'passes'} when {case}")
+        if named not in printed:
+            problems.append(f"the summary, when {case}, names the request as {printed[:300]!r}")
     return problems
 
 
@@ -3901,6 +4049,8 @@ def a_summary_before_the_runs(repeat: Workflow) -> None:
         (a_summary_after_success_alone, "the summary does not run when the runs end in failure"),
         (a_summary_that_carries_on, "the summary passes when a run failed"),
         (a_summary_before_the_runs, "the summary does not wait for the runs"),
+        (a_summary_named_by_a_constant, "Profile <code>ci</code>, Python 3.12"),
+        (a_summary_of_a_constant_python, "Profile <code>deep</code>, Python 3.15"),
     ],
 )
 def test_the_summary_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], None], problem: str) -> None:
