@@ -9,9 +9,12 @@ so a `cp` of a missing file fails it. This fails where, in any page of the copy:
 
 - a local link, image or icon, or an icon its web manifest names, resolves to no file of the copy (a
   directory to its `index.html`), or a fragment to no `id` or `name` in the page it names;
-- there is not exactly one content security policy, or it comes after an element that loads something; its
-  default is not `'none'`, or a directive that names sources allows one elsewhere: a host, a scheme other than
-  `data:`, or `*`;
+- there is not exactly one content security policy in its head, as a browser reads the head (it ends at
+  the first element or text a head cannot hold, `</head>` left out or not), or it comes after an element that
+  loads something or a style; a directive is given twice (a browser keeps the first); its default is not
+  `'none'`; or a directive that names sources allows anything but `'none'`, `'self'`, `'unsafe-inline'`, a
+  hash, a nonce and `data:` (a host, another scheme, `*`, or a keyword such as `'strict-dynamic'`, which lets
+  a trusted script load scripts from any host);
 - an element loads something from elsewhere (an image, an icon, a script, a style, a frame or the manifest),
   or a style's `url(...)` or `@import` names an address elsewhere; links to other sites (`<a href>`) are
   navigation, not loads, and are not checked;
@@ -52,6 +55,22 @@ DESCRIBING_LINKS = {"canonical", "alternate"}
 LINKING = {"a": ("href",), "area": ("href",)}
 # The directives of a policy that name where things may come from.
 SOURCE_DIRECTIVE = re.compile(r".+-src(-elem|-attr)?|base-uri|form-action|frame-ancestors")
+# The sources such a directive may hold, a closed list: none lets anything load from elsewhere.
+ALLOWED_SOURCE = re.compile(
+    r"'none'|'self'|'unsafe-inline'|'(?:sha256|sha384|sha512)-[A-Za-z0-9+/_-]+=*'|'nonce-[A-Za-z0-9+/_-]+=*'|data:",
+    re.I,
+)
+# The elements a head holds ("the in head insertion mode", HTML): any other element, or text, ends the head,
+# `</head>` or not; and the elements that hold nothing.
+HEAD_ELEMENTS = frozenset(
+    "base basefont bgsound link meta noframes noscript script style template title".split()
+)
+VOID_ELEMENTS = frozenset(
+    {
+        *"area base basefont bgsound br col embed frame hr img input keygen".split(),
+        *"link meta param source track wbr".split(),
+    }
+)
 CSS_URL = re.compile(r"""url\(\s*(['"]?)(.*?)\1\s*\)|@import\s+(['"])(.*?)\3""", re.I | re.S)
 # Where an image of the README may name a file of this repository by URL.
 REPOSITORY_URLS = (
@@ -63,35 +82,50 @@ README_IMAGE = re.compile(r"""<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']|!\[[^\]]*
 
 
 class Page(HTMLParser):
-    """What the checks read of a page: its elements in order, whether each is in its head, its ids and names,
-    and the text of its styles."""
+    """What the checks read of a page: its elements in order, whether each is in its head itself (not inside
+    another of its elements, such as a `<noscript>`), its ids and names, and the text of its styles. The head
+    is read as a browser reads it: one begins at the first element a head holds, `<head>` or not, and ends at
+    `</head>` or at the first element or text it cannot hold."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.elements: list[tuple[str, dict[str, str], bool]] = []
         self.anchors: set[str] = set()
         self.styles: list[str] = []
-        self.in_head = False
+        self.head = "before"
+        self.open_in_head: list[str] = []
         self.in_style = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = {name: value or "" for name, value in attrs}
-        self.in_head = self.in_head or tag == "head"
-        self.elements.append((tag, attributes, self.in_head))
+        if self.head == "before" and tag not in ("html", "head"):
+            self.head = "in" if tag in HEAD_ELEMENTS else "after"
+        elif self.head == "before" and tag == "head":
+            self.head = "in"
+        elif self.head == "in" and not self.open_in_head and tag not in HEAD_ELEMENTS and tag != "head":
+            self.head = "after"
+        in_head = self.head == "in" and not self.open_in_head and tag != "head"
+        self.elements.append((tag, attributes, in_head))
+        if self.head == "in" and tag != "head" and tag not in VOID_ELEMENTS:
+            self.open_in_head.append(tag)
         self.anchors |= {attributes[name] for name in ("id", "name") if attributes.get(name)}
         if "style" in attributes:
             self.styles.append(attributes["style"])
         self.in_style = tag == "style"
 
     def handle_endtag(self, tag: str) -> None:
-        if tag == "head":
-            self.in_head = False
+        if tag in self.open_in_head:
+            del self.open_in_head[self.open_in_head.index(tag) :]
+        elif tag == "head" and self.head == "in":
+            self.head = "after"
         if tag == "style":
             self.in_style = False
 
     def handle_data(self, data: str) -> None:
         if self.in_style:
             self.styles.append(data)
+        if data.strip() and not self.open_in_head and self.head in ("before", "in"):
+            self.head = "after"
 
 
 def parsed(page: Path) -> Page:
@@ -152,19 +186,24 @@ def resolved(site: Path, base: Path, url: str) -> tuple[Path | None, str]:
 
 def policy_problems(where: str, policy: str) -> list[str]:
     directives: dict[str, list[str]] = {}
+    problems: list[str] = []
     for part in policy.split(";"):
         words = part.split()
-        if words:
+        if words and words[0].lower() in directives:
+            problems.append(
+                f"{where}: its policy gives {words[0].lower()} twice, and a browser keeps the first"
+            )
+        elif words:
             directives[words[0].lower()] = words[1:]
-    problems: list[str] = []
-    if directives.get("default-src") != ["'none'"]:
+    if [source.lower() for source in directives.get("default-src", [])] != ["'none'"]:
         problems.append(f"{where}: its policy's default-src is {directives.get('default-src')}, not 'none'")
     for name, sources in directives.items():
         if SOURCE_DIRECTIVE.fullmatch(name):
             problems += [
-                f"{where}: its policy's {name} allows {source}, a source elsewhere"
+                f"{where}: its policy's {name} allows {source}, "
+                + ("a keyword not on the check's list" if source.startswith("'") else "a source elsewhere")
                 for source in sources
-                if not (source.startswith("'") and source.endswith("'")) and source.lower() != "data:"
+                if not ALLOWED_SOURCE.fullmatch(source)
             ]
     return problems
 
@@ -218,7 +257,8 @@ def page_problems(site: Path, page: Path) -> list[str]:
             tag == "style" for tag, _, _ in reader.elements[:place]
         ):
             problems.append(
-                f"{where}: its content security policy comes after an element that loads something"
+                f"{where}: its content security policy comes after an element that loads something, "
+                "or a style"
             )
         problems += policy_problems(where, policy)
     for index, tag, attribute, url in loaded:

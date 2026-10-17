@@ -373,8 +373,9 @@ every family entry goes in `families/CHANGELOG.md`.
   shards, none of which reads them, but a seconds-long `site` job (the gate's `site_paths`, neither code nor
   documentation). It stages the site with the Pages workflow's own step, copied word for word, which fails
   where a file it copies is missing, then runs `scripts/check_site.py` on the copy: every local link, image
-  and icon, the web manifest's included, resolves; every page keeps one content security policy, before
-  anything it loads, that lets nothing load from elsewhere, and nothing does; and the README's images name
+  and icon, the web manifest's included, resolves; every page keeps one content security policy, in its head
+  as a browser reads it and before anything it loads, that gives no directive twice and allows only `'none'`,
+  `'self'`, `'unsafe-inline'`, hashes, nonces and `data:`, and nothing loads from elsewhere; and the README's images name
   files of the tree. It runs on every change but one to documentation alone, and the one required check
   requires it then. `tests/unit/test_ci_workflows.py` holds the job's staging step to Pages', shows that
   leaving out any file the step copies fails it, and checks that no test or script names a path of the site

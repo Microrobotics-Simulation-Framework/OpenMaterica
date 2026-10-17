@@ -88,6 +88,32 @@ def rewrite(site: Path, old: str, new: str, name: str = "home.html") -> None:
             f"{ICON}\n{META}",
             "its content security policy comes after an element that loads something",
         ),
+        (
+            f'{META}\n{CANONICAL}\n{ICON}\n<link rel="manifest" href="/app.webmanifest">',
+            "<style>p { color: red; }</style>\n" + f"{META}\n{CANONICAL}",
+            "its content security policy comes after an element that loads something, or a style",
+        ),
+        # A directive given twice: a browser keeps the first, which here allows everything.
+        ("default-src 'none'", "default-src *; default-src 'none'", "its policy gives default-src twice"),
+        (
+            "img-src 'self' data:",
+            "img-src https://cdn.example.org; img-src 'self' data:",
+            "its policy gives img-src twice",
+        ),
+        # A keyword off the closed list: under 'strict-dynamic' a script a hash trusts loads from anywhere.
+        (
+            "img-src 'self' data:",
+            "img-src 'self' data:; script-src 'strict-dynamic' 'sha256-AAAA'",
+            "its policy's script-src allows 'strict-dynamic', a keyword not on the check's list",
+        ),
+        # A directive that names sources without `-src`.
+        (
+            "img-src 'self' data:",
+            "img-src 'self' data:; form-action https://x.example",
+            "its policy's form-action allows https://x.example, a source elsewhere",
+        ),
+        # The policy in the body: a browser ignores it there.
+        (f"{META}\n", "", "0 content security policies in its head"),
         # Loads from elsewhere.
         (
             'src="/logo.png"',
@@ -118,6 +144,12 @@ def rewrite(site: Path, old: str, new: str, name: str = "home.html") -> None:
         "any-source",
         "a-scheme",
         "a-policy-too-late",
+        "a-style-before-the-policy",
+        "a-default-given-twice",
+        "a-source-directive-given-twice",
+        "strict-dynamic",
+        "form-action-elsewhere",
+        "the-policy-out-of-the-head",
         "an-image-from-elsewhere",
         "an-icon-from-a-host",
         "a-script-from-elsewhere",
@@ -127,8 +159,79 @@ def rewrite(site: Path, old: str, new: str, name: str = "home.html") -> None:
 )
 def test_the_site_check_can_fail(site: Path, old: str, new: str, problem: str) -> None:
     rewrite(site, old.replace("{{", "{"), new.replace("{{", "{"))
+    if problem == "0 content security policies in its head":
+        rewrite(site, "<h1", f"{META}\n<h1")
     found = problems(site)
     assert any(problem in line for line in found), found
+
+
+def test_a_link_to_a_file_outside_the_copy_does_not_resolve(site: Path) -> None:
+    """The file exists, beside the copy, but Pages serves the copy alone."""
+    (site.parent / "outside.html").write_text(page(), encoding="utf-8")
+    rewrite(site, 'href="notes/"', 'href="../outside.html"')
+    assert problems(site) == ["home.html: <a href> '../outside.html' names no file of the site"]
+
+
+BODY_TEXT = "<p>A page.</p>"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"<html><head><title>p</title><body>{META}{BODY_TEXT}</body></html>",
+        f"<html><head><title>p</title><p>x</p>{META}</head><body>{BODY_TEXT}</body></html>",
+        f"<html><head>Some text{META}</head><body>{BODY_TEXT}</body></html>",
+        f"<html><head><noscript>{META}</noscript></head><body>{BODY_TEXT}</body></html>",
+        f"<html><head><title>{META}</title></head><body>{BODY_TEXT}</body></html>",
+        f"<html><head></head><head>{META}</head><body>{BODY_TEXT}</body></html>",
+    ],
+    ids=[
+        "the-body-opened-before-it",
+        "after-an-element-a-head-cannot-hold",
+        "after-text",
+        "inside-noscript",
+        "inside-the-title",
+        "in-a-second-head",
+    ],
+)
+def test_a_policy_a_browser_does_not_read_as_in_the_head_is_not_counted(site: Path, text: str) -> None:
+    """A browser ends the head at the first element or text it cannot hold, `</head>` or not, and reads a
+    policy only as an element of the head itself."""
+    (site / "home.html").write_text(text, encoding="utf-8")
+    assert "home.html: 0 content security policies in its head, not one" in problems(site)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"<!doctype html>{META}<title>p</title><p>{BODY_TEXT}</p>",
+        f"<html>\n<head>\n<!-- a comment -->\n{META}\n<title>p</title>\n</head>\n<body>{BODY_TEXT}</body>",
+        f"<html><head><title>p</title><noscript><p>x</p></noscript>{META}</head><body>{BODY_TEXT}</body></html>",
+    ],
+    ids=["a-head-without-its-tags", "whitespace-and-a-comment", "after-a-noscript"],
+)
+def test_a_policy_a_browser_reads_as_in_the_head_is_counted(site: Path, text: str) -> None:
+    """The controls: a head a browser implies without `<head>`, whitespace and comments in the head, and an
+    element inside a `<noscript>`, none of which ends it."""
+    (site / "home.html").write_text(text, encoding="utf-8")
+    assert [line for line in problems(site) if line.startswith("home.html")] == []
+
+
+@pytest.mark.parametrize(
+    "sources",
+    [
+        "'self'",
+        "'NONE'",
+        "'unsafe-inline'",
+        "'sha256-AAAA+/='",
+        "'sha512-x_y-z'",
+        "'nonce-abc123=='",
+        "data:",
+    ],
+)
+def test_the_sources_on_the_closed_list_pass(site: Path, sources: str) -> None:
+    rewrite(site, "img-src 'self' data:", f"img-src 'self' data:; script-src {sources}")
+    assert problems(site) == []
 
 
 def test_the_manifests_icons_resolve_and_come_from_the_site(site: Path) -> None:
