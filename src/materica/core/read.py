@@ -15,7 +15,7 @@ import dataclasses
 import json
 from collections.abc import Collection
 from dataclasses import dataclass
-from typing import TypeGuard, get_args
+from typing import TypeGuard, cast, get_args
 
 from materica import shapes
 from materica.core import jsonio
@@ -176,20 +176,22 @@ class ReadResult:
             result["status"],
             reasons,
             tuple(result.get("labels", [])),
-            None if conditions is None else tuple(ConditionEntry.from_json(entry) for entry in conditions),
+            None
+            if conditions is None
+            else tuple(ConditionEntry.from_json(cast(JsonObject, dict(entry))) for entry in conditions),
         )
 
     def to_json(self) -> shapes.ReadResult:
-        reasons = [reason.to_json() for reason in self.reasons]
-        if self.conditions is None:
-            return {"status": self.status, "reasons": reasons, "labels": list(self.labels)}
-        conditions = [entry.to_json() for entry in self.conditions]
-        return {
+        """The result as JSON, its members of the shapes `read_result.json` gives them; the result's shape is
+        read-only, so it is written whole."""
+        members: dict[str, object] = {
             "status": self.status,
-            "reasons": reasons,
-            "conditions": conditions,
-            "labels": list(self.labels),
+            "reasons": [reason.to_json() for reason in self.reasons],
         }
+        if self.conditions is not None:
+            members["conditions"] = [entry.to_json() for entry in self.conditions]
+        members["labels"] = list(self.labels)
+        return cast(shapes.ReadResult, members)
 
 
 def read(request: RequestInput, store: RecordStore, *, claims: Collection[Suite] = CLAIMS) -> ReadResult:

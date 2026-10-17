@@ -609,6 +609,63 @@ ReasonCode: TypeAlias = Literal[
 ]
 
 
+class ListedRecord(TypedDict):
+    """
+    A record list_records gives, by its id and version (README.md, "Operations").
+    """
+
+    id: RecordId
+    version: Version
+
+
+class ImpliedNumericValue(TypedDict):
+    """
+    A value or a range, with its unit.
+    """
+
+    value: NotRequired[float]
+    range: NotRequired[Range]
+    unit: str
+    basis: Literal["implied"]
+
+
+class ImpliedTokenValue(TypedDict):
+    """
+    A token.
+    """
+
+    token: str
+    basis: Literal["implied"]
+
+
+ResultLabel: TypeAlias = Literal[
+    "user_extracted",
+    "no_independent_witness",
+    "mean_of_specimen_fits",
+    "mixed_conditions",
+    "hash_not_checked",
+    "initial_value_only",
+]
+
+
+class NominalAssumption(TypedDict):
+    """
+    A nominal's value.
+    """
+
+    acceptance: Literal["nominal"]
+    value: float
+
+
+class ExtrapolationAssumption(TypedDict):
+    """
+    An extrapolation's members as the request gives them, method and law among them, which S3's extrapolations
+    type.
+    """
+
+    acceptance: Literal["extrapolation"]
+
+
 Suite: TypeAlias = Literal[
     "plain_read",
     "hash",
@@ -934,6 +991,15 @@ class Reason(TypedDict):
     detail: NotRequired[str]
 
 
+ImpliedValue: TypeAlias = ImpliedNumericValue | ImpliedTokenValue
+
+
+ReturnedLabel: TypeAlias = ResultLabel | Label
+
+
+Assumption: TypeAlias = NominalAssumption | ExtrapolationAssumption
+
+
 class CaseCompare(TypedDict):
     """
     The result's members compared, and how numbers are: relative_tolerance or exact, never both.
@@ -1061,6 +1127,27 @@ class Derivation(TypedDict):
 class Requirement(TypedDict):
     want: Want
     conditions: NotRequired[dict[str, RequirementCondition]]
+
+
+class ConditionEntry(TypedDict):
+    """
+    One condition checked (read_side_contract.md section 2 item 6): record is the record's entry as read, its
+    status object, or the value an implied condition supplies with basis implied; operating is the request's
+    operating condition.
+    """
+
+    name: str
+    status: ReadStatus
+    record: NotRequired[
+        NumericCondition
+        | ConditionDensityKind
+        | ConditionSpecimenShape
+        | ConditionMeasurementGeometry
+        | ConditionTestMethod
+        | StatusObject
+        | ImpliedValue
+    ]
+    operating: NotRequired[OperatingCondition]
 
 
 class CompositionComponent(TypedDict):
@@ -1318,15 +1405,67 @@ class ComparedResult(TypedDict):
 
     status: NotRequired[ReadStatus]
     reasons: NotRequired[list[Reason]]
-    value: NotRequired[JsonValue]
-    alternative_values: NotRequired[list[JsonValue]]
-    unit: NotRequired[JsonValue]
-    conditions: NotRequired[list[JsonObject]]
-    specimen: NotRequired[JsonObject]
-    statistics: NotRequired[JsonObject]
-    provenance: NotRequired[JsonObject]
-    labels: NotRequired[list[str]]
-    assumption: NotRequired[JsonObject]
+    value: NotRequired[ResultValue]
+    alternative_values: NotRequired[list[AlternativeValue]]
+    unit: NotRequired[Unit]
+    conditions: NotRequired[list[ConditionEntry]]
+    specimen: NotRequired[Specimen]
+    statistics: NotRequired[FieldStatistics]
+    provenance: NotRequired[ResultProvenance]
+    labels: NotRequired[list[ReturnedLabel]]
+    assumption: NotRequired[Assumption]
+
+
+ResultValue: TypeAlias = (
+    float
+    | Interval
+    | Composition
+    | list[EvidenceEntry | WithheldEvidenceEntry]
+    | Placeholder
+    | ContentHash
+    | list[ListedRecord]
+)
+
+
+class AlternativeValue(TypedDict):
+    """
+    An alternative that stays under no_pick (read_side_contract.md section 2): its index among the stored
+    alternatives of the field read, and its members as a read of it alone gives them.
+    """
+
+    alternative: float
+    value: ResultValue
+    conditions: list[ConditionEntry]
+    specimen: Specimen
+    statistics: NotRequired[FieldStatistics]
+    provenance: ResultProvenance
+    labels: list[ReturnedLabel]
+
+
+class ResultProvenance(TypedDict):
+    """
+    The provenance a read returns (read_side_contract.md section 2): the origin token, the review as
+    provenance.md section 2 item 6 reads it, the source's key, and a derived value's derivation.
+    """
+
+    origin: Origin
+    review: ResultReview | StatusNotChecked
+    source: NotRequired[str]
+    derivation: NotRequired[Derivation]
+
+
+class ResultReview(TypedDict):
+    """
+    A review as found, its result a token the reader knows: a review never refuses, so the members a review
+    names that the record holds are returned whatever they hold (provenance.md section 2 item 6).
+    """
+
+    result: ReviewResult
+    reviewer: NotRequired[JsonValue]
+    orcid: NotRequired[JsonValue]
+    date: NotRequired[JsonValue]
+    independent_of_extraction: NotRequired[JsonValue]
+    checklist: NotRequired[JsonValue]
 
 
 class CaseOperation(TypedDict):
@@ -1360,15 +1499,15 @@ class ReadResult(TypedDict):
 
     status: ReadStatus
     reasons: list[Reason]
-    value: NotRequired[JsonValue]
-    alternative_values: NotRequired[list[JsonValue]]
-    unit: NotRequired[JsonValue]
-    conditions: NotRequired[list[JsonObject]]
-    specimen: NotRequired[JsonObject]
-    statistics: NotRequired[JsonObject]
-    provenance: NotRequired[JsonObject]
-    labels: NotRequired[list[str]]
-    assumption: NotRequired[JsonObject]
+    value: NotRequired[ResultValue]
+    alternative_values: NotRequired[list[AlternativeValue]]
+    unit: NotRequired[Unit]
+    conditions: NotRequired[list[ConditionEntry]]
+    specimen: NotRequired[Specimen]
+    statistics: NotRequired[FieldStatistics]
+    provenance: NotRequired[ResultProvenance]
+    labels: NotRequired[list[ReturnedLabel]]
+    assumption: NotRequired[Assumption]
 
 
 class ConstantField(FieldMembers):

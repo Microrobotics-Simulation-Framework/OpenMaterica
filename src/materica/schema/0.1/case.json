@@ -87,15 +87,15 @@
       "properties": {
         "status": {"$ref": "read_result.json#/$defs/read_status"},
         "reasons": {"type": "array", "items": {"$ref": "read_result.json#/$defs/reason"}},
-        "value": {"$ref": "record.writer.json#/$defs/json_value"},
-        "alternative_values": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
-        "unit": {"$ref": "record.writer.json#/$defs/json_value"},
-        "conditions": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_object"}},
-        "specimen": {"$ref": "record.writer.json#/$defs/json_object"},
-        "statistics": {"$ref": "record.writer.json#/$defs/json_object"},
-        "provenance": {"$ref": "record.writer.json#/$defs/json_object"},
-        "labels": {"type": "array", "items": {"type": "string"}},
-        "assumption": {"$ref": "record.writer.json#/$defs/json_object"}
+        "value": {"$ref": "read_result.json#/$defs/result_value"},
+        "alternative_values": {"type": "array", "items": {"$ref": "read_result.json#/$defs/alternative_value"}},
+        "unit": {"$ref": "record.writer.json#/$defs/unit"},
+        "conditions": {"type": "array", "items": {"$ref": "read_result.json#/$defs/condition_entry"}},
+        "specimen": {"$ref": "record.writer.json#/$defs/specimen"},
+        "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
+        "provenance": {"$ref": "read_result.json#/$defs/result_provenance"},
+        "labels": {"type": "array", "items": {"$ref": "read_result.json#/$defs/returned_label"}},
+        "assumption": {"$ref": "read_result.json#/$defs/assumption"}
       },
       "additionalProperties": false
     },
