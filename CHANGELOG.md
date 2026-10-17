@@ -349,7 +349,8 @@ every family entry goes in `families/CHANGELOG.md`.
 - Every commit of a pull request but its head is checked on its own (the `commit` job): checked out as it is,
   on Python 3.15, ruff, mypy and pyright, the wheel's build and check, every generator's `--check` and the
   whole suite at `dev`, at most six at once. The gate lists the commits, but those that change documentation
-  alone, so a pull request of one commit runs none; a tree that passed the same checks earlier in the pull
+  alone, so a pull request of one commit runs none; a Python file counts as code wherever it sits, for the
+  commits and for the pull request, since ruff reads every one; a tree that passed the same checks earlier in the pull
   request is not checked again, its pass kept in the cache under the tree, the workflow's blob and the
   runner's image version. The one required check requires the job
   whenever the gate lists a commit. `tests/unit/test_ci_workflows.py` runs the gate's step on stacks of
