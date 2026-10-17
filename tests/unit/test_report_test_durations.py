@@ -4,8 +4,10 @@ nothing to summarise."""
 
 import os
 import re
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -252,14 +254,51 @@ import pytest
 def test_one(n):
     time.sleep(0.2 if n < 2 else 300)
 """
+# Loaded by every process of that run, it writes `ready` once pytest-xdist's controller, which writes the
+# report, has taken in the ends of the two quick tests and the setup of a slow test from each worker: each
+# worker is then inside a slow test. It reads each report after every other plugin, the report's writer
+# included.
+INTERRUPTED_CONFTEST = """
+import os
+from pathlib import Path
+
+import pytest
+
+QUICK = ("[0]", "[1]")
+ENDED = set()
+STARTED = set()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_logreport(report):
+    result = yield
+    if "PYTEST_XDIST_WORKER" not in os.environ:
+        if report.when == "teardown" and report.nodeid.endswith(QUICK):
+            ENDED.add(report.nodeid)
+        if report.when == "setup" and not report.nodeid.endswith(QUICK):
+            STARTED.add(report.nodeid)
+        if len(ENDED) == 2 and len(STARTED) == 2:
+            Path("ready").touch()
+    return result
+"""
+# Bounds on a run that hangs, not timings the test relies on: on four cores shared with the rest of this file,
+# the run was ready in about 3 s.
+READY_WITHIN = 120.0
+ENDS_WITHIN = 60.0
 
 
 def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_path: Path) -> None:
     """`timeout --signal=INT`, as ci.yml runs each pytest command, sends SIGINT to pytest and then to its
     whole process group, xdist's workers included: pytest writes the report of the tests that ended, and one
-    test case holding a time alone for each test still running."""
+    test case holding a time alone for each test still running.
+
+    The run is interrupted once it is ready, whatever the load: GNU `timeout` takes SIGALRM, its timer's
+    signal, as its limit reached, sends SIGINT as it would then, and exits 124. A fixed limit left the moment
+    to the load."""
     (tmp_path / "test_sample.py").write_text(INTERRUPTED_SAMPLE, encoding="utf-8")
+    (tmp_path / "conftest.py").write_text(INTERRUPTED_CONFTEST, encoding="utf-8")
     report = tmp_path / "report.xml"
+    output = tmp_path / "output.txt"
     environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
     pytest_run = [
         sys.executable,
@@ -272,20 +311,44 @@ def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_
         "-o",
         "junit_family=xunit1",
     ]
-    ran = subprocess.run(
-        ["timeout", "--signal=INT", "10s", *pytest_run, f"--junitxml={report}", "test_sample.py"],
-        cwd=tmp_path,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert ran.returncode == 124, ran.stdout + ran.stderr
-    assert sorted(test.nodeid for test in read_report(report)) == [
+    limit = f"{READY_WITHIN + ENDS_WITHIN:.0f}s"
+    with output.open("w", encoding="utf-8") as log:
+        run = subprocess.Popen(
+            ["timeout", "--signal=INT", limit, *pytest_run, f"--junitxml={report}", "test_sample.py"],
+            cwd=tmp_path,
+            env=environment,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            deadline = time.monotonic() + READY_WITHIN
+            while not (tmp_path / "ready").exists() and run.poll() is None and time.monotonic() < deadline:
+                time.sleep(0.05)
+            ready = (tmp_path / "ready").exists() and run.poll() is None
+            if ready:
+                run.send_signal(signal.SIGALRM)
+                run.wait(timeout=ENDS_WITHIN)
+        finally:
+            if run.poll() is None:
+                try:
+                    os.killpg(run.pid, signal.SIGKILL)  # `timeout` leads the run's process group
+                except ProcessLookupError:
+                    run.kill()
+                run.wait()
+    # Every failure shows what the run printed and wrote, so that one on CI can be read.
+    printed = output.read_text(encoding="utf-8")
+    report_text = report.read_text(encoding="utf-8") if report.exists() else "no report"
+    assert ready, printed
+    assert run.returncode == 124, printed
+    try:
+        tests = read_report(report)
+    except ReportError as error:
+        pytest.fail(f"{error}\n{report_text}\n{printed}")
+    assert sorted(test.nodeid for test in tests) == [
         "test_sample.py::test_one[0]",
         "test_sample.py::test_one[1]",
-    ]
-    assert stopped(report) == 2
+    ], report_text
+    assert stopped(report) == 2, report_text
 
 
 @pytest.mark.parametrize(
