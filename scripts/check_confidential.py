@@ -19,6 +19,14 @@ The private paths need no key: an absolute home directory, a session scratchpad,
 directory, and the private planning directory, which only `CLAUDE.md` names, one level up. The tracked files
 are those of the repository in the working directory, read from its working tree.
 
+A content holding no NUL byte is read as UTF-8, a byte that is not UTF-8 read as a replacement, so every ASCII
+word of a text in any ASCII-compatible encoding is read. Any other content, a binary file or a text in UTF-16
+or UTF-32, is read by its printable runs of four ASCII characters or more, as bytes and as UTF-16 and UTF-32
+code units of either byte order, each run a line, and its findings are marked `(binary)`. Not read: a run
+shorter than four characters, text in other characters than ASCII (which no term or path is written in), and
+whatever a content holds compressed, such as a PNG's compressed text chunks, a PDF's streams or an archive's
+members.
+
 With `--pre-push`, as git's pre-push hook (`scripts/pre-push`), it scans what a push publishes instead: the
 name of each ref it writes, every file content and annotated tag the remote lacks, as git itself lists what to
 send (`git rev-list --objects`), and the messages of the commits it brings, so that a name in a commit that a
@@ -46,6 +54,18 @@ _KEY = re.compile(r"[0-9a-fA-F]{64}")
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _OBJECT = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 _NO_OBJECT = re.compile(r"0+")
+_PRINTABLE = rb"[\t\n\r\x20-\x7e]"
+# A printable run of ASCII in a binary content: as bytes, and as UTF-16 and UTF-32 code units of either order.
+_RUNS = tuple(
+    re.compile(rb"(?:" + unit + rb"){4,}")
+    for unit in (
+        _PRINTABLE,
+        _PRINTABLE + rb"\x00",
+        rb"\x00" + _PRINTABLE,
+        _PRINTABLE + rb"\x00\x00\x00",
+        rb"\x00\x00\x00" + _PRINTABLE,
+    )
+)
 # Each written so that its own source does not match it: this file is scanned too.
 PATHS = {
     "an absolute home directory path": re.compile(r"/(?:home|Users)/[^/\s]+/"),
@@ -154,6 +174,25 @@ class Scanner:
         return [f"{place}:{number}: {what}" for number, what in sorted(found, key=lambda finding: finding[0])]
 
 
+def is_binary(data: bytes) -> bool:
+    return b"\0" in data
+
+
+def text_of(data: bytes) -> str:
+    """The text the scan reads in a content (the module's docstring says what it leaves out). Of runs that
+    overlap, the first and longest is kept: UTF-16 read a byte off is UTF-16 of the other order."""
+    if not is_binary(data):
+        return data.decode("utf-8", errors="replace")
+    found = sorted((match.start(), -len(match[0]), match[0]) for run in _RUNS for match in run.finditer(data))
+    runs: list[str] = []
+    end = 0
+    for start, negative_length, run in found:
+        if start >= end:
+            runs.append(run.replace(b"\0", b"").decode("ascii"))
+            end = start - negative_length
+    return "\n".join(runs)
+
+
 def git(*arguments: str, stdin: bytes | None = None) -> bytes:
     try:
         return subprocess.run(["git", *arguments], input=stdin, capture_output=True, check=True).stdout
@@ -176,15 +215,22 @@ def shown(name: str) -> str:
     return "".join(c if c.isprintable() else c.encode("unicode_escape").decode("ascii") for c in text)
 
 
-def tracked_texts() -> Iterator[tuple[str, str]]:
-    """Each tracked file of the working tree that is text, by its path: one holding a NUL byte is binary."""
+def tracked_contents() -> Iterator[tuple[str, bytes]]:
+    """Each tracked file of the working tree, by its path, and its content."""
     root = Path(names_of(git("rev-parse", "--show-toplevel")).strip())
     for name in names_of(git("-C", str(root), "ls-files", "-z")).split("\0"):
         path = root / name
         if name and path.is_file():
-            data = path.read_bytes()
-            if b"\0" not in data:
-                yield name, data.decode("utf-8", errors="replace")
+            yield name, path.read_bytes()
+
+
+def content_findings(
+    scanner: Scanner, name: str, data: bytes, allowed: re.Pattern[str] | None, *notes: str
+) -> list[str]:
+    """The findings in the content `data` of `name`, its place followed by `notes` in parentheses, `binary`
+    among them for a binary content, whose lines are its runs."""
+    notes = (*notes, "binary") if is_binary(data) else notes
+    return scanner.findings(f"{name} ({', '.join(notes)})" if notes else name, text_of(data), allowed)
 
 
 def commit_messages(*revisions: str, stdin: bytes | None = None) -> Iterator[tuple[str, str]]:
@@ -207,8 +253,8 @@ def ref_findings(scanner: Scanner, ref: str) -> list[str]:
 
 def scan(scanner: Scanner, revisions: str | None, ref_names: Sequence[str] = ()) -> list[str]:
     found: list[str] = []
-    for name, text in tracked_texts():
-        found += scanner.findings(shown(name), text, ALLOWED_PATHS.get(name))
+    for name, data in tracked_contents():
+        found += content_findings(scanner, shown(name), data, ALLOWED_PATHS.get(name))
     for commit, message in commit_messages("--end-of-options", revisions) if revisions else ():
         found += scanner.findings(f"commit {commit} message", message)
     for ref in ref_names:
@@ -306,13 +352,10 @@ def scan_push(scanner: Scanner, remote: str, updates: str) -> list[str]:
     held = object_kinds([*reported, *advertised(remote)])
     revisions = lines([*pushed, *(f"^{name}" for name in held)])
     for kind, name, data in pushed_objects(revisions):
-        if b"\0" in data:
-            continue
-        text = data.decode("utf-8", errors="replace")
         if kind == "blob":
-            found += scanner.findings(f"{shown(name)} (pushed)", text, ALLOWED_PATHS.get(name))
+            found += content_findings(scanner, shown(name), data, ALLOWED_PATHS.get(name), "pushed")
         else:
-            found += scanner.findings(f"tag {shown(name)}", text)
+            found += content_findings(scanner, f"tag {shown(name)}", data, None)
     for commit, message in commit_messages("--stdin", stdin=revisions):
         found += scanner.findings(f"commit {commit} message", message)
     return found

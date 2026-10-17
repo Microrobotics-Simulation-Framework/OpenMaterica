@@ -148,7 +148,7 @@ def test_the_command_scans_tracked_files_and_the_messages_in_a_range(
     (tmp_path / "key").write_text(KEY.hex(), encoding="utf-8")
     key_file = ["--key-file", str(tmp_path / "key")]
     commit("docs: the start", {"README.md": b"Nothing here.\n"})
-    commit("docs: by Zorblax", {"README.md": b"Nothing here.\n", "data.bin": b"zorblax\0"})
+    commit("docs: by Zorblax", {"README.md": b"Still nothing.\n"})
     (repository / "untracked.md").write_text("zorblax\n", encoding="utf-8")
     assert check_confidential.main(key_file) == 0
     assert check_confidential.main([*key_file, "--messages", "HEAD~1..HEAD"]) == 1
@@ -411,21 +411,84 @@ def test_the_pre_push_scan_reads_an_annotated_tag_and_nothing_for_a_deleted_ref(
     assert pre_push(monkeypatch, capsys, key_file, "origin", deleted) == (0, [])
 
 
-def test_the_pre_push_scan_keeps_the_allowed_path_and_leaves_binary_files_out(
+def test_the_pre_push_scan_keeps_the_allowed_path_and_reads_binary_files(
     remote: Path,
     key_file: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     start = object_name()
-    commit(
-        "docs: where the plans are",
-        {"CLAUDE.md": f"See ../{PLANNING}x.\n".encode(), "data.bin": f"{HOME}\0".encode()},
-    )
+    commit("docs: where the plans are", {"CLAUDE.md": f"See ../{PLANNING}x.\n".encode()})
     assert pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), start)) == (0, [])
     commit("docs: copied", {"notes.md": f"See ../{PLANNING}x.\n".encode()})
     status, found = pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), start))
     assert (status, found) == (1, ["notes.md (pushed):1: a path into the private planning directory"])
+    subprocess.run(["git", "reset", "-q", "--hard", "HEAD~1"], check=True)
+    commit("docs: data", {"data.bin": f"\x89PNG\0tEXt\0Comment\0{HOME}x\0".encode()})
+    status, found = pre_push(monkeypatch, capsys, key_file, "origin", update(object_name(), start))
+    assert (status, found) == (1, ["data.bin (pushed, binary):3: an absolute home directory path"])
+
+
+# Binary contents and text in UTF-16 and UTF-32, read by their printable runs.
+def utf(encoding: str, text: str) -> bytes:
+    return text.encode(encoding)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\x01tEXtAuthor\0By Zorblax, in " + HOME.encode() + b"x\0\xff",
+        utf("utf-16", f"By Zorblax, in {HOME}x.\n"),
+        utf("utf-16-be", f"By Zorblax, in {HOME}x.\n"),
+        utf("utf-32-le", f"By Zorblax, in {HOME}x.\n"),
+        utf("utf-32-be", f"By Zorblax, in {HOME}x.\n"),
+        b"\x00\x01\x02" + utf("utf-16-le", f"By Zorblax, in {HOME}x.") + b"\x03",
+        utf("utf-16-le", "Caf\u00e9 \u4e2d Zorblax, ") + utf("utf-16-le", f"{HOME}x"),
+    ],
+    ids=[
+        "a-png-text-chunk",
+        "utf-16",
+        "utf-16-be",
+        "utf-32-le",
+        "utf-32-be",
+        "utf-16-a-byte-off",
+        "utf-16-mixed",
+    ],
+)
+def test_a_binary_content_is_read_by_its_printable_runs_once(data: bytes) -> None:
+    """Each term and path found, once: UTF-16 read a byte off, UTF-16 of the other byte order, is left out."""
+    found = check_confidential.content_findings(scanner(), "data", data, None)
+    kinds = [line.split(": ", 1)[1] for line in found]
+    assert sorted(kinds) == ["a confidential term (z..., 7 characters)", "an absolute home directory path"], (
+        found
+    )
+    assert all(line.startswith("data (binary):") for line in found)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        bytes(range(256)) * 64,
+        b"\0Zor\0blax\0",
+        utf("utf-16-le", "Zor") + b"\xff\xff" + utf("utf-16-le", "blax"),
+        b"\0" + utf("utf-16-le", "nothing private here") + utf("utf-32-be", "nor here"),
+    ],
+    ids=["every-byte", "runs-under-four", "utf-16-runs-under-four", "clean-text"],
+)
+def test_a_binary_content_without_a_finding_has_none(data: bytes) -> None:
+    """The controls: noise, a term split into runs shorter than four, and clean text in UTF-16 and UTF-32."""
+    assert check_confidential.content_findings(scanner(), "data", data, None) == []
+
+
+def test_the_command_reads_a_tracked_binary_file(
+    repository: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "key").write_text(KEY.hex(), encoding="utf-8")
+    commit("docs: the start", {"README.md": b"Nothing here.\n", "notes.txt": utf("utf-16", "By Zorblax.\n")})
+    assert check_confidential.main(["--key-file", str(tmp_path / "key")]) == 1
+    assert capsys.readouterr().err.splitlines() == [
+        "notes.txt (binary):1: a confidential term (z..., 7 characters)"
+    ]
 
 
 @pytest.mark.parametrize(
