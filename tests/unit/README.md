@@ -19,7 +19,10 @@ Tests by example, for what the conformance cases and the properties do not reach
   for a kill, and both read a resource at draft 2020-12 whatever it declares (`test_verdicts.py`);
 - the typed shapes against what the reader gives: each member the schemas declare whole admits the float a
   JSON number reads as (`test_shapes.py`);
-- the Hypothesis profiles: a runner's environment changes none of their settings, none is derandomised, and on
-  a runner two seeds draw different examples and one seed what it draws elsewhere, each check run in fresh
-  processes with and without a runner's variables, its controls the registration as it was before
-  2026-10-17 and `derandomize` put back (`test_hypothesis_profiles.py`).
+- the Hypothesis profiles: a runner's environment changes none of their settings, imported or as a property
+  runs them after pytest's hooks; none is derandomised; each keeps the settings the maintainer fixed (its
+  example count, no deadline, `too_slow` alone suppressed, the blob, the repository's example database and
+  every phase); and on a runner two seeds draw different examples and one seed what it draws elsewhere. Each
+  check runs in fresh processes with and without a runner's variables; its controls are the registration as
+  it was before #38, `derandomize` put back, each fixed setting changed, and a deadline set in a hook on a
+  runner alone (`test_hypothesis_profiles.py`).
