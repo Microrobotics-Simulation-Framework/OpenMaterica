@@ -35,10 +35,11 @@ live in a repository of its own; until it exists, its rules are kept here.
    status. Do not describe a value as validated for a patient, or as suited to any use.
 10. **Never delete an anomaly entry.** Resolve it.
 11. **No network access and no code execution from data**, at import or when reading files.
-12. **Keep the anomaly registry in MADDENING's schema.** Do not add fields. CI checks it with MADDENING's
-    validator, which is a development-time dependency only; nothing in the package imports MADDENING. The
-    registry's version field is `materica_version`, which MADDENING's validator does not accept yet
-    (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
+12. **Keep the anomaly registry in MADDENING's schema.** Do not add fields. CI checks it with
+    `scripts/check_anomalies.py`, which stands in for MADDENING's validator until that accepts the registry's
+    component names; nothing in the package imports MADDENING. The registry's version field is
+    `materica_version`, which MADDENING's validator accepts from MADDENING 0.4.0, and it is the package's
+    version (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
 13. **Fail closed.** Readers refuse an unknown family or version, a failed check point, a request to
     sample an undeclared uncertainty structure, an attribute that was not authored, an unknown token in an
     enumerated field, a referenced record of an unknown type, interpolation across an edge, and a value
