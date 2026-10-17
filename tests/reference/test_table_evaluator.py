@@ -15,6 +15,7 @@ Every number those tables and points hold is exact in binary32, so each precisio
 exactly.
 """
 
+import itertools
 import math
 import re
 from collections.abc import Callable
@@ -221,6 +222,87 @@ def test_binary32_rounds_each_logarithm_and_exponential() -> None:
     # Controls: with the logarithms unrounded, or the exponential, the value differs.
     assert binary32_loglog(x0, x1, y0, y1, at, math.log, rounded_exp) != value
     assert binary32_loglog(x0, x1, y0, y1, at, rounded_ln, math.exp) != value
+
+
+# y = x^2 and y = x^3 as log-log tables, and the points where their value, or their derivative, lies halfway
+# between two doubles: at n / 2^36, n odd and n^2 above 2^53, x^2 is n^2 / 2^72 with 54 bits; at n / 2^26, n
+# odd just above 2^26, 3 x^2 is 3 n^2 / 2^52 with 54 bits.
+SQUARE = Table(x=(2.0**-10, 2.0**-9), y=(2.0**-20, 2.0**-18), scheme="loglog")
+CUBE = Table(x=(1.0, 2.0), y=(1.0, 8.0), scheme="loglog")
+SQUARE_TIES = range((math.isqrt(2**53) + 1) | 1, (math.isqrt(2**53) + 1) + 400, 2)
+CUBE_TIES = range(2**26 + 1, 2**26 + 401, 2)
+
+
+def halfway_between_two_doubles(number: Fraction) -> bool:
+    """Whether `number`, in the normal range, has 54 significant bits, the last one set."""
+    numerator, denominator = number.numerator, number.denominator
+    return denominator & (denominator - 1) == 0 and numerator % 2 == 1 and numerator.bit_length() == 54
+
+
+def test_exact_mode_is_exact_where_the_value_or_derivative_is_halfway_between_two_doubles() -> None:
+    for n in SQUARE_TIES:
+        value = Fraction(n * n, 2**72)
+        assert halfway_between_two_doubles(value)
+        found = evaluate(SQUARE, n / 2**36, "exact")
+        assert (found.value, found.derivative) == (value, Fraction(2 * n, 2**36))
+    for n in CUBE_TIES:
+        derivative = Fraction(3 * n * n, 2**52)
+        assert halfway_between_two_doubles(derivative)
+        found = evaluate(CUBE, n / 2**26, "exact")
+        assert (found.value, found.derivative) == (Fraction(n**3, 2**78), derivative)
+    # Where the point is a rational power of the knots' ratio, not the values: 2 on [1, 4] is 4^(1/2).
+    assert evaluate(Table(x=(1.0, 4.0), y=(3.0, 27.0), scheme="loglog"), 2.0, "exact").value == 9
+
+
+def test_without_its_exact_forms_exact_mode_rounds_some_of_those_points_wrongly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Control: worked to any number of digits, the formula lands on either side of such a point, so that
+    # Ziv's strategy either gives up or settles on a side, the wrong one about half the time.
+    def irrational(r: Fraction, s: Fraction) -> None:
+        return None
+
+    monkeypatch.setattr(table_evaluator, "_log_ratio", irrational)
+    monkeypatch.setattr(table_evaluator, "EXACT_DIGITS_CAP", 480)  # giving up sooner, to save time
+
+    def rounded(n: int) -> float | None:
+        try:
+            return as_double(evaluate(SQUARE, n / 2**36, "exact").value)
+        except ArithmeticError:
+            return None
+
+    assert [n for n in SQUARE_TIES[:40] if rounded(n) != n * n / 2**72]
+
+
+def test_exact_mode_rounds_an_irrational_value_correctly() -> None:
+    # y = x^(1/2) on [1, 4]: at a double that is no square the value is irrational, and the platform's square
+    # root is correctly rounded (IEEE 754).
+    root = Table(x=(1.0, 4.0), y=(1.0, 2.0), scheme="loglog")
+    for at in (1 + k / 997 for k in range(1, 2991, 13)):
+        assert as_double(evaluate(root, at, "exact").value) == math.sqrt(at)
+
+
+def as_double(number: Fraction | float | None) -> float:
+    assert number is not None
+    return float(number)
+
+
+def test_ziv_s_strategy_gives_up_rather_than_guess() -> None:
+    halfway = Fraction(2**53 + 1, 2**53)  # between 1 and the next double
+    calls = itertools.count()
+
+    def straddling(arithmetic: object) -> Fraction:
+        return halfway + Fraction((-1) ** next(calls), 10**80)
+
+    with pytest.raises(ArithmeticError):
+        table_evaluator._ziv(straddling, table_evaluator._EXACT)  # pyright: ignore[reportPrivateUsage]
+
+    # Control: answers that settle on one side are taken.
+    def settling(arithmetic: object) -> Fraction:
+        return halfway + Fraction(1, 10 ** (20 + next(calls)))
+
+    settled = table_evaluator._ziv(settling, table_evaluator._EXACT)  # pyright: ignore[reportPrivateUsage]
+    assert float(settled) == 1 + 2.0**-52
 
 
 @pytest.mark.parametrize(
