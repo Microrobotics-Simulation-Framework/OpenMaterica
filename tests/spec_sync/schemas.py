@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """JSON Schema validators for the package's schemas: the verdict jsonschema-rs gives (`tests/verdicts.py`),
 and, for a value it refuses, the messages python-jsonschema gives. Both are development dependencies only.
+Where python-jsonschema, run for its messages, finds none, the two disagree, and the test fails at once.
 
 Every JSON file under `schema/`, the vocabulary included, is registered under its `$id`, so that a reference
 resolves to the file in this tree and never over a network.
@@ -25,7 +26,12 @@ BASE = "https://w3id.org/materica/schema/0.1/"
 REGISTRY: Registry[Schema] = Registry[Schema]().with_resources(
     (uri, DRAFT202012.create_resource(document)) for uri, document in DOCUMENTS.items()
 )
-TAKEN_BY_PYTHON = "jsonschema-rs refuses it, python-jsonschema takes it"
+
+
+class Disagreement(Exception):
+    """jsonschema-rs and python-jsonschema give a value different verdicts. Not an AssertionError, so that a
+    search that takes an assertion as a mutant's death (`kill` in `tests/property/test_writer_mutants.py`)
+    never takes a disagreement for one."""
 
 
 def registry(files: Iterable[Json] = ()) -> Registry[Schema]:
@@ -36,13 +42,17 @@ def registry(files: Iterable[Json] = ()) -> Registry[Schema]:
 
 def why_refused(schema: Json, files: Iterable[Json] = ()) -> Callable[[JsonValue], list[str]]:
     """python-jsonschema's messages for a value jsonschema-rs refuses against `schema`, with `files` as in
-    `registry`; where python-jsonschema finds nothing, the two disagree, and the one message says so."""
+    `registry`; where python-jsonschema finds none, the two disagree, and it raises Disagreement."""
     checker = Draft202012Validator(schema, registry=registry(files))
 
     def messages(value: JsonValue) -> list[str]:
         # types-jsonschema types its second overload's instance as unknown.
         found = checker.iter_errors(value)  # pyright: ignore[reportUnknownMemberType]
-        return [error.message for error in found] or [TAKEN_BY_PYTHON]
+        said = [error.message for error in found]
+        if not said:
+            said_of = f"{value!r:.300} against {schema}"
+            raise Disagreement(f"jsonschema-rs refuses, python-jsonschema takes {said_of}")
+        return said
 
     return messages
 
