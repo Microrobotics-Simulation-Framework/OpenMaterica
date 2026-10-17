@@ -174,6 +174,12 @@ slip of `table` refused it, where `record_format.md` section 5 names "the form's
 constant (step 8 names every form's member only beside a form the reader does not know). Each was fixed and
 seeded.
 
+The agreement property HP12 (`tests/property/test_model_properties.py`) kills 13 of the 15 survivors and 5 of
+the 10 faults one case file alone kills, each with the model given the fault and the core as it is
+(`tests/property/test_model_mutants.py`); the other seven are listed there with the reason no read S2 builds
+shows them: an evidence entry's (two) and nominals (three) wait for S2b-2, a unit held as a status object is
+registered only for evidence, and a shared object never shows in JSON.
+
 ## Running
 
 ```sh
