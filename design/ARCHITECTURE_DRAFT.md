@@ -105,7 +105,7 @@ MIME's private 0.3.0 structure draft (the **structure draft**) and used there by
 - A sibling stays in lockstep with the core's minor for life: it depends on `openmaterica>=X.Y.F,<X.(Y+1)`
   after 1.0 as before. The core's sibling extras pin the matching minor with a range, never `==`, and `[all]`
   brings both siblings only. The version machinery is built with `openmaterica-authoring`'s first release
-  (section 7.2).
+  after the `0.1.0.devN` that claims its name (section 7.2).
 
 Everything else here is a proposal.
 
@@ -1674,7 +1674,8 @@ the repository (`authoring/`, `families/`) with its own `pyproject.toml`, versio
   - The release workflow writes a compatibility table, each core version with its siblings' versions, into the
     documentation.
   - When (maintainer, 2026-10-17): `python -m materica versions`, the import guard, the extras and the CI
-    matrix are built with `openmaterica-authoring`'s first release. None of it is built yet (section 14).
+    matrix are built with `openmaterica-authoring`'s first release after that `0.1.0.devN`. None of it is
+    built yet (section 14).
   - A regulated consumer pins exact versions all the same (sections 5.6 and 12.4).
 - Release artifacts: the wheels on PyPI, and the schemas (L0) and conformance data (L1) as a separate
   archive for projects in other languages to vendor. Golden vectors live only with their families; the
@@ -2415,7 +2416,8 @@ Still open:
   exists to measure them.
 - Nothing of the sibling machinery (sections 7.2 and 8.2) was built or tried: the uv workspace, the siblings'
   tags, the siblings' version checks, the server's closed list and entry-point loading, and the explainer
-  release. The version machinery is to be built with `openmaterica-authoring`'s first release, and the server
+  release. The version machinery is to be built with `openmaterica-authoring`'s first release after the
+  `0.1.0.devN` that claims its name, and the server
   with A9 (sections 7.2 and 12.1). That a resolver picks an explainer release only when the core is pinned to
   its minor is reasoned, not run.
 - The papers, databases and ontologies named here are recalled, except where the survey checked them.
@@ -2642,7 +2644,7 @@ proposals.
 | `openmaterica>=X.Y.F,<(X+1)` after 1.0 | `openmaterica>=X.Y.F,<X.(Y+1)` after 1.0 as before: a sibling stays in lockstep with the core's minor for life (7.2; DA 7.1) | the range, the import guard and CI against the current core agree; the release train gives every core minor a matching sibling |
 | the core's extras `[authoring]`, `[families]` and `[all]` pinning the matching siblings | `[authoring]` and `[families]` pin the matching minor with a range, `>=X.Y.0,<X.(Y+1)`, never `==`; `[all]` brings both siblings only, not `[usd]` or `[mcp]` (7.2; DA 7.1) | a sibling's patch needs no core release; `usd-core` has no wheel for Linux on aarch64 |
 | one CHANGELOG with a **Families** section, the one DA 14's update policy names | family entries in `families/CHANGELOG.md`; DA 14 names each changelog a consumer reviews (DA 7.4, DA 14) | a consumer's update review would otherwise miss family changes |
-| when the version machinery is built, and how authoring's name is claimed, unstated | built with `openmaterica-authoring`'s first release; authoring's name claimed by a `0.1.0.devN` once the uv workspace and the release workflow's change land (7.2, 14) | the maintainer's call; a pending publisher on PyPI does not reserve a name |
+| when the version machinery is built, and how authoring's name is claimed, unstated | built with `openmaterica-authoring`'s first release after the `0.1.0.devN`; authoring's name claimed by a `0.1.0.devN` once the uv workspace and the release workflow's change land (7.2, 14) | the maintainer's call; a pending publisher on PyPI does not reserve a name |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 
