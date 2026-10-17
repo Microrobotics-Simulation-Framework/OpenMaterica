@@ -1315,6 +1315,189 @@ def test_every_file_the_staging_step_copies_must_exist(tmp_path: Path) -> None:
         assert status != 0, f"the step staged a tree without {source}: {printed}"
 
 
+SITE_CHECK_STEP = (
+    "Every local link, image and icon resolves, every page keeps its policy, the README's images exist"
+)
+POLICY_META = """<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'">"""
+
+
+def site_tree(root: Path, readme_image: str | None = None, load: str = "") -> Path:
+    """A tree that holds what the site job reads, built from the staging step's own sources (so that it names
+    no path of the site): each directory source holds a page with a policy, which loads `load` if given, each
+    file source a file, and the README names an image, the first file source unless `readme_image` is given;
+    no schema, which the step stages only if present; and the site check."""
+    sources = copied(staging_step("ci.yml", "site")["run"])
+    files = [source for source in sources if "." in Path(source).name]
+    for source in sources:
+        path = root / source.removesuffix("/*")
+        if source.endswith("/*"):
+            path.mkdir(parents=True, exist_ok=True)
+            (path / "one").write_text("", encoding="utf-8")
+        elif source in files:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"\x89PNG")
+        else:
+            path.mkdir(parents=True, exist_ok=True)
+            body = f'<img src="{load}" alt="">' if load else "<p>A page.</p>"
+            (path / "page.html").write_text(
+                f"<!doctype html><html><head>{POLICY_META}<title>p</title></head><body>{body}</body></html>",
+                encoding="utf-8",
+            )
+    (root / "README.md").write_text(f"![logo]({readme_image or files[0]})\n", encoding="utf-8")
+    (root / "scripts").mkdir()
+    shutil.copy(REPOSITORY / "scripts" / "check_site.py", root / "scripts" / "check_site.py")
+    return root
+
+
+def job_status(job: dict[str, Any], tree: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[int, str]:
+    """The job's steps that run a command, run in order in `tree` as GitHub runs them, to the first that
+    fails: its status and what it printed."""
+    runner = tree.parent / f"{tree.name}-runner"
+    runner.mkdir()
+    monkeypatch.setenv("RUNNER_TEMP", str(runner))
+    for found in job["steps"]:
+        if "run" in found:
+            status, _, printed = run_step(found, {}, tree)
+            if status:
+                return status, printed
+    return 0, ""
+
+
+@pytest.mark.parametrize("job_id", ["site"])
+def test_the_site_jobs_steps_as_written_fail_a_broken_site(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, job_id: str
+) -> None:
+    """The job's steps, run as written, on a tree that passes, then on one whose README names an image the
+    tree does not hold, and on one whose page loads from elsewhere: the job must fail on each fault. So the
+    check step must be there, run after the staging step, with `--readme`."""
+    job = workflow("ci.yml")["jobs"][job_id]
+    assert job_status(job, site_tree(tmp_path / "clean"), monkeypatch) == (0, "")
+    status, printed = job_status(job, site_tree(tmp_path / "readme", readme_image="missing.png"), monkeypatch)
+    assert status != 0
+    assert "README.md: its image 'missing.png' names missing.png, which the tree does not hold" in printed
+    loading = site_tree(tmp_path / "loading", load="https://elsewhere.example/x.png")
+    status, printed = job_status(job, loading, monkeypatch)
+    assert status != 0
+    assert "<img src> loads 'https://elsewhere.example/x.png' from elsewhere" in printed
+
+
+def without_the_check(job: dict[str, Any]) -> None:
+    job["steps"] = [found for found in job["steps"] if found.get("name") != SITE_CHECK_STEP]
+
+
+def without_the_readme(job: dict[str, Any]) -> None:
+    found = step(job, SITE_CHECK_STEP)
+    found["run"] = found["run"].replace(" --readme README.md", "")
+
+
+def the_check_first(job: dict[str, Any]) -> None:
+    check = step(job, SITE_CHECK_STEP)
+    job["steps"].remove(check)
+    job["steps"].insert(1, check)
+
+
+@pytest.mark.parametrize(
+    "fault", [without_the_check, without_the_readme, the_check_first], ids=lambda fault: fault.__name__
+)
+def test_the_site_jobs_run_check_can_fail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: Callable[[dict[str, Any]], None]
+) -> None:
+    """The controls: the job without its check step, without `--readme`, or with the check before the
+    staging, passes a fault or fails the clean tree."""
+    job = copy.deepcopy(workflow("ci.yml")["jobs"]["site"])
+    fault(job)
+    outcomes = [
+        job_status(job, site_tree(tmp_path / "clean"), monkeypatch)[0] == 0,
+        job_status(job, site_tree(tmp_path / "readme", readme_image="missing.png"), monkeypatch)[0] != 0,
+        job_status(job, site_tree(tmp_path / "loading", load="https://elsewhere.example/x.png"), monkeypatch)[
+            0
+        ]
+        != 0,
+    ]
+    assert not all(outcomes), outcomes
+
+
+# What Pages deploys: pages.yml's job checks out the tree as the site job does, stages it with the step the
+# site job runs and nothing else around it, and uploads the staged directory, which the site job checks.
+PAGES_ACTIONS = (
+    "actions/checkout",
+    "actions/configure-pages",
+    None,
+    "actions/upload-pages-artifact",
+    "actions/deploy-pages",
+)
+STAGED = "${{ runner.temp }}/site"
+
+
+def pages_problems(pages: Workflow, ci: Workflow) -> list[str]:
+    """Where pages.yml's job could deploy other than what the site job checks."""
+    steps: list[dict[str, Any]] = pages["jobs"]["deploy"]["steps"]
+    kinds = tuple(str(found["uses"]).partition("@")[0] if "uses" in found else None for found in steps)
+    if kinds != PAGES_ACTIONS:
+        return [f"pages.yml's job runs {kinds}, not {PAGES_ACTIONS}"]
+    problems: list[str] = []
+    site_checkout = ci["jobs"]["site"]["steps"][0]
+    if steps[0].get("with") != site_checkout.get("with"):
+        problems.append(
+            f"pages.yml checks out with {steps[0].get('with')}, the site job with {site_checkout.get('with')}"
+        )
+    if steps[2] != step(ci["jobs"]["site"], SITE_STEP):
+        problems.append(
+            "pages.yml's step between configure-pages and the upload is not the site job's staging step"
+        )
+    if steps[3].get("with") != {"path": STAGED}:
+        problems.append(f"pages.yml uploads {steps[3].get('with')}, not the staged directory {STAGED}")
+    if '"$RUNNER_TEMP/site"' not in step(ci["jobs"]["site"], SITE_CHECK_STEP)["run"]:
+        problems.append("the site job checks another directory than the one pages.yml uploads")
+    return problems
+
+
+def test_pages_deploys_what_the_site_job_checks() -> None:
+    assert pages_problems(workflow("pages.yml"), workflow("ci.yml")) == []
+
+
+def a_step_after_the_staging(pages: Workflow) -> None:
+    steps = pages["jobs"]["deploy"]["steps"]
+    steps.insert(3, {"name": "Prune", "run": 'rm "$RUNNER_TEMP/site/logo.png"'})
+
+
+def a_step_before_the_staging(pages: Workflow) -> None:
+    pages["jobs"]["deploy"]["steps"].insert(1, {"run": "rm site/index.html"})
+
+
+def another_directory_uploaded(pages: Workflow) -> None:
+    pages["jobs"]["deploy"]["steps"][3]["with"]["path"] = "${{ runner.temp }}/site/schema"
+
+
+def submodules_checked_out(pages: Workflow) -> None:
+    pages["jobs"]["deploy"]["steps"][0]["with"]["submodules"] = "recursive"
+
+
+def another_staging(pages: Workflow) -> None:
+    staging = pages["jobs"]["deploy"]["steps"][2]
+    staging["run"] = staging["run"].replace(
+        'cp -R site "$RUNNER_TEMP/site"', 'cp -RL site "$RUNNER_TEMP/site"'
+    )
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_step_after_the_staging, "pages.yml's job runs"),
+        (a_step_before_the_staging, "pages.yml's job runs"),
+        (another_directory_uploaded, "pages.yml uploads {'path': '${{ runner.temp }}/site/schema'}"),
+        (submodules_checked_out, "pages.yml checks out with"),
+        (another_staging, "is not the site job's staging step"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_pages_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    pages = copy.deepcopy(workflow("pages.yml"))
+    fault(pages)
+    found = pages_problems(pages, workflow("ci.yml"))
+    assert any(problem in line for line in found), found
+
+
 def result_status(
     gate: str,
     code: str,
