@@ -46,10 +46,11 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "more alternatives none of which has a reason of its own; anything else is no verdict"
     ),
     "members_of_the_other_kind": (
-        "a numeric condition holding `token`, and a token condition holding `value`, `range`, `plus_minus` "
-        "or `set_or_measured`, break the condition's shape, in a record (`form_invalid`) and in an implied "
-        "condition (`request_incomplete`): fail closed, since each kind has a shape of its own and only a "
-        "token condition's `unit` has a rule of its own"
+        "in a record, a numeric condition holding `token`, and a token condition holding `value`, `range`, "
+        "`plus_minus` or `set_or_measured`, break the condition's shape (`form_invalid`): fail closed, since "
+        "each kind has a shape of its own and only a token condition's `unit` has a rule of its own. Its "
+        "request half, the same members in an implied condition (`request_incomplete`), is not open: the "
+        "text names the shapes, where `implied_value` applies them"
     ),
     "alternatives_named_at_a_field": (
         "`alternatives` is named at a field's place beside the value field's members, so a member one slip "
@@ -59,10 +60,6 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "an evidence entry's `provenance` is checked as the field's is (its origin, source and derivation) "
         "and returned with every member the provenance table names, each as stored but its review, which "
         "reads as `provenance.md` section 2 item 6 reads one: fail closed"
-    ),
-    "names_a_declaration_gives_a_requirement": (
-        "a request's requirement is named by `declarations.md` too, so `field` there, and `reason` and "
-        "`consequence` in a requirement condition, are ignored and a member one slip from one is refused"
     ),
 }
 
@@ -532,7 +529,11 @@ STANDARD_NAMES: Final = ("designation", "year")
 REQUEST_NAMES: Final = ("records", "target", "operating_conditions", "requirement", "acceptances")
 TARGET_NAMES: Final = ("field", "record", "region")
 OPERATING_NAMES: Final = ("value", "range", "unit")
-# Open point: names_a_declaration_gives_a_requirement.
+# read_side_contract.md:40-41 "a member one slip (`record_format.md` section 10) from a member this section or
+# `declarations.md` names at that place": a requirement names `field` there (declarations.md:30
+# "fluid.dynamic_viscosity", the example's) and each of its conditions a `reason` and a `consequence`
+# (declarations.md:64 "each with its `reason` and, where known, its `consequence`"), which a read ignores and
+# of which it refuses a slip.
 REQUIREMENT_NAMES: Final = ("want", "conditions", "label", "represents", "population_level", "field")
 REQUIREMENT_CONDITION_NAMES: Final = ("tolerance", "accept", "reason", "consequence")
 TOLERANCE_NAMES: Final = ("value", "unit")
@@ -1097,6 +1098,11 @@ def implied_value(name: str, value: JsonValue, reasons: Reasons) -> JsonObject |
     if "plus_minus" in value or "set_or_measured" in value:
         reasons.add("request_incomplete", name)
         return None
+    # declarations.md:190 "for a numeric one and `{"token"}`, with a token of its row, for a token one" names
+    # the shape of an implied value of each kind, and read_side_contract.md:73 "An implied condition breaks
+    # its shape" refuses a member outside it: a numeric condition's `token` (also read_side_contract.md:74-75
+    # "a token outside the condition's row"), and a token condition's `value`, `range` or `unit`. Not open,
+    # as the same members are in a record.
     if condition.shape == "token":
         if slipped(value, IMPLIED_VALUE_NAMES) or holds_another_kind(value, ("value", "range", "unit")):
             reasons.add("request_incomplete", name)
@@ -1517,7 +1523,7 @@ def check_condition(name: str, condition: JsonValue, faults: Reasons) -> None:
 
 
 def holds_another_kind(value: JsonObject, members: tuple[str, ...]) -> bool:
-    # Open point: members_of_the_other_kind.
+    # Open point: members_of_the_other_kind, in a record; an implied value's is the text's (`implied_value`).
     return any(member in value for member in members)
 
 

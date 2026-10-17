@@ -384,8 +384,9 @@ every family entry goes in `families/CHANGELOG.md`.
   two faults of one step among them (the design's B5), a catalogue of 52 faults of step 0, and the rules no
   case file pins. Its known divergences are listed by kind with their reasons and held exactly: three steps
   the implementation has not built that the model decides (an overlay as the target, a form S2b reads, an
-  acceptance other than an implied condition), and two open points the implementation reads otherwise than
-  the model's fail-closed choice, for the maintainer. 23 mutants of the implementation (a step that stops at
+  acceptance other than an implied condition), and one open point's record half (a condition holding a member
+  of the other kind's shape) the implementation reads otherwise than the model's fail-closed choice, for the
+  maintainer. 23 mutants of the implementation (a step that stops at
   its first fault at steps 0, 8, 9 and 10, and the design's mutants of HP1 to HP11 a result shows) and 18 of
   the model (its survivors of the cases and the faults one case file alone kills), each killed at both sizes;
   7 of the model's listed with the reason no read S2 builds shows them; controls of the check itself.

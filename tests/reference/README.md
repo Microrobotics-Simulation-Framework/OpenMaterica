@@ -37,10 +37,9 @@ named where it is applied:
 |---|---|
 | `form_not_allowed_by_its_row` | a composition whose basis the row does not allow is refused as a form the row does not allow is: `form_not_registered` and the shared checks' reasons, its member not checked (maintainer, 2026-10-15; the text says so of a form) |
 | `alternatives_within_decision_12` | decision 12's three cases only (maintainer, 2026-10-15) |
-| `members_of_the_other_kind` | `token` on a numeric condition, or `value`, `range`, `plus_minus` or `set_or_measured` on a token condition, breaks its shape (fail closed); a token condition's `unit` keeps its own rule, step 9's `unit_mismatch` |
+| `members_of_the_other_kind` | in a record, `token` on a numeric condition, or `value`, `range`, `plus_minus` or `set_or_measured` on a token condition, breaks its shape (fail closed); a token condition's `unit` keeps its own rule, step 9's `unit_mismatch`. The same members in an implied condition are not open: `declarations.md:190` names each kind's shape, and the model refuses a member outside it |
 | `alternatives_named_at_a_field` | `alternatives` is named at a field's place, so a slip of it is refused (fail closed) |
 | `evidence_entry_provenance` | an entry's `provenance` is checked as the field's is, and returned with every member the provenance table names, its review read as `provenance.md` section 2 item 6 reads one (fail closed) |
-| `names_a_declaration_gives_a_requirement` | `field`, and a requirement condition's `reason` and `consequence`, are named at a request's requirement by `declarations.md`, so a slip of one is refused |
 
 The model was first written to check the expected answers of S2's case files on 2026-10-15, as an independent
 reader of the text, and brought to the text of this branch here. Two rulings it took then, a form the row does
@@ -119,8 +118,8 @@ survivors, each a rule no case pins (below the table), so 80 faults: 60 killed, 
 | `section_specimen_unchecked` | a section's `specimen` not checked for a field read from it | 3 |
 | `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 19 |
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | survives: no case holds a status object breaking its shape with a token the reader does not know |
-| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | survives: no case holds a condition with a member of the other kind's shape: the text leaves it open |
-| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | survives: no case holds a condition with a member of the other kind's shape: the text leaves it open |
+| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | survives: no case holds a condition with a member of the other kind's shape, in a record or an implied condition: the text leaves the record half open |
+| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | survives: no case holds a condition with a member of the other kind's shape, in a record or an implied condition: the text leaves the record half open |
 | `slips_of_alternatives_ignored` | a member one slip from `alternatives` beside a value field's members ignored | survives: no case holds a member one slip from `alternatives`: the text leaves it open |
 | `evidence_entry_provenance_unchecked` | an evidence entry's `provenance` not checked | survives: each evidence entry's `provenance` in the cases is well formed: the text leaves it open |
 | `declaration_names_not_named_in_a_request` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | survives: no case holds a slip of `field`, `reason` or `consequence` in a requirement |
@@ -157,9 +156,11 @@ survivors, each a rule no case pins (below the table), so 80 faults: 60 killed, 
 | `units_stored_differently_read_as_no_pick` | alternatives whose units are stored differently read as `no_pick`, which S4 decides | survives: no case holds such alternatives |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
-B should kill them as well. Of the nine survivors, four are the open points (`members_of_the_other_kind_read`,
-`slips_of_alternatives_ignored`, `evidence_entry_provenance_unchecked`,
-`declaration_names_not_named_in_a_request`), which no case pins because the text leaves them open; one is
+B should kill them as well. Of the nine survivors, three are the open points (`members_of_the_other_kind_read`,
+`slips_of_alternatives_ignored`, `evidence_entry_provenance_unchecked`), which no case pins because the text
+leaves them open; one is a rule of the text that no case pins either, since S2a-4's fix round
+(`declaration_names_not_named_in_a_request`: `read_side_contract.md:40-41` and `declarations.md:30` and `:64` name
+a requirement's `field` and its conditions' `reason` and `consequence`, and a read refuses a slip of one); one is
 the rule that a status object breaking its shape gives no reason of its own
 (`broken_status_object_reports_its_token`), a ruling the text took up with S3, whose example is a table's,
 on which the model gives no verdict; two are the rule that a form's member is unchecked off its row
@@ -169,8 +170,8 @@ JSON at all (`results_share_the_record`, HP6's). The tenth, `input_specimens_opt
 reading until S2a-4's phase B, whose agreement property (HP12) found that the text requires the list
 (`provenance.md` section 5 item 3, "A derived value carries the specimen facts of each input"); the model was
 fixed, and the fault seeded. The eleventh, `members_of_the_other_kind_ignored`, is the implementation's
-reading of that open point (S2a-4's phase B): HP12 lists the point as a known divergence, held exactly by
-this fault (`tests/property/test_model_properties.py`). The last four are the model's readings until fuzz
+reading of that open point's record half (S2a-4's phase B): HP12 lists the point as a known divergence, held
+exactly by this fault (`tests/property/test_model_properties.py`). The last four are the model's readings until fuzz
 target 4, held to the model, found them on its first minutes: a population level whose `within` is missing
 or slipped had its `level` token left unchecked, so did a `dof` status object under a Student's t
 distribution, against `read_side_contract.md` section 2 item 2, "Each step makes all its checks before the
