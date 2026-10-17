@@ -263,6 +263,7 @@ class Example(NamedTuple):
     record: JsonObject
     change: str = ""  # a variant's change
     origin: str = ""  # the token a variant's change sets its provenance object's origin to
+    base: str = ""  # the base a variant changes, by its name in `bases()`
 
 
 # Step 8's verdict on an example: the codes it gives, or None where it has none.
@@ -660,12 +661,14 @@ def bases() -> dict[str, tuple[str, JsonObject]]:
     return found
 
 
-def variant(registered: str, name: str, value: JsonValue, change: str, origin: str = "") -> Example:
+def variant(
+    base: str, registered: str, name: str, value: JsonValue, change: str, origin: str = ""
+) -> Example:
     """An example of the field `registered`, `value`, alone in its section of a material record."""
     section_name, _, field_name = registered.partition(".")
     section: JsonObject = {"fields": {field_name: value}}
     record: JsonObject = {"record_type": "material", "body": {"sections": {section_name: section}}}
-    return Example(name, registered, value, section, record, change, origin)
+    return Example(name, registered, value, section, record, change, origin, base)
 
 
 @cache
@@ -681,7 +684,7 @@ def variant_examples() -> list[Example]:
                 for token in other_origins(field, path):
                     varied = with_origin(field, path, token)
                     found.append(
-                        variant(registered, f"{base} {ORIGIN} {where} {token}", varied, ORIGIN, token)
+                        variant(base, registered, f"{base} {ORIGIN} {where} {token}", varied, ORIGIN, token)
                     )
             for change in CHANGES:
                 value = changed(field, path, change)
@@ -689,12 +692,12 @@ def variant_examples() -> list[Example]:
                     continue
                 seen.add((change, path))
                 name = f"{base} {change} {where}"
-                found.append(variant(registered, name, value, change))
+                found.append(variant(base, registered, name, value, change))
                 if (provenance := provenance_of(field, path)) is not None:
                     for token in other_origins(field, provenance):
                         varied = with_origin(value, provenance, token)
                         found.append(
-                            variant(registered, f"{name} with origin {token}", varied, change, token)
+                            variant(base, registered, f"{name} with origin {token}", varied, change, token)
                         )
     return found
 

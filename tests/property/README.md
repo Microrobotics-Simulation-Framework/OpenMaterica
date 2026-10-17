@@ -107,14 +107,15 @@ Every verdict the tests take from the package's JSON Schemas is jsonschema-rs's 
 0.02 ms a field), and python-jsonschema gives the messages a failure prints (`tests/spec_sync/schemas.py`).
 `test_validators_agree.py` holds the two to one verdict: on T1's inputs (`tests/spec_sync/test_t1.py`), each
 field against the writer schema and the reader `$defs`, by its form's definition and by `value_field`, its
-section's specimen against both, and the field against its row's binding, a tenth of the examples at `dev` and
-`ci` and every one at `deep`; and on drawn fields, bodies, and the base and faulty field of each fault family,
+section's specimen against both, and the field against its row's binding, every tenth example of each group
+at `dev` and `ci` (the inputs that read one registered field; the variants of one base by one change and
+origin), 670 of them, and every one at `deep`; and on drawn fields, bodies, and the base and faulty field of each fault family,
 as many as the profile gives. Its controls: a writer mutant given to one side, M18 on T1's share and M55 on the
 drawn faults, each found as the side given it taking what the other refuses; and a pattern ended in `$`, given
 to both, which python-jsonschema reads as matching before a final newline and jsonschema-rs, as ECMA-262 does,
 not. The package's patterns end in `(?![\s\S])`, which both read alike. A whole pass over T1's 5,066 examples,
 python-jsonschema nearly all of it, took 590 s and 760 s summed over 8 workers in two runs on a loaded machine
-(2026-10-16); the tenth, 40 to 80 s.
+(2026-10-16); a tenth, 40 to 80 s.
 
 ## Mutants
 

@@ -247,9 +247,9 @@ every family entry goes in `families/CHANGELOG.md`.
   process has loaded (`tests/property/README.md`).
 - Every verdict the tests take from the package's JSON Schemas is jsonschema-rs's, a development dependency
   only (0.58.4; `tests/verdicts.py`), where it was python-jsonschema's. python-jsonschema prints the messages
-  of a failure, and a property in the writer shard holds the two to one verdict: on T1's inputs, a tenth of
-  its examples at `dev` and `ci` and every one at `deep`, and on drawn writer fields, bodies and each fault
-  family's base and faulty field. Its controls are a writer mutant given to one side and a pattern ended in
+  of a failure, and a property in the writer shard holds the two to one verdict: on T1's inputs, every tenth
+  example of each kind at `dev` and `ci` and every one at `deep`, and on drawn writer fields, bodies and each
+  fault family's base and faulty field. Its controls are a writer mutant given to one side and a pattern ended in
   `$`, which the two regex dialects read differently, given to both (`tests/property/test_validators_agree.py`).
   Every mutant still dies, at the same example as before wherever the same modules are collected; the
   agreement module brings `scripts/gen_reader_schema.py` into every shard, and Hypothesis draws constants from
