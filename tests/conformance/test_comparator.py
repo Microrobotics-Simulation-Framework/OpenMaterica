@@ -408,6 +408,14 @@ NAN = math.nan
     [
         pytest.param(4, {"refused": True, "in_range": False}, id="refused_beside_in_range"),
         pytest.param(4, {"refused": True, "value": NAN, "derivative": NAN}, id="refused_beside_nan"),
+        # A JSON `null` is no number: it reads as absent, beside a refusal as elsewhere.
+        pytest.param(4, {"refused": True, "value": None, "derivative": None}, id="refused_beside_null"),
+        pytest.param(
+            3, {"refused": False, "in_range": False, "value": None, "derivative": None}, id="outside_null"
+        ),
+        pytest.param(
+            2, {"refused": False, "in_range": True, "value": 993.0, "derivative": None}, id="none_as_null"
+        ),
         pytest.param(3, {"refused": False, "in_range": False}, id="outside_without_numbers"),
         pytest.param(
             3, {"refused": False, "in_range": False, "value": NAN, "derivative": NAN}, id="outside_nan"
@@ -442,6 +450,9 @@ def test_an_entry_compares_only_what_it_holds_and_a_number_may_be_absent_or_nan_
             4, {"refused": True, "value": math.inf, "derivative": math.inf}, id="refused_beside_infinity"
         ),
         pytest.param(4, {"refused": True, "value": NAN, "derivative": -0.05}, id="refused_beside_one_number"),
+        pytest.param(
+            4, {"refused": True, "value": None, "derivative": -0.05}, id="refused_beside_null_and_a_number"
+        ),
         pytest.param(4, {"refused": True, "derivative": -math.inf}, id="refused_beside_minus_infinity"),
         pytest.param(4, {"in_range": False}, id="refusal_unreported"),
         pytest.param(1, {"refused": True}, id="refused_where_none_is_due"),
