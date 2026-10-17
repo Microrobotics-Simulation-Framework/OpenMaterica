@@ -148,7 +148,9 @@ jobs:
       # workflow and the site job read them, and no test, so a change to them alone runs the site job and not
       # the code's. tests/unit/test_ci_workflows.py checks that no test or script names one but the site check
       # and the few it lists, each with its reason. The site job runs on every change but one to documentation
-      # alone, since what it checks also reads the README and the published schemas, which are code.
+      # alone, since what it checks also reads the README, the published schemas and the freeze manifest
+      # (tests/spec_sync/released_schemas.json, which decides which version's page carries the draft note), which
+      # are code.
       # The Hypothesis job's gate fails closed in the same way (maintainer, 2026-10-17): beside the documentation,
       # it lists the paths that no part of that job reads, neither a module its property tests load or import,
       # nor a path such a module names, nor the job's steps, its build (pyproject.toml's readme and licence, the
