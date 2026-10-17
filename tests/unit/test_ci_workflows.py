@@ -47,10 +47,11 @@ GATED = {
     "tests": "code",
     "controls": "code",
     "hypothesis": "hypothesis",
+    "site": "site",
     "commit": "commits",
 }
-# How each output runs its jobs: `code` and `hypothesis` when true, `commits` when it lists any commit.
-RUNS_WHEN = {"code": "== 'true'", "hypothesis": "== 'true'", "commits": "!= '[]'"}
+# How each output runs its jobs: `code`, `hypothesis` and `site` when true, `commits` when it lists one.
+RUNS_WHEN = {"code": "== 'true'", "hypothesis": "== 'true'", "site": "== 'true'", "commits": "!= '[]'"}
 # Jobs the gate does not decide: the gate itself, the result, and the weekly and manual fuzz job.
 UNGATED = {"gate", "result", "fuzz"}
 # A path of each kind the gate calls documentation, as its tests commit them in a throwaway repository.
@@ -399,6 +400,7 @@ def test_a_merge_to_main_and_every_run_but_a_pull_request_run_every_job(
     assert gate_outputs(repository, gate_context(event, fuzz_only=fuzz_only)) == {
         "code": "true",
         "hypothesis": "true",
+        "site": "true",
         "commits": "[]",
     }
 
@@ -407,52 +409,60 @@ def test_a_manual_run_of_the_fuzz_job_alone_runs_no_other_job(repository: Path) 
     assert gate_outputs(repository, gate_context("workflow_dispatch", fuzz_only="true")) == {
         "code": "false",
         "hypothesis": "false",
+        "site": "false",
         "commits": "[]",
     }
 
 
 @pytest.mark.parametrize(
-    ("paths", "code", "hypothesis"),
+    ("paths", "code", "hypothesis", "site"),
     [
-        pytest.param(list(DOCUMENTATION_EXAMPLES), "false", "false", id="documentation"),
+        pytest.param(list(DOCUMENTATION_EXAMPLES), "false", "false", "false", id="documentation"),
         # Code, though written as documentation: what the wheel, the type checkers, the spec-sync tests and
         # the Pages workflow read. The Hypothesis job builds the wheel's metadata, and its properties read the
         # specification.
-        (["README.md"], "true", "true"),
-        (["LICENSE"], "true", "true"),
-        (["typings/atheris/__init__.pyi"], "true", "false"),
-        (["docs/specification/README.md"], "true", "true"),
-        (["site/index.html"], "true", "false"),
-        (["design/ARCHITECTURE_DRAFT.md", ".github/workflows/pages.yml"], "true", "false"),
-        (["scripts/pre-push", "scripts/check_confidential.py"], "true", "false"),
+        (["README.md"], "true", "true", "true"),
+        (["LICENSE"], "true", "true", "true"),
+        (["typings/atheris/__init__.pyi"], "true", "false", "true"),
+        (["docs/specification/README.md"], "true", "true", "true"),
+        # The site's own paths: the site job alone, beside documentation too; with code, every job.
+        (["site/index.html"], "false", "false", "true"),
+        (["assets/images/logo.png", "CHANGELOG.md"], "false", "false", "true"),
+        (["site/index.html", "scripts/schema_index.py"], "true", "false", "true"),
+        (["design/ARCHITECTURE_DRAFT.md", ".github/workflows/pages.yml"], "true", "false", "true"),
+        (["scripts/pre-push", "scripts/check_confidential.py"], "true", "false", "true"),
         # A path nobody listed is code, and runs the Hypothesis job; one path of either makes a change so.
-        (["notes/plan.txt"], "true", "true"),
-        (["CHANGELOG.md", "scripts/check_wheel.py"], "true", "false"),
-        (["scripts/check_wheel.py", "scripts/new_tool.py"], "true", "true"),
-        # A Python file is code wherever it sits, since ruff reads it; no part of the Hypothesis job does.
-        (["docs/validation/make_table.py"], "true", "false"),
-        (["CHANGELOG.md", ".github/ISSUE_TEMPLATE/form.pyi"], "true", "false"),
+        (["notes/plan.txt"], "true", "true", "true"),
+        (["CHANGELOG.md", "scripts/check_wheel.py"], "true", "false", "true"),
+        (["scripts/check_wheel.py", "scripts/new_tool.py"], "true", "true", "true"),
+        # A Python file is code wherever it sits, since ruff reads it; no part of the Hypothesis job does. The
+        # site job runs too, as for any change but documentation alone.
+        (["docs/validation/make_table.py"], "true", "false", "true"),
+        (["CHANGELOG.md", ".github/ISSUE_TEMPLATE/form.pyi"], "true", "false", "true"),
+        (["site/make_icons.py"], "true", "false", "true"),
+        (["assets/images/make.pyi", "site/index.html"], "true", "false", "true"),
         # A diff with no path at all, as if the diff had gone wrong: the safe side.
-        ([], "true", "true"),
+        ([], "true", "true", "true"),
         # What the Hypothesis job reads, though no property: the conformance runner, the read's modules, a
         # generator, its durations step's script, and any test, whose source one property test reads.
-        (["tests/conformance/runner.py"], "true", "true"),
-        (["src/materica/io/plain.py"], "true", "true"),
-        (["scripts/gen_reader_schema.py"], "true", "true"),
-        (["scripts/report_test_durations.py"], "true", "true"),
-        (["tests/unit/test_read.py"], "true", "true"),
-        (["src/materica/core/read.py"], "true", "true"),
+        (["tests/conformance/runner.py"], "true", "true", "true"),
+        (["src/materica/io/plain.py"], "true", "true", "true"),
+        (["scripts/gen_reader_schema.py"], "true", "true", "true"),
+        (["scripts/report_test_durations.py"], "true", "true", "true"),
+        (["tests/unit/test_read.py"], "true", "true", "true"),
+        (["src/materica/core/read.py"], "true", "true", "true"),
     ],
     ids=lambda value: "+".join(cast(list[str], value)) or "nothing" if isinstance(value, list) else None,
 )
 def test_a_pull_request_runs_the_jobs_its_paths_need(
-    repository: Path, paths: list[str], code: str, hypothesis: str
+    repository: Path, paths: list[str], code: str, hypothesis: str, site: str
 ) -> None:
     base = commit()
     head = commit(*paths)
     assert gate_outputs(repository, gate_context("pull_request", base, head)) == {
         "code": code,
         "hypothesis": hypothesis,
+        "site": site,
         "commits": "[]",
     }
 
@@ -489,12 +499,14 @@ def test_without_failing_closed_the_gate_skips_the_hypothesis_job_for_a_path_it_
         ("src/materica/core/read.py", "docs/validation/read.py", ("CHANGELOG.md",), "true"),
         ("tests/unit/test_read.py", "docs/validation/test_read.py", (), "true"),
         ("tests/unit/test_read.py", ".github/ISSUE_TEMPLATE/test_read.py", (), "true"),
+        ("src/materica/core/read.py", "site/read.py", (), "true"),
     ],
     ids=[
         "core-into-regulatory",
         "core-into-validation-beside-the-changelog",
         "test-into-validation",
         "test-into-the-issue-templates",
+        "core-into-the-site",
     ],
 )
 def test_a_pull_request_that_moves_code_into_documentation_runs_the_jobs_of_the_code(
@@ -509,6 +521,7 @@ def test_a_pull_request_that_moves_code_into_documentation_runs_the_jobs_of_the_
     assert gate_outputs(repository, gate_context("pull_request", base, head)) == {
         "code": "true",
         "hypothesis": hypothesis,
+        "site": "true",
         "commits": "[]",
     }
 
@@ -537,12 +550,13 @@ def test_a_pull_request_of_one_commit_lists_none(repository: Path) -> None:
     assert listed(repository, base, head) == []
 
 
-def test_a_commit_that_changes_documentation_alone_is_not_listed(repository: Path) -> None:
+def test_a_commit_that_changes_documentation_or_the_site_alone_is_not_listed(repository: Path) -> None:
     """Its tree is its parent's but for paths no test reads; README.md is code."""
     base = commit()
     commit("CHANGELOG.md", "docs/regulatory/intended_use.md")
     code = commit("README.md")
-    commit("CONTRIBUTING.md")
+    commit("CONTRIBUTING.md", "site/index.html")
+    commit("assets/images/logo.png")
     head = commit("CHANGELOG.md")
     assert listed(repository, base, head) == [code]
 
@@ -619,11 +633,8 @@ def test_a_commit_of_code_the_pull_request_undoes_is_listed_though_its_diff_is_d
     subprocess.run(["git", "rm", "-q", "src/materica/core/new.py"], check=True)
     head = commit()
     outputs = gate_outputs(repository, gate_context("pull_request", base, head))
-    assert (outputs["code"], outputs["hypothesis"], json.loads(outputs["commits"])) == (
-        "false",
-        "false",
-        [added],
-    )
+    decided = (outputs["code"], outputs["hypothesis"], outputs["site"], json.loads(outputs["commits"]))
+    assert decided == ("false", "false", "false", [added])
 
 
 def test_after_a_force_push_the_commits_the_branch_holds_now_are_listed(repository: Path) -> None:
@@ -828,9 +839,15 @@ NAMED_NOT_READ = {
 }
 
 
-def documentation_named(pattern: str, files: list[str], named: dict[str, set[str]]) -> list[str]:
-    """Each place a test, a script or the build names a path that `pattern` calls documentation, but those
-    `NAMED_NOT_READ` gives; and each of those it no longer finds."""
+def documentation_named(
+    pattern: str,
+    files: list[str],
+    named: dict[str, set[str]],
+    exempt: Mapping[tuple[str, str], str] = NAMED_NOT_READ,
+    kind: str = "documentation",
+) -> list[str]:
+    """Each place a test, a script or the build names a path that `pattern` calls `kind`, but those `exempt`
+    gives; and each of those it no longer finds."""
     documentation = [path for path in files if re.fullmatch(pattern, path)]
     found = {
         (reader, name, path)
@@ -840,13 +857,13 @@ def documentation_named(pattern: str, files: list[str], named: dict[str, set[str
         if names(name, path)
     }
     problems = [
-        f"{reader} names {path} as {name!r}, and the gate calls it documentation"
+        f"{reader} names {path} as {name!r}, and the gate calls it {kind}"
         for reader, name, path in sorted(found)
-        if (reader, name) not in NAMED_NOT_READ
+        if (reader, name) not in exempt
     ]
     still_named = {(reader, name) for reader, name, _ in found}
     return problems + [
-        f"{reader} no longer names {name!r}" for reader, name in sorted(NAMED_NOT_READ.keys() - still_named)
+        f"{reader} no longer names {name!r}" for reader, name in sorted(exempt.keys() - still_named)
     ]
 
 
@@ -908,6 +925,72 @@ def test_the_documentation_check_finds_an_exemption_gone_stale() -> None:
     named["scripts/check_confidential.py"].discard("CLAUDE.md")
     assert documentation_named(documentation_pattern(), checkout_files(), named) == [
         "scripts/check_confidential.py no longer names 'CLAUDE.md'"
+    ]
+
+
+# Where a test or script names a path of the site's own (`site_paths`), which no code job reads, and why: the
+# site job runs whatever reads them, and the gate runs it on every change to them.
+SITE_NAMED_NOT_READ = {
+    ("scripts/check_site.py", "site"): "the name of its argument, the staged copy it checks",
+    ("scripts/check_site.py", "*.html"): "the pages of the staged copy it checks",
+    ("scripts/check_site.py", "index.html"): "a directory's page, in the staged copy it checks",
+    ("scripts/schema_index.py", "index.html"): "the pages it writes into the staged schemas, for Pages",
+    ("tests/unit/test_check_site.py", "site"): "a copy of a site it writes in tmp_path",
+    ("tests/unit/test_check_site.py", "*.html"): "the pages of a copy it writes in tmp_path",
+    ("tests/unit/test_check_site.py", "logo.png"): "an image of a copy it writes in tmp_path",
+    ("tests/unit/test_schema_index.py", "index.html"): "the pages schema_index.py writes in tmp_path",
+    ("tests/unit/test_ci_workflows.py", "site"): "the site job's name",
+    ("tests/unit/test_ci_workflows.py", "index.html"): "a name in this table",
+    ("tests/unit/test_ci_workflows.py", "logo.png"): "a name in this table",
+    (
+        "tests/unit/test_ci_workflows.py",
+        "site/index.html",
+    ): "a path the gate's tests commit in a throwaway repository",
+    ("tests/unit/test_ci_workflows.py", "assets/images/logo.png"): (
+        "a path the gate's tests commit in a throwaway repository"
+    ),
+} | {
+    # Globs, each in a directory that holds no path of the site, as for the documentation.
+    (reader, name): reason
+    for (reader, name), reason in NAMED_NOT_READ.items()
+    if name == "*"
+}
+
+
+def site_named(pattern: str, named: dict[str, set[str]]) -> list[str]:
+    return documentation_named(pattern, checkout_files(), named, SITE_NAMED_NOT_READ, "the site's")
+
+
+def test_no_test_or_script_names_a_path_of_the_site_but_those_the_site_job_runs() -> None:
+    """A change to the site alone runs the site job and no test: so no test may read the site, and only the
+    site check and the Pages workflow's index writer, which the site job runs, name its paths."""
+    assert site_named(gate_pattern("site_paths"), readers()) == []
+
+
+@pytest.mark.parametrize(
+    ("reader", "source", "problem"),
+    [
+        ("scripts/notes.py", 'Path("site/index.html").read_text()', "scripts/notes.py names site/index.html"),
+        (
+            "tests/unit/test_notes.py",
+            'ROOT / "assets" / "images"',
+            "names assets/images/logo.png as 'assets/images'",
+        ),
+        ("tests/unit/test_notes.py", 'ROOT.glob("*.html")', "test_notes.py names site/404.html as '*.html'"),
+    ],
+    ids=["a-page", "a-joined-directory", "a-glob"],
+)
+def test_the_site_check_of_the_gate_can_fail(reader: str, source: str, problem: str) -> None:
+    named = readers() | {reader: named_paths(source)}
+    found = site_named(gate_pattern("site_paths"), named)
+    assert any(problem in line for line in found), found
+
+
+def test_the_site_check_of_the_gate_finds_an_exemption_gone_stale() -> None:
+    named = readers()
+    named["scripts/schema_index.py"].discard("index.html")
+    assert site_named(gate_pattern("site_paths"), named) == [
+        "scripts/schema_index.py no longer names 'index.html'"
     ]
 
 
@@ -1164,6 +1247,76 @@ def test_the_hypothesis_check_finds_an_exemption_gone_stale(hypothesis_modules: 
     ]
 
 
+SITE_STEP = "Stage site/, with the logo and favicons at its root and the schemas at /schema/"
+
+
+def staging_step(name: str, job: str) -> dict[str, Any]:
+    return step(workflow(name)["jobs"][job], SITE_STEP)
+
+
+def test_the_site_job_stages_the_site_as_the_pages_workflow_does() -> None:
+    """Word for word, so that what the site job checks is what Pages will serve."""
+    assert staging_step("ci.yml", "site") == staging_step("pages.yml", "deploy")
+
+
+def test_the_staging_check_can_fail() -> None:
+    pages = copy.deepcopy(staging_step("pages.yml", "deploy"))
+    pages["run"] = pages["run"].replace('cp -R site "$RUNNER_TEMP/site"', 'cp -R site/. "$RUNNER_TEMP/site"')
+    assert pages != staging_step("ci.yml", "site")
+
+
+def copied(script: str) -> list[str]:
+    """What the staging step's commands at its top level copy, as `cp` names them: each source but the
+    destination, its options left out."""
+    sources: list[str] = []
+    for line in script.splitlines():
+        if line.startswith("cp "):
+            words = [word for word in shlex.split(line)[1:] if not word.startswith("-")]
+            sources += words[:-1]
+    return sources
+
+
+def staged(tree: Path, script: str) -> tuple[int, str]:
+    found = {"run": script, "env": {"RUNNER_TEMP": str(tree.parent / "runner")}}
+    (tree.parent / "runner").mkdir(exist_ok=True)
+    status, _, printed = run_step(found, {}, tree)
+    return status, printed
+
+
+def test_every_file_the_staging_step_copies_must_exist(tmp_path: Path) -> None:
+    """The site job's first check: the staging step runs under `bash -eo pipefail`, so a `cp` of a missing
+    file fails it. A tree that holds each source the step copies stages; without any one of them, it fails.
+    The tree is built from the step's own text, and holds no schema, which the step copies only if present."""
+    script = staging_step("ci.yml", "site")["run"]
+    sources = copied(script)
+    assert len(sources) >= 3, sources
+
+    def tree_without(left_out: str | None, name: str) -> Path:
+        root = tmp_path / name
+        for source in sources:
+            path = root / source.removesuffix("/*")
+            if source.endswith("/*"):
+                # Left out, the directory is there and empty: the glob then matches no file.
+                path.mkdir(parents=True, exist_ok=True)
+                if source != left_out:
+                    (path / "one").write_text("", encoding="utf-8")
+            elif source == left_out:
+                continue
+            elif "." in Path(source).name:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("", encoding="utf-8")
+            else:
+                path.mkdir(parents=True, exist_ok=True)
+                (path / "page.html").write_text("", encoding="utf-8")
+        return root
+
+    status, printed = staged(tree_without(None, "whole"), script)
+    assert status == 0, printed
+    for number, source in enumerate(sources):
+        status, printed = staged(tree_without(source, f"without-{number}"), script)
+        assert status != 0, f"the step staged a tree without {source}: {printed}"
+
+
 def result_status(
     gate: str,
     code: str,
@@ -1172,12 +1325,16 @@ def result_status(
     tmp_path: Path,
     ci: Workflow | None = None,
     commits: str = "[]",
+    site: str | None = None,
 ) -> int:
-    """The result step's exit status, for the gate's result and outputs and each other job's result."""
+    """The result step's exit status, for the gate's result and outputs and each other job's result; the
+    site's output as the code's where it is not given, as the gate gives it but for a change to the site or
+    to code undone."""
     context = {
         "needs.gate.result": gate,
         "needs.gate.outputs.code": code,
         "needs.gate.outputs.hypothesis": hypothesis,
+        "needs.gate.outputs.site": code if site is None else site,
         "needs.gate.outputs.commits": commits,
     } | {f"needs.{job}.result": result for job, result in jobs.items()}
     found = step((ci or workflow("ci.yml"))["jobs"]["result"], RESULT_STEP)
@@ -1233,6 +1390,30 @@ def test_the_result_fails_when_a_job_the_gate_asked_for_did_not_succeed(
     """A skipped job reports success to a required check: a gate whose outputs are empty or wrong would skip
     every job, and a result that looked only for failures would pass."""
     assert result_status(gate, code, hypothesis, jobs, tmp_path) == 1
+
+
+@pytest.mark.parametrize(
+    ("site", "jobs", "status"),
+    [
+        ("true", all_jobs("skipped", site="success"), 0),
+        ("true", all_jobs("skipped"), 1),
+        ("true", all_jobs("skipped", site="failure"), 1),
+        ("false", all_jobs("skipped", site="failure"), 1),
+        ("", all_jobs("skipped"), 1),
+    ],
+    ids=[
+        "checked",
+        "asked-for-and-skipped",
+        "asked-for-and-failed",
+        "not-asked-for-and-failed",
+        "output-empty",
+    ],
+)
+def test_the_result_requires_the_site_job_when_the_gate_asks_for_it(
+    tmp_path: Path, site: str, jobs: dict[str, str], status: int
+) -> None:
+    """A change to the site alone: no code job, the site job alone."""
+    assert result_status("success", "false", "false", jobs, tmp_path, site=site) == status
 
 
 TWO_COMMITS = json.dumps(["a" * 40, "b" * 40])

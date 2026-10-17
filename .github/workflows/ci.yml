@@ -2,8 +2,9 @@
 # how fast a change gets its answer. So a first job (gate) finds what a change touched, and the other jobs skip
 # at job level when nothing relevant changed: a skipped job counts as passed for a required check, while a
 # workflow skipped by `paths` would leave the check pending. A docs-only pull request runs the gate alone, which
-# also checks sign-offs and that nothing private is named. A merge to main runs every job, whatever it changed,
-# and the `result` job fails where a job the gate asked for did not succeed.
+# also checks sign-offs and that nothing private is named, and one that changes only the site the gate and the
+# site job. A merge to main runs every job, whatever it changed, and the `result` job fails where a job the
+# gate asked for did not succeed.
 # Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
 # per-push critical path is the Hypothesis job at the `ci` profile, which runs on every change but one confined
 # to paths no part of it reads (the gate lists them). Keep it short: work that would lengthen the
@@ -62,6 +63,7 @@ jobs:
     outputs:
       code: ${{ steps.paths.outputs.code }}
       hypothesis: ${{ steps.paths.outputs.hypothesis }}
+      site: ${{ steps.paths.outputs.site }}
       commits: ${{ steps.paths.outputs.commits }}
       workflow_blob: ${{ steps.paths.outputs.workflow_blob }}
     steps:
@@ -104,15 +106,20 @@ jobs:
           python3 scripts/check_confidential.py ${range:+--messages "$range"} ${HEAD_REF:+--ref-name "$HEAD_REF"}
 
       # Its outputs decide which jobs run: `code` the static, generated-files, test and control jobs,
-      # `hypothesis` the Hypothesis job, and `commits`, a JSON list, the commits the per-commit job checks.
-      # tests/unit/test_ci_workflows.py runs this step and holds each job's `if` to them.
+      # `hypothesis` the Hypothesis job, `site` the site job, and `commits`, a JSON list, the commits the
+      # per-commit job checks. tests/unit/test_ci_workflows.py runs this step and holds each job's `if` to them.
       # The gate fails closed: it lists the paths that are documentation only, which no test, script, generator,
       # build or workflow reads, and counts every other path as code, a new one included. Some documents are
-      # code: README.md and LICENSE go into the wheel, typings/ to the type checkers, docs/specification/, the
-      # architecture draft and the documentation plan to the spec-sync tests, and site/ to the Pages workflow.
-      # tests/unit/test_ci_workflows.py checks that no test or script names a path listed here. A Python file
-      # is code wherever it sits, a listed directory included (`python_paths`): ruff, run without paths, reads
-      # every file pyproject.toml's `include` matches, which the same tests hold to this pattern.
+      # code: README.md and LICENSE go into the wheel, typings/ to the type checkers, and docs/specification/,
+      # the architecture draft and the documentation plan to the spec-sync tests. tests/unit/test_ci_workflows.py
+      # checks that no test or script names a path listed here. A Python file is code wherever it sits, a listed
+      # directory included (`python_paths`): ruff, run without paths, reads every file pyproject.toml's
+      # `include` matches, which the same tests hold to this pattern.
+      # The site's own paths, site/ and assets/, are not code either (maintainer, 2026-10-17): the Pages
+      # workflow and the site job read them, and no test, so a change to them alone runs the site job and not
+      # the code's. tests/unit/test_ci_workflows.py checks that no test or script names one but the site check
+      # and the few it lists, each with its reason. The site job runs on every change but one to documentation
+      # alone, since what it checks also reads the README and the published schemas, which are code.
       # The Hypothesis job's gate fails closed in the same way (maintainer, 2026-10-17): beside the documentation,
       # it lists the paths that no part of that job reads, neither a module its property tests load or import,
       # nor a path such a module names, nor the job's steps, its build (pyproject.toml's readme and licence, the
@@ -126,15 +133,17 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          site_paths='site/.+|assets/.+'
           docs_paths='CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|docs/regulatory/.+|docs/validation/.+|\.github/ISSUE_TEMPLATE/.+|\.github/pull_request_template\.md'
           python_paths='.*\.pyi?'
-          hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_confidential|check_signoff|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|scripts/pre-push|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
+          hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_confidential|check_signoff|check_site|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|scripts/pre-push|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
           commits=()
           workflow_blob=
           if [ "$FUZZ_ONLY" = true ]; then
             # A manual run of the fuzz job alone.
             code=false
             hypothesis=false
+            site=false
           elif [ "$EVENT" = pull_request ]; then
             # Both paths of a file moved, which git would otherwise give as a rename, by where it went alone:
             # a module moved into a documentation path is a change to code.
@@ -145,12 +154,17 @@ jobs:
             echo "::stop-commands::$stop"
             printf '%s\n' "$changed"
             echo "::$stop::"
-            # Documentation only when there are paths, none a Python file, and each is listed: a diff that names
-            # none is code.
-            if [ -n "$changed" ] && ! grep -qxE "$python_paths" <<< "$changed" && ! grep -qvxE "$docs_paths" <<< "$changed"; then
+            # Documentation or the site's alone when there are paths, none a Python file, and each is listed: a
+            # diff that names none is code.
+            if [ -n "$changed" ] && ! grep -qxE "$python_paths" <<< "$changed" && ! grep -qvxE "$docs_paths|$site_paths" <<< "$changed"; then
               code=false
             else
               code=true
+            fi
+            if [ -n "$changed" ] && ! grep -qxE "$python_paths" <<< "$changed" && ! grep -qvxE "$docs_paths" <<< "$changed"; then
+              site=false
+            else
+              site=true
             fi
             if [ -n "$changed" ] && ! grep -qvxE "$docs_paths|$hypothesis_free" <<< "$changed"; then
               hypothesis=false
@@ -158,16 +172,16 @@ jobs:
               hypothesis=true
             fi
             # Each commit but the head, oldest first, for the per-commit job, but one that changes documentation
-            # alone: its tree is its parent's but for paths no test reads, and its parent is listed too, or is
-            # the base. A commit that changes no path is listed, as a diff that names none is code: grep reads
-            # its empty diff as one empty line, which no pattern lists. A force-push lists the commits the
-            # branch holds now. The list is taken apart from the loop, so that a failure of git fails the step
-            # rather than list nothing.
+            # or the site alone: its tree is its parent's but for paths no test reads, and its parent is listed
+            # too, or is the base. A commit that changes no path is listed, as a diff that names none is code:
+            # grep reads its empty diff as one empty line, which no pattern lists. A force-push lists the commits
+            # the branch holds now. The list is taken apart from the loop, so that a failure of git fails the
+            # step rather than list nothing.
             revisions=$(git rev-list --reverse "$PR_BASE..$PR_HEAD")
             for sha in $revisions; do
               [ "$sha" != "$PR_HEAD" ] || continue
               own=$(git diff --no-renames --name-only "$sha^" "$sha")
-              if grep -qxE "$python_paths" <<< "$own" || grep -qvxE "$docs_paths" <<< "$own"; then commits+=("$sha"); fi
+              if grep -qxE "$python_paths" <<< "$own" || grep -qvxE "$docs_paths|$site_paths" <<< "$own"; then commits+=("$sha"); fi
             done
             echo "${#commits[@]} commits before the head to check on their own"
             # A matrix holds at most 256 jobs, and a run that left some out would pass without them.
@@ -182,10 +196,12 @@ jobs:
             # A merge to main, the weekly run and a manual run test everything, whatever changed.
             code=true
             hypothesis=true
+            site=true
           fi
           {
             echo "code=$code"
             echo "hypothesis=$hypothesis"
+            echo "site=$site"
             echo "commits=$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1:]))' "${commits[@]}")"
             echo "workflow_blob=$workflow_blob"
           } >> "$GITHUB_OUTPUT"
@@ -519,6 +535,34 @@ jobs:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-${{ matrix.shard }}-${{ github.run_id }}
 
+  site:
+    name: the site, staged as Pages stages it
+    # A change to site/ or assets/ alone runs no test, mutant search or Hypothesis shard, none of which reads
+    # them, and this job in their place (maintainer, 2026-10-17): the site staged exactly as the Pages workflow
+    # stages it, its step copied word for word (tests/unit/test_ci_workflows.py holds the two equal), which
+    # fails where a file it copies is missing; then scripts/check_site.py on that copy: every local link, image
+    # and icon resolves, every page keeps a content security policy that lets nothing load from elsewhere, and
+    # the README's images name files of the tree. Seconds long, on the runner's own Python.
+    needs: gate
+    if: needs.gate.outputs.site == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Stage site/, with the logo and favicons at its root and the schemas at /schema/
+        run: |
+          cp -R site "$RUNNER_TEMP/site"
+          cp assets/images/logo.png assets/images/favicon/* "$RUNNER_TEMP/site/"
+          if [ -d src/materica/schema ]; then
+            mkdir "$RUNNER_TEMP/site/schema"
+            cp -R src/materica/schema/. "$RUNNER_TEMP/site/schema/"
+            python3 scripts/schema_index.py "$RUNNER_TEMP/site/schema"
+          fi
+      - name: Every local link, image and icon resolves, every page keeps its policy, the README's images exist
+        run: python3 scripts/check_site.py "$RUNNER_TEMP/site" --readme README.md
+
   commit:
     name: commit ${{ matrix.sha }} on its own
     # Every commit of a pull request passes on its own before the merge, which CI checks commit by commit
@@ -642,7 +686,7 @@ jobs:
     # requiring the jobs by name would leave docs-only pull requests waiting. A job skipped by its `if` reports
     # success, so a gate wired wrongly (a renamed step id leaves its outputs empty) would skip every job and pass
     # a check that only looks for failures: this one fails unless every job the gate asked for succeeded.
-    needs: [gate, static, generated, tests, controls, hypothesis, commit]
+    needs: [gate, static, generated, tests, controls, hypothesis, site, commit]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -652,23 +696,27 @@ jobs:
           GATE: ${{ needs.gate.result }}
           CODE: ${{ needs.gate.outputs.code }}
           HYPOTHESIS: ${{ needs.gate.outputs.hypothesis }}
+          SITE: ${{ needs.gate.outputs.site }}
           COMMITS: ${{ needs.gate.outputs.commits }}
           STATIC_JOB: ${{ needs.static.result }}
           GENERATED_JOB: ${{ needs.generated.result }}
           TESTS_JOB: ${{ needs.tests.result }}
           CONTROLS_JOB: ${{ needs.controls.result }}
           HYPOTHESIS_JOB: ${{ needs.hypothesis.result }}
+          SITE_JOB: ${{ needs.site.result }}
           COMMIT_JOB: ${{ needs.commit.result }}
         run: |
           status=0
           fail() { echo "::error::$1"; status=1; }
           asked() { [ "$2" = success ] || fail "the gate asked for $1, which ended in '$2'"; }
-          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS, commits $COMMITS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, controls $CONTROLS_JOB, hypothesis $HYPOTHESIS_JOB, commit $COMMIT_JOB"
+          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS, site $SITE, commits $COMMITS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, controls $CONTROLS_JOB, hypothesis $HYPOTHESIS_JOB, site $SITE_JOB, commit $COMMIT_JOB"
           [ "$GATE" = success ] || fail "the gate ended in '$GATE'"
-          case "$CODE $HYPOTHESIS" in
-            "true true" | "true false" | "false true" | "false false") ;;
-            *) fail "the gate's outputs are code '$CODE' and hypothesis '$HYPOTHESIS', not each true or false" ;;
-          esac
+          for output in "code $CODE" "hypothesis $HYPOTHESIS" "site $SITE"; do
+            case "${output#* }" in
+              true | false) ;;
+              *) fail "the gate's output ${output%% *} is '${output#* }', not true or false" ;;
+            esac
+          done
           if [ "$CODE" = true ]; then
             asked static "$STATIC_JOB"
             asked generated "$GENERATED_JOB"
@@ -676,13 +724,14 @@ jobs:
             asked controls "$CONTROLS_JOB"
           fi
           if [ "$HYPOTHESIS" = true ]; then asked hypothesis "$HYPOTHESIS_JOB"; fi
+          if [ "$SITE" = true ]; then asked site "$SITE_JOB"; fi
           # The commits to check on their own: none, or a list, which asks for the per-commit job.
           case "$COMMITS" in
             "[]") ;;
             \[\"*\"\]) asked "the commits before the head" "$COMMIT_JOB" ;;
             *) fail "the gate's commits are '$COMMITS', not a list" ;;
           esac
-          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$CONTROLS_JOB" "$HYPOTHESIS_JOB" "$COMMIT_JOB"; do
+          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$CONTROLS_JOB" "$HYPOTHESIS_JOB" "$SITE_JOB" "$COMMIT_JOB"; do
             case "$result" in failure | cancelled) fail "a job ended in '$result'" ;; esac
           done
           exit "$status"

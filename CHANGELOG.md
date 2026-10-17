@@ -369,6 +369,16 @@ every family entry goes in `families/CHANGELOG.md`.
   checks a pull request's branch name (`--ref-name`). Both scans read a binary file, or text in UTF-16 or
   UTF-32, by its printable runs of four ASCII characters or more, where they skipped any content holding a
   NUL byte; what a file holds compressed is still not read (CONTRIBUTING).
+- A change to `site/` or `assets/` alone no longer runs the test suite, the mutant searches or the Hypothesis
+  shards, none of which reads them, but a seconds-long `site` job (the gate's `site_paths`, neither code nor
+  documentation). It stages the site with the Pages workflow's own step, copied word for word, which fails
+  where a file it copies is missing, then runs `scripts/check_site.py` on the copy: every local link, image
+  and icon, the web manifest's included, resolves; every page keeps one content security policy, before
+  anything it loads, that lets nothing load from elsewhere, and nothing does; and the README's images name
+  files of the tree. It runs on every change but one to documentation alone, and the one required check
+  requires it then. `tests/unit/test_ci_workflows.py` holds the job's staging step to Pages', shows that
+  leaving out any file the step copies fails it, and checks that no test or script names a path of the site
+  but those the site job runs and a few listed with their reasons, beside #23's check for documentation.
 
 ## [0.1.0.dev1] - 2026-10-14
 
