@@ -234,7 +234,11 @@ member table differs from its source. The version rules are in `DOCUMENTATION_AR
 
 A released schema version's files never change: a change is a new minor version in a new directory beside it
 (maintainer, 2026-10-14). CI fails where a file of a released version is added, removed or changed
-(`tests/spec_sync/test_released_schemas.py`). Until its release, a version's files may change.
+(`tests/spec_sync/test_released_schemas.py`). Until its release, a version's files may change, and the
+version's index page on the site says so ("Draft until 0.1.0"; it leaves the page when the release freezes the
+version). Once 0.1.0 is released, the next line's schemas are written in `src/materica/schema/0.2-dev/`, with
+`$id`s under `https://w3id.org/materica/schema/0.2-dev/`; the 0.2.0 release renames the directory to `0.2/` and
+rewrites the `$id`s, then freezes it (`src/materica/schema/README.md`, "Released versions").
 
 ## Adding a model family
 
@@ -473,4 +477,5 @@ python3 scripts/freeze_schema.py --check   # fails where a released version diff
 ```
 
 It refuses a version whose `$id`s are not their paths, and never rewrites a version already listed. Commit the
-manifest with the release; from then on CI fails where a file of that version changes.
+manifest with the release; from then on CI fails where a file of that version changes, and the version's page on
+the site loses its "draft until" note when Pages next deploys.

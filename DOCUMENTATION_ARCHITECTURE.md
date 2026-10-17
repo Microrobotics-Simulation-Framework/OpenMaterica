@@ -852,6 +852,13 @@ or READMEs, and CI enforces it (`tests/spec_sync/test_released_schemas.py`). So 
 specification's wording only; a fix inside a schema file waits for the next minor version and its own
 directory (maintainer, 2026-10-15).
 
+The schemas are published under `https://w3id.org/materica/schema/<MAJOR.MINOR>/` (maintainer, 2026-10-18).
+Until a version is released its files may change, and its index page on the site opens with a note saying
+so: "Draft until 0.1.0" for schema 0.1, which the freezing of the version at its release removes. After 0.1.0
+is released, the next line's development schemas live under `schema/0.2-dev/`, with `$id`s under
+`.../schema/0.2-dev/`; at the 0.2.0 release the directory becomes `0.2/` and is frozen, or its address is
+redirected by a pull request to `perma-id/w3id.org`.
+
 **The siblings' versions** (maintainer, 2026-10-16, except where 2026-10-17 is given; architecture draft
 section 7.2). A sibling's MAJOR.MINOR is the core's MAJOR.MINOR it is built for, and its patch number is its
 own. It depends on `openmaterica>=X.Y.F,<X.(Y+1)` before 1.0 and after it, so it stays in lockstep with the

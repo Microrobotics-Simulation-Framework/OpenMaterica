@@ -15,6 +15,13 @@ every family entry goes in `families/CHANGELOG.md`.
 ## [Unreleased]
 
 ### Added
+- The schema URL scheme (maintainer, 2026-10-18). The site's index page of a schema version that
+  `tests/spec_sync/released_schemas.json` does not list opens with a note, "Draft until 0.1.0": its files may
+  change until the release, and the release freezes them, which removes the note (`scripts/schema_index.py`);
+  the Pages workflow now also runs when the manifest changes. The next line's development schemas will live in
+  a `0.2-dev/` directory, renamed `0.2/` and frozen at its release; the rule is in
+  `DOCUMENTATION_ARCHITECTURE.md` section 7.1, `CONTRIBUTING.md` and `src/materica/schema/README.md`. No
+  `0.2-dev/` exists yet, and no `$id` changed.
 - The project's artwork in `assets/`: the logo (`images/logo.png`, and `images/logo-full.png` at full size),
   the favicon and app icons (`images/favicon/`), and an animation of the logo for talks and posts
   (`video/logo-animation.mp4`). The logo heads the README and the site; the site serves the logo and favicons

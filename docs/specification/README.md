@@ -71,7 +71,8 @@ Read them in this order.
 - Until a schema version is released, its files under `schema/<MAJOR.MINOR>/` may change; once it is released
   they never change, and a later minor version gets a directory of its own. A reader validates against the
   schema files shipped with it and never fetches a schema by its `$id`, which is an identifier and need not
-  resolve. [not yet covered]
+  resolve. The site's index page of a version not yet released says so; the page of a released version does
+  not. [not yet covered]
 
 ## Suites and case numbers
 
