@@ -29,6 +29,7 @@ from tests.conformance.runner import (
     CONFIGURATIONS,
     EVALUATOR_CLAIMS,
     EXECUTORS,
+    CaseFile,
     EvaluatorClaim,
     EvaluatorPrecision,
     Executor,
@@ -819,11 +820,13 @@ EVALUATOR_FAULTS: list[Caught] = [
 RAISED = re.compile(r"claiming [^:]*: raised ")
 
 
-def why_not_caught(evaluator: TableEvaluator, catcher: str, claim: EvaluatorClaim, by: str) -> str | None:
+def why_not_caught(
+    evaluator: TableEvaluator, catcher: CaseFile, claim: EvaluatorClaim, by: str
+) -> str | None:
     """Why `evaluator`, claiming `claim`, does not fail the case file `catcher` by a difference `by`, or None
     where it does."""
     executors = {**EXECUTORS, "evaluate": runner.evaluate_executor(evaluator, (claim,))}
-    run = runner.run(CASE_FILES[catcher], configurations=CONFIGURATIONS, executors=executors)
+    run = runner.run(catcher, configurations=CONFIGURATIONS, executors=executors)
     if run.outcome is not Outcome.FAILED:
         return f"{claim}: {run.outcome.value}"
     raised = [difference for difference in run.differences if RAISED.match(difference)]
@@ -870,7 +873,7 @@ def test_an_evaluator_that_raises_its_refusals_fails_no_te_file() -> None:
     assert len(raised) == 4 * sum(map(refusals_expected, CASE_FILES.values())) > 0
 
 
-def refusals_expected(case_file: runner.CaseFile) -> int:
+def refusals_expected(case_file: CaseFile) -> int:
     evaluations = case_file.expected.get("evaluations", [])
     assert isinstance(evaluations, list)
     return sum(1 for entry in evaluations if isinstance(entry, dict) and entry.get("refused") is True)
@@ -885,7 +888,8 @@ def test_a_broken_evaluator_fails_its_case_by_its_own_difference_under_every_cla
     caught: Caught, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     evaluator = caught.fault(monkeypatch)
-    problems = [why_not_caught(evaluator, caught.catcher, claim, caught.by) for claim in caught.claims]
+    catcher = CASE_FILES[caught.catcher]
+    problems = [why_not_caught(evaluator, catcher, claim, caught.by) for claim in caught.claims]
     assert problems == [None] * len(caught.claims)
 
 
@@ -902,7 +906,7 @@ def raises_in_its_interpolation(monkeypatch: pytest.MonkeyPatch) -> TableEvaluat
 def test_a_fault_counts_as_caught_only_by_the_difference_named_beside_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    claim, catcher = EVALUATOR_CLAIMS[0], "TE-002.linear.json"
+    claim, catcher = EVALUATOR_CLAIMS[0], CASE_FILES["TE-002.linear.json"]
     assert why_not_caught(reference, catcher, claim, IN_RANGE) == f"{claim}: {Outcome.VERIFIED.value}"
     clamping = only_clamps(monkeypatch)
     assert why_not_caught(clamping, catcher, claim, IN_RANGE) is None
@@ -910,3 +914,58 @@ def test_a_fault_counts_as_caught_only_by_the_difference_named_beside_it(
     assert "no difference 'value: expected'" in str(why_not_caught(clamping, catcher, claim, VALUE))
     raising = raises_in_its_interpolation(monkeypatch)
     assert "caught by raising: " in str(why_not_caught(raising, catcher, claim, IN_RANGE))
+
+
+def with_ten_times_the_binary32_tolerance(case_file: CaseFile) -> CaseFile:
+    """`case_file`, compared in either precision at ten times its `binary32` tolerance."""
+    tolerances = case_file.precision_tolerances
+    assert tolerances is not None
+    return replace(case_file, precision_tolerances=dict.fromkeys(tolerances, 10 * tolerances["binary32"]))
+
+
+FAULTY_EVALUATORS = list(dict.fromkeys(caught.fault for caught in EVALUATOR_FAULTS))
+
+
+@pytest.mark.parametrize("fault", FAULTY_EVALUATORS, ids=[fault.__name__ for fault in FAULTY_EVALUATORS])
+def test_each_broken_evaluator_misses_one_of_its_files_by_ten_times_its_binary32_tolerance(
+    fault: EvaluatorFault, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The specification README's cap on a file's `binary32` tolerance, restated per broken evaluator
+    (maintainer, 2026-10-17): of the TE files named beside a broken evaluator, at least one still catches it,
+    by the difference named beside it, with that file's `binary32` tolerance ten times as wide, under each
+    precision and side it claims."""
+    rows = [caught for caught in EVALUATOR_FAULTS if caught.fault is fault]
+    evaluator = fault(monkeypatch)
+    for claim in rows[0].claims:
+        problems = [
+            why_not_caught(
+                evaluator, with_ten_times_the_binary32_tolerance(CASE_FILES[row.catcher]), claim, row.by
+            )
+            for row in rows
+        ]
+        assert None in problems, problems
+
+
+def nudges_each_value_by_a_millionth(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """Each value inside the readable range a millionth too large: under ten times any TE file's `binary32`
+    tolerance, the least of which is 3e-7."""
+
+    def evaluate(table: Table, at: float, precision: EvaluatorPrecision, side: Side) -> Evaluation:
+        found = reference(table, at, precision, side)
+        if found.in_range and found.value is not None:
+            return replace(found, value=float(found.value) * (1 + 1e-6))
+        return found
+
+    return evaluate
+
+
+def test_the_cap_fails_a_broken_evaluator_that_misses_every_file_by_less(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    nudging = nudges_each_value_by_a_millionth(monkeypatch)
+    claim = EVALUATOR_CLAIMS[0]
+    files = [case_file for case_file in CASE_FILES.values() if case_file.operation == "evaluate"]
+    # Caught at the files' own tolerances, but by no file at ten times its binary32 one.
+    assert any(why_not_caught(nudging, case_file, claim, VALUE) is None for case_file in files)
+    widened = [with_ten_times_the_binary32_tolerance(case_file) for case_file in files]
+    assert all(why_not_caught(nudging, case_file, claim, VALUE) is not None for case_file in widened)
