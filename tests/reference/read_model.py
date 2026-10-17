@@ -2359,7 +2359,13 @@ def review_read(provenance: JsonObject) -> JsonObject:
     ):
         return not_checked
     if "status" in review:
-        return status_returned(review) if review["status"] == "not_checked" else not_checked
+        # provenance.md:45-46 "where its `status` or `reason` is not a string, or where it also holds a
+        # member S defines"; provenance.md:51-52 "A status object that breaks its shape is read for nothing
+        # else"
+        broken = not isinstance(review.get("reason", ""), str) or any(
+            name in review for name in REVIEW_NAMES[2:]
+        )
+        return status_returned(review) if review["status"] == "not_checked" and not broken else not_checked
     if review.get("result") in REVIEW_RESULTS:
         return known_members(review, REVIEW_NAMES)
     return not_checked

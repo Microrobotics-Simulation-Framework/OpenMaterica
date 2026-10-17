@@ -235,9 +235,10 @@ REVIEW_MEMBERS = ("result", "reviewer", "orcid", "date", "independent_of_extract
 
 
 def review_as_read(review: JsonValue) -> JsonValue:
-    """`provenance.md` section 2 item 6, written here: as found, a status object holding `not_checked` and no
-    `result`, or an object holding no `status` whose `result` is `reviewed`, neither holding a member one slip
-    from a member a review names; any other review reads as `not_checked`."""
+    """`provenance.md` section 2 item 6, written here: as found, a status object holding `not_checked` that
+    keeps its shape (section 1 item 5: a `reason` that is a string, no member a review defines beside it),
+    or an object holding no `status` whose `result` is `reviewed`, neither holding a member one slip from a
+    member a review names; any other review reads as `not_checked`."""
     named = ("status", "reason", *REVIEW_MEMBERS)
     not_checked: JsonObject = {"status": "not_checked"}
     if not isinstance(review, dict) or any(
@@ -245,7 +246,11 @@ def review_as_read(review: JsonValue) -> JsonValue:
     ):
         return not_checked
     if "status" in review:
-        found = review["status"] == "not_checked" and "result" not in review
+        found = (
+            review["status"] == "not_checked"
+            and isinstance(review.get("reason", ""), str)
+            and not any(name in review for name in REVIEW_MEMBERS)
+        )
         return (
             {name: review[name] for name in ("status", "reason") if name in review} if found else not_checked
         )
