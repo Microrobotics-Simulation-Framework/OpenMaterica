@@ -509,8 +509,8 @@ def list_records_executor() -> Executor:
 
 # The claims this implementation runs under, each case file under every one that agrees with it: plain read
 # and HS, as by default; plain read alone, a reader without HS; and with the fits and reference data suite
-# too, whose `want`s step 0 then accepts. A read under it ends by step 8 or raises, and steps 1 to 8 check the
-# same under it as without it, so claiming that suite gives no answer a step not built could change.
+# too, whose `want`s step 0 then accepts. A read under it ends by step 10 or raises, and steps 1 to 10 check
+# the same under it as without it, so claiming that suite gives no answer a step not built could change.
 CONFIGURATIONS: tuple[frozenset[Suite], ...] = (
     frozenset({"plain_read", "hash"}),
     frozenset({"plain_read"}),
