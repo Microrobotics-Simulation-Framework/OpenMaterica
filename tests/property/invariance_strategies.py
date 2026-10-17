@@ -2,8 +2,9 @@
 """Strategies for the S2 design's HP4 and HP10: a read beside a record changed where the read must not look,
 or written out again in another byte form.
 
-HP4 (isolation, `read_side_contract.md` section 3, steps 7 and 8; PR-033, PR-045): a constant that passes
-steps 1 to 8 (`condition_strategies.base_reads`), beside a fault elsewhere in its record, the way drawn first:
+HP4 (isolation, `read_side_contract.md` section 3, steps 7 and 8; PR-033, PR-045): a constant, an interval
+or a composition that passes steps 1 to 8 (`result_strategies.form_reads`), read under the `want` its form
+gives, beside a fault elsewhere in its record, the way drawn first:
 another registered field holding a field of step 8's catalogue with its fault, or any JSON value; a field
 name no row registers, more than one slip from every registered one, holding anything; or another section's
 `specimen`, with its facts or with a fault of its own. Or a fault in the read field's own section's
@@ -24,10 +25,11 @@ from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite
 from tests.property import model_strategies, records
-from tests.property.condition_strategies import Read, at, base_reads, reference
+from tests.property import result_strategies as results
+from tests.property.condition_strategies import Read, at, reference
 from tests.property.model_strategies import Example
 from tests.property.strategies import WRITINGS, Size, render
-from tests.property.value_field_strategies import faulty_records, pinned, specimen
+from tests.property.value_field_strategies import WANTS, faulty_records, pinned, specimen
 from tests.reference.strict_json import NotStrictJson, parse
 
 JsonObject = dict[str, JsonValue]
@@ -100,9 +102,16 @@ def fault_elsewhere(draw: Draw, way: str, read: Read, size: Size) -> JsonObject:
 
 
 @st.composite
+def form_read(draw: Draw, size: Size) -> Read:
+    """A read of a field of a form drawn first, under the `want` its form gives."""
+    form, read = draw(results.form_reads(size))
+    return read._replace(request=results.with_want(read.request, WANTS[form]))
+
+
+@st.composite
 def isolated(draw: Draw, size: Size) -> Isolated:
     way = draw(st.sampled_from(ELSEWHERE))
-    read = draw(base_reads(size))
+    read = draw(form_read(size))
     changed = changed_record(read, draw(fault_elsewhere(way, read, size)))
     claims = draw(st.sampled_from(model_strategies.CLAIMS))
     return Isolated(way, claims, read, changed)
@@ -111,7 +120,7 @@ def isolated(draw: Draw, size: Size) -> Isolated:
 @st.composite
 def own_section_faulted(draw: Draw, size: Size) -> Isolated:
     """A fault in the read field's own section's `specimen`."""
-    read = draw(base_reads(size))
+    read = draw(form_read(size))
     section, _, _ = read.field.partition(".")
     change: JsonObject = {section: {"specimen": copy.deepcopy(draw(st.sampled_from(FAULTY_SPECIMENS)))}}
     claims = draw(st.sampled_from(model_strategies.CLAIMS))

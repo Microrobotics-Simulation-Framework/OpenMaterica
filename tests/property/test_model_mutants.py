@@ -290,6 +290,28 @@ IMPLEMENTATION = [
         ("condition_tokens.name_unknown",),
         ("condition_tokens.name_unknown",),
     ),
+    # S2b-1's HP3: an interval's and a composition's own member.
+    Mutant(
+        "interval_order_unchecked",
+        "faults",
+        taken(value_field_mutants.MUTANTS, "interval_order_unchecked"),
+        ("interval.lower_above_upper",),
+        ("interval.lower_above_upper",),
+    ),
+    Mutant(
+        "component_twice_allowed",
+        "faults",
+        taken(value_field_mutants.MUTANTS, "component_twice_allowed"),
+        ("composition.component_repeated",),
+        ("composition.component_repeated",),
+    ),
+    Mutant(
+        "element_by_pattern",
+        "faults",
+        taken(value_field_mutants.MUTANTS, "element_by_pattern"),
+        ("component.element_unknown",),
+        ("component.element_unknown",),
+    ),
     # HP5 (an unknown member returned) and HP6
     Mutant(
         "unknown_members_returned",
@@ -302,6 +324,18 @@ IMPLEMENTATION = [
         "values",
         taken(result_mutants.MUTANTS, "expanded_uncertainty_divided_by_its_k"),
         ("valued", "alternatives"),
+    ),
+    Mutant(
+        "upper_none_as_infinity",
+        "values",
+        taken(result_mutants.MUTANTS, "upper_none_as_infinity"),
+        ("form_interval",),
+    ),
+    Mutant(
+        "components_normalised",
+        "values",
+        taken(result_mutants.MUTANTS, "components_normalised"),
+        ("form_composition",),
     ),
     # HP7
     Mutant(
@@ -466,6 +500,9 @@ MODEL = [
     ModelFault("plus_minus_units_unchecked", "faults", ("unit_plus_minus",)),
     ModelFault("implied_values_compared_by_value", "unpinned", ("implied_zero_beside_minus_zero",)),
     ModelFault("stated_without_origin_unreported", "values", ("valued", "alternatives")),
+    # Case files kill these; HP12 holds the model to them on the forms S2b-1 reads.
+    ModelFault("value_given_by_an_interval", "values", ("form_interval",)),
+    ModelFault("bounds_given_by_a_constant", "values", ("form_constant",)),
 ]
 
 

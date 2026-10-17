@@ -9,7 +9,9 @@ A fault is injected where the core looks a name up when it runs: a module-level 
 or `conditions`.
 """
 
+import copy
 import dataclasses
+import math
 import types
 from collections.abc import Callable, Collection
 from typing import Any, NamedTuple
@@ -66,6 +68,7 @@ COMPARED = conditions._compared  # pyright: ignore[reportPrivateUsage]
 ORIGIN = read._origin  # pyright: ignore[reportPrivateUsage]
 BY_WANT = read._by_want  # pyright: ignore[reportPrivateUsage]
 COUNTED_MEMBER = read._counted_member  # pyright: ignore[reportPrivateUsage]
+READ_VALUE_FIELD = read.read_value_field
 FIELD_HINTS = read._FIELD_HINTS  # pyright: ignore[reportPrivateUsage]
 ENDS = read._ends  # pyright: ignore[reportPrivateUsage]
 STATUS = read._status  # pyright: ignore[reportPrivateUsage]
@@ -100,6 +103,11 @@ def _unmerged(reasons: Collection[Reason]) -> tuple[Reason, ...]:
     return tuple(reasons)
 
 
+def _a_forms_mismatch_outside_the_table(field: JsonObject, name: str, form: str, want: Want) -> Reason | None:
+    mismatch = BY_WANT(field, name, form, want)
+    return Reason("form_unmet") if mismatch is not None and form != "constant" else mismatch  # type: ignore[arg-type]
+
+
 # HP2: the status law and the members present.
 
 
@@ -128,6 +136,14 @@ def _no_unit_beside_alternative_values(*arguments: Any) -> ReadResult:
     return dataclasses.replace(result, unit=None)
 
 
+def _no_statistics_beside_a_composition(*arguments: Any) -> FieldRead:
+    """A composition's spread read as its components' alone, so the field's block is not returned."""
+    found: FieldRead = READ_VALUE_FIELD(*arguments)
+    if isinstance(found.member, dict) and "components" in found.member:
+        return dataclasses.replace(found, statistics=None)
+    return found
+
+
 # HP6: returned as stored.
 
 
@@ -149,6 +165,42 @@ def _shared_where_nothing_is_left_out(value: JsonValue, shape: object) -> JsonVa
 def _negative_zero_as_zero(member: JsonValue) -> JsonValue:
     returned = COUNTED_MEMBER(member)
     return 0.0 if returned == 0.0 else returned
+
+
+def _upper_none_as_infinity(member: JsonValue) -> JsonValue:
+    """The S2 design's HP6 mutant: an interval's `upper: none` read as infinity."""
+    returned = COUNTED_MEMBER(member)
+    upper = returned.get("upper") if isinstance(returned, dict) else None
+    if isinstance(returned, dict) and isinstance(upper, dict) and upper.get("status") == "none":
+        returned["upper"] = math.inf
+    return returned
+
+
+def _bounds_without_their_basis(member: JsonValue) -> JsonValue:
+    returned = COUNTED_MEMBER(member)
+    if isinstance(returned, dict) and "lower" in returned:
+        returned.pop("basis", None)
+    return returned
+
+
+def _components_normalised(member: JsonValue) -> JsonValue:
+    """Fractions scaled to sum to one, the stated sum dropped (`record_format.md` section 6, composition item
+    2: nothing is normalised)."""
+    returned = COUNTED_MEMBER(member)
+    if not (isinstance(returned, dict) and isinstance(components := returned.get("components"), list)):
+        return returned
+    fractions = [component.get("fraction") for component in components if isinstance(component, dict)]
+    total = math.fsum(fraction for fraction in fractions if isinstance(fraction, float))
+    for component in components:
+        if isinstance(component, dict) and isinstance(fraction := component.get("fraction"), float) and total:
+            component["fraction"] = fraction / total
+    returned.pop("stated_sum", None)
+    return returned
+
+
+def _components_copied_as_stored(member: JsonValue) -> JsonValue:
+    """A form's member returned without rule 5's integers in a component's statistics block."""
+    return copy.deepcopy(member)
 
 
 def _every_member_kept(shape: object, *, status: bool) -> None:
@@ -204,7 +256,18 @@ MUTANTS = [
         setting(read, "_origin", _origin_with_a_condition),
         ("met", "step_9_or_10_fault", "unknown_at_step_10"),
     ),
-    Mutant("a_code_outside_the_table", "HP1", setting(read, "_by_want", _a_code_outside_the_table), ("met",)),
+    # Step 13 gives an interval or a composition read under `value` "`not_met` (`want_mismatch`)"
+    # (`read_side_contract.md` section 6), whatever the read's kind: a fault of step 8's catalogue that step 8
+    # passes ("a provenance member a read does not check, broken or `null` (`"extraction": null`), does not
+    # refuse the field", `provenance.md`'s PR-109) leaves a step 8 fault's read of either form, which is read
+    # under `value`, to reach it where steps 9 and 10 do not end the read, so this dies at a step 8 fault as
+    # well.
+    Mutant(
+        "a_code_outside_the_table",
+        "HP1",
+        setting(read, "_by_want", _a_code_outside_the_table),
+        ("met", "step_8_fault"),
+    ),
     # A reason "appears at most once in a result" (section 2 item 2), at any step: step 9's faults of the
     # field's unit and of a fact's each give `unit_mismatch` with no condition, one reason found twice, so
     # this dies at a fault of steps 9 and 10 as well.
@@ -213,6 +276,14 @@ MUTANTS = [
         "HP1",
         setting(read, "merged", _unmerged),
         ("step_8_fault", "step_9_or_10_fault"),
+    ),
+    # A step 8 fault's read of an interval or a composition reaches step 13's `want_mismatch` as for
+    # `a_code_outside_the_table` (above), so this dies at a step 8 fault as well.
+    Mutant(
+        "a_forms_mismatch_outside_the_table",
+        "HP1",
+        setting(read, "_by_want", _a_forms_mismatch_outside_the_table),
+        ("form_interval", "form_composition", "step_8_fault"),
     ),
     Mutant(
         "value_beside_condition_outside",
@@ -237,6 +308,12 @@ MUTANTS = [
         ("alternatives",),
     ),
     Mutant(
+        "no_statistics_beside_a_composition",
+        "HP2",
+        setting(read, "read_value_field", _no_statistics_beside_a_composition),
+        ("form_composition",),
+    ),
+    Mutant(
         "expanded_uncertainty_divided_by_its_k",
         "HP6",
         setting(read, "_counted", _expanded_uncertainty_divided_by_its_k),
@@ -257,6 +334,30 @@ MUTANTS = [
     ),
     Mutant(
         "unknown_members_returned", "HP6", setting(read, "_members", _every_member_kept), ("unknown_member",)
+    ),
+    Mutant(
+        "upper_none_as_infinity",
+        "HP6",
+        setting(read, "_counted_member", _upper_none_as_infinity),
+        ("form_interval",),
+    ),
+    Mutant(
+        "bounds_without_their_basis",
+        "HP6",
+        setting(read, "_counted_member", _bounds_without_their_basis),
+        ("form_interval",),
+    ),
+    Mutant(
+        "components_normalised",
+        "HP6",
+        setting(read, "_counted_member", _components_normalised),
+        ("form_composition",),
+    ),
+    Mutant(
+        "component_counts_as_doubles",
+        "HP6",
+        setting(read, "_counted_member", _components_copied_as_stored),
+        ("form_composition",),
     ),
     # A review returned as the record holds it is caught as another review, or as the record's own object.
     Mutant("review_as_it_holds", "HP6", setting(read, "_review", _review_as_it_holds), REVIEWS),

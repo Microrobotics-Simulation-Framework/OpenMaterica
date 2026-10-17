@@ -5,12 +5,13 @@ the reference model (`tests/reference/read_model.py`) to agree on, each drawn by
 A draw is the sources' bytes, the request's JSON text and the claims, and what it planted, by name, so that a
 property can tell a planted open point from anything else. The kinds:
 
-- **valued**: a constant that passes steps 1 to 8, under any `want` of section 6 and any claims, its value
-  `-0`, its review read each way and a member the reader does not know where `result_strategies.enriched`
-  draws them; its temperature met as drawn, at one of section 5's boundaries as HP7 draws them, or filled by
-  an implied condition, the way drawn first;
-- **alternatives**: two or three alternatives the request meets, a list that breaks its shape, or
-  alternatives each refused by one request fault (S4's decision 12);
+- **valued**: a constant, an interval or a composition that passes steps 1 to 8, under any `want` of section
+  6 (an interval's or a composition's own in half its draws) and any claims, its value `-0`, its review read
+  each way and a member the reader does not know where `result_strategies.enriched` draws them; its
+  temperature met as drawn, at one of section 5's boundaries as HP7 draws them, or filled by an implied
+  condition, the way drawn first;
+- **alternatives**: two or three alternatives of one form the request meets, a list that breaks its shape,
+  or alternatives each refused by one request fault (S4's decision 12);
 - **step 8**, **steps 9 and 10**: one fault of each step's catalogue, or two of two parts in one draw in four;
 - **two of one step**: two faults of one of steps 0, 8, 9 and 10 that give two reasons, so that a step that
   stops at its first fault shows (the design's B5);
@@ -37,6 +38,7 @@ from tests.property import result_strategies as results
 from tests.property import stores
 from tests.property.condition_strategies import Read, at, base_reads, implying, in_vivo, repinned
 from tests.property.strategies import DOUBLES, Size
+from tests.property.value_field_strategies import WANTS as FORM_WANTS
 from tests.property.value_field_strategies import faulty_records, pinned, slipped, specimen
 
 JsonObject = dict[str, JsonValue]
@@ -88,14 +90,20 @@ def field_of(read: Read) -> JsonObject:
 def with_implied_temperature(draw: Draw, read: Read) -> None:
     """An in-vivo specimen whose temperature the record leaves unstated or does not hold, filled by an implied
     condition at the operating value; or, in one draw in four, still stated, which the implied value never
-    overrides."""
+    overrides. A row that requires no temperature (a composition's) has the request give one."""
     in_vivo(read)
+    operating = at(read.request, "operating_conditions")
+    if "temperature" not in operating:
+        operating["temperature"] = {"value": 310.15, "unit": "K"}
+        at(read.request, "requirement", "conditions")["temperature"] = {
+            "tolerance": {"value": 1.0, "unit": "K"}
+        }
     held = at(field_of(read), "conditions")
     way = draw(st.sampled_from(["unstated", "absent", "absent", "stated"]))
     if way == "unstated":
         held["temperature"] = {"status": "unstated"}
     elif way == "absent":
-        del held["temperature"]
+        held.pop("temperature", None)
     operated = at(read.request, "operating_conditions", "temperature")["value"]
     assert isinstance(operated, float)
     read.request["acceptances"] = [implying(read, "tissue_state", "in_vivo", operated)]
@@ -123,10 +131,19 @@ BOUNDARIES = conditions.BOUNDARIES
 VALUED_WAYS = ("as_drawn", "at_a_boundary", "implied")
 
 
+def a_want(draw: Draw, form: str) -> str:
+    """Any `want`, or, in half the draws of an interval or a composition, its own."""
+    if form != "constant" and draw(st.booleans()):
+        return FORM_WANTS[form]
+    want: str = draw(st.sampled_from(WANTS))
+    return want
+
+
 @st.composite
 def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS) -> Example:
     way = draw(st.sampled_from(ways))
-    read = fresh(draw(base_reads(size)))
+    form, drawn_read = draw(results.form_reads(size))
+    read = fresh(drawn_read)
     shown = draw(results.enriched(field_of(read)))
     if way == "at_a_boundary":
         at_a_boundary(draw, read)
@@ -135,7 +152,7 @@ def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS) -> Examp
     if draw(st.integers(0, 2)) == 0:
         beside_another_section(draw, read)
         shown = (*shown, "another_section")
-    read = wanting(repinned(read), draw(st.sampled_from(WANTS)))
+    read = wanting(repinned(read), a_want(draw, form))
     return example("valued", read, draw(st.sampled_from(CLAIMS)), way, *shown)
 
 
@@ -158,8 +175,8 @@ APART_WAYS = ("unit_apart", "specimen_apart", "request_faults_apart")
 
 
 def apart(draw: Draw, read: Read, field: JsonObject, way: str) -> tuple[JsonObject, tuple[str, ...]]:
-    """A further alternative of `field`, its value drawn, and how else it stands apart, by name."""
-    other: JsonObject = {**copy.deepcopy(field), "value": draw(DOUBLES)}
+    """A further alternative of `field`, its own member drawn, and how else it stands apart, by name."""
+    other = results.another_value(draw, field, read.field)
     if draw(st.integers(0, 3)):
         return other, ()
     if way == "request_fault":
@@ -192,11 +209,12 @@ def alternatives(draw: Draw, size: Size) -> Example:
     if way == "broken":
         drawn = draw(results.broken_alternatives(size))
         return Example("alternatives", drawn.sources, text(drawn.request), claims, (way,))
-    read = fresh(draw(base_reads(size)))
+    form, drawn_read = draw(results.form_reads(size))
+    read = fresh(drawn_read)
     field = field_of(read)
     if draw(st.integers(0, 3)):
         results.without_origin_s_reason(field)
-    shown: tuple[str, ...] = ()
+    shown: tuple[str, ...] = (f"form_{form}",)
     if way == "request_fault":
         conditions.disagreeing(draw, read)
     else:
@@ -207,7 +225,7 @@ def alternatives(draw: Draw, size: Size) -> Example:
         held.append(other)
         shown = (*shown, *(name for name in standing if name not in shown))
     record = results.holding(read, {"alternatives": held})
-    read = wanting(repinned(read._replace(record=record)), draw(st.sampled_from(WANTS)))
+    read = wanting(repinned(read._replace(record=record)), a_want(draw, form))
     return example("alternatives", read, claims, way, *shown)
 
 
