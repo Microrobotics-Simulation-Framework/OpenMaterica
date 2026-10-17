@@ -12,6 +12,7 @@ from collections.abc import Callable, Collection, Iterable
 
 import pytest
 
+from materica import shapes
 from materica.core import canonical, envelope, fields, hashing, jsonio, read, record, resolve, value_shapes
 from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
@@ -419,6 +420,141 @@ def takes_a_component_twice(monkeypatch: pytest.MonkeyPatch) -> Executor:
     return EXECUTORS["read"]
 
 
+def reads_every_report_withheld_as_some(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    evidence = fields.OWN_MEMBERS["evidence"]
+
+    def some(value: JsonValue, where: str, found: list[Reason]) -> None:
+        evidence(value, where, found)
+        found[:] = [Reason("entries_withheld") if reason.code == "withheld" else reason for reason in found]
+
+    monkeypatch.setitem(fields.OWN_MEMBERS, "evidence", some)
+    return EXECUTORS["read"]
+
+
+def withholds_a_list_for_one_report(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    evidence = fields.OWN_MEMBERS["evidence"]
+
+    def whole(value: JsonValue, where: str, found: list[Reason]) -> None:
+        evidence(value, where, found)
+        found[:] = [Reason("withheld") if reason.code == "entries_withheld" else reason for reason in found]
+
+    monkeypatch.setitem(fields.OWN_MEMBERS, "evidence", whole)
+    return EXECUTORS["read"]
+
+
+def takes_a_report_withheld_in_part(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    evidence_entry = fields.evidence_entry
+
+    def in_part(value: JsonValue, where: str, found: list[Reason]) -> bool:
+        own: list[Reason] = []
+        withheld = evidence_entry(value, where, own)
+        found += [reason for reason in own if "withholding" not in (reason.detail or "")]
+        return withheld
+
+    monkeypatch.setattr(fields, "evidence_entry", in_part)
+    return EXECUTORS["read"]
+
+
+def takes_a_registered_condition_under_evidence(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def none(conditions: JsonValue, where: str, found: list[Reason]) -> None:
+        pass
+
+    monkeypatch.setattr(fields, "_no_registered_condition", none)
+    return EXECUTORS["read"]
+
+
+def cuts_a_reports_provenance_to_a_results(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    returned = read._returned  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def cut(value: JsonValue, shape: object) -> JsonValue:
+        found = returned(value, shape)
+        if shape is shapes.Provenance and isinstance(found, dict):
+            return {name: member for name, member in found.items() if name in ("origin", "review")}
+        return found
+
+    monkeypatch.setattr(read, "_returned", cut)
+    return EXECUTORS["read"]
+
+
+def applies_a_nominal_outside_its_bounds(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def anywhere(
+        interval: JsonObject, name: str, nominal: read.Nominal
+    ) -> tuple[Reason, read.Nominal | None]:
+        return Reason("want_mismatch"), nominal
+
+    monkeypatch.setattr(read, "_nominal_read", anywhere)
+    return EXECUTORS["read"]
+
+
+def drops_a_nominals_value_under_not_met(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def unless_not_met(status: str, found: read.FieldRead) -> bool:
+        return found.value is not None and status != "not_met"
+
+    monkeypatch.setattr(read, "_value_returned", unless_not_met)
+    return EXECUTORS["read"]
+
+
+def applies_a_nominal_wherever_it_is_located(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def by_field(named: str, location: JsonObject, field: str, target: MaterialRef) -> bool:
+        return named == field
+
+    monkeypatch.setattr(read, "located_at", by_field)
+    return EXECUTORS["read"]
+
+
+def takes_two_nominals_for_one_field(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    acceptances = read._acceptances  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def one_each(entries: list[JsonValue], found: list[Reason]) -> object:
+        own: list[Reason] = []
+        checked = acceptances(entries, own)
+        found += [reason for reason in own if "two nominals" not in (reason.detail or "")]
+        return checked
+
+    monkeypatch.setattr(read, "_acceptances", one_each)
+    return EXECUTORS["read"]
+
+
+def ignores_a_waiver(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    acceptances = read._acceptances  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def without_waivers(entries: list[JsonValue], found: list[Reason]) -> object:
+        kept: list[JsonValue] = [
+            entry
+            for entry in entries
+            if not (isinstance(entry, dict) and entry.get("acceptance") == "waiver")
+        ]
+        return acceptances(kept, found)
+
+    monkeypatch.setattr(read, "_acceptances", without_waivers)
+    return EXECUTORS["read"]
+
+
+def compares_a_nominal_under_no_pick(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    read_alternatives = read._read_alternatives  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def compared(
+        field: RecordField,
+        record_value: JsonObject,
+        request: read.ReadRequest,
+        claims: Collection[Suite],
+        labels: tuple[str, ...],
+        nominal: read.Nominal | None,
+    ) -> read.ReadResult:
+        result = read_alternatives(field, record_value, request, claims, labels, nominal)
+        bounds = [entry.member for entry in result.alternative_values or () if isinstance(entry.member, dict)]
+        if nominal is None or not any(
+            read._nominal_read(bound, field.spec.name, nominal)[1] is None  # pyright: ignore[reportPrivateUsage]
+            for bound in bounds
+            if "lower" in bound
+        ):
+            return result
+        return read.ReadResult("not_met", (*result.reasons, Reason("nominal_invalid")), result.labels)
+
+    monkeypatch.setattr(read, "_read_alternatives", compared)
+    return EXECUTORS["read"]
+
+
 def _without(value: JsonValue, removed: str) -> JsonValue:
     if isinstance(value, list):
         return [_without(item, removed) for item in value]
@@ -483,6 +619,17 @@ FAULTS: list[tuple[Fault, str]] = [
     (normalises_components, "PR-023.components_stated_sum.json"),
     (takes_bounds_out_of_order, "PR-050.lower_above_upper.json"),
     (takes_a_component_twice, "PR-051.repeated_component.json"),
+    (reads_every_report_withheld_as_some, "PR-052.every_entry_withheld.json"),
+    (withholds_a_list_for_one_report, "PR-052.some_entries_withheld.json"),
+    (takes_a_report_withheld_in_part, "PR-052.entry_partly_withheld.json"),
+    (takes_a_registered_condition_under_evidence, "PR-052.registered_condition_in_conditions.json"),
+    (cuts_a_reports_provenance_to_a_results, "PR-038.evidence_list.json"),
+    (applies_a_nominal_outside_its_bounds, "PR-338.nominal_outside.json"),
+    (drops_a_nominals_value_under_not_met, "PR-302.nominal_value_under_not_met.json"),
+    (applies_a_nominal_wherever_it_is_located, "PR-338.nominal_other_record.json"),
+    (takes_two_nominals_for_one_field, "PR-330.two_nominals_one_field.json"),
+    (ignores_a_waiver, "PR-310.waiver_refused.json"),
+    (compares_a_nominal_under_no_pick, "PR-338.no_pick_nominal_outside_not_reported.json"),
 ]
 
 
