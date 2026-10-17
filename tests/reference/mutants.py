@@ -51,6 +51,7 @@ _check_value_field = model.check_value_field
 _checked_acceptances = model.checked_acceptances
 _checked_requirement = model.checked_requirement
 _check_composition = model.check_composition
+_check_fact = model.check_fact
 _check_input_specimens = model.check_input_specimens
 _check_population_level = model.check_population_level
 _check_plus_minus = model.check_plus_minus
@@ -66,6 +67,7 @@ _read_value_field = model.read_value_field
 _resolve = model.resolve
 _review_read = model.review_read
 _same_unit = model.same_unit
+_plural_of_either = model._plural_of_either  # pyright: ignore[reportPrivateUsage]
 _shape_by_want = model.shape_by_want
 _sources_read = model.sources_read
 _status_object = model.status_object
@@ -703,6 +705,40 @@ def review_result_alone(provenance: JsonObject) -> JsonObject:
     return {"result": read["result"]} if "result" in read else read
 
 
+def reviewed_with_a_status_objects_members(provenance: JsonObject) -> JsonObject:
+    review = provenance.get("review")
+    read = _review_read(provenance)
+    if isinstance(review, dict) and "result" in read:
+        return model.known_members(review, model.REVIEW_NAMES)
+    return read
+
+
+def both_shapes_read_as_the_status_object(provenance: JsonObject) -> JsonObject:
+    review = provenance.get("review")
+    if (
+        isinstance(review, dict)
+        and review.get("status") == "not_checked"
+        and "result" in review
+        and not model.slipped(review, model.REVIEW_NAMES)
+    ):
+        return model.status_returned(review)
+    return _review_read(provenance)
+
+
+def ies_not_a_plural(word: str, other: str) -> bool:
+    ies = any(
+        singular.endswith("y") and plural == singular[:-1] + "ies"
+        for singular, plural in ((word, other), (other, word))
+    )
+    return not ies and _plural_of_either(word, other)
+
+
+def donor_age_of_neither_accepted(name: str, fact: JsonValue, faults: Reasons) -> None:
+    if name == "donor_age" and isinstance(fact, dict) and not {"status", "value", "range"} & fact.keys():
+        fact = {**fact, "value": 0.0}
+    _check_fact(name, fact, faults)
+
+
 def units_stored_differently_compared(
     field_value: JsonObject,
     section: JsonObject,
@@ -1146,6 +1182,31 @@ MUTANTS: Mapping[str, Mutant] = {
         "read_side_contract.md:150-152",
         {"copied": shared},
         survives="a case compares a result's JSON, in which no object is shared",
+    ),
+    # Rules S2a-4's review pinned (half B, L4; half A, L6)
+    "ies_not_a_plural": Mutant(
+        "a final `y` exchanged with `ies` not one slip",
+        "record_format.md:583-584",
+        {"_plural_of_either": ies_not_a_plural},
+        survives="no case holds a slip of a final `y` made `ies`",
+    ),
+    "donor_age_of_neither_accepted": Mutant(
+        "a `donor_age` holding neither `value` nor `range` accepted",
+        "provenance.md:275",
+        {"check_fact": donor_age_of_neither_accepted},
+        survives="no case holds a `donor_age` with neither `value` nor `range`",
+    ),
+    "review_of_both_shapes_read_as_its_status": Mutant(
+        "a review holding both `status` and `result` read as its status object",
+        "provenance.md:122",
+        {"review_read": both_shapes_read_as_the_status_object},
+        survives="no case holds a review holding both `status` and `result`",
+    ),
+    "reviewed_review_keeps_a_status_objects_members": Mutant(
+        "a reviewed review returned with a status object's members, its `reason` among them",
+        "provenance.md:96",
+        {"review_read": reviewed_with_a_status_objects_members},
+        survives="no case holds a reviewed review beside a `reason`",
     ),
     # A step S4 owns, which no read S2 builds reaches (S2a-4's review B, L1)
     "units_stored_differently_read_as_no_pick": Mutant(

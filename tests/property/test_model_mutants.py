@@ -439,6 +439,15 @@ MODEL = [
     ModelFault("dof_token_unchecked_under_student_t", "unpinned", ("checks_beside_a_broken_object",)),
     ModelFault("every_status_object_an_unstated_kind", "unpinned", ("checks_beside_a_broken_object",)),
     ModelFault("every_forms_member_named_at_a_field", "unpinned", ("another_forms_member_slipped",)),
+    ModelFault("ies_not_a_plural", "unpinned", ("plural_of_two_characters",)),
+    ModelFault("review_of_both_shapes_read_as_its_status", "unpinned", ("review_of_both_shapes",)),
+    ModelFault("reviewed_review_keeps_a_status_objects_members", "unpinned", ("review_of_both_shapes",)),
+    ModelFault(
+        "donor_age_of_neither_accepted",
+        "faults",
+        ("specimen.fact_neither_value_nor_range",),
+        ("specimen.fact_neither_value_nor_range",),
+    ),
     ModelFault(
         "input_specimens_optional",
         "faults",

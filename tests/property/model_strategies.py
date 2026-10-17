@@ -531,18 +531,27 @@ IMPLIED_OTHER_KIND: dict[str, list[JsonObject]] = {
 
 
 def plural_of_two_characters(draw: Draw, read: Read) -> None:
-    """A member a place names made plural by `es`, or a final `y` by `ies`: one slip (`record_format.md`
-    section 10), which no single character inserted, deleted or substituted makes."""
+    """A member a place names made plural by `es`, or, in one draw in two, a final `y` by `ies`, in a name
+    that ends in `y` (`body` at the envelope, or an uncertainty in the statistics block): one slip
+    (`record_format.md` section 10), which no single character inserted, deleted or substituted makes."""
     field = field_of(read)
-    holder = draw(st.sampled_from(["field", "statistics", "provenance", "condition"]))
-    place = {
+    places = {
         "field": field,
         "statistics": at(field, "statistics"),
         "provenance": at(field, "provenance"),
         "condition": at(field, "conditions", "measurement_dimension"),
-    }[holder]
-    name = draw(st.sampled_from(sorted(place)))
-    place[name[:-1] + "ies" if name.endswith("y") else name + "es"] = copy.deepcopy(place[name])
+        "envelope": read.record,
+    }
+    if draw(st.booleans()):
+        ending_in_y = [
+            (holder, name) for holder, place in places.items() for name in place if name.endswith("y")
+        ]
+        holder, name = draw(st.sampled_from(sorted(ending_in_y)))
+        places[holder][name[:-1] + "ies"] = copy.deepcopy(places[holder][name])
+        return
+    place = places[draw(st.sampled_from(["field", "statistics", "provenance", "condition"]))]
+    name = draw(st.sampled_from(sorted(name for name in place if not name.endswith("y"))))
+    place[name + "es"] = copy.deepcopy(place[name])
 
 
 OFF_ROW_MEMBERS: list[JsonValue] = [{}, [], 1.0, {"lower": "x"}, {"components": [{"fraction": "x"}]}]
@@ -643,6 +652,17 @@ def declaration_names_held(draw: Draw, read: Read) -> None:
     held["consequence"] = "1 K moves drag by about 2 %"
 
 
+def review_of_both_shapes(draw: Draw, read: Read) -> None:
+    """A review holding members of both shapes `provenance.md` section 2 item 6 reads: a reviewed review
+    beside a status object's `reason`, which a result leaves out, since a reviewed review names none; or one
+    holding both `status` and `result`, which reads as `{"status": "not_checked"}`."""
+    provenance = at(field_of(read), "provenance")
+    if draw(st.booleans()):
+        provenance["review"] = {"result": "reviewed", "reason": "a status object's", "date": "2026-10-17"}
+    else:
+        provenance["review"] = {"status": "not_checked", "reason": "not yet", "result": "reviewed"}
+
+
 def implied_zero_beside_minus_zero(draw: Draw, read: Read) -> None:
     """Two implied conditions supplying `0` and `-0`, or a value and the range `[v, v]`: they disagree."""
     in_vivo(read)
@@ -701,6 +721,7 @@ PLANTS: dict[str, Callable[[Draw, Read], None]] = {
     "alternatives_slip_beside": alternatives_slip_beside,
     "implied_zero_beside_minus_zero": implied_zero_beside_minus_zero,
     "declaration_names_held": declaration_names_held,
+    "review_of_both_shapes": review_of_both_shapes,
     "members_of_the_other_kind": other_kind,
     "implied_member_of_the_other_kind": implied_member_of_the_other_kind,
     "names_a_declaration_gives_a_requirement": declaration_name_slip,
