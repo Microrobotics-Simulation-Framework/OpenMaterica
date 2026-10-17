@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from scripts import report_test_durations
-from scripts.report_test_durations import ReportError, Timing, bands, code, read_report, summary
+from scripts.report_test_durations import ReportError, Timing, bands, code, read_report, stopped, summary
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 # A file of quick tests, some of them parametrised.
@@ -189,6 +189,8 @@ def case(
 COLLECTION_FAILURE = (
     '<testcase classname="" name="tests.unit.test_x"><error message="collection failure"/></testcase>'
 )
+# What pytest-xdist writes for a test still running when ci.yml's interrupt stops the run.
+STOPPED = '<testcase time="0.000" />'
 
 
 def written(tmp_path: Path, text: str) -> Path:
@@ -218,6 +220,64 @@ def test_a_test_that_fails_and_then_errors_in_its_teardown_is_one_test(tmp_path:
         Timing("tests/unit/test_x.py::test_a", "tests/unit/test_x.py", 0.375, 0.5, 0.0625),
         Timing("tests/unit/test_x.py::test_b", "tests/unit/test_x.py", 0.5, 0.4, 0.125),
     ]
+
+
+def test_the_tests_an_interrupt_stopped_are_counted_and_left_out(tmp_path: Path) -> None:
+    report = written(tmp_path, junit(case("test_a"), STOPPED, STOPPED))
+    assert [test.nodeid for test in read_report(report)] == ["tests/unit/test_x.py::test_a"]
+    assert stopped(report) == 2
+    text = summary(read_report(report), "Durations", stopped_tests=2)
+    assert "Tests stopped by the interrupt before the job's timeout, which the report does not name" in text
+    assert "are left out: 2." in text
+    assert "stopped" not in summary(read_report(report), "Durations")
+
+
+# Two quick tests, then tests that would run for minutes: on two workers, the quick ones end, and a slow one
+# is running on each worker when the interrupt comes.
+INTERRUPTED_SAMPLE = """
+import time
+
+import pytest
+
+
+@pytest.mark.parametrize("n", range(6))
+def test_one(n):
+    time.sleep(0.2 if n < 2 else 300)
+"""
+
+
+def test_a_run_interrupted_as_ci_interrupts_it_writes_a_report_that_is_read(tmp_path: Path) -> None:
+    """`timeout --signal=INT`, as ci.yml runs each pytest command, sends SIGINT to pytest and then to its
+    whole process group, xdist's workers included: pytest writes the report of the tests that ended, and one
+    test case holding a time alone for each test still running."""
+    (tmp_path / "test_sample.py").write_text(INTERRUPTED_SAMPLE, encoding="utf-8")
+    report = tmp_path / "report.xml"
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
+    pytest_run = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "2",
+        "-o",
+        "junit_family=xunit1",
+    ]
+    ran = subprocess.run(
+        ["timeout", "--signal=INT", "10s", *pytest_run, f"--junitxml={report}", "test_sample.py"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert ran.returncode == 124, ran.stdout + ran.stderr
+    assert sorted(test.nodeid for test in read_report(report)) == [
+        "test_sample.py::test_one[0]",
+        "test_sample.py::test_one[1]",
+    ]
+    assert stopped(report) == 2
 
 
 @pytest.mark.parametrize(
@@ -292,10 +352,25 @@ def test_the_summary_gives_the_bands_the_slowest_tests_and_files_and_the_total()
         (junit(), "no test ran"),
         (junit(COLLECTION_FAILURE), "no test ran"),
         (junit(case("test_a", file=None)), 'junit_family = "xunit1"'),
+        (junit(STOPPED, STOPPED), r"no test ran to its end \(2 stopped by an interrupt\)"),
+        (
+            junit(case("test_a", file=None).replace('classname="tests.unit.test_x" name="test_a" ', "")),
+            'junit_family = "xunit1"',
+        ),
         (junit(case("test_a", time="soon")), "an unreadable time"),
         (junit(case("test_a", cpu="lots")), "an unreadable time"),
     ],
-    ids=["missing", "not-xml", "no-test-case", "only-a-collection-failure", "xunit2", "wall", "cpu"],
+    ids=[
+        "missing",
+        "not-xml",
+        "no-test-case",
+        "only-a-collection-failure",
+        "xunit2",
+        "only-stopped",
+        "no-name-but-properties",
+        "wall",
+        "cpu",
+    ],
 )
 def test_a_report_with_nothing_to_summarise_is_refused(
     tmp_path: Path, text: str | None, message: str

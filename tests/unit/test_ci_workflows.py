@@ -1777,6 +1777,125 @@ def test_the_durations_check_fails_on_another_steps_outcome() -> None:
         report_problems(ci)
 
 
+# How each pytest command starts: interrupted by SIGINT to its whole process group three minutes before its
+# job's timeout, so that it writes the report of the tests that finished, with uv outside that group (ci.yml
+# says why, above the tests job's pytest step). `JOB_MINUTES` repeats the job's `timeout-minutes`, which a
+# step cannot read.
+INTERRUPTED = 'uv run timeout --signal=INT "$((JOB_MINUTES - 3))m" pytest '
+# Jobs whose pytest commands run without the interrupt, and why.
+NOT_INTERRUPTED = {
+    "fuzz": "its pytest commands write no report, and start late among the job's many steps",
+}
+
+
+def matrix_contexts(job: dict[str, Any]) -> list[dict[str, object]]:
+    """The context of each combination of a job's matrix, for each event that runs the workflow."""
+    matrix = job.get("strategy", {}).get("matrix")
+    combinations_there: list[dict[str, object]] = combinations(matrix) if matrix is not None else [{}]
+    return [
+        {f"matrix.{key}": value for key, value in combination.items()} | {"github.event_name": event}
+        for combination in combinations_there
+        for event in EVENTS
+    ]
+
+
+def interrupt_problems(ci: Workflow) -> list[str]:
+    """Where a job's pytest command does not run under the interrupt, or the minutes it is set from are not
+    the job's timeout, on some event and combination."""
+    problems: list[str] = []
+    for job_id, job in ci["jobs"].items():
+        if not pytest_commands(job) or job_id in NOT_INTERRUPTED:
+            continue
+        for found in job["steps"]:
+            script = " ".join(str(found.get("run", "")).split()) + " "
+            if len(pytest_commands({"steps": [found]})) != script.count(INTERRUPTED):
+                problems.append(f"{job_id} runs pytest without {INTERRUPTED.strip()!r}: {script.strip()!r}")
+        minutes = pytest_step(job).get("env", {}).get("JOB_MINUTES", job.get("env", {}).get("JOB_MINUTES"))
+        for context in matrix_contexts(job):
+            limit = setting(job.get("timeout-minutes"), context)
+            interrupt = setting(minutes, context)
+            where = ", ".join(f"{key} {value}" for key, value in context.items())
+            if not equal(limit, interrupt):
+                problems.append(
+                    f"{job_id} times out at {limit!r} minutes, its JOB_MINUTES are {interrupt!r} ({where})"
+                )
+            elif as_number(limit) <= 3:
+                problems.append(
+                    f"{job_id} times out at {limit!r} minutes, no time for the interrupt ({where})"
+                )
+    return problems
+
+
+def test_each_pytest_command_is_interrupted_three_minutes_before_its_job_times_out() -> None:
+    assert interrupt_problems(workflow("ci.yml")) == []
+
+
+def interrupt_by_another_signal(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["controls"])
+    found["run"] = found["run"].replace("--signal=INT", "--signal=TERM")
+
+
+def no_interrupt(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["tests"])
+    found["run"] = found["run"].replace(' timeout --signal=INT "$((JOB_MINUTES - 3))m"', "")
+
+
+def uv_in_the_group(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["controls"])
+    found["run"] = found["run"].replace(
+        'uv run timeout --signal=INT "$((JOB_MINUTES - 3))m" pytest',
+        'timeout --signal=INT "$((JOB_MINUTES - 3))m" uv run pytest',
+    )
+
+
+def a_second_command_without_it(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["hypothesis"])
+    found["run"] += " && uv run pytest tests/property --shard json"
+
+
+def minutes_of_another_job(ci: Workflow) -> None:
+    ci["jobs"]["controls"]["env"]["JOB_MINUTES"] = 30
+
+
+def minutes_of_another_shard(ci: Workflow) -> None:
+    hypothesis = ci["jobs"]["hypothesis"]
+    hypothesis["env"]["JOB_MINUTES"] = hypothesis["env"]["JOB_MINUTES"].replace(
+        "'agreement' && 360", "'agreement' && 350"
+    )
+
+
+def minutes_unset(ci: Workflow) -> None:
+    del ci["jobs"]["tests"]["env"]["JOB_MINUTES"]
+
+
+def a_timeout_with_no_room(ci: Workflow) -> None:
+    ci["jobs"]["controls"]["timeout-minutes"] = ci["jobs"]["controls"]["env"]["JOB_MINUTES"] = 3
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (interrupt_by_another_signal, "controls runs pytest without"),
+        (no_interrupt, "tests runs pytest without"),
+        (uv_in_the_group, "controls runs pytest without"),
+        (a_second_command_without_it, "hypothesis runs pytest without"),
+        (minutes_of_another_job, "controls times out at 40 minutes, its JOB_MINUTES are 30"),
+        (
+            minutes_of_another_shard,
+            "hypothesis times out at 360.0 minutes, its JOB_MINUTES are 350.0 (matrix.shard agreement, "
+            "github.event_name schedule)",
+        ),
+        (minutes_unset, "tests times out at 40 minutes, its JOB_MINUTES are None"),
+        (a_timeout_with_no_room, "controls times out at 3 minutes, no time for the interrupt"),
+    ],
+)
+def test_the_interrupt_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    fault(ci)
+    found = interrupt_problems(ci)
+    assert any(problem in line for line in found), found
+
+
 # pytest's settings in pyproject.toml that choose no test. Every job's pytest reads them, and so does the
 # matrix check's own collection, which could not see a test they moved out of every job.
 PYTEST_SETTINGS = {"testpaths", "addopts", "junit_family", "xfail_strict", "markers", "filterwarnings"}
