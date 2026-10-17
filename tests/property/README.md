@@ -431,6 +431,16 @@ them; the other four survived 2,000 examples at both sizes until HP7's token kin
 strings outside the row, its `unknown_name` kind a status object as often as a value, and HP8's `plus_minus`
 place the unit in either entry of two.
 
+One of HP3's searches is planned. `conditions_withheld_from_a_refusal` empties step 10's entries, which the
+read takes for two implied conditions that disagree, so on a read step 10 does not end it ends the read there
+too, with neither `value` nor `conditions`. HP3 drawn whole meets such a read first (an `unstated` one, at the
+original size, once the harvested constants were pinned), and there the assertion that fails is HP3's for a
+read past step 10, not the refusal's the mutant was written for. Its search ("HP3, a refusal at step 10")
+draws HP3's first fault among step 10's four that end the read and keep its `conditions` (`ENDING`), and it
+dies at an `outside` read at both sizes. As a control, where HP3 expected a refusal to hold no `conditions`,
+the planned search let it survive 2,000 examples at both sizes, and HP3 whole still killed it, at reads past
+step 10 (measured 2026-10-18).
+
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `floating_point_as_written` | section 5's tests computed in floating point | HP7 | `anywhere`, `at_the_tolerance`, `one_ulp_outside`, `rounded_difference`, `minus_zero` | 9, 9 |
@@ -479,7 +489,7 @@ place the unit in either entry of two.
 | `step_10_after_a_refusal_at_step_9` | step 10 runs after step 9's `not_met` | HP3 | a fault of step 9 | 1, 1 |
 | `first_unit_reason_only` | step 9 gives its first reason only | HP3 | a fault of step 9 | 1, 1 |
 | `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | `unchecked`, `unstated`, `unknown_name`, `uncertain` | 7, 98 |
-| `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3 | `outside`, `range_outside`, `not_accepted`, `implied_outside` | 7, 47 |
+| `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3, a refusal at step 10 (planned) | `outside`, `range_outside`, `not_accepted`, `implied_outside` | 2, 2 |
 | `disagreement_checks_the_others` | two implied conditions that disagree, and the conditions checked all the same | HP3 | `disagreeing` | 102, 9 |
 | `unknown_members_returned_in_an_entry` | a condition's entry returns members the reader does not know | HP5 | `condition`, `plus_minus_entry` | 5, 10 |
 | `two_slips_refused_in_a_request` | a request's names two characters off a named one refused | HP5 | any of its examples | 4, 4 |

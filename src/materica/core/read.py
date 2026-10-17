@@ -2,25 +2,34 @@
 """A read of one field of one record (`read_side_contract.md` sections 1 to 3).
 
 `read` checks the request on its own (step 0), resolves its target (steps 1 to 5, `resolve.resolve_record`),
-finds the field (step 7, `fields.find_field`), checks its form and shape (step 8, `fields.form_problems`),
-its units (step 9, `fields.unit_problems`) and its conditions (step 10, `conditions.check_conditions`), and
-gives a `ReadResult`. Steps 11 to 13, which read the field's value, are not built yet, nor are overlays (step
-6) and alternatives (step 7). A read that would need one raises `NotImplementedError`, and so does a request
-whose answer a check still to come could change, whatever else is wrong with it: one with a region target, or
-an acceptance other than an implied condition. It raises rather than give an answer a later step would
-contradict.
+finds the field (step 7, `fields.find_field`), and reads it (`read_value_field`): its form and shape (step 8,
+`fields.form_problems`), its units (step 9, `fields.unit_problems`), its conditions (step 10,
+`conditions.check_conditions`), its range (step 11), its origin and labels (step 12) and its value by `want`
+(step 13), and gives a `ReadResult`.
+
+Overlays (step 6), alternatives (step 7) and every form but a constant are not built yet. A read that would
+need one raises `NotImplementedError`, and so does a request whose answer a check still to come could change,
+whatever else is wrong with it: one with a region target, or an acceptance other than an implied condition.
+It raises rather than give an answer a later step would contradict.
+
+A result returns from a record the members the reader's version defines, each as stored and copied (section 2
+item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
+member the writer schema does not define is left out at every depth.
 """
 
+import copy
 import dataclasses
 import json
-from collections.abc import Collection
+import types
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
-from typing import TypeGuard, cast, get_args
+from functools import cache
+from typing import TypeGuard, Union, cast, get_args, get_origin, get_type_hints, is_typeddict
 
 from materica import shapes
 from materica.core import jsonio
 from materica.core.conditions import ConditionEntry, ImpliedCondition, check_conditions, operating_json
-from materica.core.fields import find_field, form_problems, unit_problems
+from materica.core.fields import RecordField, find_field, form_problems, unit_problems
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason, merged
@@ -28,7 +37,7 @@ from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
 from materica.core.slips import slipped
 from materica.core.status import ReadStatus, worst
-from materica.core.value_shapes import JsonObject
+from materica.core.value_shapes import JsonObject, a_list, an_object
 from materica.core.vocabulary import VOCABULARY, ConditionSpec
 from materica.shapes import Suite, Want
 
@@ -68,6 +77,10 @@ _IMPLIED_OWN = (*_IMPLIED_MEMBERS, "implies")
 _LOCATION_MEMBERS = ("record", "region", "interval")
 _IMPLIED_IGNORED = ("basis", "inferred_from")
 _IMPLIED_REFUSED = ("plus_minus", "set_or_measured", "status")
+# The members a review names, a status object's included (`provenance.md` section 2 item 6), and a statistics
+# block's counts (section 3, step 8), which a result writes as integers.
+_REVIEW_MEMBERS = (*get_type_hints(shapes.Review), *get_type_hints(shapes.StatusObject))
+_COUNTS = ("n_specimens", "n_donors", "n_sources")
 
 
 @dataclass(frozen=True)
@@ -155,9 +168,106 @@ class ReadRequest:
 
 
 @dataclass(frozen=True)
+class ProvenanceSummary:
+    """The provenance a read returns (section 2): the origin token; the review as `provenance.md` section 2
+    item 6 reads it, as found or `{"status": "not_checked"}` (ruling C); the source's key, where there is one;
+    and for origin `derived` the derivation, its `assumptions` included (SQ45)."""
+
+    origin: str
+    review: JsonObject
+    source: str | None = None
+    derivation: JsonObject | None = None
+
+    @classmethod
+    def of(cls, provenance: JsonObject) -> "ProvenanceSummary":
+        """The summary of a provenance object that passed step 8."""
+        source = provenance.get("source")
+        derivation = provenance.get("derivation")
+        return cls(
+            str(provenance["origin"]),
+            _review(provenance.get("review")),
+            str(an_object(source)["key"]) if source is not None else None,
+            an_object(_returned(derivation, shapes.Derivation))
+            if provenance["origin"] == "derived"
+            else None,
+        )
+
+    @classmethod
+    def from_json(cls, provenance: shapes.ResultProvenance) -> "ProvenanceSummary":
+        derivation = provenance.get("derivation")
+        return cls(
+            provenance["origin"],
+            cast(JsonObject, dict(provenance["review"])),
+            provenance.get("source"),
+            None if derivation is None else cast(JsonObject, copy.deepcopy(derivation)),
+        )
+
+    def to_json(self) -> shapes.ResultProvenance:
+        summary: JsonObject = {"origin": self.origin, "review": copy.deepcopy(self.review)}
+        if self.source is not None:
+            summary["source"] = self.source
+        if self.derivation is not None:
+            derivation = copy.deepcopy(self.derivation)
+            for entry in a_list(derivation["input_specimens"]):
+                an_object(entry)["input"] = _whole(an_object(entry)["input"])
+            summary["derivation"] = derivation
+        return cast(shapes.ResultProvenance, summary)
+
+
+@dataclass(frozen=True)
+class FieldRead:
+    """Steps 8 to 13 of one value field, the field read or one of its alternatives (section 3).
+
+    `reasons` are those steps 8 to 12 found, and `want_mismatch` step 13's, kept apart since step 7 reports
+    it for no alternative under `no_pick`. `conditions` are present once step 10 has run to its end, and
+    `request_fault` says that step 10 ended on a fault of the request (section 1: two implied conditions
+    that disagree), which refuses a field holding alternatives whichever alternative found it. The other
+    members are those a read returns, once step 8 has passed, as stored and copied: the form's member
+    (`member`); the value as `want` shapes it, where it can (`value`); the unit, the specimen facts, the
+    statistics block and the provenance; and the labels step 12 adds. `applied` holds the indexes of the
+    acceptances step 10 applied."""
+
+    reasons: tuple[Reason, ...]
+    conditions: tuple[ConditionEntry, ...] | None = None
+    applied: tuple[int, ...] = dataclasses.field(default=(), compare=False)
+    request_fault: bool = False
+    want_mismatch: Reason | None = None
+    member: JsonValue = None
+    value: JsonValue = None
+    unit: JsonValue = None
+    specimen: JsonObject | None = None
+    statistics: JsonObject | None = None
+    provenance: ProvenanceSummary | None = None
+    labels: tuple[str, ...] = ()
+
+    @property
+    def found(self) -> tuple[Reason, ...]:
+        """Every reason of the read, step 13's included."""
+        return merged((*self.reasons, *(() if self.want_mismatch is None else (self.want_mismatch,))))
+
+    def entry_json(self, index: int) -> shapes.AlternativeValue:
+        """Its entry of `alternative_values` (section 2): its index among the stored alternatives, its form's
+        member as stored, and its members as a read of it alone gives them."""
+        entry: JsonObject = {
+            "alternative": index,
+            "value": copy.deepcopy(self.member),
+            "conditions": [condition.to_json() for condition in self.conditions or ()],
+            "specimen": copy.deepcopy(self.specimen),
+        }
+        if self.statistics is not None:
+            entry["statistics"] = _counted(self.statistics)
+        if self.provenance is not None:
+            entry["provenance"] = cast(JsonObject, self.provenance.to_json())
+        entry["labels"] = list(self.labels)
+        return cast(shapes.AlternativeValue, entry)
+
+
+@dataclass(frozen=True)
 class ReadResult:
-    """A read's result (section 2): its status, every reason found, its labels, and `conditions` once step 10
-    has run to its end (item 6). The members that carry a value arrive with the steps that read one."""
+    """A read's result (section 2): its status, the worst of its reasons; every reason found; its labels;
+    `conditions` once step 10 has run to its end (item 6); and the members that carry a value, each present
+    as item 6 says, as stored: `value` with its `unit`, `specimen`, `statistics` and `provenance`, or under
+    `no_pick` the `alternative_values`, each an alternative's read, with the `unit`."""
 
     status: ReadStatus
     reasons: tuple[Reason, ...]
@@ -167,29 +277,57 @@ class ReadResult:
     """Outside `to_json`, and so outside equality, which compares what section 2 gives: the indexes, in the
     request's `acceptances`, of those the read applied, the implied conditions that filled a condition so far,
     which a build maps to what accepted the result."""
+    value: JsonValue = dataclasses.field(default=None, kw_only=True)
+    alternative_values: tuple[FieldRead, ...] | None = dataclasses.field(default=None, kw_only=True)
+    unit: JsonValue = dataclasses.field(default=None, kw_only=True)
+    specimen: JsonObject | None = dataclasses.field(default=None, kw_only=True)
+    statistics: JsonObject | None = dataclasses.field(default=None, kw_only=True)
+    provenance: ProvenanceSummary | None = dataclasses.field(default=None, kw_only=True)
 
     @classmethod
     def from_json(cls, result: shapes.ReadResult) -> "ReadResult":
         reasons = tuple(Reason.from_json(reason) for reason in result["reasons"])
         conditions = result.get("conditions")
+        provenance = result.get("provenance")
+        entries = result.get("alternative_values")
         return cls(
             result["status"],
             reasons,
             tuple(result.get("labels", [])),
-            None
-            if conditions is None
-            else tuple(ConditionEntry.from_json(cast(JsonObject, dict(entry))) for entry in conditions),
+            None if conditions is None else _entries(conditions),
+            value=_stored(result.get("value")),
+            alternative_values=None if entries is None else tuple(map(_alternative, entries)),
+            unit=_stored(result.get("unit")),
+            specimen=cast(JsonObject | None, _stored(result.get("specimen"))),
+            statistics=cast(JsonObject | None, _stored(result.get("statistics"))),
+            provenance=None if provenance is None else ProvenanceSummary.from_json(provenance),
         )
 
     def to_json(self) -> shapes.ReadResult:
-        """The result as JSON, its members of the shapes `read_result.json` gives them; the result's shape is
-        read-only, so it is written whole."""
+        """The result as JSON, a copy that shares nothing with it: numbers as stored, `-0` included (PR-047),
+        and each index or count written as an integer (the code design's rule 5). Its members hold the shapes
+        `read_result.json` gives them, since step 8 checked each member the read returns; the result's shape
+        is read-only, so it is written whole."""
         members: dict[str, object] = {
             "status": self.status,
             "reasons": [reason.to_json() for reason in self.reasons],
         }
+        if self.value is not None:
+            members["value"] = copy.deepcopy(self.value)
+        if self.alternative_values is not None:
+            members["alternative_values"] = [
+                alternative.entry_json(index) for index, alternative in enumerate(self.alternative_values)
+            ]
+        if self.unit is not None:
+            members["unit"] = copy.deepcopy(self.unit)
         if self.conditions is not None:
             members["conditions"] = [entry.to_json() for entry in self.conditions]
+        if self.specimen is not None:
+            members["specimen"] = copy.deepcopy(self.specimen)
+        if self.statistics is not None:
+            members["statistics"] = _counted(self.statistics)
+        if self.provenance is not None:
+            members["provenance"] = self.provenance.to_json()
         members["labels"] = list(self.labels)
         return cast(shapes.ReadResult, members)
 
@@ -213,7 +351,8 @@ def read(request: RequestInput, store: RecordStore, *, claims: Collection[Suite]
 
 def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collection[Suite]) -> ReadResult:
     """Steps 6 to 13, for a target that passed steps 1 to 5. Step 6 applies the overlays a request's
-    acceptances name, and step 0 raised for any acceptance, so it has none to apply."""
+    acceptances name, and step 0 raised for any acceptance but an implied condition, so it has none to
+    apply."""
     record = resolved.record.value
     if record["record_type"] != "material":
         raise NotImplementedError("a read whose target is an overlay is not built yet")
@@ -222,21 +361,203 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
         return _refused((field,), resolved.labels)
     if isinstance(field.value, dict) and "alternatives" in field.value:
         raise NotImplementedError("a field holding alternatives is read at step 7, which is not built yet")
+    found = read_value_field(field, record, request, claims)
+    reasons = found.found
+    status = _status(reasons)
+    labels = tuple(dict.fromkeys((*resolved.labels, *found.labels)))
+    if not _value_returned(status, found):
+        return ReadResult(status, reasons, labels, found.conditions, found.applied)
+    return ReadResult(
+        status,
+        reasons,
+        labels,
+        found.conditions,
+        found.applied,
+        value=found.value,
+        unit=found.unit,
+        specimen=found.specimen,
+        statistics=found.statistics,
+        provenance=found.provenance,
+    )
+
+
+def _value_returned(status: ReadStatus, found: FieldRead) -> bool:
+    """Section 2 item 3: a read that steps 8 to 13 shaped a value for returns it unless it is `not_met`, a
+    declared extrapolation or nominal aside, which this read applies neither of."""
+    return found.value is not None and status != "not_met"
+
+
+def read_value_field(
+    field: RecordField, record: JsonObject, request: ReadRequest, claims: Collection[Suite]
+) -> FieldRead:
+    """Steps 8 to 13 of `field`, a value field of `record`: the field read, or one of its alternatives. A step
+    that finds a `not_met` reason ends the read (section 3)."""
     found = form_problems(field, record, claims)
     if _ends(found):
-        return _refused(merged(found), resolved.labels)
+        return FieldRead(merged(found))
     found += unit_problems(field)
     if _ends(found):
-        return _refused(merged(found), resolved.labels)
+        return FieldRead(merged(found))
     implied = [
         condition for condition in request.implied if condition.located_at(request.field, request.target)
     ]
     checked = check_conditions(field, request.operating_conditions, request.conditions, implied)
     found += checked.reasons
+    if checked.entries is None:
+        return FieldRead(merged(found), request_fault=True)
     if _ends(found):
-        reasons = merged(found)
-        return ReadResult(_status(reasons), reasons, resolved.labels, checked.entries, checked.applied)
-    raise NotImplementedError("steps 11 to 13, which read the field's value, are not built yet")
+        return FieldRead(merged(found), checked.entries, checked.applied)
+    # Step 11: a constant's range is its conditions; once they are met, it is read (section 5).
+    value = an_object(field.value)
+    provenance = an_object(value["provenance"])
+    found += _origin(provenance, field.spec.name)
+    member = copy.deepcopy(value["value"])
+    shaped, mismatch = _by_want(value, field.spec.name, request.want)
+    return FieldRead(
+        merged(found),
+        checked.entries,
+        checked.applied,
+        want_mismatch=mismatch,
+        member=member,
+        value=shaped,
+        unit=_returned(value["unit"], shapes.Unit),
+        specimen=cast(JsonObject, _returned(field.specimen(), shapes.Specimen)),
+        statistics=cast(JsonObject, _returned(value["statistics"], shapes.StatisticsBlock)),
+        provenance=ProvenanceSummary.of(provenance),
+        labels=_labels(value, provenance),
+    )
+
+
+def _origin(provenance: JsonObject, name: str) -> list[Reason]:
+    """Step 12's reason: a value stated without origin, which a waiver may accept (section 2 item 4)."""
+    if provenance["origin"] != "stated_without_origin":
+        return []
+    return [Reason("stated_without_origin", detail=f"{name} is stated with nothing behind it")]
+
+
+def _labels(field: JsonObject, provenance: JsonObject) -> tuple[str, ...]:
+    """Step 12's labels (section 2): the field's `label`, which step 8 found to be one its row names for its
+    form, and `mixed_conditions` for a derived value whose inputs' conditions differ (SQ45)."""
+    labels: list[str] = []
+    if isinstance(label := field.get("label"), str):
+        labels.append(label)
+    derivation = provenance.get("derivation")
+    if provenance["origin"] == "derived" and an_object(derivation).get("mixed_conditions") is True:
+        labels.append("mixed_conditions")
+    return tuple(labels)
+
+
+def _by_want(field: JsonObject, name: str, want: Want) -> tuple[JsonValue, Reason | None]:
+    """Step 13 for a constant (section 6): `want: value` gives its number as stored; `want: fit` on a field
+    holding a fit record is the fits and reference data suite's, not built yet; every other `want` gives
+    `want_mismatch`, a constant holding no bounds, components, evidence, reference data, fit or coverage."""
+    if want == "value":
+        return copy.deepcopy(field["value"]), None
+    if want == "fit" and "fit" in field:
+        raise NotImplementedError("want: fit on a field holding a fit record is not read yet")
+    return None, Reason("want_mismatch", detail=f"want {want} cannot give {name}, a constant")
+
+
+# What a result returns from a record: the members the reader's version defines, as stored (section 2 item 5).
+
+
+def _returned(value: JsonValue, shape: object) -> JsonValue:
+    """`value`, stored where `shape` describes it, holding at every depth only the members the shape defines,
+    each as stored, in a copy that shares nothing with the record. An object holding `status` is the status
+    object of a member whose row allows one; a member of a type no shape defines is returned whole."""
+    if isinstance(value, list):
+        items = [item for alternative in _alternatives(shape) for item in _item_types(alternative)]
+        return [_returned(item, items[0] if items else None) for item in value]
+    if not isinstance(value, dict):
+        return value
+    defined = _members(shape, status="status" in value)
+    if defined is None:
+        return copy.deepcopy(value)
+    return {name: _returned(member, defined[name]) for name, member in value.items() if name in defined}
+
+
+def _alternatives(shape: object) -> tuple[object, ...]:
+    if get_origin(shape) in (Union, types.UnionType):
+        return get_args(shape)
+    return (shape,)
+
+
+def _item_types(shape: object) -> tuple[object, ...]:
+    if get_origin(shape) in (list, tuple):
+        return get_args(shape)[:1]
+    return ()
+
+
+@cache
+def _members(shape: object, *, status: bool) -> dict[str, object] | None:
+    """The members the object shapes among `shape`'s alternatives define, by name, each with its own shape:
+    those of the status objects where `status`, those of the others where not. None where no alternative is
+    an object shape."""
+    objects = [alternative for alternative in _alternatives(shape) if is_typeddict(alternative)]
+    if not objects:
+        return None
+    chosen = [shape_ for shape_ in objects if _is_status_shape(shape_) == status] or objects
+    defined: dict[str, object] = {}
+    for shape_ in chosen:
+        for name, member in get_type_hints(shape_).items():
+            defined[name] = member if name not in defined else defined[name] | member
+    return defined
+
+
+def _is_status_shape(shape: object) -> bool:
+    return set(get_type_hints(shape)) <= {"status", "reason"}
+
+
+def _review(review: JsonValue) -> JsonObject:
+    """`provenance.md` section 2 item 6: a review as found in two cases only, each holding no member one slip
+    from a member a review names, a status object holding `not_checked` and no `result`, or an object holding
+    no `status` whose `result` is a token the reader knows; any other review reads as `not_checked`, since a
+    review never refuses."""
+    not_checked: JsonObject = {"status": "not_checked"}
+    if not isinstance(review, dict) or slipped(review, _REVIEW_MEMBERS):
+        return not_checked
+    if "status" in review:
+        found = "result" not in review and review["status"] == "not_checked"
+        return cast(JsonObject, _returned(review, shapes.StatusNotChecked)) if found else not_checked
+    if review.get("result") in get_args(shapes.ReviewResult):
+        return cast(JsonObject, _returned(review, shapes.Review))
+    return not_checked
+
+
+def _whole(number: JsonValue) -> JsonValue:
+    """An index or a count, which step 8 found whole, as an integer (the code design's rule 5)."""
+    return int(number) if isinstance(number, float) else number
+
+
+def _counted(statistics: JsonObject) -> JsonObject:
+    """A statistics block as JSON, its counts as integers."""
+    block = copy.deepcopy(statistics)
+    for name in _COUNTS:
+        if name in block:
+            block[name] = _whole(block[name])
+    return block
+
+
+def _stored(value: object) -> JsonValue:
+    return cast(JsonValue, copy.deepcopy(value))
+
+
+def _entries(conditions: Sequence[shapes.ConditionEntry]) -> tuple[ConditionEntry, ...]:
+    return tuple(ConditionEntry.from_json(cast(JsonObject, dict(entry))) for entry in conditions)
+
+
+def _alternative(entry: shapes.AlternativeValue) -> FieldRead:
+    statistics = entry.get("statistics")
+    return FieldRead(
+        (),
+        _entries(entry["conditions"]),
+        member=_stored(entry["value"]),
+        value=_stored(entry["value"]),
+        specimen=cast(JsonObject, _stored(entry["specimen"])),
+        statistics=None if statistics is None else cast(JsonObject, _stored(statistics)),
+        provenance=ProvenanceSummary.from_json(entry["provenance"]),
+        labels=tuple(entry["labels"]),
+    )
 
 
 def _ends(found: list[Reason]) -> bool:

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Fuzz target 4's oracles (`tests/fuzz/field_oracle.py`), which the target itself, needing Atheris, cannot
 show here: for a refusal step 8 is missing, quiet on step 8 as it is and failing on a step 8 that lets through
-a member of the wrong type; and for steps 9 and 10, quiet on them as they are and failing on a step 9 that
-lets another unit through and a step 10 that lets a condition outside its tolerance through."""
+a member of the wrong type; for steps 9 and 10, quiet on them as they are and failing on a step 9 that lets
+another unit through and a step 10 that lets a condition outside its tolerance through."""
 
 import json
 
