@@ -92,30 +92,54 @@ failure prints a blob that replays it anywhere.
 
 CI runs the groups in five shards side by side, each in a job of its own: `pytest tests/property --shard
 json`, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
-two validators' agreement (below), and `--shard step8_mutants`, step 8's mutant searches, which keep no example
-database and were most of the records shard's time (`SHARDS` in `tests/conftest.py`). Each family of faults is
-a property of its own, run in parallel. The agreement shard's drawn properties run python-jsonschema on every
-example, and are the longest tests of any shard: on 4 workers locally (2026-10-17), the shard took 8.0 minutes
-at `ci`, its longest property 4.7 (load 15 to 17), and 112 minutes at `deep`, its longest property 70 (load 18
-to 30). `deep` has not yet run on CI, whose cores are 1.6 to 4 times slower: there it may not fit in the
-6 hours GitHub gives a job. Each module is in exactly one shard (`tests/unit/test_source_files.py`), and each
-shard but the mutant searches' keeps its own example database in CI.
+two validators' agreement (below), and `--shard step8_mutants`, step 8's mutant searches, which keep no
+example database and were most of the records shard's time (`SHARDS` in `tests/conftest.py`). Each family of
+faults is a property of its own, run in parallel. The agreement shard's drawn properties run python-jsonschema
+on every example, and are the longest tests of any shard: on 4 workers locally (2026-10-17), the shard took
+4.0 and 8.0 minutes at `ci`, its longest property 1.9 and 4.7 (at loads of 4 to 7 and 15 to 17), and 112
+minutes at `deep`, its longest property 70 (load 18 to 30). `deep` has not yet run on CI, whose cores are 1.6
+to 4 times slower: there it may not fit in the 6 hours GitHub gives a job. Each module is in exactly one shard
+(`tests/unit/test_source_files.py`), and each shard but the mutant searches' keeps its own example database in
+CI.
 
 ## The two validators
 
-Every verdict the tests take from the package's JSON Schemas is jsonschema-rs's (`tests/verdicts.py`, about
-0.02 ms a field), and python-jsonschema gives the messages a failure prints (`tests/spec_sync/schemas.py`).
-`test_validators_agree.py` holds the two to one verdict: on T1's inputs (`tests/spec_sync/test_t1.py`), each
-field against the writer schema and the reader `$defs`, by its form's definition and by `value_field`, its
-section's specimen against both, and the field against its row's binding, every tenth example of each group
-at `dev` and `ci` (the inputs that read one registered field; the variants of one base by one change and
-origin), 670 of them, and every one at `deep`; and on drawn fields, bodies, and the base and faulty field of each fault family,
-as many as the profile gives. Its controls: a writer mutant given to one side, M18 on T1's share and M55 on the
-drawn faults, each found as the side given it taking what the other refuses; and a pattern ended in `$`, given
-to both, which python-jsonschema reads as matching before a final newline and jsonschema-rs, as ECMA-262 does,
-not. The package's patterns end in `(?![\s\S])`, which both read alike. A whole pass over T1's 5,066 examples,
-python-jsonschema nearly all of it, took 590 s and 760 s summed over 8 workers in two runs on a loaded machine
-(2026-10-16); a tenth, 40 to 80 s.
+Every verdict the tests take from the package's JSON Schemas comes from jsonschema-rs (`tests/verdicts.py`),
+alone or beside python-jsonschema's (`tests/spec_sync/schemas.py`). `validator` and `agreed`, for tests that
+take few verdicts, run both libraries on every value and fail the test with a `Disagreement` where they
+differ. `takes` and the writer properties' `Writer`, for loops, give jsonschema-rs's verdict alone;
+python-jsonschema gives the messages a failure prints, and fails the test at once where it finds none. Both
+read every resource at draft 2020-12. python-jsonschema takes 32 to 120 ms of CPU a field against the writer's
+value field, a choice among eight forms, and 6 to 20 ms against the reader's; jsonschema-rs, 0.01 to 0.08 ms
+(drawn fields at `ci`'s size and T1's fields, 2026-10-17, at loads of 13 to 22, which move CPU time too).
+
+`test_validators_agree.py`, the `agreement` shard, holds the two to one verdict:
+- on T1's inputs (`tests/spec_sync/test_t1.py`): each field against the writer schema and the reader `$defs`,
+  by its form's definition and by `value_field`, its section's specimen against both, and the field against
+  its row's binding. Every example at `deep`; at `dev` and `ci`, every tenth example of each group (the inputs
+  that read one registered field, and the variants of one base by one change and origin), 670 of the 5,066,
+  which holds each registered field, base, origin and change, alone and beside each origin (`share_misses`). A
+  whole pass took 590 s and 760 s summed over 8 workers on a loaded machine (2026-10-16).
+- on drawn fields, against the writer's and the reader's `value_field`; drawn bodies, against the writer's;
+  drawn records changed near each boundary of the envelope (`records.sweeps()`), and every conformance input
+  that parses, against the reader schema; and the base and faulty field of each fault family, against both
+  value fields; as many as the profile gives.
+- along each writer mutant's own search (`test_writer_mutants.py`), as its table runs it, up to the example at
+  which the mutant's verdict first differs from the package's. There a difference of that mutant's reach, on
+  either side, shows on every run. The drawn faults alone meet such a difference by chance: Hypothesis shows
+  one draw in about eight examples, so 2,000 examples give each of the 166 faults one or two draws, and in the
+  review of 2026-10-17, 12 of the 89 mutants changed no compared verdict in at least one of five samples.
+
+It lists every place in the tests that takes jsonschema-rs's verdict alone, with the tests that compare that
+schema or the reason it is left out, and checks that the list is exact by reading the tests' sources. Its
+controls: writer mutants given to one side (M18 on T1's share, M55 on the drawn faults, and each of the 12
+along its own search) and reader mutants given to one side (on drawn faults and on drawn records), each found
+as the side given it taking what the other refuses; a pattern ended in `$`, given to both, which
+python-jsonschema reads as matching before a final newline and jsonschema-rs, as ECMA-262 does, not; the pairs
+the properties use, each of both libraries; and T1's inputs, naming every definition T1 judges an example by.
+`tests/spec_sync/test_schemas.py` holds every schema file to draft 2020-12 and every pattern to what both
+libraries read alike: anchored at both ends, by `^` and `(?![\s\S])`, with no escape of a letter or digit, no
+`.` or `$` outside a class and no POSIX class.
 
 ## Mutants
 

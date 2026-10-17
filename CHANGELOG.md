@@ -245,17 +245,26 @@ every family entry goes in `families/CHANGELOG.md`.
 - Two of step 8's mutants, `missing_represents_accepted` and `named_state_text_unchecked`, are searched among
   their own faults: searched whole, their kills changed with the constants Hypothesis draws from the modules a
   process has loaded (`tests/property/README.md`).
-- Every verdict the tests take from the package's JSON Schemas is jsonschema-rs's, a development dependency
-  only (0.58.4; `tests/verdicts.py`), where it was python-jsonschema's. python-jsonschema prints the messages
-  of a failure, and a property in the writer shard holds the two to one verdict: on T1's inputs, every tenth
-  example of each kind at `dev` and `ci` and every one at `deep`, and on drawn writer fields, bodies and each
-  fault family's base and faulty field. Its controls are a writer mutant given to one side and a pattern ended in
-  `$`, which the two regex dialects read differently, given to both (`tests/property/test_validators_agree.py`).
-  Every mutant still dies, at the same example as before wherever the same modules are collected; the
-  agreement module brings `scripts/gen_reader_schema.py` into every shard, and Hypothesis draws constants from
-  it, so in CI's shards 22 of 430 kills move (`tests/property/README.md`, Mutants). Measured back to back on a
-  shared machine: the whole suite on 8 workers went from 363 s to 233 s, the writer shard at `ci` on 4 from
-  943 s to 489 s, and T1's tests alone from 155 s to 17 s.
+- Every verdict the tests take from the package's JSON Schemas comes from jsonschema-rs, a development
+  dependency only (0.58.4; `tests/verdicts.py`), where it was python-jsonschema's alone. Tests that take few
+  verdicts take both libraries' and fail with a `Disagreement` where they differ; loops take jsonschema-rs's
+  alone, python-jsonschema giving the messages a failure prints and failing the test at once where it finds
+  none (`tests/spec_sync/schemas.py`). Both read every schema at draft 2020-12, and
+  `tests/spec_sync/test_schemas.py` holds every schema file to that draft and every pattern to what both read
+  alike. `tests/property/test_validators_agree.py`, a Hypothesis shard of its own (`agreement`), holds the two
+  to one verdict: on T1's inputs, every example at `deep` and at `dev` and `ci` every tenth of each kind,
+  which holds each origin, change and base; on drawn fields, bodies, records and each fault family's faults,
+  by the writer and the reader; and along each writer mutant's own search, up to the example where its verdict
+  first differs from the package's. It lists, and checks exactly, every place that takes jsonschema-rs's
+  verdict alone, with what compares it or why nothing does. Its controls give writer and reader mutants to one
+  side, each of the 12 writer mutants the drawn faults had missed among them, and a pattern ended in `$` to
+  both, and hold the pairs the properties use to both libraries. Every mutant still dies, at the same example
+  as before wherever the same modules are collected; the agreement module brings
+  `scripts/gen_reader_schema.py` into every shard, and Hypothesis draws constants from it, so in CI's shards
+  20 of 430 kills move (`tests/property/README.md`, Mutants). The switch cut the CPU time of the whole suite
+  on 8 workers from 2,617 s to 1,620 s, and of the writer shard at `ci` on 4 from 2,956 s to 1,477 s; T1's
+  tests ran about 25 times faster; on CI the writer shard's tests went from 649 s to 338 s
+  (`tests/README.md`).
 
 ## [0.1.0.dev1] - 2026-10-14
 
