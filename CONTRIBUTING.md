@@ -147,6 +147,14 @@ hexadecimal digits, which CI reads from the repository secret `CONFIDENTIAL_SCAN
 fork, the paths are checked and the names are not, with a warning. A key the digests were not made with is
 refused. A finding gives its file and line, and a term's first letter and length, never the term.
 
+A text file is read as UTF-8, a byte that is not read as a replacement, which keeps every ASCII word of a text
+in any ASCII-compatible encoding. A binary file, or a text in UTF-16 or UTF-32, is read by its printable runs
+of four ASCII characters or more, as bytes and as UTF-16 and UTF-32 of either byte order (an image's text
+chunks, a PDF's plain metadata); its findings say `(binary)`, and their line is the run's number. What the
+scan does not read: a run shorter than four characters, and whatever a file holds compressed, such as a PNG's
+compressed text chunks, a PDF's streams or an archive's members. Before committing such a file, strip its
+metadata, or look at it decompressed.
+
 - **Run it**, from the repository's root, with the key in a file or in `CONFIDENTIAL_SCAN_KEY`:
   ```sh
   python3 scripts/check_confidential.py --key-file /path/to/confidential_scan.key --messages origin/main..HEAD
