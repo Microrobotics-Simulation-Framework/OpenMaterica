@@ -5,10 +5,12 @@ each must die within the examples the `ci` profile gives a property, at the smal
 one, and records the examples its kill took as `examples_to_kill`.
 
 A fault is injected where the evaluator looks a name up when it runs: one of its module-level functions,
-replaced. The first eight are the S3 design's (section 6.6). Of the other nine, six are broken evaluators of
+replaced. The first eight are the S3 design's (section 6.6). Of the other ten, six are broken evaluators of
 the table evaluation suite's README made a reader's, the text's rules since the design among them (no number
 beyond an edge, the end value of the readable range); one raises a refusal, where a read returns one (the code
-design's rule 1); and two reach the assertions no design mutant does (`interval`, `monotone`).
+design's rule 1); two reach the assertions no design mutant does (`interval`, `monotone`); and one is the
+evaluator before the S3b-1 review, a log-log value rounded from 50 digits, which a value halfway between two
+doubles may leave one unit off.
 """
 
 import math
@@ -178,6 +180,15 @@ def _t_from_the_upper_knot(x0: float, x1: float, y0: float, y1: float, at: float
     return float(Fraction(y0) + t * (Fraction(y1) - Fraction(y0)))
 
 
+def _from_fifty_digits(x0: float, x1: float, y0: float, y1: float, at: float) -> float:
+    """The log-log formula in decimal at 50 digits, rounded once: not exact where the value is halfway between
+    two doubles."""
+    with localcontext(Context(prec=50)):
+        ln_x0, ln_y0 = Decimal(x0).ln(), Decimal(y0).ln()
+        slope = (Decimal(y1).ln() - ln_y0) / (Decimal(x1).ln() - ln_x0)
+        return float((ln_y0 + (Decimal(at).ln() - ln_x0) * slope).exp())
+
+
 def _read_backwards(x0: float, x1: float, y0: float, y1: float, at: float) -> float:
     """`t` computed as `(x1 - x) / (x1 - x0)`: inside its interval's `y`, run the wrong way."""
     t = (Fraction(x1) - Fraction(at)) / (Fraction(x1) - Fraction(x0))
@@ -245,6 +256,7 @@ MUTANTS = [
         setting(evaluate, "linear", _read_backwards),
         ("monotone",),
     ),
+    Mutant("loglog_not_exact_at_ties", "HP17", setting(evaluate, "loglog", _from_fifty_digits), ("value",)),
 ]
 
 
