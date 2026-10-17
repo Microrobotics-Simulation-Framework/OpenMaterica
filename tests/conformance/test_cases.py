@@ -8,12 +8,15 @@ has no executor or a step it needs is not done (`tests/spec_sync/case_steps.json
 
 import json
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 
+from materica.shapes import Suite
 from tests.conformance import runner
 from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, CaseFile, Outcome
+from tests.spec_sync.schemas import validator
 
 CASE_FILES = runner.discover()
 RUN = [
@@ -27,6 +30,34 @@ RUN = [
 def test_case_file(case_file: CaseFile) -> None:
     case_run = runner.run(case_file, configurations=CONFIGURATIONS, executors=EXECUTORS)
     assert case_run.outcome is Outcome.PASSED, "\n".join(case_run.differences)
+
+
+def results_refused(case_files: list[CaseFile], executors: Mapping[str, runner.Executor]) -> list[str]:
+    """Each case file whose result, as `executors` give it under the first configuration that agrees with
+    it, `read_result.json` refuses, with the first reason."""
+    takes_result = validator("read_result.json")
+    refused: list[str] = []
+    for case_file in case_files:
+        claims = runner.agreeing(case_file, CONFIGURATIONS)[0]
+        result = json.loads(json.dumps(executors[case_file.operation](case_file, claims)))
+        if problems := takes_result(result):
+            refused.append(f"{case_file.path.name}: {problems[0]}")
+    return refused
+
+
+def test_every_result_a_run_case_file_gets_validates_against_the_result_schema() -> None:
+    """`read_result.json` takes each result this implementation gives a case file it runs, not only each case
+    file's expected answer (S2a-4's review, L1)."""
+    assert len(RUN) > 700
+    assert results_refused(RUN, EXECUTORS) == []
+
+
+def test_a_result_the_result_schema_refuses_is_found() -> None:
+    def with_a_member_no_result_holds(case_file: CaseFile, claims: frozenset[Suite]) -> runner.JsonObject:
+        return {**EXECUTORS[case_file.operation](case_file, claims), "x_note": 1.0}
+
+    executors = dict.fromkeys(EXECUTORS, with_a_member_no_result_holds)
+    assert len(results_refused(RUN[:3], executors)) == 3
 
 
 def test_every_case_file_is_counted() -> None:

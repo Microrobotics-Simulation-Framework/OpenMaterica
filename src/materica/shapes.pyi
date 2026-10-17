@@ -566,6 +566,15 @@ class ImpliedTokenValue(TypedDict):
     token: str
     basis: Literal["implied"]
 
+class ResultPinnedRecord(TypedDict):
+    """
+    A record by its id and version, pinned by its content hash.
+    """
+
+    id: str
+    version: str
+    content_hash: str
+
 ResultLabel: TypeAlias = Literal[
     "user_extracted",
     "no_independent_witness",
@@ -879,6 +888,18 @@ class Reason(TypedDict):
 
 ImpliedValue: TypeAlias = ImpliedNumericValue | ImpliedTokenValue
 
+class ResultAnatomicalSite(Based):
+    """
+    A UBERON identifier.
+    """
+
+    uberon: str
+    label: str
+
+class ResultDerivationInput(TypedDict):
+    record: ResultPinnedRecord
+    field: str
+
 ReturnedLabel: TypeAlias = ResultLabel | Label
 
 Assumption: TypeAlias = NominalAssumption | ExtrapolationAssumption
@@ -969,6 +990,33 @@ Target: TypeAlias = RecordTarget | RegionTarget
 
 RequirementCondition: TypeAlias = ToleranceRequirement | AcceptRequirement
 
+class ResultSpecimen(TypedDict):
+    """
+    Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact. Where
+    a fact's row fixes its unit, step 9 compares the unit with it and the writer binds the unit to it: a fact
+    whose unit the source does not give is written as a status object.
+    """
+
+    species: NotRequired[Species | StatusObject]
+    anatomical_site: NotRequired[ResultAnatomicalSite | StatusObject]
+    tissue_state: NotRequired[TissueState | StatusObject]
+    disease_and_treatment_state: NotRequired[DiseaseAndTreatmentState | StatusObject]
+    preparation: NotRequired[Preparation | StatusObject]
+    preservation: NotRequired[Preservation | StatusObject]
+    post_mortem_interval: NotRequired[PostMortemInterval | StatusObject]
+    donor_age: NotRequired[DonorAge | StatusObject]
+    mimics: NotRequired[Mimics | StatusObject]
+    supply_form: NotRequired[SupplyForm | StatusObject]
+    lot: NotRequired[Lot | StatusObject]
+
+class ResultInputSpecimen(TypedDict):
+    """
+    An input's specimen facts, input being its index in inputs.
+    """
+
+    input: float
+    specimen: ResultSpecimen
+
 class NumericCondition(Based):
     """
     A value or a range [lo, hi], lo not above hi, in the condition's registered unit; optionally the source's
@@ -1018,6 +1066,18 @@ class ConditionEntry(TypedDict):
         | ImpliedValue
     ]
     operating: NotRequired[OperatingCondition]
+
+class ResultDerivation(TypedDict):
+    """
+    A derived value's method, its inputs as pinned references, its assumptions, the inputs' specimen facts,
+    and whether the inputs' conditions differ (provenance.md section 5).
+    """
+
+    method: str
+    inputs: list[ResultDerivationInput]
+    assumptions: list[str]
+    input_specimens: list[ResultInputSpecimen]
+    mixed_conditions: NotRequired[bool]
 
 class CompositionComponent(TypedDict):
     """
@@ -1254,7 +1314,7 @@ class ComparedResult(TypedDict):
     alternative_values: NotRequired[list[AlternativeValue]]
     unit: NotRequired[Unit]
     conditions: NotRequired[list[ConditionEntry]]
-    specimen: NotRequired[Specimen]
+    specimen: NotRequired[ResultSpecimen]
     statistics: NotRequired[FieldStatistics]
     provenance: NotRequired[ResultProvenance]
     labels: NotRequired[list[ReturnedLabel]]
@@ -1279,7 +1339,7 @@ class AlternativeValue(TypedDict):
     alternative: float
     value: ResultValue
     conditions: list[ConditionEntry]
-    specimen: Specimen
+    specimen: ResultSpecimen
     statistics: NotRequired[FieldStatistics]
     provenance: ResultProvenance
     labels: list[ReturnedLabel]
@@ -1293,7 +1353,7 @@ class ResultProvenance(TypedDict):
     origin: Origin
     review: ResultReview | StatusNotChecked
     source: NotRequired[str]
-    derivation: NotRequired[Derivation]
+    derivation: NotRequired[ResultDerivation]
 
 class ResultReview(TypedDict):
     """
@@ -1341,7 +1401,7 @@ class ReadResult(TypedDict):
     alternative_values: ReadOnly[NotRequired[list[AlternativeValue]]]
     unit: ReadOnly[NotRequired[Unit]]
     conditions: ReadOnly[NotRequired[list[ConditionEntry]]]
-    specimen: ReadOnly[NotRequired[Specimen]]
+    specimen: ReadOnly[NotRequired[ResultSpecimen]]
     statistics: ReadOnly[NotRequired[FieldStatistics]]
     provenance: ReadOnly[NotRequired[ResultProvenance]]
     labels: ReadOnly[NotRequired[list[ReturnedLabel]]]

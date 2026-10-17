@@ -91,7 +91,7 @@
         "alternative_values": {"type": "array", "items": {"$ref": "read_result.json#/$defs/alternative_value"}},
         "unit": {"$ref": "record.writer.json#/$defs/unit"},
         "conditions": {"type": "array", "items": {"$ref": "read_result.json#/$defs/condition_entry"}},
-        "specimen": {"$ref": "record.writer.json#/$defs/specimen"},
+        "specimen": {"$ref": "read_result.json#/$defs/result_specimen"},
         "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
         "provenance": {"$ref": "read_result.json#/$defs/result_provenance"},
         "labels": {"type": "array", "items": {"$ref": "read_result.json#/$defs/returned_label"}},

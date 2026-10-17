@@ -1286,6 +1286,42 @@ def test_a_not_checked_review_is_returned_as_found_only_where_it_keeps_its_shape
     assert RESULT_SCHEMA(written) == []
 
 
+DERIVED_OFF_PATTERN: dict[str, JsonValue] = {
+    "origin": "derived",
+    "review": {"status": "not_checked"},
+    "derivation": {
+        "method": "a conversion",
+        "inputs": [
+            {
+                "record": {"id": "Not An Id", "version": "1.0", "content_hash": "sha256:x"},
+                "field": "fluid.density",
+            }
+        ],
+        "assumptions": [],
+        "input_specimens": [{"input": 0.0, "specimen": {}}],
+    },
+}
+SITE: dict[str, JsonValue] = {"uberon": "UBERON:liver", "label": "liver", "basis": "stated"}
+
+
+def test_a_result_of_a_record_the_writer_refuses_validates_where_the_read_takes_it() -> None:
+    """S2a-4's review, L1: step 8 checks an anatomical site's `uberon` and a derivation input's pinned record
+    as strings alone (RC-039; `provenance.md` section 5), so a read takes both off their writer patterns, and
+    `read_result.json` takes the result. It keeps the writer's closed structure: a member no shape defines,
+    which a result never holds, inside a returned fact or input is refused."""
+    field = met_field(specimen={"anatomical_site": SITE}, provenance=DERIVED_OFF_PATTERN)
+    written = json.loads(json.dumps(read_met(field).to_json()))
+    assert written["specimen"] == {"anatomical_site": SITE}
+    assert written["provenance"]["derivation"]["inputs"][0]["record"]["id"] == "Not An Id"
+    assert RESULT_SCHEMA(written) == []
+    unknown = copy.deepcopy(written)
+    unknown["specimen"]["anatomical_site"]["x_note"] = 1.0
+    assert RESULT_SCHEMA(unknown) != []
+    unknown = copy.deepcopy(written)
+    unknown["provenance"]["derivation"]["inputs"][0]["record"]["x_note"] = 1.0
+    assert RESULT_SCHEMA(unknown) != []
+
+
 def test_a_want_the_constant_cannot_give_keeps_the_conditions_and_labels_but_returns_no_value() -> None:
     for want in ("bounds", "components", "evidence"):
         result = read_met(met_field(), want=want)

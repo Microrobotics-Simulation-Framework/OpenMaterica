@@ -210,6 +210,7 @@ def test_a_member_holding_another_members_tokens_and_more_is_flagged() -> None:
 Edit = tuple[str, str, str]
 FACTS = "src/materica/schema/0.1/vocabulary/specimen_facts.json"
 WRITER = "src/materica/schema/0.1/record.writer.json"
+RESULT = "src/materica/schema/0.1/read_result.json"
 SET_OR_MEASURED = '"set_or_measured": {"$ref": "vocabulary/provenance.json#/$defs/set_or_measured"}'
 # Each form's value field holds the members of `field_members` by `allOf`, beside its own `form`.
 FORMS = json.loads(
@@ -232,6 +233,8 @@ SUPPLY_FORM = [
     ("docs/specification/provenance.md", "| `supply_form` |", "| `material_form` |"),
     (FACTS, '"supply_form"', '"material_form"'),
     (WRITER, '"supply_form": {"anyOf"', '"material_form": {"anyOf"'),
+    # read_result.json's twin of the writer's specimen follows it (`test_schemas.py` holds the two equal).
+    (RESULT, '"supply_form": {"anyOf"', '"material_form": {"anyOf"'),
 ]
 LOTS = [
     (

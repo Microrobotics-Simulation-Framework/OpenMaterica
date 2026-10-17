@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://w3id.org/materica/schema/0.1/read_result.json",
-  "$comment": "Hand-edited. Each member is typed from the writer schema's $defs and the vocabulary; a case's expected answer takes the same shapes (case.json).",
+  "$comment": "Hand-edited. Each member is typed from the writer schema's $defs and the vocabulary; a case's expected answer takes the same shapes (case.json). A result_ definition named like a writer one is that definition as a result returns it: closed alike, but without the patterns of members a read checks only as strings (an anatomical site's UBERON identifier, a record check's; a derivation input's pinned record, provenance.md section 5), so that a correct result validates. tests/spec_sync/test_schemas.py holds each to the writer's.",
   "title": "ReadResult",
   "description": "read_side_contract.md section 2.",
   "type": "object",
@@ -13,7 +13,7 @@
     "alternative_values": {"type": "array", "items": {"$ref": "#/$defs/alternative_value"}},
     "unit": {"$ref": "record.writer.json#/$defs/unit"},
     "conditions": {"type": "array", "items": {"$ref": "#/$defs/condition_entry"}},
-    "specimen": {"$ref": "record.writer.json#/$defs/specimen"},
+    "specimen": {"$ref": "#/$defs/result_specimen"},
     "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
     "provenance": {"$ref": "#/$defs/result_provenance"},
     "labels": {"type": "array", "items": {"$ref": "#/$defs/returned_label"}},
@@ -64,7 +64,7 @@
         "alternative": {"type": "integer", "minimum": 0},
         "value": {"$ref": "#/$defs/result_value"},
         "conditions": {"type": "array", "items": {"$ref": "#/$defs/condition_entry"}},
-        "specimen": {"$ref": "record.writer.json#/$defs/specimen"},
+        "specimen": {"$ref": "#/$defs/result_specimen"},
         "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
         "provenance": {"$ref": "#/$defs/result_provenance"},
         "labels": {"type": "array", "items": {"$ref": "#/$defs/returned_label"}}
@@ -120,7 +120,80 @@
         "origin": {"$ref": "vocabulary/provenance.json#/$defs/origin"},
         "review": {"anyOf": [{"$ref": "#/$defs/result_review"}, {"$ref": "record.writer.json#/$defs/status_not_checked"}]},
         "source": {"type": "string"},
-        "derivation": {"$ref": "record.writer.json#/$defs/derivation"}
+        "derivation": {"$ref": "#/$defs/result_derivation"}
+      },
+      "additionalProperties": false
+    },
+    "result_specimen": {
+      "description": "Specimen facts, by name (provenance.md section 6.2); a field's override its section's, fact by fact. Where a fact's row fixes its unit, step 9 compares the unit with it and the writer binds the unit to it: a fact whose unit the source does not give is written as a status object.",
+      "type": "object",
+      "allOf": [{"$ref": "vocabulary/specimen_facts.json#/$defs/units"}],
+      "properties": {
+        "species": {"anyOf": [{"$ref": "record.writer.json#/$defs/species"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "anatomical_site": {"anyOf": [{"$ref": "#/$defs/result_anatomical_site"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "tissue_state": {"anyOf": [{"$ref": "record.writer.json#/$defs/tissue_state"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "disease_and_treatment_state": {"anyOf": [{"$ref": "record.writer.json#/$defs/disease_and_treatment_state"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "preparation": {"anyOf": [{"$ref": "record.writer.json#/$defs/preparation"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "preservation": {"anyOf": [{"$ref": "record.writer.json#/$defs/preservation"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "post_mortem_interval": {"anyOf": [{"$ref": "record.writer.json#/$defs/post_mortem_interval"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "donor_age": {"anyOf": [{"$ref": "record.writer.json#/$defs/donor_age"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "mimics": {"anyOf": [{"$ref": "record.writer.json#/$defs/mimics"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "supply_form": {"anyOf": [{"$ref": "record.writer.json#/$defs/supply_form"}, {"$ref": "record.writer.json#/$defs/status_object"}]},
+        "lot": {"anyOf": [{"$ref": "record.writer.json#/$defs/lot"}, {"$ref": "record.writer.json#/$defs/status_object"}]}
+      },
+      "additionalProperties": false
+    },
+    "result_anatomical_site": {
+      "description": "A UBERON identifier.",
+      "type": "object",
+      "allOf": [{"$ref": "record.writer.json#/$defs/based"}],
+      "required": ["uberon", "label"],
+      "properties": {
+        "uberon": {"type": "string"},
+        "label": {"type": "string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "result_derivation": {
+      "description": "A derived value's method, its inputs as pinned references, its assumptions, the inputs' specimen facts, and whether the inputs' conditions differ (provenance.md section 5).",
+      "type": "object",
+      "required": ["method", "inputs", "assumptions", "input_specimens"],
+      "properties": {
+        "method": {"type": "string"},
+        "inputs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/result_derivation_input"}},
+        "assumptions": {"type": "array", "items": {"type": "string"}},
+        "input_specimens": {"type": "array", "items": {"$ref": "#/$defs/result_input_specimen"}},
+        "mixed_conditions": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "result_derivation_input": {
+      "type": "object",
+      "required": ["record", "field"],
+      "properties": {
+        "record": {"$ref": "#/$defs/result_pinned_record"},
+        "field": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "result_pinned_record": {
+      "description": "A record by its id and version, pinned by its content hash.",
+      "type": "object",
+      "required": ["id", "version", "content_hash"],
+      "properties": {
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "content_hash": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "result_input_specimen": {
+      "description": "An input's specimen facts, input being its index in inputs.",
+      "type": "object",
+      "required": ["input", "specimen"],
+      "properties": {
+        "input": {"type": "integer", "minimum": 0},
+        "specimen": {"$ref": "#/$defs/result_specimen"}
       },
       "additionalProperties": false
     },

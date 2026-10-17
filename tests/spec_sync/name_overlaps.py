@@ -45,6 +45,7 @@ from typing import Literal
 from materica.core.jsonio import JsonValue
 from materica.core.slips import one_slip
 from scripts.gen_vocabulary import cells
+from tests.spec_sync.schemas import RESULT_TWINS
 
 SCHEMA = Path("src/materica/schema/0.1")
 SPECIFICATION = Path("docs/specification")
@@ -244,10 +245,17 @@ class Schemas:
         for keyword, value in node.items():
             if keyword in ("properties", "$defs") and isinstance(value, dict):
                 for name, subschema in value.items():
-                    if not (keyword == "$defs" and binding(subschema, current)):
+                    if not (keyword == "$defs" and (binding(subschema, current) or twin(name, current))):
                         self.walk(subschema, current, f"{pointer}/{keyword}/{name}", name)
             elif keyword not in CONSTRAINTS:
                 self.walk(value, current, f"{pointer}/{keyword}", owner)
+
+
+def twin(name: str, file: str) -> bool:
+    """Whether a definition is one of read_result.json's twins of a writer definition, whose places are the
+    writer's: `tests/spec_sync/test_schemas.py` holds each equal to it but for patterns a read does not
+    check."""
+    return file == "read_result.json" and name.removeprefix("result_") in RESULT_TWINS
 
 
 def binding(definition: JsonValue, file: str) -> bool:
