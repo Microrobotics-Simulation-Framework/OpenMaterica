@@ -140,12 +140,15 @@ def step(job: dict[str, Any], name: str) -> dict[str, Any]:
 
 
 # GitHub's expressions as far as the workflows use them: strings, numbers, true, false and null, context paths
-# (`github.event_name`), the status functions (`success()`), `!`, `==`, `!=`, `&&`, `||` and parentheses.
-# Anything else fails the test, rather than be guessed.
+# (`github.event_name`), the status functions (`success()`), `fromJSON(...)`, `!`, `==`, `!=`, `&&`, `||` and
+# parentheses. Anything else fails the test, rather than be guessed.
 EXPRESSION_TOKEN = re.compile(
     r"\s*('(?:[^']|'')*'|\d+(?:\.\d+)?|[A-Za-z_][\w.-]*(?:\(\))?|==|!=|&&|\|\||[!()])"
 )
 STATUS_FUNCTION = re.compile(r"\b(?:success|failure|cancelled|always)\(\)")
+# The functions of one argument the workflows call, as GitHub computes them. Python's JSON parser and GitHub's
+# differ at the edges (`010`, `NaN`), which no test here reaches: each value it parses is checked first.
+FUNCTIONS: dict[str, Callable[[object], object]] = {"fromJSON": lambda value: json.loads(as_text(value))}
 
 
 def as_number(value: object) -> float:
@@ -234,6 +237,10 @@ def evaluated(expression: str, context: Mapping[str, object]) -> object:
             value = either()
             assert take(")"), f"a parenthesis left open in {expression!r}"
             return value
+        if token in FUNCTIONS and take("("):
+            argument = either()
+            assert take(")"), f"a call left open in {expression!r}"
+            return FUNCTIONS[token](argument)
         if token.startswith("'"):
             return token[1:-1].replace("''", "'")
         if re.fullmatch(r"\d+(?:\.\d+)?", token):
@@ -266,7 +273,13 @@ def condition(found: Mapping[str, Any]) -> str:
 
 
 def test_the_expressions_are_evaluated_as_github_evaluates_them() -> None:
-    context = {"github.event_name": "push", "github.run_id": "7", "matrix.python": "3.15"}
+    context = {
+        "github.event_name": "push",
+        "github.run_id": "7",
+        "matrix.python": "3.15",
+        "vars.cap": "",
+        "vars.other": "10",
+    }
     cases = {
         "github.event_name == 'PUSH'": True,
         "github.event_name != 'push'": False,
@@ -275,6 +288,9 @@ def test_the_expressions_are_evaluated_as_github_evaluates_them() -> None:
         "!(matrix.python == '3.15') || null": None,
         "github.run_id == 7": True,
         "'it''s'": "it's",
+        "fromJSON(vars.cap || '6')": 6,
+        "fromJSON(vars.other || '6')": 10,
+        "fromJSON('[\"a\", 2]')": ["a", 2],
     }
     assert {expression: evaluated(expression, context) for expression in cases} == cases
     assert condition({"if": "matrix.python != '3.15'"}) == "success() && (matrix.python != '3.15')"
