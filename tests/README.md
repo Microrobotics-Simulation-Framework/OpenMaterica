@@ -43,7 +43,7 @@ gh workflow run repeat.yml --ref <branch> -f node=tests/property/test_x.py::test
 gh run list --workflow repeat.yml --limit 3      # the run's id
 gh run watch <id> --exit-status                  # waits; exits non-zero where any run failed
 gh run view <id>                                 # the verdict, among the annotations
-gh run download <id> -n runs-3                   # job 3's records: results.jsonl and each run's JUnit report
+gh run download <id> -n runs-3-1                 # job 3's records: results.jsonl and each run's JUnit report
 ```
 
 The inputs: `node`, required; `profile`, `dev`, `ci` (the default) or `deep`, whose example counts are
@@ -61,6 +61,9 @@ verdict: "no run of 200 failed: the failure rate is at most 1.49 % (one-sided 95
 "3 of 200 runs failed (1.5 %); the failure rate is at most 3.83 % (one-sided 95%)" (the exact Clopper-Pearson
 bound; with none failed in `n` runs it is about `3 / n`). It shows each failing seed with its failing example
 and the `@reproduce_failure` line Hypothesis printed, and fails the run where any run failed or did not finish.
+Never re-run a repeat run's jobs: dispatch the request anew. Each attempt keeps its records under a name of its
+own (`runs-<job>-<attempt>`), and the summary counts every record it finds, a seed's that did not pass over
+another of that seed, but fails on any attempt but the first.
 A failing seed replays here with the same examples, whatever the machine:
 `MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest <node> --hypothesis-seed=<seed>`. A run under a seed neither reads
 nor saves the example database, and `.hypothesis/` is removed before each run.

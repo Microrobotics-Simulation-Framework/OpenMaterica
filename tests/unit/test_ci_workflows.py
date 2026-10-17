@@ -7,6 +7,8 @@ would notice breaking, and each has a control in which the check must fail.
 
 import ast
 import copy
+import fnmatch
+import glob
 import itertools
 import json
 import math
@@ -20,7 +22,7 @@ import tomllib
 from collections import Counter
 from collections.abc import Callable, Mapping, Set
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 import pytest
 import yaml
@@ -3012,7 +3014,8 @@ def test_the_table_check_can_fail(old: str, new: str, problem: str) -> None:
 # pytest, which records what each run was given and fails the seeds it is told to.
 REPEAT = "repeat.yml"
 CHECK_STEP, COLLECT_STEP = "The inputs, checked", "The node collects a test"
-RUNS_STEP, KEEP_STEP, SUM_STEP = "Run the node under each seed", "Keep the records", "Sum the runs"
+RUNS_STEP, KEEP_STEP = "Run the node under each seed", "Keep the records"
+FETCH_STEP, SUM_STEP = "Fetch the records", "Sum the runs"
 REPEAT_SCRIPT = REPOSITORY / "scripts" / "repeat_runs.py"
 # A request as a dispatch gives it, each input as text, and its outputs once the request job has checked it.
 REQUESTED = {
@@ -3505,23 +3508,30 @@ sys.exit(1 if failing else 0)
 RUN_OUTPUTS = CHECKED | {"runs": "3"}
 
 
-def run_the_runs(
-    repeat: Workflow, directory: Path, failing: str = "", **overrides: str
-) -> tuple[int, list[dict[str, Any]], list[dict[str, Any]]]:
-    """The runs step of job 1, with its job's environment and `overrides`, run as written on a checkout in
-    `directory` with the stub `uv`: its status, each call of `uv`, and the records the step kept."""
+class Ran(NamedTuple):
+    status: int
+    calls: list[dict[str, Any]]
+    records: list[dict[str, Any]]
+    printed: str
+
+
+def run_the_runs(repeat: Workflow, directory: Path, failing: str = "", job: int = 1, **overrides: str) -> Ran:
+    """The runs step of the job `job`, with its job's environment and `overrides`, run as written on a
+    checkout in `directory` with the stub `uv`: its status, each call of `uv`, the records the step kept, and
+    what it printed."""
     tree = checkout(directory)
     environment = runner(directory, STUB_UV) | {"STUB_FAILING": failing}
-    job = repeat["jobs"]["runs"]
-    found = step(job, RUNS_STEP)
-    found = dict(found, env=job.get("env", {}) | found.get("env", {}) | overrides)
-    context = job_context("runs", RUN_OUTPUTS) | {"matrix.job": 1}
-    status, _, _ = run_step(found, context, tree, base=environment, scratch=directory)
+    runs = repeat["jobs"]["runs"]
+    found = step(runs, RUNS_STEP)
+    found = dict(found, env=runs.get("env", {}) | found.get("env", {}) | overrides)
+    context = job_context("runs", RUN_OUTPUTS) | {"matrix.job": job}
+    status, _, printed = run_step(found, context, tree, base=environment, scratch=directory)
 
     def lines(path: Path) -> list[dict[str, Any]]:
         return [json.loads(line) for line in path.read_text("utf-8").splitlines()] if path.exists() else []
 
-    return status, lines(directory / "calls.jsonl"), lines(directory / "runner" / "runs" / "results.jsonl")
+    calls = lines(directory / "calls.jsonl")
+    return Ran(status, calls, lines(directory / "runner" / "runs" / "results.jsonl"), printed)
 
 
 def run_words(directory: Path, seed: int) -> list[str]:
@@ -3602,7 +3612,7 @@ def reach_problems(repeat: Workflow, ci: Workflow, directory: Path) -> list[str]
     ]
     if any(found != pythons[0] for found in pythons):
         problems.append(f"the workflow's, the script's and ci.yml's test matrix's Pythons are {pythons}")
-    _, calls, _ = run_the_runs(repeat, directory)
+    calls = run_the_runs(repeat, directory).calls
     for seed, call in enumerate(calls, 1):
         if call["arguments"][4:] != run_words(directory, seed) or call["environment"]:
             problems.append(
@@ -3826,7 +3836,7 @@ def repeat_timeout_problems(repeat: Workflow, directory: Path) -> list[str]:
             problems.append(
                 f"at {profile} the runs time out at {limit!r} minutes, their JOB_MINUTES are {minutes!r}"
             )
-    _, calls, _ = run_the_runs(repeat, directory / "ten", JOB_MINUTES="10")
+    calls = run_the_runs(repeat, directory / "ten", JOB_MINUTES="10").calls
     for call in calls:
         head = call["arguments"][:5]
         left = re.fullmatch(r"(\d+)s", head[3]) if len(head) == 5 else None
@@ -3836,7 +3846,7 @@ def repeat_timeout_problems(repeat: Workflow, directory: Path) -> list[str]:
             problems.append(f"a run of a job of 10 minutes is interrupted after {left[1]} s, not about 420")
     if len(calls) != 3:
         problems.append(f"{len(calls)} runs of 3 started in a job of 10 minutes")
-    status, calls, _ = run_the_runs(repeat, directory / "three", JOB_MINUTES="3")
+    status, calls, _, _ = run_the_runs(repeat, directory / "three", JOB_MINUTES="3")
     if calls or status == 0:
         problems.append(f"in a job of 3 minutes {len(calls)} runs started and the step exited {status}")
     return problems
@@ -3908,7 +3918,7 @@ def records_problems(repeat: Workflow, directory: Path) -> list[str]:
     """Where the runs step, run as written with the stub `uv` and seed 2 failing, passes; keeps other records
     than each run's, in order, or the failed run's without its failing example; lets a run find the example
     database of a run before it; or where the records are not kept whenever the step ran."""
-    status, calls, records = run_the_runs(repeat, directory, failing="2")
+    status, calls, records, _ = run_the_runs(repeat, directory, failing="2")
     problems: list[str] = []
     if status == 0:
         problems.append("the runs step passes with a run failed")
@@ -3956,6 +3966,192 @@ def test_the_records_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], 
     fault(repeat)
     found = records_problems(repeat, tmp_path)
     assert any(problem in line for line in found), found
+
+
+def artifact_files(path: str) -> dict[str, bytes]:
+    """The files upload-artifact keeps of `path`: a directory's files, by their path in it; otherwise those
+    the pattern matches, by their path in the directory that holds them all."""
+    if Path(path).is_dir():
+        root = Path(path)
+        files = [Path(directory) / name for directory, _, names in os.walk(path) for name in names]
+    else:
+        files = [Path(found) for found in glob.glob(path, recursive=True) if Path(found).is_file()]
+        root = Path(os.path.commonpath([found.parent for found in files])) if files else Path(path)
+    return {str(found.relative_to(root)): found.read_bytes() for found in files}
+
+
+def fetched(
+    fetch: dict[str, Any], context: Mapping[str, object], artifacts: dict[str, dict[str, bytes]]
+) -> None:
+    """The fetch step as download-artifact does it: each artifact its pattern matches, or the one it names,
+    into its path, or every artifact for neither, each in a directory of the artifact's name where more than
+    one is fetched."""
+    given = fetch["with"]
+    path = Path(str(setting(given["path"], context)))
+    chosen = list(artifacts)
+    if "name" in given:
+        chosen = [given["name"]]
+    elif "pattern" in given:
+        chosen = [name for name in artifacts if fnmatch.fnmatchcase(name, str(given["pattern"]))]
+    for name in (name for name in chosen if name in artifacts):
+        target = path / name if len(chosen) > 1 and not given.get("merge-multiple") else path
+        for relative, content in artifacts[name].items():
+            (target / relative).parent.mkdir(parents=True, exist_ok=True)
+            (target / relative).write_bytes(content)
+
+
+class Kept(NamedTuple):
+    name: str
+    files: dict[str, bytes]
+    seeds: list[int]
+
+
+def plumbing_problems(repeat: Workflow, ci: Workflow, directory: Path) -> list[str]:
+    """Where the jobs of runs and the summary, run as written with the stub `uv`, the records kept as the
+    keep step names and finds them and fetched as the fetch step does, fall short: jobs 1 and 2 do not run
+    their own seeds; every run passing fails the summary; a failed run of job 2 does not fail it by its seed;
+    job 2 run again ("Re-run failed jobs"), each run passing, hides that failure or passes the summary; or a
+    run again in full ("Re-run all jobs") passes it, should GitHub list that attempt's records alone. Or where
+    two jobs or attempts keep their records under one name, the fetch step's pattern misses one, or the
+    records are kept for another time than ci.yml's uploads that state one. A later upload of a name stands
+    in for an earlier, as download-artifact keeps the newest of a name (`latest`)."""
+    problems: list[str] = []
+    keep, fetch = step(repeat["jobs"]["runs"], KEEP_STEP), step(repeat["jobs"]["summary"], FETCH_STEP)
+    names = Counter(
+        str(setting(keep["with"]["name"], {"matrix.job": job, "github.run_attempt": attempt}))
+        for job in range(1, repeat_runs.MAX_JOBS + 1)
+        for attempt in (1, 2, 3)
+    )
+    if shared := sorted(name for name, count in names.items() if count > 1):
+        problems.append(f"two jobs or two attempts keep their records as {shared[:3]}")
+    if missed := sorted(
+        name for name in names if not fnmatch.fnmatchcase(name, str(fetch["with"].get("pattern")))
+    ):
+        problems.append(f"the fetch step's pattern {fetch['with'].get('pattern')!r} misses {missed[:3]}")
+    reports = {
+        found.get("with", {}).get("retention-days")
+        for job in ci["jobs"].values()
+        for found in job.get("steps", [])
+        if str(found.get("uses", "")).startswith("actions/upload-artifact@")
+        and "retention-days" in found.get("with", {})
+    }
+    if {keep["with"].get("retention-days")} != reports:
+        problems.append(
+            f"the records are kept {keep['with'].get('retention-days')} days, ci.yml's reports {reports}"
+        )
+
+    def kept(job: int, attempt: int, failing: str = "") -> Kept:
+        where = directory / f"job-{job}-attempt-{attempt}-failing-{failing}"
+        ran = run_the_runs(repeat, where, failing, job=job)
+        context = {"matrix.job": job, "github.run_attempt": attempt, "runner.temp": str(where / "runner")}
+        seeds = [
+            int(word.partition("=")[2])
+            for call in ran.calls
+            for word in call["arguments"]
+            if word.startswith("--hypothesis-seed=")
+        ]
+        name, path = (str(setting(keep["with"][key], context)) for key in ("name", "path"))
+        return Kept(name, artifact_files(path), seeds)
+
+    def summed(case: str, attempt: int, *uploads: Kept) -> tuple[int, str]:
+        where = directory / f"summary-{case}"
+        tree, environment = checkout(where), runner(where, "")
+        artifacts = {upload.name: upload.files for upload in uploads}
+        context = job_context("summary", RUN_OUTPUTS | {"jobs": "2", "matrix": "[1, 2]"}) | {
+            "needs.runs.result": "success" if case != "failed" else "failure",
+            "github.run_attempt": attempt,
+            "runner.temp": environment["RUNNER_TEMP"],
+        }
+        fetched(fetch, context, artifacts)
+        status, _, printed = run_step(
+            step(repeat["jobs"]["summary"], SUM_STEP), context, tree, base=environment
+        )
+        return status, printed
+
+    first, second = kept(1, 1), kept(2, 1)
+    if (first.seeds, second.seeds) != ([1, 2, 3], [4, 5, 6]):
+        problems.append(f"jobs 1 and 2 ran the seeds {first.seeds} and {second.seeds}, not 1 to 3 and 4 to 6")
+    status, printed = summed("passed", 1, first, second)
+    if status != 0:
+        problems.append(f"the summary of two jobs whose runs all passed fails: {printed[-300:]!r}")
+    failed = kept(2, 1, failing="5")
+    status, printed = summed("failed", 1, first, failed)
+    if status == 0 or "1 of 6 runs failed" not in printed or "### Failing seeds: 5" not in printed:
+        problems.append(f"the summary of a failed run of job 2 exits {status}: {printed[-300:]!r}")
+    again = kept(2, 2)
+    status, printed = summed("again", 2, first, failed, again)
+    if status == 0 or "1 of 6 runs failed" not in printed:
+        problems.append(
+            f"job 2 run again, its runs passing, leaves a summary of exit {status}: {printed[-300:]!r}"
+        )
+    status, printed = summed("all-again", 2, kept(1, 2), again)
+    if status == 0:
+        problems.append("the summary of a run again in full, every run passing, passes at attempt 2")
+    return problems
+
+
+def test_every_jobs_records_of_every_attempt_reach_the_summary(tmp_path: Path) -> None:
+    assert plumbing_problems(workflow(REPEAT), workflow("ci.yml"), tmp_path) == []
+
+
+def records_by_job_alone(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], KEEP_STEP)["with"]["name"] = "runs-${{ matrix.job }}"
+
+
+def a_summary_of_any_attempt(repeat: Workflow) -> None:
+    step(repeat["jobs"]["summary"], SUM_STEP)["env"]["ATTEMPT"] = "1"
+
+
+def a_pattern_of_another_name(repeat: Workflow) -> None:
+    step(repeat["jobs"]["summary"], FETCH_STEP)["with"]["pattern"] = "run-*"
+
+
+def the_reports_alone_kept(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], KEEP_STEP)["with"]["path"] = "${{ runner.temp }}/runs/*.xml"
+
+
+def seeds_of_job_one(repeat: Workflow) -> None:
+    edited_step(
+        repeat,
+        "listed=$(python3 scripts/repeat_runs.py seeds)",
+        'listed=$(seq "$FIRST_SEED" "$((FIRST_SEED + RUNS - 1))")',
+    )
+
+
+def records_kept_a_day(repeat: Workflow) -> None:
+    step(repeat["jobs"]["runs"], KEEP_STEP)["with"]["retention-days"] = 1
+
+
+@pytest.mark.parametrize(
+    ("fault", "problems"),
+    [
+        (
+            records_by_job_alone,
+            (
+                "two jobs or two attempts keep their records as ['runs-1', 'runs-10'",
+                "job 2 run again, its runs passing, leaves a summary of exit 1",
+            ),
+        ),
+        (a_summary_of_any_attempt, ("the summary of a run again in full, every run passing, passes",)),
+        (
+            a_pattern_of_another_name,
+            (
+                "the fetch step's pattern 'run-*' misses ['runs-1-1'",
+                "the summary of two jobs whose runs all passed fails",
+            ),
+        ),
+        (the_reports_alone_kept, ("the summary of two jobs whose runs all passed fails",)),
+        (seeds_of_job_one, ("jobs 1 and 2 ran the seeds [1, 2, 3] and [1, 2, 3]",)),
+        (records_kept_a_day, ("the records are kept 1 days, ci.yml's reports {90}",)),
+    ],
+)
+def test_the_plumbing_check_can_fail(
+    tmp_path: Path, fault: Callable[[Workflow], None], problems: tuple[str, ...]
+) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    fault(repeat)
+    found = plumbing_problems(repeat, workflow("ci.yml"), tmp_path)
+    assert all(any(problem in line for line in found) for problem in problems), found
 
 
 # The records of two jobs of three runs from seed 1, the runs' jobs' result, and whether the summary passes.
@@ -4015,7 +4211,8 @@ def summary_problems(repeat: Workflow, directory: Path) -> list[str]:
             with (kept / "results.jsonl").open("a", encoding="utf-8") as lines:
                 lines.write(json.dumps(record) + "\n")
         context = job_context("summary", outputs) | {
-            "needs.runs.result": result if "runs" in job.get("needs", []) else None
+            "needs.runs.result": result if "runs" in job.get("needs", []) else None,
+            "github.run_attempt": 1,
         }
         status, _, printed = run_step(
             step(job, SUM_STEP), context, tree, base=environment, scratch=directory / str(index)

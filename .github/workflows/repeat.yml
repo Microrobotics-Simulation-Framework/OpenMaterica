@@ -189,11 +189,13 @@ jobs:
             [ "$status" -eq 0 ] || failed=1
           done
           exit "$failed"
+      # Under a name of each attempt's own: a job run again ("Re-run failed jobs") keeps its records beside its
+      # first attempt's, never in their place, and the summary refuses any attempt but the first.
       - name: Keep the records
         if: always() && steps.runs.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: runs-${{ matrix.job }}
+          name: runs-${{ matrix.job }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/runs
           if-no-files-found: error
           retention-days: 90
@@ -209,13 +211,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Fetch the records
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: runs-*
           path: ${{ runner.temp }}/runs
       # The runs, the failures and their seeds and examples, and the failure rate with its one-sided 95 % upper
-      # bound, on the run's page; fails where any run failed or did not finish, a seed has no record, or a job of
-      # runs did not succeed (scripts/repeat_runs.py, `summary`).
+      # bound, on the run's page; fails where any run failed or did not finish, a seed has no record or two, a
+      # job of runs did not succeed, or the run is not on its first attempt, since a re-run's records add to the
+      # first attempt's, or, were a later attempt to see its own alone, would stand in for them
+      # (scripts/repeat_runs.py, `summary`). To repeat a request, dispatch it anew.
       - name: Sum the runs
         env:
           NODE: ${{ needs.request.outputs.node }}
@@ -226,4 +231,5 @@ jobs:
           FIRST_SEED: ${{ needs.request.outputs.first_seed }}
           EXTRA: ${{ needs.request.outputs.extra }}
           RUNS_RESULT: ${{ needs.runs.result }}
+          ATTEMPT: ${{ github.run_attempt }}
         run: python3 scripts/repeat_runs.py summary "$RUNNER_TEMP/runs"
