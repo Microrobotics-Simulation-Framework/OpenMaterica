@@ -5,9 +5,13 @@ a member of the wrong type; for steps 9 and 10, quiet on them as they are and fa
 another unit through and a step 10 that lets a condition outside its tolerance through; for HP1 and HP2,
 quiet on every result the core gives the full fields under each `want`, and failing on each law broken; and
 against the reference model (HP12), quiet on the core as it is, and failing on a step 8 that refuses what the
-text reads or lets through what it refuses."""
+text reads or lets through what it refuses; and HP12's open point `members_of_the_other_kind` known by its
+shape, in a field or an alternative, where the oracle failed before it knew it, a step not built beside it
+kept, and a fault beside it still seen."""
 
+import copy
 import json
+from collections.abc import Callable
 
 import pytest
 
@@ -311,3 +315,112 @@ def test_the_model_oracle_sees_a_refusal_step_8_misses(monkeypatch: pytest.Monke
     monkeypatch.setattr(value_shapes, "STATISTICS", ({**required, "n_donors": _any}, optional))
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(*model_case(a_count_of_the_wrong_type()))
+
+
+# HP12's open point `members_of_the_other_kind` on the target's reads (S2a-4's review B, M1): the core ignores
+# a member of the other kind's shape on a condition, the model refuses it. HP12 knows the point by its draw's
+# plant, which a fuzzed field carries none of, so the oracle knows it by its shape (`holds_the_other_kind`).
+# The field is met, each condition it holds checked, so that two alternatives of it reach `no_pick`.
+
+MET_CONDITIONS: dict[str, JsonValue] = {
+    "temperature": {"value": 310.15, "unit": "K", "basis": "stated"},
+    "shear_rate": {"value": 100.0, "unit": "1/s", "basis": "stated"},
+    "measurement_dimension": {"value": 5.0e-5, "unit": "m", "basis": "stated"},
+    "measurement_geometry": {"token": "tube", "basis": "stated"},
+}
+OPERATING_MET: JsonObject = {
+    "temperature": {"value": 310.15, "unit": "K"},
+    "shear_rate": {"value": 100.0, "unit": "1/s"},
+    "measurement_dimension": {"value": 5.0e-5, "unit": "m"},
+}
+REQUIRED_MET: JsonObject = {
+    "temperature": {"tolerance": {"value": 1.0, "unit": "K"}},
+    "shear_rate": {"tolerance": {"value": 0.0, "unit": "1/s"}},
+    "measurement_dimension": {"tolerance": {"value": 0.0, "unit": "m"}},
+    "measurement_geometry": {"accept": ["tube"]},
+}
+
+
+def met_field() -> dict[str, JsonValue]:
+    field = full_fields()["population"]
+    field["conditions"] = copy.deepcopy(MET_CONDITIONS)
+    return field
+
+
+def met_case(field: dict[str, JsonValue]) -> tuple[tuple[bytes, ...], JsonObject]:
+    sources, request = model_case(field)
+    request["operating_conditions"] = copy.deepcopy(OPERATING_MET)
+    request["requirement"] = {"want": "value", "conditions": copy.deepcopy(REQUIRED_MET)}
+    return sources, request
+
+
+def with_the_other_kind(condition: str, member: str, value: JsonValue) -> dict[str, JsonValue]:
+    field = met_field()
+    conditions = field["conditions"]
+    assert isinstance(conditions, dict)
+    held = conditions[condition]
+    assert isinstance(held, dict)
+    held[member] = value
+    return field
+
+
+OTHER_KIND: dict[str, tuple[str, str, JsonValue]] = {
+    "numeric-holding-token": ("temperature", "token", "tube"),
+    "token-holding-value": ("measurement_geometry", "value", 0.0005),
+    "token-holding-range": ("measurement_geometry", "range", [1.0, 2.0]),
+    "token-holding-plus-minus": ("measurement_geometry", "plus_minus", []),
+    "token-holding-set-or-measured": ("measurement_geometry", "set_or_measured", "measured"),
+}
+
+
+def as_alternatives(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    other = met_field()
+    other["value"] = 0.000701
+    return {"alternatives": [field, other]}
+
+
+def as_the_field(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    return field
+
+
+def never(example: object) -> bool:
+    return False
+
+
+def as_an_interval(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    del field["value"]
+    return {**field, "form": "interval", "interval": {"lower": 0.0006, "upper": 0.0008}}
+
+
+@pytest.mark.parametrize("held", sorted(OTHER_KIND))
+@pytest.mark.parametrize(
+    "place", [pytest.param(as_the_field, id="field"), pytest.param(as_alternatives, id="alternative")]
+)
+def test_the_model_oracle_knows_the_other_kind_by_its_shape(
+    monkeypatch: pytest.MonkeyPatch, held: str, place: Callable[[dict[str, JsonValue]], dict[str, JsonValue]]
+) -> None:
+    """Quiet on the core as it is; failing, as it did before the oracle knew the shape, where it does not:
+    the target then fails on a divergence HP12 lists, with no fault behind it."""
+    sources, request = met_case(place(with_the_other_kind(*OTHER_KIND[held])))
+    against_the_model(sources, request)
+    monkeypatch.setattr("tests.fuzz.field_oracle.holds_the_other_kind", never)
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        against_the_model(sources, request)
+
+
+def test_the_model_oracle_keeps_a_step_not_built_beside_the_other_kind() -> None:
+    """A form S2b reads holding the shape is a step not built (`NOT_BUILT`), as HP12 lists it: a plant would
+    hold the core's "not yet" to a model that reads the interval."""
+    against_the_model(*met_case(as_an_interval(with_the_other_kind(*OTHER_KIND["numeric-holding-token"]))))
+
+
+@pytest.mark.parametrize("held", sorted(OTHER_KIND))
+def test_the_model_oracle_sees_a_fault_beside_the_other_kind(
+    monkeypatch: pytest.MonkeyPatch, held: str
+) -> None:
+    """The shape changes only the model's reading of the open point: a refusal step 8 gives wrongly beside it
+    is still seen."""
+    sources, request = met_case(with_the_other_kind(*OTHER_KIND[held]))
+    monkeypatch.setattr(value_shapes, "FIELD_STATISTICS", _refuses_every_block)
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        against_the_model(sources, request)
