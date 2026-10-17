@@ -247,12 +247,13 @@ IMPLEMENTATION = [
         setting(read, "_OF_THE_OTHER_KIND", {"numeric": (), "token": ()}),
         ("implied_member_of_the_other_kind",),
     ),
-    # HP1
+    # HP1. A fault of step 8 that passes goes on to step 10, where the step-8 kind's request leaves every
+    # condition unchecked: S2b-1's passing faults of a form's own member came up first.
     Mutant(
         "condition_unchecked_without_its_condition",
         "faults",
         taken(result_mutants.MUTANTS, "condition_unchecked_without_its_condition"),
-        ("unchecked",),
+        ("unchecked", "step_8"),
     ),
     # HP2
     Mutant(

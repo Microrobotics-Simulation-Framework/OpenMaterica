@@ -88,6 +88,16 @@ CONTROLS = [
         ("check_one_fault",),
     ),
     Control(
+        value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_2,
+        "form_composition",
+        ("check_one_fault",),
+    ),
+    Control(
+        value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_3,
+        "region_component",
+        ("check_one_fault",),
+    ),
+    Control(
         condition_properties.test_each_row_of_the_table_and_the_conditions_it_checks,
         "required_with_its_token",
         ("check_against_the_oracle",),
