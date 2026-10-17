@@ -269,7 +269,7 @@ MUTANTS = [
         "stated_without_origin_with_a_condition",
         "HP1",
         setting(read, "_origin", _origin_with_a_condition),
-        ("met", "step_9_or_10_fault", "unknown_at_step_10"),
+        ("met", "met_own_member", "step_9_or_10_fault", "unknown_at_step_10"),
     ),
     # Step 13 gives an interval or a composition read under `value` "`not_met` (`want_mismatch`)"
     # (`read_side_contract.md` section 6), whatever the read's kind: a fault of step 8's catalogue that step 8
@@ -409,6 +409,7 @@ MUTANTS = [
         setting(read, "resolve_record", _labelled_beside_the_hash_suite),
         (
             "met",
+            "met_own_member",
             "step_8_fault",
             "step_9_or_10_fault",
             "unknown_at_step_10",
