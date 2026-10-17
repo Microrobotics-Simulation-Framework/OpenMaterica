@@ -67,6 +67,7 @@ jobs:
       commits: ${{ steps.paths.outputs.commits }}
       site_commits: ${{ steps.paths.outputs.site_commits }}
       workflow_blob: ${{ steps.paths.outputs.workflow_blob }}
+      per_commit_max_parallel: ${{ steps.cap.outputs.max_parallel }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -74,15 +75,19 @@ jobs:
           persist-credentials: false
 
       # The per-commit jobs' cap, `max-parallel` of `commit` and `site_commit` below, is the repository variable
-      # PER_COMMIT_MAX_PARALLEL, parsed, or 6 where it is unset (maintainer, 2026-10-17). GitHub documents no
-      # bound on `max-parallel`, nor what it does with 0, a negative number or a fraction, so this step checks
-      # the value those jobs parse, the same expression's, on every run, and fails where it is not a whole
-      # number from 1 to 20: the capped jobs, which need the gate, never start, and the result fails. The digits
+      # PER_COMMIT_MAX_PARALLEL, or 6 where it is unset (maintainer, 2026-10-17). GitHub documents no bound on
+      # `max-parallel`, nor what it does with 0, a negative number or a fraction, so this step checks the value
+      # on every run and fails where it is not a whole number from 1 to 20: the capped jobs, which need the
+      # gate, never start, and the result fails. It writes the value it took as the gate's output
+      # `per_commit_max_parallel`, which those jobs parse and which is the only place they read it: a value
+      # changed after the check does not reach them (.github/workflows/README.md says how re-runs read it). The
+      # digits
       # are listed, not a range: in a locale such as en_US.UTF-8, bash's `[1-9]` takes other scripts' digits
       # too (`٦`, `６`, `²`), which fromJSON cannot parse. The refusal prints the value escaped (`%q`), so that
       # a line break in it starts no workflow command. repeat.yml's request job checks its own cap with the
       # same script. .github/workflows/README.md says when to raise or lower it.
       - name: The cap of jobs at once is a whole number from 1 to 20
+        id: cap
         env:
           VARIABLE: PER_COMMIT_MAX_PARALLEL
           MAX_PARALLEL: ${{ vars.PER_COMMIT_MAX_PARALLEL || '6' }}
@@ -92,6 +97,7 @@ jobs:
             echo "::error title=Runner cap::the repository variable $VARIABLE is $shown, not a whole number from 1 to 20: set it to one, or delete it for the workflow's default"
             exit 1
           fi
+          echo "max_parallel=$MAX_PARALLEL" >> "$GITHUB_OUTPUT"
           echo "$VARIABLE: at most $MAX_PARALLEL jobs at once"
 
       - name: Every commit signed off (CONTRIBUTING constraint 1)
@@ -603,8 +609,8 @@ jobs:
     # and the whole suite at the `dev` profile, the mutant searches and audit controls included; the head keeps
     # the jobs above, every Python and the `ci` profile. The gate lists the commits, but those that change documentation alone; a pull request of one
     # commit lists none, and this job is skipped. At most PER_COMMIT_MAX_PARALLEL run at once, a repository
-    # variable, 6 where it is unset, which the gate checks: the organisation's 60 concurrent jobs are shared by
-    # this repository's CI and MIME's and MADDENING's (.github/workflows/README.md).
+    # variable, 6 where it is unset, as the gate checks it and gives it: the organisation's 60 concurrent jobs
+    # are shared by this repository's CI and MIME's and MADDENING's (.github/workflows/README.md).
     # A tree that passed these checks in an earlier run of the same pull request is not checked again. The
     # pass is kept in the cache, under the tree, this workflow's blob and the runner's image version, so that a
     # push that adds commits or rewrites their messages, or one after a run it cancelled, checks only the trees
@@ -625,7 +631,7 @@ jobs:
       JOB_MINUTES: 40
     strategy:
       fail-fast: false
-      max-parallel: ${{ fromJSON(vars.PER_COMMIT_MAX_PARALLEL || '6') }}
+      max-parallel: ${{ fromJSON(needs.gate.outputs.per_commit_max_parallel) }}
       matrix:
         sha: ${{ fromJSON(needs.gate.outputs.commits) }}
     steps:
@@ -732,14 +738,14 @@ jobs:
     # A commit before the head that changes the site alone (beside documentation or not) is not listed for the
     # per-commit job, whose checks read none of it, but here, where the site job's steps run on it as it is:
     # a commit that breaks the site, mended by a later one, would otherwise land unchecked. The per-commit job
-    # runs the same steps on each commit it checks. Its cap is the per-commit job's, which the gate checks.
+    # runs the same steps on each commit it checks. Its cap is the per-commit job's, as the gate gives it.
     needs: gate
     if: needs.gate.outputs.site_commits != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
       fail-fast: false
-      max-parallel: ${{ fromJSON(vars.PER_COMMIT_MAX_PARALLEL || '6') }}
+      max-parallel: ${{ fromJSON(needs.gate.outputs.per_commit_max_parallel) }}
       matrix:
         sha: ${{ fromJSON(needs.gate.outputs.site_commits) }}
     steps:
