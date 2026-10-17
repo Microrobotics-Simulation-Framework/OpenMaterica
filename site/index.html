@@ -3,14 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Nothing on this page is fetched from anywhere: no scripts, fonts, images or styles from other sites. The
-     policy below enforces that in the browser; loosen it only on purpose. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<!-- Nothing on this page is fetched from another site: no scripts, fonts, images or styles from elsewhere. Its
+     logo and icons are this site's own files. The policy below enforces that in the browser; loosen it only on
+     purpose. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="color-scheme" content="light dark">
 <title>OpenMaterica</title>
 <meta name="description" content="An open material schema and Python toolkit that records the physical properties of substances in and around the human body, with their provenance, for simulation. Pre-release.">
 <link rel="canonical" href="https://openmaterica.org/">
-<link rel="icon" href="data:,">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <style>
   :root {
     --bg: #fdfdfc;
@@ -44,6 +49,7 @@
   header, main, footer { max-width: 40rem; margin: 0 auto; }
   header { padding: 3rem 0 0.5rem; }
   h1 { font-size: 2.25rem; line-height: 1.2; margin: 0 0 0.75rem; letter-spacing: -0.01em; }
+  .logo { display: block; width: 100%; height: auto; }
   h2 { font-size: 1.25rem; line-height: 1.3; margin: 2.25rem 0 0.5rem; }
   p, ul, dl { margin: 0 0 1rem; }
   .lead { font-size: 1.1875rem; margin: 0; }
@@ -84,7 +90,7 @@
 </head>
 <body>
 <header>
-  <h1>OpenMaterica</h1>
+  <h1><img class="logo" src="/logo.png" alt="OpenMaterica" width="1280" height="919"></h1>
   <p class="lead">An open material schema and Python toolkit that records the physical properties of substances
     in and around the human body, with their provenance, for simulation.</p>
 </header>
