@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "assets/images/**"
       - "src/materica/schema/**"
       - "scripts/schema_index.py"
       - ".github/workflows/pages.yml"
@@ -56,9 +57,12 @@ jobs:
       # does: tests/spec_sync/test_released_schemas.py), and their permanent identifiers,
       # https://w3id.org/materica/schema/<version>/..., redirect to these copies. The directory is absent until
       # the first schema lands; mkdir fails if site/ ever holds a schema/ of its own.
-      - name: Stage site/, with the schemas at /schema/
+      # The logo and the favicons live in assets/images/, beside the rest of the project's artwork, and are
+      # served from the site's root.
+      - name: Stage site/, with the logo and favicons at its root and the schemas at /schema/
         run: |
           cp -R site "$RUNNER_TEMP/site"
+          cp assets/images/logo.png assets/images/favicon/* "$RUNNER_TEMP/site/"
           if [ -d src/materica/schema ]; then
             mkdir "$RUNNER_TEMP/site/schema"
             cp -R src/materica/schema/. "$RUNNER_TEMP/site/schema/"

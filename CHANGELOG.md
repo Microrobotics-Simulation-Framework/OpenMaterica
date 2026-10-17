@@ -13,6 +13,11 @@ recorded in that repository's CHANGELOG.
 ## [Unreleased]
 
 ### Added
+- The project's artwork in `assets/`: the logo (`images/logo.png`, and `images/logo-full.png` at full size),
+  the favicon and app icons (`images/favicon/`), and an animation of the logo for talks and posts
+  (`video/logo-animation.mp4`). The logo heads the README and the site; the site serves the logo and favicons
+  from its root, and its content security policy allows images and the web manifest from the site itself, and
+  still nothing from elsewhere.
 - The read's steps 7 and 8 (S2a-2; `read_side_contract.md` section 3). Step 7 finds the target field, and
   gives `absent` where the record holds none; a field holding alternatives raises `NotImplementedError`, since
   alternatives are read at step 7, with S2a-4 (`no_pick`) and S4. Step 8 refuses a form the field's row does
