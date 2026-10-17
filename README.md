@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml?query=branch%3Amain)
 [![PyPI](https://img.shields.io/pypi/v/openmaterica?include_prereleases)](https://pypi.org/project/openmaterica/)
-[![Code licence: Apache-2.0](https://img.shields.io/github/license/Microrobotics-Simulation-Framework/OpenMaterica?label=code%20licence)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/blob/main/LICENSE)
+[![Code licence: Apache-2.0](https://img.shields.io/pypi/l/openmaterica?label=code%20licence)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/blob/main/LICENSE)
 
 > *OpenMaterica* is an open material schema, with an OpenUSD binding, and a Python toolkit for biomedical
 > digital twins. It describes substances in and around the human body (tissues and body fluids, the media
