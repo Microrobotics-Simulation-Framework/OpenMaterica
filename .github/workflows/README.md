@@ -15,7 +15,7 @@ one table of what became of each, when dispatched by hand (below).
 | `generated` | every generator of `scripts/` with `--check`: the vocabulary, the reader schema, the typed shapes; on Python 3.11 | as `static` |
 | `tests` | `uv run pytest -n auto`, property tests at the `dev` profile, but the mutant searches and the audit controls (`--property-controls none`) | as `static`; Python 3.11 to 3.15, in parallel; on 3.15 alone also the pre-review script's trace test (`MATERICA_TRACE_SELECTION=1`, which no other job sets) |
 | `controls` | the mutant searches and the audit controls alone (`--property-controls only`), which run at the `ci` profile's examples whatever the profile, so cost about as much as a Python's other tests: on the supported range's ends, the oldest Python and the newest, which bracket the versions between, each in a job beside that Python's `tests` job, so that neither is the longest | as `static`; Python 3.11 and 3.15 |
-| `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run, in six shards side by side (`json`, `records`, `writer`, `agreement`, `step8_mutants`, `conditions`), each with its own example database; on Python 3.15, a worker per vCPU | a pull request that changes any path but the documentation and those no part of the job reads (`hypothesis_free` in the gate's step), any test included; every merge to main; weekly; manual |
+| `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run, in seven shards side by side (`json`, `records`, `writer`, `agreement`, `step8_mutants`, `conditions`, `relations`), each with its own example database; on Python 3.15, a worker per vCPU | a pull request that changes any path but the documentation and those no part of the job reads (`hypothesis_free` in the gate's step), any test included; every merge to main; weekly; manual |
 | `site` | the site staged exactly as `pages.yml` stages it (its step, word for word), which fails where a file it copies is missing; then `scripts/check_site.py` on the copy: every local link, image and icon of each page and of the web manifest resolves, every page keeps one content security policy, before anything it loads, that lets nothing load from elsewhere, nothing loads from elsewhere, and the README's images name files of the tree; on the runner's Python, seconds long | a pull request that changes any path but documentation alone, `site/` and `assets/` included, which run this job and no code job; every merge to main; weekly; manual |
 | `commit` | each commit of a pull request but its head, checked out on its own: the site job's steps, ruff, mypy and pyright, `uv build` and the wheel check, every generator's `--check` (on Python 3.11, as `generated`), and the whole suite at the `dev` profile, the mutant searches and audit controls included, on Python 3.15 under `--dist worksteal`; at most `PER_COMMIT_MAX_PARALLEL` at once, 6 where it is unset (below); a commit whose tree passed the same checks earlier in the pull request (kept in the cache under its tree, `ci.yml`'s blob and the runner's image version) is not checked again | a pull request of two commits or more: each commit before the head that changes code, as the gate counts it for `static` |
 | `site_commit` | each commit of a pull request but its head that changes the site alone (beside documentation or not), checked out on its own: the site job's steps, word for word; at most `PER_COMMIT_MAX_PARALLEL` at once, as `commit` | a pull request of two commits or more with such a commit before the head |
@@ -161,15 +161,15 @@ matrix jobs run at once (maintainer, 2026-10-17):
 Raise `PER_COMMIT_MAX_PARALLEL`, to 10 say, while OpenMaterica is the organisation's only repository at work,
 so that a pull request's commits are checked sooner; lower it again, to 6 or less, when MIME's or MADDENING's
 work runs at the same time, so that their jobs do not wait behind these. Count the rest too: beside the
-per-commit jobs, a push to a pull request runs, once the gate has passed, 16 jobs on its head at once
-(`static`, `generated`, `tests` on five Pythons, `controls` on two, `hypothesis` in six shards, `site`), and
+per-commit jobs, a push to a pull request runs, once the gate has passed, 17 jobs on its head at once
+(`static`, `generated`, `tests` on five Pythons, `controls` on two, `hypothesis` in seven shards, `site`), and
 each repeat dispatch runs its own `REPEAT_MAX_PARALLEL`. `PER_COMMIT_MAX_PARALLEL` caps `commit` and
-`site_commit` each apart, so at the ceiling of 20 one push can hold 16 + 20 + 20 = 56 of the organisation's 60
+`site_commit` each apart, so at the ceiling of 20 one push can hold 17 + 20 + 20 = 57 of the organisation's 60
 runners, and each repeat dispatch 20 more; a commit that changes the site alone is rare, so the usual peak of one
-push is 16 + 20 = 36. Each mutant dispatch runs its own `MUTANT_MAX_PARALLEL`, 20 at the ceiling, and
+push is 17 + 20 = 37. Each mutant dispatch runs its own `MUTANT_MAX_PARALLEL`, 20 at the ceiling, and
 nothing beside them: its request job ends before they start and its table job starts after them. So its
 worst case is 20 runners for as long as its mutants queue (up to 201 jobs, 200 mutants and the baseline),
-and one push at the ceiling, one repeat dispatch and one mutant dispatch together ask for 56 + 20 + 20 = 96,
+and one push at the ceiling, one repeat dispatch and one mutant dispatch together ask for 57 + 20 + 20 = 97,
 more than the 60: the rest wait for a runner, MIME's and MADDENING's jobs among them. Each further dispatch,
 of other inputs or on another ref, asks for its own 20 more.
 
