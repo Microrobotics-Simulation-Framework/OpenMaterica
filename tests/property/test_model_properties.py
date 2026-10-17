@@ -269,8 +269,10 @@ NOT_BUILT = {
 
 
 # The open points on which the implementation reads the text otherwise than the model, which fails closed
-# (`read_model.OPEN_POINTS`): each by the model's seeded fault that reads it as the implementation does. The
-# text leaves both open; the maintainer rules (the decision log, phase B).
+# (`read_model.OPEN_POINTS`): each by the model's seeded fault that reads it as the implementation does. Left:
+# open point 1's record half, a record condition holding a member of the other kind, which the text does not
+# decide in so many words; the maintainer rules (the decision log, phase B, and the fix round). Its request
+# half and a slip of a declaration's name, which the text decides, both read alike since the fix round.
 class OpenPoint(NamedTuple):
     refused: str  # the reason the model's fail-closed reading refuses with
     reading: str  # the model's seeded fault that reads the point as the implementation does
@@ -278,9 +280,6 @@ class OpenPoint(NamedTuple):
 
 OPEN_POINTS: Mapping[str, OpenPoint] = {
     "members_of_the_other_kind": OpenPoint("form_invalid", "members_of_the_other_kind_ignored"),
-    "names_a_declaration_gives_a_requirement": OpenPoint(
-        "request_incomplete", "declaration_names_not_named_in_a_request"
-    ),
 }
 
 

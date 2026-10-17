@@ -18,8 +18,8 @@ property can tell a planted open point from anything else. The kinds:
 - **ends early**: a read that ends before step 4, at step 5 or at step 7, a store of `stores.worlds`, or an
   overlay as the target;
 - **unpinned**: the rules the reference model's case-agreement leaves unpinned (its survivors and the faults
-  one case file alone kills), and the two open points on which the implementation and the model read the
-  text differently (`OPEN_POINTS`).
+  one case file alone kills), and the open point on which the implementation and the model read the text
+  differently (`OPEN_POINTS`).
 """
 
 import copy
@@ -470,12 +470,26 @@ def ends_early(draw: Draw, size: Size) -> Example:
 
 
 # The rules the model's case-agreement leaves unpinned (`tests/reference/README.md`, "The mutant table"), and
-# the open points the implementation and the model read differently.
+# the open point the implementation and the model read differently: open point 1's record half, a record
+# condition holding a member of the other kind. Its request half, and a slip of a name a declaration gives a
+# requirement, the text decides, and both read them alike, failing closed (the fix round of S2a-4's review).
 
-OPEN_POINTS = ("members_of_the_other_kind", "names_a_declaration_gives_a_requirement")
+OPEN_POINTS = ("members_of_the_other_kind",)
 OTHER_KIND: dict[str, tuple[str, JsonValue]] = {
     "temperature": ("token", "tube"),
     "measurement_geometry": ("value", 1.0),
+}
+# In an implied condition's `implies`, a member of the other kind's shape, or one slip from one, beside a
+# value of the condition's own kind.
+IMPLIED_OTHER_KIND: dict[str, list[JsonObject]] = {
+    "temperature": [{"token": "tube"}, {"tokens": "tube"}, {"tokn": "tube"}],
+    "measurement_geometry": [
+        {"value": 1.0},
+        {"range": [1.0, 2.0]},
+        {"unit": "m"},
+        {"valeu": 1.0},
+        {"units": "m"},
+    ],
 }
 
 
@@ -559,9 +573,23 @@ def other_kind(draw: Draw, read: Read) -> None:
     at(field_of(read), "conditions", name)[member] = value
 
 
+def implied_member_of_the_other_kind(draw: Draw, read: Read) -> None:
+    """Open point 1's request half, which the text decides (`read_side_contract.md` section 1, "a token
+    outside the condition's row") and both read alike, failing closed: an implied condition located at the
+    read that gives a numeric condition a `token`, or a token condition a `value`, `range` or `unit`, or a
+    member one slip from one, is refused at step 0 with that condition."""
+    in_vivo(read)
+    implied = implying(read, "tissue_state", "in_vivo", 310.15)
+    name = draw(st.sampled_from(sorted(IMPLIED_OTHER_KIND)))
+    own: JsonObject = {"value": 310.15, "unit": "K"} if name == "temperature" else {"token": "tube"}
+    implied["implies"] = {name: {**own, **copy.deepcopy(draw(st.sampled_from(IMPLIED_OTHER_KIND[name])))}}
+    read.request["acceptances"] = [implied]
+
+
 def declaration_name_slip(draw: Draw, read: Read) -> None:
-    """Open point `names_a_declaration_gives_a_requirement`: a member one slip from `field` in a requirement,
-    or from `reason` or `consequence` in a requirement condition."""
+    """A member one slip from `field` in a requirement, or from `reason` or `consequence` in a requirement
+    condition, which `declarations.md` section 1 names there: refused, as the text says (S2a-4's review, M1),
+    and both read it alike."""
     if draw(st.booleans()):
         at(read.request, "requirement")[draw(st.sampled_from(["fields", "feld", "fiedl"]))] = "x"
     else:
@@ -637,6 +665,7 @@ PLANTS: dict[str, Callable[[Draw, Read], None]] = {
     "implied_zero_beside_minus_zero": implied_zero_beside_minus_zero,
     "declaration_names_held": declaration_names_held,
     "members_of_the_other_kind": other_kind,
+    "implied_member_of_the_other_kind": implied_member_of_the_other_kind,
     "names_a_declaration_gives_a_requirement": declaration_name_slip,
 }
 

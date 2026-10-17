@@ -115,6 +115,16 @@ def _broken_status_reports_its_token(
         found.append(value_shapes.unknown_token(f"{where} holds the status {status!r}"))
 
 
+# Open point 1's request half read as the implementation read it before the fix round.
+
+
+def _declaration_names_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    setting(read, "_REQUIREMENT_MEMBERS", ("want", "conditions", "label", "represents", "population_level"))(
+        monkeypatch
+    )
+    setting(read, "_REQUIREMENT_CONDITION_MEMBERS", ("tolerance", "accept"))(monkeypatch)
+
+
 # The recomputed hash taken over the members in the order the source writes them, not in RFC 8785's (the S2
 # design's HP10 mutant, B7: the hash taken over the source's form, not the canonical one).
 
@@ -162,6 +172,20 @@ IMPLEMENTATION = [
         "unpinned",
         setting(value_shapes, "status_object", _broken_status_reports_its_token),
         ("broken_status_object",),
+    ),
+    # Open point 1's request half, as the implementation read it before the fix round: a slip of a name a
+    # declaration gives a requirement ignored, and an implied value's member of the other kind ignored.
+    Mutant(
+        "declaration_names_ignored",
+        "unpinned",
+        _declaration_names_ignored,
+        ("names_a_declaration_gives_a_requirement",),
+    ),
+    Mutant(
+        "implied_members_of_the_other_kind_ignored",
+        "unpinned",
+        setting(read, "_OF_THE_OTHER_KIND", {"numeric": (), "token": ()}),
+        ("implied_member_of_the_other_kind",),
     ),
     # HP1
     Mutant(
@@ -298,8 +322,16 @@ MODEL = [
     ModelFault("member_checked_off_its_row", "unpinned", ("form_off_its_row",)),
     ModelFault("composition_checked_beyond_its_basis", "unpinned", ("composition_basis_off_its_row",)),
     ModelFault("broken_status_object_reports_its_token", "unpinned", ("broken_status_object",)),
-    ModelFault("members_of_the_other_kind_read", "unpinned", ("members_of_the_other_kind",)),
-    ModelFault("members_of_the_other_kind_ignored", "unpinned", ("members_of_the_other_kind",)),
+    ModelFault(
+        "members_of_the_other_kind_read",
+        "unpinned",
+        ("members_of_the_other_kind", "implied_member_of_the_other_kind"),
+    ),
+    ModelFault(
+        "members_of_the_other_kind_ignored",
+        "unpinned",
+        ("members_of_the_other_kind", "implied_member_of_the_other_kind"),
+    ),
     ModelFault("slips_of_alternatives_ignored", "unpinned", ("alternatives_slip_beside",)),
     ModelFault(
         "declaration_names_not_named_in_a_request", "unpinned", ("names_a_declaration_gives_a_requirement",)
