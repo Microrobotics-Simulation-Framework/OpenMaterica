@@ -472,6 +472,10 @@ def every_status_object_an_unstated_kind(entries: JsonValue, faults: Reasons) ->
             model.status_object(entry["stated_as"], faults, allowed=frozenset({"unstated"}), scalar=True)
 
 
+def every_forms_member_named(form: str | None) -> tuple[str, ...]:
+    return model.FIELD_PLACE_NAMES
+
+
 def input_specimens_optional(entries: JsonValue, inputs: int, faults: Reasons) -> None:
     if entries is not None:
         _check_input_specimens(entries, inputs, faults)
@@ -920,6 +924,12 @@ MUTANTS: Mapping[str, Mutant] = {
         "provenance.md:246-247",
         {"check_plus_minus": every_status_object_an_unstated_kind},
         survives="no case holds a `stated_as` of another status token beside an entry of a stated kind",
+    ),
+    "every_forms_member_named_at_a_field": Mutant(
+        "every form's member named at a field's place, so that a slip of another form's refuses a constant",
+        "record_format.md:311",
+        {"named_at_a_field": every_forms_member_named},
+        survives="no case holds a slip of another form's member beside a form the reader knows",
     ),
     "input_specimens_optional": Mutant(
         "a derivation without `input_specimens` read",

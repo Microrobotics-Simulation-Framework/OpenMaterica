@@ -590,6 +590,13 @@ def implied_zero_beside_minus_zero(draw: Draw, read: Read) -> None:
     read.request["acceptances"] = [first, second]
 
 
+def another_forms_member_slipped(draw: Draw, read: Read) -> None:
+    """A member one slip from another form's own member beside a constant, which names `value` alone at its
+    place (`record_format.md` section 5): ignored, as a member the reader does not know. Fuzz target 4 found
+    the model refusing it."""
+    field_of(read)[draw(st.sampled_from(["tablW", "intervals", "compositon", "evidenc", "power_lav"]))] = 1.0
+
+
 def checks_beside_a_broken_object(draw: Draw, read: Read) -> None:
     """A token the reader does not know beside a fault of the object that holds it, both of which step 8
     checks (`read_side_contract.md` section 2 item 2, "Each step makes all its checks"): a population level's
@@ -622,6 +629,7 @@ def checks_beside_a_broken_object(draw: Draw, read: Read) -> None:
 PLANTS: dict[str, Callable[[Draw, Read], None]] = {
     "plural_of_two_characters": plural_of_two_characters,
     "checks_beside_a_broken_object": checks_beside_a_broken_object,
+    "another_forms_member_slipped": another_forms_member_slipped,
     "form_off_its_row": form_off_its_row,
     "composition_basis_off_its_row": composition_basis_off_its_row,
     "broken_status_object": broken_status_object,
