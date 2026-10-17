@@ -358,11 +358,13 @@ every family entry goes in `families/CHANGELOG.md`.
   then (`git ls-remote`, not the remote-tracking refs, which a branch deleted on the server leaves behind), at
   each path it has in the commits pushed, a content git names with no path included, and every commit's
   message, so that a file a later commit removes is checked too. A path or message that is not UTF-8 is read
-  and shown escaped. CI's scan also checks a pull request's branch name (`--ref-name`). Both scans read a
-  binary file, or text in UTF-16 or UTF-32, by its printable runs of four ASCII characters or more, where they
-  skipped any content holding a NUL byte; what a file holds compressed is still not read (CONTRIBUTING). It checks the paths without the
-  key, and the names with the key file `git config openmaterica.scanKeyFile` names; CONTRIBUTING says how to
-  install it. Tested through `git push` in a throwaway repository with a bare remote.
+  and shown escaped. It checks the names with the key file `git config openmaterica.scanKeyFile` names (a
+  `~` expanded) or `CONFIDENTIAL_SCAN_KEY`; without a key it refuses the push, unless the clone says it has
+  none (`git config openmaterica.scanWithoutKey true`), and then checks the paths alone. CONTRIBUTING says
+  how to install it. Tested through `git push` in a throwaway repository with a bare remote. CI's scan also
+  checks a pull request's branch name (`--ref-name`). Both scans read a binary file, or text in UTF-16 or
+  UTF-32, by its printable runs of four ASCII characters or more, where they skipped any content holding a
+  NUL byte; what a file holds compressed is still not read (CONTRIBUTING).
 
 ## [0.1.0.dev1] - 2026-10-14
 

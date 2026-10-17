@@ -5,18 +5,31 @@
 # "Confidentiality"). Git gives it the remote's name and URL, and a line for each ref pushed on standard input,
 # which the scan reads. It runs the scan of the checkout being pushed from.
 #
-# The key: the file `git config openmaterica.scanKeyFile` names, else CONFIDENTIAL_SCAN_KEY. With neither, the
-# private paths are checked and the names are not, with a warning.
+# The key: the file `git config openmaterica.scanKeyFile` names (a leading `~` is expanded), else
+# CONFIDENTIAL_SCAN_KEY. With neither, the push is refused, so that a clone missing its key setting cannot let
+# the names through unread, unless the clone says it holds no key, as an outside contributor's does (`git
+# config openmaterica.scanWithoutKey true`): then the private paths are checked and the names are not, with a
+# warning.
 #
 # Install it once a clone (hooks live in the common git directory, so every worktree shares it):
 #   cp scripts/pre-push "$(git rev-parse --git-path hooks/pre-push)"
 #   git config openmaterica.scanKeyFile /path/to/confidential_scan.key    # if you hold the key
+#   git config openmaterica.scanWithoutKey true                           # if you do not
 
 if ! grep -q -e "--pre-push" scripts/check_confidential.py 2>/dev/null; then
   echo "pre-push: this checkout's scripts/check_confidential.py has no --pre-push; rebase it onto main" >&2
   exit 1
 fi
-if key_file=$(git config --get openmaterica.scanKeyFile); then
+if key_file=$(git config --type=path --get openmaterica.scanKeyFile); then
   exec python3 scripts/check_confidential.py --pre-push "$1" --key-file "$key_file"
 fi
-exec python3 scripts/check_confidential.py --pre-push "$1"
+if [ -n "$CONFIDENTIAL_SCAN_KEY" ] || [ "$(git config --type=bool --get openmaterica.scanWithoutKey)" = true ]; then
+  exec python3 scripts/check_confidential.py --pre-push "$1"
+fi
+cat >&2 <<'MESSAGE'
+pre-push: no key, so the private names cannot be checked, and the push is refused. Either:
+  git config openmaterica.scanKeyFile /path/to/confidential_scan.key    # if you hold the key
+  git config openmaterica.scanWithoutKey true                           # if this clone has none: the paths alone
+(CONTRIBUTING.md, "Confidentiality")
+MESSAGE
+exit 1

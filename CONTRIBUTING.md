@@ -172,12 +172,15 @@ metadata, or look at it decompressed.
 - **As a pre-push hook**, which checks what each push would publish, before it does: the name of each branch
   or tag it writes, every file content and annotated tag the remote lacks (by what the remote advertises at
   that moment), a file a later commit removes included, and every commit message it brings, refusing the push
-  on a finding. Deleting a ref is never refused. CI's scan runs only once a push is public. Install it once a clone
-  (hooks live in the common git directory, so every worktree shares it), and name the key file if you hold
-  the key; without it, the hook checks the paths only, with a warning:
+  on a finding. Deleting a ref is never refused. CI's scan runs only once a push is public. Install it once a
+  clone (hooks live in the common git directory, so every worktree shares it), and either name the key file,
+  if you hold the key (a leading `~` is expanded), or say that this clone has none, as an outside
+  contributor's: then the hook checks the paths alone, with a warning. With neither, or with the key in
+  neither the configuration nor `CONFIDENTIAL_SCAN_KEY`, it refuses every push and says how to set one:
   ```sh
   cp scripts/pre-push "$(git rev-parse --git-path hooks/pre-push)"
-  git config openmaterica.scanKeyFile /path/to/confidential_scan.key
+  git config openmaterica.scanKeyFile /path/to/confidential_scan.key    # if you hold the key
+  git config openmaterica.scanWithoutKey true                           # if you do not
   ```
   It runs the scan of the checkout you push from, so a branch based on a `main` from before the hook needs a
   rebase first. Agents push only through it.
