@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """The controls of the feature audits of the json and records shards' properties that declare features by
-their chances (`@pytest.mark.chances`), and of the conditions shard's, which declare them by their chances or
-draw them alike (`@pytest.mark.drawn`): run at the `ci` profile's examples with a generator that stops
-producing one of them, each property fails its audit, on that feature alone; a parametrised property, on one
-of its parameters, by the marks that parameter carries. Outside `tests/property/`, whose audits would fail
-these runs too."""
+their chances (`@pytest.mark.chances`), and of the conditions shard's, steps 9 and 10's and the result's,
+which declare them by their chances or draw them alike (`@pytest.mark.drawn`): run at the `ci` profile's
+examples with a generator that stops producing one of them, each property fails its audit, on that feature
+alone; a parametrised property, on one of its parameters, by the marks that parameter carries. Outside
+`tests/property/`, whose audits would fail these runs too."""
 
 import sys
 from collections.abc import Callable
@@ -20,6 +20,7 @@ from tests.property import test_condition_properties as condition_properties
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_jsonio_properties as jsonio_properties
 from tests.property import test_read_properties as read_properties
+from tests.property import test_result_properties as result_properties
 from tests.property import test_value_field_properties as value_field_properties
 from tests.property import test_version_properties as version_properties
 
@@ -109,6 +110,16 @@ CONTROLS = [
         "status_object",
         ("check_refused",),
         (("place", "plus_minus"),),
+    ),
+    Control(
+        result_properties.test_a_read_gives_a_result_whose_reasons_are_the_tables,
+        "alternatives_broken",
+        ("check_totality",),
+    ),
+    Control(
+        result_properties.test_what_a_read_returns_is_as_stored_and_shares_nothing,
+        "negative_zero",
+        ("check_returned_as_stored",),
     ),
 ]
 

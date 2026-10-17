@@ -500,7 +500,8 @@ jobs:
     # take seconds and do not grow with the profile. Measured locally at `ci` on four workers (Python 3.15,
     # 2026-10-16, S2a-3's fix round): `conditions` 112 s, records 62 s, and the writer shard 9.3 minutes, 158 s
     # of it one worker's, S2a-3's relation of the writer to step 9; `conditions` at `deep`, ten times the
-    # examples, about 17 minutes by my arithmetic, unmeasured.
+    # examples, about 17 minutes by my arithmetic, unmeasured. The result's laws (S2a-4: HP1, HP2, HP6, HP11)
+    # joined `conditions`, which then took 155 s at `ci` on four local workers (Python 3.15, 2026-10-17).
     # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
     # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
