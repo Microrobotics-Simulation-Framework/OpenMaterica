@@ -2788,7 +2788,8 @@ CAPS = (
 )
 # Values of a cap's variable the check takes, beside its being unset, and values it refuses: out of range;
 # written otherwise than plainly as a whole number, which fromJSON may still parse (`6.0`, `1e1`, ` 6`); not a
-# number; or a command.
+# number; a command; or a line break and a workflow command, which a refusal that printed the value as it is
+# would give the runner as a command of its own (`workflow_commands`).
 CAPS_TAKEN = ("1", "9", "10", "19", "20")
 CAPS_REFUSED = (
     "0",
@@ -2811,7 +2812,23 @@ CAPS_REFUSED = (
     "$(touch ran)",
     "a[$(touch ran)]",
     "6;touch ran",
+    "6\n::warning title=injected::x",
+    "6\r::notice::x",
+    "6\n##[warning]x",
 )
+
+
+def workflow_commands(printed: str) -> list[str]:
+    """The lines of a step's output that GitHub's runner reads as workflow commands. It splits the output at
+    `\r\n`, `\r` and `\n`, and takes a line that starts with `::` once its leading space is trimmed, or one
+    that holds the legacy `##[` anywhere (actions/runner, `ActionCommand.TryParseV2` and `TryParse`)."""
+    lines = re.split(r"\r\n|\r|\n", printed)
+    return [line for line in lines if line.lstrip().startswith("::") or "##[" in line]
+
+
+def test_the_runner_reads_these_lines_as_workflow_commands() -> None:
+    printed = "a\r::x::1\n  ::y::2\r\nb ::z\nc ##[warning]w\r\n\n::\nd # [e]"
+    assert workflow_commands(printed) == ["::x::1", "  ::y::2", "c ##[warning]w", "::"]
 
 
 def cap_expression(variable: str, default: str) -> str:
@@ -2872,8 +2889,9 @@ def cap_used(written: object, context: Mapping[str, object]) -> object:
 
 def cap_check_problems(found: Workflow, cap: Cap, directory: Path) -> list[str]:
     """Where the cap step, run as written, takes a value of the variable outside 1 to 20 or refuses one
-    inside, lets a value run a command, refuses one without naming the variable, or takes one that the capped
-    job computes as another number, the variable unset included."""
+    inside, lets a value run a command, refuses one without naming the variable or with a workflow command
+    beside its own, or takes one that the capped job computes as another number, the variable unset
+    included."""
     check = step(found["jobs"][cap.checker], CAP_STEP)
     written = found["jobs"][cap.job].get("strategy", {}).get("max-parallel")
     tree = directory / "tree"
@@ -2895,6 +2913,13 @@ def cap_check_problems(found: Workflow, cap: Cap, directory: Path) -> list[str]:
                 problems.append(f"the check takes {cap.variable} {value!r}")
             elif CAP_REFUSAL.format(variable=cap.variable) not in printed:
                 problems.append(f"the check refuses {cap.variable} {value!r} without naming it: {printed!r}")
+            elif len(commands := workflow_commands(printed)) != 1 or not commands[0].startswith(
+                CAP_REFUSAL.format(variable=cap.variable)
+            ):
+                problems.append(
+                    f"the check's refusal of {cap.variable} {value!r} prints {len(commands)} workflow "
+                    f"commands: {commands!r}"
+                )
         elif status != 0:
             problems.append(f"the check refuses {cap.variable} {value!r}")
         else:
@@ -2997,6 +3022,16 @@ CAP_CONDITION = '[[ ! "$MAX_PARALLEL" =~ ^([1-9]|1[0-9]|20)$ ]]'
             "the cap is",
             "the check refuses {variable} '0' without naming it",
         ),
+        (
+            "printf -v shown '%q' \"$MAX_PARALLEL\"",
+            'shown="$MAX_PARALLEL"',
+            "the check's refusal of {variable} '6\\n::warning title=injected::x' prints 2 workflow commands",
+        ),
+        (
+            'if [[ ! "$MAX_PARALLEL"',
+            'echo "$VARIABLE: at most $MAX_PARALLEL jobs at once"\nif [[ ! "$MAX_PARALLEL"',
+            "the check's refusal of {variable} '6\\r::notice::x' prints 2 workflow commands",
+        ),
     ],
     ids=[
         "a-ceiling-raised",
@@ -3005,6 +3040,8 @@ CAP_CONDITION = '[[ ! "$MAX_PARALLEL" =~ ^([1-9]|1[0-9]|20)$ ]]'
         "bash-arithmetic",
         "refusal-ignored",
         "refusal-unnamed",
+        "refusal-unescaped",
+        "value-printed-first",
     ],
 )
 def test_the_cap_check_as_run_can_fail(old: str, new: str, problem: str, cap: Cap, tmp_path: Path) -> None:
