@@ -72,6 +72,7 @@ KINDS = (
     "step_7",
     "alternatives",
     "alternatives_broken",
+    "met_own_member",
 )
 # The kinds whose read returns a value or alternative values.
 VALUED = ("met", "alternatives")
@@ -125,6 +126,17 @@ def met_reads(draw: Draw, size: Size, wants: tuple[str, ...] = WANTS) -> Drawn:
     claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
     want = FORM_WANTS[form] if draw(st.booleans()) else draw(st.sampled_from(wants))
     return from_read("met", read, want, claims, f"form_{form}")
+
+
+@st.composite
+def own_member_reads(draw: Draw, size: Size) -> Drawn:
+    """A read that passes steps 1 to 10 of an interval or a composition, under the `want` that gives its own
+    member: a kind of its own, so that a fault a read of either form alone shows is searched for in a share of
+    the examples of its own, not in `met`'s one in eight (PR #37's review, L5)."""
+    form = draw(st.sampled_from(("interval", "composition")))
+    read = draw(base_reads(size, FORM_FIELDS[form], form))
+    claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
+    return from_read("met_own_member", read, FORM_WANTS[form], claims, f"form_{form}")
 
 
 @st.composite
@@ -307,6 +319,7 @@ BUILDERS = {
     "step_7": at_step_7,
     "alternatives": alternatives,
     "alternatives_broken": broken_alternatives,
+    "met_own_member": own_member_reads,
 }
 
 
