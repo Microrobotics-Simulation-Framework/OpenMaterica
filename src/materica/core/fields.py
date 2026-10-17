@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""A record's value fields (`record_format.md` sections 5 and 6): finding the field a read names (step 7 of
-`read_side_contract.md` section 3), checking its form and shape (step 8) and its units (step 9).
+"""A record's value fields (`record_format.md` sections 5 and 6): finding the field a read names and checking
+the shape of the alternatives it may hold (step 7 of `read_side_contract.md` section 3), checking its form and
+shape (step 8) and its units (step 9).
 
 Step 8 checks the form token against the field's row, a composition's basis included, then the members every
 form shares (`value_shapes.py`), then the form's own member, where the row allows the form. Only a constant's
@@ -20,7 +21,9 @@ from dataclasses import dataclass
 from materica import shapes
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
+from materica.core.slips import slipped
 from materica.core.value_shapes import (
+    FIELD_MEMBERS,
     FORM_MEMBERS,
     Found,
     JsonObject,
@@ -69,6 +72,29 @@ def find_field(record: JsonObject, spec: RecordFieldSpec) -> RecordField | Reaso
     if name not in fields:
         return Reason("absent", detail=f"the section {section_name} holds no field {name}")
     return RecordField(spec, fields[name], section)
+
+
+def alternatives_problems(holder: JsonObject, name: str) -> Found:
+    """Step 7's check of a field holding alternatives (`record_format.md` section 5): a non-empty list of
+    objects, none holding `alternatives` of its own, and beside it no member of a value field, nor a member
+    one slip from `alternatives` or from one of those. An alternative that breaks a value field's shape
+    otherwise is its own fault, found when it is read at step 8."""
+    found: Found = []
+    named = (*FIELD_MEMBERS, *dict.fromkeys(FORM_MEMBERS.values()))
+    if beside := [member for member in named if member in holder]:
+        found.append(Reason("form_invalid", detail=f"{name} holds {beside} beside its alternatives"))
+    for member, near in slipped(holder, ("alternatives", *named)):
+        found.append(Reason("form_invalid", detail=f"{name} holds {member!r}, one slip from {near!r}"))
+    alternatives = holder["alternatives"]
+    if not isinstance(alternatives, list) or not alternatives:
+        found.append(Reason("form_invalid", detail=f"{name}.alternatives is not a list of one or more"))
+    elif any(not isinstance(entry, dict) or "alternatives" in entry for entry in alternatives):
+        found.append(
+            Reason(
+                "form_invalid", detail=f"{name}.alternatives holds a non-object or one holding alternatives"
+            )
+        )
+    return found
 
 
 def form_problems(field: RecordField, record: JsonObject, claims: Collection[Suite]) -> Found:
