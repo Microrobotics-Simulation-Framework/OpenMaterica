@@ -16,6 +16,7 @@ exactly.
 """
 
 import math
+import re
 from collections.abc import Callable
 from dataclasses import replace
 from fractions import Fraction
@@ -25,7 +26,7 @@ import pytest
 
 from tests.reference import table_evaluator
 from tests.reference.table_evaluator import (
-    REFUSED,
+    Evaluation,
     Precision,
     Side,
     Table,
@@ -50,6 +51,12 @@ SOURCE = Path(table_evaluator.__file__)
 
 def close(number: Fraction | float | None, expected: float, precision: Precision) -> bool:
     return number is not None and abs(float(number) - expected) <= LOGLOG_TOLERANCE[precision] * abs(expected)
+
+
+def refused(found: Evaluation) -> bool:
+    """Whether `found` is a refusal as read_side_contract.md section 7 item 7 has it: reported, with no value
+    and no derivative. `in_range` beside it is not compared: the refusal comes first."""
+    return found.refused is True and found.value is None and found.derivative is None
 
 
 @pytest.mark.parametrize("precision", PRECISIONS)
@@ -141,9 +148,9 @@ def test_a_one_point_range_has_a_value_and_no_derivative(precision: Precision) -
 @pytest.mark.parametrize("precision", PRECISIONS)
 @pytest.mark.parametrize("side", SIDES)
 def test_at_an_edge_it_refuses_and_beside_it_reads_each_side(precision: Precision, side: Side) -> None:
-    assert evaluate(EDGED, 1.0, precision, side) == REFUSED
+    assert refused(evaluate(EDGED, 1.0, precision, side))
     at_zero = Table(x=(-1.0, 0.0, 0.0, 1.0), y=(0.0, 1.0, 5.0, 6.0), scheme="linear", edges=(0.0,))
-    assert evaluate(at_zero, -0.0, precision, side) == REFUSED
+    assert refused(evaluate(at_zero, -0.0, precision, side))
     # Control: a point beside the edge reads, from its own side.
     below = evaluate(EDGED, 1.0 - 2.0**-20, precision, side)
     above = evaluate(EDGED, 1.0 + 2.0**-20, precision, side)
@@ -154,12 +161,12 @@ def test_at_an_edge_it_refuses_and_beside_it_reads_each_side(precision: Precisio
 @pytest.mark.parametrize("precision", PRECISIONS)
 def test_an_edge_outside_the_range_refuses_at_it_and_across_it(precision: Precision) -> None:
     beyond = replace(EDGED, source_range=(1.5, 2.0))
-    assert evaluate(beyond, 1.0, precision) == REFUSED
-    assert evaluate(beyond, 0.5, precision) == REFUSED
+    assert refused(evaluate(beyond, 1.0, precision))
+    assert refused(evaluate(beyond, 0.5, precision))
     between = evaluate(beyond, 1.25, precision)
     assert (between.in_range, between.value, between.derivative) == (False, 5.5, 0.0)
     on_the_end = replace(EDGED, source_range=(1.0, 2.0))
-    assert evaluate(on_the_end, 0.5, precision) == REFUSED
+    assert refused(evaluate(on_the_end, 0.5, precision))
     assert evaluate(on_the_end, 1.5, precision).value == 5.5
     # Control: with no edge between it and the range, a point outside is no refusal.
     assert evaluate(replace(LINEAR, source_range=(1.5, 3.0)), 0.5, precision).refused is False
@@ -178,6 +185,42 @@ def test_each_precision_rounds_each_operation_its_own_way() -> None:
     assert evaluate(third, 1.0, "exact").value == Fraction(1, 3)
     assert evaluate(third, 1.0, "binary64").value == 1 / 3
     assert evaluate(third, 1.0, "binary32").value == to_binary32(1 / 3) != 1 / 3
+
+
+def rounded_ln(value: float) -> float:
+    return to_binary32(math.log(value))
+
+
+def rounded_exp(value: float) -> float:
+    return to_binary32(math.exp(value))
+
+
+Function = Callable[[float], float]
+
+
+def binary32_loglog(
+    x0: float, x1: float, y0: float, y1: float, at: float, ln: Function, exp: Function
+) -> float:
+    """The log-log value at `at` by the text's formula, worked step by step in its order, each `+`, `-`, `*`
+    and `/` rounded to binary32, with the logarithm `ln` and the exponential `exp`."""
+    rounded = to_binary32
+    slope = rounded(rounded(rounded(ln(at) - ln(x0)) * rounded(ln(y1) - ln(y0))) / rounded(ln(x1) - ln(x0)))
+    return exp(rounded(ln(y0) + slope))
+
+
+def test_binary32_rounds_each_logarithm_and_exponential() -> None:
+    # A point where each rounding shows, in a table whose numbers are exact in binary32.
+    x0, x1, y0, y1, at = 2.0, 10.0, 3.0, 11.0, 3.0
+    found = evaluate(Table(x=(x0, x1), y=(y0, y1), scheme="loglog"), at, "binary32")
+    value = binary32_loglog(x0, x1, y0, y1, at, rounded_ln, rounded_exp)
+    ln = rounded_ln
+    derivative = to_binary32(
+        to_binary32(to_binary32(value / at) * to_binary32(ln(y1) - ln(y0))) / to_binary32(ln(x1) - ln(x0))
+    )
+    assert (found.value, found.derivative) == (value, derivative)
+    # Controls: with the logarithms unrounded, or the exponential, the value differs.
+    assert binary32_loglog(x0, x1, y0, y1, at, math.log, rounded_exp) != value
+    assert binary32_loglog(x0, x1, y0, y1, at, rounded_ln, math.exp) != value
 
 
 @pytest.mark.parametrize(
@@ -200,24 +243,64 @@ def test_to_binary32_rounds_to_nearest_even(value: float, rounded: float) -> Non
     assert math.copysign(1.0, found) == math.copysign(1.0, rounded)
 
 
+NO_EDGE_SHARED = "source_range shares no value that is no edge with [x[0], x[-1]]"
+
+
 @pytest.mark.parametrize(
-    "broken",
+    ("broken", "fault"),
     [
-        pytest.param(lambda: replace(LINEAR, x=(1.0, 1.0), y=(0.0, 2.0)), id="one_distinct_x"),
-        pytest.param(lambda: replace(LINEAR, x=(0.0, 3.0, 1.0)), id="x_decreasing"),
-        pytest.param(lambda: replace(LINEAR, y=(0.0, 2.0)), id="y_short"),
-        pytest.param(lambda: replace(EDGED, edges=(1.0, 1.0)), id="edge_twice"),
-        pytest.param(lambda: replace(EDGED, x=(0.0, 0.0, 1.0, 2.0), edges=(0.0,)), id="edge_at_an_end"),
-        pytest.param(lambda: replace(LINEAR, edges=(1.0,)), id="edge_not_repeated"),
-        pytest.param(lambda: replace(LINEAR, x=(0.0, 1.0, 1.0)), id="repeat_that_is_no_edge"),
-        pytest.param(lambda: replace(LINEAR, scheme="loglog"), id="loglog_holding_zero"),
-        pytest.param(lambda: replace(LINEAR, source_range=(2.0, 1.0)), id="source_range_reversed"),
-        pytest.param(lambda: replace(LINEAR, source_range=(4.0, 5.0)), id="source_range_disjoint"),
-        pytest.param(lambda: replace(EDGED, source_range=(1.0, 1.0)), id="source_range_only_an_edge"),
+        pytest.param(
+            lambda: replace(LINEAR, x=(1.0,), y=(0.0,)), "x holds fewer than two distinct values", id="one_x"
+        ),
+        pytest.param(
+            lambda: replace(LINEAR, x=(1.0, 1.0), y=(0.0, 2.0)),
+            "x holds fewer than two distinct values",
+            id="one_distinct_x",
+        ),
+        pytest.param(lambda: replace(LINEAR, x=(0.0, 3.0, 1.0)), "x decreases", id="x_decreasing"),
+        pytest.param(
+            lambda: replace(LINEAR, y=(0.0, 2.0)),
+            "y does not hold one number for each entry of x",
+            id="y_short",
+        ),
+        pytest.param(lambda: replace(EDGED, edges=(1.0, 1.0)), "an edge is listed twice", id="edge_twice"),
+        pytest.param(
+            lambda: replace(EDGED, x=(0.0, 0.0, 1.0, 2.0), edges=(0.0,)),
+            "an edge does not lie strictly between x[0] and x[-1]",
+            id="edge_at_an_end",
+        ),
+        pytest.param(
+            lambda: replace(LINEAR, edges=(1.0,)), "an edge is not in x exactly twice", id="edge_not_repeated"
+        ),
+        pytest.param(
+            lambda: replace(LINEAR, x=(0.0, 1.0, 1.0)),
+            "an x value that is no edge repeats",
+            id="repeat_that_is_no_edge",
+        ),
+        pytest.param(
+            lambda: replace(LINEAR, scheme="loglog"),
+            "a log-log table holds a number that is not positive",
+            id="loglog_holding_zero",
+        ),
+        pytest.param(
+            lambda: replace(LINEAR, source_range=(2.0, 1.0)),
+            "source_range is out of order",
+            id="source_range_reversed",
+        ),
+        pytest.param(
+            lambda: replace(LINEAR, source_range=(4.0, 5.0)), NO_EDGE_SHARED, id="source_range_disjoint"
+        ),
+        pytest.param(
+            lambda: replace(EDGED, source_range=(1.0, 1.0)), NO_EDGE_SHARED, id="source_range_only_an_edge"
+        ),
     ],
 )
-def test_a_table_the_record_format_refuses_is_refused(broken: Callable[[], Table]) -> None:
-    with pytest.raises(ValueError, match="section 6 allows"):
+def test_a_table_the_record_format_refuses_is_refused_for_its_own_fault(
+    broken: Callable[[], Table], fault: str
+) -> None:
+    # Each fault by its own check: a table that breaks two rules is refused by the first, so the reason is
+    # compared, not only the refusal.
+    with pytest.raises(ValueError, match=f"section 6 allows: {re.escape(fault)}$"):
         broken()
 
 
