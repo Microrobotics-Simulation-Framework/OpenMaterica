@@ -2,20 +2,27 @@
 """The oracles by which fuzz target 4 (`read_field_bytes.py`) sees a read go wrong, apart from the target,
 which needs Atheris, so that a unit test can show each fails (`tests/unit/test_fuzz_oracle.py`).
 
-Until S2a-4's reference model can say what each read must give, the target holds step 8 to T1's third relation
+The reference model (`tests/reference/read_model.py`) says what each read must give: the target holds every
+read to it as HP12 does (`check_against_the_model`), so that a refusal step 8 gives wrongly is seen, which no
+other oracle here can see (S2a-2's review, L3). Beside it, the target holds step 8 to T1's third relation
 (`tests/spec_sync/test_t1.py`): what the reader `$defs` refuse, step 8 refuses. A constant step 8 passes it
 holds to steps 9 and 10 as the text gives them: its units each compared with the one registered for it, code
 point for code point, written here from `record_format.md` section 4.2 and step 9; and its conditions against
 the request by `condition_oracle.py`, HP7's oracle, written from section 5 alone.
 """
 
-from collections.abc import Mapping
+import json
+from collections.abc import Callable, Mapping
 from urllib.parse import urljoin
 
 from materica.core.jsonio import JsonValue
+from materica.core.read import ReadResult
 from materica.core.vocabulary import VOCABULARY
+from materica.shapes import Suite
 from tests.property import condition_oracle
 from tests.property.condition_oracle import AFTER_STEP_8, REASONS
+from tests.property.model_strategies import Example
+from tests.property.test_model_properties import Outcome, check_outcome, written_outcome
 from tests.spec_sync.schemas import BASE, takes, why_refused
 
 JsonObject = dict[str, JsonValue]
@@ -226,3 +233,22 @@ def objects(result: JsonValue, member: str) -> list[JsonObject]:
     """The objects of the list `member` of a result as the target takes it, none where it holds none."""
     found = result.get(member) if isinstance(result, dict) else None
     return [item for item in found if isinstance(item, dict)] if isinstance(found, list) else []
+
+
+def check_against_the_model(
+    sources: tuple[bytes, ...], request: JsonObject, claims: frozenset[Suite], implementation: Outcome
+) -> None:
+    """HP12 on the target's read, whose outcome the target took once (`read_outcome`): the core and the
+    reference model agree, or diverge as a known divergence says (`test_model_properties.py`)."""
+    check_outcome(Example("fuzzed", sources, json.dumps(request).encode(), claims), implementation)
+
+
+def read_outcome(read: Callable[[], ReadResult]) -> tuple[JsonValue, Outcome]:
+    """A read's result as the target takes it, "not yet" where a step not built yet would decide it, and its
+    outcome as HP12 compares it; the read made once."""
+    try:
+        result = read()
+    except NotImplementedError as error:
+        return "not yet", Outcome("not_yet", why=str(error))
+    written: JsonValue = json.loads(json.dumps(result.to_json()))
+    return written, written_outcome(written)

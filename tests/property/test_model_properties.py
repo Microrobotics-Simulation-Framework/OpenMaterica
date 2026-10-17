@@ -126,8 +126,13 @@ def implementation_outcome(example: Example) -> Outcome:
         return Outcome("misuse", why=str(error))
     except Exception as error:
         raise AssertionError(f"the read raised {error!r}") from error
+    return written_outcome(result.to_json())
+
+
+def written_outcome(result: object) -> Outcome:
+    """The outcome of a result the read gave, as its JSON is read back."""
     try:
-        written = parse(json.dumps(result.to_json()).encode())
+        written = parse(json.dumps(result).encode())
     except NotStrictJson as fault:
         raise AssertionError(f"the result is no JSON value: {fault.fault}") from fault
     assert isinstance(written, dict), written
@@ -295,7 +300,11 @@ def refusals(outcome: Outcome) -> list[JsonValue]:
 def check_agreement(example: Example) -> str:
     """The implementation and the model agree on `example`, or diverge as a known divergence says; the
     outcome, by name."""
-    implementation = implementation_outcome(example)
+    return check_outcome(example, implementation_outcome(example))
+
+
+def check_outcome(example: Example, implementation: Outcome) -> str:
+    """`check_agreement` on the implementation's outcome of `example`, read once already."""
     model = model_outcome(example)
     open_points = [name for name in example.planted if name in OPEN_POINTS]
     if open_points:

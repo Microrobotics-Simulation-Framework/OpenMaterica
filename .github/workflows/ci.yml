@@ -917,6 +917,7 @@ jobs:
           uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
             tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
             tests/property/test_hashing_properties.py tests/property/test_read_properties.py \
+            tests/property/test_model_properties.py tests/property/test_invariance_properties.py \
             > "$control/replay.log" 2>&1 || true
           # Each step and the fault it must find: the replay runs the properties of both.
           for check in "bytes:in parse" "properties:in parse" "record_properties:in the read" \
