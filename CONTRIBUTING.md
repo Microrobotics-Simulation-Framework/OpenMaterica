@@ -160,6 +160,17 @@ refused. A finding gives its file and line, and a term's first letter and length
   ```
 - **A new key** (`python3 -c "import secrets; print(secrets.token_hex(32))"`) needs the digests written again,
   and the secret set again: `gh secret set CONFIDENTIAL_SCAN_KEY < /path/to/confidential_scan.key`.
+- **As a pre-push hook**, which checks what each push would publish, before it does: every file content and
+  annotated tag the remote lacks, a file a later commit removes included, and every commit message it
+  brings, refusing the push on a finding. CI's scan runs only once a push is public. Install it once a clone
+  (hooks live in the common git directory, so every worktree shares it), and name the key file if you hold
+  the key; without it, the hook checks the paths only, with a warning:
+  ```sh
+  cp scripts/pre-push "$(git rev-parse --git-path hooks/pre-push)"
+  git config openmaterica.scanKeyFile /path/to/confidential_scan.key
+  ```
+  It runs the scan of the checkout you push from, so a branch based on a `main` from before the hook needs a
+  rebase first. Agents push only through it.
 - **As a pre-commit hook**, which checks the tracked files of the working tree before each commit (CI checks
   the messages):
   ```sh
