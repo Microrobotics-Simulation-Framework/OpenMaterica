@@ -75,7 +75,7 @@ every family entry goes in `families/CHANGELOG.md`.
   those the request names, each by section 5's table, every comparison on the exact values of the doubles
   (`fractions.Fraction`), a stated `plus_minus` turning `met` into `unknown` alone (`condition_uncertain`),
   and gives the result's `conditions` once it has run to its end (`core/conditions.py`). A read step 10 does
-  not end raises `NotImplementedError` until S2a-4 builds steps 11 to 13.
+  not end goes on to steps 11 to 13, which S2a-4 builds (below).
 - Implied conditions (`declarations.md` section 4.1): step 0 checks each request's `implied_condition`,
   whatever field or location it names, its units as an operating condition's (`request_unit_mismatch`), and
   keeps only the members its shape names; step 10 applies one located at the read whose fact and token the
@@ -86,6 +86,24 @@ every family entry goes in `families/CHANGELOG.md`.
   `[v, v]`). A result's `applied`, outside its JSON and its equality, holds the indexes of the implied
   conditions that filled a condition. A request with any other
   acceptance still raises `NotImplementedError`.
+- The read's steps 11 to 13 for a constant, and its result (S2a-4; `read_side_contract.md` sections 2, 3 and
+  6). Step 11 adds nothing to a constant's conditions; step 12 gives `stated_without_origin` (`unknown`) and
+  the field's label and `mixed_conditions` for a derived value whose inputs' conditions differ; step 13 gives
+  a constant's value under `want: value` and `want_mismatch` under any other `want` (`want: fit` on a field
+  holding a fit record raises `NotImplementedError` until the fits and reference data suite). The result
+  (`ReadResult`, with `FieldRead` and `ProvenanceSummary`) holds the members section 2 gives, each present
+  as its item 6 says: the value with its unit, specimen facts, statistics block and provenance (the origin,
+  the review as found or `not_checked`, the source's key, a derived value's derivation with its
+  `assumptions`), each the members the reader's version defines, read from the generated shapes, as stored
+  and copied (the code design's rule 6). `to_json` writes numbers as stored, `-0` included, and each count
+  and index as an integer (rule 5). Intervals, compositions and evidence still raise at their member.
+- Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (`core/read.py`,
+  `fields.alternatives_problems`): a list that breaks its shape is `form_invalid`, a member one slip from
+  `alternatives` or a value field's beside it included; a fault of the request inside one alternative refuses
+  the field where no alternative has a reason of its own; and two or more alternatives none of which has a
+  reason of its own give `want_mismatch` where none has a form `want` can give, else `no_pick`, each in
+  `alternative_values` by its stored index. Any other outcome over alternatives raises `NotImplementedError`
+  until S4.
 - `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
   name-overlap check share. A word made plural or singular must be a word: the empty string between two
   underscores is none.
@@ -152,6 +170,17 @@ every family entry goes in `families/CHANGELOG.md`.
   claim. The pull request template gains an Open points heading.
 
 ### Schema
+- `read_result.json`'s members, placeholders until now, typed from the writer schema's `$defs` and the
+  vocabulary (S2a-4): the value by `want` (a number, an interval, a composition, a list of test reports, a
+  form's member as stored, and the operations' content hash and listing), `alternative_values` and each
+  entry, the unit, the condition entry (`name`, `status`, `record`, `operating`: the record's entry, its status
+  object or an implied value with basis `implied`), the specimen, the statistics block, the provenance a read
+  returns (its review as found, other members as the record holds them), the labels and a nominal's
+  `assumption` (an extrapolation's members wait for S3). `case.json`'s compared result takes the same shapes,
+  and every case file's expected answer validates against them; `tests/spec_sync/test_schemas.py` holds the
+  condition entry's record to every condition shape and the returned review to the writer's members. Two
+  names take a meaning more, allowed with their reasons and safeguards (`tests/spec_sync/name_overlaps.json`):
+  `basis` (`implied`, in a result alone) and `source` (a result returns the key alone).
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
   the eight forms, or alternatives; the constant, interval, composition and evidence forms in full; conditions
   with `plus_minus` and `set_or_measured`, each token condition bound to its own row's tokens; the specimen
@@ -323,6 +352,16 @@ every family entry goes in `families/CHANGELOG.md`.
   round in place of two whose field is a form its row allows; 579 case files pass, and 298 wait for a later
   step (`tests/spec_sync/case_steps.json`).
 - S2a-3's 58 case files run and pass: 637 of 1258 case files pass, 621 wait for later steps.
+- S2a-4's 162 case files run and pass: 799 of 1258 case files pass, 459 wait for later steps. The reason-step
+  check gives steps 11 to 13 their codes and loses its set of step 10's `unknown` codes no case returned, each
+  now returned; step 7's `want_mismatch` waits for a case of S2b or S4.
+- The result's properties (`tests/property/test_result_properties.py`, in the `conditions` shard): HP1,
+  totality and the reason table; HP2, the status law and the members item 6 gives; HP6, what a read returns
+  as stored, by the generated shapes, sharing nothing; and HP11, the hash suite's label exactly where a read
+  reached step 4. They draw reads that end at each step S2 builds, the kind first, and HP6's draws a `-0`
+  value, each way a review reads and an unknown member, each by its chance. 17 mutants, each killed at both
+  sizes within the `ci` profile's examples (`test_result_mutants.py`); two audit controls. Fuzz target 4
+  holds every result to HP1 and HP2 (`field_oracle.check_result_laws`, shown failing on each law broken).
 - Steps 9 and 10's properties (`tests/property/test_condition_properties.py`), in a shard of their own: HP7,
   each condition against an oracle written from section 5 alone, on exact rationals, at each boundary its
   exactness turns on, with a plus or minus of each kind, the table's other rows and implied conditions; HP8,
