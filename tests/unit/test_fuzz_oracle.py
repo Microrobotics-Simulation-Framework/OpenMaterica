@@ -5,12 +5,14 @@ a member of the wrong type; for steps 9 and 10, quiet on them as they are and fa
 another unit through and a step 10 that lets a condition outside its tolerance through; for HP1 and HP2,
 quiet on every result the core gives the full fields under each `want`, and failing on each law broken; and
 against the reference model (HP12), quiet on the core as it is, and failing on a step 8 that refuses what the
-text reads or lets through what it refuses."""
+text reads or lets through what it refuses. Each on the full constants, and on the full interval and
+composition (S2b-1), with a fault of their own members."""
 
 import json
 
 import pytest
 
+from materica import shapes
 from materica.core import conditions, fields, value_shapes
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
@@ -30,19 +32,20 @@ from tests.fuzz.field_oracle import (
     passed_step_8,
     read_outcome,
 )
-from tests.property.full_fields import full_fields, record_of, request_for
+from tests.property.full_fields import full_fields, full_forms, record_of, request_for
 
 FIELD = "fluid.dynamic_viscosity"
+FORMS = full_forms()
 
 
-def result_of(field: dict[str, JsonValue]) -> JsonValue:
+def result_of(field: dict[str, JsonValue], name: str = FIELD) -> JsonValue:
     """The read's result as the target takes it: "not yet" where a step not built yet would decide it."""
-    record = record_of(field)
+    record = record_of(field, name)
     record["content_hash"] = content_hash(record)
     store = RecordStore()
     store.add("record", json.dumps(record).encode())
     try:
-        result = read(request_for(record), store)
+        result = read(request_for(record, name), store)
     except NotImplementedError:
         return "not yet"
     written: JsonValue = json.loads(json.dumps(result.to_json()))
@@ -60,6 +63,28 @@ def a_count_of_the_wrong_type() -> dict[str, JsonValue]:
 def test_the_oracle_is_quiet_on_step_8_as_it_is() -> None:
     for field in [*full_fields().values(), a_count_of_the_wrong_type()]:
         check_no_refusal_missing(FIELD, field, result_of(field))
+    for name, field in FORMS.values():
+        check_no_refusal_missing(name, field, result_of(field, name))
+
+
+def a_fraction_of_the_wrong_type() -> tuple[str, dict[str, JsonValue]]:
+    name, field = full_forms()["composition"]
+    composition = field["composition"]
+    assert isinstance(composition, dict)
+    components = composition["components"]
+    assert isinstance(components, list)
+    first = components[0]
+    assert isinstance(first, dict)
+    first["fraction"] = "0.102"
+    return name, field
+
+
+def test_the_oracle_sees_a_refusal_step_8_misses_in_a_component(monkeypatch: pytest.MonkeyPatch) -> None:
+    name, field = a_fraction_of_the_wrong_type()
+    check_no_refusal_missing(name, field, result_of(field, name))
+    monkeypatch.setattr(fields, "COMPONENT", {**fields.COMPONENT, "fraction": _any})
+    with pytest.raises(AssertionError, match="the reader \\$defs refuse"):
+        check_no_refusal_missing(name, field, result_of(field, name))
 
 
 def _any(value: JsonValue, where: str, found: value_shapes.Found) -> None:
@@ -311,3 +336,70 @@ def test_the_model_oracle_sees_a_refusal_step_8_misses(monkeypatch: pytest.Monke
     monkeypatch.setattr(value_shapes, "STATISTICS", ({**required, "n_donors": _any}, optional))
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(*model_case(a_count_of_the_wrong_type()))
+
+
+# The same oracles on the full interval and composition, each read as the target reads its field.
+
+
+def form_read(name: str, field: dict[str, JsonValue], want: str) -> tuple[tuple[bytes, ...], JsonObject]:
+    record = record_of(field, name)
+    record["content_hash"] = content_hash(record)
+    request = request_for(record, name)
+    requires = VOCABULARY.fields[name].requires
+    request["operating_conditions"] = {key: value for key, value in OPERATING.items() if key in requires}
+    request["requirement"] = {
+        "want": want,
+        "conditions": {key: value for key, value in REQUIRED.items() if key in requires},
+    }
+    return (json.dumps(record).encode(),), request
+
+
+def written_read(sources: tuple[bytes, ...], request: JsonObject) -> JsonValue:
+    store = RecordStore()
+    for number, source in enumerate(sources):
+        store.add(f"source_{number}", source)
+    try:
+        return json.loads(json.dumps(read(request, store).to_json()))  # type: ignore[no-any-return]
+    except NotImplementedError:
+        return "not yet"
+
+
+@pytest.mark.parametrize("form", sorted(FORMS))
+def test_every_oracle_is_quiet_on_the_forms_as_the_core_reads_them(form: str) -> None:
+    name, field = FORMS[form]
+    for want in WANTS:
+        sources, request = form_read(name, field, want)
+        result = written_read(sources, request)
+        check_result_laws(result)
+        operating, required = request["operating_conditions"], request["requirement"]
+        assert isinstance(operating, dict)
+        assert isinstance(required, dict)
+        conditions_required = required["conditions"]
+        assert isinstance(conditions_required, dict)
+        check_steps_9_and_10(name, field, operating, conditions_required, result)  # type: ignore[arg-type]
+        against_the_model(sources, request)
+
+
+def an_interval_upside_down() -> tuple[str, dict[str, JsonValue]]:
+    name, field = full_forms()["interval"]
+    field["interval"] = {"lower": 2.0, "upper": 1.0, "basis": "reported_range"}
+    return name, field
+
+
+def _in_any_order(value: JsonValue, where: str, found: value_shapes.Found) -> None:
+    if isinstance(value, dict):
+        value = {**value, "lower": 0.0, "upper": 0.0}
+    fields.interval(value, where, found)
+
+
+def test_the_model_oracle_sees_an_interval_step_8_lets_through(monkeypatch: pytest.MonkeyPatch) -> None:
+    name, field = an_interval_upside_down()
+    sources, request = form_read(name, field, "bounds")
+    against_the_model(sources, request)
+    monkeypatch.setitem(
+        fields.OWN_MEMBERS,
+        "interval",
+        value_shapes.or_status(_in_any_order, shapes.IntervalField, "interval"),
+    )
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        against_the_model(sources, request)

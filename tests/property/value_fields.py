@@ -682,6 +682,8 @@ def provenances(
 
 # A value field: `record_format.md` section 5.
 
+LABELLED = ("constant", "table")
+
 
 @st.composite
 def form_fields(draw: st.DrawFn, plan: Plan = ANY, size: Size = SIZE) -> Json:
@@ -723,8 +725,9 @@ def form_fields(draw: st.DrawFn, plan: Plan = ANY, size: Size = SIZE) -> Json:
         found["fit"] = draw(objects(size))
     if plan.full("specimen") or (not plan.minimal and draw(st.booleans())):
         found["specimen"] = draw(specimens(plan.full("specimen")))
+    # Section 4.1's Label column: a row's label goes "on a constant, or on a table" (a table's axis is S3a's).
     labels = (
-        [str(label) for label in [row_of(plan.registered).get("label")] if label]
+        [str(label) for label in [row_of(plan.registered).get("label")] if label and form in LABELLED]
         if plan.registered
         else LISTS["label"]
     )

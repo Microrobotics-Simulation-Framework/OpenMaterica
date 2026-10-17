@@ -8,6 +8,8 @@ A fault is injected where the core looks a name up when it runs: a module-level 
 `value_shapes` or `fields`, or the `members` helper wrapped so that it checks one member otherwise.
 """
 
+import math
+import re
 from collections.abc import Callable, Collection, Iterable
 from typing import Any, NamedTuple
 
@@ -431,6 +433,134 @@ def _status_slips_ignored(
 
 
 # The faults of a token the reader knows for no member of its name, each where `token_problems` finds it.
+# Faults in a form's own member (`fields.py`): its check replaced in `fields.OWN_MEMBERS`, a status object
+# read as before, or a table or check it reads when it runs.
+
+OWN_MEMBER_SHAPES = {"interval": shapes.IntervalField, "composition": shapes.CompositionField}
+INTERVAL = fields.interval
+COMPOSITION = fields.composition
+COMPONENTS = fields.components
+
+
+def own_member(form: str, check: Check) -> Callable[[pytest.MonkeyPatch], None]:
+    """An injection under which step 8 reads `form`'s own member with `check`."""
+
+    def inject(monkeypatch: pytest.MonkeyPatch) -> None:
+        held = value_shapes.or_status(check, OWN_MEMBER_SHAPES[form], form)
+        monkeypatch.setitem(fields.OWN_MEMBERS, form, held)
+
+    return inject
+
+
+def _bounds(value: JsonValue) -> tuple[JsonValue, JsonValue]:
+    return (value.get("lower"), value.get("upper")) if isinstance(value, dict) else (None, None)
+
+
+def _interval_in_any_order(value: JsonValue, where: str, found: Found) -> None:
+    lower, upper = _bounds(value)
+    if isinstance(value, dict) and isinstance(lower, float) and isinstance(upper, float):
+        value = {**value, "lower": min(lower, upper), "upper": max(lower, upper)}
+    INTERVAL(value, where, found)
+
+
+def _two_nones_as_one(value: JsonValue, where: str, found: Found) -> None:
+    lower, upper = _bounds(value)
+    if isinstance(value, dict) and isinstance(lower, dict) and isinstance(upper, dict):
+        value = {**value, "lower": 0.0}
+    INTERVAL(value, where, found)
+
+
+def _strictly_ordered(value: JsonValue, where: str, found: Found) -> None:
+    INTERVAL(value, where, found)
+    lower, upper = _bounds(value)
+    if isinstance(lower, float) and isinstance(upper, float) and lower == upper:
+        found.append(value_shapes.invalid(f"{where} has equal bounds"))
+
+
+def _ordered_by_sign(value: JsonValue, where: str, found: Found) -> None:
+    INTERVAL(value, where, found)
+    lower, upper = _bounds(value)
+    if isinstance(lower, float) and isinstance(upper, float) and lower == upper == 0.0:
+        if math.copysign(1.0, lower) > math.copysign(1.0, upper):
+            found.append(value_shapes.invalid(f"{where} has 0 above -0"))
+
+
+BOUND_ANY_STATUS = value_shapes.status_or(
+    value_shapes.number, None, value_shapes.status_row(shapes.Interval, "lower")[1]
+)
+
+
+def _every_basis_allowed(*arguments: object) -> bool:
+    return True
+
+
+def _components_may_be_empty(value: JsonValue, where: str, found: Found) -> None:
+    if value != []:
+        COMPONENTS(value, where, found)
+
+
+def _each_component_once(value: JsonValue, where: str, found: Found) -> None:
+    if isinstance(value, list):
+        named = {str(item.get("component")): item for item in value if isinstance(item, dict)}
+        value = [*named.values(), *(item for item in value if not isinstance(item, dict))]
+    COMPONENTS(value, where, found)
+
+
+def _any_number(value: JsonValue, where: str, found: Found) -> None:
+    value_shapes.number(value, where, found)
+
+
+def _within_zero_and_one_open(value: JsonValue, where: str, found: Found) -> None:
+    if not isinstance(value, float) or not 0 < value < 1:
+        found.append(value_shapes.invalid(f"{where} is not a number between zero and one"))
+
+
+def _an_element_by_pattern(value: JsonValue, where: str, found: Found) -> None:
+    """The S2 design's alternative for SQ43: a symbol checked by `[A-Z][a-z]?` alone."""
+    if not (isinstance(value, str) and re.fullmatch(r"element:[A-Z][a-z]?", value)):
+        found.append(value_shapes.invalid(f"{where} is not an element"))
+
+
+def _sums_checked(value: JsonValue, where: str, found: Found) -> None:
+    COMPOSITION(value, where, found)
+    if not isinstance(value, dict) or value.get("sum_rule") != "sums_to_one" or "stated_sum" in value:
+        return
+    held = value.get("components")
+    fractions = (
+        [item.get("fraction") for item in held if isinstance(item, dict)] if isinstance(held, list) else []
+    )
+    if abs(math.fsum(fraction for fraction in fractions if isinstance(fraction, float)) - 1) > 1e-6:
+        found.append(value_shapes.invalid(f"{where} does not sum to one"))
+
+
+OWN_MEMBER_NAMES = {
+    "interval": ("lower", "upper", "basis"),
+    "composition": ("basis", "sum_rule", "stated_sum", "components"),
+}
+COMPONENT_NAMES = ("component", "fraction", "statistics")
+
+
+def _unknown_members_refused_in(form: str) -> Check:
+    """`form`'s own member, any member it, or a component, does not name refused."""
+
+    def checked(value: JsonValue, where: str, found: Found) -> None:
+        {"interval": INTERVAL, "composition": COMPOSITION}[form](value, where, found)
+        held = [value] if isinstance(value, dict) else []
+        if isinstance(value, dict) and isinstance(components := value.get("components"), list):
+            held += [item for item in components if isinstance(item, dict)]
+        for item in held:
+            names = OWN_MEMBER_NAMES[form] if item is value else COMPONENT_NAMES
+            if set(item) - set(names):
+                found.append(value_shapes.invalid(f"{where} holds a member it does not name"))
+
+    return checked
+
+
+def _unknown_members_refused_in_an_own_member(monkeypatch: pytest.MonkeyPatch) -> None:
+    for form in OWN_MEMBER_NAMES:
+        own_member(form, _unknown_members_refused_in(form))(monkeypatch)
+
+
 UNKNOWN_TOKENS = (
     "statistics_tokens.central_unknown",
     "statistics_tokens.distribution_unknown",
@@ -445,6 +575,13 @@ UNKNOWN_TOKENS = (
     "condition_tokens.token_unknown",
     "specimen_tokens.fact_token_unknown",
     "provenance.origin_unknown",
+    "interval_tokens.basis_unknown",
+    "composition_tokens.basis_unknown",
+    "composition_tokens.sum_rule_unknown",
+    "component.element_unknown",
+    "component.kind_unknown",
+    "component.symbol_case_unknown",
+    "component.statistics_central_unknown",
 )
 
 
@@ -785,6 +922,116 @@ MUTANTS = [
         members_with(replacing("level", value_shapes.string)),
         ("statistics_tokens.level_unknown",),
     ),
+    # S2b-1's: an interval's and a composition's own member (`record_format.md` section 6), each rule HP3's
+    # catalogue holds a fault for, and its near misses.
+    Mutant(
+        "interval_order_unchecked",
+        ONE_FAULT,
+        own_member("interval", _interval_in_any_order),
+        ("interval.lower_above_upper",),
+    ),
+    Mutant(
+        "both_bounds_none_allowed",
+        ONE_FAULT,
+        own_member("interval", _two_nones_as_one),
+        ("interval.both_none",),
+    ),
+    Mutant(
+        "equal_bounds_refused",
+        ONE_FAULT,
+        own_member("interval", _strictly_ordered),
+        ("interval.bounds_equal",),
+    ),
+    Mutant(
+        "minus_zero_below_zero",
+        ONE_FAULT,
+        own_member("interval", _ordered_by_sign),
+        ("interval.zero_and_minus_zero",),
+    ),
+    Mutant(
+        "bound_any_status",
+        ONE_FAULT,
+        setting(fields, "INTERVAL_BOUND", BOUND_ANY_STATUS),
+        ("interval.bound_status_not_allowed",),
+    ),
+    Mutant(
+        "interval_basis_any_string",
+        ONE_FAULT,
+        setting(fields, "INTERVAL_BASIS", value_shapes.string),
+        ("interval_tokens.basis_unknown",),
+    ),
+    Mutant(
+        "composition_basis_any_string",
+        ONE_FAULT,
+        setting(fields, "COMPOSITION_BASIS", value_shapes.string),
+        ("composition_tokens.basis_unknown",),
+    ),
+    Mutant(
+        "sum_rule_any_string",
+        ONE_FAULT,
+        setting(fields, "SUM_RULE", value_shapes.string),
+        ("composition_tokens.sum_rule_unknown",),
+    ),
+    Mutant(
+        "composition_basis_off_its_row_read",
+        ONE_FAULT,
+        setting(fields, "_basis_allowed", _every_basis_allowed),
+        ("composition_tokens.basis_not_its_rows",),
+    ),
+    Mutant(
+        "empty_components_allowed",
+        ONE_FAULT,
+        setting(fields, "components", _components_may_be_empty),
+        ("composition.components_empty",),
+    ),
+    Mutant(
+        "component_twice_allowed",
+        ONE_FAULT,
+        setting(fields, "components", _each_component_once),
+        ("composition.component_repeated",),
+    ),
+    Mutant(
+        "fraction_any_number",
+        ONE_FAULT,
+        setting(fields, "COMPONENT", {**fields.COMPONENT, "fraction": _any_number}),
+        ("composition.fraction_above_one", "composition.fraction_negative"),
+    ),
+    Mutant(
+        "fraction_neither_zero_nor_one",
+        ONE_FAULT,
+        setting(fields, "COMPONENT", {**fields.COMPONENT, "fraction": _within_zero_and_one_open}),
+        ("composition.fractions_zero_and_one",),
+    ),
+    Mutant(
+        "element_by_pattern",
+        ONE_FAULT,
+        setting(fields, "COMPONENT", {**fields.COMPONENT, "component": _an_element_by_pattern}),
+        ("component.element_unknown",),
+    ),
+    Mutant(
+        "component_statistics_unchecked",
+        ONE_FAULT,
+        setting(fields, "COMPONENT_STATISTICS", _any),
+        (
+            "component.statistics_count_not_whole",
+            "component.statistics_central_unknown",
+            "component.statistics_status_not_allowed",
+            "component.statistics_represents_missing",
+        ),
+    ),
+    Mutant(
+        "stated_sum_any",
+        ONE_FAULT,
+        setting(fields, "number", _any),
+        ("composition.stated_sum_not_a_number",),
+    ),
+    Mutant(
+        "sums_checked_at_read",
+        ONE_FAULT,
+        own_member("composition", _sums_checked),
+        ("composition.sum_unflagged",),
+    ),
+    Mutant("unknown_members_refused_in_an_own_member", IGNORANCE, _unknown_members_refused_in_an_own_member),
 ]
 
 

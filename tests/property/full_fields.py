@@ -3,6 +3,7 @@
 that hold them.
 
 A full field is valid against the writer schema and passes step 8 (`tests/spec_sync/test_t1.py` checks both).
+The full fields are constants of `fluid.dynamic_viscosity`; the full forms an interval and a composition.
 Between them the full fields hold each member of a value field, a condition, a specimen fact, a statistics
 block, an uncertainty and the provenance members a read uses, and each value-or-status member as a status
 object somewhere, so that a change at each of their places can be drawn or listed.
@@ -205,6 +206,57 @@ def full_fields() -> dict[str, JsonObject]:
         "statuses": statuses,
         "withheld": withheld,
     }
+
+
+def full_forms() -> dict[str, tuple[str, JsonObject]]:
+    """Full fields of the other forms step 8 reads, each with the registered field that holds it: an interval
+    with one bound `none`, and a composition with a stated sum whose components hold a full statistics block,
+    one of status objects, a withheld one and none; and each of them withheld."""
+    interval = constant(PROVENANCE_BY_SOURCE, "population", label=False)
+    del interval["value"]
+    interval |= {
+        "form": "interval",
+        "interval": {"lower": 0.00066, "upper": _status("none"), "basis": "specification_limits"},
+    }
+    composition: JsonObject = {
+        "form": "composition",
+        "unit": "1",
+        "composition": {
+            "basis": "mass_fraction",
+            "sum_rule": "partial",
+            "stated_sum": 0.994,
+            "components": [
+                {"component": "element:H", "fraction": 0.102, "statistics": statistics("population")},
+                {"component": "element:O", "fraction": 0.723, "statistics": copy.deepcopy(STATUS_STATISTICS)},
+                {"component": "element:C", "fraction": 0.143, "statistics": _status("withheld")},
+                {"component": "element:N", "fraction": 0.026},
+            ],
+        },
+        "conditions": {"temperature": copy.deepcopy(CONDITIONS["temperature"])},
+        "specimen": copy.deepcopy(SPECIMEN),
+        "statistics": statistics("measurement"),
+        "provenance": copy.deepcopy(PROVENANCE_BY_SOURCE),
+    }
+    return {
+        "interval": ("fluid.dynamic_viscosity", interval),
+        "interval_withheld": ("fluid.dynamic_viscosity", _withheld(interval, "interval", "reference-only")),
+        "composition": ("bulk.elemental_composition", composition),
+        "composition_withheld": ("bulk.elemental_composition", _withheld(composition, "composition")),
+    }
+
+
+def _withheld(field: JsonObject, member: str, reason: str | None = None) -> JsonObject:
+    """`field` as a reference-only value (`provenance.md` section 7): its own member and statistics withheld,
+    its provenance holding a recipe."""
+    recipe: JsonObject = {"steps": "Table 2, row 3"}
+    return copy.deepcopy(
+        {
+            **field,
+            member: _status("withheld", reason),
+            "statistics": _status("withheld"),
+            "provenance": {**PROVENANCE_BY_SOURCE, "recipe": recipe},
+        }
+    )
 
 
 def record_of(field: JsonValue, name: str = "fluid.dynamic_viscosity", **section: JsonValue) -> JsonObject:

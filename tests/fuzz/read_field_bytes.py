@@ -16,15 +16,16 @@ anything but `NotImplementedError`, when two reads of one request differ, when a
 to 13 give (every code one of them gives, and HP1 and HP2: each code and condition once, `condition` where
 section 2 item 2 puts it, the status the worst of the codes', and the members present as item 6 says), when
 the read without the hash suite differs from the read with it by more than the label `hash_not_checked`, when
-the read under `want: value`, the `want` every step decides under, and the reference model disagree but as
-HP12 lists (a refusal step 8 misses or gives wrongly among them: held under every `want`, the model's read
-slowed the target so that the control's seeded fault went unfound in five local runs of six, where under
-`want: value` alone it is found as often as without the model), when step 8 lets through a constant its row
-allows that the reader `$defs` refuse (T1's third relation, but for one divergence of the `$defs` that
-`field_oracle.py` names), or when steps 9 and 10 read such a constant otherwise than their text, its units by
-code point and its conditions by HP7's oracle (`field_oracle.py`). `NotImplementedError` is a step not built
-yet: its form's own member waits for S2b or S3, or it holds alternatives beyond what S4's decision 12 lets S2
-read. The seeds are every value field of every conformance input.
+the read under the `want` that gives the field's form (`value` for a constant and any form step 8 does not
+read, `bounds` for an interval, `components` for a composition) and the reference model disagree but as HP12
+lists (a refusal step 8 misses or gives wrongly among them: held under every `want`, the model's read slowed
+the target so that the control's seeded fault went unfound in five local runs of six, where under one `want`
+it is found as often as without the model), when step 8 lets through a constant, an interval or a composition
+its row allows that the reader `$defs` refuse (T1's third relation), or when steps 9 and 10 read such a field
+otherwise than their text, its units by code point and its conditions by HP7's oracle (`field_oracle.py`).
+`NotImplementedError` is a step not built yet: its form's own member waits for S2b-2 (evidence) or S3 (a
+table), or it holds alternatives beyond what S4's decision 12 lets S2 read. The seeds are every value field of
+every conformance input.
 """
 
 import importlib
@@ -56,6 +57,7 @@ from tests.fuzz import seeded_fault  # noqa: E402
 from tests.fuzz.field_oracle import (  # noqa: E402
     OPERATING,
     REQUIRED,
+    WANT_OF,
     check_against_the_model,
     check_no_refusal_missing,
     check_result_laws,
@@ -137,6 +139,8 @@ def test_one_input(data: bytes) -> None:
     requires = VOCABULARY.fields[field_name].requires
     operating = {name: value for name, value in OPERATING.items() if name in requires}
     required = {name: value for name, value in REQUIRED.items() if name in requires}
+    form = field.get("form") if isinstance(field, dict) else None
+    compared = WANT_OF.get(form, "value") if isinstance(form, str) else "value"
     for want in WANTS:
         request: JsonObject = {
             "target": {"record": pin, "field": field_name},
@@ -148,7 +152,7 @@ def test_one_input(data: bytes) -> None:
         check_result(first)
         check_no_refusal_missing(field_name, field, first)
         check_steps_9_and_10(field_name, field, operating, required, first)
-        if want == "value":
+        if want == compared:
             check_against_the_model((data,), request, WITH_HASH, outcome)
         plain = read_json(request, store, WITHOUT_HASH)
         assert without_hash_label(plain) == first, "the hash suite changed more than its label"
@@ -200,6 +204,7 @@ def main(arguments: list[str]) -> None:
         Path(arguments[2]).write_text("\n".join(dictionary()) + "\n", encoding="utf-8")
         return
     seeded_fault.seed_step_10_if_asked(atheris.instrument_func)
+    seeded_fault.seed_composition_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 

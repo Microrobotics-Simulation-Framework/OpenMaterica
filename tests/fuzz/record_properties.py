@@ -52,6 +52,7 @@ PROPERTIES: list[Callable[..., None]] = [
     read_properties.test_every_listed_record_resolves_under_its_own_hash,
     value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_1,
     value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_2,
+    value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_3,
     value_field_properties.test_a_field_without_a_fault_passes_step_8,
     value_field_properties.test_members_the_reader_does_not_know_change_nothing,
     condition_properties.test_a_stated_plus_minus_turns_met_into_unknown_and_nothing_else,
@@ -93,6 +94,7 @@ def test_one_input(data: bytes) -> None:
 
 def main(arguments: list[str]) -> None:
     seeded_fault.seed_if_asked()
+    seeded_fault.seed_composition_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 

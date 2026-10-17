@@ -326,10 +326,10 @@ def reads_null_as_absent(monkeypatch: pytest.MonkeyPatch) -> Executor:
 
 
 def reads_a_withheld_value(monkeypatch: pytest.MonkeyPatch) -> Executor:
-    def no_member_check(field: dict[str, JsonValue], name: str, found: list[Reason]) -> None:
+    def no_member_check(field: dict[str, JsonValue], name: str, form: str, found: list[Reason]) -> None:
         pass
 
-    monkeypatch.setattr(fields, "_constant", no_member_check)
+    monkeypatch.setattr(fields, "_own_member", no_member_check)
     return EXECUTORS["read"]
 
 
@@ -342,6 +342,80 @@ def stops_at_the_first_refusal(monkeypatch: pytest.MonkeyPatch) -> Executor:
         return form_problems(field, record_value, claims)[:1]
 
     monkeypatch.setattr(read, "form_problems", first)
+    return EXECUTORS["read"]
+
+
+def returns_bounds_without_their_basis(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    counted_member = read._counted_member  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def bare(member: JsonValue) -> JsonValue:
+        returned = counted_member(member)
+        if isinstance(returned, dict) and "lower" in returned:
+            return {name: bound for name, bound in returned.items() if name != "basis"}
+        return returned
+
+    monkeypatch.setattr(read, "_counted_member", bare)
+    return EXECUTORS["read"]
+
+
+def reads_an_upper_none_as_the_largest_double(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    counted_member = read._counted_member  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def unbounded(member: JsonValue) -> JsonValue:
+        returned = counted_member(member)
+        if isinstance(returned, dict) and returned.get("upper") == {"status": "none"}:
+            return {**returned, "upper": 1.7976931348623157e308}
+        return returned
+
+    monkeypatch.setattr(read, "_counted_member", unbounded)
+    return EXECUTORS["read"]
+
+
+def normalises_components(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    counted_member = read._counted_member  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def normalised(member: JsonValue) -> JsonValue:
+        returned = counted_member(member)
+        if not (isinstance(returned, dict) and isinstance(stored := returned.get("components"), list)):
+            return returned
+        components = [component for component in stored if isinstance(component, dict)]
+        total = math.fsum(float(str(component["fraction"])) for component in components)
+        for component in components:
+            component["fraction"] = float(str(component["fraction"])) / total
+        return {name: kept for name, kept in returned.items() if name != "stated_sum"}
+
+    monkeypatch.setattr(read, "_counted_member", normalised)
+    return EXECUTORS["read"]
+
+
+def takes_bounds_out_of_order(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    interval = fields.OWN_MEMBERS["interval"]
+
+    def ordered_first(value: JsonValue, where: str, found: list[Reason]) -> None:
+        if isinstance(value, dict) and isinstance(value.get("lower"), float):
+            lower, upper = value["lower"], value.get("upper")
+            if isinstance(lower, float) and isinstance(upper, float) and lower > upper:
+                value = {**value, "lower": upper, "upper": lower}
+        interval(value, where, found)
+
+    monkeypatch.setitem(fields.OWN_MEMBERS, "interval", ordered_first)
+    return EXECUTORS["read"]
+
+
+def takes_a_component_twice(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    composition = fields.OWN_MEMBERS["composition"]
+
+    def each_once(value: JsonValue, where: str, found: list[Reason]) -> None:
+        if isinstance(value, dict) and isinstance(stored := value.get("components"), list):
+            kept = {
+                str(component.get("component")): component
+                for component in stored
+                if isinstance(component, dict)
+            }
+            value = {**value, "components": list(kept.values())}
+        composition(value, where, found)
+
+    monkeypatch.setitem(fields.OWN_MEMBERS, "composition", each_once)
     return EXECUTORS["read"]
 
 
@@ -404,6 +478,11 @@ FAULTS: list[tuple[Fault, str]] = [
     (reads_null_as_absent, "PR-049.field_specimen_null.json"),
     (reads_a_withheld_value, "PR-105.withheld_value.json"),
     (stops_at_the_first_refusal, "PR-301.two_refusals_step_8.json"),
+    (returns_bounds_without_their_basis, "PR-022.bounds_reported_range.json"),
+    (reads_an_upper_none_as_the_largest_double, "PR-022.bounds_one_sided_upper_none.json"),
+    (normalises_components, "PR-023.components_stated_sum.json"),
+    (takes_bounds_out_of_order, "PR-050.lower_above_upper.json"),
+    (takes_a_component_twice, "PR-051.repeated_component.json"),
 ]
 
 
