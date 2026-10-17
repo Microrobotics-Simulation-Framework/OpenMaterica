@@ -191,9 +191,9 @@ EXCEPTIONS: dict[str, Kind] = {
     ),
     "row_label": Kind(
         "a label the field's row does not name for the field and its form: the reader `$defs` leave the "
-        "row's binding out, and the writer's binds the label to the field but not to its form",
+        "row's binding out, which the writer applies, binding the label to the field and to the forms its "
+        "Label cell names",
         {
-            1: ("PR-053.newtonian_label_on_interval",),
             2: (
                 "PR-053.label_not_named_for_field",
                 "PR-053.linear_label_on_viscosity",

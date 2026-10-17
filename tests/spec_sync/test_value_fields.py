@@ -1400,7 +1400,7 @@ def field_binding(qualified: str, row: Schema) -> Schema:
     unit = row["unit"]
     bases = mapping(row.get("bases", {}))
     label = row.get("label")
-    return {
+    binding: Schema = {
         "properties": {
             "form": {"enum": row["forms"]},
             "unit": {"const": unit} if isinstance(unit, str) else status_unit(str(mapping(unit)["status"])),
@@ -1408,6 +1408,21 @@ def field_binding(qualified: str, row: Schema) -> Schema:
             **{form: {"properties": {"basis": {"enum": allowed}}} for form, allowed in bases.items()},
             "alternatives": {"items": {"$ref": f"#/$defs/{qualified}"}},
         }
+    }
+    if label is not None:
+        binding["dependentSchemas"] = {"label": label_on(row.get("label_not_on_axis"))}
+    return binding
+
+
+def label_on(axis: JsonValue) -> Schema:
+    """Section 4.1's Label column: a row's label goes "on a constant", or also "on a table whose axis is not"
+    the condition the cell names, where it names one."""
+    if axis is None:
+        return {"properties": {"form": {"enum": ["constant"]}}}
+    return {
+        "properties": {"form": {"enum": ["constant", "table"]}},
+        "if": {"required": ["form"], "properties": {"form": {"const": "table"}}},
+        "then": {"properties": {"table": {"properties": {"axis": {"not": {"const": axis}}}}}},
     }
 
 

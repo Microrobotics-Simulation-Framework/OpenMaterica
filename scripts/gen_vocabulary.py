@@ -285,7 +285,7 @@ def field_unit(name: str, code: str) -> str | dict[str, str]:
 def field_binding(qualified: str, row: FieldRow) -> dict[str, object]:
     """A field's row as a schema of its members: the forms it takes, the bases it allows a composition, its
     unit (a code, or a status object holding the registered token, whatever its reason), and its label or
-    none, applied to the field and to each of its alternatives."""
+    none, on the forms its Label cell names, applied to the field and to each of its alternatives."""
     if isinstance(row.unit, str):
         unit: object = {"const": row.unit}
     else:
@@ -293,7 +293,7 @@ def field_binding(qualified: str, row: FieldRow) -> dict[str, object]:
         unit = {"type": "object", "required": ["status"], "properties": {"status": token}}
     if set(row.bases) - {"composition"}:
         raise TableError(f"a basis is a composition's only, not {sorted(set(row.bases) - {'composition'})}")
-    return {
+    binding: dict[str, object] = {
         "properties": {
             "form": enumeration(row.forms),
             "unit": unit,
@@ -302,6 +302,26 @@ def field_binding(qualified: str, row: FieldRow) -> dict[str, object]:
             "alternatives": {"items": {"$ref": f"#/$defs/{qualified}"}},
         }
     }
+    if row.label is not None:
+        binding["dependentSchemas"] = {"label": label_binding(qualified, row)}
+    return binding
+
+
+def label_binding(qualified: str, row: FieldRow) -> dict[str, object]:
+    """Where a field holds its row's label, the forms its Label cell names it on: a constant, and a table
+    whose axis is not the condition the cell names, where it names one (`record_format.md` section 4.1,
+    "Labels"; a label the row does not name for the field and its form refuses it, so a writer cannot write
+    one)."""
+    forms = ["constant"] if row.label_not_on_axis is None else ["constant", "table"]
+    if set(forms) - set(row.forms):
+        raise TableError(f"{qualified}'s Label cell names its label on a form the row does not allow")
+    binding: dict[str, object] = {"properties": {"form": enumeration(forms)}}
+    if row.label_not_on_axis is not None:
+        binding["if"] = {"required": ["form"], "properties": {"form": {"const": "table"}}}
+        binding["then"] = {
+            "properties": {"table": {"properties": {"axis": {"not": {"const": row.label_not_on_axis}}}}}
+        }
+    return binding
 
 
 def field_label(cell: str) -> str:
