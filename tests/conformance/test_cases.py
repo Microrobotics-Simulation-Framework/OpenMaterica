@@ -14,9 +14,10 @@ from pathlib import Path
 
 import pytest
 
+from materica.core.jsonio import JsonValue
 from materica.shapes import Suite
 from tests.conformance import runner
-from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, CaseFile, Outcome
+from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, CaseFile, Executor, Outcome
 from tests.spec_sync.schemas import validator
 
 CASE_FILES = runner.discover()
@@ -91,6 +92,34 @@ def test_each_configuration_runs_every_case_file_that_holds_for_it() -> None:
         CONFIGURATIONS[2]: 1245,
         runner.REFERENCE_EVALUATOR: 35,
     }
+
+
+TABLE_EVALUATIONS = [case_file for case_file in CASE_FILES if case_file.operation == "evaluate"]
+# The reference evaluator's four configurations (the S3 design's S3Q15): each precision, declaring each side.
+FOUR_CONFIGURATIONS = [
+    ("binary64", "left"),
+    ("binary64", "right"),
+    ("binary32", "left"),
+    ("binary32", "right"),
+]
+
+
+def configurations_run(case_file: CaseFile, executor: Executor) -> list[tuple[JsonValue, JsonValue]]:
+    """The precision and the side of each run in the executor's result, in order."""
+    runs = executor(case_file, runner.REFERENCE_EVALUATOR)["runs"]
+    assert isinstance(runs, list)
+    return [(run.get("precision"), run.get("side")) for run in runs if isinstance(run, dict)]
+
+
+@pytest.mark.parametrize(
+    "case_file", TABLE_EVALUATIONS, ids=[case_file.path.name for case_file in TABLE_EVALUATIONS]
+)
+def test_the_reference_evaluator_runs_each_te_file_under_its_four_configurations(case_file: CaseFile) -> None:
+    # The comparison passes a result holding any one run, so the runs are counted here.
+    assert configurations_run(case_file, EXECUTORS["evaluate"]) == FOUR_CONFIGURATIONS
+    # Control: an executor claiming the first configuration alone runs that one.
+    first = runner.evaluate_executor(claims=runner.EVALUATOR_CLAIMS[:1])
+    assert configurations_run(case_file, first) == FOUR_CONFIGURATIONS[:1]
 
 
 def test_a_case_passes_only_where_a_variant_ran() -> None:
