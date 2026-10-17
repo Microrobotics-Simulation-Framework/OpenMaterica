@@ -108,4 +108,5 @@ an executor and its step is done, it runs; if not, it is not yet runnable, and t
 change with it. When a step is done, add it to `done`: its case files then run and must pass. A new operation
 needs an executor in `EXECUTORS`, and a broken implementation in `test_runner_can_fail.py` that one of its cases
 catches. The broken evaluators there are the S3 design's section 6.4 and the further ones the TE suite's
-README names; each must fail the TE file named beside it under every precision and side it claims.
+README names; each must fail the TE file named beside it under every precision and side it claims, by the
+difference named beside it, and never by raising.

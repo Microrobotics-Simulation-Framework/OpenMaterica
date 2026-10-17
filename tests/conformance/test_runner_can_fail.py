@@ -7,9 +7,11 @@ implementation stays the one under test.
 
 import hashlib
 import math
+import re
 import unicodedata
 from collections.abc import Callable, Collection, Iterable
 from dataclasses import replace
+from typing import NamedTuple
 
 import pytest
 
@@ -956,49 +958,85 @@ def rounds_binary32_results_to_bfloat16(monkeypatch: pytest.MonkeyPatch) -> Tabl
 
 BINARY32_CLAIMS = tuple(claim for claim in EVALUATOR_CLAIMS if claim.precision == "binary32")
 
-EVALUATOR_FAULTS: list[tuple[EvaluatorFault, str, tuple[EvaluatorClaim, ...]]] = [
+# The differences a broken evaluator may be caught by, as the runner words them.
+IN_RANGE = "in_range: expected"
+VALUE = "value: expected"
+DERIVATIVE = "derivative: expected"
+NO_DERIVATIVE = "derivative: expected none"
+NO_REFUSAL = "expected the refusal, got none"
+NUMBER_BESIDE_THE_REFUSAL = "a number beside the refusal"
+REFUSAL_NOT_DUE = "refused where no refusal is due"
+
+
+class Caught(NamedTuple):
+    """A broken evaluator, a TE file that must catch it, and the difference it must fail by there, under each
+    precision and side it claims."""
+
+    fault: EvaluatorFault
+    catcher: str
+    by: str
+    claims: tuple[EvaluatorClaim, ...] = EVALUATOR_CLAIMS
+
+
+EVALUATOR_FAULTS: list[Caught] = [
     # Section 6.4's table, each fault with every case file the table names for it.
-    (only_clamps, "TE-002.linear.json", EVALUATOR_CLAIMS),
-    (only_clamps, "TE-003.just_outside_linear.json", EVALUATOR_CLAIMS),
-    (takes_in_range_strictly, "TE-002.linear.json", EVALUATOR_CLAIMS),
-    (ignores_a_narrower_source_range, "TE-003.narrowed.json", EVALUATOR_CLAIMS),
-    (ignores_a_narrower_source_range, "TE-002.source_range_narrow.json", EVALUATOR_CLAIMS),
-    (returns_the_side_it_did_not_declare, "TE-006.close_sides.json", EVALUATOR_CLAIMS),
-    (returns_the_side_it_did_not_declare, "TE-006.far_sides.json", EVALUATOR_CLAIMS),
-    (gives_the_outside_derivative_at_an_end, "TE-007.linear_ends.json", EVALUATOR_CLAIMS),
-    (reads_an_edge_from_the_interval_above, "TE-010.linear_edge.json", EVALUATOR_CLAIMS),
-    (refuses_an_edge_beside_the_interval_above, "TE-010.linear_edge.json", EVALUATOR_CLAIMS),
-    (refuses_an_edge_beside_infinity, "TE-010.linear_edge.json", EVALUATOR_CLAIMS),
-    (checks_the_range_before_the_edge, "TE-010.edge_outside_readable_range.json", EVALUATOR_CLAIMS),
-    (
-        takes_the_declared_side_at_a_knot_ending_the_range,
-        "TE-007.readable_range_knot_ends.json",
-        EVALUATOR_CLAIMS,
+    Caught(only_clamps, "TE-002.linear.json", IN_RANGE),
+    Caught(only_clamps, "TE-003.just_outside_linear.json", IN_RANGE),
+    Caught(takes_in_range_strictly, "TE-002.linear.json", IN_RANGE),
+    Caught(ignores_a_narrower_source_range, "TE-003.narrowed.json", IN_RANGE),
+    Caught(ignores_a_narrower_source_range, "TE-002.source_range_narrow.json", IN_RANGE),
+    Caught(returns_the_side_it_did_not_declare, "TE-006.close_sides.json", DERIVATIVE),
+    Caught(returns_the_side_it_did_not_declare, "TE-006.far_sides.json", DERIVATIVE),
+    Caught(gives_the_outside_derivative_at_an_end, "TE-007.linear_ends.json", DERIVATIVE),
+    Caught(reads_an_edge_from_the_interval_above, "TE-010.linear_edge.json", NO_REFUSAL),
+    Caught(refuses_an_edge_beside_the_interval_above, "TE-010.linear_edge.json", NUMBER_BESIDE_THE_REFUSAL),
+    Caught(refuses_an_edge_beside_infinity, "TE-010.linear_edge.json", NUMBER_BESIDE_THE_REFUSAL),
+    Caught(checks_the_range_before_the_edge, "TE-010.edge_outside_readable_range.json", NO_REFUSAL),
+    Caught(
+        takes_the_declared_side_at_a_knot_ending_the_range, "TE-007.readable_range_knot_ends.json", DERIVATIVE
     ),
-    (reads_below_an_edge_from_the_interval_above, "TE-011.linear_sides.json", EVALUATOR_CLAIMS),
-    (interpolates_log_log_linearly, "TE-004.loglog_values.json", EVALUATOR_CLAIMS),
-    (interpolates_log_log_linearly, "TE-008.loglog_interior.json", EVALUATOR_CLAIMS),
-    (interpolates_linear_in_log_space, "TE-004.linear_values.json", EVALUATOR_CLAIMS),
-    (takes_the_linear_slope_as_the_log_log_derivative, "TE-008.loglog_interior.json", EVALUATOR_CLAIMS),
-    (rounds_binary32_results_to_bfloat16, "TE-012.decimal_knots_linear.json", BINARY32_CLAIMS),
-    (rounds_binary32_results_to_bfloat16, "TE-012.decimal_knots_loglog.json", BINARY32_CLAIMS),
+    Caught(reads_below_an_edge_from_the_interval_above, "TE-011.linear_sides.json", VALUE),
+    Caught(interpolates_log_log_linearly, "TE-004.loglog_values.json", VALUE),
+    Caught(interpolates_log_log_linearly, "TE-008.loglog_interior.json", VALUE),
+    Caught(interpolates_linear_in_log_space, "TE-004.linear_values.json", VALUE),
+    Caught(takes_the_linear_slope_as_the_log_log_derivative, "TE-008.loglog_interior.json", DERIVATIVE),
+    Caught(rounds_binary32_results_to_bfloat16, "TE-012.decimal_knots_linear.json", VALUE, BINARY32_CLAIMS),
+    Caught(rounds_binary32_results_to_bfloat16, "TE-012.decimal_knots_loglog.json", VALUE, BINARY32_CLAIMS),
     # The text's further faults, which the suite's README names (read_side_contract.md section 7 items 1, 4
     # and 7), each with a case file that catches it.
-    (checks_the_range_before_the_edge, "TE-010.edge_outside_readable_range_above.json", EVALUATOR_CLAIMS),
-    (extrapolates_across_an_edge, "TE-010.edge_outside_readable_range.json", EVALUATOR_CLAIMS),
-    (extrapolates_across_an_edge, "TE-010.edge_outside_readable_range_above.json", EVALUATOR_CLAIMS),
-    (extrapolates_across_an_edge, "TE-010.edge_on_readable_range_end.json", EVALUATOR_CLAIMS),
-    (extrapolates_across_an_edge, "TE-010.edge_on_readable_range_end_above.json", EVALUATOR_CLAIMS),
-    (returns_a_derivative_where_the_range_is_one_point, "TE-007.one_point_range_end.json", EVALUATOR_CLAIMS),
-    (
-        returns_a_derivative_where_the_range_is_one_point,
-        "TE-007.one_point_range_inside.json",
-        EVALUATOR_CLAIMS,
+    Caught(checks_the_range_before_the_edge, "TE-010.edge_outside_readable_range_above.json", NO_REFUSAL),
+    Caught(extrapolates_across_an_edge, "TE-010.edge_outside_readable_range.json", NO_REFUSAL),
+    Caught(extrapolates_across_an_edge, "TE-010.edge_outside_readable_range_above.json", NO_REFUSAL),
+    Caught(extrapolates_across_an_edge, "TE-010.edge_on_readable_range_end.json", NO_REFUSAL),
+    Caught(extrapolates_across_an_edge, "TE-010.edge_on_readable_range_end_above.json", NO_REFUSAL),
+    Caught(
+        returns_a_derivative_where_the_range_is_one_point, "TE-007.one_point_range_end.json", NO_DERIVATIVE
     ),
-    (refuses_outside_the_range, "TE-003.just_outside_linear.json", EVALUATOR_CLAIMS),
-    (reads_outside_the_range_as_numpy_interp, "TE-002.source_range_narrow.json", EVALUATOR_CLAIMS),
-    (extrapolates_linearly, "TE-002.linear.json", EVALUATOR_CLAIMS),
+    Caught(
+        returns_a_derivative_where_the_range_is_one_point, "TE-007.one_point_range_inside.json", NO_DERIVATIVE
+    ),
+    Caught(refuses_outside_the_range, "TE-003.just_outside_linear.json", REFUSAL_NOT_DUE),
+    Caught(reads_outside_the_range_as_numpy_interp, "TE-002.source_range_narrow.json", VALUE),
+    Caught(extrapolates_linearly, "TE-002.linear.json", VALUE),
 ]
+
+# A difference the runner gives where an executor raised: no caught fault, unless raising is the fault.
+RAISED = re.compile(r"claiming [^:]*: raised ")
+
+
+def why_not_caught(evaluator: TableEvaluator, catcher: str, claim: EvaluatorClaim, by: str) -> str | None:
+    """Why `evaluator`, claiming `claim`, does not fail the case file `catcher` by a difference `by`, or None
+    where it does."""
+    executors = {**EXECUTORS, "evaluate": runner.evaluate_executor(evaluator, (claim,))}
+    run = runner.run(CASE_FILES[catcher], configurations=CONFIGURATIONS, executors=executors)
+    if run.outcome is not Outcome.FAILED:
+        return f"{claim}: {run.outcome.value}"
+    raised = [difference for difference in run.differences if RAISED.match(difference)]
+    if raised and not by.startswith("raised"):
+        return f"{claim}: caught by raising: {raised[0]}"
+    if not any(by in difference for difference in run.differences):
+        return f"{claim}: no difference {by!r}: {run.differences[0]}"
+    return None
 
 
 def failed_cases(operation: str, executor: Executor) -> set[str]:
@@ -1023,15 +1061,36 @@ def test_the_implementation_itself_fails_none(operation: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("fault", "catcher", "claims"),
+    "caught",
     EVALUATOR_FAULTS,
-    ids=[f"{fault.__name__}-{catcher.removesuffix('.json')}" for fault, catcher, _ in EVALUATOR_FAULTS],
+    ids=[f"{caught.fault.__name__}-{caught.catcher.removesuffix('.json')}" for caught in EVALUATOR_FAULTS],
 )
-def test_a_broken_evaluator_fails_its_case_under_every_claim_it_makes(
-    fault: EvaluatorFault, catcher: str, claims: tuple[EvaluatorClaim, ...], monkeypatch: pytest.MonkeyPatch
+def test_a_broken_evaluator_fails_its_case_by_its_own_difference_under_every_claim_it_makes(
+    caught: Caught, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    evaluator = fault(monkeypatch)
-    for claim in claims:
-        executors = {**EXECUTORS, "evaluate": runner.evaluate_executor(evaluator, (claim,))}
-        run = runner.run(CASE_FILES[catcher], configurations=CONFIGURATIONS, executors=executors)
-        assert run.outcome is Outcome.FAILED, claim
+    evaluator = caught.fault(monkeypatch)
+    problems = [why_not_caught(evaluator, caught.catcher, claim, caught.by) for claim in caught.claims]
+    assert problems == [None] * len(caught.claims)
+
+
+def raises_in_its_interpolation(monkeypatch: pytest.MonkeyPatch) -> TableEvaluator:
+    """A fault that fails a case only by raising: an interpolation that raises `TypeError`."""
+
+    def interpolate(*arguments: object) -> float:
+        raise TypeError("a fault in the evaluator's own code")
+
+    monkeypatch.setattr(table_evaluator, "_interpolate", interpolate)
+    return table_evaluator.evaluate
+
+
+def test_a_fault_counts_as_caught_only_by_the_difference_named_beside_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    claim, catcher = EVALUATOR_CLAIMS[0], "TE-002.linear.json"
+    assert why_not_caught(reference, catcher, claim, IN_RANGE) == f"{claim}: {Outcome.VERIFIED.value}"
+    clamping = only_clamps(monkeypatch)
+    assert why_not_caught(clamping, catcher, claim, IN_RANGE) is None
+    # Controls: the same fault named beside a difference it does not give, and a fault that only raises.
+    assert "no difference 'value: expected'" in str(why_not_caught(clamping, catcher, claim, VALUE))
+    raising = raises_in_its_interpolation(monkeypatch)
+    assert "caught by raising: " in str(why_not_caught(raising, catcher, claim, IN_RANGE))
