@@ -32,8 +32,8 @@ while the others idle. There, at `dev` (2026-10-16): 6 workers took 6.0 minutes 
 ## Repeat runs on CI
 
 To show how often a test fails, run it many times on CI, not in a loop here (maintainer, 2026-10-17): GitHub's
-runners are free for this repository and run about 20 jobs at once, so a few hundred runs take minutes rather
-than hours, with the same examples. The workflow `repeat.yml` runs a node, a test, a file or a directory under
+runners are free for this public repository, so a few hundred runs, ten jobs at a time, take minutes rather
+than hours, with the same examples (but see the last paragraph). The workflow `repeat.yml` runs a node, a test, a file or a directory under
 `tests/`, under many seeds in parallel jobs (`.github/workflows/README.md` says what each job does). It runs on a
 pushed ref: an agent asks the main session to dispatch it on its pushed draft and waits on the result.
 
@@ -53,8 +53,9 @@ The inputs: `node`, required; `profile`, `dev`, `ci` (the default) or `deep`, wh
 A request out of bounds, or a node pytest cannot collect with those arguments, fails the `request` job, and no
 run starts. A run takes about as long as the same tests in CI's jobs at that profile, and at `deep`, with ten
 times the examples, about ten times as long as at `ci`: choose the runs a job to fit its timeout (60 minutes at
-`dev`, 120 at `ci`, 360 at `deep`), and more jobs for more runs. Twenty jobs can take every runner the
-repository gets at once (about 20), and CI's own jobs then wait behind them.
+`dev`, 120 at `ci`, 360 at `deep`), and more jobs for more runs. At most ten jobs run at once, and more queue
+inside the run: the organisation's 60 concurrent jobs (its plan's) are shared by this repository's CI and MIME's
+and MADDENING's.
 
 The summary, on the run's page, gives the runs that passed, failed, did not finish or have no record, and a
 verdict: "no run of 200 failed: the failure rate is at most 1.49 % (one-sided 95%)", or, with three failures,

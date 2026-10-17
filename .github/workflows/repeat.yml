@@ -1,7 +1,7 @@
 # One pytest node run many times, each run under a seed of its own, in parallel jobs: how an agent or a person
 # measures how often a test fails (maintainer, 2026-10-17). GitHub's runners are free for this public
-# repository and run about 20 jobs at once, so a few hundred runs take minutes rather than the laptop's hours;
-# the examples are the same. Run by hand alone (`workflow_dispatch`), never on a push or a pull request;
+# repository, and a request's jobs run ten at once, so a few hundred runs take minutes rather than the laptop's
+# hours; the examples are the same. Run by hand alone (`workflow_dispatch`), never on a push or a pull request;
 # tests/README.md, "Repeat runs on CI", says how to ask for one and how to read its summary.
 # Rigour is the repository's own: the profile is one of tests/conftest.py's, whose example counts, deadline and
 # health checks no input reaches. Every input is checked by the request job, and the jobs after it read the
@@ -132,8 +132,12 @@ jobs:
     # The same minutes, from which the interrupt is set (below).
     env:
       JOB_MINUTES: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
+    # At most ten jobs at once, the default request's; more queue inside the run. The organisation's 60
+    # concurrent jobs (its plan's) are shared by this repository's CI and MIME's and MADDENING's. A job that
+    # fails cancels no other, so that every seed keeps its record.
     strategy:
       fail-fast: false
+      max-parallel: 10
       matrix:
         job: ${{ fromJSON(needs.request.outputs.matrix) }}
     steps:
