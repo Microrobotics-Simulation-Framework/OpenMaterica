@@ -58,9 +58,10 @@ every family entry goes in `families/CHANGELOG.md`.
   uncertainty's rules, and each status object's place and token (`provenance.md` section 1 item 5); one that
   breaks its shape, a member one slip from one it names included, is read for nothing else, so its token
   gives no reason of its own (`form_invalid` alone, never `unknown_token` beside it: S2a-4's HP12). A form
-  the row allows whose own member waits for S2b or S3 (a table, an interval, a composition, evidence) raises
-  `NotImplementedError` whatever its other members hold, since its own member could add a reason: so a
-  composition's components and an evidence entry's withholding wait for S2b-1 and S2b-2. A form the row does
+  the row allows whose own member waits for S2b-2 or S3 (evidence, a table) raises `NotImplementedError`
+  whatever its other members hold, since its own member could add a reason: so an evidence entry's
+  withholding waits for S2b-2 (an interval's and a composition's own members are read since S2b-1, below). A
+  form the row does
   not allow is refused with every shared reason, its own member, which a read neither uses nor returns, unread
   (`core/fields.py`, `core/value_shapes.py`). Step 8 reads the status tokens each member allows from the
   generated shapes; a specimen fact's unit as it reads every unit, a string or a status object, step 9 alone
@@ -104,8 +105,8 @@ every family entry goes in `families/CHANGELOG.md`.
   the source's key, a derived value's derivation with its `assumptions`), each the members the reader's
   version defines, read from the generated shapes, as stored and copied (the code design's rule 6), a
   statistics block held as the status object its row allows returned as one. `to_json` writes numbers as
-  stored, `-0` included, and each count and index as an integer (rule 5). Intervals, compositions and evidence
-  still raise at their member.
+  stored, `-0` included, and each count and index as an integer (rule 5). Evidence still raises at its member;
+  S2b-1 reads intervals and compositions (below).
 - Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (`core/read.py`,
   `fields.alternatives_problems`): a list that breaks its shape is `form_invalid`, a member one slip from
   `alternatives` or a value field's beside it included; a fault of the request inside one alternative refuses
@@ -113,6 +114,17 @@ every family entry goes in `families/CHANGELOG.md`.
   reason of its own give `want_mismatch` where none has a form `want` can give, else `no_pick`, each in
   `alternative_values` by its stored index. Any other outcome over alternatives raises `NotImplementedError`
   until S4.
+- The read's steps 8 and 13 for an interval and a composition (S2b-1; `record_format.md` section 6,
+  `read_side_contract.md` section 6). Step 8 reads an interval's `lower` and `upper`, each a number or
+  `{"status": "none"}`, at most one of them `none` and `lower` not above `upper`, numbers compared by value,
+  and its `basis`; and a composition's `basis`, `sum_rule`, a `stated_sum` that is a number, and `components`:
+  at least one, none twice, each `element:<symbol>` of IUPAC's 118 (any other symbol or kind of component is
+  `unknown_token`) with a `fraction` from 0 to 1, and its own statistics block, where it has one, checked as a
+  field's. Each rule broken is `form_invalid`; a withheld own member gives `withheld`; a composition's basis
+  the row does not allow stays `form_not_registered`, its member unread (`core/fields.py`). Step 13 returns the
+  form's own member under the `want` that gives it, `bounds` or `components`, as stored and never normalised:
+  a `none` bound as a status object, never infinity, the stated sum where present, a component's statistics
+  with its counts as integers; any other `want` is `want_mismatch` (`core/read.py`).
 - `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
   name-overlap check share. A word made plural or singular must be a word: the empty string between two
   underscores is none.
@@ -380,6 +392,28 @@ every family entry goes in `families/CHANGELOG.md`.
   1's record half as the implementation does, by the implied half each breaks too. The reason-step check gives
   steps 11 to 13 their codes and loses its sets of codes no case returned: step 10's `unknown` codes, and step
   7's `want_mismatch`, each now returned.
+- S2b-1's 35 case files run and pass: 838 of 1260 case files pass, 422 wait for later steps. Five broken
+  implementations show the runner fails on them: bounds without their basis, an upper `none` read as the
+  largest double, components normalised, bounds out of order and a component taken twice. PR-013's interval
+  beside a constant under `want: components` returns step 7's `want_mismatch` too.
+- Intervals and compositions in the checks of step 8 (S2b-1): T1 holds step 8 itself on both, its bases
+  gaining a full interval and composition (`tests/property/full_fields.py`'s `full_forms`), and the 21
+  conformance examples of evidence alone keep their case files' verdict; the writer strategies give a row's
+  label to a constant or a table only, as section 4.1's Label column says, which T1's drawn intervals had
+  broken once step 8 read them; and the unknown-member positions D01 and D02 have their verdicts, R45 to R59,
+  each read in a host of its form (a position may name the `form` it applies to).
+- The properties over intervals and compositions (S2b-1). Step 8's: a field of each form drawn, a constant as
+  often as the other two together; HP3's catalogue gains five regions of an own member, 46 faults among them
+  the cross-member rules no schema states and their near misses, in a third part with its regions and forms
+  declared by their chances; HP5 adds its members inside lists and own members. The result's HP1, HP2 and HP6,
+  HP4 and HP12 draw each form, HP6 holding an interval's bounds and a composition as stored; HP12's known
+  divergence for a form not built yet shrinks to evidence. 17 mutants of step 8 planned at their faults and
+  one of HP5, six of the result's (the S2 design's `upper: none` read as infinity among them), five of the
+  implementation and two of the model for HP12, each killed at both sizes, and four audit controls for the
+  new features. Fuzz target 4 holds an interval and a composition to the reader `$defs`, steps 9 and 10's
+  oracle and the model, under the `want` its form gives; target 3 takes HP3's third part; and
+  `MATERICA_FUZZ_SEEDED_FAULT=composition` seeds the S2 design's control, a composition whose `components`
+  is empty, which target 4 finds at once and target 3 has not (`tests/fuzz/README.md`).
 - The result's properties (`tests/property/test_result_properties.py`, in the `conditions` shard): HP1,
   totality and the reason table; HP2, the status law and the members item 6 gives; HP6, what a read returns
   as stored, by the generated shapes, sharing nothing; and HP11, the hash suite's label exactly where a read
