@@ -46,6 +46,19 @@ lists the version, with every file under its directory and the SHA-256 of its by
 one of those files is added, removed or changed, or an `$id` is no longer its path. The list lies outside this
 tree, so the wheel and the published site hold the schemas alone.
 
+The published site shows which side of the release a version is on. The index page of a version that the list
+does not hold opens with a note, "Draft until 0.1.0": its files may change until the release, and the release
+freezes them. The page of a listed version has none (`scripts/schema_index.py`, tested in
+`tests/unit/test_schema_index.py`), so freezing a version at its release removes the note when Pages next
+deploys. Until 0.1.0 is released, then, the 0.1 files at `https://w3id.org/materica/schema/0.1/` can be seen to
+change.
+
+**The next line** (maintainer, 2026-10-18). After 0.1.0 is released, the development of the next minor version
+lives in a directory of its own, `0.2-dev/`, with `$id`s under `https://w3id.org/materica/schema/0.2-dev/`, and
+its index page carries the same note. At the 0.2.0 release the directory becomes `0.2/`, its `$id`s are
+rewritten to match, and `scripts/freeze_schema.py 0.2` freezes it, which it would refuse to do under the name
+`0.2-dev` or with the old `$id`s. No `0.2-dev/` exists until the first change that belongs to 0.2 is made.
+
 ## Who reads them
 
 The Python reader checks envelopes with `core/envelope.py`, which tests hold to agreement with the reader schema;
