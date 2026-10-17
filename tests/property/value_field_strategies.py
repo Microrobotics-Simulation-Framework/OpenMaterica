@@ -1061,6 +1061,8 @@ def faulty_records(
     faults: int | None = None,
     among: tuple[str, ...] = (),
     regions: tuple[str, ...] = (),
+    *,
+    two_codes: bool = False,
 ) -> Example:
     """A valid record with one fault of the catalogue; or, in one draw in four, two of two parts of the
     record, half of those a token fault beside another, so that the two give two codes. Where `among` names
@@ -1068,7 +1070,8 @@ def faulty_records(
     some, a part of HP3, the first fault is of one of them, and the mode and its region are drawn first,
     before the record: Hypothesis's mutations keep an example's first choices, but copy into a later choice
     the choices of the record's other draws, so a region drawn after the record came up 0.03 to 0.33 of a
-    part's examples, by its place in the list (measured 2026-10-15)."""
+    part's examples, by its place in the list (measured 2026-10-15). With `faults=2`, `two_codes` makes the
+    first a token fault, so that the two always give two codes."""
     assert not (among and regions)
     region = ""
     if regions:
@@ -1079,7 +1082,7 @@ def faulty_records(
         example = draw(valid_records(size))
         mode = draw(MODES)
     if faults is not None:
-        mode = "one" if faults == 1 else "two"
+        mode = "one" if faults == 1 else "two_codes" if two_codes else "two"
     planned = [(fault.partition(".")[0], fault.partition(".")[2]) for fault in among]
     if mode == "one":
         region = region or draw(st.sampled_from(REGIONS))
