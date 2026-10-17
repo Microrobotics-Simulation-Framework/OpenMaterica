@@ -5,7 +5,11 @@
 
 CI's `site` job stages the site exactly as `.github/workflows/pages.yml` does, then runs this on the copy.
 That every file the workflow copies exists is the staging step's own check: it runs under `bash -eo pipefail`,
-so a `cp` of a missing file fails it. This fails where, in any page of the copy:
+so a `cp` of a missing file fails it. This fails where the copy holds a symbolic link or a hidden path (one of
+whose components begins with a dot): the Pages artifact is an archive of the copy, made with `tar
+--dereference --exclude=.[^/]*` (upload-pages-artifact, at its pinned v5.0.0), so a link would publish its
+target's content, from anywhere on the runner, and a hidden path is not served, so what the check read there
+is not what Pages serves. And where, in any page of the copy (`*.html`, `*.htm`, `*.xhtml`):
 
 - a local link, image or icon, or an icon its web manifest names, resolves to no file of the copy (a
   directory to its `index.html`), or a fragment to no `id` or `name` in the page it names;
@@ -15,9 +19,11 @@ so a `cp` of a missing file fails it. This fails where, in any page of the copy:
   `'none'`; or a directive that names sources allows anything but `'none'`, `'self'`, `'unsafe-inline'`, a
   hash, a nonce and `data:` (a host, another scheme, `*`, or a keyword such as `'strict-dynamic'`, which lets
   a trusted script load scripts from any host);
-- an element loads something from elsewhere (an image, an icon, a script, a style, a frame or the manifest),
-  or a style's `url(...)` or `@import` names an address elsewhere; links to other sites (`<a href>`) are
-  navigation, not loads, and are not checked;
+- an element loads something from elsewhere (an image, an icon, a script, a style, a frame, the manifest, an
+  SVG image or use, or a `background`), or a style's `url(...)` or `@import`, in the page or in a stylesheet
+  of the copy it loads, names an address elsewhere or a local file the copy does not hold; links to other
+  sites (`<a href>`) are navigation, not loads, and are not checked;
+- there is a `<base>`, which changes where every address of the page resolves;
 
 and where an image of the README, by a path or by a URL into this repository, names a file the tree does not
 hold. Standard library only, so the job needs no environment.
@@ -37,7 +43,7 @@ from urllib.parse import unquote, urlsplit
 # The attributes by which each element loads what it names.
 LOADING = {
     "img": ("src", "srcset"),
-    "script": ("src",),
+    "script": ("src", "href", "xlink:href"),
     "iframe": ("src",),
     "frame": ("src",),
     "embed": ("src",),
@@ -47,8 +53,16 @@ LOADING = {
     "audio": ("src",),
     "track": ("src",),
     "input": ("src",),
-    "link": ("href",),
+    "link": ("href", "imagesrcset"),
+    # SVG, inline in a page.
+    "image": ("href", "xlink:href"),
+    "use": ("href", "xlink:href"),
+    "feimage": ("href", "xlink:href"),
 }
+# An attribute that loads what it names on any element.
+LOADING_ANYWHERE = ("background",)
+# The file names a page has.
+PAGE_SUFFIXES = {".html", ".htm", ".xhtml"}
 # A `<link>` loads what it names, but where it only describes the page.
 DESCRIBING_LINKS = {"canonical", "alternate"}
 # The attributes by which an element links to what it names, without loading it.
@@ -148,7 +162,7 @@ def is_local(url: str) -> bool:
 
 def candidates(attribute: str, value: str) -> list[str]:
     """The addresses an attribute names: each of a `srcset`'s, or the value."""
-    if attribute == "srcset":
+    if attribute in ("srcset", "imagesrcset"):
         return [entry.split()[0] for entry in value.split(",") if entry.strip()]
     return [value]
 
@@ -159,7 +173,7 @@ def loads(page: Page) -> list[tuple[int, str, str, str]]:
     for index, (tag, attributes, _) in enumerate(page.elements):
         if tag == "link" and set(attributes.get("rel", "").lower().split()) <= DESCRIBING_LINKS:
             continue
-        for attribute in LOADING.get(tag, ()):
+        for attribute in (*LOADING.get(tag, ()), *LOADING_ANYWHERE):
             if attribute in attributes:
                 found += [
                     (index, tag, attribute, url) for url in candidates(attribute, attributes[attribute])
@@ -213,11 +227,39 @@ def reference_problems(site: Path, base: Path, where: str, what: str, url: str) 
     target, fragment = resolved(site, base, url)
     if target is None:
         return [f"{where}: {what} {url!r} names no file of the site"]
-    if fragment and target.suffix == ".html" and fragment not in parsed(target).anchors:
+    if fragment and target.suffix.lower() in PAGE_SUFFIXES and fragment not in parsed(target).anchors:
         return [
             f"{where}: {what} {url!r} names no anchor {fragment!r} in {target.relative_to(site).as_posix()}"
         ]
     return []
+
+
+def css_addresses(text: str) -> list[str]:
+    """Each address a style's `url(...)` or `@import` names."""
+    return [match[2] if match[2] is not None else match[4] for match in CSS_URL.finditer(text)]
+
+
+def style_problems(site: Path, base: Path, where: str, what: str, text: str, read: set[Path]) -> list[str]:
+    """Where a style, of the file `base` (a page or a stylesheet), loads from elsewhere or names a local file
+    the copy does not hold; and the same in each stylesheet of the copy it loads, once each."""
+    problems: list[str] = []
+    for address in css_addresses(text):
+        if is_elsewhere(address):
+            problems.append(f"{where}: {what} loads {address!r} from elsewhere")
+        elif is_local(address) and address.strip():
+            problems += reference_problems(site, base, where, f"{what}'s address", address)
+            problems += stylesheet_problems(site, base, where, address, read)
+    return problems
+
+
+def stylesheet_problems(site: Path, base: Path, where: str, url: str, read: set[Path]) -> list[str]:
+    """The problems of the stylesheet a local address names from `base`, where it names one of the copy."""
+    sheet, _ = resolved(site, base, url)
+    if sheet is None or sheet.suffix.lower() != ".css" or sheet in read:
+        return []
+    read.add(sheet)
+    what = f"its stylesheet {sheet.relative_to(site).as_posix()}"
+    return style_problems(site, sheet, where, what, sheet.read_text(encoding="utf-8", errors="replace"), read)
 
 
 def manifest_problems(site: Path, manifest: Path, where: str) -> list[str]:
@@ -261,12 +303,19 @@ def page_problems(site: Path, page: Path) -> list[str]:
                 "or a style"
             )
         problems += policy_problems(where, policy)
+    read: set[Path] = set()
+    problems += [
+        f"{where}: a <base>, which changes where each address resolves"
+        for tag, *_ in reader.elements
+        if tag == "base"
+    ]
     for index, tag, attribute, url in loaded:
         what = f"<{tag} {attribute}>"
         if is_elsewhere(url):
             problems.append(f"{where}: {what} loads {url!r} from elsewhere")
         elif is_local(url):
             problems += reference_problems(site, page, where, what, url)
+            problems += stylesheet_problems(site, page, where, url, read)
             manifest, _ = resolved(site, page, url)
             if (
                 manifest is not None
@@ -274,12 +323,7 @@ def page_problems(site: Path, page: Path) -> list[str]:
             ):
                 problems += manifest_problems(site, manifest, where)
     for style in reader.styles:
-        for match in CSS_URL.finditer(style):
-            address = match[2] if match[2] is not None else match[4]
-            if is_elsewhere(address):
-                problems.append(f"{where}: a style loads {address!r} from elsewhere")
-            elif is_local(address) and address.strip():
-                problems += reference_problems(site, page, where, "a style's address", address)
+        problems += style_problems(site, page, where, "a style", style, read)
     for tag, attributes, _ in reader.elements:
         for attribute in LINKING.get(tag, ()):
             if attribute in attributes and is_local(attributes[attribute]):
@@ -308,6 +352,29 @@ def readme_problems(readme: Path) -> list[str]:
     return problems
 
 
+def copy_files(site: Path) -> tuple[list[Path], list[str]]:
+    """The files of the copy, and where it holds a symbolic link or a hidden path, which the Pages artifact
+    would not serve as they are (the module's docstring says why); neither is followed."""
+    files: list[Path] = []
+    problems: list[str] = []
+    for directory, subdirectories, names in os.walk(site):
+        for name in sorted([*subdirectories, *names]):
+            path = Path(directory) / name
+            shown = path.relative_to(site).as_posix()
+            if path.is_symlink():
+                problems.append(f"{shown}: a symbolic link, whose target the Pages artifact would publish")
+            elif name.startswith("."):
+                problems.append(f"{shown}: a hidden path, which the Pages artifact leaves out")
+            elif name in names:
+                files.append(path)
+        subdirectories[:] = sorted(
+            name
+            for name in subdirectories
+            if not name.startswith(".") and not (Path(directory) / name).is_symlink()
+        )
+    return sorted(files), problems
+
+
 def main(arguments: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").partition("\n")[0])
     parser.add_argument(
@@ -316,8 +383,9 @@ def main(arguments: Sequence[str] | None = None) -> int:
     parser.add_argument("--readme", type=Path, help="the README, whose images must name files of the tree")
     options = parser.parse_args(arguments)
     site = options.site.resolve()
-    pages = sorted(site.rglob("*.html"))
-    problems = [] if pages else [f"{site}: no page"]
+    files, problems = copy_files(site)
+    pages = [path for path in files if path.suffix.lower() in PAGE_SUFFIXES]
+    problems += [] if pages else [f"{site}: no page"]
     for page in pages:
         problems += page_problems(site, page)
     if options.readme is not None:
