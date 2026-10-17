@@ -387,6 +387,20 @@ every family entry goes in `families/CHANGELOG.md`.
   elsewhere, holds pages.yml's job to deploying what the site job checks, and checks that no test or script
   names a path of the site but those the site job runs and a few listed with their reasons, beside #23's check
   for documentation.
+- A test-only reference model of the read, written from the specification's text and importing nothing from
+  `materica`, for HP12 and the fuzz targets (S2a-4, phase 0; the S2 design's SQ49): steps 0 to 13 for
+  constants, intervals, compositions and evidence, implied conditions and nominals, `list_records`,
+  `content_hash`, and alternatives as far as S4's decision 12 lets S2 go; anything else, a table, a pick, an
+  overlay or an extrapolation among them, gives no verdict, which a test never reads as a pass. Each rule
+  cites the text, a quote at its line, and each point the text leaves open is listed with the ruling or the
+  fail-closed choice taken. Of the 1,223 case files of a read, it agrees with 894 under every configuration
+  of claims each allows (6,776 runs) and gives no verdict on 329, each listed by kind in an exact list of
+  exceptions (tables, overlays, extrapolations, picks, and alternatives with reasons of their own); it
+  disagrees with none. The table evaluation suite's 35 files, which ask for no read, are left out, and a test
+  holds those left out to the files whose operation is `evaluate`. Its tables are held to the generated
+  vocabulary; 69 faults seeded in it are each killed by a case file or listed as a survivor, a rule no case
+  pins, 9 of them; and a layering check, with a control, shows it reaches no `materica` module
+  (`tests/reference/`).
 
 ## [0.1.0.dev1] - 2026-10-14
 

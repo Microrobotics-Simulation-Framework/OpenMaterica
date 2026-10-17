@@ -8,6 +8,7 @@
 | `unit/` | examples at the edges, the rules over source files, and the scripts in `scripts/` | what belongs there |
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
+| `reference/` | a test-only reference model of the read, written from the text, which imports nothing from `materica`; it agrees with every case file of a read or lists it, its tables with the vocabulary, its citations with the text | what it decides and what not; its open points; its exceptions; its mutant table |
 
 `conftest.py` here registers the Hypothesis profiles for every test and the property shards (`--shard`), selects
 the mutant searches and the audit controls (`--property-controls only`) or every other test (`none`), as CI's
@@ -86,6 +87,10 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   no row and a repeated item (`spec_sync/test_references.py`);
 - the draw-rejection audit, the import, layer and SPDX rules and the scripts, generators included: inputs they
   must refuse (`unit/`);
+- the reference model: each case file it disagrees with or gives no verdict on, unless listed for that
+  outcome, and a listed one it agrees with; a read left out of its cases, or an evaluation kept; a fault
+  seeded in it, 69 of them, killed by a case file or listed as a survivor; a table drifted from the
+  vocabulary; a citation off its line; a module that reaches `materica` (`reference/`);
 - the consumer snippet: CI deletes `py.typed` from the installed wheel and requires the snippet then to fail;
   and it removes `ReadOnly` from the installed `shapes.pyi` and requires both checkers then to report the
   ignore on the snippet's write into a result as unused (pyright by a setting in the snippet's first line).
