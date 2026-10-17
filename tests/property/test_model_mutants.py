@@ -308,6 +308,7 @@ MODEL = [
     ),
     ModelFault("dof_token_unchecked_under_student_t", "unpinned", ("checks_beside_a_broken_object",)),
     ModelFault("every_status_object_an_unstated_kind", "unpinned", ("checks_beside_a_broken_object",)),
+    ModelFault("every_forms_member_named_at_a_field", "unpinned", ("another_forms_member_slipped",)),
     ModelFault(
         "input_specimens_optional",
         "faults",

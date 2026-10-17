@@ -70,7 +70,7 @@ detail that kind names; a listed one it agrees with fails as stale.
 exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
 of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
-measured 2026-10-17 on `main` at `6c9ab9f`. 74 faults: 60 killed, 14 survive.
+measured 2026-10-17 on `main` at `6c9ab9f`. 75 faults: 60 killed, 15 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -113,6 +113,7 @@ measured 2026-10-17 on `main` at `6c9ab9f`. 74 faults: 60 killed, 14 survive.
 | `input_specimens_optional` | a derivation without `input_specimens` read | survives: every derivation in the cases holds `input_specimens` |
 | `population_level_checks_stop_at_a_missing_member` | a population level missing a member has its `level` and `within` left unchecked | survives: no case holds a population level missing a member beside a token of its own |
 | `dof_token_unchecked_under_student_t` | a `dof` held as a status object under a Student's t distribution has its token left unchecked | survives: no case holds such a `dof` of an unknown token |
+| `every_forms_member_named_at_a_field` | every form's member named at a field's place, so that a slip of another form's refuses a constant | survives: no case holds a slip of another form's member beside a form the reader knows |
 | `every_status_object_an_unstated_kind` | a `plus_minus` entry whose `stated_as` holds any status object counted as of unstated kind | survives: no case holds a `stated_as` of another status token beside an entry of a stated kind |
 | `section_specimen_unchecked` | a section's `specimen` not checked for a field read from it | 3 |
 | `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 19 |
@@ -163,12 +164,15 @@ reading until S2a-4's phase B, whose agreement property (HP12) found that the te
 (`provenance.md` section 5 item 3, "A derived value carries the specimen facts of each input"); the model was
 fixed, and the fault seeded. The eleventh, `members_of_the_other_kind_ignored`, is the implementation's
 reading of that open point (S2a-4's phase B): HP12 lists the point as a known divergence, held exactly by
-this fault (`tests/property/test_model_properties.py`). The last three are the model's readings until fuzz
+this fault (`tests/property/test_model_properties.py`). The last four are the model's readings until fuzz
 target 4, held to the model, found them on its first minutes: a population level whose `within` is missing
 or slipped had its `level` token left unchecked, so did a `dof` status object under a Student's t
 distribution, against `read_side_contract.md` section 2 item 2, "Each step makes all its checks before the
 read stops"; and a `stated_as` of any status token counted as of unstated kind, where `provenance.md` section
-6.1 item 6 names `{"status": "unstated"}`. Each was fixed and seeded.
+6.1 item 6 names `{"status": "unstated"}`; and every form's member named at a constant's place, so that a
+slip of `table` refused it, where `record_format.md` section 5 names "the form's member", `value` for a
+constant (step 8 names every form's member only beside a form the reader does not know). Each was fixed and
+seeded.
 
 ## Running
 
