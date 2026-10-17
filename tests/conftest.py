@@ -87,9 +87,9 @@ SHARDS = {
     # Step 8's mutant searches, the longest part of the records shard, and their table's check; they keep no
     # example database.
     "step8_mutants": ("test_value_field_mutants", "test_value_field_mutant_table"),
-    # Steps 9 and 10's properties and the result's (S2a-4: HP1, HP2, HP6 and HP11), which read records end to
-    # end, their mutant searches, which take seconds and set no example database, so the shard's restored one
-    # is harmless to them, and their tables' checks.
+    # Steps 9 and 10's properties and the result's (S2a-4: HP1, HP2, HP6 and HP11, and HP12, the agreement
+    # with the reference model), which read records end to end, their mutant searches, which take seconds and
+    # set no example database, so the shard's restored one is harmless to them, and their tables' checks.
     "conditions": (
         "test_condition_properties",
         "test_condition_mutants",
@@ -97,6 +97,10 @@ SHARDS = {
         "test_result_properties",
         "test_result_mutants",
         "test_result_mutant_table",
+        "test_model_properties",
+        "test_model_mutants",
+        "test_model_mutant_table",
+        "test_model_controls",
     ),
 }
 

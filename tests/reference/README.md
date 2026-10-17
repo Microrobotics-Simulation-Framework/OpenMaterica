@@ -70,7 +70,7 @@ detail that kind names; a listed one it agrees with fails as stale.
 exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
 of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
-measured 2026-10-17 on `main` at `6c9ab9f`. 70 faults: 60 killed, 10 survive.
+measured 2026-10-17 on `main` at `6c9ab9f`. 71 faults: 60 killed, 11 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -115,6 +115,7 @@ measured 2026-10-17 on `main` at `6c9ab9f`. 70 faults: 60 killed, 10 survive.
 | `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 19 |
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | survives: no case holds a status object breaking its shape with a token the reader does not know |
 | `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | survives: no case holds a condition with a member of the other kind's shape: the text leaves it open |
+| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | survives: no case holds a condition with a member of the other kind's shape: the text leaves it open |
 | `slips_of_alternatives_ignored` | a member one slip from `alternatives` beside a value field's members ignored | survives: no case holds a member one slip from `alternatives`: the text leaves it open |
 | `evidence_entry_provenance_unchecked` | an evidence entry's `provenance` not checked | survives: each evidence entry's `provenance` in the cases is well formed: the text leaves it open |
 | `declaration_names_not_named_in_a_request` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | survives: no case holds a slip of `field`, `reason` or `consequence` in a requirement |
@@ -157,7 +158,9 @@ for tables; one needs a plural of two characters or more (`plurals_not_slips`); 
 JSON at all (`results_share_the_record`, HP6's). The tenth, `input_specimens_optional`, is the model's own
 reading until S2a-4's phase B, whose agreement property (HP12) found that the text requires the list
 (`provenance.md` section 5 item 3, "A derived value carries the specimen facts of each input"); the model was
-fixed, and the fault seeded.
+fixed, and the fault seeded. The eleventh, `members_of_the_other_kind_ignored`, is the implementation's
+reading of that open point (S2a-4's phase B): HP12 lists the point as a known divergence, held exactly by
+this fault (`tests/property/test_model_properties.py`).
 
 ## Running
 
