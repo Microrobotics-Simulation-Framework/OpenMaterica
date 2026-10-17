@@ -257,6 +257,9 @@ every family entry goes in `families/CHANGELOG.md`.
   `source_range` that widens the readable range, and a log-log derivative scaled at the lower knot), each
   failing its named TE file under every precision and side it claims, by the difference named beside it and
   never by raising.
+- The `evaluate` executor adapts a raised refusal, as the TE suite's README says a runner does: an evaluator
+  that raises `Refusal` in place of reporting a refusal fails no TE file. It adapts no other exception, and a
+  raised refusal where none is due fails.
 
 ## [0.1.0.dev1] - 2026-10-14
 
