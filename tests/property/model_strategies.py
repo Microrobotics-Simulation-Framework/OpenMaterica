@@ -150,6 +150,39 @@ def beside_another_section(draw: Draw, read: Read) -> None:
 # Alternatives.
 
 ALTERNATIVE_WAYS = ("met", "met", "broken", "request_fault")
+# How a further alternative stands apart from the first beside its value, each in one draw in four: in a
+# world the read meets, its unit spelled otherwise, which step 9 refuses in it alone, or a specimen fact the
+# first does not hold; where the first raises a fault of the request, one of its own instead, two implied
+# conditions that give its specimen size two values (S2a-4's review B, L1).
+APART_WAYS = ("unit_apart", "specimen_apart", "request_faults_apart")
+
+
+def apart(draw: Draw, read: Read, field: JsonObject, way: str) -> tuple[JsonObject, tuple[str, ...]]:
+    """A further alternative of `field`, its value drawn, and how else it stands apart, by name."""
+    other: JsonObject = {**copy.deepcopy(field), "value": draw(DOUBLES)}
+    if draw(st.integers(0, 3)):
+        return other, ()
+    if way == "request_fault":
+        facts = at(other, "specimen")
+        facts.pop("disease_and_treatment_state", None)
+        facts["tissue_state"] = {"token": "ex_vivo_fresh", "basis": "stated"}
+        facts["preservation"] = {"token": "refrigerated", "basis": "stated"}
+        acceptances = read.request["acceptances"]
+        assert isinstance(acceptances, list)
+        if len(acceptances) == 2:
+            for fact, token, size in (
+                ("tissue_state", "ex_vivo_fresh", 0.001),
+                ("preservation", "refrigerated", 0.002),
+            ):
+                implied = implying(read, fact, token, 0.0)
+                implied["implies"] = {"specimen_size": {"value": size, "unit": "m"}}
+                acceptances.append(implied)
+        return other, ("request_faults_apart",)
+    if draw(st.booleans()):
+        other["unit"] = f"{other['unit']} "
+        return other, ("unit_apart",)
+    at(other, "specimen")["lot"] = {"text": "a second lot", "basis": "stated"}
+    return other, ("specimen_apart",)
 
 
 @st.composite
@@ -169,7 +202,10 @@ def alternatives(draw: Draw, size: Size) -> Example:
     else:
         shown = draw(results.enriched(field))
     held: list[JsonValue] = [copy.deepcopy(field)]
-    held += [{**copy.deepcopy(field), "value": draw(DOUBLES)} for _ in range(draw(st.integers(1, 2)))]
+    for _ in range(draw(st.integers(1, 2))):
+        other, standing = apart(draw, read, field, way)
+        held.append(other)
+        shown = (*shown, *(name for name in standing if name not in shown))
     record = results.holding(read, {"alternatives": held})
     read = wanting(repinned(read._replace(record=record)), draw(st.sampled_from(WANTS)))
     return example("alternatives", read, claims, way, *shown)
@@ -387,7 +423,8 @@ def request_faults(draw: Draw, size: Size) -> Example:
     read = draw(base_reads(size))
     claims = draw(st.sampled_from(CLAIMS))
     if draw(st.integers(0, 15)) == 0:
-        return Example("request", (results.as_source(read.record),), draw(st.sampled_from(NOT_JSON)), claims)
+        source = results.as_source(read.record)
+        return Example("request", (source,), draw(st.sampled_from(NOT_JSON)), claims, ("not_json",))
     first = draw(st.sampled_from(sorted(REQUEST_FAULTS)))
     names: tuple[str, ...] = (first,)
     if draw(st.integers(0, 3)) == 0:

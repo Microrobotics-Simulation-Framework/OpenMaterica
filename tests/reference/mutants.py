@@ -703,6 +703,33 @@ def review_result_alone(provenance: JsonObject) -> JsonObject:
     return {"result": read["result"]} if "result" in read else read
 
 
+def units_stored_differently_compared(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    """Step 7 over alternatives, each alternative's unit, once its read passes step 13, taken as the first
+    one's: units stored differently go unseen, and `no_pick` stands."""
+    first: list[JsonValue] = []
+
+    def read_one(*arguments: object, **members: object) -> FieldRead:
+        one: FieldRead = _read_value_field(*arguments, **members)  # type: ignore[arg-type]
+        if "unit" in one.members:
+            first.append(one.members["unit"])
+            one.members["unit"] = first[0]
+        return one
+
+    with mock.patch.object(model, "read_value_field", read_one):
+        return _read_alternatives(
+            field_value, section, request, claims, reasons, labels, record_fault=record_fault
+        )
+
+
 def registered_unit(unit: JsonValue) -> JsonValue:
     if isinstance(unit, dict):
         return {name: given for name, given in unit.items() if name == "status"}
@@ -1119,5 +1146,12 @@ MUTANTS: Mapping[str, Mutant] = {
         "read_side_contract.md:150-152",
         {"copied": shared},
         survives="a case compares a result's JSON, in which no object is shared",
+    ),
+    # A step S4 owns, which no read S2 builds reaches (S2a-4's review B, L1)
+    "units_stored_differently_read_as_no_pick": Mutant(
+        "alternatives whose units are stored differently read as `no_pick`, which S4 decides",
+        "OPEN_POINTS: alternatives_within_decision_12",
+        {"read_alternatives": units_stored_differently_compared},
+        survives="no case holds alternatives whose units are stored differently",
     ),
 }
