@@ -164,6 +164,64 @@ def check_steps_9_and_10(
     assert {entry.get("name"): entry.get("status") for entry in entries} == statuses, entries
 
 
+# HP1 and HP2 (the S2 design), on any result as the target takes it: section 2 item 2's codes that carry
+# `condition` always, and those that may; the codes only steps before 10 give; and the statuses, best first.
+WITH_A_CONDITION = frozenset(code for code in REASONS["reasons"] if code.startswith("condition_"))
+PERHAPS_A_CONDITION = frozenset(
+    {
+        "request_incomplete",
+        "request_unit_mismatch",
+        "unit_mismatch",
+        "outside_range",
+        "at_edge",
+        "range_unstated",
+        "want_mismatch",
+    }
+)
+BEFORE_STEP_10 = frozenset(
+    code for code, row in REASONS["reasons"].items() if row.get("steps") and max(row["steps"]) < 10
+)
+BEST_FIRST = ("met", "unknown", "not_met")
+
+
+def check_result_laws(result: JsonValue) -> None:
+    """HP1: each code in the reason table, each `(code, condition)` once, `condition` on every `condition_*`
+    reason and on no reason of a code that never concerns one. HP2: the status the worst of the codes'
+    statuses, folded here from the table; and the members present as section 2 item 6 says, no declaration
+    being in the target's requests: `value`, `specimen`, `statistics` and `provenance` exactly where the
+    status is not `not_met` and the result rests on one value, `alternative_values` exactly under `no_pick`,
+    `unit` beside either, no `assumption`, and `conditions` beside a value, never under `no_pick` or after a
+    refusal before step 10. A form without a statistics block is the target's "not yet" until S2b."""
+    if result == "not yet":
+        return
+    assert isinstance(result, dict), result
+    pairs = [(str(reason.get("code")), reason.get("condition")) for reason in objects(result, "reasons")]
+    assert len(set(pairs)) == len(pairs), f"a reason twice: {pairs}"
+    for code, condition in pairs:
+        assert code in REASONS["reasons"], f"{code} is no code of the table"
+        if code in WITH_A_CONDITION:
+            assert isinstance(condition, str), f"{code} without its condition"
+        elif code not in PERHAPS_A_CONDITION:
+            assert condition is None, f"{code} with the condition {condition}"
+    statuses = [str(REASONS["reasons"][code]["status"]) for code, _ in pairs]
+    worst = max(statuses, key=BEST_FIRST.index, default="met")
+    assert result.get("status") == worst, f"the status {result.get('status')}, the worst reason's {worst}"
+    no_pick = any(code == "no_pick" for code, _ in pairs)
+    valued = worst != "not_met" and not no_pick
+    assert {"reasons", "labels"} <= result.keys(), result
+    for member in ("value", "specimen", "statistics", "provenance"):
+        assert (member in result) == valued, f"{member} where the status is {worst}: {result}"
+    assert ("alternative_values" in result) == no_pick, (
+        f"alternative_values, no_pick being {no_pick}: {result}"
+    )
+    assert ("unit" in result) == (valued or no_pick), f"unit where the status is {worst}: {result}"
+    assert "assumption" not in result, f"an assumption no declaration gives: {result}"
+    if valued:
+        assert "conditions" in result, f"no conditions beside the value: {result}"
+    if no_pick or {code for code, _ in pairs} & BEFORE_STEP_10:
+        assert "conditions" not in result, f"conditions after a refusal before step 10: {result}"
+
+
 def objects(result: JsonValue, member: str) -> list[JsonObject]:
     """The objects of the list `member` of a result as the target takes it, none where it holds none."""
     found = result.get(member) if isinstance(result, dict) else None
