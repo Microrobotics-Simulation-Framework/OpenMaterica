@@ -327,12 +327,11 @@ NOT_BUILT = {
     ("nominal_invalid", 13),
 }
 BUILT = (0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13)
-# The codes of a step built that no read of a case file of a step done returns yet: step 7's `want_mismatch`,
-# where no alternative left has a form `want` can give, which S2a-4 gives and no case of a step done holds
-# (S2b's and S4's do). Once one does, the test fails, and the code leaves this set.
-NO_CASE_YET = {
-    ("want_mismatch", 7),
-}
+# The codes of a step built that no read of a case file of a step done returns yet. Once one does, the test
+# fails, and the code leaves this set. Empty since S2a-4's fix round: step 7's `want_mismatch`, where no
+# alternative left has a form `want` can give, is PR-336's `want_mismatch_over_alternatives_no_hs`, which
+# S2a-4's code runs (`case_steps.json`).
+NO_CASE_YET: set[tuple[str, int]] = set()
 
 
 def test_the_reads_traced_reach_every_code_the_steps_built_give() -> None:
