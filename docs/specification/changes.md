@@ -343,4 +343,7 @@ Settled with S3-te's review of the table evaluation suite. A file's `binary32` t
 evaluator (maintainer, 2026-10-17): each broken evaluator the suite's verification names misses at least one
 of the files that should catch it by ten times that file's `binary32` tolerance. It need not miss every file
 by that much: NumPy's `interp` outside the readable range misses TE-003 `narrowed` by less (`README.md`, "Case
-files").
+files"). Outside a table's readable range, an evaluator's value and its derivative are each judged alone
+(maintainer, 2026-10-17): each is the expected number, or absent or NaN. So a NaN value beside a zero
+derivative passes, and `in_range` is still compared (`read_side_contract.md` section 7 item 1; TE-002,
+TE-003). This settles the S3 entry's "or no number".

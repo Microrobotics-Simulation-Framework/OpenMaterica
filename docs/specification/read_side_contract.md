@@ -538,9 +538,10 @@ value's derivative with respect to the axis. [TE-012]
    extrapolation, which needs the consumer's declaration, or `in_range` false stops the run
    (`declarations.md`). [TE-002] [TE-003] Outside a table's readable range, an evaluator's value is the value
    at the range's nearest end, taken from inside the range, as the read's is (section 5), and its derivative
-   is zero, as a constant extrapolation gives; or it returns neither, each absent or NaN. So it never returns
-   a table's own value beyond a narrower `source_range`, which the source disclaims: clamping at `x[0]` and
-   `x[-1]` does not meet this item. [TE-003]
+   is zero, as a constant extrapolation gives. Each number may instead be absent or NaN, whatever the other
+   is: a NaN value beside a zero derivative meets this item. So it never returns a table's own value beyond a
+   narrower `source_range`, which the source disclaims: clamping at `x[0]` and `x[-1]` does not meet this
+   item. [TE-003]
 2. Linear interpolation within `[x0, x1]` is `y0 + (x - x0) * (y1 - y0) / (x1 - x0)`. Log-log interpolation is
    `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) / (ln x1 - ln x0))`, in natural logarithms. [TE-004]
 3. At an interior knot the derivative depends on the side. An evaluator states which side it returns there
