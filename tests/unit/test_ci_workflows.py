@@ -28,7 +28,7 @@ from typing import Any, NamedTuple, cast
 import pytest
 import yaml
 
-from scripts import check_confidential, repeat_runs, schema_index
+from scripts import check_confidential, mutant_runs, repeat_runs, schema_index
 from tests.unit.test_report_test_durations import INTERRUPT_AS_CI
 from tests.unit.throwaway_git import throwaway_repository
 
@@ -947,6 +947,9 @@ NAMED_NOT_READ = {
     ("tests/unit/test_schema_index.py", "*"): "the schema directory",
     ("tests/spec_sync/name_overlaps.py", "*.md"): "the specification's documents, in docs/specification/",
     ("tests/spec_sync/test_references.py", "*.md"): "the specification's documents, in docs/specification/",
+    # The directory a patch may not touch, in the script's list of them and in this exemption's own key.
+    ("scripts/mutant_runs.py", ".github"): "a patch that touches it is refused; nothing there is read",
+    ("tests/unit/test_ci_workflows.py", ".github"): "the key of the exemption above",
 } | {
     ("tests/unit/test_ci_workflows.py", example): "a path the gate's tests commit in a throwaway repository"
     for example in DOCUMENTATION_EXAMPLES
@@ -3108,6 +3111,7 @@ CAPS = (
     Cap("ci.yml", "commit", "gate", "per_commit_max_parallel", "PER_COMMIT_MAX_PARALLEL", "6"),
     Cap("ci.yml", "site_commit", "gate", "per_commit_max_parallel", "PER_COMMIT_MAX_PARALLEL", "6"),
     Cap("repeat.yml", "runs", "request", "max_parallel", "REPEAT_MAX_PARALLEL", "10"),
+    Cap("mutants.yml", "mutants", "request", "max_parallel", "MUTANT_MAX_PARALLEL", "10"),
 )
 # Values of a cap's variable the check takes, beside its being unset, and values it refuses: out of range;
 # written otherwise than plainly as a whole number, which fromJSON may still parse (`6.0`, `1e1`, ` 6`); not a
@@ -3892,6 +3896,8 @@ def test_the_table_check_can_fail(old: str, new: str, problem: str) -> None:
 # script, the collect step on this repository, and the runs and the summary with a stub `uv` in place of
 # pytest, which records what each run was given and fails the seeds it is told to.
 REPEAT = "repeat.yml"
+# The workflows run by hand alone, which the safety check holds to the others' pins.
+BY_HAND = (REPEAT, "mutants.yml")
 CHECK_STEP, COLLECT_STEP = "The inputs, checked", "The node collects a test"
 RUNS_STEP, KEEP_STEP = "Run the node under each seed", "Keep the records"
 FETCH_STEP, SUM_STEP = "Fetch the records", "Sum the runs"
@@ -3984,12 +3990,13 @@ def edited(path: Path, old: str, new: str) -> None:
     path.write_text(text.replace(old, new), encoding="utf-8")
 
 
-def triggers_problems(repeat: Workflow) -> list[str]:
-    """Where the repeat workflow runs on anything but a dispatch by hand."""
+def triggers_problems(repeat: Workflow, name: str = REPEAT) -> list[str]:
+    """Where the workflow `name`, the repeat workflow or another run by hand, runs on anything but a dispatch
+    by hand."""
     triggers = cast(dict[object, object], repeat).get(True)
     if isinstance(triggers, dict) and list(cast(dict[str, object], triggers)) == ["workflow_dispatch"]:
         return []
-    return [f"repeat.yml runs on {triggers!r}"]
+    return [f"{name} runs on {triggers!r}"]
 
 
 def test_the_repeat_workflow_runs_on_a_dispatch_by_hand_alone() -> None:
@@ -4012,17 +4019,17 @@ def test_the_trigger_check_can_fail(triggers: object, problem: str) -> None:
     assert any(problem in line for line in triggers_problems(repeat)), triggers_problems(repeat)
 
 
-def safety_problems(repeat: Workflow, others: dict[str, Workflow]) -> list[str]:
-    """Where the repeat workflow could write to the repository, read a secret or the token, keep the token in
-    its checkout, write a cache another run reads, or use an action not pinned to a commit as the other
-    workflows pin it, or another uv than ci.yml's."""
+def safety_problems(repeat: Workflow, others: dict[str, Workflow], name: str = REPEAT) -> list[str]:
+    """Where the workflow `name`, the repeat workflow or another run by hand, could write to the repository,
+    read a secret or the token, keep the token in its checkout, write a cache another run reads, or use an
+    action not pinned to a commit as ci.yml, pages.yml and release.yml pin it, or another uv than ci.yml's."""
     problems: list[str] = []
     if repeat.get("permissions") != {"contents": "read"}:
-        problems.append(f"repeat.yml has the permissions {repeat.get('permissions')!r}")
+        problems.append(f"{name} has the permissions {repeat.get('permissions')!r}")
     pinned = {
         found["uses"]
-        for name, loaded in others.items()
-        if name != REPEAT
+        for other, loaded in others.items()
+        if other not in BY_HAND
         for job in loaded["jobs"].values()
         for found in job.get("steps", [])
         if "uses" in found
@@ -4045,9 +4052,9 @@ def safety_problems(repeat: Workflow, others: dict[str, Workflow]) -> list[str]:
             if action.startswith("actions/checkout@") and given.get("persist-credentials") is not False:
                 problems.append(f"{job_id} keeps the token in its checkout")
     text = json.dumps(repeat, default=str)
-    problems += [f"repeat.yml reads {found}" for found in re.findall(r"\b(?:secrets|github\.token)\b", text)]
+    problems += [f"{name} reads {found}" for found in re.findall(r"\b(?:secrets|github\.token)\b", text)]
     if repeat.get("env", {}).get("UV_VERSION") != others["ci.yml"]["env"]["UV_VERSION"]:
-        problems.append(f"repeat.yml's uv is {repeat.get('env', {}).get('UV_VERSION')!r}, not ci.yml's")
+        problems.append(f"{name}'s uv is {repeat.get('env', {}).get('UV_VERSION')!r}, not ci.yml's")
     return problems
 
 
@@ -5259,14 +5266,15 @@ def test_the_summary_check_can_fail(tmp_path: Path, fault: Callable[[Workflow], 
 REPEAT_HEADING = "## Repeat runs (`repeat.yml`)"
 
 
-def repeat_table_problems(readme: str, repeat: Workflow) -> list[str]:
-    """Where the workflows README's section on repeat.yml names other jobs than it has."""
-    section = readme.partition(f"\n{REPEAT_HEADING}\n")[2].partition("\n## ")[0]
+def repeat_table_problems(readme: str, repeat: Workflow, heading: str = REPEAT_HEADING) -> list[str]:
+    """Where the workflows README's section under `heading`, on repeat.yml or another workflow run by hand,
+    names other jobs than it has."""
+    section = readme.partition(f"\n{heading}\n")[2].partition("\n## ")[0]
     rows = re.findall(r"^\| `([\w-]+)` \|", section, re.M)
     return (
         []
         if rows == list(repeat["jobs"])
-        else [f"the repeat table's jobs are {rows}, repeat.yml's {list(repeat['jobs'])}"]
+        else [f"the table under {heading!r} names the jobs {rows}, its workflow {list(repeat['jobs'])}"]
     )
 
 
@@ -5285,6 +5293,1363 @@ def test_the_repeat_table_check_can_fail(old: str, new: str) -> None:
     readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
     assert readme.count(old) == 1
     assert repeat_table_problems(readme.replace(old, new), workflow(REPEAT)) != []
+
+
+# The mutant workflow, `mutants.yml`: hand mutants, each a patch committed on the dispatched branch as
+# mutants/<name>.patch, each run in a job of its own beside a job of the commit as it is (the baseline), and
+# one table of what became of each. Its steps run here as written, on a throwaway repository holding a copy of
+# its script, a package of two modules, a test of each, the files a patch may not touch and the patches: the
+# request's check; each mutant's run step with a stub `uv` that records what it was given, and with one that
+# runs this Python's pytest; and the table on the records those leave, fetched as download-artifact fetches.
+MUTANT_WORKFLOW = "mutants.yml"
+MUTANT_CHECK_STEP, MUTANT_COLLECT_STEP = (
+    "The inputs and the patches, checked",
+    "The selection collects a test",
+)
+MUTANT_RUN_STEP, RECORD_STEP = "The mutant, applied and run", "Keep the record"
+RECORDS_FETCH_STEP, TABLE_STEP, TABLE_KEEP_STEP = "Fetch the records", "The table", "Keep the table"
+MUTANT_SCRIPT = REPOSITORY / "scripts" / "mutant_runs.py"
+# A request as a dispatch gives it, each input as text.
+MUTANT_REQUESTED = {
+    "mutants": "edited",
+    "selection": "tests",
+    "profile": "dev",
+    "python": "3.15",
+    "seed": "7",
+    "extra": "",
+}
+# The tree each mutant runs on, beside the script: a package of two modules, a test of each, a workflow, the
+# build's files, and a link to a directory outside it.
+MUTANT_TREE = {
+    "src/materica/__init__.py": "def double(x):\n    return 2 * x\n",
+    "src/materica/half.py": "def half(x):\n    return x / 2\n",
+    "tests/test_double.py": (
+        "from materica import double\n\n\ndef test_double():\n    assert double(3) == 6\n"
+    ),
+    "tests/test_half.py": "from materica.half import half\n\n\ndef test_half():\n    assert half(4) == 2\n",
+    "pyproject.toml": '[tool.pytest.ini_options]\npythonpath = ["src"]\njunit_family = "xunit1"\n',
+    ".github/workflows/ci.yml": "on: push\n",
+    "uv.lock": "version = 1\n",
+}
+
+
+def git_environment() -> dict[str, str]:
+    """The environment a throwaway repository's git runs in, cut off from any repository around the run
+    (`throwaway_git`), with an identity of its own."""
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    return environment | {
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "a",
+        "GIT_AUTHOR_EMAIL": "a@example.org",
+        "GIT_COMMITTER_NAME": "a",
+        "GIT_COMMITTER_EMAIL": "a@example.org",
+    }
+
+
+def in_git(tree: Path, *arguments: str) -> str:
+    ran = subprocess.run(
+        ["git", *arguments], cwd=tree, env=git_environment(), capture_output=True, text=True, check=True
+    )
+    return ran.stdout
+
+
+Change = Callable[[Path], None]
+
+
+def edit(path: str, old: str, new: str) -> Change:
+    def change(tree: Path) -> None:
+        text = (tree / path).read_text(encoding="utf-8")
+        assert text.count(old) == 1, f"{old!r} in {path}"
+        (tree / path).write_text(text.replace(old, new), encoding="utf-8")
+
+    return change
+
+
+def add(path: str, text: str = "x = 1\n") -> Change:
+    def change(tree: Path) -> None:
+        (tree / path).parent.mkdir(parents=True, exist_ok=True)
+        (tree / path).write_text(text, encoding="utf-8")
+
+    return change
+
+
+def delete(path: str) -> Change:
+    return lambda tree: (tree / path).unlink()
+
+
+def executable(path: str) -> Change:
+    return lambda tree: (tree / path).chmod(0o755)
+
+
+def link(path: str, target: str) -> Change:
+    return lambda tree: (tree / path).symlink_to(target)
+
+
+def rename(old: str, new: str) -> Change:
+    def change(tree: Path) -> None:
+        (tree / old).rename(tree / new)
+
+    return change
+
+
+def binary(path: str) -> Change:
+    def change(tree: Path) -> None:
+        (tree / path).write_bytes(b"\x00\x01\x02 not text\n")
+
+    return change
+
+
+def diffed(tree: Path, change: Change, *options: str) -> str:
+    """The patch `git diff` gives of `change` to the committed tree, which is then restored."""
+    change(tree)
+    in_git(tree, "add", "-A")
+    patch = in_git(tree, "diff", "--cached", "-M", *options)
+    in_git(tree, "reset", "-q", "--hard")
+    return patch
+
+
+def written(patch: str) -> Callable[[Path], str]:
+    return lambda tree: patch
+
+
+def changed(change: Change, *options: str) -> Callable[[Path], str]:
+    return lambda tree: diffed(tree, change, *options)
+
+
+# A patch that adds one line to a file, by a path that git would write as given, for paths no change in a tree
+# can make: outside it, from the root, and inside .git.
+def new_file_patch(path: str) -> str:
+    return (
+        f"diff --git a/{path} b/{path}\nnew file mode 100644\n--- /dev/null\n+++ b/{path}\n"
+        "@@ -0,0 +1 @@\n+x = 1\n"
+    )
+
+
+EDITED = edit("src/materica/__init__.py", "2 * x", "3 * x")
+# The patches the request takes, each by its mutant's name: an edit, a new file, a file deleted, a file made
+# executable; an edit whose context the tree does not hold, which its job records as broken; an edit that
+# changes no behaviour; an edit that does not compile; and a module beside the scripts named as one of the
+# standard library's, which reaches the verdict's code only if that code runs from the checkout.
+PATCHES_TAKEN: dict[str, Callable[[Path], str]] = {
+    "edited": changed(EDITED),
+    "added": changed(add("src/materica/third.py", "def third(x):\n    return x / 3\n")),
+    "deleted": changed(delete("tests/test_half.py")),
+    "executable": changed(executable("src/materica/half.py")),
+    "stale": lambda tree: diffed(tree, EDITED).replace("-    return 2 * x", "-    return 5 * x"),
+    "equivalent": changed(edit("src/materica/__init__.py", "2 * x", "x + x")),
+    "syntax": changed(edit("src/materica/half.py", "x / 2", "(x / 2")),
+    "shadow": changed(add("scripts/importlib.py", 'raise ImportError("a module of the patch")\n')),
+}
+# The patches the request refuses, each by its mutant's name, with what it says of each: paths outside the
+# tree, from its root, inside .git, of a character a plain path does not hold, or through a link out of it;
+# under .github/, ignoring case, or mutants/; the runner, and the files that decide what is installed and
+# selected; a link made; binary data, with its bytes and without; a rename; a part not in git's format; a
+# control character; no patch; and a patch that is too long.
+PATCHES_REFUSED: dict[str, tuple[Callable[[Path], str], str]] = {
+    "outside": (written(new_file_patch("../outside.py")), "touches '../outside.py' is not a plain path"),
+    "rooted": (written(new_file_patch("/tmp/rooted.py")), "touches '/tmp/rooted.py' is not a plain path"),
+    "dotgit": (
+        written(new_file_patch(".git/hooks/pre-commit")),
+        "touches .git/hooks/pre-commit is inside .git",
+    ),
+    "spaced": (
+        changed(add("src/materica/sp ace.py")),
+        "touches 'src/materica/sp ace.py' is not a plain path",
+    ),
+    "through": (written(new_file_patch("outside/x.py")), "touches outside/x.py leads out of the checkout"),
+    "workflow": (
+        changed(edit(".github/workflows/ci.yml", "push", "pull_request")),
+        "touches .github/workflows/ci.yml is under .github/",
+    ),
+    "folded": (changed(add(".GitHub/workflows/x.yml", "on: push\n")), "is under .GitHub/"),
+    "patches": (changed(add("mutants/more.patch", "")), "touches mutants/more.patch is under mutants/"),
+    "runner": (
+        changed(edit("scripts/mutant_runs.py", "import argparse\n", "import argparse  # changed\n")),
+        "touches scripts/mutant_runs.py is the runner",
+    ),
+    "project": (changed(edit("pyproject.toml", "xunit1", "xunit2")), "touches pyproject.toml is the runner"),
+    "lock": (changed(edit("uv.lock", "1", "2")), "touches uv.lock is the runner"),
+    "symlink": (changed(link("src/materica/linked.py", "/etc/hostname")), "gives the mode 120000"),
+    "binary": (changed(binary("src/materica/blob.bin"), "--binary"), "is a binary patch"),
+    "binarynote": (changed(binary("src/materica/blob.bin")), "is a binary patch"),
+    "renamed": (changed(rename("src/materica/half.py", "src/materica/other.py")), "renames or copies a file"),
+    "traditional": (
+        written(
+            "--- a/src/materica/half.py\n+++ b/src/materica/half.py\n@@ -1,2 +1,2 @@\n def half(x):\n"
+            "-    return x / 2\n+    return x / 3\n"
+        ),
+        "lists 1 files and 0 `diff --git` headers",
+    ),
+    "control": (
+        lambda tree: diffed(tree, EDITED).replace("3 * x", "3 * x  # \x01"),
+        "holds a control character",
+    ),
+    "empty": (written(""), "git cannot read mutants/empty.patch as a patch"),
+    "huge": (changed(add("src/materica/huge.py", "#" * (1 << 20) + "\n")), "more than 1048576"),
+    "dotted.name": (changed(EDITED), "the mutant 'dotted.name' is not named by"),
+}
+# Names the request refuses whose patch is no file committed in mutants/: none there, one in the tree but not
+# committed, and one committed as a link to another patch.
+NAMES_REFUSED = {
+    "missing": "mutants/missing.patch is not a regular file committed",
+    "uncommitted": "mutants/uncommitted.patch is not a regular file committed",
+    "linkedpatch": "mutants/linkedpatch.patch is not a regular file committed",
+}
+
+
+def mutant_checkout(directory: Path) -> Path:
+    """A throwaway repository holding `MUTANT_TREE`, the script, a link out of it, and a commit of every patch
+    above, with one patch left uncommitted."""
+    tree = directory / "tree"
+    (directory / "elsewhere").mkdir(parents=True, exist_ok=True)
+    for path, text in MUTANT_TREE.items():
+        add(path, text)(tree)
+    (tree / "scripts").mkdir(exist_ok=True)
+    shutil.copy(MUTANT_SCRIPT, tree / "scripts" / "mutant_runs.py")
+    (tree / "outside").symlink_to(directory / "elsewhere")
+    in_git(tree, "init", "-q", "-b", "main")
+    in_git(tree, "add", "-A")
+    in_git(tree, "commit", "-q", "-m", "the tree")
+    patches = {name: make(tree) for name, make in PATCHES_TAKEN.items()}
+    patches |= {name: make(tree) for name, (make, _) in PATCHES_REFUSED.items()}
+    (tree / "mutants").mkdir()
+    for name, patch in patches.items():
+        (tree / "mutants" / f"{name}.patch").write_bytes(patch.encode("utf-8"))
+    (tree / "mutants" / "linkedpatch.patch").symlink_to("edited.patch")
+    in_git(tree, "add", "-A")
+    in_git(tree, "commit", "-q", "-m", "the patches")
+    (tree / "mutants" / "uncommitted.patch").write_bytes(patches["edited"].encode("utf-8"))
+    return tree
+
+
+def mutant_runner(directory: Path, uv: str) -> dict[str, str]:
+    """A runner's environment (`runner`) whose git is cut off from any repository around the run."""
+    return runner(directory, uv) | {
+        name: value for name, value in git_environment().items() if name.startswith("GIT_")
+    }
+
+
+def mutant_request_problems(
+    mutants: Workflow, tree: Path, directory: Path, names: Sequence[str]
+) -> list[str]:
+    """Where the request job's check, run as written on the checkout `tree` for each mutant of `names` alone,
+    takes a patch it must refuse, refuses one it must take, refuses one without saying why, or writes outputs
+    where it refuses; or, for the patches it takes all at once, does not write each output as checked, the
+    matrix the baseline and the mutants in order."""
+    environment = mutant_runner(directory, "")
+    check = step(mutants["jobs"]["request"], MUTANT_CHECK_STEP)
+    refused = {name: why for name, (_, why) in PATCHES_REFUSED.items()} | NAMES_REFUSED
+    problems: list[str] = []
+    for name in names:
+        inputs = {f"inputs.{key}": text for key, text in (MUTANT_REQUESTED | {"mutants": name}).items()}
+        status, outputs, printed = run_step(check, inputs, tree, base=environment, scratch=directory)
+        if name in refused:
+            if status == 0 or outputs:
+                problems.append(f"the check takes the patch {name}")
+            elif refused[name] not in printed:
+                problems.append(
+                    f"the check refuses the patch {name} without saying {refused[name]!r}: {printed}"
+                )
+        elif status != 0:
+            problems.append(f"the check refuses the patch {name}: {printed[-500:]}")
+    taken = [name for name in PATCHES_TAKEN if name in names]
+    if taken:
+        inputs = {
+            f"inputs.{key}": text for key, text in (MUTANT_REQUESTED | {"mutants": " ".join(taken)}).items()
+        }
+        status, outputs, printed = run_step(check, inputs, tree, base=environment, scratch=directory)
+        expected = {
+            "mutants": " ".join(taken),
+            "matrix": json.dumps(["", *taken]),
+            "selection": "tests",
+            "profile": "dev",
+            "python": "3.15",
+            "seed": "7",
+            "extra": "",
+        }
+        if (status, outputs) != (0, expected):
+            problems.append(f"the check of {taken} exits {status} and writes {outputs}: {printed[-300:]}")
+    return problems
+
+
+EVERY_PATCH = [*PATCHES_TAKEN, *PATCHES_REFUSED, *NAMES_REFUSED]
+
+
+def test_the_request_refuses_each_patch_it_cannot_run_safely_and_takes_the_others(tmp_path: Path) -> None:
+    tree = mutant_checkout(tmp_path)
+    assert mutant_request_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path, EVERY_PATCH) == []
+
+
+# Each rule of the check taken out of the script, and the patch the check then takes: a path not plain, inside
+# .git, through a link out of the tree; under .github/, ignoring case, or mutants/; the runner, pyproject.toml
+# or uv.lock; a link made; binary data; a rename; a part not in git's format; a patch not committed as a
+# regular file; a control character; a patch too long; a name not plain. Each is the one rule that refuses
+# its patch, since a patch two rules refuse would show neither.
+RULES_TAKEN_OUT = {
+    "plain-path": (
+        'if not PLAIN_PATH.fullmatch(path) or any(part in {".", ".."} for part in parts):',
+        "if False:",
+        "spaced",
+    ),
+    "dot-git": ('if ".git" in folded:', "if False:", "dotgit"),
+    "symbolic-link": (
+        "if not (root / path).resolve().is_relative_to(root.resolve()):",
+        "if False:",
+        "through",
+    ),
+    "github": (
+        'REFUSED_DIRECTORIES = (".github", MUTANTS_DIRECTORY)',
+        "REFUSED_DIRECTORIES = (MUTANTS_DIRECTORY,)",
+        "workflow",
+    ),
+    "case": (
+        "if folded[0] in {directory.casefold() for directory in REFUSED_DIRECTORIES}:",
+        "if parts[0] in REFUSED_DIRECTORIES:",
+        "folded",
+    ),
+    "patches": (
+        'REFUSED_DIRECTORIES = (".github", MUTANTS_DIRECTORY)',
+        'REFUSED_DIRECTORIES = (".github",)',
+        "patches",
+    ),
+    "runner": (
+        'REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock")',
+        'REFUSED_FILES = ("pyproject.toml", "uv.lock")',
+        "runner",
+    ),
+    "project": (
+        'REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock")',
+        'REFUSED_FILES = (RUNNER, "uv.lock")',
+        "project",
+    ),
+    "lock": (
+        'REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock")',
+        'REFUSED_FILES = (RUNNER, "pyproject.toml")',
+        "lock",
+    ),
+    "modes": ('MODES = ("100644", "100755")', 'MODES = ("100644", "100755", "120000")', "symlink"),
+    "binary": (
+        "BINARY_LINE = re.compile(",
+        'BINARY_LINE = re.compile(r"(?!)")\nNOT_BINARY_LINE = re.compile(',
+        "binary",
+    ),
+    "rename": ('problems.append(f"{relative} renames or copies a file: {line.strip()}")', "pass", "renamed"),
+    "format": ("if headers != len(paths):", "if False:", "traditional"),
+    "committed": (
+        "        listed.returncode != 0\n        or len(entries) != 1\n"
+        '        or not entries[0].startswith(tuple(f"{mode} blob " for mode in MODES))\n'
+        "        or path.is_symlink()\n        or not path.is_file()\n",
+        "        not path.exists()\n",
+        "uncommitted",
+    ),
+    "control": (
+        r'CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")',
+        'CONTROL = re.compile(r"(?!)")',
+        "control",
+    ),
+    "size": ("MAX_PATCH_BYTES = 1 << 20", "MAX_PATCH_BYTES = 1 << 30", "huge"),
+    "name": (
+        'NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")',
+        'NAME = re.compile(r".+")',
+        "dotted.name",
+    ),
+}
+
+
+@pytest.mark.parametrize(("old", "new", "name"), RULES_TAKEN_OUT.values(), ids=list(RULES_TAKEN_OUT))
+def test_the_patch_check_can_fail(tmp_path: Path, old: str, new: str, name: str) -> None:
+    tree = mutant_checkout(tmp_path)
+    edited(tree / "scripts" / "mutant_runs.py", old, new)
+    if name == "binary":
+        # Both signs of binary data taken out: the marker line and git's counts of `-`.
+        edited(tree / "scripts" / "mutant_runs.py", "    if binary and not problems:\n", "    if False:\n")
+    found = mutant_request_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path, [name])
+    assert f"the check takes the patch {name}" in found, found
+
+
+def test_the_request_names_every_committed_patch_when_none_is_named(tmp_path: Path) -> None:
+    """No mutant named runs every patch committed in mutants/: here every refused patch is refused, and the
+    uncommitted one is not among them."""
+    tree = mutant_checkout(tmp_path)
+    environment = mutant_runner(tmp_path, "")
+    check = step(workflow(MUTANT_WORKFLOW)["jobs"]["request"], MUTANT_CHECK_STEP)
+    inputs = {f"inputs.{key}": text for key, text in (MUTANT_REQUESTED | {"mutants": ""}).items()}
+    status, outputs, printed = run_step(check, inputs, tree, base=environment, scratch=tmp_path)
+    assert (status, outputs) == (1, {}), printed
+    for name, (_, why) in PATCHES_REFUSED.items():
+        assert why in printed, name
+    assert "uncommitted" not in printed
+    assert "the mutant missing" not in printed
+
+
+# The request job's outputs for `MUTANT_REQUESTED`, as the jobs after it read them.
+MUTANT_OUTPUTS = {
+    "mutants": "edited",
+    "matrix": json.dumps(["", "edited"]),
+    "selection": "tests",
+    "profile": "dev",
+    "python": "3.15",
+    "seed": "7",
+    "extra": "",
+    "max_parallel": "10",
+}
+# A `uv` that stands for `uv run ...` in a mutant's job: it records its arguments, the profile and any
+# variable of pytest's or Hypothesis's; passes the import check and the collection, which prints one test;
+# and for the run writes a JUnit report of that test, failed where `STUB_FAILING` is set, and exits as pytest
+# stopped at a failure under pytest-xdist and `-x` does.
+MUTANT_STUB_UV = """
+import json, os, sys
+from pathlib import Path
+
+arguments = sys.argv[1:]
+with open(os.environ["STUB_CALLS"], "a", encoding="utf-8") as calls:
+    record = {
+        "arguments": arguments,
+        "profile": os.environ.get("MATERICA_HYPOTHESIS_PROFILE"),
+        "environment": sorted(name for name in os.environ if name.startswith(("PYTEST_", "HYPOTHESIS_"))),
+    }
+    print(json.dumps(record), file=calls)
+if arguments[:2] == ["run", "python"]:
+    sys.exit(0)
+if "--collect-only" in arguments:
+    print("tests/test_double.py::test_double")
+    sys.exit(0)
+failing = bool(os.environ.get("STUB_FAILING"))
+report = next(word.partition("=")[2] for word in arguments if word.startswith("--junitxml="))
+Path(report).write_text(
+    '<testsuites><testsuite><testcase classname="tests.test_double" name="test_double" '
+    'file="tests/test_double.py">'
+    + ('<failure message="assert 9 == 6">assert 9 == 6</failure>' if failing else "")
+    + "</testcase></testsuite></testsuites>",
+    encoding="utf-8",
+)
+sys.exit(2 if failing else 0)
+"""
+# A `uv` whose `uv run` runs the command in the checkout's environment, as the job's `uv sync` makes it: this
+# Python, with the checkout's `src/` first on its path, for `python` and `pytest`, and `timeout` around it.
+MUTANT_UV_RUN = """
+import os, sys
+
+assert sys.argv[1] == "run", sys.argv
+command, rest = sys.argv[2], sys.argv[3:]
+os.environ["PYTHONPATH"] = os.path.join(os.getcwd(), "src")
+if command == "python":
+    os.execv(sys.executable, [sys.executable, *rest])
+if command == "pytest":
+    os.execv(sys.executable, [sys.executable, "-m", "pytest", *rest])
+assert command == "timeout", command
+at = rest.index("pytest")
+os.execvp("timeout", ["timeout", *rest[:at], sys.executable, "-m", "pytest", *rest[at + 1 :]])
+"""
+
+
+class MutantRan(NamedTuple):
+    status: int
+    calls: list[dict[str, Any]]
+    record: dict[str, Any] | None
+    printed: str
+    tree: Path
+    temporary: Path
+
+
+def mutant_context(outputs: Mapping[str, str], mutant: str | None = None) -> dict[str, object]:
+    """The context of a step of a job after the request job, as GitHub gives it: the dispatch's inputs, the
+    request job's outputs, and the request job's steps' outputs null, as GitHub gives a step the job does not
+    have; and the job's mutant, for a mutant's job."""
+    context: dict[str, object] = {f"inputs.{name}": value for name, value in MUTANT_REQUESTED.items()}
+    for name, value in outputs.items():
+        context[CHECKED_AFTER + name], context[CHECKED_IN_REQUEST + name] = value, None
+    return context if mutant is None else context | {"matrix.mutant": mutant}
+
+
+def run_a_mutant(
+    mutants: Workflow,
+    tree: Path,
+    directory: Path,
+    mutant: str,
+    uv: str = MUTANT_STUB_UV,
+    outputs: Mapping[str, str] = MUTANT_OUTPUTS,
+    base: Mapping[str, str] | None = None,
+    **overrides: str,
+) -> MutantRan:
+    """The run step of the job of `mutant` (`""` for the baseline), with its job's environment and
+    `overrides`, run as written with `uv` in `directory` on a fresh clone of the checkout `tree`: its status,
+    each call of the stub `uv`, the record it kept, what it printed, the clone and the job's temporary
+    directory."""
+    tree_copy = directory / "tree"
+    in_git(tree.parent, "clone", "-q", str(tree), str(tree_copy))
+    environment = mutant_runner(directory, uv) | dict(base or {})
+    job = mutants["jobs"]["mutants"]
+    found = step(job, MUTANT_RUN_STEP)
+    found = dict(found, env=job.get("env", {}) | found.get("env", {}) | overrides)
+    context = mutant_context(outputs, mutant)
+    status, _, printed = run_step(found, context, tree_copy, base=environment, scratch=directory)
+    calls_file = directory / "calls.jsonl"
+    calls = (
+        [json.loads(line) for line in calls_file.read_text("utf-8").splitlines()]
+        if calls_file.exists()
+        else []
+    )
+    kept = Path(environment["RUNNER_TEMP"]) / "record" / mutant_runs.RECORD
+    record = json.loads(kept.read_text("utf-8")) if kept.exists() else None
+    return MutantRan(status, calls, record, printed, tree_copy, Path(environment["RUNNER_TEMP"]))
+
+
+def outcome(ran: MutantRan) -> str:
+    return mutant_runs.verdict(ran.record)[0] if ran.record is not None else "no record"
+
+
+def mutant_wiring_problems(mutants: Workflow, tree: Path, directory: Path) -> list[str]:
+    """Where a mutant's run step, run as written with the stub `uv`, falls short: in a job of 10 minutes it
+    does not apply the patch, check that the code imports with a copy of the script outside the checkout,
+    collect the selection and run it under `uv run timeout --foreground --signal=INT` about 420 s, a worker
+    per vCPU under `worksteal`, stopping at the first failure, under the request's seed, its report in the
+    job's temporary directory, with the request's profile and no variable of pytest's or Hypothesis's; it
+    does not record a passing run as survived and a failing one as killed, both exiting 0; the baseline is not
+    run unpatched, exiting 0 where it passed and 1 where it failed; a patch that does not apply is not
+    recorded broken without running anything; or a patch refused, or a job of too few minutes, starts
+    anything or exits 0."""
+    problems: list[str] = []
+    ran = run_a_mutant(mutants, tree, directory / "edited", "edited", JOB_MINUTES="10")
+    copy_of_script = ran.temporary / "runner" / "mutant_runs.py"
+    report = ran.temporary / "record" / mutant_runs.REPORT
+    expected = [
+        ["run", "python", str(copy_of_script), "imports", "src/materica/__init__.py"],
+        ["run", "pytest", "--collect-only", "-q", "tests"],
+        [
+            *("run", "timeout", "--foreground", "--signal=INT", "<seconds>"),
+            *("pytest", "-n", "auto", "--dist", "worksteal", "-x", "tests"),
+            *("--hypothesis-seed=7", f"--junitxml={report}"),
+        ],
+    ]
+    words = [call["arguments"] for call in ran.calls]
+    seconds = re.fullmatch(r"(\d+)s", words[2][4]) if len(words) == 3 and len(words[2]) > 4 else None
+    if seconds:
+        words[2][4] = "<seconds>"
+    if words != expected:
+        problems.append(f"the job of a mutant runs {words}, not {expected}")
+    elif seconds is None or not 7 * 60 - 30 <= int(seconds[1]) <= 7 * 60:
+        problems.append(f"a run of a job of 10 minutes is interrupted after {ran.calls[2]['arguments'][4]}")
+    if not copy_of_script.is_file() or copy_of_script.is_relative_to(ran.tree):
+        problems.append(f"the script that records the verdict runs from {copy_of_script}")
+    problems += [
+        f"a call of uv has the profile {call['profile']!r} and {call['environment']}"
+        for call in ran.calls
+        if call["profile"] != "dev" or call["environment"]
+    ]
+    if "3 * x" not in (ran.tree / "src" / "materica" / "__init__.py").read_text("utf-8"):
+        problems.append("the mutant's patch was not applied")
+    if (ran.status, outcome(ran)) != (0, mutant_runs.SURVIVED):
+        problems.append(
+            f"a mutant whose run passed exits {ran.status} as {outcome(ran)}: {ran.printed[-300:]}"
+        )
+    failed = run_a_mutant(mutants, tree, directory / "failing", "edited", STUB_FAILING="1")
+    if (failed.status, outcome(failed)) != (0, mutant_runs.KILLED):
+        problems.append(f"a mutant whose run failed exits {failed.status} as {outcome(failed)}")
+    baseline = run_a_mutant(mutants, tree, directory / "baseline", "")
+    imports = [call["arguments"] for call in baseline.calls if call["arguments"][:2] == ["run", "python"]]
+    if imports != [["run", "python", str(baseline.temporary / "runner" / "mutant_runs.py"), "imports"]]:
+        problems.append(f"the baseline's import check is {imports}")
+    if in_git(baseline.tree, "status", "--porcelain") or (baseline.status, outcome(baseline)) != (
+        0,
+        "survived",
+    ):
+        problems.append(
+            f"the baseline, passing, changes the tree or exits {baseline.status} as {outcome(baseline)}"
+        )
+    failing_baseline = run_a_mutant(mutants, tree, directory / "baseline-failing", "", STUB_FAILING="1")
+    if failing_baseline.status == 0:
+        problems.append("a baseline whose run failed exits 0")
+    stale = run_a_mutant(mutants, tree, directory / "stale", "stale")
+    if stale.calls or (stale.status, outcome(stale)) != (0, mutant_runs.BROKEN) or stale.record is None:
+        problems.append(f"a patch that does not apply runs {len(stale.calls)} commands, exits {stale.status}")
+    elif stale.record["applied"] is not False:
+        problems.append(f"a patch that does not apply is recorded as {stale.record}")
+    for name, minutes in (("workflow", "60"), ("edited", "3")):
+        stopped = run_a_mutant(
+            mutants, tree, directory / f"stopped-{name}-{minutes}", name, JOB_MINUTES=minutes
+        )
+        if stopped.calls or stopped.status == 0 or outcome(stopped) != mutant_runs.UNDECIDED:
+            problems.append(
+                f"the mutant {name} in a job of {minutes} minutes runs {len(stopped.calls)} commands and "
+                f"exits {stopped.status} as {outcome(stopped)}"
+            )
+    return problems
+
+
+def test_each_mutant_is_applied_and_run_as_ci_runs_pytest_and_recorded(tmp_path: Path) -> None:
+    tree = mutant_checkout(tmp_path)
+    assert mutant_wiring_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path) == []
+
+
+def edited_run_step(mutants: Workflow, old: str, new: str) -> None:
+    found = step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)
+    assert found["run"].count(old) == 1, old
+    found["run"] = found["run"].replace(old, new)
+
+
+def the_script_run_from_the_checkout(mutants: Workflow) -> None:
+    edited_run_step(mutants, 'cp scripts/mutant_runs.py "$runner/mutant_runs.py"\n', "")
+    edited_run_step(mutants, '"$runner/mutant_runs.py" run', "scripts/mutant_runs.py run")
+
+
+def another_profile(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["env"]["MATERICA_HYPOTHESIS_PROFILE"] = "ci"
+
+
+# Faults of the script as the job runs it, each a change to its text: the run interrupted by TERM, the
+# interrupt sent to pytest's group, no room left for it, the first failure not stopped at, the patch never
+# applied, and a job exiting 0 whatever it found.
+SCRIPT_FAULTS = {
+    "terminated": ('"--signal=INT"', '"--signal=TERM"', "the job of a mutant runs"),
+    "group": ('"--foreground", ', "", "the job of a mutant runs"),
+    "no-room": ("(minutes - 3) * 60", "minutes * 60", "interrupted after"),
+    "every-failure": ('"worksteal", "-x", ', '"worksteal", ', "the job of a mutant runs"),
+    "unapplied": (
+        'applied = git(root, "apply", "--whitespace=nowarn", relative)',
+        'applied = git(root, "status")',
+        "the mutant's patch was not applied",
+    ),
+    "always-0": ("return 0 if decided else 1", "return 0", "a baseline whose run failed exits 0"),
+}
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (the_script_run_from_the_checkout, "the script that records the verdict runs from"),
+        (another_profile, "a call of uv has the profile 'ci'"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_mutant_job_check_can_fail(
+    tmp_path: Path, fault: Callable[[Workflow], None], problem: str
+) -> None:
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    fault(mutants)
+    found = mutant_wiring_problems(mutants, mutant_checkout(tmp_path), tmp_path)
+    assert any(problem in line for line in found), found
+
+
+def script_changed(tree: Path, old: str, new: str) -> None:
+    """The checkout's script with `old` changed to `new`, committed, so that every job's clone runs it."""
+    edited(tree / "scripts" / "mutant_runs.py", old, new)
+    in_git(tree, "commit", "-q", "-a", "-m", "a fault of the script")
+
+
+@pytest.mark.parametrize(("old", "new", "problem"), SCRIPT_FAULTS.values(), ids=list(SCRIPT_FAULTS))
+def test_the_mutant_job_check_finds_a_fault_of_the_script(
+    tmp_path: Path, old: str, new: str, problem: str
+) -> None:
+    tree = mutant_checkout(tmp_path)
+    script_changed(tree, old, new)
+    found = mutant_wiring_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path)
+    assert any(problem in line for line in found), found
+
+
+# The mutants run end to end, with this Python's pytest, and what each must come to: the baseline passes; the
+# edit of `double` is killed by its test; the edit that changes nothing survives; the patch whose context is
+# gone and the module that does not compile are broken; and the module beside the scripts survives, as the
+# script that records the verdict runs from its copy.
+END_TO_END = {
+    "": (mutant_runs.SURVIVED, "2 tests passed"),
+    "edited": (mutant_runs.KILLED, "tests/test_double.py::test_double"),
+    "equivalent": (mutant_runs.SURVIVED, "2 tests passed"),
+    "stale": (mutant_runs.BROKEN, "the patch does not apply"),
+    "syntax": (mutant_runs.BROKEN, "the code does not import: src/materica/half.py does not compile"),
+    "shadow": (mutant_runs.SURVIVED, "2 tests passed"),
+}
+
+
+def kept_record(mutants: Workflow, ran: MutantRan, mutant: str, attempt: int = 1) -> Kept:
+    """The record a mutant's job keeps, as its keep step names it and upload-artifact finds it."""
+    keep = step(mutants["jobs"]["mutants"], RECORD_STEP)
+    context = {"matrix.mutant": mutant, "github.run_attempt": attempt, "runner.temp": str(ran.temporary)}
+    name, path = (str(setting(keep["with"][key], context)) for key in ("name", "path"))
+    return Kept(name, artifact_files(path), [])
+
+
+def tabled(
+    mutants: Workflow,
+    tree: Path,
+    directory: Path,
+    uploads: Sequence[Kept],
+    outputs: Mapping[str, str],
+    result: str = "success",
+    attempt: int = 1,
+) -> tuple[int, str, dict[str, Any] | None]:
+    """The table job's steps after its checkout, run as written on a clone of `tree`: the records fetched as
+    the fetch step fetches them from `uploads`, then the table step; its status, what it printed, and the
+    table it kept."""
+    tree_copy = directory / "tree"
+    in_git(tree.parent, "clone", "-q", str(tree), str(tree_copy))
+    environment = mutant_runner(directory, "")
+    job = mutants["jobs"]["table"]
+    context = mutant_context(outputs) | {
+        "needs.mutants.result": result,
+        "github.run_attempt": attempt,
+        "runner.temp": environment["RUNNER_TEMP"],
+    }
+    fetched(step(job, RECORDS_FETCH_STEP), context, {upload.name: upload.files for upload in uploads})
+    status, _, printed = run_step(
+        step(job, TABLE_STEP), context, tree_copy, base=environment, scratch=directory
+    )
+    kept = Path(str(setting(step(job, TABLE_KEEP_STEP)["with"]["path"], context))) / "table.json"
+    return status, printed, json.loads(kept.read_text("utf-8")) if kept.exists() else None
+
+
+def mutant_end_to_end_problems(
+    mutants: Workflow, tree: Path, directory: Path, names: Sequence[str] = tuple(END_TO_END)
+) -> list[str]:
+    """Where the request job, each mutant's job and the table job, their steps run as written with this
+    Python's pytest, do not take the mutants `names`, or come to another outcome for one than `END_TO_END`
+    gives, exit other than 0 with it, or where the table of them all does not give each outcome and fail, as
+    not every mutant was killed, or the table of the baseline and the killed mutant alone does not pass."""
+    problems: list[str] = []
+    environment = mutant_runner(directory / "request", MUTANT_UV_RUN)
+    request = mutants["jobs"]["request"]
+    named = [name for name in names if name]
+    inputs = {
+        f"inputs.{key}": text for key, text in (MUTANT_REQUESTED | {"mutants": " ".join(named)}).items()
+    }
+    status, outputs, printed = run_step(step(request, MUTANT_CHECK_STEP), inputs, tree, base=environment)
+    if status != 0:
+        return [f"the request of {named} exits {status}: {printed[-500:]}"]
+    outputs["max_parallel"] = "10"
+    collect = step(request, MUTANT_COLLECT_STEP)
+    context = mutant_context(outputs) | {CHECKED_IN_REQUEST + name: value for name, value in outputs.items()}
+    status, _, printed = run_step(collect, context, tree, base=environment, scratch=directory / "request")
+    if status != 0:
+        problems.append(f"the selection does not collect: {printed[-500:]}")
+    uploads: dict[str, Kept] = {}
+    workers = {"PYTEST_XDIST_AUTO_NUM_WORKERS": "2"}
+    for mutant in json.loads(outputs["matrix"]):
+        where = directory / f"job-{mutant or '_baseline'}"
+        ran = run_a_mutant(mutants, tree, where, mutant, MUTANT_UV_RUN, outputs, base=workers)
+        found = mutant_runs.verdict(ran.record) if ran.record is not None else ("no record", "")
+        wanted, why = END_TO_END[mutant]
+        if ran.status != 0 or found[0] != wanted or why not in found[1]:
+            problems.append(
+                f"the mutant {mutant!r} exits {ran.status} as {found}, not {wanted} ({why}): "
+                f"{ran.printed[-500:]}"
+            )
+        uploads[mutant] = kept_record(mutants, ran, mutant)
+    if set(names) != set(END_TO_END):
+        return problems
+    status, printed, table = tabled(mutants, tree, directory / "table", list(uploads.values()), outputs)
+    rows = {row["mutant"]: row["outcome"] for row in (table or {}).get("rows", [])}
+    if status == 0 or rows != {mutant: wanted for mutant, (wanted, _) in END_TO_END.items()}:
+        problems.append(f"the table of every mutant exits {status} with the rows {rows}: {printed[-500:]}")
+    alone = dict(outputs, mutants="edited", matrix=json.dumps(["", "edited"]))
+    status, printed, table = tabled(
+        mutants, tree, directory / "table-killed", [uploads[""], uploads["edited"]], alone
+    )
+    if status != 0 or table is None or not table["passed"]:
+        problems.append(f"the table of the baseline and a killed mutant exits {status}: {printed[-500:]}")
+    return problems
+
+
+def test_three_mutants_are_killed_survive_and_are_broken_end_to_end(tmp_path: Path) -> None:
+    tree = mutant_checkout(tmp_path)
+    assert mutant_end_to_end_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path) == []
+
+
+def test_the_end_to_end_check_finds_the_verdicts_code_run_from_the_checkout(tmp_path: Path) -> None:
+    """The control: run from the checkout, the script that checks the imports imports the patch's module
+    beside it, and the mutant that changes no test's code is taken for broken."""
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    the_script_run_from_the_checkout(mutants)
+    found = mutant_end_to_end_problems(mutants, mutant_checkout(tmp_path), tmp_path, ["shadow"])
+    assert any("the mutant 'shadow' exits 0 as ('broken'" in line for line in found), found
+
+
+# Records as a mutant's job writes them, each of the baseline or a mutant, and the outcome the table must give
+# each: a mutant whose patch did not apply, whose code did not import or whose selection did not collect is
+# broken, though its record also holds a failed run; one refused, interrupted, or failed with no test named
+# is undecided; and only a run that failed at a named test, after the baseline passed, is killed.
+FAILED_TEST = [{"test": "tests/test_double.py::test_double", "message": "assert 9 == 6"}]
+
+
+def crafted_record(mutant: str, **facts: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "mutant": mutant,
+        "refused": [],
+        "applied": True,
+        "imports": True,
+        "collected": True,
+        "tests": 2,
+        "status": 0,
+        "failures": [],
+        "message": "",
+    }
+    return base | facts
+
+
+CRAFTED = {
+    "": (crafted_record(""), "survived"),
+    "killed": (crafted_record("killed", status=2, failures=FAILED_TEST), "killed"),
+    "unapplied": (crafted_record("unapplied", applied=False, status=1, failures=FAILED_TEST), "broken"),
+    "unimported": (crafted_record("unimported", imports=False, status=1, failures=FAILED_TEST), "broken"),
+    "uncollected": (crafted_record("uncollected", collected=False, status=2, failures=FAILED_TEST), "broken"),
+    "refused": (crafted_record("refused", refused=["a reason"], status=1, failures=FAILED_TEST), "undecided"),
+    "interrupted": (crafted_record("interrupted", status=124, failures=FAILED_TEST), "undecided"),
+    "unnamed": (crafted_record("unnamed", status=1), "undecided"),
+}
+
+
+def crafted_uploads(records: Mapping[str, dict[str, object]]) -> list[Kept]:
+    return [
+        Kept(f"record-{mutant or '_baseline'}-1", {mutant_runs.RECORD: json.dumps(record).encode()}, [])
+        for mutant, record in records.items()
+    ]
+
+
+def table_verdict_problems(mutants: Workflow, tree: Path, directory: Path) -> list[str]:
+    """Where the table step, run as written on the records `CRAFTED`, gives another outcome than each must
+    have, a broken mutant's above all, or passes; or, the baseline's run failed, gives any mutant killed."""
+    problems: list[str] = []
+    named = [mutant for mutant in CRAFTED if mutant]
+    outputs = dict(MUTANT_OUTPUTS, mutants=" ".join(named), matrix=json.dumps(["", *named]))
+    records = {mutant: record for mutant, (record, _) in CRAFTED.items()}
+    status, printed, table = tabled(mutants, tree, directory / "crafted", crafted_uploads(records), outputs)
+    rows = {row["mutant"]: row["outcome"] for row in (table or {}).get("rows", [])}
+    wanted = {mutant: expected for mutant, (_, expected) in CRAFTED.items()}
+    problems += [
+        f"the table gives the mutant {mutant!r} as {rows.get(mutant)}, not {expected}"
+        for mutant, expected in wanted.items()
+        if rows.get(mutant) != expected
+    ]
+    if status == 0:
+        problems.append("the table passes with mutants that are not killed")
+    records[""] = crafted_record("", status=2, failures=FAILED_TEST)
+    status, printed, table = tabled(mutants, tree, directory / "baseline", crafted_uploads(records), outputs)
+    rows = (table or {"rows": []})["rows"]
+    killed = [row["mutant"] for row in rows if row["mutant"] and row["outcome"] == "killed"]
+    if killed or status == 0 or table is None:
+        problems.append(
+            f"with the baseline failed, the table exits {status} with {killed} killed: {printed[-300:]}"
+        )
+    return problems
+
+
+def test_the_table_never_gives_a_broken_mutant_as_killed(tmp_path: Path) -> None:
+    tree = mutant_checkout(tmp_path)
+    assert table_verdict_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path) == []
+
+
+# Faults of the script's verdict, each a change to its text: a failed run taken for a kill before the patch's
+# application, import and collection are looked at; and a kill counted after the baseline failed.
+VERDICT_FAULTS = {
+    "failures-first": (
+        '    message = str(record.get("message", ""))\n',
+        '    message = str(record.get("message", ""))\n'
+        '    if record.get("failures"):\n        return KILLED, ""\n',
+        "the table gives the mutant 'unapplied' as killed, not broken",
+    ),
+    "baseline-ignored": (
+        "if baseline.outcome != SURVIVED and each.outcome == KILLED:",
+        "if False:",
+        "with the baseline failed, the table exits 1 with ['killed'] killed",
+    ),
+}
+
+
+@pytest.mark.parametrize(("old", "new", "problem"), VERDICT_FAULTS.values(), ids=list(VERDICT_FAULTS))
+def test_the_mutant_table_check_can_fail(tmp_path: Path, old: str, new: str, problem: str) -> None:
+    tree = mutant_checkout(tmp_path)
+    script_changed(tree, old, new)
+    found = table_verdict_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path)
+    assert any(problem in line for line in found), found
+
+
+def mutant_status_problems(mutants: Workflow) -> list[str]:
+    """Where the mutants' jobs can start without the request job succeeding; the table does not wait for
+    them, or does not run whatever they ended in once the request was checked; a record or the table is not
+    kept whenever its step ran; the table does not read the mutants' result and the run's attempt; or any job
+    or step carries on after a failure (`continue-on-error`), which would pass a check that failed."""
+    problems = [line for line in cap_problems(mutants, CAPS[3]) if "can start without" in line]
+    table = mutants["jobs"]["table"]
+    if "mutants" not in table.get("needs", []):
+        problems.append("the table does not wait for the mutants' jobs")
+    for result in ("success", "failure", "cancelled"):
+        context: dict[str, object] = {
+            "success()": result == "success",
+            "failure()": result == "failure",
+            "cancelled()": result == "cancelled",
+            "always()": True,
+            "needs.request.result": "success",
+            "needs.mutants.result": result,
+        }
+        if not truthy(evaluated(condition(table), context)):
+            problems.append(f"the table does not run when the mutants' jobs end in {result}")
+    for job_id, step_id, name in (("mutants", "run", RECORD_STEP), ("table", "table", TABLE_KEEP_STEP)):
+        keep = step(mutants["jobs"][job_id], name)
+        for standing, ended in ((PASSED, "success"), (FAILED, "failure"), (CANCELLED, "cancelled")):
+            if not truthy(evaluated(condition(keep), standing | {f"steps.{step_id}.outcome": ended})):
+                problems.append(f"{name!r} does not run when its step ends in {ended}")
+        if truthy(evaluated(condition(keep), FAILED | {f"steps.{step_id}.outcome": "skipped"})):
+            problems.append(f"{name!r} runs when its step was skipped, with nothing to keep")
+    reads = step(table, TABLE_STEP).get("env", {})
+    for variable, value in (
+        ("MUTANTS_RESULT", "${{ needs.mutants.result }}"),
+        ("ATTEMPT", "${{ github.run_attempt }}"),
+    ):
+        if reads.get(variable) != value:
+            problems.append(f"the table step's {variable} is {reads.get(variable)!r}, not {value}")
+    if "continue-on-error" in keys(mutants):
+        problems.append("mutants.yml sets continue-on-error")
+    return problems
+
+
+def test_every_job_of_the_mutant_workflow_runs_when_it_must_and_none_carries_on() -> None:
+    assert mutant_status_problems(workflow(MUTANT_WORKFLOW)) == []
+
+
+def a_table_after_success_alone(mutants: Workflow) -> None:
+    mutants["jobs"]["table"]["if"] = "needs.request.result == 'success'"
+
+
+def a_table_before_the_mutants(mutants: Workflow) -> None:
+    mutants["jobs"]["table"]["needs"] = ["request"]
+
+
+def a_record_kept_on_success_alone(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], RECORD_STEP)["if"] = "success()"
+
+
+def a_table_kept_when_skipped(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], TABLE_KEEP_STEP)["if"] = "always()"
+
+
+def a_mutant_job_started_whatever_the_request(mutants: Workflow) -> None:
+    mutants["jobs"]["mutants"]["if"] = "always()"
+
+
+def a_result_always_successful(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], TABLE_STEP)["env"]["MUTANTS_RESULT"] = "success"
+
+
+def an_attempt_always_the_first(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], TABLE_STEP)["env"]["ATTEMPT"] = "1"
+
+
+def a_mutant_job_that_carries_on(mutants: Workflow) -> None:
+    mutants["jobs"]["mutants"]["continue-on-error"] = True
+
+
+def a_run_step_that_carries_on(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["continue-on-error"] = True
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_table_after_success_alone, "the table does not run when the mutants' jobs end in failure"),
+        (a_table_before_the_mutants, "the table does not wait for the mutants' jobs"),
+        (a_record_kept_on_success_alone, "'Keep the record' does not run when its step ends in failure"),
+        (a_table_kept_when_skipped, "'Keep the table' runs when its step was skipped"),
+        (a_mutant_job_started_whatever_the_request, "can start without request"),
+        (a_result_always_successful, "the table step's MUTANTS_RESULT is 'success'"),
+        (an_attempt_always_the_first, "the table step's ATTEMPT is '1'"),
+        (a_mutant_job_that_carries_on, "mutants.yml sets continue-on-error"),
+        (a_run_step_that_carries_on, "mutants.yml sets continue-on-error"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_mutant_status_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    fault(mutants)
+    found = mutant_status_problems(mutants)
+    assert any(problem in line for line in found), found
+
+
+def mutant_plumbing_problems(mutants: Workflow, ci: Workflow, tree: Path, directory: Path) -> list[str]:
+    """Where two mutants' jobs, the baseline's among them, or two attempts of one, keep their records under
+    one name; the fetch step's pattern misses one, or takes the table's; the records or the table are kept for
+    another time than ci.yml's uploads that state one; or the table passes on an attempt of the run but the
+    first, or with a mutant's record missing or kept twice."""
+    problems: list[str] = []
+    keep = step(mutants["jobs"]["mutants"], RECORD_STEP)
+    table_keep = step(mutants["jobs"]["table"], TABLE_KEEP_STEP)
+    fetch = step(mutants["jobs"]["table"], RECORDS_FETCH_STEP)
+    named = ["", "baseline", "a", "a-1", "a-1-1", "b_2"]
+    names = Counter(
+        str(setting(keep["with"]["name"], {"matrix.mutant": mutant, "github.run_attempt": attempt}))
+        for mutant in named
+        for attempt in (1, 2, 11)
+    )
+    if shared := sorted(name for name, count in names.items() if count > 1):
+        problems.append(f"two mutants or two attempts keep their records as {shared[:3]}")
+    pattern = str(fetch["with"].get("pattern"))
+    if missed := sorted(name for name in names if not fnmatch.fnmatchcase(name, pattern)):
+        problems.append(f"the fetch step's pattern {pattern!r} misses {missed[:3]}")
+    table_name = str(setting(table_keep["with"]["name"], {"github.run_attempt": 1}))
+    if fnmatch.fnmatchcase(table_name, pattern):
+        problems.append(f"the fetch step's pattern {pattern!r} takes the table, {table_name}")
+    reports = {
+        found.get("with", {}).get("retention-days")
+        for job in ci["jobs"].values()
+        for found in job.get("steps", [])
+        if str(found.get("uses", "")).startswith("actions/upload-artifact@")
+        and "retention-days" in found.get("with", {})
+    }
+    for kept in (keep, table_keep):
+        if {kept["with"].get("retention-days")} != reports:
+            problems.append(
+                f"{kept['name']!r} keeps for {kept['with'].get('retention-days')} days, ci.yml {reports}"
+            )
+    records = {"": crafted_record(""), "edited": crafted_record("edited", status=2, failures=FAILED_TEST)}
+    status, printed, _ = tabled(mutants, tree, directory / "first", crafted_uploads(records), MUTANT_OUTPUTS)
+    if status != 0:
+        problems.append(f"the table of a baseline passed and a mutant killed fails: {printed[-300:]}")
+    for case, uploads, attempt in (
+        ("a second attempt", crafted_uploads(records), 2),
+        ("a record missing", crafted_uploads({"": records[""]}), 1),
+        (
+            "a record twice",
+            [*crafted_uploads(records), Kept("record-edited-2", crafted_uploads(records)[1].files, [])],
+            1,
+        ),
+    ):
+        status, printed, _ = tabled(
+            mutants, tree, directory / case.replace(" ", "-"), uploads, MUTANT_OUTPUTS, attempt=attempt
+        )
+        if status == 0:
+            problems.append(f"the table passes with {case}")
+    return problems
+
+
+def test_every_mutants_record_of_every_attempt_reaches_the_table_under_a_name_of_its_own(
+    tmp_path: Path,
+) -> None:
+    tree = mutant_checkout(tmp_path)
+    assert mutant_plumbing_problems(workflow(MUTANT_WORKFLOW), workflow("ci.yml"), tree, tmp_path) == []
+
+
+def records_by_mutant_alone(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], RECORD_STEP)["with"]["name"] = (
+        "record-${{ matrix.mutant || '_baseline' }}"
+    )
+
+
+def a_baseline_named_as_a_mutant(mutants: Workflow) -> None:
+    keep = step(mutants["jobs"]["mutants"], RECORD_STEP)
+    keep["with"]["name"] = keep["with"]["name"].replace("'_baseline'", "'baseline'")
+
+
+def a_record_pattern_of_another_name(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], RECORDS_FETCH_STEP)["with"]["pattern"] = "records-*"
+
+
+def a_pattern_taking_the_table(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], RECORDS_FETCH_STEP)["with"]["pattern"] = "*"
+
+
+def mutant_records_kept_a_day(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], RECORD_STEP)["with"]["retention-days"] = 1
+
+
+def a_table_of_any_attempt(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], TABLE_STEP)["env"]["ATTEMPT"] = "1"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (records_by_mutant_alone, "two mutants or two attempts keep their records as ['record-_baseline'"),
+        (
+            a_baseline_named_as_a_mutant,
+            "two mutants or two attempts keep their records as ['record-baseline-1'",
+        ),
+        (a_record_pattern_of_another_name, "the fetch step's pattern 'records-*' misses"),
+        (a_pattern_taking_the_table, "the fetch step's pattern '*' takes the table"),
+        (mutant_records_kept_a_day, "'Keep the record' keeps for 1 days"),
+        (a_table_of_any_attempt, "the table passes with a second attempt"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_mutant_plumbing_check_can_fail(
+    tmp_path: Path, fault: Callable[[Workflow], None], problem: str
+) -> None:
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    fault(mutants)
+    found = mutant_plumbing_problems(mutants, workflow("ci.yml"), mutant_checkout(tmp_path), tmp_path)
+    assert any(problem in line for line in found), found
+
+
+# The variables, and setup-uv's setting, that carry a part of the checked request into a step, and that part.
+MUTANT_CARRIERS = {
+    "MUTANTS": "mutants",
+    "SELECTION": "selection",
+    "PROFILE": "profile",
+    "MATERICA_HYPOTHESIS_PROFILE": "profile",
+    "PYTHON_VERSION": "python",
+    "SEED": "seed",
+    "EXTRA": "extra",
+    "python-version": "python",
+}
+
+
+def mutant_reach_problems(mutants: Workflow, repeat: Workflow) -> list[str]:
+    """Where an input could reach pytest's options, the Hypothesis settings or a patch but as the request's
+    check passed it: an input read anywhere but the check step's environment, the run's name and the
+    concurrency group; an expression in a script; a variable of pytest's or Hypothesis's; a step that runs
+    pytest without the checked profile; profiles or Pythons other than repeat.yml's and the script's; a job
+    that reads the checked request by another route than its own, or an output the request job does not
+    write; a part of the request carried as anything but its checked value; or a request job's output that is
+    not its checks'."""
+    problems: list[str] = []
+    request = mutants["jobs"]["request"]
+    check = str(request["steps"].index(step(request, MUTANT_CHECK_STEP)))
+    for at, text in places(mutants):
+        if (
+            INPUT.search(text)
+            and at not in INPUTS_READ_AT
+            and at[:5] != ("jobs", "request", "steps", check, "env")
+        ):
+            problems.append(f"an input is read at {'.'.join(at)}")
+    problems += [
+        f"mutants.yml sets {name}"
+        for name in map(str, keys(mutants))
+        if name.startswith(("PYTEST_", "HYPOTHESIS_"))
+    ]
+    written: dict[str, object] = request.get("outputs", {})
+    problems += [
+        f"the request job's output {name} is {value!r}"
+        for name, value in written.items()
+        if value != (CAP_OUTPUT if name == CAP_STEP_OUTPUT else f"${{{{ {CHECKED_IN_REQUEST}{name} }}}}")
+    ]
+    for job_id, job in mutants["jobs"].items():
+        own, other = checked_route(job_id)
+        for at, text in places(job):
+            if other in text:
+                problems.append(f"{job_id} reads the request through {other} at {'.'.join(at)}")
+            problems += [
+                f"{job_id} reads {CHECKED_AFTER}{name}, which the request job does not write"
+                for name in re.findall(rf"\b{re.escape(CHECKED_AFTER)}(\w+)", text)
+                if name not in written
+            ]
+        for index, found in enumerate(job.get("steps", [])):
+            script = str(found.get("run", ""))
+            if "${{" in script:
+                problems.append(f"a script of {job_id} holds an expression")
+            if re.search(r"\b(?:PYTEST|HYPOTHESIS)_\w+=", script):
+                problems.append(f"a script of {job_id} sets a variable of pytest's or Hypothesis's")
+            carried = dict(found.get("env", {}))
+            if str(found.get("uses", "")).startswith("astral-sh/setup-uv@"):
+                carried["python-version"] = found.get("with", {}).get("python-version")
+            runs_pytest = "pytest" in script or (job_id, found.get("name")) == ("mutants", MUTANT_RUN_STEP)
+            if runs_pytest and "MATERICA_HYPOTHESIS_PROFILE" not in carried:
+                problems.append(f"step {index} of {job_id} runs pytest without the checked profile")
+            if found.get("name") == MUTANT_CHECK_STEP:
+                continue
+            for key, value in carried.items():
+                expected = f"${{{{ {own}{MUTANT_CARRIERS[key]} }}}}" if key in MUTANT_CARRIERS else value
+                if value != expected:
+                    problems.append(f"step {index} of {job_id} sets {key} to {value!r}, not {expected}")
+    inputs = dispatch(mutants)["workflow_dispatch"]["inputs"]
+    repeat_inputs = dispatch(repeat)["workflow_dispatch"]["inputs"]
+    for name, fixed in (("profile", mutant_runs.PROFILES), ("python", mutant_runs.PYTHONS)):
+        listed = [inputs[name]["options"], list(fixed), repeat_inputs[name]["options"]]
+        if any(each != listed[0] for each in listed):
+            problems.append(f"the {name}s of mutants.yml, its script and repeat.yml are {listed}")
+    if mutant_runs.OPTIONS.keys() != repeat_runs.OPTIONS.keys():
+        problems.append(
+            f"the extra options are {list(mutant_runs.OPTIONS)}, repeat.yml's {list(repeat_runs.OPTIONS)}"
+        )
+    return problems
+
+
+def test_no_input_reaches_the_hypothesis_settings_pytests_options_or_a_patch_unchecked() -> None:
+    assert mutant_reach_problems(workflow(MUTANT_WORKFLOW), workflow(REPEAT)) == []
+
+
+def the_mutant_from_the_input(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["env"]["MUTANT"] = "${{ inputs.mutants }}"
+
+
+def the_selection_from_the_input(mutants: Workflow) -> None:
+    step(mutants["jobs"]["request"], MUTANT_COLLECT_STEP)["env"]["SELECTION"] = "${{ inputs.selection }}"
+
+
+def a_profile_of_the_mutants_own(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["env"]["MATERICA_HYPOTHESIS_PROFILE"] = "dev"
+
+
+def no_profile_for_the_run(mutants: Workflow) -> None:
+    del step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["env"]["MATERICA_HYPOTHESIS_PROFILE"]
+
+
+def an_expression_in_the_run(mutants: Workflow) -> None:
+    edited_run_step(
+        mutants, 'run "$RUNNER_TEMP/record"\n', 'run "$RUNNER_TEMP/record" "${{ matrix.mutant }}"\n'
+    )
+
+
+def options_for_every_step(mutants: Workflow) -> None:
+    mutants["env"]["PYTEST_ADDOPTS"] = "-p no:randomly"
+
+
+def a_seed_of_the_requests_step(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["env"]["SEED"] = "${{ steps.checked.outputs.seed }}"
+
+
+def an_output_never_written_read(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], TABLE_STEP)["env"]["SEED"] = "${{ needs.request.outputs.sead }}"
+
+
+def a_profile_option_of_its_own(mutants: Workflow) -> None:
+    dispatch(mutants)["workflow_dispatch"]["inputs"]["profile"]["options"].append("quick")
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (the_mutant_from_the_input, "an input is read at jobs.mutants.steps.3.env.MUTANT"),
+        (the_selection_from_the_input, "an input is read at jobs.request.steps.4.env.SELECTION"),
+        (a_profile_of_the_mutants_own, "step 3 of mutants sets MATERICA_HYPOTHESIS_PROFILE to 'dev'"),
+        (no_profile_for_the_run, "step 3 of mutants runs pytest without the checked profile"),
+        (an_expression_in_the_run, "a script of mutants holds an expression"),
+        (options_for_every_step, "mutants.yml sets PYTEST_ADDOPTS"),
+        (a_seed_of_the_requests_step, "mutants reads the request through steps.checked.outputs. at steps.3"),
+        (
+            an_output_never_written_read,
+            "table reads needs.request.outputs.sead, which the request job does not",
+        ),
+        (a_profile_option_of_its_own, "the profiles of mutants.yml, its script and repeat.yml are"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_mutant_reach_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    fault(mutants)
+    found = mutant_reach_problems(mutants, workflow(REPEAT))
+    assert any(problem in line for line in found), found
+
+
+def test_the_mutant_workflow_runs_on_a_dispatch_by_hand_alone_and_reads_and_writes_nothing_else() -> None:
+    assert triggers_problems(workflow(MUTANT_WORKFLOW), MUTANT_WORKFLOW) == []
+    assert safety_problems(workflow(MUTANT_WORKFLOW), workflows(), MUTANT_WORKFLOW) == []
+
+
+def a_push_too(mutants: Workflow) -> None:
+    cast(dict[object, object], mutants)[True] = {"workflow_dispatch": {}, "push": {}}
+
+
+def written_mutant_permissions(mutants: Workflow) -> None:
+    mutants["permissions"] = {"contents": "write"}
+
+
+def a_secret_in_the_table(mutants: Workflow) -> None:
+    step(mutants["jobs"]["table"], TABLE_STEP)["env"]["TOKEN"] = "${{ secrets.CONFIDENTIAL_SCAN_KEY }}"
+
+
+def the_mutants_uv_cache_saved(mutants: Workflow) -> None:
+    del mutants["jobs"]["mutants"]["steps"][1]["with"]["save-cache"]
+
+
+def the_mutants_token_kept(mutants: Workflow) -> None:
+    del mutants["jobs"]["mutants"]["steps"][0]["with"]["persist-credentials"]
+
+
+def the_tables_checkout_by_its_tag(mutants: Workflow) -> None:
+    mutants["jobs"]["table"]["steps"][0]["uses"] = "actions/checkout@v7"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_push_too, "mutants.yml runs on {'workflow_dispatch': {}, 'push': {}}"),
+        (written_mutant_permissions, "mutants.yml has the permissions {'contents': 'write'}"),
+        (a_secret_in_the_table, "mutants.yml reads secrets"),
+        (the_mutants_uv_cache_saved, "mutants saves the uv cache"),
+        (the_mutants_token_kept, "mutants keeps the token in its checkout"),
+        (the_tables_checkout_by_its_tag, "table uses actions/checkout@v7, not pinned to a commit"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_mutant_safety_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    fault(mutants)
+    found = triggers_problems(mutants, MUTANT_WORKFLOW) + safety_problems(
+        mutants, workflows(), MUTANT_WORKFLOW
+    )
+    assert any(problem in line for line in found), found
+
+
+# A dispatch of the request above on one ref, and those that differ from it in one input each.
+MUTANT_DISPATCHED = {"github.ref": "refs/heads/a", "github.run_id": "1"} | {
+    f"inputs.{name}": value for name, value in MUTANT_REQUESTED.items()
+}
+MUTANT_DIFFERING = {
+    "github.ref": "refs/heads/b",
+    "inputs.mutants": "added",
+    "inputs.selection": "tests/unit",
+    "inputs.profile": "ci",
+    "inputs.python": "3.11",
+    "inputs.seed": "8",
+    "inputs.extra": "--shard records",
+}
+
+
+def mutant_concurrency_problems(mutants: Workflow) -> list[str]:
+    """Where two dispatches of one request on one ref could run at once, or a dispatch could cancel another or
+    wait behind another request."""
+    settings = cast(dict[str, object], mutants.get("concurrency") or {})
+    context = MUTANT_DISPATCHED | {"github.workflow": mutants["name"]}
+    problems: list[str] = []
+    if truthy(setting(settings.get("cancel-in-progress", False), context)):
+        problems.append("a dispatch cancels the one running in its group")
+    group = setting(settings.get("group"), context)
+    if group in (None, "") or setting(settings.get("group"), context | {"github.run_id": "2"}) != group:
+        problems.append("two dispatches of one request on one ref do not share a group")
+    problems += [
+        f"a dispatch of another {key} shares the group {group!r}"
+        for key, value in MUTANT_DIFFERING.items()
+        if setting(settings.get("group"), context | {key: value}) == group
+    ]
+    return problems
+
+
+def test_a_mutant_dispatch_waits_only_behind_one_of_the_same_request() -> None:
+    assert mutant_concurrency_problems(workflow(MUTANT_WORKFLOW)) == []
+
+
+@pytest.mark.parametrize(
+    ("concurrency", "problem"),
+    [
+        (None, "two dispatches of one request on one ref do not share a group"),
+        (
+            {"group": "${{ github.workflow }}-${{ github.ref }}"},
+            "a dispatch of another inputs.mutants shares",
+        ),
+        ({"group": "${{ github.workflow }}-${{ github.run_id }}"}, "of one request on one ref do not share"),
+        ({"group": "${{ github.workflow }}", "cancel-in-progress": True}, "cancels the one running"),
+    ],
+    ids=["none", "a-group-per-ref", "a-group-per-run", "cancelling"],
+)
+def test_the_mutant_concurrency_check_can_fail(concurrency: object, problem: str) -> None:
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    mutants["concurrency"] = concurrency
+    found = mutant_concurrency_problems(mutants)
+    assert any(problem in line for line in found), found
+
+
+# The heading of the workflows README's section on mutants.yml, whose table holds a row for each of its jobs.
+MUTANTS_HEADING = "## Mutant tables (`mutants.yml`)"
+
+
+def test_the_workflows_readme_names_the_jobs_of_the_mutant_workflow() -> None:
+    readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
+    assert repeat_table_problems(readme, workflow(MUTANT_WORKFLOW), MUTANTS_HEADING) == []
+    assert readme.count("| `table` |") == 1
+    assert repeat_table_problems(
+        readme.replace("| `table` |", "| `tables` |"), workflow(MUTANT_WORKFLOW), MUTANTS_HEADING
+    )
+    assert repeat_table_problems(
+        readme.replace(MUTANTS_HEADING, "## Mutants"), workflow(MUTANT_WORKFLOW), MUTANTS_HEADING
+    )
 
 
 # The repeat request's warning on a node whose tests are derandomized (#43's review, L7): nodes, with extra

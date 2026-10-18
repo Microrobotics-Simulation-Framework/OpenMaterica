@@ -244,6 +244,8 @@ TREE_READERS = (
 LOCATES_NO_RULED_DATA = {
     "scripts/check_confidential.py": "reads the tracked files and the digests, whose rule runs its tests",
     "scripts/gen_vocabulary.py": "reads the specification's tables; the specification rule runs its tests",
+    "scripts/mutant_runs.py": "names its own copy for the mutant job's import check, and reads where each "
+    "module it imports came from; it opens no data file",
     "scripts/pre_review.py": "reads the tree through git and `ast`; its own tests read it again and hold it",
     "tests/conftest.py": "locates the example database; a change to a conftest selects every test",
     "tests/fuzz/jsonio_bytes.py": "an Atheris target: CI's fuzz job runs it, this script cannot",
