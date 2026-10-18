@@ -48,10 +48,13 @@ on:
         default: ""
 
 # A dispatch waits while another of the same inputs runs on the same ref, whose seeds it would repeat; one of
-# other inputs runs beside it. None is ever cancelled.
+# other inputs runs beside it. None is cancelled: by default GitHub cancels a run pending in a group when
+# another queues, and `queue: max` keeps up to 100 pending, in the order they came (GitHub's "Control the
+# concurrency of workflows and jobs", read 2026-10-18; actionlint 1.7.12 predates the key).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.node }}-${{ inputs.profile }}-${{ inputs.python }}-${{ inputs.jobs }}-${{ inputs.runs }}-${{ inputs.first_seed }}-${{ inputs.extra }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read

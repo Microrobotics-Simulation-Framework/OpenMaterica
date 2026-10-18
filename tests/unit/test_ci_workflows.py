@@ -19,6 +19,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 import tomllib
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence, Set
@@ -4143,6 +4144,12 @@ DIFFERING = {
 }
 
 
+# GitHub cancels a run pending in a concurrency group when another queues, unless the group sets `queue: max`,
+# which keeps up to 100 pending in order (GitHub's "Control the concurrency of workflows and jobs", read
+# 2026-10-18; #46's review, L2).
+PENDING_CANCELLED = "a dispatch pending in its group is cancelled when another queues: queue is not max"
+
+
 def repeat_concurrency_problems(repeat: Workflow) -> list[str]:
     """Where two dispatches of one request on one ref, whose runs share their seeds, could run at once, or a
     dispatch could cancel, replace or wait behind another request."""
@@ -4154,6 +4161,8 @@ def repeat_concurrency_problems(repeat: Workflow) -> list[str]:
     problems: list[str] = []
     if truthy(setting(settings.get("cancel-in-progress", False), context)):
         problems.append("a dispatch cancels the one running in its group")
+    if settings.get("queue") != "max":
+        problems.append(PENDING_CANCELLED)
     group = setting(settings.get("group"), context)
     if setting(settings.get("group"), context | {"github.run_id": "2"}) != group:
         problems.append("two dispatches of one request on one ref do not share a group")
@@ -5307,6 +5316,7 @@ MUTANT_CHECK_STEP, MUTANT_COLLECT_STEP = (
     "The selection collects a test",
 )
 MUTANT_RUN_STEP, RECORD_STEP = "The mutant, applied and run", "Keep the record"
+JOB_START_STEP, JOB_START_OUTPUT = "The job's start", "steps.started.outputs.at"
 RECORDS_FETCH_STEP, TABLE_STEP, TABLE_KEEP_STEP = "Fetch the records", "The table", "Keep the table"
 MUTANT_SCRIPT = REPOSITORY / "scripts" / "mutant_runs.py"
 # A request as a dispatch gives it, each input as text.
@@ -5919,11 +5929,13 @@ class MutantRan(NamedTuple):
 def mutant_context(outputs: Mapping[str, str], mutant: str | None = None) -> dict[str, object]:
     """The context of a step of a job after the request job, as GitHub gives it: the dispatch's inputs, the
     request job's outputs, and the request job's steps' outputs null, as GitHub gives a step the job does not
-    have; and the job's mutant, for a mutant's job."""
+    have; and the job's mutant and its start, now, for a mutant's job."""
     context: dict[str, object] = {f"inputs.{name}": value for name, value in MUTANT_REQUESTED.items()}
     for name, value in outputs.items():
         context[CHECKED_AFTER + name], context[CHECKED_IN_REQUEST + name] = value, None
-    return context if mutant is None else context | {"matrix.mutant": mutant}
+    if mutant is None:
+        return context
+    return context | {"matrix.mutant": mutant, JOB_START_OUTPUT: str(int(time.time()))}
 
 
 def run_a_mutant(
@@ -5971,8 +5983,9 @@ def mutant_wiring_problems(mutants: Workflow, tree: Path, directory: Path) -> li
     job's temporary directory, with the request's profile and no variable of pytest's or Hypothesis's; it
     does not record a passing run as survived and a failing one as killed, both exiting 0; the baseline is not
     run unpatched, exiting 0 where it passed and 1 where it failed; a patch that does not apply is not
-    recorded broken without running anything; or a patch refused, or a job of too few minutes, starts
-    anything or exits 0."""
+    recorded broken without running anything; a patch refused, a job of too few minutes, or one whose start
+    is later than now, starts anything or exits 0; or a job that started two minutes before its run step is
+    not interrupted that much sooner."""
     problems: list[str] = []
     ran = run_a_mutant(mutants, tree, directory / "edited", "edited", JOB_MINUTES="10")
     copy_of_script = ran.temporary / "runner" / "mutant_runs.py"
@@ -6010,6 +6023,15 @@ def mutant_wiring_problems(mutants: Workflow, tree: Path, directory: Path) -> li
         problems.append(
             f"a mutant whose run passed exits {ran.status} as {outcome(ran)}: {ran.printed[-300:]}"
         )
+    started = str(int(time.time()) - 120)
+    late = run_a_mutant(mutants, tree, directory / "late", "edited", JOB_MINUTES="10", JOB_STARTED=started)
+    late_words = [call["arguments"] for call in late.calls]
+    late_seconds = re.fullmatch(r"(\d+)s", late_words[2][at]) if len(late_words) == 3 else None
+    if late_seconds is None or not 5 * 60 - 30 <= int(late_seconds[1]) <= 5 * 60:
+        problems.append(
+            "a run of a job of 10 minutes that started 2 minutes before its run step is interrupted after "
+            f"{late_words[2][at] if len(late_words) == 3 else late_words}"
+        )
     failed = run_a_mutant(mutants, tree, directory / "failing", "edited", STUB_FAILING="1")
     if (failed.status, outcome(failed)) != (0, mutant_runs.KILLED):
         problems.append(f"a mutant whose run failed exits {failed.status} as {outcome(failed)}")
@@ -6033,16 +6055,67 @@ def mutant_wiring_problems(mutants: Workflow, tree: Path, directory: Path) -> li
         problems.append(f"a patch that does not apply runs {len(stale.calls)} commands, exits {stale.status}")
     elif stale.record["applied"] is not False:
         problems.append(f"a patch that does not apply is recorded as {stale.record}")
-    for name, minutes in (("workflow", "60"), ("edited", "3")):
-        stopped = run_a_mutant(
-            mutants, tree, directory / f"stopped-{name}-{minutes}", name, JOB_MINUTES=minutes
-        )
+    now, future = str(int(time.time())), str(int(time.time()) + 600)
+    for name, minutes, start in (("workflow", "60", now), ("edited", "3", now), ("edited", "60", future)):
+        where = directory / f"stopped-{name}-{minutes}-{start}"
+        stopped = run_a_mutant(mutants, tree, where, name, JOB_MINUTES=minutes, JOB_STARTED=start)
         if stopped.calls or stopped.status == 0 or outcome(stopped) != mutant_runs.UNDECIDED:
             problems.append(
-                f"the mutant {name} in a job of {minutes} minutes runs {len(stopped.calls)} commands and "
-                f"exits {stopped.status} as {outcome(stopped)}"
+                f"the mutant {name} in a job of {minutes} minutes started at {start} runs "
+                f"{len(stopped.calls)} commands and exits {stopped.status} as {outcome(stopped)}"
             )
     return problems
+
+
+def job_start_problems(mutants: Workflow, directory: Path) -> list[str]:
+    """Where a mutant's job does not record its start first, before its checkout, as the step writes it run as
+    written (seconds since the epoch, now), or its run step does not read that start (#46's review, L3)."""
+    job = mutants["jobs"]["mutants"]
+    problems: list[str] = []
+    first = job["steps"][0]
+    if first.get("name") != JOB_START_STEP:
+        problems.append(f"the job's first step is {first.get('name') or first.get('uses')!r}")
+    before = int(time.time())
+    status, outputs, printed = run_step(
+        step(job, JOB_START_STEP), {}, directory, base=runner(directory, ""), scratch=directory
+    )
+    at = outputs.get("at", "")
+    if status != 0 or not re.fullmatch(r"\d+", at) or not before <= int(at) <= before + 5:
+        problems.append(f"the job's start step exits {status} and writes {outputs}: {printed[-200:]}")
+    read = step(job, MUTANT_RUN_STEP).get("env", {}).get("JOB_STARTED")
+    if read != f"${{{{ {JOB_START_OUTPUT} }}}}" or step(job, JOB_START_STEP).get("id") != "started":
+        problems.append(f"the run step reads the job's start as {read!r}")
+    return problems
+
+
+def test_each_mutants_job_records_its_start_first(tmp_path: Path) -> None:
+    assert job_start_problems(workflow(MUTANT_WORKFLOW), tmp_path) == []
+
+
+def a_start_after_the_setup(mutants: Workflow) -> None:
+    steps = mutants["jobs"]["mutants"]["steps"]
+    steps.insert(3, steps.pop(0))
+
+
+def a_start_read_from_elsewhere(mutants: Workflow) -> None:
+    step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["env"]["JOB_STARTED"] = "${{ github.run_id }}"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_start_after_the_setup, "the job's first step is"),
+        (a_start_read_from_elsewhere, "the run step reads the job's start as '${{ github.run_id }}'"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_job_start_check_can_fail(
+    tmp_path: Path, fault: Callable[[Workflow], None], problem: str
+) -> None:
+    mutants = copy.deepcopy(workflow(MUTANT_WORKFLOW))
+    fault(mutants)
+    found = job_start_problems(mutants, tmp_path)
+    assert any(problem in line for line in found), found
 
 
 def test_each_mutant_is_applied_and_run_as_ci_runs_pytest_and_recorded(tmp_path: Path) -> None:
@@ -6066,8 +6139,9 @@ def another_profile(mutants: Workflow) -> None:
 
 
 # Faults of the script as the job runs it, each a change to its text: the environment synced after the patch,
-# the run interrupted by TERM, the interrupt sent to pytest's group, no room left for it, the first failure
-# not stopped at, the patch never applied, and a job exiting 0 whatever it found.
+# the run interrupted by TERM, the interrupt sent to pytest's group, no room left for it, its minutes counted
+# from the run step rather than the job's start, the first failure not stopped at, the patch never applied,
+# and a job exiting 0 whatever it found.
 SCRIPT_FAULTS = {
     "synced": (
         'UV_RUN = ("uv", "run", "--no-sync", "--frozen")',
@@ -6077,6 +6151,11 @@ SCRIPT_FAULTS = {
     "terminated": ('"--signal=INT"', '"--signal=TERM"', "the job of a mutant runs"),
     "group": ('"--foreground", ', "", "the job of a mutant runs"),
     "no-room": ("(minutes - 3) * 60", "minutes * 60", "interrupted after"),
+    "from-the-step": (
+        "deadline = started + (minutes - 3) * 60",
+        "deadline = now + (minutes - 3) * 60",
+        "started 2 minutes before its run step is interrupted after",
+    ),
     "every-failure": ('"worksteal", "-x", ', '"worksteal", ', "the job of a mutant runs"),
     "unapplied": (
         'applied = git(root, "apply", "--whitespace=nowarn", relative)',
@@ -6754,13 +6833,13 @@ def a_profile_option_of_its_own(mutants: Workflow) -> None:
 @pytest.mark.parametrize(
     ("fault", "problem"),
     [
-        (the_mutant_from_the_input, "an input is read at jobs.mutants.steps.3.env.MUTANT"),
+        (the_mutant_from_the_input, "an input is read at jobs.mutants.steps.4.env.MUTANT"),
         (the_selection_from_the_input, "an input is read at jobs.request.steps.4.env.SELECTION"),
-        (a_profile_of_the_mutants_own, "step 3 of mutants sets MATERICA_HYPOTHESIS_PROFILE to 'dev'"),
-        (no_profile_for_the_run, "step 3 of mutants runs pytest without the checked profile"),
+        (a_profile_of_the_mutants_own, "step 4 of mutants sets MATERICA_HYPOTHESIS_PROFILE to 'dev'"),
+        (no_profile_for_the_run, "step 4 of mutants runs pytest without the checked profile"),
         (an_expression_in_the_run, "a script of mutants holds an expression"),
         (options_for_every_step, "mutants.yml sets PYTEST_ADDOPTS"),
-        (a_seed_of_the_requests_step, "mutants reads the request through steps.checked.outputs. at steps.3"),
+        (a_seed_of_the_requests_step, "mutants reads the request through steps.checked.outputs. at steps.4"),
         (
             an_output_never_written_read,
             "table reads needs.request.outputs.sead, which the request job does not",
@@ -6794,11 +6873,11 @@ def a_secret_in_the_table(mutants: Workflow) -> None:
 
 
 def the_mutants_uv_cache_saved(mutants: Workflow) -> None:
-    del mutants["jobs"]["mutants"]["steps"][1]["with"]["save-cache"]
+    del mutants["jobs"]["mutants"]["steps"][2]["with"]["save-cache"]
 
 
 def the_mutants_token_kept(mutants: Workflow) -> None:
-    del mutants["jobs"]["mutants"]["steps"][0]["with"]["persist-credentials"]
+    del mutants["jobs"]["mutants"]["steps"][1]["with"]["persist-credentials"]
 
 
 def the_tables_checkout_by_its_tag(mutants: Workflow) -> None:
@@ -6849,6 +6928,8 @@ def mutant_concurrency_problems(mutants: Workflow) -> list[str]:
     problems: list[str] = []
     if truthy(setting(settings.get("cancel-in-progress", False), context)):
         problems.append("a dispatch cancels the one running in its group")
+    if settings.get("queue") != "max":
+        problems.append(PENDING_CANCELLED)
     group = setting(settings.get("group"), context)
     if group in (None, "") or setting(settings.get("group"), context | {"github.run_id": "2"}) != group:
         problems.append("two dispatches of one request on one ref do not share a group")
@@ -6882,6 +6963,17 @@ def test_the_mutant_concurrency_check_can_fail(concurrency: object, problem: str
     mutants["concurrency"] = concurrency
     found = mutant_concurrency_problems(mutants)
     assert any(problem in line for line in found), found
+
+
+def test_the_concurrency_checks_find_a_pending_dispatch_cancelled() -> None:
+    """The control of `queue: max`: each hand-run workflow's own concurrency without it."""
+    for name, problems in (
+        (REPEAT, repeat_concurrency_problems),
+        (MUTANT_WORKFLOW, mutant_concurrency_problems),
+    ):
+        found = copy.deepcopy(workflow(name))
+        del found["concurrency"]["queue"]
+        assert problems(found) == [PENDING_CANCELLED], name
 
 
 # The heading of the workflows README's section on mutants.yml, whose table holds a row for each of its jobs.

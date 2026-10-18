@@ -64,7 +64,10 @@ reads it, and no extra argument but the two listed is taken. A job of runs start
 running (`uv run timeout --foreground --signal=INT`, as `ci.yml`'s jobs do), three minutes before its timeout: 60 minutes at
 `dev`, 120 at `ci`, 360 at `deep`. The workflow reads the repository alone (`contents: read`), reads no secret,
 and restores the uv cache CI saved but saves none. A dispatch waits behind a running one of the same inputs on the
-same ref, whose seeds it would repeat; one of other inputs runs beside it, and none is cancelled.
+same ref, whose seeds it would repeat; one of other inputs runs beside it, and none is cancelled: GitHub
+cancels a run pending in a concurrency group when another queues, unless the group sets `queue: max`, which
+holds up to 100 pending in order (GitHub's "Control the concurrency of workflows and jobs", read
+2026-10-18), and both hand-run workflows set it.
 Each run draws what its seed draws on any machine. Until `tests/conftest.py`'s profiles stopped inheriting
 Hypothesis's own `ci` profile, which `CI=true` loads on every runner and which sets `derandomize=True`, every run
 drew the same examples whatever its seed (`tests/README.md`, "Repeat runs on CI").
@@ -93,7 +96,7 @@ Python; the seed every run draws under, or none for one drawn at random; and ext
 | Job | Runs | When |
 |---|---|---|
 | `request` | checks the inputs and every patch they name (`scripts/mutant_runs.py request`, on the runner's Python) and writes them, checked, as its outputs, the matrix of jobs among them, which the jobs after it read in place of the inputs; then collects the selection with the extra arguments, so that a test that does not exist fails before any mutant's job starts; then checks the mutants' cap, `MUTANT_MAX_PARALLEL` (below) | every dispatch |
-| `mutants` | one job for the baseline and one for each mutant: a clean checkout of the dispatched commit, the patch applied (`git apply`), every module of the package imported and each Python file the patch touches compiled, the selection collected, and then run as CI's test jobs run pytest, a worker per vCPU under `worksteal`, stopping at the first failure, under the request's seed and profile, interrupted three minutes before the job's timeout (60 minutes at `dev`, 120 at `ci`, 360 at `deep`); its record kept 90 days as the artifact `record-<mutant>-<attempt>` (`record-_baseline-<attempt>` for the baseline); fails where it could not decide, and where the baseline did not pass | after `request`, the jobs side by side, at most `MUTANT_MAX_PARALLEL` at once (`max-parallel`), 10 where it is unset (below), none cancelled by another's failure (`fail-fast: false`) |
+| `mutants` | one job for the baseline and one for each mutant: a clean checkout of the dispatched commit, the patch applied (`git apply`), every module of the package imported and each Python file the patch touches compiled, the selection collected, and then run as CI's test jobs run pytest, a worker per vCPU under `worksteal`, stopping at the first failure, under the request's seed and profile, interrupted three minutes before the job's timeout (60 minutes at `dev`, 120 at `ci`, 360 at `deep`), counted from the job's first step, so that a slow setup comes out of the run's time; its record kept 90 days as the artifact `record-<mutant>-<attempt>` (`record-_baseline-<attempt>` for the baseline); fails where it could not decide, and where the baseline did not pass | after `request`, the jobs side by side, at most `MUTANT_MAX_PARALLEL` at once (`max-parallel`), 10 where it is unset (below), none cancelled by another's failure (`fail-fast: false`) |
 | `table` | one row for the baseline and one for each mutant, on the run's page and kept 90 days as the artifact `mutant-table-<attempt>` (`table.md`, `table.json`): killed, with the collected test that failed first; survived; broken, where the patch does not apply or the code does not import or collect, in one process or under pytest-xdist (a module or a worker in its report where a test should be), with why; or undecided, with why. Where the baseline did not pass, no mutant counts as killed. Fails unless the baseline passed and every mutant was killed, each with one record, every mutant's job succeeded, and the run is on its first attempt | after the mutants' jobs, whatever their result, once the request was checked |
 
 A patch is a file of the dispatched commit, never text from the dispatch form, and the request job refuses,
@@ -123,7 +126,7 @@ mutant's run replays exactly. Under pytest-xdist, `-x` ends a run that failed as
 a run without xdist exits 1; checked 2026-10-18), so a run that stopped so counts as killed when its report
 names the failed test. The workflow reads the repository alone (`contents: read`), reads no secret, restores
 the uv cache CI saved and saves none, and never cancels another dispatch; a dispatch waits behind a running
-one of the same inputs on the same ref. `tests/unit/test_ci_workflows.py` holds it to each of these, running
+one of the same inputs on the same ref, and others pending behind it wait in turn (`queue: max`, above). `tests/unit/test_ci_workflows.py` holds it to each of these, running
 its steps as written on a throwaway repository, with a stub in place of pytest and with this Python's
 pytest, end to end on mutants that are killed, survive and are broken.
 

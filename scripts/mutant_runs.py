@@ -615,10 +615,12 @@ def run_mutant(
     root: Path,
     records: Path,
     script: Path,
-    clock: Callable[[], float] = time.monotonic,
+    clock: Callable[[], float] = time.time,
 ) -> dict[str, Any]:
     """The record of the mutant `MUTANT` (`""` for the baseline), run in the checkout at `root` until three
-    minutes before the job's timeout (`JOB_MINUTES`), counted from now: its patch checked and applied, the
+    minutes before the job's timeout (`JOB_MINUTES`), counted from the job's start (`JOB_STARTED`, seconds
+    since the epoch, no later than now), so that its setup comes out of the run's time and not out of the
+    three minutes the interrupt needs (#46's review, L3): its patch checked and applied, the
     code imported (`script`'s `imports`, in the project's environment), the selection collected, and then run
     under `timeout --foreground --signal=INT`, as CI's jobs run pytest, stopping at the first failure; the
     failures its report names are split into the collected tests' and the rest (`split_failures`). Each
@@ -626,7 +628,9 @@ def run_mutant(
     problems: list[str] = []
     minutes = whole_number("the job's minutes", environment.get("JOB_MINUTES", ""), 4, 360, problems)
     seed = whole_number("the seed", environment.get("SEED", ""), 0, MAX_SEED, problems)
-    deadline = clock() + (minutes - 3) * 60
+    now = clock()
+    started = whole_number("the job's start", environment.get("JOB_STARTED", ""), 0, int(now), problems)
+    deadline = started + (minutes - 3) * 60
     mutant = environment.get("MUTANT", "")
     selection = [word for word in environment.get("SELECTION", "").split(" ") if word]
     extra = [word for word in environment.get("EXTRA", "").split(" ") if word]
