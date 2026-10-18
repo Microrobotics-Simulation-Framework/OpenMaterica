@@ -100,7 +100,7 @@ def replay(test: object, name: str, profile: str) -> str:
 # varying up to 8 times as much as a binomial count), a feature shown by whole clusters at the gate falls
 # below its least share with a probability of about 1e-2 at either profile. Those properties' least shares
 # failed a run with a probability of about 1.5e-6 at `ci` and 1e-3 at `dev`, computed from the measured
-# clusters, so they declare their features by their chances instead (CHANCE_FLOORS). So do the json and
+# clusters, so they declare their features by their chances instead (`chances`). So do the json and
 # records shards' properties, measured on each (2026-10-15: 1.5 to 6.7 examples a cluster, by property and
 # profile), for each feature whose least share failed a run with a probability above 1e-6 at `ci` or 1e-3 at
 # `dev`. The two shards' least shares failed a run with a probability of about 7e-3 at `ci` and 2e-2 at `dev`,
@@ -128,17 +128,29 @@ CLUSTER = 8
 SHOWN = 5
 FALSE_FAILURE = 1e-6
 LEAST_DRAWS = 10
-# The profiles that judge a drawn feature, and one declared by its chance, by its draw floor, a floor below
-# LEAST_DRAWS failing. `deep` holds each to a third of its share or chance, as a declared feature. `dev`,
-# whose 200 examples leave no drawn feature's floor judged, judges none, and holds a feature declared by its
-# chance to its draw floor where that is at least LEAST_DRAWS (CHANCE_FLOORS), judging no other.
+
+
+# Each profile's rule (RULES). `ci` judges a drawn feature, and one declared by its chance, by its draw floor,
+# a floor below LEAST_DRAWS failing. `deep` holds each to a third of its share or chance, as a declared
+# feature. `dev`, whose 200 examples leave no drawn feature's floor judged, judges none, and holds a feature
+# declared by its chance to its draw floor where that is at least LEAST_DRAWS, judging no other.
 # For the acceptance properties' chances, from the measured clusters: a run of both falls short with a
 # probability of about 3e-10 at `ci` and 7e-7 at `dev`, and at most 2e-22 at `deep` (three runs measured). For
 # the json and records shards': about 2e-8 a run of the two at `ci`, nearly all HP3's regions, and 1e-15 at
 # `dev`, where one is judged; at `deep`, three runs of each property held each at 2.6 times its least share
 # or more.
-DRAW_FLOORS = frozenset({"ci"})
-CHANCE_FLOORS = frozenset({"ci", "dev"})
+class Rule(TypedDict):
+    """How a profile judges the features: the arguments it gives `feature_shortfalls`."""
+
+    by_draws: bool
+    chance_floors: bool
+
+
+RULES: dict[str, Rule] = {
+    "dev": {"by_draws": False, "chance_floors": True},
+    "ci": {"by_draws": True, "chance_floors": True},
+    "deep": {"by_draws": False, "chance_floors": False},
+}
 
 
 def binomial_floor(draws: int, chance: float) -> int:
