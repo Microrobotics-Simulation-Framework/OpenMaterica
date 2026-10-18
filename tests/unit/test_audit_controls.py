@@ -2,11 +2,11 @@
 """The controls of the feature audits of the json and records shards' properties that declare features by
 their chances (`@pytest.mark.chances`), of the conditions shard's, steps 9 and 10's and the result's, which
 declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12's and HP4's form of the
-field read (S2b-1, and PR #37's review), and of the relations shard's audit of the monotonicity relations'
-worlds, by their chances: run at the `ci` profile's examples with a generator that stops producing one of
-them, each property fails its audit, on that feature alone; a parametrised property, on one of its
-parameters, by the marks that parameter carries. Outside `tests/property/`, whose audits would fail these
-runs too."""
+field read (S2b-1, and PR #37's review), of S2b-2's evidence and nominal, and of the relations shard's audit
+of the monotonicity relations' worlds, by their chances: run at the `ci` profile's examples with a generator
+that stops producing one of them, each property fails its audit, on that feature alone; a parametrised
+property, on one of its parameters, by the marks that parameter carries. Outside `tests/property/`, whose
+audits would fail these runs too."""
 
 import sys
 from collections.abc import Callable
@@ -101,6 +101,11 @@ CONTROLS = [
         ("check_one_fault",),
     ),
     Control(
+        value_field_properties.test_one_fault_gives_its_refusal_and_no_other_part_4,
+        "region_evidence_report",
+        ("check_one_fault",),
+    ),
+    Control(
         condition_properties.test_each_row_of_the_table_and_the_conditions_it_checks,
         "required_with_its_token",
         ("check_against_the_oracle",),
@@ -151,6 +156,21 @@ CONTROLS = [
         ("check_agreement",),
     ),
     Control(
+        model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
+        "form_evidence",
+        ("check_agreement",),
+    ),
+    Control(
+        result_properties.test_what_a_read_returns_is_as_stored_and_shares_nothing,
+        "form_evidence",
+        ("check_returned_as_stored",),
+    ),
+    Control(
+        result_properties.test_a_nominal_supplies_its_value_and_the_assumption_it_rests_on,
+        "nominal_on_a_bound",
+        ("check_nominal_supplied",),
+    ),
+    Control(
         invariance_properties.test_a_fault_in_another_field_or_section_never_changes_the_read,
         "form_interval",
         ("check_isolated",),
@@ -159,6 +179,11 @@ CONTROLS = [
         invariance_properties.test_a_fault_in_the_read_fields_section_specimen_refuses_it,
         "form_composition",
         ("check_refused",),
+    ),
+    Control(
+        invariance_properties.test_a_fault_in_another_field_or_section_never_changes_the_read,
+        "form_evidence",
+        ("check_isolated",),
     ),
 ]
 

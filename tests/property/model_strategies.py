@@ -5,13 +5,15 @@ the reference model (`tests/reference/read_model.py`) to agree on, each drawn by
 A draw is the sources' bytes, the request's JSON text and the claims, and what it planted, by name, so that a
 property can tell a planted open point from anything else. The kinds:
 
-- **valued**: a constant, an interval or a composition that passes steps 1 to 8, under any `want` of section
-  6 (an interval's or a composition's own in half its draws) and any claims, its value `-0`, its review read
+- **valued**: a constant, an interval, a composition or evidence that passes steps 1 to 8, under any `want` of
+  section 6 (a form's own in half its draws but a constant's) and any claims, its value `-0`, its review read
   each way and a member the reader does not know where `result_strategies.enriched` draws them; its
   temperature met as drawn, at one of section 5's boundaries as HP7 draws them, or filled by an implied
-  condition, the way drawn first;
+  condition, the way drawn first; an interval in half the draws with a nominal of a way
+  `result_strategies.NOMINAL_WAYS` names, and evidence's unit in half its draws with a reason;
 - **alternatives**: two or three alternatives of one form the request meets, a list that breaks its shape,
-  or alternatives each refused by one request fault (S4's decision 12);
+  or alternatives each refused by one request fault (S4's decision 12); intervals in half the draws under
+  `want: value` with a nominal located at the read, which none of them is given;
 - **step 8**, **steps 9 and 10**: one fault of each step's catalogue, or two of two parts in one draw in four;
 - **two of one step**: two faults of one of steps 0, 8, 9 and 10 that give two reasons, so that a step that
   stops at its first fault shows (the design's B5);
@@ -38,8 +40,8 @@ from tests.property import result_strategies as results
 from tests.property import stores
 from tests.property.condition_strategies import Read, at, base_reads, implying, in_vivo, repinned
 from tests.property.strategies import DOUBLES, Size
+from tests.property.value_field_strategies import FORM_FIELDS, faulty_records, pinned, slipped, specimen
 from tests.property.value_field_strategies import WANTS as FORM_WANTS
-from tests.property.value_field_strategies import faulty_records, pinned, slipped, specimen
 
 JsonObject = dict[str, JsonValue]
 Draw = st.DrawFn
@@ -139,10 +141,17 @@ def a_want(draw: Draw, form: str) -> str:
     return want
 
 
+NOMINAL_PLANTS = (*(f"nominal_{way}" for way in results.NOMINAL_WAYS), "nominal_over_alternatives")
+
+
 @st.composite
-def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS) -> Example:
+def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS, *, nominal: bool = False) -> Example:
+    """A valued read; with `nominal`, an interval's with a nominal always, a planned search's."""
     way = draw(st.sampled_from(ways))
-    form, drawn_read = draw(results.form_reads(size))
+    if nominal:
+        form, drawn_read = "interval", draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
+    else:
+        form, drawn_read = draw(results.form_reads(size))
     read = fresh(drawn_read)
     shown = draw(results.enriched(field_of(read)))
     if way == "at_a_boundary":
@@ -152,8 +161,22 @@ def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS) -> Examp
     if draw(st.integers(0, 2)) == 0:
         beside_another_section(draw, read)
         shown = (*shown, "another_section")
+    if form == "evidence" and draw(st.booleans()):
+        field_of(read)["unit"] = {"status": "not_applicable", "reason": "a list of test reports"}
+        shown = (*shown, "unit_with_a_reason")
     read = wanting(repinned(read), a_want(draw, form))
+    if form == "interval" and (nominal or draw(st.booleans())):
+        nominal_way = draw(st.sampled_from(results.NOMINAL_WAYS))
+        read = wanting(read, "bounds" if nominal_way == "under_bounds" else "value")
+        with_a_nominal(read, draw(results.nominal_for(read.record, read.field, nominal_way)))
+        shown = (*shown, f"nominal_{nominal_way}")
     return example("valued", read, draw(st.sampled_from(CLAIMS)), way, *shown)
+
+
+def with_a_nominal(read: Read, nominal: JsonObject) -> None:
+    acceptances = read.request.setdefault("acceptances", [])
+    assert isinstance(acceptances, list)
+    acceptances.append(nominal)
 
 
 def beside_another_section(draw: Draw, read: Read) -> None:
@@ -203,13 +226,18 @@ def apart(draw: Draw, read: Read, field: JsonObject, way: str) -> tuple[JsonObje
 
 
 @st.composite
-def alternatives(draw: Draw, size: Size) -> Example:
-    way = draw(st.sampled_from(ALTERNATIVE_WAYS))
+def alternatives(draw: Draw, size: Size, *, nominal: bool = False) -> Example:
+    """Alternatives; with `nominal`, intervals the request meets under a nominal located at the read always, a
+    planned search's."""
+    way = "met" if nominal else draw(st.sampled_from(ALTERNATIVE_WAYS))
     claims = draw(st.sampled_from(CLAIMS))
     if way == "broken":
         drawn = draw(results.broken_alternatives(size))
         return Example("alternatives", drawn.sources, text(drawn.request), claims, (way,))
-    form, drawn_read = draw(results.form_reads(size))
+    if nominal:
+        form, drawn_read = "interval", draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
+    else:
+        form, drawn_read = draw(results.form_reads(size))
     read = fresh(drawn_read)
     field = field_of(read)
     if draw(st.integers(0, 3)):
@@ -219,13 +247,23 @@ def alternatives(draw: Draw, size: Size) -> Example:
         conditions.disagreeing(draw, read)
     else:
         shown = draw(results.enriched(field))
-    held: list[JsonValue] = [copy.deepcopy(field)]
+    held: list[JsonValue] = [results.without_withheld_reports(copy.deepcopy(field))]
     for _ in range(draw(st.integers(1, 2))):
         other, standing = apart(draw, read, field, way)
         held.append(other)
         shown = (*shown, *(name for name in standing if name not in shown))
     record = results.holding(read, {"alternatives": held})
     read = wanting(repinned(read._replace(record=record)), a_want(draw, form))
+    if form == "interval" and way == "met" and (nominal or draw(st.booleans())):
+        read = wanting(read, "value")
+        acceptance: JsonObject = {
+            "acceptance": "nominal",
+            "record": conditions.reference(read.record),
+            "field": read.field,
+            "value": draw(DOUBLES),
+        }
+        with_a_nominal(read, acceptance)
+        shown = (*shown, "nominal_over_alternatives")
     return example("alternatives", read, claims, way, *shown)
 
 
@@ -329,6 +367,33 @@ def implied_with(**members: JsonValue) -> RequestFault:
     return change
 
 
+def nominal_with(**members: JsonValue) -> RequestFault:
+    """A nominal located at the read, for its field, with `members` changed, None removing one."""
+
+    def change(draw: Draw, request: JsonObject) -> None:
+        target = object_at(request, "target") or {}
+        nominal: JsonObject = {
+            "acceptance": "nominal",
+            "record": copy.deepcopy(target.get("record")),
+            "field": copy.deepcopy(target.get("field")),
+            "value": 0.0007,
+            "basis": "a property's",
+        }
+        nominal.update(copy.deepcopy(members))
+        acceptances = request.setdefault("acceptances", [])
+        if isinstance(acceptances, list):
+            acceptances.append({name: held for name, held in nominal.items() if held is not None})
+
+    return change
+
+
+def two_nominals_for_one_field(draw: Draw, request: JsonObject) -> None:
+    """Two nominals naming the read's field, the second located at a region: refused whatever else each
+    holds."""
+    nominal_with()(draw, request)
+    nominal_with(record=None, region="lumen")(draw, request)
+
+
 NOT_NUMBERS: list[JsonValue] = ["1.0", None, True, [1.0]]
 
 
@@ -388,6 +453,12 @@ REQUEST_FAULTS: dict[str, RequestFault] = {
     "slip_in_an_operating_condition": slipping_at(*DIMENSION),
     "acceptances_not_a_list": setting_at("acceptances", value={}),
     "acceptance_of_no_kind": setting_at("acceptances", value=[{"acceptance": "waiver", "reason": "r"}]),
+    "acceptance_not_an_object": setting_at("acceptances", value=[1.0]),
+    "nominal_value_not_a_number": nominal_with(value="0.0007"),
+    "nominal_value_missing": nominal_with(value=None),
+    "nominal_field_unregistered": nominal_with(field="bulk.porosity"),
+    "nominal_slip": nominal_with(vaule=0.0007),
+    "two_nominals_for_one_field": two_nominals_for_one_field,
     "implied_fact_without_tokens": implied_with(fact="post_mortem_interval"),
     "implied_token_not_its_facts": implied_with(token="tube"),
     "implied_condition_not_registered": implied_with(implies={"x_pressure": {"value": 1.0, "unit": "Pa"}}),
@@ -407,6 +478,8 @@ REQUEST_FAULTS: dict[str, RequestFault] = {
     "tolerance_minus_zero": setting_at(*DIMENSION_TOLERANCE, "tolerance", "value", value=-0.0),
     "unit_beside_an_accept_list": setting_at(*GEOMETRY_REQUIREMENT, "unit", value="m"),
     "member_named_nowhere": setting_at("requirement", "x_note", value="anything"),
+    "nominal_for_another_field": nominal_with(field="bulk.density"),
+    "nominal_basis_and_params_anything": nominal_with(basis=1.0, params={"a": 1.0}),
     "want_of_the_fits_suite": setting_at("requirement", "want", value="reference_data"),
 }
 # Faults that leave nothing else of the request to find, which two faults of one step never pair.
@@ -434,16 +507,20 @@ def faulted(draw: Draw, read: Read, names: tuple[str, ...]) -> Read:
     return read._replace(request=request)
 
 
+# Step 0's faults of a nominal, among which a planned search draws its first fault.
+NOMINAL_REQUEST_FAULTS = tuple(sorted(name for name in REQUEST_FAULTS if "nominal" in name))
+
+
 @st.composite
-def request_faults(draw: Draw, size: Size) -> Example:
+def request_faults(draw: Draw, size: Size, among: tuple[str, ...] = ()) -> Example:
     """One fault of step 0's catalogue, two in one draw in four, or a text that is no JSON in one in
-    sixteen."""
+    sixteen; with `among`, a planned search's, the first fault one of those it names, and always JSON."""
     read = draw(base_reads(size))
     claims = draw(st.sampled_from(CLAIMS))
-    if draw(st.integers(0, 15)) == 0:
+    if not among and draw(st.integers(0, 15)) == 0:
         source = results.as_source(read.record)
         return Example("request", (source,), draw(st.sampled_from(NOT_JSON)), claims, ("not_json",))
-    first = draw(st.sampled_from(sorted(REQUEST_FAULTS)))
+    first = draw(st.sampled_from(among or sorted(REQUEST_FAULTS)))
     names: tuple[str, ...] = (first,)
     if draw(st.integers(0, 3)) == 0:
         names += (draw(st.sampled_from(sorted(set(REQUEST_FAULTS) - {first}))),)

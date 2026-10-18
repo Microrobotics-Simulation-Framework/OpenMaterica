@@ -160,6 +160,13 @@ MUTANTS = [
         "composition",
     ),
     Mutant(
+        "every_field_checked_beside_evidence",
+        "HP4",
+        setting(read, "form_problems", beside("evidence", _every_field_checked)),
+        ("another_field",),
+        "evidence",
+    ),
+    Mutant(
         "section_specimen_unchecked",
         "HP4 refusal",
         taken("section_specimen_unchecked"),

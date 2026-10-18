@@ -13,6 +13,7 @@ import copy
 import dataclasses
 import math
 import re
+import struct
 import types
 from collections.abc import Callable, Collection
 from typing import Any, NamedTuple
@@ -31,7 +32,7 @@ from materica.core.value_shapes import JsonObject
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite, Want
 from tests.property import test_result_properties as properties
-from tests.property.result_strategies import KINDS, REVIEWS, Drawn, drawn_reads, valued_reads
+from tests.property.result_strategies import KINDS, REVIEWS, Drawn, drawn_reads, nominal_reads, valued_reads
 from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.test_condition_mutants import kill
 from tests.property.test_mutants import setting
@@ -46,6 +47,7 @@ KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any
     "HP1": (drawn_reads, properties.check_totality),
     "HP2": (drawn_reads, properties.check_status_law),
     "HP6": (valued_reads, properties.check_returned_as_stored),
+    "HP6_nominal": (nominal_reads, properties.check_nominal_supplied),
     "HP11": (drawn_reads, properties.check_claims),
 }
 
@@ -78,6 +80,8 @@ STATUS = read._status  # pyright: ignore[reportPrivateUsage]
 READ_ALTERNATIVES = read._read_alternatives  # pyright: ignore[reportPrivateUsage]
 COUNTED = read._counted  # pyright: ignore[reportPrivateUsage]
 RETURNED = read._returned  # pyright: ignore[reportPrivateUsage]
+NOMINAL_READ = read._nominal_read  # pyright: ignore[reportPrivateUsage]
+VALUE = read._value  # pyright: ignore[reportPrivateUsage]
 RESOLVE = resolve.resolve_record
 
 
@@ -154,6 +158,37 @@ def _no_statistics_beside_a_composition(*arguments: Any) -> FieldRead:
     if isinstance(found.member, dict) and "components" in found.member:
         return dataclasses.replace(found, statistics=None)
     return found
+
+
+def _a_nominal_inside_wherever_it_lies(
+    interval: JsonObject, name: str, nominal: read.Nominal
+) -> tuple[Reason, read.Nominal | None]:
+    return Reason("want_mismatch"), nominal
+
+
+def _nominal_invalid_as_want_mismatch(
+    interval: JsonObject, name: str, nominal: read.Nominal
+) -> tuple[Reason, read.Nominal | None]:
+    found, supplied = NOMINAL_READ(interval, name, nominal)
+    return (found if supplied is not None else Reason("want_mismatch")), supplied
+
+
+def _located_by_its_field(named: str, location: JsonObject, field: str, record: Any) -> bool:
+    return named == field
+
+
+def _applied_wherever_a_nominal_applies(*arguments: Any) -> FieldRead:
+    """`applied` naming the nominal that applies to the read whether or not it supplied the value."""
+    found: FieldRead = READ_VALUE_FIELD(*arguments)
+    nominal = arguments[4] if len(arguments) > 4 else None
+    if nominal is None or nominal.index in found.applied:
+        return found
+    return dataclasses.replace(found, applied=tuple(sorted((*found.applied, nominal.index))))
+
+
+def _value_unless_not_met(status: ReadStatus, found: FieldRead) -> bool:
+    """Section 2 item 3 without its exception: no value under `not_met`, a nominal's included."""
+    return found.value is not None and status != "not_met"
 
 
 # HP6: returned as stored.
@@ -237,6 +272,55 @@ SHALLOW = types.SimpleNamespace(deepcopy=_shared)
 # HP11: claims.
 
 
+def _a_reports_review_as_it_holds(value: JsonValue, shape: object) -> JsonValue:
+    returned = RETURNED(value, shape)
+    if shape is shapes.Provenance and isinstance(value, dict) and isinstance(returned, dict):
+        returned["review"] = copy.deepcopy(value.get("review"))
+    return returned
+
+
+def _a_reports_provenance_cut_to_a_results(value: JsonValue, shape: object) -> JsonValue:
+    returned = RETURNED(value, shape)
+    if shape is shapes.Provenance and isinstance(returned, dict):
+        return {name: member for name, member in returned.items() if name in ("origin", "review")}
+    return returned
+
+
+def _reports_returned_whole(value: JsonValue, shape: object) -> JsonValue:
+    """Evidence's list copied as the record holds it, a member the reader does not know in a report kept."""
+    if (
+        isinstance(value, list)
+        and value
+        and all(isinstance(item, dict) and "provenance" in item for item in value)
+    ):
+        return copy.deepcopy(value)
+    return RETURNED(value, shape)
+
+
+def _a_nominal_as_a_single(
+    member: JsonValue, mismatch: Reason | None, supplied: read.Nominal | None
+) -> JsonValue:
+    """A nominal's value rounded to single precision, as a `float` attribute would hold it."""
+    found = VALUE(member, mismatch, supplied)
+    return struct.unpack(">f", struct.pack(">f", found))[0] if supplied is not None else found
+
+
+def _assumption_without_its_kind(self: read.Nominal) -> JsonObject:
+    return {"value": self.value}
+
+
+def _applied_without_the_nominal(*arguments: Any) -> FieldRead:
+    found: FieldRead = READ_VALUE_FIELD(*arguments)
+    nominal = arguments[4] if len(arguments) > 4 else None
+    return (
+        found
+        if nominal is None
+        else dataclasses.replace(
+            found, applied=tuple(index for index in found.applied if index != nominal.index)
+        )
+    )
+
+
 def _labelled_before_step_4(reference: Any, store: Any, claims: Collection[Suite]) -> Any:
     resolved = RESOLVE(reference, store, claims)
     if isinstance(resolved, Refused) and "hash" not in claims:
@@ -269,14 +353,17 @@ MUTANTS = [
         "stated_without_origin_with_a_condition",
         "HP1",
         setting(read, "_origin", _origin_with_a_condition),
-        ("met", "met_own_member", "step_9_or_10_fault", "unknown_at_step_10"),
+        ("met", "met_own_member", "nominal", "step_9_or_10_fault", "unknown_at_step_10"),
     ),
     # Step 13 gives an interval or a composition read under `value` "`not_met` (`want_mismatch`)"
     # (`read_side_contract.md` section 6), whatever the read's kind: a fault of step 8's catalogue that step 8
     # passes ("a provenance member a read does not check, broken or `null` (`"extraction": null`), does not
     # refuse the field", `provenance.md`'s PR-109) leaves a step 8 fault's read of either form, which is read
     # under `value`, to reach it where steps 9 and 10 do not end the read, so this dies at a step 8 fault as
-    # well.
+    # well. And "An acceptance applies only to a read of the field it names and, an overlay aside (it names no
+    # location), only at the read's own location" (section 1): an interval read under `value` beside a nominal
+    # for another field, beside a region or with no location is read as without it, and reaches the same
+    # `want_mismatch`, so this dies at a nominal located elsewhere as well.
     Mutant(
         "a_code_outside_the_table",
         "HP1",
@@ -284,7 +371,7 @@ MUTANTS = [
             setting(read, "_by_want", _a_code_outside_the_table),
             setting(read, "_status", _status_of_any_code),
         ),
-        ("met", "step_8_fault"),
+        ("met", "step_8_fault", "nominal_elsewhere"),
         OUTSIDE_THE_TABLE,
     ),
     # A reason "appears at most once in a result" (section 2 item 2), at any step: step 9's faults of the
@@ -305,7 +392,7 @@ MUTANTS = [
             setting(read, "_by_want", _a_forms_mismatch_outside_the_table),
             setting(read, "_status", _status_of_any_code),
         ),
-        ("form_interval", "form_composition", "step_8_fault"),
+        ("form_interval", "form_composition", "form_evidence", "step_8_fault"),
         OUTSIDE_THE_TABLE,
     ),
     Mutant(
@@ -336,6 +423,37 @@ MUTANTS = [
         setting(read, "read_value_field", _no_statistics_beside_a_composition),
         ("form_composition",),
     ),
+    # S2b-2's: a nominal (`read_side_contract.md` sections 1, 2 and 6).
+    Mutant(
+        "a_nominal_applied_outside_its_bounds",
+        "HP2",
+        setting(read, "_nominal_read", _a_nominal_inside_wherever_it_lies),
+        ("nominal_outside",),
+    ),
+    Mutant(
+        "nominal_invalid_as_want_mismatch",
+        "HP2",
+        setting(read, "_nominal_read", _nominal_invalid_as_want_mismatch),
+        ("nominal_outside",),
+    ),
+    Mutant(
+        "a_nominal_applied_wherever_it_is_located",
+        "HP2",
+        setting(read, "located_at", _located_by_its_field),
+        ("nominal_elsewhere",),
+    ),
+    Mutant(
+        "applied_names_a_nominal_that_supplied_nothing",
+        "HP2",
+        setting(read, "read_value_field", _applied_wherever_a_nominal_applies),
+        ("nominal_outside", "nominal_under_bounds"),
+    ),
+    Mutant(
+        "a_nominals_value_dropped_under_not_met",
+        "HP2",
+        setting(read, "_value_returned", _value_unless_not_met),
+        ("nominal_inside", "nominal_on_a_bound"),
+    ),
     Mutant(
         "expanded_uncertainty_divided_by_its_k",
         "HP6",
@@ -355,8 +473,12 @@ MUTANTS = [
         setting(read, "_counted_member", _negative_zero_as_zero),
         ("negative_zero",),
     ),
+    # Evidence's reports carry members no shape defines in their provenance's unchecked members, as drawn.
     Mutant(
-        "unknown_members_returned", "HP6", setting(read, "_members", _every_member_kept), ("unknown_member",)
+        "unknown_members_returned",
+        "HP6",
+        setting(read, "_members", _every_member_kept),
+        ("unknown_member", "form_evidence"),
     ),
     Mutant(
         "upper_none_as_infinity",
@@ -397,6 +519,40 @@ MUTANTS = [
         ),
         ("statistics_withheld",),
     ),
+    # S2b-2's: evidence (`record_format.md` section 4.3 item 2) and a nominal's value and assumption.
+    Mutant(
+        "a_reports_review_as_it_holds",
+        "HP6",
+        setting(read, "_returned", _a_reports_review_as_it_holds),
+        ("form_evidence",),
+    ),
+    Mutant(
+        "a_reports_provenance_cut_to_a_results",
+        "HP6",
+        setting(read, "_returned", _a_reports_provenance_cut_to_a_results),
+        ("form_evidence",),
+    ),
+    Mutant(
+        "unknown_members_kept_in_a_report",
+        "HP6",
+        setting(read, "_returned", _reports_returned_whole),
+        ("form_evidence",),
+    ),
+    Mutant(
+        "a_nominal_as_a_single", "HP6_nominal", setting(read, "_value", _a_nominal_as_a_single), ("nominal",)
+    ),
+    Mutant(
+        "an_assumption_without_its_kind",
+        "HP6_nominal",
+        setting(read.Nominal, "assumption", _assumption_without_its_kind),
+        ("nominal",),
+    ),
+    Mutant(
+        "applied_without_the_nominal",
+        "HP6_nominal",
+        setting(read, "read_value_field", _applied_without_the_nominal),
+        ("nominal",),
+    ),
     Mutant(
         "labelled_before_step_4",
         "HP11",
@@ -417,6 +573,7 @@ MUTANTS = [
             "step_7",
             "alternatives",
             "alternatives_broken",
+            "nominal",
         ),
     ),
 ]

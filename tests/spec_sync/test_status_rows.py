@@ -23,8 +23,11 @@ def shape_of(definition: str) -> type | None:
     return found if isinstance(found, type) else None
 
 
-# The definitions whose status places step 8 reads (`read_side_contract.md` section 3, step 8): a field's, a
-# condition's and a fact's, the statistics block's and its parts'. The forms' own members wait for S2b and S3.
+# The definitions whose status places step 8's shared checks read (`read_side_contract.md` section 3, step 8):
+# a field's, a condition's and a fact's, the statistics block's and its parts'. The forms' own members are
+# their readers' (`fields.py`), held to `provenance.md` section 1 item 5 by HP3's catalogue and the positions
+# test; an evidence report's members take any of the five tokens there, where the writer splits them between
+# a report and a withheld report.
 READ = {
     "constant_field",
     "conditions",

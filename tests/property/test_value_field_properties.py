@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-"""(8) Step 8's laws (`read_side_contract.md` section 3, step 8), over records holding a constant, an interval
-or a composition drawn from `value_field_strategies.py`. The mutants they kill are in
+"""(8) Step 8's laws (`read_side_contract.md` section 3, step 8), over records holding a constant, an
+interval, a composition or evidence drawn from `value_field_strategies.py`. The mutants they kill are in
 `test_value_field_mutants.py`.
 
 - **HP3, one fault, one refusal.** A field that passes step 8, given one fault of the catalogue, is refused
   with exactly the codes the fault's rule gives and no other, `not_met`; given a fault that breaks no rule
   step 8 checks (a condition name the reader does not know, a member it does not check, broken), it still
   passes. In a quarter of the draws, two faults of two regions give the codes of both: each step makes all its
-  checks.
+  checks. Some of an evidence list's reports withheld give `entries_withheld`, an `unknown` reason beside a
+  read that goes on: no refusal, so HP3 reads it as passing step 8.
 - **The label's rule** (`record_format.md` section 4.1, "Labels"): the row's label goes on a constant, and on
   a table whose axis is not the condition its Label cell names, and on no other form. A read reaches a label
   on a table only once S3 reads tables, so the property calls step 8's shared check of a field's members,
@@ -42,6 +43,7 @@ from tests.property.condition_oracle import AFTER_STEP_8
 from tests.property.strategies import SIZE, Size
 from tests.property.support import feature
 from tests.property.value_field_strategies import (
+    READ_FORMS,
     REGION_FORMS,
     REGIONS,
     WANTS,
@@ -89,9 +91,20 @@ def outcome(record: JsonObject, field: str) -> Outcome:
 
 # HP3: one fault, one refusal.
 
+# The one `unknown` reason step 8 gives (`read_side_contract.md` section 4): some reports withheld.
+STEP_8_UNKNOWN = frozenset({"entries_withheld"})
+
+
+def refusal(found: Outcome) -> Outcome:
+    """`found` as HP3 reads it: past step 8 where step 8 gave no reason but `entries_withheld`."""
+    codes = found.codes - STEP_8_UNKNOWN
+    if found.status == PAST_STEP_8 or codes <= AFTER_STEP_8:
+        return Outcome(PAST_STEP_8, frozenset())
+    return Outcome(found.status, codes)
+
 
 def check_one_fault(example: Example) -> None:
-    found = outcome(example.record, example.field)
+    found = refusal(outcome(example.record, example.field))
     expected = Outcome("not_met", example.expected) if example.expected else Outcome(PAST_STEP_8, frozenset())
     assert found == expected, example.faults
 
@@ -120,10 +133,11 @@ def fault_features(example: Example) -> None:
 # give two codes take first. A part's regions now fall below their draw floors at `ci` with a probability of
 # about 1e-8 in all.
 # The forms' own regions are a part of their own, S2b-1's, so that the first two parts and their measured
-# chances stand as they were.
-OWN_REGIONS = tuple(region for region in REGIONS if region in REGION_FORMS)
+# chances stand as they were; evidence's are a fourth, S2b-2's.
+OWN_REGIONS = tuple(region for region in REGIONS if REGION_FORMS.get(region) in ("interval", "composition"))
+EVIDENCE_REGIONS = tuple(region for region in REGIONS if REGION_FORMS.get(region) == "evidence")
 SHARED_REGIONS = tuple(region for region in REGIONS if region not in REGION_FORMS)
-HP3_PARTS = (SHARED_REGIONS[0::2], SHARED_REGIONS[1::2], OWN_REGIONS)
+HP3_PARTS = (SHARED_REGIONS[0::2], SHARED_REGIONS[1::2], OWN_REGIONS, EVIDENCE_REGIONS)
 HP3_CHANCES = {
     "statistics_tokens": 0.18,
     "statistics_numbers": 0.08,
@@ -156,6 +170,15 @@ HP3_CHANCES = {
     "composition": 0.13,
     "composition_tokens": 0.14,
     "component": 0.19,
+    # S2b-2's part, each at 4/5 of its nominal chance, rounded down: 7/8 of a quarter, and beside it, for the
+    # token regions, their share of the eighth of the draws whose first fault is one of the part's three token
+    # faults (evidence_report two, evidence_provenance one): nominal 0.219, 0.302, 0.26 and 0.219. Over four
+    # runs at `ci` (seeds 21 to 24, 2026-10-18) their least shares were 0.181, 0.275, 0.236 and 0.184, each
+    # above its chance; the repeat workflow's runs are to confirm them, as the first three parts' were.
+    "evidence_list": 0.17,
+    "evidence_report": 0.24,
+    "evidence_provenance": 0.2,
+    "evidence_field": 0.17,
 }
 # A part's drawn field's form, by its chance: the shared parts draw a constant as often as an interval and a
 # composition together, and the third takes its region's form. Over 48 runs of each part at `ci` (seeds 5001
@@ -167,6 +190,7 @@ FORM_CHANCES = (
     {"form_constant": 0.44, "form_interval": 0.19, "form_composition": 0.2},
     {"form_constant": 0.44, "form_interval": 0.19, "form_composition": 0.2},
     {"form_interval": 0.33, "form_composition": 0.55},
+    {"form_evidence": 1.0},
 )
 # Least shares, about a third of those measured at `ci` and `deep` with HP3 whole (S2a-2's fix round); in each
 # part they fail a `ci` run with a probability below 1e-9 (measured 2026-10-15).
@@ -202,8 +226,18 @@ def test_one_fault_gives_its_refusal_and_no_other_part_3(example: Example) -> No
     check_one_fault(example)
 
 
+@pytest.mark.chances(**part_chances(3))
+@pytest.mark.features(**HP3_FEATURES)
+@given(faulty_records(regions=HP3_PARTS[3]))
+def test_one_fault_gives_its_refusal_and_no_other_part_4(example: Example) -> None:
+    """Evidence: its list's, a report's, a report's provenance's and the field's other members' faults,
+    S2b-2's."""
+    fault_features(example)
+    check_one_fault(example)
+
+
 def check_passes(example: Example) -> None:
-    assert outcome(example.record, example.field) == Outcome(PAST_STEP_8, frozenset())
+    assert refusal(outcome(example.record, example.field)) == Outcome(PAST_STEP_8, frozenset())
 
 
 @given(valid_records())
@@ -285,8 +319,9 @@ def test_the_label_column_is_read_and_a_cell_of_another_form_is_not() -> None:
 # HP5: ignorance.
 
 # Where a member is added, by the kind of place: an object of the record's structure, the field, an object
-# inside it, or one inside a member step 8 does not check.
-UNCHECKED = frozenset({"extraction", "assistance", "review", "fit", "evidence", "document", "locator"})
+# inside it, or one inside a member step 8 does not check: a field's `fit`, and a provenance's members a read
+# does not check, its source's `document` and `locator` among them.
+UNCHECKED = frozenset({"extraction", "assistance", "review", "evidence", "document", "locator"})
 
 
 Place = tuple[str | int, ...]
@@ -321,8 +356,15 @@ def at(value: JsonValue, place: Place) -> JsonValue:
     return value
 
 
+def unchecked(place: Place) -> bool:
+    return place[5:6] == ("fit",) or any(
+        step == "provenance" and bool(UNCHECKED & set(place[index + 1 : index + 3]))
+        for index, step in enumerate(place)
+    )
+
+
 def place_kind(place: Place) -> str:
-    if UNCHECKED & set(place):
+    if unchecked(place):
         return "unchecked"
     if len(place) <= 4:
         return "structure"
@@ -334,13 +376,21 @@ def in_an_own_member(place: Place) -> bool:
     return place[5:6] in (("interval",), ("composition",))
 
 
+def in_a_report(place: Place) -> bool:
+    """Inside evidence's own member: a report, its standard, its provenance."""
+    return place[5:6] == ("evidence",)
+
+
 @st.composite
-def with_unknowns(draw: st.DrawFn, size: Size = SIZE) -> Unknowns:
-    """A valid record, or in one draw in three one with a fault, and one to four members added, each named
-    `x_` and letters or, in one draw in three, a member at its place with two characters added."""
-    faulty = draw(st.integers(0, 2)) == 0
-    example = draw(faulty_records(size, faults=1) if faulty else valid_records(size))
-    where = places(example.record)
+def with_unknowns(draw: st.DrawFn, size: Size = SIZE, *, reports: bool = False) -> Unknowns:
+    """A valid record of a form step 8 reads, or in one draw in three one with a fault, and one to four
+    members added, each named `x_` and letters or, in one draw in three, a member at its place with two
+    characters added. With `reports`, a mutant's planned search: a valid evidence field, each member added in
+    one of its reports."""
+    faulty = not reports and draw(st.integers(0, 2)) == 0
+    form = "evidence" if reports else draw(st.sampled_from(READ_FORMS))
+    example = draw(faulty_records(size, faults=1) if faulty else valid_records(size, form))
+    where = [place for place in places(example.record) if not reports or in_a_report(place)]
     additions: list[tuple[Place, str, JsonValue]] = []
     for _ in range(draw(st.integers(1, 4))):
         place = draw(st.sampled_from(where))
@@ -372,7 +422,10 @@ def check_ignored(unknowns: Unknowns) -> None:
 # 0.045, failed a run with a probability of 2.1e-5 (renewal: 1.6e-5), and `in_an_own_member` showed 0.084
 # (0.054 the least), where 0.025 failed one with 2.7e-7. Each declared at about a third of its mean share,
 # 0.03 and 0.02, they fail a `ci` run with 1.4e-8 and 1.1e-8 (renewal 9e-9 and 8e-9). Neither can be declared
-# by its chance: at 0.06 and 0.05, their floors are below `audits.LEAST_DRAWS`.
+# by its chance: at 0.06 and 0.05, their floors are below `audits.LEAST_DRAWS`. S2b-2 draws evidence among
+# the valid bases, a fifth of them: over four runs at `ci` (seeds 11 to 14, 2026-10-18) `in_a_report` showed
+# 0.066 to 0.088 of the additions, `in_an_own_member` 0.057 to 0.088 and `field` 0.068 to 0.115, and
+# `in_a_report` is declared as `in_an_own_member` was, at about a quarter of its mean, 0.02.
 @pytest.mark.chances(faulty_base=0.33)
 @pytest.mark.features(
     structure=0.25,
@@ -381,12 +434,14 @@ def check_ignored(unknowns: Unknowns) -> None:
     unchecked=0.065,
     two_slips=0.23,
     in_an_own_member=0.02,
+    in_a_report=0.02,
 )
 @given(with_unknowns())
 def test_members_the_reader_does_not_know_change_nothing(unknowns: Unknowns) -> None:
     for place, name, _ in unknowns.additions:
         feature(place_kind(place))
         feature("in_an_own_member", in_an_own_member(place))
+        feature("in_a_report", in_a_report(place))
         feature("two_slips", name.endswith("xx"))
     feature("faulty_base", bool(unknowns.example.faults))
     check_ignored(unknowns)

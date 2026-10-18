@@ -292,9 +292,9 @@ def checked(example: Example, shown: str) -> None:
     check_agreement(example)
 
 
-# The form of the field read, drawn after the kind: a constant as often as an interval and a composition
-# together (`value_field_strategies.BASE_FORMS`).
-@pytest.mark.chances(form_constant=0.5, form_interval=0.25, form_composition=0.25)
+# The form of the field read, drawn after the kind: a constant twice as often as an interval, a composition or
+# evidence (`value_field_strategies.READ_FORMS`).
+@pytest.mark.chances(form_constant=0.4, form_interval=0.2, form_composition=0.2, form_evidence=0.2)
 @pytest.mark.drawn(*PARTS["valued"])
 @given(strategies.drawn(SIZE, PARTS["valued"]))
 def test_the_read_agrees_with_the_model_on_values_and_alternatives(example: Example) -> None:

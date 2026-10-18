@@ -28,6 +28,9 @@ SHOWN = {
     "form_constant",
     "form_interval",
     "form_composition",
+    "form_evidence",
+    "unit_with_a_reason",
+    *strategies.NOMINAL_PLANTS,
 }
 
 
