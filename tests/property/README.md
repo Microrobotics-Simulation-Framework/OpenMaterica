@@ -484,7 +484,9 @@ tell it from the core, since step 10 returns a filled condition with the members
   feature to its draw floor where that is at least 10, judging no other (2026-10-18). There a declared feature
   counts as drawn with three times its least share, and is never held above its least share. So, at the chance
   its floor assumes, no feature `dev` judges fails a correct run with a probability above 1e-6 by the floors'
-  model, as no floor at `ci` does. With 200 examples the model counts 25 draws, and a floor reaches 10 only at
+  model, as no floor at `ci` does; a feature whose measured share falls below the chance its floor assumes
+  fails a correct run more often, and is fixed where it is declared (a lower least share or chance), not in
+  the rule. With 200 examples the model counts 25 draws, and a floor reaches 10 only at
   a chance of one half or more: `dev` judges the features drawn among two, those declared by a chance of one
   half or more, and declared features of a least share of about 0.17 or more (35 features of the properties on
   main, 2026-10-18). The features it leaves are judged at `ci` and `deep`. Until 2026-10-18 `dev` held a
@@ -492,7 +494,7 @@ tell it from the core, since step 10 returns a filled condition with the members
   third of their share, with a bound of about 1e-3 a feature set before CI's per-commit job (#30) ran every
   property at `dev` once for each commit: three of about 75 `dev` jobs of pull requests #35 and #37 failed so
   by chance that day, each a feature drawn among three. `tests/unit/test_audits.py` holds those three runs'
-  counts, pins what `ci` and `deep` judge, and fails if a feature judged by a floor, at any profile and any
+  counts, pins what `ci` and `deep` judge (in runs of any size, with `interesting` and `invalid` draws), and fails if a feature judged by a floor, at any profile and any
   declaration on a grid, fails a correct run with a probability above 1e-6 by the model.
 
 An audit judges random draws, so a sound property fails it now and then by chance. By the floors' model, each

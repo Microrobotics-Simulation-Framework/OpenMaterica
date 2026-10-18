@@ -24,8 +24,8 @@ one table of what became of each, when dispatched by hand (below).
 
 The `tests` and `commit` jobs run the properties at `dev` on random draws, as a laptop does (since #38), so an
 audit can fail a sound property by chance. Since 2026-10-18 `dev` holds each feature it judges to a floor that
-a correct run falls below with a probability of at most 1e-6 by the audits' model, as `ci`'s floors are: at
-most about 3e-5 a run of the whole suite, and 1.6e-3 for a pull request of 50 such jobs. Before, about one of
+a correct run falls below with a probability of at most 1e-6 by the audits' model, at the chance the floor
+assumes, as `ci`'s floors are: at most about 3e-5 a run of the whole suite, and 1.6e-3 for a pull request of 50 such jobs. Before, about one of
 these jobs in 25 failed by chance, so that a pull request was almost never green. The `hypothesis` job at `ci`
 also judges least shares, whose figure is known for some properties only, and the `controls` job, whose
 searches and controls are derandomised, adds nothing. Such a failure names the seed that draws its run again,
