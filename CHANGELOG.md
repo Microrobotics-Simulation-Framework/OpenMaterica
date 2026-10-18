@@ -95,6 +95,19 @@ every family entry goes in `families/CHANGELOG.md`.
   suite name does not type-check.
 
 ### Changed
+- The pre-review script's trace test (`tests/unit/test_pre_review.py`, run where `MATERICA_TRACE_SELECTION=1`)
+  no longer depends on the Python bytecode cache. With a warm `__pycache__` the import system reads a module's
+  `.pyc`, which the trace ignores, and never opens its source; with a cold one it opens the source, so the test
+  failed on a clean checkout, naming `tests/fuzz/__init__.py` and `tests/unit/test_fuzz_oracle.py`, and passed
+  on CI, where the workers had compiled every module first. The traced run now gets an empty cache of its own
+  (`PYTHONPYCACHEPREFIX`), so every import reads its source in the same way every time, and the trace's setup
+  asserts it saw that source. The pair it named was a gap in the import graph, which did not take a module to
+  import its parents: importing `tests.fuzz.field_oracle` runs `tests/fuzz/__init__.py`, yet only a test naming
+  the package selected a change to that file. The pre-review script's graph now counts `import a.b.c` as an
+  import of `a` and `a.b` too, so a change to a package's `__init__.py` selects the tests that import a module
+  under it (`src/materica/__init__.py` now selects `tests/unit/test_slips.py`, and `scripts/__init__.py` the
+  tests that import only `scripts.<module>`), and the hand-declared `TREE_READERS` row for
+  `tests/fuzz/__init__.py` is no longer needed.
 - `scripts/mutant_runs.py` refuses a patch that creates a regular file named like a directory `.gitignore`
   names with a trailing slash: `.pytest_cache`, `.hypothesis`, and any other such name (`build`, `dist`,
   `.tox`, `.mypy_cache`). `git check-ignore --no-index` matches a pattern such as `.pytest_cache/` to a
