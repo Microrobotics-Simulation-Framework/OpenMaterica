@@ -510,3 +510,76 @@ def test_the_summary_command_writes_the_step_summary_and_exits_by_its_verdict(
         .read_text(encoding="utf-8")
         .startswith("## Repeat runs of <code>tests/property/test_x.py::test_y</code>")
     )
+
+
+# Sources whose code runs a derandomized search, and sources that only name one, in a comment, a string or a
+# name of their own (#43's review, L7).
+DERANDOMIZING = [
+    "from hypothesis import settings\n\n@settings(max_examples=5, derandomize=True)\ndef test_x(): ...\n",
+    "from hypothesis import settings\nALONE = settings(derandomize=True, database=None)\n",
+    "from tests.property.support import examples_to_kill\n",
+    "from .support import MUTANT_SEARCH as SEARCH\n",
+]
+NAMING_ONLY = [
+    "# every profile was derandomize=True on a runner\nx = 1\n",
+    "FAULT = 'parent=settings(derandomize=True)'\n",
+    "import re\nMUTANT_SEARCH = re.compile('x')\n",
+    "from hypothesis import settings\nRANDOM = settings(derandomize=False)\n",
+    "from tests.property.support import feature\n",
+]
+
+
+@pytest.mark.parametrize("source", DERANDOMIZING)
+def test_a_module_whose_code_derandomizes_a_search_is_found(source: str) -> None:
+    assert repeat_runs.derandomizes(source)
+
+
+@pytest.mark.parametrize("source", NAMING_ONLY)
+def test_a_module_that_only_names_derandomizing_is_not(source: str) -> None:
+    """The control: what a search of the text would take."""
+    assert "derandomize" in source or "MUTANT_SEARCH" in source or "support" in source
+    assert not repeat_runs.derandomizes(source)
+
+
+def test_the_property_controls_are_read_as_tests_conftest_assigns_them(tmp_path: Path) -> None:
+    from tests.conftest import PROPERTY_CONTROLS
+
+    root = Path(repeat_runs.__file__).resolve().parents[1]
+    assert repeat_runs.property_controls(root) == PROPERTY_CONTROLS
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "conftest.py").write_text("CONTROLS = ('test_*mutants*',)\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="assigns PROPERTY_CONTROLS no tuple of patterns"):
+        repeat_runs.property_controls(tmp_path)
+
+
+def test_the_warning_names_each_derandomized_module_of_what_was_collected(tmp_path: Path) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "conftest.py").write_text(
+        "PROPERTY_CONTROLS = ('test_*mutants*',)\n", encoding="utf-8"
+    )
+    for name, source in (
+        ("test_mutants", ""),
+        ("test_audits", DERANDOMIZING[1]),
+        ("test_plain", NAMING_ONLY[0]),
+    ):
+        (tmp_path / "tests" / f"{name}.py").write_text(source, encoding="utf-8")
+    collected = "\n".join(
+        [
+            "tests/test_plain.py::test_a",
+            "tests/test_mutants.py::test_b[x]",
+            "tests/test_audits.py::test_c",
+            "",
+            "3 tests collected in 0.01s",
+        ]
+    )
+    modules = repeat_runs.derandomized_modules(collected, tmp_path)
+    assert modules == ["tests/test_audits.py", "tests/test_mutants.py"]
+    warning = repeat_runs.derandomized_warning(modules)
+    assert warning.startswith("::warning title=Derandomized tests::the node collects tests in 2 modules")
+    assert "\n" not in warning
+    assert (
+        repeat_runs.derandomized_warning(
+            repeat_runs.derandomized_modules(collected.splitlines()[0], tmp_path)
+        )
+        == ""
+    )

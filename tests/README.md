@@ -87,7 +87,11 @@ under every seed: the mutant searches (`MUTANT_SEARCH` in `property/support.py`)
 what else varies between runs. For a derandomized test that is nothing it draws: it draws none of the constants
 Hypothesis harvests from the loaded modules (`harvested_constants.py`), so its examples, and a mutant's kill
 count, depend on the code alone. A test under `@seed` still draws them, so its examples also change with the
-modules outside `tests/` that the process has loaded.
+modules outside `tests/` that the process has loaded. The request job says so: where the node collects a test in
+a module that `--property-controls only` selects, or whose own code sets `derandomize=True` or runs
+`property/support.py`'s `MUTANT_SEARCH`, it warns, naming the modules, and runs the request all the same (#43's
+review, L7), since repeating such a test on a head and on its base is still a valid comparison. A module that
+runs another module's search through a function it imports (`property/test_validators_agree.py`) is not found.
 
 Two limits of that pin, neither met by a test here (the review measured both; details in
 `harvested_constants.py`): a search run inside the body of another that draws with `st.data()`, derandomized in

@@ -502,6 +502,13 @@ every family entry goes in `families/CHANGELOG.md`.
   module collected alone, or on Python 3.11 against 3.15, where without it the second moved 47 and the third
   62; every mutant still dies within its 2,000 examples at both sizes, the latest at the 872nd, and
   `tests/property/README.md`'s counts are measured again.
+- `repeat.yml` warns, and runs the request all the same, where the node collects a test in a module whose
+  searches are derandomized: one `PROPERTY_CONTROLS` selects, or one whose code sets `derandomize=True` or
+  runs `MUTANT_SEARCH` (#43's review, L7). Every repeat of such a test draws the same examples whatever its
+  seed, but repeating it on a head and on its base is still a valid comparison. The warning reads what pytest
+  collected with the extra arguments; `tests/unit/test_ci_workflows.py` runs the step on nodes that must and
+  must not be warned on, with controls that drop the warning, turn it into a refusal, or read the node in
+  place of the collection.
 
 ## [0.1.0.dev1] - 2026-10-14
 

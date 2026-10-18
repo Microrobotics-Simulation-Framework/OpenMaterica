@@ -67,6 +67,14 @@ Each run draws what its seed draws on any machine. Until `tests/conftest.py`'s p
 Hypothesis's own `ci` profile, which `CI=true` loads on every runner and which sets `derandomize=True`, every run
 drew the same examples whatever its seed (`tests/README.md`, "Repeat runs on CI").
 `tests/unit/test_ci_workflows.py` holds it to each of these, running its steps as written.
+When the node collects a test in a module whose searches are derandomized, a module `PROPERTY_CONTROLS`
+selects (the mutant searches and the audit controls) or one whose code sets `derandomize=True` or runs
+`tests/property/support.py`'s `MUTANT_SEARCH`, the request job warns, naming the modules, and does not
+refuse (#43's review, L7): every repeat of such a test draws the same examples whatever its seed, so a
+repeat of it measures nothing a seed changes, but repeating it on a head and on its base is still a valid
+comparison. The warning reads what pytest collected with the extra arguments, so `--property-controls none`
+leaves the controls out of it. A module that runs another module's search through a function it imports
+(`tests/property/test_validators_agree.py` runs the writer mutants' searches) is not found.
 
 ## Jobs at once (`PER_COMMIT_MAX_PARALLEL`, `REPEAT_MAX_PARALLEL`)
 
