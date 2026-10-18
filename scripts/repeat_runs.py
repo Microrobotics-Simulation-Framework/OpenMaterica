@@ -16,7 +16,8 @@ only, so that it runs on the runner's Python before anything is installed.
   outcome, the number of tests, and for each test that failed its node id, its message and each failing
   example Hypothesis reported.
 - `derandomized` reads the node ids pytest collected (`--collect-only -q`) on standard input and prints a
-  warning, never a refusal, where any lies in a module whose searches are derandomized (`derandomizes`):
+  warning, never a refusal, once for the node (`NODE`), where any lies in a module whose searches are
+  derandomized (`derandomizes`), naming the modules but for the whole suite, which always has some:
   every repeat of such a test draws the same examples, but a repeat of one is still a control where a head is
   compared with its base (#43's review, L7).
 - `summary DIRECTORY` sums the records under `DIRECTORY`, a `results.jsonl` for each job and each attempt
@@ -218,22 +219,61 @@ def property_controls(root: Path) -> tuple[str, ...]:
     raise ValueError("tests/conftest.py assigns PROPERTY_CONTROLS no tuple of patterns")
 
 
+def turned_off(value: ast.expr) -> bool:
+    """Whether a setting's value is written as one that turns it off: `False`, `None` or `0`."""
+    return isinstance(value, ast.Constant) and value.value in (False, None)
+
+
 def derandomizes(source: str) -> bool:
-    """Whether a module's code, not its comments or strings, runs a derandomized search: a call given
-    `derandomize=True`, or a name it imports from tests/property/support.py that runs one
-    (`SUPPORT_SEARCHES`)."""
-    for node in ast.walk(ast.parse(source)):
-        if (
-            isinstance(node, ast.keyword)
-            and node.arg == "derandomize"
-            and isinstance(node.value, ast.Constant)
-            and node.value.value is True
+    """Whether a module's code, not its comments or strings, runs a derandomized or fixed-seed search, which
+    draws the same examples whatever `--hypothesis-seed` says: a call given `derandomize=` anything not
+    written as off (a name bound to `True` among them), or a mapping given with that key, as `**{...}`; a call
+    of Hypothesis's `seed` (`@seed(N)`), by any name it is imported or reached under; or a name of
+    tests/property/support.py that runs a derandomized search (`SUPPORT_SEARCHES`), imported from it or read
+    from it as a module, by any name (#46's review, L5). A profile's settings are not followed: the
+    repository registers its own `ci` profile, which does not derandomize."""
+    tree = ast.parse(source)
+    seeds: set[str] = set()
+    hypotheses: set[str] = set()
+    supports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            module = (node.module or "").split(".")
+            for alias in node.names:
+                bound = alias.asname or alias.name
+                if module == ["hypothesis"] and alias.name == "seed":
+                    seeds.add(bound)
+                elif module[-1] == "support" and alias.name in SUPPORT_SEARCHES:
+                    return True
+                elif alias.name == "support":
+                    supports.add(bound)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "hypothesis":
+                    hypotheses.add(alias.asname or alias.name)
+                elif alias.name.split(".")[-1] == "support":
+                    supports.add(alias.asname or alias.name)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg == "derandomize" and not turned_off(node.value):
+            return True
+        if isinstance(node, ast.Dict) and any(
+            isinstance(key, ast.Constant) and key.value == "derandomize" and not turned_off(value)
+            for key, value in zip(node.keys, node.values, strict=True)
+        ):
+            return True
+        if isinstance(node, ast.Call) and (
+            (isinstance(node.func, ast.Name) and node.func.id in seeds)
+            or (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr == "seed"
+                and ast.unparse(node.func.value) in hypotheses
+            )
         ):
             return True
         if (
-            isinstance(node, ast.ImportFrom)
-            and (node.module or "").split(".")[-1] == "support"
-            and any(alias.name in SUPPORT_SEARCHES for alias in node.names)
+            isinstance(node, ast.Attribute)
+            and node.attr in SUPPORT_SEARCHES
+            and ast.unparse(node.value) in supports
         ):
             return True
     return False
@@ -252,15 +292,23 @@ def derandomized_modules(collected: str, root: Path) -> list[str]:
     ]
 
 
-def derandomized_warning(modules: Sequence[str]) -> str:
-    """The warning for a node that collects tests in `modules`, which are derandomized; none for no module."""
+def derandomized_warning(modules: Sequence[str], node: str = "") -> str:
+    """The warning for the node `node` that collects tests in `modules`, which are derandomized; none for no
+    module. The whole suite (`tests`) always collects some, so its warning is one sentence naming none."""
     if not modules:
         return ""
+    if node.partition("::")[0].rstrip("/") == "tests":
+        return "::warning title=Derandomized tests::" + annotation(
+            f"the whole suite collects {len(modules)} modules whose searches are derandomized, as it "
+            "always does: their tests draw the same examples in every run, whatever its seed; the others "
+            "draw anew."
+        )
     return "::warning title=Derandomized tests::" + annotation(
         f"the node collects tests in {len(modules)} modules whose searches are derandomized "
-        f"({', '.join(modules)}): every repeat of those draws the same examples, whatever its seed, and its "
-        "outcome depends on the constants of the local modules loaded beside it, so vary the selection, "
-        "not the count. A repeat of one is still a control where a head is compared with its base."
+        f"({', '.join(modules)}): every repeat of those draws the same examples, whatever its seed, so "
+        "repeating them measures only what else varies. A repeat of one is still a control where a head is "
+        "compared with its base. This is decided by module: a module counts when any of its code runs such a "
+        "search, whichever of its tests the node selects."
     )
 
 
@@ -567,7 +615,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif arguments.command == "seeds":
             print("\n".join(str(seed) for seed in job_seeds(os.environ)))
         elif arguments.command == "derandomized":
-            if warning := derandomized_warning(derandomized_modules(sys.stdin.read(), Path.cwd())):
+            modules = derandomized_modules(sys.stdin.read(), Path.cwd())
+            if warning := derandomized_warning(modules, os.environ.get("NODE", "")):
                 print(warning)
         elif arguments.command == "record":
             print(json.dumps(record(arguments.seed, arguments.status, arguments.report)))
