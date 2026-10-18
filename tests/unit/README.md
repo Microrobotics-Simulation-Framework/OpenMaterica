@@ -37,7 +37,10 @@ Tests by example, for what the conformance cases and the properties do not reach
   `ci.yml`'s; the import graph that follows a change to the tests that import it; every path a check names
   existing, and every shard it names collected by pytest; the tables of the tests that read the whole tree and of
   the data files tests open, held against a trace of the files the tests open and the directories they list
-  (`open_trace.py` records it, over a run of the suite of about a minute); the changes read from git (committed,
+  (`open_trace.py` records it, over a run of the suite of about a minute: that test runs only where
+  `MATERICA_TRACE_SELECTION=1`, which CI's `tests` job on Python 3.15 sets and no other job does, and is skipped
+  elsewhere with a reason that says so; run it with `MATERICA_TRACE_SELECTION=1 uv run --locked pytest
+  tests/unit/test_pre_review.py -k trace`); the changes read from git (committed,
   staged, unstaged, untracked, deleted and renamed files, from the merge base, a rename git pairs and a name with a
   newline among them); the names as CI's gate reads them, by its own `grep` lines on what `git diff` prints; a
   printed command pasted back through bash; a lock file out of date refused by `uv lock --check` and `uv run

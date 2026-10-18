@@ -2843,6 +2843,136 @@ def test_the_interrupt_check_can_fail(fault: Callable[[Workflow], None], problem
     assert any(problem in line for line in found), found
 
 
+# The variable that makes the trace test of tests/unit/test_pre_review.py run. That test runs the whole suite
+# once, so ci.yml sets it in one job of a run, not in each job that runs tests/unit (each per-commit job too).
+TRACE_VARIABLE = "MATERICA_TRACE_SELECTION"
+TRACE_TEST_FILE = REPOSITORY / "tests" / "unit" / "test_pre_review.py"
+
+
+def trace_setters(ci: Workflow, event: str) -> list[str]:
+    """The jobs, each combination of a matrix apart, that set the trace variable to `1` on `event`: in the
+    workflow's, the job's or a step's environment, or by naming it in a script (an `export`, a prefix)."""
+    setters: list[str] = []
+    for job_id, job in ci["jobs"].items():
+        steps: list[dict[str, Any]] = job.get("steps", [])
+        environments = [ci.get("env", {}), job.get("env", {}), *(found.get("env", {}) for found in steps)]
+        for context in matrix_contexts(job):
+            if context["github.event_name"] != event:
+                continue
+            sets = any(
+                as_text(setting(environment[TRACE_VARIABLE], context)) == "1"
+                for environment in environments
+                if TRACE_VARIABLE in environment
+            ) or any(TRACE_VARIABLE in str(found.get("run", "")) for found in steps)
+            if sets:
+                where = ", ".join(
+                    f"{key[len('matrix.') :]} {value}"
+                    for key, value in context.items()
+                    if key.startswith("matrix.")
+                )
+                setters.append(f"{job_id} ({where})" if where else job_id)
+    return setters
+
+
+def trace_problems(ci: Workflow, test_file: str) -> list[str]:
+    """Where a run of ci.yml does not set the trace variable in exactly one job, on any event; or that job is
+    not the `tests` job on the newest Python of its matrix, which the test's skip reason names."""
+    problems: list[str] = []
+    pythons: list[str] = ci["jobs"]["tests"]["strategy"]["matrix"]["python"]
+    newest = max(pythons, key=lambda version: tuple(map(int, version.split("."))))
+    for event in EVENTS:
+        setters = trace_setters(ci, event)
+        if not setters:
+            problems.append(f"on {event} no job sets {TRACE_VARIABLE}, so the trace test never runs")
+        elif len(setters) > 1:
+            problems.append(f"on {event} {len(setters)} jobs set {TRACE_VARIABLE}, not one: {setters}")
+        elif setters != [f"tests (python {newest})"]:
+            problems.append(
+                f"on {event} {setters} sets {TRACE_VARIABLE}, not the tests job on Python {newest}"
+            )
+    named = f"`tests` job on Python {newest}"
+    if named not in test_file:
+        problems.append(f"the trace test's skip reason does not name the {named}")
+    return problems
+
+
+def test_exactly_one_job_of_a_run_sets_the_variable_that_runs_the_trace_test() -> None:
+    assert trace_problems(workflow("ci.yml"), TRACE_TEST_FILE.read_text(encoding="utf-8")) == []
+
+
+def trace_set_nowhere(ci: Workflow) -> None:
+    del pytest_step(ci["jobs"]["tests"])["env"][TRACE_VARIABLE]
+
+
+def trace_set_to_zero(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["tests"])["env"][TRACE_VARIABLE] = "0"
+
+
+def trace_set_in_a_second_job(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["controls"])["env"][TRACE_VARIABLE] = "1"
+
+
+def trace_set_in_the_per_commit_job(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["commit"])["env"][TRACE_VARIABLE] = "1"
+
+
+def trace_set_on_every_python(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["tests"])["env"][TRACE_VARIABLE] = "1"
+
+
+def trace_set_on_two_pythons(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["tests"])["env"][TRACE_VARIABLE] = "${{ matrix.python != '3.13' && '1' || '' }}"
+
+
+def trace_set_by_the_workflow(ci: Workflow) -> None:
+    ci.setdefault("env", {})[TRACE_VARIABLE] = "1"
+
+
+def trace_set_by_a_script(ci: Workflow) -> None:
+    ci["jobs"]["static"]["steps"].append({"run": f"{TRACE_VARIABLE}=1 uv run pytest"})
+
+
+def trace_set_on_another_python(ci: Workflow) -> None:
+    pytest_step(ci["jobs"]["tests"])["env"][TRACE_VARIABLE] = "${{ matrix.python == '3.13' && '1' || '' }}"
+
+
+def trace_set_in_the_controls_job_alone(ci: Workflow) -> None:
+    del pytest_step(ci["jobs"]["tests"])["env"][TRACE_VARIABLE]
+    pytest_step(ci["jobs"]["controls"])["env"][TRACE_VARIABLE] = "${{ matrix.python == '3.15' && '1' || '' }}"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (trace_set_nowhere, "on pull_request no job sets MATERICA_TRACE_SELECTION"),
+        (trace_set_to_zero, "on pull_request no job sets MATERICA_TRACE_SELECTION"),
+        (trace_set_in_a_second_job, "3 jobs set MATERICA_TRACE_SELECTION, not one"),
+        (trace_set_in_the_per_commit_job, "2 jobs set MATERICA_TRACE_SELECTION, not one"),
+        (trace_set_on_every_python, "5 jobs set MATERICA_TRACE_SELECTION, not one"),
+        (trace_set_on_two_pythons, "4 jobs set MATERICA_TRACE_SELECTION, not one"),
+        (trace_set_by_the_workflow, "jobs set MATERICA_TRACE_SELECTION, not one"),
+        (
+            trace_set_by_a_script,
+            "2 jobs set MATERICA_TRACE_SELECTION, not one: ['static', 'tests (python 3.15)']",
+        ),
+        (trace_set_on_another_python, "not the tests job on Python 3.15"),
+        (trace_set_in_the_controls_job_alone, "not the tests job on Python 3.15"),
+    ],
+)
+def test_the_trace_variable_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    fault(ci)
+    found = trace_problems(ci, TRACE_TEST_FILE.read_text(encoding="utf-8"))
+    assert any(problem in line for line in found), found
+
+
+def test_the_trace_variable_check_finds_a_skip_reason_that_names_another_job() -> None:
+    text = TRACE_TEST_FILE.read_text(encoding="utf-8")
+    assert "`tests` job on Python 3.15" in text
+    found = trace_problems(workflow("ci.yml"), text.replace("`tests` job on Python 3.15", "`tests` job"))
+    assert any("skip reason does not name the `tests` job on Python 3.15" in line for line in found), found
+
+
 def interrupt_drift(words: Sequence[str]) -> bool:
     """Whether a test that interrupts pytest with `words` interrupts it otherwise than the workflows do."""
     return f"uv run {' '.join(words)} " not in INTERRUPTED
