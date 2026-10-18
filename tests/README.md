@@ -112,12 +112,16 @@ what it refuses). It runs on a pushed ref: a reviewer, or an agent through the m
 mutants to a branch of their own, which is never merged, and dispatches the workflow on it.
 
 1. Branch from the head under review, and write each mutant as a patch of the tree, one file each, under
-   `mutants/`, named by letters, digits, `_` and `-` (for a new file, `git add -N` it before `git diff`):
+   `mutants/`, named by letters, digits, `_` and `-` (for a new file, `git add -N` it before `git diff`).
+   After each, the line that writes its patch takes the edit out of the index and the tree, a file it added
+   too, so that the next patch holds the next mutant alone (`git checkout` alone would leave a file added
+   with `git add -N` in both, and every later patch would carry it); add any other directory the mutant
+   touched beside `src tests`:
 
    ```sh
    git switch -c mutants/<review> <head> && mkdir -p mutants
    # make the mutant's edit, then
-   git diff > mutants/m01.patch && git checkout -- src tests
+   git diff > mutants/m01.patch && git reset -q && git checkout -- src tests && git clean -fdq -- src tests
    git add mutants && git commit -s -m "mutants for <review>"     # the patches alone, never the edits
    git push -u origin mutants/<review>
    ```
@@ -152,7 +156,8 @@ for one drawn at random, which the table gives; and `extra`, of `--shard NAME` a
 `--property-controls only|none` alone. At most `MUTANT_MAX_PARALLEL` mutants run at once, a repository
 variable, 10 where it is unset (`.github/workflows/README.md`, "Jobs at once").
 
-The table has a row for the baseline, the branch as it is, and one for each mutant: **killed**, with the test
+The table has a row for the baseline, the branch as it is, and one for each mutant, with the paths its patch
+touches: **killed**, with the test
 that failed first, always one the collect step listed; **survived**, every selected test passed; **broken**,
 the patch does not apply, or the code does not import or the selection does not collect, in one process or
 under pytest-xdist (whose report then names a module or a worker, such as `gw0`, where a test should be),
@@ -161,12 +166,26 @@ time, pytest stopped another way, or the record is missing or doubled). Where th
 mutant counts as killed. The run passes only when the baseline passed and every mutant was killed; a mutant
 that survives because it changes nothing (an equivalent mutant) leaves it red, and the reviewer says so where
 the table is cited. A run stops at its first failure, so a killed mutant's row names one killer, not all of
-them. A mutant's run replays here with the same examples:
+them. A kill by a patch that edits the tests or pytest's settings (anything under `tests/`, a `conftest.py`,
+a `pytest.ini`, `tox.ini`, `setup.cfg` or `pyproject.toml` beside the tests, or `sitecustomize.py`) is
+marked, in its row and in the verdict: the edit, not the code, may have failed the test, so read the patch
+before citing it.
+
+A mutant's run replays here with the same examples when it runs the same selection, the table's line:
 
 ```sh
 git apply mutants/<name>.patch
-MATERICA_HYPOTHESIS_PROFILE=<profile> uv run pytest <the test> --hypothesis-seed=<the table's seed>
+MATERICA_HYPOTHESIS_PROFILE=<profile> uv run pytest -x <the selection> <the extra arguments> \
+  --hypothesis-seed=<the table's seed>
 ```
+
+A run of the failed test alone loads fewer modules and may draw other examples under the same seed: Hypothesis
+draws constants from the modules outside `tests/` that are loaded (`tests/property/audits.py`, lines 83-84,
+`replay`; `tests/unit/test_audit_replay.py` holds it). For the same reason the one seed makes a chance failure of
+the baseline's draws one of a mutant's only where the mutant leaves the constants of every module it loads
+outside `tests/` alone: a mutant that changes a literal draws examples of its own. Both hold for the tests
+Hypothesis draws at random; a derandomized test draws none of those constants (`harvested_constants.py`), so it
+replays alone, and draws the same examples under every mutant.
 
 Never re-run a mutant table's jobs: dispatch it anew, as the table fails on any attempt but the first.
 

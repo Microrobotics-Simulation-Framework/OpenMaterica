@@ -42,6 +42,7 @@ def every_record() -> list[dict[str, Any]]:
         records.append(
             {
                 "mutant": "m",
+                "touched": ["src/materica/a.py"],
                 "refused": refused,
                 "applied": applied,
                 "imports": imports,
@@ -248,6 +249,7 @@ def test_no_patch_committed_and_none_named_is_refused(repository: Path) -> None:
 def record(mutant: str, **facts: object) -> dict[str, object]:
     found: dict[str, object] = {
         "mutant": mutant,
+        "touched": [],
         "refused": [],
         "applied": True,
         "imports": True,
@@ -331,6 +333,7 @@ def test_a_table_passes_where_the_baseline_passed_and_every_mutant_was_killed(tm
             "problems",
         ),
         ([record(""), record("a", uncollected=[{"test": "gw0"}]), record("b")], "success", 1, "problems"),
+        ([record(""), record("a", touched=[1]), record("b")], "success", 1, "problems"),
         ([record(""), {"mutant": "a"}, record("b")], "success", 1, "problems"),
         ([record(""), record("a", outcome="killed"), record("b")], "success", 1, "problems"),
     ],
@@ -345,6 +348,7 @@ def test_a_table_passes_where_the_baseline_passed_and_every_mutant_was_killed(tm
         "a-failure-of-another-shape",
         "a-failure-with-another-key",
         "an-uncollected-entry-of-another-shape",
+        "a-touched-path-of-another-type",
         "fields-missing",
         "an-outcome-written-in",
     ],
@@ -356,6 +360,67 @@ def test_a_table_fails_unless_every_record_is_there_once_and_every_mutant_killed
     assert not ok
     assert problem in verdict, verdict
     assert verdict in text
+
+
+@pytest.mark.parametrize(
+    ("touched", "marked"),
+    [
+        (["src/materica/a.py"], []),
+        (["src/materica/a.py", "tests/unit/test_a.py"], ["tests/unit/test_a.py"]),
+        (["conftest.py"], ["conftest.py"]),
+        (["tests/conftest.py"], ["tests/conftest.py"]),
+        (["pytest.ini", ".pytest.ini"], ["pytest.ini", ".pytest.ini"]),
+        (["tests/pyproject.toml", "tests/tox.ini"], ["tests/pyproject.toml", "tests/tox.ini"]),
+        (["setup.cfg"], ["setup.cfg"]),
+        (["src/sitecustomize.py", "src/usercustomize.py"], ["src/sitecustomize.py", "src/usercustomize.py"]),
+        (["scripts/other.py", "src/materica/tests.py"], []),
+    ],
+)
+def test_each_row_gives_what_its_patch_touched_and_a_kill_by_an_edit_of_the_tests_is_marked(
+    tmp_path: Path, touched: list[str], marked: list[str]
+) -> None:
+    """#46's review, M2: a kill by a patch that edits the tests, a conftest, pytest's configuration or
+    Python's startup hooks may be the edit's doing, so the row and the verdict say so; the paths every patch
+    touched are in its row. A mutant that is not killed is not marked, whatever it touched."""
+    records = kept(
+        tmp_path,
+        record(""),
+        record("a", status=2, failures=FAILED, touched=touched),
+        record("b", touched=touched),
+    )
+    text, rows, verdict, _ = mutant_runs.table(REQUEST, records, "success")
+    assert [rows[1].touched, rows[1].marked, rows[2].marked] == [tuple(touched), tuple(marked), ()]
+    assert (
+        "1 of the kills by a patch that edits the tests or pytest's settings (marked)" in verdict
+    ) == bool(marked), verdict
+    assert ("**marked**" in text) == bool(marked)
+    assert all(text.count(mutant_runs.code(path)) >= 2 for path in marked), text
+    assert all(mutant_runs.code(path) in text for path in touched)
+
+
+def test_the_mark_check_can_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control: with no file counted among the tests' settings, a kill by a patch that edits a conftest
+    is not marked."""
+    monkeypatch.setattr(mutant_runs, "TEST_SETTINGS", ())
+    records = kept(tmp_path, record(""), record("a", status=2, failures=FAILED, touched=["conftest.py"]))
+    _, rows, verdict, _ = mutant_runs.table(
+        Request(("a",), ("tests",), "dev", "3.15", 7, ()), records, "success"
+    )
+    assert (rows[1].marked, "(marked)" in verdict) == ((), False)
+
+
+def test_the_replay_runs_the_dispatchs_selection_under_its_seed(tmp_path: Path) -> None:
+    """#46's review, L1: a run of the failed test alone loads fewer modules and may draw other examples
+    (`tests/property/audits.py`, `replay`), so the table replays the selection the dispatch ran."""
+    request = Request(
+        ("a",), ("tests/unit", "tests/property/test_x.py"), "ci", "3.15", 9, ("--shard=records",)
+    )
+    text, *_ = mutant_runs.table(request, kept(tmp_path, record(""), record("a")), "success")
+    assert (
+        "<code>git apply mutants/&lt;name&gt;.patch &amp;&amp; MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest "
+        "-x tests/unit tests/property/test_x.py --shard=records --hypothesis-seed=9</code>"
+    ) in text, text
+    assert "may draw other examples under the same seed" in text
 
 
 def test_a_table_escapes_what_a_record_says() -> None:
@@ -431,6 +496,61 @@ def test_the_split_check_can_fail(tmp_path: Path) -> None:
     module, worker, _ = mutant_runs.reported_failures(report)
     found = [mutant_runs.verdict(record("m", status=2, failures=[entry])) for entry in (module, worker)]
     assert found == [(KILLED, "tests/test_half.py::tests.test_half"), (KILLED, "gw0::gw0")]
+
+
+README = Path(__file__).resolve().parents[1] / "README.md"
+# The line of tests/README.md's recipe that writes a mutant's patch and restores the tree for the next.
+RECIPE_START = "git diff > mutants/m01.patch"
+
+
+def recipe_problems(line: str, root: Path) -> list[str]:
+    """Where `line`, run as written in the throwaway repository at `root` after each of two mutants, the first
+    of which adds a source file and a test (`git add -N`, as the recipe says), leaves the tree unclean, or
+    lets the first mutant's files into the second patch (#46's review, M1)."""
+    (root / "src").mkdir()
+    (root / "tests").mkdir()
+    (root / "src" / "a.py").write_text("A = 1\n", encoding="utf-8")
+    (root / "tests" / "test_a.py").write_text("def test_a():\n    pass\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], check=True)
+    subprocess.run(["git", "-c", "user.name=a", "-c", "user.email=a@b", "commit", "-qm", "t"], check=True)
+    (root / "mutants").mkdir()
+    (root / "src" / "a.py").write_text("A = 2\n", encoding="utf-8")
+    (root / "src" / "new.py").write_text("B = 1\n", encoding="utf-8")
+    (root / "tests" / "test_new.py").write_text("def test_new():\n    assert False\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-N", "src/new.py", "tests/test_new.py"], check=True)
+    subprocess.run(["bash", "-c", line], check=True)
+    (root / "src" / "a.py").write_text("A = 3\n", encoding="utf-8")
+    subprocess.run(["bash", "-c", line.replace("m01", "m02")], check=True)
+    problems: list[str] = []
+    for name, wanted in (("m01", ["src/a.py", "src/new.py", "tests/test_new.py"]), ("m02", ["src/a.py"])):
+        patch = (root / "mutants" / f"{name}.patch").read_text(encoding="utf-8")
+        found = sorted(line.split(" b/")[-1] for line in patch.splitlines() if line.startswith("diff --git "))
+        if found != wanted:
+            problems.append(f"the patch {name} holds {found}, not {wanted}")
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
+    ).stdout
+    if status != "?? mutants/\n":
+        problems.append(f"the tree is left as {status!r}")
+    return problems
+
+
+def test_the_readmes_recipe_leaves_the_tree_clean_for_the_next_mutant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lines = [line.strip() for line in README.read_text(encoding="utf-8").splitlines()]
+    (line,) = [line for line in lines if line.startswith(RECIPE_START)]
+    assert recipe_problems(line, throwaway_repository(tmp_path, monkeypatch)) == []
+
+
+def test_the_recipe_check_can_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control: the recipe before #46's review, which leaves a file added with `git add -N` in the index
+    and the tree, lets it into the next patch."""
+    old = f"{RECIPE_START} && git checkout -- src tests"
+    found = recipe_problems(old, throwaway_repository(tmp_path, monkeypatch))
+    assert any(
+        "the patch m02 holds ['src/a.py', 'src/new.py', 'tests/test_new.py']" in line for line in found
+    )
 
 
 def imported_in_a_fresh_process(root: Path, *paths: str) -> list[str]:
