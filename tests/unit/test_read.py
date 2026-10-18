@@ -2190,6 +2190,22 @@ def test_two_intervals_under_a_nominal_give_no_pick_with_no_nominal_applied() ->
     assert (elsewhere.status, elsewhere.reasons) == ("not_met", (Reason("want_mismatch"),))
 
 
+def test_two_intervals_under_a_nominal_give_want_mismatch_under_components() -> None:
+    """Section 3 step 7: "where two or more stay and none has a form `want` can give, `not_met`, with
+    `want_mismatch`"; "An interval counts as one `want: value` can give where a nominal the request carries
+    applies to the read", so under `want: components` neither interval counts, nominal or none [PR-338] (the
+    hand mutant M47, which survived the rerun of S2b-2's review's mutants at `dev` and at `ci`)."""
+    inside = met_interval(lower=0.0006, upper=0.0008, basis="specification_limits")
+    below = met_interval(lower=0.0001, upper=0.0002, basis="specification_limits")
+    result = read_accepting({"alternatives": [inside, below]}, [nominal()], want="components")
+    assert (result.status, result.reasons, result.conditions, result.applied) == (
+        "not_met",
+        (Reason("want_mismatch"),),
+        None,
+        (),
+    )
+
+
 @pytest.mark.parametrize(
     ("field", "why"),
     [
