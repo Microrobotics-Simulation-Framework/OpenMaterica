@@ -98,15 +98,22 @@ Python; the seed every run draws under, or none for one drawn at random; and ext
 
 A patch is a file of the dispatched commit, never text from the dispatch form, and the request job refuses,
 before any mutant's job starts, a patch git does not read as a text patch in its own format (a `diff --git`
-for each file), one with binary data, one that renames or copies a file or makes a link or a submodule, and
-one that touches a path outside the checkout (from the root, through `..`, or through a link), inside
-`.git`, under `.github/` or `mutants/` (ignoring case), the runner itself (`scripts/mutant_runs.py`), or what
-decides what is installed and what pytest selects (`pyproject.toml`, `uv.lock`). It refuses a patch that is
+for each file, in git's order), one with binary data, one that renames or copies a file, in any form, or
+makes a link or a submodule, and one that touches a path outside the checkout (from the root, through `..`,
+or through a link), inside `.git`, under `.github/` or `mutants/` (ignoring case), one git ignores (the
+environment uv installs, `.venv/`, and the example database, `.hypothesis/`), the runner itself
+(`scripts/mutant_runs.py`), or what decides what uv installs or how it runs (`pyproject.toml`, `uv.lock`,
+`uv.toml`, `.python-version`, `.python-versions`). A rename without rename lines is one: a `diff --git` line,
+or its `---` and `+++` lines, naming another path than the file's, which git applies by deleting that path
+while its own report lists the new one alone (#46's review, H1), so every path a patch names, old and new, is
+checked. It refuses a patch that is
 not a regular file committed at the dispatched commit, a name other than 1 to 64 letters, digits, `_` and
 `-`, more than 200 mutants (a matrix holds 256 jobs), and a patch of more than 1 MiB or with a control
 character but tab and line feed. A mutant's job checks its patch again before applying it, and runs the
 script that records the verdict from a copy outside the checkout, made before the patch is applied
-(`python3 -I`), so that nothing a patch writes reaches it. Every run of a dispatch draws under one seed, so
+(`python3 -I`), so that nothing a patch writes reaches it, and every `uv run` after the patch neither syncs
+nor locks (`--no-sync --frozen`), so that nothing a patch adds changes what is installed. Every run of a
+dispatch draws under one seed, so
 that a chance failure of the baseline's draws is a failure of each mutant's that leaves them alone, and a
 mutant's run replays exactly. Under pytest-xdist, `-x` ends a run that failed as interrupted (exit 2, where
 a run without xdist exits 1; checked 2026-10-18), so a run that stopped so counts as killed when its report

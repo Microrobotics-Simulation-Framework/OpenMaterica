@@ -161,6 +161,12 @@ DATA_RULES = (
         tests=("tests/unit/test_ci_workflows.py", "tests/unit/test_repeat_runs.py"),
     ),
     DataRule(
+        "the ignore rules",
+        r"\.gitignore",
+        "the mutant request refuses a path git ignores, and its guard runs on the repository's own rules",
+        tests=("tests/unit/test_ci_workflows.py",),
+    ),
+    DataRule(
         "the main workflow, which more tests read than hold it",
         r"\.github/workflows/ci\.yml",
         "the script's own lists of CI's paths, the Python versions and the source-file rules are compared "

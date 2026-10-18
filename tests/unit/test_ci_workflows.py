@@ -5319,8 +5319,9 @@ MUTANT_REQUESTED = {
     "extra": "",
 }
 # The tree each mutant runs on, beside the script: a package of two modules, a test of each, a workflow, the
-# build's files, and a link to a directory outside it.
+# build's files, the repository's own ignore rules, and a link to a directory outside it.
 MUTANT_TREE = {
+    ".gitignore": (REPOSITORY / ".gitignore").read_text(encoding="utf-8"),
     "src/materica/__init__.py": "def double(x):\n    return 2 * x\n",
     "src/materica/half.py": "def half(x):\n    return x / 2\n",
     "tests/test_double.py": (
@@ -5426,6 +5427,35 @@ def new_file_patch(path: str) -> str:
     )
 
 
+# A rename without rename lines (#46's review, H1), whose one hunk replaces the old file's line with another:
+# by default a `diff --git` line naming `old` then `new`; or another header given. git's reports list `new`
+# alone, and `git apply` deletes `old`.
+def disguised_rename(old: str, new: str = "src/materica/moved.py", header: str = "") -> str:
+    return (
+        f"{header or f'diff --git a/{old} b/{new}'}\nindex 1111111..2222222 100644\n"
+        f"--- a/{old}\n+++ b/{new}\n@@ -1 +1 @@\n-on: push\n+moved = True\n"
+    )
+
+
+# A patch in git's format for one file, then a part in the traditional format for another, then a `diff --git`
+# line with nothing under it, so that git's report lists as many files as there are `diff --git` lines.
+PADDED = (
+    "diff --git a/src/materica/half.py b/src/materica/half.py\nindex 1111111..2222222 100644\n"
+    "--- a/src/materica/half.py\n+++ b/src/materica/half.py\n@@ -1,2 +1,2 @@\n def half(x):\n"
+    "-    return x / 2\n+    return x / 3\n--- a/src/materica/__init__.py\n+++ b/src/materica/__init__.py\n"
+    "@@ -1,2 +1,2 @@\n def double(x):\n-    return 2 * x\n+    return 3 * x\n"
+    "diff --git a/src/materica/half.py b/src/materica/half.py\n"
+)
+
+
+# An edit of a file `uv sync` installs, which no commit holds (#46's review, H2).
+INSTALLED = ".venv/lib/python3.15/site-packages/somepkg.py"
+INSTALLED_EDIT = (
+    f"diff --git a/{INSTALLED} b/{INSTALLED}\nindex 1111111..2222222 100644\n--- a/{INSTALLED}\n"
+    f"+++ b/{INSTALLED}\n@@ -1 +1 @@\n-def given(): return 'real'\n+def given(): return 'patched'\n"
+)
+
+
 EDITED = edit("src/materica/__init__.py", "2 * x", "3 * x")
 # The patches the request takes, each by its mutant's name: an edit, a new file, a file deleted, a file made
 # executable; an edit whose context the tree does not hold, which its job records as broken; an edit that
@@ -5443,9 +5473,11 @@ PATCHES_TAKEN: dict[str, Callable[[Path], str]] = {
 }
 # The patches the request refuses, each by its mutant's name, with what it says of each: paths outside the
 # tree, from its root, inside .git, of a character a plain path does not hold, or through a link out of it;
-# under .github/, ignoring case, or mutants/; the runner, and the files that decide what is installed and
-# selected; a link made; binary data, with its bytes and without; a rename; a part not in git's format; a
-# control character; no patch; and a patch that is too long.
+# under .github/, ignoring case, or mutants/; the runner, and the files that decide what uv installs or how it
+# runs; a link made; binary data, with its bytes and without; a rename, with rename lines and without, from
+# a path a patch may touch and from each it may not; a file of the environment uv installs, added or edited,
+# and of the example database, which git ignores; a part not in git's format; a control character; no patch;
+# and a patch that is too long.
 PATCHES_REFUSED: dict[str, tuple[Callable[[Path], str], str]] = {
     "outside": (written(new_file_patch("../outside.py")), "touches '../outside.py' is not a plain path"),
     "rooted": (written(new_file_patch("/tmp/rooted.py")), "touches '/tmp/rooted.py' is not a plain path"),
@@ -5470,10 +5502,71 @@ PATCHES_REFUSED: dict[str, tuple[Callable[[Path], str], str]] = {
     ),
     "project": (changed(edit("pyproject.toml", "xunit1", "xunit2")), "touches pyproject.toml is the runner"),
     "lock": (changed(edit("uv.lock", "1", "2")), "touches uv.lock is the runner"),
+    "uv-toml": (changed(add("uv.toml", 'resolution = "lowest"\n')), "touches uv.toml is the runner"),
+    "python-version": (
+        changed(add(".python-version", "3.11\n")),
+        "touches .python-version is the runner",
+    ),
+    "python-versions": (
+        changed(add(".python-versions", "3.11\n3.12\n")),
+        "touches .python-versions is the runner",
+    ),
     "symlink": (changed(link("src/materica/linked.py", "/etc/hostname")), "gives the mode 120000"),
     "binary": (changed(binary("src/materica/blob.bin"), "--binary"), "is a binary patch"),
     "binarynote": (changed(binary("src/materica/blob.bin")), "is a binary patch"),
     "renamed": (changed(rename("src/materica/half.py", "src/materica/other.py")), "renames or copies a file"),
+    "disguised": (
+        written(disguised_rename("src/materica/half.py")),
+        "names two paths in one `diff --git` line, src/materica/half.py and src/materica/moved.py",
+    ),
+    "disguised-workflow": (
+        written(disguised_rename(".github/workflows/ci.yml")),
+        "touches .github/workflows/ci.yml is under .github/",
+    ),
+    "disguised-project": (
+        written(disguised_rename("pyproject.toml")),
+        "touches pyproject.toml is the runner",
+    ),
+    "disguised-lock": (written(disguised_rename("uv.lock")), "touches uv.lock is the runner"),
+    "disguised-patches": (
+        written(disguised_rename("mutants/edited.patch")),
+        "touches mutants/edited.patch is under mutants/",
+    ),
+    "disguised-runner": (
+        written(disguised_rename("scripts/mutant_runs.py")),
+        "touches scripts/mutant_runs.py is the runner",
+    ),
+    "disguised-odd": (
+        written(
+            disguised_rename(
+                ".github/workflows/ci.yml",
+                header="diff --git x/.github/workflows/ci.yml y/src/materica/moved.py",
+            )
+        ),
+        "has a `diff --git` line that names no plain path twice",
+    ),
+    "disguised-dashes": (
+        written(
+            disguised_rename(
+                ".github/workflows/ci.yml",
+                header="diff --git a/src/materica/moved.py b/src/materica/moved.py",
+            )
+        ),
+        "has the line '--- a/.github/workflows/ci.yml' under `diff --git a/src/materica/moved.py",
+    ),
+    "padded": (written(PADDED), "where its `diff --git` lines name"),
+    "venv-pth": (
+        written(new_file_patch(".venv/lib/python3.15/site-packages/zz_probe.pth")),
+        "touches .venv/lib/python3.15/site-packages/zz_probe.pth, which git ignores",
+    ),
+    "venv-edit": (
+        written(INSTALLED_EDIT),
+        "touches .venv/lib/python3.15/site-packages/somepkg.py, which git ignores",
+    ),
+    "examples": (
+        written(new_file_patch(".hypothesis/examples/abcdef0123456789/0123456789abcdef")),
+        "touches .hypothesis/examples/abcdef0123456789/0123456789abcdef, which git ignores",
+    ),
     "traditional": (
         written(
             "--- a/src/materica/half.py\n+++ b/src/materica/half.py\n@@ -1,2 +1,2 @@\n def half(x):\n"
@@ -5582,10 +5675,14 @@ def test_the_request_refuses_each_patch_it_cannot_run_safely_and_takes_the_other
 
 
 # Each rule of the check taken out of the script, and the patch the check then takes: a path not plain, inside
-# .git, through a link out of the tree; under .github/, ignoring case, or mutants/; the runner, pyproject.toml
-# or uv.lock; a link made; binary data; a rename; a part not in git's format; a patch not committed as a
+# .git, through a link out of the tree, or one git ignores; under .github/, ignoring case, or mutants/; the
+# runner, pyproject.toml, uv.lock, uv.toml or .python-version; a link made; binary data; a rename with rename
+# lines, and one without, by a `diff --git` line naming two paths, one git reads in another form, or `---`
+# and `+++` lines naming another path than it; the old path of a rename without them; a part not in git's
+# format, counted or hidden behind a `diff --git` line with nothing under it; a patch not committed as a
 # regular file; a control character; a patch too long; a name not plain. Each is the one rule that refuses
-# its patch, since a patch two rules refuse would show neither.
+# its patch, since a patch two rules refuse would show neither: where a second rule refuses it too,
+# `ALSO_TAKEN_OUT` takes that out as well.
 RULES_TAKEN_OUT = {
     "plain-path": (
         'if not PLAIN_PATH.fullmatch(path) or any(part in {".", ".."} for part in parts):',
@@ -5613,21 +5710,12 @@ RULES_TAKEN_OUT = {
         'REFUSED_DIRECTORIES = (".github",)',
         "patches",
     ),
-    "runner": (
-        'REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock")',
-        'REFUSED_FILES = ("pyproject.toml", "uv.lock")',
-        "runner",
-    ),
-    "project": (
-        'REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock")',
-        'REFUSED_FILES = (RUNNER, "uv.lock")',
-        "project",
-    ),
-    "lock": (
-        'REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock")',
-        'REFUSED_FILES = (RUNNER, "pyproject.toml")',
-        "lock",
-    ),
+    "runner": ("REFUSED_FILES = (RUNNER, ", "REFUSED_FILES = (", "runner"),
+    "project": ('REFUSED_FILES = (RUNNER, "pyproject.toml", ', "REFUSED_FILES = (RUNNER, ", "project"),
+    "lock": ('"pyproject.toml", "uv.lock", ', '"pyproject.toml", ', "lock"),
+    "uv-toml": ('"uv.lock", "uv.toml", ', '"uv.lock", ', "uv-toml"),
+    "python-version": ('"uv.toml", ".python-version", ', '"uv.toml", ', "python-version"),
+    "ignored": ("        if each in ignored\n", "        if False\n", "venv-pth"),
     "modes": ('MODES = ("100644", "100755")', 'MODES = ("100644", "100755", "120000")', "symlink"),
     "binary": (
         "BINARY_LINE = re.compile(",
@@ -5635,7 +5723,28 @@ RULES_TAKEN_OUT = {
         "binary",
     ),
     "rename": ('problems.append(f"{relative} renames or copies a file: {line.strip()}")', "pass", "renamed"),
-    "format": ("if headers != len(paths):", "if False:", "traditional"),
+    "one-path-twice": ("            if current is None:\n", "            if False:\n", "disguised"),
+    "header-form": (
+        'named.problems.append(f"has a `diff --git` line that names no plain path twice: {line!r}")',
+        "pass",
+        "disguised-odd",
+    ),
+    "dashes": (
+        "            if line[4:] not in (side + current, NO_FILE):\n",
+        "            if False:\n",
+        "disguised-dashes",
+    ),
+    "old-path": (
+        "    touched = list(dict.fromkeys([*paths, *named.paths]))\n",
+        "    touched = list(paths)\n",
+        "disguised-workflow",
+    ),
+    "format": ("    if len(named.headers) != len(paths):\n", "    if False:\n", "traditional"),
+    "header-order": (
+        "    elif None not in named.headers and named.headers != paths:\n",
+        "    elif False:\n",
+        "padded",
+    ),
     "committed": (
         "        listed.returncode != 0\n        or len(entries) != 1\n"
         '        or not entries[0].startswith(tuple(f"{mode} blob " for mode in MODES))\n'
@@ -5657,13 +5766,33 @@ RULES_TAKEN_OUT = {
 }
 
 
-@pytest.mark.parametrize(("old", "new", "name"), RULES_TAKEN_OUT.values(), ids=list(RULES_TAKEN_OUT))
-def test_the_patch_check_can_fail(tmp_path: Path, old: str, new: str, name: str) -> None:
+# The second rule that refuses a rule's patch, taken out with it: for a path that is not plain, the rule that
+# a `diff --git` line names one plain path twice, as a space is in both; for a path through a link out of the
+# tree, git's refusal to say whether it ignores it; for a rename with rename lines, the rule that a
+# `diff --git` line names one path, not two; both signs of binary data, the
+# marker line and git's counts of `-`; for a part not in git's format, the rule that git's report lists the
+# files of the `diff --git` lines in their order; and, for the old path of a rename without rename lines, the
+# rule that a `diff --git` line names one path, not two.
+ALSO_TAKEN_OUT = {
+    "plain-path": RULES_TAKEN_OUT["header-form"][:2],
+    "symbolic-link": (
+        'problems.append(f"git cannot say which paths of {relative} it ignores: {error}")',
+        "pass",
+    ),
+    "rename": RULES_TAKEN_OUT["one-path-twice"][:2],
+    "binary": ("    if binary and not problems:\n", "    if False:\n"),
+    "format": RULES_TAKEN_OUT["header-order"][:2],
+    "old-path": RULES_TAKEN_OUT["one-path-twice"][:2],
+}
+
+
+@pytest.mark.parametrize("rule", list(RULES_TAKEN_OUT))
+def test_the_patch_check_can_fail(tmp_path: Path, rule: str) -> None:
+    old, new, name = RULES_TAKEN_OUT[rule]
     tree = mutant_checkout(tmp_path)
     edited(tree / "scripts" / "mutant_runs.py", old, new)
-    if name == "binary":
-        # Both signs of binary data taken out: the marker line and git's counts of `-`.
-        edited(tree / "scripts" / "mutant_runs.py", "    if binary and not problems:\n", "    if False:\n")
+    if also := ALSO_TAKEN_OUT.get(rule):
+        edited(tree / "scripts" / "mutant_runs.py", *also)
     found = mutant_request_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path, [name])
     assert f"the check takes the patch {name}" in found, found
 
@@ -5710,6 +5839,7 @@ with open(os.environ["STUB_CALLS"], "a", encoding="utf-8") as calls:
         "environment": sorted(name for name in os.environ if name.startswith(("PYTEST_", "HYPOTHESIS_"))),
     }
     print(json.dumps(record), file=calls)
+arguments = [word for word in arguments if word not in ("--no-sync", "--frozen")]
 if arguments[:2] == ["run", "python"]:
     sys.exit(0)
 if "--collect-only" in arguments:
@@ -5727,12 +5857,14 @@ Path(report).write_text(
 sys.exit(2 if failing else 0)
 """
 # A `uv` whose `uv run` runs the command in the checkout's environment, as the job's `uv sync` makes it: this
-# Python, with the checkout's `src/` first on its path, for `python` and `pytest`, and `timeout` around it.
+# Python, with the checkout's `src/` first on its path, for `python` and `pytest`, and `timeout` around it;
+# `--no-sync` and `--frozen` change nothing here, as nothing is synced.
 MUTANT_UV_RUN = """
 import os, sys
 
 assert sys.argv[1] == "run", sys.argv
-command, rest = sys.argv[2], sys.argv[3:]
+words = [word for word in sys.argv[2:] if word not in ("--no-sync", "--frozen")]
+command, rest = words[0], words[1:]
 os.environ["PYTHONPATH"] = os.path.join(os.getcwd(), "src")
 if command == "python":
     os.execv(sys.executable, [sys.executable, *rest])
@@ -5814,23 +5946,26 @@ def mutant_wiring_problems(mutants: Workflow, tree: Path, directory: Path) -> li
     ran = run_a_mutant(mutants, tree, directory / "edited", "edited", JOB_MINUTES="10")
     copy_of_script = ran.temporary / "runner" / "mutant_runs.py"
     report = ran.temporary / "record" / mutant_runs.REPORT
+    unsynced = ("run", "--no-sync", "--frozen")
     expected = [
-        ["run", "python", str(copy_of_script), "imports", "src/materica/__init__.py"],
-        ["run", "pytest", "--collect-only", "-q", "tests"],
+        [*unsynced, "python", str(copy_of_script), "imports", "src/materica/__init__.py"],
+        [*unsynced, "pytest", "--collect-only", "-q", "tests"],
         [
-            *("run", "timeout", "--foreground", "--signal=INT", "<seconds>"),
+            *unsynced,
+            *("timeout", "--foreground", "--signal=INT", "<seconds>"),
             *("pytest", "-n", "auto", "--dist", "worksteal", "-x", "tests"),
             *("--hypothesis-seed=7", f"--junitxml={report}"),
         ],
     ]
     words = [call["arguments"] for call in ran.calls]
-    seconds = re.fullmatch(r"(\d+)s", words[2][4]) if len(words) == 3 and len(words[2]) > 4 else None
+    at = expected[2].index("<seconds>")
+    seconds = re.fullmatch(r"(\d+)s", words[2][at]) if len(words) == 3 and len(words[2]) > at else None
     if seconds:
-        words[2][4] = "<seconds>"
+        words[2][at] = "<seconds>"
     if words != expected:
         problems.append(f"the job of a mutant runs {words}, not {expected}")
     elif seconds is None or not 7 * 60 - 30 <= int(seconds[1]) <= 7 * 60:
-        problems.append(f"a run of a job of 10 minutes is interrupted after {ran.calls[2]['arguments'][4]}")
+        problems.append(f"a run of a job of 10 minutes is interrupted after {ran.calls[2]['arguments'][at]}")
     if not copy_of_script.is_file() or copy_of_script.is_relative_to(ran.tree):
         problems.append(f"the script that records the verdict runs from {copy_of_script}")
     problems += [
@@ -5848,8 +5983,9 @@ def mutant_wiring_problems(mutants: Workflow, tree: Path, directory: Path) -> li
     if (failed.status, outcome(failed)) != (0, mutant_runs.KILLED):
         problems.append(f"a mutant whose run failed exits {failed.status} as {outcome(failed)}")
     baseline = run_a_mutant(mutants, tree, directory / "baseline", "")
-    imports = [call["arguments"] for call in baseline.calls if call["arguments"][:2] == ["run", "python"]]
-    if imports != [["run", "python", str(baseline.temporary / "runner" / "mutant_runs.py"), "imports"]]:
+    imports = [call["arguments"] for call in baseline.calls if "python" in call["arguments"]]
+    copy_of_baselines_script = str(baseline.temporary / "runner" / "mutant_runs.py")
+    if imports != [["run", "--no-sync", "--frozen", "python", copy_of_baselines_script, "imports"]]:
         problems.append(f"the baseline's import check is {imports}")
     if in_git(baseline.tree, "status", "--porcelain") or (baseline.status, outcome(baseline)) != (
         0,
@@ -5898,10 +6034,15 @@ def another_profile(mutants: Workflow) -> None:
     step(mutants["jobs"]["mutants"], MUTANT_RUN_STEP)["env"]["MATERICA_HYPOTHESIS_PROFILE"] = "ci"
 
 
-# Faults of the script as the job runs it, each a change to its text: the run interrupted by TERM, the
-# interrupt sent to pytest's group, no room left for it, the first failure not stopped at, the patch never
-# applied, and a job exiting 0 whatever it found.
+# Faults of the script as the job runs it, each a change to its text: the environment synced after the patch,
+# the run interrupted by TERM, the interrupt sent to pytest's group, no room left for it, the first failure
+# not stopped at, the patch never applied, and a job exiting 0 whatever it found.
 SCRIPT_FAULTS = {
+    "synced": (
+        'UV_RUN = ("uv", "run", "--no-sync", "--frozen")',
+        'UV_RUN = ("uv", "run")',
+        "the job of a mutant runs",
+    ),
     "terminated": ('"--signal=INT"', '"--signal=TERM"', "the job of a mutant runs"),
     "group": ('"--foreground", ', "", "the job of a mutant runs"),
     "no-room": ("(minutes - 3) * 60", "minutes * 60", "interrupted after"),

@@ -123,9 +123,10 @@ mutants to a branch of their own, which is never merged, and dispatches the work
    ```
 
    A patch is the tree's own `git diff`: edits, new files and deleted files of source or tests, never a
-   rename, a link, binary data, `.github/`, `mutants/`, `scripts/mutant_runs.py`, `pyproject.toml` or
-   `uv.lock`. The request checks every patch it names before any mutant runs, and refuses the run for any
-   other.
+   rename, in any form, a link, binary data, `.github/`, `mutants/`, a path git ignores (`.venv/`,
+   `.hypothesis/`), `scripts/mutant_runs.py`, or what decides what uv installs or how it runs
+   (`pyproject.toml`, `uv.lock`, `uv.toml`, `.python-version`, `.python-versions`). The request checks every
+   patch it names before any mutant runs, and refuses the run for any other.
 2. Dispatch, and wait:
 
    ```sh
