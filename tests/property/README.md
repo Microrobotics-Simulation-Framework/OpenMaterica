@@ -53,27 +53,38 @@ check's reader (the last bullet).
   its rule gives, and two faults in two parts of the record give both (each step makes all its checks);
   members the reader does not know, added where they may go, never change the outcome, two slips off a named
   member included. `value_field_strategies.py` builds a record holding one field that passes step 8, a
-  constant as often as an interval and a composition together, each member its row's shape or a status object
-  its row allows, and anything at all in the members a read does not check; and the catalogue, by region of
-  the record, each fault with the codes its rule gives: 21 regions since S2a-2's fix round, which wrote faults
+  constant as often as an interval and a composition together, or evidence, each member its row's shape or a
+  status object its row allows, and anything at all in the members a read does not check; and the catalogue,
+  by region of the record, each fault with the codes its rule gives: 21 regions since S2a-2's fix round,
+  which wrote faults
   for each value step 8 checks, the derivation and `source` included, slips beside a named member or of an
   optional one, and the eleven rules its review found untested; and five of S2b-1's, an interval's, a
   composition's and a component's own members (`interval`, `interval_tokens`, `composition`,
   `composition_tokens`, `component`), whose cross-member rules no schema states (lower above upper, both
   bounds `none`, a component twice, a fraction outside 0 to 1, an empty list, `element:Xx`, a basis the row
   does not allow), with the near misses the text allows (bounds equal, `0` beside `-0`, one bound `none`,
-  fractions 0, 1 and `-0`, a component's statistics withheld, a sum no read checks). The field region's faults
+  fractions 0, 1 and `-0`, a component's statistics withheld, a sum no read checks); and four of S2b-2's,
+  evidence's (`evidence_list`, `evidence_report`, `evidence_provenance`, `evidence_field`), 36 faults: a list
+  empty, a status object, an object or `null`, a report not an object, withheld in part or a withheld report
+  holding a member, every report withheld (`withheld`), a member missing, `null`, of another type or a broken
+  status object, a year with a fraction, a report's provenance broken as a field's would be, a registered
+  condition, with the near misses the text allows (some reports withheld, `entries_withheld` beside a read
+  that goes on, which HP3 reads as passing step 8; a member `unstated`; a member beside a standard's status;
+  a provenance member a read does not check, or its review, broken; a condition of a name the reader does not
+  know, step 10's; statistics beside, which evidence's row does not read). The field region's faults
   on the own member (`value_*`) act on the member of the field's form. A fault of the forms' regions is drawn on
-  a field of its form; any other on a field of a form drawn first. HP3 runs in three parts, a property each,
-  the 21 regions taken in turn by the first two, S2b-1's five by the third: each draws its first fault's
+  a field of its form; any other on a field of a form drawn first, evidence only for the shared regions it
+  takes (`takes`). HP3 runs in four parts, a property each,
+  the 21 regions taken in turn by the first two, S2b-1's five by the third, S2b-2's four by the fourth: each
+  draws its first fault's
   region among its own, and the field's form, before the record, so that the feature audit at `ci` can judge
   each region and form (below); the mutant searches draw HP3 whole. A third law, the label's rule, holds a
   label on a table to the Label column, read by the test itself, through step 8's shared check, since no read
   reaches a table before S3. A read is made under the `want` that gives its field's form; one that passes
   step 8 is refused at step 9 or 10, or goes on to steps 11 to 13: either is the outcome "past step 8". HP5
   adds its members at every object of the record but a `conditions` map and a status object, a list's items
-  among them (a component, a derivation's input), and declares how often one lands in an interval's or a
-  composition's own member.
+  among them (a component, a derivation's input, a report), and declares how often one lands in an interval's
+  or a composition's own member, and in an evidence field's reports (`in_a_report`).
 - **Steps 9 and 10:** (10) the laws of steps 9 and 10 (`read_side_contract.md` sections 3 and 5), the S2
   design's HP7, HP8 and HP9, and HP3 and HP5 for the part steps 9 and 10 decide
   (`test_condition_properties.py`). HP7: step 10 gives each condition the entry and reason of an oracle
@@ -128,23 +139,36 @@ check's reader (the last bullet).
   HP2, HP6 and HP11 (`test_result_properties.py`), over reads that end at each step S2 builds, the kind drawn
   first (`result_strategies.py`): a record that passes steps 1 to 10, under each `want` of plain read; a
   fault of step 8's catalogue or of steps 9 and 10's; a read that ends before step 4, at step 5 or at step 7;
-  and alternatives the request meets, or whose list breaks its shape. HP1: the read gives a result, raising
+  alternatives the request meets, or whose list breaks its shape; and, S2b-2's, an interval's read under a
+  nominal (`nominal`), five ways drawn first (inside its bounds, on one, the double next past one, under
+  `want: bounds`, or where it does not apply: for another field, beside a region, with no location), and a
+  nominal for another field before the one applied in half the draws of one that supplies the value. HP1: the
+  read gives a result, raising
   `NotImplementedError` for a step not built yet alone, which only step 8's faults reach here; every code is
   the table's, each `(code, condition)` once, `condition` on every `condition_*` reason and on no reason of a
   code that never concerns one. HP2: the status is the worst of the reasons' statuses, which the oracle folds
   from the vocabulary itself, and the members are present as item 6 says (a value with its unit, specimen,
   statistics and provenance exactly where the status is not `not_met` and one value stands; the alternative
   values exactly under `no_pick`; `conditions` beside a value, never under `no_pick` or after a refusal
-  before step 10). HP6: what a read returns of a met constant, interval or composition under the `want` that
-  gives it (its form drawn first: a constant as often as the other two together), or of each alternative under
+  before step 10); under a nominal, an oracle of its own (`declarations.md` section 4.1): inside or on the
+  bounds, compared exactly, the nominal's value and `assumption` beside `want_mismatch` and `not_met`, and
+  `applied` its index; one double outside, `nominal_invalid` in place of `want_mismatch`, no value and
+  nothing applied; under `want: bounds` or located elsewhere, the read as without it. HP6: what a read
+  returns of a met constant, interval, composition or evidence under the
+  `want` that gives it (its form drawn first: a constant as often as two of the others), or of each
+  alternative under
   `no_pick`, equals the stored member, an interval's `none` bound a status object, a composition's components
-  and stated sum as stored, numbers bit for bit and status objects as status objects, holding the members
+  and stated sum as stored, evidence's reports with their statuses and their provenance whole, the members the
+  version defines at every depth (a report's provenance as the writer schema writes it, not as a result's
+  `provenance` is cut), numbers bit for bit and status objects as status objects, holding the members
   the generated `TypedDict`s define (the oracle walks the shapes itself, never the reader's filter), each
   count and index an integer, the review as `provenance.md` section 2 item 6 reads it; and emptying what a
   result returns, its JSON or its members, changes neither a later JSON of it nor a later read of the same
   store. Its draws give the field a value of `-0` in one in four, each way a review reads in one in three,
   and a member the reader does not know in its statistics block, a fact or a condition in one in two, each
-  declared by its chance. HP11: without the hash suite, `hash_not_checked` marks exactly a read that reached
+  declared by its chance; a second HP6 property holds a nominal's value, its kind and `applied` as the
+  request writes them, a double bit for bit. HP11: without the hash suite, `hash_not_checked` marks exactly a
+  read that reached
   step 4, which the draw knows, and the two reads differ by that label alone. Step 10's faults that leave the
   read to go on (`unchecked`, `unstated`, `unknown_name`, `uncertain`) are a kind of their own, beside a token
   the request does not accept in half its draws, so that a result holds reasons of both statuses; step 8's
@@ -156,19 +180,24 @@ check's reader (the last bullet).
   and alternative; the labels as a set; condition entries by name; alternative values in order; every other
   member bit for bit; counts and indexes as the integers rule 5 writes), or both "not yet" (a
   `NotImplementedError`, a no verdict). Five parts, each drawing its kinds first (`model_strategies.py`):
-  values and alternatives (a constant, an interval or a composition, the form drawn first, met as drawn, at
-  one of section 5's boundaries as HP7 draws them, or filled by an implied condition, beside another section's
-  specimen in one draw in three, under its own `want` in half the draws of an interval or a composition;
-  alternatives of one form met, broken, or refused by a request fault, each further one apart from the first
-  beside its own member in one draw in four: its unit spelled otherwise, a specimen fact of its own, or a
-  request fault of its own); faults of steps 8 to 10, one or two, step 8's of every form it reads; two faults
-  of one of steps 0,
+  values and alternatives (a constant, an interval, a composition or evidence, the form drawn first, met as
+  drawn, at one of section 5's boundaries as HP7 draws them, or filled by an implied condition, beside another
+  section's specimen in one draw in three, under its own `want` in half the draws of a form but a constant's;
+  an interval in half its draws under a nominal of one of the result group's five ways, and evidence's unit in
+  half its draws a status object with a reason; alternatives of one form met, broken, or refused by a request
+  fault, each further one apart from the first beside its own member in one draw in four: its unit spelled
+  otherwise, a specimen fact of its own, or a request fault of its own; intervals met in half their draws
+  under `want: value` with a nominal located at the read); faults of steps 8 to 10, one or two, step 8's of
+  every form it reads; two faults of one of steps 0,
   8, 9 and 10 that give two reasons (the design's B5, a step that stops at its first fault); step 0's
-  catalogue of 52 faults and near misses, and six texts that are no JSON, written from `read_side_contract.md`
-  section 1, and reads that end before step 8; and the rules no case file pins (the model's survivors), each
+  catalogue of 60 faults and near misses, and six texts that are no JSON, written from `read_side_contract.md`
+  section 1 (S2b-2's eight: an acceptance not an object; a nominal's value not a number or missing, its field
+  not registered, a slip, two for one field; and the near misses, one for another field, its `basis` and
+  `params` anything), and reads that end before step 8; and the rules no case file pins (the model's
+  survivors), each
   planted. The known divergences are listed by kind with their reasons and held exactly, failing on any other:
-  three steps not built that the model decides (an overlay as the target, S4's decision 8; evidence, which
-  S2b-2 reads; an acceptance other than an implied condition), found by the implementation's own
+  one step not built that the model decides (an overlay as the target, S4's decision 8; evidence and the
+  nominal, which S2b-2 reads, are no divergence any more), found by the implementation's own
   `NotImplementedError` and held to the draw and to what the model gives; and one open point on which the two
   read the text differently, open point 1's record half (`members_of_the_other_kind`: a record condition
   holding a member of the other kind), where the model must refuse as it fails closed, and the model given the
@@ -180,8 +209,9 @@ check's reader (the last bullet).
 - **What a read must not look at:** (13) the S2 design's HP4 and HP10 (`test_invariance_properties.py`,
   `invariance_strategies.py`). HP4: a fault in another field, registered or not, or in another section's
   specimen never changes a read (the oracle, the read of the record without it); one in the read field's own
-  section's specimen refuses it, `form_invalid` or `unknown_token` alone. Both read a constant, an interval or a
-  composition, a constant as often as the other two together, and the audit holds each form to its chance.
+  section's specimen refuses it, `form_invalid` or `unknown_token` alone. Both read a constant, an interval, a
+  composition or evidence, a constant as often as two of the others, and the audit holds each form to its
+  chance.
   HP10: sources and request written
   again, members reordered and whitespace, escapes and number spellings drawn, give the original's result,
   compared as section 2 compares; sources identical byte for byte are written again alike, since two copies
@@ -262,7 +292,11 @@ workers at `ci`, 2026-10-16; 155 s with the result's, 2026-10-17; 151 s beside t
 groups with their mutant searches, each example reading two records or a read twice (198 s on four local
 workers at `ci`, 2026-10-17; `SHARDS` in `tests/conftest.py`). S2b-1's intervals and compositions added 13%
 to `conditions` and 7% to `relations`, each timed side by side with the tests before them (475 s against 420,
-588 against 549, at loads of 15 to 25), and HP3's third part 51 s of one worker to records (172 s). Each family of faults is a property of its own,
+588 against 549, at loads of 15 to 25), and HP3's third part 51 s of one worker to records (172 s). S2b-2's
+evidence and nominals: records 98 s, step8_mutants 65 s, conditions 265 s, relations 516 s, agreement
+429 s,
+on four local workers at `ci`, run one after another (2026-10-18, at loads of 8 to 11 from other work). Each
+family of faults is a property of its own,
 run in parallel. The agreement shard's drawn properties run python-jsonschema on every example, and are the
 longest tests of any shard: on 4 workers locally (2026-10-17), the shard took 4.0 and 8.0 minutes at `ci`, its
 longest property 1.9 and 4.7 (at loads of 4 to 7 and 15 to 17), and 112 minutes at `deep`, its longest
@@ -320,7 +354,10 @@ sizes or contents could show: a nesting limit off by one, removal that stops at 
 exchanges, a pattern searched where it must match in full, versions ordered as strings or as doubles, an
 unreadable source ignored, the first of two differing copies read. Each test records the examples its kill
 took as `examples_to_kill`, which `--junitxml` writes out. A fault that died only at the original size would
-mean the small size misses it.
+mean the small size misses it. Hypothesis warns where the repr of the example it reports runs past 30 kB,
+which the warning filter makes an error: the searches of steps 8 to 10, and those that share the latter's,
+ignore that warning alone, so that a kill at a long example (an evidence field at the original size) is
+counted, not lost in its report.
 
 A derandomized run draws none of the constants Hypothesis harvests from the loaded modules
 (`tests/harvested_constants.py`), so a search's examples, and its count, depend on the code alone: the mutant,
@@ -526,9 +563,19 @@ the second example at both sizes in each of those runs.
 | `component_statistics_unchecked` | a component's statistics block is not checked | HP3 | `component.statistics_count_not_whole`, `.statistics_central_unknown`, `.statistics_status_not_allowed`, `.statistics_represents_missing` | 1, 1 |
 | `stated_sum_any` | `stated_sum` takes any value | HP3 | `composition.stated_sum_not_a_number` | 1, 1 |
 | `sums_checked_at_read` | a `sums_to_one` composition that sums away from one with no stated sum is refused, a record check's flag read as a refusal | HP3 | `composition.sum_unflagged` | 1, 1 |
-| `unknown_members_refused_in_an_own_member` | a member an interval, a composition or a component does not name is refused | HP5 | any of its property | 24, 95 |
+| `unknown_members_refused_in_an_own_member` | a member an interval, a composition or a component does not name is refused | HP5 | any of its property | 10, 22 |
 | `any_bound_status_read_as_none` | a bound's status object of any token read as `none`, so that an unknown token beside a `none` gives `form_invalid` too | HP3 | `interval_tokens.bound_status_unknown` | 1, 1 |
 | `a_repeat_found_only_beside_itself` | a component named twice found only where it follows itself | HP3 | `composition.component_repeated_apart` | 1, 1 |
+| `every_report_withheld_read_as_some` | evidence whose every report is withheld gives `entries_withheld`, not `withheld` | HP3 | `evidence_list.every_report_withheld` | 1, 1 |
+| `some_reports_withheld_read_as_every` | evidence some of whose reports are withheld gives `withheld` | HP3 | `evidence_list.one_more_report_withheld` | 1, 1 |
+| `an_empty_list_taken` | evidence may be an empty list | HP3 | `evidence_list.list_empty` | 1, 1 |
+| `a_status_list_read_as_withheld` | evidence held as a status object read as every report withheld | HP3 | `evidence_list.list_a_status` | 1, 1 |
+| `a_report_withheld_in_part_taken` | a report withholding some of its members, or a withheld report holding a member beside its provenance, taken | HP3 | `evidence_list.report_withheld_in_part`, `.withheld_report_opened` | 1, 1 |
+| `a_report_member_optional` | a report may lack a member | HP3 | `evidence_report.member_missing` | 1, 1 |
+| `a_reports_provenance_unchecked` | a report's provenance is not checked | HP3 | `evidence_provenance.origin_unknown`, `.origin_missing`, `.source_key_not_a_string`, `.source_missing_for_its_origin`, `.derivation_missing`, `.not_an_object` | 1, 1 |
+| `a_years_fraction_taken` | a standard's `year` takes any number | HP3 | `evidence_report.standard_year_not_whole` | 1, 1 |
+| `a_registered_condition_taken_under_evidence` | a registered condition under evidence taken | HP3 | `evidence_field.registered_condition`, `.registered_condition_unstated` | 1, 1 |
+| `unknown_members_refused_in_a_report` | a member a report, its standard or its provenance does not name is refused | HP5 (planned) | any of its property, its members added in a report | 1, 1 |
 
 S2b-1's 18 test an interval's and a composition's own member: each rule HP3's five new regions hold a fault
 for, the near misses among them (equal bounds, `0` beside `-0`, fractions 0 and 1, a sum no read checks), and
@@ -541,6 +588,15 @@ object of any token read as `none` (`interval_tokens.bound_status_unknown`, an u
 repeat found only beside the component it repeats (`composition.component_repeated_apart`, the first component
 again after another, where HP3's `component_repeated` had met it only in some runs at `ci`). Each dies at its
 first example at both sizes; no other count of the table moved (the shard again, the same day).
+
+S2b-2's ten test evidence's own member, each rule HP3's fourth part holds a fault for, near misses among them
+(every report withheld beside all but one, a withheld report holding a member besides its provenance, a year
+of `1.5`), and HP5's unknown member in a report, its standard or its provenance. HP5's own draws add members
+anywhere in a record of any form step 8 reads, and met this one's fault at 233 and 1,597 examples, too thin a
+margin: its search is planned, members added in a valid evidence field's reports alone (`with_unknowns(...,
+reports=True)`). Each died at its first example at both sizes (the `step8_mutants` shard at `ci` on four local
+workers, 2026-10-18; with the pin at S2b-2's head, the same day). Of the others, only S2b-1's
+`unknown_members_refused_in_an_own_member` moved (from 24 and 95, with the pin), since HP5 draws evidence too.
 
 The S2 design's HP5 mutant, an unknown member returned, waits for the result's members (S2a-4), but in a
 condition's entry, which steps 9 and 10's HP5 kills (`unknown_members_returned_in_an_entry`, below).
@@ -657,31 +713,56 @@ that it reaches the result and dies at HP1's reason-table assertion, which each 
 look-up of the code (the review's L1). The tenth kind moved every HP1, HP2 and HP11 search; the counts below are
 measured with the pin at S2b-1's head (2026-10-18).
 
+S2b-2's eleven: five of HP2's under a nominal, three of HP6's on evidence, and three of HP6's second property,
+on a nominal's value and assumption. HP1, HP2 and HP11 draw an eleventh kind, `nominal` (its draw floor 25
+examples, as a kind's), so that HP2's nominal mutants die at a nominal's way within its share of the examples,
+not inside `met`, where they died too late; HP2's oracle names `value`, `assumption`, `nominal_invalid` and
+`applied` under a nominal itself. Even so the margin was thin: drawn among the eleven kinds, over twelve random
+seeds (1000 to 1011) `a_nominal_applied_outside_its_bounds` took up to 1,414 examples and
+`a_nominal_applied_wherever_it_is_located` survived 2,000 in two (its fault shows only at a nominal beside a
+region or with no location, two fifteenths of a nominal's draws). So the five are planned searches, HP2 over
+reads under a nominal alone (`drawn_reads(size, ("nominal",))`): over the same seeds each died within 158
+examples at both sizes (the median 1 to 42). Evidence is a fourth form `met_own_member` and HP6 draw. HP1's
+`a_code_outside_the_table` dies at a nominal located elsewhere too, an interval read under `value` as without
+it, as its comment says. The counts of S2b-2's rows, and of those its kind and form moved, are measured with
+the pin at S2b-2's head (2026-10-18).
+
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
-| `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1 | `step_8_fault`, `step_9_or_10_fault`, `unknown_at_step_10` | 6, 12 |
-| `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 | `met`, `met_own_member`, `step_9_or_10_fault`, `unknown_at_step_10` | 43, 277 |
-| `a_code_outside_the_table` | step 13's refusal under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `met`, `step_8_fault` | 19, 243 |
-| `reasons_not_merged` | a reason found twice given twice | HP1 | `step_8_fault`, `step_9_or_10_fault` | 3, 37 |
-| `a_forms_mismatch_outside_the_table` | an interval's or a composition's `want_mismatch` under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `form_interval`, `form_composition`, `step_8_fault` | 42, 243 |
-| `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault`, `unknown_at_step_10` | 7, 26 |
-| `best_status` | the status the best of the reasons' | HP2 | any kind | 7, 26 |
-| `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 | `alternatives` | 65, 28 |
-| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 | `alternatives` | 65, 28 |
-| `no_statistics_beside_a_composition` | a composition's spread read as its components' alone, so its field's statistics block is not returned | HP2 | `form_composition` | 72, 256 |
-| `expanded_uncertainty_divided_by_its_k` | an expanded uncertainty returned divided by its coverage factor (the S2 design's) | HP6 | `met`, `alternatives` | 11, 5 |
+| `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1 | `step_8_fault`, `step_9_or_10_fault`, `unknown_at_step_10` | 10, 20 |
+| `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 | `met`, `met_own_member`, `nominal`, `step_9_or_10_fault`, `unknown_at_step_10` | 179, 108 |
+| `a_code_outside_the_table` | step 13's refusal under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `met`, `step_8_fault`, `nominal_elsewhere` | 44, 47 |
+| `reasons_not_merged` | a reason found twice given twice | HP1 | `step_8_fault`, `step_9_or_10_fault` | 66, 29 |
+| `a_forms_mismatch_outside_the_table` | an interval's or a composition's `want_mismatch` under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `form_interval`, `form_composition`, `form_evidence`, `step_8_fault` | 44, 47 |
+| `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault`, `unknown_at_step_10` | 36, 129 |
+| `best_status` | the status the best of the reasons' | HP2 | any kind | 191, 108 |
+| `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 | `alternatives` | 34, 6 |
+| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 | `alternatives` | 34, 6 |
+| `no_statistics_beside_a_composition` | a composition's spread read as its components' alone, so its field's statistics block is not returned | HP2 | `form_composition` | 18, 37 |
+| `a_nominal_applied_outside_its_bounds` | a nominal supplies the value wherever it lies | HP2 (planned) | `nominal_outside` | 4, 9 |
+| `nominal_invalid_as_want_mismatch` | a nominal outside the bounds gives `want_mismatch`, not `nominal_invalid` | HP2 (planned) | `nominal_outside` | 4, 9 |
+| `a_nominal_applied_wherever_it_is_located` | a nominal applied wherever it names the read's field, whatever its location | HP2 (planned) | `nominal_elsewhere` | 27, 12 |
+| `applied_names_a_nominal_that_supplied_nothing` | `applied` names a nominal that applies whether or not it supplied the value | HP2 (planned) | `nominal_outside`, `nominal_under_bounds` | 4, 3 |
+| `a_nominals_value_dropped_under_not_met` | section 2 item 3 without its exception: no value under `not_met`, a nominal's included | HP2 (planned) | `nominal_inside`, `nominal_on_a_bound` | 1, 1 |
+| `expanded_uncertainty_divided_by_its_k` | an expanded uncertainty returned divided by its coverage factor (the S2 design's) | HP6 | `met`, `alternatives` | 9, 11 |
 | `results_share_the_record` | a member with nothing to leave out returned as the record's own object (the S2 design's) | HP6 | `met`, `alternatives` | 1, 1 |
 | `json_shares_the_result` | a result's JSON shares its objects with the result | HP6 | `met`, `alternatives` | 1, 1 |
 | `negative_zero_as_zero` | a value of `-0` returned as `0` | HP6 | `negative_zero` | 1, 1 |
-| `upper_none_as_infinity` | an interval's `upper: none` returned as infinity (the S2 design's) | HP6 | `form_interval` | 11, 77 |
-| `bounds_without_their_basis` | an interval's bounds returned without their basis | HP6 | `form_interval` | 10, 6 |
-| `components_normalised` | a composition's fractions scaled to sum to one, its stated sum dropped | HP6 | `form_composition` | 7, 5 |
-| `component_counts_as_doubles` | a component's statistics block's counts written as doubles | HP6 | `form_composition` | 6, 4 |
-| `unknown_members_returned` | the members a returned object holds kept whole, those the reader does not know included | HP6 | `unknown_member` | 9, 41 |
-| `review_as_it_holds` | a review returned as the record holds it, whatever it holds | HP6 | a review's way | 5, 11 |
+| `upper_none_as_infinity` | an interval's `upper: none` returned as infinity (the S2 design's) | HP6 | `form_interval` | 5, 487 |
+| `bounds_without_their_basis` | an interval's bounds returned without their basis | HP6 | `form_interval` | 4, 3 |
+| `components_normalised` | a composition's fractions scaled to sum to one, its stated sum dropped | HP6 | `form_composition` | 11, 30 |
+| `component_counts_as_doubles` | a component's statistics block's counts written as doubles | HP6 | `form_composition` | 10, 18 |
+| `unknown_members_returned` | the members a returned object holds kept whole, those the reader does not know included | HP6 | `unknown_member`, `form_evidence` | 18, 8 |
+| `review_as_it_holds` | a review returned as the record holds it, whatever it holds | HP6 | a review's way | 5, 6 |
 | `counts_as_doubles` | a count or an index written as a double | HP6 | `met`, `alternatives` | 3, 4 |
 | `statistics_status_object_emptied` | a constant's statistics read by the block's shape alone, so that its status object comes back empty (the fault fuzz target 4 found) | HP6 | `statistics_withheld` | 1, 1 |
-| `labelled_before_step_4` | `hash_not_checked` on a read that ended before step 4 (the S2 design's HP11 mutant) | HP11 | `before_step_4` | 101, 13 |
+| `a_reports_review_as_it_holds` | a report's review returned as the record holds it | HP6 | `form_evidence` | 18, 9 |
+| `a_reports_provenance_cut_to_a_results` | a report's provenance returned cut to a result's `provenance` (origin and review) | HP6 | `form_evidence` | 18, 9 |
+| `unknown_members_kept_in_a_report` | evidence's list copied as the record holds it, a member the reader does not know kept | HP6 | `form_evidence` | 18, 9 |
+| `a_nominal_as_a_single` | a nominal's value rounded to single precision | HP6, nominal | `nominal` | 3, 10 |
+| `an_assumption_without_its_kind` | the assumption without `acceptance: nominal` | HP6, nominal | `nominal` | 1, 1 |
+| `applied_without_the_nominal` | `applied` without the nominal that supplied the value | HP6, nominal | `nominal` | 1, 1 |
+| `labelled_before_step_4` | `hash_not_checked` on a read that ended before step 4 (the S2 design's HP11 mutant) | HP11 | `before_step_4` | 4, 81 |
 | `labelled_beside_the_hash_suite` | `hash_not_checked` on a read under the hash suite | HP11 | any kind that reaches step 4 | 1, 1 |
 
 ### HP12's mutants
@@ -691,7 +772,7 @@ first fault (the S2 design's HP12 mutant, killed on two faults of one step, B5),
 to HP11 that a result can show, taken from their modules, the broken status object that reports its token,
 the fault HP12 found, and open point 1's request half as the implementation read it before S2a-4's fix round.
 Of the model, applied to `tests/reference/read_model.py` while the core stays as it is:
-its faults no case file kills, and five of the ten one case file alone kills. Each dies within the `ci`
+its faults no case file kills, and the ten one case file alone kills. Each dies within the `ci`
 profile's examples at both sizes, at an example that shows one of the parts, ways, steps or planted rules it
 names; a search marked "planned" draws step 8's faults among those named first, or the first part's constants
 at a boundary, as HP3's planned searches do, where HP12's own draws meet the fault too seldom for a safe
@@ -710,32 +791,32 @@ S2b-1 reads.
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` too | unpinned | `broken_status_object` | 91, 8 |
 | `declaration_names_ignored` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | unpinned | `names_a_declaration_gives_a_requirement` | 50, 60 |
 | `implied_members_of_the_other_kind_ignored` | an implied value's member of the other kind's shape, and a slip of one, ignored | unpinned | `implied_member_of_the_other_kind` | 41, 6 |
-| `condition_unchecked_without_its_condition` | HP1's | faults | `unchecked`, `step_8` (a passing fault of step 8, read on to step 10) | 516, 245 |
-| `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 42, 38 |
-| `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 58, 4 |
+| `condition_unchecked_without_its_condition` | HP1's | faults | `unchecked`, `step_8` (a passing fault of step 8, read on to step 10) | 128, 168 |
+| `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 9, 27 |
+| `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 43, 4 |
 | `missing_represents_accepted` | HP3's (planned) | faults | `statistics_members.represents_missing` | 1, 1 |
 | `null_read_as_absent` | HP3's (planned) | faults | `condition_tokens.set_or_measured_null`, `provenance.source_null` | 1, 1 |
 | `unknown_condition_names_checked` | HP3's (planned) | faults | `condition_tokens.name_unknown` | 1, 1 |
 | `interval_order_unchecked` | HP3's (planned) | faults | `interval.lower_above_upper` | 1, 1 |
 | `component_twice_allowed` | HP3's (planned) | faults | `composition.component_repeated` | 1, 1 |
 | `element_by_pattern` | HP3's (planned) | faults | `component.element_unknown` | 1, 1 |
-| `specimen_facts_merged_across_sections` | HP4's | values | `another_section` | 81, 148 |
+| `specimen_facts_merged_across_sections` | HP4's | values | `another_section` | 94, 51 |
 | `unknown_members_returned` | HP5's and HP6's: an unknown member returned | values | `unknown_member` | 3, 8 |
-| `expanded_uncertainty_divided_by_its_k` | HP6's | values | `valued`, `alternatives` | 147, 8 |
-| `upper_none_as_infinity` | HP6's | values | `form_interval` | 128, 438 |
-| `components_normalised` | HP6's | values | `form_composition` | 146, 63 |
-| `floating_point_as_written` | HP7's (planned) | values at a boundary | `at_a_boundary` | 133, 62 |
+| `expanded_uncertainty_divided_by_its_k` | HP6's | values | `valued`, `alternatives` | 122, 8 |
+| `upper_none_as_infinity` | HP6's | values | `form_interval` | 177, 29 |
+| `components_normalised` | HP6's | values | `form_composition` | 143, 247 |
+| `floating_point_as_written` | HP7's (planned) | values at a boundary | `at_a_boundary` | 20, 28 |
 | `strict_inequalities` | HP7's | values | `valued`, `alternatives` | 1, 1 |
-| `plus_minus_ignored` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 8 |
-| `plus_minus_makes_not_met` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 8 |
+| `plus_minus_ignored` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 28 |
+| `plus_minus_makes_not_met` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 28 |
 | `nfkc_before_comparing` | HP8's | faults | `steps_9_and_10` | 2, 2 |
 | `case_folded` | HP8's | faults | `steps_9_and_10` | 2, 2 |
-| `section_facts_win` | HP9's | values | `valued`, `alternatives` | 168, 4 |
-| `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 9, 4 |
+| `section_facts_win` | HP9's | values | `valued`, `alternatives` | 52, 4 |
+| `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 7, 4 |
 | `labelled_before_step_4` | HP11's | early | `before_step_4`, `stores` | 2, 2 |
-| `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | values | `request_faults_apart` | 49, 3 |
+| `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | values | `request_faults_apart` | 19, 3 |
 | `first_alternative_in_every_entry` | under `no_pick`, each entry the first alternative's read | values | `alternatives` | 2, 2 |
-| `bounds_given_by_a_constant` | step 13 gives a constant's value under `want: bounds` | constants (planned) | `valued`, `alternatives` | 325, 95 |
+| `bounds_given_by_a_constant` | step 13 gives a constant's value under `want: bounds` | constants (planned) | `valued`, `alternatives` | 139, 523 |
 | `minus_zero_given_as_zero` | a constant's `-0` given as `0` | values | `negative_zero` | 1, 1 |
 | `every_constant_not_built` | step 13 raises for a constant in S2b's words | values | `valued`, `alternatives` | 1, 1 |
 | `text_that_is_no_json_raises` | step 0 raises on a text that is no JSON, where it must refuse | early | `not_json` | 1, 1 |
@@ -756,43 +837,64 @@ S2b-1 reads.
 | `every_forms_member_named_at_a_field` | unpinned | `another_forms_member_slipped` | 2, 2 |
 | `input_specimens_optional` | faults (planned) | `derivation.input_specimens_missing` | 1, 1 |
 | `hash_not_checked_before_step_4` | early | `request`, `before_step_4`, `stores` | 1, 1 |
-| `token_condition_unit_accepted` | faults | `unit_token_condition` | 76, 27 |
-| `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 267, 90 |
+| `token_condition_unit_accepted` | faults | `unit_token_condition` | 66, 35 |
+| `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 19, 330 |
 | `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 4, 10 |
-| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 108, 257 |
+| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 33, 271 |
 | `ies_not_a_plural` | unpinned | `plural_of_two_characters` | 135, 138 |
 | `review_of_both_shapes_read_as_its_status` | unpinned | `review_of_both_shapes` | 7, 3 |
 | `reviewed_review_keeps_a_status_objects_members` | unpinned | `review_of_both_shapes` | 27, 4 |
 | `donor_age_of_neither_accepted` | faults (planned) | `specimen.fact_neither_value_nor_range` | 1, 1 |
-| `value_given_by_an_interval` | values | `form_interval` | 108, 88 |
-| `bounds_given_by_a_constant` | values | `form_constant` | 836, 13 |
+| `value_given_by_an_interval` | values | `form_interval` | 36, 22 |
+| `bounds_given_by_a_constant` | values | `form_constant` | 429, 313 |
+| `evidence_entry_provenance_unchecked` | faults (planned) | `evidence_provenance.*`, each of the six faults of a report's provenance | 1, 1 |
+| `entry_withheld_in_part_read` | faults (planned) | `evidence_list.report_withheld_in_part`, `.withheld_report_opened` | 1, 1 |
+| `unit_returned_without_its_reason` | evidence's unit with a reason (planned) | `unit_with_a_reason` | 52, 52 |
+| `two_nominals_for_one_field` | early (planned: step 0's catalogue, the first fault a nominal's) | `two_nominals_for_one_field` | 52, 45 |
+| `nominal_ignored_over_alternatives` | alternatives under a nominal (planned) | `nominal_over_alternatives` | 1, 1 |
+| `nominal_applied_under_no_pick` | alternatives under a nominal (planned) | `nominal_over_alternatives` | 1, 1 |
+| `nominal_outside_supplies_the_value` | values under a nominal (planned) | `nominal_outside` | 7, 35 |
 
-Listed, with the reason no read S2 builds shows them: `evidence_entry_provenance_unchecked` and
-`entry_withheld_in_part_read` (an evidence entry, read by S2b-2: the core raises at it),
-`unit_returned_without_its_reason` (only `biocompatibility.evidence` registers a unit held as a status
-object), `two_nominals_for_one_field`, `nominal_ignored_over_alternatives` and `nominal_applied_under_no_pick`
-(the core raises for any acceptance but an implied condition until S2b-2), `results_share_the_record` (a
-shared object never shows in JSON; HP6 holds the core to sharing nothing), and
-`units_stored_differently_read_as_no_pick` (an alternative passes step 9 only where its unit is the one
-registered, so units are stored differently only where a status object is registered, which only
-`biocompatibility.evidence` does). The design's other mutant not searched here: HP6's result sharing the
-stored object (JSON again).
+S2b-2's seven are six of the eight the table listed as no read S2 built could show them (an evidence entry, at
+which the core raised; a unit held as a status object, which only `biocompatibility.evidence` registers; a
+nominal, for which no strategy drew one), and one of its own, a nominal outside the bounds that supplies the
+value (`tests/reference/mutants.py`). HP12 draws evidence among its forms, its unit with a reason in half its
+draws, an interval under a nominal in half its draws, and intervals over alternatives under one, and step 0's
+catalogue holds eight faults of acceptances. Five searches are planned: a report's faults among step 8's
+(drawn first among those named), the nominal's ways alone, alternatives under a nominal alone, step 0's
+catalogue with a nominal's fault first, where `two_nominals_for_one_field` met its fault at 1,285 and 711
+examples among all of step 0's 60, and evidence whose unit holds a reason, where
+`unit_returned_without_its_reason` took up to 1,440 over twelve random seeds (1000 to 1011). Over those seeds
+the planned searches of `two_nominals_for_one_field`, `nominal_outside_supplies_the_value` and
+`unit_returned_without_its_reason` died within 123, 123 and 94 examples at both sizes, and HP4's
+`every_field_checked_beside_evidence`, drawn whole, within 400. The counts of S2b-2's rows, and of those
+its draws moved, are measured with the pin at S2b-2's head (2026-10-18).
+
+Listed, with the reason no read S2 builds shows them: `results_share_the_record` (a shared object never
+shows in JSON; HP6 holds the core to sharing nothing), and `units_stored_differently_read_as_no_pick` (an
+alternative passes step 9 only where its unit is the one registered, so units are stored differently only
+where a status object is registered, which only `biocompatibility.evidence` does: HP12's alternatives of
+evidence hold the first's unit, or one spelled otherwise, which step 9 refuses, and the core raises at units
+stored differently until S4; none of HP12's searches showed it at either size in 2,000 examples, 2026-10-18).
+The design's other mutant not searched here: HP6's result sharing the stored object (JSON again).
 
 ### HP4 and HP10's mutants
 
-`test_invariance_mutants.py`, at the ways (HP4) and kinds (HP10) each names, and two of HP4's at the form of
-the field their read holds; relations shard, 2026-10-17; those S2b-1 wrote or moved, with the pin at its head
-(2026-10-18), whose HP4 reads a constant, an interval or a composition.
+`test_invariance_mutants.py`, at the ways (HP4) and kinds (HP10) each names, and three of HP4's at the form
+of the field their read holds; relations shard, 2026-10-17; those S2b-1 wrote or moved, with the pin at its
+head (2026-10-18), whose HP4 reads a constant, an interval or a composition, and those S2b-2 wrote or moved,
+with the pin at its head, whose HP4 reads evidence too.
 
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
-| `specimen_facts_merged_across_sections` | a field's specimen holds every section's facts (the S2 design's HP4 mutant) | HP4 | `another_section_specimen` | 9, 37 |
+| `specimen_facts_merged_across_sections` | a field's specimen holds every section's facts (the S2 design's HP4 mutant) | HP4 | `another_section_specimen` | 14, 11 |
 | `every_field_checked` | step 8 checks every field of the record | HP4 | `another_field` | 1, 1 |
-| `every_section_specimen_checked` | step 8 checks every section's specimen | HP4 | `another_section_specimen` | 6, 5 |
-| `every_field_checked_beside_an_interval` | step 8 checks every field of the record where it reads an interval (PR #37's review) | HP4 | `another_field`, at an interval | 4, 4 |
-| `every_section_specimen_checked_beside_a_composition` | step 8 checks every section's specimen where it reads a composition (PR #37's review) | HP4 | `another_section_specimen`, at a composition | 8, 27 |
+| `every_section_specimen_checked` | step 8 checks every section's specimen | HP4 | `another_section_specimen` | 11, 10 |
+| `every_field_checked_beside_an_interval` | step 8 checks every field of the record where it reads an interval (PR #37's review) | HP4 | `another_field`, at an interval | 28, 36 |
+| `every_section_specimen_checked_beside_a_composition` | step 8 checks every section's specimen where it reads a composition (PR #37's review) | HP4 | `another_section_specimen`, at a composition | 46, 395 |
+| `every_field_checked_beside_evidence` | step 8 checks every field of the record where it reads evidence (S2b-2) | HP4 | `another_field`, at evidence | 137, 5 |
 | `section_specimen_unchecked` | the read field's own section's specimen not checked (HP3's) | HP4, refusal | `own_section_specimen` | 1, 1 |
-| `hash_over_members_as_written` | the recomputed hash taken over the members in the order the source writes them (the S2 design's HP10 mutant, B7) | HP10 | any kind | 3, 12 |
+| `hash_over_members_as_written` | the recomputed hash taken over the members in the order the source writes them (the S2 design's HP10 mutant, B7) | HP10 | any kind | 3, 5 |
 | `integers_read_as_integers` | a number spelled without a fraction or exponent read as an integer | HP10 | any kind | 1, 1 |
 
 ### The monotonicity relations' mutants
@@ -866,14 +968,19 @@ those ways fails these searches; worlds that lost the shapes fail the worlds' au
   2026-10-17). Steps 9 and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and
   declare it drawn;
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
-  window by the least share measured. The result's properties draw their kind first among at most ten, and
-  HP6 declares its field's `-0`, its review's way, its statistics status object and its unknown member by
-  their chances. HP12's parts draw their kinds, steps or planted rules first (at most twelve), HP4 its ways and
+  window by the least share measured. The result's properties draw their kind first among at most eleven (a
+  floor of 25 at `ci`), and HP6 declares its field's `-0`, its review's way, its statistics status object and
+  its unknown member by their chances, and its second property a nominal's ways by theirs. HP3's fourth part,
+  evidence's, declares its regions by their chances, each at four fifths of its nominal chance, which four
+  runs at `ci` measured above (2026-10-18); HP5's `in_a_report` keeps a least share, at about a quarter of the
+  mean share four runs measured, as `in_an_own_member` did before PR #37's review's 48 runs. HP12's parts
+  draw their kinds, steps or planted rules first (at most twelve), HP4 its ways and
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
   and those that draw a way first declare their ways drawn. For each such
   property, five of steps 9 and 10's, two of the result's (HP1 by a kind, HP6 by a chance) and two of HP4's
-  (a form by its chance, in each of its two properties),
+  (a form by its chance, in each of its two properties), and S2b-2's five (HP3's fourth part by a region,
+  HP12, HP6 and HP4 by evidence's form, HP6's second property by a nominal's way),
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone. One of the five runs a parametrised property, HP8's
   other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,

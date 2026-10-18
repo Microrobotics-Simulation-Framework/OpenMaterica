@@ -60,7 +60,8 @@ every family entry goes in `families/CHANGELOG.md`.
   gives no reason of its own (`form_invalid` alone, never `unknown_token` beside it: S2a-4's HP12). A form
   the row allows whose own member waits for S2b-2 or S3 (evidence, a table) raises `NotImplementedError`
   whatever its other members hold, since its own member could add a reason: so an evidence entry's
-  withholding waits for S2b-2 (an interval's and a composition's own members are read since S2b-1, below). A
+  withholding waits for S2b-2 (an interval's and a composition's own members are read since S2b-1, and
+  evidence's since S2b-2, below). A
   form the row does
   not allow is refused with every shared reason, its own member, which a read neither uses nor returns, unread
   (`core/fields.py`, `core/value_shapes.py`). Step 8 reads the status tokens each member allows from the
@@ -105,8 +106,8 @@ every family entry goes in `families/CHANGELOG.md`.
   the source's key, a derived value's derivation with its `assumptions`), each the members the reader's
   version defines, read from the generated shapes, as stored and copied (the code design's rule 6), a
   statistics block held as the status object its row allows returned as one. `to_json` writes numbers as
-  stored, `-0` included, and each count and index as an integer (rule 5). Evidence still raises at its member;
-  S2b-1 reads intervals and compositions (below).
+  stored, `-0` included, and each count and index as an integer (rule 5). S2b-1 reads intervals and
+  compositions, and S2b-2 evidence and the nominal (below).
 - Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (`core/read.py`,
   `fields.alternatives_problems`): a list that breaks its shape is `form_invalid`, a member one slip from
   `alternatives` or a value field's beside it included; a fault of the request inside one alternative refuses
@@ -125,6 +126,32 @@ every family entry goes in `families/CHANGELOG.md`.
   form's own member under the `want` that gives it, `bounds` or `components`, as stored and never normalised:
   a `none` bound as a status object, never infinity, the stated sum where present, a component's statistics
   with its counts as integers; any other `want` is `want_mismatch` (`core/read.py`).
+- The read's steps 8 and 13 for evidence (S2b-2; `record_format.md` section 4.3, `read_side_contract.md`
+  sections 3 and 6). Step 8 reads evidence's own member: a non-empty list of test reports, never a status
+  object; each report holding every member, its text members a string or a status object of any token, its
+  `standard` a designation and a whole year, its provenance checked as a field's (origin, source,
+  derivation); each report withheld whole, its provenance kept, or not at all (`form_invalid`). Every report
+  withheld gives `withheld`; some, `entries_withheld` (`unknown`), the read going on. A registered condition
+  under evidence is `form_invalid` where the row allows the form; a name the reader does not know gives
+  `condition_unknown_name` at step 10 (`core/fields.py`). Step 13 returns the list under `want: evidence`,
+  each report with its statuses and its provenance whole, the members the version defines at every depth,
+  its review read as `provenance.md` section 2 item 6 reads every review; a result of evidence holds no
+  statistics. A placeholder beside a status object in what a result returns (a provenance's `assistance`)
+  comes back whole (`core/read.py`).
+- The nominal (S2b-2; `declarations.md` section 4.1, `read_side_contract.md` sections 1, 2 and 6). Step 0
+  checks every nominal's shape, whatever field or location it names: its `field` as a target's and its
+  `value` a number, its `reason` and `basis` ignored, `params` named and ignored; two nominals naming one field
+  are `request_incomplete` whatever else each holds. Step 13 applies the one located at the read's field and
+  record alone to an interval under `want: value`: inside or on its bounds, compared exactly, it supplies the
+  value and the `assumption` (`{"acceptance": "nominal", "value"}`) beside `want_mismatch`, which the
+  `not_met` result carries; outside them it gives `nominal_invalid` in place of `want_mismatch`, and no value;
+  under `want: bounds` it is unused. `ReadResult.applied` holds its index where it supplied the value. Over
+  alternatives no nominal is applied, nor compared with the bounds, but one that applies lets an interval
+  count as a form `want: value` can give, so two intervals give `no_pick` (`read.Nominal`,
+  `conditions.located_at`).
+- Step 0 refuses an acceptance that is not an object, or of a kind a read does not take, a `waiver` among
+  them, with `request_incomplete` alone (PR-310's GAPS G11 arm; S2a-3's review, I4). A pick, an overlay or an
+  extrapolation still raises `NotImplementedError`, whatever else the request holds, until S3 and S4.
 - `materica.core.slips`: the one-slip relation of `record_format.md` section 10, which the read and the
   name-overlap check share. A word made plural or singular must be a word: the empty string between two
   underscores is none.
@@ -191,6 +218,13 @@ every family entry goes in `families/CHANGELOG.md`.
   claim. The pull request template gains an Open points heading.
 
 ### Schema
+- `read_request.json`'s acceptances, a JSON object each until now, take the shapes of the kinds a read takes
+  (S2b-2; `read_side_contract.md` section 1, `declarations.md` section 4.1): the members every acceptance
+  holds (its `field`, its location, `record`, `region` or `interval`, and its `reason` and `basis`, the last
+  three any JSON, since a read checks no location's shape and ignores the other two), a nominal's `value`
+  (and `params`), and an implied condition's `fact`, `token` and `implies`. A pick's, an overlay's and an
+  extrapolation's own members are written with the steps that apply them (S3, S4): an extrapolation's
+  `method` would be a third meaning of the name, which the name-overlap allowlist holds at two.
 - `read_result.json`'s members, placeholders until now, typed from the writer schema's `$defs` and the
   vocabulary (S2a-4): the value by `want` (a number, an interval, a composition, a list of test reports, a
   form's member as stored, and the operations' content hash and listing), `alternative_values` and each entry,
@@ -409,6 +443,31 @@ every family entry goes in `families/CHANGELOG.md`.
   component's statistics withheld; a sum rule and a component of another member's tokens; a broken form its
   row does not allow; a component repeated after another; an unknown status token in a bound; and a slip of
   the field's `value` inside an interval.
+- S2b-2's 51 case files run and pass: 908 of 1279 case files pass, 371 wait for S3 and S4. Eleven broken
+  implementations show the runner fails on them: every report withheld read as some, and some as every; a
+  report withheld in part taken; a registered condition under evidence taken; a report's provenance cut to a
+  result's; a nominal applied outside its bounds, or wherever it is located; a nominal's value dropped from a
+  `not_met` result; two nominals for one field taken; a waiver ignored; and a nominal compared with the
+  bounds under `no_pick`. The reason-step check finds `entries_withheld` and `nominal_invalid` returned.
+- Evidence and the nominal in the checks of steps 0 and 8 (S2b-2): T1 holds step 8 itself on evidence, its
+  bases gaining a full evidence field and one every report of which is withheld; the unknown-member position
+  D03 has its verdicts, R60 to R76 (an evidence field, a report and its standard, a report's provenance
+  mirroring the field's), and D06 is narrowed to a pick, an overlay and an extrapolation, a nominal read at
+  Q15 and Q16; a nominal's and an implied condition's members, in `read_request.json` and in the read, are
+  held to the text; the reference model counts a report that is not an object as not withheld, and reads a
+  report's provenance at every depth.
+- The properties over evidence and the nominal (S2b-2). Step 8's: HP3's catalogue gains four regions of
+  evidence, 36 faults with their near misses, in a fourth part; HP5 adds its members in evidence's reports,
+  `in_a_report` declared. The result's: HP1, HP2 and HP11 draw an interval's read under a nominal as a kind of
+  its own, five ways (inside its bounds, on one, one double outside, under `want: bounds`, located
+  elsewhere), HP2 holding `value`, `assumption`, `nominal_invalid` and `applied` to an oracle of its own;
+  HP6 holds evidence as stored and, in a property of its own, a nominal's value and assumption; HP4, HP6 and
+  HP12 draw evidence, as often as an interval; HP12 draws nominals in its values, over alternatives and in
+  step 0's catalogue (eight faults and near misses). Ten mutants of step 8 and one of HP5, eleven of the
+  result's, one of HP4's, and seven faults of the model for HP12, which no read could show before, each
+  killed at both sizes; five audit controls. HP12 lists no divergence for evidence or an acceptance any
+  more. Fuzz target 4 reads evidence, holding it to the reader `$defs`, steps 9 and 10's oracle and the
+  model; its "not yet" forms are a table and alternatives beyond decision 12.
 - Intervals and compositions in the checks of step 8 (S2b-1): T1 holds step 8 itself on both, its bases
   gaining a full interval and composition (`tests/property/full_fields.py`'s `full_forms`), and the 21
   conformance examples of evidence alone keep their case files' verdict; the writer strategies give a row's

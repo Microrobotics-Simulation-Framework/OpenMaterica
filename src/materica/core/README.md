@@ -18,6 +18,7 @@ A read, steps 0 to 13 of `read_side_contract.md` section 3:
 
 ```
 request ─▶ read.ReadRequest.from_json ─▶ step 0, the request on its own ─▶ reasons, or a ReadRequest
+                                          and its implied conditions and nominals
                                                                                 │
 sources ─▶ record.RecordStore.add ─▶ candidates by id and version,              ▼
            and the unreadable sources                      resolve.resolve_record
@@ -40,7 +41,8 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
                                                            8 the form token against its row; the record's
                                                              structure, the section and the members every
                                                              form shares (value_shapes); the own member of
-                                                             a constant, an interval or a composition
+                                                             a constant, an interval, a composition or
+                                                             evidence
                                                                   │
                                                            fields.unit_problems
                                                            9 every unit against the registered one, code
@@ -49,17 +51,18 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
                                                            conditions.check_conditions
                                                           10 each condition against the request, exactly
                                                           11 a constant's range is its conditions; an
-                                                             interval and a composition have none
+                                                             interval, a composition and evidence none
                                                           12 stated_without_origin; the field's label and
                                                              mixed_conditions
                                                           13 the form's own member by want, as stored,
-                                                             or want_mismatch
+                                                             or a nominal's value for an interval under
+                                                             want value, or want_mismatch
                                                                   │
           read.ReadResult (status, reasons, labels, ◀─────────────┘   every reason found, and the members
           conditions once step 10 ran to its end, and                 section 2 gives, as stored and copied;
           value, unit, specimen, statistics and                       or NotImplementedError for an overlay,
-          provenance, or alternative_values)                          a pick, the rest of step 7 and the other
-                                                                      forms' members
+          provenance, an assumption, or                               a pick, an extrapolation, the rest of
+          alternative_values)                                         step 7 and a table's member
 ```
 
 | Module | Implements |
@@ -74,14 +77,14 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `vocabulary.py` | the tokens of the specification's tables, read from `schema/0.1/vocabulary/` |
 | `envelope.py` | the reader schema's checks by hand (`record_format.md` section 1 item 2) |
 | `value_shapes.py` | step 8's checks of what every form of a value field shares, by hand: a slip in the record's structure, a section's specimen, and a field's unit, conditions, specimen facts, statistics block, provenance members, label and status objects (`read_side_contract.md` section 3, step 8; `provenance.md`; `uncertainty.md` sections 1 and 4) |
-| `fields.py` | a value field: step 7 finds it and checks the shape of the alternatives it may hold, step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's, an interval's and a composition's so far; a table or evidence the row allows raises `NotImplementedError`), and step 9 compares its units with the registered ones; its specimen facts, the section's merged with the field's |
+| `fields.py` | a value field: step 7 finds it and checks the shape of the alternatives it may hold, step 8 checks its form token against its row (a composition's basis included), its shared members, and the own member of a form its row allows (a constant's, an interval's, a composition's and evidence's so far; a table the row allows raises `NotImplementedError`), and step 9 compares its units with the registered ones; its specimen facts, the section's merged with the field's |
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
 | `conditions.py` | step 10: the conditions checked, each against the request by section 5's table, on the exact values of the doubles, with a stated `plus_minus`, and the implied conditions the read applies (`declarations.md` section 4.1); a result's condition entries |
-| `read.py` | the request's own check (step 0), its implied conditions included; the read of a value field, steps 8 to 13 (`read_value_field`), and of alternatives at step 7 as far as S4's decision 12 goes; the result (`ReadResult`, `FieldRead`, `ProvenanceSummary`), its members as stored by the generated shapes, each count and index an integer; the other acceptances, overlays, picks and the rest of step 7 are not built yet |
+| `read.py` | the request's own check (step 0), its implied conditions and nominals included, an acceptance of a kind a read does not take refused; the read of a value field, steps 8 to 13 (`read_value_field`), a nominal applied at step 13, and of alternatives at step 7 as far as S4's decision 12 goes; the result (`ReadResult`, `FieldRead`, `ProvenanceSummary`), its members as stored by the generated shapes, each count and index an integer, and the acceptances it applied (`applied`); picks, overlays, extrapolations and the rest of step 7 are not built yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the
-read, through step 13 for a constant, an interval and a composition (`tests/conformance/`).
+read, through step 13 for a constant, an interval, a composition and evidence (`tests/conformance/`).
 
 ## Invariants
 
