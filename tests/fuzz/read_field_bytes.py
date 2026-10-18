@@ -17,15 +17,15 @@ to 13 give (every code one of them gives, and HP1 and HP2: each code and conditi
 section 2 item 2 puts it, the status the worst of the codes', and the members present as item 6 says), when
 the read without the hash suite differs from the read with it by more than the label `hash_not_checked`, when
 the read under the `want` that gives the field's form (`value` for a constant and any form step 8 does not
-read, `bounds` for an interval, `components` for a composition) and the reference model disagree but as HP12
-lists (a refusal step 8 misses or gives wrongly among them: held under every `want`, the model's read slowed
-the target so that the control's seeded fault went unfound in five local runs of six, where under one `want`
-it is found as often as without the model), when step 8 lets through a constant, an interval or a composition
-its row allows that the reader `$defs` refuse (T1's third relation), or when steps 9 and 10 read such a field
-otherwise than their text, its units by code point and its conditions by HP7's oracle (`field_oracle.py`).
-`NotImplementedError` is a step not built yet: its form's own member waits for S2b-2 (evidence) or S3 (a
-table), or it holds alternatives beyond what S4's decision 12 lets S2 read. The seeds are every value field of
-every conformance input.
+read, `bounds` for an interval, `components` for a composition, `evidence` for evidence) and the reference
+model disagree but as HP12 lists (a refusal step 8 misses or gives wrongly among them: held under every
+`want`, the model's read slowed the target so that the control's seeded fault went unfound in five local runs
+of six, where under one `want` it is found as often as without the model), when step 8 lets through a
+constant, an interval, a composition or evidence its row allows that the reader `$defs` refuse (T1's third
+relation), or when steps 9 and 10 read such a field otherwise than their text, its units by code point and its
+conditions by HP7's oracle (`field_oracle.py`). `NotImplementedError` is a step not built yet: a table, whose
+own member waits for S3, or alternatives beyond what S4's decision 12 lets S2 read. The seeds are every value
+field of every conformance input.
 """
 
 import importlib
