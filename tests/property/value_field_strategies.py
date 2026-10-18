@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Strategies for step 8's properties: records holding one value field that passes step 8, a constant, an
-interval or a composition, the faults of step 8's catalogue, each with the reasons it must give, and the
-members a reader does not know.
+interval, a composition or evidence, the faults of step 8's catalogue, each with the reasons it must give, and
+the members a reader does not know.
 
 A drawn field takes every member step 8 checks or leaves the optional ones out, each value-or-status member
 as its own shape or as a status object its row allows, and anything at all in the members a read does not
@@ -33,15 +33,23 @@ Draw = st.DrawFn
 # The forms whose own member step 8 reads so far, each with its own member (`record_format.md` section 5:
 # "`value` for a constant; otherwise the member named like the form"), the `want` that gives it
 # (`read_side_contract.md` section 6) and the fields whose row allows it.
-OWN_MEMBERS = {"constant": "value", "interval": "interval", "composition": "composition"}
-WANTS = {"constant": "value", "interval": "bounds", "composition": "components"}
+OWN_MEMBERS = {
+    "constant": "value",
+    "interval": "interval",
+    "composition": "composition",
+    "evidence": "evidence",
+}
+WANTS = {"constant": "value", "interval": "bounds", "composition": "components", "evidence": "evidence"}
 FORM_FIELDS = {
     form: tuple(sorted(name for name, spec in VOCABULARY.fields.items() if form in spec.forms))
     for form in OWN_MEMBERS
 }
 CONSTANT_FIELDS = FORM_FIELDS["constant"]
-# A drawn field's form: a constant as often as the other two together.
+# A drawn field's form, for HP3's shared regions: a constant as often as an interval and a composition
+# together. Evidence, which holds no statistics and no registered condition, takes regions of its own and a
+# few shared ones (`takes`); a read of a field draws it too (`READ_FORMS`).
 BASE_FORMS = ("constant", "constant", "interval", "composition")
+READ_FORMS = (*BASE_FORMS, "evidence")
 
 NOT_NEGATIVE = DOUBLES.map(abs)
 POSITIVE = DOUBLES.map(lambda number: abs(number) or 1.0)
@@ -316,11 +324,56 @@ def composition(draw: Draw, name: str) -> JsonObject:
     return found
 
 
-def own_member(form: str, name: str) -> st.SearchStrategy[JsonValue]:
+# Evidence's own member (`record_format.md` section 4.3).
+
+REPORT_MEMBERS = (
+    "endpoint",
+    "standard",
+    "contact_category",
+    "contact_duration",
+    "material_form",
+    "processing",
+    "reported_result",
+)
+
+
+@st.composite
+def standards(draw: Draw) -> JsonObject:
+    return {"designation": draw(TEXT), "year": float(draw(st.integers(-(2**53), 2**53)))}
+
+
+@st.composite
+def report(draw: Draw, size: Size, *, withheld: bool) -> JsonObject:
+    """A test report (item 1): each member its shape or a status object of another token than `withheld`
+    (item 2: "Any other status stands in an entry's member"); or, `withheld`, every member but its provenance
+    `{"status": "withheld"}`. Its provenance is drawn as a field's."""
+    found: JsonObject = {}
+    for name in REPORT_MEMBERS:
+        if withheld:
+            found[name] = status_object("withheld", draw(st.none() | TEXT))
+        else:
+            own: st.SearchStrategy[JsonValue] = standards() if name == "standard" else TEXT
+            found[name] = draw(or_status(own, "evidence_entry", name))
+    found["provenance"] = draw(provenance(size))
+    return found
+
+
+@st.composite
+def reports(draw: Draw, size: Size) -> list[JsonValue]:
+    """One to three reports, each withheld in one draw in four but one at least, so that the field passes step
+    8: every report withheld gives `withheld` (section 3, step 8)."""
+    withheld = [draw(st.integers(0, 3)) == 0 for _ in range(draw(st.integers(1, 3)))]
+    withheld[draw(st.integers(0, len(withheld) - 1))] = False
+    return [draw(report(size, withheld=each)) for each in withheld]
+
+
+def own_member(form: str, name: str, size: Size = SIZE) -> st.SearchStrategy[JsonValue]:
     if form == "interval":
         return interval()
     if form == "composition":
         return composition(name)
+    if form == "evidence":
+        return reports(size)
     return DOUBLES
 
 
@@ -380,17 +433,19 @@ def fields(
     draw: Draw, size: Size, names: tuple[str, ...] = CONSTANT_FIELDS, form: str = "constant"
 ) -> tuple[str, JsonObject]:
     """A registered field's name, of `names`, and a field of it of `form` that passes step 8, holding the
-    row's label, where it names one, on a constant alone (section 4.1's Label column)."""
+    row's label, where it names one, on a constant alone (section 4.1's Label column). Evidence holds no
+    statistics and no condition (`record_format.md` section 4.3)."""
     name = draw(st.sampled_from(names))
     spec = VOCABULARY.fields[name]
     field: JsonObject = {
         "form": form,
-        "unit": spec.unit if draw(st.integers(0, 3)) else draw(UNITS),
-        OWN_MEMBERS[form]: draw(own_member(form, name)),
-        "conditions": draw(conditions(size)),
-        "statistics": draw(statistics()),
-        "provenance": draw(provenance(size)),
+        "unit": copy.deepcopy(spec.unit) if draw(st.integers(0, 3)) else draw(UNITS),
+        OWN_MEMBERS[form]: draw(own_member(form, name, size)),
+        "conditions": {} if form == "evidence" else draw(conditions(size)),
     }
+    if form != "evidence":
+        field["statistics"] = draw(statistics())
+    field["provenance"] = draw(provenance(size))
     if draw(st.booleans()):
         field["specimen"] = draw(specimen())
     if form == "constant" and spec.label is not None and draw(st.booleans()):
@@ -900,6 +955,88 @@ def component_statistics(held: JsonValue, codes: frozenset[str] = INVALID) -> Fa
     return in_the_first_component("statistics", held, codes)
 
 
+# Evidence's faults: in its list, in a report it holds that is not withheld (the strategy keeps one), in that
+# report's provenance, and in the field's conditions and unit (`record_format.md` section 4.3).
+
+
+def reports_of(example: Example) -> list[JsonValue]:
+    found = field_of(example)["evidence"]
+    assert isinstance(found, list)
+    return found
+
+
+def withheld_report(report: JsonValue) -> bool:
+    """Every member but the provenance a withheld marker, with or without a reason."""
+    return isinstance(report, dict) and all(
+        isinstance(held := report.get(name), dict) and held.get("status") == "withheld"
+        for name in REPORT_MEMBERS
+    )
+
+
+def open_report(example: Example) -> JsonObject:
+    found = next(report for report in reports_of(example) if not withheld_report(report))
+    assert isinstance(found, dict)
+    return found
+
+
+def report_provenance_of(example: Example) -> JsonObject:
+    return member(open_report(example), "provenance")
+
+
+WITHHELD_REPORT: JsonObject = {
+    **{name: {"status": "withheld"} for name in REPORT_MEMBERS},
+    "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked"}},
+}
+
+
+def every_report_withheld(draw: Draw, example: Example) -> frozenset[str]:
+    """Every report withheld: the read gives `withheld` (section 3, step 8)."""
+    found = reports_of(example)
+    found[:] = [copy.deepcopy(WITHHELD_REPORT) for _ in found]
+    return frozenset({"withheld"})
+
+
+def one_more_report_withheld(draw: Draw, example: Example) -> frozenset[str]:
+    """A withheld report beside the others, one at least not withheld: `entries_withheld`, an `unknown` reason
+    that does not end the read, which HP3 reads as passing step 8."""
+    reports_of(example).insert(draw(st.integers(0, len(reports_of(example)))), copy.deepcopy(WITHHELD_REPORT))
+    return NOTHING
+
+
+def report_withheld_in_part(draw: Draw, example: Example) -> frozenset[str]:
+    """One member of a report withheld, the others not (item 2: "withheld whole ... or not at all")."""
+    open_report(example)[draw(st.sampled_from(REPORT_MEMBERS))] = {"status": "withheld"}
+    return INVALID
+
+
+def withheld_report_opened(draw: Draw, example: Example) -> frozenset[str]:
+    """A withheld report one member of which holds the source's words: withheld in part, so not withheld."""
+    opened = copy.deepcopy(WITHHELD_REPORT)
+    opened[draw(st.sampled_from([name for name in REPORT_MEMBERS if name != "standard"]))] = "the words"
+    reports_of(example).append(opened)
+    return INVALID
+
+
+def report_source_missing(draw: Draw, example: Example) -> frozenset[str]:
+    found = report_provenance_of(example)
+    found["origin"] = "measured_by_source"
+    found.pop("source", None)
+    return INVALID
+
+
+def report_derivation_missing(draw: Draw, example: Example) -> frozenset[str]:
+    found = report_provenance_of(example)
+    found["origin"] = "derived"
+    found.pop("derivation", None)
+    return INVALID
+
+
+def standard_of(example: Example) -> JsonObject:
+    found = open_report(example)
+    found["standard"] = {"designation": "ISO 10993-5", "year": 2009.0}
+    return member(found, "standard")
+
+
 # By region: each fault's name, and the fault. Every fault is written from the text: `read_side_contract.md`
 # section 3, step 8, and the sections it names.
 CATALOGUE: dict[str, dict[str, Fault]] = {
@@ -1294,6 +1431,73 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
         "statistics_valid": component_statistics(COMPONENT_BLOCK, NOTHING),
         "statistics_withheld": component_statistics({"status": "withheld"}, NOTHING),
     },
+    # Evidence's list (`record_format.md` section 4.3 items 1 and 2): at least one report, never a status;
+    # each withheld whole or not at all; every report withheld `withheld`, some `entries_withheld`.
+    "evidence_list": {
+        "list_empty": setting(field_of, "evidence", [], INVALID),
+        "list_a_status": setting(field_of, "evidence", {"status": "withheld"}, INVALID),
+        "list_an_object": setting(field_of, "evidence", copy.deepcopy(WITHHELD_REPORT), INVALID),
+        "list_null": setting(field_of, "evidence", None, INVALID),
+        "report_not_an_object": setting(field_of, "evidence", ["a report"], INVALID),
+        "report_withheld_in_part": report_withheld_in_part,
+        "withheld_report_opened": withheld_report_opened,
+        "every_report_withheld": every_report_withheld,
+        "one_more_report_withheld": one_more_report_withheld,
+    },
+    # A report's members (item 1): each its shape, or a status object of any token (`provenance.md` section 1
+    # item 5); `standard` a designation and a whole year.
+    "evidence_report": {
+        "member_missing": removing(open_report, (*REPORT_MEMBERS, "provenance")),
+        "member_null": nulling(open_report, REPORT_MEMBERS),
+        "text_not_a_string": setting(open_report, "endpoint", 5.0, INVALID),
+        # Where S is a string, a member beside `status` breaks the status object (section 1 item 5).
+        "status_beside_a_member": setting(
+            open_report, "processing", {"status": "unstated", "note": "x"}, INVALID
+        ),
+        "status_unknown": setting(open_report, "contact_duration", {"status": "untold"}, UNKNOWN),
+        "standard_year_not_whole": setting(
+            open_report, "standard", {"designation": "x", "year": 2009.5}, INVALID
+        ),
+        "standard_member_missing": setting(open_report, "standard", {"designation": "ISO 10993-5"}, INVALID),
+        "standard_status_beside_year": setting(
+            open_report, "standard", {"status": "unstated", "year": 2009.0}, INVALID
+        ),
+        "standard_status_unknown": setting(open_report, "standard", {"status": "untold"}, UNKNOWN),
+        "slip_beside": slipping_beside(open_report, "plural", REPORT_MEMBERS),
+        "standard_slip_beside": slipping_beside(standard_of, "plural", ("designation", "year")),
+        "member_unstated": setting(
+            open_report, "contact_duration", {"status": "unstated", "reason": "x"}, NOTHING
+        ),
+        "standard_status_beside_another_member": setting(
+            open_report, "standard", {"status": "not_applicable", "x_note": 1.0}, NOTHING
+        ),
+    },
+    # A report's provenance, checked as a field's (the reference model's open point
+    # `evidence_entry_provenance`).
+    "evidence_provenance": {
+        "origin_unknown": setting(report_provenance_of, "origin", "estimated", UNKNOWN),
+        "origin_missing": removing(report_provenance_of, ("origin",)),
+        "source_key_not_a_string": setting(report_provenance_of, "source", {"key": 5.0}, INVALID),
+        "source_missing_for_its_origin": report_source_missing,
+        "derivation_missing": report_derivation_missing,
+        "not_an_object": setting(open_report, "provenance", "a datasheet", INVALID),
+        "unchecked_member_broken": setting(report_provenance_of, "extraction", None, NOTHING),
+        "review_broken": setting(
+            report_provenance_of, "review", {"status": "reviewed", "result": 5.0}, NOTHING
+        ),
+    },
+    # The evidence field's other members (item 3): no registered condition, and a name the reader does not
+    # know left to step 10; its unit a status object; a statistics block, which it has none of, unread.
+    "evidence_field": {
+        "registered_condition": setting(conditions_of, "temperature", TEMPERATURE, INVALID),
+        "registered_condition_unstated": setting(conditions_of, "density_kind", UNSTATED, INVALID),
+        "conditions_not_an_object": setting(field_of, "conditions", [], INVALID),
+        "unit_status_beside_a_member": setting(
+            field_of, "unit", {"status": "not_applicable", "x": 1.0}, INVALID
+        ),
+        "condition_of_another_name": setting(conditions_of, "humidity", {"value": 0.5, "unit": "1"}, NOTHING),
+        "statistics_beside": setting(field_of, "statistics", {"central": "stated"}, NOTHING),
+    },
 }
 REGIONS = tuple(CATALOGUE)
 # The regions whose faults change a form's own member, each drawn on a field of that form; every other
@@ -1304,7 +1508,29 @@ REGION_FORMS = {
     "composition": "composition",
     "composition_tokens": "composition",
     "component": "composition",
+    "evidence_list": "evidence",
+    "evidence_report": "evidence",
+    "evidence_provenance": "evidence",
+    "evidence_field": "evidence",
 }
+# The shared regions whose faults evidence takes: those of its specimen, its provenance and the record. The
+# others hold faults of a statistics block, a registered condition or a label, which evidence holds none of.
+EVIDENCE_TAKES = (
+    "specimen",
+    "specimen_tokens",
+    "section_specimen",
+    "provenance",
+    "derivation",
+    "derivation_inputs",
+    "record",
+)
+
+
+def takes(region: str, form: str) -> bool:
+    """Whether a field of `form` takes the faults of `region`."""
+    if region in REGION_FORMS:
+        return REGION_FORMS[region] == form
+    return form != "evidence" or region in EVIDENCE_TAKES
 
 
 # The faults that give `unknown_token` alone, by region and name; every other fault gives `form_invalid`,
@@ -1329,15 +1555,22 @@ PASSING_FAULTS = {
     ("composition", "sum_unflagged"),
     ("component", "statistics_valid"),
     ("component", "statistics_withheld"),
+    ("evidence_list", "one_more_report_withheld"),
+    ("evidence_report", "member_unstated"),
+    ("evidence_report", "standard_status_beside_another_member"),
+    ("evidence_provenance", "unchecked_member_broken"),
+    ("evidence_provenance", "review_broken"),
+    ("evidence_field", "condition_of_another_name"),
+    ("evidence_field", "statistics_beside"),
 }
 # The part of the record each region's faults change: two faults of a draw never meet in one. A form's own
-# member is the field's.
+# member is the field's, and evidence's regions, a report's provenance among them, are all the field's.
 GROUPS = {
     "statistics": ("statistics_", "uncertainty"),
     "conditions": ("condition",),
     "specimen": ("specimen", "section_specimen"),
     "provenance": ("provenance", "derivation"),
-    "field": ("field", "interval", "composition", "component"),
+    "field": ("field", "interval", "composition", "component", "evidence"),
     "record": ("record",),
 }
 
@@ -1388,7 +1621,7 @@ def faulty_records(
         others = [
             (region, name)
             for region, faults_of in CATALOGUE.items()
-            if group(region) != group(first[0]) and REGION_FORMS.get(region, form) == form
+            if group(region) != group(first[0]) and takes(region, form)
             for name in sorted(faults_of)
             if mode == "two" or ((region, name) not in TOKEN_FAULTS and (region, name) not in PASSING_FAULTS)
         ]

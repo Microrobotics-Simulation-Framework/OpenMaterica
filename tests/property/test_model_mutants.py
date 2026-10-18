@@ -57,9 +57,14 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     "constants": strategies.valued,
     # A planned search of the first part: constants at section 5's boundaries alone.
     "values at a boundary": lambda size: strategies.valued(size, ("at_a_boundary",)),
+    # Planned searches of the first part: an interval's read under a nominal, alone and over alternatives.
+    "values under a nominal": lambda size: strategies.valued(size, nominal=True),
+    "alternatives under a nominal": lambda size: strategies.alternatives(size, nominal=True),
     "faults": lambda size: strategies.drawn(size, properties.PARTS["faults"]),
     "two of one step": strategies.two_faults_of_one_step,
     "early": lambda size: strategies.drawn(size, properties.PARTS["early"]),
+    # A planned search of the third part: step 0's catalogue, the first fault a nominal's.
+    "nominals at step 0": lambda size: strategies.request_faults(size, strategies.NOMINAL_REQUEST_FAULTS),
     "unpinned": strategies.unpinned,
 }
 
@@ -448,6 +453,18 @@ IMPLEMENTATION = [
 # Faults of the model, applied while the implementation stays as it is.
 
 
+# Step 8's faults of evidence that the model's evidence faults must die at, each searched among them.
+EVIDENCE_PROVENANCE = (
+    "evidence_provenance.origin_unknown",
+    "evidence_provenance.origin_missing",
+    "evidence_provenance.source_key_not_a_string",
+    "evidence_provenance.source_missing_for_its_origin",
+    "evidence_provenance.derivation_missing",
+    "evidence_provenance.not_an_object",
+)
+WITHHELD_IN_PART = ("evidence_list.report_withheld_in_part", "evidence_list.withheld_report_opened")
+
+
 class ModelFault(NamedTuple):
     name: str  # a key of `tests/reference/mutants.MUTANTS`
     killer: str
@@ -509,6 +526,18 @@ MODEL = [
     # Case files kill these; HP12 holds the model to them on the forms S2b-1 reads.
     ModelFault("value_given_by_an_interval", "values", ("form_interval",)),
     ModelFault("bounds_given_by_a_constant", "values", ("form_constant",)),
+    # S2b-2's evidence and nominals, which HP12 draws since S2b-2 reads them.
+    ModelFault("evidence_entry_provenance_unchecked", "faults", EVIDENCE_PROVENANCE, EVIDENCE_PROVENANCE),
+    ModelFault("entry_withheld_in_part_read", "faults", WITHHELD_IN_PART, WITHHELD_IN_PART),
+    ModelFault("unit_returned_without_its_reason", "values", ("unit_with_a_reason",)),
+    ModelFault("two_nominals_for_one_field", "nominals at step 0", ("two_nominals_for_one_field",)),
+    ModelFault(
+        "nominal_ignored_over_alternatives", "alternatives under a nominal", ("nominal_over_alternatives",)
+    ),
+    ModelFault(
+        "nominal_applied_under_no_pick", "alternatives under a nominal", ("nominal_over_alternatives",)
+    ),
+    ModelFault("nominal_outside_supplies_the_value", "values under a nominal", ("nominal_outside",)),
 ]
 
 
@@ -518,18 +547,7 @@ def agreement(example: Example) -> None:
 
 # The model's faults that no read S2 builds can show, each with its reason: phase 0's survivors, and those one
 # case file alone kills, beside the others above.
-EVIDENCE = "an evidence entry is read by S2b-2: the implementation raises at it"
-NOMINALS = "no strategy draws a nominal yet: S2b-2's properties draw them"
 NOT_SHOWN: dict[str, str] = {
-    "evidence_entry_provenance_unchecked": EVIDENCE,
-    "entry_withheld_in_part_read": EVIDENCE,
-    "unit_returned_without_its_reason": (
-        "only `biocompatibility.evidence` registers a unit held as a status object, and evidence waits for "
-        "S2b-2"
-    ),
-    "two_nominals_for_one_field": NOMINALS,
-    "nominal_ignored_over_alternatives": NOMINALS,
-    "nominal_applied_under_no_pick": NOMINALS,
     "results_share_the_record": (
         "a result that shares the record's objects reads as JSON as one that does not; HP6 holds the "
         "implementation to sharing nothing"
@@ -537,7 +555,8 @@ NOT_SHOWN: dict[str, str] = {
     "units_stored_differently_read_as_no_pick": (
         "an alternative passes step 9 only where its unit is the one registered, so alternatives' units are "
         "stored differently only where a status object is registered, which only `biocompatibility.evidence` "
-        "does, and evidence waits for S2b-2"
+        "does; HP12's alternatives of evidence hold the first's unit, or one spelled otherwise, which step 9 "
+        "refuses, and the core raises at units stored differently until S4"
     ),
 }
 

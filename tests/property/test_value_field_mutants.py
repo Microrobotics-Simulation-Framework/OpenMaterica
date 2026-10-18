@@ -37,10 +37,12 @@ from tests.property.test_mutants import setting
 KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any], None]]] = {
     "HP3": (strategies.faulty_records, properties.check_one_fault),
     "HP5": (properties.with_unknowns, properties.check_ignored),
+    # A planned search of HP5: members added in an evidence field's reports alone.
+    "HP5 in a report": (lambda size: properties.with_unknowns(size, reports=True), properties.check_ignored),
     "base": (strategies.valid_records, properties.check_passes),
     "label": (properties.labelled_fields, properties.check_label),
 }
-ONE_FAULT, IGNORANCE, BASE, LABEL = KILLERS
+ONE_FAULT, IGNORANCE, _, BASE, LABEL = KILLERS
 
 
 class Mutant(NamedTuple):
@@ -576,6 +578,79 @@ def _unknown_members_refused_in_an_own_member(monkeypatch: pytest.MonkeyPatch) -
         own_member(form, _unknown_members_refused_in(form))(monkeypatch)
 
 
+# Evidence's own member (`record_format.md` section 4.3), S2b-2's.
+
+EVIDENCE = fields.evidence
+EVIDENCE_ENTRY = fields.evidence_entry
+
+
+def evidence_with(check: Check) -> Callable[[pytest.MonkeyPatch], None]:
+    """An injection under which step 8 reads evidence's own member with `check`."""
+    return lambda monkeypatch: monkeypatch.setitem(fields.OWN_MEMBERS, "evidence", check)
+
+
+def _withheld_read_as(old: str, new: str) -> Check:
+    def checked(value: JsonValue, where: str, found: Found) -> None:
+        own: Found = []
+        EVIDENCE(value, where, own)
+        found += [Reason(new) if reason.code == old else reason for reason in own]  # type: ignore[arg-type]
+
+    return checked
+
+
+def _an_empty_list_taken(value: JsonValue, where: str, found: Found) -> None:
+    if value != []:
+        EVIDENCE(value, where, found)
+
+
+def _a_status_read_as_withheld(value: JsonValue, where: str, found: Found) -> None:
+    if isinstance(value, dict) and value.get("status") == "withheld":
+        found.append(Reason("withheld"))
+    else:
+        EVIDENCE(value, where, found)
+
+
+def entries_with(keep: Callable[[Reason], bool]) -> Callable[[pytest.MonkeyPatch], None]:
+    """An injection under which a report's check drops the reasons `keep` does not keep."""
+
+    def entry(value: JsonValue, where: str, found: Found) -> bool:
+        own: Found = []
+        withheld = EVIDENCE_ENTRY(value, where, own)
+        found += [reason for reason in own if keep(reason)]
+        return withheld
+
+    return lambda monkeypatch: monkeypatch.setattr(fields, "evidence_entry", entry)
+
+
+def _registered_conditions_taken(conditions: JsonValue, where: str, found: Found) -> None:
+    pass
+
+
+# The members a report names, its standard's and its provenance's (`record_format.md` section 4.3).
+REPORT_NAMES = {
+    "report": (*fields.REPORT, "provenance"),
+    "standard": ("designation", "year"),
+    "provenance": value_shapes.PROVENANCE_MEMBERS,
+}
+
+
+def _unknown_members_refused_in_a_report(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A member a report, its standard or its provenance does not name refused."""
+
+    def entry(value: JsonValue, where: str, found: Found) -> bool:
+        held = {"report": value}
+        if isinstance(value, dict):
+            held |= {name: value.get(name) for name in ("standard", "provenance")}
+        if any(
+            isinstance(part, dict) and "status" not in part and set(part) - set(REPORT_NAMES[name])
+            for name, part in held.items()
+        ):
+            found.append(value_shapes.invalid(f"{where} holds a member it does not name"))
+        return EVIDENCE_ENTRY(value, where, found)
+
+    monkeypatch.setattr(fields, "evidence_entry", entry)
+
+
 UNKNOWN_TOKENS = (
     "statistics_tokens.central_unknown",
     "statistics_tokens.distribution_unknown",
@@ -597,6 +672,7 @@ UNKNOWN_TOKENS = (
     "component.kind_unknown",
     "component.symbol_case_unknown",
     "component.statistics_central_unknown",
+    "evidence_provenance.origin_unknown",
 )
 
 
@@ -611,7 +687,13 @@ MUTANTS = [
         "unknown_token_read_as_a_shape_fault",
         ONE_FAULT,
         setting(value_shapes, "unknown_token", _unknown_token_read_as_a_shape_fault),
-        (*UNKNOWN_TOKENS, "statistics_statuses.status_unknown", "field.label_unknown"),
+        (
+            *UNKNOWN_TOKENS,
+            "statistics_statuses.status_unknown",
+            "field.label_unknown",
+            "evidence_report.status_unknown",
+            "evidence_report.standard_status_unknown",
+        ),
     ),
     Mutant(
         "status_tokens_unchecked",
@@ -1061,6 +1143,70 @@ MUTANTS = [
         setting(fields, "components", _a_repeat_found_only_beside_itself),
         ("composition.component_repeated_apart",),
     ),
+    # S2b-2's: evidence's own member (`record_format.md` section 4.3), each rule HP3's catalogue holds a fault
+    # for.
+    Mutant(
+        "every_report_withheld_read_as_some",
+        ONE_FAULT,
+        evidence_with(_withheld_read_as("withheld", "entries_withheld")),
+        ("evidence_list.every_report_withheld",),
+    ),
+    Mutant(
+        "some_reports_withheld_read_as_every",
+        ONE_FAULT,
+        evidence_with(_withheld_read_as("entries_withheld", "withheld")),
+        ("evidence_list.one_more_report_withheld",),
+    ),
+    Mutant(
+        "an_empty_list_taken",
+        ONE_FAULT,
+        evidence_with(_an_empty_list_taken),
+        ("evidence_list.list_empty",),
+    ),
+    Mutant(
+        "a_status_list_read_as_withheld",
+        ONE_FAULT,
+        evidence_with(_a_status_read_as_withheld),
+        ("evidence_list.list_a_status",),
+    ),
+    Mutant(
+        "a_report_withheld_in_part_taken",
+        ONE_FAULT,
+        entries_with(lambda reason: "withholding" not in str(reason.detail)),
+        ("evidence_list.report_withheld_in_part", "evidence_list.withheld_report_opened"),
+    ),
+    Mutant(
+        "a_report_member_optional",
+        ONE_FAULT,
+        entries_with(lambda reason: " holds no " not in str(reason.detail)),
+        ("evidence_report.member_missing",),
+    ),
+    Mutant(
+        "a_reports_provenance_unchecked",
+        ONE_FAULT,
+        setting(fields, "provenance", _any),
+        (
+            "evidence_provenance.origin_unknown",
+            "evidence_provenance.origin_missing",
+            "evidence_provenance.source_key_not_a_string",
+            "evidence_provenance.source_missing_for_its_origin",
+            "evidence_provenance.derivation_missing",
+            "evidence_provenance.not_an_object",
+        ),
+    ),
+    Mutant(
+        "a_years_fraction_taken",
+        ONE_FAULT,
+        setting(fields, "whole", value_shapes.number),
+        ("evidence_report.standard_year_not_whole",),
+    ),
+    Mutant(
+        "a_registered_condition_taken_under_evidence",
+        ONE_FAULT,
+        setting(fields, "_no_registered_condition", _registered_conditions_taken),
+        ("evidence_field.registered_condition", "evidence_field.registered_condition_unstated"),
+    ),
+    Mutant("unknown_members_refused_in_a_report", "HP5 in a report", _unknown_members_refused_in_a_report),
 ]
 
 

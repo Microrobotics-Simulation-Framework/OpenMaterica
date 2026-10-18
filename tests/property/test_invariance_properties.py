@@ -28,6 +28,8 @@ from tests.property.test_model_properties import compared
 from tests.reference.strict_json import JsonValue
 
 REFUSING_A_SECTION = frozenset({"form_invalid", "unknown_token"})
+# The one `unknown` reason step 8 gives (some of evidence's reports withheld), which stands beside a refusal.
+STEP_8_UNKNOWN = frozenset({"entries_withheld"})
 
 
 def written(sources: tuple[bytes, ...], request: bytes, claims: frozenset[Suite]) -> JsonValue:
@@ -55,8 +57,11 @@ def written(sources: tuple[bytes, ...], request: bytes, claims: frozenset[Suite]
 # that HP4 is held to the forms S2b-1 reads (PR #37's review, L2). Each is declared by its chance: over 48
 # runs of each property at `ci` (seeds 6001 to 6048, 2026-10-17), means 0.50, 0.25 and 0.25 and least shares
 # 0.432, 0.162 and 0.188, each declared at the lesser property's least share, rounded down. From the measured
-# clusters, each falls below its draw floor with a probability below 1e-19 a run.
-FORM_CHANCES = {"form_constant": 0.43, "form_interval": 0.16, "form_composition": 0.18}
+# clusters, each falls below its draw floor with a probability below 1e-19 a run. S2b-2 draws evidence too,
+# as often as an interval (`READ_FORMS`): each least share scaled by 0.8, the change of its chance, and
+# evidence's at the interval's, both rounded down. Over two runs of each property at `ci` (seeds 31 and 32,
+# 2026-10-18), the shares were 0.388 to 0.398, 0.190 to 0.202, 0.188 to 0.233 and 0.178 to 0.225.
+FORM_CHANCES = {"form_constant": 0.34, "form_interval": 0.12, "form_composition": 0.15, "form_evidence": 0.12}
 
 
 def check_isolated(isolated: Isolated) -> None:
@@ -93,7 +98,8 @@ def check_refused(isolated: Isolated) -> None:
     codes = {str(reason["code"]) for reason in reasons if isinstance(reason, dict)}
     assert changed["status"] == "not_met", changed
     assert codes, changed
-    assert codes <= REFUSING_A_SECTION, codes
+    assert codes - STEP_8_UNKNOWN <= REFUSING_A_SECTION, codes
+    assert codes & REFUSING_A_SECTION, codes
     assert "value" not in changed, changed
 
 

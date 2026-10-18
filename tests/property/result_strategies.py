@@ -3,19 +3,21 @@
 HP11: reads that end at each step S2 builds, each drawn by its kind first, so that the feature audit holds
 each kind to its draw floor.
 
-A kind is a read the steps built decide: one whose record passes steps 1 to 10, a constant, an interval or a
-composition, under each `want` of plain read; one with a fault of step 8's catalogue
-(`value_field_strategies.py`) or of steps 9 and 10's (`condition_strategies.py`), or of step 10's that leave
-the read to go on with their `unknown` reasons; one that ends before step 4 (no candidate, a pin no candidate
-states, an unreadable source beside none, another schema version, an ill-formed one, a broken envelope), at
-step 5 (a type no reader reads) or at step 7 (a field the record does not hold); and a field holding
-alternatives, each of which the request meets, or whose list breaks its shape. Each knows whether its read
-reaches step 4, where a reader without the hash suite labels it `hash_not_checked`, and a read of a value the
-form of its field.
+A kind is a read the steps built decide: one whose record passes steps 1 to 10, a constant, an interval, a
+composition or evidence, under each `want` of plain read; one of an interval with a nominal (inside its
+bounds, on one, outside them, under `want: bounds`, or located elsewhere); one with a fault of step 8's
+catalogue (`value_field_strategies.py`) or of steps 9 and 10's (`condition_strategies.py`), or of
+step 10's that leave the read to go on with their `unknown` reasons; one that ends before step 4 (no
+candidate, a pin no candidate states, an unreadable source beside none, another schema version, an ill-formed
+one, a broken envelope), at step 5 (a type no reader reads) or at step 7 (a field the record does not hold);
+and a field holding alternatives, each of which the request meets, or whose list breaks its shape. Each knows
+whether its read reaches step 4, where a reader without the hash suite labels it `hash_not_checked`, and a
+read of a value the form of its field.
 """
 
 import copy
 import json
+import math
 from typing import NamedTuple
 
 from hypothesis import strategies as st
@@ -35,12 +37,13 @@ from tests.property.condition_strategies import (
 )
 from tests.property.strategies import DOUBLES, TEXT, Size
 from tests.property.value_field_strategies import (
-    BASE_FORMS,
     FORM_FIELDS,
     OWN_MEMBERS,
+    READ_FORMS,
     faulty_records,
     own_member,
     pinned,
+    withheld_report,
 )
 from tests.property.value_field_strategies import (
     WANTS as FORM_WANTS,
@@ -51,7 +54,8 @@ Draw = st.DrawFn
 
 WITH_HASH: frozenset[Suite] = frozenset({"plain_read", "hash"})
 WITHOUT_HASH: frozenset[Suite] = frozenset({"plain_read"})
-# The `want`s of plain read: a constant gives `value` alone, an interval `bounds`, a composition `components`.
+# The `want`s of plain read: a constant gives `value` alone, an interval `bounds`, a composition `components`,
+# evidence `evidence`.
 WANTS = ("value", "value", "value", "bounds", "components", "evidence")
 BEFORE_STEP_4 = (
     "no_candidate",
@@ -73,6 +77,7 @@ KINDS = (
     "alternatives",
     "alternatives_broken",
     "met_own_member",
+    "nominal",
 )
 # The kinds whose read returns a value or alternative values.
 VALUED = ("met", "alternatives")
@@ -114,8 +119,61 @@ def from_read(kind: str, read: Read, want: str, claims: frozenset[Suite], *featu
 @st.composite
 def form_reads(draw: Draw, size: Size) -> tuple[str, Read]:
     """A base read of a field of a form drawn first, and the form."""
-    form = draw(st.sampled_from(BASE_FORMS))
+    form = draw(st.sampled_from(READ_FORMS))
     return form, draw(base_reads(size, FORM_FIELDS[form], form))
+
+
+# A nominal for an interval read (`declarations.md` section 4.1; `read_side_contract.md` section 6): its value
+# inside the bounds, on one, one double outside them, inside them under `want: bounds`, or located where it
+# does not apply (another field, a region, no location).
+NOMINAL_WAYS = ("inside", "on_a_bound", "outside", "under_bounds", "elsewhere")
+
+
+def outside(lower: float | None, upper: float | None) -> list[float]:
+    """The doubles one step past each numeric bound, where they are finite."""
+    found = [
+        math.nextafter(bound, toward)
+        for bound, toward in ((lower, -math.inf), (upper, math.inf))
+        if bound is not None
+    ]
+    return [number for number in found if math.isfinite(number)]
+
+
+@st.composite
+def nominal_for(draw: Draw, record: JsonObject, field: str, way: str) -> JsonObject:
+    """A nominal for the interval `field` of `record` holds, located at `record`, its value as `way` says."""
+    interval = at(field_at(record, field), "interval")
+    lower = interval["lower"] if isinstance(interval["lower"], float) else None
+    upper = interval["upper"] if isinstance(interval["upper"], float) else None
+    if way == "on_a_bound":
+        value = draw(st.sampled_from([bound for bound in (lower, upper) if bound is not None]))
+    elif way == "outside" and outside(lower, upper):
+        value = draw(st.sampled_from(outside(lower, upper)))
+    elif way in ("inside", "under_bounds") and lower is not None and lower == upper:
+        # Hypothesis takes no range from `0` to `-0`, which are one number.
+        value = draw(st.sampled_from([lower, upper]))
+    elif way in ("inside", "under_bounds"):
+        value = draw(st.floats(min_value=lower, max_value=upper, allow_nan=False, allow_infinity=False))
+    else:
+        value = draw(DOUBLES)
+    acceptance: JsonObject = {
+        "acceptance": "nominal",
+        "record": reference(record),
+        "field": field,
+        "value": value,
+        "basis": draw(TEXT),
+    }
+    if way == "elsewhere":
+        where = draw(st.sampled_from(("field", "region", "nowhere")))
+        if where == "field":
+            acceptance["field"] = draw(
+                st.sampled_from(sorted(name for name in VOCABULARY.fields if name != field))
+            )
+        elif where == "region":
+            acceptance["region"] = draw(TEXT)
+        else:
+            del acceptance["record"]
+    return acceptance
 
 
 @st.composite
@@ -129,11 +187,47 @@ def met_reads(draw: Draw, size: Size, wants: tuple[str, ...] = WANTS) -> Drawn:
 
 
 @st.composite
+def nominals(draw: Draw, size: Size) -> Drawn:
+    """A read of an interval that passes steps 1 to 10 with a nominal, the way drawn first: under `want:
+    value`, but where it is drawn under `bounds`."""
+    way = draw(st.sampled_from(NOMINAL_WAYS))
+    read = draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
+    claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
+    want = "bounds" if way == "under_bounds" else "value"
+    drawn = from_read("nominal", read, want, claims, "form_interval", f"nominal_{way}")
+    drawn.request["acceptances"] = [draw(nominal_for(read.record, read.field, way))]
+    return drawn
+
+
+# The ways a nominal supplies the value (section 6: "inside or on the bounds").
+SUPPLYING = ("inside", "on_a_bound")
+
+
+@st.composite
+def nominal_reads(draw: Draw, size: Size) -> Drawn:
+    """A read of an interval that passes steps 1 to 10 under `want: value`, with a nominal located at it that
+    supplies the value, inside the bounds or on one, the way drawn first; in half the draws behind a nominal
+    for another field, so that the one applied is not the first acceptance."""
+    way = draw(st.sampled_from(SUPPLYING))
+    read = draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
+    claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
+    drawn = from_read("nominal", read, "value", claims, "form_interval", f"nominal_{way}")
+    supplying = draw(nominal_for(read.record, read.field, way))
+    acceptances: list[JsonValue] = [supplying]
+    if draw(st.booleans()):
+        others = sorted(name for name in VOCABULARY.fields if name != read.field)
+        acceptances.insert(0, {**supplying, "field": draw(st.sampled_from(others))})
+        drawn = drawn._replace(features=(*drawn.features, "behind_another"))
+    drawn.request["acceptances"] = acceptances
+    return drawn
+
+
+@st.composite
 def own_member_reads(draw: Draw, size: Size) -> Drawn:
-    """A read that passes steps 1 to 10 of an interval or a composition, under the `want` that gives its own
-    member: a kind of its own, so that a fault a read of either form alone shows is searched for in a share of
-    the examples of its own, not in `met`'s one in eight (PR #37's review, L5)."""
-    form = draw(st.sampled_from(("interval", "composition")))
+    """A read that passes steps 1 to 10 of an interval, a composition or evidence, under the `want` that gives
+    its own member: a kind of its own, so that a fault a read of either form alone shows is searched for in a
+    share of the examples of its own, not in `met`'s one in eight (PR #37's review, L5)."""
+    form = draw(st.sampled_from(("interval", "composition", "evidence")))
     read = draw(base_reads(size, FORM_FIELDS[form], form))
     claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
     return from_read("met_own_member", read, FORM_WANTS[form], claims, f"form_{form}")
@@ -256,7 +350,17 @@ def target_of(request: JsonObject, record: JsonObject) -> JsonObject:
 def another_value(draw: Draw, field: JsonObject, name: str) -> JsonObject:
     """`field` with an own member of its form drawn afresh."""
     form = str(field["form"])
-    return {**copy.deepcopy(field), OWN_MEMBERS[form]: draw(own_member(form, name))}
+    return without_withheld_reports({**copy.deepcopy(field), OWN_MEMBERS[form]: draw(own_member(form, name))})
+
+
+def without_withheld_reports(field: JsonObject) -> JsonObject:
+    """`field`, where it is evidence, without its withheld reports: some withheld give `entries_withheld`, an
+    alternative's own reason, whose outcome S4 decides (decision 12). The strategy keeps one not withheld."""
+    if field["form"] == "evidence":
+        reports = field["evidence"]
+        assert isinstance(reports, list)
+        field["evidence"] = [report for report in reports if not withheld_report(report)]
+    return field
 
 
 @st.composite
@@ -264,7 +368,7 @@ def alternatives(draw: Draw, size: Size, wants: tuple[str, ...] = WANTS) -> Draw
     """Two or three alternatives, each the base read's field with a value of its own, which the request
     meets: `no_pick` under the `want` their form gives, `want_mismatch` under any other."""
     form, read = draw(form_reads(size))
-    field = field_at(read.record, read.field)
+    field = without_withheld_reports(field_at(read.record, read.field))
     without_origin_s_reason(field)
     count = draw(st.integers(2, 3))
     held: list[JsonValue] = [another_value(draw, field, read.field) for _ in range(count)]
@@ -320,6 +424,7 @@ BUILDERS = {
     "alternatives": alternatives,
     "alternatives_broken": broken_alternatives,
     "met_own_member": own_member_reads,
+    "nominal": nominals,
 }
 
 
@@ -334,7 +439,8 @@ UNKNOWN_PLACES = ("statistics", "fact", "condition", "own_member")
 
 def with_negative_zero(field: JsonObject) -> None:
     """`-0` where the field's form holds a number it returns as stored: a constant's value, an interval's
-    lower bound (its upper made at least `0`, or left `none`), or a composition's first fraction."""
+    lower bound (its upper made at least `0`, or left `none`), a composition's first fraction, or the year of
+    the standard of evidence's first report not withheld."""
     form = str(field["form"])
     if form == "constant":
         field["value"] = -0.0
@@ -344,9 +450,20 @@ def with_negative_zero(field: JsonObject) -> None:
         bounds["lower"] = -0.0
         if isinstance(upper, float) and upper < 0:
             bounds["upper"] = 0.0
+    elif form == "evidence":
+        open_report(field)["standard"] = {"designation": "ISO 10993-5", "year": -0.0}
     else:
         first = first_component(field)
         first["fraction"] = -0.0
+
+
+def open_report(field: JsonObject) -> JsonObject:
+    """Evidence's first report not withheld, which the strategy keeps one of."""
+    reports = field["evidence"]
+    assert isinstance(reports, list)
+    found = next(report for report in reports if not withheld_report(report))
+    assert isinstance(found, dict)
+    return found
 
 
 def first_component(field: JsonObject) -> JsonObject:
@@ -365,36 +482,45 @@ def own_member_place(field: JsonObject) -> JsonObject:
         return at(field, "interval")
     if form == "composition":
         return first_component(field)
+    if form == "evidence":
+        return open_report(field)
     return at(field, "statistics")
 
 
 @st.composite
 def enriched(draw: Draw, field: JsonObject) -> tuple[str, ...]:
-    """`field` changed to show what it is drawn to, which it returns, by name."""
-    shown: list[str] = [f"form_{field['form']}"]
+    """`field` changed to show what it is drawn to, which it returns, by name. Evidence, which holds no
+    statistics and no condition, takes its review into its first report's provenance too, and a member the
+    reader does not know into a fact or its own member, and never holds its statistics withheld."""
+    form = str(field["form"])
+    shown: list[str] = [f"form_{form}"]
     if draw(st.integers(0, 3)) == 0:
         with_negative_zero(field)
         shown.append("negative_zero")
     review = draw(st.sampled_from(REVIEWS))
     shown.append(review)
-    provenance = at(field, "provenance")
-    if review == "review_reviewed":
-        provenance["review"] = {
-            "result": "reviewed",
-            "reviewer": draw(TEXT),
-            "date": "2026-10-17",
-            "independent_of_extraction": draw(st.booleans()),
-            "checklist": ["value", "unit"],
-        }
-    elif review == "review_not_checked":
-        provenance["review"] = {"status": "not_checked", "reason": draw(TEXT)}
-    if draw(st.integers(0, 3)) == 0:
+    provenances = [at(field, "provenance")]
+    if form == "evidence":
+        provenances.append(at(open_report(field), "provenance"))
+    for provenance in provenances:
+        if review == "review_reviewed":
+            provenance["review"] = {
+                "result": "reviewed",
+                "reviewer": draw(TEXT),
+                "date": "2026-10-17",
+                "independent_of_extraction": draw(st.booleans()),
+                "checklist": ["value", "unit"],
+            }
+        elif review == "review_not_checked":
+            provenance["review"] = {"status": "not_checked", "reason": draw(TEXT)}
+    if draw(st.integers(0, 3)) == 0 and form != "evidence":
         field["statistics"] = (
             {"status": "withheld"} if draw(st.booleans()) else {"status": "withheld", "reason": draw(TEXT)}
         )
         shown.append("statistics_withheld")
     if draw(st.booleans()):
-        place = draw(st.sampled_from(UNKNOWN_PLACES))
+        places = ("fact", "own_member") if form == "evidence" else UNKNOWN_PLACES
+        place = draw(st.sampled_from(places))
         holder = {
             "statistics": lambda: at(field, "statistics"),
             "fact": lambda: at(field, "specimen", "post_mortem_interval"),
@@ -426,7 +552,7 @@ def valued_reads(draw: Draw, size: Size) -> Drawn:
     if kind == "met":
         record = repinned(read.record)
     else:
-        held: list[JsonValue] = [copy.deepcopy(field)]
+        held: list[JsonValue] = [without_withheld_reports(copy.deepcopy(field))]
         held += [another_value(draw, field, read.field) for _ in range(draw(st.integers(1, 2)))]
         record = holding(read, {"alternatives": held})
     claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))

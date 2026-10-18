@@ -4,16 +4,20 @@ reads that end at each step S2 builds (`result_strategies.py`). The mutants they
 `test_result_mutants.py`.
 
 - **HP1, totality and the reason table.** A read gives a result, or `NotImplementedError` where a step not
-  built yet decides it, which only step 8's faults reach here (a table, evidence); every code is in
+  built yet decides it, which only step 8's faults reach here (a table); every code is in
   the reason table; each `(code, condition)` appears once; and `condition` is present on every `condition_*`
   reason and on no reason of a code that never concerns one (section 2 item 2), the oracle the generated
   reason table.
 - **HP2, the status law and the members present.** The status is the worst of the reasons' statuses, which
   the oracle folds from the vocabulary itself; and the members are present as item 6 says: `reasons` and
-  `labels` always; `value` exactly where the status is not `not_met` and the result rests on one value (no
-  assumption is declared here); `alternative_values` exactly under `no_pick`; `unit` beside either;
-  `specimen`, `statistics` and `provenance` beside `value`; no `assumption`; and `conditions` beside a value,
-  never under `no_pick` or after a refusal before step 10.
+  `labels` always; `value` exactly where the status is not `not_met`, or a nominal supplies it, and the result
+  rests on one value; `alternative_values` exactly under `no_pick`; `unit` beside either; `specimen` and
+  `provenance` beside `value`, and `statistics` but beside evidence; `assumption` exactly where a nominal
+  supplies the value; and `conditions` beside a value, never under `no_pick` or after a refusal before step
+  10. A nominal supplies an interval's value under `want: value`, inside or on its bounds, where it names the
+  read's field at the read's record alone (sections 1 and 6, the oracle's own reading of the request);
+  outside them it gives `nominal_invalid`; `applied` holds its index exactly where it supplies the value, and
+  no acceptance that applied to nothing.
 - **HP6, returned as stored.** Every member a read returns from the record equals the stored one, numbers bit
   for bit and status objects as status objects, holding the members the generated shapes define and no
   other (the oracle filters the stored value by the `TypedDict` keys itself, never by the reader's filter),
@@ -22,7 +26,10 @@ reads that end at each step S2 builds (`result_strategies.py`). The mutants they
   value is the form's own member, under the `want` that gives it: a constant's number, an interval's bounds
   with their basis, a `none` bound a status, never infinity (`record_format.md` section 6, interval item 3),
   a composition with its basis, sum rule, stated sum and components, never normalised (composition item 4),
-  a component's statistics block's counts integers.
+  a component's statistics block's counts integers, evidence's reports with their statuses and each
+  provenance whole, its review read as item 6 reads one (`record_format.md` section 4.3 item 2); and where a
+  nominal supplies the value, the nominal's value, bit for bit, and the `assumption` it rests on,
+  `{"acceptance": "nominal", "value"}`, its `basis` aside (section 2).
 - **HP11, claims.** Without the hash suite, `hash_not_checked` is present exactly where the read reached step
   4, which the draw knows; with a correct hash the two reads differ by that label alone.
 """
@@ -31,7 +38,7 @@ import json
 import struct
 from collections.abc import Mapping
 from types import UnionType
-from typing import Any, Union, cast, get_args, get_origin, get_type_hints, is_typeddict
+from typing import Any, NamedTuple, Union, cast, get_args, get_origin, get_type_hints, is_typeddict
 
 import pytest
 from hypothesis import given
@@ -51,6 +58,7 @@ from tests.property.result_strategies import (
     Drawn,
     drawn_reads,
     field_at,
+    nominal_reads,
     valued_reads,
 )
 from tests.property.strategies import SIZE
@@ -73,9 +81,11 @@ PERHAPS_A_CONDITION = frozenset(
         "want_mismatch",
     }
 )
-# The codes only steps before step 10 give: one of them in a result means step 10 never ran.
+# The refusals only steps before step 10 give: one of them in a result means step 10 never ran.
 BEFORE_STEP_10 = frozenset(
-    code for code, row in REASONS.items() if row.get("steps") and max(row["steps"]) < 10
+    code
+    for code, row in REASONS.items()
+    if row.get("steps") and max(row["steps"]) < 10 and row["status"] == "not_met"
 )
 COUNTS = ("n_specimens", "n_donors", "n_sources")
 
@@ -146,6 +156,40 @@ def folded(codes: list[str]) -> str:
     return max((REASONS[code]["status"] for code in codes), key=BEST_FIRST.index, default="met")
 
 
+class Nominal(NamedTuple):
+    at: int  # its index in the request's `acceptances`
+    value: JsonValue
+    supplies: bool  # inside or on the bounds, under `want: value`
+
+
+def nominal_of(drawn: Drawn) -> Nominal | None:
+    """The request's nominal that applies to a read of an interval that passes steps 1 to 10 (the kinds `met`
+    and `nominal`), under `want: value`: one naming the read's field located at the read's record alone
+    (`read_side_contract.md` section 1); whether it supplies the value, inside or on the bounds compared as
+    numbers, on the bounded side of a one-sided interval (section 6)."""
+    target, requirement = at(drawn.request, "target"), at(drawn.request, "requirement")
+    field = field_at(drawn.record, drawn.field)
+    if drawn.kind not in ("met", "nominal") or requirement["want"] != "value" or field["form"] != "interval":
+        return None
+    acceptances = drawn.request.get("acceptances", [])
+    for index, acceptance in enumerate(acceptances if isinstance(acceptances, list) else []):
+        if not isinstance(acceptance, dict) or acceptance.get("acceptance") != "nominal":
+            continue
+        located = {name: held for name, held in acceptance.items() if name in LOCATIONS}
+        if acceptance.get("field") == target["field"] and located == {"record": target["record"]}:
+            value, interval = acceptance["value"], at(field, "interval")
+            lower, upper = interval["lower"], interval["upper"]
+            assert isinstance(value, float)
+            supplies = (not isinstance(lower, float) or lower <= value) and (
+                not isinstance(upper, float) or value <= upper
+            )
+            return Nominal(index, value, supplies)
+    return None
+
+
+LOCATIONS = ("record", "region", "interval")
+
+
 def check_status_law(drawn: Drawn) -> None:
     result = read_drawn(drawn)
     if result is None:
@@ -153,19 +197,36 @@ def check_status_law(drawn: Drawn) -> None:
     codes = [str(reason.code) for reason in result.reasons]
     assert result.status == folded(codes), (result.status, codes)
     members = written(result)
+    nominal = nominal_of(drawn)
+    supplied = nominal is not None and nominal.supplies
     no_pick = "no_pick" in codes
-    valued = result.status != "not_met" and not no_pick
+    valued = (result.status != "not_met" or supplied) and not no_pick
+    evidence = isinstance(members.get("value"), list)
     assert {"status", "reasons", "labels"} <= set(members), members
     assert ("value" in members) == valued, members
     assert ("alternative_values" in members) == no_pick, members
     assert ("unit" in members) == (valued or no_pick), members
-    for name in ("specimen", "statistics", "provenance"):
+    for name in ("specimen", "provenance"):
         assert (name in members) == valued, (name, members)
-    assert "assumption" not in members, members
+    assert ("statistics" in members) == (valued and not evidence), members
+    assert ("assumption" in members) == supplied, members
+    assert ("nominal_invalid" in codes) == (nominal is not None and not nominal.supplies), (codes, nominal)
+    assert set(result.applied) <= implied_indexes(drawn) | ({nominal.at} if supplied and nominal else set())
+    assert supplied <= (nominal is not None and nominal.at in result.applied), result.applied
     if valued:
         assert "conditions" in members, members
     if no_pick or set(codes) & BEFORE_STEP_10:
         assert "conditions" not in members, members
+
+
+def implied_indexes(drawn: Drawn) -> set[int]:
+    """The indexes of the request's implied conditions, the other acceptances a read applies."""
+    acceptances = drawn.request.get("acceptances", [])
+    return {
+        index
+        for index, acceptance in enumerate(acceptances if isinstance(acceptances, list) else [])
+        if isinstance(acceptance, dict) and acceptance.get("acceptance") == "implied_condition"
+    }
 
 
 @pytest.mark.drawn(*KINDS)
@@ -217,21 +278,29 @@ def flattened(shapes_: tuple[object, ...]) -> tuple[object, ...]:
 
 def as_stored(value: JsonValue, *shapes_: object) -> JsonValue:
     """`value`, which a generated shape among `shapes_` describes, holding at every depth the members that
-    shape defines: an object holding `status` is a status object, holding `status` and `reason`."""
+    shape defines: an object holding `status` is a status object, holding `status` and `reason`; a map holds
+    its names, each value as the map's shape gives it, where no object shape but a status object's is among
+    the alternatives (a placeholder)."""
     alternatives = flattened(shapes_)
     if isinstance(value, list):
         items = [get_args(shape)[0] for shape in alternatives if get_origin(shape) in (list, tuple)]
         return [as_stored(item, *items) for item in value]
     objects = [shape for shape in alternatives if is_typeddict(shape)]
-    if not isinstance(value, dict) or not objects:
+    maps = [get_args(shape)[1] for shape in alternatives if get_origin(shape) is dict]
+    if not isinstance(value, dict):
         return value
-    if "status" in value:
-        return {name: value[name] for name in ("status", "reason") if name in value}
+    status: JsonObject = {name: value[name] for name in ("status", "reason") if name in value}
+    if "status" in value and objects:
+        return status
     members: dict[str, list[object]] = {}
     for shape in objects:
         if not set(get_type_hints(shape)) <= {"status", "reason"}:
             for name, member in get_type_hints(shape).items():
                 members.setdefault(name, []).append(member)
+    if not members and maps:
+        return {name: as_stored(member, *maps) for name, member in value.items()}
+    if not members:
+        return status if objects else value
     return {name: as_stored(member, *members[name]) for name, member in value.items() if name in members}
 
 
@@ -275,21 +344,23 @@ def expected_members(field: JsonObject, section: JsonObject) -> JsonObject:
             entry["input"] = whole(entry["input"])
         summary["derivation"] = derivation
     facts = {**at(section, "specimen"), **at(field, "specimen")}
-    return {
+    expected: JsonObject = {
         "unit": as_stored(field["unit"], shapes.Unit),
         "specimen": as_stored(facts, shapes.Specimen),
-        "statistics": {
-            name: whole(member) if name in COUNTS else member
-            for name, member in cast(
-                JsonObject, as_stored(field["statistics"], shapes.StatisticsBlock)
-            ).items()
-        },
         "provenance": summary,
         "conditions": {
             name: as_stored(condition, CONDITION_SHAPES[name])
             for name, condition in at(field, "conditions").items()
         },
     }
+    if field["form"] != "evidence":
+        expected["statistics"] = {
+            name: whole(member) if name in COUNTS else member
+            for name, member in cast(
+                JsonObject, as_stored(field["statistics"], shapes.StatisticsBlock)
+            ).items()
+        }
+    return expected
 
 
 CONDITION_SHAPES = get_type_hints(shapes.Conditions)
@@ -299,7 +370,11 @@ RETURNED = ("unit", "specimen", "statistics", "provenance")
 
 
 def check_members(expected: JsonObject, given: JsonObject, names: tuple[str, ...] = RETURNED) -> None:
+    """Each member as expected, and one not expected, evidence's statistics, absent."""
     for name in names:
+        if name not in expected:
+            assert name not in given, (name, given)
+            continue
         assert same(expected[name], given[name]), (name, expected[name], given[name])
     stated = at(expected, "conditions")
     for entry in cast(list[JsonObject], given["conditions"]):
@@ -308,19 +383,33 @@ def check_members(expected: JsonObject, given: JsonObject, names: tuple[str, ...
 
 
 # Each form's own member (`record_format.md` section 5) and its generated shape.
-OWN_MEMBERS = {"constant": "value", "interval": "interval", "composition": "composition"}
+OWN_MEMBERS = {
+    "constant": "value",
+    "interval": "interval",
+    "composition": "composition",
+    "evidence": "evidence",
+}
 FIELD_SHAPES = {
     "constant": shapes.ConstantField,
     "interval": shapes.IntervalField,
     "composition": shapes.CompositionField,
+    "evidence": shapes.EvidenceField,
 }
 
 
 def expected_value(field: JsonObject) -> JsonValue:
-    """The field's own member as a read returns it, a component's statistics block's counts integers."""
+    """The field's own member as a read returns it, a component's statistics block's counts integers, a
+    report's review as `provenance.md` section 2 item 6 reads one."""
     form = str(field["form"])
     own = OWN_MEMBERS[form]
     value = as_stored(field[own], get_type_hints(FIELD_SHAPES[form])[own])
+    if form == "evidence":
+        for stored, report in zip(
+            cast(list[JsonValue], field[own]), cast(list[JsonValue], value), strict=True
+        ):
+            if isinstance(report, dict) and isinstance(report.get("provenance"), dict):
+                provenance = at(cast(JsonObject, stored), "provenance")
+                cast(JsonObject, report["provenance"])["review"] = review_as_read(provenance.get("review"))
     components = value.get("components") if isinstance(value, dict) else None
     for component in components if isinstance(components, list) else []:
         statistics = component.get("statistics") if isinstance(component, dict) else None
@@ -385,13 +474,16 @@ def scrambled(value: object) -> None:
 # about 1e-12 at `ci`, and the first, the one `dev` judges, at most about 3e-8 there. The unknown member is
 # declared the same way: drawn by `st.booleans()`, it shows in about a third of the examples, not half: 0.33
 # to 0.36 at `ci` and at `dev` over 20 to 40 runs (2026-10-18), by the draws before it. At 0.33 it falls below
-# its floor at `ci` with a probability of at most about 1e-14; `dev` judges no chance below a half.
+# its floor at `ci` with a probability of at most about 1e-14; `dev` judges no chance below a half. The form
+# is drawn among `READ_FORMS`, a constant twice; and evidence never holds its statistics withheld, which the
+# others do in a quarter of the draws.
 @pytest.mark.chances(
-    form_constant=0.5,
-    form_interval=0.25,
-    form_composition=0.25,
+    form_constant=0.4,
+    form_interval=0.2,
+    form_composition=0.2,
+    form_evidence=0.2,
     negative_zero=0.25,
-    statistics_withheld=0.25,
+    statistics_withheld=0.2,
     unknown_member=0.33,
     review_anything=0.53,
     review_reviewed=0.24,
@@ -404,6 +496,34 @@ def test_what_a_read_returns_is_as_stored_and_shares_nothing(drawn: Drawn) -> No
     for shown in drawn.features:
         feature(shown)
     check_returned_as_stored(drawn)
+
+
+def check_nominal_supplied(drawn: Drawn) -> None:
+    """Where a nominal supplies the value: the nominal's value, bit for bit, and the `assumption` it rests on,
+    its `basis` aside (section 2); the members beside them as stored; and `applied` its index alone."""
+    result = read_drawn(drawn)
+    assert result is not None
+    nominal = nominal_of(drawn)
+    assert nominal is not None, drawn.request
+    assert nominal.supplies, drawn.request
+    members = cast(JsonObject, result.to_json())
+    assert same(nominal.value, members["value"]), (nominal.value, members["value"])
+    assert same({"acceptance": "nominal", "value": nominal.value}, members["assumption"]), members[
+        "assumption"
+    ]
+    held = field_at(drawn.record, drawn.field)
+    check_members(
+        expected_members(held, at(drawn.record, "body", "sections", drawn.field.partition(".")[0])), members
+    )
+    assert result.applied == (nominal.at,), result.applied
+
+
+@pytest.mark.chances(form_interval=1.0, nominal_inside=0.5, nominal_on_a_bound=0.5, behind_another=0.5)
+@given(nominal_reads(SIZE))
+def test_a_nominal_supplies_its_value_and_the_assumption_it_rests_on(drawn: Drawn) -> None:
+    for shown in drawn.features:
+        feature(shown)
+    check_nominal_supplied(drawn)
 
 
 # HP11: claims.

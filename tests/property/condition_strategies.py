@@ -279,11 +279,12 @@ def base_reads(
 ) -> Read:
     """A record holding a field of `names` and `form`, a constant unless named, that passes steps 8 and 9,
     every unit registered, its conditions its row's and `BESIDE_THE_ROW`, each stated and met by the request,
-    so that steps 11 to 13 decide the read; a section's and a field's `post_mortem_interval`, and a derived
-    value's input's, are the places of a fact's unit."""
+    so that steps 11 to 13 decide the read (evidence, which holds no registered condition, none, and the
+    request gives none); a section's and a field's `post_mortem_interval`, and a derived value's input's, are
+    the places of a fact's unit."""
     name, field = draw(fields(size, names, form))
     spec = VOCABULARY.fields[name]
-    field["unit"] = spec.unit
+    field["unit"] = copy.deepcopy(spec.unit)
     section: JsonObject = {"fields": {name.partition(".")[2]: field}}
     if draw(st.booleans()):
         section["specimen"] = draw(specimen())
@@ -299,12 +300,13 @@ def base_reads(
     conditions: JsonObject = {}
     operating: JsonObject = {}
     required: JsonObject = {}
-    for condition in dict.fromkeys([*spec.requires, *BESIDE_THE_ROW]):
-        conditions[condition], operated, required[condition] = draw(met_condition(condition))
-        if operated is not None:
-            operating[condition] = operated
-    conditions["measurement_geometry"] = {"token": "tube", "basis": "stated"}
-    required["measurement_geometry"] = {"accept": ["tube"]}
+    if form != "evidence":
+        for condition in dict.fromkeys([*spec.requires, *BESIDE_THE_ROW]):
+            conditions[condition], operated, required[condition] = draw(met_condition(condition))
+            if operated is not None:
+                operating[condition] = operated
+        conditions["measurement_geometry"] = {"token": "tube", "basis": "stated"}
+        required["measurement_geometry"] = {"accept": ["tube"]}
     field["conditions"] = conditions
     record = pinned(
         {
