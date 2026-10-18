@@ -576,6 +576,18 @@ every family entry goes in `families/CHANGELOG.md`.
   place of the collection. Both hand-run workflows set `queue: max` on their concurrency group, since GitHub
   otherwise cancels a dispatch pending in it when another queues, so that none is cancelled as their
   comments say (#46's review, L2).
+- Three mutant searches whose kill sat in a long tail are planned, so that a change that moves a search's seed
+  (a Hypothesis upgrade, or any other change to what Hypothesis hashes into it) cannot push them past their
+  2,000 examples. With the pin their kills were fixed, but late: `a_non_object_provenance_opens` at the 872nd
+  example (original size; 455 at the small), `empty_word_made_plural` at the 629th and `row_requirements_ignored`
+  at the 536th. Reseeded 24 times with the code unchanged, drawn whole, they took up to 1,875, 945 and 1,363
+  examples, and two of the three survived 2,000 in some salt. Each now draws the region where its fault shows,
+  in records and names the core passes (an edit below a `review` or `copy` in a provenance whose value is an
+  array; a name with an empty word and the same with `s` or `es` in it; a table case with a required condition
+  held nowhere), checks the same assertion, and dies at its first example at both sizes and in all 24 salts. The
+  properties are unchanged; a control checks that each planned search's examples pass on the core. No budget,
+  size, fault or mutant was changed; the other 538 kill points did not move, and the latest of the 544 is now
+  the 276th (`tests/property/README.md`).
 
 ## [0.1.0.dev1] - 2026-10-14
 
