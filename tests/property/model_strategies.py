@@ -145,11 +145,21 @@ NOMINAL_PLANTS = (*(f"nominal_{way}" for way in results.NOMINAL_WAYS), "nominal_
 
 
 @st.composite
-def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS, *, nominal: bool = False) -> Example:
-    """A valued read; with `nominal`, an interval's with a nominal always, a planned search's."""
+def valued(
+    draw: Draw,
+    size: Size,
+    ways: tuple[str, ...] = VALUED_WAYS,
+    *,
+    nominal: bool = False,
+    unit_with_a_reason: bool = False,
+) -> Example:
+    """A valued read; for a planned search's, with `nominal`, an interval's with a nominal always, and with
+    `unit_with_a_reason`, evidence's with its unit a status object with a reason always."""
     way = draw(st.sampled_from(ways))
     if nominal:
         form, drawn_read = "interval", draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
+    elif unit_with_a_reason:
+        form, drawn_read = "evidence", draw(base_reads(size, FORM_FIELDS["evidence"], "evidence"))
     else:
         form, drawn_read = draw(results.form_reads(size))
     read = fresh(drawn_read)
@@ -161,7 +171,7 @@ def valued(draw: Draw, size: Size, ways: tuple[str, ...] = VALUED_WAYS, *, nomin
     if draw(st.integers(0, 2)) == 0:
         beside_another_section(draw, read)
         shown = (*shown, "another_section")
-    if form == "evidence" and draw(st.booleans()):
+    if form == "evidence" and (unit_with_a_reason or draw(st.booleans())):
         field_of(read)["unit"] = {"status": "not_applicable", "reason": "a list of test reports"}
         shown = (*shown, "unit_with_a_reason")
     read = wanting(repinned(read), a_want(draw, form))

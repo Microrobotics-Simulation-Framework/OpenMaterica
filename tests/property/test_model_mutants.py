@@ -60,6 +60,8 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     # Planned searches of the first part: an interval's read under a nominal, alone and over alternatives.
     "values under a nominal": lambda size: strategies.valued(size, nominal=True),
     "alternatives under a nominal": lambda size: strategies.alternatives(size, nominal=True),
+    # A planned search of the first part: evidence whose unit is a status object with a reason.
+    "evidence's unit with a reason": lambda size: strategies.valued(size, unit_with_a_reason=True),
     "faults": lambda size: strategies.drawn(size, properties.PARTS["faults"]),
     "two of one step": strategies.two_faults_of_one_step,
     "early": lambda size: strategies.drawn(size, properties.PARTS["early"]),
@@ -529,7 +531,7 @@ MODEL = [
     # S2b-2's evidence and nominals, which HP12 draws since S2b-2 reads them.
     ModelFault("evidence_entry_provenance_unchecked", "faults", EVIDENCE_PROVENANCE, EVIDENCE_PROVENANCE),
     ModelFault("entry_withheld_in_part_read", "faults", WITHHELD_IN_PART, WITHHELD_IN_PART),
-    ModelFault("unit_returned_without_its_reason", "values", ("unit_with_a_reason",)),
+    ModelFault("unit_returned_without_its_reason", "evidence's unit with a reason", ("unit_with_a_reason",)),
     ModelFault("two_nominals_for_one_field", "nominals at step 0", ("two_nominals_for_one_field",)),
     ModelFault(
         "nominal_ignored_over_alternatives", "alternatives under a nominal", ("nominal_over_alternatives",)
