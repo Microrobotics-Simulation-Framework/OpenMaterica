@@ -56,10 +56,13 @@ on:
         default: ""
 
 # A dispatch waits while another of the same inputs runs on the same ref; one of other inputs runs beside it.
-# None is ever cancelled.
+# None is cancelled: by default GitHub cancels a run pending in a group when another queues, and `queue: max`
+# keeps up to 100 pending, in the order they came (GitHub's "Control the concurrency of workflows and jobs",
+# read 2026-10-18; actionlint 1.7.12, its latest release, predates the key and reports it unknown).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.mutants }}-${{ inputs.selection }}-${{ inputs.profile }}-${{ inputs.python }}-${{ inputs.seed }}-${{ inputs.extra }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -150,7 +153,8 @@ jobs:
     name: ${{ matrix.mutant && format('mutant {0}', matrix.mutant) || 'the baseline, no mutant' }}
     needs: request
     runs-on: ubuntu-24.04
-    # The run is interrupted three minutes before this, so that the job keeps the record of what it found. Set
+    # The run is interrupted three minutes before this, counted from the job's start, so that the job keeps the
+    # record of what it found however long its checkout, uv's setup and `uv sync` took (#46's review, L3). Set
     # by profile, as in repeat.yml: a run at `deep` takes about ten times one at `ci`, and the whole suite at
     # `dev` takes the test matrix's jobs well under their 40 minutes.
     timeout-minutes: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
@@ -168,6 +172,10 @@ jobs:
       matrix:
         mutant: ${{ fromJSON(needs.request.outputs.matrix) }}
     steps:
+      # The job's start, in seconds since the epoch, from which the run step counts its interrupt.
+      - name: The job's start
+        id: started
+        run: echo "at=$(date +%s)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -195,6 +203,7 @@ jobs:
           EXTRA: ${{ needs.request.outputs.extra }}
           SEED: ${{ needs.request.outputs.seed }}
           MATERICA_HYPOTHESIS_PROFILE: ${{ needs.request.outputs.profile }}
+          JOB_STARTED: ${{ steps.started.outputs.at }}
         run: |
           runner="$RUNNER_TEMP/runner"
           mkdir -p "$runner" "$RUNNER_TEMP/record"

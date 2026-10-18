@@ -534,7 +534,9 @@ every family entry goes in `families/CHANGELOG.md`.
   seed, but repeating it on a head and on its base is still a valid comparison. The warning reads what pytest
   collected with the extra arguments; `tests/unit/test_ci_workflows.py` runs the step on nodes that must and
   must not be warned on, with controls that drop the warning, turn it into a refusal, or read the node in
-  place of the collection.
+  place of the collection. Both hand-run workflows set `queue: max` on their concurrency group, since GitHub
+  otherwise cancels a dispatch pending in it when another queues, so that none is cancelled as their
+  comments say (#46's review, L2).
 
 ## [0.1.0.dev1] - 2026-10-14
 
