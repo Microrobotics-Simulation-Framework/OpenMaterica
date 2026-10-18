@@ -4,10 +4,11 @@ against the core, in a module apart from the searches, so that it runs on every 
 (`--property-controls` in `tests/conftest.py`)."""
 
 from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from tests.conftest import EXAMPLES
 from tests.property import test_condition_properties as properties
-from tests.property.test_condition_mutants import KILLERS, MUTANTS, table_cases_without_a_requirement
+from tests.property.test_condition_mutants import KILLERS, MUTANTS, kill, table_cases_without_a_requirement
 
 
 def test_each_mutant_names_a_killer() -> None:
@@ -21,3 +22,13 @@ def test_each_mutant_names_a_killer() -> None:
 @given(table_cases_without_a_requirement())
 def test_a_requirement_held_nowhere_is_checked_by_the_core(drawn: tuple[str, properties.Case]) -> None:
     properties.check_against_the_oracle(drawn[1])
+
+
+def test_a_kill_at_an_example_with_a_long_repr_is_counted() -> None:
+    """Hypothesis warns where the repr of the example it reports is long (30 kB), which the tests' warning
+    filter makes an error: a search must count its kill, not fail on the report."""
+
+    def refused(example: str) -> None:
+        raise AssertionError(len(example))
+
+    assert kill(st.just("x" * 40_000), refused)[0] == 1
