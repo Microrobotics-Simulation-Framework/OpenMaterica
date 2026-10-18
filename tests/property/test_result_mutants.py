@@ -46,6 +46,9 @@ def kind(drawn: Drawn) -> set[str]:
 KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any], None]]] = {
     "HP1": (drawn_reads, properties.check_totality),
     "HP2": (drawn_reads, properties.check_status_law),
+    # A planned search of HP2: the reads under a nominal alone, whose mutants HP2's eleven kinds meet too
+    # seldom for a safe margin (over twelve random seeds, one survived 2,000 examples).
+    "HP2 under a nominal": (lambda size: drawn_reads(size, ("nominal",)), properties.check_status_law),
     "HP6": (valued_reads, properties.check_returned_as_stored),
     "HP6_nominal": (nominal_reads, properties.check_nominal_supplied),
     "HP11": (drawn_reads, properties.check_claims),
@@ -426,31 +429,31 @@ MUTANTS = [
     # S2b-2's: a nominal (`read_side_contract.md` sections 1, 2 and 6).
     Mutant(
         "a_nominal_applied_outside_its_bounds",
-        "HP2",
+        "HP2 under a nominal",
         setting(read, "_nominal_read", _a_nominal_inside_wherever_it_lies),
         ("nominal_outside",),
     ),
     Mutant(
         "nominal_invalid_as_want_mismatch",
-        "HP2",
+        "HP2 under a nominal",
         setting(read, "_nominal_read", _nominal_invalid_as_want_mismatch),
         ("nominal_outside",),
     ),
     Mutant(
         "a_nominal_applied_wherever_it_is_located",
-        "HP2",
+        "HP2 under a nominal",
         setting(read, "located_at", _located_by_its_field),
         ("nominal_elsewhere",),
     ),
     Mutant(
         "applied_names_a_nominal_that_supplied_nothing",
-        "HP2",
+        "HP2 under a nominal",
         setting(read, "read_value_field", _applied_wherever_a_nominal_applies),
         ("nominal_outside", "nominal_under_bounds"),
     ),
     Mutant(
         "a_nominals_value_dropped_under_not_met",
-        "HP2",
+        "HP2 under a nominal",
         setting(read, "_value_returned", _value_unless_not_met),
         ("nominal_inside", "nominal_on_a_bound"),
     ),
