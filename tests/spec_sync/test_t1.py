@@ -128,6 +128,7 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-030.near_typo_in_statistics_means",
                 "PR-030.near_typo_in_status_object",
                 "PR-030.near_typo_in_uncertainty",
+                "PR-030.near_typo_of_provenance_in_evidence_entry",
                 "PR-030.near_typo_section_fact_tissue_stat",
                 "PR-030.near_typo_section_specimens",
                 "PR-108.near_typo_in_plus_minus_entry",
@@ -220,7 +221,7 @@ EXCEPTIONS: dict[str, Kind] = {
     "row_condition": Kind(
         "a registered condition under evidence: the reader `$defs` take any member of `conditions` there, "
         "where step 8 refuses a registered name and gives `unknown` for another",
-        {2: ("PR-052.registered_condition_in_conditions",)},
+        {2: ("PR-052.registered_condition_as_status_object", "PR-052.registered_condition_in_conditions")},
         mark=r"a registered condition",
     ),
     "status_beside": Kind(
@@ -231,6 +232,7 @@ EXCEPTIONS: dict[str, Kind] = {
             2: (
                 "PR-042.broken_marker_in_value_only",
                 "PR-042.broken_withheld_marker",
+                "PR-052.withheld_entry_marker_beside_member",
                 "PR-110.condition_status_beside_basis",
                 "PR-110.condition_status_beside_unit",
                 "PR-110.evidence_unit_status_beside_other_member",
