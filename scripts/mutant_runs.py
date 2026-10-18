@@ -397,6 +397,8 @@ def committed_patches(root: Path) -> list[str]:
     )
 
 
+# `node_problems`, `extra_arguments` and `node_id` repeat `scripts/repeat_runs.py`'s, since a mutant's job
+# runs this file alone; tests/unit/test_mutant_runs.py holds the node check and the node ids to repeat's.
 def node_problems(node: str, root: Path) -> list[str]:
     """Why pytest may not be given `node`, if it may not: it must be `tests` or a path under it that exists,
     by plain parts, with any part after `::` in printable ASCII but a space (`scripts/repeat_runs.py`)."""
