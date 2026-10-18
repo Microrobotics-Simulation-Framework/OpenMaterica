@@ -5608,6 +5608,16 @@ PATCHES_REFUSED: dict[str, tuple[Callable[[Path], str], str]] = {
         written(new_file_patch(".hypothesis/examples/abcdef0123456789/0123456789abcdef")),
         "touches .hypothesis/examples/abcdef0123456789/0123456789abcdef, which git ignores",
     ),
+    # A regular file named like a directory `.gitignore` names with a trailing slash (#46's re-check, H2): git
+    # matches `.pytest_cache/` to a directory only, so the path is asked about as a directory as well.
+    "file-pytest-cache": (
+        written(new_file_patch(".pytest_cache")),
+        "touches .pytest_cache, which git ignores",
+    ),
+    "file-hypothesis": (
+        written(new_file_patch(".hypothesis")),
+        "touches .hypothesis, which git ignores",
+    ),
     "traditional": (
         written(
             "--- a/src/materica/half.py\n+++ b/src/materica/half.py\n@@ -1,2 +1,2 @@\n def half(x):\n"
@@ -5715,15 +5725,15 @@ def test_the_request_refuses_each_patch_it_cannot_run_safely_and_takes_the_other
     assert mutant_request_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path, EVERY_PATCH) == []
 
 
-# Each rule of the check taken out of the script, and the patch the check then takes: a path not plain, inside
-# .git, through a link out of the tree, or one git ignores; under .github/, ignoring case, or mutants/; the
-# runner, pyproject.toml, uv.lock, uv.toml or .python-version; a link made; binary data; a rename with rename
-# lines, and one without, by a `diff --git` line naming two paths, one git reads in another form, or `---`
-# and `+++` lines naming another path than it; the old path of a rename without them; a part not in git's
-# format, counted or hidden behind a `diff --git` line with nothing under it; a patch not committed as a
-# regular file; a control character; a patch too long; a name not plain. Each is the one rule that refuses
-# its patch, since a patch two rules refuse would show neither: where a second rule refuses it too,
-# `ALSO_TAKEN_OUT` takes that out as well.
+# Each rule of the check taken out of the script, and the patch the check then takes: a path not plain,
+# inside .git, through a link out of the tree, or one git ignores, as a file or only as a directory; under
+# .github/, ignoring case, or mutants/; the runner, pyproject.toml, uv.lock, uv.toml or .python-version; a
+# link made; binary data; a rename with rename lines, and one without, by a `diff --git` line naming two
+# paths, one git reads in another form, or `---` and `+++` lines naming another path than it; the old path
+# of a rename without them; a part not in git's format, counted or hidden behind a `diff --git` line with
+# nothing under it; a patch not committed as a regular file; a control character; a patch too long; a name
+# not plain. Each is the one rule that refuses its patch, since a patch two rules refuse would show neither:
+# where a second rule refuses it too, `ALSO_TAKEN_OUT` takes that out as well.
 RULES_TAKEN_OUT = {
     "plain-path": (
         'if not PLAIN_PATH.fullmatch(path) or any(part in {".", ".."} for part in parts):',
@@ -5757,6 +5767,11 @@ RULES_TAKEN_OUT = {
     "uv-toml": ('"uv.lock", "uv.toml", ', '"uv.lock", ', "uv-toml"),
     "python-version": ('"uv.toml", ".python-version", ', '"uv.toml", ', "python-version"),
     "ignored": ("        if each in ignored\n", "        if False\n", "venv-pth"),
+    "ignored-directory": (
+        'path for path in paths if path in matched or f"{path}/" in matched',
+        "path for path in paths if path in matched",
+        "file-pytest-cache",
+    ),
     "modes": ('MODES = ("100644", "100755")', 'MODES = ("100644", "100755", "120000")', "symlink"),
     "binary": (
         "BINARY_LINE = re.compile(",
