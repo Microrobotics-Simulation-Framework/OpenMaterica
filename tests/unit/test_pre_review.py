@@ -72,7 +72,22 @@ def test_the_generators_are_the_ones_the_workflow_checks_on_python_3_11() -> Non
     assert f"--python {pre_review.GENERATOR_PYTHON}" in CI
 
 
-@pytest.mark.parametrize("command", pre_review.STATIC_COMMANDS)
+# The static job's four steps before the wheel's, as the workflow gives them and with `--locked` as the script
+# runs them: written out here, since a table read from the script would drop a step without a test noticing.
+STATIC_STEPS = (
+    ("uv", "run", "--locked", "ruff", "check"),
+    ("uv", "run", "--locked", "ruff", "format", "--check"),
+    ("uv", "run", "--locked", "mypy"),
+    ("uv", "run", "--locked", "pyright"),
+)
+
+
+def test_the_script_runs_the_static_jobs_four_steps_and_no_other() -> None:
+    assert pre_review.STATIC_COMMANDS == STATIC_STEPS
+    assert set(commands(plan("src/materica/core/read.py")[0], "fast")) >= {" ".join(c) for c in STATIC_STEPS}
+
+
+@pytest.mark.parametrize("command", STATIC_STEPS)
 def test_each_static_check_is_a_step_of_the_workflows_static_job(command: tuple[str, ...]) -> None:
     # CI syncs the environment with `uv sync --locked` first; the script, which has none, locks each `uv run`.
     in_ci = " ".join(argument for argument in command if argument != "--locked")
@@ -122,7 +137,7 @@ def test_the_generators_run_in_their_own_python_3_11_environment_not_the_project
 )
 def test_a_change_to_code_runs_the_linters_and_type_checkers(path: str) -> None:
     fast = commands(plan(path)[0], "fast")
-    assert {" ".join(command) for command in pre_review.STATIC_COMMANDS} <= set(fast)
+    assert {" ".join(command) for command in STATIC_STEPS} <= set(fast)
 
 
 @pytest.mark.parametrize(
@@ -137,7 +152,7 @@ def test_a_change_to_code_runs_the_linters_and_type_checkers(path: str) -> None:
 )
 def test_a_change_to_documentation_or_the_site_alone_runs_none_of_them(path: str) -> None:
     fast = commands(plan(path)[0], "fast")
-    assert not {" ".join(command) for command in pre_review.STATIC_COMMANDS} & set(fast)
+    assert not {" ".join(command) for command in STATIC_STEPS} & set(fast)
     assert not {" ".join(pre_review.WHEEL_COMMAND)} & set(fast)
 
 
@@ -544,6 +559,38 @@ def test_the_script_names_a_file_it_cannot_read_instead_of_failing(
     checks, uncovered = plan("src/pkg/latin.py", tree=tree)
     pre_review.print_plan(checks, uncovered, ["src/pkg/latin.py"], notes=tree.notes)
     assert "src/pkg/latin.py is not valid UTF-8" in capsys.readouterr().out
+
+
+def test_a_file_that_is_not_utf_8_sends_its_change_to_the_whole_unit_directory_though_a_test_imports_it(
+    tmp_path: Path,
+) -> None:
+    small_tree(tmp_path)
+    (tmp_path / "src/pkg/latin.py").write_bytes(b"x = '\xe9'\n")
+    (tmp_path / "tests/unit/test_latin.py").write_text("from pkg import latin\n", encoding="utf-8")
+    checks, _ = plan("src/pkg/latin.py", tree=Tree(tmp_path))
+    (run,) = [check for check in checks if check.stage == "tests"]
+    assert "tests/unit" in run.paths  # what it imports, and so what imports it, is not known
+    assert any("cannot be read as Python source" in cause for cause in run.because)
+    # control: the same file in UTF-8, imported by the same test, selects that test alone
+    (tmp_path / "src/pkg/latin.py").write_text("x = 1\n", encoding="utf-8")
+    checks, _ = plan("src/pkg/latin.py", tree=Tree(tmp_path))
+    assert run_paths(checks) == {"tests/unit/test_latin.py"}
+
+
+def test_a_test_a_table_names_selects_the_tests_that_import_it_as_their_collection_runs_its_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    small_tree(tmp_path)
+    (tmp_path / "tests/unit/test_reads.py").write_text("X = 1\n", encoding="utf-8")
+    (tmp_path / "tests/unit/test_imports_it.py").write_text(
+        "from tests.unit.test_reads import X\n", encoding="utf-8"
+    )
+    (tmp_path / "tests/unit/test_alone.py").write_text("Y = 2\n", encoding="utf-8")
+    table = (pre_review.TreeReader(r"src/pkg/c\.py", "reads it", ("tests/unit/test_reads.py",)),)
+    monkeypatch.setattr(pre_review, "TREE_READERS", table)
+    checks, _ = plan("src/pkg/c.py", tree=Tree(tmp_path))
+    assert {"tests/unit/test_reads.py", "tests/unit/test_imports_it.py"} <= run_paths(checks)
+    assert "tests/unit/test_alone.py" not in run_paths(checks)  # control
 
 
 # --- the names as the gate reads them -----------------------------------------------------------------------
