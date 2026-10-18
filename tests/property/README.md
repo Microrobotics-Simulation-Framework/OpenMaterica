@@ -233,8 +233,31 @@ kills that `--property-controls only` measures, and `a_non_object_provenance_ope
 the original size; a module of 270 other constants loaded beside the suite moved 47, and each mutant module
 collected alone, 62. With the constants pinned, none of the 544 moved in any of those runs, nor on Python 3.11
 against 3.15 (measured 2026-10-18, as are the counts below). Each mutant dies within its 2,000 examples, at
-both sizes; the latest kill is at the 872nd example (`a_non_object_provenance_opens`, original size), and five
-of the 544 come after the 500th.
+both sizes; the latest kill is at the 276th example (`id_pattern_searched`, small size), and none of the 544
+comes after the 500th (measured 2026-10-18, after the three searches below were planned).
+
+Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
+the code, but where the kill is late, a change that moves the seed (a Hypothesis upgrade, or any other change to
+what Hypothesis hashes into a search's seed) can move it past the budget. Each of
+the three was reseeded 24 times with the code unchanged (a pytest plugin salting `hypothesis.core.
+function_digest`, salts `v1` to `v24`: the strategies and the code are the same, only the seed differs), drawn whole: `a_non_object_provenance_opens` took 872 examples at the original size
+and 455 at the small (pinned), up to 1,875 and 1,311 over the salts, and survived 2,000 at the small size in
+one salt; `empty_word_made_plural` 629, up to 945; `row_requirements_ignored` 536, up to 1,363, and survived
+2,000 in one salt (both sizes). Each fault shows in a thin region of its property's examples (below), so each
+is now searched in that region, in records the core passes, and the property itself is unchanged:
+
+| Mutant | Where the fault shows | The planned search |
+|---|---|---|
+| `a_non_object_provenance_opens` | an edit of a leaf below a `review` or `copy` in a provenance whose value is an array, which the hash keeps (item 1 removes them inside a provenance object only): the hash's `edits` must draw such a provenance, an object inside it holding one of the names, and that leaf among the record's | The hash's record, a `held` member `{"provenance": [...]}` holding an object (in up to two further arrays) with `review` or `copy`, and an edit of a leaf below it |
+| `empty_word_made_plural` | `x__y` against `x_s_y` (one character added) or `x_es_y` (two): (9)'s `pairs` must draw a name with an empty word, then the slip that puts `s` or `es` in exactly that word | a name of words with one empty, the same with `s` or `es` in it, in either order |
+| `row_requirements_ignored` | a condition the field's row requires that the record does not hold and the request does not name: `table_cases` names every one in the request, so it needs the `unchecked` kind to remove one from the request and `absent_but_required` to remove the same from the record | HP7's table case with one required condition removed from the record and from the request |
+
+Each draws only examples the core passes (a control in `test_mutant_view.py` and `test_condition_mutant_table.py`
+checks up to 2,000 of them, the `ci` count, against the core; the three mutants, by the searches in `test_mutants.py` and
+`test_condition_mutants.py`, fail on every one of 2,000 at both sizes, at the assertion that names their fault:
+`check_edit`'s "left the hash unchanged", `check_one_slip`'s first or second assertion, and
+`check_against_the_oracle`'s reasons). Planned, each dies at its first example at both sizes, and at the first
+in each of the 24 salts (measured 2026-10-18).
 
 CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported range's ends alone
 (`--property-controls` in `tests/conftest.py`), so a mutant module holds mutant searches only. The checks of
@@ -252,7 +275,7 @@ so both sizes take the same examples; measured 2026-10-18):
 | `two_characters_added_one_slip` | two characters added at the end are one slip | 38 |
 | `swap_of_any_two_characters` | two characters swapped far apart are one slip | 11 |
 | `ies_plural_missed`, `es_plural_missed`, `irregular_plurals_missed` | a plural section 10 lists missed | 155, 38, 114 |
-| `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural | 629 |
+| `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural | 1 (planned) |
 
 The last is the relation as it stood until the property found it: `x__y` and `x_s_y` are one character apart,
 but `x__y` and `x_es_y` two, which it called one plural.
@@ -402,7 +425,7 @@ place the unit in either entry of two.
 | `unknown_name_status_read_as_unstated` | a name the reader does not know, held as a status object, read as `condition_unstated` | HP7, table | any of its examples | 5, 5 |
 | `unknown_name_read_as_unstated` | a name the reader does not know is `condition_unstated` | HP7, table | any of its examples | 5, 5 |
 | `required_with_ignored` | a condition another requires with its token is not checked | HP7, table | any of its examples | 3, 3 |
-| `row_requirements_ignored` | the row's required conditions are not checked | HP7, table | any of its examples | 536, 536 |
+| `row_requirements_ignored` | the row's required conditions are not checked | HP7, table (planned) | any of its examples | 1, 1 |
 | `status_object_not_returned` | an entry held as a status object returns no `record` | HP7, table | any of its examples | 1, 1 |
 | `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | any of its examples | 34, 34 |
 | `implied_overrides_a_stated_value` | an implied condition fills a stated condition | HP7, implied | `never_over_a_stated_value`, `never_over_another_status` | 2, 2 |
