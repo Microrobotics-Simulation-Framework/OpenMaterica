@@ -1246,6 +1246,9 @@ def test_the_figures_added_are_those_of_the_changelog_lines_and_commit_messages_
 # --- the declared tables, held against what the tests open --------------------------------------------------
 
 TRACE_OUT = "OPEN_TRACE_OUT"
+# The trace runs the whole suite once, about a minute of wall time and three of CPU, so it runs where this is
+# `1`: in ci.yml's `tests` job on Python 3.15 alone (test_ci_workflows.py holds that), and where asked.
+TRACE_SELECTION = "MATERICA_TRACE_SELECTION"
 
 
 @pytest.fixture(scope="module")
@@ -1255,6 +1258,12 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]
     the property modules. It sees what the test process opens, not what a subprocess of it does."""
     if TRACE_OUT in os.environ:
         pytest.skip("this is the traced run itself")
+    if os.environ.get(TRACE_SELECTION) != "1":
+        pytest.skip(
+            f"the trace test is skipped unless {TRACE_SELECTION}=1: CI's `tests` job on Python 3.15 sets it, "
+            f"and a builder runs it with `{TRACE_SELECTION}=1 uv run --locked pytest "
+            "tests/unit/test_pre_review.py -k trace`"
+        )
     out = tmp_path_factory.mktemp("trace") / "opens.jsonl"
     run = subprocess.run(
         [

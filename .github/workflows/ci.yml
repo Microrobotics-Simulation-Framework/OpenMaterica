@@ -396,6 +396,14 @@ jobs:
           pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
+          # The trace test of scripts/pre_review.py's tables (tests/unit/test_pre_review.py) runs the whole suite
+          # once inside one test, about a minute of wall time and three of CPU locally, and is skipped unless
+          # this is `1`. It runs here on Python 3.15 alone, so once per CI run and not in every job that runs
+          # tests/unit, each per-commit job among them. 3.15 is the Python of the project's own environment, in
+          # which a builder runs the same test, and the newest, where a change to the audit events or the import
+          # system that the trace reads would show first. tests/unit/test_ci_workflows.py holds that exactly one
+          # job of this workflow sets it.
+          MATERICA_TRACE_SELECTION: ${{ matrix.python == '3.15' && '1' || '' }}
       # Where the time went, on the run's page, and the report kept for later runs to compare (no time fails
       # the job): scripts/report_test_durations.py. Whenever pytest ran, passed, failed, was interrupted before
       # the job's timeout, or was cancelled, and not where a failed checkout or setup skipped it. A run cancelled
