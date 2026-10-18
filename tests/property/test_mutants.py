@@ -378,6 +378,43 @@ def edit_kills(fault: str) -> Callable[[Size], int]:
     return killed_by(edits, lambda edit: hashing_properties.check_edit(mutant_digest(fault), edit))
 
 
+@st.composite
+def edits_below_a_non_object_provenance(draw: st.DrawFn, size: Size) -> hashing_properties.Edit:
+    """An edit of a leaf below a `review` or `copy` that sits in a provenance whose value is not an object
+    (an array, and the object inside it, up to two arrays deep, among other items). Section 9 item 1 removes
+    `review` and `copy` only inside a provenance object, so the hash keeps the leaf; `edits` reaches such a
+    leaf seldom, since it must draw a non-object provenance, an object inside it holding one of the two
+    names, and that leaf among the record's, and a search drawn whole took up to 872 of 2,000 examples."""
+    record = draw(hashing_properties.records(size))
+    assert isinstance(record, dict)
+    name = draw(st.sampled_from(hashing_properties.REMOVED_IN_PROVENANCE))
+    node: JsonValue = {**draw(hashing_properties.objects(size)), name: draw(hashing_properties.trees(size))}
+    below: hashing_properties.Path = (name,)
+    for _ in range(draw(st.integers(0, 2))):
+        node, below = [node], (0, *below)
+    items = draw(st.lists(hashing_properties.trees(size), max_size=size.members))
+    index = draw(st.integers(0, len(items)))
+    items.insert(index, node)
+    record["held"] = {"provenance": items}
+    prefix: hashing_properties.Path = ("held", "provenance", index, *below)
+    # A leaf the hash keeps: one below a provenance object nested in the tree is removed with it, and where
+    # every leaf is, the whole of `review` or `copy` is the edit.
+    kept = [
+        leaf
+        for leaf in hashing_properties.leaves(record)
+        if leaf[: len(prefix)] == prefix and not hashing_properties.removed(record, leaf)
+    ]
+    path = draw(st.sampled_from(kept or [prefix]))
+    return hashing_properties.edit_at(record, path, draw(strategies.SCALARS))
+
+
+def edit_below_a_non_object_provenance_kills(fault: str) -> Callable[[Size], int]:
+    return killed_by(
+        edits_below_a_non_object_provenance,
+        lambda edit: hashing_properties.check_edit(mutant_digest(fault), edit),
+    )
+
+
 HASH_MUTANTS = [
     Mutant("card_hashed", invariance_kills("card_hashed")),
     Mutant("nothing_removed_inside_provenance", invariance_kills("nothing_removed_inside_provenance")),
@@ -396,7 +433,10 @@ HASH_MUTANTS = [
     ),
     Mutant("review_removed_outside_provenance", edit_kills("review_removed_outside_provenance")),
     Mutant("review_and_copy_removed_everywhere", edit_kills("review_and_copy_removed_everywhere")),
-    Mutant("a_non_object_provenance_opens", edit_kills("a_non_object_provenance_opens")),
+    Mutant(
+        "a_non_object_provenance_opens",
+        edit_below_a_non_object_provenance_kills("a_non_object_provenance_opens"),
+    ),
     Mutant("card_removed_at_every_depth", edit_kills("card_removed_at_every_depth")),
     Mutant(
         "a_constant_answer",
