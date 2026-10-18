@@ -10,8 +10,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
-# `packaging` comes with pytest, which depends on it.
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
 from scripts import check_anomalies
@@ -111,6 +109,27 @@ NOT_A_RANGE = "neither a PEP 440 version specifier set nor 'none'"
             "MADD-ANO-002: the anomaly_id is not OMAT-ANO- and three digits",
         ),
         ('"OMAT-ANO-002"', '"OMAT-ANO-2"', "OMAT-ANO-2: the anomaly_id is not OMAT-ANO- and three digits"),
+        # Three digits and no more, ASCII digits, the whole identifier, whatever its case.
+        (
+            '"OMAT-ANO-002"',
+            '"OMAT-ANO-0021"',
+            "OMAT-ANO-0021: the anomaly_id is not OMAT-ANO- and three digits",
+        ),
+        (
+            '"OMAT-ANO-002"',
+            '"OMAT-ANO-\u0660\u0660\u0662"',
+            "OMAT-ANO-\u0660\u0660\u0662: the anomaly_id is not OMAT-ANO- and three digits",
+        ),
+        (
+            '"OMAT-ANO-002"',
+            '"OMAT-ANO-002 "',
+            "OMAT-ANO-002 : the anomaly_id is not OMAT-ANO- and three digits",
+        ),
+        (
+            '"OMAT-ANO-002"',
+            '"omat-ano-002"',
+            "omat-ano-002: the anomaly_id is not OMAT-ANO- and three digits",
+        ),
         # materica_version in place of maddening_version.
         (
             "materica_version:",
@@ -184,6 +203,27 @@ NOT_A_RANGE = "neither a PEP 440 version specifier set nor 'none'"
         ),
         (ENTRY_TWO, "    title: []\n", "OMAT-ANO-002: title is missing, or not a quoted, non-empty string"),
         (
+            ENTRY_TWO,
+            "    title:\n      - 'x'\n",
+            "OMAT-ANO-002: title is missing, or not a quoted, non-empty string",
+        ),
+        # Each required field, missing: the five the faults above leave out, and the identifier, which names
+        # the entry in the problem.
+        (
+            '  - anomaly_id: "OMAT-ANO-002"\n' + ENTRY_TWO,
+            "  - " + ENTRY_TWO.lstrip(),
+            "entry 2: anomaly_id is missing, or not a quoted, non-empty string",
+        ),
+        *(
+            (line, "", f"OMAT-ANO-002: {field} is missing, or not a quoted, non-empty string")
+            for field, line in (
+                ("description", '    description: "Introduced and fixed within one development cycle."\n'),
+                ("severity", '    severity: "minor"\n'),
+                ("safety_relevance", '    safety_relevance: "not_safety_relevant"\n'),
+                ("resolution_status", '    resolution_status: "resolved"\n'),
+            )
+        ),
+        (
             "    residual_risk:",
             "    residual_risks:",
             "OMAT-ANO-001: the field residual_risks is not one of MADDENING's record",
@@ -196,6 +236,9 @@ NOT_A_RANGE = "neither a PEP 440 version specifier set nor 'none'"
             "generated_date, anomalies)",
         ),
         ('generated_date: "2026-10-17"\n', "", "the top-level field generated_date is missing"),
+        ('schema_version: "1.0"\n', "", "the top-level field schema_version is missing"),
+        ('materica_version: "0.1.0.dev1"\n', "", "the top-level field materica_version is missing"),
+        ('"2026-10-17"', '"2026-1-17"', "generated_date is '2026-1-17', not a date written YYYY-MM-DD"),
         ('schema_version: "1.0"', "schema_version: ''", "schema_version is not a quoted, non-empty string"),
         ('"2026-10-17"', '"2026-10-32"', "generated_date is '2026-10-32', not a date written YYYY-MM-DD"),
         ('"2026-10-17"', '"20261017"', "generated_date is '20261017', not a date written YYYY-MM-DD"),
@@ -210,6 +253,7 @@ def test_a_registry_with_one_fault_fails_that_rule(tmp_path: Path, old: str, new
     [
         ('anomalies: "none"\n', "anomalies is not a list (`[]` when empty)"),
         ("anomalies:\n", "anomalies is not a list (`[]` when empty)"),
+        ("", "the top-level field anomalies is missing"),
         ('anomalies:\n  - "OMAT-ANO-001"\n', "entry 1 is not a mapping"),
     ],
 )
@@ -253,6 +297,26 @@ SPECIFIER_SETS = [
     ">=1.0;",
     "1.0",
     "latest",
+    # Each spelling the syntax allows, which a looser or tighter pattern reads otherwise: case, the long
+    # spellings of a pre-release (`preview`, `c`) and a post-release (`rev`, `r`), the separators of a local
+    # label, `<=`, and the characters `===` ends at.
+    ">=1.0RC1",
+    "==V1.0.POST1.DEV2",
+    ">=1.0preview1",
+    ">=1.0c1",
+    ">1.0rev2",
+    ">1.0r2",
+    ">=1.0-r2",
+    "==1.0+a-b",
+    "==1.0+a_b",
+    "==1.0+A.b-C_d",
+    "<=2.0",
+    "<=2.0.*",
+    "===a;b",
+    "===a)b",
+    "===a b",
+    "===",
+    "== 1.0\t",
 ]
 
 
@@ -267,7 +331,7 @@ def test_a_specifier_set_is_read_as_packaging_reads_it(text: str) -> None:
     assert check_anomalies.is_specifier_set(text) == valid
 
 
-@pytest.mark.parametrize("text", ["", " ", ">=1.0,", ">=1.0, ,<2.0"])
+@pytest.mark.parametrize("text", ["", " ", ">=1.0,", ">=1.0, ,<2.0", ",>=1.0"])
 def test_an_empty_specifier_is_refused_where_packaging_skips_it(text: str) -> None:
     """PEP 440 has no empty specifier, and an empty set would admit every version (MADDENING refuses one)."""
     SpecifierSet(text)
@@ -346,6 +410,8 @@ REFUSED = {
     "text after a quoted value": ('a: "x"#c\n', "line 1 has '#c' after a quoted value"),
     "an indented top level": ("  a: 'x'\n", "line 1 is indented"),
     "a sequence at the top": ("- 'x'\n", "line 1 is a sequence's item where a key belongs"),
+    "a dash with nothing after it": ("a:\n  -\n", "line 2 is an item with nothing on its line"),
+    "a dash with a comment after it": ("a:\n  - # c\n", "line 2 is an item with nothing on its line"),
     "nothing": ("# only a comment\n", "it holds no mapping"),
 }
 
@@ -380,6 +446,32 @@ def test_the_command_exits_nonzero_and_names_each_problem(
     problems(tmp_path, with_fault('"minor"', '"low"'))
     assert check_anomalies.main([registry, "--pyproject", pyproject]) == 1
     assert "OMAT-ANO-002: the severity 'low' is none of" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ('"2026-10-17"', "2026-10-17", "line 4 has the value '2026-10-17' unquoted"),
+        (
+            "workaround: 'Convert the value by hand; it''s exact.'",
+            "workaround: {a: 'x'}",
+            "line 27 has the value \"{a: 'x'}\" unquoted",
+        ),
+        ("    verification: []\n", "    verification: [a, b]\n", "line 30 has the value '[a, b]' unquoted"),
+        ('title: "A wrong unit conversion"', 'title: "one\n      two"', "does not end on it"),
+    ],
+)
+def test_a_registry_the_reader_refuses_fails_the_check(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], old: str, new: str, message: str
+) -> None:
+    """The likeliest first failure of the gate is a refusal: an entry written in a form the reader does not
+    read. The control is the same registry without the fault, which passes (above)."""
+    text = with_fault(old, new)
+    (refused,) = problems(tmp_path, text)
+    assert message in refused
+    registry, pyproject = str(tmp_path / "registry.yaml"), str(tmp_path / "pyproject.toml")
+    assert check_anomalies.main([registry, "--pyproject", pyproject]) == 1
+    assert message in capsys.readouterr().err
 
 
 def test_the_check_runs_on_the_standard_library_alone(tmp_path: Path) -> None:
