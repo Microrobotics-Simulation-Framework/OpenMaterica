@@ -35,5 +35,8 @@ Tests by example, for what the conformance cases and the properties do not reach
 - the pre-review script's selection (`test_pre_review.py`): each rule, with a change that must select its check and
   one that must not; its lists of the paths that are not code, of the generators and of the static checks held to
   `ci.yml`'s; the import graph that follows a change to the tests that import it; every path a check names
-  existing, and every shard it names collected by pytest; the changes read from git (committed, staged, unstaged,
-  untracked, deleted and renamed files, from the merge base); and the stages' order, stop and `--keep-going`.
+  existing, and every shard it names collected by pytest; the tables of the tests that read the whole tree and of
+  the data files tests open, held against a trace of the files the tests open and the directories they list
+  (`open_trace.py` records it, over a run of the suite of about a minute); the changes read from git (committed,
+  staged, unstaged, untracked, deleted and renamed files, from the merge base); and the stages' order, stop and
+  `--keep-going`.

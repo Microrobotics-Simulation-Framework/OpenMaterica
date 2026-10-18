@@ -21,9 +21,10 @@ every family entry goes in `families/CHANGELOG.md`.
   runs the checks that apply to them, printing each with the paths that selected it: the sign-off and
   confidential scans and every generator's `--check` for any change; the linters and type checkers for a change
   to code; the tests that import a changed Python file, directly or through others, with a property module run
-  as its whole shard at the `ci` profile; the tests that hold a changed specification, schema, conformance case,
-  spec-sync table, workflow or build file. A stage that fails stops the run before the next. It ends with
-  reminders for what no check decides: a mutant module changed beside a README that was not, code beside a
+  as its whole shard at the `ci` profile, and the few tests that read the whole tree instead of importing it; the
+  tests that hold or open a changed specification, schema, conformance case, spec-sync table, workflow or build
+  file. A change it cannot map to a test selects the whole of `tests/unit`, and the plan says why. A stage that
+  fails stops the run before the next. It ends with reminders for what no check decides: code changed beside a
   CHANGELOG that was not, and each count the branch states. `CONTRIBUTING.md` has a section, "Before asking for
   review", with each check's command and a short list for the points a builder judges. The script runs the
   checks that apply, not all of CI's, and replaces none; no check was removed and no threshold changed.

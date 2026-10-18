@@ -2,6 +2,8 @@
 """The pre-review script selects the checks a change calls for, and no others, and every check it can select
 exists. Each rule has a change that must select its check and one that must not."""
 
+import json
+import os
 import re
 import subprocess
 import sys
@@ -18,6 +20,7 @@ from scripts.pre_review import (
     Tree,
     plan_checks,
 )
+from tests.unit import open_trace
 from tests.unit.throwaway_git import throwaway_repository
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -66,15 +69,7 @@ def test_the_generators_are_the_ones_the_workflow_checks_on_python_3_11() -> Non
     assert f"--python {pre_review.GENERATOR_PYTHON}" in CI
 
 
-@pytest.mark.parametrize(
-    "command",
-    [
-        ("uv", "run", "ruff", "check"),
-        ("uv", "run", "ruff", "format", "--check"),
-        ("uv", "run", "mypy"),
-        ("uv", "run", "pyright"),
-    ],
-)
+@pytest.mark.parametrize("command", pre_review.STATIC_COMMANDS)
 def test_each_static_check_is_a_step_of_the_workflows_static_job(command: tuple[str, ...]) -> None:
     assert f"- run: {' '.join(command)}" in CI
     checks, _ = plan("src/materica/core/read.py")
@@ -122,7 +117,7 @@ def test_the_generators_run_in_their_own_python_3_11_environment_not_the_project
 )
 def test_a_change_to_code_runs_the_linters_and_type_checkers(path: str) -> None:
     fast = commands(plan(path)[0], "fast")
-    assert {"uv run ruff check", "uv run ruff format --check", "uv run mypy", "uv run pyright"} <= set(fast)
+    assert {" ".join(command) for command in pre_review.STATIC_COMMANDS} <= set(fast)
 
 
 @pytest.mark.parametrize(
@@ -137,7 +132,7 @@ def test_a_change_to_code_runs_the_linters_and_type_checkers(path: str) -> None:
 )
 def test_a_change_to_documentation_or_the_site_alone_runs_none_of_them(path: str) -> None:
     fast = commands(plan(path)[0], "fast")
-    assert not {"uv run ruff check", "uv run mypy", "uv run pyright"} & set(fast)
+    assert not {" ".join(command) for command in pre_review.STATIC_COMMANDS} & set(fast)
 
 
 def test_a_change_with_no_path_is_code_as_the_gate_reads_it() -> None:
@@ -193,16 +188,16 @@ def test_a_conftest_applies_to_every_shard_and_the_top_one_to_every_test() -> No
     assert "tests/unit/test_read.py" in run_paths(plan("tests/conftest.py")[0])
 
 
-def test_a_script_runs_its_own_unit_test_and_no_shard() -> None:
+def test_a_script_runs_its_own_unit_test_and_no_shard_beyond_the_agreement_one() -> None:
     checks, _ = plan("scripts/check_signoff.py")
-    assert run_paths(checks) == {"tests/unit/test_check_signoff.py"}
-    assert shards(checks) == set()
+    assert "tests/unit/test_check_signoff.py" in run_paths(checks)
+    assert shards(checks) == set()  # the agreement shard reads the tests' sources, not the scripts'
     assert "tests/unit/test_check_signoff.py" not in run_paths(plan("scripts/check_site.py")[0])  # control
 
 
 def test_a_specification_file_runs_the_spec_sync_tests_and_the_generators_tests() -> None:
     for path in (
-        "docs/specification/provenance.md",
+        "docs/specification/overview.md",
         "DOCUMENTATION_ARCHITECTURE.md",
         "design/ARCHITECTURE_DRAFT.md",
     ):
@@ -270,6 +265,181 @@ def test_the_stages_run_in_order() -> None:
     stages = [check.stage for check in checks]
     assert stages == sorted(stages, key=pre_review.STAGES.index)
     assert set(stages) == set(pre_review.STAGES)
+
+
+# --- what reads the whole tree, and what the script cannot map --------------------------------------------
+
+
+def selects(checks: list[Planned], test: str, tree: Tree = TREE) -> bool:
+    """Whether the planned checks run the test file: by its path, by a directory above it, or by its shard."""
+    if tree.shard_of(test) is not None:
+        return tree.shard_of(test) in shards(checks)
+    return any(test == path or test.startswith(f"{path}/") for path in run_paths(checks))
+
+
+@pytest.fixture
+def no_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Switch off the whole-directory fallback, so that the declared readers are not satisfied by it."""
+    monkeypatch.setattr(pre_review, "WHOLE_UNIT_DIRECTORY", "tests/nowhere")
+
+
+READERS_OF_THE_CORE = (
+    "tests/unit/test_source_files.py",
+    "tests/unit/test_read.py",
+    "tests/spec_sync/test_reason_steps.py",
+    "tests/unit/test_pre_review.py",
+)
+
+
+@pytest.mark.usefixtures("no_fallback")
+def test_a_new_core_module_selects_the_tests_that_list_every_core_module() -> None:
+    checks, uncovered = plan("src/materica/core/zz_new.py")
+    assert all(selects(checks, test) for test in READERS_OF_THE_CORE)
+    assert uncovered == []
+    # control: a module beside the core is listed by the source-file tests, not by the two of the core
+    beside, _ = plan("src/materica/zz_new.py")
+    assert selects(beside, "tests/unit/test_source_files.py")
+    assert not selects(beside, "tests/unit/test_read.py")
+    assert not selects(beside, "tests/spec_sync/test_reason_steps.py")
+
+
+@pytest.mark.usefixtures("no_fallback")
+def test_a_script_selects_the_workflow_tests_that_forbid_it_to_name_a_documentation_path() -> None:
+    assert selects(plan("scripts/check_signoff.py")[0], "tests/unit/test_ci_workflows.py")
+    assert selects(plan("tests/unit/test_zz_new.py")[0], "tests/unit/test_ci_workflows.py")
+    # control: a Python file outside the three directories it reads
+    assert not selects(plan("docs/regulatory/zz_new.py")[0], "tests/unit/test_ci_workflows.py")
+
+
+@pytest.mark.usefixtures("no_fallback")
+def test_a_property_module_outside_every_shard_selects_the_tests_that_list_the_shards() -> None:
+    checks, uncovered = plan("tests/property/test_zz_new.py")
+    assert selects(checks, "tests/unit/test_source_files.py")
+    assert uncovered == []
+    assert "writer" not in shards(checks)  # control: it is in no shard, so no shard but the readers' is run
+
+
+@pytest.mark.usefixtures("no_fallback")
+def test_a_new_test_that_calls_the_verdicts_selects_the_agreement_shard_that_compares_every_test() -> None:
+    assert "agreement" in shards(plan("tests/unit/test_zz_verdict.py")[0])
+    assert "agreement" not in shards(plan("scripts/check_signoff.py")[0])  # control: it reads the tests only
+
+
+def test_a_python_file_no_test_imports_selects_the_whole_unit_directory_and_says_why() -> None:
+    for path in (
+        "scripts/zz_new.py",
+        "tests/fuzz/zz_new.py",
+        "src/materica/zz_new.py",
+        "docs/regulatory/zz.py",
+    ):
+        checks, uncovered = plan(path)
+        (run,) = [check for check in checks if check.stage == "tests"]
+        assert "tests/unit" in run.paths
+        assert uncovered == []
+        assert any(cause.startswith(path) and "no test imports it" in cause for cause in run.because)
+    # controls: what a test imports, and a test
+    for path in (
+        "scripts/check_signoff.py",
+        "src/materica/core/hashing.py",
+        "tests/unit/test_read.py",
+    ):
+        checks, _ = plan(path)
+        assert "tests/unit" not in run_paths(checks), path
+
+
+def test_a_file_under_tests_outside_every_group_selects_the_whole_unit_directory_and_says_why() -> None:
+    for path in ("tests/README.md", "tests/fuzz/README.md", "tests/fuzz/json.dict"):
+        checks, uncovered = plan(path)
+        (run,) = [check for check in checks if check.stage == "tests"]
+        assert "tests/unit" in run.paths
+        assert uncovered == []
+        assert any("in no group of tests" in cause for cause in run.because)
+    # control: a file in a group of tests that no rule reads is listed
+    checks, uncovered = plan("tests/property/README.md")
+    assert uncovered == ["tests/property/README.md"]
+    assert "tests/unit" not in run_paths(checks)
+
+
+@pytest.mark.parametrize(
+    ("path", "selected", "not_selected"),
+    [
+        ("tests/unit/conftest.py", "tests/unit", "tests/spec_sync"),
+        ("tests/spec_sync/conftest.py", "tests/spec_sync", "tests/unit"),
+        ("tests/conformance/conftest.py", "tests/conformance", "tests/unit"),
+        ("tests/unit/__init__.py", "tests/unit", "tests/spec_sync"),
+    ],
+)
+def test_a_conftest_or_package_file_of_a_group_of_tests_selects_that_directorys_tests(
+    path: str, selected: str, not_selected: str
+) -> None:
+    checks, uncovered = plan(path)
+    assert selected in run_paths(checks)
+    assert not_selected not in run_paths(checks)
+    assert shards(checks) != set(TREE.shards())  # control: a conftest of one group was every shard
+    assert uncovered == []
+    (run,) = [check for check in checks if check.stage == "tests"]
+    assert not any("no test imports it" in cause for cause in run.because)
+
+
+def test_a_conftest_of_a_directory_that_is_no_group_selects_the_whole_unit_directory() -> None:
+    checks, _ = plan("tests/fuzz/conftest.py")
+    assert "tests/unit" in run_paths(checks)
+
+
+# Each pair is a file that a test opens (the trace below finds them) and the tests it must select.
+PROVENANCE_READERS = (
+    "tests/unit/test_audit_controls.py",
+    "tests/unit/test_verdicts.py",
+    "tests/property/test_validators_agree.py",
+    "tests/property/test_condition_mutant_table.py",
+)
+PLAIN_READ = "src/materica/data/conformance/plain_read/inputs"
+SCHEMA_READERS = ("tests/unit/test_freeze_schema.py", "tests/unit/test_schema_index.py")
+
+
+@pytest.mark.parametrize(
+    ("path", "tests"),
+    [
+        *(
+            (f"docs/specification/{name}.md", PROVENANCE_READERS)
+            for name in ("provenance", "record_format", "uncertainty")
+        ),
+        (f"{PLAIN_READ}/water_fixture.json", ("tests/unit/test_read.py", "tests/unit/test_conditions.py")),
+        (
+            f"{PLAIN_READ}/water_overlay_fixture.json",
+            ("tests/unit/test_read.py", "tests/unit/test_conditions.py"),
+        ),
+        ("src/materica/schema/0.1/README.md", SCHEMA_READERS),
+        ("src/materica/schema/0.1/record.writer.json", SCHEMA_READERS),
+        ("tests/spec_sync/released_schemas.json", ("tests/unit/test_schema_index.py",)),
+        ("scripts/pre-push", ("tests/unit/test_check_confidential.py",)),
+        (
+            ".github/workflows/ci.yml",
+            (
+                "tests/unit/test_pre_review.py",
+                "tests/unit/test_python_versions.py",
+                "tests/unit/test_source_files.py",
+                "tests/unit/test_ci_workflows.py",
+            ),
+        ),
+    ],
+)
+def test_a_data_file_selects_each_test_that_opens_it(path: str, tests: tuple[str, ...]) -> None:
+    checks, uncovered = plan(path)
+    assert uncovered == []
+    assert [test for test in tests if not selects(checks, test)] == []
+
+
+def test_a_data_file_no_test_opens_does_not_select_those_tests() -> None:
+    # controls: a specification file the tests do not open, a conformance case, another workflow, a table
+    other = plan("docs/specification/changes.md")[0]
+    assert not any(selects(other, test) for test in PROVENANCE_READERS)
+    case = plan("src/materica/data/conformance/plain_read/CASES.md")[0]
+    assert not any(selects(case, test) for test in (*SCHEMA_READERS, "tests/unit/test_read.py"))
+    workflow = plan(".github/workflows/repeat.yml")[0]
+    assert not selects(workflow, "tests/unit/test_python_versions.py")
+    assert not selects(workflow, "tests/unit/test_pre_review.py")
+    assert not selects(plan("tests/spec_sync/name_overlaps.json")[0], "tests/unit/test_schema_index.py")
 
 
 # --- the import graph --------------------------------------------------------------------------------------
@@ -425,16 +595,12 @@ def test_pytest_collects_each_shard_the_checks_name(shard: str) -> None:
     assert re.search(r"\b\d+ tests? collected\b", done.stdout)
 
 
-def test_every_module_that_finds_a_data_file_by_its_own_location_is_a_reader_or_listed_why_not() -> None:
+def test_every_helper_that_finds_a_data_file_by_its_own_location_is_a_reader_or_listed_why_not() -> None:
     readers = {reader for rule in DATA_RULES for reader in rule.readers}
     found = {
         path
         for path, source in TREE.files.items()
-        if (
-            path.startswith("src/materica/")
-            or path.startswith(("tests/property/", "tests/conformance/", "tests/fuzz/"))
-        )
-        or path in {"tests/conftest.py", "tests/verdicts.py"}
+        if not Path(path).name.startswith("test_")
         if "resources.files" in source or "__file__" in source
     }
     assert found - readers - set(LOCATES_NO_RULED_DATA) == set()
@@ -699,21 +865,20 @@ def test_listing_the_plan_runs_none_of_it(monkeypatch: pytest.MonkeyPatch) -> No
         ("each of the 1266 case files, 1266 case files again", ["1266 case files"]),
         ("38 mutants and 2,000 examples in 12 tests", ["38 mutants", "2,000 examples", "12 tests"]),
         ("a section 3 item 12 of 4 steps, version 1.2", []),
+        ("24 hand mutants, then 45 hand mutants", ["24 hand mutants", "45 hand mutants"]),
+        ("1723 passed in 3 shards", ["1723 passed", "3 shards"]),
+        ("a mean of 1.5 runs and 2,000 examples", ["1.5 runs", "2,000 examples"]),
     ],
 )
 def test_stated_figures(text: str, figures: list[str]) -> None:
     assert pre_review.stated_figures(text) == figures
 
 
-def test_reminders_name_a_mutant_table_changed_beside_a_readme_that_was_not() -> None:
-    mutants = "tests/property/test_writer_mutants.py"
-    assert any("mutant" in text for text in pre_review.reminders([mutants], []))
-    assert not any(
-        "mutant" in text for text in pre_review.reminders([mutants, "tests/property/README.md"], [])
-    )
-    assert not any(
-        "mutant" in text for text in pre_review.reminders(["tests/property/test_writer_properties.py"], [])
-    )
+def test_a_mutant_module_changed_beside_a_readme_that_was_not_is_no_reminder() -> None:
+    # The reviews showed a README row that is wrong, never a missing co-change: CONTRIBUTING asks for the row.
+    reminders = pre_review.reminders(["tests/property/test_writer_mutants.py"], [])
+    assert not any("mutant" in text for text in reminders)
+    assert any("CHANGELOG" in text for text in reminders)  # control: the reminders are still built
 
 
 def test_reminders_name_code_changed_beside_a_changelog_that_was_not() -> None:
@@ -742,3 +907,111 @@ def test_the_figures_added_are_those_of_the_changelog_lines_and_commit_messages_
     (repository / "CHANGELOG.md").write_text("- an old line of 5 tests\n- a new line of 1,266 case files\n")
     commit("the branch, 9 examples")
     assert pre_review.added_figures("main", repository) == ["1,266 case files", "9 examples"]
+
+
+# --- the declared tables, held against what the tests open --------------------------------------------------
+
+TRACE_OUT = "OPEN_TRACE_OUT"
+
+
+@pytest.fixture(scope="module")
+def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]]:
+    """Every file the tests open and every directory they list, by test file: the suite is run under
+    `tests/unit/open_trace.py`, which keeps the first test of each test function and imports, without running,
+    the property modules. It sees what the test process opens, not what a subprocess of it does."""
+    if TRACE_OUT in os.environ:
+        pytest.skip("this is the traced run itself")
+    out = tmp_path_factory.mktemp("trace") / "opens.jsonl"
+    run = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-p",
+            open_trace.__name__,
+            *("tests/unit", "tests/spec_sync", "tests/conformance", "tests/property"),
+            *("-n", "4", "--dist", "worksteal", "-q", "--tb=no", "-p", "no:cacheprovider"),
+        ],
+        cwd=REPOSITORY,
+        env={**os.environ, "OPEN_TRACE_ROOT": str(REPOSITORY), TRACE_OUT: str(out)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert out.exists(), run.stdout[-800:] + run.stderr[-800:]
+    found = [
+        (kind, test, path) for kind, test, path in (json.loads(line) for line in out.read_text().splitlines())
+    ]
+    # control: the trace sees what it is for, or an empty one would pass every test below
+    assert ("opened", "tests/unit/test_read.py", f"{PLAIN_READ}/water_fixture.json") in found
+    assert ("listed", "tests/unit/test_source_files.py", "tests/property") in found
+    return found
+
+
+def tracked() -> set[str]:
+    done = subprocess.run(
+        ["git", "ls-files", "-z"], capture_output=True, text=True, check=True, cwd=REPOSITORY
+    )
+    return {path for path in done.stdout.split("\0") if path}
+
+
+def is_a_test_module(path: str) -> bool:
+    return path.startswith("tests/") and Path(path).name.startswith("test_") and path.endswith(".py")
+
+
+# A file that a test opens and that does not select it when it changes, each with its reason. None today.
+OPENED_AND_NOT_SELECTING: dict[tuple[str, str], str] = {}
+
+
+def lists_python(trace: list[tuple[str, str, str]]) -> set[tuple[str, str]]:
+    """The (directory, test file) pairs where a test lists a directory that holds a tracked Python file."""
+    with_python = {str(Path(path).parent) for path in tracked() if path.endswith(".py")}
+    return {
+        (directory, test)
+        for kind, test, directory in trace
+        if kind == "listed" and directory in with_python and is_a_test_module(test)
+    }
+
+
+def test_the_declared_readers_hold_against_a_trace_of_the_files_the_tests_open(
+    trace: list[tuple[str, str, str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One test, since each worker that ran one of several would make the trace again."""
+    files = tracked()
+    with monkeypatch.context() as unmapped:
+        unmapped.setattr(pre_review, "WHOLE_UNIT_DIRECTORY", "tests/nowhere")  # the tables must hold alone
+        opened = sorted(
+            {
+                (path, test)
+                for kind, test, path in trace
+                if kind == "opened" and path in files and path != test and is_a_test_module(test)
+            }
+        )
+        planned: dict[str, list[Planned]] = {}
+        missed = [
+            (path, test)
+            for path, test in opened
+            if (path, test) not in OPENED_AND_NOT_SELECTING
+            and not selects(planned.setdefault(path, plan(path)[0]), test)
+        ]
+        assert not missed, (
+            f"{len(missed)} files whose change does not select a test that opens them: {missed[:12]}"
+        )
+        assert set(OPENED_AND_NOT_SELECTING) <= set(opened), "an exemption for a file that no test opens"
+
+        listed = sorted(lists_python(trace))
+        assert listed, "no test lists a directory of Python files"
+        absent = [(d, test) for d, test in listed if not selects(plan(f"{d}/zz_new.py")[0], test)]
+        assert not absent, f"a new Python file does not select a test that lists its directory: {absent}"
+
+        # control: with the table of whole-tree readers emptied, the same check names the readers it held
+        unmapped.setattr(pre_review, "TREE_READERS", ())
+        absent_without = {test for d, test in listed if not selects(plan(f"{d}/zz_new.py")[0], test)}
+        assert {
+            "tests/unit/test_source_files.py",
+            "tests/unit/test_ci_workflows.py",
+            "tests/spec_sync/test_reason_steps.py",
+            "tests/unit/test_pre_review.py",
+        } <= absent_without
+        # test_read lists the core when it is first imported, which test_conditions may do first and be named
+        assert absent_without & {"tests/unit/test_read.py", "tests/unit/test_conditions.py"}
