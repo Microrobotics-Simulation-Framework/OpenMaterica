@@ -423,18 +423,23 @@ def check_ignored(unknowns: Unknowns) -> None:
 # (0.054 the least), where 0.025 failed one with 2.7e-7. Each declared at about a third of its mean share,
 # 0.03 and 0.02, they fail a `ci` run with 1.4e-8 and 1.1e-8 (renewal 9e-9 and 8e-9). Neither can be declared
 # by its chance: at 0.06 and 0.05, their floors are below `audits.LEAST_DRAWS`. S2b-2 draws evidence among
-# the valid bases, a fifth of them: over four runs at `ci` (seeds 11 to 14, 2026-10-18) `in_a_report` showed
-# 0.066 to 0.088 of the additions, `in_an_own_member` 0.057 to 0.088 and `field` 0.068 to 0.115, and
-# `in_a_report` is declared as `in_an_own_member` was, at about a quarter of its mean, 0.02.
+# the valid bases, a fifth of them, and adds `in_a_report`. Over 22 runs at `ci`, two at a time (2026-10-18,
+# S2b-2's review, M1), the three showed, as mean and least shares of the additions and the variance of their
+# count against a binomial one: `field` 0.092 and 0.062 (5.1 times), `in_a_report` 0.082 and 0.055 (4.3),
+# `in_an_own_member` 0.070 and 0.038 (6.5). By `audits.py`'s cluster model, each run counted as 2,000 / c
+# clusters each showing the feature whole, c that variance ratio, their least shares of 0.03, 0.02 and 0.02
+# failed a run with 4.7e-7, 5.3e-9 and 5.7e-5 (the review's 22 runs: 6.5e-7, 1.4e-5, 4.6e-6). At 0.02, 0.01
+# and 0.01, the lowest a `ci` run judges (`audits.JUDGED_FROM`), they fail one with 1.4e-9, 5.8e-13 and
+# 5.0e-7 (the review's runs 2.7e-9, 2.0e-7, 2.7e-8; with c the module's `CLUSTER`, 6.3e-7, 1.5e-7, 2.9e-6).
 @pytest.mark.chances(faulty_base=0.33)
 @pytest.mark.features(
     structure=0.25,
-    field=0.03,
+    field=0.02,
     inside_the_field=0.11,
     unchecked=0.065,
     two_slips=0.23,
-    in_an_own_member=0.02,
-    in_a_report=0.02,
+    in_an_own_member=0.01,
+    in_a_report=0.01,
 )
 @given(with_unknowns())
 def test_members_the_reader_does_not_know_change_nothing(unknowns: Unknowns) -> None:
