@@ -335,6 +335,20 @@ every family entry goes in `families/CHANGELOG.md`.
   are unchanged. The value-field check holds the marks of this form to the text, and the unknown-member positions
   walk into such a member, as before.
 
+### Data
+- Three example records in `examples/records/`, in the namespace `example`, each cited: `example/water`
+  (density and dynamic viscosity at 293.15 K and 310.15 K and 0.101325 MPa, evaluated from IAPWS R6-95(2018)
+  and R12-08), `example/ndfeb_n45` (the remanence of sintered NdFeB grade N45, 1.32 to 1.37 T, a vendor's
+  grade limits) and `example/human_plasma` (dynamic viscosity at 37 °C, 1.33 mPa·s, from
+  Marcinkowska-Gapinska and Nawrocka-Bogusz 2013, with the specimen facts the paper states). They are
+  examples, not reviewed library data: not yet fully human-reviewed, and they may change in a later commit
+  (maintainer, 2026-10-17 and 2026-10-18). They stay in the repository and are not in the wheel
+  (`examples/README.md`). Tests hold each to the schemas, its hash and the record checks a reader of this
+  release can make without `materica check` (identifier and version, required conditions, the label, every
+  review `not_checked`; RC-058 is not among them), each number to its source's, the note to every place the
+  examples are documented, and each read to what those documents say this release gives
+  (`tests/examples/`).
+
 ### Verification
 - Checks that the value-field shapes match the specification's member tables, status table and examples, that
   the members marked write-only are those step 8 does not check, that each token condition and fact binds its

@@ -1,0 +1,172 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "example/human_plasma",
+  "version": "0.1.0",
+  "name": "Human blood plasma (example, not reviewed library data)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:b0a199424a7bc7d0645d649b816ba518922cf2a67a3e34eed5e0dfa4c12495e1",
+  "card": "Example, not reviewed library data. This record is not yet fully human-reviewed and may change in a later commit.\n\nThe dynamic viscosity of human blood plasma at 37 °C, 1.33 mPa·s, from Marcinkowska-Gapinska A. and Nawrocka-Bogusz H. (2013), 'Analysis of the Magnetic Field Influence on the Rheological Properties of Healthy Persons Blood', BioMed Research International 2013, article 490410, doi:10.1155/2013/490410 (PMC3775424; CC BY 3.0). The paper tests a magnetic field applied to blood samples; this record holds only the column 'Before magnetic field' of its Table 1, the untreated samples.\n\nThe table gives '1.33 ± 0.03' and does not say whether ± is a standard deviation or a standard error, nor which statistic 1.33 is; the paper writes the hematocrit the same way and calls it 'mean value in the group', so 1.33 is recorded as a mean. The ± is recorded in words, its kind unstated.\n\nWhat the paper states of the donors and the test (section 2, 'Material and Methods'): 25 healthy nonsmoking donors, aged 21 to 51 (mean 31), 19 men and 6 women, free of chronic disease, who passed the standard tests for blood donors; blood in lithium heparin, plasma by centrifugation at 4000 rpm for 10 minutes, measured within 4 hours of collection; a Contraves LS40 rotary-oscillating rheometer, its Couette cell of 1.8 mL used in rotary mode, at 37 °C; viscosity from a regression of shear stress on shear rate over 10 to 100 per second. The paper states that plasma is a Newtonian liquid, citing others. The donor ages are converted to seconds with the Julian year, 31 557 600 s. The record holds no density: the paper reports none.",
+  "body": {
+    "sections": {
+      "fluid": {
+        "specimen": {
+          "species": {
+            "ncbi_taxon": 9606,
+            "label": "Homo sapiens",
+            "basis": "stated"
+          },
+          "anatomical_site": {
+            "uberon": "UBERON:0001969",
+            "label": "blood plasma",
+            "basis": "stated"
+          },
+          "tissue_state": {
+            "token": "ex_vivo_fresh",
+            "basis": "inferred",
+            "inferred_from": "Material and Methods: 'The interval between the blood collection and the viscosity measurement never exceeded 4 hours.'"
+          },
+          "disease_and_treatment_state": {
+            "token": "normal",
+            "basis": "stated"
+          },
+          "preparation": {
+            "text": "Blood collected into BD Vacutainer tubes containing lithium heparin (17 international units/mL of blood); plasma obtained by centrifugation of whole blood at 4000 rpm for 10 minutes and collection of the supernatant; measured within 4 hours of collection.",
+            "basis": "stated"
+          },
+          "preservation": {
+            "status": "unstated",
+            "reason": "Measured within 4 hours of collection; how the samples were kept until then is not stated."
+          },
+          "donor_age": {
+            "range": [
+              662709600,
+              1609437600
+            ],
+            "unit": "s",
+            "basis": "stated"
+          }
+        },
+        "fields": {
+          "dynamic_viscosity": {
+            "form": "constant",
+            "unit": "Pa.s",
+            "value": 0.00133,
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "shear_rate": {
+                "range": [
+                  10,
+                  100
+                ],
+                "unit": "1/s",
+                "basis": "stated"
+              },
+              "test_method": {
+                "token": "rotational_rheometer",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "central": "mean",
+              "n_specimens": 25,
+              "n_donors": 25,
+              "mean": 0.00133,
+              "sd": {
+                "status": "unstated",
+                "reason": "The source gives '1.33 ± 0.03' mPa·s and does not say whether ± is a standard deviation or a standard error. Schema 0.1.0 has no member for a spread of unstated kind."
+              },
+              "min": {
+                "status": "unstated"
+              },
+              "max": {
+                "status": "unstated"
+              },
+              "distribution": {
+                "status": "unstated"
+              },
+              "basis": {
+                "status": "not_applicable"
+              },
+              "represents": {
+                "status": "unstated",
+                "reason": "± 0.03 mPa·s, of a kind the source does not state."
+              },
+              "dispersion": "reported",
+              "relative_uncertainty": {
+                "status": "none"
+              },
+              "expanded_uncertainty": {
+                "status": "none"
+              }
+            },
+            "provenance": {
+              "origin": "measured_by_source",
+              "source": {
+                "key": "marcinkowska_gapinska_2013",
+                "document": {
+                  "identifier": "doi:10.1155/2013/490410",
+                  "version": "version_of_record"
+                },
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "column": {
+                    "header": "Before magnetic field (n = 25)",
+                    "index": 2
+                  },
+                  "row": "Plasma viscosity (η p) [mPas]"
+                }
+              },
+              "extraction": {
+                "method": "table",
+                "text_extraction": "Europe PMC's full-text XML of PMC3775424 (JATS), each table cell's text with every run of white space as one space",
+                "source_unit": "mPas",
+                "conversion": "multiplied by 0.001: 1 mPa·s is 0.001 Pa·s"
+              },
+              "evidence": {
+                "quote": "Plasma viscosity (η p) [mPas] 1.33 ± 0.03*",
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "column": {
+                    "header": "Before magnetic field (n = 25)",
+                    "index": 2
+                  },
+                  "row": "Plasma viscosity (η p) [mPas]"
+                },
+                "document": {
+                  "identifier": "doi:10.1155/2013/490410",
+                  "version": "version_of_record"
+                },
+                "copy": {
+                  "sha256": "c1b331eeca80395291cf4b2d59b19d1c02f061ebfe023e527e4ddce40d16febc",
+                  "retrieved": "2026-10-18"
+                }
+              },
+              "assistance": {
+                "tool": "Claude Code",
+                "model": "Claude Sonnet (sources researched, 2026-10-17); Claude Opus 5.5 (record written, 2026-10-18)",
+                "provider": "Anthropic",
+                "prompt_version": "none registered",
+                "date": "2026-10-18"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "Example, not reviewed library data: not yet fully human-reviewed, and may change in a later commit."
+              }
+            },
+            "label": "materica.fluid.newtonian.v1"
+          }
+        }
+      }
+    }
+  }
+}

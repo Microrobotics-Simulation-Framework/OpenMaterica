@@ -158,6 +158,19 @@ DATA_RULES = (
         tests=("tests/unit/test_read.py",),
     ),
     DataRule(
+        "an example record",
+        r"examples/.+",
+        "the example tests check each record against the schemas, its sources and what a read of it gives",
+        tests=("tests/examples",),
+    ),
+    DataRule(
+        "the README, which documents the example records",
+        r"README\.md",
+        "the example tests hold each page that documents the records to say they are not yet fully "
+        "human-reviewed",
+        tests=("tests/examples/test_example_records.py",),
+    ),
+    DataRule(
         "a spec-sync table",
         r"tests/spec_sync/.+\.json",
         "the tables are checked against the text and the schemas",
@@ -284,7 +297,7 @@ LOCATES_NO_RULED_DATA = {
 
 # The groups of tests under `tests/`, and the directory a conftest or package file of each applies to. A path
 # under `tests/` outside every group selects the whole of `tests/unit`.
-TEST_GROUPS = ("unit", "spec_sync", "conformance", "property")
+TEST_GROUPS = ("unit", "spec_sync", "conformance", "property", "examples")
 # Code with no test, that a check of the static job holds instead: the consumer snippet is type-checked
 # against the built wheel.
 CHECKED_BY_THE_STATIC_JOB = r"tests/typing/.+"
