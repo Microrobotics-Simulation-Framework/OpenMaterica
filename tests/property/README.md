@@ -219,10 +219,22 @@ the original one. The faults include those the conformance runner's self-tests u
 sizes or contents could show: a nesting limit off by one, removal that stops at depth 2, sorting by one pass of
 exchanges, a pattern searched where it must match in full, versions ordered as strings or as doubles, an
 unreadable source ignored, the first of two differing copies read. Each test records the examples its kill
-took as `examples_to_kill`, which `--junitxml` writes out. Hypothesis also draws constants from the project's
-modules a process has imported, the tests excepted, and every shard run imports every property module: an
-import added to one can move kills in every shard, so compare counts only between runs that import the same
-modules. A fault that died only at the original size would mean the small size misses it.
+took as `examples_to_kill`, which `--junitxml` writes out. A fault that died only at the original size would
+mean the small size misses it.
+
+A derandomized run draws none of the constants Hypothesis harvests from the loaded modules
+(`tests/harvested_constants.py`), so a search's examples, and its count, depend on the code alone: the mutant,
+the property's strategy and check, and the versions of Hypothesis and Python, not which other modules the
+process imported or in what order. Until 2026-10-18 they did not: Hypothesis (6.169) takes a constant in about
+one draw in twenty, half the time one it found in a loaded module outside `tests/`, and `derandomize=True`
+fixes the seed, not those constants, so a module added for any reason could move kills in every shard or let a
+mutant survive. #43's `scripts/check_anomalies.py`, collected through its unit tests, moved 13 of the 544
+kills that `--property-controls only` measures, and `a_non_object_provenance_opens` survived 2,000 examples at
+the original size; a module of 270 other constants loaded beside the suite moved 47, and each mutant module
+collected alone, 62. With the constants pinned, none of the 544 moved in any of those runs, nor on Python 3.11
+against 3.15 (measured 2026-10-18, as are the counts below). Each mutant dies within its 2,000 examples, at
+both sizes; the latest kill is at the 872nd example (`a_non_object_provenance_opens`, original size), and five
+of the 544 come after the 500th.
 
 CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported range's ends alone
 (`--property-controls` in `tests/conftest.py`), so a mutant module holds mutant searches only. The checks of
@@ -231,7 +243,7 @@ mutants' view, without a fault, is the core's), `test_value_field_mutant_table.p
 `test_writer_mutant_table.py` and `test_condition_mutant_table.py`.
 
 `test_mutants.py` also gives the one-slip relation twelve faults, each killed by (9) (its strategy has no size,
-so both sizes take the same examples; measured 2026-10-15):
+so both sizes take the same examples; measured 2026-10-18):
 
 | Mutant | Fault | Examples |
 |---|---|---|
@@ -240,7 +252,7 @@ so both sizes take the same examples; measured 2026-10-15):
 | `two_characters_added_one_slip` | two characters added at the end are one slip | 38 |
 | `swap_of_any_two_characters` | two characters swapped far apart are one slip | 11 |
 | `ies_plural_missed`, `es_plural_missed`, `irregular_plurals_missed` | a plural section 10 lists missed | 155, 38, 114 |
-| `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural | 333 |
+| `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural | 629 |
 
 The last is the relation as it stood until the property found it: `x__y` and `x_s_y` are one character apart,
 but `x__y` and `x_es_y` two, which it called one plural.
@@ -278,7 +290,7 @@ those 21 were measured: each died within its 2,000 examples at both sizes but `w
 whole meets one fault of 154 too seldom to kill each such mutant every time at `ci`, so the planned search is
 what shows HP3 refuses each fault, and the region audit that HP3 draws it; each of the review's eleven rules
 also has a deterministic read in `tests/unit/test_read.py`. The kill is the examples the derandomised search
-took, at the small and the original size (measured 2026-10-15, S2a-2's fix round).
+took, at the small and the original size (measured 2026-10-18).
 
 Two of the first 25, `missing_represents_accepted` and `named_state_text_unchecked`, have had planned searches
 since 2026-10-16: searched with HP3 whole, each survived 2,000 examples at the small size once the suite held
@@ -286,8 +298,9 @@ since 2026-10-16: searched with HP3 whole, each survived 2,000 examples at the s
 S2a-3's head, `named_state_text_unchecked` also survived 2,000 examples at the original size where its shard
 ran alone, as CI runs it, and died where the whole suite ran: S2a-3's code added constants. Hypothesis (6.169)
 draws, among its values, constants it finds in the project's modules the process has loaded, test modules
-aside, so the examples a derandomised search meets change with the code and with what else a process imported.
-Emptying that pool, the search killed it alone and after the unit tests alike (measured 2026-10-16). Planned,
+aside, so the examples a derandomised search meets changed with the code and with what else a process imported
+(no longer: Mutants, above). Emptying that pool, the search killed it alone and after the unit tests alike
+(measured 2026-10-16). Planned,
 each dies at its first example at both sizes, alone, after the whole suite's collection, on Python 3.11 and
 3.15. The other 21 that HP3 kills, which could each meet the same at any change, have been planned since S2a-3
 came onto main (maintainer, 2026-10-16): each names the faults of HP3's catalogue that test the rule it
@@ -328,11 +341,11 @@ the second example at both sizes in each of those runs.
 | `within_any_status` | a population level's `within` takes any status token, where `none` alone is allowed | HP3 | `statistics_statuses.within_status_not_allowed` | 1, 1 |
 | `uncertainty_precision_any_string` | an uncertainty's `precision_conditions` takes any string | HP3 | `uncertainty_tokens.uncertainty_precision_unknown` | 1, 1 |
 | `statistics_not_applicable_on_a_constant` | a constant's `statistics` takes `not_applicable`, which only reference data's takes | HP3 | `statistics_statuses.block_status_not_allowed` | 1, 1 |
-| `basis_any_string` | a condition's and a fact's `basis` take any string | HP3 | `condition_tokens.basis_unknown`, `specimen_tokens.fact_basis_of_another_member` | 14, 10 |
+| `basis_any_string` | a condition's and a fact's `basis` take any string | HP3 | `condition_tokens.basis_unknown`, `specimen_tokens.fact_basis_of_another_member` | 14, 42 |
 | `condition_status_refuses_its_own_shapes_members_only` | a condition's status object refuses only its own shape's members, so `token` beside a numeric condition's passes | HP3 | `condition_tokens.status_beside_a_token` | 1, 1 |
 | `token_known_within_its_kind` | a condition's `token` knows only the conditions' tokens and a fact's only the facts', so `tube` in `tissue_state` is `unknown_token` | HP3 | `condition_tokens.token_of_a_fact`, `specimen_tokens.fact_token_of_a_condition` | 1, 1 |
 | `token_condition_unit_unchecked` | a token condition's `unit` takes anything | HP3 | `condition_tokens.token_condition_unit_not_a_string` | 1, 1 |
-| `label_on_any_table` | a label goes on a table whatever its axis | the label's rule | its oracle, on a table on its row's axis | 54, 59 |
+| `label_on_any_table` | a label goes on a table whatever its axis | the label's rule | its oracle, on a table on its row's axis | 3, 35 |
 | `label_beside_an_unknown_form_as_on_a_constant` | a label beside a form the reader does not know is judged as on a constant | HP3 | `field_form.form_unknown_beside_the_label` | 2, 2 |
 | `no_form_member_named_beside_an_unknown_form` | beside a form the reader does not know, no form's own member is named, so `intervals` is ignored | HP3 | `field_form.form_unknown_beside_a_slip` | 1, 1 |
 | `statistics_block_slips_ignored` | a slip among a statistics block's members is ignored | HP3 | `statistics_slips_beside.*` | 1, 1 |
@@ -361,7 +374,7 @@ places of its additions), the example that kills it must hold one. HP7's and HP9
 both sizes take the same examples. Three rules no property draws are searched alike over the deterministic
 tables of `tests/unit/test_read.py` that check them: an implied condition located elsewhere, read end to end
 ("located elsewhere"), and the implied conditions step 0 refuses ("step 0"). The kill is the examples the
-derandomised search took, at the small and the original size (measured 2026-10-16, S2a-3's fix round).
+derandomised search took, at the small and the original size (measured 2026-10-18).
 
 Seven of these are the mutants of S2a-3's review that survived the whole suite (its M2), each a rule no test
 checked: `implied_not_located`, `located_at_without_its_hash`, `accept_list_case_folded`,
@@ -385,11 +398,11 @@ place the unit in either entry of two.
 | `unchecked_read_as_met` | a stated condition with no tolerance or accept list is `met` | HP7, table | any of its examples | 3, 3 |
 | `not_accepted_read_as_unknown` | a token outside the accept list is `unknown` | HP7, table | any of its examples | 7, 7 |
 | `accept_list_case_folded` | a token matched against an accept list after case folding | HP7, table | any of its examples | 7, 7 |
-| `accept_list_by_prefix` | a token matched by an entry of the accept list that begins with its first three characters | HP7, table | any of its examples | 122, 122 |
+| `accept_list_by_prefix` | a token matched by an entry of the accept list that begins with its first three characters | HP7, table | any of its examples | 83, 83 |
 | `unknown_name_status_read_as_unstated` | a name the reader does not know, held as a status object, read as `condition_unstated` | HP7, table | any of its examples | 5, 5 |
 | `unknown_name_read_as_unstated` | a name the reader does not know is `condition_unstated` | HP7, table | any of its examples | 5, 5 |
 | `required_with_ignored` | a condition another requires with its token is not checked | HP7, table | any of its examples | 3, 3 |
-| `row_requirements_ignored` | the row's required conditions are not checked | HP7, table | any of its examples | 308, 308 |
+| `row_requirements_ignored` | the row's required conditions are not checked | HP7, table | any of its examples | 536, 536 |
 | `status_object_not_returned` | an entry held as a status object returns no `record` | HP7, table | any of its examples | 1, 1 |
 | `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | any of its examples | 34, 34 |
 | `implied_overrides_a_stated_value` | an implied condition fills a stated condition | HP7, implied | `never_over_a_stated_value`, `never_over_another_status` | 2, 2 |
@@ -406,21 +419,21 @@ place the unit in either entry of two.
 | `a_status_fact_overrides_nothing` | a field's fact held as a status object leaves the section's | HP9 | `the_field_a_status_object` | 22, 22 |
 | `nfkc_before_comparing` | units compared after NFKC (the S2 design's HP8 mutant) | HP8, another unit | `compatibility_equal` | 1, 1 |
 | `case_folded` | units compared after case folding (the S2 design's HP8 mutant) | HP8, another unit | `case_folded`, `compatibility_equal` | 2, 2 |
-| `spaces_ignored` | spaces and zero-width spaces dropped from a unit | HP8, another unit | `spaced` | 11, 46 |
-| `a_status_object_where_a_string_is_registered` | a status object takes a string's place | HP8, another unit | `status_object` | 26, 12 |
+| `spaces_ignored` | spaces and zero-width spaces dropped from a unit | HP8, another unit | `spaced` | 11, 11 |
+| `a_status_object_where_a_string_is_registered` | a status object takes a string's place | HP8, another unit | `status_object` | 35, 5 |
 | `plus_minus_units_unchecked` | a `plus_minus` entry's unit not compared | HP8, another unit | `plus_minus` | 2, 2 |
-| `only_the_first_plus_minus_unit` | only the first `plus_minus` entry's unit compared | HP8, another unit | `plus_minus` | 9, 69 |
-| `token_condition_units_unchecked` | a `unit` on a token condition passes | HP8, another unit | `token_condition` | 150, 3 |
-| `section_facts_unchecked` | the section's facts' units not compared | HP8, another unit | `section_fact` | 34, 11 |
-| `input_facts_unchecked` | a derived value's input facts' units not compared | HP8, another unit | `input_fact` | 4, 21 |
+| `only_the_first_plus_minus_unit` | only the first `plus_minus` entry's unit compared | HP8, another unit | `plus_minus` | 9, 87 |
+| `token_condition_units_unchecked` | a `unit` on a token condition passes | HP8, another unit | `token_condition` | 179, 3 |
+| `section_facts_unchecked` | the section's facts' units not compared | HP8, another unit | `section_fact` | 34, 6 |
+| `input_facts_unchecked` | a derived value's input facts' units not compared | HP8, another unit | `input_fact` | 4, 52 |
 | `condition_dropped_from_unit_mismatch` | a condition's `unit_mismatch` carries no condition | HP8, another unit | `condition`, `plus_minus`, `token_condition` | 2, 2 |
 | `plus_minus_against_the_field_unit` | a `plus_minus` unit compared with the field's unit | HP8, the registered unit | any of its examples | 1, 1 |
 | `facts_against_the_field_unit` | a fact's unit compared with the field's unit | HP8, the registered unit | any of its examples | 1, 1 |
 | `step_10_after_a_refusal_at_step_9` | step 10 runs after step 9's `not_met` | HP3 | a fault of step 9 | 1, 1 |
 | `first_unit_reason_only` | step 9 gives its first reason only | HP3 | a fault of step 9 | 1, 1 |
-| `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | `unchecked`, `unstated`, `unknown_name`, `uncertain` | 7, 198 |
-| `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3 | `outside`, `range_outside`, `not_accepted`, `implied_outside` | 7, 7 |
-| `disagreement_checks_the_others` | two implied conditions that disagree, and the conditions checked all the same | HP3 | `disagreeing` | 155, 111 |
+| `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | `unchecked`, `unstated`, `unknown_name`, `uncertain` | 7, 98 |
+| `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3 | `outside`, `range_outside`, `not_accepted`, `implied_outside` | 7, 47 |
+| `disagreement_checks_the_others` | two implied conditions that disagree, and the conditions checked all the same | HP3 | `disagreeing` | 102, 9 |
 | `unknown_members_returned_in_an_entry` | a condition's entry returns members the reader does not know | HP5 | `condition`, `plus_minus_entry` | 5, 10 |
 | `two_slips_refused_in_a_request` | a request's names two characters off a named one refused | HP5 | any of its examples | 4, 4 |
 | `unknown_request_members_refused` | every member a request's place does not name refused | HP5 | `operating`, `requirement_condition`, `tolerance`, `implied`, `implied_record`, `implied_value` | 4, 3 |

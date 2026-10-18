@@ -471,6 +471,21 @@ every family entry goes in `families/CHANGELOG.md`.
   checker to that output and every repository variable a workflow reads to a cap's check, and runs each check
   as written, under two locales, on values inside and outside the range, each with controls in which it fails;
   its evaluator of GitHub's expressions reads `fromJSON`, and it reads a step's outputs as the runner does.
+- Every derandomized Hypothesis run, the mutant searches and the audit controls among them, draws none of the
+  constants Hypothesis harvests from the loaded modules (`tests/harvested_constants.py`, installed by
+  `tests/conftest.py`), so what it draws, and so a mutant's kill count, depends on the code alone. Hypothesis
+  6.169 takes a constant in about one draw in twenty, half the time one it found in a loaded module outside
+  `tests/`, and `derandomize=True` fixes the seed, not those constants: #43's `scripts/check_anomalies.py`,
+  collected through its unit tests, moved 13 of the 544 kills that `--property-controls only` measures and let
+  `a_non_object_provenance_opens` survive 2,000 examples, which turned that pull request red (its review, H1).
+  Hypothesis has no setting or environment variable for it, so the pin replaces
+  `providers._get_local_constants` and empties `providers.CONSTANTS_CACHE`, both private, for a run whose
+  settings are derandomized; `tests/unit/test_harvested_constants.py` fails if they go or stop having effect,
+  with controls in which the draws do change. Every other run keeps the pool. With the pin, none of the 544
+  kills moved with #43's module collected, with a module of 270 other constants loaded, with each mutant
+  module collected alone, or on Python 3.11 against 3.15, where without it the second moved 47 and the third
+  62; every mutant still dies within its 2,000 examples at both sizes, the latest at the 872nd, and
+  `tests/property/README.md`'s counts are measured again.
 
 ## [0.1.0.dev1] - 2026-10-14
 

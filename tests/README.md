@@ -10,10 +10,12 @@
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
 
 `conftest.py` here registers the Hypothesis profiles for every test, on Hypothesis's own defaults, so that no
-machine's environment changes them, and the property shards (`--shard`), selects the mutant searches and the
-audit controls (`--property-controls only`) or every other test (`none`), as CI's test matrix splits them,
-records each test's CPU time, its own and its child processes', for a JUnit report (`--junitxml`, which CI's
-durations report reads), and prints the count of conformance case files after a run that included them.
+machine's environment changes them, and the property shards (`--shard`), keeps every derandomized run from
+drawing the constants Hypothesis harvests from the loaded modules (`harvested_constants.py`), selects the
+mutant searches and the audit controls (`--property-controls only`) or every other test (`none`), as CI's test
+matrix splits them, records each test's CPU time, its own and its child processes', for a JUnit report
+(`--junitxml`, which CI's durations report reads), and prints the count of conformance case files after a run
+that included them.
 
 ## Running
 
@@ -82,7 +84,10 @@ runs the same whatever `--hypothesis-seed` says (6.169 reads `derandomize=True` 
 under every seed: the mutant searches (`MUTANT_SEARCH` in `property/support.py`), the audit controls
 (`unit/test_audit_controls.py`), which are what `--property-controls only` selects, and some tests of
 `unit/test_audits.py`. So does a test under `@seed`, and a test without Hypothesis. Repeating those measures only
-what else varies between runs.
+what else varies between runs. For a derandomized test that is nothing it draws: it draws none of the constants
+Hypothesis harvests from the loaded modules (`harvested_constants.py`), so its examples, and a mutant's kill
+count, depend on the code alone. A test under `@seed` still draws them, so its examples also change with the
+modules outside `tests/` that the process has loaded.
 
 Until the profiles stopped inheriting Hypothesis's own `ci` profile (above, "Running"), so did every test on
 GitHub's runners: every run of a repeat run drew the same examples whatever its seed.

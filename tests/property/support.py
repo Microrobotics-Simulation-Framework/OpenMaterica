@@ -17,8 +17,10 @@ from tests.property.audits import FEATURE
 Example = TypeVar("Example")
 
 # A mutant must die within the examples the `ci` profile gives a property. The search is derandomised, so it
-# finds the same example on every run; it keeps nothing in the example database, and does not shrink what it
-# finds, which only a person reading a failure needs.
+# finds the same example on every run, and draws none of the constants Hypothesis harvests from the loaded
+# modules (`tests/harvested_constants.py`), so that example depends on the code alone, not on what else the
+# process imported; it keeps nothing in the example database, and does not shrink what it finds, which only a
+# person reading a failure needs.
 MUTANT_SEARCH = settings(
     max_examples=EXAMPLES["ci"],
     derandomize=True,

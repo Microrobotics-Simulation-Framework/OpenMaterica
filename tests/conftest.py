@@ -16,6 +16,7 @@ import pytest
 from hypothesis import HealthCheck, settings
 from hypothesis.database import DirectoryBasedExampleDatabase
 
+from tests import harvested_constants
 from tests.conformance import runner
 
 if sys.platform != "win32":
@@ -53,6 +54,11 @@ PROFILE = os.environ.get("MATERICA_HYPOTHESIS_PROFILE", "dev")
 if PROFILE not in EXAMPLES:
     raise RuntimeError(f"MATERICA_HYPOTHESIS_PROFILE={PROFILE!r}: expected one of {sorted(EXAMPLES)}")
 settings.load_profile(PROFILE)
+
+# Every derandomized run, the mutant searches and the audit controls among them, draws none of the constants
+# Hypothesis harvests from the loaded modules, so that what it draws depends on the code alone
+# (`harvested_constants.py`).
+harvested_constants.pin()
 
 
 # CI's Hypothesis job runs the property modules in six shards side by side, `--shard json`, `--shard
