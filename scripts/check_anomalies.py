@@ -358,7 +358,10 @@ class _Reader:
 
 def read_registry(text: str) -> dict[str, Value]:
     """The registry's top-level mapping, from the YAML subset this module's docstring names."""
-    return _Reader(text).document()
+    try:
+        return _Reader(text).document()
+    except RecursionError:
+        raise RegistryFormatError("it nests deeper than this check reads") from None
 
 
 def top_level_problems(registry: dict[str, Value], version: str) -> list[str]:
@@ -450,18 +453,34 @@ def schema_problems(registry: dict[str, Value], version: str) -> list[str]:
 
 
 def package_version(pyproject: Path) -> str:
-    version = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+    """The version `pyproject` states for the package; a ValueError says why it states none."""
+    try:
+        version = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+    except OSError as error:
+        raise ValueError(f"cannot be read ({error.strerror})") from None
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError):
+        raise ValueError("is not UTF-8 TOML") from None
+    except (KeyError, TypeError):
+        raise ValueError("has no [project] version (a dynamic version is not read here)") from None
     if not isinstance(version, str):
-        raise TypeError(f"{pyproject}: the project's version is not a string")
+        raise ValueError("the project's version is not a string")
     return version
 
 
 def registry_problems(registry: Path = REGISTRY, pyproject: Path = PYPROJECT) -> list[str]:
     try:
         found = read_registry(registry.read_text(encoding="utf-8"))
+    except OSError as error:
+        return [f"{registry}: cannot be read ({error.strerror})"]
+    except UnicodeDecodeError:
+        return [f"{registry}: is not UTF-8 text"]
     except RegistryFormatError as error:
         return [f"{registry}: {error}"]
-    return [f"{registry}: {problem}" for problem in schema_problems(found, package_version(pyproject))]
+    try:
+        version = package_version(pyproject)
+    except ValueError as error:
+        return [f"{pyproject}: {error}"]
+    return [f"{registry}: {problem}" for problem in schema_problems(found, version)]
 
 
 def main(arguments: Sequence[str] | None = None) -> int:

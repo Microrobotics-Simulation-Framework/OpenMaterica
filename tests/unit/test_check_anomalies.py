@@ -474,6 +474,62 @@ def test_a_registry_the_reader_refuses_fails_the_check(
     assert message in capsys.readouterr().err
 
 
+# A sequence of mappings, each holding one: past the depth the interpreter's stack allows.
+NESTED = "a:\n" + "".join(" " * (2 * depth) + "- k:\n" for depth in range(1500)) + " " * 3000 + "- 'x'\n"
+
+
+@pytest.mark.parametrize(
+    ("registry", "problem"),
+    [
+        (None, "cannot be read (No such file or directory)"),
+        (b"schema_version: '\xff'\n", "is not UTF-8 text"),
+        (NESTED, "it nests deeper than this check reads"),
+    ],
+    ids=["a file that is missing", "a file that is not UTF-8", "a sequence nested too deep"],
+)
+def test_a_registry_that_cannot_be_read_is_refused_not_a_traceback(
+    tmp_path: Path, registry: str | bytes | None, problem: str
+) -> None:
+    """The control is the passing registry, read from the same path."""
+    path = tmp_path / "registry.yaml"
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(f'[project]\nversion = "{VERSION}"\n', encoding="utf-8")
+    if registry is not None:
+        path.write_bytes(registry if isinstance(registry, bytes) else registry.encode())
+    assert check_anomalies.registry_problems(path, pyproject) == [f"{path}: {problem}"]
+    path.write_text(REGISTRY, encoding="utf-8")
+    assert check_anomalies.registry_problems(path, pyproject) == []
+
+
+@pytest.mark.parametrize(
+    ("pyproject", "problem"),
+    [
+        (None, "cannot be read (No such file or directory)"),
+        (b"[project]\nversion = '\xff'\n", "is not UTF-8 TOML"),
+        (b"[project\n", "is not UTF-8 TOML"),
+        (
+            b'[project]\nname = "x"\ndynamic = ["version"]\n',
+            "has no [project] version (a dynamic version is not read here)",
+        ),
+        (b"project = 3\n", "has no [project] version (a dynamic version is not read here)"),
+        (b"[project]\nversion = 1\n", "the project's version is not a string"),
+    ],
+    ids=["missing", "not UTF-8", "not TOML", "a dynamic version", "no table", "a version that is no string"],
+)
+def test_a_pyproject_without_a_version_is_refused_not_a_traceback(
+    tmp_path: Path, pyproject: bytes | None, problem: str
+) -> None:
+    """The control is the passing pyproject.toml, at the same path."""
+    path = tmp_path / "pyproject.toml"
+    registry = tmp_path / "registry.yaml"
+    registry.write_text(REGISTRY, encoding="utf-8")
+    if pyproject is not None:
+        path.write_bytes(pyproject)
+    assert check_anomalies.registry_problems(registry, path) == [f"{path}: {problem}"]
+    path.write_text(f'[project]\nversion = "{VERSION}"\n', encoding="utf-8")
+    assert check_anomalies.registry_problems(registry, path) == []
+
+
 def test_the_check_runs_on_the_standard_library_alone(tmp_path: Path) -> None:
     """The gate runs it before any dependency is installed: so it runs in a Python that sees no installed
     package (`-S`), passing the registry and failing it with a fault. The control shows the flag hides one."""
