@@ -143,9 +143,11 @@ SHARE_PER_LEAST = 3
 # that chance, and a declared feature at SHARE_PER_LEAST times its least share, a least share being about a
 # third of the share measured, but never above its least share. So, at the chance its floor assumes, no
 # feature `dev` judges fails a correct run with a probability above FALSE_FAILURE by the floor's model, as at
-# `ci`'s floors. At 200 examples the model counts 25 draws, and a floor reaches LEAST_DRAWS only at a chance
-# of one half or more: `dev` judges features drawn among two, those declared by a chance of one half or more,
-# and declared features of a least share of about 0.17 or more; `ci` or `deep` judges the others.
+# `ci`'s floors; a feature whose measured share falls below the chance its floor assumes fails a correct run
+# more often, and is fixed where it is declared (a lower least share or chance), not here. At 200 examples the
+# model counts 25 draws, and a floor reaches LEAST_DRAWS only at a chance of one half or more: `dev` judges
+# features drawn among two, those declared by a chance of one half or more, and declared features of a least
+# share of about 0.17 or more; `ci` or `deep` judges the others.
 # Until 2026-10-18 `dev` held a declared feature to its least share where JUDGED_FROM were expected, and
 # features drawn among three or fewer to a third of their share, at a false failure of up to 7e-2 a feature by
 # the floor's model, which overstates a common feature's spread. Run once for each commit of a pull request
@@ -164,6 +166,7 @@ class Rule(TypedDict):
 
 
 RULES: dict[str, Rule] = {
+    # `by_draws` is read only where `floors_only` is False; `dev` states it so that every profile names both.
     "dev": {"by_draws": False, "floors_only": True},
     "ci": {"by_draws": True, "floors_only": False},
     "deep": {"by_draws": False, "floors_only": False},
@@ -265,7 +268,7 @@ def floor_shortfalls(
     their number, one declared by its chance at that chance, and a declared feature at SHARE_PER_LEAST times
     its least share, held to its least share where that is the lower."""
     judged: dict[str, tuple[float, float | None]] = {
-        name: (min(SHARE_PER_LEAST * least, 1.0), least) for name, least in declared.items()
+        name: (SHARE_PER_LEAST * least, least) for name, least in declared.items()
     }
     judged.update({name: (1 / len(drawn), None) for name in drawn})
     judged.update({name: (chance, None) for name, chance in chances.items()})

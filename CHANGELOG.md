@@ -458,7 +458,8 @@ every family entry goes in `families/CHANGELOG.md`.
   test matrix (`tests/property/README.md`, "Audits"). An audit's failure therefore names the seed Hypothesis
   drew its run under and the command that draws it again (`tests/unit/test_audit_replay.py`).
 - The feature audit holds `dev` to the false failure `ci`'s floors keep: by the floors' model, at the chance
-  each floor assumes, no feature it judges fails a correct run with a probability above 1e-6. `dev` now holds
+  each floor assumes, no feature it judges fails a correct run with a probability above 1e-6; a feature whose
+  measured share falls below that chance fails more often, and is fixed where it is declared. `dev` now holds
   every feature to its draw floor where that is at least 10, judging no other: a drawn feature at one over
   their number, one declared by its chance at that chance, and a declared feature at three times its least
   share, never above its least share (`audits.RULES`, `floor_shortfalls`). It held declared features, and
@@ -475,7 +476,8 @@ every family entry goes in `families/CHANGELOG.md`.
   the model, as before. `dev` stops judging 12 features of main's properties (25 with #35's and #37's), least
   shares of 0.10 to 0.16 and features drawn among three, each still judged at `ci` and `deep`. `ci` and
   `deep` judge exactly as before: `tests/unit/test_audits.py` pins what they judge of every declaration on a
-  grid, computed from the rule before this change, with controls in which another rule or floors at another
+  grid, in runs of sizes that are not multiples of eight and with `interesting` and `invalid` draws,
+  computed from the rule before this change, with controls in which another rule or floors at another
   false failure judge otherwise. It fails if a feature judged by a floor, at any profile and any declaration
   on the grid, fails a correct run with a probability above 1e-6 by the model, with controls (the least shares
   `dev` judged by; floors at 1e-3), and holds the three CI runs' counts, replayed under their jobs' commands
