@@ -457,6 +457,32 @@ every family entry goes in `families/CHANGELOG.md`.
   property by chance about once in 2,000 runs of the suite, which makes a push red about once in 400 from the
   test matrix (`tests/property/README.md`, "Audits"). An audit's failure therefore names the seed Hypothesis
   drew its run under and the command that draws it again (`tests/unit/test_audit_replay.py`).
+- The feature audit holds `dev` to the false failure `ci`'s floors keep: by the floors' model, at the chance
+  each floor assumes, no feature it judges fails a correct run with a probability above 1e-6. `dev` now holds
+  every feature to its draw floor where that is at least 10, judging no other: a drawn feature at one over
+  their number, one declared by its chance at that chance, and a declared feature at three times its least
+  share, never above its least share (`audits.RULES`, `floor_shortfalls`). It held declared features, and
+  features drawn among three or fewer, to their least shares where 20 were expected, a bound of about 1e-3 a
+  feature set before the per-commit job (#30) ran the suite at `dev` once for each commit: on 2026-10-18 three
+  of about 75 `dev` jobs of #35 and #37 failed by chance (`unknown_field` in 10.5% and `another_field` in
+  11.0% of an invariance property's examples, `drawn` in 9.5% of a monotonicity property's, each below 11%),
+  so that a pull request was almost never green. By the model, the old rule failed a run of every property
+  with a probability of about 0.36 on main (about 1 with #35's and #37's properties), the new at most 1.3e-5
+  (3.2e-5); run locally at seeds 1 to 100 on #37's head, the audited properties failed 2 runs of 100 by the
+  old rule (features drawn among three again) and none of their 8,900 audits by the new. Over those runs, each
+  declared feature of main that `dev` judges showed 0.94 to 1.26 times the share its floor assumes;
+  `non_ascii_character`, declared by its chance measured at `ci` (0.66), showed 0.57 at `dev`, about 3e-5 by
+  the model, as before. `dev` stops judging 12 features of main's properties (25 with #35's and #37's), least
+  shares of 0.10 to 0.16 and features drawn among three, each still judged at `ci` and `deep`. `ci` and
+  `deep` judge exactly as before: `tests/unit/test_audits.py` pins what they judge of every declaration on a
+  grid, computed from the rule before this change, with controls in which another rule or floors at another
+  false failure judge otherwise. It fails if a feature judged by a floor, at any profile and any declaration
+  on the grid, fails a correct run with a probability above 1e-6 by the model, with controls (the least shares
+  `dev` judged by; floors at 1e-3), and holds the three CI runs' counts, replayed under their jobs' commands
+  and seeds, which fail by the old rule and pass by the new. The README's "about once in 2,000" for `dev` is
+  gone (`tests/property/README.md`, "Audits"; `.github/workflows/README.md`), and it no longer says that `ci`
+  judges every share (it judges those of 1% or more) or gives one figure for a run at `ci`, whose least shares
+  have figures for the json and records shards' and the writer schema's acceptance properties alone.
 - Three test helpers that rebuilt the same thing on every call build it once, and no draw or verdict changes:
   `tests/spec_sync/test_cases_md.py` reads each suite's `CASES.md` once, not once for each of its 1258 case
   files, and types the result read-only, since every caller shares it, and keeps its argument typed;

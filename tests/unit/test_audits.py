@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from fractions import Fraction
 from math import comb
 
@@ -189,19 +189,60 @@ def test_a_feature_declared_by_its_chance_is_held_to_a_third_of_it_otherwise() -
 
 def test_at_dev_a_feature_declared_by_its_chance_is_held_to_its_draw_floor_where_it_can_be_judged() -> None:
     """`dev` (200 examples) holds a feature declared by its chance to its draw floor where that is at least
-    LEAST_DRAWS, and judges no other; `ci` fails the other."""
-    chances = {"often": 0.6, "seldom": 0.2}
-    assert audits.draw_floor(200, 0.6) >= audits.LEAST_DRAWS > audits.draw_floor(200, 0.2)
+    LEAST_DRAWS, and judges no other, a floor of 5 included; `ci` fails the other. A chance's floor is not
+    held to a third of the chance."""
+    dev = audits.RULES["dev"]
+    chances = {"often": 0.6, "seldom": 0.45}
+    assert audits.draw_floor(200, 0.6) >= audits.LEAST_DRAWS > audits.draw_floor(200, 0.45) > 0
     floor = audits.draw_floor(200, 0.6)
-    assert audits.feature_shortfalls(counts(200, often=floor), {}, chances=chances, chance_floors=True) == []
-    assert audits.feature_shortfalls(
-        counts(200, often=floor - 1), {}, chances=chances, chance_floors=True
-    ) == [f"feature 'often' in {floor - 1} of 200 examples, below its floor of {floor}"]
-    strict = audits.feature_shortfalls(counts(200, often=floor), {}, by_draws=True, chances=chances)
-    assert len(strict) == 1
+    assert audits.feature_shortfalls(counts(200, often=floor), {}, chances=chances, **dev) == []
+    assert audits.feature_shortfalls(counts(200, often=floor - 1), {}, chances=chances, **dev) == [
+        f"feature 'often' in {floor - 1} of 200 examples, below its floor of {floor}"
+    ]
+    strict = audits.feature_shortfalls(counts(200, often=floor), {}, chances=chances, **audits.RULES["ci"])
     assert "draw it more often" in strict[0]
-    assert audits.RULES["dev"] == {"by_draws": False, "chance_floors": True}
-    assert audits.RULES["ci"]["by_draws"]
+    nearly_always = audits.draw_floor(200, 0.9)
+    assert nearly_always - 1 > 0.9 / 3 * 200
+    assert audits.feature_shortfalls(
+        counts(200, shown=nearly_always - 1), {}, chances={"shown": 0.9}, **dev
+    ) == [f"feature 'shown' in {nearly_always - 1} of 200 examples, below its floor of {nearly_always}"]
+
+
+def test_at_dev_features_drawn_among_two_are_held_to_their_draw_floor_and_among_three_are_not_judged() -> (
+    None
+):
+    dev = audits.RULES["dev"]
+    floor = audits.draw_floor(200, 1 / 2)
+    assert floor >= audits.LEAST_DRAWS > audits.draw_floor(200, 1 / 3)
+    assert (
+        audits.feature_shortfalls(counts(200, one=floor, other=200 - floor), {}, ["one", "other"], **dev)
+        == []
+    )
+    assert audits.feature_shortfalls(
+        counts(200, one=floor - 1, other=201 - floor), {}, ["one", "other"], **dev
+    ) == [f"feature 'one' in {floor - 1} of 200 examples, below its floor of {floor}"]
+    assert audits.feature_shortfalls(counts(200, b=100, c=100), {}, ["a", "b", "c"], **dev) == []
+
+
+def test_at_dev_a_declared_feature_is_held_to_the_floor_of_three_times_its_least_share_never_above_it() -> (
+    None
+):
+    dev = audits.RULES["dev"]
+    floor = audits.draw_floor(200, 3 * 0.2)
+    assert audits.LEAST_DRAWS <= floor < 0.2 * 200
+    assert audits.feature_shortfalls(counts(200, held=floor), {"held": 0.2}, **dev) == []
+    assert audits.feature_shortfalls(counts(200, held=floor - 1), {"held": 0.2}, **dev) == [
+        f"feature 'held' in {floor - 1} of 200 examples, below its floor of {floor}"
+    ]
+    # A floor above the least share's count holds the feature to its least share.
+    assert audits.draw_floor(200, 3 * 0.33) > 0.33 * 200
+    assert audits.feature_shortfalls(counts(200, held=66), {"held": 0.33}, **dev) == []
+    assert audits.feature_shortfalls(counts(200, held=65), {"held": 0.33}, **dev) == [
+        "feature 'held' in 32.5% of 200 examples, below 33%"
+    ]
+    # A floor below LEAST_DRAWS is not judged.
+    assert audits.draw_floor(200, 3 * 0.11) < audits.LEAST_DRAWS
+    assert audits.feature_shortfalls(counts(200), {"held": 0.11}, **dev) == []
 
 
 def test_a_feature_declared_by_its_chance_counts_as_declared() -> None:
@@ -348,3 +389,108 @@ def test_the_pin_sees_a_floor_moved(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_every_profile_has_a_rule() -> None:
     assert audits.RULES.keys() == EXAMPLES.keys()
+
+
+THREE_FIELDS = ["another_field", "unknown_field", "another_section_specimen"]
+THREE_PLUS_MINUS = ["drawn", "just_outside", "met"]
+# The three audits that CI's `dev` jobs failed by chance on 2026-10-18, each a correct property's feature
+# drawn among three, which `dev` held to a third of its share where 20 were expected (11%, 22.2 of 200
+# examples): the counts of each run, replayed under its job's command and seed (pull requests #35 and #37, at
+# d226c16, 9344311 and f36810d).
+CHANCE_FAILURES: list[tuple[audits.Counts, dict[str, float], list[str], str]] = [
+    (
+        counts(200, another_field=71, unknown_field=21, another_section_specimen=108),
+        {},
+        THREE_FIELDS,
+        "feature 'unknown_field' in 10.5% of 200 examples, below 11%",
+    ),
+    (
+        counts(200, another_field=22, unknown_field=119, another_section_specimen=59),
+        {},
+        THREE_FIELDS,
+        "feature 'another_field' in 11.0% of 200 examples, below 11%",
+    ),
+    (
+        counts(200, drawn=19, just_outside=110, met=71, held=72),
+        {"held": 0.12},
+        THREE_PLUS_MINUS,
+        "feature 'drawn' in 9.5% of 200 examples, below 11%",
+    ),
+]
+
+
+@pytest.mark.parametrize(("counted", "declared", "drawn", "reported"), CHANCE_FAILURES)
+def test_the_chance_failures_ci_met_at_dev_pass(
+    counted: audits.Counts, declared: dict[str, float], drawn: list[str], reported: str
+) -> None:
+    assert audits.feature_shortfalls(counted, declared, drawn, **audits.RULES["dev"]) == []
+    # The control: judged by least shares where 20 are expected, as `dev` judged declared and drawn features
+    # until 2026-10-18 and `deep` judges them, each fails as CI reported it.
+    assert audits.feature_shortfalls(counted, declared, drawn, **audits.RULES["deep"]) == [reported]
+
+
+def model_false_failure(examples: int, chance: float, fewest: int) -> float:
+    """By the draw floor's model, the probability that a feature drawn with probability `chance` shows in
+    fewer than `fewest` examples of a run of `examples`: SHOWN times the successes of examples // CLUSTER
+    draws, each at `chance`."""
+    draws = examples // audits.CLUSTER
+    needed = -(-fewest // audits.SHOWN)  # the examples shown are fewer than `fewest` with fewer successes
+    chance = min(chance, 1.0)
+    return math.fsum(
+        comb(draws, count) * chance**count * (1 - chance) ** (draws - count)
+        for count in range(min(needed, draws + 1))
+    )
+
+
+# The chance that one draw shows a feature declared so: a least share is a third of the share measured.
+CHANCE: dict[str, Callable[[float], float]] = {
+    "features": lambda least: 3 * least,
+    "drawn": lambda drawn: 1 / drawn,
+    "chances": lambda chance: chance,
+}
+# The judgements made by a least share, as before 2026-10-18 and pinned as they are (above): the draw floor's
+# model does not bound them. It gives a feature shown by whole clusters at JUDGED_FROM about 5e-2, and a least
+# share of 10% at `ci` about 1e-6; the figures for those whose clusters were measured are in `audits.py`.
+BY_LEAST_SHARES = {("ci", "features"), ("deep", "features"), ("deep", "drawn"), ("deep", "chances")}
+
+
+def worst_false_failure(rule: audits.Rule, examples: int, kinds: set[str]) -> tuple[float, tuple[str, float]]:
+    """Of every declaration of these kinds that `rule` judges in a run of `examples`, the one most likely to
+    fail a correct run, by the draw floor's model, with that probability. A declaration no count passes is the
+    declaration's fault, not chance: `ci` refuses it on every run."""
+    worst: tuple[float, tuple[str, float]] = (0.0, ("", 0.0))
+    for kind, value in DECLARATIONS:
+        fewest, _ = judging(rule, examples, kind, value)
+        if kind in kinds and fewest:
+            worst = max(worst, (model_false_failure(examples, CHANCE[kind](value), fewest), (kind, value)))
+    return worst
+
+
+@pytest.mark.parametrize("profile", ["dev", "ci"])
+def test_no_feature_judged_by_a_floor_fails_a_correct_run_more_often_than_one_in_a_million(
+    profile: str,
+) -> None:
+    kinds = {kind for kind in CHANCE if (profile, kind) not in BY_LEAST_SHARES}
+    probability, declaration = worst_false_failure(audits.RULES[profile], EXAMPLES[profile], kinds)
+    assert probability <= 1e-6, declaration
+
+
+def test_dev_judges_every_feature_by_a_floor() -> None:
+    assert {profile for profile, _ in BY_LEAST_SHARES} == {"ci", "deep"}
+
+
+def test_the_check_sees_the_least_shares_dev_judged_by() -> None:
+    """The control: `dev`'s runs judged by least shares where 20 are expected, as `dev` judged declared and
+    drawn features until 2026-10-18, fail a correct run more often: features drawn among three about one run
+    in twenty by the model."""
+    probability, _ = worst_false_failure(audits.RULES["deep"], EXAMPLES["dev"], {"features", "drawn"})
+    assert probability > 1e-6
+    fewest, _ = judging(audits.RULES["deep"], EXAMPLES["dev"], "drawn", 3)
+    assert fewest is not None
+    assert model_false_failure(EXAMPLES["dev"], 1 / 3, fewest) > 1e-2
+
+
+def test_the_check_sees_floors_at_another_false_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(audits, "FALSE_FAILURE", 1e-3)
+    probability, _ = worst_false_failure(audits.RULES["dev"], EXAMPLES["dev"], set(CHANCE))
+    assert probability > 1e-6
