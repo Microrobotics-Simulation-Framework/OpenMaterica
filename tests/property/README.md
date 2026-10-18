@@ -1,6 +1,7 @@
 # Property tests
 
-Hypothesis properties of the core, in four groups, and of the writer schema, in a fifth.
+Hypothesis properties of the core, in four groups, of the writer schema, in a fifth, and of the anomaly
+check's reader (the last bullet).
 
 - **JSON:** the JSON reader (`docs/specification/record_format.md` section 1 item 6), RFC 8785 (section 9 item
   2) and the content hash (section 9). `strategies.py` builds what they draw: JSON values, texts that write a
@@ -112,6 +113,13 @@ Hypothesis properties of the core, in four groups, and of the writer schema, in 
   first row as written, `|r - v| <= t`, also in `mixed_magnitudes_outside` (1,127 of 3,000 value rows): the
   kinds those mutants die at. Which end of the stated span the boundary sits at, and a bound's window, are
   features declared by their chances.
+- **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
+  against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
+  A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
+  the reader names is read. Documents are drawn whole, with one or two choices outside the subset, with an edit
+  to a valid one, and as single plain words, characters, escapes and boolean words; controls run each on a
+  reader with one rule weakened. The reader is a gate script that installs nothing, so these are its only tests
+  against a second implementation.
 
 The record strategies draw each case the specification tells apart as often as another. An example of (4) is
 a sweep: one record changed at each aspect the reader schema checks (removed, of another JSON type, or `null`),

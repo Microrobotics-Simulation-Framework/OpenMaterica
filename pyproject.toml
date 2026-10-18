@@ -32,11 +32,15 @@ dev = [
     # the two to one verdict.
     "jsonschema-rs==0.58.4",
     "mypy>=1.18",
+    # The reference the anomaly check's specifier syntax is held to (`tests/unit/test_check_anomalies.py`,
+    # `tests/property/test_anomaly_reader_properties.py`); pytest depends on it too.
+    "packaging>=24.0",
     # The release MADDENING's CI pins.
     "pyright==1.1.414",
     "pytest>=8.4",
     "pytest-xdist>=3.8",
-    # Reads the workflows in tests/unit/test_ci_workflows.py.
+    # Reads the workflows in tests/unit/test_ci_workflows.py, and is the reference the anomaly check's YAML
+    # reader is held to (`tests/property/test_anomaly_reader_properties.py`).
     "pyyaml>=6.0",
     "rfc8785>=0.1.4",
     "ruff>=0.13",
