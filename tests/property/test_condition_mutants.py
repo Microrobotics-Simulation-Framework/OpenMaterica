@@ -63,6 +63,20 @@ def kind(drawn: tuple[str, Any]) -> set[str]:
     return {drawn[0]}
 
 
+@st.composite
+def table_cases_without_a_requirement(draw: st.DrawFn) -> tuple[str, properties.Case]:
+    """A table case in which one condition the field's row requires is held nowhere: the record has none of
+    it, and the request names none, so that only the row asks for it. `table_cases` names every required
+    condition in the request, and leaves one so only where its `unchecked` kind removes the request's
+    requirement of a condition and its `absent_but_required` kind then removes that condition from the record:
+    a search drawn whole took 536 examples."""
+    _, case = draw(properties.table_cases())
+    name = draw(st.sampled_from(VOCABULARY.fields[properties.FIELD].requires))
+    conditions = {held: value for held, value in case.conditions.items() if held != name}
+    required = {asked: value for asked, value in case.required.items() if asked != name}
+    return "absent_but_required", case._replace(conditions=conditions, required=required)
+
+
 # Each property that kills a mutant, by name: its examples at a size, its check, and the labels of an example
 # (the kind it was drawn of, a unit's place and kind, a read's faults, the places of its additions), among
 # which a mutant's `dies_at` must be.
@@ -77,6 +91,11 @@ KILLERS: dict[
         lambda drawn: {drawn.kind},
     ),
     "HP7 table": (lambda size: properties.table_cases(), second(properties.check_against_the_oracle), kind),
+    "HP7 table, a requirement held nowhere": (
+        lambda size: table_cases_without_a_requirement(),
+        second(properties.check_against_the_oracle),
+        kind,
+    ),
     "HP7 implied": (
         lambda size: properties.implied_cases(),
         second(properties.check_against_the_oracle),
@@ -632,7 +651,9 @@ MUTANTS = [
     ),
     Mutant("required_with_ignored", "HP7 table", setting(conditions, "_checked", _required_with_ignored)),
     Mutant(
-        "row_requirements_ignored", "HP7 table", setting(conditions, "_checked", _row_requirements_ignored)
+        "row_requirements_ignored",
+        "HP7 table, a requirement held nowhere",
+        setting(conditions, "_checked", _row_requirements_ignored),
     ),
     Mutant("status_object_not_returned", "HP7 table", setting(conditions, "_entry", _status_record_dropped)),
     Mutant(
