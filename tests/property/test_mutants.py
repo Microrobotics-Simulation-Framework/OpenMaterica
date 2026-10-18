@@ -379,16 +379,28 @@ def edit_kills(fault: str) -> Callable[[Size], int]:
 
 
 @st.composite
-def edits_below_a_non_object_provenance(draw: st.DrawFn, size: Size) -> hashing_properties.Edit:
+def edits_below_a_non_object_provenance(
+    draw: st.DrawFn,
+    size: Size,
+    inside: st.SearchStrategy[JsonValue] | None = None,
+    only_kept: bool = True,
+) -> hashing_properties.Edit:
     """An edit of a leaf below a `review` or `copy` that sits in a provenance whose value is not an object
     (an array, and the object inside it, up to two arrays deep, among other items). Section 9 item 1 removes
     `review` and `copy` only inside a provenance object, so the hash keeps the leaf; `edits` reaches such a
     leaf seldom, since it must draw a non-object provenance, an object inside it holding one of the two
-    names, and that leaf among the record's, and a search drawn whole took up to 872 of 2,000 examples."""
+    names, and that leaf among the record's, and a search drawn whole took up to 872 of 2,000 examples.
+
+    `inside` draws the tree below `review` or `copy` (`trees(size)` where none is given), and
+    `only_kept=False` lets the edit fall on a leaf the hash removes. Both are for `test_mutant_view.py`, which
+    plans draws that reach such a leaf, to show its control refuses the strategy without the filter."""
     record = draw(hashing_properties.records(size))
     assert isinstance(record, dict)
     name = draw(st.sampled_from(hashing_properties.REMOVED_IN_PROVENANCE))
-    node: JsonValue = {**draw(hashing_properties.objects(size)), name: draw(hashing_properties.trees(size))}
+    node: JsonValue = {
+        **draw(hashing_properties.objects(size)),
+        name: draw(hashing_properties.trees(size) if inside is None else inside),
+    }
     below: hashing_properties.Path = (name,)
     for _ in range(draw(st.integers(0, 2))):
         node, below = [node], (0, *below)
@@ -399,12 +411,9 @@ def edits_below_a_non_object_provenance(draw: st.DrawFn, size: Size) -> hashing_
     prefix: hashing_properties.Path = ("held", "provenance", index, *below)
     # A leaf the hash keeps: one below a provenance object nested in the tree is removed with it, and where
     # every leaf is, the whole of `review` or `copy` is the edit.
-    kept = [
-        leaf
-        for leaf in hashing_properties.leaves(record)
-        if leaf[: len(prefix)] == prefix and not hashing_properties.removed(record, leaf)
-    ]
-    path = draw(st.sampled_from(kept or [prefix]))
+    below_the_prefix = [leaf for leaf in hashing_properties.leaves(record) if leaf[: len(prefix)] == prefix]
+    kept = [leaf for leaf in below_the_prefix if not hashing_properties.removed(record, leaf)]
+    path = draw(st.sampled_from((kept or [prefix]) if only_kept else below_the_prefix))
     return hashing_properties.edit_at(record, path, draw(strategies.SCALARS))
 
 
