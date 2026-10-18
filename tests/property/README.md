@@ -714,8 +714,8 @@ look-up of the code (the review's L1). The tenth kind moved every HP1, HP2 and H
 measured with the pin at S2b-1's head (2026-10-18).
 
 S2b-2's eleven: five of HP2's under a nominal, three of HP6's on evidence, and three of HP6's second property,
-on a nominal's value and assumption. HP1, HP2 and HP11 draw an eleventh kind, `nominal` (its draw floor 25
-examples, as a kind's), so that HP2's nominal mutants die at a nominal's way within its share of the examples,
+on a nominal's value and assumption. HP1, HP2 and HP11 draw an eleventh kind, `nominal` (declared by a chance
+of 0.07, as each kind is), so that HP2's nominal mutants die at a nominal's way within its share of the examples,
 not inside `met`, where they died too late; HP2's oracle names `value`, `assumption`, `nominal_invalid` and
 `applied` under a nominal itself. Even so the margin was thin: drawn among the eleven kinds, over twelve random
 seeds (1000 to 1011) `a_nominal_applied_outside_its_bounds` took up to 1,414 examples and
@@ -969,18 +969,22 @@ those ways fails these searches; worlds that lost the shapes fail the worlds' au
   2026-10-18). Steps 9 and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and
   declare it drawn;
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
-  window by the least share measured. The result's properties draw their kind first among at most eleven (a
-  floor of 25 at `ci`), and HP6 declares its field's `-0`, its review's way, its statistics status object and
-  its unknown member by their chances, and its second property a nominal's ways by theirs. HP3's fourth part,
-  evidence's, declares its regions by their chances, each at four fifths of its nominal chance, which four
-  runs at `ci` measured above (2026-10-18). HP12's parts draw their kinds, steps or planted rules first (at
-  most twelve), HP4 its ways and
+  window by the least share measured. The result's properties draw their kind first among at most eleven;
+  HP1, HP2 and HP11 declare each kind by a chance of 0.07, below one in eleven, since at its floor of 25 a
+  kind's count, measured over 22 runs at `ci`, fell short with up to 2.8e-6 (at 0.07's floor of 10, 1.9e-7 at
+  most: S2b-2's review, 2026-10-18); and HP6 declares its field's `-0`, its review's way, its statistics
+  status object and its unknown member by their chances, and its second property a nominal's ways by theirs,
+  `behind_another` at its least share measured. HP3's fourth part, evidence's, declares its regions by their
+  chances, each at four fifths of its nominal chance, which four runs at `ci` measured above (2026-10-18);
+  HP12 declares the read field's form by its chance measured over 22 runs at `ci`, since a tenth of its
+  examples show none. HP12's parts draw their kinds, steps or planted rules first (at most twelve), HP4 its
+  ways and
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
   and those that draw a way first declare their ways drawn. For each such
   property, five of steps 9 and 10's, two of the result's (HP1 by a kind, HP6 by a chance) and two of HP4's
   (a form by its chance, in each of its two properties), and S2b-2's five (HP3's fourth part by a region,
-  HP12, HP6 and HP4 by evidence's form, HP6's second property by a nominal's way),
+  HP12, HP6 and HP4 by evidence's form, HP6's second property by a nominal's way and by `behind_another`),
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone. One of the five runs a parametrised property, HP8's
   other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,

@@ -171,6 +171,11 @@ CONTROLS = [
         ("check_nominal_supplied",),
     ),
     Control(
+        result_properties.test_a_nominal_supplies_its_value_and_the_assumption_it_rests_on,
+        "behind_another",
+        ("check_nominal_supplied",),
+    ),
+    Control(
         invariance_properties.test_a_fault_in_another_field_or_section_never_changes_the_read,
         "form_interval",
         ("check_isolated",),
