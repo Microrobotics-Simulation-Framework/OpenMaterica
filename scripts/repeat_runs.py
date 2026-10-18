@@ -15,6 +15,10 @@ only, so that it runs on the runner's Python before anything is installed.
 - `record SEED STATUS REPORT` prints one run's record, a line of JSON: its seed, pytest's exit status, the
   outcome, the number of tests, and for each test that failed its node id, its message and each failing
   example Hypothesis reported.
+- `derandomized` reads the node ids pytest collected (`--collect-only -q`) on standard input and prints a
+  warning, never a refusal, where any lies in a module whose searches are derandomized (`derandomizes`):
+  every repeat of such a test draws the same examples, but a repeat of one is still a control where a head is
+  compared with its base (#43's review, L7).
 - `summary DIRECTORY` sums the records under `DIRECTORY`, a `results.jsonl` for each job and each attempt
   of it: the runs, the failures and their seeds and examples, and the failure rate with its one-sided 95 %
   upper bound, appended to the step summary. It exits 1 where a run failed or did not finish, a seed has no
@@ -24,6 +28,7 @@ only, so that it runs on the runner's Python before anything is installed.
 """
 
 import argparse
+import ast
 import html
 import json
 import math
@@ -31,8 +36,9 @@ import os
 import re
 import sys
 from collections.abc import Mapping, Sequence
+from fnmatch import fnmatch
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 from xml.etree import ElementTree
 
 # The repository's Hypothesis profiles (`EXAMPLES` in tests/conftest.py) and the Pythons CI tests (ci.yml's
@@ -66,6 +72,11 @@ MAX_MESSAGE = 2_000
 # The failing seeds the summary shows with their examples; the others it lists by seed.
 SHOWN_FAILURES = 20
 CONFIDENCE = 0.95
+
+
+# The names of tests/property/support.py that run a derandomized search: `MUTANT_SEARCH`, and
+# `examples_to_kill`, which runs one.
+SUPPORT_SEARCHES = frozenset({"MUTANT_SEARCH", "examples_to_kill"})
 
 
 class Request(NamedTuple):
@@ -189,6 +200,68 @@ def job_seeds(environment: Mapping[str, str]) -> list[int]:
         raise RequestError(problems)
     start = first_seed + (job - 1) * runs
     return list(range(start, start + runs))
+
+
+def property_controls(root: Path) -> tuple[str, ...]:
+    """`PROPERTY_CONTROLS` as tests/conftest.py assigns it, read without importing the module, which imports
+    Hypothesis."""
+    module = ast.parse((root / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    for node in module.body:
+        if isinstance(node, ast.Assign) and [ast.unparse(target) for target in node.targets] == [
+            "PROPERTY_CONTROLS"
+        ]:
+            patterns: object = ast.literal_eval(node.value)
+            if isinstance(patterns, tuple) and all(
+                isinstance(each, str) for each in cast(tuple[object, ...], patterns)
+            ):
+                return cast(tuple[str, ...], patterns)
+    raise ValueError("tests/conftest.py assigns PROPERTY_CONTROLS no tuple of patterns")
+
+
+def derandomizes(source: str) -> bool:
+    """Whether a module's code, not its comments or strings, runs a derandomized search: a call given
+    `derandomize=True`, or a name it imports from tests/property/support.py that runs one
+    (`SUPPORT_SEARCHES`)."""
+    for node in ast.walk(ast.parse(source)):
+        if (
+            isinstance(node, ast.keyword)
+            and node.arg == "derandomize"
+            and isinstance(node.value, ast.Constant)
+            and node.value.value is True
+        ):
+            return True
+        if (
+            isinstance(node, ast.ImportFrom)
+            and (node.module or "").split(".")[-1] == "support"
+            and any(alias.name in SUPPORT_SEARCHES for alias in node.names)
+        ):
+            return True
+    return False
+
+
+def derandomized_modules(collected: str, root: Path) -> list[str]:
+    """The modules of the tests pytest collected, one node id a line (`--collect-only -q`), whose searches are
+    derandomized: a module `PROPERTY_CONTROLS` selects, or one whose code `derandomizes`."""
+    patterns = property_controls(root)
+    modules = sorted({line.partition("::")[0] for line in collected.splitlines() if "::" in line})
+    return [
+        module
+        for module in modules
+        if any(fnmatch(Path(module).stem, pattern) for pattern in patterns)
+        or ((root / module).is_file() and derandomizes((root / module).read_text(encoding="utf-8")))
+    ]
+
+
+def derandomized_warning(modules: Sequence[str]) -> str:
+    """The warning for a node that collects tests in `modules`, which are derandomized; none for no module."""
+    if not modules:
+        return ""
+    return "::warning title=Derandomized tests::" + annotation(
+        f"the node collects tests in {len(modules)} modules whose searches are derandomized "
+        f"({', '.join(modules)}): every repeat of those draws the same examples, whatever its seed, and its "
+        "outcome depends on the constants of the local modules loaded beside it, so vary the selection, "
+        "not the count. A repeat of one is still a control where a head is compared with its base."
+    )
 
 
 def failing_examples(text: str) -> list[str]:
@@ -476,6 +549,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("request", help="check the request in the environment and write it as outputs")
     commands.add_parser("seeds", help="print the seeds of the job JOB, one a line")
+    commands.add_parser(
+        "derandomized", help="warn where a node id on standard input lies in a derandomized module"
+    )
     recording = commands.add_parser("record", help="print one run's record as a line of JSON")
     recording.add_argument("seed", type=int)
     recording.add_argument("status", type=int)
@@ -490,6 +566,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"The request, checked: {request}")
         elif arguments.command == "seeds":
             print("\n".join(str(seed) for seed in job_seeds(os.environ)))
+        elif arguments.command == "derandomized":
+            if warning := derandomized_warning(derandomized_modules(sys.stdin.read(), Path.cwd())):
+                print(warning)
         elif arguments.command == "record":
             print(json.dumps(record(arguments.seed, arguments.status, arguments.report)))
         else:

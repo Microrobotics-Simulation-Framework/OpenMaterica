@@ -5285,3 +5285,79 @@ def test_the_repeat_table_check_can_fail(old: str, new: str) -> None:
     readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
     assert readme.count(old) == 1
     assert repeat_table_problems(readme.replace(old, new), workflow(REPEAT)) != []
+
+
+# The repeat request's warning on a node whose tests are derandomized (#43's review, L7): nodes, with extra
+# arguments, and the modules the warning must name, none for a node it must not warn on. `--property-controls
+# none` leaves the audit controls out, and the modules whose own code derandomizes a search in:
+# test_audits.py, and test_harvested_constants.py, which runs searches with `derandomize=True` to show what
+# they draw.
+DERANDOMIZED_NODES: list[tuple[str, str, list[str]]] = [
+    ("tests/unit/test_audit_controls.py", "", ["tests/unit/test_audit_controls.py"]),
+    ("tests/unit/test_audits.py", "", ["tests/unit/test_audits.py"]),
+    ("tests/unit/test_repeat_runs.py::test_with_every_run_failed_the_bound_is_one", "", []),
+    (
+        "tests/unit",
+        "--property-controls=none",
+        ["tests/unit/test_audits.py", "tests/unit/test_harvested_constants.py"],
+    ),
+]
+DERANDOMIZED_WARNING = "::warning title=Derandomized tests::"
+
+
+def derandomized_warning_problems(repeat: Workflow, directory: Path) -> list[str]:
+    """Where the request job's collect step, run as written on this repository, refuses a node it must take
+    because its tests are derandomized, or does not warn naming exactly the derandomized modules of what
+    pytest collected, in one workflow command, or warns on a node whose tests are not."""
+    environment = runner(directory, UV_RUN)
+    collect = step(repeat["jobs"]["request"], COLLECT_STEP)
+    problems: list[str] = []
+    for node, extra, modules in DERANDOMIZED_NODES:
+        context = job_context("request", CHECKED | {"node": node, "extra": extra})
+        status, outputs, printed = run_step(collect, context, REPOSITORY, base=environment, scratch=directory)
+        warnings = [line for line in workflow_commands(printed) if line.startswith(DERANDOMIZED_WARNING)]
+        named = re.findall(r"tests/[\w/]+\.py", " ".join(warnings))
+        if status != 0 or outputs:
+            problems.append(f"the collect step refuses {node!r} with {extra!r}: {printed[-300:]}")
+        if (len(warnings), named) != ((1, modules) if modules else (0, [])):
+            problems.append(f"the collect step warns on {node!r} with {extra!r} as {warnings}")
+    return problems
+
+
+def test_the_repeat_request_warns_on_a_derandomized_node_and_takes_it(tmp_path: Path) -> None:
+    assert derandomized_warning_problems(workflow(REPEAT), tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        (
+            'python3 scripts/repeat_runs.py derandomized <<< "$collected"\n',
+            "",
+            "the collect step warns on 'tests/unit/test_audit_controls.py' with '' as []",
+        ),
+        (
+            'python3 scripts/repeat_runs.py derandomized <<< "$collected"\n',
+            'python3 scripts/repeat_runs.py derandomized <<< "$collected" | grep -q . && exit 1\n',
+            "the collect step refuses 'tests/unit/test_audit_controls.py'",
+        ),
+        (
+            'python3 scripts/repeat_runs.py derandomized <<< "$collected"\n',
+            'python3 scripts/repeat_runs.py derandomized <<< "$NODE"\n',
+            "the collect step warns on 'tests/unit/test_audits.py' with '' as []",
+        ),
+        (
+            'python3 scripts/repeat_runs.py derandomized <<< "$collected"\n',
+            'python3 scripts/repeat_runs.py derandomized <<< "$(uv run pytest --collect-only -q "$NODE")"\n',
+            "the collect step warns on 'tests/unit' with '--property-controls=none' as",
+        ),
+    ],
+    ids=["no-warning", "a-refusal", "the-node-not-the-collection", "the-extra-arguments-left-out"],
+)
+def test_the_derandomized_warning_check_can_fail(tmp_path: Path, old: str, new: str, problem: str) -> None:
+    repeat = copy.deepcopy(workflow(REPEAT))
+    collect = step(repeat["jobs"]["request"], COLLECT_STEP)
+    assert collect["run"].count(old) == 1
+    collect["run"] = collect["run"].replace(old, new)
+    found = derandomized_warning_problems(repeat, tmp_path)
+    assert any(problem in line for line in found), found

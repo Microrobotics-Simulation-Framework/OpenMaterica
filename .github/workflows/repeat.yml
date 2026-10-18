@@ -106,7 +106,10 @@ jobs:
           cache-dependency-glob: uv.lock
       - run: uv sync --locked
       # pytest refuses a test the node does not name and an extra argument's value its option does not list,
-      # and finds none in a path that holds none: before any runner starts a run.
+      # and finds none in a path that holds none: before any runner starts a run. A node that collects a test
+      # whose search is derandomized gets a warning, never a refusal (scripts/repeat_runs.py, `derandomized`):
+      # every repeat of it draws the same examples, but a repeat of one is still a control where a head is
+      # compared with its base (#43's review, L7).
       - name: The node collects a test
         env:
           NODE: ${{ steps.checked.outputs.node }}
@@ -121,6 +124,7 @@ jobs:
             echo "::error title=Repeat request::pytest collected no test of the node with these arguments (exit $status)"
             exit 1
           fi
+          python3 scripts/repeat_runs.py derandomized <<< "$collected"
       # The runs' cap, as ci.yml's gate checks the per-commit jobs' (its step says why), with the same script:
       # a whole number from 1 to 20, or no run starts. The value it took is the request job's output
       # `max_parallel`, the only place the runs read it.
