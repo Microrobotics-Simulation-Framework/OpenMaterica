@@ -1024,34 +1024,62 @@ def test_a_lock_file_that_is_out_of_date_is_refused_and_left_as_it_was(tmp_path:
     project = tmp_path / "project"
     project.mkdir()
     pyproject = project / "pyproject.toml"
+    # The project asks for no more than the Python that runs this test, and goes stale by its version, not by
+    # its Python requirement: raising `requires-python` past the running interpreter made every uv call after
+    # it fail with "incompatible with the project's Python requirement" on Python 3.11 (CI, 2026-10-18), exit
+    # 2, whether or not the lock was stale. That also let the two refusals below pass for the wrong reason.
+    python = f"{sys.version_info.major}.{sys.version_info.minor}"
     pyproject.write_text(
-        '[project]\nname = "p"\nversion = "0"\nrequires-python = ">=3.11"\n', encoding="utf-8"
+        f'[project]\nname = "p"\nversion = "0"\nrequires-python = ">={python}"\n', encoding="utf-8"
     )
+    # An explicit environment: nothing uv reads from the one that runs the test (UV_LOCKED, UV_FROZEN,
+    # UV_NO_SYNC, UV_PROJECT_ENVIRONMENT, a cache or index setting, an active VIRTUAL_ENV) reaches the
+    # throwaway project.
     environment = {
-        **os.environ,
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("UV_") and name not in {"VIRTUAL_ENV", "CONDA_PREFIX"}
+    }
+    environment |= {
         "UV_PROJECT_ENVIRONMENT": str(tmp_path / "venv"),
         "UV_PYTHON": sys.executable,
+        "UV_PYTHON_DOWNLOADS": "never",
         "UV_OFFLINE": "1",
+        "UV_NO_CONFIG": "1",
     }
 
-    def uv(*arguments: str) -> int:
+    def uv(*arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["uv", *arguments], cwd=project, env=environment, capture_output=True, check=False
-        ).returncode
+            ["uv", *arguments], cwd=project, env=environment, capture_output=True, text=True, check=False
+        )
 
-    assert uv("lock") == 0
+    def succeeds(*arguments: str) -> None:
+        done = uv(*arguments)
+        assert done.returncode == 0, f"uv {' '.join(arguments)} exited {done.returncode}: {done.stderr}"
+
+    def refuses_a_stale_lock(*arguments: str) -> None:
+        done = uv(*arguments)
+        assert done.returncode != 0, f"uv {' '.join(arguments)} accepted a stale lock file: {done.stderr}"
+        # for the lock file's staleness, not for another reason (an interpreter the project does not allow)
+        assert "needs to be updated" in done.stderr, (
+            f"uv {' '.join(arguments)} exited {done.returncode}: {done.stderr}"
+        )
+
+    succeeds("lock")
     lock = (project / "uv.lock").read_bytes()
-    assert uv("lock", "--check") == 0  # control: a lock file that is current passes
-    assert uv("run", "--locked", "python", "-c", "pass") == 0
-    pyproject.write_text(pyproject.read_text(encoding="utf-8").replace(">=3.11", ">=3.12"), encoding="utf-8")
-    assert uv("lock", "--check") != 0
-    assert uv("run", "--locked", "python", "-c", "pass") != 0
+    succeeds("lock", "--check")  # control: a lock file that is current passes
+    succeeds("run", "--locked", "python", "-c", "pass")
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace('version = "0"', 'version = "1"'), encoding="utf-8"
+    )
+    refuses_a_stale_lock("lock", "--check")
+    refuses_a_stale_lock("run", "--locked", "python", "-c", "pass")
     assert (project / "uv.lock").read_bytes() == lock
     # control: without `--locked` uv rewrites the lock file, and `uv lock --check` passes after it, as the
     # script's first version left the builder's tree
-    assert uv("run", "python", "-c", "pass") == 0
+    succeeds("run", "python", "-c", "pass")
     assert (project / "uv.lock").read_bytes() != lock
-    assert uv("lock", "--check") == 0
+    succeeds("lock", "--check")
 
 
 @pytest.mark.parametrize(
