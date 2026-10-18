@@ -63,7 +63,8 @@ def examples_to_kill(
     error: type[Exception] = AssertionError,
 ) -> int:
     """The examples Hypothesis tries, searching `examples`, until `check` raises `error`; an AssertionError
-    where it never does."""
+    where it never does. An `error` raised by `examples` itself (a strategy that asserts) is not a kill: it is
+    raised again, as an AssertionError that says so."""
     tried = 0
     killed_at = 0
 
@@ -81,6 +82,8 @@ def examples_to_kill(
     try:
         search()
     except error:
+        if not killed_at:
+            raise AssertionError(f"the strategy raised {error.__name__} itself, before any check") from None
         return killed_at
     raise AssertionError(f"the mutant survived {tried} examples")
 
