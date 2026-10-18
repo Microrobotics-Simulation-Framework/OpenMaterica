@@ -36,9 +36,8 @@ def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
         counts,
         {} if declared is None else dict(declared.kwargs),
         () if drawn is None else drawn.args,
-        by_draws=PROFILE in audits.DRAW_FLOORS,
         chances={} if chances is None else dict(chances.kwargs),
-        chance_floors=PROFILE in audits.CHANCE_FLOORS,
+        **audits.RULES[PROFILE],
     )
     if problems:
         pytest.fail("feature audit: " + "; ".join(problems) + replay(item))

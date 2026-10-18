@@ -184,9 +184,8 @@ def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
         counts,
         marker_kwargs(control, "features"),
         drawn,
-        by_draws=True,
         chances=chances,
-        chance_floors=True,
+        **audits.RULES["ci"],
     )
     chance = chances[control.never] if control.never in chances else 1 / len(drawn)
     floor = audits.draw_floor(EXAMPLES["ci"], chance)

@@ -2,8 +2,11 @@
 """The property tests' audits can fail. This lives outside `tests/property/`, whose audits would fail this
 test's filtering property too."""
 
+import hashlib
+import json
 import math
 from collections import Counter
+from collections.abc import Iterator
 from fractions import Fraction
 from math import comb
 
@@ -11,6 +14,7 @@ import pytest
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
+from tests.conftest import EXAMPLES
 from tests.property import audits
 from tests.property.support import feature
 
@@ -196,7 +200,8 @@ def test_at_dev_a_feature_declared_by_its_chance_is_held_to_its_draw_floor_where
     strict = audits.feature_shortfalls(counts(200, often=floor), {}, by_draws=True, chances=chances)
     assert len(strict) == 1
     assert "draw it more often" in strict[0]
-    assert audits.CHANCE_FLOORS == audits.DRAW_FLOORS | {"dev"}
+    assert audits.RULES["dev"] == {"by_draws": False, "chance_floors": True}
+    assert audits.RULES["ci"]["by_draws"]
 
 
 def test_a_feature_declared_by_its_chance_counts_as_declared() -> None:
@@ -250,3 +255,96 @@ def test_a_first_choice_shows_in_at_most_cluster_examples() -> None:
 
     drawing()
     assert max(shown.values()) == audits.CLUSTER
+
+
+# Every declaration the pins and the false-failure check judge: a least share or a chance in steps of 0.001,
+# or one to 60 features drawn alike.
+DECLARATIONS = [
+    *(("features", index / 1000) for index in range(1, 1001)),
+    *(("drawn", drawn) for drawn in range(1, 61)),
+    *(("chances", index / 1000) for index in range(1, 1001)),
+]
+
+
+def judging(rule: audits.Rule, examples: int, kind: str, value: float) -> tuple[int | None, list[str]]:
+    """The fewest examples a feature declared so must show to pass `rule`'s audit in a run of `examples`,
+    with the problems one fewer gives; or None, with the problems the most give, where no count passes."""
+    names = [f"f{index}" for index in range(int(value))] if kind == "drawn" else ["f"]
+
+    def problems(shown: int) -> list[str]:
+        return audits.feature_shortfalls(
+            counts(examples, **dict.fromkeys(names, shown)),
+            {"f": value} if kind == "features" else {},
+            names if kind == "drawn" else (),
+            chances={"f": value} if kind == "chances" else {},
+            **rule,
+        )
+
+    if problems(examples):
+        return None, problems(examples)
+    fewest, passing = 0, examples
+    while fewest < passing:
+        middle = (fewest + passing) // 2
+        if problems(middle):
+            fewest = middle + 1
+        else:
+            passing = middle
+    return fewest, problems(fewest - 1) if fewest else []
+
+
+Judgement = tuple[int, str, float, int | None, list[str]]
+
+
+def judgements(rule: audits.Rule, sizes: tuple[int, ...]) -> Iterator[Judgement]:
+    """What `rule` judges of every declaration, in runs of each of `sizes` examples."""
+    for examples in sizes:
+        for kind, value in DECLARATIONS:
+            yield (examples, kind, value, *judging(rule, examples, kind, value))
+
+
+def digest(rule: audits.Rule, sizes: tuple[int, ...]) -> str:
+    return hashlib.sha256(json.dumps(list(judgements(rule, sizes))).encode()).hexdigest()
+
+
+def differ(rule: audits.Rule, pinned: str) -> bool:
+    """Whether `rule` judges some declaration otherwise than the pinned profile's rule, in its runs: so that
+    its digest is another. It stops at the first difference."""
+    sizes = PINNED[pinned][0]
+    return any(
+        ours != theirs
+        for ours, theirs in zip(judgements(rule, sizes), judgements(audits.RULES[pinned], sizes), strict=True)
+    )
+
+
+# What `ci` and `deep` judge, pinned on 2026-10-18 from the rule as it stood before `dev` was held to
+# FALSE_FAILURE: a change of `dev`'s rule leaves them as they are. The sizes are each profile's examples and a
+# run that ends sooner.
+PINNED = {
+    "ci": ((2_000, 200), "1e80bd1978fb1155c5a52f9524ca94cf6c7e0b1f4c01b4230887ab2651a05357"),
+    "deep": ((20_000, 2_000), "f9ad81cf4cce990ceafca0115f850ae10db9fe7a7fc0ebc289292bf2d1bfe5e5"),
+}
+
+
+@pytest.mark.parametrize("profile", sorted(PINNED))
+def test_what_ci_and_deep_judge_is_pinned(profile: str) -> None:
+    sizes, pinned = PINNED[profile]
+    assert digest(audits.RULES[profile], sizes) == pinned
+
+
+@pytest.mark.parametrize("profile", sorted(PINNED))
+def test_the_pin_sees_another_rule(profile: str) -> None:
+    """The control: each other profile's rule judges a pinned profile's runs otherwise."""
+    for other in sorted(audits.RULES.keys() - {profile}):
+        assert differ(audits.RULES[other], profile), other
+
+
+def test_the_pin_sees_a_floor_moved(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control: `ci`'s rule with floors at another false failure judges its runs otherwise."""
+    rule = audits.RULES["ci"]
+    floors = list(judgements(rule, PINNED["ci"][0]))
+    monkeypatch.setattr(audits, "FALSE_FAILURE", 1e-3)
+    assert any(ours != theirs for ours, theirs in zip(judgements(rule, PINNED["ci"][0]), floors, strict=True))
+
+
+def test_every_profile_has_a_rule() -> None:
+    assert audits.RULES.keys() == EXAMPLES.keys()
