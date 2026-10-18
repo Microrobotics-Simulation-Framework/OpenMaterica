@@ -712,6 +712,52 @@ def test_a_change_reaches_what_imports_it_through_others_and_not_what_does_not(t
     assert shards(checks) == {"one"}  # control: two imports only c
 
 
+def test_importing_a_module_reaches_the_package_files_it_runs_and_not_their_siblings(tmp_path: Path) -> None:
+    for name, text in {
+        "src/pkg/__init__.py": "",
+        "src/pkg/sub/__init__.py": "",
+        "src/pkg/sub/deep.py": "",
+        "src/pkg/sub/other.py": "",
+        "src/pkg/top.py": "",
+        "tests/conftest.py": "SHARDS = {}\n",
+        "tests/unit/test_deep.py": "import pkg.sub.deep",
+        "tests/unit/test_top.py": "from pkg import top",
+    }.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text, encoding="utf-8")
+    tree = Tree(tmp_path)
+    assert tree.importers["pkg.sub"] == {"tests/unit/test_deep.py"}  # `pkg.sub.deep` runs pkg/sub/__init__.py
+    assert run_paths(plan("src/pkg/sub/__init__.py", tree=tree)[0]) == {"tests/unit/test_deep.py"}
+    assert run_paths(plan("src/pkg/__init__.py", tree=tree)[0]) == {
+        "tests/unit/test_deep.py",
+        "tests/unit/test_top.py",
+    }
+    # control: a module beside the package file is run only by what imports it, which nothing here does
+    assert tree.importers["pkg.sub.other"] == set()
+    assert "tests/unit/test_top.py" not in run_paths(plan("src/pkg/sub/__init__.py", tree=tree)[0])
+
+
+@pytest.mark.parametrize(
+    ("package_file", "test", "imports_only"),
+    [
+        ("src/materica/__init__.py", "tests/unit/test_slips.py", "materica.core.slips"),
+        ("scripts/__init__.py", "tests/unit/test_schema_index.py", "scripts.freeze_schema"),
+        ("tests/fuzz/__init__.py", "tests/unit/test_fuzz_oracle.py", "tests.fuzz.field_oracle"),
+    ],
+)
+@pytest.mark.usefixtures("no_fallback")  # the whole-directory fallback would select the test without the rule
+def test_a_package_file_selects_a_test_that_imports_only_a_module_under_it(
+    package_file: str, test: str, imports_only: str
+) -> None:
+    names = pre_review.imported_names(test, TREE.files[test])
+    assert imports_only in names  # control: the test names the module, never the package itself
+    package = pre_review.module_name(package_file)
+    assert package is not None
+    assert package not in names
+    assert selects(plan(package_file)[0], test)
+    assert all(test not in reader.tests for reader in pre_review.TREE_READERS)  # no declared reader
+
+
 def test_a_deleted_module_still_reaches_what_imported_it(tmp_path: Path) -> None:
     tree = small_tree(tmp_path)
     (tmp_path / "src/pkg/a.py").unlink()
@@ -1285,7 +1331,12 @@ TRACE_SELECTION = "MATERICA_TRACE_SELECTION"
 def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]]:
     """Every file the tests open and every directory they list, by test file: the suite is run under
     `tests/unit/open_trace.py`, which keeps the first test of each test function and imports, without running,
-    the property modules. It sees what the test process opens, not what a subprocess of it does."""
+    the property modules. It sees what the test process opens, not what a subprocess of it does.
+
+    The run gets an empty bytecode cache of its own (`PYTHONPYCACHEPREFIX`). With a warm cache the import
+    system reads a module's `.pyc`, under `__pycache__` and ignored, and never opens its source, so a
+    package's `__init__.py` was named or not by whatever an earlier run had left. Every import now reads its
+    source, and the trace is the same on a laptop, on CI and in a clean checkout."""
     if TRACE_OUT in os.environ:
         pytest.skip("this is the traced run itself")
     if os.environ.get(TRACE_SELECTION) != "1":
@@ -1295,6 +1346,7 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]
             "tests/unit/test_pre_review.py -k trace`"
         )
     out = tmp_path_factory.mktemp("trace") / "opens.jsonl"
+    cold_cache = tmp_path_factory.mktemp("cold_bytecode_cache")
     run = subprocess.run(
         [
             sys.executable,
@@ -1306,7 +1358,12 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]
             *("-n", "4", "--dist", "worksteal", "-q", "--tb=no", "-p", "no:cacheprovider"),
         ],
         cwd=REPOSITORY,
-        env={**os.environ, "OPEN_TRACE_ROOT": str(REPOSITORY), TRACE_OUT: str(out)},
+        env={
+            **os.environ,
+            "OPEN_TRACE_ROOT": str(REPOSITORY),
+            TRACE_OUT: str(out),
+            "PYTHONPYCACHEPREFIX": str(cold_cache),
+        },
         capture_output=True,
         text=True,
         check=False,
@@ -1318,6 +1375,9 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]
     # control: the trace sees what it is for, or an empty one would pass every test below
     assert ("opened", "tests/unit/test_read.py", f"{PLAIN_READ}/water_fixture.json") in found
     assert ("listed", "tests/unit/test_source_files.py", "tests/property") in found
+    # control: the run read each package's source, as a cold cache makes the import system do. With the
+    # repository's own warm `__pycache__` it would have read the `.pyc`, which the trace ignores
+    assert ("opened", "tests/unit/test_fuzz_oracle.py", "tests/fuzz/__init__.py") in found
     return found
 
 
@@ -1344,6 +1404,9 @@ def lists_python(trace: list[tuple[str, str, str]]) -> set[tuple[str, str]]:
         for kind, test, directory in trace
         if kind == "listed" and directory in with_python and is_a_test_module(test)
     }
+
+
+FUZZ_ORACLE_TEST = "tests/unit/test_fuzz_oracle.py"
 
 
 def test_the_declared_readers_hold_against_a_trace_of_the_files_the_tests_open(
@@ -1376,6 +1439,11 @@ def test_the_declared_readers_hold_against_a_trace_of_the_files_the_tests_open(
         assert listed, "no test lists a directory of Python files"
         absent = [(d, test) for d, test in listed if not selects(plan(f"{d}/zz_new.py")[0], test)]
         assert not absent, f"a new Python file does not select a test that lists its directory: {absent}"
+
+        # control: the trace names the fuzz package's file for the oracle's test, and no declared reader
+        # lists that test, so the import graph alone selects it (the cold run once named this pair)
+        assert ("tests/fuzz/__init__.py", FUZZ_ORACLE_TEST) in opened
+        assert all(FUZZ_ORACLE_TEST not in reader.tests for reader in pre_review.TREE_READERS)
 
         # control: with the table of whole-tree readers emptied, the same check names the readers it held
         unmapped.setattr(pre_review, "TREE_READERS", ())

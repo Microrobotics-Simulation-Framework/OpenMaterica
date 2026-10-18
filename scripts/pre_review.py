@@ -19,11 +19,12 @@ runs them all, on every Python, and its result is the one that counts. A change 
 printed as such: that is a gap in this script, or a change only an independent eye can judge.
 
 What imports what is read from the import statements of the Python files, `from a import b` counting for
-`a` and for `a.b`; a package is not taken to import its parents, and a data file is followed to the tests and
-modules that read it by the declared table `DATA_RULES`. A few tests read the whole tree instead of importing
-what they check (`TREE_READERS`): a changed Python file selects them whether or not anything imports it. A
-change it cannot map to a test with confidence (a Python file no test imports, a file under `tests/` outside
-every group of tests, a conftest of a group it does not know) selects the whole of `tests/unit`, and says so.
+`a` and for `a.b`, and `import a.b.c` for `a` and `a.b` too, whose `__init__.py` it runs; a data file is
+followed to the tests and modules that read it by the declared table `DATA_RULES`. A few tests read the whole
+tree instead of importing what they check (`TREE_READERS`): a changed Python file selects them whether or not
+anything imports it. A change it cannot map to a test with confidence (a Python file no test imports, a file
+under `tests/` outside every group of tests, a conftest of a group it does not know) selects the whole of
+`tests/unit`, and says so.
 `tests/unit/test_pre_review.py` holds both tables against a trace of the files the tests open.
 """
 
@@ -456,7 +457,11 @@ class Tree:
         self.importers: dict[str, set[str]] = defaultdict(set)
         for path, source in self.files.items():
             for name in imported_names(path, source):
-                self.importers[name].add(path)
+                # Importing `a.b.c` runs `a/__init__.py` and `a/b/__init__.py` first, so the file is an
+                # importer of each parent package as well.
+                parts = name.split(".")
+                for end in range(1, len(parts) + 1):
+                    self.importers[".".join(parts[:end])].add(path)
         self._shards: dict[str, tuple[str, ...]] | None = None
 
     def exists(self, path: str) -> bool:
