@@ -512,10 +512,13 @@ every family entry goes in `families/CHANGELOG.md`.
   collect; or undecided. Where the baseline did not pass, no mutant counts as killed, and the run passes only
   when every mutant was killed. Patches are files of the dispatched commit, never text from the dispatch form,
   and the request refuses, before any mutant runs, one git does not read as a text patch in its own format,
-  one with binary data, a rename, a copy, a link or a submodule, and one that touches a path outside the
-  checkout, inside `.git`, under `.github/` or `mutants/`, the runner itself (`scripts/mutant_runs.py`),
-  `pyproject.toml` or `uv.lock`. A mutant's job runs the code that records its verdict from a copy outside the
-  checkout, made before the patch is applied; the record holds facts, and one function makes the verdict from
+  one with binary data, a rename in any form (with rename lines or without, as a `diff --git`, `---` or `+++`
+  line naming another path, which git applies though its report does not show it), a copy, a link or a
+  submodule, and one that touches a path outside the checkout, inside `.git`, under `.github/` or `mutants/`,
+  one git ignores (`.venv/`, `.hypothesis/`), the runner itself (`scripts/mutant_runs.py`), or what decides
+  what uv installs or how it runs (`pyproject.toml`, `uv.lock`, `uv.toml`, `.python-version`); once the patch
+  is applied, uv neither syncs nor locks. A mutant's job runs the code that records its verdict from a copy
+  outside the checkout, made before the patch is applied; the record holds facts, and one function makes the verdict from
   them, so that a mutant whose patch did not apply or whose code did not import is broken whatever else its
   record holds. The runs of a dispatch share one seed, given or drawn and shown, so that a mutant's run
   replays exactly. At most `MUTANT_MAX_PARALLEL` mutants run at once, a repository variable checked as the

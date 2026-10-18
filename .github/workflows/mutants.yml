@@ -6,9 +6,10 @@
 # tests/README.md, "Mutant tables on CI", says how to ask for one and how to read its table.
 # A mutant is a patch committed on the dispatched branch as mutants/<name>.patch; the dispatch names patches,
 # never gives their text. The request job refuses any patch git does not read as a text patch in its own
-# format, and one that renames, copies or links a file, or touches a path outside the checkout, under .github/
-# or mutants/, this workflow's script, or what decides what is installed and what pytest selects
-# (pyproject.toml, uv.lock): scripts/mutant_runs.py says why.
+# format, and one that renames, copies or links a file, in any form, or touches a path outside the checkout,
+# under .github/ or mutants/, one git ignores (.venv/, .hypothesis/), this workflow's script, or what decides
+# what uv installs or how it runs (pyproject.toml, uv.lock, uv.toml, .python-version): scripts/mutant_runs.py
+# says why. Once the patch is applied, uv neither syncs nor locks (`uv run --no-sync --frozen`).
 # Each mutant's job applies its patch to a clean checkout of the dispatched commit, checks that the code
 # imports, collects the selection and runs it until the first failure: killed, by the test that failed first;
 # survived; or broken, where the patch does not apply or the code does not import or collect. A job of the
@@ -180,10 +181,11 @@ jobs:
       # The script is copied out of the checkout and run from there, isolated (`python3 -I`), before the patch
       # is applied, so that nothing the patch writes reaches the code that records the verdict; the record goes
       # to the runner's temporary directory, outside the checkout. The script checks the patch again, applies
-      # it, imports the package, collects the selection and runs it under `uv run timeout --foreground
-      # --signal=INT` until three minutes before the job's timeout, as ci.yml's jobs run pytest (its step says
-      # why): a worker per vCPU, under `worksteal`, stopping at the first failure, under the request's seed. It
-      # exits 1 where it could not decide, or where the baseline did not pass.
+      # it, imports the package, collects the selection and runs it under `timeout --foreground --signal=INT`
+      # until three minutes before the job's timeout, as ci.yml's jobs run pytest (its step says why): a worker
+      # per vCPU, under `worksteal`, stopping at the first failure, under the request's seed. Each through
+      # `uv run --no-sync --frozen`, so that nothing the patch adds or deletes changes what `uv sync` installed.
+      # It exits 1 where it could not decide, or where the baseline did not pass.
       - name: The mutant, applied and run
         id: run
         env:

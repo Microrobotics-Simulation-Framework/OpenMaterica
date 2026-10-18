@@ -12,12 +12,15 @@ patch is applied, so that nothing a patch writes reaches the code that records i
   them, checked, as the step's outputs, the matrix of jobs among them: the baseline (`""`) and each mutant.
   A patch is a file committed in `mutants/`, never text from the dispatch form, and is refused
   (`patch_problems`) unless git reads it as a text patch in its own format that changes files in place, adds
-  or deletes them, each by a plain path inside the checkout, none under `.github/` or `mutants/`, none the
-  runner itself and none of the files that decide what is installed and what pytest selects
+  or deletes them, each by a plain path inside the checkout that its `diff --git` line names twice, none
+  under `.github/` or `mutants/`, none that git ignores (the environment `uv sync` makes, the example
+  database), none the runner itself and none of the files that decide what uv installs or how it runs
   (`REFUSED_FILES`).
 - `run DIRECTORY` runs one job, the mutant `MUTANT` (`""` for the baseline): it checks the patch again,
   applies it (`git apply`), checks that the code imports (`imports`, in the project's environment), collects
   the selection, runs it until the first failure, and writes the facts it found to `DIRECTORY/record.json`.
+  Every `uv run` after the patch neither syncs the environment nor locks (`UV_RUN`), so that nothing a
+  patch adds changes what is installed.
 - `imports [PATH ...]` compiles each Python file of the paths given, imports every module of the package,
   and prints what fails; `run` calls it with the paths the patch touches.
 - `table DIRECTORY OUTPUT` reads every record under `DIRECTORY`, writes the table to the step summary and to
@@ -66,14 +69,33 @@ PRINTABLE = re.compile(r"[\x20-\x7e]+")
 WHOLE_NUMBER = re.compile(r"0|[1-9][0-9]*")
 
 # What a patch may touch: plain relative paths, by parts of letters, digits, `_`, `.` and `-`, so that a path
-# git prints needs no quoting and cannot start at the root; never a part `.` or `..`, nor `.git`, and never
-# through a symbolic link out of the checkout. A path under one of `REFUSED_DIRECTORIES`, or one of
-# `REFUSED_FILES`, is refused, ignoring case: the workflows, the patches, this runner, and the files that
-# decide what `uv` installs and what pytest selects, which a mutant of the code under test never changes.
+# git prints needs no quoting and cannot start at the root; never a part `.` or `..`, nor `.git`, never
+# through a symbolic link out of the checkout, and never a path git ignores (`ignored_paths`). A path under
+# one of `REFUSED_DIRECTORIES`, or one of `REFUSED_FILES`, is refused, ignoring case: the workflows, the
+# patches, this runner, and the files that decide what uv installs or how it runs, which a mutant of the code
+# under test never changes. `pyproject.toml` and `uv.lock` decide what is installed; `uv.toml` is uv's
+# configuration, read in the working directory before `pyproject.toml` (uv's "Configuration files", read
+# 2026-10-18); `.python-version` and `.python-versions` name the Python (uv's "Python versions"). In the job,
+# setup-uv's `UV_PYTHON` overrides the file and `UV_RUN` keeps the environment, but a plain `uv run` rebuilds
+# `.venv` on the file's Python (checked 2026-10-18 with uv 0.11.15). uv reads no configuration of pip's.
 PLAIN_PATH = re.compile(r"[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*")
 RUNNER = "scripts/mutant_runs.py"
 REFUSED_DIRECTORIES = (".github", MUTANTS_DIRECTORY)
-REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock")
+REFUSED_FILES = (RUNNER, "pyproject.toml", "uv.lock", "uv.toml", ".python-version", ".python-versions")
+# A file's `diff --git` line as git writes it for a file changed in place, added or deleted: one plain path,
+# twice. git's reports (`--numstat`, `--summary`) give one path of a file whose names differ without rename
+# lines, and `git apply` then deletes the other (#46's review, H1; checked 2026-10-18 with git 2.43): a
+# `diff --git` line naming two paths, one git reads in another form (`x/OLD y/NEW`, a second space), or
+# `---` and `+++` lines naming another path than their `diff --git` line. So the names are read here
+# (`named_paths`) and must all be one path.
+HEADER = re.compile(r"diff --git a/(\S+) b/(\S+)")
+NO_FILE = "/dev/null"
+# How a mutant's job runs a command in the project's environment once the patch is applied: never syncing it
+# and never locking (`--no-sync` implies `--frozen`, uv's help says; both are given), so that no file a patch
+# adds or deletes, `uv.lock` or a configuration of uv's, changes what is installed. Flags rather than
+# `UV_NO_SYNC` and `UV_FROZEN`: the copy of this script made before the patch holds them, and uv reads its
+# command line before its environment and its files.
+UV_RUN = ("uv", "run", "--no-sync", "--frozen")
 # The file modes a patch may give: a plain file, executable or not; never a symbolic link or a submodule.
 MODES = ("100644", "100755")
 # Every character a text patch may hold but those below space other than tab and line feed, and DEL.
@@ -140,10 +162,11 @@ def whole_number(name: str, text: str, low: int, high: int, problems: list[str])
     return value
 
 
-def git(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+def git(root: Path, *arguments: str, given: str | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", *arguments],
         cwd=root,
+        input=given,
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -175,34 +198,76 @@ def path_problems(root: Path, path: str) -> list[str]:
     if folded[0] in {directory.casefold() for directory in REFUSED_DIRECTORIES}:
         return [f"{path} is under {parts[0]}/, which a patch may not touch"]
     if path.casefold() in {file.casefold() for file in REFUSED_FILES}:
-        return [
-            f"{path} is the runner or decides the environment or the selection, which a patch may not touch"
-        ]
+        return [f"{path} is the runner or decides what uv installs or how it runs, which no patch may touch"]
     if not (root / path).resolve().is_relative_to(root.resolve()):
         return [f"{path} leads out of the checkout through a symbolic link"]
     return []
 
 
+def ignored_paths(root: Path, paths: Sequence[str]) -> tuple[set[str], str]:
+    """The paths of `paths` git's ignore rules match, whether tracked or not (`git check-ignore --no-index`),
+    read before anything is installed: the environment `uv sync` makes (`.venv/`) and Hypothesis's example
+    database (`.hypothesis/`) among them; and git's error where it could not say."""
+    if not paths:
+        return set(), ""
+    asked = git(root, "check-ignore", "--no-index", "--stdin", "-z", given="".join(f"{p}\0" for p in paths))
+    if asked.returncode not in (0, 1):
+        return set(), first_lines(asked.stderr) or f"exit {asked.returncode}"
+    return {path for path in asked.stdout.split("\0") if path}, ""
+
+
+class Named(NamedTuple):
+    headers: list[str | None]
+    paths: list[str]
+    problems: list[str]
+
+
+def named_paths(text: str) -> Named:
+    """The names a patch gives its files: the path of each `diff --git` line, in order, None for one that does
+    not name one plain path twice (`HEADER`); every path a `diff --git` line names, both of one that names
+    two; and why any name is not its file's. Each `---` and `+++` line of a file before its first hunk must
+    name its path (`a/`, `b/`) or `/dev/null`. A hunk's lines are its file's content and are not read; a part
+    after them that is not under a `diff --git` line is one more file in git's report (`--numstat`), which
+    `patch_problems` holds to the `diff --git` lines."""
+    named = Named([], [], [])
+    current: str | None = None
+    for line in text.split("\n"):
+        if line.startswith("diff --git "):
+            found = HEADER.fullmatch(line)
+            current = found[1] if found is not None and found[1] == found[2] else None
+            named.headers.append(current)
+            if found is None:
+                named.problems.append(f"has a `diff --git` line that names no plain path twice: {line!r}")
+                continue
+            named.paths.extend(found.groups())
+            if current is None:
+                named.problems.append(
+                    f"names two paths in one `diff --git` line, {found[1]} and {found[2]}: git applies it as "
+                    "a rename, which its report does not show"
+                )
+        elif line.startswith("@@"):
+            current = None
+        elif current is not None and line.startswith(("--- ", "+++ ")):
+            side = "a/" if line[0] == "-" else "b/"
+            if line[4:] not in (side + current, NO_FILE):
+                named.problems.append(
+                    f"has the line {line!r} under `diff --git a/{current} b/{current}`: git applies it as a "
+                    "rename, which its report does not show"
+                )
+    return named
+
+
 def numstat_paths(text: str) -> tuple[list[str], bool]:
-    """The paths `git apply --numstat -z` lists, and whether it lists a binary file (`-` for its counts). A
-    rename, which `git diff` would give as an empty path then its two paths, gives both."""
-    fields = text.split("\0")
+    """The paths `git apply --numstat -z` lists, one for each file of the patch (for a rename, its new path
+    alone, which is why the `diff --git` lines are read too), and whether it lists a binary file (`-` for its
+    counts)."""
     paths: list[str] = []
     binary = False
-    index = 0
-    while index < len(fields):
-        entry = fields[index]
-        index += 1
-        if not entry:
-            continue
+    for entry in filter(None, text.split("\0")):
         added, _, rest = entry.partition("\t")
         deleted, _, path = rest.partition("\t")
-        binary = binary or added == "-" or deleted == "-"
-        if path:
-            paths.append(path)
-        else:
-            paths += [found for found in fields[index : index + 2] if found]
-            index += 2
+        binary = binary or "-" in (added, deleted)
+        paths.append(path)
     return paths, binary
 
 
@@ -210,9 +275,11 @@ def patch_problems(root: Path, name: str) -> tuple[list[str], list[str]]:
     """Why the checkout at `root` may not run the mutant `name`, if it may not, and the paths its patch
     touches. The patch must be `mutants/<name>.patch`, a regular file committed at HEAD, at most
     `MAX_PATCH_BYTES` of UTF-8 text with no control character but tab and line feed; git must read it as a
-    patch in its own format (`diff --git`, one for each file it lists), with no binary data, no rename or
-    copy, and only the `MODES`; and each path it touches must pass `path_problems`. Whether it applies is not
-    checked here: a patch that does not apply changes nothing, and its job records it broken."""
+    patch in its own format, a `diff --git` line for each file it lists, in its order, each naming one plain
+    path twice (`HEADER`), with no binary data, no rename or copy, and only the `MODES`; and each path git
+    lists or a `diff --git` line names must pass `path_problems` and not be one git ignores. Whether it
+    applies is not checked here: a patch that does not apply changes nothing, and its job records it
+    broken."""
     if not NAME.fullmatch(name):
         return [
             f"the mutant {name!r} is not named by 1 to 64 letters, digits, `_` and `-`, a letter or a digit "
@@ -248,11 +315,17 @@ def patch_problems(root: Path, name: str) -> tuple[list[str], list[str]]:
     paths, binary = numstat_paths(numstat.stdout)
     if binary and not problems:
         problems.append(f"{relative} is a binary patch")
-    headers = sum(line.startswith("diff --git ") for line in text.split("\n"))
-    if headers != len(paths):
+    named = named_paths(text)
+    problems += [f"{relative} {problem}" for problem in named.problems]
+    if len(named.headers) != len(paths):
         problems.append(
-            f"{relative} lists {len(paths)} files and {headers} `diff --git` headers: each file of a patch "
-            "must be in git's own format"
+            f"{relative} lists {len(paths)} files and {len(named.headers)} `diff --git` headers: each file "
+            "of a patch must be in git's own format"
+        )
+    elif None not in named.headers and named.headers != paths:
+        problems.append(
+            f"{relative} lists the files {paths} where its `diff --git` lines name {named.headers}: each "
+            "file of a patch must be in git's own format"
         )
     summary = git(root, "apply", "--summary", relative)
     for line in summary.stdout.splitlines():
@@ -269,9 +342,23 @@ def patch_problems(root: Path, name: str) -> tuple[list[str], list[str]]:
             problems.append(f"{relative} has a summary line git's format does not give: {line.strip()!r}")
     if summary.returncode != 0:
         problems.append(f"git cannot summarise {relative}: {first_lines(summary.stderr)}")
-    for touched in paths:
-        problems += [f"{relative} touches {problem}" for problem in path_problems(root, touched)]
-    return problems, paths
+    touched = list(dict.fromkeys([*paths, *named.paths]))
+    plain: list[str] = []
+    for each in touched:
+        refused = path_problems(root, each)
+        problems += [f"{relative} touches {problem}" for problem in refused]
+        if not refused:
+            plain.append(each)
+    ignored, error = ignored_paths(root, plain)
+    if error:
+        problems.append(f"git cannot say which paths of {relative} it ignores: {error}")
+    problems += [
+        f"{relative} touches {each}, which git ignores (the environment uv installs, the example database, "
+        "or another file no commit holds)"
+        for each in plain
+        if each in ignored
+    ]
+    return problems, touched
 
 
 def committed_patches(root: Path) -> list[str]:
@@ -341,6 +428,15 @@ def checked_request(
         problems.append(f"{len(mutants)} mutants, more than {MAX_MUTANTS}")
     problems += [
         f"the mutant {name} is named twice" for name in sorted({m for m in mutants if mutants.count(m) > 1})
+    ]
+    by_case: dict[str, list[str]] = {}
+    for name in dict.fromkeys(mutants):
+        by_case.setdefault(name.casefold(), []).append(name)
+    problems += [
+        f"the mutants {' and '.join(names)} differ only in case, which GitHub's concurrency groups ignore "
+        "and its artifact names may"
+        for names in by_case.values()
+        if len(names) > 1
     ]
     for name in dict.fromkeys(mutants):
         problems += patch_problems(root, name)[0]
@@ -515,12 +611,12 @@ def run_mutant(
         record["applied"] = True
     python_files = [path for path in touched if path.endswith(".py")]
     # The import check prints the files that do not compile first; pytest prints its errors before a summary.
-    check = ["uv", "run", "python", str(script), "imports", *python_files]
+    check = [*UV_RUN, "python", str(script), "imports", *python_files]
     imports = staged(check, root, deadline - clock(), head=True)
     record["imports"], record["message"] = imports.passed, imports.message
     if imports.passed is not True:
         return record
-    collect = ["uv", "run", "pytest", "--collect-only", "-q", *selection, *extra]
+    collect = [*UV_RUN, "pytest", "--collect-only", "-q", *selection, *extra]
     collected = staged(collect, root, deadline - clock())
     record["collected"], record["message"] = collected.passed, collected.message
     if collected.passed is not True:
@@ -532,7 +628,8 @@ def run_mutant(
         return record
     report = records / REPORT
     command = [
-        *("uv", "run", "timeout", "--foreground", "--signal=INT", f"{left}s"),
+        *UV_RUN,
+        *("timeout", "--foreground", "--signal=INT", f"{left}s"),
         *("pytest", "-n", "auto", "--dist", "worksteal", "-x", *selection, *extra),
         *(f"--hypothesis-seed={seed}", f"--junitxml={report}"),
     ]

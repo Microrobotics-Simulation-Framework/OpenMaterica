@@ -95,13 +95,37 @@ def test_the_verdict_check_can_fail() -> None:
     )
 
 
-def test_a_rename_in_git_diffs_form_gives_both_its_paths() -> None:
+def test_gits_report_gives_one_path_a_file_and_says_where_one_is_binary() -> None:
+    """`git apply --numstat -z` gives one path for each file, the new path alone of a rename (checked with git
+    2.43), which is why the request also reads the `diff --git` lines; an entry without a path gives an empty
+    one, which no plain path matches."""
     assert mutant_runs.numstat_paths("1\t1\tsrc/a.py\x00-\t-\tb.bin\x00") == (["src/a.py", "b.bin"], True)
-    assert mutant_runs.numstat_paths("0\t0\t\x00src/a.py\x00src/b.py\x00") == (
-        ["src/a.py", "src/b.py"],
-        False,
-    )
+    assert mutant_runs.numstat_paths("0\t0\t\x00") == ([""], False)
     assert mutant_runs.numstat_paths("") == ([], False)
+
+
+def test_every_name_a_patch_gives_its_file_is_read() -> None:
+    """A `diff --git` line naming one plain path twice gives it; one naming two gives both and a problem, as
+    does one git reads in another form and a `---` or `+++` line before the first hunk naming another path;
+    a hunk's lines are content, though they start as those lines do."""
+    edit = "diff --git a/src/a.py b/src/a.py\n--- a/src/a.py\n+++ b/src/a.py\n@@ -1 +1 @@\n--- a/x\n+++ b/y\n"
+    new = (
+        "diff --git a/src/n.py b/src/n.py\nnew file mode 100644\n--- /dev/null\n+++ b/src/n.py\n"
+        "@@ -0,0 +1 @@\n+1\n"
+    )
+    assert mutant_runs.named_paths(edit + new) == (
+        ["src/a.py", "src/n.py"],
+        ["src/a.py"] * 2 + ["src/n.py"] * 2,
+        [],
+    )
+    two = mutant_runs.named_paths("diff --git a/src/a.py b/src/b.py\n--- a/src/a.py\n+++ b/src/b.py\n")
+    assert (two.headers, two.paths) == ([None], ["src/a.py", "src/b.py"])
+    assert len(two.problems) == 1
+    assert "names two paths in one `diff --git` line, src/a.py and src/b.py" in two.problems[0]
+    odd = mutant_runs.named_paths("diff --git x/src/a.py y/src/b.py\n")
+    assert (odd.headers, odd.paths, len(odd.problems)) == ([None], [], 1)
+    dashes = mutant_runs.named_paths("diff --git a/src/b.py b/src/b.py\n--- a/src/a.py\n+++ b/src/b.py\n")
+    assert (dashes.headers, len(dashes.problems)) == (["src/b.py"], 1), dashes
 
 
 @pytest.fixture
@@ -162,6 +186,7 @@ def test_no_mutant_named_runs_every_committed_patch_and_no_seed_one_drawn(reposi
     ("name", "value", "problem"),
     [
         ("MUTANTS", "a a", "the mutant a is named twice"),
+        ("MUTANTS", "a A", "the mutants a and A differ only in case"),
         ("MUTANTS", "a\tb", "MUTANTS 'a\\tb' holds a character other than printable ASCII"),
         ("MUTANTS", " ".join(f"m{index}" for index in range(201)), "201 mutants, more than 200"),
         ("SELECTION", "", "the selection is empty"),
