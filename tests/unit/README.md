@@ -38,5 +38,7 @@ Tests by example, for what the conformance cases and the properties do not reach
   existing, and every shard it names collected by pytest; the tables of the tests that read the whole tree and of
   the data files tests open, held against a trace of the files the tests open and the directories they list
   (`open_trace.py` records it, over a run of the suite of about a minute); the changes read from git (committed,
-  staged, unstaged, untracked, deleted and renamed files, from the merge base); and the stages' order, stop and
-  `--keep-going`.
+  staged, unstaged, untracked, deleted and renamed files, from the merge base, a rename git pairs and a name with a
+  newline among them); the names as CI's gate reads them, by its own `grep` lines on what `git diff` prints; a
+  printed command pasted back through bash; a lock file out of date refused by `uv lock --check` and `uv run
+  --locked`; the wheel check's steps; and the stages' order, stop, `--keep-going` and exit status.

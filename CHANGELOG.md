@@ -23,8 +23,11 @@ every family entry goes in `families/CHANGELOG.md`.
   to code; the tests that import a changed Python file, directly or through others, with a property module run
   as its whole shard at the `ci` profile, and the few tests that read the whole tree instead of importing it; the
   tests that hold or open a changed specification, schema, conformance case, spec-sync table, workflow or build
-  file. A change it cannot map to a test selects the whole of `tests/unit`, and the plan says why. A stage that
-  fails stops the run before the next. It ends with reminders for what no check decides: code changed beside a
+  file. A change it cannot map to a test selects the whole of `tests/unit`, and the plan says why. A change to
+  code also builds the wheel, checks it and type-checks the consumer snippet against it, as CI's static job
+  does. Every `uv run` is `--locked` and `uv lock --check` comes first. A name in a diff is printed escaped, a
+  command quoted, and a file that cannot be read as Python is named, not a traceback. A stage that fails stops
+  the run before the next. It ends with reminders for what no check decides: code changed beside a
   CHANGELOG that was not, and each count the branch states. `CONTRIBUTING.md` has a section, "Before asking for
   review", with each check's command and a short list for the points a builder judges. The script runs the
   checks that apply, not all of CI's, and replaces none; no check was removed and no threshold changed.

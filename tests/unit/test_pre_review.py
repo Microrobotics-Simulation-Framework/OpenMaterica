@@ -5,8 +5,11 @@ exists. Each rule has a change that must select its check and one that must not.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import unicodedata
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -71,7 +74,9 @@ def test_the_generators_are_the_ones_the_workflow_checks_on_python_3_11() -> Non
 
 @pytest.mark.parametrize("command", pre_review.STATIC_COMMANDS)
 def test_each_static_check_is_a_step_of_the_workflows_static_job(command: tuple[str, ...]) -> None:
-    assert f"- run: {' '.join(command)}" in CI
+    # CI syncs the environment with `uv sync --locked` first; the script, which has none, locks each `uv run`.
+    in_ci = " ".join(argument for argument in command if argument != "--locked")
+    assert f"- run: {in_ci}" in CI
     checks, _ = plan("src/materica/core/read.py")
     assert " ".join(command) in commands(checks, "fast")
 
@@ -133,6 +138,7 @@ def test_a_change_to_code_runs_the_linters_and_type_checkers(path: str) -> None:
 def test_a_change_to_documentation_or_the_site_alone_runs_none_of_them(path: str) -> None:
     fast = commands(plan(path)[0], "fast")
     assert not {" ".join(command) for command in pre_review.STATIC_COMMANDS} & set(fast)
+    assert not {" ".join(pre_review.WHEEL_COMMAND)} & set(fast)
 
 
 def test_a_change_with_no_path_is_code_as_the_gate_reads_it() -> None:
@@ -143,10 +149,9 @@ def test_a_change_with_no_path_is_code_as_the_gate_reads_it() -> None:
     assert not pre_review.is_code(["docs/regulatory/other.md"])
 
 
-def test_the_lock_file_is_checked_when_it_or_pyproject_changes_and_not_otherwise() -> None:
-    assert "uv lock --check" in commands(plan("pyproject.toml")[0], "fast")
-    assert "uv lock --check" in commands(plan("uv.lock")[0], "fast")
-    assert "uv lock --check" not in commands(plan("src/materica/core/read.py")[0], "fast")
+@pytest.mark.parametrize("path", ["CHANGELOG.md", "pyproject.toml", "uv.lock", "src/materica/core/read.py"])
+def test_the_lock_file_is_checked_first_whatever_changed(path: str) -> None:
+    assert commands(plan(path)[0], "fast")[0] == "uv lock --check"
 
 
 def test_a_property_module_runs_its_shard_at_ci_and_the_audit_controls_that_import_it() -> None:
@@ -337,11 +342,12 @@ def test_a_python_file_no_test_imports_selects_the_whole_unit_directory_and_says
         assert "tests/unit" in run.paths
         assert uncovered == []
         assert any(cause.startswith(path) and "no test imports it" in cause for cause in run.because)
-    # controls: what a test imports, and a test
+    # controls: what a test imports, a test, and the snippet the static job type-checks
     for path in (
         "scripts/check_signoff.py",
         "src/materica/core/hashing.py",
         "tests/unit/test_read.py",
+        "tests/typing/consumer_snippet.py",
     ):
         checks, _ = plan(path)
         assert "tests/unit" not in run_paths(checks), path
@@ -354,10 +360,13 @@ def test_a_file_under_tests_outside_every_group_selects_the_whole_unit_directory
         assert "tests/unit" in run.paths
         assert uncovered == []
         assert any("in no group of tests" in cause for cause in run.because)
-    # control: a file in a group of tests that no rule reads is listed
+    # controls: a file in a group of tests that no rule reads is listed; the snippet's is the static job's
     checks, uncovered = plan("tests/property/README.md")
     assert uncovered == ["tests/property/README.md"]
     assert "tests/unit" not in run_paths(checks)
+    checks, uncovered = plan("tests/typing/zz_other.md")
+    assert "tests/unit" not in run_paths(checks)
+    assert uncovered == []
 
 
 @pytest.mark.parametrize(
@@ -440,6 +449,156 @@ def test_a_data_file_no_test_opens_does_not_select_those_tests() -> None:
     assert not selects(workflow, "tests/unit/test_python_versions.py")
     assert not selects(workflow, "tests/unit/test_pre_review.py")
     assert not selects(plan("tests/spec_sync/name_overlaps.json")[0], "tests/unit/test_schema_index.py")
+
+
+# --- hostile names and files ------------------------------------------------------------------------------
+
+NAMES = [
+    "tests/unit/test_$(touch pwned2).py",
+    "tests/unit/test_semi;touch pwned.py",
+    "tests/unit/test_--collect-only.py",
+    "tests/unit/test_a b.py",
+    "tests/unit/test_new\nline.py",
+    "tests/unit/test_\x1b[31mred.py",
+    "tests/unit/test_it's.py",
+    "tests/unit/test_é.py",
+]
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_a_printed_argument_pastes_back_as_the_same_argument_and_runs_nothing(
+    name: str, tmp_path: Path
+) -> None:
+    quoted = pre_review.shell_quote(name)
+    done = subprocess.run(
+        ["bash", "-c", f"printf %s {quoted}"], capture_output=True, check=True, cwd=tmp_path
+    )
+    assert done.stdout == name.encode()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_same_names_joined_without_quoting_would_run_a_command(tmp_path: Path) -> None:
+    # control: the printed command of the first version, `" ".join(command)`, executes the name's `$(...)`
+    subprocess.run(["bash", "-c", f"printf %s {NAMES[0]}"], capture_output=True, check=True, cwd=tmp_path)
+    assert [path.name for path in tmp_path.iterdir()] == ["pwned2"]
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_a_name_is_printed_with_no_control_character_in_it(
+    name: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def printed(text: str) -> str:
+        checks = [Planned("tests", ("uv", "run", "pytest", text), "why", because=[text])]
+        pre_review.print_plan(checks, [text], [text], notes=[text])
+        return capsys.readouterr().out
+
+    out, plain = printed(name), printed("tests/unit/test_plain.py")
+    assert {character for character in out if unicodedata.category(character) == "Cc"} <= {"\n"}
+    assert out.count("\n") == plain.count("\n")  # a newline in a name does not add a line
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_a_hostile_test_name_reaches_pytest_as_one_argument_and_nothing_runs(
+    name: str, tmp_path: Path
+) -> None:
+    tree = small_tree(tmp_path)
+    (tmp_path / name).write_text("from pkg import a\n", encoding="utf-8")
+    tree = Tree(tmp_path)
+    checks, _ = plan(name, tree=tree)
+    (run,) = [check for check in checks if check.stage == "tests"]
+    assert name in run.command
+    assert run.command.count(name) == 1
+    assert not any(name.startswith("pwned") for _, _, names in os.walk(tmp_path) for name in names)
+
+
+def test_a_file_that_is_no_regular_file_is_not_opened_and_one_that_is_not_utf_8_is_reported(
+    tmp_path: Path,
+) -> None:
+    small_tree(tmp_path)
+    assert Tree(tmp_path).notes == []  # control: a tree of ordinary files has no note
+    (tmp_path / "src/pkg/zero.py").symlink_to("/dev/zero")
+    (tmp_path / "src/pkg/latin.py").write_bytes(b"x = '\xe9'\n")
+    (tmp_path / "src/pkg/gone.py").symlink_to(tmp_path / "nowhere")
+    tree = Tree(tmp_path)  # a read of /dev/zero would not return
+    assert not {"src/pkg/zero.py", "src/pkg/gone.py"} & set(tree.files)
+    assert "src/pkg/latin.py" in tree.files
+    assert sorted(tree.notes) == [
+        "src/pkg/gone.py is not a regular file: not read",
+        "src/pkg/latin.py is not valid UTF-8: read with replacements, its imports may be missed",
+        "src/pkg/zero.py is not a regular file: not read",
+    ]
+    for path in ("src/pkg/zero.py", "src/pkg/latin.py"):
+        checks, uncovered = plan(path, tree=tree)
+        (run,) = [check for check in checks if check.stage == "tests"]
+        assert "tests/unit" in run.paths
+        assert uncovered == []
+        assert any(cause.startswith(path) for cause in run.because)
+
+
+def test_the_script_names_a_file_it_cannot_read_instead_of_failing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    small_tree(tmp_path)
+    (tmp_path / "src/pkg/latin.py").write_bytes(b"x = '\xe9'\n")
+    tree = Tree(tmp_path)
+    checks, uncovered = plan("src/pkg/latin.py", tree=tree)
+    pre_review.print_plan(checks, uncovered, ["src/pkg/latin.py"], notes=tree.notes)
+    assert "src/pkg/latin.py is not valid UTF-8" in capsys.readouterr().out
+
+
+# --- the names as the gate reads them -----------------------------------------------------------------------
+
+
+def ci_says_code(lines: str) -> bool:
+    """CI's `code` for the names `git diff --name-only` printed, by the gate's own `grep` lines."""
+    script = (
+        'if [ -n "$changed" ] && ! grep -qxE "$python_paths" <<< "$changed" '
+        '&& ! grep -qvxE "$docs_paths|$site_paths" <<< "$changed"; then echo false; else echo true; fi'
+    )
+    environment = {
+        "changed": lines.rstrip("\n"),
+        **{name: ci_assignment(name) for name in ("python_paths", "docs_paths", "site_paths")},
+    }
+    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=environment, check=True)
+    return done.stdout.strip() == "true"
+
+
+GATE_CASES = [
+    ["CHANGELOG.md"],
+    ["docs/regulatory/plain.md", "site/page.html"],
+    ["docs/regulatory/é.md"],
+    ["docs/regulatory/tab\there.md"],
+    ['docs/regulatory/quote".md'],
+    ["docs/regulatory/back\\slash.md"],
+    ["site/é.html", "CHANGELOG.md"],
+    ["docs/regulatory/helper.py"],
+    ["docs/regulatory/é.py"],
+    ["CONTRIBUTING.md", "scripts/x.sh"],
+]
+
+
+@pytest.mark.parametrize("names", GATE_CASES, ids=lambda names: "+".join(names))
+def test_a_change_is_code_as_the_gate_reads_the_names_git_prints(names: list[str], repository: Path) -> None:
+    commit("base", "--allow-empty")
+    for name in names:
+        (repository / name).parent.mkdir(parents=True, exist_ok=True)
+        (repository / name).write_text("x")
+    subprocess.run(["git", "add", "-A"], check=True)
+    listed = subprocess.run(
+        ["git", "diff", "--cached", "--no-renames", "--name-only"], capture_output=True, text=True, check=True
+    ).stdout
+    assert pre_review.is_code(names) == ci_says_code(listed)
+    assert {pre_review.git_quoted(name) for name in names} == set(listed.splitlines())
+
+
+def test_a_documentation_file_with_an_accent_in_its_name_is_code_to_the_gate_and_so_to_the_script() -> None:
+    assert re.fullmatch(
+        f"{pre_review.DOCUMENTATION_PATHS}", "docs/regulatory/é.md"
+    )  # control: read raw, it is docs
+    assert pre_review.is_code(["docs/regulatory/é.md"])
+    assert not pre_review.is_code(
+        ["docs/regulatory/e.md"]
+    )  # control: the same name in ASCII is documentation
 
 
 # --- the import graph --------------------------------------------------------------------------------------
@@ -802,6 +961,134 @@ def test_the_script_runs_as_a_command() -> None:
     )
     assert done.returncode == 0, done.stderr
     assert "[fast]" in done.stdout
+
+
+def test_every_uv_run_and_sync_the_script_plans_is_locked() -> None:
+    checks, _ = plan(*everything_changed())
+    runs = [check.command for check in checks if check.command[:2] == ("uv", "run")]
+    assert len(runs) >= 4 + len(GENERATORS) + 1  # the static checks, the generators and the pytest commands
+    assert all(command[2] == "--locked" for command in runs), [c for c in runs if c[2] != "--locked"]
+    assert all("--locked" in check.command for check in checks if check.command[:2] == ("uv", "sync"))
+    assert pre_review.pytest_command(["tests/unit"], 3)[:3] == ("uv", "run", "--locked")
+
+
+@pytest.mark.skipif(shutil.which("uv") is None, reason="needs uv, which CI's test job installs")
+def test_a_lock_file_that_is_out_of_date_is_refused_and_left_as_it_was(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    pyproject = project / "pyproject.toml"
+    pyproject.write_text(
+        '[project]\nname = "p"\nversion = "0"\nrequires-python = ">=3.11"\n', encoding="utf-8"
+    )
+    environment = {
+        **os.environ,
+        "UV_PROJECT_ENVIRONMENT": str(tmp_path / "venv"),
+        "UV_PYTHON": sys.executable,
+        "UV_OFFLINE": "1",
+    }
+
+    def uv(*arguments: str) -> int:
+        return subprocess.run(
+            ["uv", *arguments], cwd=project, env=environment, capture_output=True, check=False
+        ).returncode
+
+    assert uv("lock") == 0
+    lock = (project / "uv.lock").read_bytes()
+    assert uv("lock", "--check") == 0  # control: a lock file that is current passes
+    assert uv("run", "--locked", "python", "-c", "pass") == 0
+    pyproject.write_text(pyproject.read_text(encoding="utf-8").replace(">=3.11", ">=3.12"), encoding="utf-8")
+    assert uv("lock", "--check") != 0
+    assert uv("run", "--locked", "python", "-c", "pass") != 0
+    assert (project / "uv.lock").read_bytes() == lock
+    # control: without `--locked` uv rewrites the lock file, and `uv lock --check` passes after it, as the
+    # script's first version left the builder's tree
+    assert uv("run", "python", "-c", "pass") == 0
+    assert (project / "uv.lock").read_bytes() != lock
+    assert uv("lock", "--check") == 0
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "pyproject.toml",
+        "src/materica/shapes.pyi",
+        "src/materica/py.typed",
+        "tests/typing/consumer_snippet.py",
+        "src/materica/data/conformance/plain_read/CASES.md",
+    ],
+)
+def test_a_change_to_what_the_wheel_ships_or_the_snippet_checks_runs_the_wheel_check(path: str) -> None:
+    assert " ".join(pre_review.WHEEL_COMMAND) in commands(plan(path)[0], "fast")
+
+
+def test_the_wheel_check_is_what_the_workflows_static_job_does_after_the_type_checkers() -> None:
+    for text in (
+        "- run: uv build",
+        "scripts/check_wheel.py dist/*.whl",
+        "uv venv ",
+        "uv pip install --python ",
+        "tests/typing/consumer_snippet.py",
+        "mypy --strict --python-executable ",
+        "pyright --pythonpath ",
+    ):
+        assert text in CI, text
+
+
+class Steps:
+    """A stand-in for the commands of the wheel check: records each, builds a wheel for `uv build`."""
+
+    def __init__(self, fail_at: str | None = None, builds: bool = True) -> None:
+        self.calls: list[tuple[tuple[str, ...], Path, bool]] = []
+        self.fail_at = fail_at
+        self.builds = builds
+
+    def __call__(self, command: Sequence[str], directory: Path) -> int:
+        self.calls.append((tuple(command), directory, (directory / "consumer_snippet.py").exists()))
+        if command[:2] == ("uv", "build") and self.builds:
+            Path(command[3]).mkdir(parents=True)
+            (Path(command[3]) / "p-0-py3-none-any.whl").write_bytes(b"")
+        return 3 if self.fail_at and self.fail_at in command else 0
+
+
+def test_the_wheel_check_builds_checks_installs_and_type_checks_the_snippet_apart_from_the_project() -> None:
+    steps = Steps()
+    assert pre_review.wheel_check(REPOSITORY, steps) == 0
+    assert [command[:2] for command, _, _ in steps.calls] == [
+        ("uv", "build"),
+        ("uv", "run"),
+        ("uv", "venv"),
+        ("uv", "pip"),
+        ("uv", "run"),
+        ("uv", "run"),
+    ]
+    _, check, _, install, mypy, pyright = steps.calls
+    wheel = check[0][-1]
+    assert wheel.endswith(".whl")
+    assert wheel in install[0]
+    assert check[0][3:5] == ("python", "scripts/check_wheel.py")
+    assert check[1] == REPOSITORY
+    for step in (mypy, pyright):
+        assert step[1] != REPOSITORY  # run where the project's configuration does not reach
+        assert step[2]  # with the snippet beside it
+        assert step[0][-1] == "consumer_snippet.py"
+        assert "--project" in step[0]
+    assert "mypy" in mypy[0]
+    assert "--strict" in mypy[0]
+    assert "pyright" in pyright[0]
+
+
+@pytest.mark.parametrize("failing", ["scripts/check_wheel.py", "mypy", "pyright"])
+def test_a_wheel_check_step_that_fails_stops_the_rest_and_gives_its_status(failing: str) -> None:
+    steps = Steps(fail_at=failing)
+    assert pre_review.wheel_check(REPOSITORY, steps) == 3
+    assert failing in steps.calls[-1][0]  # it is the last step run
+    assert len(steps.calls) == {"scripts/check_wheel.py": 2, "mypy": 5, "pyright": 6}[failing]
+
+
+def test_a_build_that_makes_no_wheel_fails_the_wheel_check() -> None:
+    steps = Steps(builds=False)
+    assert pre_review.wheel_check(REPOSITORY, steps) == 1
+    assert len(steps.calls) == 1
 
 
 def test_the_chosen_pytest_command_has_the_workers_and_the_work_stealing_distribution() -> None:
