@@ -167,8 +167,8 @@ same shape as MADDENING's, and MIME, which depends on both, translates between t
 registry with MADDENING's validator (`python -m maddening.compliance check-anomalies`), in a CI job of its
 own, so the three registries are held to one implementation of one schema. This is a development dependency
 only: nothing in the OpenMaterica package imports MADDENING, and nothing installed by `pip install
-openmaterica` depends on it. Until that validator accepts the registry's component names, a stand-in checks
-the registry (section 8.1).
+openmaterica` depends on it. Its packaged command reads every component name as a Python name, so a stand-in
+checks the registry meanwhile (section 8.1).
 
 ---
 
@@ -805,7 +805,7 @@ In this repository:
 
 | Script | Checks |
 |---|---|
-| `scripts/check_anomalies.py` | the registry against the schema of section 8, prefix `OMAT-ANO-`, and its `materica_version` against the package's version; in the gate on every run, standing in for MADDENING's validator until that accepts the registry's component names, then by delegating to it (section 8.1) |
+| `scripts/check_anomalies.py` | the registry against the schema of section 8, prefix `OMAT-ANO-`, and its `materica_version` against the package's version; in the gate on every run, standing in for MADDENING's validator, which is to run beside it once its packaged command can skip reading component names (section 8.1) |
 | `scripts/check_citations.py` | every `[@Key]` in the specification, methods and families exists in `bibliography.bib` |
 | `scripts/check_impl_mapping.py` | every function named in a method guide or family definition exists |
 | `scripts/check_families.py` | reference implementations reproduce their vectors; released vectors are unchanged; every family version's content hash matches; every family has a named consumer |
@@ -964,14 +964,23 @@ OpenMaterica's CI is to check the registry with MADDENING's validator (section 1
 top-level version field but `maddening_version` (`MADD:src/maddening/compliance/_validate.py`,
 `_KNOWN_TOPLEVEL_FIELDS`), so it refused `materica_version`, against MADDENING's own Appendix F; accepting a
 project version field was requested of MADDENING. MADDENING 0.4.0 accepts one, `materica_version` included
-(checked 2026-10-17 against MADDENING `6099cf8f`, whose validator is 0.4.1's). But it reads each
-`affected_components` entry as an importable Python name (`resolve_dotted_name` in the same module), so it
-refuses every component name of section 8.3, and its command has no option to skip that read. So CI runs
-`scripts/check_anomalies.py` in its place, in the gate on every run (section 6.5): MADDENING's record schema
-with this registry's prefix, version field and component names, `materica_version` equal to the package's
-version, and `affected_versions` a PEP 440 version specifier set or `none`, checked for its syntax and not for
-the order the convention gives it. CI switches to MADDENING's validator once that accepts these component
-names.
+(checked 2026-10-17 against MADDENING `6099cf8f`, whose validator is 0.4.1's). But its packaged command reads
+each `affected_components` entry as an importable Python name (`resolve_dotted_name` in the same module), so
+it refuses every component name of section 8.3. The library can skip that read, since 0.4.0
+(`validate_anomaly_registry(..., resolve_references=False)`), and MADDENING's own script has `--no-resolve`,
+but the command, `maddening.compliance.__main__`, calls the function with its default, `resolve_references=True`,
+and offers no option. Two other things stand between the gate and MADDENING's validator: installing MADDENING
+needs Python 3.12 or later (`requires-python = ">=3.12"`), where OpenMaterica supports 3.11, and the gate
+installs nothing; and the stand-in checks more than the library does (an identifier's three digits, the
+component kinds, `affected_versions` required and a PEP 440 version specifier set, every field a string), so
+MADDENING's validator would run beside it, not in its place. So CI runs `scripts/check_anomalies.py`, in the
+gate on every run (section 6.5): MADDENING's record schema with this registry's prefix, version field and
+component names, `materica_version` equal to the package's version, and `affected_versions` a PEP 440 version
+specifier set or `none`, checked for its syntax and not for the order the convention gives it. It does not
+check, either, what MADDENING's own script checks of a registry that has entries: a `resolved` entry's
+`resolution_version`, a `resolved` or `partially_resolved` entry's `verification` and that each names a real
+test, and identifiers without a gap; the first entry's pull request adds them. CI runs MADDENING's validator
+beside it once the packaged command can skip reading component names (a request for MADDENING 0.5.0).
 
 ### 8.2 Severity, applied to data and families
 
@@ -1250,8 +1259,8 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
 10. **Anomaly entries are never deleted**, only resolved.
 11. **No network access and no code execution from data**, at import or when reading files.
 12. **The anomaly registry stays in MADDENING's schema** and is checked against it in CI: by MADDENING's
-    validator, a development-time dependency only, once that accepts the registry's component names, and
-    until then by a stand-in (sections 1 and 8.1).
+    validator, a development-time dependency only, beside a stand-in, once its packaged command can skip
+    reading the registry's component names, and until then by the stand-in alone (sections 1 and 8.1).
 13. **Fail closed.** A reader refuses an unknown family or version, a failed check point, a request to
     sample an undeclared uncertainty structure, an attribute that was not authored, an unknown token in an
     enumerated field, a referenced record of an unknown type, interpolation across an edge, and a value
@@ -1358,7 +1367,7 @@ procedures as method entries, and the gold set (architecture draft section 8).
 
 ## Appendix B: Bootstrap Checklist
 
-Status at 2026-10-13.
+Status at 2026-10-13, but for the items that carry a later date, changed on it.
 
 **Phase 0**
 
@@ -1389,8 +1398,9 @@ Status at 2026-10-13.
 - [x] `scripts/check_anomalies.py`, run in CI's first job on every run, a stand-in for MADDENING's validator
   (2026-10-17)
 - [x] MADDENING's validator accepts a project version field (`materica_version`): from MADDENING 0.4.0
-- [ ] MADDENING's validator accepts the registry's component names (section 8.3), and
-  `scripts/check_anomalies.py` delegates to it
+  (2026-10-17)
+- [ ] MADDENING's packaged command can skip reading component names (section 8.3), and CI runs it beside
+  `scripts/check_anomalies.py`
 - [ ] `scripts/check_families.py` and `scripts/check_signoff.py`, run in CI on every pull request
 - [ ] GitHub labels as in Appendix A
 

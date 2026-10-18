@@ -4,13 +4,22 @@
 # section 9.7). Do not add fields; name affected components as schema:<API>, reader:<function>,
 # method:<OMAT-MTH id>, model:<family identifier> or data:<MAT id> (CONTRIBUTING.md).
 # Checked in CI, in its first job on every run, by scripts/check_anomalies.py, which stands in for
-# MADDENING's validator until that accepts this registry's component names; CI switches to it then:
+# MADDENING's validator:
 #   python -m maddening.compliance check-anomalies docs/validation/known_anomalies.yaml \
 #     --prefix OMAT-ANO- --version-field materica_version
-# The version field is materica_version, which MADDENING's validator accepts from MADDENING 0.4.0; but it
-# reads each affected_components entry as an importable Python name, which schema:<API> and the others
-# are not (DOCUMENTATION_ARCHITECTURE.md section 8.1). The stand-in holds affected_versions to PEP 440's
-# syntax, not to the order the convention below gives it.
+# The version field is materica_version, which MADDENING's validator accepts from MADDENING 0.4.0. Its
+# library function can skip resolving components (validate_anomaly_registry(..., resolve_references=False),
+# since 0.4.0) and MADDENING's own script has --no-resolve, but the packaged command above cannot skip it: it
+# reads each affected_components entry as an importable Python name, which schema:<API> and the others are
+# not (DOCUMENTATION_ARCHITECTURE.md section 8.1). The gate installs nothing, and installing MADDENING needs
+# Python 3.12 or later where OpenMaterica supports 3.11. The stand-in also checks more than MADDENING's
+# library does (an identifier's three digits, the component kinds, affected_versions required and a PEP 440
+# specifier set, every field a string), so a switch would run MADDENING's validator beside it.
+# Limits: the stand-in does not check what MADDENING's own script checks of a registry that has entries: the
+# order of affected_versions (below) and its status against the entry's; that a "resolved" entry has a
+# resolution_version, and a "resolved" or "partially_resolved" one a verification; that each verification
+# names a real test; and that identifiers run on without a gap. They are left for the pull request that adds
+# the first entry.
 #
 # Severity definitions, applied to data: DOCUMENTATION_ARCHITECTURE.md section 8.2.
 # affected_versions: a PEP 440 specifier set, as in MADDENING (">=FIRST" while reachable,

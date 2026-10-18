@@ -126,14 +126,17 @@ every family entry goes in `families/CHANGELOG.md`.
   built yet.
 - The documentation plan (sections 1, 6.5, 8.1 and 15, and Appendix B) and `CONTRIBUTING.md` (constraint 12)
   say what checks the known-anomalies registry: `scripts/check_anomalies.py`, which stands in for MADDENING's
-  validator until that accepts the registry's component names; MADDENING's validator accepts
+  validator, whose packaged command reads each component name as a Python name; MADDENING's validator accepts
   `materica_version` from MADDENING 0.4.0. They had said that CI checked the registry with MADDENING's
-  validator, which no job did, and that the validator refused `materica_version`.
+  validator, which no job did, and that the validator refused `materica_version`. Appendix B dates the items
+  changed after its status date.
 - `CLAUDE.md` states the maintainer's review budget (maintainer, 2026-10-17) where it said that the maintainer
   reviews every line of code in detail: the specification text and `changes.md`, the public API and the
-  schemas, the rulings, and each pull request's description and open points are reviewed closely; tests, case
-  files and generated files are sampled, and the independent review and CI are the line-level check.
-  `CONTRIBUTING.md`, the documentation plan and the pull request template made no such claim.
+  schemas, the rulings, and each pull request's description and open points are reviewed closely; the rest is
+  sampled (tests, case files, generated files, and the source code that is neither the public API nor a
+  schema), and the independent review and CI are the line-level check. A step's end with the maintainer's
+  review is now a review of what the budget lists. `CONTRIBUTING.md` and the documentation plan made no such
+  claim. The pull request template gains an Open points heading.
 
 ### Schema
 - The value fields of schema 0.1's writer schema, so far open placeholders (S2a-1): a value field of each of
@@ -603,19 +606,27 @@ every family entry goes in `families/CHANGELOG.md`.
   example); no kill point moved.
 - The known-anomalies registry is checked in CI, in the gate on every run, whatever the change touches, by
   `scripts/check_anomalies.py`. It stands in for MADDENING's validator, which accepts `materica_version` from
-  MADDENING 0.4.0 but reads each `affected_components` entry as an importable Python name, which this
-  registry's component names are not. It checks MADDENING's record schema with this registry's prefix, version
+  MADDENING 0.4.0 but whose packaged command reads each `affected_components` entry as an importable Python
+  name, which this registry's component names are not (its library function can skip that read, and the
+  command cannot; installing it needs Python 3.12 or later). It checks MADDENING's record schema with this registry's prefix, version
   field and component names: the top-level fields and no other, `materica_version` the package's version and
   `generated_date` a date; in each entry MADDENING's required fields and no other, `OMAT-ANO-` and three
   digits, each identifier once, the severity (`DOCUMENTATION_ARCHITECTURE.md` section 8.2), safety relevance
   and resolution status among their values, `affected_versions` a PEP 440 version specifier set or `none`, and
   each component `schema:`, `reader:`, `method:`, `model:` or `data:` and a name. It runs on the standard
   library alone, so it reads the registry's YAML as a subset, as PyYAML reads it, and refuses the rest at its
-  line, an unquoted number or date and a key given twice among it. `tests/unit/test_check_anomalies.py`
-  fails a registry with each fault, one at a time, naming its rule, holds the specifier syntax to
-  `packaging`'s and the reader to PyYAML on each form it reads, and runs the check where no installed package
-  is importable; `tests/unit/test_ci_workflows.py` runs the gate's step as GitHub runs it, which passes a
-  registry at the package's version and fails one a version behind.
+  line, an unquoted number or date and a key given twice among it, and refuses, not fails with a traceback, a
+  registry or `pyproject.toml` that is missing, not UTF-8 or nested too deep, or a version that is not a string
+  or is dynamic. `tests/unit/test_check_anomalies.py` fails a copy of a passing registry with each of its listed
+  faults, one at a time, naming the rule (each required field missing, each top-level field missing, and a
+  registry the reader refuses among them), holds the specifier syntax to `packaging`'s on listed strings, and
+  holds the reader to PyYAML on fixed witness documents; `tests/property/test_anomaly_reader_properties.py`
+  holds the reader to PyYAML's `safe_load` and the specifier syntax to `packaging`'s on drawn documents and
+  sets, in the Hypothesis job (an estimate by sampling, with controls in which a weakened reader is found, not
+  a proof of equality); one difference is known, a key of more than 1024 characters, which PyYAML refuses.
+  The check runs where no installed package is importable, and `tests/unit/test_ci_workflows.py` runs the
+  gate's step as GitHub runs it, which passes a registry at the package's version and fails one a version
+  behind.
 
 ### Known Anomalies
 - The registry's `materica_version` is the package's version, `0.1.0.dev1`: it still read `0.1.0.dev0` after

@@ -2,9 +2,9 @@
 # how fast a change gets its answer. So a first job (gate) finds what a change touched, and the other jobs skip
 # at job level when nothing relevant changed: a skipped job counts as passed for a required check, while a
 # workflow skipped by `paths` would leave the check pending. A docs-only pull request runs the gate alone, which
-# also checks sign-offs and that nothing private is named, and one that changes only the site the gate and the
-# site job. A merge to main runs every job, whatever it changed, and the `result` job fails where a job the
-# gate asked for did not succeed.
+# also checks sign-offs, that nothing private is named and the known-anomalies registry, and one that changes
+# only the site the gate and the site job. A merge to main runs every job, whatever it changed, and the
+# `result` job fails where a job the gate asked for did not succeed.
 # Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
 # per-push critical path is the Hypothesis job at the `ci` profile, which runs on every change but one confined
 # to paths no part of it reads (the gate lists them). Keep it short: work that would lengthen the
@@ -135,8 +135,8 @@ jobs:
 
       # The known-anomalies registry against MADDENING's record schema, and its version against the package's,
       # on every run whatever the change touches, so that the step below may call the registry documentation.
-      # scripts/check_anomalies.py stands in for MADDENING's validator (the registry's header says why and
-      # until when), on the standard library alone, as this job installs nothing.
+      # scripts/check_anomalies.py stands in for MADDENING's validator (the registry's header says why), on the
+      # standard library alone, as this job installs nothing.
       - name: The known-anomalies registry keeps MADDENING's record schema and the package's version
         run: python3 scripts/check_anomalies.py
 

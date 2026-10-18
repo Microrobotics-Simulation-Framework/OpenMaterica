@@ -4,10 +4,12 @@
     python scripts/check_anomalies.py [REGISTRY] [--pyproject PYPROJECT]
 
 It stands in for MADDENING's validator (`python -m maddening.compliance check-anomalies`), which accepts the
-version field `materica_version` from MADDENING 0.4.0 but reads each `affected_components` entry as an
-importable Python name, which this registry's component names are not. The rules are MADDENING's record
-schema (`maddening.compliance._validate`, 0.4.1), with this registry's prefix, version field and component
-names:
+version field `materica_version` from MADDENING 0.4.0. Its library function can skip resolving components
+(`resolve_references=False`), but the packaged command cannot: it reads each `affected_components` entry as
+an importable Python name, which this registry's component names are not. The gate also installs nothing,
+and MADDENING needs Python 3.12 or later where OpenMaterica supports 3.11. The registry's header gives the
+rest, and what is not checked. The rules are MADDENING's record schema (`maddening.compliance._validate`,
+0.4.1), with this registry's prefix, version field and component names:
 
 - the top level holds `schema_version`, `materica_version`, `generated_date` (`YYYY-MM-DD`) and `anomalies`, a
   list, and nothing else; `materica_version` is the package's version, from `pyproject.toml`;
