@@ -247,6 +247,33 @@ def test_at_dev_a_declared_feature_is_held_to_the_floor_of_three_times_its_least
     assert audits.feature_shortfalls(counts(200), {"held": 0.11}, **dev) == []
 
 
+def test_at_dev_a_feature_recorded_but_not_declared_fails_whichever_way_the_others_are_declared() -> None:
+    """A mistyped feature name is reported at `dev` as at `ci`, whether the others are declared by a least
+    share, drawn alike or declared by a chance, and before any shortfall."""
+    dev = audits.RULES["dev"]
+    typo = "feature 'typo' recorded but not declared"
+    declarations: list[tuple[dict[str, float], list[str], dict[str, float]]] = [
+        ({"held": 0.2}, [], {}),
+        ({}, ["one", "other"], {}),
+        ({}, [], {"often": 0.6}),
+    ]
+    for declared, drawn, chances in declarations:
+        names = [*declared, *drawn, *chances]
+        # The control: with every feature declared and shown as often as its floor, the run passes.
+        assert (
+            audits.feature_shortfalls(
+                counts(200, **dict.fromkeys(names, 100)), declared, drawn, chances=chances, **dev
+            )
+            == []
+        )
+        mistyped = counts(200, **dict.fromkeys(names, 100), typo=1)
+        assert audits.feature_shortfalls(mistyped, declared, drawn, chances=chances, **dev) == [typo]
+        short = counts(200, **dict.fromkeys(names, 0), typo=1)
+        problems = audits.feature_shortfalls(short, declared, drawn, chances=chances, **dev)
+        assert problems[0] == typo
+        assert len(problems) > 1, "the shortfalls follow the typo"
+
+
 def test_a_feature_declared_by_its_chance_counts_as_declared() -> None:
     assert audits.feature_shortfalls(counts(200, shown=100), {}, chances={"shown": 0.5}) == []
     assert audits.feature_shortfalls(counts(200, shown=100, typo=1), {}, chances={"shown": 0.5}) == [
