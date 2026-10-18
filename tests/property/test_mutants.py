@@ -493,6 +493,35 @@ def _swap_of_any_two(a: str, b: str) -> str | None:
 
 
 SLIPS = killed_by(lambda size: slip_properties.pairs(), slip_properties.check_one_slip)
+
+
+@st.composite
+def pairs_through_an_empty_word(draw: st.DrawFn) -> slip_properties.Pair:
+    """A name with an empty word between underscores, or the empty name, and the name with `s` or `es` in
+    that word, in either order, among words of section 10's and words of letters: `x__y` and `x_s_y` are one
+    character apart, `x__y` and `x_es_y` two. `pairs` reaches one only by an insertion at the one empty word
+    of a name that has one (`es`, by two), and a search drawn whole took 629 of 2,000 examples."""
+    words = draw(
+        st.lists(
+            st.one_of(
+                st.sampled_from(slip_properties.WORDS),
+                st.text(slip_properties.LETTERS, min_size=1, max_size=4),
+            ),
+            max_size=3,
+        )
+    )
+    index = draw(st.integers(0, len(words)))
+    suffix = draw(st.sampled_from(("s", "es")))
+    empty, plural = [*words[:index], "", *words[index:]], [*words[:index], suffix, *words[index:]]
+    a, b = "_".join(empty), "_".join(plural)
+    return (
+        slip_properties.Pair(a, b, len(suffix))
+        if draw(st.booleans())
+        else slip_properties.Pair(b, a, len(suffix))
+    )
+
+
+EMPTY_WORDS = killed_by(lambda size: pairs_through_an_empty_word(), slip_properties.check_one_slip)
 SLIP_MUTANTS = [
     *[
         Mutant(f"{name}_missed", SLIPS, setting(slips, "one_slip", _without_kind(kind)))
@@ -510,7 +539,7 @@ SLIP_MUTANTS = [
     Mutant("ies_plural_missed", SLIPS, setting(slips, "plural_of", _plural_without_ies)),
     Mutant("es_plural_missed", SLIPS, setting(slips, "plural_of", _plural_without_es)),
     Mutant("irregular_plurals_missed", SLIPS, setting(slips, "_IRREGULAR_PLURALS", {})),
-    Mutant("empty_word_made_plural", SLIPS, setting(slips, "plural_of", _empty_word_made_plural)),
+    Mutant("empty_word_made_plural", EMPTY_WORDS, setting(slips, "plural_of", _empty_word_made_plural)),
 ]
 
 MUTANTS = READER_MUTANTS + CANONICAL_MUTANTS + HASH_MUTANTS + SLIP_MUTANTS
