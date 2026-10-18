@@ -35,7 +35,7 @@ after every run that includes these tests:
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
 | S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape (plain read) | 166 | run, passed |
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
-| S2's reads of evidence, and reads under a nominal or an acceptance a read does not take, to the value or ending at step 0, 8 or 13 (plain read) | 51 | run, passed |
+| S2's reads of evidence, and reads under a nominal or an acceptance a read does not take, to the value or ending at step 0, 8 or 13 (plain read) | 64 | run, passed |
 | reads S3's pieces run (plain read): tables, and reads under an extrapolation | 180 | not yet runnable: the step that runs each is not done |
 | reads S4 runs (plain read): over alternatives, with a pick, or through an overlay | 156 | not yet runnable: S4, which runs each, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | not yet runnable: no executor; S3-te adds one, which runs a test-only reference evaluator |
@@ -48,7 +48,7 @@ since its fix round. So are the two arms of the maintainer's token ruling, which
 (`PR-330.implied_token_for_numeric_condition`, `PR-330.implied_unit_for_token_condition`): S2a-3's step 0
 ignored each member, and S2a-4's fix round refuses it.
 
-Of the 1279 case files, 1229 agree with plain read and the hash suite, 1171 with plain read alone, and 1229 with
+Of the 1292 case files, 1242 agree with plain read and the hash suite, 1184 with plain read alone, and 1242 with
 the fits and reference data suite too; the 35 of the table evaluation suite agree with none, since this
 implementation claims no evaluator.
 

@@ -1,0 +1,131 @@
+{
+  "case": "PR-052",
+  "variant": "withheld_entry_first",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_withheld_entry_first.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:cbb23d84a5c99693408c7bc910ab4d08c39a3accec640508f8e7b1c103ec4acb"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "evidence"
+    }
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "entries_withheld"
+      }
+    ],
+    "value": [
+      {
+        "endpoint": {
+          "status": "withheld"
+        },
+        "standard": {
+          "status": "withheld"
+        },
+        "contact_category": {
+          "status": "withheld"
+        },
+        "contact_duration": {
+          "status": "withheld"
+        },
+        "material_form": {
+          "status": "withheld"
+        },
+        "processing": {
+          "status": "withheld"
+        },
+        "reported_result": {
+          "status": "withheld"
+        },
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          },
+          "recipe": {
+            "locator": {
+              "type": "table",
+              "label": "Table 3"
+            },
+            "steps": "conformance fixture: illustrative extraction steps"
+          }
+        }
+      },
+      {
+        "endpoint": "cytotoxicity",
+        "standard": {
+          "designation": "ISO 10993-5",
+          "year": 2009
+        },
+        "contact_category": "conformance fixture: the source's words",
+        "contact_duration": "conformance fixture: the source's words",
+        "material_form": "conformance fixture: the source's words",
+        "processing": "conformance fixture: the source's words",
+        "reported_result": "conformance fixture: illustrative report text",
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": {
+            "method": "own_measurement"
+          },
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        }
+      }
+    ],
+    "unit": {
+      "status": "not_applicable"
+    },
+    "conditions": [],
+    "specimen": {},
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

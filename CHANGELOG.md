@@ -443,12 +443,19 @@ every family entry goes in `families/CHANGELOG.md`.
   component's statistics withheld; a sum rule and a component of another member's tokens; a broken form its
   row does not allow; a component repeated after another; an unknown status token in a bound; and a slip of
   the field's `value` inside an interval.
-- S2b-2's 51 case files run and pass: 908 of 1279 case files pass, 371 wait for S3 and S4. Eleven broken
+- S2b-2's 64 case files run and pass: 921 of 1292 case files pass, 371 wait for S3 and S4. Eleven broken
   implementations show the runner fails on them: every report withheld read as some, and some as every; a
   report withheld in part taken; a registered condition under evidence taken; a report's provenance cut to a
   result's; a nominal applied outside its bounds, or wherever it is located; a nominal's value dropped from a
-  `not_met` result; two nominals for one field taken; a waiver ignored; and a nominal compared with the
-  bounds under `no_pick`. The reason-step check finds `entries_withheld` and `nominal_invalid` returned.
+  `not_met` result; two nominals for one field taken; a waiver ignored; and a nominal compared with the bounds
+  under `no_pick`. The reason-step check finds `entries_withheld` and `nominal_invalid` returned. 13 of the 64
+  came with S2b-2's review, each killing a fault of the read that every other case let through: a list whose
+  first report is withheld; a report's member holding `none` or `not_checked`, or a status token the reader
+  does not know; `standard` as a status object beside a member its shape does not define, and a `standard`
+  without its `designation`; a registered condition held as a status object under evidence; a withheld report
+  whose marker holds a member beside its status; a slip of `provenance` in a report; a report's review of an
+  unknown status; and a nominal on an interval's lower bound, inside one with no lower bound, and under
+  `want: components`.
 - Evidence and the nominal in the checks of steps 0 and 8 (S2b-2): T1 holds step 8 itself on evidence, its
   bases gaining a full evidence field and one every report of which is withheld; the unknown-member position
   D03 has its verdicts, R60 to R76 (an evidence field, a report and its standard, a report's provenance
