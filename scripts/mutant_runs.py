@@ -233,13 +233,24 @@ def path_problems(root: Path, path: str) -> list[str]:
 def ignored_paths(root: Path, paths: Sequence[str]) -> tuple[set[str], str]:
     """The paths of `paths` git's ignore rules match, whether tracked or not (`git check-ignore --no-index`),
     read before anything is installed: the environment `uv sync` makes (`.venv/`) and Hypothesis's example
-    database (`.hypothesis/`) among them; and git's error where it could not say."""
+    database (`.hypothesis/`) among them; and git's error where it could not say. Each path is asked about
+    twice, as itself and as a directory (`path/`): a pattern with a trailing slash (`.pytest_cache/`,
+    `.hypothesis/`, `build/`) matches a directory only, so a regular file of that name would pass the first
+    question, and the tools that look for that directory would meet a file in its place."""
     if not paths:
         return set(), ""
-    asked = git(root, "check-ignore", "--no-index", "--stdin", "-z", given="".join(f"{p}\0" for p in paths))
+    asked = git(
+        root,
+        "check-ignore",
+        "--no-index",
+        "--stdin",
+        "-z",
+        given="".join(f"{p}\0{p}/\0" for p in paths),
+    )
     if asked.returncode not in (0, 1):
         return set(), first_lines(asked.stderr) or f"exit {asked.returncode}"
-    return {path for path in asked.stdout.split("\0") if path}, ""
+    matched = {path for path in asked.stdout.split("\0") if path}
+    return {path for path in paths if path in matched or f"{path}/" in matched}, ""
 
 
 class Named(NamedTuple):

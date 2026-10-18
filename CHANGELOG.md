@@ -95,6 +95,15 @@ every family entry goes in `families/CHANGELOG.md`.
   suite name does not type-check.
 
 ### Changed
+- `scripts/mutant_runs.py` refuses a patch that creates a regular file named like a directory `.gitignore`
+  names with a trailing slash: `.pytest_cache`, `.hypothesis`, and any other such name (`build`, `dist`,
+  `.tox`, `.mypy_cache`). `git check-ignore --no-index` matches a pattern such as `.pytest_cache/` to a
+  directory only, so the request took the file (`touched ['.pytest_cache']`), and the mutant ran undecided
+  with a reason the table did not name (pytest: "Not a directory", exit 1, no failure named); it could not
+  give a kill (#46's re-check, H2). The request now asks git about each path as itself and as `path/`, which
+  closes the whole class rather than the two names, and no file tracked in the repository is matched either
+  way. `tests/unit/test_ci_workflows.py` adds both names to the refused patches, with a control that takes
+  the second question out and takes the patch; the patch creating `src/materica/third.py` stays taken.
 - The README's code-licence badge reads PyPI's licence metadata (`img.shields.io/pypi/l/openmaterica`) where it
   read GitHub's licence detection (`img.shields.io/github/license/...`). Shields.io draws the second through a
   pool of GitHub API tokens and, on 2026-10-17, drew an error, which GitHub's image proxy then kept for four
