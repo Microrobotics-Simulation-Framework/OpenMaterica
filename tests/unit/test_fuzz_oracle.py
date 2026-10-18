@@ -95,6 +95,26 @@ def _any(value: JsonValue, where: str, found: value_shapes.Found) -> None:
     pass
 
 
+def a_year_of_the_wrong_type() -> tuple[str, dict[str, JsonValue]]:
+    name, field = full_forms()["evidence"]
+    reports = field["evidence"]
+    assert isinstance(reports, list)
+    first = reports[0]
+    assert isinstance(first, dict)
+    first["standard"] = {"designation": "ISO 10993-5", "year": "2009"}
+    return name, field
+
+
+def test_the_oracle_sees_a_refusal_step_8_misses_in_an_evidence_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    name, field = a_year_of_the_wrong_type()
+    check_no_refusal_missing(name, field, result_of(field, name))
+    monkeypatch.setattr(fields, "whole", _any)
+    with pytest.raises(AssertionError, match="the reader \\$defs refuse"):
+        check_no_refusal_missing(name, field, result_of(field, name))
+
+
 def test_the_oracle_sees_a_refusal_step_8_misses(monkeypatch: pytest.MonkeyPatch) -> None:
     required, optional = value_shapes.STATISTICS
     blind: value_shapes.Members = {**required, "n_donors": _any}

@@ -5,11 +5,11 @@ which needs Atheris, so that a unit test can show each fails (`tests/unit/test_f
 The reference model (`tests/reference/read_model.py`) says what each read must give: the target holds every
 read to it as HP12 does (`check_against_the_model`), so that a refusal step 8 gives wrongly is seen, which no
 other oracle here can see (S2a-2's review, L3). Beside it, the target holds step 8 to T1's third relation
-(`tests/spec_sync/test_t1.py`): what the reader `$defs` refuse, step 8 refuses. A constant, an interval or a
-composition step 8 passes it holds to steps 9 and 10 as the text gives them: its units each compared with the
-one registered for it, code point for code point, written here from `record_format.md` section 4.2 and step
-9; and its conditions against the request by `condition_oracle.py`, HP7's oracle, written from section 5
-alone.
+(`tests/spec_sync/test_t1.py`): what the reader `$defs` refuse, step 8 refuses. A constant, an interval, a
+composition or evidence step 8 passes it holds to steps 9 and 10 as the text gives them: its units each
+compared with the one registered for it, code point for code point, written here from `record_format.md`
+section 4.2 and step 9; and its conditions against the request by `condition_oracle.py`, HP7's oracle,
+written from section 5 alone.
 """
 
 import json
@@ -40,12 +40,12 @@ JsonObject = dict[str, JsonValue]
 # The forms step 8 reads, each with its reader definition. jsonschema-rs alone, on every input the target
 # reaches: T1 holds its verdicts on those definitions to python-jsonschema's
 # (`tests/property/test_validators_agree.py`).
-READ_FORMS = ("constant", "interval", "composition")
+READ_FORMS = ("constant", "interval", "composition", "evidence")
 DEFINITIONS = {form: f"record.reader.json#/$defs/{form}_field" for form in READ_FORMS}
 READER_TAKES = {form: takes(definition) for form, definition in DEFINITIONS.items()}
 WHY = {form: why_refused({"$ref": urljoin(BASE, definition)}) for form, definition in DEFINITIONS.items()}
 # What a read of each form wants to get its own member (`read_side_contract.md` section 6).
-WANT_OF = {"constant": "value", "interval": "bounds", "composition": "components"}
+WANT_OF = {"constant": "value", "interval": "bounds", "composition": "components", "evidence": "evidence"}
 
 # The operating conditions and the requirement a read gives each condition a field's row may require: a
 # tolerance about a seed's usual value, or an accept list of some of the row's tokens.
@@ -66,7 +66,10 @@ REQUIRED: dict[str, JsonObject] = {
 
 # The codes of steps 12 and 13 a read of those forms gives (`read_side_contract.md` section 3), and those of
 # step 10. The target's requests want only what plain read gives, so `want_mismatch` comes from step 13 alone.
+# The one `unknown` reason step 8 gives, some of evidence's reports withheld, stands beside a read that goes
+# on.
 STEPS_12_AND_13 = frozenset({"stated_without_origin", "want_mismatch"})
+STEP_8_UNKNOWN = frozenset({"entries_withheld"})
 STEP_10 = frozenset(code for code, row in REASONS["reasons"].items() if 10 in row.get("steps", []))
 
 
@@ -81,7 +84,9 @@ def passed_step_8(result: JsonValue) -> bool:
         if isinstance(reasons, list)
         else []
     )
-    return isinstance(reasons, list) and all(code in AFTER_STEP_8 | STEPS_12_AND_13 for code in codes)
+    return isinstance(reasons, list) and all(
+        code in AFTER_STEP_8 | STEPS_12_AND_13 | STEP_8_UNKNOWN for code in codes
+    )
 
 
 def read_form(field_name: str, field: JsonValue) -> str | None:
@@ -167,7 +172,11 @@ def check_steps_9_and_10(
     stand beside step 10's."""
     if read_form(field_name, field) is None or not passed_step_8(result) or not isinstance(field, dict):
         return
-    pairs = {(str(reason.get("code")), reason.get("condition")) for reason in objects(result, "reasons")}
+    pairs = {
+        (str(reason.get("code")), reason.get("condition"))
+        for reason in objects(result, "reasons")
+        if reason.get("code") not in STEP_8_UNKNOWN
+    }
     units = units_refused(field_name, field)
     if units:
         assert pairs == units, (
