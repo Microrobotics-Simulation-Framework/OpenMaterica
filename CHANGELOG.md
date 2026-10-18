@@ -14,6 +14,16 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [0.1.0.dev2] - 2026-10-20
+
+A development pre-release. It holds S2: the read of a field holding a constant, an interval, a composition or
+evidence, with its conditions, the acceptances a read takes (nominals and implied conditions) and the reasons of
+its result; S4a: a field holding alternatives, read with no pick and no overlay (the one alternative left, those
+set aside, or no pick among those that stay); the core's table evaluator, not yet called by the read; three
+example records with a quickstart; and a README and site that say first what OpenMaterica is for. Tables,
+extrapolation, picks and overlays raise `NotImplementedError` until later steps. The schema 0.1 files may still
+change before 0.1.0. The entries below are everything since 0.1.0.dev1.
+
 ### Added
 - A builders' check before a pull request is reviewed (maintainer, 2026-10-18), so that routine findings are
   caught before the independent review and the review spends its time on what only an independent reader finds.
@@ -1041,8 +1051,8 @@ every family entry goes in `families/CHANGELOG.md`.
   the 96th example (`loglog_not_exact_at_ties`, original size), so none needs a plan.
 
 ### Known Anomalies
-- The registry's `materica_version` is the package's version, `0.1.0.dev1`: it still read `0.1.0.dev0` after
-  0.1.0.dev1 was released, and its header still said no version had been. No entries yet.
+- The registry's `materica_version` is the package's version (`0.1.0.dev2` at this release); it still read
+  `0.1.0.dev0` after 0.1.0.dev1 was released, and its header still said no version had been. No entries yet.
 
 ## [0.1.0.dev1] - 2026-10-14
 

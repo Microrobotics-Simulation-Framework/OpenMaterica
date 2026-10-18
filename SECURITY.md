@@ -11,7 +11,8 @@ reproduce, the affected versions, and a suggested fix if you have one.
 
 ## Supported versions
 
-No version has been released yet.
+No stable version has been released yet. Development pre-releases (`0.1.0.devN`) are on PyPI for evaluation
+only.
 
 ## Scope
 
