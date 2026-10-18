@@ -89,6 +89,12 @@ Hypothesis harvests from the loaded modules (`harvested_constants.py`), so its e
 count, depend on the code alone. A test under `@seed` still draws them, so its examples also change with the
 modules outside `tests/` that the process has loaded.
 
+Two limits of that pin, neither met by a test here (the review measured both; details in
+`harvested_constants.py`): a search run inside the body of another that draws with `st.data()`, derandomized in
+one and random in the other, leaks the pool into the derandomized draws or takes it from the random ones (81
+of 6,000 draws, and 106 to 0); and a derandomized test that calls `settings.load_profile` in its body draws
+the pool afterwards (14 of 2,400). A test that does either is outside the pin's guarantee.
+
 Until the profiles stopped inheriting Hypothesis's own `ci` profile (above, "Running"), so did every test on
 GitHub's runners: every run of a repeat run drew the same examples whatever its seed.
 
