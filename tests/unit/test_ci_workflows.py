@@ -928,6 +928,18 @@ NAMED_NOT_READ = {
         "CLAUDE.md",
     ): "a key of the scan's allowed paths, over text it writes",
     # Globs, each in a directory that holds no documentation.
+    (
+        "scripts/pre_review.py",
+        "CHANGELOG.md",
+    ): "the lines a branch adds to it, read from git for the counts they state; no test takes it as input",
+    (
+        "tests/unit/test_pre_review.py",
+        "CHANGELOG.md",
+    ): "a path the selection tests pass as a changed file, and one a throwaway repository commits",
+    (
+        "tests/unit/test_pre_review.py",
+        "CONTRIBUTING.md",
+    ): "a path the selection tests pass as a changed file, as the gate's tests do",
     ("scripts/check_wheel.py", "*"): "the files of the wheel it unpacks",
     ("scripts/freeze_schema.py", "*"): "the files of a schema version",
     ("scripts/schema_index.py", "*"): "the directories of the published schemas",

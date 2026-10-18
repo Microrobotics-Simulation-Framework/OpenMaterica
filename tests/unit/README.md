@@ -32,3 +32,8 @@ Tests by example, for what the conformance cases and the properties do not reach
 - the key under which `tests/property/strategies.py` caches `json_values`'s strategy: it tells apart 0.0 and
   -0.0, `True`, 1 and 1.0, strategies that compare equal, and a `Size` from a tuple of its items, where a key
   by `==` merges each pair; its control runs each pair under that key (`test_strategy_key.py`).
+- the pre-review script's selection (`test_pre_review.py`): each rule, with a change that must select its check and
+  one that must not; its lists of the paths that are not code, of the generators and of the static checks held to
+  `ci.yml`'s; the import graph that follows a change to the tests that import it; every path a check names
+  existing, and every shard it names collected by pytest; the changes read from git (committed, staged, unstaged,
+  untracked, deleted and renamed files, from the merge base); and the stages' order, stop and `--keep-going`.
