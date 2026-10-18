@@ -1,0 +1,250 @@
+# Hand mutants run on CI, each in a job of its own, and one table of what became of each: how a reviewer shows
+# that a branch's tests kill its mutants without running the suite against each on a shared laptop (maintainer,
+# 2026-10-18; a reviewer's run of the suite against dozens of mutants took about five hours there). GitHub's
+# runners are free for this public repository, and the mutants run side by side, ten at once by default
+# (MUTANT_MAX_PARALLEL, below). Run by hand alone (`workflow_dispatch`), never on a push or a pull request;
+# tests/README.md, "Mutant tables on CI", says how to ask for one and how to read its table.
+# A mutant is a patch committed on the dispatched branch as mutants/<name>.patch; the dispatch names patches,
+# never gives their text. The request job refuses any patch git does not read as a text patch in its own
+# format, and one that renames, copies or links a file, or touches a path outside the checkout, under .github/
+# or mutants/, this workflow's script, or what decides what is installed and what pytest selects
+# (pyproject.toml, uv.lock): scripts/mutant_runs.py says why.
+# Each mutant's job applies its patch to a clean checkout of the dispatched commit, checks that the code
+# imports, collects the selection and runs it until the first failure: killed, by the test that failed first;
+# survived; or broken, where the patch does not apply or the code does not import or collect. A job of the
+# commit as it is, the baseline, runs beside them, and where it does not pass no mutant counts as killed.
+# Rigour is the repository's own: the profile is one of tests/conftest.py's, whose example counts, deadline and
+# health checks no input reaches, and every run draws under one seed, given or drawn at random, which the
+# table gives. Every input is checked by the request job, and the jobs after it read the checked values alone;
+# each reaches its steps through the environment, never through a script's text.
+# tests/unit/test_ci_workflows.py holds each of these.
+
+name: Mutants
+
+run-name: "Mutants ${{ inputs.mutants || '(every patch in mutants/)' }} against ${{ inputs.selection }} (${{ inputs.profile }})"
+
+on:
+  workflow_dispatch:
+    inputs:
+      mutants:
+        description: "The mutants by name, space-separated, each the patch mutants/<name>.patch committed on the branch; empty for every patch there"
+        type: string
+        default: ""
+      selection:
+        description: "What pytest runs against each mutant: paths or nodes under tests/, space-separated; tests for the whole suite"
+        type: string
+        default: tests
+      profile:
+        description: The Hypothesis profile, one of the repository's own (tests/conftest.py)
+        type: choice
+        options: [dev, ci, deep]
+        default: dev
+      python:
+        description: The Python
+        type: choice
+        options: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        default: "3.15"
+      seed:
+        description: "The Hypothesis seed of every run (0 to 999999999); empty for one drawn at random, which the table gives"
+        type: string
+        default: ""
+      extra:
+        description: "Extra pytest arguments, of these alone: --shard NAME, --property-controls only|none"
+        type: string
+        default: ""
+
+# A dispatch waits while another of the same inputs runs on the same ref; one of other inputs runs beside it.
+# None is ever cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.mutants }}-${{ inputs.selection }}-${{ inputs.profile }}-${{ inputs.python }}-${{ inputs.seed }}-${{ inputs.extra }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.13.0"
+
+# Under bash with `-eo pipefail`, as every workflow here (ci.yml says why).
+defaults:
+  run:
+    shell: bash
+
+# On ubuntu-24.04, as every job of every workflow here (ci.yml says why, above its jobs).
+jobs:
+  request:
+    name: the request and its patches, checked
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      mutants: ${{ steps.checked.outputs.mutants }}
+      matrix: ${{ steps.checked.outputs.matrix }}
+      selection: ${{ steps.checked.outputs.selection }}
+      profile: ${{ steps.checked.outputs.profile }}
+      python: ${{ steps.checked.outputs.python }}
+      seed: ${{ steps.checked.outputs.seed }}
+      extra: ${{ steps.checked.outputs.extra }}
+      max_parallel: ${{ steps.cap.outputs.max_parallel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The only step that reads an input (scripts/mutant_runs.py says what it refuses), on the runner's Python:
+      # the inputs, and every patch they name, read from the dispatched commit.
+      - name: The inputs and the patches, checked
+        id: checked
+        env:
+          MUTANTS: ${{ inputs.mutants }}
+          SELECTION: ${{ inputs.selection }}
+          PROFILE: ${{ inputs.profile }}
+          PYTHON_VERSION: ${{ inputs.python }}
+          SEED: ${{ inputs.seed }}
+          EXTRA: ${{ inputs.extra }}
+        run: python3 scripts/mutant_runs.py request
+      # The uv cache CI saved is restored, and none is saved: no other run reads what this workflow writes.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ steps.checked.outputs.python }}
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # pytest refuses a test the selection does not name and an extra argument's value its option does not
+      # list, and finds none in a path that holds none: before any mutant's job starts.
+      - name: The selection collects a test
+        env:
+          SELECTION: ${{ steps.checked.outputs.selection }}
+          EXTRA: ${{ steps.checked.outputs.extra }}
+          MATERICA_HYPOTHESIS_PROFILE: ${{ steps.checked.outputs.profile }}
+        run: |
+          read -ra selection <<< "$SELECTION"
+          read -ra extra <<< "$EXTRA"
+          status=0
+          collected=$(uv run pytest --collect-only -q "${selection[@]}" "${extra[@]}") || status=$?
+          tail -n 5 <<< "$collected"
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Mutant request::pytest collected no test of the selection with these arguments (exit $status)"
+            exit 1
+          fi
+      # The mutants' cap, as ci.yml's gate checks the per-commit jobs' (its step says why), with the same
+      # script: a whole number from 1 to 20, or no mutant's job starts. The value it took is the request job's
+      # output `max_parallel`, the only place the mutants' jobs read it.
+      - name: The cap of jobs at once is a whole number from 1 to 20
+        id: cap
+        env:
+          VARIABLE: MUTANT_MAX_PARALLEL
+          MAX_PARALLEL: ${{ vars.MUTANT_MAX_PARALLEL || '10' }}
+        run: |
+          if [[ ! "$MAX_PARALLEL" =~ ^([123456789]|1[0123456789]|20)$ ]]; then
+            printf -v shown '%q' "$MAX_PARALLEL"
+            echo "::error title=Runner cap::the repository variable $VARIABLE is $shown, not a whole number from 1 to 20: set it to one, or delete it for the workflow's default"
+            exit 1
+          fi
+          echo "max_parallel=$MAX_PARALLEL" >> "$GITHUB_OUTPUT"
+          echo "$VARIABLE: at most $MAX_PARALLEL jobs at once"
+
+  mutants:
+    name: ${{ matrix.mutant && format('mutant {0}', matrix.mutant) || 'the baseline, no mutant' }}
+    needs: request
+    runs-on: ubuntu-24.04
+    # The run is interrupted three minutes before this, so that the job keeps the record of what it found. Set
+    # by profile, as in repeat.yml: a run at `deep` takes about ten times one at `ci`, and the whole suite at
+    # `dev` takes the test matrix's jobs well under their 40 minutes.
+    timeout-minutes: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
+    # The same minutes, from which the interrupt is set (below).
+    env:
+      JOB_MINUTES: ${{ needs.request.outputs.profile == 'deep' && 360 || needs.request.outputs.profile == 'ci' && 120 || 60 }}
+    # One job for the baseline (the matrix's `""`) and one for each mutant, at most MUTANT_MAX_PARALLEL at
+    # once, a repository variable, 10 where it is unset, as the request job checks it and gives it; more queue
+    # inside the run. The organisation's 60 concurrent jobs (its plan's) are shared by this repository's CI and
+    # MIME's and MADDENING's (.github/workflows/README.md). A job that fails cancels no other, so that every
+    # mutant keeps its record.
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.request.outputs.max_parallel) }}
+      matrix:
+        mutant: ${{ fromJSON(needs.request.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ needs.request.outputs.python }}
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # The script is copied out of the checkout and run from there, isolated (`python3 -I`), before the patch
+      # is applied, so that nothing the patch writes reaches the code that records the verdict; the record goes
+      # to the runner's temporary directory, outside the checkout. The script checks the patch again, applies
+      # it, imports the package, collects the selection and runs it under `uv run timeout --foreground
+      # --signal=INT` until three minutes before the job's timeout, as ci.yml's jobs run pytest (its step says
+      # why): a worker per vCPU, under `worksteal`, stopping at the first failure, under the request's seed. It
+      # exits 1 where it could not decide, or where the baseline did not pass.
+      - name: The mutant, applied and run
+        id: run
+        env:
+          MUTANT: ${{ matrix.mutant }}
+          SELECTION: ${{ needs.request.outputs.selection }}
+          EXTRA: ${{ needs.request.outputs.extra }}
+          SEED: ${{ needs.request.outputs.seed }}
+          MATERICA_HYPOTHESIS_PROFILE: ${{ needs.request.outputs.profile }}
+        run: |
+          runner="$RUNNER_TEMP/runner"
+          mkdir -p "$runner" "$RUNNER_TEMP/record"
+          cp scripts/mutant_runs.py "$runner/mutant_runs.py"
+          python3 -I "$runner/mutant_runs.py" run "$RUNNER_TEMP/record"
+      # Under a name of each mutant's and each attempt's own (the baseline's is `_baseline`, which no mutant's
+      # name can be), and the table refuses any attempt but the first.
+      - name: Keep the record
+        if: always() && steps.run.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: record-${{ matrix.mutant || '_baseline' }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/record
+          if-no-files-found: error
+          retention-days: 90
+
+  table:
+    name: the table
+    needs: [request, mutants]
+    # After every mutant's job, whatever their outcome, once the request was checked.
+    if: always() && needs.request.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fetch the records
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: record-*
+          path: ${{ runner.temp }}/records
+      # One row for the baseline and one for each mutant, on the run's page and kept as an artifact; fails
+      # unless the baseline passed and every mutant was killed, each with one record, every mutant's job
+      # succeeded, and the run is on its first attempt (scripts/mutant_runs.py, `table`). To run a table again,
+      # dispatch it anew.
+      - name: The table
+        id: table
+        env:
+          MUTANTS: ${{ needs.request.outputs.mutants }}
+          SELECTION: ${{ needs.request.outputs.selection }}
+          PROFILE: ${{ needs.request.outputs.profile }}
+          PYTHON_VERSION: ${{ needs.request.outputs.python }}
+          SEED: ${{ needs.request.outputs.seed }}
+          EXTRA: ${{ needs.request.outputs.extra }}
+          MUTANTS_RESULT: ${{ needs.mutants.result }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: python3 scripts/mutant_runs.py table "$RUNNER_TEMP/records" "$RUNNER_TEMP/table"
+      - name: Keep the table
+        if: always() && steps.table.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutant-table-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/table
+          if-no-files-found: error
+          retention-days: 90

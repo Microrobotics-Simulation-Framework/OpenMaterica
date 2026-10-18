@@ -102,6 +102,86 @@ the pool afterwards (14 of 2,400). A test that does either is outside the pin's 
 Until the profiles stopped inheriting Hypothesis's own `ci` profile (above, "Running"), so did every test on
 GitHub's runners: every run of a repeat run drew the same examples whatever its seed.
 
+## Mutant tables on CI
+
+To show that a branch's tests kill its hand mutants, run the mutants on CI, not one after another here
+(maintainer, 2026-10-18): one review's run of the suite against its mutants took about five hours on the
+shared laptop. The workflow `mutants.yml` runs each mutant in a job of its own, ten at a time by default,
+beside the branch as it is, and writes one table (`.github/workflows/README.md` says what each job does and
+what it refuses). It runs on a pushed ref: a reviewer, or an agent through the main session, commits the
+mutants to a branch of their own, which is never merged, and dispatches the workflow on it.
+
+1. Branch from the head under review, and write each mutant as a patch of the tree, one file each, under
+   `mutants/`, named by letters, digits, `_` and `-` (for a new file, `git add -N` it before `git diff`):
+
+   ```sh
+   git switch -c mutants/<review> <head> && mkdir -p mutants
+   # make the mutant's edit, then
+   git diff > mutants/m01.patch && git checkout -- src tests
+   git add mutants && git commit -s -m "mutants for <review>"     # the patches alone, never the edits
+   git push -u origin mutants/<review>
+   ```
+
+   A patch is the tree's own `git diff`: edits, new files and deleted files of source or tests, never a
+   rename, a link, binary data, `.github/`, `mutants/`, `scripts/mutant_runs.py`, `pyproject.toml` or
+   `uv.lock`. The request checks every patch it names before any mutant runs, and refuses the run for any
+   other.
+2. Dispatch, and wait:
+
+   ```sh
+   gh workflow run mutants.yml --ref mutants/<review> -f selection=tests      # every patch in mutants/
+   gh workflow run mutants.yml --ref mutants/<review> -f mutants="m01 m07" \
+     -f selection="tests/unit/test_read.py tests/property/test_read_properties.py" -f profile=dev
+   gh run list --workflow mutants.yml --limit 3     # the run's id
+   gh run watch <id> --exit-status                  # exits non-zero unless every mutant was killed
+   ```
+
+3. Read the table, on the run's page or as a file:
+
+   ```sh
+   gh run view <id> --web
+   gh run download <id> -n mutant-table-1           # table.md and table.json
+   ```
+
+The inputs: `mutants`, the names, space-separated, or none for every patch committed in `mutants/`;
+`selection`, paths or nodes under `tests/`, space-separated (`tests` by default, the whole suite); `profile`,
+`dev` (the default, a local run's), `ci` or `deep`, whose example counts are `tests/conftest.py`'s and nothing
+else's; `python`, 3.11 to 3.15 (default 3.15); `seed`, the one Hypothesis seed every run draws under, or none
+for one drawn at random, which the table gives; and `extra`, of `--shard NAME` and
+`--property-controls only|none` alone. At most `MUTANT_MAX_PARALLEL` mutants run at once, a repository
+variable, 10 where it is unset (`.github/workflows/README.md`, "Jobs at once").
+
+The table has a row for the baseline, the branch as it is, and one for each mutant: **killed**, with the test
+that failed first; **survived**, every selected test passed; **broken**, the patch does not apply, or the code
+does not import or the selection does not collect, with why; or **undecided**, with why (the job ran out of
+time, pytest stopped another way, or the record is missing or doubled). Where the baseline did not pass, no
+mutant counts as killed. The run passes only when the baseline passed and every mutant was killed; a mutant
+that survives because it changes nothing (an equivalent mutant) leaves it red, and the reviewer says so where
+the table is cited. A run stops at its first failure, so a killed mutant's row names one killer, not all of
+them. A mutant's run replays here with the same examples:
+
+```sh
+git apply mutants/<name>.patch
+MATERICA_HYPOTHESIS_PROFILE=<profile> uv run pytest <the test> --hypothesis-seed=<the table's seed>
+```
+
+Never re-run a mutant table's jobs: dispatch it anew, as the table fails on any attempt but the first.
+
+## The whole suite on CI
+
+A branch's whole suite runs on CI without a run here. Once the main session has pushed a branch as a draft
+pull request, `ci.yml` runs the suite at `dev` on its head (the `tests` and `controls` jobs, on every Python,
+the mutant searches and audit controls on the range's ends) and on each earlier commit (the `commit` job), and
+the Hypothesis job at `ci`; `gh pr checks <number>` shows their result. A pushed branch with no pull request
+runs it through `repeat.yml`, the whole suite once under one seed:
+
+```sh
+gh workflow run repeat.yml --ref <branch> -f node=tests -f profile=dev -f jobs=1 -f runs=1
+```
+
+Each job runs a worker per vCPU, four on GitHub's runner, which it has to itself; `-n 8` and `-n 12` here are
+about sharing this machine (`.github/workflows/README.md`, "The whole suite on CI").
+
 ## Schema verdicts
 
 Every verdict the tests take from the package's JSON Schemas comes from jsonschema-rs (`verdicts.py`), alone

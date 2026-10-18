@@ -502,6 +502,28 @@ every family entry goes in `families/CHANGELOG.md`.
   module collected alone, or on Python 3.11 against 3.15, where without it the second moved 47 and the third
   62; every mutant still dies within its 2,000 examples at both sizes, the latest at the 872nd, and
   `tests/property/README.md`'s counts are measured again.
+- Hand mutants run on CI (maintainer, 2026-10-18), so that a reviewer's runs of the suite against dozens of
+  mutants, about five hours on the shared laptop for one review, run side by side (`mutants.yml`, dispatched
+  by hand alone; `tests/README.md`, "Mutant tables on CI"). A reviewer commits each mutant on a branch of its
+  own as `mutants/<name>.patch` and dispatches the workflow with a pytest selection: each mutant runs in a job
+  of its own, its patch applied to a clean checkout of the dispatched commit, beside a job of the commit as it
+  is (the baseline), and a last job writes one table, on the run's page and as an artifact: killed, with the
+  test that failed first; survived; broken, where the patch does not apply or the code does not import or
+  collect; or undecided. Where the baseline did not pass, no mutant counts as killed, and the run passes only
+  when every mutant was killed. Patches are files of the dispatched commit, never text from the dispatch form,
+  and the request refuses, before any mutant runs, one git does not read as a text patch in its own format,
+  one with binary data, a rename, a copy, a link or a submodule, and one that touches a path outside the
+  checkout, inside `.git`, under `.github/` or `mutants/`, the runner itself (`scripts/mutant_runs.py`),
+  `pyproject.toml` or `uv.lock`. A mutant's job runs the code that records its verdict from a copy outside the
+  checkout, made before the patch is applied; the record holds facts, and one function makes the verdict from
+  them, so that a mutant whose patch did not apply or whose code did not import is broken whatever else its
+  record holds. The runs of a dispatch share one seed, given or drawn and shown, so that a mutant's run
+  replays exactly. At most `MUTANT_MAX_PARALLEL` mutants run at once, a repository variable checked as the
+  other caps are (10 where it is unset, 20 at most). `tests/unit/test_ci_workflows.py` runs its steps as
+  written on a throwaway repository, each refusal with the rule taken out of the script as its control, and
+  end to end with this Python's pytest on mutants that are killed, survive and are broken. The whole suite of
+  a branch already runs on CI, through a draft pull request or `repeat.yml` with `node=tests`;
+  `.github/workflows/README.md`, "The whole suite on CI", says how.
 - `repeat.yml` warns, and runs the request all the same, where the node collects a test in a module whose
   searches are derandomized: one `PROPERTY_CONTROLS` selects, or one whose code sets `derandomize=True` or
   runs `MUTANT_SEARCH` (#43's review, L7). Every repeat of such a test draws the same examples whatever its

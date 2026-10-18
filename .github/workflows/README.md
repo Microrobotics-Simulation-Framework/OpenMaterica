@@ -5,6 +5,8 @@ and `tests/unit/test_ci_workflows.py` holds its jobs and shards to `ci.yml`, wit
 selects; no job or step carries on after a failure (`continue-on-error`).
 `pages.yml` deploys `site/` to openmaterica.org on a push to main that touches it.
 `repeat.yml` runs one test many times, each run under a seed of its own, when dispatched by hand (below).
+`mutants.yml` runs a branch's hand mutants, each against a pytest selection in a job of its own, and writes
+one table of what became of each, when dispatched by hand (below).
 
 | Job | Runs | When |
 |---|---|---|
@@ -76,6 +78,57 @@ comparison. The warning reads what pytest collected with the extra arguments, so
 leaves the controls out of it. A module that runs another module's search through a function it imports
 (`tests/property/test_validators_agree.py` runs the writer mutants' searches) is not found.
 
+## Mutant tables (`mutants.yml`)
+
+Run by hand alone (`workflow_dispatch`), never on a push or a pull request: a branch's hand mutants, each a
+patch committed on it as `mutants/<name>.patch`, each run against a pytest selection in a job of its own,
+beside a job of the commit as it is (the baseline), and one table of what became of each (maintainer,
+2026-10-18), so that a reviewer's mutant runs, which took about five hours on the shared laptop for one
+review, run side by side on CI. `tests/README.md`, "Mutant tables on CI", says how to ask for one and how
+to read its table. Its inputs: the mutants, by name, or none for every patch in `mutants/`; the selection,
+paths or nodes under `tests/` (`tests` by default, the whole suite); the profile (`dev` by default); the
+Python; the seed every run draws under, or none for one drawn at random; and extra pytest arguments,
+`--shard` and `--property-controls` alone.
+
+| Job | Runs | When |
+|---|---|---|
+| `request` | checks the inputs and every patch they name (`scripts/mutant_runs.py request`, on the runner's Python) and writes them, checked, as its outputs, the matrix of jobs among them, which the jobs after it read in place of the inputs; then collects the selection with the extra arguments, so that a test that does not exist fails before any mutant's job starts; then checks the mutants' cap, `MUTANT_MAX_PARALLEL` (below) | every dispatch |
+| `mutants` | one job for the baseline and one for each mutant: a clean checkout of the dispatched commit, the patch applied (`git apply`), every module of the package imported and each Python file the patch touches compiled, the selection collected, and then run as CI's test jobs run pytest, a worker per vCPU under `worksteal`, stopping at the first failure, under the request's seed and profile, interrupted three minutes before the job's timeout (60 minutes at `dev`, 120 at `ci`, 360 at `deep`); its record kept 90 days as the artifact `record-<mutant>-<attempt>` (`record-_baseline-<attempt>` for the baseline); fails where it could not decide, and where the baseline did not pass | after `request`, the jobs side by side, at most `MUTANT_MAX_PARALLEL` at once (`max-parallel`), 10 where it is unset (below), none cancelled by another's failure (`fail-fast: false`) |
+| `table` | one row for the baseline and one for each mutant, on the run's page and kept 90 days as the artifact `mutant-table-<attempt>` (`table.md`, `table.json`): killed, with the test that failed first; survived; broken, where the patch does not apply or the code does not import or collect, with why; or undecided, with why. Where the baseline did not pass, no mutant counts as killed. Fails unless the baseline passed and every mutant was killed, each with one record, every mutant's job succeeded, and the run is on its first attempt | after the mutants' jobs, whatever their result, once the request was checked |
+
+A patch is a file of the dispatched commit, never text from the dispatch form, and the request job refuses,
+before any mutant's job starts, a patch git does not read as a text patch in its own format (a `diff --git`
+for each file), one with binary data, one that renames or copies a file or makes a link or a submodule, and
+one that touches a path outside the checkout (from the root, through `..`, or through a link), inside
+`.git`, under `.github/` or `mutants/` (ignoring case), the runner itself (`scripts/mutant_runs.py`), or what
+decides what is installed and what pytest selects (`pyproject.toml`, `uv.lock`). It refuses a patch that is
+not a regular file committed at the dispatched commit, a name other than 1 to 64 letters, digits, `_` and
+`-`, more than 200 mutants (a matrix holds 256 jobs), and a patch of more than 1 MiB or with a control
+character but tab and line feed. A mutant's job checks its patch again before applying it, and runs the
+script that records the verdict from a copy outside the checkout, made before the patch is applied
+(`python3 -I`), so that nothing a patch writes reaches it. Every run of a dispatch draws under one seed, so
+that a chance failure of the baseline's draws is a failure of each mutant's that leaves them alone, and a
+mutant's run replays exactly. Under pytest-xdist, `-x` ends a run that failed as interrupted (exit 2, where
+a run without xdist exits 1; checked 2026-10-18), so a run that stopped so counts as killed when its report
+names the failed test. The workflow reads the repository alone (`contents: read`), reads no secret, restores
+the uv cache CI saved and saves none, and never cancels another dispatch; a dispatch waits behind a running
+one of the same inputs on the same ref. `tests/unit/test_ci_workflows.py` holds it to each of these, running
+its steps as written on a throwaway repository, with a stub in place of pytest and with this Python's
+pytest, end to end on mutants that are killed, survive and are broken.
+
+## The whole suite on CI
+
+A branch's whole suite runs on CI without a workflow of its own. A push to a pull request, a draft
+included, runs it on the head at `dev` in `ci.yml`'s `tests` and `controls` jobs (every Python, and the
+mutant searches and audit controls on the range's ends), and on each earlier commit in its `commit` job; a
+push to main and the weekly run run every job. For a pushed branch with no pull request, dispatch
+`repeat.yml` with `node=tests`, `jobs=1` and `runs=1`, at the profile and on the Python wanted: one run of
+the whole suite under one seed. A manual run of `ci.yml` on a branch also runs the suite, with every job but
+the per-commit ones, but its Hypothesis job runs at `deep`, beside the fuzz job, which takes hours. Each job
+runs pytest with a worker per vCPU (`-n auto`), four on GitHub's standard Linux runner for a public
+repository (GitHub's runner reference, read 2026-10-18): a job has its runner to itself, so the worker count
+a laptop shared between agents needs chosen (`-n 8` or `-n 12`) has nothing to share there.
+
 ## Jobs at once (`PER_COMMIT_MAX_PARALLEL`, `REPEAT_MAX_PARALLEL`)
 
 The organisation's plan runs 60 jobs at once, which this repository's workflows share with MIME's and
@@ -86,6 +139,7 @@ matrix jobs run at once (maintainer, 2026-10-17):
 |---|---|---|
 | `PER_COMMIT_MAX_PARALLEL` | `ci.yml`'s `commit` job, and its `site_commit` job apart: each may run that many at once | 6 |
 | `REPEAT_MAX_PARALLEL` | `repeat.yml`'s `runs`, for each dispatch | 10 |
+| `MUTANT_MAX_PARALLEL` | `mutants.yml`'s `mutants`, for each dispatch | 10 |
 
 Raise `PER_COMMIT_MAX_PARALLEL`, to 10 say, while OpenMaterica is the organisation's only repository at work,
 so that a pull request's commits are checked sooner; lower it again, to 6 or less, when MIME's or MADDENING's
@@ -95,7 +149,11 @@ per-commit jobs, a push to a pull request runs, once the gate has passed, 16 job
 each repeat dispatch runs its own `REPEAT_MAX_PARALLEL`. `PER_COMMIT_MAX_PARALLEL` caps `commit` and
 `site_commit` each apart, so at the ceiling of 20 one push can hold 16 + 20 + 20 = 56 of the organisation's 60
 runners, and each repeat dispatch 20 more; a commit that changes the site alone is rare, so the usual peak of one
-push is 16 + 20 = 36.
+push is 16 + 20 = 36. Each mutant dispatch runs its own `MUTANT_MAX_PARALLEL`, 20 at the ceiling, and
+nothing beside them: its request job ends before they start and its table job starts after them. So its
+worst case is 20 runners for as long as its mutants queue (up to 201 jobs, 200 mutants and the baseline),
+and one push at the ceiling, one repeat dispatch and one mutant dispatch together ask for 56 + 20 + 20 = 96,
+more than the 60: the rest wait for a runner, MIME's and MADDENING's jobs among them.
 
 Anyone with write access to the repository can set these variables, not its maintainers alone (GitHub's "Use
 variables": write access suffices for a repository of an organisation), which is why the check bounds them. Set,
@@ -113,7 +171,7 @@ anything else, with "the repository variable NAME is ..., not a whole number fro
 more than 20, a fraction, `1e1`, a sign, a space or a leading zero, another script's digit, or text. The capped
 jobs then never start, and the run fails. GitHub documents no bound on `max-parallel`, nor what it does with such
 a value, so none reaches it. The step writes the value it took as an output of its job (the gate's
-`per_commit_max_parallel`, the request job's `max_parallel`), and the capped jobs parse that output
+`per_commit_max_parallel`, each request job's `max_parallel`), and the capped jobs parse that output
 (`fromJSON(needs.gate.outputs.per_commit_max_parallel)`) and never read the variable: a value changed after the
 check does not reach a run already past it. "Re-run failed jobs" runs the capped jobs again on the output their
 checker gave when it passed, as it runs the per-commit job again on the gate's list of commits (GitHub does not
