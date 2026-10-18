@@ -39,7 +39,7 @@ named where it is applied:
 | `alternatives_within_decision_12` | decision 12's three cases only (maintainer, 2026-10-15) |
 | `members_of_the_other_kind` | in a record, `token` on a numeric condition, or `value`, `range`, `plus_minus` or `set_or_measured` on a token condition, breaks its shape (fail closed); a token condition's `unit` keeps its own rule, step 9's `unit_mismatch`. The same members in an implied condition are not open: `read_side_contract.md` section 1 refuses them (maintainer, 2026-10-18), and so does the model |
 | `alternatives_named_at_a_field` | `alternatives` is named at a field's place, so a slip of it is refused (fail closed) |
-| `evidence_entry_provenance` | an entry's `provenance` is checked as the field's is, and returned with every member the provenance table names, its review read as `provenance.md` section 2 item 6 reads one (fail closed) |
+| `evidence_entry_provenance` | an entry's `provenance` is checked as the field's is (fail closed); it is returned whole, holding the members the version defines at every depth, read from the writer schema below the provenance table's own, since the text names them in part only, its review read as `provenance.md` section 2 item 6 reads every review |
 
 The model was first written to check the expected answers of S2's case files on 2026-10-15, as an independent
 reader of the text, and brought to the text of this branch here. Two rulings it took then, a form the row does
@@ -193,12 +193,15 @@ model's own reading until then (a reviewed review's `reason` was returned, which
 item 6 does not name for a reviewed review), fixed and seeded; the fifth is a step S4 owns, which no read S2
 builds reaches.
 
-The agreement property HP12 (`tests/property/test_model_properties.py`) kills 14 of the 17 survivors, the two
+The agreement property HP12 (`tests/property/test_model_properties.py`) kills 15 of the 17 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two
-cases came to kill it, and 5 of the 10 faults one case file alone kills, each with the model given the fault
-and the core as it is (`tests/property/test_model_mutants.py`); the other eight are listed there with the
-reason no read S2 builds shows them: an evidence entry's (two) and nominals (three) wait for S2b-2, a unit
-held as a status object is registered only for evidence (two), and a shared object never shows in JSON.
+cases came to kill it, every one of the 10 faults one case file alone kills, and
+`nominal_outside_supplies_the_value`, which two kill, each with the model given the fault and the core as it
+is (`tests/property/test_model_mutants.py`); S2b-2, which reads evidence and nominals, brought the six that
+waited for it. The other two are listed there with the reason no read S2 builds shows them: alternatives
+whose units are stored differently, which only evidence's unit held as a status object allows, are drawn by no
+part of HP12, and the core raises at them until S4 (`units_stored_differently_read_as_no_pick`); and a shared
+object never shows in JSON.
 
 ## Running
 
