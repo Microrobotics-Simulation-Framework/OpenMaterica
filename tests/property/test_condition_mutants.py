@@ -38,7 +38,7 @@ from tests.property.condition_strategies import (
     with_unknowns,
 )
 from tests.property.strategies import ORIGINAL, SMALL, Size
-from tests.property.support import MUTANT_SEARCH
+from tests.property.support import MUTANT_SEARCH, long_reprs_reported
 from tests.property.test_mutants import setting
 from tests.property.test_value_field_mutants import slipped_by, within_two_slips
 from tests.unit import test_read
@@ -855,7 +855,8 @@ def kill(examples: st.SearchStrategy[Any], check: Callable[[Any], None]) -> tupl
             raise
 
     try:
-        search()
+        with long_reprs_reported():
+            search()
     except AssertionError:
         return first[0]
     raise AssertionError(f"the mutant survived {tried} examples")

@@ -4,11 +4,14 @@ pattern searched where it must match in full."""
 
 import re
 import struct
-from collections.abc import Callable
+import warnings
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from typing import TypeVar
 
 from hypothesis import Phase, event, given, settings
 from hypothesis import strategies as st
+from hypothesis.errors import HypothesisWarning
 
 from materica.core.jsonio import JsonValue
 from tests.conftest import EXAMPLES
@@ -29,6 +32,15 @@ MUTANT_SEARCH = settings(
     phases=[Phase.generate],
     report_multiple_bugs=False,
 )
+
+
+@contextmanager
+def long_reprs_reported() -> Generator[None, None, None]:
+    """Hypothesis warns where the repr of the example it reports runs past 30 kB, which the tests' warning
+    filter makes an error: a mutant search's result is the kill it counted, not that report."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Generating overly large repr", HypothesisWarning)
+        yield
 
 
 def same(expected: JsonValue, actual: JsonValue) -> bool:

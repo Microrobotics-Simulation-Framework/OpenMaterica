@@ -30,7 +30,7 @@ from materica.shapes import Suite
 from tests.property import test_value_field_properties as properties
 from tests.property import value_field_strategies as strategies
 from tests.property.strategies import ORIGINAL, SMALL, Size
-from tests.property.support import MUTANT_SEARCH
+from tests.property.support import MUTANT_SEARCH, long_reprs_reported
 from tests.property.test_mutants import setting
 
 # Each property that kills a mutant, by name: its examples at a size, and its check.
@@ -1228,7 +1228,8 @@ def kill(examples: st.SearchStrategy[Any], check: Callable[[Any], None]) -> tupl
             raise
 
     try:
-        search()
+        with long_reprs_reported():
+            search()
     except AssertionError:
         return first[0]
     raise AssertionError(f"the mutant survived {tried} examples")
