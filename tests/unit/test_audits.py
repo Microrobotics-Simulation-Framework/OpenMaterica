@@ -9,6 +9,8 @@ from collections import Counter
 from collections.abc import Callable, Iterator
 from fractions import Fraction
 from math import comb
+from pathlib import Path
+from types import ModuleType
 
 import pytest
 from hypothesis import HealthCheck, assume, given, settings
@@ -306,20 +308,44 @@ DECLARATIONS = [
     *(("chances", index / 1000) for index in range(1, 1001)),
 ]
 
+# A run is its number of examples (the draws Hypothesis reports `valid` or `interesting`), how many of them
+# were `interesting`, and how many further draws were `invalid`.
+Run = tuple[int, int, int]
 
-def judging(rule: audits.Rule, examples: int, kind: str, value: float) -> tuple[int | None, list[str]]:
-    """The fewest examples a feature declared so must show to pass `rule`'s audit in a run of `examples`,
-    with the problems one fewer gives; or None, with the problems the most give, where no count passes."""
+
+def runs(*sizes: int) -> tuple[Run, ...]:
+    """Each size as a run of valid draws alone, then with interesting draws, with invalid draws, and with
+    both: the examples a run counts are the valid and the interesting, not the invalid. A size need not be a
+    multiple of CLUSTER, as a run that replays a saved failure is not."""
+    return tuple(
+        (size, interesting, invalid) for size in sizes for interesting in (0, 3) for invalid in (0, 9)
+    )
+
+
+def counted(run: Run, **features: int) -> audits.Counts:
+    examples, interesting, invalid = run
+    return audits.Counts(
+        Counter(valid=examples - interesting, interesting=interesting, invalid=invalid), Counter(features)
+    )
+
+
+def judging(
+    rule: audits.Rule, run: Run, kind: str, value: float, module: ModuleType = audits
+) -> tuple[int | None, list[str]]:
+    """The fewest examples a feature declared so must show to pass `rule`'s audit in `run`, with the
+    problems one fewer gives; or None, with the problems the most give, where no count passes."""
+    examples = run[0]
     names = [f"f{index}" for index in range(int(value))] if kind == "drawn" else ["f"]
 
     def problems(shown: int) -> list[str]:
-        return audits.feature_shortfalls(
-            counts(examples, **dict.fromkeys(names, shown)),
+        found: list[str] = module.feature_shortfalls(
+            counted(run, **dict.fromkeys(names, shown)),
             {"f": value} if kind == "features" else {},
             names if kind == "drawn" else (),
             chances={"f": value} if kind == "chances" else {},
             **rule,
         )
+        return found
 
     if problems(examples):
         return None, problems(examples)
@@ -333,43 +359,54 @@ def judging(rule: audits.Rule, examples: int, kind: str, value: float) -> tuple[
     return fewest, problems(fewest - 1) if fewest else []
 
 
-Judgement = tuple[int, str, float, int | None, list[str]]
+Judgement = tuple[Run, str, float, int | None, list[str]]
 
 
-def judgements(rule: audits.Rule, sizes: tuple[int, ...]) -> Iterator[Judgement]:
-    """What `rule` judges of every declaration, in runs of each of `sizes` examples."""
-    for examples in sizes:
+def judgements(
+    rule: audits.Rule, pinned: tuple[Run, ...], module: ModuleType = audits
+) -> Iterator[Judgement]:
+    """What `rule` judges of every declaration, in each of the runs."""
+    for run in pinned:
         for kind, value in DECLARATIONS:
-            yield (examples, kind, value, *judging(rule, examples, kind, value))
+            yield (run, kind, value, *judging(rule, run, kind, value, module))
 
 
-def digest(rule: audits.Rule, sizes: tuple[int, ...]) -> str:
-    return hashlib.sha256(json.dumps(list(judgements(rule, sizes))).encode()).hexdigest()
+def digest(rule: audits.Rule, pinned: tuple[Run, ...], module: ModuleType = audits) -> str:
+    return hashlib.sha256(json.dumps(list(judgements(rule, pinned, module))).encode()).hexdigest()
 
 
-def differ(rule: audits.Rule, pinned: str) -> bool:
-    """Whether `rule` judges some declaration otherwise than the pinned profile's rule, in its runs: so that
-    its digest is another. It stops at the first difference."""
-    sizes = PINNED[pinned][0]
+def differ(rule: audits.Rule, pinned: str, module: ModuleType = audits) -> bool:
+    """Whether `rule`, in `module`, judges some declaration otherwise than the pinned profile's rule in
+    `audits`, in the pinned runs: so that its digest is another. It stops at the first difference."""
+    pinned_runs = PINNED[pinned][0]
     return any(
         ours != theirs
-        for ours, theirs in zip(judgements(rule, sizes), judgements(audits.RULES[pinned], sizes), strict=True)
+        for ours, theirs in zip(
+            judgements(rule, pinned_runs, module), judgements(audits.RULES[pinned], pinned_runs), strict=True
+        )
     )
 
 
 # What `ci` and `deep` judge, pinned on 2026-10-18 from the rule as it stood before `dev` was held to
-# FALSE_FAILURE: a change of `dev`'s rule leaves them as they are. The sizes are each profile's examples and a
-# run that ends sooner.
+# FALSE_FAILURE: a change of `dev`'s rule leaves them as they are. The runs are each profile's examples and a
+# run that ends sooner, and sizes that are not multiples of CLUSTER (`runs`). The digests are of
+# `origin/main`'s own `feature_shortfalls` (`by_draws` and `chance_floors` for `ci`, neither for `deep`).
 PINNED = {
-    "ci": ((2_000, 200), "1e80bd1978fb1155c5a52f9524ca94cf6c7e0b1f4c01b4230887ab2651a05357"),
-    "deep": ((20_000, 2_000), "f9ad81cf4cce990ceafca0115f850ae10db9fe7a7fc0ebc289292bf2d1bfe5e5"),
+    "ci": (
+        runs(2_000, 200, 1_999, 2_001, 2_003, 199, 203),
+        "2fe5c02b9c8cd7d01cc529f22faf0b11a62ee4efb70260d73d5ba5ce66127440",
+    ),
+    "deep": (
+        runs(20_000, 2_000, 19_999, 20_001, 1_999, 2_001),
+        "d052820c1fe8e43ecfa219d79d8a80c5b954d54ed900d9de27c9ce2042c0111c",
+    ),
 }
 
 
 @pytest.mark.parametrize("profile", sorted(PINNED))
 def test_what_ci_and_deep_judge_is_pinned(profile: str) -> None:
-    sizes, pinned = PINNED[profile]
-    assert digest(audits.RULES[profile], sizes) == pinned
+    pinned_runs, pinned = PINNED[profile]
+    assert digest(audits.RULES[profile], pinned_runs) == pinned
 
 
 @pytest.mark.parametrize("profile", sorted(PINNED))
@@ -385,6 +422,58 @@ def test_the_pin_sees_a_floor_moved(monkeypatch: pytest.MonkeyPatch) -> None:
     floors = list(judgements(rule, PINNED["ci"][0]))
     monkeypatch.setattr(audits, "FALSE_FAILURE", 1e-3)
     assert any(ours != theirs for ours, theirs in zip(judgements(rule, PINNED["ci"][0]), floors, strict=True))
+
+
+def audits_with(old: str, new: str) -> ModuleType:
+    """The audits module with one line of its source changed: a constructed change to what a run counts."""
+    source = Path(audits.__file__).read_text()
+    assert source.count(old) == 1, old
+    module = ModuleType("audits_changed")
+    exec(compile(source.replace(old, new), "audits_changed", "exec"), module.__dict__)
+    return module
+
+
+EXAMPLES_LINE = 'examples = counts.draws["valid"] + counts.draws["interesting"]'
+FLOOR_LINE = "return SHOWN * binomial_floor(examples // CLUSTER, chance)"
+# What a run counts, changed one way at a time, with the profiles whose judgement it changes: `deep` judges
+# no draw floor, so a change to the floor's count is no change of its.
+CHANGES: dict[str, tuple[str, str, tuple[str, ...]]] = {
+    "interesting_draws_not_examples": (EXAMPLES_LINE, 'examples = counts.draws["valid"]', ("ci", "deep")),
+    "invalid_draws_are_examples": (
+        EXAMPLES_LINE,
+        EXAMPLES_LINE + ' + counts.draws["invalid"]',
+        ("ci", "deep"),
+    ),
+    "draws_rounded_up": (
+        FLOOR_LINE,
+        "return SHOWN * binomial_floor(-(-examples // CLUSTER), chance)",
+        ("ci",),
+    ),
+    "no_floor_for_a_part_cluster": (
+        FLOOR_LINE,
+        "return SHOWN * binomial_floor(examples // CLUSTER, chance) if examples % CLUSTER == 0 else 0",
+        ("ci",),
+    ),
+}
+
+
+def test_a_changed_module_judges_as_the_module_when_nothing_is_changed() -> None:
+    """The control: the loader that makes the constructed changes changes nothing by itself."""
+    same = audits_with(EXAMPLES_LINE, EXAMPLES_LINE)
+    for profile, (pinned_runs, pinned) in PINNED.items():
+        assert digest(audits.RULES[profile], pinned_runs, same) == pinned
+
+
+@pytest.mark.parametrize(
+    ("change", "profile"),
+    [(change, profile) for change, (*_, profiles) in CHANGES.items() for profile in profiles],
+)
+def test_the_pin_sees_a_change_to_what_a_run_counts(change: str, profile: str) -> None:
+    """A run's examples are its valid and interesting draws, and its draws are its examples in eights, rounded
+    down: the pin sees each of these four changes, in the runs that are not multiples of eight and have
+    interesting and invalid draws."""
+    old, new, _ = CHANGES[change]
+    assert differ(audits.RULES[profile], profile, audits_with(old, new))
 
 
 def test_every_profile_has_a_rule() -> None:
@@ -460,7 +549,7 @@ def worst_false_failure(rule: audits.Rule, examples: int, kinds: set[str]) -> tu
     declaration's fault, not chance: `ci` refuses it on every run."""
     worst: tuple[float, tuple[str, float]] = (0.0, ("", 0.0))
     for kind, value in DECLARATIONS:
-        fewest, _ = judging(rule, examples, kind, value)
+        fewest, _ = judging(rule, (examples, 0, 0), kind, value)
         if kind in kinds and fewest:
             worst = max(worst, (model_false_failure(examples, CHANCE[kind](value), fewest), (kind, value)))
     return worst
@@ -485,7 +574,7 @@ def test_the_check_sees_the_least_shares_dev_judged_by() -> None:
     in twenty by the model."""
     probability, _ = worst_false_failure(audits.RULES["deep"], EXAMPLES["dev"], {"features", "drawn"})
     assert probability > 1e-6
-    fewest, _ = judging(audits.RULES["deep"], EXAMPLES["dev"], "drawn", 3)
+    fewest, _ = judging(audits.RULES["deep"], (EXAMPLES["dev"], 0, 0), "drawn", 3)
     assert fewest is not None
     assert model_false_failure(EXAMPLES["dev"], 1 / 3, fewest) > 1e-2
 
