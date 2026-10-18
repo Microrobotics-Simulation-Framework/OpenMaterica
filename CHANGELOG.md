@@ -528,9 +528,11 @@ every family entry goes in `families/CHANGELOG.md`.
   end to end with this Python's pytest on mutants that are killed, survive and are broken. The whole suite of
   a branch already runs on CI, through a draft pull request or `repeat.yml` with `node=tests`;
   `.github/workflows/README.md`, "The whole suite on CI", says how.
-- `repeat.yml` warns, and runs the request all the same, where the node collects a test in a module whose
-  searches are derandomized: one `PROPERTY_CONTROLS` selects, or one whose code sets `derandomize=True` or
-  runs `MUTANT_SEARCH` (#43's review, L7). Every repeat of such a test draws the same examples whatever its
+- `repeat.yml` warns once, and runs the request all the same, where the node collects a test in a module
+  whose searches are derandomized: one `PROPERTY_CONTROLS` selects, or one whose code sets `derandomize` to
+  anything but off, fixes a seed (`@seed`), or runs `MUTANT_SEARCH` or `examples_to_kill` by any name (#43's
+  review, L7). The reading is by module, which the warning says; for the whole suite, which always holds
+  such modules, it is one sentence naming none. Every repeat of such a test draws the same examples whatever its
   seed, but repeating it on a head and on its base is still a valid comparison. The warning reads what pytest
   collected with the extra arguments; `tests/unit/test_ci_workflows.py` runs the step on nodes that must and
   must not be warned on, with controls that drop the warning, turn it into a refusal, or read the node in

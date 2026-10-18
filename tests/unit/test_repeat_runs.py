@@ -2,6 +2,7 @@
 """The repeat run's script refuses a request it cannot run as asked, finds the failing examples Hypothesis
 reports, and fails a summary where any run failed, did not finish or left no record."""
 
+import io
 import json
 import math
 import os
@@ -519,6 +520,18 @@ DERANDOMIZING = [
     "from hypothesis import settings\nALONE = settings(derandomize=True, database=None)\n",
     "from tests.property.support import examples_to_kill\n",
     "from .support import MUTANT_SEARCH as SEARCH\n",
+    # The searches #46's review (L5) built that the first reading missed: a fixed seed, by any name; support's
+    # searches read from it as a module, by any name; and `derandomize` given by a name or through `**`.
+    "from hypothesis import given, seed, strategies\n\n@seed(1234)\n@given(strategies.integers())\n"
+    "def test_a(x): ...\n",
+    "from hypothesis import seed as fixed\n\n@fixed(7)\ndef test_a(): ...\n",
+    "import hypothesis as h\n\n@h.seed(7)\ndef test_a(): ...\n",
+    "import hypothesis\n\n@hypothesis.seed(7)\ndef test_a(): ...\n",
+    "from tests.property import support\nS = support.MUTANT_SEARCH\n",
+    "import tests.property.support as s\nS = s.examples_to_kill\n",
+    "import tests.property.support\nS = tests.property.support.MUTANT_SEARCH\n",
+    "from hypothesis import settings\nD = True\n\n@settings(derandomize=D)\ndef test_a(): ...\n",
+    "from hypothesis import settings\n\n@settings(**{'derandomize': True})\ndef test_a(): ...\n",
 ]
 NAMING_ONLY = [
     "# every profile was derandomize=True on a runner\nx = 1\n",
@@ -526,6 +539,12 @@ NAMING_ONLY = [
     "import re\nMUTANT_SEARCH = re.compile('x')\n",
     "from hypothesis import settings\nRANDOM = settings(derandomize=False)\n",
     "from tests.property.support import feature\n",
+    "from hypothesis import settings\nRANDOM = settings(derandomize=None)\n",
+    "from hypothesis import settings\nRANDOM = settings(**{'derandomize': False})\n",
+    "from random import seed\nseed(1)\n",
+    "import random\nrandom.seed(1)\n",
+    "from tests.property import support\nF = support.feature\n",
+    "SOURCE = 'from hypothesis import seed\\n@seed(1)\\ndef test_a(): ...'\n",
 ]
 
 
@@ -537,7 +556,7 @@ def test_a_module_whose_code_derandomizes_a_search_is_found(source: str) -> None
 @pytest.mark.parametrize("source", NAMING_ONLY)
 def test_a_module_that_only_names_derandomizing_is_not(source: str) -> None:
     """The control: what a search of the text would take."""
-    assert "derandomize" in source or "MUTANT_SEARCH" in source or "support" in source
+    assert any(word in source for word in ("derandomize", "MUTANT_SEARCH", "support", "seed"))
     assert not repeat_runs.derandomizes(source)
 
 
@@ -583,3 +602,30 @@ def test_the_warning_names_each_derandomized_module_of_what_was_collected(tmp_pa
         )
         == ""
     )
+
+
+@pytest.mark.parametrize("node", ["tests", "tests/"])
+def test_the_whole_suite_is_warned_on_once_naming_no_module(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], node: str
+) -> None:
+    """#46's review, L5: the whole suite always collects derandomized modules, so its warning is one short
+    sentence; a narrower node's names its modules and says the reading is by module. The command reads the
+    node from `NODE`, as repeat.yml's collect step gives it."""
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "conftest.py").write_text(
+        "PROPERTY_CONTROLS = ('test_*mutants*',)\n", encoding="utf-8"
+    )
+    for name in ("test_mutants", "test_more_mutants"):
+        (tmp_path / "tests" / f"{name}.py").write_text("", encoding="utf-8")
+    collected = "tests/test_mutants.py::test_a\ntests/test_more_mutants.py::test_b\n"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO(collected))
+    monkeypatch.setenv("NODE", node)
+    assert repeat_runs.main(["derandomized"]) == 0
+    (whole,) = capsys.readouterr().out.splitlines()
+    assert whole.startswith("::warning title=Derandomized tests::the whole suite collects 2 modules"), whole
+    assert "tests/test_" not in whole
+    narrower = repeat_runs.derandomized_warning(["tests/test_mutants.py"], "tests/test_mutants.py::test_a")
+    assert "(tests/test_mutants.py)" in narrower
+    assert "decided by module" in narrower
+    assert "the whole suite" not in narrower

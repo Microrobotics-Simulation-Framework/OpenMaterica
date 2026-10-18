@@ -73,9 +73,11 @@ Hypothesis's own `ci` profile, which `CI=true` loads on every runner and which s
 drew the same examples whatever its seed (`tests/README.md`, "Repeat runs on CI").
 `tests/unit/test_ci_workflows.py` holds it to each of these, running its steps as written.
 When the node collects a test in a module whose searches are derandomized, a module `PROPERTY_CONTROLS`
-selects (the mutant searches and the audit controls) or one whose code sets `derandomize=True` or runs
-`tests/property/support.py`'s `MUTANT_SEARCH`, the request job warns, naming the modules, and does not
-refuse (#43's review, L7): every repeat of such a test draws the same examples whatever its seed, so a
+selects (the mutant searches and the audit controls) or one whose code sets `derandomize` to anything but
+off, fixes a seed (`@seed`), or runs `tests/property/support.py`'s `MUTANT_SEARCH` or `examples_to_kill`
+by any name, the request job warns once, naming the modules (for the whole suite, which always holds some,
+naming none), and does not refuse (#43's review, L7; #46's, L5); a module counts by any of its code,
+whichever of its tests the node selects: every repeat of such a test draws the same examples whatever its seed, so a
 repeat of it measures nothing a seed changes, but repeating it on a head and on its base is still a valid
 comparison. The warning reads what pytest collected with the extra arguments, so `--property-controls none`
 leaves the controls out of it. A module that runs another module's search through a function it imports

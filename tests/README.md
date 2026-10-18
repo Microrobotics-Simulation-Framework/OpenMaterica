@@ -88,10 +88,13 @@ what else varies between runs. For a derandomized test that is nothing it draws:
 Hypothesis harvests from the loaded modules (`harvested_constants.py`), so its examples, and a mutant's kill
 count, depend on the code alone. A test under `@seed` still draws them, so its examples also change with the
 modules outside `tests/` that the process has loaded. The request job says so: where the node collects a test in
-a module that `--property-controls only` selects, or whose own code sets `derandomize=True` or runs
-`property/support.py`'s `MUTANT_SEARCH`, it warns, naming the modules, and runs the request all the same (#43's
-review, L7), since repeating such a test on a head and on its base is still a valid comparison. A module that
-runs another module's search through a function it imports (`property/test_validators_agree.py`) is not found.
+a module that `--property-controls only` selects, or whose own code sets `derandomize` to anything but off (by a
+name, or through `**{...}`), fixes a seed (`@seed`), or runs `property/support.py`'s `MUTANT_SEARCH` or
+`examples_to_kill` by any name, it warns once, naming the modules, and runs the request all the same (#43's
+review, L7), since repeating such a test on a head and on its base is still a valid comparison. The reading is by
+module: a module counts when any of its code runs such a search, whichever of its tests the node selects. The
+whole suite always holds such modules, so its warning is one sentence naming none. A module that runs another
+module's search through a function it imports (`property/test_validators_agree.py`) is not found.
 
 Two limits of that pin, neither met by a test here (the review measured both; details in
 `harvested_constants.py`): a search run inside the body of another that draws with `st.data()`, derandomized in
