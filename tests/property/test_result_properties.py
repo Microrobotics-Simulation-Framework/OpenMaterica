@@ -64,6 +64,14 @@ from tests.property.result_strategies import (
 from tests.property.strategies import SIZE
 from tests.property.support import feature
 
+# HP1, HP2 and HP11 draw their kind first among eleven, alike. At the draw floor of one in eleven, 25 examples
+# at `ci`, a kind's count, which varies 3.6 to 13 times as much as a binomial count, fell short with a
+# probability of up to 2.8e-6 by `audits.py`'s cluster model over 22 runs at `ci` (2026-10-18), and up to
+# 2.8e-5 over the review's 22 (S2b-2's review, L4). So each kind is declared by a chance below one in eleven,
+# whose floor, 10 examples (`audits.LEAST_DRAWS`), each kind falls below with at most 1.9e-7 on either set of
+# runs, and the 33 together with at most 4.3e-7 (at most 1.6e-8 each with the module's `CLUSTER`).
+KIND_CHANCE = 0.07
+
 JsonObject = dict[str, JsonValue]
 REASONS: Mapping[str, Mapping[str, Any]] = condition_oracle.REASONS["reasons"]
 BEST_FIRST = ("met", "unknown", "not_met")
@@ -142,7 +150,7 @@ def kind_feature(drawn: Drawn) -> None:
     feature(drawn.kind)
 
 
-@pytest.mark.drawn(*KINDS)
+@pytest.mark.chances(**dict.fromkeys(KINDS, KIND_CHANCE))
 @given(drawn_reads(SIZE))
 def test_a_read_gives_a_result_whose_reasons_are_the_tables(drawn: Drawn) -> None:
     kind_feature(drawn)
@@ -229,7 +237,7 @@ def implied_indexes(drawn: Drawn) -> set[int]:
     }
 
 
-@pytest.mark.drawn(*KINDS)
+@pytest.mark.chances(**dict.fromkeys(KINDS, KIND_CHANCE))
 @given(drawn_reads(SIZE))
 def test_the_status_is_the_worst_reason_and_the_members_are_those_item_6_gives(drawn: Drawn) -> None:
     kind_feature(drawn)
@@ -518,7 +526,11 @@ def check_nominal_supplied(drawn: Drawn) -> None:
     assert result.applied == (nominal.at,), result.applied
 
 
-@pytest.mark.chances(form_interval=1.0, nominal_inside=0.5, nominal_on_a_bound=0.5, behind_another=0.5)
+# `behind_another` is drawn after the nominal, late in the example, where Hypothesis's mutations favour
+# `False`: over 22 runs at `ci` (2026-10-18, S2b-2's review, L2) it showed in 0.354 of the examples on
+# average, 0.308 the least (the review's 22 runs: 0.357, 0.306). Declared at 0.3, it falls below its draw
+# floor with a probability below 1e-19 by `audits.py`'s cluster model at the variance measured.
+@pytest.mark.chances(form_interval=1.0, nominal_inside=0.5, nominal_on_a_bound=0.5, behind_another=0.3)
 @given(nominal_reads(SIZE))
 def test_a_nominal_supplies_its_value_and_the_assumption_it_rests_on(drawn: Drawn) -> None:
     for shown in drawn.features:
@@ -546,7 +558,7 @@ def check_claims(drawn: Drawn) -> None:
     assert without_the_label(written(plain)) == written(hashed)
 
 
-@pytest.mark.drawn(*KINDS)
+@pytest.mark.chances(**dict.fromkeys(KINDS, KIND_CHANCE))
 @given(drawn_reads(SIZE))
 def test_without_the_hash_suite_the_label_marks_exactly_a_read_that_reached_step_4(drawn: Drawn) -> None:
     kind_feature(drawn)
