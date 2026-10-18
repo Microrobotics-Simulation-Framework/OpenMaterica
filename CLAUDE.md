@@ -25,13 +25,14 @@ This repository is public. Everything in it, this file and commit messages inclu
   what each is responsible for, the data passed between them, and the call sequence of the main paths
   (reading a record, checking a consumer's declarations, writing the material input sheet). The maintainer
   reads and agrees it first. So code is written in steps that map onto the agreed design: a step may be
-  several files, but each step ends with the maintainer's review, and the next starts only after it. Never
-  develop the whole package iteratively on your own. No class, abstraction or module boundary appears in code
-  that the design did not cover without raising it first.
+  several files, but each step ends with the maintainer's review of what the budget below lists, and the next
+  starts only after it. Never develop the whole package iteratively on your own. No class, abstraction or
+  module boundary appears in code that the design did not cover without raising it first.
 - **The maintainer's review budget** (maintainer, 2026-10-17). The maintainer reviews closely the
   specification text and `changes.md`, the public API and the schemas, the rulings, and each pull request's
-  description and open points. Tests, case files and generated files are sampled; the independent review and
-  CI are the line-level check. So every open point goes in the pull request's description.
+  description and open points. The rest is sampled: tests, case files and generated files, and the source
+  code that is neither the public API nor a schema (modules, scripts, workflows). The independent review and
+  CI are the line-level check.
 - **Prototype before standardising.** A claim about the design is tested by the cheapest prototype that could
   show it wrong, pre-registered (criteria and predictions written before the run), with a control that must
   come out differently if the claim is false. A pass told to break the pre-registration reviews it before the

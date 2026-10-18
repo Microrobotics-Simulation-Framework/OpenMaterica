@@ -2,6 +2,10 @@
 
 <!-- What this changes and why. For a schema, family or data change, name the consumer that needs it. -->
 
+## Open points
+
+<!-- Anything the maintainer should rule on; write none if none. -->
+
 ## Checklist
 
 - [ ] Every commit is signed off (`git commit -s`), certifying the Developer Certificate of Origin.

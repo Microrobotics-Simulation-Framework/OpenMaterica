@@ -36,8 +36,8 @@ live in a repository of its own; until it exists, its rules are kept here.
 10. **Never delete an anomaly entry.** Resolve it.
 11. **No network access and no code execution from data**, at import or when reading files.
 12. **Keep the anomaly registry in MADDENING's schema.** Do not add fields. CI checks it with
-    `scripts/check_anomalies.py`, which stands in for MADDENING's validator until that accepts the registry's
-    component names; nothing in the package imports MADDENING. The registry's version field is
+    `scripts/check_anomalies.py`, which stands in for MADDENING's validator, whose packaged command reads
+    each component name as a Python name; nothing in the package imports MADDENING. The registry's version field is
     `materica_version`, which MADDENING's validator accepts from MADDENING 0.4.0, and it is the package's
     version (`DOCUMENTATION_ARCHITECTURE.md` section 8.1).
 13. **Fail closed.** Readers refuse an unknown family or version, a failed check point, a request to
