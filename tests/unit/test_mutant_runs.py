@@ -5,15 +5,17 @@ it, the patches' refusals among them."""
 
 import itertools
 import json
+import re
 import subprocess
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 import pytest
 
-from scripts import mutant_runs
+from scripts import mutant_runs, repeat_runs
 from scripts.mutant_runs import BROKEN, KILLED, SURVIVED, UNDECIDED, Request, RequestError
 from tests.unit.throwaway_git import throwaway_repository
 
@@ -603,3 +605,98 @@ def test_a_package_imported_from_elsewhere_is_found(tmp_path: Path) -> None:
     )
     assert "materica is imported from" in ran.stdout
     assert "not from the checkout" in ran.stdout
+
+
+# The node checks and JUnit node ids `scripts/mutant_runs.py` repeats from `scripts/repeat_runs.py`, since a
+# mutant's job runs it alone, from a copy outside the checkout (#46's review, I3; open point 4: the lines stay
+# duplicated, held together here). Nodes of each kind, under the repository fixture's tree: each script must
+# take or refuse each alike, the mutant request's printable check (`checked_request`) with its node check,
+# but for the one kind they treat apart on purpose, a node holding a space after `::`, which the mutant
+# request reads as two words of its selection.
+NODES = [
+    "tests",
+    "tests/",
+    "tests/test_x.py",
+    "tests/test_x.py::test_y",
+    "tests/test_x.py::test_y[a-b.c]",
+    "tests/test_x.py::TestC::test_y[x::y]",
+    "src",
+    "tests/../tests",
+    "tests/./test_x.py",
+    "tests/missing.py",
+    "tests::",
+    "/tests",
+    "tests/test x.py",
+    "tests\t",
+    "tests/test_x.py::test_y[é]",
+    "",
+]
+NODES_APART = ["tests/test_x.py::test_y[a b]"]
+
+
+def node_parity_problems(root: Path) -> list[str]:
+    """Each node of `NODES` one script takes and the other refuses, and each of `NODES_APART` they treat
+    alike."""
+    problems: list[str] = []
+    for node in [*NODES, *NODES_APART]:
+        try:
+            mutant_runs.checked_request(GOOD | {"SELECTION": node}, root)
+            mutant_takes = True
+        except RequestError as refused:
+            mutant_takes = not any(
+                line.startswith(("SELECTION", "the selection")) for line in refused.problems
+            )
+        repeat_takes = not repeat_runs.node_problems(node, root)
+        if (mutant_takes == repeat_takes) == (node in NODES_APART):
+            problems.append(f"{node!r}: the mutant request takes it {mutant_takes}, repeat's {repeat_takes}")
+    return problems
+
+
+def test_both_scripts_take_and_refuse_the_same_nodes(repository: Path) -> None:
+    assert node_parity_problems(repository) == []
+
+
+def test_the_node_parity_check_can_fail(repository: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control: the mutant request's node path without its trailing `/` refuses `tests/`, which repeat's
+    takes."""
+    monkeypatch.setattr(mutant_runs, "NODE_PATH", re.compile(r"tests(?:/[A-Za-z0-9_.-]+)*"))
+    assert node_parity_problems(repository) == ["'tests/': the mutant request takes it False, repeat's True"]
+
+
+# Test cases as pytest's JUnit report writes them (`junit_family = "xunit1"`): a function, a method of a class
+# and of a class within it, parameters holding dots and `::`, a module that did not collect and a worker under
+# pytest-xdist, and a case with no file.
+JUNIT_CASES = [
+    {"classname": "tests.unit.test_x", "name": "test_y", "file": "tests/unit/test_x.py"},
+    {"classname": "tests.unit.test_x.TestC", "name": "test_y", "file": "tests/unit/test_x.py"},
+    {"classname": "tests.unit.test_x.TestC.TestD", "name": "test_y[1.5]", "file": "tests/unit/test_x.py"},
+    {"classname": "tests.unit.test_x", "name": "test_y[a::b]", "file": "tests/unit/test_x.py"},
+    {"classname": "", "name": "tests.unit.test_x", "file": "tests/unit/test_x.py"},
+    {"classname": "", "name": "gw0", "file": "gw0"},
+    {"classname": "tests.unit.test_x", "name": "test_y"},
+]
+
+
+def node_id_parity_problems(node_id: Callable[[ElementTree.Element], str]) -> list[str]:
+    """Each case of `JUNIT_CASES` to which `node_id` gives another node id than repeat_runs' does."""
+    problems: list[str] = []
+    for attributes in JUNIT_CASES:
+        case = ElementTree.Element("testcase", attributes)
+        if node_id(case) != repeat_runs.node_id(case):
+            problems.append(f"{attributes}: {node_id(case)!r}, repeat's {repeat_runs.node_id(case)!r}")
+    return problems
+
+
+def test_both_scripts_read_the_same_node_id_from_a_junit_case() -> None:
+    assert node_id_parity_problems(mutant_runs.node_id) == []
+
+
+def test_the_node_id_parity_check_can_fail() -> None:
+    """The control: a node id read without the classes between its file and its name."""
+
+    def without_classes(case: ElementTree.Element) -> str:
+        return "::".join([case.get("file", "") or case.get("classname", ""), case.get("name", "")])
+
+    found = node_id_parity_problems(without_classes)
+    assert len(found) == 2, found
+    assert all("TestC" in line for line in found), found
