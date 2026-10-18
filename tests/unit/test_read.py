@@ -1482,8 +1482,14 @@ def met_composition(**composition: JsonValue) -> dict[str, JsonValue]:
 
 
 def read_composition(
-    field: JsonValue, *, want: str = "components", claims: Collection[Suite] = ("plain_read", "hash")
+    field: JsonValue,
+    *,
+    want: str = "components",
+    claims: Collection[Suite] = ("plain_read", "hash"),
+    acceptances: Collection[dict[str, JsonValue]] = (),
 ) -> ReadResult:
+    """`field` as `bulk.elemental_composition`, read under `want`, with `acceptances`, each located at the
+    target's record."""
     name = "bulk.elemental_composition"
     request, records = stored(with_field(name, field), name)
     assert isinstance(request, dict)
@@ -1491,6 +1497,9 @@ def read_composition(
     requirement = request["requirement"]
     assert isinstance(requirement, dict)
     requirement["want"] = want
+    if acceptances:
+        pin = cast(dict[str, JsonValue], request["target"])["record"]
+        request["acceptances"] = [{**acceptance, "record": pin} for acceptance in acceptances]
     return read(request, records, claims=claims)
 
 
@@ -1711,9 +1720,14 @@ WITHHELD_REPORT: dict[str, JsonValue] = {
 
 
 def read_evidence(
-    evidence: JsonValue, *, want: str = "evidence", members: dict[str, JsonValue] | None = None
+    evidence: JsonValue,
+    *,
+    want: str = "evidence",
+    members: dict[str, JsonValue] | None = None,
+    acceptances: Collection[dict[str, JsonValue]] = (),
 ) -> ReadResult:
-    """The evidence fixture's field, holding `evidence` and `members`, read under `want`."""
+    """The evidence fixture's field, holding `evidence` and `members`, read under `want`, with `acceptances`,
+    each located at the evidence record."""
     name = "biocompatibility.evidence"
     record: dict[str, JsonValue] = json.loads(EVIDENCE_FIXTURE.read_text(encoding="utf-8"))
     field = cast(dict[str, Any], record)["body"]["sections"]["biocompatibility"]["fields"]["evidence"]
@@ -1722,6 +1736,9 @@ def read_evidence(
     assert isinstance(request, dict)
     request["requirement"] = {"want": want}
     del request["operating_conditions"]
+    if acceptances:
+        pin = cast(dict[str, JsonValue], request["target"])["record"]
+        request["acceptances"] = [{**acceptance, "record": pin} for acceptance in acceptances]
     return read(request, records)
 
 
@@ -1799,6 +1816,29 @@ def test_a_reports_placeholder_comes_back_whole_and_a_named_member_by_its_shape(
     assert provenance["extraction"] == {"method": "table", "text_extraction": "a tool"}
 
 
+def test_a_reports_provenance_reads_its_review_and_its_per_parameter_provenances_as_every_provenance() -> (
+    None
+):
+    """`provenance.md` section 2 item 6: "Every other review reads as `{"status": "not_checked"}`: one that
+    is `null`, absent or not an object, ..."; `read_side_contract.md` section 2 item 5: "A member the reader
+    does not know is left out", at every depth, in each provenance `per_parameter` maps a name to (S2b-2's
+    review, L1: M65 and M31)."""
+    without_review = {name: member for name, member in EVIDENCE_PROVENANCE.items() if name != "review"}
+    per_parameter: dict[str, JsonValue] = {
+        "a": {**EVIDENCE_PROVENANCE, "x_unknown_member": 1.0, "review": {"status": "bogus"}}
+    }
+    result = read_evidence(
+        [
+            report_with(provenance=without_review),
+            report_with(provenance={**EVIDENCE_PROVENANCE, "per_parameter": per_parameter}),
+        ]
+    )
+    assert (result.status, result.reasons) == ("met", ())
+    first, second = (report["provenance"] for report in json.loads(json.dumps(result.to_json()))["value"])
+    assert first == {**without_review, "review": {"status": "not_checked"}}
+    assert second["per_parameter"] == {"a": {**EVIDENCE_PROVENANCE, "review": {"status": "not_checked"}}}
+
+
 def report_with(**members: JsonValue) -> dict[str, JsonValue]:
     return {**REPORT, **members}
 
@@ -1823,6 +1863,9 @@ EVIDENCE_LISTS: list[tuple[JsonValue, set[ReasonCode]]] = [
     ),
     # A marker that breaks its shape is read for nothing else, so it withholds nothing.
     ([{**WITHHELD_REPORT, "endpoint": {"status": "withheld", "x": 1.0}}], {"form_invalid"}),
+    # "Every member of an entry is present": one missing a member, its others withheld, is not withheld whole,
+    # so it gives no `withheld` of its own (S2b-2's review, L1: M15).
+    ([{name: member for name, member in WITHHELD_REPORT.items() if name != "processing"}], {"form_invalid"}),
     # Any other status stands in a report's member, `unstated` for a duration the source does not give.
     ([report_with(contact_duration={"status": "unstated"})], set()),
     ([report_with(standard={"status": "not_applicable", "x_unknown_member": 1.0})], set()),
@@ -1968,6 +2011,25 @@ def test_a_nominal_is_unused_under_bounds_and_on_a_form_that_gives_its_value() -
         None,
         None,
     )
+
+
+def test_a_nominal_supplies_no_value_for_a_composition_or_evidence() -> None:
+    """`declarations.md` section 4.1: a nominal "supplies a value for an interval"; section 6's table gives
+    it in the interval's column alone, and `not_met` (`want_mismatch`) for a composition and for evidence
+    under `want: value`, with no value (S2b-2's review, L1: M35)."""
+    composition = read_composition(
+        met_composition(**cast(dict[str, JsonValue], MEMBERS["composition"])),
+        want="value",
+        acceptances=[nominal(0.5, field="bulk.elemental_composition")],
+    )
+    evidence = read_evidence(
+        [REPORT], want="value", acceptances=[nominal(1.0, field="biocompatibility.evidence")]
+    )
+    unused = ("not_met", (Reason("want_mismatch"),), None, None, ())
+    assert [
+        (result.status, result.reasons, result.value, result.assumption, result.applied)
+        for result in (composition, evidence)
+    ] == [unused, unused]
 
 
 NOMINALS_ELSEWHERE: list[dict[str, JsonValue]] = [
