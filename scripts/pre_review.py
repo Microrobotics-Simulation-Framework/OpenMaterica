@@ -11,16 +11,20 @@ the checks, prints each with the paths that selected it, and runs them in three 
 checkers), the tests of what changed and of what imports it, and the property shards at the `ci` profile that
 hold a changed or affected property module. A stage that fails stops the run before the next, unless
 `--keep-going` is given: what the fast checks find is fixed before any test runs. After the plan it prints
-reminders for what no test can check: a figure stated in a CHANGELOG line or a commit message to recount, a
-mutant table changed beside a README that was not.
+reminders for what no test can check: a figure stated in a CHANGELOG line or a commit message to recount, code
+changed beside a CHANGELOG that was not.
 
 It adds to CI's checks and replaces none. It runs the checks that apply to the change, not every check; CI
 runs them all, on every Python, and its result is the one that counts. A change it selects no check for is
 printed as such: that is a gap in this script, or a change only an independent eye can judge.
 
 What imports what is read from the import statements of the Python files, `from a import b` counting for
-`a` and for `a.b`; a package is not taken to import its parents, and a data file is followed to the modules
-that read it by the declared table `DATA_READERS`.
+`a` and for `a.b`; a package is not taken to import its parents, and a data file is followed to the tests and
+modules that read it by the declared table `DATA_RULES`. A few tests read the whole tree instead of importing
+what they check (`TREE_READERS`): a changed Python file selects them whether or not anything imports it. A
+change it cannot map to a test with confidence (a Python file no test imports, a file under `tests/` outside
+every group of tests, a conftest of a group it does not know) selects the whole of `tests/unit`, and says so.
+`tests/unit/test_pre_review.py` holds both tables against a trace of the files the tests open.
 """
 
 import argparse
@@ -84,15 +88,39 @@ DATA_RULES = (
         tests=("tests/spec_sync", "tests/unit/test_generators.py", CITATION_TEST),
     ),
     DataRule(
+        "the specification text the verdicts, the audits and the conditions read",
+        r"docs/specification/(provenance|record_format|uncertainty)\.md",
+        "the verdicts' tests and the audit controls quote it, and the agreement and conditions shards read "
+        "it when they are imported",
+        tests=(
+            "tests/unit/test_audit_controls.py",
+            "tests/unit/test_verdicts.py",
+            "tests/property/test_validators_agree.py",
+            "tests/property/test_condition_mutant_table.py",
+        ),
+    ),
+    DataRule(
         "a schema",
         r"src/materica/schema/.+",
-        "the schemas and the vocabulary are read by the reader and held to the specification",
-        tests=("tests/spec_sync", "tests/unit/test_shapes.py", "tests/unit/test_vocabulary.py"),
+        "the schemas and the vocabulary are read by the reader and held to the specification, and the frozen "
+        "versions and the published index are built from the files",
+        tests=(
+            "tests/spec_sync",
+            "tests/unit/test_shapes.py",
+            "tests/unit/test_vocabulary.py",
+            "tests/unit/test_freeze_schema.py",
+            "tests/unit/test_schema_index.py",
+        ),
         readers=(
             "src/materica/core/vocabulary.py",
             "tests/spec_sync/schemas.py",
             "tests/property/condition_oracle.py",
             "tests/verdicts.py",
+            "scripts/check_wheel.py",
+            "scripts/freeze_schema.py",
+            "scripts/gen_reader_schema.py",
+            "scripts/gen_shapes.py",
+            "scripts/schema_index.py",
         ),
     ),
     DataRule(
@@ -100,7 +128,13 @@ DATA_RULES = (
         r"src/materica/data/conformance/.+",
         "the cases are run by the conformance runner and held to CASES.md and the step map",
         tests=("tests/conformance", "tests/spec_sync"),
-        readers=("tests/conformance/runner.py",),
+        readers=("tests/conformance/runner.py", "scripts/check_wheel.py"),
+    ),
+    DataRule(
+        "a plain-read input the read tests load",
+        r"src/materica/data/conformance/plain_read/inputs/water(_overlay)?_fixture\.json",
+        "the read and conditions tests load the water fixtures directly",
+        tests=("tests/unit/test_read.py", "tests/unit/test_conditions.py"),
     ),
     DataRule(
         "a spec-sync table",
@@ -109,10 +143,27 @@ DATA_RULES = (
         tests=("tests/spec_sync",),
     ),
     DataRule(
+        "the list of released schema versions",
+        r"tests/spec_sync/released_schemas\.json",
+        "the published index marks every version this list does not hold as a draft",
+        tests=("tests/unit/test_schema_index.py",),
+    ),
+    DataRule(
         "a workflow",
         r"\.github/workflows/.+",
         "the workflows' jobs, guards and caps are held by tests",
         tests=("tests/unit/test_ci_workflows.py", "tests/unit/test_repeat_runs.py"),
+    ),
+    DataRule(
+        "the main workflow, which more tests read than hold it",
+        r"\.github/workflows/ci\.yml",
+        "the script's own lists of CI's paths, the Python versions and the source-file rules are compared "
+        "with its text",
+        tests=(
+            "tests/unit/test_pre_review.py",
+            "tests/unit/test_python_versions.py",
+            "tests/unit/test_source_files.py",
+        ),
     ),
     DataRule(
         "the project's build",
@@ -126,22 +177,78 @@ DATA_RULES = (
         ),
     ),
     DataRule(
-        "the confidential digests",
-        r"scripts/confidential_digests\.txt",
-        "the digests are read by the scan, whose tests run it on them",
+        "the confidential digests and the hook that runs the scan",
+        r"scripts/confidential_digests\.txt|scripts/pre-push",
+        "the digests are read by the scan, whose tests run it on them, and its tests run the hook",
         tests=("tests/unit/test_check_confidential.py",),
     ),
 )
 
-# Modules outside `tests/unit` and `tests/spec_sync` (whose files the rules above run, whole or by name) that
-# locate files by `resources.files` or `__file__` without being one of `DATA_RULES`' readers, each with the
-# reason a change to a data file need not follow it.
+
+@dataclass(frozen=True)
+class TreeReader:
+    """Tests that read Python files instead of importing them, a directory of them or a named one: an added,
+    deleted or changed Python file that matches `pattern` can fail them, whatever imports it."""
+
+    pattern: str
+    why: str
+    tests: tuple[str, ...]
+
+
+# Declared, not derived: `test_pre_review.py` runs the tests under a trace of the files they open and the
+# directories they list, and fails for a test that lists a directory of Python files, or opens a Python file
+# it does not import, where the change of such a file does not select it.
+TREE_READERS = (
+    TreeReader(
+        r"(src|tests|scripts)/.+\.py",
+        "every Python file has its licence header and layer, and each property module is in one shard",
+        ("tests/unit/test_source_files.py",),
+    ),
+    TreeReader(
+        r"(src|tests|scripts)/.+\.py",
+        "the pre-review script's own tests read the tree: the readers of data files are all declared",
+        ("tests/unit/test_pre_review.py",),
+    ),
+    TreeReader(
+        r"(src|tests|scripts)/.+\.py",
+        "no test or script names a path the gate calls documentation, and no module the Hypothesis job runs "
+        "imports one of the files the gate lists as free of Hypothesis",
+        ("tests/unit/test_ci_workflows.py",),
+    ),
+    TreeReader(
+        r"src/materica/core/.+\.py",
+        "each core module is imported, its `claims` parameter and its steps are checked",
+        ("tests/unit/test_read.py", "tests/spec_sync/test_reason_steps.py"),
+    ),
+    TreeReader(
+        r"tests/spec_sync/test_name_overlap_safeguards\.py",
+        "the name-overlap allowlist names tests in it, and each must be there guarding its name",
+        ("tests/spec_sync/test_name_overlaps.py",),
+    ),
+    TreeReader(
+        r"tests/.+\.py",
+        "the agreement shard compares the source of every test file with what it lists",
+        ("tests/property/test_validators_agree.py",),
+    ),
+)
+
+# Modules that are no test and that locate files by `resources.files` or `__file__` without being one of
+# `DATA_RULES`' readers, each with the reason a change to a data file need not follow it. (A test module is
+# held by the trace in `test_pre_review.py`, which sees what it opens.)
 LOCATES_NO_RULED_DATA = {
+    "scripts/check_confidential.py": "reads the tracked files and the digests, whose rule runs its tests",
+    "scripts/gen_vocabulary.py": "reads the specification's tables; the specification rule runs its tests",
+    "scripts/pre_review.py": "reads the tree through git and `ast`; its own tests read it again and hold it",
     "tests/conftest.py": "locates the example database; a change to a conftest selects every test",
     "tests/fuzz/jsonio_bytes.py": "an Atheris target: CI's fuzz job runs it, this script cannot",
     "tests/fuzz/read_field_bytes.py": "an Atheris target: CI's fuzz job runs it, this script cannot",
-    "tests/property/test_validators_agree.py": "lists the tests' own modules, no data file",
+    "tests/spec_sync/name_overlaps.py": "read by `tests/spec_sync`, which the schema rule runs whole",
 }
+
+# The groups of tests under `tests/`, and the directory a conftest or package file of each applies to. A path
+# under `tests/` outside every group selects the whole of `tests/unit`.
+TEST_GROUPS = ("unit", "spec_sync", "conformance", "property")
+WHOLE_UNIT_DIRECTORY = "tests/unit"
 
 
 @dataclass
@@ -282,7 +389,7 @@ def is_test_module(path: str) -> bool:
     return (
         parts[0] == "tests"
         and len(parts) > 1
-        and parts[1] in {"unit", "spec_sync", "conformance", "property"}
+        and parts[1] in TEST_GROUPS
         and Path(path).name.startswith("test_")
         and path.endswith(".py")
     )
@@ -326,6 +433,14 @@ def generator_environment() -> dict[str, str]:
     neither is rebuilt for the other."""
     cache = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
     return {"UV_PROJECT_ENVIRONMENT": str(cache / "openmaterica" / f"python-{GENERATOR_PYTHON}")}
+
+
+STATIC_COMMANDS = (
+    ("uv", "run", "ruff", "check"),
+    ("uv", "run", "ruff", "format", "--check"),
+    ("uv", "run", "mypy"),
+    ("uv", "run", "pyright"),
+)
 
 
 def key_arguments(key_file: str | None, root: Path = REPOSITORY) -> tuple[str, ...]:
@@ -415,12 +530,7 @@ def plan_checks(
 
     # A change to code.
     if is_code(changed):
-        for command in (
-            ("uv", "run", "ruff", "check"),
-            ("uv", "run", "ruff", "format", "--check"),
-            ("uv", "run", "mypy"),
-            ("uv", "run", "pyright"),
-        ):
+        for command in STATIC_COMMANDS:
             plan.add(
                 Planned("fast", command, "CI's static job runs it on every change to code"),
                 "a change to code",
@@ -439,42 +549,78 @@ def plan_checks(
     file_tests: dict[str, list[str]] = defaultdict(list)
     shard_causes: dict[str, list[str]] = defaultdict(list)
 
-    def route(test: str, cause: str) -> None:
+    def cause_of(path: str, reason: str | None) -> str:
+        return path if reason is None else f"{path} ({reason})"
+
+    def route(test: str, path: str, reason: str | None = None) -> None:
+        covered.add(path)
         shard = tree.shard_of(test)
         if shard is None:
-            file_tests[test].append(cause)
+            file_tests[test].append(cause_of(path, reason))
         else:
-            shard_causes[shard].append(cause)
+            shard_causes[shard].append(cause_of(path, reason))
 
-    def route_importers(root: str, cause: str) -> None:
-        for affected in sorted(tree.affected([root])):
-            if is_test_module(affected) and tree.exists(affected):
-                route(affected, cause)
+    def route_importers(root: str, path: str) -> int:
+        """The tests that import `root`, directly or through others, each routed; how many."""
+        found = [a for a in sorted(tree.affected([root])) if is_test_module(a) and tree.exists(a)]
+        for affected in found:
+            route(affected, path)
+        return len(found)
+
+    def route_declared(test: str, path: str) -> None:
+        """A test a table names, and the tests that import it, whose collection runs its module-level code."""
+        if tree.exists(test):
+            route(test, path)
+            if module_name(test) is not None:
+                route_importers(test, path)
+
+    def route_whole_unit(path: str, reason: str) -> None:
+        if tree.exists(WHOLE_UNIT_DIRECTORY):
+            route(WHOLE_UNIT_DIRECTORY, path, f"{reason}: the whole of {WHOLE_UNIT_DIRECTORY}")
+
+    def route_every_shard(path: str) -> None:
+        covered.add(path)
+        for shard in tree.shards():
+            shard_causes[shard].append(path)
 
     for path in changed:
+        parts = Path(path).parts
+        scoped = parts[0] == "tests" and Path(path).name in {"conftest.py", "__init__.py"}
         if module_name(path) is not None:
-            covered.add(path)
-            route_importers(path, path)
-        if Path(path).name == "conftest.py":
-            # A conftest applies to every test under its directory.
-            covered.add(path)
+            imported = route_importers(path, path)
+            if not (imported or scoped or is_test_module(path)):
+                route_whole_unit(path, "no test imports it")
+            for tree_reader in TREE_READERS:
+                if re.fullmatch(tree_reader.pattern, path):
+                    for test in tree_reader.tests:
+                        route_declared(test, path)
+        elif parts[0] == "tests":
+            group = parts[1] if len(parts) > 2 else None
+            if group not in TEST_GROUPS:
+                route_whole_unit(path, "it is under tests/ and in no group of tests")
+        if scoped:
+            # A conftest, or a package file, applies to every test under its directory.
             directory = Path(path).parent.as_posix()
-            for shard in tree.shards():
-                shard_causes[shard].append(path)
-            if directory == "tests":
+            group = parts[1] if len(parts) > 2 else None
+            if group is None:
+                route_every_shard(path)
                 for other in tree.files:
                     if is_test_module(other) and tree.shard_of(other) is None:
-                        file_tests[other].append(path)
+                        route(other, path)
+            elif group == "property":
+                route_every_shard(path)
+            elif group in TEST_GROUPS:
+                route(directory, path)
+            else:
+                route_whole_unit(path, f"a {Path(path).name} of a directory that is no group of tests")
 
     # Data files, and the modules that read them.
     for path in changed:
         for rule in DATA_RULES:
             if not re.fullmatch(rule.pattern, path):
                 continue
-            covered.add(path)
             for test in rule.tests:
-                if tree.exists(test):
-                    route(test, path)
+                route_declared(test, path)
             for reader in rule.readers:
                 route_importers(reader, path)
 
@@ -511,12 +657,12 @@ def plan_checks(
     return plan.checks(), [path for path in changed if path not in covered]
 
 
-# A figure a message states as a count of something a recount can show: "69,617 test cases".
+# A figure a message states as a count of something a recount can show: "69,617 test cases", "24 hand
+# mutants", "1723 passed", "3 shards". A decimal ("1.5 runs") is read whole, never from its fraction.
 FIGURE = re.compile(
-    r"\b\d[\d,]*\s+(?:test cases|test case|cases|case files|files|tests|mutants|examples|runs|properties)\b"
+    r"(?<![\d.,])\d[\d,]*(?:\.\d+)?\s+(?:[A-Za-z-]+\s+)?"
+    r"(?:test cases|test case|cases|case files|files|tests|mutants|examples|runs|properties|shards|passed)\b"
 )
-MUTANT_MODULE = re.compile(r"tests/property/test_\w*mutant\w*\.py")
-README_OF_PROPERTIES = "tests/property/README.md"
 
 
 def stated_figures(text: str) -> list[str]:
@@ -528,11 +674,6 @@ def reminders(changed: Sequence[str], stated: Sequence[str]) -> list[str]:
     """What no check here can decide, from the paths changed and the figures stated in the CHANGELOG lines and
     commit messages the branch adds."""
     found: list[str] = []
-    if any(MUTANT_MODULE.fullmatch(path) for path in changed) and README_OF_PROPERTIES not in changed:
-        found.append(
-            f"a mutant module changed and {README_OF_PROPERTIES} did not: is each mutant's row current, "
-            "and does it name the assertion the mutant dies at?"
-        )
     if is_code(changed) and "CHANGELOG.md" not in changed:
         found.append(
             "code changed and the CHANGELOG did not: does the change need an entry under Unreleased?"

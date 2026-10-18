@@ -175,7 +175,8 @@ The rest only you can decide. Read your change once as the reviewer will:
   kind, a token known for another place), the code gives the status and code the text names.
 - **A fact is written once.** Search for the words, names and numbers you changed in comments, READMEs, workflow
   headers and this file, and refer to the one place that states each.
-- **A mutant table and its README row change together,** and the row names the assertion the mutant dies at.
+- **A mutant's README row is current.** The row of each mutant you changed names the assertion it dies at and its
+  current kill count.
 - **Each commit stands alone.** No call lands before the function it calls; CI's per-commit job checks it.
 
 ## Confidentiality
