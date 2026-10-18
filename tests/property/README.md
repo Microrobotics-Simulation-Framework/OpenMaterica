@@ -962,19 +962,19 @@ those ways fails these searches; worlds that lost the shapes fail the worlds' au
   records shards' properties declare by its chance each feature whose least share failed a run with a
   probability above 1e-6 at `ci` or 1e-3 at `dev` (the bound `dev` was held to then), computed from the
   clusters measured on each property (2026-10-15); RFC 8785's values and HP3's parts draw their features often
-  enough to have a floor. HP5's `field` and `in_an_own_member`, which S2b-1's places in lists and own members
-  made rarer, have no floor at their chances, so they keep least shares, lowered to about a third of the mean
-  share 48 runs at `ci` measured, where each fails a run with a probability of about 1e-8 (PR #37's review,
-  2026-10-17). Steps 9 and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and
+  enough to have a floor. HP5's `field`, `in_an_own_member` and `in_a_report`, which S2b-1's places in lists
+  and own members and S2b-2's evidence made rarer, have no floor at their chances, so they keep least shares:
+  0.02, 0.01 and 0.01, the last two the lowest `ci` judges, from 22 runs at `ci`, where they fail a run with
+  1.4e-9, 5.0e-7 and 5.8e-13 by the module's cluster model at the variance measured (S2b-2's review,
+  2026-10-18). Steps 9 and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and
   declare it drawn;
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
   window by the least share measured. The result's properties draw their kind first among at most eleven (a
   floor of 25 at `ci`), and HP6 declares its field's `-0`, its review's way, its statistics status object and
   its unknown member by their chances, and its second property a nominal's ways by theirs. HP3's fourth part,
   evidence's, declares its regions by their chances, each at four fifths of its nominal chance, which four
-  runs at `ci` measured above (2026-10-18); HP5's `in_a_report` keeps a least share, at about a quarter of the
-  mean share four runs measured, as `in_an_own_member` did before PR #37's review's 48 runs. HP12's parts
-  draw their kinds, steps or planted rules first (at most twelve), HP4 its ways and
+  runs at `ci` measured above (2026-10-18). HP12's parts draw their kinds, steps or planted rules first (at
+  most twelve), HP4 its ways and
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
   and those that draw a way first declare their ways drawn. For each such
