@@ -29,7 +29,7 @@
 # the check fails where the two differ, so a version's bump updates it.
 
 schema_version: "1.0"
-materica_version: "0.1.0.dev1"
-generated_date: "2026-10-17"
+materica_version: "0.1.0.dev2"
+generated_date: "2026-10-20"
 
 anomalies: []
