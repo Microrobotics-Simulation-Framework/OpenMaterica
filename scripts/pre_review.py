@@ -29,11 +29,17 @@ every group of tests, a conftest of a group it does not know) selects the whole 
 
 import argparse
 import ast
+import glob
 import os
 import re
+import shlex
+import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 import time
+import unicodedata
 from collections import defaultdict, deque
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
@@ -248,6 +254,9 @@ LOCATES_NO_RULED_DATA = {
 # The groups of tests under `tests/`, and the directory a conftest or package file of each applies to. A path
 # under `tests/` outside every group selects the whole of `tests/unit`.
 TEST_GROUPS = ("unit", "spec_sync", "conformance", "property")
+# Code with no test, that a check of the static job holds instead: the consumer snippet is type-checked
+# against the built wheel.
+CHECKED_BY_THE_STATIC_JOB = r"tests/typing/.+"
 WHOLE_UNIT_DIRECTORY = "tests/unit"
 
 
@@ -268,29 +277,96 @@ def git(*arguments: str, root: Path = REPOSITORY, check: bool = True) -> subproc
     return subprocess.run(["git", *arguments], capture_output=True, text=True, check=check, cwd=root)
 
 
+def git_paths(*arguments: str, root: Path = REPOSITORY) -> list[str]:
+    """The NUL-separated paths git prints for `arguments`, as the file system names them."""
+    done = subprocess.run(["git", *arguments], capture_output=True, check=True, cwd=root)
+    return [os.fsdecode(path) for path in done.stdout.split(b"\0") if path]
+
+
 def changed_files(base: str, root: Path = REPOSITORY) -> list[str]:
     """The files changed from the merge base of `base` and HEAD to the working tree, deleted ones included,
     with those not tracked yet, each path once, sorted. A rename counts as the old path gone and the new one
     added."""
     merge_base = git("merge-base", base, "HEAD", root=root).stdout.strip()
-    tracked = git("diff", "--no-renames", "--name-only", "-z", merge_base, root=root).stdout
-    untracked = git("ls-files", "--others", "--exclude-standard", "-z", root=root).stdout
-    return sorted({path for path in (tracked + untracked).split("\0") if path})
+    tracked = git_paths("diff", "--no-renames", "--name-only", "-z", merge_base, root=root)
+    untracked = git_paths("ls-files", "--others", "--exclude-standard", "-z", root=root)
+    return sorted({*tracked, *untracked})
+
+
+# How git writes a name on the line of `git diff --name-only`, which is what CI's gate reads: in double
+# quotes, with these characters as a backslash and a letter, and any other control character, DEL and any
+# byte of 0x80 or more as a backslash and three octal digits.
+GIT_ESCAPES = {7: "a", 8: "b", 9: "t", 10: "n", 11: "v", 12: "f", 13: "r", 34: '"', 92: "\\"}
+
+
+def git_quoted(path: str) -> str:
+    """The path as `git diff --name-only` prints it, without `-z`: unchanged where it holds only printable
+    ASCII other than `"` and `\\`, else in double quotes, escaped (`core.quotePath` at its default)."""
+    data = os.fsencode(path)
+    if all(0x20 <= byte < 0x7F and byte not in GIT_ESCAPES for byte in data):
+        return path
+    pieces = ['"']
+    for byte in data:
+        if byte in GIT_ESCAPES:
+            pieces.append("\\" + GIT_ESCAPES[byte])
+        elif 0x20 <= byte < 0x7F:
+            pieces.append(chr(byte))
+        else:
+            pieces.append(f"\\{byte:03o}")
+    return "".join(pieces) + '"'
+
+
+def printable(text: str) -> str:
+    """The text with each control, format, surrogate or unassigned character written as an escape, so that a
+    name in a diff cannot rewrite the terminal it is printed on."""
+    return "".join(
+        character
+        if unicodedata.category(character) not in {"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp"}
+        else f"\\x{ord(character):02x}"
+        if ord(character) < 0x100
+        else f"\\u{ord(character):04x}"
+        if ord(character) < 0x10000
+        else f"\\U{ord(character):08x}"
+        for character in text
+    )
+
+
+def shell_quote(argument: str) -> str:
+    """The argument as a shell reads it back: single-quoted where it needs quoting, and in `$'...'` where it
+    holds a character `printable` would write as an escape, so that a command printed here can be pasted."""
+    if printable(argument) == argument:
+        return shlex.quote(argument)
+    pieces: list[str] = []
+    for character in argument:
+        if character in {"\\", "'"}:
+            pieces.append("\\" + character)
+        elif printable(character) == character:
+            pieces.append(character)
+        else:
+            pieces.append(printable(character))
+    return "$'" + "".join(pieces) + "'"
 
 
 def is_code(changed: Sequence[str]) -> bool:
     """CI's rule: a change is code unless it has paths, none a Python file, and each is documentation or the
-    site's (the gate's `code`)."""
+    site's (the gate's `code`). The gate reads the names as `git diff --name-only` prints them, so a name that
+    git quotes is matched in its quotes."""
     if not changed:
         return True
-    if any(re.fullmatch(PYTHON_PATHS, path) for path in changed):
+    lines = [git_quoted(path) for path in changed]
+    if any(re.fullmatch(PYTHON_PATHS, line) for line in lines):
         return True
-    return any(not re.fullmatch(f"{DOCUMENTATION_PATHS}|{SITE_PATHS}", path) for path in changed)
+    return any(not re.fullmatch(f"{DOCUMENTATION_PATHS}|{SITE_PATHS}", line) for line in lines)
+
+
+def matches(pattern: str, path: str) -> bool:
+    """Whether the whole path fits the pattern, a newline in a name included."""
+    return re.fullmatch(pattern, path, re.DOTALL) is not None
 
 
 def module_name(path: str) -> str | None:
     """The dotted name a Python file is imported by, from the repository's root or `src/`."""
-    if not re.fullmatch(r".*\.pyi?", path):
+    if not path.endswith((".py", ".pyi")):
         return None
     parts = Path(path).with_suffix("").parts
     if parts[0] == "src":
@@ -330,15 +406,37 @@ def imported_names(path: str, source: str) -> set[str]:
 
 
 class Tree:
-    """The repository's Python files and what they import, read once."""
+    """The repository's Python files and what they import, read once. A file that is no regular file (a link
+    to a device, say) is not opened, and one that is not UTF-8 is read with replacements; each is listed in
+    `notes`, and `unreadable` holds the paths whose imports may therefore be missed."""
 
     def __init__(self, root: Path = REPOSITORY) -> None:
         self.root = root
         self.files: dict[str, str] = {}
+        self.notes: list[str] = []
+        self.unreadable: set[str] = set()
         for top in ("src", "tests", "scripts"):
             for file in sorted((root / top).rglob("*.py")):
-                if "__pycache__" not in file.parts:
-                    self.files[file.relative_to(root).as_posix()] = file.read_text(encoding="utf-8")
+                if "__pycache__" in file.parts:
+                    continue
+                path = file.relative_to(root).as_posix()
+                try:
+                    regular = stat.S_ISREG(file.stat().st_mode)
+                except OSError:
+                    regular = False
+                if not regular:
+                    self.notes.append(f"{path} is not a regular file: not read")
+                    self.unreadable.add(path)
+                    continue
+                data = file.read_bytes()
+                try:
+                    self.files[path] = data.decode("utf-8")
+                except UnicodeDecodeError:
+                    self.files[path] = data.decode("utf-8", errors="replace")
+                    self.notes.append(
+                        f"{path} is not valid UTF-8: read with replacements, its imports may be missed"
+                    )
+                    self.unreadable.add(path)
         self.importers: dict[str, set[str]] = defaultdict(set)
         for path, source in self.files.items():
             for name in imported_names(path, source):
@@ -399,6 +497,7 @@ def pytest_command(paths: Sequence[str], workers: int, *extra: str) -> tuple[str
     return (
         "uv",
         "run",
+        "--locked",
         "pytest",
         *paths,
         *extra,
@@ -436,11 +535,14 @@ def generator_environment() -> dict[str, str]:
 
 
 STATIC_COMMANDS = (
-    ("uv", "run", "ruff", "check"),
-    ("uv", "run", "ruff", "format", "--check"),
-    ("uv", "run", "mypy"),
-    ("uv", "run", "pyright"),
+    ("uv", "run", "--locked", "ruff", "check"),
+    ("uv", "run", "--locked", "ruff", "format", "--check"),
+    ("uv", "run", "--locked", "mypy"),
+    ("uv", "run", "--locked", "pyright"),
 )
+# The rest of CI's static job, run by this script itself (`wheel_check`): its commands are not a list of argv
+# the shell does not have to expand, since they name the wheel the build made.
+WHEEL_COMMAND = ("python3", "scripts/pre_review.py", "--wheel-check")
 
 
 def key_arguments(key_file: str | None, root: Path = REPOSITORY) -> tuple[str, ...]:
@@ -463,7 +565,16 @@ def plan_checks(
     plan = Plan()
     covered: set[str] = set()
 
-    # Every change.
+    # Every change. The lock file first: every `uv run` below is `--locked`, so a lock file out of date with
+    # `pyproject.toml` is refused, not rewritten behind the builder, and says so before anything else runs.
+    plan.add(
+        Planned(
+            "fast",
+            ("uv", "lock", "--check"),
+            "the lock file is out of date with pyproject.toml; CI installs with `uv sync --locked`",
+        ),
+        "every change",
+    )
     plan.add(
         Planned(
             "fast",
@@ -535,14 +646,15 @@ def plan_checks(
                 Planned("fast", command, "CI's static job runs it on every change to code"),
                 "a change to code",
             )
-    if any(path in {"pyproject.toml", "uv.lock"} for path in changed):
         plan.add(
             Planned(
                 "fast",
-                ("uv", "lock", "--check"),
-                "the lock file is out of date with pyproject.toml; CI installs with `uv sync --locked`",
+                WHEEL_COMMAND,
+                "CI's static job builds the wheel, checks what it ships, and type-checks the consumer "
+                "snippet against it (its two controls stay on CI)",
+                paths=("scripts/pre_review.py",),
             ),
-            next(path for path in changed if path in {"pyproject.toml", "uv.lock"}),
+            "a change to code",
         )
 
     # The tests of what changed and of what imports it; a property module is run in its shard, whole.
@@ -586,15 +698,21 @@ def plan_checks(
     for path in changed:
         parts = Path(path).parts
         scoped = parts[0] == "tests" and Path(path).name in {"conftest.py", "__init__.py"}
+        if matches(CHECKED_BY_THE_STATIC_JOB, path):
+            covered.add(path)
         if module_name(path) is not None:
             imported = route_importers(path, path)
-            if not (imported or scoped or is_test_module(path)):
+            if path in tree.unreadable:
+                route_whole_unit(
+                    path, "it cannot be read as Python source here, so what imports it is not known"
+                )
+            elif not (imported or scoped or is_test_module(path) or matches(CHECKED_BY_THE_STATIC_JOB, path)):
                 route_whole_unit(path, "no test imports it")
             for tree_reader in TREE_READERS:
-                if re.fullmatch(tree_reader.pattern, path):
+                if matches(tree_reader.pattern, path):
                     for test in tree_reader.tests:
                         route_declared(test, path)
-        elif parts[0] == "tests":
+        elif parts[0] == "tests" and not matches(CHECKED_BY_THE_STATIC_JOB, path):
             group = parts[1] if len(parts) > 2 else None
             if group not in TEST_GROUPS:
                 route_whole_unit(path, "it is under tests/ and in no group of tests")
@@ -617,7 +735,7 @@ def plan_checks(
     # Data files, and the modules that read them.
     for path in changed:
         for rule in DATA_RULES:
-            if not re.fullmatch(rule.pattern, path):
+            if not matches(rule.pattern, path):
                 continue
             for test in rule.tests:
                 route_declared(test, path)
@@ -688,13 +806,18 @@ def reminders(changed: Sequence[str], stated: Sequence[str]) -> list[str]:
 
 
 def describe(planned: Planned) -> str:
-    environment = " ".join(f"{name}={value}" for name, value in planned.env.items())
-    command = " ".join(planned.command)
+    """The command as a shell reads it, quoted, with the environment it sets."""
+    environment = " ".join(f"{name}={shell_quote(value)}" for name, value in planned.env.items())
+    command = " ".join(shell_quote(argument) for argument in planned.command)
     return f"{environment + ' ' if environment else ''}{command}"
 
 
 def print_plan(
-    checks: Sequence[Planned], uncovered: Sequence[str], files: Sequence[str], to_decide: Sequence[str] = ()
+    checks: Sequence[Planned],
+    uncovered: Sequence[str],
+    files: Sequence[str],
+    to_decide: Sequence[str] = (),
+    notes: Sequence[str] = (),
 ) -> None:
     print(f"{len(files)} changed file(s); {len(checks)} check(s) selected")
     for stage in STAGES:
@@ -706,13 +829,17 @@ def print_plan(
             print(f"  {describe(planned)}")
             print(f"      why: {planned.why}")
             if planned.because:
-                shown = ", ".join(planned.because[:4])
+                shown = ", ".join(printable(cause) for cause in planned.because[:4])
                 more = len(planned.because) - 4
                 print(f"      selected by: {shown}{f' and {more} more' if more > 0 else ''}")
     if uncovered:
         print("\nno check is selected for these (CI may check them; the self-review list applies):")
         for path in uncovered:
-            print(f"  {path}")
+            print(f"  {printable(path)}")
+    if notes:
+        print("\nnot read as Python:")
+        for note in notes:
+            print(f"  {printable(note)}")
     if to_decide:
         print("\nfor you to decide (no check can):")
         for reminder in to_decide:
@@ -725,6 +852,59 @@ Runner = Callable[[Planned, Path], int]
 def run_check(planned: Planned, root: Path) -> int:
     environment = {**os.environ, **planned.env}
     return subprocess.run(planned.command, cwd=root, env=environment, check=False).returncode
+
+
+CONSUMER_SNIPPET = "tests/typing/consumer_snippet.py"
+StepRunner = Callable[[Sequence[str], Path], int]
+
+
+def run_step(command: Sequence[str], directory: Path) -> int:
+    print(f"$ {' '.join(shell_quote(argument) for argument in command)}", flush=True)
+    return subprocess.run(command, cwd=directory, check=False).returncode
+
+
+def wheel_check(root: Path = REPOSITORY, run: StepRunner = run_step) -> int:
+    """The part of CI's static job after the type checkers, in a temporary directory: build the wheel, check
+    what it ships, install it into a virtual environment of its own, and type-check the consumer snippet
+    against it with mypy and pyright, from a directory the project's configuration does not reach. The exit
+    status is that of the first step that failed. The job's two controls on the snippet check stay on CI."""
+    with tempfile.TemporaryDirectory(prefix="pre-review-wheel-") as scratch_name:
+        scratch = Path(scratch_name)
+        distribution, consumer, snippet = scratch / "dist", scratch / "consumer", scratch / "snippet"
+        python = str(consumer / "bin" / "python")
+        status = run(("uv", "build", "--out-dir", str(distribution)), root)
+        if status != 0:
+            return status
+        wheels = sorted(glob.glob(str(distribution / "*.whl")))
+        if not wheels:
+            print("uv build made no wheel", file=sys.stderr)
+            return 1
+        snippet.mkdir()
+        shutil.copy(root / CONSUMER_SNIPPET, snippet)
+        steps: tuple[tuple[tuple[str, ...], Path], ...] = (
+            (("uv", "run", "--locked", "python", "scripts/check_wheel.py", *wheels), root),
+            (("uv", "venv", str(consumer)), root),
+            (("uv", "pip", "install", "--python", python, *wheels), root),
+            (
+                (
+                    *("uv", "run", "--locked", "--project", str(root)),
+                    *("mypy", "--strict", "--python-executable", python, "consumer_snippet.py"),
+                ),
+                snippet,
+            ),
+            (
+                (
+                    *("uv", "run", "--locked", "--project", str(root)),
+                    *("pyright", "--pythonpath", python, "consumer_snippet.py"),
+                ),
+                snippet,
+            ),
+        )
+        for command, directory in steps:
+            status = run(command, directory)
+            if status != 0:
+                return status
+    return 0
 
 
 def execute(
@@ -783,14 +963,18 @@ def main(arguments: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--keep-going", action="store_true", help="run a stage after one that failed")
     parser.add_argument("--key-file", help="the confidential-names key, else openmaterica.scanKeyFile")
+    parser.add_argument("--wheel-check", action="store_true", help=argparse.SUPPRESS)
     options = parser.parse_args(arguments)
+    if options.wheel_check:
+        return wheel_check()
     try:
         files = changed_files(options.base)
     except subprocess.CalledProcessError as error:
         print(f"cannot find the changes from {options.base}: {error.stderr.strip()}", file=sys.stderr)
         return 2
-    checks, uncovered = plan_checks(files, Tree(), options.base, options.workers, options.key_file)
-    print_plan(checks, uncovered, files, reminders(files, added_figures(options.base)))
+    tree = Tree()
+    checks, uncovered = plan_checks(files, tree, options.base, options.workers, options.key_file)
+    print_plan(checks, uncovered, files, reminders(files, added_figures(options.base)), tree.notes)
     if options.list:
         return 0
     status, summary = execute(checks, options.stage or STAGES, options.keep_going)

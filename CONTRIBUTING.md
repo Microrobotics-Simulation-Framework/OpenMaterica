@@ -141,13 +141,17 @@ to the review and to CI and lower no bar. `scripts/pre_review.py [BASE]` (`origi
 finds the files you changed, from the merge base to your working tree, runs the checks below that apply to them
 and prints each with the paths that selected it; `--list` prints the plan alone. Its fast stage comes first:
 fix what it finds before any test runs. It runs the checks that apply, not every check; CI runs them all, on
-every Python, and its result is the one that counts.
+every Python, and its result is the one that counts. Every `uv run` it plans is `--locked`, and `uv lock
+--check` comes first: a lock file out of date with `pyproject.toml` is refused, never rewritten behind you. A
+change it cannot map to a test (a Python file no test imports, a file under `tests/` in no group of tests)
+selects the whole of `tests/unit`, and the plan says why.
 
 | What it catches | Check |
 |---|---|
 | a commit without your sign-off; a private name or path in a file or a message | `python3 scripts/check_signoff.py BASE HEAD`; `python3 scripts/check_confidential.py --messages BASE..HEAD` |
 | a generated file edited by hand, or a source changed without regenerating; a released schema file changed | each of `scripts/gen_vocabulary.py`, `gen_reader_schema.py` and `gen_shapes.py` with `--check`, on Python 3.11 (the shapes' generator does not run on 3.15); `scripts/freeze_schema.py --check` |
 | lint, format, types | `uv run ruff check`, `uv run ruff format --check`, `uv run mypy`, `uv run pyright` |
+| a wheel that lacks a file it ships, or that a consumer's type check refuses (`py.typed`, the stubs, the package data) | `uv build`, then `uv run python scripts/check_wheel.py dist/*.whl` and the consumer snippet's `mypy --strict` and `pyright` against the installed wheel, as the static job's steps do; `python3 scripts/pre_review.py --wheel-check` runs them in a temporary directory |
 | a reference to a section, item or title that is not there; a quote of the specification changed or lost; a case tag or table row with no counterpart | `uv run pytest tests/spec_sync/test_references.py tests/spec_sync/test_value_fields.py tests/spec_sync/test_unknown_member_positions.py` |
 | a name reused at a place, or one slip from another | `uv run pytest tests/spec_sync/test_name_overlaps.py tests/spec_sync/test_name_overlap_safeguards.py` |
 | a feature audit that fails by chance, or that does not fail when its feature stops being drawn | `MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest tests/property --shard NAME -n 12 --dist worksteal` for your module's shard (`SHARDS` in `tests/conftest.py`), and `uv run pytest tests/unit/test_audit_controls.py tests/unit/test_audits.py` |
