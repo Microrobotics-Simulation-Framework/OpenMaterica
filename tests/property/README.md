@@ -252,12 +252,28 @@ is now searched in that region, in records the core passes, and the property its
 | `empty_word_made_plural` | `x__y` against `x_s_y` (one character added) or `x_es_y` (two): (9)'s `pairs` must draw a name with an empty word, then the slip that puts `s` or `es` in exactly that word | a name of words with one empty, the same with `s` or `es` in it, in either order |
 | `row_requirements_ignored` | a condition the field's row requires that the record does not hold and the request does not name: `table_cases` names every one in the request, so it needs the `unchecked` kind to remove one from the request and `absent_but_required` to remove the same from the record | HP7's table case with one required condition removed from the record and from the request |
 
-Each draws only examples the core passes (a control in `test_mutant_view.py` and `test_condition_mutant_table.py`
-checks up to 2,000 of them, the `ci` count, against the core; the three mutants, by the searches in `test_mutants.py` and
-`test_condition_mutants.py`, fail on every one of 2,000 at both sizes, at the assertion that names their fault:
+Each is meant to draw only examples the core passes, and three controls check that, on fresh random draws of the
+same strategy, not on the search's own derandomized 2,000: 200 at `dev` and 2,000 at `ci` and `deep`. The hash's
+(`test_mutant_view.py`) runs at both sizes, small and original, in two arms: the strategy as the search draws it,
+and the strategy with the tree below `review` or `copy` planned to hold a provenance object that removes a leaf,
+alone or beside a kept one, which is the draw that tells a search that edits a removed leaf from the planned one.
+The first draft of the hash's strategy, without the filter that picks a kept leaf, failed the core on 1 of 5,000
+random examples at the small size and 6 of 5,000 at the original (the review's measurement), so the first arm
+alone would catch it in a run of 2,000 (`ci`) with a probability of 33% at the small size and 91% at the original,
+and in a run of 200 (`dev`) 4% and 21%; the second arm catches it at the first example of every run (the first
+draw of its `one_of` is a tree with no kept leaf, and a random draw fails three times in four, so 200 draws miss
+it with a probability below 1e-100; measured 40 runs of 200 in 40, at each size), and a third test runs the
+strategy without the filter against the control and asserts that it fails, at both sizes. The slips' control (`test_mutant_view.py`, `pairs_through_an_empty_word`, which takes no
+size) and the conditions' (`test_condition_mutant_table.py`, `table_cases_without_a_requirement`, no size either)
+draw their one strategy. The three mutants, by the searches in `test_mutants.py` and `test_condition_mutants.py`,
+fail on every one of the 2,000 examples of each search, at both sizes, at the assertion that names their fault:
 `check_edit`'s "left the hash unchanged", `check_one_slip`'s first or second assertion, and
-`check_against_the_oracle`'s reasons). Planned, each dies at its first example at both sizes, and at the first
-in each of the 24 salts (measured 2026-10-18).
+`check_against_the_oracle`'s reasons. Each search dies at its first example at both sizes, and in each of the
+24 salts (measured 2026-10-18). That is by construction: Hypothesis draws the example of all zero choices
+first, whatever the seed, and every planned example kills, so the kill point is 1 and a salt cannot move it. It
+is not a margin. What it shows is the number of the planned examples that kill: 2,000 of 2,000 for each of the
+three (the slip's first draw, `Pair('s', '')`, is the degenerate whole name `''` against `s`, not `x__y` against
+`x_s_y`; 1,996 of its 2,000 contain an underscore).
 
 CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported range's ends alone
 (`--property-controls` in `tests/conftest.py`), so a mutant module holds mutant searches only. The checks of

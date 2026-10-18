@@ -585,9 +585,12 @@ every family entry goes in `families/CHANGELOG.md`.
   in records and names the core passes (an edit below a `review` or `copy` in a provenance whose value is an
   array; a name with an empty word and the same with `s` or `es` in it; a table case with a required condition
   held nowhere), checks the same assertion, and dies at its first example at both sizes and in all 24 salts. The
-  properties are unchanged; a control checks that each planned search's examples pass on the core. No budget,
-  size, fault or mutant was changed; the other 538 kill points did not move, and the latest of the 544 is now
-  the 276th (`tests/property/README.md`).
+  properties are unchanged; a control checks that each planned search's examples pass on the core (the hash's
+  at both sizes, with a second arm that plans the draws that tell the search from one that edits a removed
+  leaf, and a test that the control fails that search). No budget, size, fault or mutant was changed; the other
+  538 kill points did not move, and the latest of the 544 is now the 276th (`tests/property/README.md`).
+  `examples_to_kill` no longer counts an error raised by the strategy itself as a kill (a kill at the 0th
+  example); no kill point moved.
 
 ## [0.1.0.dev1] - 2026-10-14
 
