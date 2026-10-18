@@ -5318,8 +5318,9 @@ MUTANT_REQUESTED = {
     "seed": "7",
     "extra": "",
 }
-# The tree each mutant runs on, beside the script: a package of two modules, a test of each, a workflow, the
-# build's files, the repository's own ignore rules, and a link to a directory outside it.
+# The tree each mutant runs on, beside the script: a package of three modules, a test of each, one of which
+# calls its module when collected and one parametrized by its module's list, a workflow, the build's files,
+# the repository's own ignore rules, and a link to a directory outside it.
 MUTANT_TREE = {
     ".gitignore": (REPOSITORY / ".gitignore").read_text(encoding="utf-8"),
     "src/materica/__init__.py": "def double(x):\n    return 2 * x\n",
@@ -5327,7 +5328,15 @@ MUTANT_TREE = {
     "tests/test_double.py": (
         "from materica import double\n\n\ndef test_double():\n    assert double(3) == 6\n"
     ),
-    "tests/test_half.py": "from materica.half import half\n\n\ndef test_half():\n    assert half(4) == 2\n",
+    "src/materica/cases.py": 'CASES = ["a", "b", "c"]\n',
+    "tests/test_half.py": (
+        "from materica.half import half\n\nHALF_OF_FOUR = half(4)\n\n\ndef test_half():\n"
+        "    assert HALF_OF_FOUR == 2\n"
+    ),
+    "tests/test_cases.py": (
+        "import pytest\n\nfrom materica.cases import CASES\n\n\n@pytest.mark.parametrize('case', CASES)\n"
+        "def test_case(case):\n    assert case\n"
+    ),
     "pyproject.toml": '[tool.pytest.ini_options]\npythonpath = ["src"]\njunit_family = "xunit1"\n',
     ".github/workflows/ci.yml": "on: push\n",
     "uv.lock": "version = 1\n",
@@ -5459,8 +5468,11 @@ INSTALLED_EDIT = (
 EDITED = edit("src/materica/__init__.py", "2 * x", "3 * x")
 # The patches the request takes, each by its mutant's name: an edit, a new file, a file deleted, a file made
 # executable; an edit whose context the tree does not hold, which its job records as broken; an edit that
-# changes no behaviour; an edit that does not compile; and a module beside the scripts named as one of the
-# standard library's, which reaches the verdict's code only if that code runs from the checkout.
+# changes no behaviour; an edit that does not compile; a module beside the scripts named as one of the
+# standard library's, which reaches the verdict's code only if that code runs from the checkout; an edit that
+# makes a test module fail when it is collected (#46's review, L4, m21); and two that fail only under
+# pytest-xdist's collection (its H3): a module that does not import on the worker `gw1`, and a list whose
+# order differs on it, as a set's order differs between processes.
 PATCHES_TAKEN: dict[str, Callable[[Path], str]] = {
     "edited": changed(EDITED),
     "added": changed(add("src/materica/third.py", "def third(x):\n    return x / 3\n")),
@@ -5470,6 +5482,23 @@ PATCHES_TAKEN: dict[str, Callable[[Path], str]] = {
     "equivalent": changed(edit("src/materica/__init__.py", "2 * x", "x + x")),
     "syntax": changed(edit("src/materica/half.py", "x / 2", "(x / 2")),
     "shadow": changed(add("scripts/importlib.py", 'raise ImportError("a module of the patch")\n')),
+    "uncollectable": changed(edit("src/materica/half.py", "    return x / 2", "    raise ValueError(x)")),
+    "worker-collect": changed(
+        edit(
+            "src/materica/half.py",
+            "def half(x):",
+            'import os\n\nif os.environ.get("PYTEST_XDIST_WORKER") == "gw1":\n'
+            '    raise RuntimeError("no import on gw1")\n\n\ndef half(x):',
+        )
+    ),
+    "worker-order": changed(
+        edit(
+            "src/materica/cases.py",
+            'CASES = ["a", "b", "c"]\n',
+            'import os\n\nCASES = ["a", "b", "c"]\nif os.environ.get("PYTEST_XDIST_WORKER") == "gw1":\n'
+            "    CASES.reverse()\n",
+        )
+    ),
 }
 # The patches the request refuses, each by its mutant's name, with what it says of each: paths outside the
 # tree, from its root, inside .git, of a character a plain path does not hold, or through a link out of it;
@@ -6089,17 +6118,25 @@ def test_the_mutant_job_check_finds_a_fault_of_the_script(
     assert any(problem in line for line in found), found
 
 
-# The mutants run end to end, with this Python's pytest, and what each must come to: the baseline passes; the
-# edit of `double` is killed by its test; the edit that changes nothing survives; the patch whose context is
-# gone and the module that does not compile are broken; and the module beside the scripts survives, as the
-# script that records the verdict runs from its copy.
+# The mutants run end to end, with this Python's pytest under two workers, and what each must come to: the
+# baseline passes; the edit of `double` is killed by its test; the edit that changes nothing survives; the
+# patch whose context is gone and the module that does not compile are broken; the module beside the scripts
+# survives, as the script that records the verdict runs from its copy; the test module that fails when
+# collected is broken at the collect step; and the two that fail under pytest-xdist alone are broken by what
+# its report names, a module and a worker, neither of them a collected test.
 END_TO_END = {
-    "": (mutant_runs.SURVIVED, "2 tests passed"),
+    "": (mutant_runs.SURVIVED, "5 tests passed"),
     "edited": (mutant_runs.KILLED, "tests/test_double.py::test_double"),
-    "equivalent": (mutant_runs.SURVIVED, "2 tests passed"),
+    "equivalent": (mutant_runs.SURVIVED, "5 tests passed"),
     "stale": (mutant_runs.BROKEN, "the patch does not apply"),
     "syntax": (mutant_runs.BROKEN, "the code does not import: src/materica/half.py does not compile"),
-    "shadow": (mutant_runs.SURVIVED, "2 tests passed"),
+    "shadow": (mutant_runs.SURVIVED, "5 tests passed"),
+    "uncollectable": (mutant_runs.BROKEN, "pytest cannot collect the selection"),
+    "worker-collect": (
+        mutant_runs.BROKEN,
+        "the selection does not collect under pytest-xdist: tests/test_half.py::tests.test_half",
+    ),
+    "worker-order": (mutant_runs.BROKEN, "the selection does not collect under pytest-xdist: gw"),
 }
 
 
@@ -6196,6 +6233,37 @@ def test_three_mutants_are_killed_survive_and_are_broken_end_to_end(tmp_path: Pa
     assert mutant_end_to_end_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path) == []
 
 
+# Faults of the script the end-to-end check finds, each a change to its text, the mutant it shows on, and what
+# the check says: a selection that does not collect recorded as collected (#46's review, L4, m21), and every
+# entry of the report taken for a collected test's failure (its H3).
+END_TO_END_FAULTS = {
+    "collection-recorded-as-collected": (
+        'record["collected"], record["message"] = collected.passed, collected.message',
+        'record["collected"], record["message"] = True, collected.message',
+        "uncollectable",
+        "the mutant 'uncollectable' exits 1 as ('undecided'",
+    ),
+    "every-entry-a-test": (
+        'is_test = failure["test"] in collected and failure["message"] != COLLECTION_FAILURE',
+        "is_test = True",
+        "worker-collect",
+        "the mutant 'worker-collect' exits 0 as ('killed', 'tests/test_half.py::tests.test_half')",
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "mutant", "problem"), END_TO_END_FAULTS.values(), ids=list(END_TO_END_FAULTS)
+)
+def test_the_end_to_end_check_finds_a_fault_of_the_scripts_collection(
+    tmp_path: Path, old: str, new: str, mutant: str, problem: str
+) -> None:
+    tree = mutant_checkout(tmp_path)
+    script_changed(tree, old, new)
+    found = mutant_end_to_end_problems(workflow(MUTANT_WORKFLOW), tree, tmp_path, [mutant])
+    assert any(problem in line for line in found), found
+
+
 def test_the_end_to_end_check_finds_the_verdicts_code_run_from_the_checkout(tmp_path: Path) -> None:
     """The control: run from the checkout, the script that checks the imports imports the patch's module
     beside it, and the mutant that changes no test's code is taken for broken."""
@@ -6206,10 +6274,13 @@ def test_the_end_to_end_check_finds_the_verdicts_code_run_from_the_checkout(tmp_
 
 
 # Records as a mutant's job writes them, each of the baseline or a mutant, and the outcome the table must give
-# each: a mutant whose patch did not apply, whose code did not import or whose selection did not collect is
-# broken, though its record also holds a failed run; one refused, interrupted, or failed with no test named
-# is undecided; and only a run that failed at a named test, after the baseline passed, is killed.
+# each: a mutant whose patch did not apply, whose code did not import or whose selection did not collect, in
+# one process or under pytest-xdist (a module or a worker named in the report), is broken, though its record
+# also holds a failed run; one refused, interrupted, or failed with no test named is undecided; and only a
+# run that failed at a collected test, after the baseline passed, is killed.
 FAILED_TEST = [{"test": "tests/test_double.py::test_double", "message": "assert 9 == 6"}]
+XDIST_MODULE = [{"test": "tests/test_half.py::tests.test_half", "message": "collection failure"}]
+XDIST_WORKER = [{"test": "gw0::gw0", "message": "collection failure"}]
 
 
 def crafted_record(mutant: str, **facts: object) -> dict[str, object]:
@@ -6222,6 +6293,7 @@ def crafted_record(mutant: str, **facts: object) -> dict[str, object]:
         "tests": 2,
         "status": 0,
         "failures": [],
+        "uncollected": [],
         "message": "",
     }
     return base | facts
@@ -6236,6 +6308,18 @@ CRAFTED = {
     "refused": (crafted_record("refused", refused=["a reason"], status=1, failures=FAILED_TEST), "undecided"),
     "interrupted": (crafted_record("interrupted", status=124, failures=FAILED_TEST), "undecided"),
     "unnamed": (crafted_record("unnamed", status=1), "undecided"),
+    "xdist-module": (crafted_record("xdist-module", status=2, uncollected=XDIST_MODULE), "broken"),
+    "xdist-worker": (
+        crafted_record("xdist-worker", status=1, failures=FAILED_TEST, uncollected=XDIST_WORKER),
+        "broken",
+    ),
+}
+# Baselines that did not pass, each with which way: failed, interrupted at the job's limit (undecided), and
+# broken, not collected (#46's review, L4, m09). After any, no mutant is killed.
+BASELINES_NOT_PASSED = {
+    "failed": crafted_record("", status=2, failures=FAILED_TEST),
+    "interrupted": crafted_record("", status=124),
+    "broken": crafted_record("", collected=False, status=2, failures=FAILED_TEST),
 }
 
 
@@ -6248,7 +6332,8 @@ def crafted_uploads(records: Mapping[str, dict[str, object]]) -> list[Kept]:
 
 def table_verdict_problems(mutants: Workflow, tree: Path, directory: Path) -> list[str]:
     """Where the table step, run as written on the records `CRAFTED`, gives another outcome than each must
-    have, a broken mutant's above all, or passes; or, the baseline's run failed, gives any mutant killed."""
+    have, a broken mutant's above all, or passes; or, with a baseline that did not pass in any of the ways
+    `BASELINES_NOT_PASSED` gives, gives any mutant killed or passes."""
     problems: list[str] = []
     named = [mutant for mutant in CRAFTED if mutant]
     outputs = dict(MUTANT_OUTPUTS, mutants=" ".join(named), matrix=json.dumps(["", *named]))
@@ -6263,14 +6348,16 @@ def table_verdict_problems(mutants: Workflow, tree: Path, directory: Path) -> li
     ]
     if status == 0:
         problems.append("the table passes with mutants that are not killed")
-    records[""] = crafted_record("", status=2, failures=FAILED_TEST)
-    status, printed, table = tabled(mutants, tree, directory / "baseline", crafted_uploads(records), outputs)
-    rows = (table or {"rows": []})["rows"]
-    killed = [row["mutant"] for row in rows if row["mutant"] and row["outcome"] == "killed"]
-    if killed or status == 0 or table is None:
-        problems.append(
-            f"with the baseline failed, the table exits {status} with {killed} killed: {printed[-300:]}"
-        )
+    for how, baseline in BASELINES_NOT_PASSED.items():
+        records[""] = baseline
+        uploads = crafted_uploads(records)
+        status, printed, table = tabled(mutants, tree, directory / f"baseline-{how}", uploads, outputs)
+        rows = (table or {"rows": []})["rows"]
+        killed = [row["mutant"] for row in rows if row["mutant"] and row["outcome"] == "killed"]
+        if killed or status == 0 or table is None:
+            problems.append(
+                f"with the baseline {how}, the table exits {status} with {killed} killed: {printed[-300:]}"
+            )
     return problems
 
 
@@ -6280,7 +6367,9 @@ def test_the_table_never_gives_a_broken_mutant_as_killed(tmp_path: Path) -> None
 
 
 # Faults of the script's verdict, each a change to its text: a failed run taken for a kill before the patch's
-# application, import and collection are looked at; and a kill counted after the baseline failed.
+# application, import and collection are looked at; what the report names beside the collected tests not
+# read; a kill counted after the baseline failed; and one counted after a baseline that did not fail but
+# did not pass either (#46's review, L4, m09).
 VERDICT_FAULTS = {
     "failures-first": (
         '    message = str(record.get("message", ""))\n',
@@ -6288,10 +6377,20 @@ VERDICT_FAULTS = {
         '    if record.get("failures"):\n        return KILLED, ""\n',
         "the table gives the mutant 'unapplied' as killed, not broken",
     ),
+    "uncollected-unread": (
+        "    if uncollected:\n",
+        "    if False:\n",
+        "the table gives the mutant 'xdist-worker' as killed, not broken",
+    ),
     "baseline-ignored": (
         "if baseline.outcome != SURVIVED and each.outcome == KILLED:",
         "if False:",
         "with the baseline failed, the table exits 1 with ['killed'] killed",
+    ),
+    "only-a-failed-baseline": (
+        "if baseline.outcome != SURVIVED and each.outcome == KILLED:",
+        "if baseline.outcome == KILLED and each.outcome == KILLED:",
+        "with the baseline interrupted, the table exits 1 with ['killed'] killed",
     ),
 }
 

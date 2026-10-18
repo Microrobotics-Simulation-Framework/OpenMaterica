@@ -28,9 +28,11 @@ patch is applied, so that nothing a patch writes reaches the code that records i
   each with one record, the mutants' jobs all succeeded and the run is on its first attempt (`ATTEMPT`).
 
 A record holds facts, never a verdict: whether the patch applied, the code imported and the selection was
-collected, pytest's exit status and the tests that failed. `verdict` alone turns them into one, the job's
-and the table's alike, and a mutant whose patch does not apply or whose code does not import or collect is
-broken whatever else its record holds, so that the table cannot report it killed.
+collected, pytest's exit status, the collected tests that failed, and what else the run's report names as
+failed, which is no collected test (`uncollected`). `verdict` alone turns them into one, the job's and the
+table's alike, and a mutant whose patch does not apply, whose code does not import, or whose selection does
+not collect, in one process or under pytest-xdist, is broken whatever else its record holds, so that the
+table cannot report it killed: a mutant is killed by a test the collect step listed, or not at all.
 """
 
 import argparse
@@ -117,6 +119,10 @@ KILLED, SURVIVED, BROKEN, UNDECIDED = "killed", "survived", "broken", "undecided
 # pytest at the job's limit.
 PASSED_STATUS, INTERRUPTED_STATUS = 0, 124
 STOPPED_AT_A_FAILURE = (1, 2)
+# The message pytest-xdist's report gives an entry for a collection error of a worker's: a module that does
+# not collect on it, or the worker itself (`gw0`) where the workers collected different tests (checked
+# 2026-10-18 with the locked pytest-xdist, #46's review, H3).
+COLLECTION_FAILURE = "collection failure"
 MAX_MESSAGE = 500
 RECORD = "record.json"
 REPORT = "report.xml"
@@ -130,6 +136,7 @@ RECORD_FIELDS: dict[str, tuple[type, ...]] = {
     "tests": (int, type(None)),
     "status": (int, type(None)),
     "failures": (list,),
+    "uncollected": (list,),
     "message": (str,),
 }
 
@@ -504,11 +511,27 @@ def reported_failures(report: Path) -> list[dict[str, str]]:
     return failures
 
 
+def split_failures(
+    failures: Sequence[dict[str, str]], collected: set[str]
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """`failures`, in their order, split into those of a test the collect step listed (`collected`) and the
+    rest: pytest-xdist's collection errors (`COLLECTION_FAILURE`), by a module or by a worker (`gw0::gw0`),
+    and anything else the report names that is no collected test."""
+    tests: list[dict[str, str]] = []
+    others: list[dict[str, str]] = []
+    for failure in failures:
+        is_test = failure["test"] in collected and failure["message"] != COLLECTION_FAILURE
+        (tests if is_test else others).append(failure)
+    return tests, others
+
+
 def verdict(record: Mapping[str, Any]) -> tuple[str, str]:
-    """The outcome a record shows, and why: broken where the patch did not apply or the code did not import
-    or collect, whatever else the record holds; otherwise survived where pytest passed and named no failure,
-    killed where it failed and named the test that failed first; undecided for anything else (a refusal, a
-    stage not reached, a run interrupted at the job's limit, or a status and failures that disagree)."""
+    """The outcome a record shows, and why: broken where the patch did not apply, the code did not import or
+    the selection did not collect, or the run's report names as failed what is no collected test (a
+    collection error under pytest-xdist), whatever else the record holds; otherwise survived where pytest
+    passed and named no failure, killed where it failed and named the collected test that failed first;
+    undecided for anything else (a refusal, a stage not reached, a run interrupted at the job's limit, or a
+    status and failures that disagree)."""
     message = str(record.get("message", ""))
     if record.get("refused"):
         return UNDECIDED, "the patch was refused: " + "; ".join(map(str, record["refused"]))
@@ -521,6 +544,12 @@ def verdict(record: Mapping[str, Any]) -> tuple[str, str]:
             return BROKEN, f"{why}: {message}"
     if not all(record.get(stage) is True for stage in ("applied", "imports", "collected")):
         return UNDECIDED, f"the job stopped before it ran the selection: {message}"
+    uncollected: list[Any] = list(record.get("uncollected") or [])
+    if uncollected:
+        first = cast(dict[str, str], uncollected[0]) if is_failure(uncollected[0]) else {}
+        return BROKEN, (
+            f"the selection does not collect under pytest-xdist: {first.get('test')}: {first.get('message')}"
+        )
     status = record.get("status")
     failures: list[Any] = list(record.get("failures") or [])
     if status == PASSED_STATUS and not failures:
@@ -572,7 +601,8 @@ def run_mutant(
     """The record of the mutant `MUTANT` (`""` for the baseline), run in the checkout at `root` until three
     minutes before the job's timeout (`JOB_MINUTES`), counted from now: its patch checked and applied, the
     code imported (`script`'s `imports`, in the project's environment), the selection collected, and then run
-    under `timeout --foreground --signal=INT`, as CI's jobs run pytest, stopping at the first failure. Each
+    under `timeout --foreground --signal=INT`, as CI's jobs run pytest, stopping at the first failure; the
+    failures its report names are split into the collected tests' and the rest (`split_failures`). Each
     stage runs only where the one before it passed."""
     problems: list[str] = []
     minutes = whole_number("the job's minutes", environment.get("JOB_MINUTES", ""), 4, 360, problems)
@@ -592,6 +622,7 @@ def run_mutant(
         "tests": None,
         "status": None,
         "failures": [],
+        "uncollected": [],
         "message": "",
     }
     touched: list[str] = []
@@ -621,7 +652,8 @@ def run_mutant(
     record["collected"], record["message"] = collected.passed, collected.message
     if collected.passed is not True:
         return record
-    record["tests"] = sum("::" in line for line in collected.printed.splitlines())
+    tests = {line.strip() for line in collected.printed.splitlines() if "::" in line}
+    record["tests"] = len(tests)
     left = int(deadline - clock())
     if left <= 0:
         record["message"] = "the job's time ran out before the run"
@@ -634,7 +666,7 @@ def run_mutant(
         *(f"--hypothesis-seed={seed}", f"--junitxml={report}"),
     ]
     record["status"] = subprocess.run(command, cwd=root, check=False).returncode
-    record["failures"] = reported_failures(report)
+    record["failures"], record["uncollected"] = split_failures(reported_failures(report), tests)
     return record
 
 
@@ -689,8 +721,7 @@ def read_records(directory: Path) -> tuple[dict[str, list[dict[str, Any]]], list
         ]
         if not all(isinstance(problem, str) for problem in fields["refused"]):
             wrong.append("refused")
-        if not all(is_failure(failure) for failure in fields["failures"]):
-            wrong.append("failures")
+        wrong += [name for name in ("failures", "uncollected") if not all(map(is_failure, fields[name]))]
         if wrong:
             problems.append(f"{where} holds {', '.join(wrong)} of another type")
             continue

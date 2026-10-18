@@ -153,8 +153,10 @@ for one drawn at random, which the table gives; and `extra`, of `--shard NAME` a
 variable, 10 where it is unset (`.github/workflows/README.md`, "Jobs at once").
 
 The table has a row for the baseline, the branch as it is, and one for each mutant: **killed**, with the test
-that failed first; **survived**, every selected test passed; **broken**, the patch does not apply, or the code
-does not import or the selection does not collect, with why; or **undecided**, with why (the job ran out of
+that failed first, always one the collect step listed; **survived**, every selected test passed; **broken**,
+the patch does not apply, or the code does not import or the selection does not collect, in one process or
+under pytest-xdist (whose report then names a module or a worker, such as `gw0`, where a test should be),
+with why; or **undecided**, with why (the job ran out of
 time, pytest stopped another way, or the record is missing or doubled). Where the baseline did not pass, no
 mutant counts as killed. The run passes only when the baseline passed and every mutant was killed; a mutant
 that survives because it changes nothing (an equivalent mutant) leaves it red, and the reviewer says so where
