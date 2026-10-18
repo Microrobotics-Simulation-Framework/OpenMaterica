@@ -5470,7 +5470,8 @@ EDITED = edit("src/materica/__init__.py", "2 * x", "3 * x")
 # executable; an edit whose context the tree does not hold, which its job records as broken; an edit that
 # changes no behaviour; an edit that does not compile; a module beside the scripts named as one of the
 # standard library's, which reaches the verdict's code only if that code runs from the checkout; an edit that
-# makes a test module fail when it is collected (#46's review, L4, m21); and two that fail only under
+# makes a test module fail when it is collected (#46's review, L4, m21); an edit of a test, whose kill the
+# table marks (its M2); and two that fail only under
 # pytest-xdist's collection (its H3): a module that does not import on the worker `gw1`, and a list whose
 # order differs on it, as a set's order differs between processes.
 PATCHES_TAKEN: dict[str, Callable[[Path], str]] = {
@@ -5483,6 +5484,7 @@ PATCHES_TAKEN: dict[str, Callable[[Path], str]] = {
     "syntax": changed(edit("src/materica/half.py", "x / 2", "(x / 2")),
     "shadow": changed(add("scripts/importlib.py", 'raise ImportError("a module of the patch")\n')),
     "uncollectable": changed(edit("src/materica/half.py", "    return x / 2", "    raise ValueError(x)")),
+    "test-edit": changed(edit("tests/test_double.py", "== 6", "== 7")),
     "worker-collect": changed(
         edit(
             "src/materica/half.py",
@@ -6122,8 +6124,9 @@ def test_the_mutant_job_check_finds_a_fault_of_the_script(
 # baseline passes; the edit of `double` is killed by its test; the edit that changes nothing survives; the
 # patch whose context is gone and the module that does not compile are broken; the module beside the scripts
 # survives, as the script that records the verdict runs from its copy; the test module that fails when
-# collected is broken at the collect step; and the two that fail under pytest-xdist alone are broken by what
-# its report names, a module and a worker, neither of them a collected test.
+# collected is broken at the collect step; the edit of a test is killed, and marked in the table; and the two
+# that fail under pytest-xdist alone are broken by what its report names, a module and a worker, neither of
+# them a collected test.
 END_TO_END = {
     "": (mutant_runs.SURVIVED, "5 tests passed"),
     "edited": (mutant_runs.KILLED, "tests/test_double.py::test_double"),
@@ -6132,6 +6135,7 @@ END_TO_END = {
     "syntax": (mutant_runs.BROKEN, "the code does not import: src/materica/half.py does not compile"),
     "shadow": (mutant_runs.SURVIVED, "5 tests passed"),
     "uncollectable": (mutant_runs.BROKEN, "pytest cannot collect the selection"),
+    "test-edit": (mutant_runs.KILLED, "tests/test_double.py::test_double"),
     "worker-collect": (
         mutant_runs.BROKEN,
         "the selection does not collect under pytest-xdist: tests/test_half.py::tests.test_half",
@@ -6219,6 +6223,9 @@ def mutant_end_to_end_problems(
     rows = {row["mutant"]: row["outcome"] for row in (table or {}).get("rows", [])}
     if status == 0 or rows != {mutant: wanted for mutant, (wanted, _) in END_TO_END.items()}:
         problems.append(f"the table of every mutant exits {status} with the rows {rows}: {printed[-500:]}")
+    marked = {row["mutant"]: row["marked"] for row in (table or {}).get("rows", []) if row["marked"]}
+    if marked != {"test-edit": ["tests/test_double.py"]}:
+        problems.append(f"the table marks the kills {marked}, not that of the edit of a test alone")
     alone = dict(outputs, mutants="edited", matrix=json.dumps(["", "edited"]))
     status, printed, table = tabled(
         mutants, tree, directory / "table-killed", [uploads[""], uploads["edited"]], alone
@@ -6286,6 +6293,7 @@ XDIST_WORKER = [{"test": "gw0::gw0", "message": "collection failure"}]
 def crafted_record(mutant: str, **facts: object) -> dict[str, object]:
     base: dict[str, object] = {
         "mutant": mutant,
+        "touched": [],
         "refused": [],
         "applied": True,
         "imports": True,

@@ -112,7 +112,11 @@ not a regular file committed at the dispatched commit, a name other than 1 to 64
 character but tab and line feed. A mutant's job checks its patch again before applying it, and runs the
 script that records the verdict from a copy outside the checkout, made before the patch is applied
 (`python3 -I`), so that nothing a patch writes reaches it, and every `uv run` after the patch neither syncs
-nor locks (`--no-sync --frozen`), so that nothing a patch adds changes what is installed. Every run of a
+nor locks (`--no-sync --frozen`), so that nothing a patch adds changes what is installed. These guard against
+accidents, not a hostile patch: a patch's code runs in its job, which could forge its own record, so the
+workflow relies on who may dispatch it (write access, which can push a workflow anyway), a token that reads
+alone, no secret read and no cache saved. Each row gives the paths its patch touches, and a kill by a patch
+that edits the tests or pytest's settings is marked, since the edit may have failed the test. Every run of a
 dispatch draws under one seed, so
 that a chance failure of the baseline's draws is a failure of each mutant's that leaves them alone, and a
 mutant's run replays exactly. Under pytest-xdist, `-x` ends a run that failed as interrupted (exit 2, where
@@ -160,7 +164,8 @@ push is 16 + 20 = 36. Each mutant dispatch runs its own `MUTANT_MAX_PARALLEL`, 2
 nothing beside them: its request job ends before they start and its table job starts after them. So its
 worst case is 20 runners for as long as its mutants queue (up to 201 jobs, 200 mutants and the baseline),
 and one push at the ceiling, one repeat dispatch and one mutant dispatch together ask for 56 + 20 + 20 = 96,
-more than the 60: the rest wait for a runner, MIME's and MADDENING's jobs among them.
+more than the 60: the rest wait for a runner, MIME's and MADDENING's jobs among them. Each further dispatch,
+of other inputs or on another ref, asks for its own 20 more.
 
 Anyone with write access to the repository can set these variables, not its maintainers alone (GitHub's "Use
 variables": write access suffices for a repository of an organisation), which is why the check bounds them. Set,

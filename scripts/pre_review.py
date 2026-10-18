@@ -167,6 +167,12 @@ DATA_RULES = (
         tests=("tests/unit/test_ci_workflows.py",),
     ),
     DataRule(
+        "the tests' README",
+        r"tests/README\.md",
+        "the mutant tables' recipe is run as the README writes it",
+        tests=("tests/unit/test_mutant_runs.py",),
+    ),
+    DataRule(
         "the main workflow, which more tests read than hold it",
         r"\.github/workflows/ci\.yml",
         "the script's own lists of CI's paths, the Python versions and the source-file rules are compared "

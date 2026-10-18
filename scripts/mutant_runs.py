@@ -26,13 +26,15 @@ patch is applied, so that nothing a patch writes reaches the code that records i
 - `table DIRECTORY OUTPUT` reads every record under `DIRECTORY`, writes the table to the step summary and to
   `OUTPUT` (`table.md`, `table.json`), and exits 1 unless the baseline passed and every mutant was killed,
   each with one record, the mutants' jobs all succeeded and the run is on its first attempt (`ATTEMPT`).
+  Each row gives the paths its patch touched, and a kill by a patch that edits the tests or pytest's
+  settings is marked (`TEST_SETTINGS`): the edit, not the code, may have failed the test.
 
-A record holds facts, never a verdict: whether the patch applied, the code imported and the selection was
-collected, pytest's exit status, the collected tests that failed, and what else the run's report names as
-failed, which is no collected test (`uncollected`). `verdict` alone turns them into one, the job's and the
-table's alike, and a mutant whose patch does not apply, whose code does not import, or whose selection does
-not collect, in one process or under pytest-xdist, is broken whatever else its record holds, so that the
-table cannot report it killed: a mutant is killed by a test the collect step listed, or not at all.
+A record holds facts, never a verdict: the paths the patch touches, whether it applied, the code imported and
+the selection was collected, pytest's exit status, the collected tests that failed, and what else the run's
+report names as failed, which is no collected test (`uncollected`). `verdict` alone turns them into one, the
+job's and the table's alike, and a mutant whose patch does not apply, whose code does not import, or whose
+selection does not collect, in one process or under pytest-xdist, is broken whatever else its record holds, so
+that the table cannot report it killed: a mutant is killed by a test the collect step listed, or not at all.
 """
 
 import argparse
@@ -111,6 +113,22 @@ REWRITE = re.compile(r" rewrite .+ \(\d+%\)")
 RENAME_OR_COPY = re.compile(r" (?:rename|copy) .+")
 # The package whose every module must import, under the checkout.
 PACKAGE = ("src", "materica")
+# The files beside the code under test that change what pytest runs or how, by name wherever they are: a
+# conftest; pytest's configuration files (a `tests/pytest.ini` is read before the root's `pyproject.toml`
+# for a selection under `tests/`); and Python's startup hooks, which run at every start once `src/` is on
+# the environment's path. With anything under `tests/`, a patch may touch them, since a mutant of a conftest
+# is a fair review, but a kill by such a patch may be the edit's doing, not the code's, so the table marks it
+# (#46's review, M2).
+TEST_SETTINGS = (
+    "conftest.py",
+    "pytest.ini",
+    ".pytest.ini",
+    "pyproject.toml",
+    "tox.ini",
+    "setup.cfg",
+    "sitecustomize.py",
+    "usercustomize.py",
+)
 
 KILLED, SURVIVED, BROKEN, UNDECIDED = "killed", "survived", "broken", "undecided"
 # pytest's exit status for a run whose tests all passed; those of a run in which a test failed, 1, or 2 where
@@ -129,6 +147,7 @@ REPORT = "report.xml"
 # The facts a record holds, and the types each may take.
 RECORD_FIELDS: dict[str, tuple[type, ...]] = {
     "mutant": (str,),
+    "touched": (list,),
     "refused": (list,),
     "applied": (bool, type(None)),
     "imports": (bool, type(None)),
@@ -615,6 +634,7 @@ def run_mutant(
         problems.append("the selection is empty")
     record: dict[str, Any] = {
         "mutant": mutant,
+        "touched": [],
         "refused": problems,
         "applied": None,
         "imports": None,
@@ -629,6 +649,7 @@ def run_mutant(
     if mutant and not problems:
         refused, touched = patch_problems(root, mutant)
         problems += refused
+        record["touched"] = touched
     if problems:
         return record
     if mutant:
@@ -719,8 +740,9 @@ def read_records(directory: Path) -> tuple[dict[str, list[dict[str, Any]]], list
             for name, types in RECORD_FIELDS.items()
             if not isinstance(fields[name], types) or (bool not in types and isinstance(fields[name], bool))
         ]
-        if not all(isinstance(problem, str) for problem in fields["refused"]):
-            wrong.append("refused")
+        wrong += [
+            name for name in ("touched", "refused") if not all(isinstance(each, str) for each in fields[name])
+        ]
         wrong += [name for name in ("failures", "uncollected") if not all(map(is_failure, fields[name]))]
         if wrong:
             problems.append(f"{where} holds {', '.join(wrong)} of another type")
@@ -749,6 +771,13 @@ class Row(NamedTuple):
     mutant: str
     outcome: str
     why: str
+    touched: tuple[str, ...] = ()
+    marked: tuple[str, ...] = ()
+
+
+def edits_the_tests(paths: Sequence[str]) -> tuple[str, ...]:
+    """The paths of `paths` under `tests/` or named as one of `TEST_SETTINGS`."""
+    return tuple(path for path in paths if path.startswith("tests/") or path.split("/")[-1] in TEST_SETTINGS)
 
 
 def table(
@@ -769,14 +798,16 @@ def table(
         found = records.get(name, [])
         if len(found) != 1:
             return Row(name, UNDECIDED, "no record" if not found else f"{len(found)} records")
-        return Row(name, *verdict(found[0]))
+        return Row(name, *verdict(found[0]), tuple(found[0]["touched"]))
 
     baseline = row("")
     rows = [baseline]
     for name in request.mutants:
         each = row(name)
         if baseline.outcome != SURVIVED and each.outcome == KILLED:
-            each = Row(name, UNDECIDED, f"the baseline did not pass; killed by {each.why}")
+            each = each._replace(outcome=UNDECIDED, why=f"the baseline did not pass; killed by {each.why}")
+        if each.outcome == KILLED:
+            each = each._replace(marked=edits_the_tests(each.touched))
         rows.append(each)
     counts = {
         outcome: sum(each.outcome == outcome for each in rows[1:])
@@ -786,6 +817,10 @@ def table(
         f"{counts[KILLED]} of {len(request.mutants)} mutants killed, {counts[SURVIVED]} survived, "
         f"{counts[BROKEN]} broken, {counts[UNDECIDED]} undecided"
     )
+    if marked := sum(bool(each.marked) for each in rows[1:]):
+        verdict_text += (
+            f"; {marked} of the kills by a patch that edits the tests or pytest's settings (marked)"
+        )
     if baseline.outcome != SURVIVED:
         verdict_text += f"; the baseline did not pass ({baseline.outcome}: {baseline.why})"
     if problems:
@@ -816,22 +851,30 @@ def table(
         "",
         f"**{verdict_text[0].upper()}{verdict_text[1:]}.**",
         "",
-        "| Mutant | Outcome | The test that failed first, or why |",
-        "|---|---|---|",
+        "| Mutant | Outcome | The test that failed first, or why | The patch touches |",
+        "|---|---|---|---|",
         f"| the baseline, no patch | {shown.get(baseline.outcome, baseline.outcome)} | "
-        f"{cell(baseline.why)} |",
+        f"{cell(baseline.why)} | nothing |",
     ]
     for each in rows[1:]:
         why = code(each.why) if each.outcome == KILLED else cell(each.why)
-        lines.append(f"| {code(each.mutant)} | {each.outcome} | {why} |")
+        if each.marked:
+            why += (
+                f"; **marked**: the patch edits {', '.join(map(code, each.marked))}, so the edit, not the "
+                "code, may have failed the test"
+            )
+        touched = ", ".join(map(code, each.touched)) or "nothing"
+        lines.append(f"| {code(each.mutant)} | {each.outcome} | {why} | {touched} |")
+    replay = " ".join(["-x", *request.selection, *request.extra, f"--hypothesis-seed={request.seed}"])
     lines += [
         "",
-        "A mutant's run replays with its patch applied and the same seed: "
+        "A mutant's run replays with its patch applied, the dispatch's selection and its seed: "
         + code(
             f"git apply {patch_path('<name>')} && MATERICA_HYPOTHESIS_PROFILE={request.profile} "
-            f"uv run pytest <test> --hypothesis-seed={request.seed}"
+            f"uv run pytest {replay}"
         )
-        + ".",
+        + ". A run of the failed test alone loads fewer modules, from whose constants Hypothesis draws, and "
+        "may draw other examples under the same seed (`tests/property/audits.py`, `replay`).",
         "",
     ]
     if problems:
