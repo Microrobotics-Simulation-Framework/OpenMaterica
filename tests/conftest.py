@@ -82,8 +82,8 @@ SHARDS = {
     ),
     "writer": ("test_writer_properties", "test_writer_mutants", "test_writer_mutant_table"),
     # The two JSON Schema libraries' agreement, whose drawn properties run python-jsonschema on every example
-    # and were the writer shard's longest tests.
-    "agreement": ("test_validators_agree",),
+    # and were the writer shard's longest tests; and the anomaly check's YAML reader's agreement with PyYAML.
+    "agreement": ("test_validators_agree", "test_anomaly_reader_properties"),
     # Step 8's mutant searches, the longest part of the records shard, and their table's check; they keep no
     # example database.
     "step8_mutants": ("test_value_field_mutants", "test_value_field_mutant_table"),

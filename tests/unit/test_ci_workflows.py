@@ -1255,6 +1255,11 @@ HYPOTHESIS_NAMED_NOT_READ = {
     ): "a glob over tests/, for the modules that take a verdict from one JSON Schema library alone",
     # Loaded through tests/property/test_condition_mutants.py, which takes two of its tables.
     ("tests/unit/test_read.py", "*.py"): "a glob over src/materica/core/, for the core's modules",
+    # Loaded through tests/property/test_anomaly_reader_properties.py, which calls only its reader, on text.
+    (
+        "scripts/check_anomalies.py",
+        "docs/validation/known_anomalies.yaml",
+    ): "the registry the check reads on a command; the properties read its YAML reader on drawn text",
 }
 
 

@@ -23,7 +23,10 @@ Standard library only, so that the gate runs it before any dependency is install
 YAML as a subset: block mappings and sequences; values quoted on one line, block scalars (`|` and `>`), plain
 words that start with a letter, `null`, `~` and `[]`; and comments. It refuses anything else, a number or a
 date unquoted and a key given twice among them, at its line, rather than guess; what it reads, it reads as
-PyYAML does (`tests/unit/test_check_anomalies.py`).
+PyYAML does (`tests/property/test_anomaly_reader_properties.py`, which holds it to PyYAML on drawn documents).
+One difference is known: PyYAML refuses a key of more than 1024 characters, and this reader reads one. A key
+of the registry is one of a closed set of field names, so a key that long is an unknown field, which the
+check refuses on its own.
 """
 
 import argparse
