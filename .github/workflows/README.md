@@ -23,12 +23,13 @@ one table of what became of each, when dispatched by hand (below).
 | `result` | fails unless every job the gate asked for succeeded (a job skipped by its `if` reports success), and when any job failed or was cancelled: the one check the ruleset on main requires | always |
 
 The `tests` and `commit` jobs run the properties at `dev` on random draws, as a laptop does (since #38), so an
-audit can fail a sound property by chance: about once in 2,000 runs of the whole suite (5e-4,
-`tests/property/audits.py`). With five `tests` jobs a push, that makes a push red by chance about once in 400
-(2.5e-3), and the `commit` job adds 5e-4 for each earlier commit it checks: about once in 220 for a pull request
-of five commits (4.5e-3). The `hypothesis` job at `ci` adds about 2e-6, and the `controls` job, whose searches
-and controls are derandomised, nothing. Such a failure names the seed that draws its run again, and `repeat.yml`
-tells chance from a fault (`tests/property/README.md`, "Audits").
+audit can fail a sound property by chance. Since 2026-10-18 `dev` holds each feature it judges to a floor that
+a correct run falls below with a probability of at most 1e-6 by the audits' model, as `ci`'s floors are: at
+most about 3e-5 a run of the whole suite, and 1.6e-3 for a pull request of 50 such jobs. Before, about one of
+these jobs in 25 failed by chance, so that a pull request was almost never green. The `hypothesis` job at `ci`
+also judges least shares, whose figure is known for some properties only, and the `controls` job, whose
+searches and controls are derandomised, adds nothing. Such a failure names the seed that draws its run again,
+and `repeat.yml` tells chance from a fault (`tests/property/README.md`, "Audits").
 
 Each pytest job but `commit`, which runs on each earlier commit the suite the head's jobs run, writes a JUnit
 report, summarised on the run's page (`scripts/report_test_durations.py`: the tests in each band of wall time, the

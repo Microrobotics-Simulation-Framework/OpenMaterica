@@ -86,7 +86,9 @@ def audited(tmp_path: Path, run: str, *arguments: str, at_seed: str | None = Non
     )
     report = ran.stdout + ran.stderr
     assert ran.returncode == 1, report
-    assert f"feature audit: feature 'shown' in 0.0% of {EXAMPLES['dev']} examples" in report, report
+    assert f"feature audit: feature 'shown' in 0 of {EXAMPLES['dev']} examples, below its floor" in report, (
+        report
+    )
     examples = [json.dumps(json.loads(line)) for line in draws.read_text(encoding="utf-8").splitlines()]
     assert len(examples) == EXAMPLES["dev"], len(examples)
     return report, examples

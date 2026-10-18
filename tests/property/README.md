@@ -450,39 +450,70 @@ tell it from the core, since step 10 returns a filled condition with the members
 - **features**: a property declares, with `@pytest.mark.features(name=least_share, ...)`, the least share of
   its examples that must show each feature the specification distinguishes, and records each example's
   features with `support.feature`. A share below its least fails, and so does a feature recorded but not
-  declared. Each least share is about a third of the share measured at both sizes. A share is judged only
-  where the run's examples make at least 20 expected at the least share: `ci` and `deep` judge every share,
-  `dev` those of 10% or more. A property that draws one of several features alike as its first choice, as a
+  declared. Each least share is about a third of the share measured at both sizes. At `ci` and `deep` a share
+  is judged only where the run's examples make at least 20 expected at the least share: `ci` judges the shares
+  of 1% or more, and `deep` every share declared (the least is 0.2%); `dev` holds a declared feature to a
+  floor instead (below). A property that draws one of several features alike as its first choice, as a
   refusal property draws its fault, names them with `@pytest.mark.drawn(name, ...)` instead. At `ci` each is
   held to its draw floor: Hypothesis keeps an example's first choice through up to 8 examples (the example
   and the mutations it makes of it), so the floor counts 2,000 examples as 250 draws, each shown in 5
   examples (5.7 to 7.0 measured, by fault), and is the count a fault falls below with a probability of at
   most 1e-6. A floor below 10 cannot be judged, and fails: those features must be drawn among fewer. `deep`
-  holds each to a third of its share, and `dev` judges none. A property that knows the chance that one draw
-  shows each feature declares it with `@pytest.mark.chances(name=chance, ...)`, as the writer schema's
-  acceptance properties do with their shares measured at `ci`: at `ci` each is held to the draw floor of its
-  chance, a floor below 10 failing (draw it more often, its family in parts); at `dev` to that floor where it
+  holds each to a third of its share, and `dev` to its draw floor where that is at least 10, judging no other
+  (below). A property that knows the chance that one draw shows each feature declares it with
+  `@pytest.mark.chances(name=chance, ...)`, as the writer schema's acceptance properties do with their shares
+  measured at `ci`: at `ci` each is held to the draw floor of its chance, a floor below 10 failing (draw it
+  more often, its family in parts); at `dev` to that floor where it
   is at least 10, judging no other; and at `deep` to a third of its chance. Hypothesis's clusters make a least
   share less safe than independent examples would: at the gate of 20 expected, a feature shown by whole
   clusters falls below its least share in about one run in a hundred (`audits.JUDGED_FROM`). So the json and
   records shards' properties declare by its chance each feature whose least share failed a run with a
-  probability above 1e-6 at `ci` or 1e-3 at `dev`, computed from the clusters measured on each property
-  (2026-10-15); RFC 8785's values and HP3's parts draw their features often enough to have a floor. Steps 9
-  and 10's properties draw each kind first among at most ten (a floor of 30 at `ci`), and declare it drawn;
+  probability above 1e-6 at `ci` or 1e-3 at `dev` (the bound `dev` was held to then), computed from the
+  clusters measured on each property (2026-10-15); RFC 8785's values and HP3's parts draw their features often
+  enough to have a floor. Steps 9 and 10's properties draw each kind first among at most ten (a floor of 30 at
+  `ci`), and declare it drawn;
   their HP3's two faults are declared by their chance, one in four, and HP7's end of the span and a bound's
   window by the least share measured. For each such property, and five of steps 9 and 10's,
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone. One of the five runs a parametrised property, HP8's
   other units, on one parameter, its `plus_minus` place, held to the features that parameter's marks declare,
-  as the audit holds each parameter to its own.
+  as the audit holds each parameter to its own;
+- **each profile's rule** (`audits.RULES`): `ci` holds the drawn features and those declared by their chances
+  to their draw floors, and a declared feature to its least share; `deep` holds each feature to its least
+  share, a third of its share or chance where it is drawn or declared by its chance; and `dev` holds every
+  feature to its draw floor where that is at least 10, judging no other (2026-10-18). There a declared feature
+  counts as drawn with three times its least share, and is never held above its least share. So, at the chance
+  its floor assumes, no feature `dev` judges fails a correct run with a probability above 1e-6 by the floors'
+  model, as no floor at `ci` does. With 200 examples the model counts 25 draws, and a floor reaches 10 only at
+  a chance of one half or more: `dev` judges the features drawn among two, those declared by a chance of one
+  half or more, and declared features of a least share of about 0.17 or more (35 features of the properties on
+  main, 2026-10-18). The features it leaves are judged at `ci` and `deep`. Until 2026-10-18 `dev` held a
+  declared feature to its least share where 20 were expected, and features drawn among three or fewer to a
+  third of their share, with a bound of about 1e-3 a feature set before CI's per-commit job (#30) ran every
+  property at `dev` once for each commit: three of about 75 `dev` jobs of pull requests #35 and #37 failed so
+  by chance that day, each a feature drawn among three. `tests/unit/test_audits.py` holds those three runs'
+  counts, pins what `ci` and `deep` judge, and fails if a feature judged by a floor, at any profile and any
+  declaration on a grid, fails a correct run with a probability above 1e-6 by the model.
 
-An audit judges random draws, so a sound property fails it now and then by chance. From `audits.py`'s figures,
-a run of every property at `dev` fails about once in 2,000 (5e-4, nearly all of it the json and records shards'
-least shares, `card_accepted`'s 4e-4 the most), and a run at `ci` about once in 500,000 (2e-6). CI draws at
-random since #38 ("Profiles and sizes"), so each of its `dev` runs is a sample of its own: the test matrix's
-five Pythons make a push red by chance about once in 400 (2.5e-3), and the per-commit job adds 5e-4 for each
-earlier commit it checks, about once in 220 for a pull request of five commits (4.5e-3); the Hypothesis job
-adds about 2e-6, and the controls job, derandomised, nothing (`.github/workflows/README.md`). An audit that
+An audit judges random draws, so a sound property fails it now and then by chance. By the floors' model, each
+feature judged at `dev` fails a correct run with a probability of at most 1e-6, and a run of every property on
+main at most about 1.3e-5 in all (3.2e-5 with the properties of pull requests #35 and #37). The model takes
+the fewest draws a run can hold, and overstates: it gave the least shares `dev` judged until 2026-10-18 about
+one failure a run of every property with #35's and #37's (0.36 on main), where CI's `dev` jobs failed about
+one run in 25. Over seeds 1 to 100, run locally at `dev` on #37's head (every audited property then written),
+the audited properties failed 2 runs of 100 by the rule `dev` had (features drawn among three, in 5.5% and
+9.5% of the examples, against 11%), and none of the 8,900 audits failed by its rule now (2026-10-18). The
+bound rests on the chance each floor assumes. Over those runs each declared feature of main that `dev` judges
+showed 0.94 to 1.26 times the share its floor assumes, three times its least share; of the features declared
+by their chances, measured at `ci`, `test_output_matches_rfc8785`'s `non_ascii_character` showed 0.57 at `dev`
+against 0.66, which puts its floor's false failure at about 3e-5 by the model, as before 2026-10-18. At `ci`
+each floor holds a feature to 1e-6 as well; the least shares of the properties whose clusters were measured,
+the json and records shards' and the writer schema's acceptance properties, fail a run of them with a
+probability of about 2e-6 (`audits.py`); the other least shares judged at `ci` have no figure. CI draws at
+random since #38 ("Profiles and sizes"), so each of its `dev` runs is a sample of its own: by the model, a
+pull request's 50 or so `dev` jobs, the test matrix's five Pythons and the per-commit job's one for each
+earlier commit, fail by chance with a probability of at most about 1.6e-3; the controls job, derandomised,
+adds nothing (`.github/workflows/README.md`). An audit that
 fails a run Hypothesis drew at random names the seed of that run and how to draw it again: the failing job's
 own pytest command, at its profile and on its Python, with `-k <test> --hypothesis-seed=<seed>`, or with
 `@seed(<seed>)` on the test. A run that collects less draws other examples under the same seed, since
