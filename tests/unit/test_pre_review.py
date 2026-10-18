@@ -445,10 +445,21 @@ def test_every_module_that_finds_a_data_file_by_its_own_location_is_a_reader_or_
 # --- the changes, read from git ---------------------------------------------------------------------------
 
 
-def commit(message: str) -> None:
+def commit(message: str, *options: str) -> None:
     subprocess.run(["git", "add", "-A"], check=True)
     subprocess.run(
-        ["git", "-c", "user.name=T", "-c", "user.email=t@example.org", "commit", "-q", "-m", message],
+        [
+            "git",
+            "-c",
+            "user.name=T",
+            "-c",
+            "user.email=t@example.org",
+            "commit",
+            "-q",
+            *options,
+            "-m",
+            message,
+        ],
         check=True,
     )
 
@@ -495,6 +506,38 @@ def test_the_changes_are_from_the_merge_base_not_from_the_base_tip(repository: P
     commit("theirs, since the branch was cut")
     subprocess.run(["git", "checkout", "-q", "branch"], check=True)
     assert pre_review.changed_files("main", repository) == ["mine"]
+
+
+def test_a_file_moved_with_git_mv_and_committed_gives_both_paths(repository: Path) -> None:
+    # A rename git pairs is only one it reports from a commit or the index; without `--no-renames` the old
+    # path is lost, and with it the importers of a moved module.
+    (repository / "core").mkdir()
+    (repository / "core" / "hashing.py").write_text("x = 1\n" * 20)
+    commit("base")
+    subprocess.run(["git", "checkout", "-q", "-b", "branch"], check=True)
+    subprocess.run(["git", "mv", "core/hashing.py", "core/digest.py"], check=True)
+    commit("moved")
+    assert pre_review.changed_files("main", repository) == ["core/digest.py", "core/hashing.py"]
+    (repository / "core" / "again.py").write_text("x = 1\n" * 20)
+    subprocess.run(
+        ["git", "mv", "core/digest.py", "core/other.py"], check=True
+    )  # and one staged, not committed
+    assert pre_review.changed_files("main", repository) == [
+        "core/again.py",
+        "core/hashing.py",
+        "core/other.py",
+    ]
+
+
+def test_a_path_with_a_newline_in_it_is_one_path(repository: Path) -> None:
+    (repository / "kept").write_text("kept")
+    commit("base")
+    subprocess.run(["git", "checkout", "-q", "-b", "branch"], check=True)
+    (repository / "two\nlines.py").write_text("x")
+    (repository / "kept").write_text("changed")
+    commit("a name with a newline")
+    (repository / "tab\there.py").write_text("x")  # untracked
+    assert pre_review.changed_files("main", repository) == ["kept", "tab\there.py", "two\nlines.py"]
 
 
 def test_an_unknown_base_is_refused() -> None:
@@ -593,6 +636,57 @@ def test_the_script_runs_as_a_command() -> None:
     )
     assert done.returncode == 0, done.stderr
     assert "[fast]" in done.stdout
+
+
+def test_the_chosen_pytest_command_has_the_workers_and_the_work_stealing_distribution() -> None:
+    command = pre_review.pytest_command(["tests/unit"], 7, "--shard", "json")
+    assert command[command.index("-n") + 1] == "7"
+    assert command[command.index("--dist") + 1] == "worksteal"
+    assert command[command.index("--shard") + 1] == "json"
+
+
+def test_the_checks_come_in_the_order_of_the_stages_whatever_the_order_they_were_planned_in() -> None:
+    plan_of_checks = pre_review.Plan()
+    for stage in ("properties", "tests", "fast"):
+        plan_of_checks.add(Planned(stage, (stage,), "why"))
+    assert [check.stage for check in plan_of_checks.checks()] == ["fast", "tests", "properties"]
+
+
+def test_is_test_module_names_the_four_groups_of_tests_and_no_other_file() -> None:
+    for group in ("unit", "spec_sync", "conformance", "property"):
+        assert pre_review.is_test_module(f"tests/{group}/test_x.py")
+    for path in ("tests/fuzz/test_x.py", "tests/unit/helper.py", "scripts/test_x.py", "tests/unit/test_x.md"):
+        assert not pre_review.is_test_module(path)
+
+
+def test_a_module_of_the_same_name_outside_the_property_directory_is_in_no_shard(tmp_path: Path) -> None:
+    tree = small_tree(tmp_path)
+    assert tree.shard_of("tests/property/test_p.py") == "one"
+    assert tree.shard_of("tests/unit/test_p.py") is None
+    assert tree.shard_of("tests/property/sub/test_p.py") is None
+
+
+@pytest.mark.parametrize(
+    ("status", "said"), [(1, "pre-review checks failed"), (0, "pre-review checks that ran passed")]
+)
+def test_the_command_ends_with_the_status_of_the_checks_it_ran(
+    status: int, said: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+
+    def executed(*arguments: object, **keywords: object) -> tuple[int, list[str]]:
+        return status, ["  summary line"]
+
+    monkeypatch.setattr(pre_review, "execute", executed)
+    assert pre_review.main(["HEAD", "--stage", "fast"]) == status
+    assert said in capsys.readouterr().out
+
+
+def test_listing_the_plan_runs_none_of_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    def never(*arguments: object, **keywords: object) -> tuple[int, list[str]]:
+        raise AssertionError("--list ran the checks")
+
+    monkeypatch.setattr(pre_review, "execute", never)
+    assert pre_review.main(["HEAD", "--list"]) == 0
 
 
 # --- what no check can decide ------------------------------------------------------------------------------
