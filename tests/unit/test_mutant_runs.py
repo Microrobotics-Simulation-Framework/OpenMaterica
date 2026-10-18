@@ -18,21 +18,26 @@ from scripts.mutant_runs import BROKEN, KILLED, SURVIVED, UNDECIDED, Request, Re
 from tests.unit.throwaway_git import throwaway_repository
 
 FAILED = [{"test": "tests/test_x.py::test_y", "message": "assert 1 == 2"}]
+# Two collected tests that failed, the first first; and a collection error pytest-xdist reported, no test.
+TWO_FAILED = [*FAILED, {"test": "tests/test_x.py::test_z", "message": "assert 3 == 4"}]
+NOT_A_TEST = [{"test": "gw0::gw0", "message": "collection failure"}]
 STAGES = ("applied", "imports", "collected")
 
 
 def every_record() -> list[dict[str, Any]]:
     """A record of each combination of facts a job can write, and some it cannot: each stage passed, failed or
-    not reached, refused or not, each exit status pytest or `timeout` gives and one never given, and no
-    failure, a named one, or one that is not a failure's shape."""
+    not reached, refused or not, each exit status pytest or `timeout` gives and one never given, no failure,
+    a named one, two, or one that is not a failure's shape, and an entry of the report that is no collected
+    test or none."""
     records: list[dict[str, Any]] = []
-    for applied, imports, collected, refused, status, failures in itertools.product(
+    for applied, imports, collected, refused, status, failures, uncollected in itertools.product(
         (True, False, None),
         (True, False, None),
         (True, False, None),
         ([], ["a reason"]),
         (None, 0, 1, 2, 3, 4, 5, 124, 7),
-        ([], FAILED, [{"name": "x"}]),
+        ([], FAILED, TWO_FAILED, [{"name": "x"}]),
+        ([], NOT_A_TEST),
     ):
         records.append(
             {
@@ -44,6 +49,7 @@ def every_record() -> list[dict[str, Any]]:
                 "tests": 3,
                 "status": status,
                 "failures": failures,
+                "uncollected": uncollected,
                 "message": "why",
             }
         )
@@ -52,9 +58,11 @@ def every_record() -> list[dict[str, Any]]:
 
 def verdict_problems(verdict: Callable[[Mapping[str, Any]], tuple[str, str]]) -> list[str]:
     """Each record of `every_record` to which `verdict` gives another outcome than its facts allow: killed
-    only where nothing was refused, every stage passed, and pytest failed (1, or 2 where `-x` stopped it under
-    pytest-xdist) at a named test, which it gives; broken wherever, nothing refused, a stage failed; survived
-    only where every stage passed and pytest passed naming no failure; undecided otherwise."""
+    only where nothing was refused, every stage passed, the report named nothing that is no collected test,
+    and pytest failed (1, or 2 where `-x` stopped it under pytest-xdist) at a collected test, the first of
+    which it gives; broken wherever, nothing refused, a stage failed, or every stage passed and the report
+    named what is no collected test; survived only where every stage passed and pytest passed naming no
+    failure; undecided otherwise."""
     problems: list[str] = []
     for record in every_record():
         found = verdict(record)
@@ -66,13 +74,15 @@ def verdict_problems(verdict: Callable[[Mapping[str, Any]], tuple[str, str]]) ->
             expected = BROKEN
         elif stages != [True, True, True]:
             expected = UNDECIDED
+        elif record["uncollected"]:
+            expected = BROKEN
         elif record["status"] == 0 and not failures:
             expected = SURVIVED
-        elif record["status"] in (1, 2) and failures == FAILED:
+        elif record["status"] in (1, 2) and failures in (FAILED, TWO_FAILED):
             expected = KILLED
         else:
             expected = UNDECIDED
-        if found[0] != expected or (expected == KILLED and found[1] != FAILED[0]["test"]):
+        if found[0] != expected or (expected == KILLED and found[1] != failures[0]["test"]):
             problems.append(f"{record} is {found}, not {expected}")
     return problems
 
@@ -93,6 +103,22 @@ def test_the_verdict_check_can_fail() -> None:
     assert any(
         "'applied': False" in line and "('killed'" in line and "not broken" in line for line in problems
     )
+
+
+def test_the_verdict_check_finds_a_kill_by_what_is_no_collected_test_and_the_last_failure_named() -> None:
+    """The controls: a verdict that does not read what the report named beside the collected tests gives a
+    collection error under pytest-xdist as killed (#46's review, H3); one that names the last failure gives
+    the second test of two (its L4, m08)."""
+
+    def uncollected_unread(record: Mapping[str, Any]) -> tuple[str, str]:
+        return mutant_runs.verdict(dict(record, uncollected=[]))
+
+    def last_named(record: Mapping[str, Any]) -> tuple[str, str]:
+        found = mutant_runs.verdict(record)
+        return (KILLED, record["failures"][-1]["test"]) if found[0] == KILLED else found
+
+    assert any("gw0::gw0" in line and "not broken" in line for line in verdict_problems(uncollected_unread))
+    assert any("test_z" in line and "not killed" in line for line in verdict_problems(last_named))
 
 
 def test_gits_report_gives_one_path_a_file_and_says_where_one_is_binary() -> None:
@@ -229,6 +255,7 @@ def record(mutant: str, **facts: object) -> dict[str, object]:
         "tests": 3,
         "status": 0,
         "failures": [],
+        "uncollected": [],
         "message": "",
     }
     return found | facts
@@ -297,6 +324,13 @@ def test_a_table_passes_where_the_baseline_passed_and_every_mutant_was_killed(tm
             "problems",
         ),
         ([record(""), record("a", failures=[{"test": 1}]), record("b")], "success", 1, "problems"),
+        (
+            [record(""), record("a", status=2, failures=[FAILED[0] | {"line": "7"}]), record("b")],
+            "success",
+            1,
+            "problems",
+        ),
+        ([record(""), record("a", uncollected=[{"test": "gw0"}]), record("b")], "success", 1, "problems"),
         ([record(""), {"mutant": "a"}, record("b")], "success", 1, "problems"),
         ([record(""), record("a", outcome="killed"), record("b")], "success", 1, "problems"),
     ],
@@ -309,6 +343,8 @@ def test_a_table_passes_where_the_baseline_passed_and_every_mutant_was_killed(tm
         "the-baseline-failed",
         "a-bool-for-a-status",
         "a-failure-of-another-shape",
+        "a-failure-with-another-key",
+        "an-uncollected-entry-of-another-shape",
         "fields-missing",
         "an-outcome-written-in",
     ],
@@ -343,6 +379,58 @@ def test_each_failed_test_is_read_from_the_report_in_its_order(tmp_path: Path) -
         {"test": "tests/test_x.py::test_a", "message": "e"},
     ]
     assert mutant_runs.reported_failures(tmp_path / "missing.xml") == []
+
+
+# Entries of the JUnit reports pytest-xdist wrote for #46's review (H3), trimmed: a module that did not
+# collect on one worker (`gw1`); workers that collected different tests, from a set's order, which string
+# hashing makes each process's own; and a worker that crashed in a collected test.
+XDIST_REPORT = (
+    "<testsuites><testsuite>"
+    '<testcase classname="" name="tests.test_half" file="tests/test_half.py" time="0.000">'
+    '<error message="collection failure">RuntimeError: collection fails on gw1 alone</error></testcase>'
+    '<testcase classname="" name="gw0" file="gw0" time="0.000"><error message="collection failure">'
+    "Different tests were collected between gw1 and gw0.</error></testcase>"
+    '<testcase classname="tests.test_half" name="test_n[3]" file="tests/test_half.py" time="0.000">'
+    "<error message=\"failed on setup with &quot;worker 'gw2' crashed while running "
+    "'tests/test_half.py::test_n[3]'&quot;\">crashed</error></testcase>"
+    "</testsuite></testsuites>"
+)
+COLLECTED = {"tests/test_half.py::test_n[3]", "tests/test_half.py::test_case[a]"}
+
+
+def test_only_a_collected_test_fails_and_kills(tmp_path: Path) -> None:
+    """A module or a worker named in the report, a collected test's id given xdist's collection message, and
+    an id the collect step did not list, whatever its message, are no collected test's failure, which leaves
+    the mutant broken: the reviewer's two cases, the module that does not
+    collect on one worker (status 2) and the workers that collected different tests (status 1). A crash in a
+    collected test kills."""
+    report = tmp_path / "report.xml"
+    report.write_text(XDIST_REPORT, encoding="utf-8")
+    module, worker, crash = mutant_runs.reported_failures(report)
+    assert (module["test"], worker["test"]) == ("tests/test_half.py::tests.test_half", "gw0::gw0")
+    assert mutant_runs.split_failures([module, worker, crash], COLLECTED) == ([crash], [module, worker])
+    given = {"test": "tests/test_half.py::test_n[3]", "message": mutant_runs.COLLECTION_FAILURE}
+    assert mutant_runs.split_failures([given], COLLECTED) == ([], [given])
+    elsewhere = {"test": "tests/test_other.py::test_gone", "message": "assert 1 == 2"}
+    assert mutant_runs.split_failures([elsewhere], COLLECTED) == ([], [elsewhere])
+    for status, entry in ((2, module), (1, worker)):
+        tests, others = mutant_runs.split_failures([entry], COLLECTED)
+        found = mutant_runs.verdict(record("m", status=status, failures=tests, uncollected=others))
+        assert found[0] == BROKEN, found
+        assert found[1].startswith("the selection does not collect under pytest-xdist: "), found
+    tests, others = mutant_runs.split_failures([crash], COLLECTED)
+    found = mutant_runs.verdict(record("m", status=1, failures=tests, uncollected=others))
+    assert found == (KILLED, "tests/test_half.py::test_n[3]")
+
+
+def test_the_split_check_can_fail(tmp_path: Path) -> None:
+    """The control: every entry the report names taken for a test's failure, as before #46's review, gives
+    the reviewer's two cases as killed, by a module and by a worker."""
+    report = tmp_path / "report.xml"
+    report.write_text(XDIST_REPORT, encoding="utf-8")
+    module, worker, _ = mutant_runs.reported_failures(report)
+    found = [mutant_runs.verdict(record("m", status=2, failures=[entry])) for entry in (module, worker)]
+    assert found == [(KILLED, "tests/test_half.py::tests.test_half"), (KILLED, "gw0::gw0")]
 
 
 def imported_in_a_fresh_process(root: Path, *paths: str) -> list[str]:

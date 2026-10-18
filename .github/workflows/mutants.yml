@@ -11,8 +11,9 @@
 # what uv installs or how it runs (pyproject.toml, uv.lock, uv.toml, .python-version): scripts/mutant_runs.py
 # says why. Once the patch is applied, uv neither syncs nor locks (`uv run --no-sync --frozen`).
 # Each mutant's job applies its patch to a clean checkout of the dispatched commit, checks that the code
-# imports, collects the selection and runs it until the first failure: killed, by the test that failed first;
-# survived; or broken, where the patch does not apply or the code does not import or collect. A job of the
+# imports, collects the selection and runs it until the first failure: killed, by the collected test that
+# failed first; survived; or broken, where the patch does not apply or the code does not import or collect,
+# in one process or under pytest-xdist (a module or a worker in its report, no collected test). A job of the
 # commit as it is, the baseline, runs beside them, and where it does not pass no mutant counts as killed.
 # Rigour is the repository's own: the profile is one of tests/conftest.py's, whose example counts, deadline and
 # health checks no input reaches, and every run draws under one seed, given or drawn at random, which the

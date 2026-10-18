@@ -508,8 +508,8 @@ every family entry goes in `families/CHANGELOG.md`.
   own as `mutants/<name>.patch` and dispatches the workflow with a pytest selection: each mutant runs in a job
   of its own, its patch applied to a clean checkout of the dispatched commit, beside a job of the commit as it
   is (the baseline), and a last job writes one table, on the run's page and as an artifact: killed, with the
-  test that failed first; survived; broken, where the patch does not apply or the code does not import or
-  collect; or undecided. Where the baseline did not pass, no mutant counts as killed, and the run passes only
+  collected test that failed first; survived; broken, where the patch does not apply or the code does not
+  import or collect, in one process or under pytest-xdist; or undecided. Where the baseline did not pass, no mutant counts as killed, and the run passes only
   when every mutant was killed. Patches are files of the dispatched commit, never text from the dispatch form,
   and the request refuses, before any mutant runs, one git does not read as a text patch in its own format,
   one with binary data, a rename in any form (with rename lines or without, as a `diff --git`, `---` or `+++`
