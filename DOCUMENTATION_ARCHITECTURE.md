@@ -233,6 +233,7 @@ OpenMaterica/
 │   │   └── iec62304_mapping.md
 │   └── bibliography.bib               # every source the specification, methods or families cite
 │
+├── examples/records/                  # labelled example records, cited; not library data, not in the wheel
 ├── pyproject.toml                     # the core's, and the uv workspace that holds the two siblings below
 ├── src/materica/                      # the core distribution, including `python -m materica check` and the MCP server, which runs only with the `[mcp]` extra (architecture draft sections 7.1 and 8)
 ├── authoring/                         # openmaterica-authoring, with its own pyproject.toml and CHANGELOG.md: L3 with the curation tools and check-point baking; L6 integrations

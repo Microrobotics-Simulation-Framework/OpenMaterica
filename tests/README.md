@@ -8,6 +8,7 @@
 | `unit/` | examples at the edges, the rules over source files, and the scripts in `scripts/` | what belongs there |
 | `typing/` | a consumer's code, type-checked by CI against the built wheel | how CI runs it |
 | `fuzz/` | Atheris targets: raw bytes into the JSON reader, and the properties driven by Atheris | running them; the control |
+| `examples/` | the example records in `examples/` (schemas, hash, record checks, each number against its source, the note that they are not yet fully reviewed, what a read of each gives now) | each check and its controls |
 | `reference/` | a test-only reference model of the read, written from the text, which imports nothing from `materica`; it agrees with every case file of a read or lists it, its tables with the vocabulary, its citations with the text | what it decides and what not; its open points; its exceptions; its mutant table |
 
 `conftest.py` here registers the Hypothesis profiles for every test, on Hypothesis's own defaults, so that no

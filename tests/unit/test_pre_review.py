@@ -393,6 +393,7 @@ def test_a_file_under_tests_outside_every_group_selects_the_whole_unit_directory
         ("tests/spec_sync/conftest.py", "tests/spec_sync", "tests/unit"),
         ("tests/conformance/conftest.py", "tests/conformance", "tests/unit"),
         ("tests/unit/__init__.py", "tests/unit", "tests/spec_sync"),
+        ("tests/examples/__init__.py", "tests/examples", "tests/unit"),
     ],
 )
 def test_a_conftest_or_package_file_of_a_group_of_tests_selects_that_directorys_tests(
@@ -438,6 +439,9 @@ SCHEMA_READERS = ("tests/unit/test_freeze_schema.py", "tests/unit/test_schema_in
         ("src/materica/schema/0.1/README.md", SCHEMA_READERS),
         ("src/materica/schema/0.1/record.writer.json", SCHEMA_READERS),
         ("tests/spec_sync/released_schemas.json", ("tests/unit/test_schema_index.py",)),
+        ("examples/records/water.json", ("tests/examples/test_example_records.py",)),
+        ("examples/README.md", ("tests/examples/test_example_records.py",)),
+        ("README.md", ("tests/examples/test_example_records.py",)),
         ("scripts/pre-push", ("tests/unit/test_check_confidential.py",)),
         (
             ".github/workflows/ci.yml",
@@ -1354,7 +1358,7 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]
             "pytest",
             "-p",
             open_trace.__name__,
-            *("tests/unit", "tests/spec_sync", "tests/conformance", "tests/property"),
+            *("tests/unit", "tests/spec_sync", "tests/conformance", "tests/property", "tests/examples"),
             *("-n", "4", "--dist", "worksteal", "-q", "--tb=no", "-p", "no:cacheprovider"),
         ],
         cwd=REPOSITORY,
@@ -1378,6 +1382,10 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]
     # control: the run read each package's source, as a cold cache makes the import system do. With the
     # repository's own warm `__pycache__` it would have read the `.pyc`, which the trace ignores
     assert ("opened", "tests/unit/test_fuzz_oracle.py", "tests/fuzz/__init__.py") in found
+    # control: the run held every group of tests, since a group left out of the run opens nothing and so
+    # would pass every test below without being seen
+    for group in pre_review.TEST_GROUPS:
+        assert any(test.startswith(f"tests/{group}/") for _, test, _ in found), group
     return found
 
 
