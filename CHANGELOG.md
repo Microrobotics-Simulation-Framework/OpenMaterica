@@ -15,6 +15,18 @@ every family entry goes in `families/CHANGELOG.md`.
 ## [Unreleased]
 
 ### Added
+- A builders' check before a pull request is reviewed (maintainer, 2026-10-18), so that routine findings are
+  caught before the independent review and the review spends its time on what only an independent reader finds.
+  `scripts/pre_review.py [BASE]` finds the files a branch changed, from the merge base to the working tree, and
+  runs the checks that apply to them, printing each with the paths that selected it: the sign-off and
+  confidential scans and every generator's `--check` for any change; the linters and type checkers for a change
+  to code; the tests that import a changed Python file, directly or through others, with a property module run
+  as its whole shard at the `ci` profile; the tests that hold a changed specification, schema, conformance case,
+  spec-sync table, workflow or build file. A stage that fails stops the run before the next. It ends with
+  reminders for what no check decides: a mutant module changed beside a README that was not, code beside a
+  CHANGELOG that was not, and each count the branch states. `CONTRIBUTING.md` has a section, "Before asking for
+  review", with each check's command and a short list for the points a builder judges. The script runs the
+  checks that apply, not all of CI's, and replaces none; no check was removed and no threshold changed.
 - The schema URL scheme (maintainer, 2026-10-18). The site's index page of a schema version that
   `tests/spec_sync/released_schemas.json` does not list opens with a note, "Draft until 0.1.0": its files may
   change until the release, and the release freezes them, which removes the note (`scripts/schema_index.py`);

@@ -133,6 +133,51 @@ Property tests take their depth from `MATERICA_HYPOTHESIS_PROFILE`: `dev` (the d
 `tests/fuzz/README.md`. Without uv, `pip install --group dev -e .` (pip 25.1 or later) installs the same
 tools, unpinned.
 
+## Before asking for review
+
+A review should spend its time on what only an independent reader finds. The reviews of this repository's pull
+requests kept finding the same things first, and a builder can check most of them mechanically. These checks add
+to the review and to CI and lower no bar. `scripts/pre_review.py [BASE]` (`origin/main` where none is given)
+finds the files you changed, from the merge base to your working tree, runs the checks below that apply to them
+and prints each with the paths that selected it; `--list` prints the plan alone. Its fast stage comes first:
+fix what it finds before any test runs. It runs the checks that apply, not every check; CI runs them all, on
+every Python, and its result is the one that counts.
+
+| What it catches | Check |
+|---|---|
+| a commit without your sign-off; a private name or path in a file or a message | `python3 scripts/check_signoff.py BASE HEAD`; `python3 scripts/check_confidential.py --messages BASE..HEAD` |
+| a generated file edited by hand, or a source changed without regenerating; a released schema file changed | each of `scripts/gen_vocabulary.py`, `gen_reader_schema.py` and `gen_shapes.py` with `--check`, on Python 3.11 (the shapes' generator does not run on 3.15); `scripts/freeze_schema.py --check` |
+| lint, format, types | `uv run ruff check`, `uv run ruff format --check`, `uv run mypy`, `uv run pyright` |
+| a reference to a section, item or title that is not there; a quote of the specification changed or lost; a case tag or table row with no counterpart | `uv run pytest tests/spec_sync/test_references.py tests/spec_sync/test_value_fields.py tests/spec_sync/test_unknown_member_positions.py` |
+| a name reused at a place, or one slip from another | `uv run pytest tests/spec_sync/test_name_overlaps.py tests/spec_sync/test_name_overlap_safeguards.py` |
+| a feature audit that fails by chance, or that does not fail when its feature stops being drawn | `MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest tests/property --shard NAME -n 12 --dist worksteal` for your module's shard (`SHARDS` in `tests/conftest.py`), and `uv run pytest tests/unit/test_audit_controls.py tests/unit/test_audits.py` |
+| a mutant a property no longer kills, or a mutant table that no longer matches its module | the same shard run, which holds the group's mutant searches and `test_*mutant_table.py` |
+| a script, a workflow or the build broken | the script's `tests/unit/test_<script>.py`; `tests/unit/test_ci_workflows.py` |
+
+The rest only you can decide. Read your change once as the reviewer will:
+
+- **A mutant dies where it names.** Run each and read the assertion it fails at. A guard that fires first (`the
+  read raised`, a totality check) means the check the mutant is for never ran.
+- **A guard or control can fail.** Break what it guards, one fault at a time, and see it fail; then try the faults
+  it was not written for: a neighbouring spelling, another locale, a newline in a value, a `continue-on-error`.
+- **The draws reach what the mutants need.** Take a variety out of a strategy and see whether a mutant then
+  survives. A rule pinned in most runs by chance is not pinned.
+- **A number declared is a number measured.** A least share, a chance, a timeout and a rate each rest on runs
+  you can name, at the profile and on the machine they apply to. Three local runs do not show 1e-6, and a local
+  rate is not CI's: ask for the repeat workflow (`tests/README.md`).
+- **A claim says what the tests show.** In the pull request, the CHANGELOG and each commit message, say what is
+  bounded and what is estimated. Recount every figure by what counts that thing: a test is not a case file, nor a
+  Hypothesis example, nor a line of a trace. Where you write "neither X nor Y", name the control that could have
+  shown one.
+- **A citation says it.** The line is right, the quote is whole (a check may stop at an inner `"`), and the
+  section cited holds it in the commit that cites it. Check a `file:line` reference by opening the line.
+- **The code agrees with the text, arm by arm.** For each refusal the text lists (a slip, a member of the other
+  kind, a token known for another place), the code gives the status and code the text names.
+- **A fact is written once.** Search for the words, names and numbers you changed in comments, READMEs, workflow
+  headers and this file, and refer to the one place that states each.
+- **A mutant table and its README row change together,** and the row names the assertion the mutant dies at.
+- **Each commit stands alone.** No call lands before the function it calls; CI's per-commit job checks it.
+
 ## Confidentiality
 
 This repository is public. It never names the maintainer's private projects, and never carries a private path:
