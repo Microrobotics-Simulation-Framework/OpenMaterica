@@ -25,6 +25,22 @@ if these names go or the pin stops having effect.
 Every other run keeps the pool: a property drawn at random meets, now and then, one of the package's own
 strings or numbers (a field name, a token, a limit), which a strategy aimed elsewhere would seldom draw. Its
 draws were never the same from one run to the next.
+
+Two interleavings escape the pin. No test in this repository does either, so nothing guards them (the review
+of this pin measured both with a module of 600 harvestable strings, on Hypothesis 6.169):
+
+- A search run inside the body of another that draws with `st.data()`, derandomized in one and random in the
+  other. Hypothesis reads the pool once a test case, but `CONSTANTS_CACHE` is shared by both and keyed
+  without the pool, so the inner run's switch leaves the outer's later draws with the wrong one. With the
+  same strategy in both, 6,000 outer draws after the inner run: a derandomized outer around a random inner
+  drew 81 of the module's strings (0 before the inner run), and a random outer around a derandomized inner
+  drew 0 (106 before). The two random runs, and the two derandomized, were unchanged (100 against 114; 0
+  against 0).
+- A derandomized test that calls `settings.load_profile` in its body. `settings.default` is what the pin
+  reads, so it follows the profile, and the draws after the call came from a random one: 14 of 2,400 were
+  the module's strings.
+
+A test of either kind has to be written with that in view, or the pin extended to key on the test case.
 """
 
 from hypothesis import settings
