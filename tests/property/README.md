@@ -959,13 +959,12 @@ the planned searches of `two_nominals_for_one_field`, `nominal_outside_supplies_
 `unit_returned_without_its_reason` died within 123, 123 and 94 examples at both sizes, and HP4's
 `every_field_checked_beside_evidence`, drawn whole, within 400.
 
-Listed, with the reason no read S2 builds shows them: `results_share_the_record` (a shared object never
-shows in JSON; HP6 holds the core to sharing nothing), and `units_stored_differently_read_as_no_pick` (an
-alternative passes step 9 only where its unit is the one registered, so units are stored differently only
-where a status object is registered, which only `biocompatibility.evidence` does: HP12's alternatives of
-evidence hold the first's unit, or one spelled otherwise, which step 9 refuses, and the core raises at units
-stored differently until S4; none of HP12's searches showed it at either size in 2,000 examples, 2026-10-18).
-The design's other mutant not searched here: HP6's result sharing the stored object (JSON again).
+Listed, with the reason no read shows it: `results_share_the_record` (a shared object never shows in JSON; HP6
+holds the core to sharing nothing). `units_stored_differently_read_as_no_pick`, listed here until S4a, became
+the text's reading with the maintainer's ruling on `unit` under `no_pick` (2026-10-19), and is replaced in
+the model's table by `unit_of_the_last_remaining_alternative`, which two case files kill
+(`tests/reference/README.md`). The design's other mutant not searched here: HP6's result sharing the stored
+object (JSON again).
 
 ### HP4 and HP10's mutants
 

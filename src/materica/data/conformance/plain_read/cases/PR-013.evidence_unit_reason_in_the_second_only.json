@@ -1,0 +1,134 @@
+{
+  "case": "PR-013",
+  "variant": "evidence_unit_reason_in_the_second_only",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_alternatives_unit_reason_in_the_second_only.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:d3800734b58dd2d01fb54d2aabcd5a04bafc6cf0fd0af7af4074d9862ab008a1"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "evidence"
+    }
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "no_pick"
+      }
+    ],
+    "alternative_values": [
+      {
+        "alternative": 0,
+        "value": [
+          {
+            "endpoint": "cytotoxicity",
+            "standard": {
+              "designation": "ISO 10993-5",
+              "year": 2009
+            },
+            "contact_category": "conformance fixture: the source's words",
+            "contact_duration": "conformance fixture: the source's words",
+            "material_form": "conformance fixture: the source's words",
+            "processing": "conformance fixture: the source's words",
+            "reported_result": "conformance fixture: illustrative report text",
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        ],
+        "conditions": [],
+        "specimen": {},
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      },
+      {
+        "alternative": 1,
+        "value": [
+          {
+            "endpoint": "sensitisation",
+            "standard": {
+              "designation": "ISO 10993-10",
+              "year": 2010
+            },
+            "contact_category": "conformance fixture: the source's words",
+            "contact_duration": "conformance fixture: the source's words",
+            "material_form": "conformance fixture: the source's words",
+            "processing": "conformance fixture: the source's words",
+            "reported_result": "conformance fixture: illustrative report text",
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        ],
+        "conditions": [],
+        "specimen": {},
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      }
+    ],
+    "unit": {
+      "status": "not_applicable"
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

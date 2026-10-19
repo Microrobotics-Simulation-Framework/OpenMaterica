@@ -4,9 +4,10 @@ it, and every case file of a step done passes.
 
 The map is how a step is known to be done: its cases run and pass, under the claims each states. A step is one
 of the code design's S1 to S13, with S2 in its pieces, S2a-1 to S2a-4, then S2b-1 and S2b-2 in either order,
-and S3 in its pieces, S3-te, S3a, S3b-1, S3b-2 and S3c, in that order. A case file that needs pieces whose
-order is not fixed names them all, as a list, and runs once all are done; until its steps are done, the
-runner reports it as not yet runnable (`tests/conformance/runner.py`).
+S3 in its pieces, S3-te, S3a, S3b-1, S3b-2 and S3c, in that order, and S4 in its pieces, S4a, built ahead of
+S3's code (maintainer, 2026-10-19), then S4b and S4c. A case file that needs pieces whose order is not fixed
+names them all, as a list, and runs once all are done; until its steps are done, the runner reports it as not
+yet runnable (`tests/conformance/runner.py`).
 """
 
 import json
@@ -17,7 +18,22 @@ from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, Outcome
 
 STEPS = json.loads((Path(__file__).parent / "case_steps.json").read_text(encoding="utf-8"))
 CASE_FILES = runner.discover()
-PIECES = ("S2a-1", "S2a-2", "S2a-3", "S2a-4", "S2b-1", "S2b-2", "S3-te", "S3a", "S3b-1", "S3b-2", "S3c")
+PIECES = (
+    "S2a-1",
+    "S2a-2",
+    "S2a-3",
+    "S2a-4",
+    "S2b-1",
+    "S2b-2",
+    "S3-te",
+    "S3a",
+    "S3b-1",
+    "S3b-2",
+    "S3c",
+    "S4a",
+    "S4b",
+    "S4c",
+)
 KNOWN = {"S1", *PIECES} | {f"S{number}" for number in range(3, 14)}
 
 

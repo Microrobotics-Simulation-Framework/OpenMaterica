@@ -2207,6 +2207,32 @@ def test_two_intervals_under_a_nominal_give_want_mismatch_under_components() -> 
 
 
 @pytest.mark.parametrize(
+    "units",
+    [
+        [{"status": "not_applicable", "reason": "one"}, {"status": "not_applicable", "reason": "two"}],
+        [{"status": "not_applicable"}, {"status": "not_applicable", "reason": "two"}],
+        [{"status": "not_applicable", "reason": "one"}, {"status": "not_applicable"}],
+    ],
+)
+def test_under_no_pick_the_unit_is_the_first_remaining_alternatives(units: list[JsonValue]) -> None:
+    """Section 2, the `unit` row: "Under `no_pick`, it is the first remaining alternative's unit, in stored
+    order", and "another alternative's `reason` is not returned" (the maintainer's ruling of 2026-10-19 on
+    `unit` under `no_pick`) [PR-013]."""
+    record: dict[str, Any] = json.loads(EVIDENCE_FIXTURE.read_text(encoding="utf-8"))
+    fields = record["body"]["sections"]["biocompatibility"]["fields"]
+    alternatives = [{**fields["evidence"], "evidence": [REPORT], "unit": unit} for unit in units]
+    fields["evidence"] = {"alternatives": alternatives}
+    request, records = stored(record, "biocompatibility.evidence")
+    assert isinstance(request, dict)
+    request["requirement"] = {"want": "evidence"}
+    del request["operating_conditions"]
+    result = read(request, records)
+    assert (result.status, result.reasons) == ("unknown", (Reason("no_pick"),))
+    assert result.unit == units[0]
+    assert json.loads(json.dumps(result.to_json()))["unit"] == units[0]
+
+
+@pytest.mark.parametrize(
     ("field", "why"),
     [
         ({"alternatives": [met_field()]}, "the one alternative left"),

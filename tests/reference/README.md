@@ -72,7 +72,10 @@ of S2a-4's phase B must kill. The search stops at the first such case file; the 
 measured 2026-10-17 on `main` at `6c9ab9f`, but `member_checked_off_its_row`'s, which PR #37's review's cases
 kill (the same day). 75 faults: 61 killed, 14 survive; S2a-4's review added five survivors, each a rule no
 case pins (below the table), so 80 faults: 61 killed, 19 survive. The two cases of the maintainer's token
-ruling (2026-10-18) kill two of the survivors, so 63 killed, 17 survive.
+ruling (2026-10-18) kill two of the survivors, so 63 killed, 17 survive. S4a replaced the fifth survivor S2a-4's
+review added, `units_stored_differently_read_as_no_pick`, which the maintainer's ruling on `unit` under
+`no_pick` (2026-10-19) made the text's reading, by `unit_of_the_last_remaining_alternative`, which that
+ruling's two cases kill: 64 killed, 16 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -155,7 +158,7 @@ ruling (2026-10-18) kill two of the survivors, so 63 killed, 17 survive.
 | `donor_age_of_neither_accepted` | a `donor_age` holding neither `value` nor `range` accepted | survives: no case holds one |
 | `review_of_both_shapes_read_as_its_status` | a review holding both `status` and `result` read as its status object | survives: no case holds one |
 | `reviewed_review_keeps_a_status_objects_members` | a reviewed review returned with a status object's members, its `reason` among them | survives: no case holds one |
-| `units_stored_differently_read_as_no_pick` | alternatives whose units are stored differently read as `no_pick`, which S4 decides | survives: no case holds such alternatives |
+| `unit_of_the_last_remaining_alternative` | under `no_pick`, the result's `unit` the last remaining alternative's | 2, `PR-013.evidence_units_with_different_reasons` and `PR-013.evidence_unit_reason_in_the_second_only` |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the eight survivors, three are the open points (`members_of_the_other_kind_read`,
@@ -190,18 +193,16 @@ seeded.
 
 S2a-4's review pinned the five it added: the first four are rules no case or HP12 draw held, the fourth the
 model's own reading until then (a reviewed review's `reason` was returned, which `provenance.md` section 2
-item 6 does not name for a reviewed review), fixed and seeded; the fifth is a step S4 owns, which no read S2
-builds reaches.
+item 6 does not name for a reviewed review), fixed and seeded; the fifth was a step S4 owns, which no read S2
+built reached, and S4a replaced it (above).
 
-The agreement property HP12 (`tests/property/test_model_properties.py`) kills 15 of the 17 survivors, the two
+The agreement property HP12 (`tests/property/test_model_properties.py`) kills 15 of the 16 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two
 cases came to kill it, every one of the 10 faults one case file alone kills, and
 `nominal_outside_supplies_the_value`, which two kill, each with the model given the fault and the core as it
 is (`tests/property/test_model_mutants.py`); S2b-2, which reads evidence and nominals, brought the six that
-waited for it. The other two are listed there with the reason no read S2 builds shows them: alternatives
-whose units are stored differently, which only evidence's unit held as a status object allows, are drawn by no
-part of HP12, and the core raises at them until S4 (`units_stored_differently_read_as_no_pick`); and a shared
-object never shows in JSON.
+waited for it. The other one is listed there with the reason no read shows it: a shared object never shows
+in JSON.
 
 ## Running
 
