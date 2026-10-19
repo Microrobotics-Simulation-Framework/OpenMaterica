@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """The controls of the feature audits of the json and records shards' properties that declare features by
 their chances (`@pytest.mark.chances`), of the conditions shard's, steps 9 and 10's and the result's, which
-declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12's and HP4's form of the
-field read (S2b-1, and PR #37's review), of S2b-2's evidence and nominal, and of the relations shard's audit
-of the monotonicity relations' worlds, by their chances: run at the `ci` profile's examples with a generator
-that stops producing one of them, each property fails its audit, on that feature alone; a parametrised
-property, on one of its parameters, by the marks that parameter carries. Outside `tests/property/`, whose
-audits would fail these runs too."""
+declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12's and HP4's form of the field
+read (S2b-1, and PR #37's review), of S2b-2's evidence and nominal, of the relations shard's audit of the
+monotonicity relations' worlds, by their chances, of S4a's outcome of step 7, drawn first, and of HP12's draws
+of S4a's alternatives, by their chance: run at the `ci` profile's examples with a generator that stops
+producing one of them, each property fails its audit, on that feature alone; a parametrised property, on one
+of its parameters, by the marks that parameter carries. Outside `tests/property/`, whose audits would fail
+these runs too."""
 
 import sys
 from collections.abc import Callable
@@ -17,6 +18,7 @@ from hypothesis import HealthCheck, reject, settings
 
 from tests.conftest import EXAMPLES
 from tests.property import audits
+from tests.property import test_alternatives_properties as alternatives_properties
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_condition_properties as condition_properties
 from tests.property import test_evaluate_properties as evaluate_properties
@@ -205,6 +207,17 @@ CONTROLS = [
         evaluate_properties.test_hp19_reads_over_monotone_knots_are_monotone,
         "non_increasing",
         ("check_monotone",),
+    ),
+    # S4a's: step 7's outcome over alternatives, drawn first among the five; and HP12's draws of them.
+    Control(
+        alternatives_properties.test_the_outcome_over_alternatives_is_the_texts,
+        "no_pick",
+        ("check_drawn_outcome", "check_outcome"),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
+        "standing",
+        ("check_agreement",),
     ),
 ]
 

@@ -253,6 +253,33 @@ check's reader (the last bullet).
   and `decimal`. Its own controls: it gives every number and refusal of the table evaluation cases, and the
   exact value at constructed ties, which it misses with its exact decision switched off. HP17 also holds, as
   explicit examples, six reads at log-log values halfway between two subnormals, which its own draws reach.
+- **Step 7 over alternatives (S4a):** (16) the laws of step 7 for a field holding alternatives, read with no
+  pick and no overlay (`read_side_contract.md` section 3, step 7; `record_format.md` section 5), HP27 to HP29
+  (`test_alternatives_properties.py`). `alternatives_strategies.py` draws one of step 7's five outcomes first
+  (a refusal, every alternative set aside, the one left, `want_mismatch` and `no_pick`), then a base read of a
+  form, and one to five alternatives built to give it, each by a way drawn for its standing: staying as drawn,
+  with an `unknown` reason of step 10 or 12, held in the field's other form, or, for evidence, its unit with
+  another `reason`; set aside by a numeric condition one double off its operating value or a token the request
+  does not accept, in either form where the field takes a constant and an interval, or, for evidence, which
+  holds no registered condition, an implied temperature one double off; refusing by a unit, a form token the reader does not know, a missing provenance, or two implied
+  conditions that disagree in it alone; in a stored order drawn, under a nominal in half the draws of a field
+  that takes intervals under `want: value`. Each way's standing is the text's, so the drawn outcome is the
+  draw's, which HP27 asserts of each example. HP27: the read agrees with an oracle written from the text
+  that composes the reads of each alternative alone (the record holding it as the field, under the same
+  request): each alternative's standing from the `not_met` codes of its own read, by the steps the reason
+  table gives each, then the first outcome that applies, its reasons, each found reading one alternative
+  carrying its index and a fault of the request none, and its members, an `alternative_values` entry's from
+  the alternative read alone under the `want` its form gives, and the `unit` the first staying one's. The
+  oracle uses the implementation's own read of a value field, so HP27 holds step 7's composition, not steps
+  8 to 13, which the other groups and HP12 hold. HP28: reordering the stored alternatives moves only their
+  indexes (the fail-closed spike's P6), and a field wrapped as its only alternative reads as the field, each
+  reason found reading it carrying `alternative: 0`, every member the field's where it stays (P5). HP29: an
+  alternative set aside, added at any stored index, changes the status never, and the reasons only by its own,
+  reported only where the result is `not_met` and rests on no single alternative, and by the indexes past it
+  (the spike's N7r, from the other side); two or more alternatives that stay never give `met` (S3). HP12
+  draws the same alternatives among its own (`model_strategies.outcomes_of_step_7`), so that the reference
+  model and the read meet step 7's outcomes: its audit holds those draws to their floor (`standing`), and
+  HP27's audit each outcome among them.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -307,7 +334,7 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the groups in seven shards side by side, each in a job of its own: `pytest tests/property --shard
+CI runs the groups in eight shards side by side, each in a job of its own: `pytest tests/property --shard
 json`, which also holds the tables group, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
 two validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
 database and were most of the records shard's time, `--shard conditions`, steps 9 and 10's group and the
@@ -315,7 +342,10 @@ result's with their mutant searches, which take seconds and set no example datab
 workers at `ci`, 2026-10-16; 155 s with the result's, 2026-10-17; 151 s beside the relations' shard,
 2026-10-17), and `--shard relations`, the reference model's, isolation and byte form's, and monotonicity
 groups with their mutant searches, each example reading two records or a read twice (198 s on four local
-workers at `ci`, 2026-10-17; `SHARDS` in `tests/conftest.py`). S2b-1's intervals and compositions added 13%
+workers at `ci`, 2026-10-17; `SHARDS` in `tests/conftest.py`), and `--shard alternatives`, S4a's step 7 over
+alternatives with its mutant searches (122 s on eight local workers at `ci`, 342 s of test time, 2026-10-19;
+`relations`, with HP12's draws of S4a's outcomes, took 163 s and 1,036 s after it, under the same lock).
+S2b-1's intervals and compositions added 13%
 to `conditions` and 7% to `relations`, each timed side by side with the tests before them (475 s against 420,
 588 against 549, at loads of 15 to 25), and HP3's third part 51 s of one worker to records (172 s). S2b-2's
 evidence and nominals: records 98 s, step8_mutants 65 s, conditions 265 s, relations 516 s, agreement
@@ -433,7 +463,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 910 searches, 455 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 958 searches, 479 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -870,6 +900,15 @@ shows, so they describe the draws, not regions found. S2b-1's: three of HP3's pl
 as infinity and normalised components, and two faults of the model that case files kill, held here on the forms
 S2b-1 reads.
 
+`upper_none_as_infinity` is planned since S4a's move onto main (2026-10-20). S4a's alternatives joined the draws
+of the first part, and drawn whole it died at the 503rd example at the small size (the 177th and the 29th
+before, at the small and the original size), after the margin guard's 500th. It is searched among intervals
+under `want: bounds` with no nominal, whose reads give the bounds, `upper: none` among them (an interval's
+upper bound is none in one draw in four), and dies at the 7th and the 34th. That search and S4a's planned
+searches (the table below) are each held to the agreement on the core as it is
+(`test_a_planned_search_draws_only_reads_the_core_agrees_with_the_model_on`, for the first 500 examples and once
+for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
+
 <!-- kill points of every search of test_model_mutants.py::test_the_implementations_mutant_is_killed_by_the_agreement (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Part | Dies at | Examples |
 |---|---|---|---|---|
@@ -889,21 +928,21 @@ S2b-1 reads.
 | `interval_order_unchecked` | HP3's (planned) | faults | `interval.lower_above_upper` | 1, 1 |
 | `component_twice_allowed` | HP3's (planned) | faults | `composition.component_repeated` | 1, 1 |
 | `element_by_pattern` | HP3's (planned) | faults | `component.element_unknown` | 1, 1 |
-| `specimen_facts_merged_across_sections` | HP4's | values | `another_section` | 94, 51 |
-| `unknown_members_returned` | HP5's and HP6's: an unknown member returned | values | `unknown_member` | 3, 8 |
-| `expanded_uncertainty_divided_by_its_k` | HP6's | values | `valued`, `alternatives` | 122, 8 |
-| `upper_none_as_infinity` | HP6's | values | `form_interval` | 177, 29 |
-| `components_normalised` | HP6's | values | `form_composition` | 143, 247 |
+| `specimen_facts_merged_across_sections` | HP4's | values | `another_section` | 34, 31 |
+| `unknown_members_returned` | HP5's and HP6's: an unknown member returned | values | `unknown_member` | 3, 72 |
+| `expanded_uncertainty_divided_by_its_k` | HP6's | values | `valued`, `alternatives` | 26, 21 |
+| `upper_none_as_infinity` | HP6's | an interval under bounds (planned) | `form_interval` | 7, 34 |
+| `components_normalised` | HP6's | values | `form_composition` | 71, 11 |
 | `floating_point_as_written` | HP7's (planned) | values at a boundary | `at_a_boundary` | 20, 28 |
 | `strict_inequalities` | HP7's | values | `valued`, `alternatives` | 1, 1 |
 | `plus_minus_ignored` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 28 |
 | `plus_minus_makes_not_met` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 28 |
 | `nfkc_before_comparing` | HP8's | faults | `steps_9_and_10` | 2, 2 |
 | `case_folded` | HP8's | faults | `steps_9_and_10` | 2, 2 |
-| `section_facts_win` | HP9's | values | `valued`, `alternatives` | 52, 4 |
-| `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 7, 4 |
+| `section_facts_win` | HP9's | values | `valued`, `alternatives` | 136, 8 |
+| `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 6, 4 |
 | `labelled_before_step_4` | HP11's | early | `before_step_4`, `stores` | 2, 2 |
-| `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | values | `request_faults_apart` | 19, 3 |
+| `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | values | `request_faults_apart` | 4, 7 |
 | `first_alternative_in_every_entry` | under `no_pick`, each entry the first alternative's read | values | `alternatives` | 2, 2 |
 | `bounds_given_by_a_constant` | step 13 gives a constant's value under `want: bounds` | constants (planned) | `valued` | 1, 1 |
 | `minus_zero_given_as_zero` | a constant's `-0` given as `0` | values | `negative_zero` | 1, 1 |
@@ -930,13 +969,13 @@ S2b-1 reads.
 | `token_condition_unit_accepted` | faults | `unit_token_condition` | 66, 35 |
 | `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 19, 330 |
 | `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 18, 9 |
-| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 33, 182 |
+| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 11, 93 |
 | `ies_not_a_plural` | unpinned | `plural_of_two_characters` | 416, 147 |
 | `review_of_both_shapes_read_as_its_status` | unpinned | `review_of_both_shapes` | 8, 3 |
 | `reviewed_review_keeps_a_status_objects_members` | unpinned | `review_of_both_shapes` | 9, 4 |
 | `donor_age_of_neither_accepted` | faults (planned) | `specimen.fact_neither_value_nor_range` | 1, 1 |
-| `value_given_by_an_interval` | values | `form_interval` | 36, 22 |
-| `bounds_given_by_a_constant` | values | `form_constant` | 429, 313 |
+| `value_given_by_an_interval` | values | `form_interval` | 34, 16 |
+| `bounds_given_by_a_constant` | values | `form_constant` | 9, 128 |
 | `evidence_entry_provenance_unchecked` | faults (planned) | `evidence_provenance.*`, each of the six faults of a report's provenance | 1, 1 |
 | `entry_withheld_in_part_read` | faults (planned) | `evidence_list.report_withheld_in_part`, `.withheld_report_opened` | 1, 1 |
 | `unit_returned_without_its_reason` | evidence's unit with a reason (planned) | `unit_with_a_reason` | 52, 52 |
@@ -944,6 +983,24 @@ S2b-1 reads.
 | `nominal_ignored_over_alternatives` | alternatives under a nominal (planned) | `nominal_over_alternatives` | 1, 1 |
 | `nominal_applied_under_no_pick` | alternatives under a nominal (planned) | `nominal_over_alternatives` | 1, 1 |
 | `nominal_outside_supplies_the_value` | values under a nominal (planned) | `nominal_outside` | 7, 35 |
+| `request_fault_sets_aside` | a refusal by a fault of the request (planned) | `refused` | 3, 3 |
+| `nominal_not_applied_to_the_one_left` | an interval under a nominal (planned) | `one_left` | 2, 2 |
+| `unknown_reasons_dropped_beside_no_pick` | outcomes of step 7 (planned) | `want_mismatch`, `no_pick` | 7, 5 |
+| `set_aside_reasons_beside_no_pick` | outcomes of step 7 (planned) | `want_mismatch`, `no_pick` | 58, 39 |
+| `unit_of_the_first_stored_alternative` | evidence set aside first (planned) | `no_pick` | 52, 52 |
+
+S4a's five are the faults of the model's step 7 that one case file alone kills, each searched over S4a's
+alternatives alone (`model_strategies.outcomes_of_step_7`), three of them narrowed further, as HP27's planned
+searches are: among all S4a's outcomes, `request_fault_sets_aside` took 311 and 211 examples,
+`nominal_not_applied_to_the_one_left` 395 and 52, and `unit_of_the_first_stored_alternative` 1,116 and
+survived 2,000 at the original size (2026-10-19, at `ci`); the table's counts are S4a's fix round's, once a
+set-aside alternative's form was drawn too. HP12 draws S4a's alternatives in two of its
+alternatives kind's six ways, the base field's form planted for the form's audit, so that the model and the
+read meet step 7's outcomes. Its audit holds those draws, `standing`, to the floor of their chance, measured
+(about one example in six by the draw; 0.119 to 0.178 over 12 runs of the draws at `ci`; declared 0.10), and
+a control stops drawing them (`tests/unit/test_audit_controls.py`). The five outcomes among them are not
+audited here: each is about one HP12 example in 30, whose floor at `ci` is 0, below what the audit judges;
+HP27's audit holds each, drawn first by the same strategy.
 
 S2b-2's seven are six of the eight the table listed as no read S2 built could show them (an evidence entry, at
 which the core raised; a unit held as a status object, which only `biocompatibility.evidence` registers; a
@@ -1064,6 +1121,62 @@ leave one unit off. The kill is the examples the derandomised search took, at th
 | `interval_read_backwards` | `t` computed as `(x1 - x) / (x1 - x0)`: inside its interval's `y`, run the wrong way | HP19 monotone | `monotone` | 32, 9 |
 | `loglog_not_exact_at_ties` | a log-log value in decimal at 50 digits, rounded once: one unit off at some values halfway between two doubles, which the least subnormals give | HP17 | `value` | 66, 96 |
 
+### Step 7's mutants (S4a)
+
+`test_alternatives_mutants.py`, each injected as the result's are, at a function of step 7 in `core/read.py`
+(its standing, each of the three rules of what an outcome reports, the reading of one alternative) or around
+`_read_alternatives`, and each dying at the outcome and the assertion it names. Five are planned searches,
+HP27 over draws narrowed to where the fault shows, since HP27's own draws met it too seldom: drawn among all
+five outcomes, `request_fault_sets_aside` took 628 and 565 examples, `nominal_dropped_over_alternatives` 656
+and survived 2,000 at the small size, and `the_first_stored_unit` 1,990 and survived 2,000 at the original.
+The fourth, `gives_reads_the_first_stored_form`, a review's hand mutant that survived every test, judges an
+interval under a nominal by the first stored alternative's form: it shows only where a non-interval is stored
+first and set aside and every alternative that stays is an interval, which the draws reach since a set-aside
+alternative is held in either form; under a nominal alone it took 15 and 739, so it is searched with the
+set-aside alternative stored first. The fifth, `the_last_staying_unit`, takes the last staying alternative's
+unit under `no_pick`: it shows only where the alternatives that stay hold units that differ, which only
+evidence allows (a status object with another `reason`). Drawn among all five outcomes and every form it died
+at the 86th and 355th example (S4a's fix round), and, once a set-aside alternative's form was drawn, at the
+495th and 732nd, the second after the margin guard's 500th; it is searched among evidence under `no_pick`,
+where it died at the 52nd and 80th. Each planned search is also held to HP27's check on the core as it is,
+which it must pass (`test_a_planned_search_draws_only_reads_the_core_passes`, for the first 500 examples, the
+margin guard's horizon, and once for 2,000 on 2026-10-20), so that a mutant it kills dies of its fault. Counts at both sizes, one seed's, the derandomised search's, in the
+alternatives shard at `ci` (2026-10-19, S4a's fix round; recorded again on the move onto main, 2026-10-20).
+
+<!-- kill points of every search of test_alternatives_mutants.py::test_the_alternatives_mutant_is_killed (scripts/gen_kill_counts.py) -->
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `refusal_sets_aside` | an alternative refused at step 8 or 9 set aside | HP27 | `refused` | 77, 6 |
+| `cannot_give_sets_aside` | an alternative whose form `want` cannot give set aside | HP27 | every outcome but `all_set_aside` | 7, 3 |
+| `request_fault_sets_aside` | an alternative a fault of the request ends set aside | HP27 (planned) | `refused` | 3, 3 |
+| `set_aside_reasons_beside_the_one_left` | the set-aside alternatives' reasons reported beside the one left | HP27 | `one_left` | 97, 114 |
+| `waiting_reasons_beside_two_or_more` | a staying alternative's `not_met` reasons reported beside `no_pick` or `want_mismatch` | HP27 | `want_mismatch`, `no_pick` | 19, 3 |
+| `unknown_reasons_dropped_beside_two_or_more` | the staying alternatives' `unknown` reasons dropped there | HP27 | `want_mismatch`, `no_pick` | 20, 10 |
+| `set_aside_reasons_dropped_where_refused` | the set-aside alternatives' reasons dropped from a refusal | HP27 | `refused`, `all_set_aside` | 2, 2 |
+| `waiting_reasons_dropped_where_refused` | a staying alternative's waiting reasons dropped from a refusal | HP27 | `refused` | 77, 6 |
+| `index_among_those_that_stay` | an index counted among the alternatives that stay | HP27 | `one_left`, `no_pick` | 118, 66 |
+| `request_fault_tagged` | a fault of the request given the alternative's index | HP27 | `refused` | 79, 80 |
+| `gives_reads_the_first_stored_form` | an interval under a nominal judged by the first stored alternative's form | HP27 (planned) | `no_pick` | 3, 12 |
+| `nominal_dropped_over_alternatives` | a nominal ignored over alternatives | HP27 (planned) | `refused`, `one_left` | 2, 2 |
+| `the_last_staying_unit` | under `no_pick`, the last staying alternative's unit | HP27 (planned) | `no_pick` | 52, 80 |
+| `the_first_stored_unit` | under `no_pick`, the first stored alternative's unit, set aside or not | HP27 (planned) | `no_pick` | 52, 59 |
+| `labels_kept_where_refused` | the alternatives' labels on a result that rests on none | HP27 | `refused`, `want_mismatch` | 269, 87 |
+| `outcome_decided_in_reading_order` | the reading stops at the first alternative that refuses | HP28, order | `refused` | 92, 21 |
+| `the_one_left_untagged` | the one left's reasons without their index | HP28, wrapping | any outcome | 6, 3 |
+| `set_aside_refuses` | an alternative set aside refusing the field | HP29, set aside | every outcome but `all_set_aside` | 6, 3 |
+| `the_first_staying_read` | with several alternatives left, the first is read (the spike's `first_alternative`) | HP29, two staying | `no_pick` | 2, 2 |
+
+Seven of them are also broken implementations that an S4a case file catches
+(`tests/conformance/test_runner_can_fail.py`), and the reference model's own step 7 has sixteen seeded faults
+of its own, each killed by a case file (`tests/reference/README.md`).
+
+Not drawn: an alternative that a fault of the request ends holding a reason of its own. Only step 8's
+`entries_withheld` could stand there (evidence with some reports withheld, beside two implied conditions
+that disagree in the same alternative), and the strategies remove withheld reports
+(`result_strategies.without_withheld_reports`). So nothing here would see that alternative's own reasons
+lose their index (a review's hand mutant did so and survived every test); the text gives the index
+(`read_side_contract.md` section 2 item 2) and `_found_reading` tags every reason but the request's fault.
+
 ## Audits
 
 `conftest.py` runs every test here under the two audits of `audits.py`:
@@ -1112,12 +1225,14 @@ leave one unit off. The kill is the examples the derandomised search took, at th
   ways and
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
-  and those that draw a way first declare their ways drawn. The table evaluator's properties declare every
+  and those that draw a way first declare their ways drawn; S4a's HP27 to HP29 draw step 7's outcome first,
+  each declared drawn. The table evaluator's properties declare every
   feature by its chance: the least share it showed in eight runs of 2,000 examples (seeds 1 to 4, at both sizes,
   2026-10-17, measured again after the S3b-1 review's strategy changes), rounded down. For each such
   property, five of steps 9 and 10's, two of the result's (HP1 by a kind, HP6 by a chance) and two of HP4's
-  (a form by its chance, in each of its two properties), and S2b-2's five (HP3's fourth part by a region,
+  (a form by its chance, in each of its two properties), S2b-2's five (HP3's fourth part by a region,
   HP12, HP6 and HP4 by evidence's form, HP6's second property by a nominal's way and by `behind_another`),
+  and S4a's HP27 by `no_pick`,
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone; each of the table evaluator's has a control, on a choice no other
   feature it declares depends on. Such a chance is a lower estimate of a share, held only to its floor, which

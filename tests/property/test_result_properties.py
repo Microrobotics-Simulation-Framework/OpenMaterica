@@ -4,8 +4,8 @@ reads that end at each step S2 builds (`result_strategies.py`). The mutants they
 `test_result_mutants.py`.
 
 - **HP1, totality and the reason table.** A read gives a result, or `NotImplementedError` where a step not
-  built yet decides it, which only step 8's faults reach here (a table); every code is in
-  the reason table; each `(code, condition)` appears once; and `condition` is present on every `condition_*`
+  built yet decides it, which only step 8's faults reach here (a table); every code is in the reason table;
+  each `(code, condition, alternative)` appears once; and `condition` is present on every `condition_*`
   reason and on no reason of a code that never concerns one (section 2 item 2), the oracle the generated
   reason table.
 - **HP2, the status law and the members present.** The status is the worst of the reasons' statuses, which
@@ -136,9 +136,9 @@ def check_totality(drawn: Drawn) -> None:
     result = read_drawn(drawn)
     if result is None:
         return
-    pairs = [(reason.code, reason.condition) for reason in result.reasons]
-    assert len(set(pairs)) == len(pairs), f"a reason twice: {pairs}"
-    for code, condition in pairs:
+    found = [(reason.code, reason.condition, reason.alternative) for reason in result.reasons]
+    assert len(set(found)) == len(found), f"a reason twice: {found}"
+    for code, condition, _ in found:
         assert code in REASONS, f"{code} is no code of the table"
         if code in WITH_A_CONDITION:
             assert isinstance(condition, str), f"{code} without its condition"

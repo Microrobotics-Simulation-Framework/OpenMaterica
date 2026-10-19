@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Mutants of the result (`core/read.py`'s steps 11 to 13, step 7 under decision 12 and the result's members,
-and `core/conditions.py` where its reasons carry their condition), each with one fault, and the property of
-`test_result_properties.py` that must kill each one. As in `test_condition_mutants.py`, each must die within
-the examples the `ci` profile gives a property, at both sizes, at an example of a kind it names, and records
-the examples its kill took as `examples_to_kill`.
+"""Mutants of the result (`core/read.py`'s steps 11 to 13, step 7 where no alternative has a reason of its own
+and the result's members, and `core/conditions.py` where its reasons carry their condition), each with one
+fault, and the property of `test_result_properties.py` that must kill each one. As in
+`test_condition_mutants.py`, each must die within the examples the `ci` profile gives a property, at both
+sizes, at an example of a kind it names, and records the examples its kill took as `examples_to_kill`.
 
 A fault is injected where the core looks a name up when it runs: a module-level function or name of `read`
 or `conditions`.

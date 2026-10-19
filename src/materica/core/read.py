@@ -632,19 +632,14 @@ def _read_alternatives(
         )
         for index, alternative in enumerate(stored)
     ]
-    standings = [_standing(read) for read in reads]
+    standings: list[Standing] = [_standing(read) for read in reads]
     staying = [read for read, standing in zip(reads, standings, strict=True) if standing == "stays"]
     if "refuses" in standings or not staying:
-        # "with every alternative's reasons, those that wait included"
-        return _refused(merged(reason for read in reads for reason in _found_reading(read)), labels)
+        return _refused(merged(_reported_where_refused(reads)), labels)
     if len(staying) == 1:
-        # "that alternative's read, `want` included; the set-aside ones' reasons are not reported"
         (left,) = staying
-        return _resting_on(left, _found_reading(left), labels)
-    # "each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`, and its `not_met` reasons wait"
-    standing_beside = [
-        reason for read in staying for reason in _found_reading(read) if _status((reason,)) == "unknown"
-    ]
+        return _resting_on(left, _reported_of_the_one_left(left), labels)
+    standing_beside = _reported_beside_two_or_more(staying)
     if not any(_gives(read, stored, request.want, nominal) for read in staying):
         mismatch = Reason(
             "want_mismatch", detail=f"want {request.want} can give no alternative of {field.spec.name}"
@@ -660,7 +655,32 @@ def _read_alternatives(
     )
 
 
-def _standing(read: FieldRead) -> Literal["refuses", "set_aside", "stays"]:
+# How an alternative stands, and what each outcome reports of the alternatives' reasons (section 3, step 7),
+# one rule each.
+Standing = Literal["refuses", "set_aside", "stays"]
+
+
+def _reported_where_refused(reads: Sequence[FieldRead]) -> tuple[Reason, ...]:
+    """Where an alternative refuses the field or every one is set aside: "with every alternative's reasons,
+    those that wait included"."""
+    return tuple(reason for read in reads for reason in _found_reading(read))
+
+
+def _reported_of_the_one_left(left: FieldRead) -> tuple[Reason, ...]:
+    """Where one alternative stays: "that alternative's read, `want` included; the set-aside ones' reasons are
+    not reported"."""
+    return _found_reading(left)
+
+
+def _reported_beside_two_or_more(staying: Sequence[FieldRead]) -> tuple[Reason, ...]:
+    """Where two or more stay: "each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`, and
+    its `not_met` reasons wait"."""
+    return tuple(
+        reason for read in staying for reason in _found_reading(read) if _status((reason,)) == "unknown"
+    )
+
+
+def _standing(read: FieldRead) -> Standing:
     """Whether one alternative's read refuses the field, sets it aside or leaves it standing (section 3, step
     7), as far as the forms read so far reach: a table's range at step 11 waits for S3."""
     if read.request_fault:

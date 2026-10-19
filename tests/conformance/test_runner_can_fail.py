@@ -24,6 +24,7 @@ from materica.core.vocabulary import ConditionSpec, RecordFieldSpec
 from materica.shapes import Suite
 from tests.conformance import runner
 from tests.conformance.runner import CONFIGURATIONS, EXECUTORS, Executor, JsonObject, Outcome
+from tests.property import test_alternatives_mutants as alternatives_mutants
 from tests.property.support import Searched
 
 CASE_FILES = {case_file.path.name: case_file for case_file in runner.discover()}
@@ -555,6 +556,51 @@ def compares_a_nominal_under_no_pick(monkeypatch: pytest.MonkeyPatch) -> Executo
     return EXECUTORS["read"]
 
 
+# S4a's step 7 (`read_side_contract.md` section 3, step 7), each fault one of S4a's mutants.
+
+
+def sets_a_refusal_aside(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = alternatives_mutants._refusal_sets_aside  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_standing", replaced)
+    return EXECUTORS["read"]
+
+
+def reports_the_set_aside_beside_the_one_left(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = alternatives_mutants._set_aside_beside_the_one_left  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_read_alternatives", replaced)
+    return EXECUTORS["read"]
+
+
+def leaves_the_one_left_untagged(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = alternatives_mutants._the_one_left_untagged  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_reported_of_the_one_left", replaced)
+    return EXECUTORS["read"]
+
+
+def tags_a_request_fault(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = alternatives_mutants._request_fault_tagged  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_found_reading", replaced)
+    return EXECUTORS["read"]
+
+
+def drops_the_waiting_reasons_where_refused(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = alternatives_mutants._waiting_dropped_where_refused  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_reported_where_refused", replaced)
+    return EXECUTORS["read"]
+
+
+def counts_an_index_among_those_that_stay(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = alternatives_mutants._index_among_those_that_stay  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_read_alternatives", replaced)
+    return EXECUTORS["read"]
+
+
+def takes_the_first_stored_unit(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = alternatives_mutants._the_first_stored_unit  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_read_alternatives", replaced)
+    return EXECUTORS["read"]
+
+
 def _without(value: JsonValue, removed: str) -> JsonValue:
     if isinstance(value, list):
         return [_without(item, removed) for item in value]
@@ -630,6 +676,13 @@ FAULTS: list[tuple[Fault, str]] = [
     (takes_two_nominals_for_one_field, "PR-330.two_nominals_one_field.json"),
     (ignores_a_waiver, "PR-310.waiver_refused.json"),
     (compares_a_nominal_under_no_pick, "PR-338.no_pick_nominal_outside_not_reported.json"),
+    (sets_a_refusal_aside, "PR-044.refused_reports_waiting_want_mismatch.json"),
+    (reports_the_set_aside_beside_the_one_left, "PR-044.one_left_after_set_aside.json"),
+    (leaves_the_one_left_untagged, "PR-044.one_left_after_set_aside.json"),
+    (tags_a_request_fault, "PR-316.implied_two_disagree_in_alternative_beside_reasons.json"),
+    (drops_the_waiting_reasons_where_refused, "PR-044.refused_reports_waiting_want_mismatch.json"),
+    (counts_an_index_among_those_that_stay, "PR-013.index_past_set_aside_and_unknown_reasons.json"),
+    (takes_the_first_stored_unit, "PR-013.evidence_unit_of_the_first_that_stays.json"),
 ]
 
 

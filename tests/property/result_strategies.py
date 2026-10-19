@@ -356,7 +356,8 @@ def another_value(draw: Draw, field: JsonObject, name: str) -> JsonObject:
 
 def without_withheld_reports(field: JsonObject) -> JsonObject:
     """`field`, where it is evidence, without its withheld reports: some withheld give `entries_withheld`, an
-    alternative's own reason, whose outcome S4 decides (decision 12). The strategy keeps one not withheld."""
+    alternative's own reason, and this kind draws alternatives with none (S4a's properties draw the others,
+    `alternatives_strategies.py`). The strategy keeps one not withheld."""
     if field["form"] == "evidence":
         reports = field["evidence"]
         assert isinstance(reports, list)

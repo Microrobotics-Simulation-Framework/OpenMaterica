@@ -292,6 +292,13 @@ def checked(example: Example, shown: str) -> None:
     check_agreement(example)
 
 
+# HP12's draws of S4a's alternatives (`standing`): two of the alternatives kind's six ways, the kind drawn in
+# half the examples, so 1/6 by the draw. Over 12 runs at `ci`, the draws alone (2026-10-19, seeds 1000 to
+# 1011), their shares were 0.119 to 0.178 (mean 0.157); the chance is declared below the least, as the forms'
+# are, and its floor, 30 examples, is below every run's count (237 to 356).
+STANDING_CHANCE = 0.10
+
+
 # The form of the field read, drawn after the kind: a constant twice as often as an interval, a composition or
 # evidence (`value_field_strategies.READ_FORMS`). About a tenth of the examples show no form, so each is
 # declared by its chance measured, not its nominal one: over 22 runs at `ci` (2026-10-18, S2b-2's review, L2),
@@ -299,12 +306,18 @@ def checked(example: Example, shown: str) -> None:
 # runs, 0.292, 0.145, 0.124, 0.112), and each falls below the draw floor of the chance declared with a
 # probability below 1e-12 by `audits.py`'s cluster model at the variance measured (4.1 to 9.9 times a binomial
 # count's).
-@pytest.mark.chances(form_constant=0.29, form_interval=0.14, form_composition=0.12, form_evidence=0.11)
+@pytest.mark.chances(
+    form_constant=0.29,
+    form_interval=0.14,
+    form_composition=0.12,
+    form_evidence=0.11,
+    standing=STANDING_CHANCE,
+)
 @pytest.mark.drawn(*PARTS["valued"])
 @given(strategies.drawn(SIZE, PARTS["valued"]))
 def test_the_read_agrees_with_the_model_on_values_and_alternatives(example: Example) -> None:
     for planted in example.planted:
-        feature(planted, planted.startswith("form_"))
+        feature(planted, planted.startswith("form_") or planted == "standing")
     checked(example, example.kind)
 
 

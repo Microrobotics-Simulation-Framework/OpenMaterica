@@ -61,9 +61,10 @@ settings.load_profile(PROFILE)
 harvested_constants.pin()
 
 
-# CI's Hypothesis job runs the property modules in seven shards side by side, `--shard json`, `--shard
-# records`, `--shard writer`, `--shard agreement`, `--shard step8_mutants`, `--shard conditions` and `--shard
-# relations`; `tests/unit/test_source_files.py` checks that each module is in exactly one.
+# CI's Hypothesis job runs the property modules in eight shards side by side, `--shard json`, `--shard
+# records`, `--shard writer`, `--shard agreement`, `--shard step8_mutants`, `--shard conditions`, `--shard
+# relations` and `--shard alternatives`; `tests/unit/test_source_files.py` checks that each module is in
+# exactly one.
 SHARDS = {
     "json": (
         "test_jsonio_properties",
@@ -116,6 +117,14 @@ SHARDS = {
         "test_monotonicity_properties",
         "test_monotonicity_mutants",
         "test_monotonicity_mutant_table",
+    ),
+    # S4a's step 7 over alternatives (HP27 to HP29), each example reading a field of alternatives and each
+    # alternative alone, with their mutant searches and their table's check: a shard of their own, since
+    # `relations` already took about a third of its timeout at `ci` on CI (7.4 minutes of 30, 2026-10-17).
+    "alternatives": (
+        "test_alternatives_properties",
+        "test_alternatives_mutants",
+        "test_alternatives_mutant_table",
     ),
 }
 

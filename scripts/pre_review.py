@@ -157,7 +157,7 @@ DATA_RULES = (
         "PR-316's case and its record, which the read tests load",
         r"src/materica/data/conformance/plain_read/(cases/PR-316\.implied_two_disagree_in_alternative"
         r"|inputs/water_alternatives_in_vivo_normal)\.json",
-        "the read tests load PR-316's case file and its record directly, for step 7's arm under decision 12",
+        "the read tests load PR-316's case file and its record directly, for step 7's arm of a request fault",
         tests=("tests/unit/test_read.py",),
     ),
     DataRule(

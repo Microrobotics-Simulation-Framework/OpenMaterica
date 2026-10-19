@@ -3,8 +3,9 @@
 # pyright: reportMissingModuleSource=false
 """Fuzz target 3: Atheris drives the Hypothesis properties of records and the read, in-process, through
 `fuzz_one_input`: the envelope checks against the reader schema, versions, the read's laws, step 8's, steps 9
-and 10's but those drawn in parameters, which `fuzz_one_input` cannot take, and the S2 design's HP1, HP2, HP4,
-HP6, HP10, HP11 and HP12 (the S2 design's target 2, which takes each HP once registered).
+and 10's but those drawn in parameters, which `fuzz_one_input` cannot take, the S2 design's HP1, HP2, HP4,
+HP6, HP10, HP11 and HP12 (the S2 design's target 2, which takes each HP once registered), and S4a's HP27 to
+HP29.
 
     python -m tests.fuzz.record_properties [CORPUS] [libFuzzer options]
 
@@ -31,6 +32,7 @@ from hypothesis.core import HypothesisHandle
 importlib.import_module("tests.conftest")
 
 from tests.fuzz import seeded_fault  # noqa: E402
+from tests.property import test_alternatives_properties as alternatives_properties  # noqa: E402
 from tests.property import test_condition_properties as condition_properties  # noqa: E402
 from tests.property import test_envelope_properties as envelope_properties  # noqa: E402
 from tests.property import test_invariance_properties as invariance_properties  # noqa: E402
@@ -76,6 +78,11 @@ PROPERTIES: list[Callable[..., None]] = [
     model_properties.test_the_read_agrees_with_the_model_on_two_faults_of_one_step,
     model_properties.test_the_read_agrees_with_the_model_on_requests_and_reads_that_end_early,
     model_properties.test_the_read_agrees_with_the_model_where_no_case_pins_a_rule,
+    alternatives_properties.test_the_outcome_over_alternatives_is_the_texts,
+    alternatives_properties.test_the_order_of_the_alternatives_moves_only_their_indexes,
+    alternatives_properties.test_a_field_wrapped_as_its_only_alternative_reads_as_the_field,
+    alternatives_properties.test_an_alternative_set_aside_changes_no_status,
+    alternatives_properties.test_two_alternatives_that_stay_never_give_met,
 ]
 
 

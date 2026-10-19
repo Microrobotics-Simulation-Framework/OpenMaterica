@@ -24,6 +24,11 @@ Example = TypeVar("Example")
 # modules (`tests/harvested_constants.py`), so that example depends on the code alone, not on what else the
 # process imported; it keeps nothing in the example database, and does not shrink what it finds, which only a
 # person reading a failure needs.
+# The examples a mutant search may take before its kill: the margin guard of `scripts/gen_kill_counts.py`
+# (its `MARGIN`, which `tests/unit/test_gen_kill_counts.py` holds equal to this one; the property modules do
+# not import `scripts/`, which the Hypothesis job's path filter reads).
+MARGIN = 500
+
 MUTANT_SEARCH = settings(
     max_examples=EXAMPLES["ci"],
     derandomize=True,

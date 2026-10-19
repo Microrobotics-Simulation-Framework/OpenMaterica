@@ -550,13 +550,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Seven shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785, the hash and the
+        # Eight shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785, the hash and the
         # table evaluator; the envelope checks, versions and the read; the writer schema's value fields; the two
         # JSON Schema libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
         # searches, which were most of the records shard's time; steps 9 and 10's properties and the result's,
-        # with their mutant searches; and the read's relations (HP12, the agreement with the reference model,
-        # HP4, HP10 and the information-monotonicity relations), with theirs.
-        shard: [json, records, writer, agreement, step8_mutants, conditions, relations]
+        # with their mutant searches; the read's relations (HP12, the agreement with the reference model,
+        # HP4, HP10 and the information-monotonicity relations), with theirs; and S4a's step 7 over
+        # alternatives (HP27 to HP29), with theirs, which take the default timeouts until CI measures them.
+        shard: [json, records, writer, agreement, step8_mutants, conditions, relations, alternatives]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
       # The job's `timeout-minutes`, as above, from which the pytest step's interrupt is set.
