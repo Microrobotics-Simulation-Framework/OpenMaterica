@@ -1069,6 +1069,9 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   failing its named TE file under every precision and side it claims, by the difference named beside it and
   never by raising. Each still fails one of its named files with that file's `binary32` tolerance ten times
   as wide: the cap on a file's tolerance, restated per broken evaluator (maintainer, 2026-10-17).
+  A test holds the list the tests run to the table in the TE suite's README, "The broken evaluators": the same
+  faults, each beside the same files and the same difference, with controls in which a row, a file or a
+  difference is changed (`tests/spec_sync/test_broken_evaluators.py`).
 - The `evaluate` executor adapts a raised refusal, as the TE suite's README says a runner does: an evaluator
   that raises `Refusal` in place of reporting a refusal fails no TE file. It adapts no other exception, and a
   raised refusal where none is due fails.
