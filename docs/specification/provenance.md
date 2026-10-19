@@ -78,7 +78,7 @@ for that parameter. [RC-021]
                "locator": {"type": "table", "label": "Table 2", "page": 5,
                            "column": {"header": "Density (g cm-3)", "index": 3}, "row": "liver"},
                "document": {"identifier": "doi:10.1000/xyz123", "version": "version_of_record"},
-               "copy": {"sha256": "...", "retrieved": "2026-10-11"}},
+               "copy": {"sha256": "sha256:...", "retrieved": "2026-10-11"}},
   "assistance": {"status": "none"},
   "review": {"result": "reviewed", "reviewer": "...", "orcid": "0000-0000-0000-0000", "date": "2026-10-12",
              "independent_of_extraction": true,
@@ -104,7 +104,8 @@ for that parameter. [RC-021]
 1. A checker flags a provenance object without a member its row requires. [RC-044]
 2. A `locator` names its `type` (`table`, `figure`, `page`, `equation`, `text`, `dataset`) and holds for the
    document version named beside it. A table locator quotes the column header and gives its index, counting
-   from 1 as printed. [RC-022] [RC-023]
+   from 1 as printed. [RC-022] [RC-023] The place of a quote in one copy holds for that copy only, so it is
+   not a locator: it sits in the evidence's `copy` (section 4 item 2). [RC-222]
 3. A checker refuses an origin token it does not know (`record_format.md` section 10). [RC-024]
 4. `import` is never provenance. A reader never reports it as the value's source, and a checker flags a
    record whose `source` has no review beyond what `import` holds. In the importer prototype every citation
@@ -157,18 +158,32 @@ for that parameter. [RC-021]
    requires a verbatim `quote` for every value extracted from text or a table, with the conditions and, for a
    power law, the exponent quoted too; its record check flags one without. Other namespaces MAY omit quotes.
    [RC-030]
-2. `document` names the document's identifier and version; `copy` holds the SHA-256 of the copy read and the
-   retrieval date. A copy's hash identifies that copy, not the document: publishers stamp copies, so
-   re-verification means the quote occurs in your own copy at the locator. `copy` is excluded from the content
-   hash (`record_format.md` section 9). [RC-031]
-3. A checker with a copy confirms that the quote occurs at its locator and contains the value's numbers. With
-   no copy it reports `not_checked`, never a pass. [RC-032]
+2. `document` names the document's identifier and version; `copy` holds `sha256`, the SHA-256 of the copy
+   read, written as `sha256:` and 64 lowercase hexadecimal digits, and `retrieved`, the retrieval date, and
+   MAY name the quote's place in that copy (`page_text` and `spans`, `page_text.md` section 2). A copy's hash
+   identifies that copy, not the document: publishers stamp copies, so re-verification means the quote occurs
+   at its place in your own copy. `copy` is excluded from the content hash (`record_format.md` section 9).
+   [RC-031]
+3. A checker given the page-text document a copy names confirms that the quote occurs at its place in the
+   copy's text, as the extraction named there gave that text, and that the value's numbers occur where the
+   place marks the value (`page_text.md` section 3). Whether that text is the copy's is not checked here: it
+   holds where the page-text document was made from the copy whose hash is `copy.sha256`. The place is
+   compared with the locator only where the page-text document gives the columns of the table cell holding
+   the value; elsewhere (the table and row a locator names, a PDF table's column) the review compares them
+   (AD 8.7). With no `copy` member, no place in it, or no page-text document of the hash `copy.page_text`, the
+   checker reports `not_checked`, never a pass. [RC-032]
 4. Where quotes may not ship (a source whose redistribution status is `values_only`, or a ruling of the legal
    review, AD 6.5), `quote_sha256` replaces `quote`. It is `sha256:` and the lowercase hexadecimal SHA-256 of
-   the quote's UTF-8 bytes after normalising it to Unicode NFKC, replacing every run of characters with the
-   Unicode `White_Space` property by one space (U+0020), and trimming both ends. The text stays in the
-   curator's private store, and re-verification compares hashes. The conformance suite has test vectors.
-   [RC-033]
+   the UTF-8 bytes of the quote's normalised form. A text's normalised form is made in four steps, in this
+   order: removing the invisible format characters U+00AD, U+061C, U+180E, U+200B to U+200F, U+202A to
+   U+202E, U+2060 to U+2064, U+2066 to U+2069 and U+FEFF; normalising to Unicode NFKC; replacing every run of
+   the 25 code points with the Unicode `White_Space` property (U+0009 to U+000D, U+0020, U+0085, U+00A0,
+   U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000) by one space (U+0020); and trimming
+   spaces from both ends. Nothing else is folded: letter case, dashes, quotation marks and digits stay as they
+   are. Python's `str.isspace`, and the `\s` of its regular expressions, also take U+001C to U+001F, which are
+   not `White_Space`. A checker compares a `quote` with its place by the same normalised form (`page_text.md`
+   section 3). The text stays in the curator's private store, and re-verification compares hashes. The
+   conformance suite has test vectors. [RC-033]
 5. A withheld value carries neither `quote` nor `quote_sha256`: a quote is a template around the value, and
    numbers can be enumerated until the hash matches. [RC-046]
 6. A copy stamped with personal data (a downloader's name or address) never ships, in any form. [RC-034]
@@ -386,10 +401,10 @@ A model never sets a redistribution state or a review (AD 8.2). [not yet covered
 | RC-028 | record checks | attenuation without its amplitude-or-intensity fact is flagged (with the acoustic section) |
 | RC-029 | record checks | a digitised figure without calibration or digitising error is flagged |
 | RC-030 | record checks | a quote present is verified; a curated value from text or a table without one is flagged |
-| RC-031 | record checks | evidence without the document's identity and version beside the copy's hash is flagged |
-| RC-032 | record checks | a quote absent at its locator, or not containing the value's numbers, fails; with no copy, `not_checked` |
-| RC-033 | record checks | `quote_sha256` vectors: NFKC, White_Space runs, trimming, lowercase hexadecimal |
-| RC-034 | record checks | a stamped copy, or anything taken from it, in a release is flagged |
+| RC-031 | record checks | evidence without the document's identity and version beside the copy's hash is flagged, and so is a copy's `sha256` other than `sha256:` and 64 lowercase hexadecimal digits |
+| RC-032 | record checks | a quote absent at its place in the page-text document its copy names, or whose value's numbers are not where the place marks the value, fails; with no `copy`, no place, or no page-text document of the hash `copy.page_text` gives, `not_checked` |
+| RC-033 | record checks | `quote_sha256` vectors: the invisible format characters removed, NFKC, `White_Space` runs (U+001C to U+001F not among them), trimming, lowercase hexadecimal |
+| RC-034 | record checks | a stamped copy, or anything taken from it (a quote's place in it, or the hash of its page-text document, among them), in a release is flagged |
 | RC-035 | record checks | a derivation without its method, inputs with hashes, and assumptions is flagged |
 | RC-036 | record checks | a derivation from inputs at different conditions without the flag is flagged |
 | RC-037 | record checks | a condition or fact without a basis, or `inferred` without `inferred_from`, is flagged |

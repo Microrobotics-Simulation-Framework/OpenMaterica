@@ -401,3 +401,27 @@ Newtonian there is the consumer's own declaration, never the label's: an implied
 shear rate, or a declaration that covers the reason (`record_format.md` section 4.1; PR-104, PR-053, PR-316).
 A label claims only over the stated `shear_rate` condition, as that section already said, and no rule widens
 it.
+
+Decided with the curation tools' first piece (maintainer, 2026-10-20): page-text documents and the place of a
+quote in a copy (`page_text.md`). A checker reads only JSON, so it reads a copy's text from a page-text
+document: the text of one copy as one named extraction gave it, identified by its RFC 8785 hash and never
+published (RC-220, RC-221). A PDF's form holds each page's visible text with the ranges the extraction does
+not vouch for (where two readings, compared glyph by glyph, disagree), the line feeds where reading order
+jumps, the page's furniture, and its raised and lowered text; it names its readings, and one naming fewer than
+two passes no quote. An XML file's form holds its string value and every element by its path, with a table
+cell's columns where the extraction knows them. A quote's place in a copy, its spans and the hash of the
+page-text document they count in, sits in `copy`, outside the content hash, since it holds for one copy and
+one extraction, not for the document version; the locator is unchanged. Across a page break a place leaves out
+only `White_Space` and furniture, a span may mark the value's characters, and a stamped copy's place never
+ships (RC-222, RC-034). RC-032 compares a quote with its place in that page-text document alone, under every
+reading of its line-end hyphens (a hyphen after a letter, never in XML), reads the value's numbers where the
+place marks the value, fails a value marked in an XML table cell outside the locator's column, and reports
+`not_checked` where the place is flagged, the readings are too few, or the located text is doubtful, crosses a
+jump, or holds a code point unassigned or private-use in the checker's Unicode database (RC-032, RC-223 to
+RC-226). A pass says that the quote is in the copy's text as the named extraction gave it; whether that text
+is the copy's is not checked. The normalisation of `quote_sha256` gains a first step, removing invisible
+format characters, and lists the 25 `White_Space` code points, which are not those of Python's `str.isspace`;
+RC-032 compares a `quote` by the same normalised form (`provenance.md` section 4 item 4; RC-033).
+`copy.sha256` is written as `sha256:` and 64 lowercase hexadecimal digits (RC-031). A page-text document's
+schema version follows the version rule (`record_format.md` section 8), and its JSON the strict rules
+(`record_format.md` section 1). No reader change: a read never checks `copy`.

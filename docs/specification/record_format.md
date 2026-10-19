@@ -74,8 +74,9 @@ and 5.6. What a reader does with a record, in order, and every reason it returns
    where the member is used, not of its JSON type. An escaped U+0000 is a legal character. Noncharacters
    (U+FFFE, U+FFFF, U+FDD0 to U+FDEF and the like), which I-JSON forbids, are legal here, because common
    parsers accept them and they make no reading ambiguous. These rules apply also to scene documents, engine
-   crosswalks, read requests and conformance case files. Most JSON libraries need configuring to keep them: a
-   stock parser call accepts some of what this list refuses (README, "Conventions"). [PR-002] [PR-047]
+   crosswalks, page-text documents, read requests and conformance case files. Most JSON libraries need
+   configuring to keep them: a stock parser call accepts some of what this list refuses (README,
+   "Conventions"). [PR-002] [PR-047]
 
 ## 2. The envelope
 
@@ -527,9 +528,9 @@ Every pattern below must match in full: a full match, not a search, so a trailin
    it), `^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`, with no pre-release or build part. Components
    are compared as numbers; with no leading zeros, comparing their lengths and then their digits gives the
    same order with no overflow. The same rule holds for the schema versions of other OpenMaterica documents: a
-   scene document's `scene_schema_version` and an engine crosswalk's `crosswalk_schema_version`. Other
-   versions a document names (a consumer's, a model's, an engine's, a source's) are not bound by it. [RC-014]
-   [PR-048]
+   scene document's `scene_schema_version`, an engine crosswalk's `crosswalk_schema_version` and a page-text
+   document's `page_text_schema_version`. Other versions a document names (a consumer's, a model's, an
+   engine's, a source's) are not bound by it. [RC-014] [PR-048]
 2. **Before 1.0.0**, a reader reads only records of its own `MAJOR.MINOR`, whatever their patch, and refuses
    every other, with the reason `other_version`. From 1.0.0, a reader of `M.m` reads a record of `M.n` for any
    `n` by the rules of section 10, and refuses another major version. [PR-026] [PR-027]

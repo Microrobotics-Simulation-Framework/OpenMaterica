@@ -35,7 +35,7 @@ class Outcome:
 
 
 # The table evaluation suite is not a read. Each of its files asks an evaluator for a table's values at points
-# (README.md:192 "A **table evaluation case** (`read_side_contract.md` section 7) names `{"operation":
+# (README.md:194 "A **table evaluation case** (`read_side_contract.md` section 7) names `{"operation":
 # "evaluate"`), as a consumer's own evaluator does, outside the read; the model, a model of the read, has no
 # answer to it, and those files are the table evaluator's to agree with.
 NOT_A_READ: Final = "table_evaluation"
