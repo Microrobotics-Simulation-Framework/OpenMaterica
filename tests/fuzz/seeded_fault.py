@@ -22,12 +22,20 @@
   (`record_format.md` section 6, composition item 5). The fourth target's seeds hold one (PR-051's
   `no_component`), so it finds it at once; the third has to draw it.
 
-Each raises its own message, so that CI can tell which fault a run found.
+- In step 7, S4a's control for the fourth target, whose oracle is the reference model (`read_side_contract.md`
+  section 3, step 7): an alternative refused at step 9 for its unit alone is set aside, not refusing the
+  field, where it is the third or a later stored alternative. Nothing raises: the read gives an answer, which
+  only the model's tells wrong. Of the 56 seed fields that hold alternatives, two hold three or more, and none
+  a unit other than the registered one past the second (2026-10-19), so the fuzzer has to change one.
+
+Each of the first four raises its own message, so that CI can tell which fault a run found; the fifth is
+found by the oracle's assertion that the implementation and the model disagree.
 
 The first three targets seed the first two faults when `MATERICA_FUZZ_SEEDED_FAULT` is set, and pytest seeds
 them when loaded as a plugin, `python -m pytest -p tests.fuzz.seeded_fault`. Only the fourth target seeds the
 third, since the property targets draw conditions too and would find it before their own. Set to
-`composition`, the variable seeds the composition's fault alone, in the third target and the fourth.
+`composition`, the variable seeds the composition's fault alone, in the third target and the fourth; set to
+`alternatives`, step 7's alone, in the fourth.
 """
 
 import os
@@ -41,13 +49,17 @@ from materica.core.conditions import ConditionsRead, ImpliedCondition
 from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
+from materica.core.read import FieldRead, Standing
 from materica.core.reasons import Reason
 from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
 from materica.core.value_shapes import Found
+from materica.core.vocabulary import VOCABULARY
 from materica.shapes import OperatingCondition, RequirementCondition, Suite
 
 COMPOSITION = "composition"
+ALTERNATIVES = "alternatives"
+NAMED = (COMPOSITION, ALTERNATIVES)
 
 _parse = jsonio.parse
 
@@ -104,13 +116,25 @@ def faulty_components(value: JsonValue, where: str, found: Found) -> None:
     _components(value, where, found)
 
 
+_standing = read._standing  # pyright: ignore[reportPrivateUsage]
+
+
+def faulty_standing(found: FieldRead) -> Standing:
+    standing = _standing(found)
+    refused_for_its_unit = {
+        reason.code for reason in found.reasons if VOCABULARY.reasons[reason.code].status == "not_met"
+    } == {"unit_mismatch"}
+    third_or_later = found.alternative is not None and found.alternative >= 2
+    return "set_aside" if standing == "refuses" and refused_for_its_unit and third_or_later else standing
+
+
 def seed() -> None:
     jsonio.parse = faulty_parse
     read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
 
 
 def seed_if_asked() -> None:
-    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") not in (None, "", COMPOSITION):
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") not in (None, "", *NAMED):
         seed()
 
 
@@ -125,7 +149,7 @@ def seed_step_10_if_asked(instrument: Instrument) -> None:
     """The fourth target's fault, which only it seeds, since the property targets draw fields too.
     `instrument` is Atheris's, so that each part of the conjunction the fuzzer meets is new coverage and each
     comparison a hint, as in a real fault of the core."""
-    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") not in (None, "", COMPOSITION):
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") not in (None, "", *NAMED):
         read.check_conditions = instrument(faulty_check_conditions)  # type: ignore[attr-defined]  # read's own name
 
 
@@ -134,6 +158,14 @@ def seed_composition_if_asked(instrument: Instrument) -> None:
     by name, instrumented as the fourth's own fault is."""
     if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == COMPOSITION:
         fields.components = instrument(faulty_components)
+
+
+def seed_alternatives_if_asked(instrument: Instrument) -> None:
+    """S4a's control, which the fourth target seeds where the variable asks for it by name, instrumented as
+    its other faults are."""
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == ALTERNATIVES:
+        # Its parameter is named otherwise than `read._standing`'s, whose name is the module's here.
+        read._standing = instrument(faulty_standing)  # type: ignore[assignment]  # pyright: ignore[reportPrivateUsage]
 
 
 def pytest_configure(config: pytest.Config) -> None:
