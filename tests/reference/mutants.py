@@ -1382,7 +1382,8 @@ MUTANTS: Mapping[str, Mutant] = {
         "record_format.md:247-249 (the maintainer's ruling, 2026-10-20)",
         {"entry_provenance_returned": nested_reviews_as_found},
     ),
-    # Not an open point since the fix round: the text names the three, and no case holds a slip of one.
+    # Not an open point since the fix round: the text names the three (S2a-4's review, approved by the
+    # maintainer on 2026-10-18 and confirmed on 2026-10-19), and no case holds a slip of one.
     "declaration_names_not_named_in_a_request": Mutant(
         "a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored",
         "read_side_contract.md:40-41, declarations.md:30 and :64 (the text names them in a requirement)",

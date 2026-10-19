@@ -100,6 +100,10 @@ every family entry goes in `families/CHANGELOG.md`.
     section 5 names `alternatives` at a field's place, and section 10 item 5 refuses a slip of a member named
     there); no text changes. One PR-030 case, `alternative` beside a constant (`form_invalid`), which kills
     the reference model's fault that ignores such a slip, a survivor of the cases until then.
+  - `names_a_declaration_gives_a_requirement`: already decided (S2a-4's review, approved 2026-10-18): a slip of
+    a requirement's `field`, or of a requirement condition's `reason` or `consequence`, is refused at step 0,
+    as `read_side_contract.md` section 1 says of a slip of a member `declarations.md` names. The reference
+    model, its seeded faults, HP12 and the READMEs cite the ruling; no text changes.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from

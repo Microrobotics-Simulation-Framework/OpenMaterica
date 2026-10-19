@@ -270,7 +270,9 @@ IMPLEMENTATION = [
         ("broken_status_object",),
     ),
     # Open point 1's request half, as the implementation read it before the fix round: a slip of a name a
-    # declaration gives a requirement ignored, and an implied value's member of the other kind ignored.
+    # declaration gives a requirement ignored (`names_a_declaration_gives_a_requirement`, which the text
+    # decides: S2a-4's review, approved 2026-10-18 and confirmed 2026-10-19), and an implied value's member of
+    # the other kind ignored (the token ruling, 2026-10-18).
     Mutant(
         "declaration_names_ignored",
         "unpinned",
