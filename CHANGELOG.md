@@ -440,6 +440,17 @@ every family entry goes in `families/CHANGELOG.md`.
   removed. Git exports `GIT_DIR` to the commands it runs, `git rebase --exec` among them, so the suite run
   that way re-initialised the outer repository, setting `core.bare` in its shared config, and committed onto
   its HEAD (`tests/unit/throwaway_git.py`, `test_throwaway_git.py`).
+- The throwaway git repositories run no automatic maintenance. From git 2.54 (CI's runners carry 2.55), the
+  maintenance a commit starts repacks in the background once about 256 objects are loose, and its
+  `prune-packed` removes each emptied directory of `.git/objects`. The two gate tests that make 260 commits
+  meet it (at git 2.55, the site commits' loop in 40 of 40 runs, the empty commits' in 7 of 40), and they
+  failed twice in at most about 1,050 CI jobs of the whole suite, when that removal fell between git making a
+  directory for the test's next object and writing the object there: "unable to create temporary file: No such
+  file or directory". With 3 ms held at that point in the tests' own git commands, at git 2.55, the two tests
+  failed 7 of 80 runs, each with one of CI's two messages, and passed 80 of 80 with this change; in a copy of
+  their loop, a repack forced after every commit failed 24 of 24 runs in the background and none of 24 run
+  before the commit returned. A test reads a commit's trace for the start of maintenance, with a control that
+  finds it once the setting is unset (`tests/unit/throwaway_git.py`, `test_throwaway_git.py`).
 - T1 (S2a-2): step 8 against the writer schema, with each field's binding to its row, and the generated reader
   `$defs`, on every value field of the conformance inputs and on one-fault variants of five full fields and of
   one field of each row and form, drawn by the writer's strategies: what the writer accepts step 8 accepts,
