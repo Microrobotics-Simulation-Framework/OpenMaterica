@@ -59,6 +59,9 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     # whole, which S2b-1 and S2b-2 had made draw every form, so a constant under `bounds` came up in one draw
     # in 35 (a constant in two in five, `bounds` in one `want` in 14).
     "constants": lambda size: strategies.valued(size, ("as_drawn", "implied"), constant_under_bounds=True),
+    # A planned search of the second part: a condition the request gives no tolerance for, which step 10
+    # gives as `condition_unchecked` (HP1's mutant drops its condition there).
+    "an unchecked condition": lambda size: strategies.step_9_or_10_faults(size, ("unchecked",)),
     # A planned search of the first part: constants at section 5's boundaries alone.
     "values at a boundary": lambda size: strategies.valued(size, ("at_a_boundary",)),
     # Planned searches of the first part: an interval's read under a nominal, alone and over alternatives.
@@ -263,13 +266,14 @@ IMPLEMENTATION = [
         setting(read, "_OF_THE_OTHER_KIND", {"numeric": (), "token": ()}),
         ("implied_member_of_the_other_kind",),
     ),
-    # HP1. A fault of step 8 that passes goes on to step 10, where the step-8 kind's request leaves every
-    # condition unchecked: S2b-1's passing faults of a form's own member came up first.
+    # HP1. Drawn with the faults' part whole it died at a passing fault of step 8, which goes on to step 10,
+    # where the step-8 kind's request leaves every condition unchecked, or at `unchecked`; over 24 seeds it
+    # took up to 811 examples (2026-10-19), so its search is planned.
     Mutant(
         "condition_unchecked_without_its_condition",
-        "faults",
+        "an unchecked condition",
         taken(result_mutants.MUTANTS, "condition_unchecked_without_its_condition"),
-        ("unchecked", "step_8"),
+        ("unchecked",),
     ),
     # HP2
     Mutant(
