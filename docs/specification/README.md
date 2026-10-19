@@ -15,6 +15,7 @@ Read them in this order.
 |---|---|
 | `record_format.md` | records: the envelope, record types, the material body, value fields and the eight form tokens (the seven value forms of AD 4.4, and evidence), units, identifiers, versions and the content hash |
 | `provenance.md` | where a value came from: origin, source registry, locators, evidence, review; conditions and specimen facts; tiers |
+| `page_text.md` | page-text documents (the text of a copy, as a checker reads it), the place of a quote in a copy, and how a quote is compared with it |
 | `uncertainty.md` | statistics and what a spread represents; uncertainty structures; sampling |
 | `model_families.md` | what a family definition fixes; parameter sets; check points; witnesses; events |
 | `fits_and_reference_data.md` | fit records; reference data; fit reproduction |
@@ -106,6 +107,7 @@ Numbers are reserved by document, so each document can add cases without collidi
 |---|---|
 | `record_format.md` | PR-001 to PR-099; HS-001 to HS-009; RC-001 to RC-019; RC-120 to RC-139 |
 | `provenance.md` | PR-100 to PR-149; RC-020 to RC-049; RC-200 to RC-219 |
+| `page_text.md` | RC-220 to RC-239 |
 | `uncertainty.md` | PR-150 to PR-199; SA-001 to SA-049; FE-040 to FE-049; RC-050 to RC-059; RC-160 to RC-179 |
 | `fits_and_reference_data.md` | FD-001 to FD-049; RC-080 to RC-089 |
 | `geometry.md` | SC-001 to SC-049; RC-090 to RC-099 |

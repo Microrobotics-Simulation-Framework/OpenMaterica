@@ -1083,18 +1083,18 @@ MUTANTS: Mapping[str, Mutant] = {
     # The slip rule, in a request and a record
     "every_slip_ignored": Mutant(
         "a member one slip from a named one ignored, in a request and in a record",
-        "record_format.md:574-579",
+        "record_format.md:575-580",
         {"slipped": no_slip},
     ),
     "plurals_not_slips": Mutant(
         "a word made plural or singular not one slip",
-        "record_format.md:588-590",
+        "record_format.md:589-591",
         {"_plural_of_either": no_plural},
         survives="each plural slip in the cases adds an `s` (`fluids`), and so is one character inserted",
     ),
     "envelope_body_and_section_slips_ignored": Mutant(
         "a slip in the envelope, the body or a section refuses no field",
-        "record_format.md:576-578",
+        "record_format.md:577-579",
         {"record_slips": no_record_slip, "section_slips": no_section_slip},
     ),
     # Steps 1 to 5
@@ -1126,7 +1126,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # Step 7
     "alternatives_shape_unchecked": Mutant(
         "an `alternatives` that is empty, not a list or beside a value field's members read",
-        "record_format.md:328-332",
+        "record_format.md:329-333",
         {"alternatives_broken": never_broken},
     ),
     "want_mismatch_beside_no_pick": Mutant(
@@ -1269,17 +1269,17 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "entry_withheld_in_part_read": Mutant(
         "an evidence entry withheld in some members but not every one read",
-        "record_format.md:239-241",
+        "record_format.md:240-242",
         {"withheld_whole": withheld_in_part},
     ),
     "missing_label_refused": Mutant(
         "a field without its row's label refused",
-        "record_format.md:196-197",
+        "record_format.md:197-198",
         {"check_label": missing_label_refused},
     ),
     "unreadable_review_refuses": Mutant(
         "a review the reader cannot read refuses the field",
-        "provenance.md:118-124",
+        "provenance.md:119-125",
         {"check_provenance": unreadable_review_refused},
     ),
     "null_read_as_absent": Mutant(
@@ -1296,7 +1296,7 @@ MUTANTS: Mapping[str, Mutant] = {
         {"check_uncertainty": unchecked},
     ),
     "derivation_unchecked": Mutant(
-        "a derived value's derivation not checked", "provenance.md:185-189", {"check_derivation": unchecked}
+        "a derived value's derivation not checked", "provenance.md:200-204", {"check_derivation": unchecked}
     ),
     "population_level_checks_stop_at_a_missing_member": Mutant(
         "a population level missing a member has its `level` and `within` left unchecked",
@@ -1312,19 +1312,19 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "every_status_object_an_unstated_kind": Mutant(
         "a `plus_minus` entry whose `stated_as` holds any status object counted as of unstated kind",
-        "provenance.md:246-247",
+        "provenance.md:261-262",
         {"check_plus_minus": every_status_object_an_unstated_kind},
         survives="no case holds a `stated_as` of another status token beside an entry of a stated kind",
     ),
     "every_forms_member_named_at_a_field": Mutant(
         "every form's member named at a field's place, so that a slip of another form's refuses a constant",
-        "record_format.md:317",
+        "record_format.md:318",
         {"named_at_a_field": every_forms_member_named},
         survives="no case holds a slip of another form's member beside a form the reader knows",
     ),
     "input_specimens_optional": Mutant(
         "a derivation without `input_specimens` read",
-        "provenance.md:185",
+        "provenance.md:200",
         {"check_input_specimens": input_specimens_optional},
         survives="every derivation in the cases holds `input_specimens`",
     ),
@@ -1382,7 +1382,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     # Step 9
     "units_compared_after_case_folding": Mutant(
-        "a record's units compared after case folding", "record_format.md:216-218", {"same_unit": case_folded}
+        "a record's units compared after case folding", "record_format.md:217-219", {"same_unit": case_folded}
     ),
     "fact_units_unchecked": Mutant(
         "a specimen fact's unit not compared with the one its row fixes",
@@ -1493,7 +1493,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "review_returned_as_its_result": Mutant(
         "a known review returned as its `result` alone",
-        "provenance.md:118-121",
+        "provenance.md:119-122",
         {"review_read": review_result_alone},
     ),
     "unit_returned_without_its_reason": Mutant(
@@ -1515,19 +1515,19 @@ MUTANTS: Mapping[str, Mutant] = {
     # Rules S2a-4's review pinned (half B, L4; half A, L6)
     "ies_not_a_plural": Mutant(
         "a final `y` exchanged with `ies` not one slip",
-        "record_format.md:589-590",
+        "record_format.md:590-591",
         {"_plural_of_either": ies_not_a_plural},
         survives="no case holds a slip of a final `y` made `ies`",
     ),
     "donor_age_of_neither_accepted": Mutant(
         "a `donor_age` holding neither `value` nor `range` accepted",
-        "provenance.md:279",
+        "provenance.md:294",
         {"check_fact": donor_age_of_neither_accepted},
         survives="no case holds a `donor_age` with neither `value` nor `range`",
     ),
     "review_of_both_shapes_read_as_its_status": Mutant(
         "a review holding both `status` and `result` read as its status object",
-        "provenance.md:122",
+        "provenance.md:123",
         {"review_read": both_shapes_read_as_the_status_object},
         survives="no case holds a review holding both `status` and `result`",
     ),
