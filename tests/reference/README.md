@@ -194,7 +194,9 @@ them open (the maintainer's rulings brought cases that kill all three: the token
 half's, `PR-030.near_typo_alternative_beside_constant` and `PR-052.entry_provenance_origin_unknown`); one is a
 rule of the text that no case pins either, since S2a-4's fix round
 (`declaration_names_not_named_in_a_request`: `read_side_contract.md:40-41` and `declarations.md:30` and `:64` name
-a requirement's `field` and its conditions' `reason` and `consequence`, and a read refuses a slip of one); one is
+a requirement's `field` and its conditions' `reason` and `consequence`, and a read refuses a slip of one: the
+former open point `names_a_declaration_gives_a_requirement`, decided by the text as S2a-4's review read it,
+approved by the maintainer on 2026-10-18 and confirmed on 2026-10-19); one is
 the rule that a status object breaking its shape gives no reason of its own
 (`broken_status_object_reports_its_token`), a ruling the text took up with S3, whose example is a table's,
 on which the model gives no verdict; one is the rule that a composition whose basis its row does not allow

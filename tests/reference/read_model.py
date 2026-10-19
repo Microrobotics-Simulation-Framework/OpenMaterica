@@ -529,7 +529,8 @@ OPERATING_NAMES: Final = ("value", "range", "unit")
 # `declarations.md` names at that place": a requirement names `field` there (declarations.md:30
 # "fluid.dynamic_viscosity", the example's) and each of its conditions a `reason` and a `consequence`
 # (declarations.md:64 "each with its `reason` and, where known, its `consequence`"), which a read ignores and
-# of which it refuses a slip.
+# of which it refuses a slip: the text decides it, as S2a-4's review read it, the maintainer's approval
+# (2026-10-18) and ruling (2026-10-19) on the former open point `names_a_declaration_gives_a_requirement`.
 REQUIREMENT_NAMES: Final = ("want", "conditions", "label", "represents", "population_level", "field")
 REQUIREMENT_CONDITION_NAMES: Final = ("tolerance", "accept", "reason", "consequence")
 TOLERANCE_NAMES: Final = ("value", "unit")

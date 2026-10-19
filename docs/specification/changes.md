@@ -467,3 +467,10 @@ member named at a field's place does: `record_format.md` section 5 names both sh
 field's members and an `alternatives` object, and `record_format.md` section 10 item 5 refuses a slip of a
 member named there (PR-030). The text decides it, and the reader has read it so since S2a-2; no sentence
 changes.
+
+Confirmed with S2b-2's review (maintainer, 2026-10-19), decided with S2a-4's review (approved 2026-10-18): a
+member one slip from a requirement's `field`, or from a requirement condition's `reason` or `consequence`,
+refuses the request (`request_incomplete`), as `read_side_contract.md` section 1 refuses a member one slip
+from one `declarations.md` names at that place, refused ones included (PR-330). `declarations.md` names
+`field` in a requirement and `reason` and `consequence` in each of its conditions, and a read ignores the
+three, so a misspelt one is refused, not ignored. The text decides it; no sentence changes.

@@ -785,8 +785,8 @@ def implied_member_of_the_other_kind(draw: Draw, read: Read) -> None:
 
 def declaration_name_slip(draw: Draw, read: Read) -> None:
     """A member one slip from `field` in a requirement, or from `reason` or `consequence` in a requirement
-    condition, which `declarations.md` section 1 names there: refused, as the text says (S2a-4's review, M1),
-    and both read it alike."""
+    condition, which `declarations.md` section 1 names there: refused, as the text says (S2a-4's review, M1;
+    the maintainer's approval of 2026-10-18, confirmed on 2026-10-19), and both read it alike."""
     if draw(st.booleans()):
         at(read.request, "requirement")[draw(st.sampled_from(["fields", "feld", "fiedl"]))] = "x"
     else:
