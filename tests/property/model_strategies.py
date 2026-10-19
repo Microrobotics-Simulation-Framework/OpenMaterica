@@ -152,11 +152,15 @@ def valued(
     *,
     nominal: bool = False,
     unit_with_a_reason: bool = False,
+    constant_under_bounds: bool = False,
 ) -> Example:
-    """A valued read; for a planned search's, with `nominal`, an interval's with a nominal always, and with
-    `unit_with_a_reason`, evidence's with its unit a status object with a reason always."""
+    """A valued read; for a planned search's, with `nominal`, an interval's with a nominal always, with
+    `unit_with_a_reason`, evidence's with its unit a status object with a reason always, and with
+    `constant_under_bounds`, a constant's under `want: bounds` always."""
     way = draw(st.sampled_from(ways))
-    if nominal:
+    if constant_under_bounds:
+        form, drawn_read = "constant", draw(base_reads(size, FORM_FIELDS["constant"], "constant"))
+    elif nominal:
         form, drawn_read = "interval", draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
     elif unit_with_a_reason:
         form, drawn_read = "evidence", draw(base_reads(size, FORM_FIELDS["evidence"], "evidence"))
@@ -174,7 +178,7 @@ def valued(
     if form == "evidence" and (unit_with_a_reason or draw(st.booleans())):
         field_of(read)["unit"] = {"status": "not_applicable", "reason": "a list of test reports"}
         shown = (*shown, "unit_with_a_reason")
-    read = wanting(repinned(read), a_want(draw, form))
+    read = wanting(repinned(read), "bounds" if constant_under_bounds else a_want(draw, form))
     if form == "interval" and (nominal or draw(st.booleans())):
         nominal_way = draw(st.sampled_from(results.NOMINAL_WAYS))
         read = wanting(read, "bounds" if nominal_way == "under_bounds" else "value")

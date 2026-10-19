@@ -151,13 +151,14 @@ stages it, and its links and images checked), the fuzz job, or the two controls 
 | What it catches | Check |
 |---|---|
 | a commit without your sign-off; a private name or path in a file or a message | `python3 scripts/check_signoff.py BASE HEAD`; `python3 scripts/check_confidential.py --messages BASE..HEAD` |
-| a generated file edited by hand, or a source changed without regenerating; a released schema file changed | each of `scripts/gen_vocabulary.py`, `gen_reader_schema.py` and `gen_shapes.py` with `--check`, on Python 3.11, which `uv run --python 3.11 python scripts/gen_shapes.py --check` does (`uv run python scripts/gen_shapes.py --check` fails on the project's 3.15: the shapes' generator does not run there); `pre_review.py` runs all three on 3.11 in an environment of its own, so the project's `.venv` is not rebuilt; `python3 scripts/freeze_schema.py --check` |
+| a generated file edited by hand, or a source changed without regenerating; a kill count of `tests/property/README.md` that is not the recorded one, or a kill after the 500th example; a released schema file changed | each of `scripts/gen_vocabulary.py`, `gen_reader_schema.py`, `gen_shapes.py` and `gen_kill_counts.py` with `--check`, on Python 3.11, which `uv run --python 3.11 python scripts/gen_shapes.py --check` does (`uv run python scripts/gen_shapes.py --check` fails on the project's 3.15: the shapes' generator does not run there); `pre_review.py` runs all four on 3.11 in an environment of its own, so the project's `.venv` is not rebuilt; `python3 scripts/freeze_schema.py --check` |
 | lint, format, types | `uv run ruff check`, `uv run ruff format --check`, `uv run mypy`, `uv run pyright` |
 | a wheel that lacks a file it ships, or that a consumer's type check refuses (`py.typed`, the stubs, the package data) | `uv build`, then `uv run python scripts/check_wheel.py dist/*.whl` and the consumer snippet's `mypy --strict` and `pyright` against the installed wheel, as the static job's steps do; `python3 scripts/pre_review.py --wheel-check` runs them in a temporary directory |
 | a reference to a section, item or title that is not there; a quote of the specification changed or lost; a case tag or table row with no counterpart | `uv run pytest tests/spec_sync/test_references.py tests/spec_sync/test_value_fields.py tests/spec_sync/test_unknown_member_positions.py` |
 | a name reused at a place, or one slip from another | `uv run pytest tests/spec_sync/test_name_overlaps.py tests/spec_sync/test_name_overlap_safeguards.py` |
 | a feature audit that fails by chance, or that does not fail when its feature stops being drawn | `MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest tests/property --shard NAME -n 12 --dist worksteal` for your module's shard (`SHARDS` in `tests/conftest.py`), and `uv run pytest tests/unit/test_audit_controls.py tests/unit/test_audits.py` |
 | a mutant a property no longer kills, or a mutant table that no longer matches its module | the same shard run, which holds the group's mutant searches and `test_*mutant_table.py` |
+| a kill point that moved, a mutant search not recorded, or a README row naming a search that does not run | `uv run python scripts/gen_kill_counts.py --measure`, which runs every mutant search (about 45 seconds on 12 workers) and checks its kills against `tests/property/kill_points.json`; `--measure --record` records them and writes the README's counts. An edit to a `kill` helper (the function that runs a mutant search), or a Hypothesis upgrade, re-seeds hundreds of searches at once; the check names it, and `--measure --record` is the cure |
 | a table of `pre_review.py` (the tests that read the whole tree, the data files tests open) that a test you wrote or changed now opens or lists and the table misses | `MATERICA_TRACE_SELECTION=1 uv run --locked pytest tests/unit/test_pre_review.py -k trace`: the trace test runs the whole suite once, about a minute of wall time and three of CPU, so it is skipped unless that variable is `1`; CI sets it in one job, the `tests` job on Python 3.15, and `pre_review.py` does not set it |
 | a script, a workflow or the build broken | the script's own test in `tests/unit` (`test_<script>.py`; `test_generators.py` for the three generators, `test_check_confidential.py` for `pre-push`); `tests/unit/test_ci_workflows.py` |
 
@@ -186,8 +187,8 @@ The rest only you can decide. Read your change once as the reviewer will:
   kind, a token known for another place), the code gives the status and code the text names.
 - **A fact is written once.** Search for the words, names and numbers you changed in comments, READMEs, workflow
   headers and this file, and refer to the one place that states each.
-- **A mutant's README row is current.** The row of each mutant you changed names the assertion it dies at and its
-  current kill count.
+- **A mutant's README row is current.** The row of each mutant you changed names the assertion it dies at; its
+  kill count is written by `scripts/gen_kill_counts.py` from the recorded kill points, never by hand.
 - **Each commit stands alone.** No call lands before the function it calls; CI's per-commit job checks it.
 
 ## Confidentiality

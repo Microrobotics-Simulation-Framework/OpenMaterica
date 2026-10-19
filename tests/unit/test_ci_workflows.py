@@ -7189,3 +7189,71 @@ def test_the_target_4_check_finds_no_run() -> None:
         step for step in ci["jobs"]["fuzz"]["steps"] if "read_field_bytes" not in str(step.get("run"))
     ]
     assert target_4_problems(ci) == ["no run of fuzz target 4"]
+
+
+# --- the kill points against the controls job's run ---------------------------------------------------------
+
+KILL_POINTS_STEP = "Each kill point is the recorded one"
+
+
+def kill_points_problems(ci: Workflow) -> list[str]:
+    """Where the controls job does not hold `tests/property/kill_points.json` to its own run of every mutant
+    search: one step, after the pytest step, run when that step passed and failing the job when it fails,
+    reading the report that step writes (`scripts/gen_kill_counts.py --against`)."""
+    steps: list[dict[str, Any]] = ci["jobs"]["controls"]["steps"]
+    searches = pytest_step(ci["jobs"]["controls"])
+    report = re.search(r'--junitxml="([^"]+)"', searches["run"])
+    checks = [found for found in steps if "scripts/gen_kill_counts.py --against" in str(found.get("run", ""))]
+    if len(checks) != 1:
+        return [f"the controls job checks its kill points {len(checks)} times, not once"]
+    [check] = checks
+    problems: list[str] = []
+    if steps.index(check) < steps.index(searches):
+        problems.append("it checks the kill points before the searches run")
+    if report is None or f'--against "{report.group(1)}"' not in check["run"]:
+        problems.append("it checks another report than the one the searches write")
+    if "if" in check or check.get("continue-on-error"):
+        problems.append("its check does not run on every passing run, or does not fail the job")
+    return problems
+
+
+def without_the_kill_points(ci: Workflow) -> None:
+    ci["jobs"]["controls"]["steps"].remove(step(ci["jobs"]["controls"], KILL_POINTS_STEP))
+
+
+def kill_points_first(ci: Workflow) -> None:
+    steps = ci["jobs"]["controls"]["steps"]
+    steps.insert(0, steps.pop(steps.index(step(ci["jobs"]["controls"], KILL_POINTS_STEP))))
+
+
+def kill_points_of_another_report(ci: Workflow) -> None:
+    found = step(ci["jobs"]["controls"], KILL_POINTS_STEP)
+    found["run"] = found["run"].replace("durations.xml", "other.xml")
+
+
+def kill_points_that_carry_on(ci: Workflow) -> None:
+    step(ci["jobs"]["controls"], KILL_POINTS_STEP)["continue-on-error"] = True
+
+
+def kill_points_never(ci: Workflow) -> None:
+    step(ci["jobs"]["controls"], KILL_POINTS_STEP)["if"] = "false"
+
+
+def test_the_controls_job_holds_the_recorded_kill_points_to_its_own_run() -> None:
+    assert kill_points_problems(workflow("ci.yml")) == []
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (without_the_kill_points, "0 times"),
+        (kill_points_first, "before the searches run"),
+        (kill_points_of_another_report, "another report"),
+        (kill_points_that_carry_on, "does not fail the job"),
+        (kill_points_never, "does not run on every passing run"),
+    ],
+)
+def test_the_kill_points_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    fault(ci)
+    assert any(problem in line for line in kill_points_problems(ci)), kill_points_problems(ci)

@@ -9,10 +9,12 @@ and `HEAD` to the working tree, committed or not, with the files git does not tr
 the checks, prints each with the paths that selected it, and runs them in three stages: the fast checks
 (sign-offs, confidential names, every generator's `--check`, and for a change to code the linters and type
 checkers), the tests of what changed and of what imports it, and the property shards at the `ci` profile that
-hold a changed or affected property module. A stage that fails stops the run before the next, unless
-`--keep-going` is given: what the fast checks find is fixed before any test runs. After the plan it prints
-reminders for what no test can check: a figure stated in a CHANGELOG line or a commit message to recount, code
-changed beside a CHANGELOG that was not.
+hold a changed or affected property module, with, where one of them holds mutant searches or the recorded kill
+points or their README changed, every mutant search's kill against the recorded one
+(`scripts/gen_kill_counts.py --measure`, as CI's controls job checks its own run). A stage that fails stops
+the run before the next, unless `--keep-going` is given: what the fast checks find is fixed before any test
+runs. After the plan it prints reminders for what no test can check: a figure stated in a CHANGELOG line or a
+commit message to recount, code changed beside a CHANGELOG that was not.
 
 It adds to CI's checks and replaces none. It runs the checks that apply to the change, not every check; CI
 runs them all, on every Python, and its result is the one that counts. A change it selects no check for is
@@ -30,6 +32,7 @@ under `tests/` outside every group of tests, a conftest of a group it does not k
 
 import argparse
 import ast
+import fnmatch
 import glob
 import os
 import re
@@ -61,8 +64,14 @@ PYTHON_PATHS = r".*\.pyi?"
 
 # The generators CI runs with `--check` in its generated-files job, in its own environment on Python 3.11,
 # since the generator of the typed shapes does not run on 3.15.
-GENERATORS = ("gen_vocabulary", "gen_reader_schema", "gen_shapes")
+GENERATORS = ("gen_vocabulary", "gen_reader_schema", "gen_shapes", "gen_kill_counts")
 GENERATOR_PYTHON = "3.11"
+
+# The kill counts: the recorded kill points and the README written from them, which a run of every mutant
+# search holds to the code (`scripts/gen_kill_counts.py --measure`, as CI's controls job does with
+# `--against`), and the modules whose searches record one.
+KILL_COUNTS = r"tests/property/(kill_points\.json|README\.md)"
+MUTANT_SEARCHES = "test_*mutants"
 
 PROFILE_VARIABLE = "MATERICA_HYPOTHESIS_PROFILE"
 SPECIFICATION = r"docs/specification/.+|design/ARCHITECTURE_DRAFT\.md|DOCUMENTATION_ARCHITECTURE\.md"
@@ -226,7 +235,16 @@ DATA_RULES = (
             "tests/unit/test_hypothesis_profiles.py",
             "tests/unit/test_source_files.py",
             "tests/unit/test_ci_workflows.py",
+            "tests/unit/test_gen_kill_counts.py",
         ),
+    ),
+    DataRule(
+        "the recorded kill points, or the README written from them",
+        KILL_COUNTS,
+        "the kill counts' generator holds the README to the file, and its tests read both; a run of every "
+        "mutant search holds the file to the code (planned with the property shards)",
+        tests=("tests/unit/test_gen_kill_counts.py",),
+        readers=("scripts/gen_kill_counts.py",),
     ),
     DataRule(
         "the confidential digests and the hook that runs the scan",
@@ -266,6 +284,12 @@ TREE_READERS = (
         "no test or script names a path the gate calls documentation, and no module the Hypothesis job runs "
         "imports one of the files the gate lists as free of Hypothesis",
         ("tests/unit/test_ci_workflows.py",),
+    ),
+    TreeReader(
+        r"tests/property/.+\.py",
+        "the kill counts' generator digests the source of the functions that seed the mutant searches, and "
+        "holds the recorded kill points to them",
+        ("tests/unit/test_gen_kill_counts.py",),
     ),
     TreeReader(
         r"src/materica/core/.+\.py",
@@ -834,6 +858,36 @@ def plan_checks(
             paths=("tests/property",),
         )
         for cause in dict.fromkeys(shard_causes[shard]):
+            plan.add(planned, cause)
+
+    # Every mutant search's kill point against the recorded one, wherever a shard that holds mutant searches
+    # runs, or the file or the README changed.
+    searching = [
+        cause
+        for shard in sorted(shard_causes)
+        if any(fnmatch.fnmatch(module, MUTANT_SEARCHES) for module in tree.shards()[shard])
+        for cause in shard_causes[shard]
+    ]
+    searching += [path for path in changed if matches(KILL_COUNTS, path)]
+    if searching:
+        planned = Planned(
+            "properties",
+            (
+                "uv",
+                "run",
+                "--locked",
+                "python",
+                "scripts/gen_kill_counts.py",
+                "--measure",
+                "--workers",
+                str(workers),
+            ),
+            "every mutant search's kill point is the one tests/property/kill_points.json records, and every "
+            "row of the README's tables names a search that ran; CI's controls job checks its own run so",
+            env={PROFILE_VARIABLE: "ci"},
+            paths=("scripts/gen_kill_counts.py",),
+        )
+        for cause in dict.fromkeys(searching):
             plan.add(planned, cause)
 
     return plan.checks(), [path for path in changed if path not in covered]
