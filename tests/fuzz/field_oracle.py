@@ -225,18 +225,22 @@ BEST_FIRST = ("met", "unknown", "not_met")
 
 
 def check_result_laws(result: JsonValue) -> None:
-    """HP1: each code in the reason table, each `(code, condition)` once, `condition` on every `condition_*`
-    reason and on no reason of a code that never concerns one. HP2: the status the worst of the codes'
-    statuses, folded here from the table; and the members present as section 2 item 6 says, no declaration
-    being in the target's requests: `value`, `specimen`, `statistics` and `provenance` exactly where the
-    status is not `not_met` and the result rests on one value, but `statistics` beside evidence, whose value
-    is its list of reports, `alternative_values` exactly under `no_pick`, `unit` beside either, no
+    """HP1: each code in the reason table, each `(code, condition, alternative)` once, `condition` on every
+    `condition_*` reason and on no reason of a code that never concerns one. HP2: the status the worst of the
+    codes' statuses, folded here from the table; and the members present as section 2 item 6 says, no
+    declaration being in the target's requests: `value`, `specimen`, `statistics` and `provenance` exactly
+    where the status is not `not_met` and the result rests on one value, but `statistics` beside evidence,
+    whose value is its list of reports, `alternative_values` exactly under `no_pick`, `unit` beside either, no
     `assumption`, and `conditions` beside a value, never under `no_pick` or after a refusal before step 10."""
     if result == "not yet":
         return
     assert isinstance(result, dict), result
-    pairs = [(str(reason.get("code")), reason.get("condition")) for reason in objects(result, "reasons")]
-    assert len(set(pairs)) == len(pairs), f"a reason twice: {pairs}"
+    found = [
+        (str(reason.get("code")), reason.get("condition"), reason.get("alternative"))
+        for reason in objects(result, "reasons")
+    ]
+    assert len(set(found)) == len(found), f"a reason twice: {found}"
+    pairs = [(code, condition) for code, condition, _ in found]
     for code, condition in pairs:
         assert code in REASONS["reasons"], f"{code} is no code of the table"
         if code in WITH_A_CONDITION:

@@ -227,7 +227,7 @@ condition of its own, so an implied condition is the one way to set an evidence 
 
 The agreement property HP12 (`tests/property/test_model_properties.py`) kills 15 of the 16 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two
-cases came to kill it, every one of the 10 faults one case file alone kills, and
+cases came to kill it, every one of the 15 faults one case file alone kills (S4a's five among them), and
 `nominal_outside_supplies_the_value`, which two kill, each with the model given the fault and the core as it
 is (`tests/property/test_model_mutants.py`); S2b-2, which reads evidence and nominals, brought the six that
 waited for it. The other one is listed there with the reason no read shows it: a shared object never shows

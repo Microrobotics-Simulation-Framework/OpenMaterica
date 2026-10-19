@@ -11,6 +11,7 @@ import pytest
 
 from scripts import gen_kill_counts
 from scripts.gen_kill_counts import CountsError, KillPoints, Record
+from tests.property import support
 
 REAL_INPUTS = gen_kill_counts.inputs_of_tree
 REAL_NO_TABLE = gen_kill_counts.NO_TABLE
@@ -763,6 +764,10 @@ def test_a_recorded_group_whose_marker_was_deleted_fails_the_check(
     assert gen_kill_counts.main(["--check"]) == 0
 
 
+def test_the_planned_searches_controls_run_the_examples_the_margin_guard_allows() -> None:
+    assert support.MARGIN == gen_kill_counts.MARGIN
+
+
 def test_the_readme_holds_a_table_for_exactly_the_recorded_groups_but_two() -> None:
     """By name, so that a marker deleted or moved to another group's table fails here too."""
     text = (gen_kill_counts.REPOSITORY / "tests" / "property" / "README.md").read_text(encoding="utf-8")
@@ -789,6 +794,7 @@ def test_the_readme_holds_a_table_for_exactly_the_recorded_groups_but_two() -> N
                 "every search",
                 "test_model_mutants.py::test_the_models_seeded_mutant_is_killed_by_the_agreement",
             ),
+            ("every search", "test_alternatives_mutants.py::test_the_alternatives_mutant_is_killed"),
             ("every search", "test_invariance_mutants.py::test_the_invariance_mutant_is_killed"),
             ("every search", "test_monotonicity_mutants.py::test_the_relations_mutant_is_killed"),
             (

@@ -12,8 +12,10 @@ property can tell a planted open point from anything else. The kinds:
   condition, the way drawn first; an interval in half the draws with a nominal of a way
   `result_strategies.NOMINAL_WAYS` names, and evidence's unit in half its draws with a reason;
 - **alternatives**: two or three alternatives of one form the request meets, a list that breaks its shape,
-  or alternatives each refused by one request fault (S4's decision 12); intervals in half the draws under
-  `want: value` with a nominal located at the read, which none of them is given;
+  or alternatives each refused by one request fault; intervals in half the draws under `want: value` with a
+  nominal located at the read, which none of them is given; and S4a's draws (`alternatives_strategies.py`),
+  each of step 7's five outcomes drawn first, the alternatives set aside, staying and refusing as it needs
+  (`standing`);
 - **step 8**, **steps 9 and 10**: one fault of each step's catalogue, or two of two parts in one draw in four;
 - **two of one step**: two faults of one of steps 0, 8, 9 and 10 that give two reasons, so that a step that
   stops at its first fault shows (the design's B5);
@@ -35,6 +37,7 @@ from hypothesis import strategies as st
 from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite
+from tests.property import alternatives_strategies as standings
 from tests.property import condition_strategies as conditions
 from tests.property import result_strategies as results
 from tests.property import stores
@@ -153,14 +156,16 @@ def valued(
     nominal: bool = False,
     unit_with_a_reason: bool = False,
     constant_under_bounds: bool = False,
+    interval_under_bounds: bool = False,
 ) -> Example:
     """A valued read; for a planned search's, with `nominal`, an interval's with a nominal always, with
-    `unit_with_a_reason`, evidence's with its unit a status object with a reason always, and with
-    `constant_under_bounds`, a constant's under `want: bounds` always."""
+    `unit_with_a_reason`, evidence's with its unit a status object with a reason always, with
+    `constant_under_bounds`, a constant's under `want: bounds` always, and with `interval_under_bounds`, an
+    interval's under `want: bounds` and with no nominal always."""
     way = draw(st.sampled_from(ways))
     if constant_under_bounds:
         form, drawn_read = "constant", draw(base_reads(size, FORM_FIELDS["constant"], "constant"))
-    elif nominal:
+    elif nominal or interval_under_bounds:
         form, drawn_read = "interval", draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
     elif unit_with_a_reason:
         form, drawn_read = "evidence", draw(base_reads(size, FORM_FIELDS["evidence"], "evidence"))
@@ -178,8 +183,10 @@ def valued(
     if form == "evidence" and (unit_with_a_reason or draw(st.booleans())):
         field_of(read)["unit"] = {"status": "not_applicable", "reason": "a list of test reports"}
         shown = (*shown, "unit_with_a_reason")
-    read = wanting(repinned(read), "bounds" if constant_under_bounds else a_want(draw, form))
-    if form == "interval" and (nominal or draw(st.booleans())):
+    read = wanting(
+        repinned(read), "bounds" if constant_under_bounds or interval_under_bounds else a_want(draw, form)
+    )
+    if form == "interval" and not interval_under_bounds and (nominal or draw(st.booleans())):
         nominal_way = draw(st.sampled_from(results.NOMINAL_WAYS))
         read = wanting(read, "bounds" if nominal_way == "under_bounds" else "value")
         with_a_nominal(read, draw(results.nominal_for(read.record, read.field, nominal_way)))
@@ -203,7 +210,7 @@ def beside_another_section(draw: Draw, read: Read) -> None:
 
 # Alternatives.
 
-ALTERNATIVE_WAYS = ("met", "met", "broken", "request_fault")
+ALTERNATIVE_WAYS = ("met", "met", "broken", "request_fault", "standing", "standing")
 # How a further alternative stands apart from the first beside its value, each in one draw in four: in a
 # world the read meets, its unit spelled otherwise, which step 9 refuses in it alone, or a specimen fact the
 # first does not hold; where the first raises a fault of the request, one of its own instead, two implied
@@ -240,10 +247,43 @@ def apart(draw: Draw, read: Read, field: JsonObject, way: str) -> tuple[JsonObje
 
 
 @st.composite
+def outcomes_of_step_7(
+    draw: Draw,
+    size: Size,
+    outcomes: tuple[str, ...] = standings.OUTCOMES,
+    *,
+    forms: tuple[str, ...] = standings.FORMS,
+    refusing_ways: tuple[str, ...] = standings.REFUSING,
+    under_a_nominal: bool = False,
+    set_aside_first: bool = False,
+) -> Example:
+    """S4a's alternatives, one of `outcomes` drawn first (`alternatives_strategies.py`, narrowed as a planned
+    search asks), under any claims: the way, the outcome and the base field's form planted, the way for its
+    own audit and the form for the form's."""
+    drawn = draw(
+        standings.alternatives(
+            size,
+            outcomes,
+            forms=forms,
+            refusing_ways=refusing_ways,
+            under_a_nominal=under_a_nominal,
+            set_aside_first=set_aside_first,
+        )
+    )
+    claims = draw(st.sampled_from(CLAIMS))
+    sources = (results.as_source(drawn.record),)
+    planted = ("standing", drawn.outcome, f"form_{drawn.form}")
+    return Example("alternatives", sources, text(drawn.request), claims, planted)
+
+
+@st.composite
 def alternatives(draw: Draw, size: Size, *, nominal: bool = False) -> Example:
     """Alternatives; with `nominal`, intervals the request meets under a nominal located at the read always, a
     planned search's."""
     way = "met" if nominal else draw(st.sampled_from(ALTERNATIVE_WAYS))
+    if way == "standing":
+        drawn_example: Example = draw(outcomes_of_step_7(size))
+        return drawn_example
     claims = draw(st.sampled_from(CLAIMS))
     if way == "broken":
         drawn = draw(results.broken_alternatives(size))

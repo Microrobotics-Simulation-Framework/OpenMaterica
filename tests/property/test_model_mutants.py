@@ -59,6 +59,10 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     # whole, which S2b-1 and S2b-2 had made draw every form, so a constant under `bounds` came up in one draw
     # in 35 (a constant in two in five, `bounds` in one `want` in 14).
     "constants": lambda size: strategies.valued(size, ("as_drawn", "implied"), constant_under_bounds=True),
+    # A planned search of the first part: an interval under `want: bounds`, with no nominal, every one of
+    # which the read gives its bounds for, `upper: none` among them. Drawn whole, `upper_none_as_infinity`
+    # died at the 503rd example at the small size once S4a's alternatives joined the part's draws.
+    "an interval under bounds": lambda size: strategies.valued(size, interval_under_bounds=True),
     # A planned search of the second part: a condition the request gives no tolerance for, which step 10
     # gives as `condition_unchecked` (HP1's mutant drops its condition there).
     "an unchecked condition": lambda size: strategies.step_9_or_10_faults(size, ("unchecked",)),
@@ -75,6 +79,19 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     # A planned search of the third part: step 0's catalogue, the first fault a nominal's.
     "nominals at step 0": lambda size: strategies.request_faults(size, strategies.NOMINAL_REQUEST_FAULTS),
     "unpinned": strategies.unpinned,
+    # A planned search of the first part: S4a's alternatives alone, each of step 7's outcomes drawn first; and
+    # three narrower, as `test_alternatives_mutants.py` plans HP27's: a refusal by a fault of the request, an
+    # interval under a nominal, and evidence whose first alternative an implied condition sets aside.
+    "outcomes of step 7": strategies.outcomes_of_step_7,
+    "a refusal by a fault of the request": lambda size: strategies.outcomes_of_step_7(
+        size, ("refused",), refusing_ways=("request_fault",)
+    ),
+    "an interval under a nominal": lambda size: strategies.outcomes_of_step_7(
+        size, ("refused", "one_left", "no_pick"), forms=("interval",), under_a_nominal=True
+    ),
+    "evidence set aside first": lambda size: strategies.outcomes_of_step_7(
+        size, ("no_pick",), forms=("evidence",), set_aside_first=True
+    ),
 }
 
 
@@ -347,7 +364,7 @@ IMPLEMENTATION = [
     ),
     Mutant(
         "upper_none_as_infinity",
-        "values",
+        "an interval under bounds",
         taken(result_mutants.MUTANTS, "upper_none_as_infinity"),
         ("form_interval",),
     ),
@@ -548,6 +565,12 @@ MODEL = [
         "nominal_applied_under_no_pick", "alternatives under a nominal", ("nominal_over_alternatives",)
     ),
     ModelFault("nominal_outside_supplies_the_value", "values under a nominal", ("nominal_outside",)),
+    # S4a's step 7, the five of its faults one case file alone kills.
+    ModelFault("request_fault_sets_aside", "a refusal by a fault of the request", ("refused",)),
+    ModelFault("nominal_not_applied_to_the_one_left", "an interval under a nominal", ("one_left",)),
+    ModelFault("unknown_reasons_dropped_beside_no_pick", "outcomes of step 7", ("want_mismatch", "no_pick")),
+    ModelFault("set_aside_reasons_beside_no_pick", "outcomes of step 7", ("want_mismatch", "no_pick")),
+    ModelFault("unit_of_the_first_stored_alternative", "evidence set aside first", ("no_pick",)),
 ]
 
 

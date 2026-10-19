@@ -2,10 +2,17 @@
 """HP12's mutant table (`test_model_mutants.py`) read whole, in a module apart from its searches, so that it
 runs on every Python (`--property-controls` in `tests/conftest.py`)."""
 
+import pytest
+from hypothesis import given, settings
+
+from tests.conftest import EXAMPLES
 from tests.property import model_strategies as strategies
+from tests.property.alternatives_strategies import OUTCOMES
 from tests.property.condition_strategies import FAULTS
 from tests.property.result_strategies import REVIEWS
-from tests.property.test_model_mutants import IMPLEMENTATION, KILLERS, MODEL, NOT_SHOWN
+from tests.property.strategies import ORIGINAL, SMALL, Size
+from tests.property.support import MARGIN
+from tests.property.test_model_mutants import IMPLEMENTATION, KILLERS, MODEL, NOT_SHOWN, agreement
 from tests.property.value_field_strategies import CATALOGUE
 from tests.reference.mutants import MUTANTS as MODEL_FAULTS
 
@@ -31,6 +38,7 @@ SHOWN = {
     "form_evidence",
     "unit_with_a_reason",
     *strategies.NOMINAL_PLANTS,
+    *OUTCOMES,
 }
 
 
@@ -54,3 +62,25 @@ def test_every_fault_of_the_model_no_case_kills_is_killed_here_or_said_why_it_ca
     survivors = {name for name, fault in MODEL_FAULTS.items() if fault.survives is not None}
     assert survivors <= searched | NOT_SHOWN.keys(), survivors - searched - NOT_SHOWN.keys()
     assert all(reason.strip() for reason in NOT_SHOWN.values())
+
+
+# S4a's planned searches of the first part, and `upper_none_as_infinity`'s: each draws a region, and must draw
+# only reads the core agrees with the model on, so that a mutant it kills dies of its fault.
+PLANNED_BY_S4A = (
+    "outcomes of step 7",
+    "a refusal by a fault of the request",
+    "an interval under a nominal",
+    "evidence set aside first",
+    "an interval under bounds",
+)
+
+
+@pytest.mark.parametrize("size", [pytest.param(SMALL, id="small"), pytest.param(ORIGINAL, id="original")])
+@pytest.mark.parametrize("name", PLANNED_BY_S4A)
+def test_a_planned_search_draws_only_reads_the_core_agrees_with_the_model_on(name: str, size: Size) -> None:
+    @settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], MARGIN), deadline=None)
+    @given(KILLERS[name](size))
+    def run(example: strategies.Example) -> None:
+        agreement(example)
+
+    run()
