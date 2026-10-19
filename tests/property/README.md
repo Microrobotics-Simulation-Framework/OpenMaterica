@@ -768,9 +768,18 @@ member, a review's way, a statistics status object) one of which the example tha
 is the examples the derandomised search took, at the small and the original size. Phase A's `condition_unchecked_without_its_condition` died at 1,079 of
 2,000 at the small size; since its fault's kind is drawn as one of its own (`unknown_at_step_10`), over twelve
 random seeds a search it dies within 507, `reasons_not_merged` within 115 and `best_status` within 310 (they
-took up to 1,459 and 1,587 over 24). Two HP1 mutants die at a fault of step 8 and at one of steps 9 and 10
-alike, as the comments above them in `test_result_mutants.py` say, and the two of a code the table does not
-hold die at a fault of step 8 too, as their comments say. S2b-1's six die at an interval or a
+took up to 1,459 and 1,587 over 24). On main on 2026-10-19 it died at the 10th and 20th examples, but over 24
+seed salts (as for the three searches above) at up to the 546th at the small size and the 1,064th at the
+original, after the 500th in 4 of the 48; so its search is planned, HP1 over its `unknown_at_step_10` kind with
+the fault `unchecked` first ("HP1, an unchecked condition"). Of 2,000 examples of that strategy, at a
+derandomised seed and at a random one, 1,657 and 1,640 kill it at the small size and 1,624 and 1,578 at the
+original; the others draw a second fault, of step 9, which ends the read before step 10. It dies at the 2nd
+example at both sizes, alone and in each of the 24 salts (measured 2026-10-19). Its "dies at" cell names the one
+label every example of that strategy shows, so for this search it describes the draw, not a region found.
+`reasons_not_merged` dies at a
+fault of step 8 and at one of steps 9 and 10 alike, as the comment above it in `test_result_mutants.py` says,
+and the two of a code the table does not hold die at a fault of step 8 too, as their comments say. S2b-1's six
+die at an interval or a
 composition (`form_interval`, `form_composition`), the S2 design's other HP6 mutant, an interval's `upper: none`
 read as infinity, among them; HP2's `no_statistics_beside_a_composition` took 1,708 and 1,831 examples while
 `met` reads drew their `want` among all of plain read's, and since they take their form's own in half the
@@ -798,7 +807,7 @@ it, as its comment says.
 <!-- kill points of every search of test_result_mutants.py::test_the_result_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
-| `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1 | `step_8_fault`, `step_9_or_10_fault`, `unknown_at_step_10` | 10, 20 |
+| `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1, an unchecked condition (planned) | `unknown_at_step_10` | 2, 2 |
 | `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 | `met`, `met_own_member`, `nominal`, `step_9_or_10_fault`, `unknown_at_step_10` | 179, 108 |
 | `a_code_outside_the_table` | step 13's refusal under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `met`, `step_8_fault`, `nominal_elsewhere` | 44, 47 |
 | `reasons_not_merged` | a reason found twice given twice | HP1 | `step_8_fault`, `step_9_or_10_fault` | 66, 29 |
@@ -845,12 +854,19 @@ its faults no case file kills, and the ten one case file alone kills. Each dies 
 profile's examples at both sizes, at an example that shows one of the parts, ways, steps or planted rules it
 names; a search marked "planned" draws step 8's faults among those named first, or the first part's constants
 at a boundary, as HP3's planned searches do, where HP12's own draws meet the fault too seldom for a safe
-margin (each measured over six to twelve random seeds). One more is planned since 2026-10-19:
-`bounds_given_by_a_constant`, whose planned search drew `valued` whole, every form since S2b-1 and S2b-2 (a
-constant under `bounds` in one draw in 35), died at the 139th and 523rd and over 24 seed salts at up to the 934th
-and 594th; it is searched among constants under `want: bounds`, as drawn or with an implied temperature, every
-one of which kills it (2,000 of 2,000 at both sizes and at a derandomised seed and a random one), and no example
-failed on the core. It dies at the 1st example, at both sizes and in each salt (measured 2026-10-19). S2b-1's: three of HP3's planned on an own member, HP6's `upper: none`
+margin (each measured over six to twelve random seeds). Two more are planned since 2026-10-19, each late over
+24 seed salts: HP1's `condition_unchecked_without_its_condition`, drawn with the faults' part whole, died at
+the 128th and 168th examples and over the salts at up to the 598th and 811th; it is searched among reads whose
+fault of steps 9 and 10 is `unchecked` ("an unchecked condition"): of 2,000 of its examples, at two seeds as
+above, 1,446 and 1,527 kill it at the small size and 1,570 and 1,562 at the original (the others draw a second
+fault, of step 9, which ends the read there, or a `want` of a suite the claims leave out, which step 0
+refuses). And `bounds_given_by_a_constant`, whose planned search drew `valued` whole, every form since S2b-1
+and S2b-2 (a constant under `bounds` in one draw in 35), died at the 139th and 523rd and over the salts at up
+to the 934th and 594th; it is searched among constants under `want: bounds`, as drawn or with an implied
+temperature, every one of which kills it (2,000 of 2,000 at both sizes and both seeds). No example of the three
+strategies failed on the core. They die at the 2nd and the 1st example, at both sizes and in each salt
+(measured 2026-10-19). The "dies at" cells of these two name the label every example of their strategy
+shows, so they describe the draws, not regions found. S2b-1's: three of HP3's planned on an own member, HP6's `upper: none`
 as infinity and normalised components, and two faults of the model that case files kill, held here on the forms
 S2b-1 reads.
 
@@ -864,7 +880,7 @@ S2b-1 reads.
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` too | unpinned | `broken_status_object` | 10, 45 |
 | `declaration_names_ignored` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | unpinned | `names_a_declaration_gives_a_requirement` | 47, 38 |
 | `implied_members_of_the_other_kind_ignored` | an implied value's member of the other kind's shape, and a slip of one, ignored | unpinned | `implied_member_of_the_other_kind` | 26, 51 |
-| `condition_unchecked_without_its_condition` | HP1's | faults | `unchecked`, `step_8` (a passing fault of step 8, read on to step 10) | 128, 168 |
+| `condition_unchecked_without_its_condition` | HP1's (planned) | an unchecked condition | `unchecked` | 2, 2 |
 | `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 9, 27 |
 | `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 43, 4 |
 | `missing_represents_accepted` | HP3's (planned) | faults | `statistics_members.represents_missing` | 1, 1 |

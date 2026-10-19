@@ -263,10 +263,11 @@ UNKNOWN_AT_STEP_10 = ("unchecked", "unstated", "unknown_name", "uncertain")
 
 
 @st.composite
-def unknown_at_step_10(draw: Draw, size: Size) -> Drawn:
-    """One of those faults, beside, in half the draws, a token the request does not accept, which ends the
-    read at step 10 (`not_met`): a result that holds reasons of both statuses."""
-    faulty = draw(faulty_reads(UNKNOWN_AT_STEP_10, size))
+def unknown_at_step_10(draw: Draw, size: Size, among: tuple[str, ...] = UNKNOWN_AT_STEP_10) -> Drawn:
+    """One of those faults (or of `among`, a planned search's), beside, in half the draws, a token the request
+    does not accept, which ends the read at step 10 (`not_met`): a result that holds reasons of both
+    statuses."""
+    faulty = draw(faulty_reads(among, size))
     if draw(st.booleans()):
         not_accepted(draw, faulty.read)
     return from_read(

@@ -300,8 +300,9 @@ def step_8_faults(draw: Draw, size: Size, among: tuple[str, ...] = ()) -> Exampl
 
 
 @st.composite
-def step_9_or_10_faults(draw: Draw, size: Size) -> Example:
-    faulty = draw(conditions.faulty_reads(tuple(conditions.FAULTS), size))
+def step_9_or_10_faults(draw: Draw, size: Size, among: tuple[str, ...] = tuple(conditions.FAULTS)) -> Example:
+    """A read with a fault of steps 9 and 10, its first among `among`: all of them, or a planned search's."""
+    faulty = draw(conditions.faulty_reads(among, size))
     read = wanting(faulty.read, draw(st.sampled_from(WANTS)))
     return example("steps_9_and_10", read, draw(st.sampled_from(CLAIMS)), *faulty.faults)
 

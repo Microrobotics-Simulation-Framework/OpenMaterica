@@ -922,6 +922,18 @@ every family entry goes in `families/CHANGELOG.md`.
   none fails on the core; it dies at the 1st example at both sizes and in all 24 salts. The properties, budgets,
   sizes, catalogues and the mutant tables' members are unchanged, and no other kill point moved
   (`tests/property/README.md`).
+- One more mutant search is planned (maintainer, 2026-10-19): HP1's `condition_unchecked_without_its_condition`,
+  in the result's group and in HP12's. With the pin it died at the 10th and 20th, and the 128th and 168th
+  examples (small, original); reseeded 24 times with the code unchanged, drawn whole, it took up to 1,064 and
+  811 examples, after the 500th in four of its 48 searches in each group. Each search now draws the region where
+  its fault shows: HP1's `unknown_at_step_10` kind with the fault `unchecked`, and HP12's reads with that fault of
+  step 10 (`result_strategies.unknown_at_step_10` and `model_strategies.step_9_or_10_faults` take the faults to
+  draw first, their default unchanged). Of 2,000 examples of each, at both sizes, at a derandomised seed and at a
+  random one, 1,446 to 1,657 kill (the others draw a second fault, of step 9, which ends the read before step 10,
+  or a `want` of a suite the claims leave out, which step 0 refuses), and none fails on the core; each dies at the
+  2nd example at both sizes and in all 24 salts. The two cells that name where it dies now name what the search
+  draws, not a measurement. The properties, budgets, sizes, catalogues and the mutant tables' members are
+  unchanged, and no other kill point moved (`tests/property/README.md`).
 - The property README's kill counts are generated, and a kill after the 500th example fails a check (maintainer,
   2026-10-18 and 2026-10-19), so that stacked pull requests stop conflicting on them and none goes stale, as 27 of
   its 265 rows of counts had;

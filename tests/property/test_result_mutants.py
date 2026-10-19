@@ -32,7 +32,15 @@ from materica.core.value_shapes import JsonObject
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite, Want
 from tests.property import test_result_properties as properties
-from tests.property.result_strategies import KINDS, REVIEWS, Drawn, drawn_reads, nominal_reads, valued_reads
+from tests.property.result_strategies import (
+    KINDS,
+    REVIEWS,
+    Drawn,
+    drawn_reads,
+    nominal_reads,
+    unknown_at_step_10,
+    valued_reads,
+)
 from tests.property.strategies import ORIGINAL, SMALL, Size
 from tests.property.test_condition_mutants import kill
 from tests.property.test_mutants import setting
@@ -45,6 +53,12 @@ def kind(drawn: Drawn) -> set[str]:
 # Each property that kills a mutant, by name: its examples at a size and its check.
 KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any], None]]] = {
     "HP1": (drawn_reads, properties.check_totality),
+    # A planned search of HP1: the reads of its `unknown_at_step_10` kind whose fault is a condition the
+    # request gives no tolerance for, which step 10 gives as `condition_unchecked`.
+    "HP1, an unchecked condition": (
+        lambda size: unknown_at_step_10(size, ("unchecked",)),
+        properties.check_totality,
+    ),
     "HP2": (drawn_reads, properties.check_status_law),
     # A planned search of HP2: the reads under a nominal alone, whose mutants HP2's eleven kinds meet too
     # seldom for a safe margin (over twelve random seeds, one survived 2,000 examples).
@@ -345,12 +359,13 @@ MUTANTS = [
     # `condition` is on "every `condition_*` reason" (`read_side_contract.md` section 2 item 2), whatever
     # the read's kind: a fault of step 8's catalogue that step 8 passes (an unknown condition name) reaches
     # step 10, where a condition the record states and the request gives no tolerance or accept list for
-    # gives `condition_unchecked`, so this dies at a step 8 fault as well.
+    # gives `condition_unchecked`, so HP1 whole killed this at a step 8 fault as well. Over 24 seeds it
+    # took up to 1,064 examples that way (2026-10-19), so its search is planned.
     Mutant(
         "condition_unchecked_without_its_condition",
-        "HP1",
+        "HP1, an unchecked condition",
         setting(conditions, "_compared", _unchecked_without_its_condition),
-        ("step_8_fault", "step_9_or_10_fault", "unknown_at_step_10"),
+        ("unknown_at_step_10",),
     ),
     Mutant(
         "stated_without_origin_with_a_condition",
