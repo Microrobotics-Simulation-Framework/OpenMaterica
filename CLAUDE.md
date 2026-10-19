@@ -33,6 +33,11 @@ This repository is public. Everything in it, this file and commit messages inclu
   description and open points. The rest is sampled: tests, case files and generated files, and the source
   code that is neither the public API nor a schema (modules, scripts, workflows). The independent review and
   CI are the line-level check.
+- **Proportionality** (maintainer, 2026-10-17). A finding that matters only where real data is very unlikely
+  to reach (magnitudes among the subnormals, say) gets no new machinery once that is shown: the text states the
+  limit, so it is never silent, and the decision is recorded. If real data is found to reach it, it is raised as
+  an issue and becomes a known anomaly. Reviews mark each finding by whether it can change a value or a refusal
+  a consumer sees on data a real record could hold. Exactness already built stays.
 - **Prototype before standardising.** A claim about the design is tested by the cheapest prototype that could
   show it wrong, pre-registered (criteria and predictions written before the run), with a control that must
   come out differently if the claim is false. A pass told to break the pre-registration reviews it before the

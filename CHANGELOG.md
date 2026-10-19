@@ -166,6 +166,10 @@ every family entry goes in `families/CHANGELOG.md`.
   README's documentation table links it and the examples.
 
 ### Changed
+- `CLAUDE.md` states the proportionality rule (maintainer, 2026-10-17) beside the review budget it was decided
+  with: a finding that matters only where real data is very unlikely to reach gets a stated limit, not new
+  machinery, and becomes a known anomaly if real data is found to reach it; reviews mark each finding by whether
+  it can change a value or a refusal a consumer sees on data a real record could hold.
 - The pre-review script's trace test (`tests/unit/test_pre_review.py`, run where `MATERICA_TRACE_SELECTION=1`)
   no longer depends on the Python bytecode cache. With a warm `__pycache__` the import system reads a module's
   `.pyc`, which the trace ignores, and never opens its source; with a cold one it opens the source, so the test
