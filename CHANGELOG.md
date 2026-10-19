@@ -913,6 +913,39 @@ every family entry goes in `families/CHANGELOG.md`.
   pins, 15 of them, each killed by HP12 or listed with the reason no read S2 builds shows it; and a layering
   check, with a control, shows it reaches no `materica` module (`tests/reference/`). Phase B fixed five of its
   readings the text does not take, each found by HP12 or by fuzz target 4 held to it, each seeded since.
+- One more mutant search is planned (maintainer, 2026-10-19): HP12's `bounds_given_by_a_constant`. With the pin it
+  died at the 139th and 523rd examples (small, original); reseeded 24 times with the code unchanged, drawn whole,
+  it took up to 934 and 594 examples, after the 500th in five of its 48 searches. Its planned search, constants
+  alone, had drawn `valued` whole since S2b-1 and S2b-2 made it draw every form, so that a constant under
+  `want: bounds` came up in one draw in 35. It now draws constants under `want: bounds`, as drawn or with an
+  implied temperature. Of 2,000 examples, at both sizes, at a derandomised seed and at a random one, all kill, and
+  none fails on the core; it dies at the 1st example at both sizes and in all 24 salts. The properties, budgets,
+  sizes, catalogues and the mutant tables' members are unchanged, and no other kill point moved
+  (`tests/property/README.md`).
+- The property README's kill counts are generated, and a kill after the 500th example fails a check (maintainer,
+  2026-10-18 and 2026-10-19), so that stacked pull requests stop conflicting on them and none goes stale, as 27 of
+  its 265 rows of counts had;
+  its summary named the 276th example as the latest kill of 544, where 874 searches ran and the latest was the
+  523rd. `tests/property/kill_points.json` records every mutant search's kill point at both sizes, one group per
+  test function and one line per mutant, and what they depend on (the Hypothesis version, and a digest of the
+  source of each helper that runs a derandomised search, since Hypothesis seeds a search from it and editing it
+  moves hundreds of kills at once), written by `scripts/gen_kill_counts.py` from the JUnit reports pytest
+  writes (`examples_to_kill`) and never by hand; the script writes from it the last cell of each row of the tables
+  under a comment naming their group, and the summary. `--check`, beside the other generators in CI's
+  generated-files job, the per-commit job and `scripts/pre_review.py`, fails where a count differs, where an input
+  differs from the tree's (naming it), where a recorded group has no table, where a table of every search of its
+  group lacks a recorded mutant's row, or where a kill falls after the 500th example: the margin guard, which
+  names each such search (a recorded kill at the 501st fails it, at the 500th passes); the guard bounds the pinned
+  seed's kill, not the margin over other seeds. CI's controls job holds the file to its own run of every search on
+  Python 3.11 and 3.15 (`--against` its JUnit report): a kill that moved, a search not recorded, a recorded one
+  with no kill, a recorded group missing from the run, a search that passed without recording its kill, and a
+  README row naming a search that did not run each fail it; `pre_review.py` runs the same check (`--measure`) wherever it runs a shard that
+  holds mutant searches. A search's kill does not depend on the profile or the Python (the 874 were the same at
+  `dev` and `ci` and on 3.11 and 3.15), so a local run records CI's: `--measure --record` runs every search and
+  records it. The one-slip relation's table gives one row a mutant, and the unrestricted twins' kills a table.
+  The table evaluator's 18 mutant searches (`test_evaluate_mutants.py`) are recorded with the rest, their README
+  table under a comment naming its group: the recorded counts equal the ones typed there, and the latest kill is
+  the 96th example (`loglog_not_exact_at_ties`, original size), so none needs a plan.
 
 ### Known Anomalies
 - The registry's `materica_version` is the package's version, `0.1.0.dev1`: it still read `0.1.0.dev0` after

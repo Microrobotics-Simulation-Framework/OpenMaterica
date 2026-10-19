@@ -53,8 +53,12 @@ def shown(example: Example) -> set[str]:
 # Each part of HP12 that kills a mutant, by name: its examples at a size.
 KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     "values": lambda size: strategies.drawn(size, properties.PARTS["valued"]),
-    # A planned search of the first part: constants alone, under every `want`.
-    "constants": strategies.valued,
+    # A planned search of the first part: constants under `want: bounds`, as drawn or with an implied
+    # temperature, every one of which the read meets and so asks of its form (not at a boundary, where a
+    # constant may lie outside its tolerance and end the read at step 10). Until 2026-10-19 it drew `valued`
+    # whole, which S2b-1 and S2b-2 had made draw every form, so a constant under `bounds` came up in one draw
+    # in 35 (a constant in two in five, `bounds` in one `want` in 14).
+    "constants": lambda size: strategies.valued(size, ("as_drawn", "implied"), constant_under_bounds=True),
     # A planned search of the first part: constants at section 5's boundaries alone.
     "values at a boundary": lambda size: strategies.valued(size, ("at_a_boundary",)),
     # Planned searches of the first part: an interval's read under a nominal, alone and over alternatives.
@@ -428,7 +432,7 @@ IMPLEMENTATION = [
         "bounds_given_by_a_constant",
         "constants",
         setting(read, "_by_want", _bounds_given_by_a_constant),
-        ("valued", "alternatives"),
+        ("valued",),
     ),
     Mutant(
         "minus_zero_given_as_zero",

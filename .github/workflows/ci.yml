@@ -337,10 +337,12 @@ jobs:
       - run: uv sync --locked
       # Each regenerates its files in memory and fails where one on disk differs (CONTRIBUTING, "Changing the
       # schema"): the vocabulary from the specification's tables, the reader schema and the shapes from the
-      # writer schemas.
+      # writer schemas, and the property README's kill counts from `tests/property/kill_points.json`, which
+      # also fails on a kill after the 500th example (the margin guard).
       - run: uv run python scripts/gen_vocabulary.py --check
       - run: uv run python scripts/gen_reader_schema.py --check
       - run: uv run python scripts/gen_shapes.py --check
+      - run: uv run python scripts/gen_kill_counts.py --check
 
   tests:
     name: tests (Python ${{ matrix.python }})
@@ -470,6 +472,13 @@ jobs:
           pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
+      # Each search's kill point, as the report gives it, is the one `tests/property/kill_points.json` records,
+      # every recorded group and search ran and recorded its kill, and every row of the property README's
+      # tables names one that ran: the
+      # README's counts are written from that file, so this holds them to the code at the head. A search's
+      # kill does not depend on the profile or the Python (scripts/gen_kill_counts.py).
+      - name: Each kill point is the recorded one
+        run: uv run python scripts/gen_kill_counts.py --against "$RUNNER_TEMP/durations.xml"
       - name: Test durations
         if: always() && steps.pytest.outcome != 'skipped'
         env:
@@ -756,6 +765,7 @@ jobs:
           uv run --locked --python 3.11 python scripts/gen_vocabulary.py --check
           uv run --locked --python 3.11 python scripts/gen_reader_schema.py --check
           uv run --locked --python 3.11 python scripts/gen_shapes.py --check
+          uv run --locked --python 3.11 python scripts/gen_kill_counts.py --check
       # The whole suite, as an agent runs it locally, under the interrupt the tests job's comment describes.
       - id: pytest
         if: steps.passed.outputs.cache-hit != 'true'

@@ -47,7 +47,9 @@ def run_paths(checks: list[Planned]) -> set[str]:
 
 def shards(checks: list[Planned]) -> set[str]:
     return {
-        check.command[check.command.index("--shard") + 1] for check in checks if check.stage == "properties"
+        check.command[check.command.index("--shard") + 1]
+        for check in checks
+        if check.stage == "properties" and "--shard" in check.command
     }
 
 
@@ -188,6 +190,42 @@ def test_a_mutant_module_and_its_table_run_with_their_shard() -> None:
     assert "step8_mutants" not in shards(plan("tests/property/test_writer_mutant_table.py")[0])
 
 
+MEASURE = "uv run --locked python scripts/gen_kill_counts.py --measure --workers 3"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "tests/property/test_result_mutants.py",
+        "tests/property/model_strategies.py",
+        "src/materica/core/read.py",
+        "tests/property/kill_points.json",
+        "tests/property/README.md",
+    ],
+)
+def test_a_change_that_can_move_a_kill_or_a_count_measures_every_search_against_the_file(path: str) -> None:
+    checks, uncovered = plan(path)
+    assert MEASURE in commands(checks, "properties")
+    assert uncovered == []
+
+
+@pytest.mark.parametrize(
+    "path", ["tests/property/test_validators_agree.py", "scripts/check_signoff.py", "CHANGELOG.md"]
+)
+def test_a_change_that_cannot_move_a_kill_does_not_measure(path: str) -> None:
+    """The controls: a shard that holds no mutant search (the agreement), a script, documentation."""
+    assert MEASURE not in commands(plan(path)[0])
+
+
+def test_the_kill_counts_file_and_readme_run_the_generators_tests_and_check() -> None:
+    for path in ("tests/property/kill_points.json", "tests/property/README.md"):
+        checks, _ = plan(path)
+        assert "tests/unit/test_gen_kill_counts.py" in run_paths(checks)
+        assert any(
+            command.endswith("scripts/gen_kill_counts.py --check") for command in commands(checks, "fast")
+        )
+
+
 def test_a_property_helper_runs_the_shards_of_the_modules_that_import_it() -> None:
     checks, _ = plan("tests/property/audits.py")
     assert "tests/unit/test_audits.py" in run_paths(checks)
@@ -289,7 +327,7 @@ def test_a_change_selects_each_check_once_with_every_path_that_selected_it() -> 
 
 def test_a_change_no_rule_selects_a_check_for_is_listed() -> None:
     assert plan("CHANGELOG.md")[1] == ["CHANGELOG.md"]
-    assert plan("tests/property/README.md")[1] == ["tests/property/README.md"]
+    assert plan("tests/conformance/README.md")[1] == ["tests/conformance/README.md"]
     assert plan("site/other.html", "scripts/check_signoff.py")[1] == ["site/other.html"]  # control: covered
 
 
@@ -389,8 +427,8 @@ def test_a_file_under_tests_outside_every_group_selects_the_whole_unit_directory
         assert uncovered == []
         assert any("in no group of tests" in cause for cause in run.because)
     # controls: a file in a group of tests that no rule reads is listed; the snippet's is the static job's
-    checks, uncovered = plan("tests/property/README.md")
-    assert uncovered == ["tests/property/README.md"]
+    checks, uncovered = plan("tests/conformance/README.md")
+    assert uncovered == ["tests/conformance/README.md"]
     assert "tests/unit" not in run_paths(checks)
     checks, uncovered = plan("tests/typing/zz_other.md")
     assert "tests/unit" not in run_paths(checks)
@@ -458,6 +496,8 @@ SCHEMA_READERS = ("tests/unit/test_freeze_schema.py", "tests/unit/test_schema_in
             ("tests/examples/test_quickstart.py", "tests/examples/test_example_records.py"),
         ),
         ("scripts/pre-push", ("tests/unit/test_check_confidential.py",)),
+        ("tests/property/kill_points.json", ("tests/unit/test_gen_kill_counts.py",)),
+        ("tests/property/README.md", ("tests/unit/test_gen_kill_counts.py",)),
         (
             ".github/workflows/ci.yml",
             (

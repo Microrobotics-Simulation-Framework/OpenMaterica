@@ -386,17 +386,55 @@ counted, not lost in its report.
 
 A derandomized run draws none of the constants Hypothesis harvests from the loaded modules
 (`tests/harvested_constants.py`), so a search's examples, and its count, depend on the code alone: the mutant,
-the property's strategy and check, and the versions of Hypothesis and Python, not which other modules the
-process imported or in what order. Until 2026-10-18 they did not: Hypothesis (6.169) takes a constant in about
+the property's strategy and check, the version of Hypothesis, and the source of the `kill` helper that runs the
+search (below), not which other modules the process imported or in what order. Until 2026-10-18 they did not: Hypothesis (6.169) takes a constant in about
 one draw in twenty, half the time one it found in a loaded module outside `tests/`, and `derandomize=True`
 fixes the seed, not those constants, so a module added for any reason could move kills in every shard or let a
 mutant survive. #43's `scripts/check_anomalies.py`, collected through its unit tests, moved 13 of the 544
 kills that `--property-controls only` measures, and `a_non_object_provenance_opens` survived 2,000 examples at
 the original size; a module of 270 other constants loaded beside the suite moved 47, and each mutant module
 collected alone, 62. With the constants pinned, none of the 544 moved in any of those runs, nor on Python 3.11
-against 3.15 (measured 2026-10-18, as are the counts below). Each mutant dies within its 2,000 examples, at
-both sizes; the latest kill is at the 276th example (`id_pattern_searched`, small size), and none of the 544
-comes after the 500th (measured 2026-10-18, after the three searches below were planned).
+against 3.15 (measured 2026-10-18).
+
+No kill count here is typed. `kill_points.json` records each search's kill point at the small and the original
+size, and `scripts/gen_kill_counts.py` writes from it the last cell of each row of the tables under a comment
+naming their group, and the sentence below. The file is recorded from a run of every search (`uv run python
+scripts/gen_kill_counts.py --measure --record`, about 45 seconds of tests on 8 to 12 workers). A search's kill
+does not depend on the profile or the Python (the 874 kills of 2026-10-19 were the same at `dev` and `ci`, and
+on 3.11 and 3.15), so a local run records CI's.
+
+What a kill does depend on, beyond the strategies and checks a search draws, the file records under `inputs`:
+the Hypothesis version (`uv.lock`), and a digest of the source of each `kill` helper that runs a search (the
+function `search` it defines, `@MUTANT_SEARCH`-decorated, which Hypothesis hashes into the seed, comments and
+blank lines left out as it leaves them out) and of `MUTANT_SEARCH`. That source is the same text for every
+mutant a helper searches, so editing it re-seeds all of them. The condition group's helper is also the
+result, invariance, monotonicity and model groups' (366 of the 874 searches). Measured on a scratch copy
+(2026-10-19): comment lines added beside the search and inside it moved no kill; renaming one local
+(`first`) throughout the helper moved 247 of those 366 searches, and one (`two_nominals_for_one_field`, small
+size) re-seeded to an example outside its "dies at" labels and failed its own assertion. `--check`,
+`--against` and a failed `--measure` name the input that differs from the tree first, so that a re-seed never
+shows as an unexplained wall of moved kills; the cure is to record again (`--measure --record`), and then to
+read the margin guard's list, a re-seeded kill past the 500th being a new fact about its search. The digest is
+of the text, so it also flags an edit to the search function that moves nothing, such as a comment after code
+on a line.
+
+Two checks hold the counts. `--check`, beside the other generators, fails where a count here differs from the
+file, where an input differs from the tree's, where a recorded group has no table here (but the writer's and
+the records', which have none), where a table of every search of its group lacks a recorded mutant's row, or
+where a kill falls after the 500th example: the margin guard (maintainer, 2026-10-19), which names each such
+search, to be planned as below. The guard bounds the pinned seed's kill, not the margin: a search that is early
+at this seed and long over others is not seen by it (below). CI's `controls` job, which runs every search on
+Python 3.11 and 3.15, holds the file to its own run (`--against`): it fails where a kill point differs, a search
+it ran is not recorded, a recorded group is missing from its run (a test function renamed or deleted leaves
+counts nothing runs; `--measure --record` drops it), a search passed without recording `examples_to_kill`
+(which neither the file, the counts nor the guard would otherwise see), or a row of these tables names a search
+it did not run. A pull request that adds or moves a mutant records again; a row of a mutant the file does not
+hold yet passes `--check`, so that a stacked branch's older commits stand, and fails at the head against CI's
+run.
+
+<!-- kill points summary (scripts/gen_kill_counts.py) -->
+`kill_points.json` records 910 searches, 455 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+<!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
 the code, but where the kill is late, a change that moves the seed (a Hypothesis upgrade, or any other change to
@@ -437,7 +475,7 @@ is not a margin. What it shows is the number of the planned examples that kill: 
 three (the slip's first draw, `Pair('s', '')`, is the degenerate whole name `''` against `s`, not `x__y` against
 `x_s_y`; 1,996 of its 2,000 contain an underscore).
 
-Every count in these tables is one seed's: the derandomised search's, in one shard's run. Another seed takes
+Every count in these tables is one seed's: the derandomised search's. Another seed takes
 another count, often several times larger or smaller (PR #37's review measured 19 and 1,406 for a mutant
 listed at 52 and 414), so a count says how a search went, not a mutant's margin to the 2,000 examples. That
 margin is a seed sweep's, which the tables give where one was run: the examples a search took over many
@@ -452,16 +490,23 @@ mutants' view, without a fault, is the core's), `test_value_field_mutant_table.p
 `test_invariance_mutant_table.py` and `test_monotonicity_mutant_table.py`.
 
 `test_mutants.py` also gives the one-slip relation twelve faults, each killed by (9) (its strategy has no size,
-so both sizes take the same examples; measured 2026-10-18):
+so both sizes take the same examples):
 
+<!-- kill points of some searches of test_mutants.py::test_the_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Examples |
 |---|---|---|
-| `substitution_missed`, `insertion_missed`, `underscore_missed`, `swap_missed`, `plural_missed` | a kind of slip missed | 19, 1, 28, 3, 23 |
-| `underscore_read_as_a_character` | an underscore added is named a character added | 28 |
-| `two_characters_added_one_slip` | two characters added at the end are one slip | 38 |
-| `swap_of_any_two_characters` | two characters swapped far apart are one slip | 11 |
-| `ies_plural_missed`, `es_plural_missed`, `irregular_plurals_missed` | a plural section 10 lists missed | 155, 38, 114 |
-| `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural | 1 (planned) |
+| `substitution_missed` | a character substituted missed | 19, 19 |
+| `insertion_missed` | a character inserted or deleted missed | 1, 1 |
+| `underscore_missed` | an underscore added or removed missed | 28, 28 |
+| `swap_missed` | two adjacent characters swapped missed | 3, 3 |
+| `plural_missed` | a word made plural or singular missed | 23, 23 |
+| `underscore_read_as_a_character` | an underscore added is named a character added | 28, 28 |
+| `two_characters_added_one_slip` | two characters added at the end are one slip | 38, 38 |
+| `swap_of_any_two_characters` | two characters swapped far apart are one slip | 11, 11 |
+| `ies_plural_missed` | a final `y` made `ies`, a plural section 10 lists, missed | 155, 155 |
+| `es_plural_missed` | `es` added, a plural section 10 lists, missed | 38, 38 |
+| `irregular_plurals_missed` | an irregular plural section 10 lists missed | 114, 114 |
+| `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural (planned) | 1, 1 |
 
 The last is the relation as it stood until the property found it: `x__y` and `x_s_y` are one character apart,
 but `x__y` and `x_es_y` two, which it called one plural.
@@ -501,7 +546,7 @@ those 21 were measured: each died within its 2,000 examples at both sizes but `w
 whole meets one fault of 154 too seldom to kill each such mutant every time at `ci`, so the planned search is
 what shows HP3 refuses each fault, and the region audit that HP3 draws it; each of the review's eleven rules
 also has a deterministic read in `tests/unit/test_read.py`. The kill is the examples the derandomised search
-took, at the small and the original size (measured 2026-10-18).
+took, at the small and the original size.
 
 Two of the first 25, `missing_represents_accepted` and `named_state_text_unchecked`, have had planned searches
 since 2026-10-16: searched with HP3 whole, each survived 2,000 examples at the small size once the suite held
@@ -522,6 +567,7 @@ died after 3 to 1,297 examples. HP5's two, `unknown_members_refused` and `two_sl
 searched whole: HP5 draws no fault of the catalogue to name, and nearly every example it draws kills each, at
 the second example at both sizes in each of those runs.
 
+<!-- kill points of every search of test_value_field_mutants.py::test_the_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `unknown_tokens_ignored` | a token the reader knows for no member of its name is accepted | HP3 | the 20 faults of a token unknown to its member (`UNKNOWN_TOKENS`), S2b-1's seven among them | 1, 1 |
@@ -636,7 +682,7 @@ places of its additions), the example that kills it must hold one. HP7's and HP9
 both sizes take the same examples. Three rules no property draws are searched alike over the deterministic
 tables of `tests/unit/test_read.py` that check them: an implied condition located elsewhere, read end to end
 ("located elsewhere"), and the implied conditions step 0 refuses ("step 0"). The kill is the examples the
-derandomised search took, at the small and the original size (measured 2026-10-18).
+derandomised search took, at the small and the original size.
 
 Seven of these are the mutants of S2a-3's review that survived the whole suite (its M2), each a rule no test
 checked: `implied_not_located`, `located_at_without_its_hash`, `accept_list_case_folded`,
@@ -656,6 +702,7 @@ dies at an `outside` read at both sizes. As a control, where HP3 expected a refu
 the planned search let it survive 2,000 examples at both sizes, and HP3 whole still killed it, at reads past
 step 10 (measured 2026-10-18).
 
+<!-- kill points of every search of test_condition_mutants.py::test_the_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `floating_point_as_written` | section 5's tests computed in floating point | HP7 | `anywhere`, `at_the_tolerance`, `one_ulp_outside`, `rounded_difference`, `minus_zero` | 9, 9 |
@@ -686,7 +733,7 @@ step 10 (measured 2026-10-18).
 | `applied_not_recorded` | `applied` holds no implied condition | HP7, implied | any of its examples | 1, 1 |
 | `implied_not_located` | every implied condition applied, wherever it is located | located elsewhere | any of its rows | 1, 1 |
 | `located_at_without_its_hash` | a location compared by `id` and `version`, without its `content_hash` | located elsewhere | `another_content_hash` | 3, 3 |
-| `implies_value_not_an_object_ignored` | an implied value that is not an object dropped without a reason | step 0 | `a value that is not an object` | 2, 2 |
+| `implies_value_not_an_object_ignored` | an implied value that is not an object dropped without a reason | step 0 | `a value that is not an object` | 16, 16 |
 | `section_facts_win` | the section's fact overrides the field's (the S2 design's HP9 mutant) | HP9 | `the_field_another_token`, `the_field_a_status_object`, `the_section_a_status_object` | 7, 7 |
 | `a_status_fact_overrides_nothing` | a field's fact held as a status object leaves the section's | HP9 | `the_field_a_status_object` | 22, 22 |
 | `nfkc_before_comparing` | units compared after NFKC (the S2 design's HP8 mutant) | HP8, another unit | `compatibility_equal` | 1, 1 |
@@ -703,10 +750,10 @@ step 10 (measured 2026-10-18).
 | `facts_against_the_field_unit` | a fact's unit compared with the field's unit | HP8, the registered unit | any of its examples | 1, 1 |
 | `step_10_after_a_refusal_at_step_9` | step 10 runs after step 9's `not_met` | HP3 | a fault of step 9 | 1, 1 |
 | `first_unit_reason_only` | step 9 gives its first reason only | HP3 | a fault of step 9 | 1, 1 |
-| `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | `unchecked`, `unstated`, `unknown_name`, `uncertain` | 7, 98 |
+| `unknown_reasons_dropped_beside_not_met` | step 10's `unknown` reasons dropped beside a `not_met` | HP3 | `unchecked`, `unstated`, `unknown_name`, `uncertain` | 7, 6 |
 | `conditions_withheld_from_a_refusal` | a read step 10 ends returns no `conditions` | HP3, a refusal at step 10 (planned) | `outside`, `range_outside`, `not_accepted`, `implied_outside` | 2, 2 |
 | `disagreement_checks_the_others` | two implied conditions that disagree, and the conditions checked all the same | HP3 | `disagreeing` | 102, 9 |
-| `unknown_members_returned_in_an_entry` | a condition's entry returns members the reader does not know | HP5 | `condition`, `plus_minus_entry` | 5, 10 |
+| `unknown_members_returned_in_an_entry` | a condition's entry returns members the reader does not know | HP5 | `condition`, `plus_minus_entry` | 1, 1 |
 | `two_slips_refused_in_a_request` | a request's names two characters off a named one refused | HP5 | any of its examples | 4, 4 |
 | `unknown_request_members_refused` | every member a request's place does not name refused | HP5 | `operating`, `requirement_condition`, `tolerance`, `implied`, `implied_record`, `implied_value` | 4, 3 |
 
@@ -718,9 +765,7 @@ tell it from the core, since step 10 returns a filled condition with the members
 `test_result_mutants.py`, injected as steps 9 and 10's are: a module-level function or name of `read`,
 `conditions` or `resolve`. Each names the property that kills it and the kinds or features (`-0`, an unknown
 member, a review's way, a statistics status object) one of which the example that kills it must show. The kill
-is the examples the derandomised search took, at the small and the original size (measured 2026-10-17, S2a-4's
-phase B, in the conditions shard; remeasured at S2b-1's head, whose strategies draw intervals and
-compositions, the same day). Phase A's `condition_unchecked_without_its_condition` died at 1,079 of
+is the examples the derandomised search took, at the small and the original size. Phase A's `condition_unchecked_without_its_condition` died at 1,079 of
 2,000 at the small size; since its fault's kind is drawn as one of its own (`unknown_at_step_10`), over twelve
 random seeds a search it dies within 507, `reasons_not_merged` within 115 and `best_status` within 310 (they
 took up to 1,459 and 1,587 over 24). Two HP1 mutants die at a fault of step 8 and at one of steps 9 and 10
@@ -735,8 +780,7 @@ HP2 and HP11 draw a tenth kind, `met_own_member`, a met read of an interval or a
 its form gives: over the same seeds it dies within 4 to 314 at the small size (median 42) and 4 to 215 at the
 original (median 26). HP1's two mutants of a code the table does not hold give it the status `not_met` too, so
 that it reaches the result and dies at HP1's reason-table assertion, which each names, not at the read's own
-look-up of the code (the review's L1). The tenth kind moved every HP1, HP2 and HP11 search; the counts below are
-measured with the pin at S2b-1's head (2026-10-18).
+look-up of the code (the review's L1). The tenth kind moved every HP1, HP2 and HP11 search.
 
 S2b-2's eleven: five of HP2's under a nominal, three of HP6's on evidence, and three of HP6's second property,
 on a nominal's value and assumption. HP1, HP2 and HP11 draw an eleventh kind, `nominal` (declared by a chance
@@ -749,9 +793,9 @@ region or with no location, two fifteenths of a nominal's draws). So the five ar
 reads under a nominal alone (`drawn_reads(size, ("nominal",))`): over the same seeds each died within 158
 examples at both sizes (the median 1 to 42). Evidence is a fourth form `met_own_member` and HP6 draw. HP1's
 `a_code_outside_the_table` dies at a nominal located elsewhere too, an interval read under `value` as without
-it, as its comment says. The counts of S2b-2's rows, and of those its kind and form moved, are measured with
-the pin at S2b-2's head (2026-10-18).
+it, as its comment says.
 
+<!-- kill points of every search of test_result_mutants.py::test_the_result_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1 | `step_8_fault`, `step_9_or_10_fault`, `unknown_at_step_10` | 10, 20 |
@@ -801,21 +845,25 @@ its faults no case file kills, and the ten one case file alone kills. Each dies 
 profile's examples at both sizes, at an example that shows one of the parts, ways, steps or planted rules it
 names; a search marked "planned" draws step 8's faults among those named first, or the first part's constants
 at a boundary, as HP3's planned searches do, where HP12's own draws meet the fault too seldom for a safe
-margin (each measured over six to twelve random seeds). Kills in the relations shard, 2026-10-17; those S2b-1
-wrote or moved, with the pin at its head (2026-10-18; S2b-1's strategies draw intervals and compositions).
-S2b-1's: three of HP3's planned on an own member, HP6's `upper: none`
+margin (each measured over six to twelve random seeds). One more is planned since 2026-10-19:
+`bounds_given_by_a_constant`, whose planned search drew `valued` whole, every form since S2b-1 and S2b-2 (a
+constant under `bounds` in one draw in 35), died at the 139th and 523rd and over 24 seed salts at up to the 934th
+and 594th; it is searched among constants under `want: bounds`, as drawn or with an implied temperature, every
+one of which kills it (2,000 of 2,000 at both sizes and at a derandomised seed and a random one), and no example
+failed on the core. It dies at the 1st example, at both sizes and in each salt (measured 2026-10-19). S2b-1's: three of HP3's planned on an own member, HP6's `upper: none`
 as infinity and normalised components, and two faults of the model that case files kill, held here on the forms
 S2b-1 reads.
 
+<!-- kill points of every search of test_model_mutants.py::test_the_implementations_mutant_is_killed_by_the_agreement (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Part | Dies at | Examples |
 |---|---|---|---|---|
 | `step_0_stops_at_its_first_fault` | step 0 gives its first reason only | two of one step | `step_0` | 1, 1 |
 | `step_8_stops_at_its_first_fault` | step 8 gives its first reason only | two of one step | `step_8` | 2, 2 |
 | `step_9_stops_at_its_first_fault` | step 9 gives its first reason only | two of one step | `step_9` | 8, 3 |
 | `step_10_stops_at_its_first_fault` | step 10 gives its first reason only | two of one step | `step_10` | 4, 9 |
-| `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` too | unpinned | `broken_status_object` | 91, 8 |
-| `declaration_names_ignored` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | unpinned | `names_a_declaration_gives_a_requirement` | 50, 60 |
-| `implied_members_of_the_other_kind_ignored` | an implied value's member of the other kind's shape, and a slip of one, ignored | unpinned | `implied_member_of_the_other_kind` | 41, 6 |
+| `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` too | unpinned | `broken_status_object` | 10, 45 |
+| `declaration_names_ignored` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | unpinned | `names_a_declaration_gives_a_requirement` | 47, 38 |
+| `implied_members_of_the_other_kind_ignored` | an implied value's member of the other kind's shape, and a slip of one, ignored | unpinned | `implied_member_of_the_other_kind` | 26, 51 |
 | `condition_unchecked_without_its_condition` | HP1's | faults | `unchecked`, `step_8` (a passing fault of step 8, read on to step 10) | 128, 168 |
 | `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 9, 27 |
 | `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 43, 4 |
@@ -841,34 +889,35 @@ S2b-1 reads.
 | `labelled_before_step_4` | HP11's | early | `before_step_4`, `stores` | 2, 2 |
 | `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | values | `request_faults_apart` | 19, 3 |
 | `first_alternative_in_every_entry` | under `no_pick`, each entry the first alternative's read | values | `alternatives` | 2, 2 |
-| `bounds_given_by_a_constant` | step 13 gives a constant's value under `want: bounds` | constants (planned) | `valued`, `alternatives` | 139, 523 |
+| `bounds_given_by_a_constant` | step 13 gives a constant's value under `want: bounds` | constants (planned) | `valued` | 1, 1 |
 | `minus_zero_given_as_zero` | a constant's `-0` given as `0` | values | `negative_zero` | 1, 1 |
 | `every_constant_not_built` | step 13 raises for a constant in S2b's words | values | `valued`, `alternatives` | 1, 1 |
 | `text_that_is_no_json_raises` | step 0 raises on a text that is no JSON, where it must refuse | early | `not_json` | 1, 1 |
 
+<!-- kill points of every search of test_model_mutants.py::test_the_models_seeded_mutant_is_killed_by_the_agreement (scripts/gen_kill_counts.py) -->
 | Fault of the model | Part | Dies at | Examples |
 |---|---|---|---|
-| `plurals_not_slips` | unpinned | `plural_of_two_characters` | 10, 3 |
-| `member_checked_off_its_row` | unpinned | `form_off_its_row` | 117, 6 |
-| `composition_checked_beyond_its_basis` | unpinned | `composition_basis_off_its_row` | 49, 7 |
-| `broken_status_object_reports_its_token` | unpinned | `broken_status_object` | 91, 8 |
-| `members_of_the_other_kind_read` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 41, 5 |
-| `members_of_the_other_kind_ignored` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 41, 5 |
+| `plurals_not_slips` | unpinned | `plural_of_two_characters` | 199, 12 |
+| `member_checked_off_its_row` | unpinned | `form_off_its_row` | 90, 66 |
+| `composition_checked_beyond_its_basis` | unpinned | `composition_basis_off_its_row` | 110, 119 |
+| `broken_status_object_reports_its_token` | unpinned | `broken_status_object` | 10, 45 |
+| `members_of_the_other_kind_read` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 4, 11 |
+| `members_of_the_other_kind_ignored` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 4, 11 |
 | `slips_of_alternatives_ignored` | unpinned | `alternatives_slip_beside` | 1, 1 |
-| `declaration_names_not_named_in_a_request` | unpinned | `names_a_declaration_gives_a_requirement` | 50, 60 |
-| `population_level_checks_stop_at_a_missing_member` | unpinned | `checks_beside_a_broken_object` | 6, 37 |
-| `dof_token_unchecked_under_student_t` | unpinned | `checks_beside_a_broken_object` | 19, 59 |
-| `every_status_object_an_unstated_kind` | unpinned | `checks_beside_a_broken_object` | 7, 127 |
+| `declaration_names_not_named_in_a_request` | unpinned | `names_a_declaration_gives_a_requirement` | 47, 38 |
+| `population_level_checks_stop_at_a_missing_member` | unpinned | `checks_beside_a_broken_object` | 164, 84 |
+| `dof_token_unchecked_under_student_t` | unpinned | `checks_beside_a_broken_object` | 137, 473 |
+| `every_status_object_an_unstated_kind` | unpinned | `checks_beside_a_broken_object` | 185, 78 |
 | `every_forms_member_named_at_a_field` | unpinned | `another_forms_member_slipped` | 2, 2 |
 | `input_specimens_optional` | faults (planned) | `derivation.input_specimens_missing` | 1, 1 |
 | `hash_not_checked_before_step_4` | early | `request`, `before_step_4`, `stores` | 1, 1 |
 | `token_condition_unit_accepted` | faults | `unit_token_condition` | 66, 35 |
 | `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 19, 330 |
-| `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 4, 10 |
+| `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 18, 9 |
 | `stated_without_origin_unreported` | values | `valued`, `alternatives` | 33, 271 |
-| `ies_not_a_plural` | unpinned | `plural_of_two_characters` | 135, 138 |
-| `review_of_both_shapes_read_as_its_status` | unpinned | `review_of_both_shapes` | 7, 3 |
-| `reviewed_review_keeps_a_status_objects_members` | unpinned | `review_of_both_shapes` | 27, 4 |
+| `ies_not_a_plural` | unpinned | `plural_of_two_characters` | 416, 147 |
+| `review_of_both_shapes_read_as_its_status` | unpinned | `review_of_both_shapes` | 8, 3 |
+| `reviewed_review_keeps_a_status_objects_members` | unpinned | `review_of_both_shapes` | 9, 4 |
 | `donor_age_of_neither_accepted` | faults (planned) | `specimen.fact_neither_value_nor_range` | 1, 1 |
 | `value_given_by_an_interval` | values | `form_interval` | 36, 22 |
 | `bounds_given_by_a_constant` | values | `form_constant` | 429, 313 |
@@ -892,8 +941,7 @@ examples among all of step 0's 60, and evidence whose unit holds a reason, where
 `unit_returned_without_its_reason` took up to 1,440 over twelve random seeds (1000 to 1011). Over those seeds
 the planned searches of `two_nominals_for_one_field`, `nominal_outside_supplies_the_value` and
 `unit_returned_without_its_reason` died within 123, 123 and 94 examples at both sizes, and HP4's
-`every_field_checked_beside_evidence`, drawn whole, within 400. The counts of S2b-2's rows, and of those
-its draws moved, are measured with the pin at S2b-2's head (2026-10-18).
+`every_field_checked_beside_evidence`, drawn whole, within 400.
 
 Listed, with the reason no read S2 builds shows them: `results_share_the_record` (a shared object never
 shows in JSON; HP6 holds the core to sharing nothing), and `units_stored_differently_read_as_no_pick` (an
@@ -906,10 +954,9 @@ The design's other mutant not searched here: HP6's result sharing the stored obj
 ### HP4 and HP10's mutants
 
 `test_invariance_mutants.py`, at the ways (HP4) and kinds (HP10) each names, and three of HP4's at the form
-of the field their read holds; relations shard, 2026-10-17; those S2b-1 wrote or moved, with the pin at its
-head (2026-10-18), whose HP4 reads a constant, an interval or a composition, and those S2b-2 wrote or moved,
-with the pin at its head, whose HP4 reads evidence too.
+of the field their read holds, a constant, an interval, a composition or evidence.
 
+<!-- kill points of every search of test_invariance_mutants.py::test_the_invariance_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `specimen_facts_merged_across_sections` | a field's specimen holds every section's facts (the S2 design's HP4 mutant) | HP4 | `another_section_specimen` | 14, 11 |
@@ -927,15 +974,16 @@ with the pin at its head, whose HP4 reads evidence too.
 `test_monotonicity_mutants.py`, each searched with the relation it names (the spike's mutants that S2's forms
 reach, under its names where the core has them; with a world's trigger built in where the relation draws a way
 first). Over twelve random seeds a search, each died within 927 examples, `floating_point_as_written` the
-slowest. Relations shard, 2026-10-17; `missing_operating_met` with the pin at S2b-1's head (2026-10-18).
+slowest.
 
+<!-- kill points of every search of test_monotonicity_mutants.py::test_the_relations_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Relation | Examples |
 |---|---|---|---|
 | `row_requirements_ignored` | a condition the row requires, absent, not checked (the spike's `absent_required_skipped`) | N1r | 2, 2 |
-| `required_with_ignored` | a condition another requires with its token not checked | N1r | 6, 4 |
-| `requested_absent_skipped` | a condition the request names and the record lacks skipped | N1r | 8, 6 |
-| `origin_default` | an absent origin read as `measured_by_contributor` | N2 | 454, 254 |
-| `status_object_passes` | a condition held as a status object gives a met entry | N3r | 77, 5 |
+| `required_with_ignored` | a condition another requires with its token not checked | N1r | 75, 11 |
+| `requested_absent_skipped` | a condition the request names and the record lacks skipped | N1r | 6, 4 |
+| `origin_default` | an absent origin read as `measured_by_contributor` | N2 | 9, 214 |
+| `status_object_passes` | a condition held as a status object gives a met entry | N3r | 9, 4 |
 | `status_in_any_member` | a status object in `origin` passes step 8 | N3r | 2, 2 |
 | `plus_minus_widens` | a bound widens the tolerance instead of narrowing it | N4 | 2, 2 |
 | `tolerance_inverted` | a value met where it lies outside the tolerance | N5r | 2, 2 |
@@ -947,14 +995,21 @@ slowest. Relations shard, 2026-10-17; `missing_operating_met` with the pin at S2
 | `operating_conditions_checked` | every condition the request operates checked, as one with no tolerance | P4 | 2, 2 |
 | `sd_ignored` | an `sd` or unstated plus or minus ignored | S1 | 3, 5 |
 | `status_object_read_as_met` | as `status_object_passes` | S2 | 1, 1 |
-| `not_applicable_anywhere` | `not_applicable` read as met on any condition | S2 | 3, 41 |
-| `floating_point_as_written` | section 5's comparisons in floating point (`float_compare`) | S5 | 209, 3 |
-| `implied_fills_any_status` | an implied condition fills a condition held as any status object (step 10's) | N3r | 10, 11 |
+| `not_applicable_anywhere` | `not_applicable` read as met on any condition | S2 | 3, 12 |
+| `floating_point_as_written` | section 5's comparisons in floating point (`float_compare`) | S5 | 200, 3 |
+| `implied_fills_any_status` | an implied condition fills a condition held as any status object (step 10's) | N3r | 9, 73 |
 
 The unrestricted twins, N1 (any condition removed) and N3 (any member made a status object), fail on the core
 as they must, on N1r's and N3r's own draws, by one of the ways that hold their counterexamples
-(`UNRESTRICTED_WAYS`): N1, an unchecked condition or one an implied condition fills, removed from a world
-otherwise met (17, 6); N3, `unstated` where an implied condition fills it (9, 10). A generator that lost
+(`UNRESTRICTED_WAYS`):
+
+<!-- kill points of every search of test_monotonicity_mutants.py::test_the_unrestricted_twins_mutant_is_killed_by_the_core (scripts/gen_kill_counts.py) -->
+| Twin | The way that holds its counterexample | Examples |
+|---|---|---|
+| `N1` | an unchecked condition, or one an implied condition fills, removed from a world otherwise met | 17, 10 |
+| `N3` | `unstated` where an implied condition fills it | 8, 6 |
+
+A generator that lost
 those ways fails these searches; worlds that lost the shapes fail the worlds' audit
 (`test_the_worlds_hold_the_shapes_the_restrictions_are_for`).
 
@@ -969,9 +1024,10 @@ evaluators of the table evaluation suite's README made a reader's, the text's ru
 them (no number beyond an edge, the readable range's end value); one raises where a read returns a refusal
 (the code design's rule 1); two reach the assertions no design mutant does (`interval`, `monotone`); and one
 is the evaluator before the S3b-1 review, whose log-log value, rounded from 50 digits, a halfway point may
-leave one unit off. The kill is the examples the derandomised search took, at the small and the original size (measured 2026-10-17 at
-the S3b-1 fix round's head, the `json` shard at `ci`).
+leave one unit off. The kill is the examples the derandomised search took, at the small and the original size
+(recorded by `scripts/gen_kill_counts.py`, below).
 
+<!-- kill points of every search of test_evaluate_mutants.py::test_the_evaluator_mutant_is_killed_at_its_assertion (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `bracket_search_off_by_one_at_a_knot` | the bracket search one past a knot (`bisect_right`): a knot read through the interval above it, the last one past the end | HP17 | `raised`, `value` | 1, 1 |
@@ -1106,7 +1162,9 @@ tells a rare failure from a frequent one.
 
 Write the check as a function of the implementation and the example, and the property as a `test_...` function
 that records its features and calls the check. Declare the features with their least shares, or their chances,
-measured. Add a mutant that the property must kill, to the mutant file of its group, and the module to a
-shard. Never set `max_examples` on a property: the profile decides it. Build strategies so that they draw what
+measured. Add a mutant that the property must kill, to the mutant file of its group, with its row in its
+group's table, and the module to a shard; then record its kill (`uv run python scripts/gen_kill_counts.py
+--measure --record`), which writes the row's count, and plan its search if the check names its kill after the
+500th example. Never set `max_examples` on a property: the profile decides it. Build strategies so that they draw what
 they need rather than filter it, take their size from `strategies.SIZE`, and build each strategy once rather
 than in every draw: Hypothesis spends more building and checking a strategy than drawing from it.
