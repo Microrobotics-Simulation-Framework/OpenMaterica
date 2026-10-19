@@ -19,21 +19,23 @@ it and how the value was taken from it. The values are stored in SI units: 1.001
 
 ## What a read gives in this release
 
-This release reads a field that holds one constant, an interval, a composition or evidence, and applies a
-declared nominal to an interval (`read_side_contract.md` steps 0 to 13). It does not read a table, a pick, an
-overlay or an extrapolation (S3 and S4), nor the one alternative left once the others are set aside (S4). So:
+This release reads a field that holds one constant, an interval, a composition or evidence, or alternatives of
+these read with no pick, and applies a declared nominal to an interval (`read_side_contract.md` steps 0 to
+13). It does not read a table, a pick, an overlay or an extrapolation (S3 and S4). So:
 
 - `example/human_plasma` reads `met` at 310.15 K when the request gives a shear-rate range inside 10 to
   100 s⁻¹, requires tolerances on temperature (0.5 K, say) and on shear rate (0 suffices for a range inside
   the stated one), and accepts the test method. A stated condition with no tolerance in the request reads
   `unknown` (`condition_unchecked`).
-- `example/water` holds each field at two temperatures, as alternatives (`record_format.md` section 5). This
-  release reads alternatives only where none has a reason of its own. A density request that both
-  alternatives meet gives `unknown` with `no_pick`, and holds both values. A density request at one of the
-  two temperatures, which sets the other aside, raises `NotImplementedError` until choosing between
-  alternatives is built (S4). The viscosity states no shear rate, which is a reason of each alternative's
-  own, so a viscosity request raises `NotImplementedError` at any temperature; once S4 reads alternatives it
-  gives `unknown` (`condition_unstated`) until the consumer's declaration waives it.
+- `example/water` holds each field at two temperatures, as alternatives (`record_format.md` section 5). Each
+  alternative is read alone; one whose temperature lies outside the request's tolerance is set aside, and the
+  result rests on those left (`read_side_contract.md` section 3, step 7). A density request at one of the two
+  temperatures, with a tolerance of 0.5 K, sets the other aside and reads `met`, with the value of the one
+  left. A density request that both alternatives meet gives `unknown` with `no_pick`, and holds both values,
+  until the consumer picks one (S4). The viscosity states no shear rate, which its row requires, so a
+  viscosity request at one temperature gives the one left, `unknown` (`condition_unstated`, naming that
+  alternative), until the consumer's declaration waives it; one that both meet gives `no_pick`, each
+  alternative's `condition_unstated` beside it.
 - `example/ndfeb_n45` is an interval, read since S2b-1. `want: bounds` gives its limits as stored, 1.32 and
   1.37 T with the basis `specification_limits`, and the status `unknown`: its origin is `stated_without_origin`,
   and its temperature, specimen shape and test method are unstated, so the reasons are `stated_without_origin`

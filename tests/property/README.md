@@ -930,7 +930,7 @@ S2b-1 reads.
 | `token_condition_unit_accepted` | faults | `unit_token_condition` | 66, 35 |
 | `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 19, 330 |
 | `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 18, 9 |
-| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 33, 271 |
+| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 33, 182 |
 | `ies_not_a_plural` | unpinned | `plural_of_two_characters` | 416, 147 |
 | `review_of_both_shapes_read_as_its_status` | unpinned | `review_of_both_shapes` | 8, 3 |
 | `reviewed_review_keeps_a_status_objects_members` | unpinned | `review_of_both_shapes` | 9, 4 |

@@ -1,0 +1,197 @@
+{
+  "case": "PR-013",
+  "variant": "evidence_unit_of_the_first_that_stays",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_alternatives_first_set_aside.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_alternatives_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:3a01d85fe10851f5066c824e300a1837e1f393a506331acf6caeb54c065412e1"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 310.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "evidence",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        }
+      }
+    },
+    "acceptances": [
+      {
+        "acceptance": "implied_condition",
+        "record": {
+          "id": "conformance/evidence_alternatives_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:3a01d85fe10851f5066c824e300a1837e1f393a506331acf6caeb54c065412e1"
+        },
+        "field": "biocompatibility.evidence",
+        "fact": "tissue_state",
+        "token": "in_vivo",
+        "implies": {
+          "temperature": {
+            "value": 300.0,
+            "unit": "K"
+          }
+        },
+        "reason": "conformance fixture: an illustrative reason"
+      }
+    ]
+  },
+  "expected": {
+    "status": "unknown",
+    "reasons": [
+      {
+        "code": "no_pick"
+      },
+      {
+        "code": "condition_unstated",
+        "condition": "temperature",
+        "alternative": 1
+      },
+      {
+        "code": "condition_unstated",
+        "condition": "temperature",
+        "alternative": 2
+      }
+    ],
+    "alternative_values": [
+      {
+        "alternative": 1,
+        "value": [
+          {
+            "endpoint": "cytotoxicity",
+            "standard": {
+              "designation": "ISO 10993-5",
+              "year": 2009
+            },
+            "contact_category": "conformance fixture: the source's words",
+            "contact_duration": "conformance fixture: the source's words",
+            "material_form": "conformance fixture: the source's words",
+            "processing": "conformance fixture: the source's words",
+            "reported_result": "conformance fixture: illustrative report text",
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "unknown",
+            "operating": {
+              "value": 310.15,
+              "unit": "K"
+            }
+          }
+        ],
+        "specimen": {},
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      },
+      {
+        "alternative": 2,
+        "value": [
+          {
+            "endpoint": "sensitisation",
+            "standard": {
+              "designation": "ISO 10993-10",
+              "year": 2010
+            },
+            "contact_category": "conformance fixture: the source's words",
+            "contact_duration": "conformance fixture: the source's words",
+            "material_form": "conformance fixture: the source's words",
+            "processing": "conformance fixture: the source's words",
+            "reported_result": "conformance fixture: illustrative report text",
+            "provenance": {
+              "origin": "measured_by_contributor",
+              "extraction": {
+                "method": "own_measurement"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "name": "temperature",
+            "status": "unknown",
+            "operating": {
+              "value": 310.15,
+              "unit": "K"
+            }
+          }
+        ],
+        "specimen": {},
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        },
+        "labels": []
+      }
+    ],
+    "unit": {
+      "status": "not_applicable",
+      "reason": "conformance fixture: the second source's note"
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

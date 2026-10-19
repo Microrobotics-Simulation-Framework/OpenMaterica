@@ -8,13 +8,13 @@ text's, checked against the generated vocabulary (`test_tables.py`), and each ru
 from, as `file:line` and a short quote, which `test_citations.py` finds at that line.
 
 **What it decides.** Steps 0 to 13 for the forms constant, interval, composition and evidence; implied
-conditions and nominals; alternatives as far as S4's decision 12 lets S2 go (maintainer, 2026-10-15): the
-shape of `alternatives`, a request fault inside one alternative, and `no_pick` or step 7's `want_mismatch`
-where no alternative has a reason of its own; and the operations `list_records` and `content_hash`.
+conditions and nominals; step 7 over alternatives read with no pick and no overlay (S4a): the shape of
+`alternatives`, each alternative read alone and set aside, kept or refusing the field, and the outcome with
+its reasons and members; and the operations `list_records` and `content_hash`.
 
 **What it does not.** Everything else gives `NoVerdict`, a distinct outcome a test counts and never reads as a
-pass: a table the field's row allows, a pick, an overlay, an extrapolation, a region target, `want: fit` on a
-field holding a fit record, and alternatives beyond decision 12.
+pass: a table the field's row allows, alone or as one alternative, a pick, an overlay, an extrapolation, a
+region target, and `want: fit` on a field holding a fit record.
 
 **Where the text is silent.** The model takes the maintainer's ruling where there is one, else the fail-closed
 choice. Each such point is listed once in `OPEN_POINTS`, and named where it is applied ("Open point: <name>").
@@ -41,11 +41,13 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "neither uses nor returns, not checked (maintainer, 2026-10-15; the text says so of a form, not of "
         "a basis)"
     ),
-    "alternatives_within_decision_12": (
-        "over alternatives the model decides only what S4's decision 12 gives S2 (maintainer, 2026-10-15): "
-        "the shape of `alternatives` (`record_format.md` section 5); a request fault inside one alternative "
-        "where no alternative has another reason of its own; and `no_pick` or `want_mismatch` over two or "
-        "more alternatives none of which has a reason of its own; anything else is no verdict"
+    "alternatives_without_a_pick": (
+        "over alternatives the model decides step 7 for a read with no pick and no overlay (S4a): the shape "
+        "of `alternatives`, each alternative of a form it reads read alone by steps 8 to 13, set aside, "
+        "kept or refusing the field, and the outcome, its reasons and members. A pick or an overlay in the "
+        "request gives no verdict at step 0, and so does a table alternative its row allows, wherever it "
+        "stands among the others, since every alternative is read before the outcome is decided: step 11's "
+        "set-aside, `at_edge` and `request_incomplete` are a table's, which the model does not read"
     ),
     "members_of_the_other_kind": (
         "in a record, a numeric condition holding `token`, and a token condition holding `value`, `range`, "
@@ -560,15 +562,12 @@ READER_MAJOR_MINOR: Final = ("0", "1")
 class Reason:
     code: str
     condition: str | None = None
+    alternative: int | None = None
 
 
 class Reasons:
     """The reasons a read has found, each once: read_side_contract.md:131-132 "A reason, identified by its
-    `code`, its `condition` and its `alternative`, appears at most once in a result". No reason the model
-    gives carries `alternative`, which only a reason found reading one alternative at steps 8 to 13 carries
-    (read_side_contract.md:138-140 "A reason carries `alternative` exactly when it was found at steps 8 to 13
-    while reading one alternative"): the model decides no read that reports one (Open point:
-    alternatives_within_decision_12)."""
+    `code`, its `condition` and its `alternative`, appears at most once in a result"."""
 
     def __init__(self, found: Iterable[Reason] = ()) -> None:
         self._found: dict[Reason, None] = dict.fromkeys(found)
@@ -579,6 +578,11 @@ class Reasons:
     def extend(self, other: Iterable[Reason]) -> None:
         for reason in other:
             self._found[reason] = None
+
+    def found_in(self, index: int) -> "Reasons":
+        # read_side_contract.md:138-140 "A reason carries `alternative` exactly when it was found at steps 8
+        # to 13 while reading one alternative"
+        return Reasons(Reason(reason.code, reason.condition, index) for reason in self._found)
 
     def __iter__(self) -> Iterator[Reason]:
         return iter(self._found)
@@ -594,13 +598,21 @@ class Reasons:
         # read_side_contract.md:172 "A step that gives `not_met` ends the read"
         return self.status == "not_met"
 
+    def of_status(self, status: Status) -> "Reasons":
+        return Reasons(reason for reason in self._found if REASONS[reason.code].status == status)
+
     def to_json(self) -> list[JsonValue]:
-        return [
-            {"code": reason.code}
-            if reason.condition is None
-            else {"code": reason.code, "condition": reason.condition}
-            for reason in self._found
-        ]
+        # read_side_contract.md:117 "a list of `{"code", "condition"?, "alternative"?, "detail"?}`"
+        found: list[JsonValue] = []
+        for reason in self._found:
+            given: JsonObject = {"code": reason.code}
+            if reason.condition is not None:
+                given["condition"] = reason.condition
+            if reason.alternative is not None:
+                # JSON numbers read as doubles (strict_json.parse), an index among them
+                given["alternative"] = float(reason.alternative)
+            found.append(given)
+        return found
 
 
 def worst(statuses: Iterable[Status]) -> Status:
@@ -2583,7 +2595,8 @@ class FieldRead:
 
     own: Reasons = field(default_factory=Reasons)  # steps 8 to 12
     by_want: Reasons = field(default_factory=Reasons)  # step 13
-    request_fault: bool = False  # step 10's `request_incomplete`, the request's, not the field's
+    by_request: Reasons = field(default_factory=Reasons)  # step 10's `request_incomplete`, the request's
+    ended_at: int | None = None  # the step whose `not_met` ended the read, None where it reached step 13
     form: str | None = None
     conditions: list[JsonValue] | None = None
     labels: list[str] = field(default_factory=list[str])
@@ -2593,7 +2606,7 @@ class FieldRead:
 
     @property
     def reasons(self) -> Reasons:
-        return Reasons((*self.own, *self.by_want))
+        return Reasons((*self.own, *self.by_request, *self.by_want))
 
 
 def read_value_field(
@@ -2611,19 +2624,24 @@ def read_value_field(
     )
     read.own.extend(faults)
     if read.own.end_the_read() or not isinstance(field_value, dict) or read.form is None:
+        read.ended_at = 8
         return read
     read.own.extend(check_units(field_value, section, request.field))
     if read.own.end_the_read():
+        read.ended_at = 9
         return read
     specimen = merged_specimen(section, field_value)
     checked = check_against_request(field_value, specimen, request)
-    read.own.extend(checked.reasons)
     if checked.entries is None:
-        read.request_fault = True
+        # read_side_contract.md:107-108 "This fault, like step 11's `request_incomplete`, is the request's"
+        read.by_request.extend(checked.reasons)
+        read.ended_at = 10
         return read
+    read.own.extend(checked.reasons)
     # read_side_contract.md:158-159 "`conditions` is present once step 10 has run to its end, and only then"
     read.conditions = checked.entries
     if read.own.end_the_read():
+        read.ended_at = 10
         return read
     # read_side_contract.md:491-492 "A **constant's** range is its conditions: once they are met, it is read;
     # step 11 adds nothing."
@@ -2750,6 +2768,12 @@ def read_decided(
         field_value, section, checked, claims, record_fault=record_fault, nominal=checked.nominal
     )
     reasons.extend(read_field.reasons)
+    return field_result(reasons, labels, read_field)
+
+
+def field_result(reasons: Reasons, labels: Sequence[str], read_field: FieldRead) -> JsonObject:
+    """The result of one value field's read, a field's or the one alternative left, its reasons in
+    `reasons`."""
     returned: JsonObject = {}
     if read_field.conditions is not None:
         returned["conditions"] = read_field.conditions
@@ -2804,38 +2828,45 @@ def read_alternatives(
     *,
     record_fault: bool,
 ) -> JsonObject:
-    """Step 7 over alternatives, as far as decision 12 goes (Open point: alternatives_within_decision_12)."""
+    """Step 7 over alternatives with no pick (Open point: alternatives_without_a_pick)."""
     # read_side_contract.md:226-227 "A field whose `alternatives` breaks its shape is refused (`form_invalid`"
     if alternatives_broken(field_value):
         reasons.add("form_invalid")
         return result(reasons, labels)
     alternatives = field_value["alternatives"]
     assert isinstance(alternatives, list)
-    # read_side_contract.md:525-526 "Under `no_pick` no nominal is applied, nor compared with the bounds"
+    # read_side_contract.md:241-242 "each alternative is read alone, as a field, by steps 8 to 13, and its
+    # read ends where a field's would"; read_side_contract.md:263 "a nominal's outside an interval's bounds
+    # among them": the nominal is compared in each read, and applied only to the one left (below)
     reads = [
-        read_value_field(alternative, section, request, claims, record_fault=record_fault, nominal=None)
+        read_value_field(
+            alternative, section, request, claims, record_fault=record_fault, nominal=request.nominal
+        )
         for alternative in alternatives
     ]
-    request_faults = [reason for one in reads if one.request_fault for reason in one.own]
-    own_reasons = [reason for one in reads if not one.request_fault for reason in one.own]
-    if (
-        request_faults
-        and not own_reasons
-        and all(reason.code == "request_incomplete" for reason in request_faults)
-    ):
-        # read_side_contract.md:108-110 "where either arises in one alternative it ends that alternative's
-        # read and refuses the field: the alternative is not set aside"
-        reasons.extend(request_faults)
+    # read_side_contract.md:242-243 "The outcome is decided once every alternative is read"
+    fates = [fate_of(one) for one in reads]
+    staying = [index for index, fate in enumerate(fates) if fate == "stays"]
+    if "refuses" in fates or not staying:
+        # read_side_contract.md:268 "where an alternative refuses the field, or every alternative is set
+        # aside"
+        reasons.extend(reasons_where_refused(reads))
+        # read_side_contract.md:285-286 "and its `labels` holds at most `hash_not_checked`"
         return result(reasons, labels)
-    if request_faults or own_reasons:
-        raise _Undecided("an alternative with reasons of its own (S4, decisions 1 to 4)")
-    if len(reads) == 1:
-        raise _Undecided("one alternative left, read under `want` alone (S4)")
+    if len(staying) == 1:
+        # read_side_contract.md:270-271 "where one alternative stays, that alternative's read, `want`
+        # included; the set-aside ones' reasons are not reported"
+        (left,) = staying
+        reasons.extend(reasons_of_alternative(reads[left], left))
+        return field_result(reasons, labels, reads[left])
+    reasons.extend(reasons_beside_two_or_more(reads, staying))
     can_give = [
-        one
-        for one in reads
-        if (one.form in GIVES.get(request.want, ()))
-        or (one.form == "interval" and request.want == "value" and request.nominal is not None)
+        index
+        for index in staying
+        if (reads[index].form in GIVES.get(request.want, ()))
+        # read_side_contract.md:274-275 "An interval counts as one `want: value` can give where a nominal the
+        # request carries applies to the read"
+        or (reads[index].form == "interval" and request.want == "value" and request.nominal is not None)
     ]
     if not can_give:
         # read_side_contract.md:272-273 "where two or more stay and none has a form `want` can give,
@@ -2843,12 +2874,15 @@ def read_alternatives(
         reasons.add("want_mismatch")
         return result(reasons, labels)
     # read_side_contract.md:120 "Under `no_pick`, it is the first remaining alternative's unit, in stored
-    # order"
-    unit = reads[0].members["unit"]
+    # order": the first that stays
+    unit = reads[staying[0]].members["unit"]
     # read_side_contract.md:276 "otherwise `unknown`, with `no_pick`"
     reasons.add("no_pick")
     entries: list[JsonValue] = []
-    for index, one in enumerate(reads):
+    # read_side_contract.md:276-277 "each alternative that stays appears in `alternative_values` as section 2
+    # says, with no nominal or extrapolation applied"
+    for index in staying:
+        one = reads[index]
         assert one.conditions is not None
         # read_side_contract.md:119 "`value` is its value as `want` shapes it. Where `want` cannot give its
         # form" ... "the entry holds its form's member as stored instead, with no nominal or extrapolation
@@ -2866,3 +2900,47 @@ def read_alternatives(
     # read_side_contract.md:166-167 "Under `no_pick` the result holds none of `conditions`, `specimen`,
     # `statistics` and `provenance`"
     return result(reasons, labels, {"alternative_values": entries, "unit": unit})
+
+
+Fate: TypeAlias = Literal["set_aside", "stays", "refuses"]
+
+
+def fate_of(read: FieldRead) -> Fate:
+    """What step 7 does with one alternative read with no pick: read_side_contract.md:243 "Each alternative is
+    set aside, stays, or refuses the field"."""
+    # read_side_contract.md:258-259 "So does a fault of the request (section 1)"
+    if read.by_request:
+        return "refuses"
+    # read_side_contract.md:244-245 "An alternative is set aside where its conditions, the form's own axis
+    # entry aside (section 5), give `not_met` at step 10"
+    if read.ended_at == 10:
+        return "set_aside"
+    # read_side_contract.md:256 "Every other `not_met` in an alternative's read refuses the field"
+    if read.ended_at is not None:
+        return "refuses"
+    # read_side_contract.md:250-253 "These stay: one whose read gives no `not_met`" ... "and one whose form
+    # `want` cannot give": a read that reaches step 13 gives a `not_met` there alone, `want_mismatch`, or
+    # `nominal_invalid` (read_side_contract.md:263 "a nominal's outside an interval's bounds among them")
+    return "stays"
+
+
+def reasons_of_alternative(read: FieldRead, index: int) -> Reasons:
+    """The reasons the read of the alternative at `index` reports, where step 7 reports them."""
+    # read_side_contract.md:283-284 "Every reason found reading one alternative carries its `alternative`; a
+    # fault of the request carries none"
+    return Reasons((*read.own.found_in(index), *read.by_request, *read.by_want.found_in(index)))
+
+
+def reasons_where_refused(reads: Sequence[FieldRead]) -> Reasons:
+    # read_side_contract.md:268-269 "`not_met`, with every alternative's reasons, those that wait included"
+    return Reasons(reason for index, one in enumerate(reads) for reason in reasons_of_alternative(one, index))
+
+
+def reasons_beside_two_or_more(reads: Sequence[FieldRead], staying: Sequence[int]) -> Reasons:
+    # read_side_contract.md:281-283 "each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`,
+    # and its `not_met` reasons wait" ... "A set-aside alternative's reasons are not reported there"
+    return Reasons(
+        reason
+        for index in staying
+        for reason in reasons_of_alternative(reads[index], index).of_status("unknown")
+    )

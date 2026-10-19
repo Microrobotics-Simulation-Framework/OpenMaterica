@@ -125,8 +125,29 @@ every family entry goes in `families/CHANGELOG.md`.
   `alternatives` or a value field's beside it included; a fault of the request inside one alternative refuses
   the field where no alternative has a reason of its own; and two or more alternatives none of which has a
   reason of its own give `want_mismatch` where none has a form `want` can give, else `no_pick`, each in
-  `alternative_values` by its stored index. Any other outcome over alternatives raises `NotImplementedError`
-  until S4.
+  `alternative_values` by its stored index. S4a reads every other outcome with no pick and no overlay
+  (below).
+- Step 7 over a field holding alternatives, read with no pick and no overlay (S4a; `read_side_contract.md`
+  section 3, step 7, `record_format.md` section 5; built ahead of S3's code, maintainer, 2026-10-19). Each
+  alternative is read alone, as a field, by steps 8 to 13, the request's nominal applied at step 13 where it
+  applies to the read. One whose conditions give `not_met` at step 10 is set aside; one refused at step 8 or
+  9, or by a fault of the request, refuses the field; any other stays, a `not_met` of step 13
+  (`want_mismatch`, `nominal_invalid`) waiting. The result is the first outcome that applies: where one
+  refuses, or every one is set aside, `not_met` with every alternative's reasons, those that wait included;
+  where one stays, its read, the nominal applied; where two or more stay and none has a form `want` can give,
+  `not_met` (`want_mismatch`); otherwise `unknown` (`no_pick`), each one that stays in `alternative_values` by
+  its stored index, and the first one's `unit`. Beside `want_mismatch` and `no_pick` each staying
+  alternative's `unknown` reasons stand and its `not_met` ones wait; a set-aside one's are not reported. A
+  reason found reading one alternative carries its index as `alternative` (`Reason.alternative`, written as an
+  integer; a reason's identity is its code, condition and alternative), a fault of the request none
+  (`reasons.tagged`). A result that rests on no single alternative holds no value, `conditions` or
+  `assumption`, a `unit` only beside `alternative_values`, and at most the label `hash_not_checked`. The 21 S4
+  arms that hold no pick, no overlay, no extrapolation and no table alternative run, with S4a's three `unit`
+  arms, the third written with this step: three evidence alternatives, the first set aside by an implied
+  condition, so that the `unit` is the first remaining one's, not the first stored; a table alternative still
+  raises at step 8 until S3, and a pick or an overlay at step 0 until S4b and S4c. The reference model reads
+  the same step from the text, written without the implementation's, and agrees with every case file it
+  decides.
 - The read's steps 8 and 13 for an interval and a composition (S2b-1; `record_format.md` section 6,
   `read_side_contract.md` section 6). Step 8 reads an interval's `lower` and `upper`, each a number or
   `{"status": "none"}`, at most one of them `none` and `lower` not above `upper`, numbers compared by value,
@@ -157,10 +178,10 @@ every family entry goes in `families/CHANGELOG.md`.
   record alone to an interval under `want: value`: inside or on its bounds, compared exactly, it supplies the
   value and the `assumption` (`{"acceptance": "nominal", "value"}`) beside `want_mismatch`, which the
   `not_met` result carries; outside them it gives `nominal_invalid` in place of `want_mismatch`, and no value;
-  under `want: bounds` it is unused. `ReadResult.applied` holds its index where it supplied the value. Over
-  alternatives no nominal is applied, nor compared with the bounds, but one that applies lets an interval
-  count as a form `want: value` can give, so two intervals give `no_pick` (`read.Nominal`,
-  `conditions.located_at`).
+  under `want: bounds` it is unused. `ReadResult.applied` holds its index where it supplied the value. Under
+  `no_pick` no nominal is applied, nor compared with the bounds, but one that applies lets an interval count
+  as a form `want: value` can give, so two intervals give `no_pick` (`read.Nominal`,
+  `conditions.located_at`); since S4a it applies to the one alternative left.
 - Step 0 refuses an acceptance that is not an object, or of a kind a read does not take, a `waiver` among
   them, with `request_incomplete` alone (PR-310's GAPS G11 arm; S2a-3's review, I4). A pick, an overlay or an
   extrapolation still raises `NotImplementedError`, whatever else the request holds, until S3 and S4.
@@ -172,10 +193,11 @@ every family entry goes in `families/CHANGELOG.md`.
   (`core/vocabulary.py`). Every `claims` parameter of the core is typed by the suites, so that a misspelt
   suite name does not type-check.
 - A quickstart (`docs/user_guide/quickstart.md`): it writes a record holding one of the water example's
-  values, reads it to a `met` result, and shows a refusal with its reasons. It says plainly that this release
-  reads constants, intervals, compositions and evidence, and not yet tables or choosing between alternatives
-  (S3 and S4), and a test runs its code and compares every output it shows (`tests/examples/`). The
-  README's documentation table links it and the examples.
+  values, reads it to a `met` result, shows a refusal with its reasons, and reads the example's two density
+  alternatives, to the one left at one temperature and to `no_pick` where both are met (S4a). It says plainly
+  that this release reads constants, intervals, compositions and evidence, and alternatives with no pick, and
+  not yet tables or picks (S3 and S4), and a test runs its code and compares every output it shows
+  (`tests/examples/`). The README's documentation table links it and the examples.
 
 ### Changed
 - `CLAUDE.md` states the proportionality rule (maintainer, 2026-10-17) beside the review budget it was decided

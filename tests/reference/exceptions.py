@@ -246,7 +246,7 @@ EXCEPTIONS: Final[Mapping[str, Excepted]] = {
         detail="an extrapolation acceptance (S3 and S4)",
     ),
     "picks": Excepted(
-        ("A pick is checked and applied at step 7 (S4), beyond what S4's decision 12 gives S2."),
+        ("A pick is checked and applied at step 7 (S4); the model reads alternatives with no pick alone."),
         "no verdict",
         frozenset(
             {
@@ -368,38 +368,5 @@ EXCEPTIONS: Final[Mapping[str, Excepted]] = {
             }
         ),
         detail="an overlay acceptance (S4)",
-    ),
-    "alternatives_with_reasons_of_their_own": Excepted(
-        (
-            "What an alternative's own reasons do at step 7, setting it aside, keeping it or refusing the "
-            "field, is S4's (decisions 1 to 4), beyond decision 12."
-        ),
-        "no verdict",
-        frozenset(
-            {
-                "PR-013.index_past_set_aside_and_unknown_reasons.json",
-                "PR-044.all_set_aside_reports_unknown_reasons.json",
-                "PR-044.conditions_outside_set_aside.json",
-                "PR-044.one_left_after_set_aside.json",
-                "PR-044.one_left_interval_want_mismatch.json",
-                "PR-044.refused_first_reports_set_aside.json",
-                "PR-044.refused_form_invalid.json",
-                "PR-044.refused_form_not_registered.json",
-                "PR-044.refused_last_reports_set_aside.json",
-                "PR-044.refused_parameter_set_without_family_suite.json",
-                "PR-044.refused_reports_waiting_nominal_invalid.json",
-                "PR-044.refused_reports_waiting_want_mismatch.json",
-                "PR-044.refused_unit_mismatch.json",
-                "PR-044.refused_unknown_token.json",
-                "PR-044.refused_withheld.json",
-                "PR-044.single_alternative_set_aside.json",
-                "PR-044.token_condition_not_accepted_set_aside.json",
-                "PR-316.implied_two_disagree_in_alternative_beside_reasons.json",
-                "PR-331.two_alternatives_condition_outside.json",
-                "PR-336.refused_over_alternatives_no_hs.json",
-                "PR-338.one_left_interval_nominal_applied.json",
-            }
-        ),
-        detail="an alternative with reasons of its own (S4, decisions 1 to 4)",
     ),
 }

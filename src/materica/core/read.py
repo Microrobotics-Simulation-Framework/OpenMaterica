@@ -5,18 +5,18 @@
 finds the field (step 7, `fields.find_field`), and reads it (`read_value_field`): its form and shape (step 8,
 `fields.form_problems`), its units (step 9, `fields.unit_problems`), its conditions (step 10,
 `conditions.check_conditions`), its range (step 11), its origin and labels (step 12) and its value by `want`
-(step 13), and gives a `ReadResult`. A field holding alternatives is read at step 7, each alternative as a
-field, as far as S4's decision 12 lets S2 go: the list's shape, a fault of the request inside one alternative,
-and `no_pick` or `want_mismatch` where no alternative has a reason of its own.
+(step 13), and gives a `ReadResult`. A field holding alternatives is read at step 7 with no pick and no
+overlay (S4a): each alternative read alone, as a field, then set aside, kept or refusing the field, and the
+outcome the first that applies (`_read_alternatives`).
 
 Of a request's acceptances, a read applies the two S2 builds (`declarations.md` section 4.1): an implied
 condition at step 10, and a nominal at step 13, which supplies the value of an interval under `want: value`.
 Step 0 refuses an acceptance of a kind a read does not take.
 
-Overlays (step 6), picks, the rest of step 7 over alternatives, and a table are not built yet. A read that
-would need one raises `NotImplementedError`, and so does a request whose answer a check still to come could
-change, whatever else is wrong with it: one with a region target, or a pick, an overlay or an extrapolation
-among its acceptances. It raises rather than give an answer a later step would contradict.
+Overlays (step 6), picks and tables are not built yet. A read that would need one raises
+`NotImplementedError`, and so does a request whose answer a check still to come could change, whatever else
+is wrong with it: one with a region target, or a pick, an overlay or an extrapolation among its acceptances.
+It raises rather than give an answer a later step would contradict.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -30,7 +30,7 @@ import types
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from functools import cache
-from typing import Union, cast, get_args, get_origin, get_type_hints, is_typeddict
+from typing import Literal, Union, cast, get_args, get_origin, get_type_hints, is_typeddict
 
 from materica import shapes
 from materica.core import jsonio
@@ -51,7 +51,7 @@ from materica.core.fields import (
 )
 from materica.core.identifiers import FIELD, MaterialRef
 from materica.core.jsonio import JsonValue
-from materica.core.reasons import Reason, merged
+from materica.core.reasons import Reason, merged, tagged
 from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
 from materica.core.slips import slipped
@@ -297,19 +297,24 @@ class FieldRead:
     """Steps 8 to 13 of one value field, the field read or one of its alternatives (section 3).
 
     `reasons` are those steps 8 to 12 found, and `want_mismatch` step 13's (`nominal_invalid` in its place
-    for a nominal outside an interval's bounds), kept apart since step 7 reports it for no alternative under
-    `no_pick`. `conditions` are present once step 10 has run to its end, and `request_fault` says that step
-    10 ended on a fault of the request (section 1: two implied conditions that disagree), which refuses a
-    field holding alternatives whichever alternative found it. The other members are those a read returns,
-    once step 8 has passed, as stored and copied: the form's member (`member`); the value as `want` shapes it,
-    or as a nominal supplies it with its `assumption`, where it can (`value`); the unit, the specimen facts,
-    the statistics block (none for evidence) and the provenance; and the labels step 12 adds. `applied` holds
-    the indexes of the acceptances steps 10 and 13 applied."""
+    for a nominal outside an interval's bounds), kept apart since a `not_met` of step 13 leaves an alternative
+    standing, its reason waiting (section 3, step 7). `conditions` are present once step 10 has run to its
+    end; `conditions_not_met` says that the read ended there on its conditions' `not_met`, which sets an
+    alternative aside, and `request_fault` that step 10 ended on a fault of the request (section 1: two
+    implied conditions that disagree), which refuses a field holding alternatives whichever alternative found
+    it. The other members are those a read returns, once step 8 has passed, as stored and copied: the form's
+    member (`member`); the value as `want` shapes it, or as a nominal supplies it with its `assumption`, where
+    it can (`value`); the unit, the specimen facts, the statistics block (none for evidence) and the
+    provenance; and the labels step 12 adds. `applied` holds the indexes of the acceptances steps 10 and 13
+    applied, and `alternative` the read's index among the stored alternatives of the field, where it reads one
+    of them."""
 
     reasons: tuple[Reason, ...]
     conditions: tuple[ConditionEntry, ...] | None = None
     applied: tuple[int, ...] = dataclasses.field(default=(), compare=False)
     request_fault: bool = False
+    conditions_not_met: bool = dataclasses.field(default=False, compare=False)
+    alternative: int | None = None
     want_mismatch: Reason | None = None
     member: JsonValue = None
     value: JsonValue = None
@@ -325,11 +330,11 @@ class FieldRead:
         """Every reason of the read, step 13's included."""
         return merged((*self.reasons, *(() if self.want_mismatch is None else (self.want_mismatch,))))
 
-    def entry_json(self, index: int) -> shapes.AlternativeValue:
+    def entry_json(self) -> shapes.AlternativeValue:
         """Its entry of `alternative_values` (section 2): its index among the stored alternatives, its form's
         member as stored, and its members as a read of it alone gives them."""
-        entry: JsonObject = {
-            "alternative": index,
+        entry: dict[str, object] = {
+            "alternative": self.alternative,
             "value": copy.deepcopy(self.member),
             "conditions": [condition.to_json() for condition in self.conditions or ()],
             "specimen": copy.deepcopy(self.specimen),
@@ -399,7 +404,7 @@ class ReadResult:
             members["value"] = copy.deepcopy(self.value)
         if self.alternative_values is not None:
             members["alternative_values"] = [
-                alternative.entry_json(index) for index, alternative in enumerate(self.alternative_values)
+                alternative.entry_json() for alternative in self.alternative_values
             ]
         if self.unit is not None:
             members["unit"] = copy.deepcopy(self.unit)
@@ -448,9 +453,15 @@ def _read_field(request: ReadRequest, resolved: ResolvedRecord, claims: Collecti
     if isinstance(field.value, dict) and "alternatives" in field.value:
         return _read_alternatives(field, record, request, claims, resolved.labels, nominal)
     found = read_value_field(field, record, request, claims, nominal)
-    reasons = found.found
+    return _resting_on(found, found.found, resolved.labels)
+
+
+def _resting_on(found: FieldRead, reasons: tuple[Reason, ...], labels: tuple[str, ...]) -> ReadResult:
+    """The result of a read that rests on one value field, the field read or the one alternative left (section
+    3, step 7): `reasons`, its own as the read reports them; the labels steps 1 to 5 gave and its own; its
+    `conditions`; and its value with the members beside it, where section 2 item 3 returns them."""
     status = _status(reasons)
-    labels = tuple(dict.fromkeys((*resolved.labels, *found.labels)))
+    labels = tuple(dict.fromkeys((*labels, *found.labels)))
     if not _value_returned(status, found):
         return ReadResult(status, reasons, labels, found.conditions, found.applied)
     return ReadResult(
@@ -499,7 +510,7 @@ def read_value_field(
     if checked.entries is None:
         return FieldRead(merged(found), request_fault=True)
     if _ends(found):
-        return FieldRead(merged(found), checked.entries, checked.applied)
+        return FieldRead(merged(found), checked.entries, checked.applied, conditions_not_met=True)
     # Step 11: a constant's range is its conditions, once they are met, and an interval, a composition and
     # evidence have none (section 5).
     value = an_object(field.value)
@@ -600,50 +611,90 @@ def _read_alternatives(
     labels: tuple[str, ...],
     nominal: Nominal | None,
 ) -> ReadResult:
-    """Step 7 over a field holding alternatives, as far as S4's decision 12 lets S2 go (section 3, step 7):
-    the list's shape (`form_invalid`); a fault of the request inside one alternative, where no alternative has
-    a reason of its own, which refuses the field; and two or more alternatives none of which has a reason of
-    its own: `want_mismatch` where none has a form `want` can give, else `no_pick`, each in
-    `alternative_values`, with no nominal applied, nor compared with the bounds (section 6). An interval
-    counts as a form `want: value` can give where `nominal`, the request's nominal that applies to the read,
-    is one, since a pick would let it apply. Any other outcome, which an alternative's own reasons decide,
-    waits for S4."""
+    """Step 7 over a field holding alternatives, read with no pick and no applied overlay (section 3, step 7;
+    `record_format.md` section 5). Once the list's shape passes, each alternative is read alone, as a field,
+    by steps 8 to 13, `nominal` applied at step 13 where it applies to the read; each then refuses the field,
+    is set aside or stays (`_standing`), and the result is the first outcome that applies: a refusal, or every
+    alternative set aside; the one left; `want_mismatch` where none that stays has a form `want` can give;
+    otherwise `no_pick`. A pick and an overlay raise at step 0, and a table at step 8, so no alternative here
+    reaches step 11's range."""
     holder = an_object(field.value)
     shape = alternatives_problems(holder, field.spec.name)
     if shape:
         return _refused(merged(shape), labels)
+    stored = a_list(holder["alternatives"])
     reads = [
-        read_value_field(RecordField(field.spec, alternative, field.section), record, request, claims)
-        for alternative in a_list(holder["alternatives"])
-    ]
-    faults = [read for read in reads if read.request_fault]
-    own = [read for read in reads if not read.request_fault and read.reasons]
-    if (
-        faults
-        and not own
-        and all(reason.code == "request_incomplete" for read in faults for reason in read.reasons)
-    ):
-        return _refused(merged(reason for read in faults for reason in read.reasons), labels)
-    if faults or own:
-        raise NotImplementedError(
-            "an alternative's own reasons are read at step 7 by S4, which is not built yet"
+        dataclasses.replace(
+            read_value_field(
+                RecordField(field.spec, alternative, field.section), record, request, claims, nominal
+            ),
+            alternative=index,
         )
-    if len(reads) == 1:
-        raise NotImplementedError("the one alternative left is read at step 7 by S4, which is not built yet")
-    gives = [
-        read.want_mismatch is None
-        or (nominal is not None and _is_interval(alternative) and request.want == "value")
-        for read, alternative in zip(reads, a_list(holder["alternatives"]), strict=True)
+        for index, alternative in enumerate(stored)
     ]
-    if not any(gives):
+    standings = [_standing(read) for read in reads]
+    staying = [read for read, standing in zip(reads, standings, strict=True) if standing == "stays"]
+    if "refuses" in standings or not staying:
+        # "with every alternative's reasons, those that wait included"
+        return _refused(merged(reason for read in reads for reason in _found_reading(read)), labels)
+    if len(staying) == 1:
+        # "that alternative's read, `want` included; the set-aside ones' reasons are not reported"
+        (left,) = staying
+        return _resting_on(left, _found_reading(left), labels)
+    # "each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`, and its `not_met` reasons wait"
+    standing_beside = [
+        reason for read in staying for reason in _found_reading(read) if _status((reason,)) == "unknown"
+    ]
+    if not any(_gives(read, stored, request.want, nominal) for read in staying):
         mismatch = Reason(
             "want_mismatch", detail=f"want {request.want} can give no alternative of {field.spec.name}"
         )
-        return _refused((mismatch,), labels)
-    no_pick = Reason("no_pick", detail=f"{field.spec.name} holds {len(reads)} alternatives and no pick")
-    # The first remaining alternative's unit, in stored order, where the alternatives store it differently
-    # (section 2, the `unit` row), which only a unit registered as a status object allows.
-    return ReadResult("unknown", (no_pick,), labels, alternative_values=tuple(reads), unit=reads[0].unit)
+        return _refused(merged((mismatch, *standing_beside)), labels)
+    no_pick = Reason(
+        "no_pick", detail=f"{field.spec.name} holds {len(staying)} alternatives that stay, no pick"
+    )
+    reasons = merged((no_pick, *standing_beside))
+    # Under `no_pick`, "the first remaining alternative's unit, in stored order" (section 2, the `unit` row).
+    return ReadResult(
+        _status(reasons), reasons, labels, alternative_values=tuple(staying), unit=staying[0].unit
+    )
+
+
+def _standing(read: FieldRead) -> Literal["refuses", "set_aside", "stays"]:
+    """Whether one alternative's read refuses the field, sets it aside or leaves it standing (section 3, step
+    7), as far as the forms read so far reach: a table's range at step 11 waits for S3."""
+    if read.request_fault:
+        # "So does a fault of the request (section 1)"
+        return "refuses"
+    if read.conditions_not_met:
+        # "An alternative is set aside where its conditions, the form's own axis entry aside (section 5), give
+        # `not_met` at step 10"
+        return "set_aside"
+    if _ends(list(read.reasons)):
+        # "Every other `not_met` in an alternative's read refuses the field": steps 8 and 9 end the read.
+        return "refuses"
+    # "one whose read gives no `not_met`" or "one whose form `want` cannot give": step 13's reason waits.
+    return "stays"
+
+
+def _found_reading(read: FieldRead) -> tuple[Reason, ...]:
+    """Every reason of one alternative's read, each carrying the alternative's index, but a fault of the
+    request, which carries none (section 2 item 2): in an alternative's read only `request_incomplete` is one,
+    from step 10's two implied conditions that disagree (section 1; section 4, the code's steps)."""
+    assert read.alternative is not None
+    of_the_request = tuple(reason for reason in read.found if reason.code == "request_incomplete")
+    own = (reason for reason in read.found if reason.code != "request_incomplete")
+    return (*of_the_request, *tagged(own, read.alternative))
+
+
+def _gives(read: FieldRead, stored: list[JsonValue], want: Want, nominal: Nominal | None) -> bool:
+    """Whether `want` can give the form of an alternative that stays: step 13 found nothing, or the form is an
+    interval under `want: value` beside a nominal that applies to the read, "since a pick would let it apply"
+    (section 3, step 7)."""
+    assert read.alternative is not None
+    return read.want_mismatch is None or (
+        nominal is not None and want == "value" and _is_interval(stored[read.alternative])
+    )
 
 
 # What a result returns from a record: the members the reader's version defines, as stored (section 2 item 5).
@@ -771,6 +822,7 @@ def _alternative(entry: shapes.AlternativeValue) -> FieldRead:
     return FieldRead(
         (),
         _entries(entry["conditions"]),
+        alternative=int(entry["alternative"]),
         member=_stored(entry["value"]),
         value=_stored(entry["value"]),
         specimen=cast(JsonObject, _stored(entry["specimen"])),

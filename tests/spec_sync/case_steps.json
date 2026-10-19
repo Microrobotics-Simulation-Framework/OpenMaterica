@@ -7,7 +7,8 @@
     "S2a-3",
     "S2a-4",
     "S2b-1",
-    "S2b-2"
+    "S2b-2",
+    "S4a"
   ],
   "case_files": {
     "HS-001.escaped_names.json": "S1",
@@ -241,6 +242,7 @@
     "PR-012.overlay_named_for_other_field.json": "S4",
     "PR-012.overlay_named_for_other_field_not_resolved.json": "S4",
     "PR-012.undeclared_overlay_not_applied.json": "S4",
+    "PR-013.evidence_unit_of_the_first_that_stays.json": "S4a",
     "PR-013.evidence_unit_reason_in_the_second_only.json": "S4a",
     "PR-013.evidence_units_with_different_reasons.json": "S4a",
     "PR-013.grade_interval_and_lot_constant_bounds.json": "S2b-1",

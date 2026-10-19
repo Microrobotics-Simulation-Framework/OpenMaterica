@@ -2138,7 +2138,7 @@ DERIVED_INPUTS: dict[str, JsonValue] = {
 }
 
 
-# Step 7 over alternatives, as far as S4's decision 12 lets S2 go (`read_side_contract.md` section 3, step 7).
+# Step 7 over alternatives, with no pick and no overlay (`read_side_contract.md` section 3, step 7).
 
 
 def test_two_alternatives_with_no_reason_of_their_own_give_no_pick_each_in_alternative_values() -> None:
@@ -2155,7 +2155,7 @@ def test_two_alternatives_with_no_reason_of_their_own_give_no_pick_each_in_alter
 
 
 def test_an_unknown_member_inside_an_alternative_is_ignored() -> None:
-    """`record_format.md` section 10 item 1, inside an alternative (D05's half that S2a-4 decides)."""
+    """`record_format.md` section 10 item 1, inside an alternative (the unknown-member position R77)."""
     plain = read_met({"alternatives": [met_field(), met_field()]})
     unknown = read_met({"alternatives": [met_field(x_unknown_member=1.0), met_field()]})
     assert unknown == plain
@@ -2232,12 +2232,111 @@ def test_under_no_pick_the_unit_is_the_first_remaining_alternatives(units: list[
     assert json.loads(json.dumps(result.to_json()))["unit"] == units[0]
 
 
+def test_the_one_alternative_left_is_read_as_the_field_its_reasons_carrying_its_index() -> None:
+    """Section 3 step 7: "where one alternative stays, that alternative's read, `want` included"; section 2
+    item 2: a reason found reading it carries its `alternative` [PR-044]."""
+    alone = read_met(met_field())
+    left = read_met({"alternatives": [met_field()]})
+    assert left == alone
+    unknown = read_met({"alternatives": [water_field()]})
+    assert (unknown.status, unknown.reasons) == (
+        "unknown",
+        (Reason("condition_unstated", "shear_rate", alternative=0),),
+    )
+    assert unknown.value == 0.000692
+    (written,) = json.loads(json.dumps(unknown.to_json()))["reasons"]
+    assert (written["code"], written["condition"], written["alternative"]) == (
+        "condition_unstated",
+        "shear_rate",
+        0,
+    )
+    assert type(written["alternative"]) is int
+
+
+def test_an_alternatives_own_unknown_reason_stands_beside_no_pick() -> None:
+    """Section 3 step 7: "each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`" [PR-013]."""
+    result = read_met({"alternatives": [met_field(), water_field()]})
+    assert (result.status, set(result.reasons)) == (
+        "unknown",
+        {Reason("no_pick"), Reason("condition_unstated", "shear_rate", alternative=1)},
+    )
+    assert [entry.alternative for entry in result.alternative_values or ()] == [0, 1]
+
+
+def test_an_alternatives_own_unknown_reason_stands_beside_want_mismatch() -> None:
+    """Section 3 step 7: "each one's `unknown` reasons stand beside `want_mismatch` or `no_pick`", under a
+    `want` neither constant gives (a review's hand mutant that kept S2's `want_mismatch` alone) [PR-013]."""
+    result = read_met({"alternatives": [met_field(), water_field()]}, want="bounds")
+    assert (result.status, set(result.reasons), result.conditions) == (
+        "not_met",
+        {Reason("want_mismatch"), Reason("condition_unstated", "shear_rate", alternative=1)},
+        None,
+    )
+
+
+def set_aside_lot() -> dict[str, JsonValue]:
+    """The water constant stated at 400 K, which the read at 310.15 K sets aside at step 10, as a lot's value
+    beside a grade's intervals (`provenance.md` section 6.2 item 5)."""
+    lot = met_field()
+    cast(dict[str, JsonValue], lot["conditions"])["temperature"] = {"value": 400.0, "unit": "K", **STATED}
+    return lot
+
+
+def test_each_interval_that_stays_counts_by_its_own_form_beside_a_constant_set_aside_first() -> None:
+    """Section 3 step 7: "An interval counts as one `want: value` can give where a nominal the request carries
+    applies to the read", each alternative that stays by its own form: a constant stored first and set aside
+    takes nothing from the two intervals after it (a review's hand mutant that read the first stored
+    alternative's form) [PR-338]."""
+    inside = met_interval(lower=0.0006, upper=0.0008, basis="specification_limits")
+    below = met_interval(lower=0.0001, upper=0.0002, basis="specification_limits")
+    result = read_accepting({"alternatives": [set_aside_lot(), inside, below]}, [nominal()])
+    assert (result.status, result.reasons, result.applied) == ("unknown", (Reason("no_pick"),), ())
+    assert [entry.alternative for entry in result.alternative_values or ()] == [1, 2]
+
+
+def test_two_intervals_count_under_a_nominal_outside_both() -> None:
+    """Section 3 step 7: an interval counts "where a nominal the request carries applies to the read", and a
+    nominal applies where it is located (section 1), whether or not it falls inside the bounds; section 6:
+    "Under `no_pick` no nominal is applied, nor compared with the bounds, so none gives `nominal_invalid`"
+    (a review's hand mutant that counted an interval only where the nominal supplied a value) [PR-338]."""
+    below = met_interval(lower=0.0001, upper=0.0002, basis="specification_limits")
+    above = met_interval(lower=0.0009, upper=0.001, basis="specification_limits")
+    result = read_accepting({"alternatives": [below, above]}, [nominal()])
+    assert (result.status, result.reasons, result.applied) == ("unknown", (Reason("no_pick"),), ())
+    assert [entry.alternative for entry in result.alternative_values or ()] == [0, 1]
+
+
+def test_the_one_alternative_left_keeps_what_its_read_applied() -> None:
+    """Section 3 step 7: "where one alternative stays, that alternative's read", what it applied included
+    (`ReadResult.applied`, outside the JSON): the nominal that supplied an interval's value [PR-338], and the
+    implied condition that filled the alternative's temperature (`declarations.md` section 4.1), each by its
+    index among the acceptances (a review's hand mutant that dropped them)."""
+    inside = met_interval(lower=0.0006, upper=0.0008, basis="specification_limits")
+    supplied = read_accepting({"alternatives": [set_aside_lot(), inside]}, [IMPLIED, nominal()])
+    assert (supplied.status, supplied.reasons, supplied.value, supplied.applied) == (
+        "not_met",
+        (Reason("want_mismatch", alternative=1),),
+        0.0007,
+        (1,),
+    )
+    filled: dict[str, JsonValue] = {
+        **met_field(),
+        "conditions": {"shear_rate": dict(SHEAR_RATE)},
+        "specimen": {"tissue_state": {"token": "in_vivo", **STATED}},
+    }
+    implied = {**IMPLIED, "record": PINNED_AT_THE_READ}
+    result = read_accepting({"alternatives": [set_aside_lot(), filled]}, [nominal(), implied])
+    assert (result.status, result.value, result.applied) == ("unknown", 0.000692, (1,))
+    assert set(result.reasons) == {Reason("condition_unchecked", "density_kind", alternative=1)}
+
+
 @pytest.mark.parametrize(
-    ("field", "why"),
+    ("field", "refusals"),
     [
-        ({"alternatives": [met_field()]}, "the one alternative left"),
-        ({"alternatives": [met_field(), water_field()]}, "an alternative's own unknown reason"),
-        ({"alternatives": [met_field(), met_field(unit="mPa.s")]}, "an alternative's own refusal"),
+        (
+            {"alternatives": [met_field(), met_field(unit="mPa.s")]},
+            {Reason("unit_mismatch", alternative=1)},
+        ),
         (
             {
                 "alternatives": [
@@ -2245,13 +2344,16 @@ def test_under_no_pick_the_unit_is_the_first_remaining_alternatives(units: list[
                     met_field(unit={"status": "unstated", "reason": "two"}),
                 ]
             },
-            "each alternative's own refusal, its unit held as a status object",
+            {Reason("unit_mismatch", alternative=0), Reason("unit_mismatch", alternative=1)},
         ),
     ],
 )
-def test_what_step_7_decides_beyond_decision_12_raises(field: dict[str, JsonValue], why: str) -> None:
-    with pytest.raises(NotImplementedError):
-        read_met(field)
+def test_an_alternatives_own_refusal_refuses_the_field(field: JsonValue, refusals: set[Reason]) -> None:
+    """Section 3 step 7: "Every other `not_met` in an alternative's read refuses the field: ... a unit other
+    than the registered one", and the result holds no value, `unit` or `conditions` [PR-044]."""
+    result = read_met(field)
+    assert (result.status, set(result.reasons), result.conditions) == ("not_met", refusals, None)
+    assert set(json.loads(json.dumps(result.to_json()))) == {"status", "reasons", "labels"}
 
 
 PR_316_CASE = INPUTS.parent / "cases" / "PR-316.implied_two_disagree_in_alternative.json"
@@ -2276,19 +2378,20 @@ def disagreeing_in_one_alternative(other: dict[str, JsonValue]) -> tuple[JsonVal
 
 
 def test_a_request_fault_inside_one_alternative_refuses_the_field_where_no_other_has_a_reason() -> None:
-    """S4's decision 12 (a): PR-316's arm, as its case file gives it."""
+    """PR-316's arm, as its case file gives it: the fault carries no `alternative` (section 2 item 2)."""
     refused = read(*disagreeing_in_one_alternative({}))
     assert (refused.status, refused.reasons) == ("not_met", (Reason("request_incomplete", "temperature"),))
 
 
-def test_a_request_fault_inside_one_alternative_beside_anothers_own_reason_raises() -> None:
-    """S4's decision 12 (a) gives S2 "a request fault inside one alternative"; S2a-4 builds that arm only
-    where no alternative has a reason of its own, as the decision does `no_pick` and `want_mismatch` (S2a-4's
-    decision log, phase A item 10, and its fix round, I2). Where another alternative has one, here
-    `stated_without_origin`, PR-316's row reports it beside the refusal, carrying its `alternative`, which
-    S4 gives a reason: so the read raises rather than drop it (S2a-4's review, L3's M09)."""
-    with pytest.raises(NotImplementedError, match="an alternative's own reasons"):
-        read(*disagreeing_in_one_alternative({"origin": "stated_without_origin"}))
+def test_a_request_fault_inside_one_alternative_reports_anothers_own_reason_beside_it() -> None:
+    """Section 3 step 7: a fault of the request in one alternative refuses the field "with every
+    alternative's reasons"; it carries no `alternative`, while the other's `stated_without_origin` carries its
+    own (section 2 item 2) [PR-316] (S2a-4's review, L3's M09, which this read raised for until S4a)."""
+    refused = read(*disagreeing_in_one_alternative({"origin": "stated_without_origin"}))
+    assert (refused.status, set(refused.reasons)) == (
+        "not_met",
+        {Reason("request_incomplete", "temperature"), Reason("stated_without_origin", alternative=1)},
+    )
 
 
 @pytest.mark.parametrize(

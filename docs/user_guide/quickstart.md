@@ -8,7 +8,9 @@ drift apart.
 > field, the bounds of an interval, the components of a composition or the reports of evidence. A field holding
 > a table, and a request with a pick, an overlay or an extrapolation, are not read yet: the read raises
 > `NotImplementedError`, rather than give an answer a later release could contradict. A field holding
-> alternatives is read only where none has a reason of its own: choosing between them waits for S4.
+> alternatives is read one alternative at a time: one whose conditions the request does not meet is set aside,
+> one that breaks its shape, holds another unit or withholds its value refuses the field, and the one left is
+> read; where more than one is left, the result is `no_pick` until picks are read (S4).
 
 > **The example records are examples, not reviewed library data.** They are not yet fully human-reviewed, and
 > may change in a later commit ([`examples/README.md`](../../examples/README.md)).
@@ -20,9 +22,9 @@ directory, and nothing in the checkout.
 ## 1. Write a record
 
 The example `example/water` holds liquid water's density at 293.15 K and at 310.15 K as two alternatives of
-one field (`record_format.md` section 5). This release does not yet choose between alternatives, so the page
-writes a record of its own that holds one of them: the density at 310.15 K, with the example's conditions,
-statistics and provenance.
+one field (`record_format.md` section 5). The page writes a record of its own that holds one of them: the
+density at 310.15 K, with the example's conditions, statistics and provenance. Section 4 reads the example
+itself.
 
 ```pycon
 >>> import json
@@ -103,13 +105,36 @@ and carries no value. A reader never interpolates or extrapolates a value the re
 refusal is a result, never an exception: every reason found is reported, each naming the condition it concerns
 (`read_side_contract.md` sections 2 and 4).
 
+## 4. Alternatives
+
+The example itself holds the density at both temperatures, as alternatives. A read takes each alternative
+alone, sets aside one whose conditions the request does not meet, and reads the one left. Where more than one
+is left, it gives `no_pick` and each one's value, until the consumer picks one (`read_side_contract.md`
+section 3, step 7).
+
+```pycon
+>>> examples = load_records([Path("examples/records/water.json")])
+>>> pin = {key: example[key] for key in ("id", "version", "content_hash")}
+>>> left = read(density_at(293.15), examples)
+>>> left.status, left.value
+('met', 998.207)
+>>> wide = density_at(300.0)
+>>> wide["requirement"]["conditions"]["temperature"]["tolerance"]["value"] = 20.0
+>>> both = read(wide, examples)
+>>> both.status, [reason.code for reason in both.reasons]
+('unknown', ['no_pick'])
+>>> [alternative.value for alternative in both.alternative_values]
+[998.207, 993.33]
+```
+
+At 293.15 K the alternative at 310.15 K lies outside the tolerance and is set aside, so the result is the
+other's read. At 300 ± 20 K both are met, and the read cannot choose: a consumer declares a pick, which a
+later release reads (S4). The viscosity alternatives state no shear rate, which the field's row requires, so
+a viscosity read gives `unknown` (`condition_unstated`), each such reason naming the alternative it was found
+in, until the consumer's declaration waives it.
+
 ## What this release does not read yet
 
-- **Alternatives.** The example `example/water` itself. A density request that both alternatives meet
-  gives `unknown` with `no_pick`, holding both. A density request at one of its two temperatures raises
-  `NotImplementedError` until choosing between alternatives, and the one alternative left, are built (S4).
-  The viscosity states no shear rate, which is a reason of each alternative's own, so a viscosity request
-  raises `NotImplementedError` at any temperature until S4.
 - **Tables and extrapolation** (S3), **picks and overlays** (S4), **scenes** (a region target, and a target
   record that is an overlay), **fit records** (`want: fit` on a field holding one), **sampling**, **USD** and
   **`materica check`**.
