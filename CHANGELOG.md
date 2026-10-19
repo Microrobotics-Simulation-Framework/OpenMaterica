@@ -278,6 +278,13 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   schema), and the independent review and CI are the line-level check. A step's end with the maintainer's
   review is now a review of what the budget lists. `CONTRIBUTING.md` and the documentation plan made no such
   claim. The pull request template gains an Open points heading.
+- The specification README's cap on a file's `binary32` tolerance in the table evaluation suite holds under each
+  precision and side a broken evaluator claims (maintainer, 2026-10-19; `docs/specification/changes.md`): "under
+  each precision and side it claims" now follows "by ten times that file's `binary32` tolerance" in "Case files".
+  The suite's README and the reference evaluator's tests already read the cap so, and no figure changes: for each
+  of the 24 broken evaluators the best file is the same under each claim. The clause that a difference no
+  tolerance passes counts as beyond the cap is ratified as written, and the 13 files named beside no broken
+  evaluator keep no cap.
 
 ### Schema
 - `read_request.json`'s acceptances, a JSON object each until now, take the shapes of the kinds a read takes

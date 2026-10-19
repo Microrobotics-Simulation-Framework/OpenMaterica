@@ -363,6 +363,14 @@ each judged alone (maintainer, 2026-10-17): each is the expected number, or abse
 beside a zero derivative passes (`read_side_contract.md` section 7 item 1). `in_range` is still compared there
 (`read_side_contract.md` section 7 item 7; TE-002, TE-003). This settles the S3 entry's "or no number".
 
+The cap on a file's `binary32` tolerance holds under each precision and side a broken evaluator claims
+(maintainer, 2026-10-19): those words follow "by ten times that file's `binary32` tolerance" in `README.md`,
+"Case files". The suite's README and the reference evaluator's tests already read the cap so, and it changes no
+figure: for each of the 24 broken evaluators the best file is the same under each claim. The clause that a
+difference no tolerance passes (in `in_range`, say, or a refusal) counts as beyond the cap, which the ruling of
+2026-10-17 did not say, is ratified as written, and the 13 of the 35 table evaluation files named beside no
+broken evaluator have no cap.
+
 Settled with S2a-4's review (maintainer, 2026-10-18): an implied condition breaks its shape
 (`request_incomplete`, with that `condition`) where `implies` gives a numeric condition a `token`, or a token
 condition a `value`, `range` or `unit`, whatever that member holds, each being a member of the other kind of

@@ -218,11 +218,12 @@ on a knot, an end or an edge is exact in `binary32`, except in a case that says 
 (TE-012), and a point beside one lies at least one `binary32` unit in the last place from it, so both
 precisions evaluate the same side of it. The `binary32` tolerances are capped per broken evaluator: each
 broken evaluator the suite's verification names misses at least one of the files that should catch it by ten
-times that file's `binary32` tolerance. The suite's README (`data/conformance/table_evaluation/README.md`,
-"The broken evaluators") lists each broken evaluator beside the files that should catch it. A broken evaluator
-misses a file by that much where, at the compared number where its answer differs most from the expected one,
-the relative difference is at least ten times the file's `binary32` tolerance, or the difference is one no
-tolerance passes (in `in_range`, say, or a refusal). It need not miss every file by that much.
+times that file's `binary32` tolerance under each precision and side it claims. The suite's README
+(`data/conformance/table_evaluation/README.md`, "The broken evaluators") lists each broken evaluator beside the
+files that should catch it. A broken evaluator misses a file by that much where, at the compared number where
+its answer differs most from the expected one, the relative difference is at least ten times the file's
+`binary32` tolerance, or the difference is one no tolerance passes (in `in_range`, say, or a refusal). It need
+not miss every file by that much.
 
 Three kinds of case take other inputs. Each names the schema files it passes in `inputs.schemas`
 (`usd_binding.md` section 10.1 item 8); a case that names none has none.
