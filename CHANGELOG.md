@@ -325,6 +325,17 @@ every family entry goes in `families/CHANGELOG.md`.
   `range` or `unit`, whatever that member holds. The reader has refused both since S2a-4's review; the second
   rested on the shapes `declarations.md` section 4.1 names, and reversed S2a-3's reading of a `unit` beside a
   token, which step 0 ignored. One PR-330 case for each direction comes with it.
+- The maintainer's ruling on `unit` under `no_pick` (2026-10-19; `docs/specification/changes.md`):
+  `read_side_contract.md` section 2's `unit` row now says that under `no_pick` the result's `unit` is the
+  first remaining alternative's, in stored order, so that where the remaining alternatives store `unit`
+  differently, which only a unit registered as a status object allows, another alternative's `reason` is not
+  returned. The reader and the reference model take the first; the reader raised `NotImplementedError` there
+  until now. Two PR-013 cases come with it, run with S4a: two evidence alternatives whose units hold different
+  `reason`s, or the second's alone a `reason`. The model's seeded fault that read it so until now
+  (`units_stored_differently_read_as_no_pick`) is replaced by one that takes the last remaining alternative's
+  unit, which both cases kill.
+  The rule is interim: the maintainer has ruled that it holds until S3b-2, which replaces it with each remaining
+  alternative's `unit` in its `alternative_values` entry.
 - `provenance.md` section 6.2 item 1 states the writer's rule for a specimen fact's unit (maintainer,
   2026-10-15): a fact whose row fixes its unit holds that unit, and one whose unit the source does not give is
   written as a status object in place of the fact.

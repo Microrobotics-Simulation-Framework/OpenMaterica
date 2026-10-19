@@ -562,12 +562,6 @@ NOT_SHOWN: dict[str, str] = {
         "a result that shares the record's objects reads as JSON as one that does not; HP6 holds the "
         "implementation to sharing nothing"
     ),
-    "units_stored_differently_read_as_no_pick": (
-        "an alternative passes step 9 only where its unit is the one registered, so alternatives' units are "
-        "stored differently only where a status object is registered, which only `biocompatibility.evidence` "
-        "does; HP12's alternatives of evidence hold the first's unit, or one spelled otherwise, which step 9 "
-        "refuses, and the core raises at units stored differently until S4"
-    ),
 }
 
 

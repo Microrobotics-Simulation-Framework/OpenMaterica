@@ -739,7 +739,7 @@ def donor_age_of_neither_accepted(name: str, fact: JsonValue, faults: Reasons) -
     _check_fact(name, fact, faults)
 
 
-def units_stored_differently_compared(
+def unit_of_the_last_remaining_alternative(
     field_value: JsonObject,
     section: JsonObject,
     request: Request,
@@ -749,21 +749,22 @@ def units_stored_differently_compared(
     *,
     record_fault: bool,
 ) -> JsonObject:
-    """Step 7 over alternatives, each alternative's unit, once its read passes step 13, taken as the first
-    one's: units stored differently go unseen, and `no_pick` stands."""
-    first: list[JsonValue] = []
-
-    def read_one(*arguments: object, **members: object) -> FieldRead:
-        one: FieldRead = _read_value_field(*arguments, **members)  # type: ignore[arg-type]
-        if "unit" in one.members:
-            first.append(one.members["unit"])
-            one.members["unit"] = first[0]
-        return one
-
-    with mock.patch.object(model, "read_value_field", read_one):
-        return _read_alternatives(
-            field_value, section, request, claims, reasons, labels, record_fault=record_fault
-        )
+    """Step 7 over alternatives, the `no_pick` result's `unit` taken from the last remaining alternative, not
+    the first."""
+    returned = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    entries = returned.get("alternative_values")
+    if isinstance(entries, list) and entries:
+        alternatives = field_value["alternatives"]
+        assert isinstance(alternatives, list)
+        last = entries[-1]
+        assert isinstance(last, dict)
+        assert isinstance(last["alternative"], float)
+        stored = alternatives[int(last["alternative"])]
+        assert isinstance(stored, dict)
+        returned["unit"] = model.unit_returned(stored["unit"])
+    return returned
 
 
 def registered_unit(unit: JsonValue) -> JsonValue:
@@ -1208,11 +1209,11 @@ MUTANTS: Mapping[str, Mutant] = {
         {"review_read": reviewed_with_a_status_objects_members},
         survives="no case holds a reviewed review beside a `reason`",
     ),
-    # A step S4 owns, which no read S2 builds reaches (S2a-4's review B, L1)
-    "units_stored_differently_read_as_no_pick": Mutant(
-        "alternatives whose units are stored differently read as `no_pick`, which S4 decides",
-        "OPEN_POINTS: alternatives_within_decision_12",
-        {"read_alternatives": units_stored_differently_compared},
-        survives="no case holds alternatives whose units are stored differently",
+    # The maintainer's ruling of 2026-10-19 on `unit` under `no_pick`: it replaces
+    # `units_stored_differently_read_as_no_pick`, the reading the text now takes.
+    "unit_of_the_last_remaining_alternative": Mutant(
+        "under `no_pick`, the result's `unit` the last remaining alternative's",
+        "read_side_contract.md:120",
+        {"read_alternatives": unit_of_the_last_remaining_alternative},
     ),
 }

@@ -2842,9 +2842,9 @@ def read_alternatives(
         # `not_met`, with `want_mismatch`, since no pick could help"
         reasons.add("want_mismatch")
         return result(reasons, labels)
-    units = [one.members["unit"] for one in reads]
-    if any(unit != units[0] for unit in units):
-        raise _Undecided("alternatives whose units are stored differently")
+    # read_side_contract.md:120 "Under `no_pick`, it is the first remaining alternative's unit, in stored
+    # order"
+    unit = reads[0].members["unit"]
     # read_side_contract.md:276 "otherwise `unknown`, with `no_pick`"
     reasons.add("no_pick")
     entries: list[JsonValue] = []
@@ -2865,4 +2865,4 @@ def read_alternatives(
         entries.append(entry)
     # read_side_contract.md:166-167 "Under `no_pick` the result holds none of `conditions`, `specimen`,
     # `statistics` and `provenance`"
-    return result(reasons, labels, {"alternative_values": entries, "unit": units[0]})
+    return result(reasons, labels, {"alternative_values": entries, "unit": unit})

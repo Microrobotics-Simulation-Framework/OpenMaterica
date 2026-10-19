@@ -369,3 +369,13 @@ condition a `value`, `range` or `unit`, whatever that member holds, each being a
 condition's shape (`read_side_contract.md` section 1; PR-330). The text refused the first already, as a token
 outside a numeric condition's row, and the second only through the shapes `declarations.md` section 4.1 names,
 so S2a-3's reader ignored a `unit` beside a token; one sentence now says both, and the reader refuses both.
+
+An interim rule, with S4a, step 7 over alternatives read with no pick and no overlay (maintainer, 2026-10-19):
+under `no_pick`, the result's `unit` is the first remaining alternative's, in stored order, where the remaining
+alternatives store it differently, and another alternative's `reason` is not returned (`read_side_contract.md`
+section 2; PR-013). The maintainer has ruled that the rule holds until S3b-2, which replaces it with each
+remaining alternative's `unit` in its `alternative_values` entry. Only a unit registered as a status object can
+differ there, since step 9 compares it by its `status` token alone, and in 0.1.0 only
+`biocompatibility.evidence` registers one. Stored order is fixed once a record is released (`record_format.md`
+section 5), so the unit does not depend on the order of reading. An `alternative_values` entry still holds no
+`unit` of its own.

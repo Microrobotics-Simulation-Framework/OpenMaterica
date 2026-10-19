@@ -640,11 +640,9 @@ def _read_alternatives(
             "want_mismatch", detail=f"want {request.want} can give no alternative of {field.spec.name}"
         )
         return _refused((mismatch,), labels)
-    if any(read.unit != reads[0].unit for read in reads):
-        # A constant never reaches this: an alternative with no reason of its own has passed step 9, so its
-        # unit is the registered unit's string. A guard for the forms S2b, S3 and S4 read.
-        raise NotImplementedError("alternatives whose units are stored differently wait for S4")
     no_pick = Reason("no_pick", detail=f"{field.spec.name} holds {len(reads)} alternatives and no pick")
+    # The first remaining alternative's unit, in stored order, where the alternatives store it differently
+    # (section 2, the `unit` row), which only a unit registered as a status object allows.
     return ReadResult("unknown", (no_pick,), labels, alternative_values=tuple(reads), unit=reads[0].unit)
 
 

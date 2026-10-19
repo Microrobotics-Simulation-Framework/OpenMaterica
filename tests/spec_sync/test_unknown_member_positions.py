@@ -52,7 +52,7 @@ from scripts.gen_vocabulary import SPECIFICATION
 from tests.property.full_fields import SPECIMEN, full_fields, full_forms, record_of
 from tests.spec_sync import status_rows
 from tests.spec_sync.schemas import SCHEMA
-from tests.spec_sync.test_case_steps import KNOWN, STEPS
+from tests.spec_sync.test_case_steps import KNOWN, PIECES, STEPS
 
 JsonObject = dict[str, JsonValue]
 Path_ = tuple[str | int, ...]
@@ -384,13 +384,24 @@ def test_the_read_meets_each_positions_verdict(position: JsonObject) -> None:
     assert problems(position) == []
 
 
+# The steps built in pieces: `done` names their pieces, never the step itself.
+IN_PIECES = {re.sub(r"^(S[0-9]+).*", r"\1", piece) for piece in PIECES}
+
+
 def done_too_soon(positions: list[JsonObject], done: list[str]) -> list[str]:
-    """Each deferred position whose piece is done, or that names no piece, an unknown one or a verdict."""
+    """Each deferred position whose piece is done, or that names no piece, an unknown one or a verdict; and
+    each that names a step built in pieces, which `done` never holds, so that the position would wait for
+    ever."""
     found: list[str] = []
     for position in positions:
         pieces = [str(piece) for piece in a_list(position.get("deferred", []))]
         if "deferred" in position and (not pieces or "verdict" in position or set(pieces) - KNOWN):
             found.append(f"{position['id']}: a deferred position names its known pieces and no verdict")
+        found += [
+            f"{position['id']}: {piece} is built in pieces, so it is never done: name the piece"
+            for piece in pieces
+            if piece in IN_PIECES
+        ]
         found += [
             f"{position['id']}: {piece} is done, so the position needs its verdict"
             for piece in pieces
@@ -401,14 +412,23 @@ def done_too_soon(positions: list[JsonObject], done: list[str]) -> list[str]:
 
 def test_a_deferred_position_waits_for_a_piece_not_done() -> None:
     """A position no read of this version reaches yet: the test fails once the first piece that builds it is
-    done, until the position gets its verdict and is read."""
+    done, until the position gets its verdict and is read; and where it names a step built in pieces, which is
+    never done."""
     done = [str(piece) for piece in STEPS["done"]]
     assert done_too_soon(TABLE, done) == []
-    assert done_too_soon(TABLE, [*done, "S3"]) == [
-        "D04: S3 is done, so the position needs its verdict",
-        "D06: S3 is done, so the position needs its verdict",
+    assert done_too_soon(TABLE, [*done, "S3a", "S4b"]) == [
+        "D04: S3a is done, so the position needs its verdict",
+        "D06: S4b is done, so the position needs its verdict",
     ]
     assert done_too_soon([{**BY_ID["D04"], "deferred": ["S2c"]}], done) != []
+    # The rows as they stood before S4a, which named S3 and S4 once those were built in pieces.
+    assert done_too_soon([{**BY_ID["D04"], "deferred": ["S3"]}], [*done, "S3a", "S3c"]) == [
+        "D04: S3 is built in pieces, so it is never done: name the piece"
+    ]
+    assert done_too_soon([{**BY_ID["D06"], "deferred": ["S3", "S4"]}], [*done, "S4a", "S4b", "S4c"]) == [
+        "D06: S3 is built in pieces, so it is never done: name the piece",
+        "D06: S4 is built in pieces, so it is never done: name the piece",
+    ]
 
 
 # The table against the text and the schemas.
