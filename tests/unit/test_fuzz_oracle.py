@@ -8,7 +8,8 @@ against the reference model (HP12), quiet on the core as it is, and failing on a
 text reads or lets through what it refuses. Each on the full constants, and on the full interval and
 composition (S2b-1), with a fault of their own members. And HP12's open point `members_of_the_other_kind`
 known by its shape, in a field or an alternative, where the oracle failed before it knew it, a step not built
-beside it kept, and a fault beside it still seen."""
+beside it kept, and a fault beside it still seen; and S4a's control fault in step 7, which the model alone
+sees."""
 
 import copy
 import json
@@ -18,6 +19,7 @@ import pytest
 
 from materica import shapes
 from materica.core import conditions, fields, value_shapes
+from materica.core import read as read_module
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.read import read
@@ -36,6 +38,7 @@ from tests.fuzz.field_oracle import (
     passed_step_8,
     read_outcome,
 )
+from tests.fuzz.seeded_fault import faulty_standing
 from tests.property.full_fields import full_fields, full_forms, record_of, request_for
 
 FIELD = "fluid.dynamic_viscosity"
@@ -339,6 +342,18 @@ def against_the_model(sources: tuple[bytes, ...], request: JsonObject) -> None:
 def test_the_model_oracle_is_quiet_on_the_core_as_it_is(name: str) -> None:
     for want in ("value", "bounds", "components", "evidence"):
         against_the_model(*model_case(full_fields()[name], want))
+
+
+def test_the_model_oracle_sees_step_7_s_seeded_fault(monkeypatch: pytest.MonkeyPatch) -> None:
+    """S4a's control fault (`tests/fuzz/seeded_fault.py`, `faulty_standing`): a third alternative refused for
+    its unit alone set aside, so that the two before it give `no_pick` where the text refuses the field. The
+    read gives an answer, which the model's alone tells wrong."""
+    base = full_fields()["population"]
+    sources, request = model_case({"alternatives": [base, base, {**base, "unit": "mPa.s"}]})
+    against_the_model(sources, request)
+    monkeypatch.setattr(read_module, "_standing", faulty_standing)
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        against_the_model(sources, request)
 
 
 def _refuses_every_block(value: JsonValue, where: str, found: value_shapes.Found) -> None:

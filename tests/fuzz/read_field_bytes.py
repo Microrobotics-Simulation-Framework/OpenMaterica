@@ -23,9 +23,10 @@ model disagree but as HP12 lists (a refusal step 8 misses or gives wrongly among
 of six, where under one `want` it is found as often as without the model), when step 8 lets through a
 constant, an interval, a composition or evidence its row allows that the reader `$defs` refuse (T1's third
 relation), or when steps 9 and 10 read such a field otherwise than their text, its units by code point and its
-conditions by HP7's oracle (`field_oracle.py`). `NotImplementedError` is a step not built yet: a table, whose
-own member waits for S3, or alternatives beyond what S4's decision 12 lets S2 read. The seeds are every value
-field of every conformance input.
+conditions by HP7's oracle (`field_oracle.py`). A field holding alternatives is read by step 7 with no pick
+and no overlay (S4a), and the model's step 7 decides it too. `NotImplementedError` is a step not built yet:
+a table, whose own member waits for S3, alone or as an alternative. The seeds are every value field of every
+conformance input.
 """
 
 import importlib
@@ -205,6 +206,7 @@ def main(arguments: list[str]) -> None:
         return
     seeded_fault.seed_step_10_if_asked(atheris.instrument_func)
     seeded_fault.seed_composition_if_asked(atheris.instrument_func)
+    seeded_fault.seed_alternatives_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 

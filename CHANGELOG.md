@@ -537,6 +537,34 @@ every family entry goes in `families/CHANGELOG.md`.
   component's statistics withheld; a sum rule and a component of another member's tokens; a broken form its
   row does not allow; a component repeated after another; an unknown status token in a bound; and a slip of
   the field's `value` inside an interval.
+- S4a's 24 case files run and pass: 945 of 1295 case files pass, 350 wait for S3 and S4's later pieces. 21
+  were written with S4's text; three, the arms of `unit` under `no_pick`, come with S4a. Seven broken
+  implementations of step 7 show the runner fails on them: a refusal set aside; the set-aside alternatives'
+  reasons beside the one left; the one left's reasons without their index; a fault of the request given an
+  index; the waiting reasons dropped from a refusal; an index counted among the alternatives that stay; and
+  the first stored alternative's unit under `no_pick`. The reference model agrees with all 24, and its step 7
+  has 16 seeded faults, each killed by a case file. The unknown-member positions read every position at a
+  field's place inside an alternative too, and an alternative's own position gets its verdict (R77).
+- S4a's properties (`tests/property/test_alternatives_properties.py`, a shard of their own, `alternatives`),
+  over draws that take one of step 7's five outcomes first and build the alternatives that give it, each by a
+  way drawn for its standing (`alternatives_strategies.py`): HP27, the read against an oracle written from
+  step 7's text that composes the reads of each alternative alone, the drawn outcome asserted to be the
+  oracle's; HP28, reordering the stored alternatives moves only their indexes and a field wrapped as its only
+  alternative reads as the field (the fail-closed spike's P6 and P5); HP29, an alternative set aside, added at
+  any stored index, changes no status, and two that stay never give `met` (N7r and S3). 19 mutants of step 7,
+  each killed within the `ci` profile's examples at both sizes at the assertion it names, five by searches
+  planned where their fault shows (`test_alternatives_mutants.py`); an audit control stops drawing `no_pick`.
+  HP12 draws the same alternatives, its audit holds those draws to their floor, which a second control stops,
+  and a planned search of them kills the five model faults one case file alone kills. HP1's and fuzz target
+  4's reason identity take the `alternative`. The kill points join the generated counts
+  (`tests/property/kill_points.json`), and two searches the margin guard named are planned: the mutant
+  `the_last_staying_unit` (the 495th and 732nd example drawn whole, the 52nd and 80th among evidence under
+  `no_pick`), and HP12's `upper_none_as_infinity`, which S4a's draws moved from the 177th and 29th to the
+  503rd and 93rd (the 7th and 34th among intervals under `want: bounds`). Each planned search of both groups
+  is held to its check on the core as it is, which it must pass.
+- Fuzz target 4's oracle, the reference model, decides step 7 over alternatives with no pick and no overlay;
+  `MATERICA_FUZZ_SEEDED_FAULT=alternatives` seeds a control in step 7 that answers wrongly rather than raises,
+  which only the oracle finds and no seed holds. Fuzz target 3 drives HP27 to HP29.
 - S2b-2's 64 case files run and pass: 921 of 1292 case files pass, 371 wait for S3 and S4. Eleven broken
   implementations show the runner fails on them: every report withheld read as some, and some as every; a
   report withheld in part taken; a registered condition under evidence taken; a report's provenance cut to a
