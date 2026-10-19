@@ -475,7 +475,9 @@ family among several, and most soft tissue needs another.
 **Which sections are specified first.** Bulk, fluid, mechanical (with failure), acoustic, radiological,
 magnetic and biocompatibility have consumers now (section 12). Optical, thermal and dielectric are described
 here so that the design accounts for them, and are specified when a consumer needs them; adding a section
-later is a minor schema change (section 5.6). Two of the deferrals need a word:
+later is a minor schema change (section 5.6). Photoacoustics is planned now, as a 0.2 stretch goal: the optical
+section and the thermal section's Grüneisen parameter (maintainer, 2026-10-19; section 12.2). Two of the
+deferrals need a word:
 
 - **Radiological now, optical later.** Both describe how photons interact with matter, in different
   regimes. At X-ray energies attenuation follows from elemental composition (photoelectric absorption and
@@ -2272,7 +2274,8 @@ the label crosswalk's USD form stay with A1.
 | 0.3 | target | A1, A2 and A4 (the OpenMaterica side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A10; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
 | with 0.2 | the mechanics track: not a priority, but progressing | mechanics with isotropic linear elasticity (A10 adds the anisotropic form), one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
-| with a consumer | | the optical, thermal and dielectric sections, added without breaking the schema (section 5.6); further families, of either kind | | |
+| with 0.2, stretch | photoacoustics: planned now, as a stretch goal (maintainer, 2026-10-19) | the optical section (absorption and scattering spectra, scattering anisotropy, refractive index), on the spectral machinery R3 builds (an axis in photon energy or wavelength), and the thermal section's Grüneisen parameter, specified against MIME's photoacoustic chain (optics, the thermoelastic step, acoustics) | | MIME |
+| with a consumer | | the rest of the thermal section and the dielectric section, added without breaking the schema (section 5.6); further families, of either kind | | |
 | with a consumer | transcranial focused ultrasound, for microrobotics in the brain (maintainer, 2026-10-12; not scheduled) | acoustic properties of skull bone as tables over porosity (substance data); the scanner's calibration from CT number to density as a system record in the consumer's namespace; the patient's property map as a field override (A1) carrying that calibration as provenance; shear attenuation (R2); the thermal section, since skull heating is usually the binding safety limit (recalled); anisotropy (A10) after these. On MIME's side it needs an elastic-wave solver | | MIME |
 | beside 0.2 or 0.3 | | the ultrasound adapter and the label crosswalk for the patient twin. Its library values are sourced records, with the extrapolations outside their measured bands declared and labelled (section 3.5); a local copy of Isaac for Healthcare's own six materials, never published, serves as the adapter's test oracle, from the integration testing at the end of 0.1 (maintainer, 2026-10-12) | | Isaac for Healthcare, if they want it |
 
