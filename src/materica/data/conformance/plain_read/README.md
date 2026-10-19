@@ -91,6 +91,11 @@ the members it holds.
   `no_pick` entry holds the labels step 12 gives its alternative, even one whose read ended at step 11, a
   table read over an operating range (`PR-013.table_over_operating_range_keeps_labels`; S4-spec's default for
   the maintainer).
+- **The unit under `no_pick`** (the maintainer's ruling, 2026-10-19). Three PR-013 arms read evidence
+  alternatives whose units hold `not_applicable` with different `reason`s, or a `reason` in one alone: the
+  result's `unit` is the first remaining alternative's, and another's `reason` is not returned. In the third,
+  an implied temperature of 300 K, which applies where the specimen states `tissue_state` `in_vivo`, sets the
+  first alternative aside at 310.15 K, so the unit is the second's, not the first stored one's.
 - **Picks.** Step 0 checks a pick's `index` (a number with no fractional part, not below zero; `1e0` and `-0`
   are written as such in their requests) and refuses two picks for one field. Step 7 then reads only the
   alternative a pick names, counting every stored alternative, or gives `pick_invalid`.

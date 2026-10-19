@@ -6,9 +6,9 @@
 - The members named at a position are the schema's (the writer schema's for a record, `read_request.json`'s
   for a request), with any other member the text names there given with its reason. Every object definition a
   read reaches in a record has a position, and every member of one that may hold a status object a status
-  position, but where a `deferred` position names the piece that will read it (evidence, a table,
-  alternatives, a request's acceptances): it fails once that piece is done. Every object in
-  a host is found by a position's path. An implied condition's and a nominal's members are those the text
+  position, but where a `deferred` position names the piece that will read it (a table, a request's pick,
+  overlay or extrapolation): it fails once that piece is done. Every object in a host is found by a
+  position's path. An implied condition's and a nominal's members are those the text
   names at each place, in `read_request.json`, in an implied condition's rows' `also` and in the read's
   tuples.
 - At each position of a few valid records and a valid request, at every place the pattern finds, the read
@@ -23,11 +23,12 @@
 The hosts are the full fields and forms of `tests/property/full_fields.py`, each in a record with a section
 specimen and extensions, read under the `want` its form gives, and a request for one of them; three of them
 also hold a unit as a status object in a token condition, a field's, a section's and a derivation input's
-fact, which the writer refuses. A position that names a `form` is read in the hosts of that form. A read that
-passes
-steps 8 and 9 goes on to steps 10 to 13, where a name `condition_names` leaves to step 10 adds its
-`condition_unknown_name` and nothing else; one that raises `NotImplementedError`, a step not built yet, has
-the outcome "past step 8".
+fact, which the writer refuses. Each field host is read again with its field wrapped as the field's only
+alternative, which reads as the field (`read_side_contract.md` section 3, step 7), so that every position at
+a field's place is read inside an alternative too. A position that names a `form` is read in the hosts of
+that form. A read that passes steps 8 and 9 goes on to steps 10 to 13, where a name `condition_names` leaves
+to step 10 adds its `condition_unknown_name` and nothing else; one that raises `NotImplementedError`, a step
+not built yet, has the outcome "past step 8".
 """
 
 import copy
@@ -149,6 +150,15 @@ def hosts() -> tuple[Host, ...]:
         record_body["extensions"] = {"acme": {"sections": {"x": 1.0}}}
         record["content_hash"] = content_hash(record)
         found.append(Host(name, record, None, registered, str(field["form"])))
+    # And each, wrapped as the field's only alternative, which reads as the field (HP28's P5), so that every
+    # position at a field's place is read inside an alternative too (`found_by`).
+    for host in list(found):
+        record = copy.deepcopy(host.record)
+        section, _, name = host.field.partition(".")
+        fields_of = an_object(an_object(an_object(an_object(record["body"])["sections"])[section])["fields"])
+        fields_of[name] = {"alternatives": [fields_of[name]]}
+        record["content_hash"] = content_hash(record)
+        found.append(host._replace(name=f"{host.name}, its only alternative", record=record))
     # An implied condition the read applies (its fact and token are the field's), holding a numeric and a
     # token condition the record does not.
     implied: JsonObject = {
@@ -240,6 +250,8 @@ def places(position: JsonObject, host: Host) -> Iterator[Path_]:
 
 
 def found_by(value: JsonValue, pattern: list[str], field: str, here: Path_ = ()) -> Iterator[Path_]:
+    """Each path in `value` that `pattern` finds. A field's place is also each alternative's, where the field
+    holds them: "each alternative is read alone, as a field" (`read_side_contract.md` section 3, step 7)."""
     if not pattern:
         if isinstance(value, dict):
             yield here
@@ -254,6 +266,10 @@ def found_by(value: JsonValue, pattern: list[str], field: str, here: Path_ = ())
         for key, member in value.items():
             if not step.startswith("[") and fits(step, key, member, field):
                 yield from found_by(member, rest, field, (*here, key))
+                alternatives = member.get("alternatives") if isinstance(member, dict) else None
+                if step == "{field}" and isinstance(alternatives, list):
+                    for index, alternative in enumerate(alternatives):
+                        yield from found_by(alternative, rest, field, (*here, key, "alternatives", index))
 
 
 def at(value: JsonValue, path: Path_) -> JsonValue:
@@ -601,6 +617,17 @@ def _no_slip(members: object, names: object) -> list[tuple[str, str]]:
 
 
 NAMED_AT_A_NOMINAL = read_module._NOMINAL_MEMBERS  # pyright: ignore[reportPrivateUsage]
+ALTERNATIVES_PROBLEMS = fields.alternatives_problems
+
+
+def _refusing_the_unknown_in_an_alternative(holder: JsonObject, name: str) -> list[object]:
+    found: list[object] = list(ALTERNATIVES_PROBLEMS(holder, name))
+    if any(
+        isinstance(alternative, dict) and UNKNOWN in alternative
+        for alternative in a_list(holder["alternatives"])
+    ):
+        found.append(value_shapes.invalid(f"{name} holds an alternative holding {UNKNOWN}"))
+    return found
 
 
 BY_ID = {str(position["id"]): position for position in TABLE}
@@ -621,6 +648,13 @@ BY_ID = {str(position["id"]): position for position in TABLE}
         pytest.param(read_module, "slipped", _no_slip, "Q13", id="a_slip_in_an_implied_value_ignored"),
         pytest.param(read_module, "_IMPLIED_REFUSED", (), "Q14", id="an_implied_value_holding_a_status"),
         pytest.param(read_module, "_NOMINAL_MEMBERS", NAMED_AT_A_NOMINAL[:-1], "Q15", id="a_slip_of_params"),
+        pytest.param(
+            read_module,
+            "alternatives_problems",
+            _refusing_the_unknown_in_an_alternative,
+            "R77",
+            id="an_unknown_member_in_an_alternative_refused",
+        ),
     ],
 )
 def test_a_read_against_the_verdict_is_found(
@@ -635,6 +669,7 @@ def test_a_wrong_verdict_a_dead_row_and_a_lost_quote_are_found() -> None:
     assert problems({**BY_ID["R22"], "path": ["body", "nowhere"]}) == ["R22: found in no host"]
     assert problems({**BY_ID["Q10"], "path": ["acceptances", "[pick]"]}) == ["Q10: found in no host"]
     assert problems({**BY_ID["Q12"], "verdict": "ignored"}) != []
+    assert uncovered([position for position in TABLE if position["id"] != "R77"]) == {"alternatives"}
     assert unquoted([{**BY_ID["R01"], "quote": "A reader ignores every member"}], document) == ["R01"]
     assert uncovered([position for position in TABLE if position["id"] not in ("R26", "R58")]) == {
         "uncertainty"
@@ -655,6 +690,17 @@ def test_a_wrong_verdict_a_dead_row_and_a_lost_quote_are_found() -> None:
         *(f"composition_field.{member}" for member in ("composition", "statistics", "unit")),
         "composition_component.statistics",
     }
+
+
+def test_a_position_at_a_fields_place_is_read_inside_its_only_alternative(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The control of the wrapped hosts: a read that refuses an unknown member in a status object's place is
+    found there inside an alternative, as in the field."""
+    monkeypatch.setattr(value_shapes, "slips", _refusing_the_unknown)
+    found = problems(BY_ID["R22"])
+    assert [problem for problem in found if "its only alternative" in problem] != []
+    assert [problem for problem in found if "its only alternative" not in problem] != []
 
 
 def objects_in(value: JsonValue, here: Path_ = ()) -> Iterator[Path_]:

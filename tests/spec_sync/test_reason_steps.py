@@ -153,11 +153,13 @@ def test_each_code_is_given_at_the_steps_the_table_names_and_no_other() -> None:
 # The functions of the core that construct a reason, by module and qualified name, and the step each belongs
 # to; None for a function that is no step's: `jsonio.parse` gives the JSON reader's refusal, which `_parsed`
 # passes to step 0, to report as `request_incomplete`, and `RecordStore.add` notes for an unreadable source,
-# which step 1 reports; `merged` copies the reasons a step found, each code and condition once. Step 8's
-# checks of shape construct theirs in `value_shapes.invalid` and `unknown_token`.
+# which step 1 reports; `merged` copies the reasons a step found, each code, condition and alternative once,
+# and `tagged` copies those found reading one alternative, with its index. Step 8's checks of shape construct
+# theirs in `value_shapes.invalid` and `unknown_token`.
 STEP_OF: dict[tuple[str, str], int | None] = {
     ("jsonio.py", "parse"): None,
     ("reasons.py", "merged"): None,
+    ("reasons.py", "tagged"): None,
     ("read.py", "ReadRequest.from_json"): 0,
     ("read.py", "_parsed"): None,
     ("read.py", "_incomplete"): 0,

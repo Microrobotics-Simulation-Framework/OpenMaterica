@@ -20,14 +20,15 @@ S2 design's SQ49), as S3 keeps a test-only reference evaluator. It never ships, 
 ## What it decides
 
 Steps 0 to 13 for the forms constant, interval, composition and evidence; implied conditions and nominals;
-the operations `list_records` and `content_hash`; and alternatives as far as S4's decision 12 lets S2 go
-(maintainer, 2026-10-15): the shape of `alternatives`, a request fault inside one alternative, and `no_pick`
-or step 7's `want_mismatch` where no alternative has a reason of its own.
+the operations `list_records` and `content_hash`; and step 7 over alternatives read with no pick and no
+overlay (S4a): the shape of `alternatives`, each alternative read alone and set aside, kept or refusing the
+field, and the outcome with its reasons, each found reading one alternative carrying its index, and its
+members. S4a's step 7 was written from the text by an agent that did not read the implementation's.
 
 Anything else gives `NoVerdict`, an outcome of its own, which a test counts and never reads as a pass: a table
-the field's row allows (S3), a pick or an overlay (S4), an extrapolation (S3 and S4), a region target (the
-scene suite), `want: fit` on a field holding a fit record (the fits and reference data suite), and
-alternatives beyond decision 12.
+the field's row allows (S3), alone or as one alternative, a pick or an overlay (S4), an extrapolation (S3 and
+S4), a region target (the scene suite), and `want: fit` on a field holding a fit record (the fits and
+reference data suite).
 
 Each rule cites the text as `file:line` and a short quote. Where the text leaves a point open, the model takes
 the maintainer's ruling where there is one, else the fail-closed choice, each listed once in `OPEN_POINTS` and
@@ -36,7 +37,7 @@ named where it is applied:
 | Open point | The model's choice |
 |---|---|
 | `form_not_allowed_by_its_row` | a composition whose basis the row does not allow is refused as a form the row does not allow is: `form_not_registered` and the shared checks' reasons, its member not checked (maintainer, 2026-10-15; the text says so of a form) |
-| `alternatives_within_decision_12` | decision 12's three cases only (maintainer, 2026-10-15) |
+| `alternatives_without_a_pick` | step 7 for a read with no pick and no overlay (S4a); a table alternative gives no verdict wherever it stands among the others, since every alternative is read before the outcome is decided, and step 11's set-aside, `at_edge` and `request_incomplete` are a table's |
 | `members_of_the_other_kind` | in a record, `token` on a numeric condition, or `value`, `range`, `plus_minus` or `set_or_measured` on a token condition, breaks its shape (fail closed); a token condition's `unit` keeps its own rule, step 9's `unit_mismatch`. The same members in an implied condition are not open: `read_side_contract.md` section 1 refuses them (maintainer, 2026-10-18), and so does the model |
 | `alternatives_named_at_a_field` | `alternatives` is named at a field's place, so a slip of it is refused (fail closed) |
 | `evidence_entry_provenance` | an entry's `provenance` is checked as the field's is (fail closed); it is returned whole, holding the members the version defines at every depth, read from the writer schema below the provenance table's own, since the text names them in part only, its review read as `provenance.md` section 2 item 6 reads every review |
@@ -49,18 +50,19 @@ since S3 (`read_side_contract.md` section 3, step 8; `provenance.md` section 1),
 
 ## Agreement with the cases
 
-`test_cases.py` runs every case file of a read in the repository, 1,223 on `main` at `6c9ab9f` (1,136 reads,
-25 listings and 11 reads of the hash suite, and 51 content hashes), whichever step of the implementation runs
+`test_cases.py` runs every case file of a read in the repository, 1,260 at S4a's head (1,173 reads, 25
+listings and 11 reads of the hash suite, and 51 content hashes), whichever step of the implementation runs
 it, under each of the 8 configurations of claims (plain read, with or without the hash, the fits and reference
 data, and the family evaluation suites) that agrees with the case's suite and claims. Each is compared as the
 specification's README says ("Case files"), by the conformance runner's comparison. The table evaluation
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 915 files, under every configuration each allows (6,952 runs), and gives no verdict on
-329, each listed in `exceptions.py` under the kind its outcome names: a table its row allows (147), an overlay
-(71), an extrapolation (55), a pick (35), and an alternative with reasons of its own (21). It disagrees with
-none. A case file the model disagrees with, or gives no verdict on, fails unless a kind lists it, for the
+The model agrees with 952 files, under every configuration each allows (7,240 runs), and gives no verdict on
+308, each listed in `exceptions.py` under the kind its outcome names: a table its row allows (147), an overlay
+(71), an extrapolation (55) and a pick (35). It disagrees with none. Until S4a it also gave no verdict on 21
+files of alternatives with reasons of their own, with which it now agrees, as with S4a's three cases of
+`unit` under `no_pick`. A case file the model disagrees with, or gives no verdict on, fails unless a kind lists it, for the
 detail that kind names; a listed one it agrees with fails as stale.
 
 ## The mutant table
@@ -72,10 +74,11 @@ of S2a-4's phase B must kill. The search stops at the first such case file; the 
 measured 2026-10-17 on `main` at `6c9ab9f`, but `member_checked_off_its_row`'s, which PR #37's review's cases
 kill (the same day). 75 faults: 61 killed, 14 survive; S2a-4's review added five survivors, each a rule no
 case pins (below the table), so 80 faults: 61 killed, 19 survive. The two cases of the maintainer's token
-ruling (2026-10-18) kill two of the survivors, so 63 killed, 17 survive. S4a replaced the fifth survivor S2a-4's
-review added, `units_stored_differently_read_as_no_pick`, which the maintainer's ruling on `unit` under
-`no_pick` (2026-10-19) made the text's reading, by `unit_of_the_last_remaining_alternative`, which that
-ruling's two cases kill: 64 killed, 16 survive.
+ruling (2026-10-18) kill two of the survivors, so 63 killed, 17 survive. S4a replaced the fifth survivor
+S2a-4's review added, `units_stored_differently_read_as_no_pick`, which the maintainer's ruling on `unit`
+under `no_pick` (2026-10-19) made the text's reading, by `unit_of_the_last_remaining_alternative`, which that
+ruling's cases kill, and added 16 faults of its step 7, each killed, measured 2026-10-19 at S4a's head: 96
+faults, 80 killed, 16 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -158,7 +161,23 @@ ruling's two cases kill: 64 killed, 16 survive.
 | `donor_age_of_neither_accepted` | a `donor_age` holding neither `value` nor `range` accepted | survives: no case holds one |
 | `review_of_both_shapes_read_as_its_status` | a review holding both `status` and `result` read as its status object | survives: no case holds one |
 | `reviewed_review_keeps_a_status_objects_members` | a reviewed review returned with a status object's members, its `reason` among them | survives: no case holds one |
-| `unit_of_the_last_remaining_alternative` | under `no_pick`, the result's `unit` the last remaining alternative's | 2, `PR-013.evidence_units_with_different_reasons` and `PR-013.evidence_unit_reason_in_the_second_only` |
+| `unit_of_the_last_remaining_alternative` | under `no_pick`, the result's `unit` the last remaining alternative's | 3, the three `PR-013.evidence_unit*` arms |
+| `refused_alternative_set_aside` | an alternative refused at step 8 or 9 set aside, not refusing the field | 9 |
+| `set_aside_alternative_refuses` | an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside | 6 |
+| `request_fault_sets_aside` | an alternative whose read a fault of the request ends set aside, not refusing the field | 1, `PR-316.implied_two_disagree_in_alternative` alone |
+| `want_mismatch_sets_aside` | an alternative whose form `want` cannot give set aside, not kept | 9 |
+| `set_aside_reasons_dropped_where_refused` | the set-aside alternatives' reasons dropped where another refuses the field | 3 |
+| `waiting_reasons_dropped_where_refused` | the `not_met` reasons of an alternative that stays dropped where the field is refused | 2, `PR-044.refused_reports_waiting_nominal_invalid` and `PR-044.refused_reports_waiting_want_mismatch` |
+| `labels_kept_where_refused` | the alternatives' labels on the result where the field is refused or every alternative set aside | 2, `PR-316.implied_two_disagree_in_alternative` and `PR-336.refused_over_alternatives_no_hs` |
+| `set_aside_reasons_beside_the_one_left` | the set-aside alternatives' reasons reported beside the one left | 5 |
+| `one_left_reasons_without_their_alternative` | the one left's reasons without their `alternative` | 3 |
+| `nominal_not_applied_to_the_one_left` | a nominal not applied to the interval left, which gives no value | 1, `PR-338.one_left_interval_nominal_applied` alone |
+| `not_met_reasons_beside_no_pick` | the `not_met` reasons of the alternatives that stay reported beside `no_pick` or `want_mismatch` | 7 |
+| `unknown_reasons_dropped_beside_no_pick` | the `unknown` reasons of the alternatives that stay dropped beside `no_pick` or `want_mismatch` | 1, `PR-013.index_past_set_aside_and_unknown_reasons` alone |
+| `set_aside_reasons_beside_no_pick` | the set-aside alternatives' reasons reported beside `no_pick` or `want_mismatch` | 1, `PR-013.index_past_set_aside_and_unknown_reasons` alone |
+| `request_fault_given_an_alternative` | a fault of the request found reading one alternative given that `alternative` | 2, PR-316's two arms in an alternative |
+| `index_among_those_that_stay` | an alternative's index counted among the alternatives that stay, in its reasons and its entry | 2, `PR-013.index_past_set_aside_and_unknown_reasons` and `PR-044.one_left_after_set_aside` |
+| `unit_of_the_first_stored_alternative` | under `no_pick`, the result's `unit` the first stored alternative's, set aside or not | 1, `PR-013.evidence_unit_of_the_first_that_stays` alone |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the eight survivors, three are the open points (`members_of_the_other_kind_read`,
@@ -195,6 +214,16 @@ S2a-4's review pinned the five it added: the first four are rules no case or HP1
 model's own reading until then (a reviewed review's `reason` was returned, which `provenance.md` section 2
 item 6 does not name for a reviewed review), fixed and seeded; the fifth was a step S4 owns, which no read S2
 built reached, and S4a replaced it (above).
+
+S4a's sixteen break each rule of step 7 the model decides for a read with no pick and no overlay: an
+alternative's standing (set aside, staying or refusing the field), the reasons each outcome reports and
+withholds, each reason's `alternative`, the nominal on the one left, the labels of a result that rests on no
+single alternative, the entries' indexes and the `unit` under `no_pick`. Five die to one case file alone:
+`request_fault_sets_aside`, `nominal_not_applied_to_the_one_left`, `unknown_reasons_dropped_beside_no_pick`,
+`set_aside_reasons_beside_no_pick` and `unit_of_the_first_stored_alternative`, whose case S4a wrote for it,
+three evidence alternatives the first of which an implied condition sets aside: only a unit registered as a
+status object can be stored differently, which only evidence's is, and evidence holds no registered
+condition of its own, so an implied condition is the one way to set an evidence alternative aside.
 
 The agreement property HP12 (`tests/property/test_model_properties.py`) kills 15 of the 16 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two

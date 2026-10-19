@@ -33,7 +33,8 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
                                                            7 the field, or absent; a field holding
                                                              alternatives (fields.alternatives_problems,
                                                              read._read_alternatives) reads each by 8 to
-                                                             13, as far as S4's decision 12 goes
+                                                             13, then sets it aside, keeps it or refuses
+                                                             the field, with no pick and no overlay (S4a)
                                                                   │
                                                            read.read_value_field, steps 8 to 13 of one
                                                            value field:
@@ -67,7 +68,7 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 
 | Module | Implements |
 |---|---|
-| `reasons.py` | a reason as `read_side_contract.md` section 2 shapes it, each code and condition once; codes from the table in section 4 |
+| `reasons.py` | a reason as `read_side_contract.md` section 2 shapes it, each code, condition and alternative once, the index of the alternative it was found reading where it was; codes from the table in section 4 |
 | `status.py` | the three statuses of a read, and the worst of several (section 2) |
 | `jsonio.py` | `record_format.md` section 1 item 6, strict JSON; `JsonValue`, the type of what it reads |
 | `canonical.py` | `record_format.md` section 9 item 2: RFC 8785, with no Unicode normalisation |
@@ -81,7 +82,7 @@ sources ─▶ record.RecordStore.add ─▶ candidates by id and version,      
 | `record.py` | the records a read resolves among, and the checks that depend on one record alone (steps 2, 3 and 5) |
 | `resolve.py` | steps 1 to 5: a material reference to the record it pins, or the reasons it is refused |
 | `conditions.py` | step 10: the conditions checked, each against the request by section 5's table, on the exact values of the doubles, with a stated `plus_minus`, and the implied conditions the read applies (`declarations.md` section 4.1); a result's condition entries |
-| `read.py` | the request's own check (step 0), its implied conditions and nominals included, an acceptance of a kind a read does not take refused; the read of a value field, steps 8 to 13 (`read_value_field`), a nominal applied at step 13, and of alternatives at step 7 as far as S4's decision 12 goes; the result (`ReadResult`, `FieldRead`, `ProvenanceSummary`), its members as stored by the generated shapes, each count and index an integer, and the acceptances it applied (`applied`); picks, overlays, extrapolations and the rest of step 7 are not built yet |
+| `read.py` | the request's own check (step 0), its implied conditions and nominals included, an acceptance of a kind a read does not take refused; the read of a value field, steps 8 to 13 (`read_value_field`), a nominal applied at step 13, and of alternatives at step 7 with no pick and no overlay (S4a), each reason found reading one carrying its index; the result (`ReadResult`, `FieldRead`, `ProvenanceSummary`), its members as stored by the generated shapes, each count and index an integer, and the acceptances it applied (`applied`); picks, overlays, extrapolations and the rest of step 7 are not built yet |
 | `evaluate.py` | a table at an operating value of its axis (`record_format.md` section 6, table items 3 and 4; `read_side_contract.md` section 5): its readable range, its edges, the knots that bracket the value, and the table's number there, the exact value rounded once to the nearest double, ties to even (a log-log one under the one assumption `loglog` states); step 11 is to use it, and nothing calls it yet |
 
 The conformance cases HS-001 to HS-003 check the hash end to end; the plain-read cases, HS-010 and HS-011 the

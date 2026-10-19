@@ -158,7 +158,7 @@
       "review_of_both_shapes_read_as_its_status": [8, 3],
       "reviewed_review_keeps_a_status_objects_members": [9, 4],
       "slips_of_alternatives_ignored": [1, 1],
-      "stated_without_origin_unreported": [33, 271],
+      "stated_without_origin_unreported": [33, 182],
       "token_condition_unit_accepted": [66, 35],
       "two_nominals_for_one_field": [52, 45],
       "unit_returned_without_its_reason": [52, 52],

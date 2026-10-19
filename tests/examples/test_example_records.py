@@ -19,6 +19,7 @@ from materica.core import jsonio
 from materica.core.envelope import envelope_problems
 from materica.core.jsonio import JsonValue
 from materica.core.read import ReadResult
+from materica.core.reasons import Reason
 from materica.core.value_shapes import JsonObject, a_list, an_object
 from materica.core.vocabulary import VOCABULARY
 from tests.spec_sync.schemas import validator
@@ -542,38 +543,71 @@ def test_the_water_example_gives_no_pick_where_both_alternatives_meet() -> None:
     assert [alternative.value for alternative in result.alternative_values or ()] == [998.207, 993.33]
 
 
-OWN_REASONS = "an alternative's own reasons are read at step 7 by S4"
-
-
-@pytest.mark.parametrize("temperature", [293.15, 310.15])
-@pytest.mark.parametrize("field", ["bulk.density", "fluid.dynamic_viscosity"])
-def test_the_water_example_at_one_temperature_is_not_read_yet(field: str, temperature: float) -> None:
-    """A read that sets one alternative aside is that alternative's own reason, which step 7 reads in S4. The
-    message is the one guard's: the unit guard and the one-alternative-left guard also name an alternative."""
+@pytest.mark.parametrize(("temperature", "value"), [(293.15, 998.207), (310.15, 993.33)])
+def test_the_water_density_at_one_temperature_is_the_one_alternative_left(
+    temperature: float, value: float
+) -> None:
+    """The other temperature is outside the tolerance, so its alternative is set aside and the one left is
+    read (`read_side_contract.md` section 3, step 7): `met`, its value, and no reason of the set-aside one."""
     operating, tolerance = kelvin(temperature, 0.5)
-    conditions: JsonObject = {"temperature": tolerance}
-    if field == "bulk.density":
-        conditions["density_kind"] = {"accept": ["apparent"]}
-    with pytest.raises(NotImplementedError, match=OWN_REASONS):
-        read(request(example("water.json"), field, {"temperature": operating}, conditions), STORE)
+    result = read(
+        request(
+            example("water.json"),
+            "bulk.density",
+            {"temperature": operating},
+            {"temperature": tolerance, "density_kind": {"accept": ["apparent"]}},
+        ),
+        STORE,
+    )
+    assert (result.status, result.reasons, result.value) == ("met", (), value)
+    assert result.alternative_values is None
 
 
-@pytest.mark.parametrize("temperature", [293.15, 300.0, 310.15])
-def test_the_water_viscosity_is_not_read_at_any_temperature(temperature: float) -> None:
-    """Each viscosity alternative states no shear rate, which is a reason of its own, so a request both
-    alternatives meet raises too, where the density gives `no_pick`. Whether the viscosity then reads
-    `unknown` (`condition_unstated`) once S4 lands is for a consumer's declaration to waive."""
-    operating, tolerance = kelvin(temperature, 20.0)
-    with pytest.raises(NotImplementedError, match=OWN_REASONS):
-        read(
-            request(
-                example("water.json"),
-                "fluid.dynamic_viscosity",
-                {"temperature": operating},
-                {"temperature": tolerance},
-            ),
-            STORE,
-        )
+@pytest.mark.parametrize(("temperature", "left", "value"), [(293.15, 0, 0.0010016), (310.15, 1, 0.000691304)])
+def test_the_water_viscosity_at_one_temperature_is_the_one_left_its_shear_rate_unstated(
+    temperature: float, left: int, value: float
+) -> None:
+    """Each viscosity alternative states no shear rate, which its row requires: the one left is read,
+    `unknown` (`condition_unstated`, carrying its index), for a consumer's declaration to waive."""
+    operating, tolerance = kelvin(temperature, 0.5)
+    result = read(
+        request(
+            example("water.json"),
+            "fluid.dynamic_viscosity",
+            {"temperature": operating},
+            {"temperature": tolerance},
+        ),
+        STORE,
+    )
+    assert (result.status, result.reasons, result.value) == (
+        "unknown",
+        (Reason("condition_unstated", "shear_rate", alternative=left),),
+        value,
+    )
+
+
+def test_the_water_viscosity_where_both_alternatives_meet_gives_no_pick() -> None:
+    """Where both alternatives stay, each one's `unknown` reasons stand beside `no_pick`
+    (`read_side_contract.md` section 3, step 7)."""
+    operating, tolerance = kelvin(300.0, 20.0)
+    result = read(
+        request(
+            example("water.json"),
+            "fluid.dynamic_viscosity",
+            {"temperature": operating},
+            {"temperature": tolerance},
+        ),
+        STORE,
+    )
+    assert (result.status, set(result.reasons)) == (
+        "unknown",
+        {
+            Reason("no_pick"),
+            Reason("condition_unstated", "shear_rate", alternative=0),
+            Reason("condition_unstated", "shear_rate", alternative=1),
+        },
+    )
+    assert [alternative.value for alternative in result.alternative_values or ()] == [0.0010016, 0.000691304]
 
 
 N45_UNKNOWN_REASONS = [

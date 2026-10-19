@@ -61,6 +61,9 @@ _check_provenance = model.check_provenance
 _check_units = model.check_units
 _condition_entry = model.condition_entry
 _conditions_checked = model.conditions_checked
+_fate_of = model.fate_of
+_reasons_beside_two_or_more = model.reasons_beside_two_or_more
+_reasons_where_refused = model.reasons_where_refused
 _read_alternatives = model.read_alternatives
 _read_decided = model.read_decided
 _read_value_field = model.read_value_field
@@ -324,6 +327,250 @@ def nominal_applied_to_every_alternative(
     if "assumption" in read.members:
         read.stored = read.members["value"]
     return read
+
+
+def alternatives_read(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    *,
+    record_fault: bool,
+) -> list[FieldRead]:
+    """Each alternative of a field whose `alternatives` keeps its shape read alone, as step 7 reads it."""
+    alternatives = field_value["alternatives"]
+    if model.alternatives_broken(field_value) or not isinstance(alternatives, list):
+        return []
+    return [
+        _read_value_field(
+            alternative, section, request, claims, record_fault=record_fault, nominal=request.nominal
+        )
+        for alternative in alternatives
+    ]
+
+
+def reasons_in(answer: JsonObject) -> Reasons:
+    found: list[Reason] = []
+    listed = answer["reasons"]
+    for reason in listed if isinstance(listed, list) else []:
+        assert isinstance(reason, dict)
+        code, condition, index = reason["code"], reason.get("condition"), reason.get("alternative")
+        assert isinstance(code, str)
+        found.append(
+            Reason(
+                code,
+                condition if isinstance(condition, str) else None,
+                int(index) if isinstance(index, float) else None,
+            )
+        )
+    return Reasons(found)
+
+
+def with_reasons(answer: JsonObject, reasons: Reasons) -> JsonObject:
+    answer["reasons"], answer["status"] = reasons.to_json(), reasons.status
+    return answer
+
+
+def rests_on_one_alternative(answer: JsonObject) -> bool:
+    # read_side_contract.md:166-167: of step 7's outcomes, only the one left holds `conditions`
+    return "conditions" in answer
+
+
+def refused_alternative_set_aside(read: FieldRead) -> model.Fate:
+    fate = _fate_of(read)
+    return "set_aside" if fate == "refuses" and not read.by_request else fate
+
+
+def set_aside_alternative_refuses(read: FieldRead) -> model.Fate:
+    fate = _fate_of(read)
+    return "refuses" if fate == "set_aside" else fate
+
+
+def request_fault_sets_aside(read: FieldRead) -> model.Fate:
+    return "set_aside" if read.by_request else _fate_of(read)
+
+
+def want_mismatch_sets_aside(read: FieldRead) -> model.Fate:
+    fate = _fate_of(read)
+    return "set_aside" if fate == "stays" and read.by_want.status == "not_met" else fate
+
+
+def set_aside_reasons_dropped_where_refused(reads: Sequence[FieldRead]) -> Reasons:
+    fates = [model.fate_of(one) for one in reads]
+    if "refuses" not in fates:
+        return _reasons_where_refused(reads)
+    return Reasons(
+        reason
+        for index, one in enumerate(reads)
+        if fates[index] != "set_aside"
+        for reason in model.reasons_of_alternative(one, index)
+    )
+
+
+def waiting_reasons_dropped_where_refused(reads: Sequence[FieldRead]) -> Reasons:
+    return Reasons(
+        reason
+        for index, one in enumerate(reads)
+        for reason in model.reasons_of_alternative(one, index)
+        if model.fate_of(one) != "stays" or model.REASONS[reason.code].status != "not_met"
+    )
+
+
+def labels_kept_where_refused(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    answer = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    reads = alternatives_read(field_value, section, request, claims, record_fault=record_fault)
+    fates = [model.fate_of(one) for one in reads]
+    found = answer["labels"]
+    if reads and ("refuses" in fates or "stays" not in fates) and isinstance(found, list):
+        answer["labels"] = [*found, *(label for one in reads for label in one.labels)]
+    return answer
+
+
+def set_aside_reasons_beside_the_one_left(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    answer = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    if not rests_on_one_alternative(answer):
+        return answer
+    reads = alternatives_read(field_value, section, request, claims, record_fault=record_fault)
+    found = reasons_in(answer)
+    found.extend(
+        reason
+        for index, one in enumerate(reads)
+        if model.fate_of(one) == "set_aside"
+        for reason in model.reasons_of_alternative(one, index)
+    )
+    return with_reasons(answer, found)
+
+
+def one_left_reasons_without_their_alternative(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    answer = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    if not rests_on_one_alternative(answer):
+        return answer
+    return with_reasons(answer, Reasons(Reason(found.code, found.condition) for found in reasons_in(answer)))
+
+
+def nominal_not_applied_to_the_one_left(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    """The one left read as an interval under `want: value` with no nominal: `want_mismatch`, and no value."""
+    answer = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    if "assumption" in answer:
+        for name in ("value", "assumption", "unit", "specimen", "statistics", "provenance"):
+            answer.pop(name, None)
+    return answer
+
+
+def not_met_reasons_beside_two_or_more(reads: Sequence[FieldRead], staying: Sequence[int]) -> Reasons:
+    return Reasons(
+        reason for index in staying for reason in model.reasons_of_alternative(reads[index], index)
+    )
+
+
+def unknown_reasons_dropped_beside_two_or_more(reads: Sequence[FieldRead], staying: Sequence[int]) -> Reasons:
+    return Reasons()
+
+
+def set_aside_reasons_beside_two_or_more(reads: Sequence[FieldRead], staying: Sequence[int]) -> Reasons:
+    found = _reasons_beside_two_or_more(reads, staying)
+    found.extend(
+        reason
+        for index, one in enumerate(reads)
+        if model.fate_of(one) == "set_aside"
+        for reason in model.reasons_of_alternative(one, index)
+    )
+    return found
+
+
+def request_fault_given_an_alternative(read: FieldRead, index: int) -> Reasons:
+    return Reasons(
+        (*read.own.found_in(index), *read.by_request.found_in(index), *read.by_want.found_in(index))
+    )
+
+
+def index_among_those_that_stay(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    answer = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    reads = alternatives_read(field_value, section, request, claims, record_fault=record_fault)
+    staying = [index for index, one in enumerate(reads) if model.fate_of(one) == "stays"]
+    rank = {float(index): float(position) for position, index in enumerate(staying)}
+    for listed in (answer["reasons"], answer.get("alternative_values", [])):
+        for item in listed if isinstance(listed, list) else []:
+            index = item.get("alternative") if isinstance(item, dict) else None
+            if isinstance(item, dict) and isinstance(index, float) and index in rank:
+                item["alternative"] = rank[index]
+    return answer
+
+
+def unit_of_the_first_stored_alternative(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    answer = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    alternatives = field_value["alternatives"]
+    if "alternative_values" in answer and isinstance(alternatives, list):
+        first = alternatives[0]
+        assert isinstance(first, dict)
+        answer["unit"] = model.unit_returned(first["unit"])
+    return answer
 
 
 def every_unknown_token_a_shape_fault(
@@ -911,6 +1158,87 @@ MUTANTS: Mapping[str, Mutant] = {
         "a nominal applied to an interval alternative under `no_pick`",
         "read_side_contract.md:525-526",
         {"read_value_field": nominal_applied_to_every_alternative},
+    ),
+    # Step 7 with no pick (S4a)
+    "refused_alternative_set_aside": Mutant(
+        "an alternative refused at step 8 or 9 set aside, not refusing the field",
+        "read_side_contract.md:256",
+        {"fate_of": refused_alternative_set_aside},
+    ),
+    "set_aside_alternative_refuses": Mutant(
+        "an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside",
+        "read_side_contract.md:244-245",
+        {"fate_of": set_aside_alternative_refuses},
+    ),
+    "request_fault_sets_aside": Mutant(
+        "an alternative whose read a fault of the request ends set aside, not refusing the field",
+        "read_side_contract.md:258-259",
+        {"fate_of": request_fault_sets_aside},
+    ),
+    "want_mismatch_sets_aside": Mutant(
+        "an alternative whose form `want` cannot give set aside, not kept",
+        "read_side_contract.md:250-253",
+        {"fate_of": want_mismatch_sets_aside},
+    ),
+    "set_aside_reasons_dropped_where_refused": Mutant(
+        "the set-aside alternatives' reasons dropped where another refuses the field",
+        "read_side_contract.md:268-269",
+        {"reasons_where_refused": set_aside_reasons_dropped_where_refused},
+    ),
+    "waiting_reasons_dropped_where_refused": Mutant(
+        "the `not_met` reasons of an alternative that stays dropped where the field is refused",
+        "read_side_contract.md:263-265",
+        {"reasons_where_refused": waiting_reasons_dropped_where_refused},
+    ),
+    "labels_kept_where_refused": Mutant(
+        "the alternatives' labels on the result where the field is refused or every alternative set aside",
+        "read_side_contract.md:284-286",
+        {"read_alternatives": labels_kept_where_refused},
+    ),
+    "set_aside_reasons_beside_the_one_left": Mutant(
+        "the set-aside alternatives' reasons reported beside the one left",
+        "read_side_contract.md:270-271",
+        {"read_alternatives": set_aside_reasons_beside_the_one_left},
+    ),
+    "one_left_reasons_without_their_alternative": Mutant(
+        "the one left's reasons without their `alternative`",
+        "read_side_contract.md:139-140",
+        {"read_alternatives": one_left_reasons_without_their_alternative},
+    ),
+    "nominal_not_applied_to_the_one_left": Mutant(
+        "a nominal not applied to the interval left, which gives no value",
+        "read_side_contract.md:270",
+        {"read_alternatives": nominal_not_applied_to_the_one_left},
+    ),
+    "not_met_reasons_beside_no_pick": Mutant(
+        "the `not_met` reasons of the alternatives that stay reported beside `no_pick` or `want_mismatch`",
+        "read_side_contract.md:281-282",
+        {"reasons_beside_two_or_more": not_met_reasons_beside_two_or_more},
+    ),
+    "unknown_reasons_dropped_beside_no_pick": Mutant(
+        "the `unknown` reasons of the alternatives that stay dropped beside `no_pick` or `want_mismatch`",
+        "read_side_contract.md:281",
+        {"reasons_beside_two_or_more": unknown_reasons_dropped_beside_two_or_more},
+    ),
+    "set_aside_reasons_beside_no_pick": Mutant(
+        "the set-aside alternatives' reasons reported beside `no_pick` or `want_mismatch`",
+        "read_side_contract.md:282-283",
+        {"reasons_beside_two_or_more": set_aside_reasons_beside_two_or_more},
+    ),
+    "request_fault_given_an_alternative": Mutant(
+        "a fault of the request found reading one alternative given that `alternative`",
+        "read_side_contract.md:142",
+        {"reasons_of_alternative": request_fault_given_an_alternative},
+    ),
+    "index_among_those_that_stay": Mutant(
+        "an alternative's index counted among the alternatives that stay, in its reasons and its entry",
+        "read_side_contract.md:141-142",
+        {"read_alternatives": index_among_those_that_stay},
+    ),
+    "unit_of_the_first_stored_alternative": Mutant(
+        "under `no_pick`, the result's `unit` the first stored alternative's, set aside or not",
+        "read_side_contract.md:120",
+        {"read_alternatives": unit_of_the_first_stored_alternative},
     ),
     # Step 8
     "unknown_tokens_read_as_shape_faults": Mutant(
