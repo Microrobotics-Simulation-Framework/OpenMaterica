@@ -204,6 +204,15 @@ every family entry goes in `families/CHANGELOG.md`.
   with: a finding that matters only where real data is very unlikely to reach gets a stated limit, not new
   machinery, and becomes a known anomaly if real data is found to reach it; reviews mark each finding by whether
   it can change a value or a refusal a consumer sees on data a real record could hold.
+- The README and the site say first what OpenMaterica is for, in one line: material properties for biomedical
+  simulation, each stored with the conditions it holds under, so a simulation can check that a value applies
+  before it uses it. Both now give example uses (blood or plasma viscosity for a microrobot, a magnet grade's
+  remanence, a phantom standing in for blood, biocompatibility evidence; and, for the sections after schema 0.1,
+  photoacoustic imaging through layered tissue, ultrasound in a simulator built on USD and C-arm fluoroscopy of a
+  device in a vessel), a list of what it is and is not (not a simulator: it computes no physics and ships no anatomy), and plain
+  JSON and OpenUSD as its two main integration targets. What the specification defines but the Python package does not yet implement (the
+  OpenUSD binding, scene documents, the build check, model parameter sets with check points) is labelled so,
+  and the site's paragraph on materiomics leaves the front page (the architecture concept holds it).
 - The pre-review script's trace test (`tests/unit/test_pre_review.py`, run where `MATERICA_TRACE_SELECTION=1`)
   no longer depends on the Python bytecode cache. With a warm `__pycache__` the import system reads a module's
   `.pyc`, which the trace ignores, and never opens its source; with a cold one it opens the source, so the test

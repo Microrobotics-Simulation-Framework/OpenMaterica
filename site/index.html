@@ -91,18 +91,74 @@
 <body>
 <header>
   <h1><img class="logo" src="/logo.png" alt="OpenMaterica" width="1280" height="919"></h1>
-  <p class="lead">An open material schema and Python toolkit that records the physical properties of substances
-    in and around the human body, with their provenance, for simulation.</p>
+  <p class="lead">Material properties for biomedical simulation, each stored with the conditions it holds under,
+    so a simulation can check that a value applies before it uses it.</p>
 </header>
 
 <main>
   <section aria-labelledby="what">
     <h2 id="what">What it is</h2>
-    <p>OpenMaterica describes tissues and body fluids, the media and phantoms that stand in for them, agents
-      introduced into them, and the materials of devices that enter or touch them. Every value carries its
-      provenance, the conditions it was measured under and its uncertainty, so that a simulation can check a value
-      against its own conditions before using it. The specification is normative: where the Python package disagrees with it,
-      the package is wrong.</p>
+    <p>OpenMaterica is an open, fail-closed format for the physical properties of substances in and around the
+      human body, and a Python reader for it. A material value holds only under conditions: a viscosity at a temperature and a shear rate, a stiffness on
+      a specimen of a given shape. OpenMaterica records those conditions with every value, with its source and its
+      uncertainty (or that the source gave none), for tissues and body fluids, the media and phantoms that stand in for them, agents introduced
+      into them, and the materials of devices that enter or touch them. A simulation asks for a value at its own
+      operating conditions, and the reader answers <code>met</code>, <code>not_met</code> or <code>unknown</code>,
+      with its reasons. The specification is normative: where the Python package disagrees with it, the package is
+      wrong.</p>
+  </section>
+
+  <section aria-labelledby="examples">
+    <h2 id="examples">Example uses</h2>
+    <p>The curated library does not exist yet; three example records show the format. These are the uses it is
+      built for.</p>
+    <ul>
+      <li><strong>A microrobot swimming in a blood vessel</strong> needs the viscosity of blood or plasma at body
+        temperature and at the shear rates its own motion creates. Blood's viscosity at room temperature is not its
+        viscosity at body temperature, and blood is thicker in slow flow than in fast flow. A value measured
+        outside the robot's conditions reads <code>not_met</code>, naming the condition that failed.</li>
+      <li><strong>A magnetically steered device</strong> needs its magnet's remanence. A magnet grade gives a
+        range, not one number: the reader returns the bounds, or a nominal value you declare, carried with the
+        assumption it rests on. If the source never stated the temperature the range holds at, the read says
+        <code>unknown</code>, not <code>met</code>.</li>
+      <li><strong>A bench test with a phantom</strong> fills a model vessel with water or a glycerol mixture in
+        place of blood. The phantom's properties come from a record of the phantom itself, at the bench's
+        temperature; whether it stands in for blood is your declaration, never the library's claim.</li>
+      <li><strong>A device design review</strong> looks up a material's biocompatibility evidence: the test
+        reports, the standards they followed and what they tested. It is information about the evidence, never a
+        claim that the material is safe.</li>
+    </ul>
+    <p>Imaging needs more. Schema 0.1 holds the bulk, fluid, magnetic and biocompatibility sections; the acoustic,
+      radiological, optical and thermal sections come later, and scenes and layered paths are specified but not yet
+      in the Python package.</p>
+    <ul>
+      <li><strong>Photoacoustic imaging through layered tissue</strong> needs, for each layer from the skin to a
+        target vessel, optical absorption and scattering at the laser's wavelength, how efficiently absorbed light
+        becomes pressure (the Grüneisen parameter), and the speed and attenuation of sound at the transducer's
+        frequency. Blood's absorption depends on the wavelength and on how oxygenated the blood is, the Grüneisen
+        parameter changes markedly between room and body temperature, and attenuation depends on frequency.</li>
+      <li><strong>Ultrasound in a robotics simulator built on USD</strong> needs each tissue's sound speed, density
+        and attenuation at the probe's frequency, bound to the meshes of the scene. Tuning such as speckle stays
+        with the simulator.</li>
+      <li><strong>C-arm fluoroscopy of a device in a vessel</strong> needs each material's X-ray attenuation across
+        the tube's energy spectrum: tissue and bone, blood carrying a contrast agent, and the device's own
+        materials. Attenuation jumps at an element's absorption edge, and iodine's and neodymium's both fall inside
+        the diagnostic band, so a contrast agent and a magnet each need a spectrum, not one number.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="not">
+    <h2 id="not">What it is not</h2>
+    <ul>
+      <li><strong>Not a simulator.</strong> It computes no physics: it is not a solver, a mesher, a segmenter or a
+        renderer, and none of its code runs inside a simulation's loop.</li>
+      <li><strong>Not a source of anatomy or patient data.</strong> Geometry is scene data.</li>
+      <li><strong>Not a judge of whether a value applies to your use.</strong> Whether a record's specimen stands
+        in for yours is your declaration.</li>
+      <li><strong>Not a database service, and not yet a curated library.</strong> The library does not exist yet;
+        three example records show the format.</li>
+      <li><strong>Not a medical device,</strong> and never a source of safety or biocompatibility claims.</li>
+    </ul>
   </section>
 
   <section aria-labelledby="status">
@@ -128,9 +184,15 @@
       <dt>Checks give <code>met</code>, <code>not_met</code> or <code>unknown</code>.</dt>
       <dd>Each check of a declaration against a record gives one of three results, with its reasons. An unstated
         condition gives <code>unknown</code>, never <code>met</code>, and a refusal is a result, not an error.</dd>
-      <dt>JSON, with an optional USD binding.</dt>
-      <dd>Records are plain JSON files that any language can read with a JSON parser and no OpenMaterica code. An
-        OpenUSD binding expresses the same records in USD scenes; it is never required.</dd>
+      <dt>Two integration targets: plain JSON and OpenUSD.</dt>
+      <dd>Records are plain JSON files that any language can read with a JSON parser and no OpenMaterica code, and
+        the Python package depends on nothing outside the standard library. For simulators built on USD, the
+        specification defines an OpenUSD binding that expresses the same records in USD scenes. It is optional, and
+        not yet in the Python package.</dd>
+      <dt>Check points for model parameters (specified, not yet in the Python package).</dt>
+      <dd>A model parameter set names a versioned model family and carries check points: inputs with the outputs
+        the model must give. A solver that evaluates the model in the wrong convention fails them loudly instead of
+        running silently with wrong physics.</dd>
       <dt>Content hashes.</dt>
       <dd>Each record carries a SHA-256 hash of its content, serialised as canonical JSON (RFC&nbsp;8785), so a consumer
         can pin the exact record it read. A further review does not change the hash; a change to a value does.</dd>
@@ -140,10 +202,8 @@
   <section aria-labelledby="scope">
     <h2 id="scope">Scope</h2>
     <p>OpenMaterica describes substances, never systems: not an apparatus or its calibration, not a device as
-      built, not a simulator's tuning. It is adjacent to materiomics rather than infrastructure for it: it records
-      measured properties of specimens, with their test conditions, at the scale where a simulation consumes them,
-      and does not represent the structure, process, hierarchical level or cell response whose relations
-      materiomics studies.</p>
+      built, not a simulator's tuning. It records measured properties of specimens, with their test conditions, at
+      the scale where a simulation consumes them.</p>
   </section>
 
   <section aria-labelledby="links">
