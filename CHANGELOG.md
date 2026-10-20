@@ -21,6 +21,12 @@ every family entry goes in `families/CHANGELOG.md`.
   until a `deep` run measures it. The job's `timeout-minutes` and the `JOB_MINUTES` its pytest step reads, which
   the interrupt is set from, change together; `tests/unit/test_ci_workflows.py` holds the interrupt at twice the
   estimate and fails where the clause is removed.
+- Two of the maintainer's decisions recorded. The documentation plan's constraint 19, and its mirror in
+  `CONTRIBUTING.md`, name a second tool that goes online (2026-10-20): source discovery and acquisition, like
+  registry drafting a command a person runs with an explicit flag, which the MCP server never loads; the
+  architecture draft's section 7.2 says the same. The architecture draft's section 12.2 places the curation
+  tools (R15) in 0.1, as decided on 2026-10-15: quote attach-and-verify and the page text it reads by 0.1.0a1,
+  the other tools by 0.1.0b1; its release table had them in 0.2.
 
 ### Schema
 - `test_method` gains `reference_formulation` (maintainer, 2026-10-19): the test method of a value evaluated from

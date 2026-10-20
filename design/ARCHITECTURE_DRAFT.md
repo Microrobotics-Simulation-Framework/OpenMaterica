@@ -1641,9 +1641,9 @@ the repository (`authoring/`, `families/`) with its own `pyproject.toml`, versio
   matching siblings (below). Type
   checkers read `typing_extensions` through the `.pyi` files and `TYPE_CHECKING` imports; nothing imports it
   at run time. `openmaterica-authoring` carries the curation tools' heavier dependencies (PDF text extraction,
-  the digitiser) and the only network access in the project: registry drafting from DOI and Crossref, a
-  command a person runs with an explicit flag, which the MCP server does not load (section 8.2; maintainer,
-  2026-10-17).
+  the digitiser) and the only network access in the project: registry drafting from DOI and Crossref
+  (maintainer, 2026-10-17), and source discovery and acquisition (maintainer, 2026-10-20), each a command a
+  person runs with an explicit flag, which the MCP server does not load (section 8.2).
 - **What runs where.** The core never runs inside a consumer's computation (its simulation step, compiled
   program and gradient path; principle 2). It does run at a consumer's build: MIME's build calls the reader,
   the requirement checks over domains, the material input sheet, L5's label fractions and, where it samples,
@@ -1826,8 +1826,8 @@ building):
   (the witness bottleneck of section 4.6, chosen first by the maintainer); draft templates that mark fields
   "not applicable" by the value's type and record "unstated" in structure; quote attach-and-verify, per copy;
   registry drafting from DOI, Crossref and licence pages; formulation evaluators and check-point bakers. They
-  ship in `openmaterica-authoring` (section 7.2). Registry drafting goes online, so the server does not load
-  it (below). The MCP server stays a later item (section 12).
+  ship in `openmaterica-authoring` (section 7.2). Registry drafting goes online, and so does source discovery
+  and acquisition, so the server loads neither (below). The MCP server stays a later item (section 12).
 - **How the server finds the tools.** A sibling's tools are plain functions registered by entry point, and no
   sibling imports an MCP library; only the server does, so the base install of every distribution stays free
   of MCP dependencies (maintainer, 2026-10-16). The server loads tools from a closed list in the core: the
@@ -2267,10 +2267,18 @@ layered-path prim, overlay prims, region markers, binding refusals, the units ru
 found only by implementing them. The material input sheet stays R7, in 0.2. Label volumes, field overrides and
 the label crosswalk's USD form stay with A1.
 
+**The curation tools in 0.1** (maintainer, 2026-10-15). The curation tools (R15) come with 0.1.0's
+pre-releases, in `openmaterica-authoring`: the page-text documents a quote is checked against and quote
+attach-and-verify by 0.1.0a1, with the package's first release; registry drafting, the formulation evaluator,
+the digitiser, draft templates, source discovery and acquisition, the review interface and the model workflow
+by 0.1.0b1. The last three are not among R15's tools; they come with them. Section 8.2 lists the digitiser
+first; the build takes quotes first, and both come before the first library release (R8), which is what
+section 8.2 asks.
+
 | OpenMaterica | Set | Contents | Proven in MIME by | Consumers |
 |---|---|---|---|---|
-| 0.1 | minimal, and R1 and R14 | M1 to M10, R1 and R14 | S1 and S4 | the MIME spikes |
-| 0.2 | realistic | R2 to R9 and R15 | S2, S3, S5, S6 | MIME 0.3.0: the release it is expected to pin |
+| 0.1 | minimal, and R1, R14 and R15 | M1 to M10, R1, R14 and R15 | S1 and S4 | the MIME spikes |
+| 0.2 | realistic | R2 to R9 | S2, S3, S5, S6 | MIME 0.3.0: the release it is expected to pin |
 | 0.3 | target | A1, A2 and A4 (the OpenMaterica side) | S7, S8 | MIME 0.3.0 if ready when its work starts; otherwise a later MIME minor release |
 | 0.4 | stretch | A6 to A10; the first exporters; the convention checker | none needed | photoacoustics in MIME (Appendix A); curators; contact |
 | with 0.2 | the mechanics track: not a priority, but progressing | mechanics with isotropic linear elasticity (A10 adds the anisotropic form), one hyperelastic family and rate-dependent families as that track's consumer needs them; failure properties and failure criteria, static or with events; the importer from an existing per-paper calibration code base, as the design's acceptance test (section 12.5) | none needed | that code base |
