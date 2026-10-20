@@ -109,7 +109,8 @@
         "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
         "provenance": {"$ref": "read_result.json#/$defs/result_provenance"},
         "labels": {"type": "array", "items": {"$ref": "read_result.json#/$defs/returned_label"}},
-        "assumption": {"$ref": "read_result.json#/$defs/assumption"}
+        "assumption": {"$ref": "read_result.json#/$defs/assumption"},
+        "table": {"$ref": "record.writer.json#/$defs/table"}
       },
       "additionalProperties": false
     },

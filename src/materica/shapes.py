@@ -1610,6 +1610,7 @@ class ComparedResult(TypedDict):
     provenance: NotRequired[ResultProvenance]
     labels: NotRequired[list[ReturnedLabel]]
     assumption: NotRequired[Assumption]
+    table: NotRequired[Table]
 
 
 ResultValue: TypeAlias = (
@@ -1617,6 +1618,7 @@ ResultValue: TypeAlias = (
     | Interval
     | Composition
     | list[Union["ResultEvidenceEntry", "ResultWithheldEvidenceEntry"]]
+    | Table
     | Placeholder
     | ContentHash
     | list[ListedRecord]
@@ -1626,11 +1628,12 @@ ResultValue: TypeAlias = (
 class AlternativeValue(TypedDict):
     """
     An alternative that stays under no_pick (read_side_contract.md section 2): its index among the stored
-    alternatives of the field read, and its members as a read of it alone gives them.
+    alternatives of the field read, and its members as a read of it alone gives them, its unit among them.
     """
 
     alternative: float
     value: ResultValue
+    unit: Unit
     conditions: list[ConditionEntry]
     specimen: ResultSpecimen
     statistics: NotRequired[FieldStatistics]
@@ -1748,6 +1751,7 @@ class ReadResult(TypedDict):
     provenance: NotRequired[ResultProvenance]
     labels: NotRequired[list[ReturnedLabel]]
     assumption: NotRequired[Assumption]
+    table: NotRequired[Table]
 
 
 class ConstantField(FieldMembers):

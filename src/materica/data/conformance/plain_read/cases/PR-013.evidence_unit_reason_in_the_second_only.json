@@ -58,6 +58,9 @@
             }
           }
         ],
+        "unit": {
+          "status": "not_applicable"
+        },
         "conditions": [],
         "specimen": {},
         "provenance": {
@@ -98,6 +101,10 @@
             }
           }
         ],
+        "unit": {
+          "status": "not_applicable",
+          "reason": "conformance fixture: the second source's note"
+        },
         "conditions": [],
         "specimen": {},
         "provenance": {
@@ -110,9 +117,6 @@
         "labels": []
       }
     ],
-    "unit": {
-      "status": "not_applicable"
-    },
     "labels": []
   },
   "compare": {

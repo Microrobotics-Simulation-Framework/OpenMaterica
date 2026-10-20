@@ -242,8 +242,9 @@ def check_result_laws(result: JsonValue) -> None:
     codes' statuses, folded here from the table; and the members present as section 2 item 6 says, no
     declaration being in the target's requests: `value`, `specimen`, `statistics` and `provenance` exactly
     where the status is not `not_met` and the result rests on one value, but `statistics` beside evidence,
-    whose value is its list of reports, `alternative_values` exactly under `no_pick`, `unit` beside either, no
-    `assumption`, and `conditions` beside a value, never under `no_pick` or after a refusal before step 10."""
+    whose value is its list of reports, `unit` beside the value too, each entry's own under `no_pick`,
+    `alternative_values` exactly under `no_pick`, no `assumption`, and `conditions` beside a value, never
+    under `no_pick` or after a refusal before step 10."""
     if result == "not yet":
         return
     assert isinstance(result, dict), result
@@ -265,14 +266,15 @@ def check_result_laws(result: JsonValue) -> None:
     no_pick = any(code == "no_pick" for code, _ in pairs)
     valued = worst != "not_met" and not no_pick
     assert {"reasons", "labels"} <= result.keys(), result
-    for member in ("value", "specimen", "provenance"):
+    for member in ("value", "unit", "specimen", "provenance"):
         assert (member in result) == valued, f"{member} where the status is {worst}: {result}"
     evidence = isinstance(result.get("value"), list)
     assert ("statistics" in result) == (valued and not evidence), f"statistics, valued {valued}: {result}"
     assert ("alternative_values" in result) == no_pick, (
         f"alternative_values, no_pick being {no_pick}: {result}"
     )
-    assert ("unit" in result) == (valued or no_pick), f"unit where the status is {worst}: {result}"
+    entries = objects(result, "alternative_values")
+    assert all("unit" in entry for entry in entries), f"an entry without its unit: {entries}"
     assert "assumption" not in result, f"an assumption no declaration gives: {result}"
     if valued:
         assert "conditions" in result, f"no conditions beside the value: {result}"

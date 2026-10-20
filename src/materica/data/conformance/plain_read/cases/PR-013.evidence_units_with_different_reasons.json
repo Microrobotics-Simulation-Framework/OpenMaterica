@@ -58,6 +58,10 @@
             }
           }
         ],
+        "unit": {
+          "status": "not_applicable",
+          "reason": "a list of reports has no unit"
+        },
         "conditions": [],
         "specimen": {},
         "provenance": {
@@ -98,6 +102,10 @@
             }
           }
         ],
+        "unit": {
+          "status": "not_applicable",
+          "reason": "conformance fixture: the second source's note"
+        },
         "conditions": [],
         "specimen": {},
         "provenance": {
@@ -110,10 +118,6 @@
         "labels": []
       }
     ],
-    "unit": {
-      "status": "not_applicable",
-      "reason": "a list of reports has no unit"
-    },
     "labels": []
   },
   "compare": {

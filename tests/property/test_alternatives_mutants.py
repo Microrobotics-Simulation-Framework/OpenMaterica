@@ -57,7 +57,7 @@ KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any
         lambda size: strategies.alternatives(size, ("no_pick",), forms=("evidence",), set_aside_first=True),
         properties.check_outcome,
     ),
-    # And, planned since the move onto main, evidence under `no_pick`: the unit a result gives differs among
+    # And, planned since the move onto main, evidence under `no_pick`: the units the entries give differ among
     # the alternatives that stay only where the form is evidence (a status object with another `reason`).
     "HP27 over evidence under no_pick": (
         lambda size: strategies.alternatives(size, ("no_pick",), forms=("evidence",)),
@@ -243,7 +243,9 @@ def _the_last_staying_unit(*arguments: Any) -> ReadResult:
     result: ReadResult = READ_ALTERNATIVES(*arguments)
     if not result.alternative_values:
         return result
-    return dataclasses.replace(result, unit=result.alternative_values[-1].unit)
+    last = result.alternative_values[-1].unit
+    entries = tuple(dataclasses.replace(entry, unit=last) for entry in result.alternative_values)
+    return dataclasses.replace(result, alternative_values=entries)
 
 
 def _the_first_stored_unit(
@@ -254,12 +256,13 @@ def _the_first_stored_unit(
     labels: tuple[str, ...],
     nominal: Nominal | None,
 ) -> ReadResult:
-    """Under `no_pick`, the first stored alternative's unit, set aside or not."""
+    """Under `no_pick`, every entry's unit the first stored alternative's, set aside or not."""
     result = READ_ALTERNATIVES(field, record, request, claims, labels, nominal)
     if not result.alternative_values:
         return result
-    first = a_list(an_object(field.value)["alternatives"])[0]
-    return dataclasses.replace(result, unit=an_object(first)["unit"])
+    first = an_object(a_list(an_object(field.value)["alternatives"])[0])["unit"]
+    entries = tuple(dataclasses.replace(entry, unit=first) for entry in result.alternative_values)
+    return dataclasses.replace(result, alternative_values=entries)
 
 
 def _labels_kept_where_refused(
@@ -394,14 +397,14 @@ MUTANTS: list[Mutant] = [
         "HP27 over evidence under no_pick",
         setting(read, "_read_alternatives", _the_last_staying_unit),
         ("no_pick",),
-        "^unit",
+        "^alternative_values",
     ),
     Mutant(
         "the_first_stored_unit",
         "HP27 over evidence set aside first",
         setting(read, "_read_alternatives", _the_first_stored_unit),
         ("no_pick",),
-        "^unit",
+        "^alternative_values",
     ),
     Mutant(
         "labels_kept_where_refused",

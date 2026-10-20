@@ -154,7 +154,7 @@ def entry(drawn: Alternatives, index: int) -> JsonObject:
     assert isinstance(alternative, dict)
     own = alone(drawn, index, FORM_WANTS[str(alternative["form"])])
     found: JsonObject = {"alternative": float(index)}
-    for name in ("value", "conditions", "specimen", "statistics", "provenance"):
+    for name in ("value", "unit", "conditions", "specimen", "statistics", "provenance"):
         if name in own:
             found[name] = own[name]
     labels = own["labels"]
@@ -205,16 +205,13 @@ def expected(drawn: Alternatives) -> tuple[str, JsonObject]:
             "reasons": unique([{"code": "want_mismatch"}, *beside]),
             "labels": labels,
         }
+    # the `unit` row: "Under `no_pick` the result holds none: each `alternative_values` entry holds its own
+    # alternative's unit, as stored"
     entries: list[JsonValue] = [entry(drawn, index) for index in staying]
-    first = drawn.stored[staying[0]]
-    assert isinstance(first, dict)
-    # the `unit` row: "it is the first remaining alternative's unit, in stored order"
-    unit = alone(drawn, staying[0], FORM_WANTS[str(first["form"])])["unit"]
     return "no_pick", {
         "status": "unknown",
         "reasons": unique([{"code": "no_pick"}, *beside]),
         "alternative_values": entries,
-        "unit": unit,
         "labels": labels,
     }
 
@@ -263,28 +260,13 @@ def moved(result: JsonObject, new_index: Callable[[int], int]) -> JsonObject:
     return changed
 
 
-def first_entrys_unit(stored: list[JsonValue], result: JsonObject) -> JsonValue:
-    """The unit the alternative of `result`'s first entry stores, among `stored`, as `no_pick` returns it."""
-    entries = result["alternative_values"]
-    assert isinstance(entries, list)
-    first = entries[0]
-    assert isinstance(first, dict)
-    index = first["alternative"]
-    assert isinstance(index, float)
-    alternative = stored[int(index)]
-    assert isinstance(alternative, dict)
-    return alternative["unit"]
-
-
 def check_order(drawn: Alternatives, order: list[int]) -> None:
-    """HP28's P6: the alternatives stored in `order` give the read of the drawn ones, each index moved, and
-    under `no_pick` the unit of the first that stays in the new order."""
+    """HP28's P6: the alternatives stored in `order` give the read of the drawn ones, each index moved, under
+    `no_pick` each entry with its own unit (section 2, the `unit` row)."""
     stored = [drawn.stored[index] for index in order]
     record, request = strategies.holding(drawn, {"alternatives": stored})
     reordered = read_written(record, request, drawn.claims)
     expected_result = moved(read_drawn(drawn), order.index)
-    if "alternative_values" in expected_result:
-        expected_result["unit"] = first_entrys_unit(stored, expected_result)
     actual, oracle = compared(reordered), compared(expected_result)
     assert actual.keys() == oracle.keys(), f"members {sorted(actual)}, reordered from {sorted(oracle)}"
     for name in oracle:
