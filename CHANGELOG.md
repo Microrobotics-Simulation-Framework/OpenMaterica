@@ -32,12 +32,18 @@ every family entry goes in `families/CHANGELOG.md`.
   member the table's shape does not define (`provenance.md` section 1 item 5). Step 9 compares `axis_unit`
   with the axis condition's registered unit, code point for code point, its `unit_mismatch` carrying the axis.
   A table that steps 8 and 9 pass, alone or as an alternative, first, last or beside any other, still raises
-  `NotImplementedError`: steps 10 to 13 are S3b-2's. The 68 case files mapped to S3a run and pass:
-  1025 of 1504 case files pass and 35 are verified against the reference evaluator; 444 wait for S3b-2 (67),
+  `NotImplementedError`: steps 10 to 13 are S3b-2's. The 72 case files mapped to S3a run and pass:
+  1029 of 1508 case files pass and 35 are verified against the reference evaluator; 444 wait for S3b-2 (67),
   S3c (45), S4's later pieces (135) and the record checks, C2 (197).
 - The evidence field's `conditions` hold no registered condition whatever the field's form (`record_format.md`
   section 4.3 item 3; the maintainer's ruling of 2026-10-19): a table on `biocompatibility.evidence` whose
-  `conditions` hold its axis gives `form_invalid` beside `form_not_registered`.
+  `conditions` hold its axis gives `form_invalid` beside `form_not_registered`
+  (`PR-036.table_on_biocompatibility_evidence_holding_its_axis`, a new arm written through the case tools).
+- Three more case arms, written through the case tools (S3a's review): a table whose `x` is empty beside an
+  edge and a `source_range`, `form_invalid` where the read raised
+  (`PR-322.x_empty_beside_an_edge_and_a_source_range`); a withheld table beside `points`, `withheld`
+  (`PR-110.table_withheld_beside_points`); and one beside `point`, one slip from it, `form_invalid`
+  (`PR-110.table_withheld_beside_a_slip_of_points`).
 
 ### Changed
 - The fuzz job's replay step skips every mutant search by a rule, `--ignore-glob='tests/property/test_*mutants.py'`,

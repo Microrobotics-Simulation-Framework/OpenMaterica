@@ -66,16 +66,16 @@ def test_a_result_the_result_schema_refuses_is_found() -> None:
 
 def test_every_case_file_is_counted() -> None:
     runs = runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
-    assert len(runs) == 1504
+    assert len(runs) == 1508
     assert Counter(case_run.outcome for case_run in runs) == {
-        Outcome.PASSED: 1025,
+        Outcome.PASSED: 1029,
         Outcome.VERIFIED: 35,
         Outcome.NOT_YET_RUNNABLE: 444,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
         (Outcome.PASSED, "content_hash"): 51,
-        (Outcome.PASSED, "read"): 949,
+        (Outcome.PASSED, "read"): 953,
         (Outcome.PASSED, "list_records"): 25,
         (Outcome.VERIFIED, "evaluate"): 35,
         (Outcome.NOT_YET_RUNNABLE, "read"): 247,
@@ -89,9 +89,9 @@ def test_each_configuration_runs_every_case_file_that_holds_for_it() -> None:
         claimed for case_file in CASE_FILES for claimed in runner.agreeing(case_file, CONFIGURATIONS)
     )
     assert claims == {
-        CONFIGURATIONS[0]: 1257,
-        CONFIGURATIONS[1]: 1199,
-        CONFIGURATIONS[2]: 1257,
+        CONFIGURATIONS[0]: 1261,
+        CONFIGURATIONS[1]: 1203,
+        CONFIGURATIONS[2]: 1261,
         runner.REFERENCE_EVALUATOR: 35,
     }
 
