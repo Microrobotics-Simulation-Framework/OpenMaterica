@@ -87,14 +87,20 @@ SHARDS = {
         "test_read_properties",
         "test_record_mutants",
         "test_value_field_properties",
+        "test_table_form_properties",
     ),
     "writer": ("test_writer_properties", "test_writer_mutants", "test_writer_mutant_table"),
     # The two JSON Schema libraries' agreement, whose drawn properties run python-jsonschema on every example
     # and were the writer shard's longest tests; and the anomaly check's YAML reader's agreement with PyYAML.
     "agreement": ("test_validators_agree", "test_anomaly_reader_properties"),
-    # Step 8's mutant searches, the longest part of the records shard, and their table's check; they keep no
-    # example database.
-    "step8_mutants": ("test_value_field_mutants", "test_value_field_mutant_table"),
+    # Step 8's mutant searches, the longest part of the records shard, and their table's check, a table's own
+    # (S3a's HP13 to HP16) among them; they keep no example database.
+    "step8_mutants": (
+        "test_value_field_mutants",
+        "test_value_field_mutant_table",
+        "test_table_form_mutants",
+        "test_table_form_mutant_table",
+    ),
     # Steps 9 and 10's properties and the result's (S2a-4: HP1, HP2, HP6 and HP11), which read records end to
     # end, their mutant searches, which take seconds and set no example database, so the shard's restored one
     # is harmless to them, and their tables' checks.

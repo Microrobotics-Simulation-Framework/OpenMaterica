@@ -295,6 +295,28 @@ check's reader (the last bullet).
   draws the same alternatives among its own (`model_strategies.outcomes_of_step_7`), so that the reference
   model and the read meet step 7's outcomes: its audit holds those draws to their floor (`standing`), and
   HP27's audit each outcome among them.
+- **The table form through steps 8 and 9 (S3a):** (17) the laws of a table's step 8 and step 9
+  (`record_format.md` section 6, table items 1, 2, 4 and 5; `read_side_contract.md` section 3), the S3 design's
+  HP13 to HP16 (`test_table_form_properties.py`), over reads of a table steps 8 and 9 pass, drawn by
+  `tables.py` on a field whose row allows one, over an axis drawn among the numeric conditions, beside a full
+  composition in the record (`table_form_strategies.py`). A table they pass raises `NotImplementedError`, since
+  steps 10 to 13 are S3b-2's: its outcome is "past step 9". HP13, in four parts drawing their faults first
+  among at most eight (the knots, the edges and a log-log table's signs, the tokens and the axis condition,
+  `source_range` and `points`, an empty `x` among them): one fault of a catalogue written from the text gives
+  exactly the reasons its rule gives, and a near miss the text allows (an edge at zero held as `-0` and `0`,
+  an axis condition with its `reason`, a `source_range` of one point that is no edge) gives none, a read that
+  raises being an outcome no rule gives; each base passes, checked after its fault, so that a reader that
+  refuses some bases is reported at the fault wherever an example draws it; and the fault changes nothing of
+  the composition's read, which sits in the density's section. HP14: a member added to a
+  table more than one slip from every member named there, `points` included, changes nothing, and one slip
+  from one, by each kind section 10 names, refuses (`form_invalid`). HP15: an `axis_unit` of each kind HP8
+  draws other than the registered one gives `unit_mismatch` with the axis as `condition`. HP16: the row's
+  label on a table is refused exactly where its axis is the condition the Label cell names. Each property
+  declares what it draws first as drawn, at most eight, so each is held to a draw floor of 50 or more at
+  `ci`. The
+  writer's table family (7), T1's table examples (`tests/spec_sync/test_t1.py`) and the reference model, which
+  reads a table through step 9 as the read does (its case files, and the oracle of fuzz target 4; HP12's
+  strategies draw no table until S3b-2), hold the same rules from three other sides.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -481,7 +503,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 958 searches, 479 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,028 searches, 514 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1330,6 +1352,63 @@ that disagree in the same alternative), and the strategies remove withheld repor
 (`result_strategies.without_withheld_reports`). So nothing here would see that alternative's own reasons
 lose their index (a review's hand mutant did so and survived every test); the text gives the index
 (`read_side_contract.md` section 2 item 2) and `_found_reading` tags every reason but the request's fault.
+
+### The table form's mutants (S3a)
+
+`test_table_form_mutants.py`, each injected at a function or a table of `core/fields.py` or
+`core/value_shapes.py` that the table reader looks up when it runs (each rule of a table's step 8 is a
+function of its own, `_abscissae`, `_one_y_for_each_x`, `_edges_once`, `_positive_where_log_log`, `_points`,
+`_shares_a_value_no_edge`, `_axis_condition`, so that a fault replaces one), and each dying at a fault, kind or
+way it names and at the assertion it names. Eighteen are the S3 design's mutants of HP13 to HP16
+(section 6.5); `a_tables_fault_refuses_its_records_other_fields` is not, and HP13's read of the record's other
+field sees it; nor is `ends_of_an_empty_x_read`, the code S3a's review found raising on a table whose `x` is
+empty beside an edge or a `source_range` (its H1), which HP13's fault of that table kills, the raise read as
+an outcome no rule gives. Counts at both sizes, one seed's, the derandomised search's, in the step8_mutants
+shard at `ci` (2026-10-20, S3a and its review's fix round).
+
+Three searches are planned (S3a's review, M4 and L3), each drawing alone the faults where its mutant shows,
+from the part HP13 draws them in. Over 40 seeds a size, HP13's own draws first met
+`zero_and_minus_zero_by_sign_bit` at the base on 15 of 80 streams: a base drawn with an edge at zero, held as
+`-0` and `0`, is one that mutant itself refuses, and the check read the base first. Its search draws the two
+faults of an edge at zero, on bases whose zeros are each held as `0` (`zeros_held_alike`, which reads the same
+by table item 1); `x_strictly_increasing`, which refuses any base holding an edge, is searched on the near
+miss alone, an edge at zero held as `-0` and `0`, whose read it refuses before its base is read, and now names
+that fault and its assertion alone, where it admitted the base. Each of the two dies at the near miss whatever
+the base, a fault HP13 draws first, held to its draw floor of 50 at `ci` with an audit control. And
+`axis_condition_held_as_a_value_accepted` showed only where `axis_condition_held_otherwise` held the axis
+condition as a value, one of the fault's three ways (one draw in 21, a draw floor of none: it died as late as
+the 489th example); the fault now holds it as a value, a number or a range in the axis's registered unit, in
+two of its four ways, a region HP13's tokens part records and declares by its chance, 0.07 (a floor of 10;
+0.0876 of the examples on average over 18 runs at `ci`, 0.055 at least), with an audit control, and the search
+draws that way alone (`axis_conditions_held_as_a_value`). `test_table_form_mutant_table.py` holds each planned
+search to the core as it is for its first 500 examples at `ci` (200 at `dev`), at both sizes, so that a mutant
+it kills dies of its fault. Over 40 seeds a size (2026-10-20, the search's settings with only the seed
+changed), each died at the first or second example, at its fault and assertion; every other table form mutant
+died at its own assertion too, none past the 267th example.
+
+<!-- kill points of every search of test_table_form_mutants.py::test_the_table_form_mutant_is_killed (scripts/gen_kill_counts.py) -->
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `y_length_unchecked` | `y` of another length than `x` taken | HP13, knots | `y_longer`, `y_shorter` | 1, 1 |
+| `x_strictly_increasing` | `x` required strictly increasing, which refuses every edge | HP13, edges (planned) | `zero_edge_both_signs` | 1, 1 |
+| `edge_at_an_end_accepted` | an edge at `x[0]` or `x[-1]` taken | HP13, edges | `edge_at_an_end` | 1, 1 |
+| `zero_accepted_in_log_log` | `>=` for `>`: a log-log table's zero taken | HP13, edges | `log_log_not_positive` | 6, 96 |
+| `unknown_scheme_read_as_linear` | any string taken as a scheme | HP13, tokens | `scheme_unknown` | 1, 1 |
+| `axis_condition_held_as_a_value_accepted` | the axis condition held as a value taken | HP13, tokens (planned) | `axis_condition_held_otherwise`, held as a value | 1, 1 |
+| `zero_and_minus_zero_by_sign_bit` | `-0` and `0` compared by sign bit, in `x` and in `edges` | HP13, edges (planned) | `zero_edge_both_signs`, `edges_zero_and_minus_zero` | 2, 2 |
+| `token_condition_axis_form_invalid` | a token condition's name as axis given `form_invalid` | HP13, tokens | `axis_token_condition` | 2, 2 |
+| `source_range_unchecked` | `source_range` neither shaped nor held to `x` | HP13, `source_range` and `points` | a `source_range` fault | 1, 1 |
+| `disjoint_source_range_accepted` | a `source_range` disjoint from `x`'s range taken | HP13, `source_range` and `points` | `source_range_disjoint` | 119, 4 |
+| `points_ignored` | a table holding `points` read | HP13, `source_range` and `points` | `points`, `points_null` | 20, 39 |
+| `source_range_meeting_x_only_at_an_edge_accepted` | a `source_range` meeting `x`'s range only at an edge taken | HP13, `source_range` and `points` | `source_range_only_at_an_edge` | 2, 2 |
+| `points_form_invalid` | `form_invalid` in place of `points_unsupported` | HP13, `source_range` and `points` | `points`, `points_null` | 20, 39 |
+| `ends_of_an_empty_x_read` | an edge's and `source_range`'s rules read `x[0]` and `x[-1]` of an empty `x`, and raise | HP13, `source_range` and `points` | `x_empty_beside_edges_or_a_source_range` | 6, 70 |
+| `a_tables_fault_refuses_its_records_other_fields` | a table's fault refuses every field read from its record | HP13, knots | any, at the neighbour | 1, 1 |
+| `edge_slip_ignored` | a member one slip from `edges` ignored | HP14 | a slip | 9, 27 |
+| `point_slip_ignored` | `points` not named at a table's place, so a slip of it is ignored | HP14 | a slip | 7, 5 |
+| `axis_unit_reason_without_its_condition` | a table's `unit_mismatch` without its axis | HP15 | any kind | 1, 1 |
+| `axis_unit_compared_under_nfkc` | units compared after NFKC | HP15 | `compatibility_equal` | 1, 1 |
+| `label_blind_to_the_axis` | the row's label taken on a table over any axis | HP16 | `on_its_rows_axis` | 1, 1 |
 
 ## Audits
 
