@@ -33,7 +33,8 @@
         "vibrating_sample_magnetometer",
         "squid_magnetometer",
         "hysteresigraph",
-        "pycnometer"
+        "pycnometer",
+        "reference_formulation"
       ]
     },
     "units": {
@@ -191,7 +192,8 @@
         "vibrating_sample_magnetometer",
         "squid_magnetometer",
         "hysteresigraph",
-        "pycnometer"
+        "pycnometer",
+        "reference_formulation"
       ],
       "required_with": {}
     }

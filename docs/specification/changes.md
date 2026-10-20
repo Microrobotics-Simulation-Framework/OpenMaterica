@@ -387,3 +387,17 @@ differ there, since step 9 compares it by its `status` token alone, and in 0.1.0
 `biocompatibility.evidence` registers one. Stored order is fixed once a record is released (`record_format.md`
 section 5), so the unit does not depend on the order of reading. An `alternative_values` entry still holds no
 `unit` of its own.
+
+Settled with a consumer's first reads of formulation values (maintainer, 2026-10-19): `test_method` gains
+`reference_formulation`, the test method of a value evaluated from a reference formulation or an equation of
+state (origin `evaluated_from_formulation`, `provenance.md` section 6.1 item 10). A consumer that names
+`test_method` in its requirement accepts such a value by listing the token, while, with no acceptance, the
+`test_method` entry of a value that states none is still `unknown` (`condition_unstated`), whatever its origin
+(`read_side_contract.md` section 5). No read rule changes: the token is one more in the condition's list.
+Clarified with it (maintainer, 2026-10-19): the Newtonian label on a value with no stated shear rate is no
+evidence at any shear rate. A label its row allows changes no member of a read's result but `labels`, so with
+no acceptance the value's `shear_rate` entry is `unknown` (`condition_unstated`), and treating the fluid as
+Newtonian there is the consumer's own declaration, never the label's: an implied condition that supplies a
+shear rate, or a declaration that covers the reason (`record_format.md` section 4.1; PR-104, PR-053, PR-316).
+A label claims only over the stated `shear_rate` condition, as that section already said, and no rule widens
+it.

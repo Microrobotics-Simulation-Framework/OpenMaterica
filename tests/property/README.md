@@ -762,7 +762,7 @@ step 10 (measured 2026-10-18).
 | `disagreement_ignored` | two implied conditions that disagree, the first wins | HP7, implied | `two_that_disagree`, `a_value_beside_a_range`, `minus_zero_beside_zero` | 8, 8 |
 | `a_value_agrees_with_its_range` | a value agrees with the range `[v, v]` | HP7, implied | `a_value_beside_a_range` | 25, 25 |
 | `minus_zero_agrees_with_zero` | implied values compared as numbers, `-0` agreeing with `0` (S2a-3's first reading, until its fix round's default) | HP7, implied | `minus_zero_beside_zero` | 8, 8 |
-| `implied_applies_without_its_fact` | an implied condition applies whatever the specimen states | HP7, implied | `its_fact_not_stated` | 73, 73 |
+| `implied_applies_without_its_fact` | an implied condition applies whatever the specimen states | HP7, implied | `its_fact_not_stated` | 96, 96 |
 | `applied_not_recorded` | `applied` holds no implied condition | HP7, implied | any of its examples | 1, 1 |
 | `implied_not_located` | every implied condition applied, wherever it is located | located elsewhere | any of its rows | 1, 1 |
 | `located_at_without_its_hash` | a location compared by `id` and `version`, without its `content_hash` | located elsewhere | `another_content_hash` | 3, 3 |

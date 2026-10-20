@@ -235,6 +235,7 @@ TestMethodToken: TypeAlias = Literal[
     "squid_magnetometer",
     "hysteresigraph",
     "pycnometer",
+    "reference_formulation",
 ]
 
 Range: TypeAlias = tuple[float, float]
