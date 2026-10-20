@@ -976,9 +976,12 @@ jobs:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     # Four targets at the default 300 s, the control (at most 3 minutes for each of the first three targets and
-    # 15 for the fourth) and the replay, which leaves out the mutant tables: about 50 minutes, by estimate. A
-    # manual run longer than about 450 s a target needs this raised.
-    timeout-minutes: 65
+    # 15 for the fourth, then a replay of six property modules) and the replay of the property tests. The slowest
+    # run on CI took 59.5 minutes (the weekly run of 2026-10-19: 22.2 for the control, 20.2 for the targets, 16.8
+    # for the replay); the timeout is twice that, as the Hypothesis job's is of its shards' slowest runs, and
+    # `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a target adds 4 (S - 300) / 60
+    # minutes to the targets.
+    timeout-minutes: 120
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
       # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
@@ -1147,16 +1150,17 @@ jobs:
             -max_total_time="$FUZZ_SECONDS" -entropic_scale_per_exec_time=1 -artifact_prefix="$RUNNER_TEMP/findings/"
       # What the property target found is in the example database: replayed first here, and shrunk. The writer
       # schema's properties and the two JSON Schema libraries' agreement are no fuzz target, and their shards
-      # keep their own databases; the mutant tables keep none, so they have nothing to replay.
+      # keep their own databases. Every mutant search, a module named `test_*mutants.py`, is derandomised and
+      # keeps nothing in the example database (`MUTANT_SEARCH` in tests/property/support.py), so it has nothing
+      # to replay: a rule by name, so that a new mutant module is skipped unedited. The mutant tables' checks
+      # (`test_*mutant_table.py`) draw under the profile's database, and stay.
       - name: Replay and shrink what was found
         if: success() || failure()
         run: >-
           uv run pytest tests/property -n auto --dist worksteal
-          --ignore=tests/property/test_writer_properties.py --ignore=tests/property/test_writer_mutants.py
+          --ignore=tests/property/test_writer_properties.py
           --ignore=tests/property/test_validators_agree.py
-          --ignore=tests/property/test_mutants.py --ignore=tests/property/test_record_mutants.py
-          --ignore=tests/property/test_value_field_mutants.py --ignore=tests/property/test_condition_mutants.py
-          --ignore=tests/property/test_evaluate_mutants.py
+          --ignore-glob='tests/property/test_*mutants.py'
       - name: Keep the inputs that failed
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

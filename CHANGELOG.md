@@ -15,6 +15,18 @@ every family entry goes in `families/CHANGELOG.md`.
 ## [Unreleased]
 
 ### Changed
+- The fuzz job's replay step skips every mutant search by a rule, `--ignore-glob='tests/property/test_*mutants.py'`,
+  not by a list of modules: the list named the older mutant modules only, so the step collected 623 tests, 312 of
+  them in mutant modules that are derandomised and keep nothing in the example database. It now collects 311. The
+  mutant tables' checks (`test_*mutant_table.py`) draw under the profile's database and stay in the replay.
+  `tests/unit/test_ci_workflows.py` collects with the step's own arguments and compares the files with the
+  property modules that are mutant searches keeping no database; it fails with a mutant module's pattern removed
+  and with a property module wrongly skipped. Locally the rule saves about 6 % of the step (434.7 to 410.6 s at
+  8 workers): the replay's growth is mostly in the property modules and the mutant tables, not the mutant modules.
+  The fuzz job's `timeout-minutes` is 120, from 65: its slowest run on CI took 59.5 minutes (the weekly run of
+  2026-10-19, run 39234564233; the replay 16.8 minutes against 2.6 to 6.3 before), and the job is held to twice
+  its slowest run as the Hypothesis job's shards are (`FUZZ_SLOWEST_ON_CI`, which fails below it). What the job
+  runs is unchanged.
 - The Hypothesis job's `alternatives` parts have a `deep` timeout of 90 minutes, from 45, set by estimate before
   the weekly `deep` run: at `ci` the parts took 196.8 and 218.0 s of pytest time (run 39404674681), ten times the
   examples is 33 and 36 minutes, and the timeout is twice the upper end, rounded up to the figure `records` has,

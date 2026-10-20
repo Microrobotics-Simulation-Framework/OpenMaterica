@@ -2825,17 +2825,13 @@ SELECTIONS: dict[str, list[list[str]]] = {
             "tests/property/test_invariance_properties.py",
         ],
         # The replay: the property tests, but the writer schema's and the two JSON Schema libraries'
-        # agreement, no fuzz target, and the mutant tables, which keep no example database.
+        # agreement, no fuzz target, and every mutant search, a module named `test_*mutants.py`, which keeps
+        # no example database (`test_the_replay_skips_the_mutant_searches_and_only_those`).
         [
             "tests/property",
             "--ignore=tests/property/test_writer_properties.py",
-            "--ignore=tests/property/test_writer_mutants.py",
             "--ignore=tests/property/test_validators_agree.py",
-            "--ignore=tests/property/test_mutants.py",
-            "--ignore=tests/property/test_record_mutants.py",
-            "--ignore=tests/property/test_value_field_mutants.py",
-            "--ignore=tests/property/test_condition_mutants.py",
-            "--ignore=tests/property/test_evaluate_mutants.py",
+            "--ignore-glob=tests/property/test_*mutants.py",
         ],
     ],
 }
@@ -2977,6 +2973,156 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
     fault(ci)
     found = selection_problems(ci)
     assert any(problem in line for line in found), found
+
+
+# The slowest run of the fuzz job measured on CI, in minutes: the weekly run 39234564233 of 2026-10-19
+# (control 22.2, targets 20.2, replay 16.8). The earlier runs since 2026-10-14 took 26.7, 37.0, 46.0 and 55.2
+# (a manual run of 600 s a target). The job has no interrupt, so its timeout is held to twice the slowest run
+# itself, as the Hypothesis job's interrupt is to its shards' (`MEASURED_ON_CI`).
+FUZZ_SLOWEST_ON_CI = 59.52
+
+
+def fuzz_margin_problems(ci: Workflow) -> list[str]:
+    """Where the fuzz job times out in less than twice its slowest run measured on CI."""
+    limit = as_number(ci["jobs"]["fuzz"]["timeout-minutes"])
+    if limit < 2 * FUZZ_SLOWEST_ON_CI:
+        return [f"fuzz times out at {limit:g} minutes, less than twice its {FUZZ_SLOWEST_ON_CI:g} on CI"]
+    return []
+
+
+def test_the_fuzz_job_has_twice_its_slowest_run_on_ci() -> None:
+    assert fuzz_margin_problems(workflow("ci.yml")) == []
+
+
+@pytest.mark.parametrize("minutes", [65, 100, 119])
+def test_the_fuzz_margin_check_can_fail(minutes: int) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    ci["jobs"]["fuzz"]["timeout-minutes"] = minutes
+    found = fuzz_margin_problems(ci)
+    assert found == [f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI"], found
+
+
+PROPERTY_TESTS = REPOSITORY / "tests" / "property"
+# The two modules the replay skips beside the mutant searches: no fuzz target, and their shards keep their own
+# example databases (the comment above the step).
+NOT_A_FUZZ_TARGET = {"test_writer_properties.py", "test_validators_agree.py"}
+
+
+def replay_command(ci: Workflow) -> list[str]:
+    """The arguments of the fuzz job's pytest command that replays `tests/property`."""
+    [command] = [found for found in pytest_commands(ci["jobs"]["fuzz"]) if "tests/property" in found]
+    return command
+
+
+def decorates_with(function: ast.FunctionDef | ast.AsyncFunctionDef, name: str) -> bool:
+    return any(
+        name in {node.id for node in ast.walk(decorator) if isinstance(node, ast.Name)}
+        for decorator in function.decorator_list
+    )
+
+
+def keeps_no_database(source: str) -> bool:
+    """Whether every Hypothesis search the module source draws runs under `MUTANT_SEARCH`, which keeps nothing
+    in the example database: each use of `given` is a decorator of a function that `MUTANT_SEARCH` also
+    decorates. A module that only calls the helpers of another, which do the same, draws no other."""
+    tree = ast.parse(source)
+    uses = sum(isinstance(node, ast.Name) and node.id == "given" for node in ast.walk(tree))
+    uses += sum(isinstance(node, ast.Attribute) and node.attr == "given" for node in ast.walk(tree))
+    covered = sum(
+        isinstance(decorator, ast.Call)
+        and isinstance(decorator.func, ast.Name)
+        and decorator.func.id == "given"
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and decorates_with(node, "MUTANT_SEARCH")
+        for decorator in node.decorator_list
+    )
+    return uses == covered
+
+
+def is_mutant_module(module: Path) -> bool:
+    """A mutant search by its name, or by what it records: the examples its kill took."""
+    records = 'record_property("examples_to_kill"' in module.read_text("utf-8")
+    return module.stem.endswith("mutants") or records
+
+
+def collected_by(command: list[str]) -> set[str]:
+    """The files of `tests/property` that pytest collects tests from with the replay's arguments."""
+    arguments = [*selecting(command), "--collect-only", "-q"]
+    ran = subprocess.run(
+        [sys.executable, "-m", "pytest", *arguments],
+        cwd=REPOSITORY,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "MATERICA_HYPOTHESIS_PROFILE": "ci"},
+    )
+    assert ran.returncode in {0, 5}, ran.stdout[-2000:] + ran.stderr[-2000:]
+    return {line.partition("::")[0] for line in ran.stdout.splitlines() if "::" in line}
+
+
+def replay_problems(command: list[str]) -> list[str]:
+    """Where the replay's arguments collect a mutant search that keeps no example database, which has nothing
+    to replay, or leave out a module that does, or one that is a fuzz target."""
+    modules = sorted(PROPERTY_TESTS.glob("test_*.py"))
+    skipped = {
+        module.name
+        for module in modules
+        if module.name in NOT_A_FUZZ_TARGET
+        or (is_mutant_module(module) and keeps_no_database(module.read_text("utf-8")))
+    }
+    expected = {f"tests/property/{module.name}" for module in modules if module.name not in skipped}
+    collected = collected_by(command)
+    return [f"{name} is collected but has nothing to replay" for name in sorted(collected - expected)] + [
+        f"{name} is not collected but has something to replay" for name in sorted(expected - collected)
+    ]
+
+
+def test_the_replay_skips_the_mutant_searches_and_only_those() -> None:
+    assert replay_problems(replay_command(workflow("ci.yml"))) == []
+
+
+def the_old_list(command: list[str]) -> list[str]:
+    """The step as it stood before the rule: a list of the mutant modules there were then."""
+    older = ("test_mutants", "test_record_mutants", "test_value_field_mutants", "test_condition_mutants")
+    kept = [word for word in command if not word.startswith("--ignore-glob=")]
+    return kept + [f"--ignore=tests/property/{name}.py" for name in older]
+
+
+def a_module_wrongly_skipped(command: list[str]) -> list[str]:
+    return [*command, "--ignore=tests/property/test_read_properties.py"]
+
+
+def a_mutant_table_skipped(command: list[str]) -> list[str]:
+    return [*command, "--ignore=tests/property/test_model_mutant_table.py"]
+
+
+def a_rule_that_skips_every_module(command: list[str]) -> list[str]:
+    return [word.replace("test_*mutants.py", "test_*.py") for word in command]
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (the_old_list, "test_model_mutants.py is collected but has nothing to replay"),
+        (a_module_wrongly_skipped, "test_read_properties.py is not collected but has something to replay"),
+        (a_mutant_table_skipped, "test_model_mutant_table.py is not collected but has something to replay"),
+        (a_rule_that_skips_every_module, "test_read_properties.py is not collected but has something"),
+    ],
+)
+def test_the_replay_check_can_fail(fault: Callable[[list[str]], list[str]], problem: str) -> None:
+    found = replay_problems(fault(replay_command(workflow("ci.yml"))))
+    assert any(problem in line for line in found), found
+
+
+def test_a_search_outside_mutant_search_keeps_a_database() -> None:
+    bare = "@given(x)\ndef test_a(example): ...\n"
+    searched = "@MUTANT_SEARCH\n@given(x)\ndef search(example): ...\n"
+    assert keeps_no_database(searched)
+    assert keeps_no_database("def test_a(): kill(x, y)\n")
+    assert not keeps_no_database(bare)
+    assert not keeps_no_database(searched + bare)
+    assert not keeps_no_database("settings(database=None)(given(x)(check))()\n")
+    assert not keeps_no_database((PROPERTY_TESTS / "test_model_mutant_table.py").read_text("utf-8"))
 
 
 # Where a pytest job can stand when its durations steps come: the status functions there, the pytest step's
