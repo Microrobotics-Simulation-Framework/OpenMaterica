@@ -89,6 +89,8 @@ def model_reasons() -> JsonObject:
 # Each of the model's token lists, and where the vocabulary holds the same list.
 TOKEN_LISTS: dict[str, tuple[tuple[str, ...], str, str]] = {
     "FORMS": (read_model.FORMS, "forms", "form"),
+    "TABLE_SCHEMES": (read_model.TABLE_SCHEMES, "forms", "table_scheme"),
+    "AXES": (read_model.AXES, "conditions", "axis"),
     "INTERVAL_BASES": (read_model.INTERVAL_BASES, "forms", "interval_basis"),
     "COMPOSITION_BASES": (read_model.COMPOSITION_BASES, "forms", "composition_basis"),
     "SUM_RULES": (read_model.SUM_RULES, "forms", "sum_rule"),
@@ -165,6 +167,7 @@ def drifted(path: tuple[str, ...], value: JsonValue) -> dict[str, JsonObject]:
         (("acceptances", "kinds"), ["pick"], "ACCEPTANCE_KINDS"),
         (("statistics", "$defs", "represents", "enum"), ["population"], "REPRESENTS"),
         (("forms", "$defs", "component", "enum"), ["element:H"], "COMPONENTS"),
+        (("forms", "$defs", "table_scheme", "enum"), ["linear"], "TABLE_SCHEMES"),
         (("labels", "$defs", "result_label", "enum"), [], "RESULT_LABELS"),
     ],
 )

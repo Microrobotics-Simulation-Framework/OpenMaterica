@@ -586,10 +586,11 @@ def status_tokens_unchecked(
     *,
     allowed: frozenset[str],
     shape: tuple[str, ...] = (),
+    named: tuple[str, ...] = (),
     scalar: bool = False,
     unit: bool = False,
 ) -> StatusObject | None:
-    return _status_object(value, faults, allowed=allowed, shape=shape, scalar=scalar, unit=True)
+    return _status_object(value, faults, allowed=allowed, shape=shape, named=named, scalar=scalar, unit=True)
 
 
 def member_checked_off_its_row(
@@ -746,10 +747,11 @@ def broken_status_reports_its_token(
     *,
     allowed: frozenset[str],
     shape: tuple[str, ...] = (),
+    named: tuple[str, ...] = (),
     scalar: bool = False,
     unit: bool = False,
 ) -> StatusObject | None:
-    found = _status_object(value, faults, allowed=allowed, shape=shape, scalar=scalar, unit=unit)
+    found = _status_object(value, faults, allowed=allowed, shape=shape, named=named, scalar=scalar, unit=unit)
     token = value.get("status") if isinstance(value, dict) else None
     if found is not None and found.token is None and not unit and isinstance(token, str):
         if token not in model.STATUS_TOKENS:
@@ -1348,7 +1350,6 @@ MUTANTS: Mapping[str, Mutant] = {
         "a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid`",
         "provenance.md:51-53",
         {"status_object": broken_status_reports_its_token},
-        survives="no case holds a status object breaking its shape with a token the reader does not know",
     ),
     # The points the text left open (`OPEN_POINTS` until the maintainer ruled each). The first two break the
     # implied half too, which the maintainer's token ruling settled (2026-10-18), and the record half, ruled

@@ -61,10 +61,11 @@ specification's README says ("Case files"), by the conformance runner's comparis
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 952 files, under every configuration each allows (7,240 runs), and gives no verdict on
-308, each listed in `exceptions.py` under the kind its outcome names: a table its row allows (147), an overlay
-(71), an extrapolation (55) and a pick (35). It disagrees with none. Until S4a it also gave no verdict on 21
-files of alternatives with reasons of their own, with which it now agrees, as with S4a's three cases of
+The model agrees with 1028 files, under every configuration each allows (7,848 runs), and gives no verdict
+on 244, each listed in `exceptions.py` under the kind its outcome names: a table that steps 8 and 9 pass (83),
+an overlay (71), an extrapolation (55) and a pick (35). It disagrees with none (measured at S3a's head, which
+reads a table through step 9: 64 files gained a verdict, 2026-10-20). Until S4a it also
+gave no verdict on 21 files of alternatives with reasons of their own, with which it now agrees, as with S4a's three cases of
 `unit` under `no_pick`. A case file the model disagrees with, or gives no verdict on, fails unless a kind lists it, for the
 detail that kind names; a listed one it agrees with fails as stale.
 
@@ -86,6 +87,8 @@ more, `evidence_entry_provenance_unchecked` and `slips_of_alternatives_ignored`,
 `nested_reviews_returned_as_found`, so 97 faults: 83 killed, 14 survive. The rows these rulings change are
 measured with them, and so are those their cases move that were current before them,
 `condition_shapes_unchecked`, `every_slip_ignored` and `null_read_as_absent`; the others are as stamped.
+S3a's case files kill one more, `broken_status_object_reports_its_token`
+(`PR-110.table_unknown_status_beside_members` alone): 84 killed, 13 survive.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -132,7 +135,7 @@ measured with them, and so are those their cases move that were current before t
 | `every_status_object_an_unstated_kind` | a `plus_minus` entry whose `stated_as` holds any status object counted as of unstated kind | survives: no case holds a `stated_as` of another status token beside an entry of a stated kind |
 | `section_specimen_unchecked` | a section's `specimen` not checked for a field read from it | 3 |
 | `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 25 |
-| `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | survives: no case holds a status object breaking its shape with a token the reader does not know |
+| `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | 1, `PR-110.table_unknown_status_beside_members` alone (since S3a) |
 | `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | 7: `PR-330.implied_token_for_numeric_condition` and `PR-330.implied_unit_for_token_condition`, the implied half, which the token ruling settled; `PR-045.numeric_condition_holding_token`, `PR-045.numeric_condition_holding_token_status`, `PR-045.token_condition_holding_value`, `PR-045.token_condition_holding_value_null` and `PR-301.other_kind_beside_unknown_basis`, the record half, ruled on 2026-10-19 |
 | `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | 7, the same seven, the implied half's two and the record half's five |
 | `slips_of_alternatives_ignored` | a member one slip from `alternatives` beside a value field's members ignored | 1, `PR-030.near_typo_alternative_beside_constant` alone, the case of the maintainer's ruling (2026-10-19) |
@@ -199,8 +202,8 @@ former open point `names_a_declaration_gives_a_requirement`, decided by the text
 approved by the maintainer on 2026-10-18 and confirmed on 2026-10-19); one is
 the rule that a status object breaking its shape gives no reason of its own
 (`broken_status_object_reports_its_token`), a ruling the text took up with S3, whose example is a table's,
-on which the model gives no verdict; one is the rule that a composition whose basis its row does not allow
-is checked no further (`composition_checked_beyond_its_basis`), which only S3's cases show, again for tables;
+which survived until S3a let the model read a table through step 9; one is the rule that a composition whose
+basis its row does not allow is checked no further (`composition_checked_beyond_its_basis`), which only S3's cases show, again for tables;
 one needs a plural of two characters or more (`plurals_not_slips`); and one cannot show through JSON at all
 (`results_share_the_record`, HP6's). The same rule for a form the row does not allow
 (`member_checked_off_its_row`) survived until PR #37's review added two cases that kill it, a composition with
