@@ -162,6 +162,12 @@ every family entry goes in `families/CHANGELOG.md`.
 - The ruling on a nominal's `params` (2026-10-19) comes with one PR-330 case (**Schema**, above), which runs
   and passes; a broken implementation taking `params` in place of a value fails it alone. 957 of 1504 case
   files pass.
+- Four record-check arms name every sentence that decides them in `CASES.md`'s **Decided by** column. Three
+  (`typography_quoted_as_printed`, `ligature_mapped_by_nfkc`, `format_character_removed`, of RC-032) named
+  `page_text.md` 3.8 alone, where 3.6 and `provenance.md` 4.4 first find the match; they now name "3.6, 3.8 and
+  `provenance.md` 4.4". `information_separator_not_a_space` named 3.6 alone, where `provenance.md` 4.4 (U+001C to
+  U+001F "are not `White_Space`") decides; it now names "3.6 and `provenance.md` 4.4". No case file, input or
+  expected answer changes: four rows of one table.
 
 ## [0.1.0.dev2] - 2026-10-20
 
