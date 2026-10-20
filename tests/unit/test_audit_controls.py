@@ -3,11 +3,12 @@
 their chances (`@pytest.mark.chances`), of the conditions shard's, steps 9 and 10's and the result's, which
 declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12's and HP4's form of the field
 read (S2b-1, and PR #37's review), of S2b-2's evidence and nominal, of the relations shard's audit of the
-monotonicity relations' worlds, by their chances, of S4a's outcome of step 7, drawn first, and of HP12's draws
-of S4a's alternatives, by their chance: run at the `ci` profile's examples with a generator that stops
-producing one of them, each property fails its audit, on that feature alone; a parametrised property, on one
-of its parameters, by the marks that parameter carries. Outside `tests/property/`, whose audits would fail
-these runs too."""
+monotonicity relations' worlds, by their chances, of S4a's outcome of step 7, drawn first, of HP12's draws
+of S4a's alternatives, by their chance, and of the regions where a planned search's mutant shows, each held on
+the property whose own draws the search stands in for, by their chances: run at the `ci` profile's examples
+with a generator that stops producing one of them, each property fails its audit, on that feature alone; a
+parametrised property, on one of its parameters, by the marks that parameter carries. Outside
+`tests/property/`, whose audits would fail these runs too."""
 
 import sys
 from collections.abc import Callable
@@ -29,6 +30,7 @@ from tests.property import test_model_properties as model_properties
 from tests.property import test_monotonicity_properties as monotonicity_properties
 from tests.property import test_read_properties as read_properties
 from tests.property import test_result_properties as result_properties
+from tests.property import test_slip_properties as slip_properties
 from tests.property import test_value_field_properties as value_field_properties
 from tests.property import test_version_properties as version_properties
 
@@ -156,12 +158,12 @@ CONTROLS = [
     Control(
         model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
         "form_composition",
-        ("check_agreement",),
+        ("check_outcome",),
     ),
     Control(
         model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
         "form_evidence",
-        ("check_agreement",),
+        ("check_outcome",),
     ),
     Control(
         result_properties.test_what_a_read_returns_is_as_stored_and_shares_nothing,
@@ -193,6 +195,43 @@ CONTROLS = [
         "form_evidence",
         ("check_isolated",),
     ),
+    # The regions where a planned search's mutant shows, each held to its floor on the property whose own
+    # draws the planned search stands in for (`tests/property/README.md`, "Mutants").
+    Control(
+        hashing_properties.test_editing_any_leaf_the_hash_covers_changes_it,
+        "edited_below_review_or_copy_in_a_non_object_provenance",
+        ("check_edit",),
+    ),
+    Control(
+        slip_properties.test_one_slip_is_what_the_neighbour_generator_reaches,
+        "through_an_empty_word",
+        ("check_one_slip",),
+    ),
+    Control(
+        condition_properties.test_each_row_of_the_table_and_the_conditions_it_checks,
+        "required_held_nowhere",
+        ("check_against_the_oracle",),
+    ),
+    Control(
+        result_properties.test_a_read_gives_a_result_whose_reasons_are_the_tables,
+        "condition_unchecked",
+        ("check_totality",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_faults_of_steps_8_to_10,
+        "condition_unchecked",
+        ("check_outcome",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
+        "constant_refused_bounds",
+        ("check_outcome",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
+        "unknown_member",
+        ("check_outcome",),
+    ),
     # The table evaluator's: each stops one choice that no other feature it declares depends on.
     Control(
         evaluate_properties.test_hp17_the_evaluator_agrees_with_the_oracle, "one_point", ("check_agreement",)
@@ -217,7 +256,7 @@ CONTROLS = [
     Control(
         model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
         "standing",
-        ("check_agreement",),
+        ("check_outcome",),
     ),
 ]
 

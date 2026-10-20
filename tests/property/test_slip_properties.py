@@ -122,13 +122,45 @@ def far_swaps(name: str) -> list[str]:
 
 
 @st.composite
+def pairs_through_an_empty_word(draw: st.DrawFn) -> Pair:
+    """A name with an empty word between underscores, or the empty name, and the name with `s` or `es` in
+    that word, in either order, among words of section 10's and words of letters: `x__y` and `x_s_y` are one
+    character apart, `x__y` and `x_es_y` two, and neither pair is a plural, since the empty string is no
+    word."""
+    words = draw(
+        st.lists(st.one_of(st.sampled_from(WORDS), st.text(LETTERS, min_size=1, max_size=4)), max_size=3)
+    )
+    index = draw(st.integers(0, len(words)))
+    suffix = draw(st.sampled_from(("s", "es")))
+    empty, plural = [*words[:index], "", *words[index:]], [*words[:index], suffix, *words[index:]]
+    a, b = "_".join(empty), "_".join(plural)
+    return Pair(a, b, len(suffix)) if draw(st.booleans()) else Pair(b, a, len(suffix))
+
+
+def through_an_empty_word(pair: Pair) -> bool:
+    """Whether the two names differ in one word alone, empty in one and `s` or `es` in the other: where
+    section 10's plural meets the empty string between two underscores."""
+    first, second = pair.a.split("_"), pair.b.split("_")
+    if len(first) != len(second):
+        return False
+    differing = [{x, y} for x, y in zip(first, second, strict=True) if x != y]
+    return differing in ([{"", "s"}], [{"", "es"}])
+
+
+@st.composite
 def pairs(draw: st.DrawFn) -> Pair:
     """A name, and another: one slip from it in half the draws, two slips or unrelated in a quarter each; of
-    two slips, half are two characters swapped that are not adjacent, where the name allows it."""
+    two slips, half are two characters swapped that are not adjacent, where the name allows it. In about one
+    in four of the unrelated and the two slips not swapped far apart, a pair through an empty word instead
+    (`pairs_through_an_empty_word`; 0.16 of the examples, measured), which the others reach in about one draw
+    in 500, by an insertion at the one empty word of a name that has one. It takes no one slip's draw: drawn
+    first among all, it took a fifth of the substitutions' share (measured, 2026-10-20)."""
     a = draw(names())
     edits = draw(st.sampled_from((1, 1, 0, 2)))
     if edits == 2 and far_swaps(a) and draw(st.booleans()):
         return Pair(a, draw(st.sampled_from(far_swaps(a))), edits)
+    if edits != 1 and draw(st.integers(0, 2)) == 2:
+        return draw(pairs_through_an_empty_word())
     b = draw(names()) if edits == 0 else draw(edited(a))
     if edits == 2:
         b = draw(edited(b))
@@ -142,7 +174,12 @@ def check_one_slip(pair: Pair) -> None:
     assert (slips.one_slip(pair.b, pair.a) is None) == (found is None), pair
 
 
-# Least shares, about a third of the least measured at `ci` over four seeds.
+# Least shares, about a third of the least measured at `ci` over four seeds. A pair through an empty word,
+# where `empty_word_made_plural` shows, by its chance, below its least share over 48 runs at `ci`
+# (2026-10-20, derandomised, each its own stream; mean 0.157, least 0.116). By `audits.py`'s model, 250 draws
+# each shown in 5 examples, a run falls below its floor of 30 examples with a probability of 6e-13, and with
+# 2e-32 at the variance measured (3.4 times a binomial count's).
+@pytest.mark.chances(through_an_empty_word=0.1)
 @pytest.mark.features(
     substituted=0.021,
     added=0.048,
@@ -163,6 +200,7 @@ def test_one_slip_is_what_the_neighbour_generator_reaches(pair: Pair) -> None:
     feature("none", not expected)
     feature("two_edits", pair.edits == 2)
     feature("far_swap", pair.b in far_swaps(pair.a))
+    feature("through_an_empty_word", through_an_empty_word(pair))
     check_one_slip(pair)
 
 

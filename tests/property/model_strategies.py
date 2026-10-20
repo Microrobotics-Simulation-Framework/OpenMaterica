@@ -157,11 +157,15 @@ def valued(
     unit_with_a_reason: bool = False,
     constant_under_bounds: bool = False,
     interval_under_bounds: bool = False,
+    composition_under_components: bool = False,
+    unknown_member: bool = False,
 ) -> Example:
     """A valued read; for a planned search's, with `nominal`, an interval's with a nominal always, with
     `unit_with_a_reason`, evidence's with its unit a status object with a reason always, with
-    `constant_under_bounds`, a constant's under `want: bounds` always, and with `interval_under_bounds`, an
-    interval's under `want: bounds` and with no nominal always."""
+    `constant_under_bounds`, a constant's under `want: bounds` always, with `interval_under_bounds`, an
+    interval's under `want: bounds` and with no nominal always, with `composition_under_components`, a
+    composition's under `want: components` always, and with `unknown_member`, a member the reader does not
+    know always (`result_strategies.enriched`)."""
     way = draw(st.sampled_from(ways))
     if constant_under_bounds:
         form, drawn_read = "constant", draw(base_reads(size, FORM_FIELDS["constant"], "constant"))
@@ -169,10 +173,12 @@ def valued(
         form, drawn_read = "interval", draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
     elif unit_with_a_reason:
         form, drawn_read = "evidence", draw(base_reads(size, FORM_FIELDS["evidence"], "evidence"))
+    elif composition_under_components:
+        form, drawn_read = "composition", draw(base_reads(size, FORM_FIELDS["composition"], "composition"))
     else:
         form, drawn_read = draw(results.form_reads(size))
     read = fresh(drawn_read)
-    shown = draw(results.enriched(field_of(read)))
+    shown = draw(results.enriched(field_of(read), unknown_member=unknown_member))
     if way == "at_a_boundary":
         at_a_boundary(draw, read)
     elif way == "implied":
@@ -183,9 +189,13 @@ def valued(
     if form == "evidence" and (unit_with_a_reason or draw(st.booleans())):
         field_of(read)["unit"] = {"status": "not_applicable", "reason": "a list of test reports"}
         shown = (*shown, "unit_with_a_reason")
-    read = wanting(
-        repinned(read), "bounds" if constant_under_bounds or interval_under_bounds else a_want(draw, form)
-    )
+    if constant_under_bounds or interval_under_bounds:
+        want = "bounds"
+    elif composition_under_components:
+        want = "components"
+    else:
+        want = a_want(draw, form)
+    read = wanting(repinned(read), want)
     if form == "interval" and not interval_under_bounds and (nominal or draw(st.booleans())):
         nominal_way = draw(st.sampled_from(results.NOMINAL_WAYS))
         read = wanting(read, "bounds" if nominal_way == "under_bounds" else "value")
@@ -218,10 +228,13 @@ ALTERNATIVE_WAYS = ("met", "met", "broken", "request_fault", "standing", "standi
 APART_WAYS = ("unit_apart", "specimen_apart", "request_faults_apart")
 
 
-def apart(draw: Draw, read: Read, field: JsonObject, way: str) -> tuple[JsonObject, tuple[str, ...]]:
-    """A further alternative of `field`, its own member drawn, and how else it stands apart, by name."""
+def apart(
+    draw: Draw, read: Read, field: JsonObject, way: str, always: bool = False
+) -> tuple[JsonObject, tuple[str, ...]]:
+    """A further alternative of `field`, its own member drawn, and how else it stands apart, by name; with
+    `always`, a planned search's, apart always."""
     other = results.another_value(draw, field, read.field)
-    if draw(st.integers(0, 3)):
+    if not always and draw(st.integers(0, 3)):
         return other, ()
     if way == "request_fault":
         facts = at(other, "specimen")
@@ -277,10 +290,25 @@ def outcomes_of_step_7(
 
 
 @st.composite
-def alternatives(draw: Draw, size: Size, *, nominal: bool = False) -> Example:
-    """Alternatives; with `nominal`, intervals the request meets under a nominal located at the read always, a
-    planned search's."""
-    way = "met" if nominal else draw(st.sampled_from(ALTERNATIVE_WAYS))
+def alternatives(
+    draw: Draw,
+    size: Size,
+    *,
+    nominal: bool = False,
+    request_faults_apart: bool = False,
+    constant_under_bounds: bool = False,
+) -> Example:
+    """Alternatives; for a planned search's, with `nominal`, intervals the request meets under a nominal
+    located at the read always, and with `request_faults_apart`, alternatives whose first raises a fault of
+    the request and each further one one of its own always; and, for HP12's region (`REGIONS`), with
+    `constant_under_bounds`, constants under `want: bounds` in a world the read meets, beside a member the
+    reader does not know, always."""
+    if nominal or constant_under_bounds:
+        way = "met"
+    elif request_faults_apart:
+        way = "request_fault"
+    else:
+        way = draw(st.sampled_from(ALTERNATIVE_WAYS))
     if way == "standing":
         drawn_example: Example = draw(outcomes_of_step_7(size))
         return drawn_example
@@ -290,6 +318,8 @@ def alternatives(draw: Draw, size: Size, *, nominal: bool = False) -> Example:
         return Example("alternatives", drawn.sources, text(drawn.request), claims, (way,))
     if nominal:
         form, drawn_read = "interval", draw(base_reads(size, FORM_FIELDS["interval"], "interval"))
+    elif constant_under_bounds:
+        form, drawn_read = "constant", draw(base_reads(size, FORM_FIELDS["constant"], "constant"))
     else:
         form, drawn_read = draw(results.form_reads(size))
     read = fresh(drawn_read)
@@ -300,14 +330,16 @@ def alternatives(draw: Draw, size: Size, *, nominal: bool = False) -> Example:
     if way == "request_fault":
         conditions.disagreeing(draw, read)
     else:
-        shown = draw(results.enriched(field))
+        shown = draw(results.enriched(field, unknown_member=constant_under_bounds))
     held: list[JsonValue] = [results.without_withheld_reports(copy.deepcopy(field))]
     for _ in range(draw(st.integers(1, 2))):
-        other, standing = apart(draw, read, field, way)
+        other, standing = apart(draw, read, field, way, always=request_faults_apart)
         held.append(other)
         shown = (*shown, *(name for name in standing if name not in shown))
     record = results.holding(read, {"alternatives": held})
-    read = wanting(repinned(read._replace(record=record)), a_want(draw, form))
+    read = wanting(
+        repinned(read._replace(record=record)), "bounds" if constant_under_bounds else a_want(draw, form)
+    )
     if form == "interval" and way == "met" and (nominal or draw(st.booleans())):
         read = wanting(read, "value")
         acceptance: JsonObject = {
@@ -340,9 +372,12 @@ def step_8_faults(draw: Draw, size: Size, among: tuple[str, ...] = ()) -> Exampl
 
 
 @st.composite
-def step_9_or_10_faults(draw: Draw, size: Size, among: tuple[str, ...] = tuple(conditions.FAULTS)) -> Example:
-    """A read with a fault of steps 9 and 10, its first among `among`: all of them, or a planned search's."""
-    faulty = draw(conditions.faulty_reads(among, size))
+def step_9_or_10_faults(
+    draw: Draw, size: Size, among: tuple[str, ...] = tuple(conditions.FAULTS), alone: bool = False
+) -> Example:
+    """A read with a fault of steps 9 and 10, its first among `among`: all of them, or a planned search's;
+    with `alone`, that fault alone."""
+    faulty = draw(conditions.faulty_reads(among, size, alone))
     read = wanting(faulty.read, draw(st.sampled_from(WANTS)))
     return example("steps_9_and_10", read, draw(st.sampled_from(CLAIMS)), *faulty.faults)
 
@@ -900,8 +935,43 @@ BUILDERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
 KINDS = tuple(BUILDERS)
 
 
+# The regions HP12's first two parts hold to a floor (`test_model_properties.py`), each drawn inside the kinds
+# that can hold it, after the kind, where the last of `last + 1` is drawn, the rest of the kind drawn as
+# before: the kinds stay drawn alike, as their floors take them, and the region's draws count to their kind.
+# A constant's read under `want: bounds`, as the planned search of `bounds_given_by_a_constant` draws it
+# ("constants", `test_model_mutants.py`), inside each of the values part's kinds alike, a constant's value
+# or its alternatives; and a read of steps 9 and 10 whose one fault is `unchecked`, as the planned search of
+# HP1's mutant that drops that reason's condition draws it but with no second fault of step 9, which would
+# end the read before step 10 ("an unchecked condition"), inside the kind of steps 9 and 10, the one kind of
+# the faults part that reaches step 10. Drawn whole, the parts gave them in about one example in 55 and one in
+# 40 (2026-10-20), too few for a draw floor at `ci` (`audits.py`). The constants hold a member the reader
+# does not know always (`result_strategies.enriched` plants one in half the draws it makes), so that the
+# branch gives back the share of `unknown_member` it takes from the draws it replaces.
+REGIONS: dict[tuple[str, ...], tuple[int, dict[str, Callable[[Size], st.SearchStrategy[Example]]]]] = {
+    ("valued", "alternatives"): (
+        6,
+        {
+            "valued": lambda size: valued(
+                size, ("as_drawn", "implied"), constant_under_bounds=True, unknown_member=True
+            ),
+            "alternatives": lambda size: alternatives(size, constant_under_bounds=True),
+        },
+    ),
+    ("step_8", "steps_9_and_10"): (
+        3,
+        {"steps_9_and_10": lambda size: step_9_or_10_faults(size, ("unchecked",), alone=True)},
+    ),
+}
+
+
 @st.composite
 def drawn(draw: Draw, size: Size, kinds: tuple[str, ...] = KINDS) -> Example:
-    """A read of one of `kinds`, the kind drawn first."""
-    example_: Example = draw(BUILDERS[draw(st.sampled_from(kinds))](size))
+    """A read of one of `kinds`, the kind drawn first; of HP12's first two parts, inside a kind that can hold
+    it, in a share of its draws, the region the part holds to a floor (`REGIONS`)."""
+    kind = draw(st.sampled_from(kinds))
+    last, regions = REGIONS.get(kinds, (0, {}))
+    if kind in regions and draw(st.integers(0, last)) == last:
+        region: Example = draw(regions[kind](size))
+        return region
+    example_: Example = draw(BUILDERS[kind](size))
     return example_

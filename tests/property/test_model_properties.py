@@ -278,7 +278,12 @@ def check_outcome(example: Example, implementation: Outcome) -> str:
     return {"result": "agrees", "not_yet": "neither_decides", "misuse": "misuse"}[model.kind]
 
 
-# The parts, each drawing its kinds first.
+# The parts, each drawing its kinds first; the first two draw, after the kind and inside a kind that can
+# hold it, the region each holds to a floor (`model_strategies.REGIONS`), so that their kinds stay drawn
+# alike: over 96 runs at `ci` (2026-10-20, derandomised, each its own stream) each kind showed in 0.495 to
+# 0.505 of the examples, and falls below its floor at one half, 440 of 2,000 examples, with a probability of
+# 9e-7 by `audits.py`'s model at that half and below 1e-23 at the variance measured (5.7 to 6.3 times a
+# binomial count's).
 
 PARTS: dict[str, tuple[str, ...]] = {
     "valued": ("valued", "alternatives"),
@@ -293,11 +298,55 @@ def checked(example: Example, shown: str) -> None:
     check_agreement(example)
 
 
+def gives(outcome: Outcome, code: str) -> bool:
+    """Whether the implementation's result holds a reason of `code`."""
+    result = outcome.result
+    reasons = result.get("reasons") if isinstance(result, dict) else None
+    return isinstance(reasons, list) and any(
+        isinstance(reason, dict) and reason.get("code") == code for reason in reasons
+    )
+
+
+def at(value: JsonValue, *path: str) -> JsonValue:
+    """The member at `path`, or None where a step of it is no object or holds no such member."""
+    for step in path:
+        value = value.get(step) if isinstance(value, dict) else None
+    return value
+
+
+def forms_read(example: Example) -> set[JsonValue]:
+    """The forms of the field the request names, in each record its pin names: the field's own, or each of its
+    alternatives' (S4a's draws hold a constant among the alternatives of a field drawn as another form)."""
+    name = at(request_of(example), "target", "field")
+    section, _, field = name.partition(".") if isinstance(name, str) else ("", "", "")
+    forms: set[JsonValue] = set()
+    for record in targets(example):
+        value = at(record, "body", "sections", section, "fields", field)
+        alternatives = at(value, "alternatives")
+        held = alternatives if isinstance(alternatives, list) else [value]
+        forms.update(at(each, "form") for each in held)
+    return forms
+
+
+def a_constant_refused_bounds(example: Example, implementation: Outcome) -> bool:
+    """Whether a constant's read under `want: bounds` reached step 13, which refuses it (`want_mismatch`)."""
+    want = at(request_of(example), "requirement", "want")
+    return "constant" in forms_read(example) and want == "bounds" and gives(implementation, "want_mismatch")
+
+
 # HP12's draws of S4a's alternatives (`standing`): two of the alternatives kind's six ways, the kind drawn in
 # half the examples, so 1/6 by the draw. Over 12 runs at `ci`, the draws alone (2026-10-19, seeds 1000 to
 # 1011), their shares were 0.119 to 0.178 (mean 0.157); the chance is declared below the least, as the forms'
 # are, and its floor, 30 examples, is below every run's count (237 to 356).
 STANDING_CHANCE = 0.10
+# A member the reader does not know, which `result_strategies.enriched` plants in half the draws of the field
+# `valued` and `alternatives` read, and the region's draws always (`model_strategies.REGIONS`): where
+# `unknown_members_returned` shows, which its planned search draws always, held by its chance as HP6 holds it,
+# below its least share over 96 runs at `ci` (2026-10-20, derandomised, each its own stream; mean 0.354, least
+# 0.294). By `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of 110
+# examples with a probability of 3e-23, and with 3e-42 at the variance measured (5.6 times a binomial
+# count's).
+UNKNOWN_MEMBER_CHANCE = 0.2
 
 
 # The form of the field read, drawn after the kind: a constant twice as often as an interval, a composition or
@@ -306,6 +355,16 @@ STANDING_CHANCE = 0.10
 # their least shares were 0.319, 0.150, 0.128 and 0.133 (means 0.354, 0.177, 0.166, 0.175; the review's 22
 # runs, 0.292, 0.145, 0.124, 0.112), and each falls below the draw floor of the chance declared with a
 # probability below 1e-12 by `audits.py`'s cluster model at the variance measured (4.1 to 9.9 times a binomial
+# count's). Since the region below is drawn (2026-10-20), an interval, a composition and evidence show in
+# 0.154 to 0.158 of the examples over 96 runs, their least shares 0.102, 0.107 and 0.107, and `standing` in
+# 0.147, its least 0.093: below the chances of the three and `standing`, though each falls below its floor
+# with a probability below 1e-10 at the variance measured. The region takes about one draw in seven of each
+# kind, and the share it leaves cannot hold the four with the constant's under `want: value`, which no other
+# draw gives (README, "The regions held to a floor"). A constant's read under `want: bounds` that reaches step
+# 13, where the mutant that gives a constant's value there shows (`model_strategies.REGIONS`), by its chance,
+# below its least share over 96 runs at `ci` (2026-10-20, derandomised, each its own stream; mean 0.157, least
+# 0.116). By `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of 20
+# examples with a probability of 5e-15, and with 6e-22 at the variance measured (5.7 times a binomial
 # count's).
 @pytest.mark.chances(
     form_constant=0.29,
@@ -313,19 +372,35 @@ STANDING_CHANCE = 0.10
     form_composition=0.12,
     form_evidence=0.11,
     standing=STANDING_CHANCE,
+    constant_refused_bounds=0.09,
+    unknown_member=UNKNOWN_MEMBER_CHANCE,
 )
 @pytest.mark.drawn(*PARTS["valued"])
 @given(strategies.drawn(SIZE, PARTS["valued"]))
 def test_the_read_agrees_with_the_model_on_values_and_alternatives(example: Example) -> None:
     for planted in example.planted:
-        feature(planted, planted.startswith("form_") or planted == "standing")
-    checked(example, example.kind)
+        feature(planted, planted.startswith("form_") or planted in ("standing", "unknown_member"))
+    implementation = implementation_outcome(example)
+    feature("constant_refused_bounds", a_constant_refused_bounds(example, implementation))
+    feature(example.kind)
+    check_outcome(example, implementation)
 
 
+# A result holding `condition_unchecked`, where HP1's mutant that drops that reason's condition shows
+# (`model_strategies.REGIONS`), by its chance, below its least share over 96 runs at `ci` (2026-10-20,
+# derandomised, each its own stream; mean 0.132, least 0.093). By `audits.py`'s model, 250 draws each shown in
+# 5 examples, a run falls below its floor of 15 examples with a probability of 4e-13, and with 3e-19 at the
+# variance measured (5.6 times a binomial count's). The region takes about a quarter of the draws of steps 9
+# and 10, the one kind that can hold it, so each of their first faults shows in about three quarters of its
+# share on main.
+@pytest.mark.chances(condition_unchecked=0.08)
 @pytest.mark.drawn(*PARTS["faults"])
 @given(strategies.drawn(SIZE, PARTS["faults"]))
 def test_the_read_agrees_with_the_model_on_faults_of_steps_8_to_10(example: Example) -> None:
-    checked(example, example.kind)
+    implementation = implementation_outcome(example)
+    feature("condition_unchecked", gives(implementation, "condition_unchecked"))
+    feature(example.kind)
+    check_outcome(example, implementation)
 
 
 @pytest.mark.drawn(*STEPS)

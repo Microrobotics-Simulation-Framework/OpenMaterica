@@ -46,16 +46,20 @@ def records(draw: st.DrawFn, size: Size = SIZE) -> JsonValue:
     """Objects holding a provenance object and a scalar `name`, so that each has a leaf the hash covers, and
     up to `size.members` members beside each, every one a tree within `size`.
 
-    A quarter of them also hold a provenance object inside an array, and a quarter one inside a provenance
-    that is an array: shapes section 9 item 1 tells apart, which random trees seldom reach.
+    Half of them also hold a provenance object inside an array, and a quarter one inside a provenance that
+    is an array: shapes section 9 item 1 tells apart, which random trees seldom reach. In half of them the
+    provenance object holds a `card` or a `content_hash`, which the hash keeps below the top.
     """
     record: dict[str, JsonValue] = {**draw(objects(size)), "name": draw(strategies.SCALARS)}
-    record["provenance"] = draw(objects(size))
+    provenance = draw(objects(size))
+    if draw(st.booleans()):
+        provenance[draw(st.sampled_from(TOP_LEVEL_REMOVED))] = draw(trees(size))
+    record["provenance"] = provenance
     placement = draw(st.integers(0, 3))
-    if placement in (1, 2):
+    if placement:
         items = draw(st.lists(trees(size), max_size=size.members))
         items.insert(draw(st.integers(0, len(items))), {"provenance": draw(objects(size))})
-        record["items" if placement == 1 else "held"] = items if placement == 1 else {"provenance": items}
+        record["held" if placement == 2 else "items"] = {"provenance": items} if placement == 2 else items
     return record
 
 
@@ -246,7 +250,11 @@ def check_invariance(
 # Each feature whose least share failed a `dev` run too often is declared by its chance: its share at `ci`
 # over 64 runs (2026-10-15), rounded down to two places. From the measured clusters, those least shares failed
 # a `dev` run with a probability of about 6.5e-5 (at most 6e-3; `audits.JUDGED_FROM`); neither is judged at
-# `dev` now, and at `ci` each falls below its draw floor with a probability below 1e-20.
+# `dev` now, and at `ci` each falls below its draw floor with a probability below 1e-20. Over 48 runs on main
+# (2026-10-20, derandomised, each its own stream) their least shares were 0.386 and 0.395, below the chances;
+# since `records` holds a provenance object in an array in half its records, and a `card` or `content_hash`
+# in its provenance object in half, they show in 0.717 and 0.645 of the examples, least 0.655 and 0.588 over
+# 48 runs, and fall below their floors with a probability below 1e-26 by `audits.py`'s model.
 @pytest.mark.chances(card_below_the_top=0.44, provenance_in_an_array=0.46)
 @pytest.mark.features(
     near_miss_name=0.20,
@@ -327,10 +335,90 @@ def edit_at(original: JsonValue, path: Path, new: JsonValue) -> Edit:
     return Edit(original, edited, path)
 
 
+def provenances_opened(root: JsonValue, path: Path) -> list[bool]:
+    """For each `provenance` along `path`, whether its value is an object, which item 1 opens."""
+    nodes = _nodes(root, path)
+    return [isinstance(nodes[index + 1], dict) for index, step in enumerate(path) if step == "provenance"]
+
+
+def below_review_or_copy_in_a_non_object_provenance(root: JsonValue, path: Path) -> bool:
+    """Whether the leaf at `path` lies below a `review` or `copy` member of an object inside a provenance
+    whose value is not an object: the hash keeps it, since item 1 removes the two names inside a provenance
+    object alone."""
+    nodes = _nodes(root, path)
+    in_a_non_object_provenance = False
+    for index, step in enumerate(path):
+        if isinstance(nodes[index], dict):
+            if in_a_non_object_provenance and step in REMOVED_IN_PROVENANCE:
+                return True
+            if step == "provenance" and not isinstance(nodes[index + 1], dict):
+                in_a_non_object_provenance = True
+    return False
+
+
+def placed_below_a_non_object_provenance(
+    draw: st.DrawFn,
+    record: dict[str, JsonValue],
+    member: str,
+    size: Size,
+    inside: st.SearchStrategy[JsonValue] | None = None,
+    only_kept: bool = True,
+) -> Edit:
+    """`record` given `member`, `{"provenance": [...]}`, whose array holds, among other items and up to two
+    arrays deep, an object with `review` or `copy`; and an edit of a leaf below that name the hash keeps (or,
+    with `only_kept=False`, of any leaf below it). `inside` draws the tree below the name (`trees(size)` where
+    none is given)."""
+    name = draw(st.sampled_from(REMOVED_IN_PROVENANCE))
+    node: JsonValue = {**draw(objects(size)), name: draw(trees(size) if inside is None else inside)}
+    below: Path = (name,)
+    for _ in range(draw(st.integers(0, 2))):
+        node, below = [node], (0, *below)
+    items = draw(st.lists(trees(size), max_size=size.members))
+    index = draw(st.integers(0, len(items)))
+    items.insert(index, node)
+    record[member] = {"provenance": items}
+    prefix: Path = (member, "provenance", index, *below)
+    # A leaf the hash keeps: one below a provenance object nested in the tree is removed with it, and where
+    # every leaf is, the whole of `review` or `copy` is the edit.
+    below_the_prefix = [leaf for leaf in leaves(record) if leaf[: len(prefix)] == prefix]
+    kept = [leaf for leaf in below_the_prefix if not removed(record, leaf)]
+    path = draw(st.sampled_from((kept or [prefix]) if only_kept else below_the_prefix))
+    return edit_at(record, path, draw(strategies.SCALARS))
+
+
+@st.composite
+def edits_below_a_non_object_provenance(
+    draw: st.DrawFn,
+    size: Size,
+    inside: st.SearchStrategy[JsonValue] | None = None,
+    only_kept: bool = True,
+) -> Edit:
+    """A record whose `held` is a provenance that is an array (`placed_below_a_non_object_provenance`), and an
+    edit below a `review` or `copy` in it: the planned search of `a_non_object_provenance_opens`
+    (`test_mutants.py`). `inside` and `only_kept=False` are for `test_mutant_view.py`, which plans draws that
+    reach a leaf the hash removes, to show its control refuses the strategy without the filter."""
+    record = draw(records(size))
+    assert isinstance(record, dict)
+    return placed_below_a_non_object_provenance(draw, record, "held", size, inside, only_kept)
+
+
+# Where an edit below `review` or `copy` in a provenance that is not an object is placed beside the record's
+# own members: longer than any name `NAMES` draws, so that no member is replaced.
+BESIDE = "beside the record"
+
+
 @st.composite
 def edits(draw: st.DrawFn, size: Size = SIZE) -> Edit:
+    """An edit of a leaf the hash covers, at a path drawn at random. In about three draws in ten of those
+    outside every provenance object (0.26 of the examples, measured), the record is given a provenance that is
+    an array and the edit is of a leaf below a `review` or `copy` in it
+    (`placed_below_a_non_object_provenance`), which a path drawn at random reaches in about one draw in 200:
+    the edits inside a provenance object, and the record's own members, are as drawn."""
     original = draw(records(size))
     path = draw(st.sampled_from([path for path in leaves(original) if not removed(original, path)]))
+    if not any(provenances_opened(original, path)) and draw(st.integers(0, 5)) == 0:
+        assert isinstance(original, dict)
+        return placed_below_a_non_object_provenance(draw, original, BESIDE, size)
     return edit_at(original, path, draw(strategies.SCALARS))
 
 
@@ -338,12 +426,21 @@ def check_edit(digest: Digest, edit: Edit) -> None:
     assert digest(edit.original) != digest(edit.edited), f"editing {edit.path} left the hash unchanged"
 
 
-# As above: those least shares failed a `dev` run with a probability of about 1.8e-4 (at most 1e-2).
+# As above: those least shares failed a `dev` run with a probability of about 1.8e-4 (at most 1e-2). Over 48
+# runs on main (2026-10-20) the least shares of the first, second and fourth were 0.419, 0.426 and 0.295,
+# below their chances; with `records` as above, the four show in 0.727, 0.643, 0.590 and 0.387 of the
+# examples, least 0.678, 0.593, 0.536 and 0.345 over 48 runs, and fall below their floors with a probability
+# below 1e-10 by `audits.py`'s model.
 @pytest.mark.chances(
     card_below_the_top=0.46,
     provenance_in_an_array=0.46,
     edited_below_a_kept_special_name=0.36,
     edited_inside_a_provenance_object=0.33,
+    # Where `a_non_object_provenance_opens` shows, below its least share over 48 runs at `ci` (2026-10-20,
+    # derandomised, each its own stream; mean 0.257, least 0.218). By `audits.py`'s model, 250 draws each
+    # shown in 5 examples, a run falls below its floor of 95 examples with a probability of 5e-14, and with
+    # 1e-38 at the variance measured (3.7 times a binomial count's).
+    edited_below_review_or_copy_in_a_non_object_provenance=0.18,
 )
 @pytest.mark.features(
     near_miss_name=0.20,
@@ -358,12 +455,13 @@ def check_edit(digest: Digest, edit: Edit) -> None:
 @given(edits())
 def test_editing_any_leaf_the_hash_covers_changes_it(edit: Edit) -> None:
     record_features(edit.original)
-    nodes = _nodes(edit.original, edit.path)
     special = (*TOP_LEVEL_REMOVED, *REMOVED_IN_PROVENANCE, *NEAR_MISSES)
     feature("edited_below_a_kept_special_name", any(step in special for step in edit.path))
-    opened = [
-        isinstance(nodes[index + 1], dict) for index, step in enumerate(edit.path) if step == "provenance"
-    ]
+    opened = provenances_opened(edit.original, edit.path)
     feature("edited_inside_a_provenance_object", any(opened))
     feature("edited_below_a_non_object_provenance", not all(opened))
+    feature(
+        "edited_below_review_or_copy_in_a_non_object_provenance",
+        below_review_or_copy_in_a_non_object_provenance(edit.original, edit.path),
+    )
     check_edit(content_hash, edit)

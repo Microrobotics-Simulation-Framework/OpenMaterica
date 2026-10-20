@@ -223,11 +223,14 @@ def nominal_reads(draw: Draw, size: Size) -> Drawn:
 
 
 @st.composite
-def own_member_reads(draw: Draw, size: Size) -> Drawn:
-    """A read that passes steps 1 to 10 of an interval, a composition or evidence, under the `want` that gives
-    its own member: a kind of its own, so that a fault a read of either form alone shows is searched for in a
-    share of the examples of its own, not in `met`'s one in eight (PR #37's review, L5)."""
-    form = draw(st.sampled_from(("interval", "composition", "evidence")))
+def own_member_reads(
+    draw: Draw, size: Size, forms: tuple[str, ...] = ("interval", "composition", "evidence")
+) -> Drawn:
+    """A read that passes steps 1 to 10 of an interval, a composition or evidence (or of `forms`, a planned
+    search's), under the `want` that gives its own member: a kind of its own, so that a fault a read of either
+    form alone shows is searched for in a share of the examples of its own, not in `met`'s one in eight (PR
+    #37's review, L5)."""
+    form = draw(st.sampled_from(forms))
     read = draw(base_reads(size, FORM_FIELDS[form], form))
     claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
     return from_read("met_own_member", read, FORM_WANTS[form], claims, f"form_{form}")
@@ -248,8 +251,9 @@ def step_8_faults(draw: Draw, size: Size) -> Drawn:
 
 
 @st.composite
-def step_9_or_10_faults(draw: Draw, size: Size) -> Drawn:
-    faulty = draw(faulty_reads(tuple(FAULTS), size))
+def step_9_or_10_faults(draw: Draw, size: Size, among: tuple[str, ...] = tuple(FAULTS)) -> Drawn:
+    """A read with a fault of steps 9 and 10, its first among `among`: all of them, or one HP1 raises."""
+    faulty = draw(faulty_reads(among, size))
     return from_read(
         "step_9_or_10_fault", faulty.read, "value", draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
     )
@@ -263,11 +267,13 @@ UNKNOWN_AT_STEP_10 = ("unchecked", "unstated", "unknown_name", "uncertain")
 
 
 @st.composite
-def unknown_at_step_10(draw: Draw, size: Size, among: tuple[str, ...] = UNKNOWN_AT_STEP_10) -> Drawn:
+def unknown_at_step_10(
+    draw: Draw, size: Size, among: tuple[str, ...] = UNKNOWN_AT_STEP_10, alone: bool = False
+) -> Drawn:
     """One of those faults (or of `among`, a planned search's), beside, in half the draws, a token the request
     does not accept, which ends the read at step 10 (`not_met`): a result that holds reasons of both
-    statuses."""
-    faulty = draw(faulty_reads(among, size))
+    statuses; with `alone`, no second fault, which would end the read at step 9 where it is one of step 9."""
+    faulty = draw(faulty_reads(among, size, alone))
     if draw(st.booleans()):
         not_accepted(draw, faulty.read)
     return from_read(
@@ -490,10 +496,11 @@ def own_member_place(field: JsonObject) -> JsonObject:
 
 
 @st.composite
-def enriched(draw: Draw, field: JsonObject) -> tuple[str, ...]:
-    """`field` changed to show what it is drawn to, which it returns, by name. Evidence, which holds no
-    statistics and no condition, takes its review into its first report's provenance too, and a member the
-    reader does not know into a fact or its own member, and never holds its statistics withheld."""
+def enriched(draw: Draw, field: JsonObject, *, unknown_member: bool = False) -> tuple[str, ...]:
+    """`field` changed to show what it is drawn to, which it returns, by name; with `unknown_member`, a
+    planned search's, a member the reader does not know always. Evidence, which holds no statistics and no
+    condition, takes its review into its first report's provenance too, and a member the reader does not know
+    into a fact or its own member, and never holds its statistics withheld."""
     form = str(field["form"])
     shown: list[str] = [f"form_{form}"]
     if draw(st.integers(0, 3)) == 0:
@@ -520,7 +527,7 @@ def enriched(draw: Draw, field: JsonObject) -> tuple[str, ...]:
             {"status": "withheld"} if draw(st.booleans()) else {"status": "withheld", "reason": draw(TEXT)}
         )
         shown.append("statistics_withheld")
-    if draw(st.booleans()):
+    if unknown_member or draw(st.booleans()):
         places = ("fact", "own_member") if form == "evidence" else UNKNOWN_PLACES
         place = draw(st.sampled_from(places))
         holder = {
@@ -534,10 +541,35 @@ def enriched(draw: Draw, field: JsonObject) -> tuple[str, ...]:
     return tuple(shown)
 
 
+# HP1's mutant that drops the condition of `condition_unchecked` shows only where step 10 gives that reason,
+# which the kinds drawn alike gave in about one example in 45 (2026-10-20), too few for a draw floor at `ci`
+# (`audits.py`). So a read of every kind is first, where the last of seven is drawn, the planned search's
+# read (`unknown_at_step_10` whose fault is `unchecked`, under that kind), with no second fault, which would
+# end the read at step 9 where it is one of step 9; and is otherwise drawn as before, but that the kind's own
+# draws give `unchecked` half as often as each fault beside it: the branch takes its draws from every kind
+# and every fault alike, and from `unknown_at_step_10` most of its draws of `unchecked`, not those of the
+# faults beside it. In one of the branch's draws in 32 it is instead a read of steps 9 and 10 whose first
+# fault is `disagreeing`, the one fault that gives `request_incomplete` there, which the branch would
+# otherwise thin below 0.8 of its share.
+BESIDE_UNCHECKED = tuple(fault for fault in UNKNOWN_AT_STEP_10 if fault != "unchecked")
+AFTER_THE_BRANCH = (*BESIDE_UNCHECKED, *BESIDE_UNCHECKED, "unchecked")
+
+
 @st.composite
 def drawn_reads(draw: Draw, size: Size, kinds: tuple[str, ...] = KINDS) -> Drawn:
-    """A read of one of `kinds`, the kind drawn first."""
+    """A read of one of `kinds`, the kind drawn first; of every kind, first, in about one draw in seven, a
+    read whose step 10 gives `condition_unchecked` (or, in a few of those, `request_incomplete`)."""
+    whole = kinds == KINDS
+    if whole and draw(st.integers(0, 6)) == 6:
+        if draw(st.integers(0, 31)) == 31:
+            disagreeing: Drawn = draw(step_9_or_10_faults(size, ("disagreeing",)))
+            return disagreeing
+        unchecked: Drawn = draw(unknown_at_step_10(size, ("unchecked",), alone=True))
+        return unchecked
     kind = draw(st.sampled_from(kinds))
+    if whole and kind == "unknown_at_step_10":
+        after: Drawn = draw(unknown_at_step_10(size, AFTER_THE_BRANCH))
+        return after
     drawn: Drawn = draw(BUILDERS[kind](size))
     return drawn
 

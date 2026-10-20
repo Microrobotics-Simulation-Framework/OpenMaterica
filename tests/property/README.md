@@ -13,7 +13,10 @@ check's reader (the last bullet).
   written from section 10's list (`test_slip_properties.py`): two names are one slip apart exactly where the
   generator reaches one from the other, by a kind it reaches it by. The generator builds names from a name, as
   the relation compares two, and is the oracle neither shares (the S2a-1 review, verdict 19). Each kind is
-  drawn alike, with two slips, unrelated names and two characters swapped far apart as near misses.
+  drawn alike, with two slips, unrelated names and two characters swapped far apart as near misses; and, in
+  about one in four of the unrelated names and of the two slips not swapped far apart, a name with an empty
+  word against the same with `s` or `es` in that word, which is no plural (`pairs_through_an_empty_word`, about
+  0.16 of the examples; its floor: Mutants, "The regions held to a floor").
 - **Records:** (4) the envelope checks agree with the generated reader schema (section 1 item 2); (5) versions
   order as their integers, for components hundreds of digits long, and a text is a version exactly when it
   matches section 8's pattern; (6) the laws of a read up to step 5 (`read_side_contract.md` sections 1 to 3):
@@ -96,7 +99,9 @@ check's reader (the last bullet).
   above it or below it; negative zero), each at the lower or the upper end of the stated span, a stated plus
   or minus of each kind, the table's other rows (an accept list holding, beside the row's tokens, a token
   capitalised, a prefix of one and another row's token; a name the reader does not know, held as a value or a
-  status object) and the conditions checked, and implied conditions that fill, never override, and disagree.
+  status object) and the conditions checked, a condition the row requires held by neither the record nor the
+  request in about one draw in seven (its floor: Mutants), and implied conditions that fill, never
+  override, and disagree.
   Step 10's `met` and `unknown` entries are not returned before S2a-4, so HP7 calls `check_conditions` as the
   read does. HP9: a field's specimen is the section's facts, each overridden by the field's (a dict merge
   written in the test), and an implied condition applies exactly where that merge states its fact and token.
@@ -171,7 +176,9 @@ check's reader (the last bullet).
   read that reached
   step 4, which the draw knows, and the two reads differ by that label alone. Step 10's faults that leave the
   read to go on (`unchecked`, `unstated`, `unknown_name`, `uncertain`) are a kind of their own, beside a token
-  the request does not accept in half its draws, so that a result holds reasons of both statuses; step 8's
+  the request does not accept in half its draws, so that a result holds reasons of both statuses; a read of
+  every kind is, first, in about one draw in seven, this kind's whose one fault is `unchecked`, the kind's own
+  draws giving `unchecked` half as often as each other fault (its floor: Mutants); step 8's
   kind draws two faults always in half its draws; and HP6 draws a constant's statistics held as the status
   object its row allows in one draw in four (fuzz target 4 found it returned as an empty block).
 - **The reference model:** (12) the S2 design's HP12 (`test_model_properties.py`): the read agrees with the
@@ -188,7 +195,10 @@ check's reader (the last bullet).
   fault, each further one apart from the first beside its own member in one draw in four: its unit spelled
   otherwise, a specimen fact of its own, or a request fault of its own; intervals met in half their draws
   under `want: value` with a nominal located at the read); faults of steps 8 to 10, one or two, step 8's of
-  every form it reads; two faults of one of steps 0,
+  every form it reads; the first two parts draw, after the kind and inside a kind that can hold it, in about
+  one draw in seven of each kind of values and one in four of steps 9 and 10, the region each holds to a
+  floor, a constant's read under `want: bounds` and a read of steps 9 and 10 whose one fault is `unchecked`
+  (Mutants, "The regions held to a floor"); two faults of one of steps 0,
   8, 9 and 10 that give two reasons (the design's B5, a step that stops at its first fault); step 0's
   catalogue of 60 faults and near misses, and six texts that are no JSON, written from `read_side_contract.md`
   section 1 (S2b-2's eight: an acceptance not an object; a nominal's value not a number or missing, its field
@@ -479,7 +489,8 @@ function_digest`, salts `v1` to `v24`: the strategies and the code are the same,
 and 455 at the small (pinned), up to 1,875 and 1,311 over the salts, and survived 2,000 at the small size in
 one salt; `empty_word_made_plural` 629, up to 945; `row_requirements_ignored` 536, up to 1,363, and survived
 2,000 in one salt (both sizes). Each fault shows in a thin region of its property's examples (below), so each
-is now searched in that region, in records the core passes, and the property itself is unchanged:
+is now searched in that region, in records the core passes (and the property's own reach into it is held to a
+floor: "The regions held to a floor", below):
 
 | Mutant | Where the fault shows | The planned search |
 |---|---|---|
@@ -510,6 +521,87 @@ is not a margin. What it shows is the number of the planned examples that kill: 
 three (the slip's first draw, `Pair('s', '')`, is the degenerate whole name `''` against `s`, not `x__y` against
 `x_s_y`; 1,996 of its 2,000 contain an underscore).
 
+**The regions held to a floor.** A planned search shows that a check kills its mutant; it does not show that the
+property's own strategy still draws the region where the fault shows, so a change that stopped drawing it would
+pass every test (PR #49's review, M1; maintainer, 2026-10-19). The property whose draws each planned search
+stands in for records its region as a feature and holds it to a draw floor at `ci` (Audits, below), declared by
+its chance; and a control in `tests/unit/test_audit_controls.py` shows each audit failing, on that feature
+alone, when the generator stops producing it. The member the reader does not know that
+HP12's values plant is held as HP6 holds it, by its chance and its audit control alone; its planned search
+draws it always. Main drew six of these regions in under 0.03 of the examples, too seldom for a floor: one of
+10 examples, the least `ci` judges, needs a chance of about 0.065 (`audits.draw_floor`). So each strategy draws
+its region in a weighted branch, and each chance is declared below the least share measured (2026-10-20: 2,000
+examples a run at `ci`, derandomised, each run its own stream, the checks skipped; 48 runs, HP1's and HP12's
+96; shares are measured, since Hypothesis draws the ends of a small range more often than their share):
+
+| Planned search | Region (feature) | Property, and its branch | Main: mean share | Now: mean (least) | Chance | Floor | Falls below it, a run |
+|---|---|---|---|---|---|---|---|
+| `a_non_object_provenance_opens` | an edit below `review` or `copy` in a provenance that is an array (`edited_below_review_or_copy_in_a_non_object_provenance`) | the hash's edit property: in about three in ten of its edits outside every provenance object, the edit placed below such a name beside the record's own members (`placed_below_a_non_object_provenance`) | 0.003 | 0.257 (0.218) | 0.18 | 95 | 5e-14; 1e-38 |
+| `empty_word_made_plural` | a name with an empty word against the same with `s` or `es` in it (`through_an_empty_word`) | (9): such a pair in about one in four of its unrelated names and its two slips not swapped far apart (`pairs_through_an_empty_word`) | 0.002 | 0.157 (0.116) | 0.1 | 30 | 6e-13; 2e-32 |
+| `row_requirements_ignored` | a condition the row requires held by neither the record nor the request (`required_held_nowhere`) | HP7's table: such a condition removed after the kinds in about one draw in seven | 0.005 | 0.142 (0.104) | 0.1 | 30 | 3e-11; 3e-19 |
+| `condition_unchecked_without_its_condition` (result) | a result holding `condition_unchecked` (`condition_unchecked`) | HP1: before the kind, in about one draw in seven, the planned search's read with no second fault (`unknown_at_step_10` whose one fault is `unchecked`), the kind's own draws giving `unchecked` half as often as each other fault | 0.024 | 0.154 (0.113) | 0.08 | 15 | 7e-16; 8e-18 |
+| `condition_unchecked_without_its_condition` (HP12) | the same (`condition_unchecked`) | HP12's faults: inside the kind of steps 9 and 10, the one that reaches step 10, in about a quarter of its draws, the planned search's read with no second fault (`unchecked` the one fault of steps 9 and 10) | 0.026 | 0.132 (0.093) | 0.08 | 15 | 4e-13; 3e-19 |
+| `bounds_given_by_a_constant` | a constant's read under `want: bounds` that reaches step 13, which refuses it (`constant_refused_bounds`) | HP12's values: inside each of its two kinds alike, in about one draw in seven, the planned search's read (a constant under `want: bounds`, as drawn or with an implied temperature) or alternatives of a constant met under `want: bounds`, each beside a member the reader does not know | 0.016 | 0.157 (0.116) | 0.09 | 20 | 5e-15; 6e-22 |
+| `unknown_members_returned` | a member the reader does not know (`unknown_member`) | HP12's values, as drawn (`result_strategies.enriched`, half the draws of the field read) and in every draw of the region above | 0.244 | 0.354 (0.294) | 0.2 | 110 | 3e-23; 3e-42 |
+
+The floor is the count of 2,000 examples below which a run fails. The last column is the probability that a
+run falls below it, by `audits.py`'s model (a run counts 2,000 / `CLUSTER` = 250 draws, each shown in `SHOWN` =
+5 examples: the probability that 250 draws at the mean share give fewer than a fifth of the floor), and at the
+variance measured over the runs (3.4 to 7.2 times a binomial count's: the count taken as that many examples'
+clusters). What each floor bounds: a region no longer drawn, or drawn 5 to 21 times more thinly than now. Main's
+strategies drew the hash's, the slips' and the table's regions below these floors, but HP1's, HP12's faults' and
+HP12's constants under `bounds` above theirs: those floors catch a region that is no longer drawn, not one drawn
+as thinly as on main, which no floor at 1e-6 could tell from the shares now. `deep` would catch most such slides:
+it holds each chance at a third (0.027 to 0.03 over 20,000 examples), above main's 0.016 to 0.026.
+
+Each branch draws its region in place of a draw the strategy would have made, so it narrows what the strategy
+draws besides by the branch's share. HP1's draws its region before the kind, so that it takes from every kind
+and fault alike, and from `unknown_at_step_10` most of that kind's draws of `unchecked`, not those of the
+faults beside it; in one of its draws in 32 it draws instead a read whose first fault is `disagreeing`, which
+gives `request_incomplete`, so that the branch takes none of that code's share. Over 96 runs each region of
+HP1, HP2 and HP11 (their reads are HP1's) that the reviews measured kept 0.81 to 1.26 of main's mean share
+(the fix rounds' tables, in the pull request). HP12's parts draw theirs after the kind, inside a kind that can
+hold it, so that their kinds stay drawn alike, as their floors take them (0.495 to 0.505 over 96 runs): the
+values part in each of its two kinds alike, the other regions the review measured keeping 0.84 to 0.99 of
+main's share, and the faults part in its kind of steps 9 and 10, the one of its two that reaches step 10,
+where the region takes about a quarter of the draws, so that each first fault of steps 9 and 10 keeps 0.66 to
+0.82 of its share on main. The slips' branch takes from the unrelated names and the two slips not swapped far
+apart, never from a one slip's draw: drawn first among all, it took a fifth of the substitutions' share and
+moved the plural searches' kills. The table's draws after the kinds, whose labels are as drawn, removing one
+condition from the case; the hash's takes the edits outside every provenance object alone and places its
+region under a member no record holds, so that the edits inside a provenance object and every feature of the
+record are as drawn. These changes reach the properties named and the searches that draw their strategies;
+HP10, the byte form's property, draws HP12's builders but not its parts, and so draws as before. The hash's
+records hold a provenance object in an array in half their draws, and a `card` or `content_hash` in their
+provenance object in half, which lifts the four chances of its two properties that lay above their least
+shares on main (`test_hashing_properties.py`). Some declared chances still lie above the least share measured
+over 96 runs, each far above its floor (at most 6e-8 a run at the variance measured): HP1's kinds (0.07; least
+0.030 to 0.045 now, 0.043 to 0.064 on main), and HP12's values' `form_interval` (0.14; 0.102 now, 0.136 on
+main), `form_composition` (0.12; 0.107, 0.124), `form_evidence` (0.11; 0.107, 0.113) and `standing` (0.10;
+0.093, 0.100). No weight lifts HP1's: a kind's count varies six to eight times as much as a binomial count, so
+a least share of 0.07 over 48 runs needs a mean of about 0.11, and eleven such kinds exceed the whole. HP12's
+four lay within 0.005 of their least shares on main, and the region takes about one draw in seven of each
+kind; the constants hold the only slack, and those under `want: value` hold the `-0` region (kept at 0.87 of
+main's), the others S4a's constant alternatives and the request faults, which other searches draw.
+
+The other planned searches are held by a floor the property had, or by none of their own yet. HP2's five under a
+nominal draw HP2's `nominal` kind whole, and since 2026-10-20 HP1's `reasons_not_merged` its step 8 and steps 9
+and 10 kinds and `stated_without_origin_with_a_condition` the five it dies at, HP2's `conditions_beside_no_pick` and `no_unit_beside_alternative_values` its `alternatives`
+kind and `no_statistics_beside_a_composition` its `met_own_member` kind's compositions (The result's mutants,
+below), each kind held to its chance, not the narrower region where the fault shows;
+steps 9 and 10's planned search draws HP3's faults that end the read at step 10, each of which HP3's step 10
+property draws first and holds to its floor; HP5's members in a report are its `in_a_report` share; and HP3's
+planned searches of step 8, and HP12's that draw step 8's faults among those named, draw faults HP3 holds by
+region, the precedent of Step 8's mutants ("the region audit that HP3 draws it"), not by fault: 154 faults
+cannot each be drawn often enough for a floor at `ci`. These have no floor of their own yet: HP12's planned
+searches of values at a boundary, under a nominal, alternatives under a nominal, evidence's unit with a reason,
+step 0's nominal faults, and those planned on 2026-10-20 (a `plus_minus` unit, a token condition's unit, a
+composition under `components`, request faults apart; S4a's, an interval under bounds, the outcomes of step 7 and three narrower);
+HP27's planned searches (a request fault, under a nominal, evidence set aside first or under `no_pick`); and
+(9)'s irregular plurals and plurals in `ies`. The regions of those planned on 2026-10-20 are 0.03 to 0.04 of their property's draws
+(the irregular plurals' 0.004; each mutant injected, 24 runs), and a floor at `ci` needs about 0.065: a second
+branch in a strategy already drawing one would take its other draws below 0.8 of main's.
+
 Every count in these tables is one seed's: the derandomised search's. Another seed takes
 another count, often several times larger or smaller (PR #37's review measured 19 and 1,406 for a mutant
 listed at 52 and 414), so a count says how a search went, not a mutant's margin to the 2,000 examples. That
@@ -530,21 +622,28 @@ so both sizes take the same examples):
 <!-- kill points of some searches of test_mutants.py::test_the_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Examples |
 |---|---|---|
-| `substitution_missed` | a character substituted missed | 19, 19 |
+| `substitution_missed` | a character substituted missed | 23, 23 |
 | `insertion_missed` | a character inserted or deleted missed | 1, 1 |
-| `underscore_missed` | an underscore added or removed missed | 28, 28 |
+| `underscore_missed` | an underscore added or removed missed | 21, 21 |
 | `swap_missed` | two adjacent characters swapped missed | 3, 3 |
-| `plural_missed` | a word made plural or singular missed | 23, 23 |
-| `underscore_read_as_a_character` | an underscore added is named a character added | 28, 28 |
-| `two_characters_added_one_slip` | two characters added at the end are one slip | 38, 38 |
-| `swap_of_any_two_characters` | two characters swapped far apart are one slip | 11, 11 |
-| `ies_plural_missed` | a final `y` made `ies`, a plural section 10 lists, missed | 155, 155 |
-| `es_plural_missed` | `es` added, a plural section 10 lists, missed | 38, 38 |
-| `irregular_plurals_missed` | an irregular plural section 10 lists missed | 114, 114 |
+| `plural_missed` | a word made plural or singular missed | 11, 11 |
+| `underscore_read_as_a_character` | an underscore added is named a character added | 21, 21 |
+| `two_characters_added_one_slip` | two characters added at the end are one slip | 13, 13 |
+| `swap_of_any_two_characters` | two characters swapped far apart are one slip | 52, 52 |
+| `ies_plural_missed` | a final `y` made `ies`, a plural section 10 lists, missed (planned) | 1, 1 |
+| `es_plural_missed` | `es` added, a plural section 10 lists, missed | 93, 93 |
+| `irregular_plurals_missed` | an irregular plural section 10 lists missed (planned) | 1, 1 |
 | `empty_word_made_plural` | the empty string between two underscores is a word, `s` its plural (planned) | 1, 1 |
 
 The last is the relation as it stood until the property found it: `x__y` and `x_s_y` are one character apart,
-but `x__y` and `x_es_y` two, which it called one plural.
+but `x__y` and `x_es_y` two, which it called one plural. `irregular_plurals_missed` and `ies_plural_missed` are
+planned since 2026-10-20, on a name holding one of section 10's irregular singulars against the same with its
+plural (`pairs_through_an_irregular_plural`), and on a name holding a word that ends in `y` against the same
+with `ies` in its place (`pairs_through_an_ies_plural`), each of which the core passes (`test_mutant_view.py`).
+Drawn with (9) whole, the first died past the 500th example on 46 of 400 streams on main and on 73 once (9)
+drew a pair through an empty word (one-sided Fisher p = 0.005); the second on 88 and 80, about as on main, but
+at the 700th on the recorded stream. (9) draws either region in about one example in 250 or fewer, too seldom
+for a floor of its own; each dies at the 1st example.
 
 `test_writer_mutants.py` gives the writer schema one change at a time: the S2a-1 review's 29 mutants of its
 value-field part and its two controls (M1 to M31, its numbering kept), one for each constraint written since
@@ -750,15 +849,15 @@ step 10 (measured 2026-10-18).
 | `sd_ignored` | an `sd` or unstated entry ignored where no bound sits | HP7, plus or minus | `sd`, `unstated` | 3, 3 |
 | `bound_moves_the_low_end_only` | a bound narrows the window at its low end alone | HP7, plus or minus | `bound`, `bound_beside_sd` | 24, 24 |
 | `unchecked_read_as_met` | a stated condition with no tolerance or accept list is `met` | HP7, table | any of its examples | 3, 3 |
-| `not_accepted_read_as_unknown` | a token outside the accept list is `unknown` | HP7, table | any of its examples | 7, 7 |
-| `accept_list_case_folded` | a token matched against an accept list after case folding | HP7, table | any of its examples | 7, 7 |
-| `accept_list_by_prefix` | a token matched by an entry of the accept list that begins with its first three characters | HP7, table | any of its examples | 83, 83 |
+| `not_accepted_read_as_unknown` | a token outside the accept list is `unknown` | HP7, table | any of its examples | 18, 18 |
+| `accept_list_case_folded` | a token matched against an accept list after case folding | HP7, table | any of its examples | 114, 114 |
+| `accept_list_by_prefix` | a token matched by an entry of the accept list that begins with its first three characters | HP7, table | any of its examples | 114, 114 |
 | `unknown_name_status_read_as_unstated` | a name the reader does not know, held as a status object, read as `condition_unstated` | HP7, table | any of its examples | 5, 5 |
-| `unknown_name_read_as_unstated` | a name the reader does not know is `condition_unstated` | HP7, table | any of its examples | 5, 5 |
+| `unknown_name_read_as_unstated` | a name the reader does not know is `condition_unstated` | HP7, table | any of its examples | 4, 4 |
 | `required_with_ignored` | a condition another requires with its token is not checked | HP7, table | any of its examples | 3, 3 |
 | `row_requirements_ignored` | the row's required conditions are not checked | HP7, table (planned) | any of its examples | 1, 1 |
 | `status_object_not_returned` | an entry held as a status object returns no `record` | HP7, table | any of its examples | 1, 1 |
-| `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | any of its examples | 34, 34 |
+| `operating_returned_only_with_a_requirement` | `operating` returned only where a tolerance is given | HP7, table | any of its examples | 6, 6 |
 | `implied_overrides_a_stated_value` | an implied condition fills a stated condition | HP7, implied | `never_over_a_stated_value`, `never_over_another_status` | 2, 2 |
 | `implied_fills_any_status` | an implied condition fills any status object | HP7, implied | `never_over_another_status` | 21, 21 |
 | `disagreement_ignored` | two implied conditions that disagree, the first wins | HP7, implied | `two_that_disagree`, `a_value_beside_a_range`, `minus_zero_beside_zero` | 8, 8 |
@@ -811,7 +910,8 @@ derandomised seed and at a random one, 1,657 and 1,640 kill it at the small size
 original; the others draw a second fault, of step 9, which ends the read before step 10. It dies at the 2nd
 example at both sizes, alone and in each of the 24 salts (measured 2026-10-19). Its "dies at" cell names the one
 label every example of that strategy shows, so for this search it describes the draw, not a region found.
-`reasons_not_merged` dies at a
+HP1 itself holds the region to a floor, a result holding `condition_unchecked`, since 2026-10-20 (Mutants, "The
+regions held to a floor"). `reasons_not_merged` dies at a
 fault of step 8 and at one of steps 9 and 10 alike, as the comment above it in `test_result_mutants.py` says,
 and the two of a code the table does not hold die at a fault of step 8 too, as their comments say. S2b-1's six
 die at an interval or a
@@ -839,19 +939,32 @@ examples at both sizes (the median 1 to 42). Evidence is a fourth form `met_own_
 `a_code_outside_the_table` dies at a nominal located elsewhere too, an interval read under `value` as without
 it, as its comment says.
 
+Since 2026-10-20 a read of every kind is, first, in about one draw in seven, HP1's planned search's read, which
+step 10 gives `condition_unchecked` (Mutants, "The regions held to a floor"). That moved four searches past the
+500th example more often than main's (each over 200 streams at each size, main against the branch, one-sided
+Fisher p below 0.01): `reasons_not_merged` on 18 of 400 (3 on main), `conditions_beside_no_pick` and
+`no_unit_beside_alternative_values` on 17 (3), and `no_statistics_beside_a_composition` on 28 (12); and
+`stated_without_origin_with_a_condition`, on 3 (5), died at the 656th on the recorded stream. So they are
+planned, as HP2's under a nominal are, on the kinds or the form they die at alone: HP1 over its step 8 and steps
+9 and 10 kinds ("HP1 at steps 8 to 10"), HP1 over the five kinds `stated_without_origin_with_a_condition` dies
+at ("HP1 over the kinds of a stated value"), HP2 over its `alternatives` kind ("HP2 among alternatives"), and
+HP2 over `met_own_member`'s compositions ("HP2 over a composition under its own want"). Each kind is held to its chance, not the narrower region where the fault shows (a reason found
+twice, a `no_pick` result: 0.04 and 0.03 of HP1's examples, too few for a floor of their own), and a composition
+by `met_own_member`'s chance alone.
+
 <!-- kill points of every search of test_result_mutants.py::test_the_result_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
 |---|---|---|---|---|
 | `condition_unchecked_without_its_condition` | `condition_unchecked` given without its condition (the S2 design's HP1 mutant) | HP1, an unchecked condition (planned) | `unknown_at_step_10` | 2, 2 |
-| `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 | `met`, `met_own_member`, `nominal`, `step_9_or_10_fault`, `unknown_at_step_10` | 179, 108 |
-| `a_code_outside_the_table` | step 13's refusal under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `met`, `step_8_fault`, `nominal_elsewhere` | 44, 47 |
-| `reasons_not_merged` | a reason found twice given twice | HP1 | `step_8_fault`, `step_9_or_10_fault` | 66, 29 |
-| `a_forms_mismatch_outside_the_table` | an interval's or a composition's `want_mismatch` under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `form_interval`, `form_composition`, `form_evidence`, `step_8_fault` | 44, 47 |
-| `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault`, `unknown_at_step_10` | 36, 129 |
-| `best_status` | the status the best of the reasons' | HP2 | any kind | 191, 108 |
-| `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 | `alternatives` | 34, 6 |
-| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 | `alternatives` | 34, 6 |
-| `no_statistics_beside_a_composition` | a composition's spread read as its components' alone, so its field's statistics block is not returned | HP2 | `form_composition` | 18, 37 |
+| `stated_without_origin_with_a_condition` | `stated_without_origin` given a condition | HP1 over the kinds of a stated value (planned) | `met`, `met_own_member`, `nominal`, `step_9_or_10_fault`, `unknown_at_step_10` | 20, 5 |
+| `a_code_outside_the_table` | step 13's refusal under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `met`, `step_8_fault`, `nominal_elsewhere` | 115, 260 |
+| `reasons_not_merged` | a reason found twice given twice | HP1 at steps 8 to 10 (planned) | `step_8_fault`, `step_9_or_10_fault` | 18, 4 |
+| `a_forms_mismatch_outside_the_table` | an interval's or a composition's `want_mismatch` under a code the table does not hold, given `not_met`, at the reason table's assertion | HP1 | `form_interval`, `form_composition`, `form_evidence`, `step_8_fault` | 115, 260 |
+| `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault`, `unknown_at_step_10` | 49, 53 |
+| `best_status` | the status the best of the reasons' | HP2 | any kind | 49, 53 |
+| `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 among alternatives (planned) | `alternatives` | 1, 1 |
+| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 among alternatives (planned) | `alternatives` | 1, 1 |
+| `no_statistics_beside_a_composition` | a composition's spread read as its components' alone, so its field's statistics block is not returned | HP2 over a composition under its own want (planned) | `form_composition` | 1, 1 |
 | `a_nominal_applied_outside_its_bounds` | a nominal supplies the value wherever it lies | HP2 (planned) | `nominal_outside` | 4, 9 |
 | `nominal_invalid_as_want_mismatch` | a nominal outside the bounds gives `want_mismatch`, not `nominal_invalid` | HP2 (planned) | `nominal_outside` | 4, 9 |
 | `a_nominal_applied_wherever_it_is_located` | a nominal applied wherever it names the read's field, whatever its location | HP2 (planned) | `nominal_elsewhere` | 27, 12 |
@@ -875,7 +988,7 @@ it, as its comment says.
 | `a_nominal_as_a_single` | a nominal's value rounded to single precision | HP6, nominal | `nominal` | 3, 10 |
 | `an_assumption_without_its_kind` | the assumption without `acceptance: nominal` | HP6, nominal | `nominal` | 1, 1 |
 | `applied_without_the_nominal` | `applied` without the nominal that supplied the value | HP6, nominal | `nominal` | 1, 1 |
-| `labelled_before_step_4` | `hash_not_checked` on a read that ended before step 4 (the S2 design's HP11 mutant) | HP11 | `before_step_4` | 4, 81 |
+| `labelled_before_step_4` | `hash_not_checked` on a read that ended before step 4 (the S2 design's HP11 mutant) | HP11 | `before_step_4` | 6, 44 |
 | `labelled_beside_the_hash_suite` | `hash_not_checked` on a read under the hash suite | HP11 | any kind that reaches step 4 | 1, 1 |
 
 ### HP12's mutants
@@ -901,7 +1014,29 @@ to the 934th and 594th; it is searched among constants under `want: bounds`, as 
 temperature, every one of which kills it (2,000 of 2,000 at both sizes and both seeds). No example of the three
 strategies failed on the core. They die at the 2nd and the 1st example, at both sizes and in each salt
 (measured 2026-10-19). The "dies at" cells of these two name the label every example of their strategy
-shows, so they describe the draws, not regions found. S2b-1's: three of HP3's planned on an own member, HP6's `upper: none`
+shows, so they describe the draws, not regions found. Since 2026-10-20 the first and second parts draw, inside their kinds, the regions they hold to floors, a
+constant's read under `bounds` that reaches step 13 and a result holding `condition_unchecked`, and the first
+holds the member the reader does not know to its chance (Mutants, "The regions held to a floor"). The draws of
+the regions moved four of these parts' searches past the 500th example more often than main's: each searched
+over 200 streams at each size, main against the branch, the model's fault `plus_minus_units_unchecked` on 27 of
+400 (13 on main), `request_faults_of_the_first_alternative_alone` on 10 (2), and, under an earlier draft of the
+branch, `components_normalised` at the 510th at the small size (2 of 400 as drawn now, none on main) and
+`unknown_members_returned` at members no shape defines in evidence's reports rather than a planted one (so on 10
+of 80 streams on main too). A fifth, `token_condition_unit_accepted`, went past it on 8 of 200 (3), not beyond
+chance (one-sided Fisher p = 0.11), and is planned too, as the review named it. Each is planned on its region: the reads whose first fault of steps 9
+and 10 is a `plus_minus` entry's unit ("a plus or minus unit") or a token condition's unit ("a token
+condition's unit"); alternatives whose first raises a fault of the request and
+each further one one of its own ("request faults apart"); a composition under `want: components`, as drawn or
+with an implied temperature ("a composition under components"); and a read whose field holds a member the reader
+does not know ("an unknown member"). Each draws only reads the implementation and the model agree on, as S4a's
+planned searches must, and its region in every example (`test_model_mutant_table.py`). Of 2,000 examples of the `plus_minus` search, at a derandomised seed and at a random one, 1,888 and
+1,832 kill `plus_minus_units_unchecked` at the small size and 1,886 and 1,837 at the original (the others draw
+a second fault, of step 9, or a `want` step 0 refuses), all at a read showing its fault; of the composition's, 1,570
+and 1,545 kill `components_normalised` at the small size and 1,505 and 1,578 at the original, all at a
+composition (measured 2026-10-20). Each dies at the 1st example at both sizes, but `components_normalised`
+at the 3rd and 5th. None has a floor of its own yet: their regions are 0.03 to 0.04 of the parts' draws
+(Mutants, "The regions held to a floor").
+S2b-1's: three of HP3's planned on an own member, HP6's `upper: none`
 as infinity and normalised components, and two faults of the model that case files kill, held here on the forms
 S2b-1 reads.
 
@@ -925,29 +1060,29 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `declaration_names_ignored` | a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored | unpinned | `names_a_declaration_gives_a_requirement` | 47, 38 |
 | `implied_members_of_the_other_kind_ignored` | an implied value's member of the other kind's shape, and a slip of one, ignored | unpinned | `implied_member_of_the_other_kind` | 26, 51 |
 | `condition_unchecked_without_its_condition` | HP1's (planned) | an unchecked condition | `unchecked` | 2, 2 |
-| `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 9, 27 |
-| `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 43, 4 |
+| `value_beside_condition_outside` | HP2's | faults | step 10's ending faults | 266, 9 |
+| `unknown_tokens_ignored` | HP3's: an unknown token ignored | faults | `step_8` | 4, 10 |
 | `missing_represents_accepted` | HP3's (planned) | faults | `statistics_members.represents_missing` | 1, 1 |
 | `null_read_as_absent` | HP3's (planned) | faults | `condition_tokens.set_or_measured_null`, `provenance.source_null` | 1, 1 |
 | `unknown_condition_names_checked` | HP3's (planned) | faults | `condition_tokens.name_unknown` | 1, 1 |
 | `interval_order_unchecked` | HP3's (planned) | faults | `interval.lower_above_upper` | 1, 1 |
 | `component_twice_allowed` | HP3's (planned) | faults | `composition.component_repeated` | 1, 1 |
 | `element_by_pattern` | HP3's (planned) | faults | `component.element_unknown` | 1, 1 |
-| `specimen_facts_merged_across_sections` | HP4's | values | `another_section` | 34, 31 |
-| `unknown_members_returned` | HP5's and HP6's: an unknown member returned | values | `unknown_member` | 3, 72 |
-| `expanded_uncertainty_divided_by_its_k` | HP6's | values | `valued`, `alternatives` | 26, 21 |
+| `specimen_facts_merged_across_sections` | HP4's | values | `another_section` | 38, 117 |
+| `unknown_members_returned` | HP5's and HP6's: an unknown member returned | an unknown member (planned) | `unknown_member` | 1, 1 |
+| `expanded_uncertainty_divided_by_its_k` | HP6's | values | `valued`, `alternatives` | 151, 104 |
 | `upper_none_as_infinity` | HP6's | an interval under bounds (planned) | `form_interval` | 7, 34 |
-| `components_normalised` | HP6's | values | `form_composition` | 71, 11 |
+| `components_normalised` | HP6's | a composition under components (planned) | `form_composition` | 3, 5 |
 | `floating_point_as_written` | HP7's (planned) | values at a boundary | `at_a_boundary` | 20, 28 |
 | `strict_inequalities` | HP7's | values | `valued`, `alternatives` | 1, 1 |
 | `plus_minus_ignored` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 28 |
 | `plus_minus_makes_not_met` | HP7's (planned) | values at a boundary | `at_a_boundary` | 5, 28 |
 | `nfkc_before_comparing` | HP8's | faults | `steps_9_and_10` | 2, 2 |
 | `case_folded` | HP8's | faults | `steps_9_and_10` | 2, 2 |
-| `section_facts_win` | HP9's | values | `valued`, `alternatives` | 136, 8 |
-| `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 6, 4 |
+| `section_facts_win` | HP9's | values | `valued`, `alternatives` | 179, 91 |
+| `hash_over_members_as_written` | HP10's (B7) | values | `valued`, `alternatives` | 6, 5 |
 | `labelled_before_step_4` | HP11's | early | `before_step_4`, `stores` | 2, 2 |
-| `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | values | `request_faults_apart` | 4, 7 |
+| `request_faults_of_the_first_alternative_alone` | step 7 gives the first faulted alternative's request faults alone | request faults apart (planned) | `request_faults_apart` | 1, 1 |
 | `first_alternative_in_every_entry` | under `no_pick`, each entry the first alternative's read | values | `alternatives` | 2, 2 |
 | `bounds_given_by_a_constant` | step 13 gives a constant's value under `want: bounds` | constants (planned) | `valued` | 1, 1 |
 | `minus_zero_given_as_zero` | a constant's `-0` given as `0` | values | `negative_zero` | 1, 1 |
@@ -971,16 +1106,16 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `every_forms_member_named_at_a_field` | unpinned | `another_forms_member_slipped` | 2, 2 |
 | `input_specimens_optional` | faults (planned) | `derivation.input_specimens_missing` | 1, 1 |
 | `hash_not_checked_before_step_4` | early | `request`, `before_step_4`, `stores` | 1, 1 |
-| `token_condition_unit_accepted` | faults | `unit_token_condition` | 66, 35 |
-| `plus_minus_units_unchecked` | faults | `unit_plus_minus` | 19, 330 |
+| `token_condition_unit_accepted` | faults (planned: a token condition's unit first) | `unit_token_condition` | 1, 1 |
+| `plus_minus_units_unchecked` | faults (planned: a `plus_minus` unit first) | `unit_plus_minus` | 1, 1 |
 | `implied_values_compared_by_value` | unpinned | `implied_zero_beside_minus_zero` | 18, 9 |
-| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 11, 93 |
+| `stated_without_origin_unreported` | values | `valued`, `alternatives` | 60, 106 |
 | `ies_not_a_plural` | unpinned | `plural_of_two_characters` | 416, 147 |
 | `review_of_both_shapes_read_as_its_status` | unpinned | `review_of_both_shapes` | 8, 3 |
 | `reviewed_review_keeps_a_status_objects_members` | unpinned | `review_of_both_shapes` | 9, 4 |
 | `donor_age_of_neither_accepted` | faults (planned) | `specimen.fact_neither_value_nor_range` | 1, 1 |
-| `value_given_by_an_interval` | values | `form_interval` | 34, 16 |
-| `bounds_given_by_a_constant` | values | `form_constant` | 9, 128 |
+| `value_given_by_an_interval` | values | `form_interval` | 74, 38 |
+| `bounds_given_by_a_constant` | values | `form_constant` | 9, 9 |
 | `evidence_entry_provenance_unchecked` | faults (planned) | `evidence_provenance.*`, each of the six faults of a report's provenance | 1, 1 |
 | `entry_withheld_in_part_read` | faults (planned) | `evidence_list.report_withheld_in_part`, `.withheld_report_opened` | 1, 1 |
 | `unit_returned_without_its_reason` | evidence's unit with a reason (planned) | `unit_with_a_reason` | 52, 52 |
@@ -1226,7 +1361,10 @@ lose their index (a review's hand mutant did so and survived every test); the te
   `behind_another` at its least share measured. HP3's fourth part, evidence's, declares its regions by their
   chances, each at four fifths of its nominal chance, which four runs at `ci` measured above (2026-10-18);
   HP12 declares the read field's form by its chance measured over 22 runs at `ci`, since a tenth of its
-  examples show none. HP12's parts draw their kinds, steps or planted rules first (at most twelve), HP4 its
+  examples show none. Seven regions where a planned search's mutant shows are declared by their chances
+  on the properties the searches stand in for, each with a control (Mutants, "The regions held to a floor");
+  HP12's first two parts draw their region inside a kind, so that their kinds stay drawn alike.
+  HP12's parts draw their kinds, steps or planted rules first (at most twelve), HP4 its
   ways and
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),

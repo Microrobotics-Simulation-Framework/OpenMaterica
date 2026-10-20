@@ -64,14 +64,20 @@ def test_every_fault_of_the_model_no_case_kills_is_killed_here_or_said_why_it_ca
     assert all(reason.strip() for reason in NOT_SHOWN.values())
 
 
-# S4a's planned searches of the first part, and `upper_none_as_infinity`'s: each draws a region, and must draw
-# only reads the core agrees with the model on, so that a mutant it kills dies of its fault.
+# S4a's planned searches of the first part, `upper_none_as_infinity`'s, and those planned when the region
+# floors moved their kills (2026-10-20): each draws a region, and must draw only reads the core agrees with
+# the model on, so that a mutant it kills dies of its fault.
 PLANNED_BY_S4A = (
     "outcomes of step 7",
     "a refusal by a fault of the request",
     "an interval under a nominal",
     "evidence set aside first",
     "an interval under bounds",
+    "a plus or minus unit",
+    "a composition under components",
+    "an unknown member",
+    "request faults apart",
+    "a token condition's unit",
 )
 
 
@@ -82,5 +88,27 @@ def test_a_planned_search_draws_only_reads_the_core_agrees_with_the_model_on(nam
     @given(KILLERS[name](size))
     def run(example: strategies.Example) -> None:
         agreement(example)
+
+    run()
+
+
+# The planned searches of 2026-10-20 each draw their region in every example, not in some by chance: what the
+# draw plants names it.
+REGION_OF = {
+    "a plus or minus unit": "unit_plus_minus",
+    "a token condition's unit": "unit_token_condition",
+    "a composition under components": "form_composition",
+    "an unknown member": "unknown_member",
+    "request faults apart": "request_faults_apart",
+}
+
+
+@pytest.mark.parametrize("size", [pytest.param(SMALL, id="small"), pytest.param(ORIGINAL, id="original")])
+@pytest.mark.parametrize("name", sorted(REGION_OF))
+def test_a_planned_search_draws_its_region_in_every_example(name: str, size: Size) -> None:
+    @settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], MARGIN), deadline=None)
+    @given(KILLERS[name](size))
+    def run(example: strategies.Example) -> None:
+        assert REGION_OF[name] in example.planted, example.planted
 
     run()

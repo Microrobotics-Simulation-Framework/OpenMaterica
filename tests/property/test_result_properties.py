@@ -69,8 +69,21 @@ from tests.property.support import feature
 # probability of up to 2.8e-6 by `audits.py`'s cluster model over 22 runs at `ci` (2026-10-18), and up to
 # 2.8e-5 over the review's 22 (S2b-2's review, L4). So each kind is declared by a chance below one in eleven,
 # whose floor, 10 examples (`audits.LEAST_DRAWS`), each kind falls below with at most 1.9e-7 on either set of
-# runs, and the 33 together with at most 4.3e-7 (at most 1.6e-8 each with the module's `CLUSTER`).
+# runs, and the 33 together with at most 4.3e-7 (at most 1.6e-8 each with the module's `CLUSTER`). Since
+# the read holding `condition_unchecked` is drawn before the kind (2026-10-20), a kind shows in 0.075 to 0.084
+# of the examples over 96 runs at `ci`, derandomised, each its own stream, and falls below its floor with at
+# most 6e-8 at the variance measured and by `audits.py`'s model at the mean, the 33 together with 2e-7 and
+# 1.2e-6. Each kind's least share over those runs, 0.030 to 0.045 (0.043 to 0.064 on main), lies below its
+# chance, and no draw could lift eleven kinds above it: with a kind's count varying six to eight times as
+# much as a binomial count, a least share of 0.07 over 48 runs needs a mean of about 0.11, eleven of which
+# exceed the whole.
 KIND_CHANCE = 0.07
+# A result holding `condition_unchecked`, where HP1's mutant that drops its condition shows, which a read of
+# every kind is first in about one draw in seven (`result_strategies.drawn_reads`), by its chance, below its
+# least share over 96 runs at `ci` (2026-10-20, derandomised, each its own stream; mean 0.154, least 0.113).
+# By `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of 15 examples with
+# a probability of 7e-16, and with 8e-18 at the variance measured (7.2 times a binomial count's).
+UNCHECKED_CHANCE = 0.08
 
 JsonObject = dict[str, JsonValue]
 REASONS: Mapping[str, Mapping[str, Any]] = condition_oracle.REASONS["reasons"]
@@ -150,10 +163,17 @@ def kind_feature(drawn: Drawn) -> None:
     feature(drawn.kind)
 
 
-@pytest.mark.chances(**dict.fromkeys(KINDS, KIND_CHANCE))
+def codes_given(drawn: Drawn) -> frozenset[str]:
+    """The codes of the reasons the read gives; none where a step not built yet decides it."""
+    result = read_drawn(drawn)
+    return frozenset() if result is None else frozenset(str(reason.code) for reason in result.reasons)
+
+
+@pytest.mark.chances(**dict.fromkeys(KINDS, KIND_CHANCE), condition_unchecked=UNCHECKED_CHANCE)
 @given(drawn_reads(SIZE))
 def test_a_read_gives_a_result_whose_reasons_are_the_tables(drawn: Drawn) -> None:
     kind_feature(drawn)
+    feature("condition_unchecked", "condition_unchecked" in codes_given(drawn))
     check_totality(drawn)
 
 

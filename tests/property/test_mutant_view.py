@@ -18,11 +18,13 @@ from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_slip_properties as slip_properties
 from tests.property.strategies import ORIGINAL, SCALARS, SIZE, SMALL, Size
 from tests.property.support import examples_to_kill
+from tests.property.test_hashing_properties import edits_below_a_non_object_provenance
 from tests.property.test_mutants import (
-    edits_below_a_non_object_provenance,
     mutant_view,
-    pairs_through_an_empty_word,
+    pairs_through_an_ies_plural,
+    pairs_through_an_irregular_plural,
 )
+from tests.property.test_slip_properties import pairs_through_an_empty_word
 
 
 # This checks the mutants' own code, not the core's, so `deep` adds nothing to it: it searches as `ci` does at
@@ -94,6 +96,18 @@ def test_the_control_refuses_a_search_that_edits_a_removed_leaf(size: Size) -> N
 @settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
 @given(pairs_through_an_empty_word())
 def test_a_pair_through_an_empty_word_is_the_cores_to_the_generator(pair: slip_properties.Pair) -> None:
+    slip_properties.check_one_slip(pair)
+
+
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(pairs_through_an_ies_plural())
+def test_a_pair_through_an_ies_plural_is_the_cores_to_the_generator(pair: slip_properties.Pair) -> None:
+    slip_properties.check_one_slip(pair)
+
+
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(pairs_through_an_irregular_plural())
+def test_a_pair_through_an_irregular_plural_is_the_cores_to_the_generator(pair: slip_properties.Pair) -> None:
     slip_properties.check_one_slip(pair)
 
 
