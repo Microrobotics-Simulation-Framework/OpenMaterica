@@ -474,3 +474,11 @@ refuses the request (`request_incomplete`), as `read_side_contract.md` section 1
 from one `declarations.md` names at that place, refused ones included (PR-330). `declarations.md` names
 `field` in a requirement and `reason` and `consequence` in each of its conditions, and a read ignores the
 three, so a misspelt one is refused, not ignored. The text decides it; no sentence changes.
+
+Settled with S2b-2's review (maintainer, 2026-10-19): step 0 judges a nominal by the row of the field it
+names. A nominal takes `params` in place of `value` only where that row allows the form `parameter_set`, so
+one holding `params` and no `value`, for a field whose row allows none, breaks its shape
+(`request_incomplete`; `read_side_contract.md` section 1; PR-330). `declarations.md` section 4.1 gives
+`params` "for a parameter set" without saying whether step 0 reads the field's row to know it; S2b-2's reader
+required a `value` in every nominal, which is that reading while no 0.1.0 row allows a parameter set, and one
+sentence now says so.

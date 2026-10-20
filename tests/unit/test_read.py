@@ -2078,6 +2078,10 @@ NOMINAL_SHAPES: list[tuple[list[dict[str, JsonValue]], str]] = [
     # Its `reason` and `basis` are ignored; `params`, a parameter set's in place of a value, and a member no
     # document names, too.
     ([nominal(basis=1.0, reason=None, params={"a": 1.0}, x_unknown_member=1.0)], "read"),
+    # "A nominal takes `params` in place of `value` only where the row of the field it names allows the form
+    # `parameter_set`" (the maintainer's ruling of 2026-10-19, S2b-2's review M56): the water field's row
+    # allows none, so `params` alone breaks its shape.
+    ([nominal(value=None, params={"a": 1.0})], "refused"),
 ]
 
 

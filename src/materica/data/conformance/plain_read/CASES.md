@@ -1707,6 +1707,7 @@ See `README.md` beside this file for how to read a case.
 | `near_typo_target_fields` | the target holds `fields`, one slip from `field`, beside it: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `nominal_basis_not_string_read` | a nominal of 1210 kg/m3 whose `basis` is the number 5: a read ignores `basis`, so the nominal applies: `not_met` (`want_mismatch`), the nominal as `value`, and `assumption` without `basis` | 13 | not_met; `want_mismatch`; value `1210.0`; unit `"kg/m3"`; assumption `{"acceptance": "nominal", "value": 1210.0}`; labels none |
 | `nominal_field_not_registered` | a nominal naming `bulk.porosity`, a field that is not registered: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
+| `nominal_params_in_place_of_value` | a nominal holding `params` and no `value`, for `bulk.density`, whose row allows no parameter set: it breaks its shape, `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `nominal_value_missing` | a nominal without its `value`: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `nominal_value_not_number` | a nominal whose `value` is a string: `request_incomplete` at step 0 | 0 | not_met; `request_incomplete`; labels none |
 | `not_json_bom` | the request is not valid JSON: a byte-order mark | 0 | not_met; `request_incomplete` |

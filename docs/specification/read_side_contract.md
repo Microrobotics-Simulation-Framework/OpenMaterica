@@ -70,6 +70,9 @@ that name one field, whatever location or other members each holds. So do two `o
 one field and the same overlay (equal `id`, `version` and `content_hash`); two that name different overlays
 are each resolved (section 3, step 6). A pick's `index` breaks its shape unless it is a number with no
 fractional part, not below zero: `1.0` and `1e0` are 1, and `-0` is 0 (`record_format.md` section 1 item 6).
+A nominal takes `params` in place of `value` only where the row of the field it names allows the form
+`parameter_set` (`record_format.md` section 4.1), so a nominal holding `params` and no `value`, for a field
+whose row allows none, breaks its shape.
 An implied condition breaks its shape where its `fact` is not a specimen fact with tokens or its `token` is
 not one of that fact's, and where `implies` names a condition that is not registered, or gives one a status
 object, `plus_minus`, `set_or_measured` or a token outside the condition's row; the reason carries that

@@ -120,9 +120,9 @@ _FIELD_HINTS = {form: get_type_hints(shape) for form, shape in FIELD_SHAPES.item
 # overlay (S4). A request holding one raises, whatever else it holds.
 _APPLIED_LATER = ("pick", "overlay", "extrapolation")
 # The members named at a nominal's place (`declarations.md` section 4.1): every acceptance's kind, location,
-# field, reason and basis, the last two of which a read ignores; its `value`; and `params`, which a parameter
-# set's nominal holds in place of a value, and which a read of this version, whose rows take no parameter set,
-# ignores.
+# field, reason and basis, the last two of which a read ignores; its `value`; and `params`, which a nominal
+# holds in place of a value only for a field whose row allows a parameter set (section 1), as no row of this
+# version does: so every nominal holds a `value`, and a `params` beside it is ignored.
 _NOMINAL = "nominal"
 _NOMINAL_MEMBERS = ("acceptance", *_LOCATION_MEMBERS, "field", "reason", "basis", "value", "params")
 

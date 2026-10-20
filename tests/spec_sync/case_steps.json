@@ -1120,6 +1120,7 @@
       "S2b-2"
     ],
     "PR-330.nominal_field_not_registered.json": "S2b-2",
+    "PR-330.nominal_params_in_place_of_value.json": "S2b-2",
     "PR-330.nominal_value_missing.json": "S2b-2",
     "PR-330.nominal_value_not_number.json": "S2b-2",
     "PR-330.not_json_bom.json": "S1",
