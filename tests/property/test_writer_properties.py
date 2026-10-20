@@ -193,10 +193,11 @@ def test_the_writer_schema_refuses_each_fault_the_text_names(
 # unit changed at a place step 9 compares, in the field or its first alternative: a writer that takes it
 # fails the relation.
 
-UNIT_PLACES = ("none", "field", "condition", "plus_minus", "token_condition", "fact")
+UNIT_PLACES = ("none", "field", "axis_unit", "condition", "plus_minus", "token_condition", "fact")
 ON_A_CONDITION = ("condition", "plus_minus", "token_condition")
 WITH_EVERY_UNIT = Plan(rich=frozenset({"conditions", "specimen"}))
 WITH_CONDITIONS = [name for name in value_fields.FIELDS if set(listing(row_of(name)["forms"])) - {"evidence"}]
+WITH_TABLES = [name for name in value_fields.FIELDS if "table" in listing(row_of(name)["forms"])]
 
 
 class Changed(NamedTuple):
@@ -228,6 +229,9 @@ def bodies_with_a_unit_changed(
         registered = plan.registered or draw(st.sampled_from(WITH_CONDITIONS))
         forms = [str(form) for form in listing(row_of(registered)["forms"]) if form != "evidence"]
         plan = replace(plan, registered=registered, form=draw(st.sampled_from(forms)))
+    if place == "axis_unit":
+        registered = plan.registered or draw(st.sampled_from(WITH_TABLES))
+        plan = replace(plan, registered=registered, form="table", withheld=False)
     body = draw(value_fields.bodies(plan, size))
     container, name, registered = value_fields.placed(body)
     value = mapping(container[name])
@@ -235,6 +239,9 @@ def bodies_with_a_unit_changed(
     conditions = mapping(field["conditions"])
     if place == "field":
         field["unit"] = draw(another_unit(row_of(registered)["unit"]))
+    elif place == "axis_unit":
+        table = mapping(field["table"])
+        table["axis_unit"] = draw(another_unit(registered_unit(str(table["axis"]))))
     elif place in ("condition", "plus_minus"):
         # A table's axis condition is `not_applicable`, a status object, which holds no unit.
         held = [name for name in NUMERIC_CONDITIONS if "status" not in mapping(conditions[name])]
@@ -278,9 +285,11 @@ def check_passes_step_9(writer: Writer, changed: Changed) -> bool:
     return True
 
 
-# `taken`, the writer taking the body, declared by its chance, the least share measured in seven runs at `ci`
-# (12 to 20%, 2026-10-16): the writer takes the bodies drawn with no unit changed, and no other.
-@pytest.mark.chances(taken=0.12)
+# `taken`, the writer taking the body, declared by its chance: the writer takes the bodies drawn with no unit
+# changed, and no other. Measured in seven runs at `ci` (12 to 20%, 2026-10-16) when one place in six drew no
+# change; with S3a's seventh place, a table's `axis_unit`, over 18 runs of 2,000 at `ci` (S3a's review,
+# 2026-10-20), 0.146 on average and 0.0995 at least (199 examples, against the floor of 30 that 0.1 gives).
+@pytest.mark.chances(taken=0.1)
 @pytest.mark.drawn(*UNIT_PLACES)
 @given(bodies_with_a_unit_changed())
 def test_step_9_passes_every_body_the_writer_takes(changed: Changed) -> None:

@@ -10,7 +10,7 @@ review's 29 mutants and its two controls (M1 to M31, its numbering kept), then o
 (a table's shape, S3a: M62 to M69) and a few that tighten, then those of the bindings the writer applies from
 the vocabulary (B1 to B12, TB1 to TB4, maintainer 2026-10-15; B13, B14 and TB5, a specimen fact's unit,
 2026-10-15; B15, B16 and TB6, a label's forms, PR #37's review; B17 to B19 and TB7, a table's axis, S3a),
-which change the writer or a vocabulary file; and three bindings removed again (U1 to U3), each killed by the
+which change the writer or a vocabulary file; and four bindings removed again (U1 to U4), each killed by the
 relation that what the writer takes, step 9 passes, searched on bodies with a unit changed where the binding
 held it. Each test records the examples its kill took as `examples_to_kill`.
 """
@@ -858,6 +858,12 @@ MUTANTS = [
         deleting(D, "conditions", "allOf"),
         STEP_9,
         ("condition", "plus_minus"),
+    ),
+    WriterMutant(
+        "U4 the writer applies no binding to a table's axis, read at step 9",
+        deleting(D, "table_field", "allOf", 1),
+        STEP_9,
+        ("axis_unit",),
     ),
 ]
 

@@ -53,8 +53,7 @@ check's reader (the last bullet).
   And what the writer takes in a body, step 9 of a read passes (the relation its unit bindings exist for):
   a body the text allows passes step 9, and one with every condition and fact, its unit changed at one place
   step 9 compares (the field's, a numeric condition's, a `plus_minus` entry's, a token condition's, a fact's),
-  is one the writer refuses. A table's `axis_unit` is not among the places: S3 writes the table's shape, and
-  adds it there.
+  is one the writer refuses, a table's `axis_unit` among the places since S3a.
 - **Step 8:** (8) the laws of step 8 of a read (`read_side_contract.md` section 3), in the part step 8
   decides, the S2 design's HP3 and HP5: one fault of a catalogue written from the text gives exactly the codes
   its rule gives, and two faults in two parts of the record give both (each step makes all its checks);

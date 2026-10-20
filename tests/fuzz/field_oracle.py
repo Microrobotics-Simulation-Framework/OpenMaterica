@@ -9,7 +9,9 @@ other oracle here can see (S2a-2's review, L3). Beside it, the target holds step
 composition or evidence step 8 passes it holds to steps 9 and 10 as the text gives them: its units each
 compared with the one registered for it, code point for code point, written here from `record_format.md`
 section 4.2 and step 9; and its conditions against the request by `condition_oracle.py`, HP7's oracle,
-written from section 5 alone.
+written from section 5 alone. A table step 8 passes it holds to step 9 alone, its `axis_unit` among its
+units, since steps 10 to 13 are not built for tables yet (S3a): where its units are the registered ones, the
+read is not yet decided.
 """
 
 import json
@@ -35,12 +37,18 @@ JsonObject = dict[str, JsonValue]
 # The forms step 8 reads, each with its reader definition. jsonschema-rs alone, on every input the target
 # reaches: T1 holds its verdicts on those definitions to python-jsonschema's
 # (`tests/property/test_validators_agree.py`).
-READ_FORMS = ("constant", "interval", "composition", "evidence")
+READ_FORMS = ("constant", "table", "interval", "composition", "evidence")
 DEFINITIONS = {form: f"record.reader.json#/$defs/{form}_field" for form in READ_FORMS}
 READER_TAKES = {form: takes(definition) for form, definition in DEFINITIONS.items()}
 WHY = {form: why_refused({"$ref": urljoin(BASE, definition)}) for form, definition in DEFINITIONS.items()}
 # What a read of each form wants to get its own member (`read_side_contract.md` section 6).
-WANT_OF = {"constant": "value", "interval": "bounds", "composition": "components", "evidence": "evidence"}
+WANT_OF = {
+    "constant": "value",
+    "table": "value",
+    "interval": "bounds",
+    "composition": "components",
+    "evidence": "evidence",
+}
 
 # The operating conditions and the requirement a read gives each condition a field's row may require: a
 # tolerance about a seed's usual value, or an accept list of some of the row's tokens.
@@ -111,12 +119,18 @@ def same(stored: JsonValue, registered: JsonValue) -> bool:
 
 
 def units_refused(field_name: str, field: JsonObject) -> frozenset[tuple[str, str | None]]:
-    """Step 9's reasons for a field step 8 passed, its own section holding no specimen: the field's unit, each
-    known condition's and its plus or minus entries', a token condition's any unit, and each fact's whose row
-    fixes one, in the field's specimen and, for a derived value, its inputs'."""
+    """Step 9's reasons for a field step 8 passed, its own section holding no specimen: the field's unit, a
+    table's `axis_unit` with its axis, each known condition's and its plus or minus entries', a token
+    condition's any unit, and each fact's whose row fixes one, in the field's specimen and, for a derived
+    value, its inputs'."""
     found: set[tuple[str, str | None]] = set()
     if not same(field["unit"], VOCABULARY.fields[field_name].unit):
         found.add(("unit_mismatch", None))
+    table = field.get("table") if field.get("form") == "table" else None
+    if isinstance(table, dict) and "status" not in table:
+        axis = str(table["axis"])
+        if not same(table["axis_unit"], VOCABULARY.conditions[axis].unit):
+            found.add(("unit_mismatch", axis))
     conditions = field["conditions"]
     assert isinstance(conditions, dict)
     for name, entry in conditions.items():
@@ -177,6 +191,9 @@ def check_steps_9_and_10(
         assert pairs == units, (
             f"step 9 gave {sorted(pairs, key=str)}, where its text gives {sorted(units, key=str)}"
         )
+        return
+    if field.get("form") == "table":
+        assert result == "not yet", f"a table steps 8 and 9 pass gave {result}, before step 10 is built"
         return
     conditions = field["conditions"]
     specimen = field.get("specimen", {})

@@ -14,6 +14,31 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Added
+- The read's steps 8 and 9 for a table (S3a; `record_format.md` section 6, table items 1, 2, 4 and 5;
+  `read_side_contract.md` section 3, steps 8 and 9). Step 8 checks every member of a table: `axis`, a numeric
+  condition the reader knows (another string, a token condition's name included, is `unknown_token`, and the
+  axis condition is then not checked), held in the field's `conditions` as `not_applicable`; `axis_unit`, a
+  string or a status object; `x`, at least two distinct values, never decreasing; `y`, one number for each;
+  `scheme`, `linear` or `loglog` (another string `unknown_token`), a log-log table's numbers positive;
+  `edges`, each strictly inside `x`'s range, in `x` exactly twice and consecutively, none listed twice, no
+  other value of `x` repeated; `source_range`, two numbers in order sharing with `x`'s range a value that is
+  no edge. Numbers are compared by value, so `-0` equals `0`, and `x` is indexed once, so that the edges are
+  checked in time linear in the table's length. A table whose `x` is empty is refused (`form_invalid`) beside
+  an edge or a `source_range` too, whose rules read `x`'s ends, and the read never raises there. A table
+  holding `points`, whatever it holds, gives `points_unsupported`, and `null` there `form_invalid` too;
+  `points` counts as a member named at a table's place, so a member one slip from it is refused, in a table
+  and in a status object standing for one, while `points` itself beside such a status object is ignored, as a
+  member the table's shape does not define (`provenance.md` section 1 item 5). Step 9 compares `axis_unit`
+  with the axis condition's registered unit, code point for code point, its `unit_mismatch` carrying the axis.
+  A table that steps 8 and 9 pass, alone or as an alternative, first, last or beside any other, still raises
+  `NotImplementedError`: steps 10 to 13 are S3b-2's. The 68 case files mapped to S3a run and pass:
+  1025 of 1504 case files pass and 35 are verified against the reference evaluator; 444 wait for S3b-2 (67),
+  S3c (45), S4's later pieces (135) and the record checks, C2 (197).
+- The evidence field's `conditions` hold no registered condition whatever the field's form (`record_format.md`
+  section 4.3 item 3; the maintainer's ruling of 2026-10-19): a table on `biocompatibility.evidence` whose
+  `conditions` hold its axis gives `form_invalid` beside `form_not_registered`.
+
 ### Changed
 - The fuzz job's replay step skips every mutant search by a rule, `--ignore-glob='tests/property/test_*mutants.py'`,
   not by a list of modules: the list named the older mutant modules only, so the step collected 623 tests, 312 of
@@ -133,6 +158,17 @@ every family entry goes in `families/CHANGELOG.md`.
     that reading while no row of this version allows a parameter set; the text did not say whether step 0
     consults the named field's row. A unit row (`params` alone), which the review's mutant fails, and one
     PR-330 case come with it.
+- The writer schema's `table` (S3a), in place of the placeholder `table_field` held: `axis`, `axis_unit`, `x`,
+  `y`, `scheme`, `edges` and `source_range`, none write-only, since a read checks every member of a table;
+  `points` is not defined, so the closed writer refuses it (`record_format.md` section 6, table item 5). A
+  log-log table's numbers are above zero, `edges` lists no number twice (`uniqueItems`, under which both
+  validators the tests use take `-0` and `0` as equal), and the rules across members are step 8's, which T1
+  lists with their reasons. The vocabulary gains `table_scheme` (`forms.json`, from table item 2), `axis`, the
+  numeric conditions' names, and the binding `axes` (`conditions.json`), which the writer applies to a table
+  field: each axis's registered unit in `axis_unit`, and the axis condition held as `not_applicable`. The
+  reader schema and the typed shapes are generated again (`Table`, `TableScheme`, `Axis`); like every binding,
+  `axes` is left out of both. `gen_reader_schema.py` copies `uniqueItems`. No specification text changed: the
+  text, its cases and `changes.md`'s entry landed with S3-spec and S3-cases.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from

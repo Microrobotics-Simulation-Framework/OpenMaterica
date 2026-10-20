@@ -275,21 +275,31 @@ def status_row(shape: type, member: str) -> tuple[tuple[str, ...], tuple[str, ..
     return tokens, tuple(defines)
 
 
-def or_status(check: Check, shape: type, member: str, defines: Collection[str] | None = None) -> Check:
+def or_status(
+    check: Check,
+    shape: type,
+    member: str,
+    defines: Collection[str] | None = None,
+    *,
+    named: Collection[str] = (),
+) -> Check:
     """`member` of `shape`, whose row allows a status object in place of its own shape S, which `check`
     checks. A status object holds a status token its row allows, and is refused where it also holds a member S
     defines (`defines`, where the row's are not S's own) or, where S is a number, a string or a token, any
-    member but `status` and `reason` (`provenance.md` section 1 item 5)."""
+    member but `status` and `reason` (`provenance.md` section 1 item 5). `named` are names the text names at
+    S's place that S does not define: a member one slip from one is refused, the name itself ignored."""
     tokens, own = status_row(shape, member)
-    return status_or(check, tokens, own if defines is None else tuple(defines))
+    return status_or(check, tokens, own if defines is None else tuple(defines), named)
 
 
-def status_or(check: Check, tokens: Collection[str] | None, defines: Collection[str]) -> Check:
+def status_or(
+    check: Check, tokens: Collection[str] | None, defines: Collection[str], named: Collection[str] = ()
+) -> Check:
     """A status object with one of `tokens`, any token where None, or what `check` takes."""
 
     def checked(value: JsonValue, where: str, found: Found) -> None:
         if isinstance(value, dict) and "status" in value:
-            status_object(value, where, tokens, defines, found)
+            status_object(value, where, tokens, defines, found, named)
         else:
             check(value, where, found)
 
@@ -297,11 +307,16 @@ def status_or(check: Check, tokens: Collection[str] | None, defines: Collection[
 
 
 def status_object(
-    value: JsonObject, where: str, tokens: Collection[str] | None, defines: Collection[str], found: Found
+    value: JsonObject,
+    where: str,
+    tokens: Collection[str] | None,
+    defines: Collection[str],
+    found: Found,
+    named: Collection[str] = (),
 ) -> None:
     """A status object that breaks its shape is read for nothing else, so its token gives no reason of its
-    own (`provenance.md` section 1 item 5); a member one slip from `status`, `reason` or a member S defines
-    breaks it, as a member S defines does."""
+    own (`provenance.md` section 1 item 5); a member one slip from `status`, `reason`, a member S defines or
+    one of `named` breaks it, as a member S defines does (`record_format.md` section 10 item 5)."""
     status = value["status"]
     broken: Found = []
     if not isinstance(status, str):
@@ -318,7 +333,7 @@ def status_object(
             invalid(f"{where} holds {beside} beside its status, members of the shape it stands for")
         )
     else:
-        slips(value, ("status", "reason", *defines), where, broken)
+        slips(value, ("status", "reason", *defines, *named), where, broken)
     found.extend(broken)
     if broken or tokens is None:
         return

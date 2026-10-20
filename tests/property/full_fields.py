@@ -210,11 +210,29 @@ def full_fields() -> dict[str, JsonObject]:
 
 
 def full_forms() -> dict[str, tuple[str, JsonObject]]:
-    """Full fields of the other forms step 8 reads, each with the registered field that holds it: an interval
+    """Full fields of the other forms step 8 reads, each with the registered field that holds it: a table over
+    temperature, with an edge and a narrower `source_range`, its axis condition `not_applicable`; an interval
     with one bound `none`; a composition with a stated sum whose components hold a full statistics block, one
     of status objects, a withheld one and none; each of them withheld; and evidence whose reports hold a
     status object in some members, one withheld, and each provenance a read checks (by a source, derived),
     and the same with every report withheld."""
+    table = constant(PROVENANCE_BY_SOURCE, "population")
+    del table["value"]
+    conditions = table["conditions"]
+    assert isinstance(conditions, dict)
+    table["conditions"] = {**conditions, "temperature": _status("not_applicable", "the table's axis")}
+    table |= {
+        "form": "table",
+        "table": {
+            "axis": "temperature",
+            "axis_unit": "K",
+            "x": [293.15, 303.15, 313.15, 313.15, 323.15],
+            "y": [0.001002, 0.000797, 0.000653, 0.000650, 0.000547],
+            "scheme": "linear",
+            "edges": [313.15],
+            "source_range": [298.15, 323.15],
+        },
+    }
     interval = constant(PROVENANCE_BY_SOURCE, "population", label=False)
     del interval["value"]
     interval |= {
@@ -269,6 +287,8 @@ def full_forms() -> dict[str, tuple[str, JsonObject]]:
         "provenance": copy.deepcopy(PROVENANCE_BY_SOURCE),
     }
     return {
+        "table": ("fluid.dynamic_viscosity", table),
+        "table_withheld": ("fluid.dynamic_viscosity", _withheld(table, "table", "reference-only")),
         "interval": ("fluid.dynamic_viscosity", interval),
         "interval_withheld": ("fluid.dynamic_viscosity", _withheld(interval, "interval", "reference-only")),
         "composition": ("bulk.elemental_composition", composition),

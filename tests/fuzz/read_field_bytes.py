@@ -25,8 +25,9 @@ constant, an interval, a composition or evidence its row allows that the reader 
 relation), or when steps 9 and 10 read such a field otherwise than their text, its units by code point and its
 conditions by HP7's oracle (`field_oracle.py`). A field holding alternatives is read by step 7 with no pick
 and no overlay (S4a), and the model's step 7 decides it too. `NotImplementedError` is a step not built yet:
-a table, whose own member waits for S3, alone or as an alternative. The seeds are every value field of every
-conformance input.
+a table that steps 8 and 9 pass, whose steps 10 to 13 wait for S3b-2, alone or as an alternative. Step 8 and 9
+of a table are held as a constant's are, to the model, to T1's third relation and, its `axis_unit` among its
+units, to step 9's text. The seeds are every value field of every conformance input.
 """
 
 import importlib
@@ -183,11 +184,12 @@ def seed_corpus(directory: Path) -> None:
 
 
 def dictionary() -> Iterator[str]:
-    """JSON's structure, and every member name and token a value field of S2 holds: the members of the
-    writer schema's value-field part, the vocabulary's tokens but the components, and the status tokens."""
+    """JSON's structure, and every member name and token a value field holds: the members of the writer
+    schema's value-field part, a table's reserved `points`, which no writer writes, the vocabulary's tokens
+    but the components, and the status tokens."""
     yield from ('"{"', '"}"', '"["', '"]"', '":"', '","', '"null"', '"true"', '"false"', '"-0"', '"1e308"')
     writer = json.loads((PACKAGE / "schema" / "0.1" / "record.writer.json").read_text(encoding="utf-8"))
-    names: set[str] = set(STATUS_TOKENS) | set(VOCABULARY.conditions) | set(VOCABULARY.facts)
+    names: set[str] = set(STATUS_TOKENS) | set(VOCABULARY.conditions) | set(VOCABULARY.facts) | {"points"}
     for definition in writer["$defs"].values():
         names |= set(definition.get("properties", {}))
     for list_name, tokens in VOCABULARY.token_lists.items():
@@ -207,6 +209,7 @@ def main(arguments: list[str]) -> None:
     seeded_fault.seed_step_10_if_asked(atheris.instrument_func)
     seeded_fault.seed_composition_if_asked(atheris.instrument_func)
     seeded_fault.seed_alternatives_if_asked(atheris.instrument_func)
+    seeded_fault.seed_tables_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 

@@ -68,17 +68,17 @@ def test_every_case_file_is_counted() -> None:
     runs = runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
     assert len(runs) == 1504
     assert Counter(case_run.outcome for case_run in runs) == {
-        Outcome.PASSED: 957,
+        Outcome.PASSED: 1025,
         Outcome.VERIFIED: 35,
-        Outcome.NOT_YET_RUNNABLE: 512,
+        Outcome.NOT_YET_RUNNABLE: 444,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
         (Outcome.PASSED, "content_hash"): 51,
-        (Outcome.PASSED, "read"): 881,
+        (Outcome.PASSED, "read"): 949,
         (Outcome.PASSED, "list_records"): 25,
         (Outcome.VERIFIED, "evaluate"): 35,
-        (Outcome.NOT_YET_RUNNABLE, "read"): 315,
+        (Outcome.NOT_YET_RUNNABLE, "read"): 247,
         (Outcome.NOT_YET_RUNNABLE, "check"): 184,
         (Outcome.NOT_YET_RUNNABLE, "quote_sha256"): 13,
     }
@@ -130,9 +130,9 @@ def test_a_case_passes_only_where_a_variant_ran() -> None:
     )
     assert len(outcomes) == 126
     assert Counter(outcomes.values()) == {
-        Outcome.PASSED: 88,
+        Outcome.PASSED: 90,
         Outcome.VERIFIED: 10,
-        Outcome.NOT_YET_RUNNABLE: 28,
+        Outcome.NOT_YET_RUNNABLE: 26,
     }
 
 
