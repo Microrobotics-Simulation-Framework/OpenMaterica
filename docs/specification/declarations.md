@@ -456,22 +456,37 @@ The reader applies a declared overlay and refuses a base mismatch or a conflict 
 
 ## 8. Run-time watches
 
-1. The build emits one watch for every condition entry of every result that a tolerance or accept list
-   checked: `{"model", location, "field", "condition", "unit", "source": "tolerance"}` with either `interval`
-   or `accept`. The interval is the set of values the condition may take while the entry stays met:
+1. The build emits watches for the results it accepts, and no others: one for every condition entry of an
+   accepted result that a tolerance or accept list checked: `{"model", location, "field", "condition", "unit",
+   "source": "tolerance"}` with either `interval` or `accept`. The interval is the set of values the condition
+   may take while the entry stays met:
    `[r - t, r + t]` for a stated value `r`, `[a - t, b + t]` for a stated range; where the condition's
    `plus_minus` holds a bound u, which narrows the check (`read_side_contract.md` section 5),
    `[r - t + u, r + t - u]` and `[a - t + u, b + t - u]`. Each end is its exact value rounded inward to a
    double, so that every double inside the watch keeps the entry met. An accept-list entry's watch holds the
    accept list. A constant has no axis, but a run that heats it can still leave its tolerance. An entry a
    waiver accepted as `condition_uncertain` gets the interval of a record that states no ±, `[r - t, r + t]`
-   or `[a - t, b + t]`, rounded inward too. [BC-030]
+   or `[a - t, b + t]`, rounded inward too. [BC-030] Where the entry was accepted while `not_met` (a trainable
+   field's `condition_outside`, section 7), its interval holds the operating condition the read was given as
+   well: the smallest interval holding both. An accept list's watch is unchanged, a token condition having no
+   operating condition (`read_side_contract.md` section 1). [BC-030]
 2. For a table or power law, the build emits a watch with `source` `form_range`: the form's own range (for a
-   table, its readable range, `record_format.md` section 6, table item 3), never widened. [BC-031]
-3. The consumer checks its watches during the run, on the condition, not only on the value derived from it. A
+   table, its readable range, `record_format.md` section 6, table item 3), never widened by a tolerance.
+   [BC-031] Where the result was accepted while `outside_range` (under an extrapolation, section 4.1, or on a
+   trainable field), the watch holds the operating value as well: the smallest interval holding both. [BC-031]
+   Where a declared edge lies inside the readable range, the watch holds only the part between the edges, or
+   an edge and an end of the range, that holds the operating value; for an operating value outside the
+   readable range, the part beside it, joined with it as above. Each end beside an edge is the double next to
+   the edge on the operating value's side, since an evaluator refuses at the edge (`read_side_contract.md`
+   section 7 item 7). [BC-031]
+3. For a numeric condition whose entry a waiver accepted as `condition_unstated`, on an accepted result, the
+   build emits a watch with `source` `declared`, holding as its interval the operating condition the read was
+   given (`[v, v]` for a value, `[lo, hi]` for a range); where the read was given none, it emits none. The
+   record says nothing there, so the run keeps to what the consumer declared. [BC-052]
+4. The consumer checks its watches during the run, on the condition, not only on the value derived from it. A
    model-validity guard on the value itself MAY stay beside them. When a watch fires, the consumer marks the
    results from that point. [not yet covered]
-4. The build notes, in the sheet, a declared operating condition that sits exactly on a table knot, because a
+5. The build notes, in the sheet, a declared operating condition that sits exactly on a table knot, because a
    derivative there depends on the evaluator's side (`read_side_contract.md` section 7). [BC-032]
 
 ## 9. The material input sheet
@@ -529,8 +544,8 @@ The sheet is one JSON document per build. [BC-033]
 | BC-027 | build checks | a required label that differs from the label stored on the value the result rests on, or is absent there, gives `label_mismatch`, beside any other reason, whether or not the read reached step 12; a result that rests on no stored value gives none |
 | BC-028 | build checks | every result names its model, the field read, and the region, interval or record it was read for: over records, the record and neither a region nor an interval |
 | BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported, not refused: the build gives its read a `trainable` acceptance, and the result carries the record's value with `initial_value_only` and names its entry in `trainable_by`; its other refusals stand, `at_edge` among them, and so does a result that carries no value |
-| BC-030 | build checks | a tolerance watch holds the interval, or the accept list, within which the entry stays met, narrowed by a stated bound, each end rounded inward; a waived `condition_uncertain` gets the tolerance's interval |
-| BC-031 | build checks | a form-range watch holding the readable range is emitted for every table or power law, unwidened |
+| BC-030 | build checks | only accepted results are watched; a tolerance watch holds the interval, or the accept list, within which the entry stays met, narrowed by a stated bound, each end rounded inward; a waived `condition_uncertain` gets the tolerance's interval; an entry accepted while `not_met` gets the smallest interval holding its interval and the operating condition |
+| BC-031 | build checks | a form-range watch holding the readable range is emitted for every table or power law of an accepted result, unwidened by a tolerance; joined with the operating value where the result was accepted while `outside_range`; cut at a declared edge inside the range to the part that holds the operating value |
 | BC-032 | build checks | an operating condition on a table knot is noted (planned with R7) |
 | BC-033 | build checks | the sheet holds every member of section 9 (planned with R7) |
 | BC-034 | build checks | a parameter with no derivation is reported as unexplained (planned with R7) |
@@ -550,4 +565,5 @@ The sheet is one JSON document per build. [BC-033]
 | BC-049 | build checks | a requirement holding `review: "reviewed"` gives `unknown` (`not_reviewed`) on a result whose review is not completed, which a waiver of that code covers; a completed review gives no such reason, nor does a result that holds no `provenance` |
 | BC-050 | build checks | a waiver naming a `label` is refused at build unless the requirement for its field names that label and holds `review: "reviewed"`; it covers only a result whose stored label is that label and trusted, stated by the source or on a value whose review is completed |
 | BC-051 | build checks | a build that does not claim the scene suite, USD read or the sampling suite refuses at build what needs it: a model checked over a domain or a path, `region_conditions`, an acceptance or `trainable` entry at a region or an interval; a model with `engine`; `sampling`, a requirement's `represents` or `population_level`, a `distribution` acceptance; where items 7 and 8 or the `population_level` rule refuse the same declaration, their refusal alone |
+| BC-052 | build checks | a waived `condition_unstated` of a numeric condition, on an accepted result, gives a `declared` watch holding the operating condition the read was given, and none where it was given none |
 | BC-053 | build checks | the build lists, per model, each acceptance no result used in `unused`: a waiver for another field, record or code, and an acceptance given to a read and not applied; an unused acceptance refuses nothing |
