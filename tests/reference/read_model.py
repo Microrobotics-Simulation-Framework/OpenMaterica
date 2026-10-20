@@ -163,6 +163,7 @@ CONDITIONS: Final[Mapping[str, ConditionRow]] = {
             "squid_magnetometer",
             "hysteresigraph",
             "pycnometer",
+            "reference_formulation",
         ),
     ),
 }
@@ -177,28 +178,28 @@ class FactRow:
     basis: str | None = None  # the basis the row fixes
 
 
-# provenance.md:266 "| Name | JSON shape |"
+# provenance.md:270 "| Name | JSON shape |"
 FACTS: Final[Mapping[str, FactRow]] = {
     "species": FactRow({"ncbi_taxon": "integer", "label": "text"}, ("ncbi_taxon", "label")),
     "anatomical_site": FactRow({"uberon": "text", "label": "text"}, ("uberon", "label")),
     "tissue_state": FactRow(
         {"token": "token"}, ("token",), ("in_vivo", "ex_vivo_fresh", "frozen_thawed", "fixed", "phantom")
     ),
-    # provenance.md:271 "is present exactly when `token` is `diseased` or `treated`"
+    # provenance.md:275 "is present exactly when `token` is `diseased` or `treated`"
     "disease_and_treatment_state": FactRow(
         {"token": "token", "text": "text"}, ("token",), ("normal", "diseased", "treated")
     ),
     "preparation": FactRow({"text": "text"}, ("text",)),
-    # provenance.md:273 "required for other"
+    # provenance.md:277 "required for other"
     "preservation": FactRow(
         {"token": "token", "text": "text"},
         ("token",),
         ("none", "refrigerated", "frozen", "fixed_formalin", "other"),
     ),
     "post_mortem_interval": FactRow({"value": "number", "unit": "unit"}, ("value", "unit"), unit="s"),
-    # provenance.md:275 "| `donor_age` |"
+    # provenance.md:279 "| `donor_age` |"
     "donor_age": FactRow({"value": "number", "range": "range", "unit": "unit"}, ("unit",), unit="s"),
-    # provenance.md:276 "its `basis` is fixed to `stated`, so it takes no `inferred_from`"
+    # provenance.md:280 "its `basis` is fixed to `stated`, so it takes no `inferred_from`"
     "mimics": FactRow({"text": "text"}, ("text",), basis="stated"),
     "supply_form": FactRow({"token": "token"}, ("token",), ("stock", "coupon", "finished_component")),
     "lot": FactRow({"text": "text"}, ("text",)),
@@ -296,20 +297,20 @@ REASONS: Final[Mapping[str, ReasonRow]] = {
 STATUS_TOKENS: Final = ("unstated", "not_checked", "none", "not_applicable", "withheld")
 ANY_STATUS: Final = frozenset(STATUS_TOKENS)
 
-# record_format.md:309 "one of `constant`, `table`, `power_law`, `interval`, `composition`, `parameter_set`"
+# record_format.md:315 "one of `constant`, `table`, `power_law`, `interval`, `composition`, `parameter_set`"
 FORMS: Final = (
     "constant", "table", "power_law", "interval", "composition", "parameter_set", "reference_data", "evidence"
 )  # fmt: skip
-# record_format.md:311 "`value` for a constant; otherwise the member named like the form"
+# record_format.md:317 "`value` for a constant; otherwise the member named like the form"
 FORM_MEMBERS: Final[Mapping[str, str]] = {form: "value" if form == "constant" else form for form in FORMS}
-# record_format.md:449-450 "`reported_range`, `proxy_range` (a range taken from other tissues),
+# record_format.md:455-456 "`reported_range`, `proxy_range` (a range taken from other tissues),
 # `specification_limits`"
 INTERVAL_BASES: Final = ("reported_range", "proxy_range", "specification_limits", "stated_bound")
-# record_format.md:462 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`"
+# record_format.md:468 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`"
 COMPOSITION_BASES: Final = ("mass_fraction", "volume_fraction", "mole_fraction")
-# record_format.md:466 "`sum_rule` is `sums_to_one` or `partial`"
+# record_format.md:472 "`sum_rule` is `sums_to_one` or `partial`"
 SUM_RULES: Final = ("sums_to_one", "partial")
-# record_format.md:478 "The element symbols are IUPAC's 118"
+# record_format.md:484 "The element symbols are IUPAC's 118"
 ELEMENTS: Final = tuple(
     "H He "
     "Li Be B C N O F Ne "
@@ -319,7 +320,7 @@ ELEMENTS: Final = tuple(
     "Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn "
     "Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split()
 )
-# record_format.md:462-463 "`component` is `element:<symbol>`"
+# record_format.md:468-469 "`component` is `element:<symbol>`"
 COMPONENTS: Final = frozenset(f"element:{symbol}" for symbol in ELEMENTS)
 
 # uncertainty.md:31 "`mean`, `median`, `single_measurement` or `stated`"
@@ -438,7 +439,7 @@ KNOWN_TOKENS: Final[Mapping[str, frozenset[str]]] = {
     "label": frozenset(FIELD_LABELS),
 }
 
-# The members each shape names at its place, for the slips of record_format.md:568-569 "one slip (below) from
+# The members each shape names at its place, for the slips of record_format.md:574-575 "one slip (below) from
 # a member the shape names at that place" and the members a result returns, read_side_contract.md:153 "Every
 # member a result returns from a record holds the members the reader's version defines".
 # record_format.md:85 "| Member | Required | Contents |"
@@ -451,7 +452,7 @@ LICENCE_NAMES: Final = ("values", "evidence")
 MATERIAL_BODY_NAMES: Final = ("sections", "extensions")
 # record_format.md:143-144 "A section holds `fields`" and "optionally `specimen`"
 SECTION_NAMES: Final = ("specimen", "fields")
-# record_format.md:307 "| Member | Required | Contents |"
+# record_format.md:313 "| Member | Required | Contents |"
 VALUE_FIELD_NAMES: Final = (
     "form", "unit", *dict.fromkeys(FORM_MEMBERS.values()), "conditions", "specimen", "statistics",
     "provenance", "label", "fit",
@@ -515,12 +516,12 @@ DERIVATION_NAMES: Final = ("method", "inputs", "assumptions", "input_specimens",
 INPUT_NAMES: Final = ("record", "field")
 INPUT_SPECIMEN_NAMES: Final = ("input", "specimen")
 REFERENCE_NAMES: Final = ("id", "version", "content_hash")
-# record_format.md:446 "`lower` and `upper` are numbers"
+# record_format.md:452 "`lower` and `upper` are numbers"
 INTERVAL_NAMES: Final = ("lower", "upper", "basis")
-# record_format.md:472-473 "its basis, sum rule, stated sum where present, and components"
+# record_format.md:478-479 "its basis, sum rule, stated sum where present, and components"
 COMPOSITION_NAMES: Final = ("basis", "sum_rule", "stated_sum", "components")
 COMPONENT_NAMES: Final = ("component", "fraction", "statistics")
-# record_format.md:221-222 "Each entry holds `endpoint`, `standard`"
+# record_format.md:227-228 "Each entry holds `endpoint`, `standard`"
 EVIDENCE_ENTRY_NAMES: Final = (
     "endpoint", "standard", "contact_category", "contact_duration", "material_form", "processing",
     "reported_result", "provenance",
@@ -546,9 +547,9 @@ IMPLIED_VALUE_NAMES: Final = (*CONDITION_NAMES, "status", "reason")
 
 # read_side_contract.md:32 "its field does not match `^[a-z0-9_]+\.[a-z0-9_]+$` in full"
 FIELD_PATTERN: Final = re.compile(r"[a-z0-9_]+\.[a-z0-9_]+")
-# record_format.md:521 "`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`"
+# record_format.md:527 "`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`"
 VERSION_PATTERN: Final = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
-# record_format.md:503 "A namespace matches `[a-z0-9_]+`"; record_format.md:512 "the local id matching"
+# record_format.md:509 "A namespace matches `[a-z0-9_]+`"; record_format.md:518 "the local id matching"
 ID_PATTERN: Final = re.compile(r"[a-z0-9_]+/[A-Za-z0-9_.-]+")
 # record_format.md:93 "`sha256:` and 64 lowercase hexadecimal digits"
 HASH_PATTERN: Final = re.compile(r"sha256:[0-9a-f]{64}")
@@ -665,7 +666,7 @@ def ordered_pair(value: JsonValue) -> bool:
 
 
 def one_slip(name: str, other: str) -> bool:
-    """record_format.md:581-582 "Two names are **one slip** apart when one becomes the other by inserting,
+    """record_format.md:587-588 "Two names are **one slip** apart when one becomes the other by inserting,
     deleting or substituting one character", an underscore included, counting code points, or by swapping two
     adjacent ones, or making one `_`-separated word plural or singular."""
     if name == other:
@@ -692,7 +693,7 @@ def one_slip(name: str, other: str) -> bool:
 
 
 def _plural_of_either(word: str, other: str) -> bool:
-    # record_format.md:583-584 "`s` or `es` added at its end or taken off it, a final `y` exchanged with
+    # record_format.md:589-590 "`s` or `es` added at its end or taken off it, a final `y` exchanged with
     # `ies`, or `datum` with `data`, `index` with `indices` or `matrix` with `matrices`"
     irregular = {("datum", "data"), ("index", "indices"), ("matrix", "matrices")}
     for singular, plural in ((word, other), (other, word)):
@@ -706,7 +707,7 @@ def _plural_of_either(word: str, other: str) -> bool:
 
 
 def slipped(value: JsonObject, named: Iterable[str]) -> bool:
-    """Whether `value` holds a member one slip from a member named at its place: record_format.md:568 "refuses
+    """Whether `value` holds a member one slip from a member named at its place: record_format.md:574 "refuses
     a member it does not know, where items 1 and 4 would ignore or skip it, that is one slip"."""
     names = tuple(named)
     return any(member not in names and any(one_slip(member, name) for name in names) for member in value)
@@ -1346,7 +1347,7 @@ def hash_operation(data: bytes) -> JsonObject:
 
 
 def record_slips(record: JsonObject) -> bool:
-    # record_format.md:571-572 "in the envelope or the body, the names in `sections` included, each field read
+    # record_format.md:577-578 "in the envelope or the body, the names in `sections` included, each field read
     # from that record"
     body, licence = record["body"], record["licence"]
     if not (isinstance(body, dict) and isinstance(licence, dict)):
@@ -1361,7 +1362,7 @@ def record_slips(record: JsonObject) -> bool:
 
 
 def section_slips(section: JsonObject, section_name: str) -> bool:
-    # record_format.md:570-571 "in a section, its `specimen` and the names in its `fields` included, each
+    # record_format.md:576-577 "in a section, its `specimen` and the names in its `fields` included, each
     # field read from that section"
     fields = section.get("fields")
     field_names = tuple(name.partition(".")[2] for name in FIELDS if name.partition(".")[0] == section_name)
@@ -1419,7 +1420,7 @@ def check_value_field(
     check_conditions(field_value, faults)
     if "specimen" in field_value:
         check_specimen(field_value["specimen"], faults)
-    # record_format.md:314 "| `statistics` | yes, except for `evidence` |"
+    # record_format.md:320 "| `statistics` | yes, except for `evidence` |"
     if known_form != "evidence":
         if "statistics" not in field_value:
             faults.add("form_invalid")
@@ -1436,7 +1437,7 @@ def check_value_field(
 
 
 def named_at_a_field(form: str | None) -> tuple[str, ...]:
-    """The members named at a value field's place: record_format.md:311 "| the form's member | yes | `value`
+    """The members named at a value field's place: record_format.md:317 "| the form's member | yes | `value`
     for a constant; otherwise the member named like the form", the field's own form's member alone; beside a
     form the reader does not know, every form's member, which any of them might be (fail closed)."""
     if form is None:
@@ -1454,7 +1455,7 @@ def check_form_member(field_value: JsonObject, form: str, row: FieldRow, faults:
         return
     value = field_value[member]
     if form == "constant":
-        # record_format.md:371 "**Constant.**"
+        # record_format.md:377 "**Constant.**"
         stated = status_object(value, faults, allowed=frozenset({"withheld"}), scalar=True)
         if stated is not None:
             withheld_value(stated, faults)
@@ -1466,20 +1467,20 @@ def check_form_member(field_value: JsonObject, form: str, row: FieldRow, faults:
         check_composition(value, row, faults)
     elif form == "evidence":
         check_evidence(value, faults)
-        # record_format.md:241 "`conditions` holds no registered condition: one there is a shape error"
+        # record_format.md:247 "`conditions` holds no registered condition: one there is a shape error"
         conditions = field_value.get("conditions")
         if isinstance(conditions, dict) and any(name in CONDITIONS for name in conditions):
             faults.add("form_invalid")
 
 
 def withheld_value(stated: StatusObject, faults: Reasons) -> None:
-    # provenance.md:316 "A reader refuses a withheld value, with the reason `withheld`."
+    # provenance.md:320 "A reader refuses a withheld value, with the reason `withheld`."
     if stated.token == "withheld":
         faults.add("withheld")
 
 
 def check_unit(unit: JsonValue, faults: Reasons) -> None:
-    # record_format.md:214-216 "step 8 checks only that it is a string or a status object" ... "and one that
+    # record_format.md:220-222 "step 8 checks only that it is a string or a status object" ... "and one that
     # is neither is a shape error (`form_invalid`)"
     if isinstance(unit, str):
         return
@@ -1488,7 +1489,7 @@ def check_unit(unit: JsonValue, faults: Reasons) -> None:
 
 
 def check_conditions(field_value: JsonObject, faults: Reasons) -> None:
-    # record_format.md:312 "| `conditions` | yes |"
+    # record_format.md:318 "| `conditions` | yes |"
     conditions = field_value.get("conditions")
     if not isinstance(conditions, dict):
         faults.add("form_invalid")
@@ -1610,14 +1611,14 @@ def check_specimen(specimen: JsonValue, faults: Reasons) -> None:
         if name in FACTS:
             check_fact(name, fact, faults)
         elif any(one_slip(name, known) for known in FACTS):
-            # record_format.md:570 "in a section, its `specimen`"
+            # record_format.md:576 "in a section, its `specimen`"
             faults.add("form_invalid")
 
 
 def check_fact(name: str, fact: JsonValue, faults: Reasons) -> None:
     row = FACTS[name]
     names = fact_names(row)
-    # provenance.md:280 "Every fact takes its row's shape or a status object"
+    # provenance.md:284 "Every fact takes its row's shape or a status object"
     if status_object(fact, faults, allowed=ANY_STATUS, shape=names) is not None:
         return
     if not isinstance(fact, dict):
@@ -1783,7 +1784,7 @@ def check_uncertainty(value: JsonValue, faults: Reasons) -> None:
 
 
 def check_label(field_value: JsonObject, row: FieldRow, faults: Reasons) -> None:
-    # record_format.md:187-189 "A label the reader does not know refuses the field as a token it does not know
+    # record_format.md:193-195 "A label the reader does not know refuses the field as a token it does not know
     # (`unknown_token`, section 10), and a label it knows that the row does not name for the field and its
     # form refuses it as `form_invalid`."
     if "label" not in field_value:
@@ -1891,7 +1892,7 @@ def check_input_specimens(entries: JsonValue, inputs: int, faults: Reasons) -> N
 
 
 def check_interval(value: JsonValue, faults: Reasons) -> None:
-    """record_format.md:446 "`lower` and `upper` are numbers, at most one holds `{"status": "none"}`"."""
+    """record_format.md:452 "`lower` and `upper` are numbers, at most one holds `{"status": "none"}`"."""
     stated = status_object(value, faults, allowed=frozenset({"withheld"}), shape=INTERVAL_NAMES)
     if stated is not None:
         withheld_value(stated, faults)
@@ -1912,7 +1913,7 @@ def check_interval(value: JsonValue, faults: Reasons) -> None:
         elif not number(value[side]):
             faults.add("form_invalid")
     lower, upper = value.get("lower"), value.get("upper")
-    # record_format.md:446-447 "at most one holds" and "`lower <= upper` where both are numbers"
+    # record_format.md:452-453 "at most one holds" and "`lower <= upper` where both are numbers"
     if nones == 2 or (number(lower) and number(upper) and lower > upper):
         faults.add("form_invalid")
     if "basis" not in value:
@@ -1922,8 +1923,8 @@ def check_interval(value: JsonValue, faults: Reasons) -> None:
 
 
 def check_composition(value: JsonValue, row: FieldRow, faults: Reasons) -> None:
-    """record_format.md:462 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`" and
-    record_format.md:474-476 "`components` holds at least one component; no component appears twice"."""
+    """record_format.md:468 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`" and
+    record_format.md:480-482 "`components` holds at least one component; no component appears twice"."""
     stated = status_object(value, faults, allowed=frozenset({"withheld"}), shape=COMPOSITION_NAMES)
     if stated is not None:
         withheld_value(stated, faults)
@@ -1932,7 +1933,7 @@ def check_composition(value: JsonValue, row: FieldRow, faults: Reasons) -> None:
         faults.add("form_invalid")
         return
     basis = value.get("basis")
-    # record_format.md:198-199 "and so is a composition whose basis the row does not allow"
+    # record_format.md:204-205 "and so is a composition whose basis the row does not allow"
     if isinstance(basis, str) and basis in COMPOSITION_BASES and basis not in row.bases:
         # Open point: form_not_allowed_by_its_row.
         faults.add("form_not_registered")
@@ -1950,7 +1951,7 @@ def check_composition(value: JsonValue, row: FieldRow, faults: Reasons) -> None:
     if "stated_sum" in value and not number(value["stated_sum"]):
         faults.add("form_invalid")
     components = value.get("components")
-    # record_format.md:474-475 "`components` holds at least one component; no component appears twice; and
+    # record_format.md:480-481 "`components` holds at least one component; no component appears twice; and
     # each `fraction` is a number from 0 to 1"
     if not (isinstance(components, list) and components):
         faults.add("form_invalid")
@@ -1966,7 +1967,7 @@ def check_composition(value: JsonValue, row: FieldRow, faults: Reasons) -> None:
         if "component" not in component:
             faults.add("form_invalid")
         else:
-            # record_format.md:463-464 "Another symbol, or a component of another kind, is a token the reader
+            # record_format.md:469-470 "Another symbol, or a component of another kind, is a token the reader
             # does not know (`unknown_token`)."
             known_token(name, "component", COMPONENTS, faults)
             if isinstance(name, str):
@@ -1975,15 +1976,15 @@ def check_composition(value: JsonValue, row: FieldRow, faults: Reasons) -> None:
                 seen.add(name)
         if not (number(fraction) and 0 <= fraction <= 1):
             faults.add("form_invalid")
-        # record_format.md:470-471 "a statistics block (`uncertainty.md` section 1), which a read checks as it
+        # record_format.md:476-477 "a statistics block (`uncertainty.md` section 1), which a read checks as it
         # checks the field's"
         if "statistics" in component:
             check_block(component["statistics"], faults, allowed=frozenset({"withheld"}))
 
 
 def check_evidence(value: JsonValue, faults: Reasons) -> None:
-    """record_format.md:220 "`biocompatibility.evidence` is a value field of form `evidence`"."""
-    # record_format.md:229-230 "The list holds at least one entry; an empty list is a shape error"
+    """record_format.md:226 "`biocompatibility.evidence` is a value field of form `evidence`"."""
+    # record_format.md:235-236 "The list holds at least one entry; an empty list is a shape error"
     if not (isinstance(value, list) and value):
         faults.add("form_invalid")
         return
@@ -1999,7 +2000,7 @@ def check_evidence(value: JsonValue, faults: Reasons) -> None:
         withheld_members: list[bool] = []
         for member in EVIDENCE_ENTRY_NAMES[:-1]:
             if member not in entry:
-                # record_format.md:230 "Every member of an entry is present"
+                # record_format.md:236 "Every member of an entry is present"
                 faults.add("form_invalid")
                 continue
             given = entry[member]
@@ -2038,7 +2039,7 @@ def check_entry_provenance(provenance: JsonValue, faults: Reasons) -> None:
 
 def withheld_whole(withheld_members: list[bool], faults: Reasons) -> bool:
     """Whether an entry, of which `withheld_members` says which members but `provenance` hold `withheld`, is
-    withheld: record_format.md:233-234 "An entry is withheld whole, its provenance kept, or not at all"."""
+    withheld: record_format.md:239-240 "An entry is withheld whole, its provenance kept, or not at all"."""
     whole_entry = len(withheld_members) == len(EVIDENCE_ENTRY_NAMES) - 1 and all(withheld_members)
     if any(withheld_members) and not whole_entry:
         faults.add("form_invalid")
@@ -2046,7 +2047,7 @@ def withheld_whole(withheld_members: list[bool], faults: Reasons) -> bool:
 
 
 def check_standard(standard: JsonValue, faults: Reasons) -> None:
-    # record_format.md:221-222 "Each entry holds `endpoint`, `standard`"
+    # record_format.md:227-228 "Each entry holds `endpoint`, `standard`"
     if not isinstance(standard, dict) or any(name not in standard for name in STANDARD_NAMES):
         faults.add("form_invalid")
         return
@@ -2062,7 +2063,7 @@ def check_standard(standard: JsonValue, faults: Reasons) -> None:
 
 
 def same_unit(stored: JsonValue, registered: str | StatusUnit) -> bool:
-    # record_format.md:210-213 "Units are compared as strings, after JSON escapes are decoded, code point for
+    # record_format.md:216-219 "Units are compared as strings, after JSON escapes are decoded, code point for
     # code point" ... "A unit registered as a status object equals one holding the same `status` token"
     if isinstance(registered, StatusUnit):
         return isinstance(stored, dict) and stored.get("status") == registered.status
@@ -2472,7 +2473,7 @@ def form_member_returned(form: str, member: JsonValue) -> JsonValue:
             for side, given in known_members(member, INTERVAL_NAMES).items()
         }
     if form == "composition" and isinstance(member, dict):
-        # record_format.md:472-473 "its basis, sum rule, stated sum where present, and components"
+        # record_format.md:478-479 "its basis, sum rule, stated sum where present, and components"
         returned = known_members(member, COMPOSITION_NAMES)
         components = member.get("components")
         if isinstance(components, list):
@@ -2492,7 +2493,7 @@ def component_returned(component: JsonObject) -> JsonValue:
     return returned
 
 
-# record_format.md:236-237 "A reader returns an entry with its statuses and its `provenance` whole" ...
+# record_format.md:242-243 "A reader returns an entry with its statuses and its `provenance` whole" ...
 # "section 2 item 5 defines": read_side_contract.md:153 "Every member a result returns from a record holds
 # the members the reader's version defines", at every depth. Below the provenance table's own members the
 # text names their members in part only (an extraction's by its methods' rows, a locator's in provenance.md
@@ -2801,7 +2802,7 @@ def result(reasons: Reasons, labels: Sequence[str], members: JsonObject | None =
 
 
 def alternatives_broken(field_value: JsonObject) -> bool:
-    # record_format.md:322-326 "`alternatives` is a non-empty list. Each entry is an object, and none holds
+    # record_format.md:328-332 "`alternatives` is a non-empty list. Each entry is an object, and none holds
     # `alternatives` of its own. The object holding `alternatives` holds no member of a value field." ...
     # "an empty list, one that is not a list, an entry that is not an object or that holds `alternatives`, or
     # `alternatives` beside `form`, a form's member or another member of the table above"

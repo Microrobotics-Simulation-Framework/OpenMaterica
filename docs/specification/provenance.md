@@ -221,7 +221,7 @@ them; where the two differ, these tables hold. The vocabulary grows by minor ver
 | `specimen_size` | numeric | `m`: the specimen's characteristic dimension (a sphere's diameter, a cylinder's diameter, a slab's or film's thickness) | — |
 | `measurement_geometry` | token | `bulk`, `tube`, `gap` | — |
 | `measurement_dimension` | numeric | `m`: a tube's inner diameter or a gap's width | `measurement_geometry`: `tube`, `gap` |
-| `test_method` | token | `rotational_rheometer`, `capillary_viscometer`, `vibrating_sample_magnetometer`, `squid_magnetometer`, `hysteresigraph` (a closed magnetic circuit, as in ASTM A977/A977M and IEC 60404-5, in which the specimen's demagnetisation does not enter; makers also write "hysteresisgraph"), `pycnometer` | — |
+| `test_method` | token | `rotational_rheometer`, `capillary_viscometer`, `vibrating_sample_magnetometer`, `squid_magnetometer`, `hysteresigraph` (a closed magnetic circuit, as in ASTM A977/A977M and IEC 60404-5, in which the specimen's demagnetisation does not enter; makers also write "hysteresisgraph"), `pycnometer`, `reference_formulation` (item 10) | — |
 
 1. A numeric condition holds `{"value", "unit"}` or `{"range": [lo, hi], "unit"}` with `lo <= hi`, its `unit`
    a string or a status object (`record_format.md` section 4.2), compared with the condition's unit at step 9
@@ -260,6 +260,10 @@ them; where the two differ, these tables hold. The vocabulary grows by minor ver
    it. A read checks it as one the field's row requires wherever that other condition holds that token, in
    the record or by an implied condition the read applies (`read_side_contract.md` section 5). [RC-006]
    [PR-311]
+10. `reference_formulation` is the test method of a value evaluated from a reference formulation or an
+    equation of state (origin `evaluated_from_formulation`, section 2). [not yet covered] A consumer that
+    names `test_method` in its requirement accepts such a value by this token (`read_side_contract.md`
+    section 5). [PR-315]
 
 ### 6.2 Specimen facts of schema 0.1.0
 

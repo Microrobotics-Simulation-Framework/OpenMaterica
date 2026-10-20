@@ -184,7 +184,13 @@ condition MUST be present, holding `{"status": "unstated"}` if the source does n
   `magnetic_flux_density` condition, with no saturation. A label is not a family: `model_families.md`'s
   refusal of an unknown family does not apply to it, and a reader returns it with the value. A consumer may
   require a label (`declarations.md`). [PR-035] On a constant, the Newtonian label claims only what the
-  stated `shear_rate` condition covers; it is no evidence about other shear rates. [not yet covered] A label
+  stated `shear_rate` condition covers; it is no evidence about other shear rates. [not yet covered] The
+  Newtonian label on a value with no stated shear rate is no evidence at any shear rate: a label its row
+  allows changes no member of a read's result but `labels`, so with no acceptance the value's `shear_rate`
+  entry is `unknown` (`condition_unstated`). [PR-104] [PR-053] Treating the fluid as Newtonian there is the
+  consumer's own declaration, never the label's: an implied condition that supplies a shear rate
+  (`declarations.md` section 4.1) [PR-316], or a declaration that covers the reason (`declarations.md`
+  section 4.2). [BC-016] [BC-029] A label
   the reader does not know refuses the field as a token it does not know (`unknown_token`, section 10), and a
   label it knows that the row does not name for the field and its form refuses it as `form_invalid`. A
   missing label is not refused at read, since the value does not depend on it: a model that assumes the label

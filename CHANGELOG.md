@@ -22,6 +22,21 @@ every family entry goes in `families/CHANGELOG.md`.
   the interrupt is set from, change together; `tests/unit/test_ci_workflows.py` holds the interrupt at twice the
   estimate and fails where the clause is removed.
 
+### Schema
+- `test_method` gains `reference_formulation` (maintainer, 2026-10-19): the test method of a value evaluated from
+  a reference formulation or an equation of state, origin `evaluated_from_formulation` (`provenance.md`
+  section 6.1 item 10), so that a consumer that names `test_method` in its requirement can accept such a value by
+  its stated method, while, with no acceptance, the `test_method` entry of a value that states none is still
+  `unknown` (`condition_unstated`). The vocabulary (`conditions.json`, whose list the writer schema binds a
+  `test_method` token to) and the typed shapes are regenerated from the table, and the reference model's row
+  lists the token. No read rule changes, so no conformance case does.
+- `record_format.md` section 4.1 says, in two sentences (maintainer, 2026-10-19), that the Newtonian label on a
+  value with no stated shear rate is no evidence at any shear rate: a label its row allows changes no member of a
+  read's result but `labels`, so with no acceptance the value's `shear_rate` entry is `unknown`
+  (`condition_unstated`) (PR-104, PR-053), and treating the fluid as Newtonian there is the consumer's own
+  declaration, never the label's: an implied condition that supplies a shear rate (PR-316), or a declaration that
+  covers the reason. No rule widens a label beyond its stated `shear_rate` condition.
+
 ## [0.1.0.dev2] - 2026-10-20
 
 A development pre-release. It holds S2: the read of a field holding a constant, an interval, a composition or

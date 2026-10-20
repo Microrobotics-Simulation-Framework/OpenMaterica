@@ -46,7 +46,7 @@
       "facts_against_the_field_unit": [1, 1],
       "first_unit_reason_only": [1, 1],
       "floating_point_as_written": [9, 9],
-      "implied_applies_without_its_fact": [73, 73],
+      "implied_applies_without_its_fact": [96, 96],
       "implied_fills_any_status": [21, 21],
       "implied_not_located": [1, 1],
       "implied_overrides_a_stated_value": [2, 2],
