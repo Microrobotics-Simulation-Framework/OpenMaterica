@@ -130,7 +130,7 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
         ('read_side_contract.md:225 "Find the field" and "a quote not there"', "'a quote not there'"),
         ('read_side_contracts.md:222 "Find the field"', "no file read_side_contracts.md"),
         (
-            'record_format.md:588 "Two names are **one slip** apart when one becomes the other by '
+            'record_format.md:591 "Two names are **one slip** apart when one becomes the other by '
             'inserting,"',
             None,
         ),

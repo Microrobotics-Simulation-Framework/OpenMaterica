@@ -1,0 +1,48 @@
+{
+  "case": "PR-052",
+  "variant": "entry_provenance_origin_unknown",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_entry_provenance_origin_unknown.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:e3371e23f77db3d8d7830ce41305183be49c1fbba592ffff46fc29a1cfc71700"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "evidence"
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "unknown_token"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

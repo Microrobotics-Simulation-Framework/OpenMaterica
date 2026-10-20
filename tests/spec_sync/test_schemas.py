@@ -280,6 +280,134 @@ def test_a_twin_that_drifts_from_the_writer_is_found() -> None:
     ]
 
 
+# A test report a read returns: the writer's report, its provenance whole, checked as a field's and the
+# members that check leaves unchecked as found (`record_format.md` section 4.3 item 2, the maintainer's ruling
+# of 2026-10-19), so that a report whose `extraction` is a number, returned as stored, validates.
+REPORTS = {
+    "result_evidence_entry": "evidence_entry",
+    "result_withheld_evidence_entry": "withheld_evidence_entry",
+}
+JSON_VALUE: JsonValue = {"$ref": "record.writer.json#/$defs/json_value"}
+
+
+def _write_only(member: JsonValue) -> bool:
+    return isinstance(member, dict) and "x-materica-write-only" in member
+
+
+def as_a_report_returns(writer_defs: dict[str, dict[str, JsonValue]], name: str) -> dict[str, JsonValue]:
+    """The writer's `name` as a read returns it in a test report: a reference to the writer's own written
+    from read_result.json, the provenance and its source as a report returns them, each member the writer
+    marks write-only any JSON value and required nowhere, and no rule across members a read does not check."""
+    written = copy.deepcopy(writer_defs[name])
+    written.pop("if", None)
+    written.pop("then", None)
+    written.pop("allOf", None)
+    properties = cast(dict[str, JsonValue], written["properties"])
+    for member, given in properties.items():
+        if _write_only(given):
+            properties[member] = JSON_VALUE
+        elif member == "provenance":
+            properties[member] = {"$ref": "#/$defs/result_entry_provenance"}
+        elif member == "source":
+            properties[member] = {"$ref": "#/$defs/result_entry_source"}
+        else:
+            properties[member] = json.loads(
+                json.dumps(given).replace('"#/$defs/', '"record.writer.json#/$defs/')
+            )
+    written["required"] = [
+        member for member in cast(list[str], written["required"]) if properties[member] != JSON_VALUE
+    ]
+    written.pop("description", None)
+    return written
+
+
+def report_problems(result: dict[str, JsonValue], writer: dict[str, JsonValue]) -> list[str]:
+    """Each of a returned report's definitions that is not the writer's as a report returns it; the
+    provenance also holds its review as a result's provenance does, required, and a derived value's
+    derivation as a result's, required."""
+    result_defs = cast(dict[str, dict[str, JsonValue]], result["$defs"])
+    writer_defs = cast(dict[str, dict[str, JsonValue]], writer["$defs"])
+    expected = {returned: as_a_report_returns(writer_defs, name) for returned, name in REPORTS.items()}
+    expected["result_entry_source"] = as_a_report_returns(writer_defs, "source")
+    provenance = as_a_report_returns(writer_defs, "provenance")
+    cast(dict[str, JsonValue], provenance["properties"])["review"] = cast(
+        dict[str, JsonValue], result_defs["result_provenance"]["properties"]
+    )["review"]
+    provenance["required"] = [*cast(list[str], provenance["required"]), "review"]
+    provenance["allOf"] = [
+        {
+            "if": {"required": ["origin"], "properties": {"origin": {"const": "measured_by_source"}}},
+            "then": {"required": ["source"]},
+        },
+        {
+            "if": {"required": ["origin"], "properties": {"origin": {"const": "derived"}}},
+            "then": {
+                "required": ["derivation"],
+                "properties": {"derivation": {"$ref": "#/$defs/result_derivation"}},
+            },
+        },
+    ]
+    expected["result_entry_provenance"] = provenance
+    problems = [
+        f"{returned} is not the writer's definition as a report returns it"
+        for returned, shape in expected.items()
+        if {key: value for key, value in result_defs.get(returned, {}).items() if key != "description"}
+        != shape
+    ]
+    evidence = [
+        branch
+        for branch in cast(list[JsonValue], result_defs["result_value"]["anyOf"])
+        if isinstance(branch, dict)
+        and branch.get("type") == "array"
+        and "listed_record" not in json.dumps(branch)
+    ]
+    reports = {"anyOf": [{"$ref": f"#/$defs/{returned}"} for returned in REPORTS]}
+    if evidence != [{"type": "array", "items": reports}]:
+        problems.append("a result's evidence is not a list of reports as a report returns them")
+    return problems
+
+
+def test_a_report_returned_is_the_writers_with_its_unchecked_members_as_found() -> None:
+    assert report_problems(RESULT, WRITER) == []
+    takes = validator("read_result.json")
+    report: dict[str, JsonValue] = {
+        "endpoint": "cytotoxicity",
+        "standard": {"designation": "ISO 10993-5", "year": 2009.0},
+        **dict.fromkeys(("contact_category", "contact_duration", "material_form", "processing"), "text"),
+        "reported_result": "text",
+        "provenance": {
+            "origin": "measured_by_contributor",
+            "extraction": 5.0,
+            "review": {"status": "not_checked"},
+        },
+    }
+    result: dict[str, JsonValue] = {"status": "met", "reasons": [], "value": [report], "labels": []}
+    assert takes(result) == []
+    for broken in ({"origin": "estimated"}, {"x_unknown_member": 1.0}, {"review": 5.0}):
+        provenance = {**cast(dict[str, JsonValue], report["provenance"]), **broken}
+        assert takes({**result, "value": [{**report, "provenance": provenance}]}) != [], broken
+
+
+def test_a_report_shape_that_drifts_from_the_writer_is_found() -> None:
+    drifted = copy.deepcopy(RESULT)
+    drifted["$defs"]["result_entry_provenance"]["properties"]["extraction"] = {
+        "$ref": "record.writer.json#/$defs/extraction"
+    }
+    del drifted["$defs"]["result_withheld_evidence_entry"]["properties"]["processing"]
+    drifted["$defs"]["result_value"]["anyOf"][3] = {
+        "type": "array",
+        "items": {"anyOf": [{"$ref": "record.writer.json#/$defs/evidence_entry"}]},
+    }
+    writer = copy.deepcopy(WRITER)
+    writer["$defs"]["source"]["properties"]["page"] = {"type": "string"}
+    assert report_problems(drifted, writer) == [
+        "result_withheld_evidence_entry is not the writer's definition as a report returns it",
+        "result_entry_source is not the writer's definition as a report returns it",
+        "result_entry_provenance is not the writer's definition as a report returns it",
+        "a result's evidence is not a list of reports as a report returns them",
+    ]
+
+
 def test_the_result_takes_an_alternatives_index_only_from_zero() -> None:
     """An index among the stored alternatives, in an entry of `alternative_values` or a reason, is a whole
     number from 0 (`read_side_contract.md` section 2): the result schema refuses `-1` and takes 0 (S2a-4's

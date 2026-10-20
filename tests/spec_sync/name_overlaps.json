@@ -76,7 +76,7 @@
       "reason": "The licence's evidence (excluded), a value's provenance evidence (quote, locator, document, copy), and the evidence form's list of test reports.",
       "safeguard": {
         "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[evidence]",
-        "what": "The writer refuses each meaning's value at the other two places, and the reader refuses it at the licence and at the form's list; a provenance's evidence is one a read does not check."
+        "what": "The writer refuses each meaning's value at the other two places, and the reader refuses it at the licence and at the form's list; a provenance's evidence is one a read does not check, which a read returns in a test report as found."
       }
     },
     {

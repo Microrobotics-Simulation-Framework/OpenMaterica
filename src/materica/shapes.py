@@ -1588,7 +1588,7 @@ ResultValue: TypeAlias = (
     float
     | Interval
     | Composition
-    | list[EvidenceEntry | WithheldEvidenceEntry]
+    | list[Union["ResultEvidenceEntry", "ResultWithheldEvidenceEntry"]]
     | Placeholder
     | ContentHash
     | list[ListedRecord]
@@ -1620,6 +1620,49 @@ class ResultProvenance(TypedDict):
     review: ResultReview | StatusNotChecked
     source: NotRequired[str]
     derivation: NotRequired[ResultDerivation]
+
+
+class ResultEvidenceEntry(TypedDict):
+    """
+    A test report as a read returns it (record_format.md section 4.3 item 2): the writer's evidence_entry, its
+    provenance as a report returns it.
+    """
+
+    endpoint: ReportText
+    standard: Standard | StatusNotWithheld
+    contact_category: ReportText
+    contact_duration: ReportText
+    material_form: ReportText
+    processing: ReportText
+    reported_result: ReportText
+    provenance: ResultEntryProvenance
+
+
+class ResultWithheldEvidenceEntry(TypedDict):
+    """
+    A withheld test report as a read returns it: the writer's withheld_evidence_entry, its provenance as a
+    report returns it, whose recipe a read does not check (record_format.md section 4.3 item 2).
+    """
+
+    endpoint: StatusWithheld
+    standard: StatusWithheld
+    contact_category: StatusWithheld
+    contact_duration: StatusWithheld
+    material_form: StatusWithheld
+    processing: StatusWithheld
+    reported_result: StatusWithheld
+    provenance: ResultEntryProvenance
+
+
+class ResultEntrySource(TypedDict):
+    """
+    A test report's source as a read returns it: its key, which a read checks, and its document and locator,
+    the record checks', as found (provenance.md section 2 item 6).
+    """
+
+    key: str
+    document: NotRequired[JsonValue]
+    locator: NotRequired[JsonValue]
 
 
 class ResultReview(TypedDict):
@@ -1816,5 +1859,23 @@ Provenance = TypedDict(
         "import": NotRequired[JsonObject],
         "per_parameter": NotRequired[dict[str, "Provenance"]],
         "recipe": NotRequired[JsonObject],
+    },
+)
+
+ResultEntryProvenance = TypedDict(
+    "ResultEntryProvenance",
+    {
+        "origin": Origin,
+        "source": NotRequired[ResultEntrySource],
+        "extraction": NotRequired[JsonValue],
+        "evidence": NotRequired[JsonValue],
+        "assistance": NotRequired[JsonValue],
+        "review": ResultReview | StatusNotChecked,
+        "derivation": NotRequired[JsonValue],
+        "formulation": NotRequired[JsonValue],
+        "search": NotRequired[JsonValue],
+        "import": NotRequired[JsonValue],
+        "per_parameter": NotRequired[JsonValue],
+        "recipe": NotRequired[JsonValue],
     },
 )

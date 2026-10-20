@@ -1,0 +1,82 @@
+{
+  "case": "PR-052",
+  "variant": "entry_provenance_extraction_number",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "evidence_entry_provenance_extraction_number.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/evidence_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:94142012730b3407494e3e167bf83b702eff7045468ad44a9b797dc27ff78a24"
+      },
+      "field": "biocompatibility.evidence"
+    },
+    "requirement": {
+      "want": "evidence"
+    }
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": [
+      {
+        "endpoint": "cytotoxicity",
+        "standard": {
+          "designation": "ISO 10993-5",
+          "year": 2009
+        },
+        "contact_category": "conformance fixture: the source's words",
+        "contact_duration": "conformance fixture: the source's words",
+        "material_form": "conformance fixture: the source's words",
+        "processing": "conformance fixture: the source's words",
+        "reported_result": "conformance fixture: illustrative report text",
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "extraction": 5.0,
+          "assistance": {
+            "status": "none"
+          },
+          "review": {
+            "status": "not_checked",
+            "reason": "conformance fixture: illustrative values, not a measurement"
+          }
+        }
+      }
+    ],
+    "unit": {
+      "status": "not_applicable"
+    },
+    "conditions": [],
+    "specimen": {},
+    "provenance": {
+      "origin": "measured_by_contributor",
+      "review": {
+        "status": "not_checked",
+        "reason": "conformance fixture: illustrative values, not a measurement"
+      }
+    },
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ],
+    "exact": true
+  }
+}

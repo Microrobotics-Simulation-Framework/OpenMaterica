@@ -778,6 +778,12 @@ def entry_provenance_unchecked(provenance: JsonValue, faults: Reasons) -> None:
     return None
 
 
+def nested_reviews_as_found(provenance: JsonObject) -> JsonObject:
+    returned = model.written_returned(provenance, [{"$ref": "#/$defs/provenance"}])
+    assert isinstance(returned, dict)
+    return {**returned, "review": model.review_read(provenance)}
+
+
 def no_specimen_checked(field_value: JsonObject, section: JsonObject) -> list[JsonObject]:
     return []
 
@@ -1083,18 +1089,18 @@ MUTANTS: Mapping[str, Mutant] = {
     # The slip rule, in a request and a record
     "every_slip_ignored": Mutant(
         "a member one slip from a named one ignored, in a request and in a record",
-        "record_format.md:575-580",
+        "record_format.md:578-583",
         {"slipped": no_slip},
     ),
     "plurals_not_slips": Mutant(
         "a word made plural or singular not one slip",
-        "record_format.md:589-591",
+        "record_format.md:592-594",
         {"_plural_of_either": no_plural},
         survives="each plural slip in the cases adds an `s` (`fluids`), and so is one character inserted",
     ),
     "envelope_body_and_section_slips_ignored": Mutant(
         "a slip in the envelope, the body or a section refuses no field",
-        "record_format.md:577-579",
+        "record_format.md:580-582",
         {"record_slips": no_record_slip, "section_slips": no_section_slip},
     ),
     # Steps 1 to 5
@@ -1126,7 +1132,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # Step 7
     "alternatives_shape_unchecked": Mutant(
         "an `alternatives` that is empty, not a list or beside a value field's members read",
-        "record_format.md:329-333",
+        "record_format.md:332-336",
         {"alternatives_broken": never_broken},
     ),
     "want_mismatch_beside_no_pick": Mutant(
@@ -1318,7 +1324,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "every_forms_member_named_at_a_field": Mutant(
         "every form's member named at a field's place, so that a slip of another form's refuses a constant",
-        "record_format.md:318",
+        "record_format.md:321",
         {"named_at_a_field": every_forms_member_named},
         survives="no case holds a slip of another form's member beside a form the reader knows",
     ),
@@ -1366,9 +1372,14 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "evidence_entry_provenance_unchecked": Mutant(
         "an evidence entry's `provenance` not checked",
-        "OPEN_POINTS: evidence_entry_provenance",
+        "record_format.md:246 (the maintainer's ruling, 2026-10-19)",
         {"check_entry_provenance": entry_provenance_unchecked},
-        survives="each evidence entry's `provenance` in the cases is well formed: the text leaves it open",
+    ),
+    "nested_reviews_returned_as_found": Mutant(
+        "a review inside a provenance an evidence entry's `per_parameter` maps a parameter to returned as "
+        "found, and none where that provenance holds none",
+        "record_format.md:247-249 (the maintainer's ruling, 2026-10-20)",
+        {"entry_provenance_returned": nested_reviews_as_found},
     ),
     # Not an open point since the fix round: the text names the three, and no case holds a slip of one.
     "declaration_names_not_named_in_a_request": Mutant(
@@ -1515,7 +1526,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # Rules S2a-4's review pinned (half B, L4; half A, L6)
     "ies_not_a_plural": Mutant(
         "a final `y` exchanged with `ies` not one slip",
-        "record_format.md:590-591",
+        "record_format.md:593-594",
         {"_plural_of_either": ies_not_a_plural},
         survives="no case holds a slip of a final `y` made `ies`",
     ),

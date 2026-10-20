@@ -437,3 +437,17 @@ documents, `inputs.page_texts`; `compare.rules_compared`, the rules whose items 
 comparison of a quote with its place reported under RC-032 at the quote's evidence, a failure as a finding and
 `not_checked` as a listing; and the operation `quote_sha256`, which gives a text's quote hash. `case.json`
 takes them.
+
+Settled with S2b-2's review (maintainer, 2026-10-19): step 8 checks an evidence entry's `provenance` as it
+checks a field's (`provenance.md` section 2 item 6: its `origin`; its `source`, present for
+`measured_by_source` and an object with a string `key` wherever present; its `derivation` for `derived`; its
+`review` read as every review is), and returns it whole, the members that check leaves unchecked as found
+(`record_format.md` section 4.3 item 2; PR-052). The text returned the provenance whole but did not say which
+of its members a read checks; S2b-2's reader checked them as a field's, and one sentence now says so. So a
+report's provenance whose origin the reader does not know refuses the field (`unknown_token`), and one whose
+`extraction` is a number is returned as stored. With the maintainer's ruling of 2026-10-20 on the reviews
+inside it, the sentence also says that each provenance those members hold, at any depth (one that
+`per_parameter` maps a parameter to, say), returns its `review` as `provenance.md` section 2 item 6 reads
+every review: one of a status token a review does not take, or absent, is returned as
+`{"status": "not_checked"}` (PR-052). S2b-2's reader read every review so; the text said so of the
+provenance's own review alone.

@@ -1891,7 +1891,7 @@ def test_an_evidence_list_holds_one_report_or_more_each_withheld_whole_or_not_at
     """`record_format.md` section 4.3 items 1 and 2, `read_side_contract.md` section 3 step 8: every entry
     withheld gives `withheld`, some `entries_withheld` [PR-052]; an entry's members by `provenance.md` section
     1 item 5's row, "any; `withheld` only in every one of them at once"; an entry's provenance checked as a
-    field's is (the reference model's open point `evidence_entry_provenance`)."""
+    field's is (`record_format.md` section 4.3 item 2, the maintainer's ruling of 2026-10-19)."""
     result = read_evidence(evidence)
     assert {reason.code for reason in result.reasons} == codes, evidence
 

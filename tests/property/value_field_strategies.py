@@ -1472,8 +1472,8 @@ CATALOGUE: dict[str, dict[str, Fault]] = {
             open_report, "standard", {"status": "not_applicable", "x_note": 1.0}, NOTHING
         ),
     },
-    # A report's provenance, checked as a field's (the reference model's open point
-    # `evidence_entry_provenance`).
+    # A report's provenance, checked as a field's (`record_format.md` section 4.3 item 2, the maintainer's
+    # ruling of 2026-10-19 on the reference model's open point `evidence_entry_provenance`).
     "evidence_provenance": {
         "origin_unknown": setting(report_provenance_of, "origin", "estimated", UNKNOWN),
         "origin_missing": removing(report_provenance_of, ("origin",)),
