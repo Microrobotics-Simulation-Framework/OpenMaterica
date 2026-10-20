@@ -26,6 +26,7 @@ WRITER = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
 CASE = json.loads((SCHEMA / "case.json").read_text(encoding="utf-8"))
 REQUEST = json.loads((SCHEMA / "read_request.json").read_text(encoding="utf-8"))
 RESULT = json.loads((SCHEMA / "read_result.json").read_text(encoding="utf-8"))
+PAGE_TEXT = json.loads((SCHEMA / "page_text.json").read_text(encoding="utf-8"))
 
 
 def document(name: str) -> str:
@@ -36,6 +37,44 @@ def test_the_envelope_table_is_the_writer_schemas() -> None:
     rows = table(document("record_format.md"), "## 2. The envelope")
     assert [only_code(row["Member"]) for row in rows] == list(WRITER["properties"])
     assert [only_code(row["Member"]) for row in rows if row["Required"] == "yes"] == WRITER["required"]
+
+
+def page_text_table_problems(schema: dict[str, JsonValue]) -> list[str]:
+    """Where `page_text.md` section 1's member table differs from the page-text schema: the members in order,
+    those required, and the members of a page, of an element entry and of `copy` that its contents name."""
+    rows = table(document("page_text.md"), "## 1. Page-text documents")
+    members = [name for row in rows for name in codes(row["Member"])]
+    required = [name for row in rows if row["Required"] == "yes" for name in codes(row["Member"])]
+    definitions = cast(dict[str, dict[str, JsonValue]], schema["$defs"])
+    properties = cast(dict[str, dict[str, JsonValue]], schema["properties"])
+    named = {codes(row["Member"])[0]: codes(row["Contents"])[0] for row in rows if codes(row["Contents"])}
+    shapes = {
+        "pages": definitions["page"],
+        "text": definitions["element"],
+        "copy": properties["copy"],
+    }
+    problems: list[str] = []
+    if members != list(properties):
+        problems.append(f"members {members}, the schema's {list(properties)}")
+    if required != schema["required"]:
+        problems.append(f"required {required}, the schema's {schema['required']}")
+    for member, shape in shapes.items():
+        listed = json.loads("[" + named[member].strip("{}") + "]")
+        held = [name for name in cast(dict[str, JsonValue], shape["properties"]) if name != "cell_columns"]
+        if listed != held or cast(list[str], shape["required"]) != listed:
+            problems.append(f"{member}: the table names {listed}, the schema holds {held}")
+    return problems
+
+
+def test_the_page_text_table_is_the_page_text_schemas() -> None:
+    assert page_text_table_problems(PAGE_TEXT) == []
+
+
+def test_a_page_text_member_left_out_of_the_schema_is_found() -> None:
+    schema = copy.deepcopy(PAGE_TEXT)
+    del schema["$defs"]["page"]["properties"]["furniture"]
+    schema["required"].remove("readings")
+    assert len(page_text_table_problems(schema)) == 2
 
 
 def test_the_request_table_is_the_request_schemas() -> None:

@@ -147,7 +147,7 @@
                   "version": "version_of_record"
                 },
                 "copy": {
-                  "sha256": "c1b331eeca80395291cf4b2d59b19d1c02f061ebfe023e527e4ddce40d16febc",
+                  "sha256": "sha256:c1b331eeca80395291cf4b2d59b19d1c02f061ebfe023e527e4ddce40d16febc",
                   "retrieved": "2026-10-18"
                 }
               },

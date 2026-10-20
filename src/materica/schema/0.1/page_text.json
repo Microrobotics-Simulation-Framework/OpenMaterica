@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3id.org/materica/schema/0.1/page_text.json",
+  "$comment": "Hand-edited: the shapes of page_text.md section 1, and a page's text holding no C0 control but tab and line feed. The rules the schema does not state are the record checks' (RC-220): pages numbered from 1 in order; a range in order, within its page's text, the ranges of one list in increasing order and not overlapping; a jump at a line feed of its page's text; no line ending in White_Space; an element's range within text; cell_columns in order.",
+  "title": "PageTextDocument",
+  "description": "A page-text document (page_text.md section 1): the text of one copy of one document as one text extraction gave it, identified by its RFC 8785 hash. It holds the pages of a PDF, or the text and elements of an XML file, never members of both kinds.",
+  "type": "object",
+  "required": ["page_text_schema_version", "document_type", "document", "copy", "text_extraction", "readings"],
+  "properties": {
+    "page_text_schema_version": {"$ref": "record.writer.json#/$defs/version"},
+    "document_type": {"const": "page_text"},
+    "document": {"$ref": "record.writer.json#/$defs/document"},
+    "copy": {
+      "description": "The SHA-256 of the copy's bytes, written as a record's copy.sha256 is (provenance.md section 4 item 2).",
+      "type": "object",
+      "required": ["sha256"],
+      "properties": {"sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"}},
+      "additionalProperties": false
+    },
+    "text_extraction": {"description": "The program that wrote the document and its version.", "type": "string"},
+    "readings": {
+      "description": "Each reading of the copy the extraction made and compared, with the version of each library it reads the file with; the reading whose text the document holds first.",
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "pages": {"description": "For a PDF: every page of the copy, in the order of its file.", "type": "array", "minItems": 1, "items": {"$ref": "#/$defs/page"}},
+    "text": {"description": "For an XML file: the string value of the document element.", "type": "string"},
+    "elements": {"description": "For an XML file: every element, the document element first, in document order.", "type": "array", "minItems": 1, "items": {"$ref": "#/$defs/element"}}
+  },
+  "additionalProperties": false,
+  "anyOf": [
+    {"required": ["pages"], "properties": {"text": false, "elements": false}},
+    {"required": ["text", "elements"], "properties": {"pages": false}}
+  ],
+  "$defs": {
+    "page": {
+      "description": "One page (page_text.md section 1 items 4 to 7): its position in the copy's file, from 1; its visible text, each line but the last ending in U+000A; and five lists, each empty where the extraction finds nothing.",
+      "type": "object",
+      "required": ["page", "text", "doubtful", "jumps", "furniture", "raised", "lowered"],
+      "properties": {
+        "page": {"type": "integer", "minimum": 1},
+        "text": {"description": "The page's visible text in reading order, holding no C0 control but U+0009 and U+000A (page_text.md section 1 item 4).", "type": "string", "pattern": "^[^\u0000-\u0008\u000b-\u001f]*(?![\\s\\S])"},
+        "doubtful": {"$ref": "#/$defs/ranges"},
+        "jumps": {"description": "The positions of the line feeds after which reading order moves to another column or region.", "type": "array", "items": {"type": "integer", "minimum": 0}},
+        "furniture": {"$ref": "#/$defs/ranges"},
+        "raised": {"$ref": "#/$defs/ranges"},
+        "lowered": {"$ref": "#/$defs/ranges"}
+      },
+      "additionalProperties": false
+    },
+    "ranges": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/character_range"}},
+    "element": {
+      "description": "One element (page_text.md section 1 items 8 and 9): its path, the range of text that is its string value (empty for an element with no text), and, for a table cell, the columns it occupies where the extraction knows the file's table model.",
+      "type": "object",
+      "required": ["element", "characters"],
+      "properties": {
+        "element": {"$ref": "record.writer.json#/$defs/element_path"},
+        "characters": {"$ref": "record.writer.json#/$defs/character_range"},
+        "cell_columns": {"description": "[first, last], counted from 1, both included.", "type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 1}}
+      },
+      "additionalProperties": false
+    }
+  }
+}

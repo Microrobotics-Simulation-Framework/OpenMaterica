@@ -138,7 +138,7 @@ class ConditionRow:
     required_with: RequiredWith = ()
 
 
-# provenance.md:229 "| Name | Shape | Unit or tokens | Required with |"
+# provenance.md:230 "| Name | Shape | Unit or tokens | Required with |"
 CONDITIONS: Final[Mapping[str, ConditionRow]] = {
     "temperature": ConditionRow("numeric", unit="K"),
     "shear_rate": ConditionRow("numeric", unit="1/s"),
@@ -150,7 +150,7 @@ CONDITIONS: Final[Mapping[str, ConditionRow]] = {
     ),
     "specimen_size": ConditionRow("numeric", unit="m"),
     "measurement_geometry": ConditionRow("token", tokens=("bulk", "tube", "gap")),
-    # provenance.md:238 "`measurement_geometry`: `tube`, `gap`"
+    # provenance.md:239 "`measurement_geometry`: `tube`, `gap`"
     "measurement_dimension": ConditionRow(
         "numeric", unit="m", required_with=(("measurement_geometry", ("tube", "gap")),)
     ),
@@ -178,28 +178,28 @@ class FactRow:
     basis: str | None = None  # the basis the row fixes
 
 
-# provenance.md:285 "| Name | JSON shape |"
+# provenance.md:286 "| Name | JSON shape |"
 FACTS: Final[Mapping[str, FactRow]] = {
     "species": FactRow({"ncbi_taxon": "integer", "label": "text"}, ("ncbi_taxon", "label")),
     "anatomical_site": FactRow({"uberon": "text", "label": "text"}, ("uberon", "label")),
     "tissue_state": FactRow(
         {"token": "token"}, ("token",), ("in_vivo", "ex_vivo_fresh", "frozen_thawed", "fixed", "phantom")
     ),
-    # provenance.md:290 "is present exactly when `token` is `diseased` or `treated`"
+    # provenance.md:291 "is present exactly when `token` is `diseased` or `treated`"
     "disease_and_treatment_state": FactRow(
         {"token": "token", "text": "text"}, ("token",), ("normal", "diseased", "treated")
     ),
     "preparation": FactRow({"text": "text"}, ("text",)),
-    # provenance.md:292 "required for other"
+    # provenance.md:293 "required for other"
     "preservation": FactRow(
         {"token": "token", "text": "text"},
         ("token",),
         ("none", "refrigerated", "frozen", "fixed_formalin", "other"),
     ),
     "post_mortem_interval": FactRow({"value": "number", "unit": "unit"}, ("value", "unit"), unit="s"),
-    # provenance.md:294 "| `donor_age` |"
+    # provenance.md:295 "| `donor_age` |"
     "donor_age": FactRow({"value": "number", "range": "range", "unit": "unit"}, ("unit",), unit="s"),
-    # provenance.md:295 "its `basis` is fixed to `stated`, so it takes no `inferred_from`"
+    # provenance.md:296 "its `basis` is fixed to `stated`, so it takes no `inferred_from`"
     "mimics": FactRow({"text": "text"}, ("text",), basis="stated"),
     "supply_form": FactRow({"token": "token"}, ("token",), ("stock", "coupon", "finished_component")),
     "lot": FactRow({"text": "text"}, ("text",)),
@@ -349,21 +349,21 @@ UNCERTAINTY_REPRESENTS: Final = ("measurement", "estimate")
 # uncertainty.md:237 "| Token | Parameters |"
 DISTRIBUTIONS: Final = ("normal", "lognormal", "uniform", "triangular", "student_t", "beta")
 
-# provenance.md:91 "`measured_by_source`, `measured_by_contributor`, `fitted`, `derived`,
+# provenance.md:92 "`measured_by_source`, `measured_by_contributor`, `fitted`, `derived`,
 # `evaluated_from_formulation`"
 ORIGINS: Final = (
     "measured_by_source", "measured_by_contributor", "fitted", "derived", "evaluated_from_formulation",
     "stated_without_origin",
 )  # fmt: skip
-# provenance.md:121-122 "whose `result` is a token the reader knows (`reviewed`)"
+# provenance.md:122-123 "whose `result` is a token the reader knows (`reviewed`)"
 REVIEW_RESULTS: Final = ("reviewed",)
-# provenance.md:210 "`stated`, or `inferred` with an `inferred_from` text"
+# provenance.md:211 "`stated`, or `inferred` with an `inferred_from` text"
 CONDITION_BASES: Final = ("stated", "inferred")
 # read_side_contract.md:464 "with basis `implied`"
 IMPLIED_BASIS: Final = "implied"
-# provenance.md:260-261 "`stated_as` is `bound`"
+# provenance.md:261-262 "`stated_as` is `bound`"
 STATED_AS: Final = ("bound", "sd")
-# provenance.md:268 "`set_or_measured` is `set_point`"
+# provenance.md:269 "`set_or_measured` is `set_point`"
 SET_OR_MEASURED: Final = ("set_point", "measured")
 
 # read_side_contract.md:125 "the result's labels, from this list only: `user_extracted`"
@@ -464,7 +464,7 @@ CONDITION_NAMES: Final = (
     "value", "range", "token", "unit", "basis", "inferred_from", "plus_minus", "set_or_measured"
 )  # fmt: skip
 NUMERIC_CONDITION_ONLY: Final = ("value", "range", "plus_minus", "set_or_measured")
-# provenance.md:259 "a non-empty list of"
+# provenance.md:260 "a non-empty list of"
 PLUS_MINUS_NAMES: Final = ("stated_as", "value", "unit")
 # uncertainty.md:29 "| Member | Contents |"
 BLOCK_MEMBERS: Final = (
@@ -495,23 +495,23 @@ UNCERTAINTY_MEMBERS: Final = (
     "value", "coverage_factor", "coverage_probability", "distribution", "dof", "basis", "represents"
 )  # fmt: skip
 UNCERTAINTY_NAMES: Final = (*UNCERTAINTY_MEMBERS, "precision_conditions")
-# provenance.md:89 "| Member | Required | Contents |"
+# provenance.md:90 "| Member | Required | Contents |"
 PROVENANCE_NAMES: Final = (
     "origin", "source", "extraction", "evidence", "assistance", "review", "derivation", "formulation",
     "search", "import", "per_parameter", "recipe",
 )  # fmt: skip
-# provenance.md:92 "`key` in the source registry (section 8); `document`"
+# provenance.md:93 "`key` in the source registry (section 8); `document`"
 SOURCE_NAMES: Final = ("key", "document", "locator")
 # The members a review names, as the example review holds them, with a status object's:
-# provenance.md:96 "with who checked the value against the source, their ORCID, the date, whether they are
+# provenance.md:97 "with who checked the value against the source, their ORCID, the date, whether they are
 # independent of whoever or whatever extracted it, and the checklist items covered"
 REVIEW_NAMES: Final = (
     "status", "reason", "result", "reviewer", "orcid", "date", "independent_of_extraction", "checklist"
 )  # fmt: skip
-# Those a reviewed review returns, a status object's aside: provenance.md:96 "or `{"result": "reviewed", ...}`
+# Those a reviewed review returns, a status object's aside: provenance.md:97 "or `{"result": "reviewed", ...}`
 # with who checked the value against the source"
 RESULT_REVIEW_NAMES: Final = tuple(name for name in REVIEW_NAMES if name not in ("status", "reason"))
-# provenance.md:195-197 "holds `method`, the method's identifier, a string; `inputs`"
+# provenance.md:196-198 "holds `method`, the method's identifier, a string; `inputs`"
 DERIVATION_NAMES: Final = ("method", "inputs", "assumptions", "input_specimens", "mixed_conditions")
 INPUT_NAMES: Final = ("record", "field")
 INPUT_SPECIMEN_NAMES: Final = ("input", "specimen")
@@ -1474,7 +1474,7 @@ def check_form_member(field_value: JsonObject, form: str, row: FieldRow, faults:
 
 
 def withheld_value(stated: StatusObject, faults: Reasons) -> None:
-    # provenance.md:335 "A reader refuses a withheld value, with the reason `withheld`."
+    # provenance.md:336 "A reader refuses a withheld value, with the reason `withheld`."
     if stated.token == "withheld":
         faults.add("withheld")
 
@@ -1502,7 +1502,7 @@ def check_conditions(field_value: JsonObject, faults: Reasons) -> None:
 
 def check_condition(name: str, condition: JsonValue, faults: Reasons) -> None:
     row = CONDITIONS[name]
-    # provenance.md:245 "either may instead hold a status object"
+    # provenance.md:246 "either may instead hold a status object"
     if status_object(condition, faults, allowed=ANY_STATUS, shape=CONDITION_NAMES) is not None:
         return
     if not isinstance(condition, dict):
@@ -1513,7 +1513,7 @@ def check_condition(name: str, condition: JsonValue, faults: Reasons) -> None:
     if holds_another_kind(condition, ("token",) if row.shape == "numeric" else NUMERIC_CONDITION_ONLY):
         faults.add("form_invalid")
     if row.shape == "numeric":
-        # provenance.md:241 "A numeric condition holds"
+        # provenance.md:242 "A numeric condition holds"
         check_value_or_range(condition, faults)
         if "unit" not in condition:
             faults.add("form_invalid")
@@ -1524,12 +1524,12 @@ def check_condition(name: str, condition: JsonValue, faults: Reasons) -> None:
         if "set_or_measured" in condition:
             known_token(condition["set_or_measured"], "set_or_measured", SET_OR_MEASURED, faults)
     else:
-        # provenance.md:244 "a token condition holds"
+        # provenance.md:245 "a token condition holds"
         if "token" not in condition:
             faults.add("form_invalid")
         else:
             known_token(condition["token"], "token", row.tokens, faults)
-        # provenance.md:244-245 "so a `unit` on one gives `unit_mismatch` at step 9"
+        # provenance.md:245-246 "so a `unit` on one gives `unit_mismatch` at step 9"
         if "unit" in condition:
             check_unit(condition["unit"], faults)
     check_basis(condition, None, faults)
@@ -1541,7 +1541,7 @@ def holds_another_kind(value: JsonObject, members: tuple[str, ...]) -> bool:
 
 
 def check_value_or_range(value: JsonObject, faults: Reasons) -> None:
-    # provenance.md:241 "with `lo <= hi`"; read_side_contract.md:308 "a condition's or fact's `range`"
+    # provenance.md:242 "with `lo <= hi`"; read_side_contract.md:308 "a condition's or fact's `range`"
     if ("value" in value) == ("range" in value):
         faults.add("form_invalid")
     if "value" in value and not number(value["value"]):
@@ -1551,7 +1551,7 @@ def check_value_or_range(value: JsonObject, faults: Reasons) -> None:
 
 
 def check_basis(value: JsonObject, fixed: str | None, faults: Reasons) -> None:
-    # provenance.md:209-210 "each shape except a status object carries a `basis`: `stated`, or `inferred` with
+    # provenance.md:210-211 "each shape except a status object carries a `basis`: `stated`, or `inferred` with
     # an `inferred_from` text"
     if "basis" not in value:
         faults.add("form_invalid")
@@ -1565,7 +1565,7 @@ def check_basis(value: JsonObject, fixed: str | None, faults: Reasons) -> None:
 
 
 def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
-    # provenance.md:259 "a non-empty list of"
+    # provenance.md:260 "a non-empty list of"
     if not isinstance(entries, list) or not entries:
         faults.add("form_invalid")
         return
@@ -1580,7 +1580,7 @@ def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
             kind = entry["stated_as"]
             unstated = status_object(kind, faults, allowed=frozenset({"unstated"}), scalar=True)
             if unstated is not None:
-                # provenance.md:261-262 "or `{"status": "unstated"}` (a ± whose kind the source does not
+                # provenance.md:262-263 "or `{"status": "unstated"}` (a ± whose kind the source does not
                 # state)", so another token is no kind of the list's rules, refused by its own.
                 if unstated.token == "unstated":
                     kinds.append("unstated")
@@ -1588,12 +1588,12 @@ def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
                 known_token(kind, "stated_as", STATED_AS, faults)
                 if isinstance(kind, str):
                     kinds.append(kind)
-        # provenance.md:262 "`value` is a number not below zero"
+        # provenance.md:263 "`value` is a number not below zero"
         if "value" in entry and not not_negative(entry["value"]):
             faults.add("form_invalid")
         if "unit" in entry:
             check_unit(entry["unit"], faults)
-    # provenance.md:264-265 "The list holds at most one entry of each kind, and an entry of unstated kind
+    # provenance.md:265-266 "The list holds at most one entry of each kind, and an entry of unstated kind
     # stands alone."
     if len(kinds) != len(set(kinds)) or ("unstated" in kinds and len(kinds) > 1):
         faults.add("form_invalid")
@@ -1618,7 +1618,7 @@ def check_specimen(specimen: JsonValue, faults: Reasons) -> None:
 def check_fact(name: str, fact: JsonValue, faults: Reasons) -> None:
     row = FACTS[name]
     names = fact_names(row)
-    # provenance.md:299 "Every fact takes its row's shape or a status object"
+    # provenance.md:300 "Every fact takes its row's shape or a status object"
     if status_object(fact, faults, allowed=ANY_STATUS, shape=names) is not None:
         return
     if not isinstance(fact, dict):
@@ -1824,12 +1824,12 @@ def check_provenance(provenance: JsonValue, faults: Reasons) -> None:
         faults.add("form_invalid")
     if "source" in provenance:
         source = provenance["source"]
-        # provenance.md:116 "wherever present, an object whose `key` is a string"
+        # provenance.md:117 "wherever present, an object whose `key` is a string"
         if not (isinstance(source, dict) and isinstance(source.get("key"), str)):
             faults.add("form_invalid")
         elif slipped(source, SOURCE_NAMES):
             faults.add("form_invalid")
-    # provenance.md:118 "`derivation` for origin `derived` (section 5)"
+    # provenance.md:119 "`derivation` for origin `derived` (section 5)"
     if origin == "derived":
         if "derivation" not in provenance:
             faults.add("form_invalid")
@@ -1838,7 +1838,7 @@ def check_provenance(provenance: JsonValue, faults: Reasons) -> None:
 
 
 def check_derivation(derivation: JsonValue, faults: Reasons) -> None:
-    """provenance.md:195 "A derived value's `derivation` holds `method`" and provenance.md:200-201 "a list of
+    """provenance.md:196 "A derived value's `derivation` holds `method`" and provenance.md:201-202 "a list of
     `{"input": <index into inputs>, "specimen": {...}}`"."""
     if not isinstance(derivation, dict):
         faults.add("form_invalid")
@@ -1867,8 +1867,8 @@ def check_derivation(derivation: JsonValue, faults: Reasons) -> None:
     assumptions = derivation.get("assumptions")
     if not (isinstance(assumptions, list) and all(isinstance(text, str) for text in assumptions)):
         faults.add("form_invalid")
-    # provenance.md:200 "A derived value carries the specimen facts of each input in
-    # `derivation.input_specimens`": required, as `mixed_conditions` is not (provenance.md:203 "where present,
+    # provenance.md:201 "A derived value carries the specimen facts of each input in
+    # `derivation.input_specimens`": required, as `mixed_conditions` is not (provenance.md:204 "where present,
     # the member is a boolean").
     check_input_specimens(derivation.get("input_specimens"), len(inputs), faults)
     if "mixed_conditions" in derivation and not isinstance(derivation["mixed_conditions"], bool):
@@ -1876,7 +1876,7 @@ def check_derivation(derivation: JsonValue, faults: Reasons) -> None:
 
 
 def check_input_specimens(entries: JsonValue, inputs: int, faults: Reasons) -> None:
-    # provenance.md:201-202 "each `input` a whole number below the length of `inputs` and each `specimen` a
+    # provenance.md:202-203 "each `input` a whole number below the length of `inputs` and each `specimen` a
     # map of specimen facts"
     if not isinstance(entries, list):
         faults.add("form_invalid")
@@ -2398,7 +2398,7 @@ def uncertainty_returned(uncertainty: JsonValue) -> JsonValue:
 
 def review_read(provenance: JsonObject) -> JsonObject:
     """A review as found, in two cases only, and otherwise as a status object holding `not_checked`:
-    provenance.md:119 "A reader returns it as found in two cases only"."""
+    provenance.md:120 "A reader returns it as found in two cases only"."""
     review = provenance.get("review")
     not_checked: JsonObject = {"status": "not_checked"}
     if (
@@ -2574,7 +2574,7 @@ def evidence_entry_returned(entry: JsonObject) -> JsonValue:
             continue
         given = entry[name]
         if name == "provenance" and isinstance(given, dict):
-            # provenance.md:119-121 "A reader returns it as found in two cases only": every review it returns.
+            # provenance.md:120-122 "A reader returns it as found in two cases only": every review it returns.
             provenance = written_returned(given, [{"$ref": "#/$defs/provenance"}])
             assert isinstance(provenance, dict)
             returned[name] = {**provenance, "review": review_read(given)}
