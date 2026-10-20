@@ -37,6 +37,19 @@ every family entry goes in `families/CHANGELOG.md`.
   declaration, never the label's: an implied condition that supplies a shear rate (PR-316), or a declaration that
   covers the reason. No rule widens a label beyond its stated `shear_rate` condition.
 
+### Data
+- `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from
+  the IAPWS formulations (maintainer, 2026-10-19). A condition changed, so its version is now `1.0.0`, a major
+  change by `record_format.md` section 8 item 3, and its content hash
+  `sha256:88851e6263f4dba3f41137f07a8a95dba13cb09bf36650a361bc11ff5bf22a07`; its label is unchanged, and it is
+  still an example, not yet fully human-reviewed. A read of it now names the test method: the quickstart's
+  request and the pinned reads in `tests/examples/` accept `reference_formulation`, and one that names none reads
+  the stated method `unknown` (`condition_unchecked`), as `examples/README.md` now says. New tests read the water
+  values refused by an accept list of measuring methods alone (`condition_not_accepted`), and the plasma,
+  measured, `unknown` (`condition_unstated`) once its method is removed, by a request that also accepts
+  `reference_formulation`, and `not_met` (`condition_not_accepted`) by one that accepts `reference_formulation`
+  alone.
+
 ## [0.1.0.dev2] - 2026-10-20
 
 A development pre-release. It holds S2: the read of a field holding a constant, an interval, a composition or

@@ -9,8 +9,8 @@ Three records that show what a record holds and how a read uses it, each with it
 
 | File | Record | Field | Value | Conditions | Source |
 |---|---|---|---|---|---|
-| [`records/water.json`](records/water.json) | `example/water` | `bulk.density` | 998.207 kg/m³; 993.330 kg/m³ | 293.15 K; 310.15 K; 0.101325 MPa | evaluated from IAPWS R6-95(2018) |
-| | | `fluid.dynamic_viscosity` | 1.00160 mPa·s; 0.691304 mPa·s | 293.15 K; 310.15 K; 0.101325 MPa; shear rate unstated | evaluated from IAPWS R12-08 |
+| [`records/water.json`](records/water.json) | `example/water` | `bulk.density` | 998.207 kg/m³; 993.330 kg/m³ | 293.15 K; 310.15 K; 0.101325 MPa; reference formulation | evaluated from IAPWS R6-95(2018) |
+| | | `fluid.dynamic_viscosity` | 1.00160 mPa·s; 0.691304 mPa·s | 293.15 K; 310.15 K; 0.101325 MPa; shear rate unstated; reference formulation | evaluated from IAPWS R12-08 |
 | [`records/ndfeb_n45.json`](records/ndfeb_n45.json) | `example/ndfeb_n45` | `magnetic.remanence` | 1.32 to 1.37 T, a datasheet's limits | "room temperature", recorded as unstated; specimen shape and test method unstated | supermagnete.de, "Physical Magnet Data" and the data sheet of article W-01-N, accessed 2026-10-17 |
 | [`records/human_plasma.json`](records/human_plasma.json) | `example/human_plasma` | `fluid.dynamic_viscosity` | 1.33 mPa·s, "± 0.03" of unstated kind, 25 donors | 310.15 K; shear rate 10 to 100 s⁻¹; rotational rheometer | Marcinkowska-Gapinska and Nawrocka-Bogusz 2013, doi:10.1155/2013/490410, Table 1 (CC BY 3.0) |
 
@@ -29,7 +29,9 @@ these read with no pick, and applies a declared nominal to an interval (`read_si
   `unknown` (`condition_unchecked`).
 - `example/water` holds each field at two temperatures, as alternatives (`record_format.md` section 5). Each
   alternative is read alone; one whose temperature lies outside the request's tolerance is set aside, and the
-  result rests on those left (`read_side_contract.md` section 3, step 7). A density request at one of the two
+  result rests on those left (`read_side_contract.md` section 3, step 7). Each value states its test method,
+  `reference_formulation` (`provenance.md` section 6.1 item 10), and each request here accepts it: one that
+  names no test method reads it `unknown` (`condition_unchecked`). A density request at one of the two
   temperatures, with a tolerance of 0.5 K, sets the other aside and reads `met`, with the value of the one
   left. A density request that both alternatives meet gives `unknown` with `no_pick`, and holds both values,
   until the consumer picks one (S4). The viscosity states no shear rate, which its row requires, so a
@@ -68,4 +70,5 @@ and reads it. `tests/examples/` checks these outcomes, so this list changes when
   (`provenance.md` section 8), and the examples are outside the library.
 - The values are licensed CC0-1.0, and quoted evidence is excluded from that licence, as in every record.
 - The script that first wrote these files is not part of the repository. The files are the source: after an
-  edit, recompute the record's `content_hash` (`record_format.md` section 9).
+  edit, change the record's `version` as `record_format.md` section 8 item 3 says, then recompute its
+  `content_hash` (`record_format.md` section 9).

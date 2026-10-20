@@ -58,7 +58,8 @@ The content hash covers the whole record but the hash itself, its `card`, and ea
 A request names the record by its identifier, version and content hash, and the field. It gives the operating
 conditions, and for each condition the record states, what the consumer requires: a tolerance for a number,
 the tokens it accepts for a token (`read_side_contract.md` section 1). Here, body temperature to within 0.5 K,
-and the density of the whole specimen (`apparent`).
+the density of the whole specimen (`apparent`), and a value evaluated from a reference formulation
+(`reference_formulation`), the test method the example states.
 
 ```pycon
 >>> store = load_records([path])
@@ -72,6 +73,7 @@ and the density of the whole specimen (`apparent`).
 ...             "conditions": {
 ...                 "temperature": {"tolerance": {"value": 0.5, "unit": "K"}},
 ...                 "density_kind": {"accept": ["apparent"]},
+...                 "test_method": {"accept": ["reference_formulation"]},
 ...             },
 ...         },
 ...     }
@@ -97,7 +99,7 @@ The same request at 298.15 K (25 °C):
 >>> [(reason.code, reason.condition) for reason in refused.reasons]
 [('condition_outside', 'temperature')]
 >>> sorted((entry.name, entry.status) for entry in refused.conditions)
-[('density_kind', 'met'), ('temperature', 'not_met')]
+[('density_kind', 'met'), ('temperature', 'not_met'), ('test_method', 'met')]
 ```
 
 The record states 310.15 K, which is outside the request's tolerance of 298.15 ± 0.5 K, so the read is refused

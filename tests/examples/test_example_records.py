@@ -6,6 +6,7 @@ documented; and a read of each gives, at this release, what that documentation s
 control that must fail."""
 
 import copy
+import json
 import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from materica.core.envelope import envelope_problems
 from materica.core.jsonio import JsonValue
 from materica.core.read import ReadResult
 from materica.core.reasons import Reason
+from materica.core.record import RecordStore
 from materica.core.value_shapes import JsonObject, a_list, an_object
 from materica.core.vocabulary import VOCABULARY
 from tests.spec_sync.schemas import validator
@@ -506,6 +508,9 @@ def kelvin(value: float, tolerance: float) -> tuple[JsonObject, JsonObject]:
 
 
 STORE = load_records(sorted(RECORDS.glob("*.json")))
+# Each water value is evaluated from a formulation and states so (`provenance.md` section 6.1 item 10), so a
+# request for one accepts that method; one that names none leaves it `condition_unchecked`.
+FORMULATION: JsonObject = {"test_method": {"accept": ["reference_formulation"]}}
 
 
 def test_the_plasma_example_reads_met() -> None:
@@ -535,7 +540,7 @@ def test_the_water_example_gives_no_pick_where_both_alternatives_meet() -> None:
             example("water.json"),
             "bulk.density",
             {"temperature": operating},
-            {"temperature": tolerance, "density_kind": {"accept": ["apparent"]}},
+            {"temperature": tolerance, "density_kind": {"accept": ["apparent"]}, **FORMULATION},
         ),
         STORE,
     )
@@ -555,7 +560,7 @@ def test_the_water_density_at_one_temperature_is_the_one_alternative_left(
             example("water.json"),
             "bulk.density",
             {"temperature": operating},
-            {"temperature": tolerance, "density_kind": {"accept": ["apparent"]}},
+            {"temperature": tolerance, "density_kind": {"accept": ["apparent"]}, **FORMULATION},
         ),
         STORE,
     )
@@ -575,7 +580,7 @@ def test_the_water_viscosity_at_one_temperature_is_the_one_left_its_shear_rate_u
             example("water.json"),
             "fluid.dynamic_viscosity",
             {"temperature": operating},
-            {"temperature": tolerance},
+            {"temperature": tolerance, **FORMULATION},
         ),
         STORE,
     )
@@ -595,7 +600,7 @@ def test_the_water_viscosity_where_both_alternatives_meet_gives_no_pick() -> Non
             example("water.json"),
             "fluid.dynamic_viscosity",
             {"temperature": operating},
-            {"temperature": tolerance},
+            {"temperature": tolerance, **FORMULATION},
         ),
         STORE,
     )
@@ -608,6 +613,101 @@ def test_the_water_viscosity_where_both_alternatives_meet_gives_no_pick() -> Non
         },
     )
     assert [alternative.value for alternative in result.alternative_values or ()] == [0.0010016, 0.000691304]
+
+
+def test_a_water_read_that_names_no_test_method_leaves_the_stated_one_unchecked() -> None:
+    """The density states its test method, so a request that names none reads it `unknown`
+    (`condition_unchecked`, `read_side_contract.md` section 5), the value carried."""
+    operating, tolerance = kelvin(293.15, 0.5)
+    result = read(
+        request(
+            example("water.json"),
+            "bulk.density",
+            {"temperature": operating},
+            {"temperature": tolerance, "density_kind": {"accept": ["apparent"]}},
+        ),
+        STORE,
+    )
+    assert (result.status, result.reasons, result.value) == (
+        "unknown",
+        (Reason("condition_unchecked", "test_method", alternative=0),),
+        998.207,
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "own"),
+    [
+        ("bulk.density", {"density_kind": {"accept": ["apparent"]}}),
+        ("fluid.dynamic_viscosity", {}),
+    ],
+)
+def test_the_water_values_are_accepted_by_their_stated_method_and_by_no_measured_one(
+    field: str, own: JsonObject
+) -> None:
+    """A consumer that accepts only measuring methods refuses each alternative (`condition_not_accepted`),
+    and one that accepts `reference_formulation` meets the method (`provenance.md` section 6.1 item 10)."""
+    operating, tolerance = kelvin(293.15, 0.5)
+    measured: JsonObject = {
+        "test_method": {"accept": ["rotational_rheometer", "capillary_viscometer", "pycnometer"]}
+    }
+    results = {
+        accepted: read(
+            request(
+                example("water.json"),
+                field,
+                {"temperature": operating},
+                {"temperature": tolerance, **own, **by},
+            ),
+            STORE,
+        )
+        for accepted, by in (("formulation", FORMULATION), ("measured", measured))
+    }
+    entries = {entry.name: entry.status for entry in results["formulation"].conditions or ()}
+    assert entries["test_method"] == "met"
+    refused = results["measured"]
+    assert (refused.status, refused.value) == ("not_met", None)
+    assert {reason for reason in refused.reasons if reason.condition == "test_method"} == {
+        Reason("condition_not_accepted", "test_method", alternative=0),
+        Reason("condition_not_accepted", "test_method", alternative=1),
+    }
+
+
+def test_an_accept_list_holding_reference_formulation_accepts_no_other_method_and_no_absent_one() -> None:
+    """The plasma's viscosity, measured, is met where its test method is accepted, and reads `unknown`
+    (`condition_unstated`) once its method is removed, whatever methods the request accepts: an accept list
+    holding `reference_formulation` accepts no value that states no method. One holding that token alone
+    refuses the plasma's stated method (`condition_not_accepted`, `read_side_contract.md` section 5)."""
+    operating, tolerance = kelvin(310.15, 0.5)
+    both: JsonObject = {"test_method": {"accept": ["rotational_rheometer", "reference_formulation"]}}
+    formulation_alone: JsonObject = {"test_method": {"accept": ["reference_formulation"]}}
+    plasma = example("human_plasma.json")
+    without = copy.deepcopy(plasma)
+    drop(("body", "sections", "fluid", "fields", "dynamic_viscosity", "conditions", "test_method"))(without)
+    rehashed(without)
+    statuses: list[tuple[str, tuple[Reason, ...]]] = []
+    for record, accepted in ((plasma, both), (without, both), (plasma, formulation_alone)):
+        store = RecordStore()
+        store.add("plasma.json", json.dumps(record).encode("utf-8"))
+        result = read(
+            request(
+                record,
+                "fluid.dynamic_viscosity",
+                {"temperature": operating, "shear_rate": {"range": [10.0, 100.0], "unit": "1/s"}},
+                {
+                    "temperature": tolerance,
+                    "shear_rate": {"tolerance": {"value": 0.0, "unit": "1/s"}},
+                    **accepted,
+                },
+            ),
+            store,
+        )
+        statuses.append((result.status, result.reasons))
+    assert statuses == [
+        ("met", ()),
+        ("unknown", (Reason("condition_unstated", "test_method"),)),
+        ("not_met", (Reason("condition_not_accepted", "test_method"),)),
+    ]
 
 
 N45_UNKNOWN_REASONS = [
