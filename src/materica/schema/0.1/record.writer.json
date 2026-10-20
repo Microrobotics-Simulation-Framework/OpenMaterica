@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://w3id.org/materica/schema/0.1/record.writer.json",
-  "$comment": "Hand-edited: the one source of a record's structure. record.reader.json and the package's typed shapes are generated from it. A member marked x-materica-write-only is one a read does not check (read_side_contract.md section 3, step 8), so a fault in it never refuses a field at read, although a read may return it (a review, as found); a rule that tests such a member, or requires only such members, is the record checks' alone, and the reader's $defs leave it out. Tokens come from vocabulary/, a token condition's own list included, and so does what binds a name to its row: a section's field names and each field's forms, unit and label (vocabulary/fields.json), and a numeric condition's unit (vocabulary/conditions.json), each applied by an allOf that the reader schema and the typed shapes leave out: a read checks a field against its row in its own steps, a unit at step 9 alone. The table, power-law, parameter-set and reference-data forms, the fit record, extensions and the provenance members not yet named are placeholders until their shapes are written.",
+  "$comment": "Hand-edited: the one source of a record's structure. record.reader.json and the package's typed shapes are generated from it. A member marked x-materica-write-only is one a read does not check (read_side_contract.md section 3, step 8), so a fault in it never refuses a field at read, although a read may return it (a review, as found); a rule that tests such a member, or requires only such members, is the record checks' alone, and the reader's $defs leave it out. Tokens come from vocabulary/, a token condition's own list included, and so does what binds a name to its row: a section's field names and each field's forms, unit and label (vocabulary/fields.json), and a numeric condition's unit (vocabulary/conditions.json), each applied by an allOf that the reader schema and the typed shapes leave out: a read checks a field against its row in its own steps, a unit at step 9 alone. The power-law, parameter-set and reference-data forms, the fit record, extensions and the provenance members not yet named are placeholders until their shapes are written.",
   "title": "Record",
-  "description": "A record as a writer writes it (record_format.md, provenance.md and uncertainty.md): closed in its structure, with no member it does not define, and every token list the vocabulary's, but for what is not yet written. Each section's field names, an overlay's replaced fields, each field's forms, unit and label, and a numeric condition's unit are bound to the specification's rows through the vocabulary. Open until written: the parameter names of `per_parameter`; the namespaces in `extensions`, which a reader never checks; an interface record's `body`; and the placeholders, any object until their members are named: the `table`, `power_law`, `parameter_set` and `reference_data` forms' members, the `fit` record, and in provenance `assistance`, `formulation`, `import`, `recipe`, `search` beside its weighting and inputs, and extraction's `digitisation`. The status-object tokens are written here, by hand, and checked against provenance.md section 1.",
+  "description": "A record as a writer writes it (record_format.md, provenance.md and uncertainty.md): closed in its structure, with no member it does not define, and every token list the vocabulary's, but for what is not yet written. Each section's field names, an overlay's replaced fields, each field's forms, unit and label, and a numeric condition's unit are bound to the specification's rows through the vocabulary. Open until written: the parameter names of `per_parameter`; the namespaces in `extensions`, which a reader never checks; an interface record's `body`; and the placeholders, any object until their members are named: the `power_law`, `parameter_set` and `reference_data` forms' members, the `fit` record, and in provenance `assistance`, `formulation`, `import`, `recipe`, `search` beside its weighting and inputs, and extraction's `digitisation`. The status-object tokens are written here, by hand, and checked against provenance.md section 1.",
   "type": "object",
   "required": ["schema_version", "record_type", "id", "version", "name", "licence", "content_hash", "body"],
   "properties": {
@@ -273,13 +273,13 @@
       "unevaluatedProperties": false
     },
     "table_field": {
-      "description": "A table (record_format.md section 6). Its member is a placeholder until its shape is written.",
+      "description": "A table: values against a numeric condition, its axis, which the field's conditions hold as not_applicable (record_format.md section 6).",
       "type": "object",
-      "allOf": [{"$ref": "#/$defs/field_members"}],
+      "allOf": [{"$ref": "#/$defs/field_members"}, {"$ref": "vocabulary/conditions.json#/$defs/axes"}],
       "required": ["form", "table", "conditions", "statistics"],
       "properties": {
         "form": {"const": "table"},
-        "table": {"anyOf": [{"$ref": "#/$defs/placeholder"}, {"$ref": "#/$defs/status_withheld"}]},
+        "table": {"anyOf": [{"$ref": "#/$defs/table"}, {"$ref": "#/$defs/status_withheld"}]},
         "conditions": {"$ref": "#/$defs/conditions"},
         "statistics": {"$ref": "#/$defs/field_statistics"}
       },
@@ -376,6 +376,23 @@
     "unit": {
       "description": "A unit code, compared with the registered unit at step 9 alone (record_format.md section 4.2), or a status object.",
       "anyOf": [{"type": "string"}, {"$ref": "#/$defs/status_object"}]
+    },
+    "table": {
+      "description": "A table's members (record_format.md section 6, table items 1 to 5): y holds one number for each value of x, at least two of them distinct, in an order that never decreases, each edge lying strictly inside x's range and in x exactly twice, consecutively, and no other value of x twice; and source_range is two numbers, the first not greater than the second, sharing with x's range a value that is no edge. A schema states none of these rules across members, which step 8 of a read checks. points, a name item 5 reserves, is no member of this shape: a 0.1.0 writer does not write it, and a reader refuses a table that holds it at step 8 (points_unsupported).",
+      "type": "object",
+      "required": ["axis", "axis_unit", "x", "y", "scheme", "edges"],
+      "properties": {
+        "axis": {"$ref": "vocabulary/conditions.json#/$defs/axis"},
+        "axis_unit": {"$ref": "#/$defs/unit"},
+        "x": {"type": "array", "minItems": 2, "items": {"type": "number"}},
+        "y": {"type": "array", "minItems": 2, "items": {"type": "number"}},
+        "scheme": {"$ref": "vocabulary/forms.json#/$defs/table_scheme"},
+        "edges": {"type": "array", "uniqueItems": true, "items": {"type": "number"}},
+        "source_range": {"$ref": "#/$defs/range"}
+      },
+      "additionalProperties": false,
+      "if": {"required": ["scheme"], "properties": {"scheme": {"const": "loglog"}}},
+      "then": {"properties": {"x": {"items": {"exclusiveMinimum": 0}}, "y": {"items": {"exclusiveMinimum": 0}}}}
     },
     "interval": {
       "description": "lower <= upper where both are numbers, and at most one holds none (record_format.md section 6).",

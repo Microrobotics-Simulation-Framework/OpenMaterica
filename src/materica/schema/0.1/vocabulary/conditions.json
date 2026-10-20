@@ -37,6 +37,15 @@
         "reference_formulation"
       ]
     },
+    "axis": {
+      "enum": [
+        "temperature",
+        "shear_rate",
+        "magnetic_flux_density",
+        "specimen_size",
+        "measurement_dimension"
+      ]
+    },
     "units": {
       "description": "Each numeric condition's registered unit, in its unit and its plus_minus entries'.",
       "properties": {
@@ -121,6 +130,332 @@
           }
         }
       }
+    },
+    "axes": {
+      "description": "A table's axis: its axis_unit holds that numeric condition's registered unit, and the field's conditions hold the condition as not_applicable.",
+      "properties": {
+        "table": {
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "temperature"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "axis_unit": {
+                    "const": "K"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "shear_rate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "axis_unit": {
+                    "const": "1/s"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "magnetic_flux_density"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "axis_unit": {
+                    "const": "T"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "specimen_size"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "axis_unit": {
+                    "const": "m"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "measurement_dimension"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "axis_unit": {
+                    "const": "m"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "table"
+            ],
+            "properties": {
+              "table": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "temperature"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "conditions"
+            ],
+            "properties": {
+              "conditions": {
+                "required": [
+                  "temperature"
+                ],
+                "properties": {
+                  "temperature": {
+                    "type": "object",
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "not_applicable"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "table"
+            ],
+            "properties": {
+              "table": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "shear_rate"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "conditions"
+            ],
+            "properties": {
+              "conditions": {
+                "required": [
+                  "shear_rate"
+                ],
+                "properties": {
+                  "shear_rate": {
+                    "type": "object",
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "not_applicable"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "table"
+            ],
+            "properties": {
+              "table": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "magnetic_flux_density"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "conditions"
+            ],
+            "properties": {
+              "conditions": {
+                "required": [
+                  "magnetic_flux_density"
+                ],
+                "properties": {
+                  "magnetic_flux_density": {
+                    "type": "object",
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "not_applicable"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "table"
+            ],
+            "properties": {
+              "table": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "specimen_size"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "conditions"
+            ],
+            "properties": {
+              "conditions": {
+                "required": [
+                  "specimen_size"
+                ],
+                "properties": {
+                  "specimen_size": {
+                    "type": "object",
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "not_applicable"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "table"
+            ],
+            "properties": {
+              "table": {
+                "required": [
+                  "axis"
+                ],
+                "properties": {
+                  "axis": {
+                    "const": "measurement_dimension"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "conditions"
+            ],
+            "properties": {
+              "conditions": {
+                "required": [
+                  "measurement_dimension"
+                ],
+                "properties": {
+                  "measurement_dimension": {
+                    "type": "object",
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "not_applicable"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "conditions": {

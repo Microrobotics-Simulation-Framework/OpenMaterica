@@ -463,7 +463,7 @@
       }
     },
     "table_field": {
-      "description": "A table (record_format.md section 6). Its member is a placeholder until its shape is written.",
+      "description": "A table: values against a numeric condition, its axis, which the field's conditions hold as not_applicable (record_format.md section 6).",
       "type": "object",
       "allOf": [
         {
@@ -483,7 +483,7 @@
         "table": {
           "anyOf": [
             {
-              "$ref": "#/$defs/placeholder"
+              "$ref": "#/$defs/table"
             },
             {
               "$ref": "#/$defs/status_withheld"
@@ -732,6 +732,77 @@
           "$ref": "#/$defs/status_object"
         }
       ]
+    },
+    "table": {
+      "description": "A table's members (record_format.md section 6, table items 1 to 5): y holds one number for each value of x, at least two of them distinct, in an order that never decreases, each edge lying strictly inside x's range and in x exactly twice, consecutively, and no other value of x twice; and source_range is two numbers, the first not greater than the second, sharing with x's range a value that is no edge. A schema states none of these rules across members, which step 8 of a read checks. points, a name item 5 reserves, is no member of this shape: a 0.1.0 writer does not write it, and a reader refuses a table that holds it at step 8 (points_unsupported).",
+      "type": "object",
+      "required": [
+        "axis",
+        "axis_unit",
+        "x",
+        "y",
+        "scheme",
+        "edges"
+      ],
+      "properties": {
+        "axis": {
+          "type": "string"
+        },
+        "axis_unit": {
+          "$ref": "#/$defs/unit"
+        },
+        "x": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "y": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "scheme": {
+          "type": "string"
+        },
+        "edges": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "number"
+          }
+        },
+        "source_range": {
+          "$ref": "#/$defs/range"
+        }
+      },
+      "if": {
+        "required": [
+          "scheme"
+        ],
+        "properties": {
+          "scheme": {
+            "const": "loglog"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "x": {
+            "items": {
+              "exclusiveMinimum": 0
+            }
+          },
+          "y": {
+            "items": {
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      }
     },
     "interval": {
       "description": "lower <= upper where both are numbers, and at most one holds none (record_format.md section 6).",

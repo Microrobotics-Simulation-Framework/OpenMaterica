@@ -55,12 +55,42 @@ class ScopeModel(TypedDict):
 Label: TypeAlias = Literal["materica.fluid.newtonian.v1", "materica.magnetic.linear.v1"]
 
 
-IntervalBasis: TypeAlias = Literal["reported_range", "proxy_range", "specification_limits", "stated_bound"]
+Axis: TypeAlias = Literal[
+    "temperature", "shear_rate", "magnetic_flux_density", "specimen_size", "measurement_dimension"
+]
+
+
+DensityKindToken: TypeAlias = Literal["apparent", "matrix"]
+
+
+SpecimenShapeToken: TypeAlias = Literal[
+    "sphere", "cylinder", "prolate_spheroid", "oblate_spheroid", "slab", "film", "irregular"
+]
+
+
+MeasurementGeometryToken: TypeAlias = Literal["bulk", "tube", "gap"]
+
+
+TestMethodToken: TypeAlias = Literal[
+    "rotational_rheometer",
+    "capillary_viscometer",
+    "vibrating_sample_magnetometer",
+    "squid_magnetometer",
+    "hysteresigraph",
+    "pycnometer",
+    "reference_formulation",
+]
+
+
+TableScheme: TypeAlias = Literal["linear", "loglog"]
 
 
 Form: TypeAlias = Literal[
     "constant", "table", "power_law", "interval", "composition", "parameter_set", "reference_data", "evidence"
 ]
+
+
+IntervalBasis: TypeAlias = Literal["reported_range", "proxy_range", "specification_limits", "stated_bound"]
 
 
 CompositionBasis: TypeAlias = Literal["mass_fraction", "volume_fraction", "mole_fraction"]
@@ -238,28 +268,6 @@ StatedAs: TypeAlias = Literal["bound", "sd"]
 
 
 SetOrMeasured: TypeAlias = Literal["set_point", "measured"]
-
-
-DensityKindToken: TypeAlias = Literal["apparent", "matrix"]
-
-
-SpecimenShapeToken: TypeAlias = Literal[
-    "sphere", "cylinder", "prolate_spheroid", "oblate_spheroid", "slab", "film", "irregular"
-]
-
-
-MeasurementGeometryToken: TypeAlias = Literal["bulk", "tube", "gap"]
-
-
-TestMethodToken: TypeAlias = Literal[
-    "rotational_rheometer",
-    "capillary_viscometer",
-    "vibrating_sample_magnetometer",
-    "squid_magnetometer",
-    "hysteresigraph",
-    "pycnometer",
-    "reference_formulation",
-]
 
 
 Range: TypeAlias = tuple[float, float]
@@ -791,6 +799,26 @@ class OverlayScope(TypedDict):
 
 
 Unit: TypeAlias = str | StatusObject
+
+
+class Table(TypedDict):
+    """
+    A table's members (record_format.md section 6, table items 1 to 5): y holds one number for each value of
+    x, at least two of them distinct, in an order that never decreases, each edge lying strictly inside x's
+    range and in x exactly twice, consecutively, and no other value of x twice; and source_range is two
+    numbers, the first not greater than the second, sharing with x's range a value that is no edge. A schema
+    states none of these rules across members, which step 8 of a read checks. points, a name item 5 reserves,
+    is no member of this shape: a 0.1.0 writer does not write it, and a reader refuses a table that holds it
+    at step 8 (points_unsupported).
+    """
+
+    axis: Axis
+    axis_unit: Unit
+    x: list[float]
+    y: list[float]
+    scheme: TableScheme
+    edges: list[float]
+    source_range: NotRequired[Range]
 
 
 class Interval(TypedDict):
@@ -1345,8 +1373,8 @@ class Record(TypedDict):
     and a numeric condition's unit are bound to the specification's rows through the vocabulary. Open until
     written: the parameter names of `per_parameter`; the namespaces in `extensions`, which a reader never
     checks; an interface record's `body`; and the placeholders, any object until their members are named: the
-    `table`, `power_law`, `parameter_set` and `reference_data` forms' members, the `fit` record, and in
-    provenance `assistance`, `formulation`, `import`, `recipe`, `search` beside its weighting and inputs, and
+    `power_law`, `parameter_set` and `reference_data` forms' members, the `fit` record, and in provenance
+    `assistance`, `formulation`, `import`, `recipe`, `search` beside its weighting and inputs, and
     extraction's `digitisation`. The status-object tokens are written here, by hand, and checked against
     provenance.md section 1.
     """
@@ -1735,11 +1763,12 @@ class ConstantField(FieldMembers):
 
 class TableField(FieldMembers):
     """
-    A table (record_format.md section 6). Its member is a placeholder until its shape is written.
+    A table: values against a numeric condition, its axis, which the field's conditions hold as not_applicable
+    (record_format.md section 6).
     """
 
     form: Literal["table"]
-    table: Placeholder | StatusWithheld
+    table: Table | StatusWithheld
     conditions: Conditions
     statistics: FieldStatistics
 

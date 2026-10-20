@@ -725,10 +725,10 @@ JOINED: list[tuple[str, JsonValue, tuple[tuple[str, ...], JsonValue], JsonValue]
 @pytest.mark.parametrize(
     ("place", "shape"),
     [
-        *[((form,), {"rows": []}) for form in ("table", "power_law", "parameter_set", "reference_data")],
+        *[((form,), {"rows": []}) for form in ("power_law", "parameter_set", "reference_data")],
         (("provenance", "assistance"), {"tool": "a drafting tool"}),
     ],
-    ids=["table", "power_law", "parameter_set", "reference_data", "assistance"],
+    ids=["power_law", "parameter_set", "reference_data", "assistance"],
 )
 def test_a_placeholder_beside_a_status_object_holds_no_other_status(
     place: tuple[str, ...], shape: JsonValue
@@ -1388,6 +1388,7 @@ APPLIED = {
     "replaces": "vocabulary/fields.json#/$defs/replaces",
     "conditions": "vocabulary/conditions.json#/$defs/units",
     "specimen": "vocabulary/specimen_facts.json#/$defs/units",
+    "table_field": "vocabulary/conditions.json#/$defs/axes",
 }
 
 
@@ -1426,10 +1427,48 @@ def label_on(axis: JsonValue) -> Schema:
     }
 
 
+def axes(units: dict[str, JsonValue]) -> Schema:
+    """`record_format.md` section 6, table item 1, for each numeric condition and its registered unit: a table
+    whose `axis` names it holds that unit in `axis_unit` (section 4.2), and its field's `conditions` hold the
+    condition as `{"status": "not_applicable"}`."""
+    return {
+        "properties": {
+            "table": {
+                "allOf": [
+                    {
+                        "if": {"required": ["axis"], "properties": {"axis": {"const": name}}},
+                        "then": {"properties": {"axis_unit": {"const": unit}}},
+                    }
+                    for name, unit in units.items()
+                ]
+            }
+        },
+        "allOf": [
+            {
+                "if": {
+                    "required": ["table"],
+                    "properties": {"table": {"required": ["axis"], "properties": {"axis": {"const": name}}}},
+                },
+                "then": {
+                    "required": ["conditions"],
+                    "properties": {
+                        "conditions": {
+                            "required": [name],
+                            "properties": {name: status_unit("not_applicable")},
+                        }
+                    },
+                },
+            }
+            for name in units
+        ],
+    }
+
+
 def check_bindings(definitions: Definitions, files: Files) -> None:
     """Each binding applied by the definition named for it and by no other, holding exactly what the
     vocabulary's rows give: each section's field names, the replaced fields, each field's row, each numeric
-    condition's unit, in its `unit` and its `plus_minus` entries', and each specimen fact's fixed unit."""
+    condition's unit, in its `unit` and its `plus_minus` entries', and as a table's axis, each specimen fact's
+    fixed unit; and a table's `axis` takes the numeric conditions alone."""
     applied: dict[str, list[str]] = {}
     for name, definition in definitions.items():
         for conjunct in listing(definition.get("allOf", [])):
@@ -1472,6 +1511,9 @@ def check_bindings(definitions: Definitions, files: Files) -> None:
         }
         for name, unit in units.items()
     }
+    bound_axes = mapping(mapping(files("conditions.json")["$defs"])["axes"])
+    assert {key: value for key, value in bound_axes.items() if key != "description"} == axes(units)
+    assert mapping(files("conditions.json")["$defs"])["axis"] == {"enum": list(units)}
     facts = mapping(files("specimen_facts.json")["facts"])
     fixed = {name: mapping(row)["unit"] for name, row in facts.items() if "unit" in mapping(row)}
     assert fixed, "no fact's row fixes a unit"
@@ -1551,6 +1593,22 @@ def test_the_writer_binds_each_name_to_its_row_through_the_vocabulary() -> None:
                 editing("units", "properties", "shear_rate", "properties", "plus_minus", to=None),
             ),
             id="a_plus_minus_unit_unbound",
+        ),
+        pytest.param(dropping_last("table_field", "allOf"), vocabulary_file, id="table_axes_unbound"),
+        pytest.param(
+            None,
+            changed_file("conditions.json", editing("axes", "allOf", to=[])),
+            id="a_tables_axis_condition_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file("conditions.json", editing("axes", "properties", "table", to={})),
+            id="a_tables_axis_unit_unbound",
+        ),
+        pytest.param(
+            None,
+            changed_file("conditions.json", editing("axis", to={"enum": ["temperature", "density_kind"]})),
+            id="a_token_condition_as_axis",
         ),
         pytest.param(removing("specimen", "allOf"), vocabulary_file, id="fact_units_unbound"),
         pytest.param(

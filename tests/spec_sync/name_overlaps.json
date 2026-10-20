@@ -269,6 +269,28 @@
         "quote": "`document` naming an input by its file name and `pointer` a JSON pointer into it",
         "what": "Case files: a finding's document is a case input's file name, in case files only; a record's and a page-text document's is an object."
       }
+    },
+    {
+      "rule": "A",
+      "names": ["axis"],
+      "meanings": 2,
+      "reason": "One meaning, the numeric condition a form's values are given against: a table's axis, a token of the conditions this version registers, and a power law's, whose example names frequency, a condition of a section a later version adds (record_format.md section 4.1, its reserved names). A power law's member is a placeholder until its shape is written, and no row of this version allows the form.",
+      "safeguard": {
+        "document": "docs/specification/record_format.md",
+        "quote": "An `axis` that is a string naming no numeric condition the reader knows, a token condition's name included, is a token the reader does not know for that member",
+        "what": "Section 6, table item 2 (PR-032): a table's axis naming a condition the reader does not know, or a token condition, is refused (unknown_token), so the list a reader knows is the one it reads by."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["name"],
+      "owner": "axis",
+      "reason": "A result's condition entry names its condition, numeric or token, so it takes the numeric conditions a table's axis takes and the token conditions beside them; elsewhere a name names what its own object describes (a family's input or parameter, an admissibility rule, a model, a consumer). No member takes the other's place.",
+      "safeguard": {
+        "document": "docs/specification/read_side_contract.md",
+        "quote": "one entry per condition checked (section 5): `{\"name\", \"status\", \"record\"?, \"operating\"?}`",
+        "what": "Section 2's conditions row: a condition entry in a result names the condition checked, whichever its kind."
+      }
     }
   ]
 }
