@@ -12,10 +12,13 @@
 | `reference/` | test-only reference implementations written from the specification's text, which import nothing from `materica`: a model of the read, which agrees with every case file of a read or lists it, its tables with the vocabulary, its citations with the text; and the table evaluator the table evaluation cases are verified against, with its own tests | what the model decides and what not; its open points; its exceptions; its mutant table (`reference/README.md`); how the evaluator was written (`table_evaluator.py`'s docstring) |
 
 `conftest.py` here registers the Hypothesis profiles for every test, on Hypothesis's own defaults, so that no
-machine's environment changes them, and the property shards (`--shard`), keeps every derandomized run from
+machine's environment changes them, and the property shards (`--shard`, or `--shard NAME_IofN` for part I of N of
+a shard), keeps every derandomized run from
 drawing the constants Hypothesis harvests from the loaded modules (`harvested_constants.py`), selects the
 mutant searches and the audit controls (`--property-controls only`) or every other test (`none`), as CI's test
-matrix splits them, records each test's CPU time, its own and its child processes', for a JUnit report
+matrix splits them, splits what the other options select into parts of about equal time that run side by side
+(`--partition I/N`, which CI's `tests` and `controls` jobs use; `partition.py`, with the seconds each long test took in a
+CI run in `partition_weights.json`, whose docstring says when and how to record them again), records each test's CPU time, its own and its child processes', for a JUnit report
 (`--junitxml`, which CI's durations report reads), and prints the count of conformance case files after a run
 that included them.
 

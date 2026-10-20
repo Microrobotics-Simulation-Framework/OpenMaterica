@@ -5,6 +5,7 @@
 weekly run. A property never sets its own example count, which would override the profile.
 """
 
+import argparse
 import os
 import sys
 import time
@@ -17,7 +18,7 @@ from hypothesis import HealthCheck, settings
 from hypothesis.database import DirectoryBasedExampleDatabase
 
 from materica.shapes import Suite
-from tests import harvested_constants
+from tests import harvested_constants, partition
 from tests.conformance import runner
 
 if sys.platform != "win32":
@@ -62,10 +63,11 @@ settings.load_profile(PROFILE)
 harvested_constants.pin()
 
 
-# CI's Hypothesis job runs the property modules in eight shards side by side, `--shard json`, `--shard
-# records`, `--shard writer`, `--shard agreement`, `--shard step8_mutants`, `--shard conditions`, `--shard
-# relations` and `--shard alternatives`; `tests/unit/test_source_files.py` checks that each module is in
-# exactly one.
+# CI's Hypothesis job runs the property modules in eight shards, `--shard json`, `--shard records`, `--shard
+# writer`, `--shard agreement`, `--shard step8_mutants`, `--shard conditions`, `--shard relations` and
+# `--shard alternatives`, the two longest, `agreement` and `relations`, each as two parts side by side
+# (`--shard agreement_1of2`, `--shard agreement_2of2`: the shard's tests in two parts of about equal time,
+# `tests/partition.py`); `tests/unit/test_source_files.py` checks that each module is in exactly one shard.
 SHARDS = {
     "json": (
         "test_jsonio_properties",
@@ -142,25 +144,64 @@ def is_property_control(module: Path) -> bool:
     return any(fnmatch(module.stem, pattern) for pattern in PROPERTY_CONTROLS)
 
 
+def shard_name(text: str) -> str:
+    """A shard of `SHARDS`, or one part of it: `agreement_1of2`."""
+    name, _ = partition.split_shard(text)
+    if name not in SHARDS:
+        raise argparse.ArgumentTypeError(
+            f"invalid choice: {text!r} (choose from {', '.join(sorted(SHARDS))})"
+        )
+    return text
+
+
+def part_of_selection(text: str) -> str:
+    try:
+        partition.parse_part(text)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from None
+    return text
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
-    parser.addoption("--shard", choices=sorted(SHARDS), help="run only the property modules of this shard")
+    parser.addoption(
+        "--shard",
+        type=shard_name,
+        help="run only the property modules of this shard, or of part IofN of it: agreement_1of2",
+    )
     parser.addoption(
         "--property-controls",
         choices=["only", "none"],
         help="run only the mutant searches and the audit controls, or none of them",
+    )
+    parser.addoption(
+        "--partition",
+        type=part_of_selection,
+        metavar="I/N",
+        help="of the tests the other options select, run only part I of N, parts of about equal time that "
+        "together hold every one of them once (tests/partition.py)",
     )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     shard = config.getoption("--shard")
     controls = config.getoption("--property-controls")
+    split = config.getoption("--partition")
+    name, shard_part = partition.split_shard(shard) if shard else (None, None)
+    if split is not None and shard_part is not None:
+        raise pytest.UsageError(f"--partition {split} with --shard {shard}, which is a part already")
 
     def kept(item: pytest.Item) -> bool:
-        in_shard = shard is None or item.path.stem in SHARDS[shard]
+        in_shard = name is None or item.path.stem in SHARDS[name]
         return in_shard and (controls is None or is_property_control(item.path) == (controls == "only"))
 
-    config.hook.pytest_deselected(items=[item for item in items if not kept(item)])
-    items[:] = [item for item in items if kept(item)]
+    selected = [item for item in items if kept(item)]
+    if part := shard_part or (partition.parse_part(split) if split else None):
+        weights = partition.weights_for(PROFILE)
+        chosen = partition.in_part([item.nodeid for item in selected], part, weights)
+        selected = [item for item, wanted in zip(selected, chosen, strict=True) if wanted]
+    run = {id(item) for item in selected}
+    config.hook.pytest_deselected(items=[item for item in items if id(item) not in run])
+    items[:] = selected
 
 
 # Each test's CPU time, written beside the wall time in the JUnit XML that CI's durations report reads

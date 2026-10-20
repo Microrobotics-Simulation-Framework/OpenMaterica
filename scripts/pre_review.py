@@ -210,6 +210,14 @@ DATA_RULES = (
         tests=("tests/unit/test_ci_workflows.py",),
     ),
     DataRule(
+        "the weights that split a run into parts",
+        r"tests/partition_weights\.json",
+        "the parts of a run are the tests' assignment by these seconds, which the partition's own tests "
+        "read; the tests of CI's matrices run the real assignment",
+        tests=("tests/unit/test_partition.py", "tests/unit/test_ci_workflows.py"),
+        readers=("tests/partition.py",),
+    ),
+    DataRule(
         "the tests' README",
         r"tests/README\.md",
         "the mutant tables' recipe is run as the README writes it",
