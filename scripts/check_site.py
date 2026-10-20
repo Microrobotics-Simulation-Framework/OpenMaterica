@@ -88,9 +88,9 @@ VOID_ELEMENTS = frozenset(
 CSS_URL = re.compile(r"""url\(\s*(['"]?)(.*?)\1\s*\)|@import\s+(['"])(.*?)\3""", re.I | re.S)
 # Where an image of the README may name a file of this repository by URL.
 REPOSITORY_URLS = (
-    "https://raw.githubusercontent.com/Microrobotics-Simulation-Framework/OpenMaterica/",
-    "https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/raw/",
-    "https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/blob/",
+    "https://raw.githubusercontent.com/OpenMaterica/OpenMaterica/",
+    "https://github.com/OpenMaterica/OpenMaterica/raw/",
+    "https://github.com/OpenMaterica/OpenMaterica/blob/",
 )
 README_IMAGE = re.compile(r"""<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']|!\[[^\]]*\]\(\s*<?([^)\s>]+)""", re.I)
 # A reference-style image of the README (`![alt][label]`, `![alt][]`, `![alt]`) and a definition of a label.

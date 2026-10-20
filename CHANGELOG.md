@@ -27,6 +27,11 @@ every family entry goes in `families/CHANGELOG.md`.
   2026-10-19, run 39234564233; the replay 16.8 minutes against 2.6 to 6.3 before), and the job is held to twice
   its slowest run as the Hypothesis job's shards are (`FUZZ_SLOWEST_ON_CI`, which fails below it). What the job
   runs is unchanged.
+- The repository moved from `Microrobotics-Simulation-Framework/OpenMaterica` to `OpenMaterica/OpenMaterica`.
+  GitHub redirects the old git and web URLs; the README, the site, the scripts, the unit test and the workflow
+  documentation name the new place. MIME and MADDENING stay where they are. The README's attestation command says
+  which repository to name for which release: the old one for 0.1.0.dev1 and 0.1.0.dev2, the new one from the next
+  release on.
 - The Hypothesis job's `alternatives` parts have a `deep` timeout of 90 minutes, from 45, set by estimate before
   the weekly `deep` run: at `ci` the parts took 196.8 and 218.0 s of pytest time (run 39404674681), ten times the
   examples is 33 and 36 minutes, and the timeout is twice the upper end, rounded up to the figure `records` has,

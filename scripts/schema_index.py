@@ -37,7 +37,7 @@ VERSION = re.compile(r"(?P<line>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?P<develop
 
 # The landing page's policy (site/index.html): nothing is fetched from anywhere.
 POLICY = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"
-SOURCE = "https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/tree/main/src/materica/schema"
+SOURCE = "https://github.com/OpenMaterica/OpenMaterica/tree/main/src/materica/schema"
 
 # The landing page's colours and type (site/index.html), cut down to what an index uses.
 STYLE = """
