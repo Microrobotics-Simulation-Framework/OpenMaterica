@@ -624,7 +624,7 @@ a binomial count's).
 
 The other planned searches are held by a floor the property had, or by none of their own yet. HP2's five under a
 nominal draw HP2's `nominal` kind whole, and since 2026-10-20 HP1's `reasons_not_merged` its step 8 and steps 9
-and 10 kinds and `stated_without_origin_with_a_condition` the five it dies at, HP2's `conditions_beside_no_pick` and `no_unit_beside_alternative_values` its `alternatives`
+and 10 kinds and `stated_without_origin_with_a_condition` the five it dies at, HP2's `conditions_beside_no_pick` and `unit_beside_alternative_values` its `alternatives`
 kind and `no_statistics_beside_a_composition` its `met_own_member` kind's compositions (The result's mutants,
 below), each kind held to its chance, not the narrower region where the fault shows;
 steps 9 and 10's planned search draws HP3's faults that end the read at step 10, each of which HP3's step 10
@@ -1026,7 +1026,8 @@ Since 2026-10-20 a read of every kind is, first, in about one draw in seven, HP1
 step 10 gives `condition_unchecked` (Mutants, "The regions held to a floor"). That moved four searches past the
 500th example more often than main's (each over 200 streams at each size, main against the branch, one-sided
 Fisher p below 0.01): `reasons_not_merged` on 18 of 400 (3 on main), `conditions_beside_no_pick` and
-`no_unit_beside_alternative_values` on 17 (3), and `no_statistics_beside_a_composition` on 28 (12); and
+`no_unit_beside_alternative_values` on 17 (3; since S3b-2 its row holds the ruled rule's fault,
+`unit_beside_alternative_values`), and `no_statistics_beside_a_composition` on 28 (12); and
 `stated_without_origin_with_a_condition`, on 3 (5), died at the 656th on the recorded stream. So they are
 planned, as HP2's under a nominal are, on the kinds or the form they die at alone: HP1 over its step 8 and steps
 9 and 10 kinds ("HP1 at steps 8 to 10"), HP1 over the five kinds `stated_without_origin_with_a_condition` dies
@@ -1046,7 +1047,7 @@ by `met_own_member`'s chance alone.
 | `value_beside_condition_outside` | a read step 10 refuses goes on, and returns its value (the S2 design's HP2 mutant) | HP2 | `step_9_or_10_fault`, `unknown_at_step_10` | 49, 53 |
 | `best_status` | the status the best of the reasons' | HP2 | any kind | 49, 53 |
 | `conditions_beside_no_pick` | a `no_pick` result holds the first alternative's `conditions` | HP2 among alternatives (planned) | `alternatives` | 1, 1 |
-| `no_unit_beside_alternative_values` | a `no_pick` result holds no `unit` | HP2 among alternatives (planned) | `alternatives` | 1, 1 |
+| `unit_beside_alternative_values` | a `no_pick` result holds the first entry's `unit` beside its entries, as the interim rule gave it | HP2 among alternatives (planned) | `alternatives` | 1, 1 |
 | `no_statistics_beside_a_composition` | a composition's spread read as its components' alone, so its field's statistics block is not returned | HP2 over a composition under its own want (planned) | `form_composition` | 1, 1 |
 | `a_nominal_applied_outside_its_bounds` | a nominal supplies the value wherever it lies | HP2 (planned) | `nominal_outside` | 4, 9 |
 | `nominal_invalid_as_want_mismatch` | a nominal outside the bounds gives `want_mismatch`, not `nominal_invalid` | HP2 (planned) | `nominal_outside` | 4, 9 |
@@ -1357,15 +1358,18 @@ The fourth, `gives_reads_the_first_stored_form`, a review's hand mutant that sur
 interval under a nominal by the first stored alternative's form: it shows only where a non-interval is stored
 first and set aside and every alternative that stays is an interval, which the draws reach since a set-aside
 alternative is held in either form; under a nominal alone it took 15 and 739, so it is searched with the
-set-aside alternative stored first. The fifth, `the_last_staying_unit`, takes the last staying alternative's
-unit under `no_pick`: it shows only where the alternatives that stay hold units that differ, which only
-evidence allows (a status object with another `reason`). Drawn among all five outcomes and every form it died
-at the 86th and 355th example (S4a's fix round), and, once a set-aside alternative's form was drawn, at the
-495th and 732nd, the second after the margin guard's 500th; it is searched among evidence under `no_pick`,
-where it died at the 52nd and 80th. Each planned search is also held to HP27's check on the core as it is,
-which it must pass (`test_a_planned_search_draws_only_reads_the_core_passes`, for the first 500 examples, the
-margin guard's horizon, and once for 2,000 on 2026-10-20), so that a mutant it kills dies of its fault. Counts at both sizes, one seed's, the derandomised search's, in the
-alternatives shard at `ci` (2026-10-19, S4a's fix round; recorded again on the move onto main, 2026-10-20).
+set-aside alternative stored first. The fifth, `the_last_staying_unit`, gives every entry the last staying
+alternative's unit under `no_pick` (since S3b-2 each entry holds its own; before, the result held one): it
+shows only where the alternatives that stay hold units that differ, which only evidence allows (a status
+object with another `reason`). Drawn among all five outcomes and every form it died at the 86th and 355th
+example (S4a's fix round), and, once a set-aside alternative's form was drawn, at the 495th and 732nd, the
+second after the margin guard's 500th; it is searched among evidence under `no_pick`, where it died at the
+52nd and 80th, and at the 52nd and 73rd once each entry held its own unit (S3b-2). Each planned search is also
+held to HP27's check on the core as it is, which it must pass
+(`test_a_planned_search_draws_only_reads_the_core_passes`, for the first 500 examples, the margin guard's
+horizon, and once for 2,000 on 2026-10-20), so that a mutant it kills dies of its fault. Counts at both sizes,
+one seed's, the derandomised search's, in the alternatives shard at `ci` (2026-10-19, S4a's fix round;
+recorded again on the move onto main, 2026-10-20).
 
 <!-- kill points of every search of test_alternatives_mutants.py::test_the_alternatives_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
@@ -1382,8 +1386,8 @@ alternatives shard at `ci` (2026-10-19, S4a's fix round; recorded again on the m
 | `request_fault_tagged` | a fault of the request given the alternative's index | HP27 | `refused` | 79, 80 |
 | `gives_reads_the_first_stored_form` | an interval under a nominal judged by the first stored alternative's form | HP27 (planned) | `no_pick` | 3, 12 |
 | `nominal_dropped_over_alternatives` | a nominal ignored over alternatives | HP27 (planned) | `refused`, `one_left` | 2, 2 |
-| `the_last_staying_unit` | under `no_pick`, the last staying alternative's unit | HP27 (planned) | `no_pick` | 52, 80 |
-| `the_first_stored_unit` | under `no_pick`, the first stored alternative's unit, set aside or not | HP27 (planned) | `no_pick` | 52, 59 |
+| `the_last_staying_unit` | under `no_pick`, every entry's unit the last staying alternative's | HP27 (planned) | `no_pick` | 52, 73 |
+| `the_first_stored_unit` | under `no_pick`, every entry's unit the first stored alternative's, set aside or not | HP27 (planned) | `no_pick` | 52, 59 |
 | `labels_kept_where_refused` | the alternatives' labels on a result that rests on none | HP27 | `refused`, `want_mismatch` | 269, 87 |
 | `outcome_decided_in_reading_order` | the reading stops at the first alternative that refuses | HP28, order | `refused` | 92, 21 |
 | `the_one_left_untagged` | the one left's reasons without their index | HP28, wrapping | any outcome | 6, 3 |

@@ -70,6 +70,7 @@
       {
         "alternative": 1,
         "value": 993.5,
+        "unit": "kg/m3",
         "conditions": [
           {
             "name": "temperature",
@@ -143,6 +144,7 @@
       {
         "alternative": 2,
         "value": 993.0,
+        "unit": "kg/m3",
         "conditions": [
           {
             "name": "temperature",
@@ -213,7 +215,6 @@
         "labels": []
       }
     ],
-    "unit": "kg/m3",
     "labels": []
   },
   "compare": {

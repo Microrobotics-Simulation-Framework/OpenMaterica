@@ -186,9 +186,13 @@ def _conditions_beside_no_pick(*arguments: Any) -> ReadResult:
     return dataclasses.replace(result, conditions=result.alternative_values[0].conditions)
 
 
-def _no_unit_beside_alternative_values(*arguments: Any) -> ReadResult:
+def _unit_beside_alternative_values(*arguments: Any) -> ReadResult:
+    """Under `no_pick`, the first remaining alternative's unit beside the entries, as the interim rule gave
+    it."""
     result: ReadResult = READ_ALTERNATIVES(*arguments)
-    return dataclasses.replace(result, unit=None)
+    if not result.alternative_values:
+        return result
+    return dataclasses.replace(result, unit=result.alternative_values[0].unit)
 
 
 def _no_statistics_beside_a_composition(*arguments: Any) -> FieldRead:
@@ -452,9 +456,9 @@ MUTANTS = [
         ("alternatives",),
     ),
     Mutant(
-        "no_unit_beside_alternative_values",
+        "unit_beside_alternative_values",
         "HP2 among alternatives",
-        setting(read, "_read_alternatives", _no_unit_beside_alternative_values),
+        setting(read, "_read_alternatives", _unit_beside_alternative_values),
         ("alternatives",),
     ),
     Mutant(

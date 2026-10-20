@@ -17,7 +17,8 @@
     "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
     "provenance": {"$ref": "#/$defs/result_provenance"},
     "labels": {"type": "array", "items": {"$ref": "#/$defs/returned_label"}},
-    "assumption": {"$ref": "#/$defs/assumption"}
+    "assumption": {"$ref": "#/$defs/assumption"},
+    "table": {"$ref": "record.writer.json#/$defs/table"}
   },
   "additionalProperties": false,
   "$defs": {
@@ -41,6 +42,7 @@
         {"$ref": "record.writer.json#/$defs/interval"},
         {"$ref": "record.writer.json#/$defs/composition"},
         {"type": "array", "items": {"anyOf": [{"$ref": "#/$defs/result_evidence_entry"}, {"$ref": "#/$defs/result_withheld_evidence_entry"}]}},
+        {"$ref": "record.writer.json#/$defs/table"},
         {"$ref": "record.writer.json#/$defs/placeholder"},
         {"$ref": "record.writer.json#/$defs/content_hash"},
         {"type": "array", "items": {"$ref": "#/$defs/listed_record"}}
@@ -57,12 +59,13 @@
       "additionalProperties": false
     },
     "alternative_value": {
-      "description": "An alternative that stays under no_pick (read_side_contract.md section 2): its index among the stored alternatives of the field read, and its members as a read of it alone gives them.",
+      "description": "An alternative that stays under no_pick (read_side_contract.md section 2): its index among the stored alternatives of the field read, and its members as a read of it alone gives them, its unit among them.",
       "type": "object",
-      "required": ["alternative", "value", "conditions", "specimen", "provenance", "labels"],
+      "required": ["alternative", "value", "unit", "conditions", "specimen", "provenance", "labels"],
       "properties": {
         "alternative": {"type": "integer", "minimum": 0},
         "value": {"$ref": "#/$defs/result_value"},
+        "unit": {"$ref": "record.writer.json#/$defs/unit"},
         "conditions": {"type": "array", "items": {"$ref": "#/$defs/condition_entry"}},
         "specimen": {"$ref": "#/$defs/result_specimen"},
         "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},

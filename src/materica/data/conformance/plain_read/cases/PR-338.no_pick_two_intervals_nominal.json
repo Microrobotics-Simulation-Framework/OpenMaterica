@@ -69,6 +69,7 @@
           "upper": 1250.0,
           "basis": "specification_limits"
         },
+        "unit": "kg/m3",
         "conditions": [
           {
             "name": "temperature",
@@ -150,6 +151,7 @@
           "upper": 1220.0,
           "basis": "reported_range"
         },
+        "unit": "kg/m3",
         "conditions": [
           {
             "name": "temperature",
@@ -225,7 +227,6 @@
         "labels": []
       }
     ],
-    "unit": "kg/m3",
     "labels": []
   },
   "compare": {

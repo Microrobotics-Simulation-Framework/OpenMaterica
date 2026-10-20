@@ -482,3 +482,15 @@ one holding `params` and no `value`, for a field whose row allows none, breaks i
 `params` "for a parameter set" without saying whether step 0 reads the field's row to know it; S2b-2's reader
 required a `value` in every nominal, which is that reading while no 0.1.0 row allows a parameter set, and one
 sentence now says so.
+
+Settled for the result's shape, with S3b-2 (maintainer, 2026-10-19): under `no_pick` each `alternative_values`
+entry holds its own alternative's `unit`, as stored, and the result holds no `unit` of its own
+(`read_side_contract.md` section 2; PR-013). This replaces the interim rule of S4a above, under which the
+result held the first remaining alternative's unit and another alternative's `reason` was not returned: now no
+alternative's `reason` is lost, and `unit` is present exactly when `value` is. With it, a result whose value
+is read from a table holds that table as stored, in a member `table` of the same meaning as a value field's,
+present exactly when `value` is and is read from a table: the field's, the one alternative left or the one a
+pick names, under an extrapolation too (`read_side_contract.md` section 2; PR-318, PR-336). A consumer that
+evaluates the table in its own code (`read_side_contract.md` section 7) so takes the table the read checked,
+through the overlays, the pick and the alternatives set aside that the read applied, with the readable range's
+two ends, where before it would have read the record's JSON again on its own.

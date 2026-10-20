@@ -80,6 +80,7 @@
       {
         "alternative": 0,
         "value": 0.000692,
+        "unit": "Pa.s",
         "conditions": [
           {
             "name": "temperature",
@@ -163,6 +164,7 @@
       {
         "alternative": 1,
         "value": 0.00069,
+        "unit": "Pa.s",
         "conditions": [
           {
             "name": "temperature",
@@ -244,7 +246,6 @@
         ]
       }
     ],
-    "unit": "Pa.s",
     "labels": []
   },
   "compare": {

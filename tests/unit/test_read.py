@@ -2322,10 +2322,12 @@ def test_two_alternatives_with_no_reason_of_their_own_give_no_pick_each_in_alter
     result = read_met({"alternatives": [met_field(), met_field(value=0.0007)]})
     assert (result.status, result.reasons) == ("unknown", (Reason("no_pick"),))
     written = json.loads(json.dumps(result.to_json()))
-    assert set(written) == {"status", "reasons", "alternative_values", "unit", "labels"}
-    assert [(entry["alternative"], entry["value"]) for entry in written["alternative_values"]] == [
-        (0, 0.000692),
-        (1, 0.0007),
+    assert set(written) == {"status", "reasons", "alternative_values", "labels"}
+    assert [
+        (entry["alternative"], entry["value"], entry["unit"]) for entry in written["alternative_values"]
+    ] == [
+        (0, 0.000692, "Pa.s"),
+        (1, 0.0007, "Pa.s"),
     ]
     assert all(type(entry["alternative"]) is int for entry in written["alternative_values"])
     assert written["labels"] == []
@@ -2391,10 +2393,10 @@ def test_two_intervals_under_a_nominal_give_want_mismatch_under_components() -> 
         [{"status": "not_applicable", "reason": "one"}, {"status": "not_applicable"}],
     ],
 )
-def test_under_no_pick_the_unit_is_the_first_remaining_alternatives(units: list[JsonValue]) -> None:
-    """Section 2, the `unit` row: "Under `no_pick`, it is the first remaining alternative's unit, in stored
-    order", and "another alternative's `reason` is not returned" (the maintainer's ruling of 2026-10-19 on
-    `unit` under `no_pick`) [PR-013]."""
+def test_under_no_pick_each_entry_holds_its_own_alternatives_unit(units: list[JsonValue]) -> None:
+    """Section 2, the `unit` row: "Under `no_pick` the result holds none: each `alternative_values` entry
+    holds its own alternative's unit, as stored", so that alternatives whose units are stored differently
+    "each keep their own" (the maintainer's ruling of 2026-10-19, replacing the interim rule) [PR-013]."""
     record: dict[str, Any] = json.loads(EVIDENCE_FIXTURE.read_text(encoding="utf-8"))
     fields = record["body"]["sections"]["biocompatibility"]["fields"]
     alternatives = [{**fields["evidence"], "evidence": [REPORT], "unit": unit} for unit in units]
@@ -2405,8 +2407,10 @@ def test_under_no_pick_the_unit_is_the_first_remaining_alternatives(units: list[
     del request["operating_conditions"]
     result = read(request, records)
     assert (result.status, result.reasons) == ("unknown", (Reason("no_pick"),))
-    assert result.unit == units[0]
-    assert json.loads(json.dumps(result.to_json()))["unit"] == units[0]
+    assert result.unit is None
+    written = json.loads(json.dumps(result.to_json()))
+    assert "unit" not in written
+    assert [entry["unit"] for entry in written["alternative_values"]] == units
 
 
 def test_the_one_alternative_left_is_read_as_the_field_its_reasons_carrying_its_index() -> None:

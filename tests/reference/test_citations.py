@@ -123,19 +123,19 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
 @pytest.mark.parametrize(
     ("text", "problem"),
     [
-        ('read_side_contract.md:228 "Find the field (`absent`)"', None),
-        ('read_side_contract.md:227-228 "Find the field (`absent`)"', None),
-        ('read_side_contract.md:229 "Find the field (`absent`)"', "is not at lines 229 to 229"),
-        ('read_side_contract.md:228 "Find the record"', "is not at lines 228 to 228"),
-        ('read_side_contract.md:228 "Find the field" and "a quote not there"', "'a quote not there'"),
+        ('read_side_contract.md:231 "Find the field (`absent`)"', None),
+        ('read_side_contract.md:230-231 "Find the field (`absent`)"', None),
+        ('read_side_contract.md:232 "Find the field (`absent`)"', "is not at lines 232 to 232"),
+        ('read_side_contract.md:231 "Find the record"', "is not at lines 231 to 231"),
+        ('read_side_contract.md:231 "Find the field" and "a quote not there"', "'a quote not there'"),
         ('read_side_contracts.md:222 "Find the field"', "no file read_side_contracts.md"),
         (
             'record_format.md:591 "Two names are **one slip** apart when one becomes the other by '
             'inserting,"',
             None,
         ),
-        ("read_side_contract.md:228, where the field is found", "read_side_contract.md:228: no quote"),
-        ('see read_side_contract.md:227-228 (step 7), "Find the field"', "read_side_contract.md:227-228: no"),
+        ("read_side_contract.md:231, where the field is found", "read_side_contract.md:231: no quote"),
+        ('see read_side_contract.md:230-231 (step 7), "Find the field"', "read_side_contract.md:230-231: no"),
         (
             'provenance.md:265-266 "or `{"status": "unstated"}` (a ± whose kind the source does not state)"',
             None,
@@ -172,11 +172,11 @@ def test_the_evaluator_is_held_to_the_same_citation_rules() -> None:
     ("old", "new", "problem"),
     [
         pytest.param(
-            "read_side_contract.md:554 ", "read_side_contract.md:563 ", "is not at lines 563", id="line"
+            "read_side_contract.md:557 ", "read_side_contract.md:566 ", "is not at lines 566", id="line"
         ),
         pytest.param('"Linear interpolation within', '"Linear interpolation outside', "outside", id="quote"),
         pytest.param(
-            "read_side_contract.md:554 ", "read_contract.md:554 ", "no file read_contract.md", id="file"
+            "read_side_contract.md:557 ", "read_contract.md:557 ", "no file read_contract.md", id="file"
         ),
     ],
 )

@@ -332,10 +332,11 @@ class FieldRead:
 
     def entry_json(self) -> shapes.AlternativeValue:
         """Its entry of `alternative_values` (section 2): its index among the stored alternatives, its form's
-        member as stored, and its members as a read of it alone gives them."""
+        member as stored, and its members as a read of it alone gives them, its unit among them."""
         entry: dict[str, object] = {
             "alternative": self.alternative,
             "value": copy.deepcopy(self.member),
+            "unit": copy.deepcopy(self.unit),
             "conditions": [condition.to_json() for condition in self.conditions or ()],
             "specimen": copy.deepcopy(self.specimen),
         }
@@ -353,7 +354,7 @@ class ReadResult:
     `conditions` once step 10 has run to its end (item 6); and the members that carry a value, each present
     as item 6 says, as stored: `value` with its `unit`, `specimen`, `statistics` and `provenance`, and the
     `assumption` a nominal's value rests on (item 3), or under `no_pick` the `alternative_values`, each an
-    alternative's read, with the `unit`."""
+    alternative's read, its unit among its members."""
 
     status: ReadStatus
     reasons: tuple[Reason, ...]
@@ -651,10 +652,9 @@ def _read_alternatives(
         "no_pick", detail=f"{field.spec.name} holds {len(staying)} alternatives that stay, no pick"
     )
     reasons = merged((no_pick, *standing_beside))
-    # Under `no_pick`, "the first remaining alternative's unit, in stored order" (section 2, the `unit` row).
-    return ReadResult(
-        _status(reasons), reasons, labels, alternative_values=tuple(staying), unit=staying[0].unit
-    )
+    # Under `no_pick` "the result holds none" of `unit`: "each `alternative_values` entry holds its own
+    # alternative's unit, as stored" (section 2, the `unit` row).
+    return ReadResult(_status(reasons), reasons, labels, alternative_values=tuple(staying))
 
 
 # How an alternative stands, and what each outcome reports of the alternatives' reasons (section 3, step 7),
@@ -848,6 +848,7 @@ def _alternative(entry: shapes.AlternativeValue) -> FieldRead:
         alternative=int(entry["alternative"]),
         member=_stored(entry["value"]),
         value=_stored(entry["value"]),
+        unit=_stored(entry["unit"]),
         specimen=cast(JsonObject, _stored(entry["specimen"])),
         statistics=None if statistics is None else cast(JsonObject, _stored(statistics)),
         provenance=ProvenanceSummary.from_json(entry["provenance"]),

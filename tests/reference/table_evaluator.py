@@ -75,8 +75,8 @@ class Evaluation:
     derivative: Fraction | float | None = None
 
 
-# read_side_contract.md:567-568 "an evaluator refuses, as the reader does, and the refusal comes before
-# `in_range`"; read_side_contract.md:570-572 "It reports the refusal as an output of its own" ... "It returns
+# read_side_contract.md:570-571 "an evaluator refuses, as the reader does, and the refusal comes before
+# `in_range`"; read_side_contract.md:573-575 "It reports the refusal as an output of its own" ... "It returns
 # no number there"
 REFUSED = Evaluation(refused=True)
 
@@ -270,7 +270,7 @@ def _evaluate(table: Table, at: float, side: Side, arithmetic: _Arithmetic[N]) -
     knots = _knots(table, arithmetic)
     point = arithmetic.number(at)
     # record_format.md:407-408 "An operating value is compared with these ends and with the edges by value and
-    # exactly"; read_side_contract.md:567 "At a declared edge, wherever it lies, inside the readable range or
+    # exactly"; read_side_contract.md:570 "At a declared edge, wherever it lies, inside the readable range or
     # outside it, an evaluator refuses"
     if point in knots.edges:
         return REFUSED
@@ -282,12 +282,12 @@ def _evaluate(table: Table, at: float, side: Side, arithmetic: _Arithmetic[N]) -
             refused=False, in_range=True, value=_returned(value), derivative=_returned(derivative)
         )
     end = low if point < low else high
-    # read_side_contract.md:568-570 "It refuses in the same way where a declared edge lies between its
+    # read_side_contract.md:571-573 "It refuses in the same way where a declared edge lies between its
     # condition and the readable range's nearest end, or on that end, since no extrapolation crosses an edge"
     if any(point < edge <= end or end <= edge < point for edge in knots.edges):
         return REFUSED
-    # read_side_contract.md:543 "An evaluator returns, beside the value, `in_range`";
-    # read_side_contract.md:548-550 "Outside a table's readable range, an evaluator's value is the value at
+    # read_side_contract.md:546 "An evaluator returns, beside the value, `in_range`";
+    # read_side_contract.md:551-553 "Outside a table's readable range, an evaluator's value is the value at
     # the range's nearest end, taken from inside the range" ... "and its derivative is zero". `end` is no edge
     # here, so its value is one-sided.
     value = _value(knots, end)
@@ -317,18 +317,18 @@ def _value(knots: _Knots[N], point: N) -> N:
 
 
 def _derivative(knots: _Knots[N], point: N, value: N, side: Side, low: N, high: N) -> N | None:
-    # read_side_contract.md:562-563 "Where the readable range is one point, it has no inside: the evaluator
+    # read_side_contract.md:565-566 "Where the readable range is one point, it has no inside: the evaluator
     # returns no derivative there"
     if low == high:
         return None
-    # read_side_contract.md:559-561 "At an end of a table's readable range, an interior knot of `x` included,
+    # read_side_contract.md:562-564 "At an end of a table's readable range, an interior knot of `x` included,
     # the derivative is the one from inside the range, whatever side the evaluator declares: item 3's side
     # applies only at an interior knot strictly inside the readable range."
     if point == low:
         side = "right"
     elif point == high:
         side = "left"
-    # read_side_contract.md:556-557 "At an interior knot the derivative depends on the side. An evaluator
+    # read_side_contract.md:559-560 "At an interior knot the derivative depends on the side. An evaluator
     # states which side it returns there"
     return _slope(knots, _interval(knots.x, point, side), point, value)
 
@@ -337,7 +337,7 @@ def _interval(x: tuple[N, ...], point: N, side: Side) -> int:
     """The index `i` of the interval `[x[i], x[i + 1]]` on `side` of `point`: below it, `x[i] < point <= x[i +
     1]`, or above it, `x[i] <= point < x[i + 1]`. Between two knots both are the interval that brackets it."""
     # record_format.md:414-415 "strictly where an edge is concerned, so a read just below an edge uses the
-    # knot below it"; read_side_contract.md:561-562 "the value and derivative below it come from the interval
+    # knot below it"; read_side_contract.md:564-565 "the value and derivative below it come from the interval
     # below, and above it from the interval above"
     return (bisect_left(x, point) if side == "left" else bisect_right(x, point)) - 1
 
@@ -345,7 +345,7 @@ def _interval(x: tuple[N, ...], point: N, side: Side) -> int:
 def _interpolate(knots: _Knots[N], i: int, point: N) -> N:
     x0, x1, y0, y1 = knots.x[i], knots.x[i + 1], knots.y[i], knots.y[i + 1]
     if knots.scheme == "linear":
-        # read_side_contract.md:554 "Linear interpolation within `[x0, x1]` is `y0 + (x - x0) * (y1 - y0) /
+        # read_side_contract.md:557 "Linear interpolation within `[x0, x1]` is `y0 + (x - x0) * (y1 - y0) /
         # (x1 - x0)`"
         return y0 + (point - x0) * (y1 - y0) / (x1 - x0)
     loglog = knots.arithmetic.loglog or _loglog
@@ -354,7 +354,7 @@ def _interpolate(knots: _Knots[N], i: int, point: N) -> N:
 
 def _loglog(x0: N, x1: N, y0: N, y1: N, point: N, arithmetic: _Arithmetic[N]) -> N:
     ln, exp = arithmetic.ln, arithmetic.exp
-    # read_side_contract.md:554-555 "Log-log interpolation is `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) /
+    # read_side_contract.md:557-558 "Log-log interpolation is `exp(ln y0 + (ln x - ln x0) * (ln y1 - ln y0) /
     # (ln x1 - ln x0))`, in natural logarithms"
     return exp(ln(y0) + (ln(point) - ln(x0)) * (ln(y1) - ln(y0)) / (ln(x1) - ln(x0)))
 
@@ -366,13 +366,13 @@ def _slope(knots: _Knots[N], i: int, point: N, value: N) -> N:
 
 
 def _linear_slope(x0: N, x1: N, y0: N, y1: N, point: N, value: N, arithmetic: _Arithmetic[N]) -> N:
-    # read_side_contract.md:540-541 "A derivative is the value's derivative with respect to the axis": for
+    # read_side_contract.md:543-544 "A derivative is the value's derivative with respect to the axis": for
     # item 2's linear formula, its interval's slope (calculus, not quoted).
     return (y1 - y0) / (x1 - x0)
 
 
 def _loglog_slope(x0: N, x1: N, y0: N, y1: N, point: N, value: N, arithmetic: _Arithmetic[N]) -> N:
-    # read_side_contract.md:564 "For a log-log table, the derivative within an interval is `(y / x) * (ln y1 -
+    # read_side_contract.md:567 "For a log-log table, the derivative within an interval is `(y / x) * (ln y1 -
     # ln y0) / (ln x1 - ln x0)`"
     ln = arithmetic.ln
     return (value / point) * (ln(y1) - ln(y0)) / (ln(x1) - ln(x0))

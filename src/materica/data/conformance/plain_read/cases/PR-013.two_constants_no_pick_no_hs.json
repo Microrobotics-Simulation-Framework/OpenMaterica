@@ -59,6 +59,7 @@
       {
         "alternative": 0,
         "value": 0.000692,
+        "unit": "Pa.s",
         "conditions": [
           {
             "name": "temperature",
@@ -142,6 +143,7 @@
       {
         "alternative": 1,
         "value": 0.000695,
+        "unit": "Pa.s",
         "conditions": [
           {
             "name": "temperature",
@@ -223,7 +225,6 @@
         ]
       }
     ],
-    "unit": "Pa.s",
     "labels": [
       "hash_not_checked"
     ]

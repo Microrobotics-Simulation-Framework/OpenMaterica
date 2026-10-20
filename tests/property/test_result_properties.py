@@ -11,7 +11,7 @@ reads that end at each step S2 builds (`result_strategies.py`). The mutants they
 - **HP2, the status law and the members present.** The status is the worst of the reasons' statuses, which
   the oracle folds from the vocabulary itself; and the members are present as item 6 says: `reasons` and
   `labels` always; `value` exactly where the status is not `not_met`, or a nominal supplies it, and the result
-  rests on one value; `alternative_values` exactly under `no_pick`; `unit` beside either; `specimen` and
+  rests on one value; `alternative_values` exactly under `no_pick`; `unit`, `specimen` and
   `provenance` beside `value`, and `statistics` but beside evidence; `assumption` exactly where a nominal
   supplies the value; and `conditions` beside a value, never under `no_pick` or after a refusal before step
   10. A nominal supplies an interval's value under `want: value`, inside or on its bounds, where it names the
@@ -233,8 +233,7 @@ def check_status_law(drawn: Drawn) -> None:
     assert {"status", "reasons", "labels"} <= set(members), members
     assert ("value" in members) == valued, members
     assert ("alternative_values" in members) == no_pick, members
-    assert ("unit" in members) == (valued or no_pick), members
-    for name in ("specimen", "provenance"):
+    for name in ("unit", "specimen", "provenance"):
         assert (name in members) == valued, (name, members)
     assert ("statistics" in members) == (valued and not evidence), members
     assert ("assumption" in members) == supplied, members
@@ -392,8 +391,7 @@ def expected_members(field: JsonObject, section: JsonObject) -> JsonObject:
 
 
 CONDITION_SHAPES = get_type_hints(shapes.Conditions)
-# The members a read returns from a record beside the value, an `alternative_values` entry's but the unit,
-# which the result holds once.
+# The members a read returns from a record beside the value, an `alternative_values` entry's alike.
 RETURNED = ("unit", "specimen", "statistics", "provenance")
 
 
@@ -466,8 +464,7 @@ def check_returned_as_stored(drawn: Drawn) -> None:
             expected_value(alternative),
             entry["value"],
         )
-        check_members(expected_members(alternative, section), entry, RETURNED[1:])
-        assert same(expected_members(alternative, section)["unit"], members["unit"]), members["unit"]
+        check_members(expected_members(alternative, section), entry)
     before = written(result)
     scrambled(result.to_json())
     assert written(result) == before, "a result shares its JSON with itself"
@@ -475,7 +472,7 @@ def check_returned_as_stored(drawn: Drawn) -> None:
         [result.specimen, result.statistics, result.unit, result.provenance and result.provenance.review]
     )
     for read_alone in result.alternative_values or ():
-        scrambled([read_alone.specimen, read_alone.statistics])
+        scrambled([read_alone.specimen, read_alone.statistics, read_alone.unit])
     again = read_drawn(drawn, store=store)
     assert again is not None, drawn
     assert written(again) == before, "a result shares its members with the record"

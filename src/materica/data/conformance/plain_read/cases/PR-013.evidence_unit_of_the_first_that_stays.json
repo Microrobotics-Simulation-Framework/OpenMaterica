@@ -102,6 +102,10 @@
             }
           }
         ],
+        "unit": {
+          "status": "not_applicable",
+          "reason": "conformance fixture: the second source's note"
+        },
         "conditions": [
           {
             "name": "temperature",
@@ -151,6 +155,10 @@
             }
           }
         ],
+        "unit": {
+          "status": "not_applicable",
+          "reason": "conformance fixture: the third source's note"
+        },
         "conditions": [
           {
             "name": "temperature",
@@ -172,10 +180,6 @@
         "labels": []
       }
     ],
-    "unit": {
-      "status": "not_applicable",
-      "reason": "conformance fixture: the second source's note"
-    },
     "labels": []
   },
   "compare": {

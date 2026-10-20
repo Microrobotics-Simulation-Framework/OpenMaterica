@@ -416,6 +416,7 @@ def test_the_result_takes_an_alternatives_index_only_from_zero() -> None:
     entry: dict[str, JsonValue] = {
         "alternative": 0,
         "value": 1.0,
+        "unit": "Pa.s",
         "conditions": [],
         "specimen": {},
         "provenance": {"origin": "measured_by_contributor", "review": {"status": "not_checked"}},
@@ -428,7 +429,6 @@ def test_the_result_takes_an_alternatives_index_only_from_zero() -> None:
             "status": "unknown",
             "reasons": [{**reason, "alternative": index}],
             "alternative_values": [{**entry, "alternative": index}],
-            "unit": "Pa.s",
             "labels": [],
         }
 

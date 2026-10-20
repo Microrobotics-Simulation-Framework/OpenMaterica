@@ -189,7 +189,7 @@ and every fault is killed by the same files as before, from the same first file,
 | `donor_age_of_neither_accepted` | a `donor_age` holding neither `value` nor `range` accepted | survives: no case holds one |
 | `review_of_both_shapes_read_as_its_status` | a review holding both `status` and `result` read as its status object | survives: no case holds one |
 | `reviewed_review_keeps_a_status_objects_members` | a reviewed review returned with a status object's members, its `reason` among them | survives: no case holds one |
-| `unit_of_the_last_remaining_alternative` | under `no_pick`, the result's `unit` the last remaining alternative's | 3, the three `PR-013.evidence_unit*` arms |
+| `unit_of_the_last_remaining_alternative` | under `no_pick`, every entry's `unit` the last remaining alternative's | 3, the three `PR-013.evidence_unit*` arms |
 | `refused_alternative_set_aside` | an alternative refused at step 8 or 9 set aside, not refusing the field | 9 |
 | `set_aside_alternative_refuses` | an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside | 6 |
 | `request_fault_sets_aside` | an alternative whose read a fault of the request ends set aside, not refusing the field | 1, `PR-316.implied_two_disagree_in_alternative` alone |
@@ -205,7 +205,7 @@ and every fault is killed by the same files as before, from the same first file,
 | `set_aside_reasons_beside_no_pick` | the set-aside alternatives' reasons reported beside `no_pick` or `want_mismatch` | 1, `PR-013.index_past_set_aside_and_unknown_reasons` alone |
 | `request_fault_given_an_alternative` | a fault of the request found reading one alternative given that `alternative` | 2, PR-316's two arms in an alternative |
 | `index_among_those_that_stay` | an alternative's index counted among the alternatives that stay, in its reasons and its entry | 2, `PR-013.index_past_set_aside_and_unknown_reasons` and `PR-044.one_left_after_set_aside` |
-| `unit_of_the_first_stored_alternative` | under `no_pick`, the result's `unit` the first stored alternative's, set aside or not | 1, `PR-013.evidence_unit_of_the_first_that_stays` alone |
+| `unit_of_the_first_stored_alternative` | under `no_pick`, every entry's `unit` the first stored alternative's, set aside or not | 3, the three `PR-013.evidence_unit*` arms |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the eight survivors, three were the open points (`members_of_the_other_kind_read`,
@@ -251,12 +251,15 @@ built reached, and S4a replaced it (above).
 S4a's sixteen break each rule of step 7 the model decides for a read with no pick and no overlay: an
 alternative's standing (set aside, staying or refusing the field), the reasons each outcome reports and
 withholds, each reason's `alternative`, the nominal on the one left, the labels of a result that rests on no
-single alternative, the entries' indexes and the `unit` under `no_pick`. Five die to one case file alone:
-`request_fault_sets_aside`, `nominal_not_applied_to_the_one_left`, `unknown_reasons_dropped_beside_no_pick`,
-`set_aside_reasons_beside_no_pick` and `unit_of_the_first_stored_alternative`, whose case S4a wrote for it,
-three evidence alternatives the first of which an implied condition sets aside: only a unit registered as a
-status object can be stored differently, which only evidence's is, and evidence holds no registered
-condition of its own, so an implied condition is the one way to set an evidence alternative aside.
+single alternative, the entries' indexes and the `unit` under `no_pick`. Four die to one case file alone:
+`request_fault_sets_aside`, `nominal_not_applied_to_the_one_left`, `unknown_reasons_dropped_beside_no_pick` and
+`set_aside_reasons_beside_no_pick`. A fifth, `unit_of_the_first_stored_alternative`, died to the case S4a wrote
+for it alone, three evidence alternatives the first of which an implied condition sets aside: only a unit
+registered as a status object can be stored differently, which only evidence's is, and evidence holds no
+registered condition of its own, so an implied condition is the one way to set an evidence alternative aside.
+Since S3b-2 (the maintainer's ruling of 2026-10-19 on the result's shape) each entry holds its own
+alternative's unit, and both `unit` faults set every entry's unit to one alternative's, so each dies to the
+three evidence arms, whose entries' units differ.
 
 The agreement property HP12 (`tests/property/test_model_properties.py`) kills 13 of the 14 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two
