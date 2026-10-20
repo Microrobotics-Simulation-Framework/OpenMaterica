@@ -174,19 +174,19 @@ every family entry goes in `families/CHANGELOG.md`.
   Six regions, of the three searches planned for a long tail and of the two planned with the generated counts (one
   of them in two groups), were drawn by their properties in under 0.03 of the examples, too seldom for a draw
   floor at `ci`. Each property now draws its region in a weighted branch, records it as a feature computed from
-  the example or from the read's result, and declares it by its chance, below the least share measured over 48 or
-  96 runs at `ci` (0.08 to 0.18, where the means are 0.132 to 0.257): a run is held to a floor of 15 to 95
-  examples of 2,000, which a correct run falls below with a probability of 7e-16 to 3e-11 by the audits' model
-  (250 draws each shown in 5 examples) and of 1e-38 to 8e-18 at the variance measured. HP1 draws the planned
-  search's read before the kind, in about one draw in seven, so that the branch takes from every kind and fault
-  alike, and from `unknown_at_step_10` most of that kind's draws of `unchecked`: a result holding
-  `condition_unchecked`. HP12's faults and values draw their region inside a kind that can hold it, so that their
-  kinds stay drawn alike: the same result in about a quarter of the draws of steps 9 and 10, and a constant's read
-  under `want: bounds` that reaches step 13 in about one draw in seven of each kind of values. The one-slip
-  relation draws a name with an empty word against the same with `s` or `es` in it in about one in four of its
-  unrelated names and two slips not swapped far apart, never a one slip's draw; HP7's table removes a condition
-  the row requires from record and request after the kinds in about one draw in seven; and the hash's edit
-  property places an edit below `review` or `copy` in a provenance that is an array beside the record's own
+  the example or from the read's result, and declares it by its chance, below the least share measured over 48 to
+  144 runs at `ci` (0.08 to 0.18, where the means are 0.132 to 0.257; HP12's faults' is at its least, below): a
+  run is held to a floor of 15 to 95 examples of 2,000, which a correct run falls below with a probability of
+  7e-16 to 2e-11 by the audits' model (250 draws each shown in 5 examples) and of 1e-38 to 8e-18 at the variance
+  measured. HP1 draws the planned search's read before the kind, in about one draw in seven, so that the branch
+  takes from every kind and fault alike, and from `unknown_at_step_10` most of that kind's draws of `unchecked`: a
+  result holding `condition_unchecked`. HP12's faults and values draw their region inside a kind that can hold it,
+  so that their kinds stay drawn alike: the same result in about a quarter of the draws of steps 9 and 10, and a
+  constant's read under `want: bounds` that reaches step 13 in about one draw in seven of each kind of values. The
+  one-slip relation draws a name with an empty word against the same with `s` or `es` in it in about one in four
+  of its unrelated names and two slips not swapped far apart, never a one slip's draw; HP7's table removes a
+  condition the row requires from record and request after the kinds in about one draw in seven; and the hash's
+  edit property places an edit below `review` or `copy` in a provenance that is an array beside the record's own
   members in about three in ten of its edits outside every provenance object. HP12's values hold the member the
   reader does not know to a chance of 0.2, as HP6 does (`unknown_members_returned`), and plant it in each draw of
   their region. A floor catches a region no longer drawn; HP1's and HP12's lie below the thin shares main drew,
@@ -199,11 +199,12 @@ every family entry goes in `families/CHANGELOG.md`.
   takes none of that code's share), HP12's values' 0.84 to 0.99 and the one-slip relation's 0.88 to 1.01; each
   first fault of HP12's steps 9 and 10, the kind that holds the region, kept 0.66 to 0.82. The hash's records hold
   a provenance object in an array in half their draws and a `card` or `content_hash` in their provenance object in
-  half, which lifts four of its chances, below their least shares on main, above them; HP1's kinds (0.07) and four
+  half, which lifts six of its chances, below their least shares on main, above them; HP1's kinds (0.07) and four
   of HP12's values' (`form_interval`, `form_composition`, `form_evidence` and `standing`) still lie above their
-  least shares, each far above its floor (`tests/property/README.md`, "The regions held to a floor"). Kill points
-  past the 500th example on more of 400 streams than main's (one-sided Fisher p below 0.05) are planned, on the
-  region where each mutant shows: `reasons_not_merged` (HP1 over its step 8 and steps 9 and 10 kinds),
+  least shares, and HP12's faults' `condition_unchecked` (0.08) is at its least (0.093 over 96 runs, 0.0795 over
+  20 more), each far above its floor (`tests/property/README.md`, "The regions held to a floor"). Kill points past
+  the 500th example on more of 400 streams than main's (one-sided Fisher p below 0.05) are planned, on the region
+  where each mutant shows: `reasons_not_merged` (HP1 over its step 8 and steps 9 and 10 kinds),
   `stated_without_origin_with_a_condition` (HP1 over the five kinds it dies at), `conditions_beside_no_pick` and
   `no_unit_beside_alternative_values` (HP2 over its alternatives), `no_statistics_beside_a_composition` (HP2 over
   compositions under their own `want`), `request_faults_of_the_first_alternative_alone` (alternatives with request
@@ -212,10 +213,11 @@ every family entry goes in `families/CHANGELOG.md`.
   `token_condition_unit_accepted` (a token condition's unit first; 8 of 200 streams against 3, which the review
   named), `components_normalised` (a composition under `want: components`) and `unknown_members_returned` (a
   member the reader does not know, where its HP12 row names `unknown_member` alone again). The first five draw
-  kinds their properties hold to their chances; the others have no floor of their own, their regions being 0.004
-  to 0.04 of their properties' draws (`tests/property/README.md`, "The regions held to a floor"). No example
-  count, size, fault, mutant or check changed. The new draws and searches moved the kill points of 43 of the 479
-  mutants; the latest kill is still the 487th (`tests/property/kill_points.json`).
+  kinds their properties hold to their chances, and `unknown_members_returned` a region with a floor of its own
+  (HP12's values, `unknown_member`, chance 0.2, floor 110); the others have no floor of their own, their regions
+  being 0.004 to 0.04 of their properties' draws (`tests/property/README.md`, "The regions held to a floor"). No
+  example count, size, fault, mutant or check changed. The new draws and searches moved the kill points of 43 of
+  the 479 mutants; the latest kill is still the 487th (`tests/property/kill_points.json`).
 
 ## [0.1.0.dev2] - 2026-10-20
 

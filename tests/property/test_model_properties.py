@@ -387,12 +387,14 @@ def test_the_read_agrees_with_the_model_on_values_and_alternatives(example: Exam
 
 
 # A result holding `condition_unchecked`, where HP1's mutant that drops that reason's condition shows
-# (`model_strategies.REGIONS`), by its chance, below its least share over 96 runs at `ci` (2026-10-20,
-# derandomised, each its own stream; mean 0.132, least 0.093). By `audits.py`'s model, 250 draws each shown in
-# 5 examples, a run falls below its floor of 15 examples with a probability of 4e-13, and with 3e-19 at the
-# variance measured (5.6 times a binomial count's). The region takes about a quarter of the draws of steps 9
-# and 10, the one kind that can hold it, so each of their first faults shows in about three quarters of its
-# share on main.
+# (`model_strategies.REGIONS`), by its chance, which is at its least share, not clear of it: over 96 runs at
+# `ci` (2026-10-20, derandomised, each its own stream) the mean was 0.132 and the least 0.093, and over 20
+# more on other streams (2026-10-21) the least was 0.0795 (159 of 2,000 examples), under the chance. By
+# `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of 15 examples (against
+# that least count of 159) with a probability of 4e-13, with 3e-19 at the variance of the 96 runs (5.6 times a
+# binomial count's) and with 5e-11 at that of the 20 (10.4 times). The region takes about a quarter of the
+# draws of steps 9 and 10, the one kind that can hold it, so each of their first faults shows in about three
+# quarters of its share on main.
 @pytest.mark.chances(condition_unchecked=0.08)
 @pytest.mark.drawn(*PARTS["faults"])
 @given(strategies.drawn(SIZE, PARTS["faults"]))

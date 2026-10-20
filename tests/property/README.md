@@ -536,23 +536,23 @@ draws it always. Main drew six of these regions in under 0.03 of the examples, t
 10 examples, the least `ci` judges, needs a chance of about 0.065 (`audits.draw_floor`). So each strategy draws
 its region in a weighted branch, and each chance is declared below the least share measured (2026-10-20: 2,000
 examples a run at `ci`, derandomised, each run its own stream, the checks skipped; 48 runs, HP1's and HP12's
-96; shares are measured, since Hypothesis draws the ends of a small range more often than their share):
+96, HP7's 144; shares are measured, since Hypothesis draws the ends of a small range more often than their share):
 
 | Planned search | Region (feature) | Property, and its branch | Main: mean share | Now: mean (least) | Chance | Floor | Falls below it, a run |
 |---|---|---|---|---|---|---|---|
 | `a_non_object_provenance_opens` | an edit below `review` or `copy` in a provenance that is an array (`edited_below_review_or_copy_in_a_non_object_provenance`) | the hash's edit property: in about three in ten of its edits outside every provenance object, the edit placed below such a name beside the record's own members (`placed_below_a_non_object_provenance`) | 0.003 | 0.257 (0.218) | 0.18 | 95 | 5e-14; 1e-38 |
 | `empty_word_made_plural` | a name with an empty word against the same with `s` or `es` in it (`through_an_empty_word`) | (9): such a pair in about one in four of its unrelated names and its two slips not swapped far apart (`pairs_through_an_empty_word`) | 0.002 | 0.157 (0.116) | 0.1 | 30 | 6e-13; 2e-32 |
-| `row_requirements_ignored` | a condition the row requires held by neither the record nor the request (`required_held_nowhere`) | HP7's table: such a condition removed after the kinds in about one draw in seven | 0.005 | 0.142 (0.104) | 0.1 | 30 | 3e-11; 3e-19 |
+| `row_requirements_ignored` | a condition the row requires held by neither the record nor the request (`required_held_nowhere`) | HP7's table: such a condition removed after the kinds in about one draw in seven | 0.005 | 0.144 (0.104) | 0.1 | 30 | 2e-11; 7e-21 |
 | `condition_unchecked_without_its_condition` (result) | a result holding `condition_unchecked` (`condition_unchecked`) | HP1: before the kind, in about one draw in seven, the planned search's read with no second fault (`unknown_at_step_10` whose one fault is `unchecked`), the kind's own draws giving `unchecked` half as often as each other fault | 0.024 | 0.154 (0.113) | 0.08 | 15 | 7e-16; 8e-18 |
-| `condition_unchecked_without_its_condition` (HP12) | the same (`condition_unchecked`) | HP12's faults: inside the kind of steps 9 and 10, the one that reaches step 10, in about a quarter of its draws, the planned search's read with no second fault (`unchecked` the one fault of steps 9 and 10) | 0.026 | 0.132 (0.093) | 0.08 | 15 | 4e-13; 3e-19 |
+| `condition_unchecked_without_its_condition` (HP12) | the same (`condition_unchecked`) | HP12's faults: inside the kind of steps 9 and 10, the one that reaches step 10, in about a quarter of its draws, the planned search's read with no second fault (`unchecked` the one fault of steps 9 and 10) | 0.026 | 0.132 (0.093; 0.0795 over 20 more runs) | 0.08 | 15 | 4e-13; 3e-19 (5e-11 at the 20's variance) |
 | `bounds_given_by_a_constant` | a constant's read under `want: bounds` that reaches step 13, which refuses it (`constant_refused_bounds`) | HP12's values: inside each of its two kinds alike, in about one draw in seven, the planned search's read (a constant under `want: bounds`, as drawn or with an implied temperature) or alternatives of a constant met under `want: bounds`, each beside a member the reader does not know | 0.016 | 0.157 (0.116) | 0.09 | 20 | 5e-15; 6e-22 |
 | `unknown_members_returned` | a member the reader does not know (`unknown_member`) | HP12's values, as drawn (`result_strategies.enriched`, half the draws of the field read) and in every draw of the region above | 0.244 | 0.354 (0.294) | 0.2 | 110 | 3e-23; 3e-42 |
 
 The floor is the count of 2,000 examples below which a run fails. The last column is the probability that a
 run falls below it, by `audits.py`'s model (a run counts 2,000 / `CLUSTER` = 250 draws, each shown in `SHOWN` =
 5 examples: the probability that 250 draws at the mean share give fewer than a fifth of the floor), and at the
-variance measured over the runs (3.4 to 7.2 times a binomial count's: the count taken as that many examples'
-clusters). What each floor bounds: a region no longer drawn, or drawn 5 to 21 times more thinly than now. Main's
+variance measured over the runs (3.4 to 7.2 times a binomial count's, 10.4 over the 20 more of HP12's faults:
+the count taken as that many examples' clusters). What each floor bounds: a region no longer drawn, or drawn 5 to 21 times more thinly than now. Main's
 strategies drew the hash's, the slips' and the table's regions below these floors, but HP1's, HP12's faults' and
 HP12's constants under `bounds` above theirs: those floors catch a region that is no longer drawn, not one drawn
 as thinly as on main, which no floor at 1e-6 could tell from the shares now. `deep` would catch most such slides:
@@ -577,16 +577,23 @@ region under a member no record holds, so that the edits inside a provenance obj
 record are as drawn. These changes reach the properties named and the searches that draw their strategies;
 HP10, the byte form's property, draws HP12's builders but not its parts, and so draws as before. The hash's
 records hold a provenance object in an array in half their draws, and a `card` or `content_hash` in their
-provenance object in half, which lifts the four chances of its two properties that lay above their least
-shares on main (`test_hashing_properties.py`). Some declared chances still lie above the least share measured
-over 96 runs, each far above its floor (at most 6e-8 a run at the variance measured): HP1's kinds (0.07; least
+provenance object in half, which lifts the six chances of its two properties that lay above their least
+shares on main (`card_below_the_top` and `provenance_in_an_array` on both, least 0.386 to 0.426, and the edit
+property's `edited_below_a_kept_special_name` and `edited_inside_a_provenance_object`, 0.3335 and 0.2945 against
+0.36 and 0.33; `test_hashing_properties.py`). All six clear their chances now. Some declared chances still lie
+above the least share measured over 96 runs, each far above its floor (at most 6e-8 a run at the variance
+measured): HP1's kinds (0.07; least
 0.030 to 0.045 now, 0.043 to 0.064 on main), and HP12's values' `form_interval` (0.14; 0.102 now, 0.136 on
 main), `form_composition` (0.12; 0.107, 0.124), `form_evidence` (0.11; 0.107, 0.113) and `standing` (0.10;
 0.093, 0.100). No weight lifts HP1's: a kind's count varies six to eight times as much as a binomial count, so
 a least share of 0.07 over 48 runs needs a mean of about 0.11, and eleven such kinds exceed the whole. HP12's
 four lay within 0.005 of their least shares on main, and the region takes about one draw in seven of each
 kind; the constants hold the only slack, and those under `want: value` hold the `-0` region (kept at 0.87 of
-main's), the others S4a's constant alternatives and the request faults, which other searches draw.
+main's), the others S4a's constant alternatives and the request faults, which other searches draw. A sixth,
+HP12's faults' `condition_unchecked` (0.08), is at its least share: 0.093 over those 96 runs, but 0.0795 (159
+of 2,000 examples) in the worst of 20 more on other streams (2026-10-21). Its floor, 15, lies far below that
+least count, and a run falls below it with a probability of 5e-11 at the variance of those 20 runs (10.4 times
+a binomial count's).
 
 The other planned searches are held by a floor the property had, or by none of their own yet. HP2's five under a
 nominal draw HP2's `nominal` kind whole, and since 2026-10-20 HP1's `reasons_not_merged` its step 8 and steps 9

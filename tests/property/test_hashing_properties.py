@@ -427,8 +427,9 @@ def check_edit(digest: Digest, edit: Edit) -> None:
 
 
 # As above: those least shares failed a `dev` run with a probability of about 1.8e-4 (at most 1e-2). Over 48
-# runs on main (2026-10-20) the least shares of the first, second and fourth were 0.419, 0.426 and 0.295,
-# below their chances; with `records` as above, the four show in 0.727, 0.643, 0.590 and 0.387 of the
+# runs on main (2026-10-20) the least shares of the first, second, third and fourth were 0.419, 0.426, 0.3335
+# and 0.295, below their chances (with the two of the property above, six chances lay above their least
+# shares); with `records` as above, the four show in 0.727, 0.643, 0.590 and 0.387 of the
 # examples, least 0.678, 0.593, 0.536 and 0.345 over 48 runs, and fall below their floors with a probability
 # below 1e-10 by `audits.py`'s model.
 @pytest.mark.chances(
