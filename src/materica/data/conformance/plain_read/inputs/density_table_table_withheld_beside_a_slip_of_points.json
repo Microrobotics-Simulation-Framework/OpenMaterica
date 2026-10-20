@@ -1,0 +1,85 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/density_table_fixture",
+  "version": "1.0.0",
+  "name": "Density table (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:e5463e85463506b7dc7b67604f01ccd94998b8cf52d6904fd15add052bf812a5",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "bulk": {
+        "fields": {
+          "density": {
+            "form": "table",
+            "unit": "kg/m3",
+            "table": {
+              "status": "withheld",
+              "point": []
+            },
+            "conditions": {
+              "temperature": {
+                "status": "not_applicable"
+              },
+              "density_kind": {
+                "token": "apparent",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "status": "withheld"
+            },
+            "provenance": {
+              "origin": "measured_by_source",
+              "extraction": {
+                "method": "table",
+                "text_extraction": "conformance fixture: text extraction"
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              },
+              "source": {
+                "key": "conformance_fixture_source",
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-source",
+                  "version": "1"
+                },
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "page": 1,
+                  "column": {
+                    "header": "Density (kg/m3)",
+                    "index": 2
+                  },
+                  "row": "Density table (conformance fixture)"
+                }
+              },
+              "recipe": {
+                "locator": {
+                  "type": "table",
+                  "label": "Table 1",
+                  "page": 1,
+                  "column": {
+                    "header": "Density (kg/m3)",
+                    "index": 2
+                  },
+                  "row": "Density table (conformance fixture)"
+                },
+                "steps": "conformance fixture: illustrative extraction steps"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

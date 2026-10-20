@@ -61,10 +61,10 @@ specification's README says ("Case files"), by the conformance runner's comparis
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 1028 files, under every configuration each allows (7,848 runs), and gives no verdict
+The model agrees with 1032 files, under every configuration each allows (7,880 runs), and gives no verdict
 on 244, each listed in `exceptions.py` under the kind its outcome names: a table that steps 8 and 9 pass (83),
 an overlay (71), an extrapolation (55) and a pick (35). It disagrees with none (measured at S3a's head, which
-reads a table through step 9: 64 files gained a verdict, 2026-10-20). Until S4a it also
+reads a table through step 9: 64 files gained a verdict, and S3a added four, 2026-10-20). Until S4a it also
 gave no verdict on 21 files of alternatives with reasons of their own, with which it now agrees, as with S4a's three cases of
 `unit` under `no_pick`. A case file the model disagrees with, or gives no verdict on, fails unless a kind lists it, for the
 detail that kind names; a listed one it agrees with fails as stale.

@@ -138,6 +138,7 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-030.near_typo_z",
                 "PR-108.near_typo_in_plus_minus_entry",
                 "PR-108.near_typo_plus_minsu",
+                "PR-110.table_withheld_beside_a_slip_of_points",
             ),
         },
         # The fluid field beside the one PR-008's case reads: the section's slip refuses it too; and the
@@ -256,6 +257,7 @@ EXCEPTIONS: dict[str, Kind] = {
         "where step 8 refuses a registered name and gives `unknown` for another, whatever the field's form",
         {
             2: (
+                "PR-036.table_on_biocompatibility_evidence_holding_its_axis",
                 "PR-052.registered_condition_as_status_object",
                 "PR-052.registered_condition_in_conditions",
             )
