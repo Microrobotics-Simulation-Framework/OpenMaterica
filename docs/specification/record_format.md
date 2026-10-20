@@ -196,6 +196,14 @@ condition MUST be present, holding `{"status": "unstated"}` if the source does n
   label it knows that the row does not name for the field and its form refuses it as `form_invalid`. A
   missing label is not refused at read, since the value does not depend on it: a model that assumes the label
   refuses its absence (`declarations.md` section 1 item 5), and a record check flags it. [PR-053] [RC-122]
+  A label records its basis in the field's `label_basis`, in the shape of a condition's basis (`provenance.md`
+  section 6): `{"basis": "stated"}` where the source states the trivial model the label names (a source
+  reporting the viscosity independent of shear rate over the range it measured), `{"basis": "inferred",
+  "inferred_from": <text>}` where a curator inferred it. A reader checks only its name, for slips, as it checks
+  every member named at its place (section 10 item 5), and neither checks its shape nor returns it, so no read
+  depends on it. [PR-030] The build reads it from the record as stored, beside the label, and trusts a label
+  whose basis is stated, or whose value's review is completed (`declarations.md` sections 2 and 4.1). A record
+  check flags a label without one, or a basis that breaks its shape. [RC-122] [BC-050]
 - `test_method` is required on remanence and saturation magnetisation: a closed magnetic circuit
   (`hysteresigraph`, as in ASTM A977/A977M and IEC 60404-5; makers also write "hysteresisgraph") measures
   without the specimen's demagnetisation and an open-circuit magnetometer with it, so on one specimen shape
