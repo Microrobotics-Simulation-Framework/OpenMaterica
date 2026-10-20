@@ -496,10 +496,10 @@ because a published figure is often the only independent witness available; draf
 applicable" driven by the value's type, and a structured "unstated"); quote attach-and-verify; registry
 drafting from a DOI and licence pages; formulation evaluators (a reference formulation such as water's) and
 check-point bakers. Each is a method entry built first as a library function with a command line, in
-`openmaterica-authoring`; the MCP server only exposes them, except registry drafting, which goes online and
-stays a command a person runs (architecture draft section 8.2). A prototype estimated (it did not measure)
-full provenance at two to seven times the time first assumed per value; tooling, not fewer fields, is the
-answer chosen.
+`openmaterica-authoring`; the MCP server only exposes them, except registry drafting and source discovery and
+acquisition, which go online and stay commands a person runs (architecture draft section 8.2). A prototype
+estimated (it did not measure) full provenance at two to seven times the time first assumed per value;
+tooling, not fewer fields, is the answer chosen.
 
 ### 5.2 Model-family definitions
 
@@ -1282,8 +1282,9 @@ Binding on every contribution. `CONTRIBUTING.md` holds the operational detail.
     enforces it.
 19. **Static releases.** Everything needed to use a release is in its archived artefacts. No OpenMaterica
     feature requires a hosted service, and nothing is fetched from the network unless the user asks. No tool
-    the MCP server loads makes a network request; registry drafting, the one tool that goes online, is a
-    command a person runs with an explicit flag (maintainer, 2026-10-17).
+    the MCP server loads makes a network request. Two tools go online, each a command a person runs with an
+    explicit flag, which the MCP server never loads: registry drafting (maintainer, 2026-10-17), and source
+    discovery and acquisition (maintainer, 2026-10-20).
 20. **No model on the read side.** No language model runs in a reader, in `materica check`, in a release
     build, or in any consumer's build. OpenMaterica calls no model and holds no keys; the user's agent brings
     both (architecture draft section 8.1).
