@@ -38,7 +38,6 @@ named where it is applied:
 |---|---|
 | `form_not_allowed_by_its_row` | a composition whose basis the row does not allow is refused as a form the row does not allow is: `form_not_registered` and the shared checks' reasons, its member not checked (maintainer, 2026-10-15; the text says so of a form) |
 | `alternatives_without_a_pick` | step 7 for a read with no pick and no overlay (S4a); a table alternative gives no verdict wherever it stands among the others, since every alternative is read before the outcome is decided, and step 11's set-aside, `at_edge` and `request_incomplete` are a table's |
-| `members_of_the_other_kind` | in a record, `token` on a numeric condition, or `value`, `range`, `plus_minus` or `set_or_measured` on a token condition, breaks its shape (fail closed); a token condition's `unit` keeps its own rule, step 9's `unit_mismatch`. The same members in an implied condition are not open: `read_side_contract.md` section 1 refuses them (maintainer, 2026-10-18), and so does the model |
 | `alternatives_named_at_a_field` | `alternatives` is named at a field's place, so a slip of it is refused (fail closed) |
 | `evidence_entry_provenance` | an entry's `provenance` is returned whole, holding the members the version defines at every depth, read from the writer schema below the provenance table's own, since the text names them in part only |
 
@@ -47,8 +46,10 @@ reader of the text, and brought to the text of this branch here. Two rulings it 
 not allow left unchecked and a status object breaking its shape giving `form_invalid` alone, are the text's
 since S3 (`read_side_contract.md` section 3, step 8; `provenance.md` section 1), and so is the shape of
 `alternatives` (`record_format.md` section 5): the model cites them there. So are the maintainer's rulings of
-2026-10-19 and 2026-10-20 on a point the model once listed: an evidence entry's `provenance` is checked as a
-field's, every review it holds at any depth read as every review is (`record_format.md` section 4.3 item 2).
+2026-10-19 and 2026-10-20 on two points the model once listed: an evidence entry's `provenance` is checked as a
+field's, every review it holds at any depth read as every review is (`record_format.md` section 4.3 item 2);
+and a record's condition holding a member of the other kind of condition's shape breaks it (`provenance.md`
+section 6.1 item 1).
 
 ## Agreement with the cases
 
@@ -83,8 +84,9 @@ ruling's cases kill, and added 16 faults of its step 7, each killed, measured 20
 faults, 80 killed, 16 survive. The maintainer's rulings of
 2026-10-19 and 2026-10-20 on an evidence report's provenance bring a case that kills one more,
 `evidence_entry_provenance_unchecked`, and a fault their cases kill, `nested_reviews_returned_as_found`, so 97
-faults: 82 killed, 15 survive. The rows these rulings change are measured with them; the others are as
-stamped.
+faults: 82 killed, 15 survive. The rows these rulings change are measured with them, and so are those their
+cases move that were current before them, `condition_shapes_unchecked`, `every_slip_ignored` and
+`null_read_as_absent`; the others are as stamped.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -97,7 +99,7 @@ stamped.
 | `acceptances_applied_anywhere` | an acceptance applied at another record, a region, an interval or no location | 13 |
 | `two_nominals_for_one_field` | two nominals naming one field read as the first | 1, `PR-330.two_nominals_one_field` alone |
 | `unregistered_field_requested` | a field the reader's version does not register read, and found absent | 5 |
-| `every_slip_ignored` | a member one slip from a named one ignored, in a request and in a record | 39 |
+| `every_slip_ignored` | a member one slip from a named one ignored, in a request and in a record | 40 |
 | `plurals_not_slips` | a word made plural or singular not one slip | survives: each plural slip in the cases adds an `s` (`fluids`), and so is one character inserted |
 | `envelope_body_and_section_slips_ignored` | a slip in the envelope, the body or a section refuses no field | 6 |
 | `unreadable_sources_ignored` | an unreadable source never turns `absent` or `pin_mismatch` into `malformed` | 49 |
@@ -120,7 +122,7 @@ stamped.
 | `entry_withheld_in_part_read` | an evidence entry withheld in some members but not every one read | 1, `PR-052.entry_partly_withheld` alone |
 | `missing_label_refused` | a field without its row's label refused | 97 |
 | `unreadable_review_refuses` | a review the reader cannot read refuses the field | 8 |
-| `null_read_as_absent` | `null` in a member step 8 checks read as the member absent | 7 |
+| `null_read_as_absent` | `null` in a member step 8 checks read as the member absent | 8 |
 | `statistics_unchecked` | a statistics block not checked | 47 |
 | `uncertainties_unchecked` | a relative or expanded uncertainty not checked | 14 |
 | `derivation_unchecked` | a derived value's derivation not checked | 14 |
@@ -130,10 +132,10 @@ stamped.
 | `every_forms_member_named_at_a_field` | every form's member named at a field's place, so that a slip of another form's refuses a constant | survives: no case holds a slip of another form's member beside a form the reader knows |
 | `every_status_object_an_unstated_kind` | a `plus_minus` entry whose `stated_as` holds any status object counted as of unstated kind | survives: no case holds a `stated_as` of another status token beside an entry of a stated kind |
 | `section_specimen_unchecked` | a section's `specimen` not checked for a field read from it | 3 |
-| `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 19 |
+| `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 25 |
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | survives: no case holds a status object breaking its shape with a token the reader does not know |
-| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | 2, `PR-330.implied_token_for_numeric_condition` and `PR-330.implied_unit_for_token_condition`: the implied half, which the token ruling settled; no case holds the record half, which the text leaves open |
-| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | 2, the same two: the implied half; no case holds the record half, which the text leaves open |
+| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | 7: `PR-330.implied_token_for_numeric_condition` and `PR-330.implied_unit_for_token_condition`, the implied half, which the token ruling settled; `PR-045.numeric_condition_holding_token`, `PR-045.numeric_condition_holding_token_status`, `PR-045.token_condition_holding_value`, `PR-045.token_condition_holding_value_null` and `PR-301.other_kind_beside_unknown_basis`, the record half, ruled on 2026-10-19 |
+| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | 7, the same seven, the implied half's two and the record half's five |
 | `slips_of_alternatives_ignored` | a member one slip from `alternatives` beside a value field's members ignored | survives: no case holds a member one slip from `alternatives`: the text leaves it open |
 | `evidence_entry_provenance_unchecked` | an evidence entry's `provenance` not checked | 1, `PR-052.entry_provenance_origin_unknown` alone, the case of the maintainer's ruling (2026-10-19) |
 | `nested_reviews_returned_as_found` | a review inside a provenance an evidence entry's `per_parameter` maps a parameter to returned as found, and none where that provenance holds none | 2, `PR-052.entry_provenance_per_parameter_review_unknown` and `PR-052.entry_provenance_per_parameter_review_absent`, the cases of the maintainer's ruling (2026-10-20) |
@@ -189,8 +191,8 @@ stamped.
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the eight survivors, three were the open points (`members_of_the_other_kind_read`,
 `slips_of_alternatives_ignored`, `evidence_entry_provenance_unchecked`), which no case pinned while the text left
-them open (the maintainer's rulings brought cases that kill the first and the last: the token ruling's, and
-`PR-052.entry_provenance_origin_unknown`); one is a rule of the text that no case pins either, since S2a-4's fix round
+them open (the maintainer's rulings brought cases that kill the first and the last: the token ruling's and
+the record half's, and `PR-052.entry_provenance_origin_unknown`); one is a rule of the text that no case pins either, since S2a-4's fix round
 (`declaration_names_not_named_in_a_request`: `read_side_contract.md:40-41` and `declarations.md:30` and `:64` name
 a requirement's `field` and its conditions' `reason` and `consequence`, and a read refuses a slip of one); one is
 the rule that a status object breaking its shape gives no reason of its own
@@ -204,11 +206,12 @@ no component on `bulk.density` and an interval upside down on `bulk.elemental_co
 `form_not_registered` alone. The ninth, `input_specimens_optional`, is the model's own
 reading until S2a-4's phase B, whose agreement property (HP12) found that the text requires the list
 (`provenance.md` section 5 item 3, "A derived value carries the specimen facts of each input"); the model was
-fixed, and the fault seeded. The tenth, `members_of_the_other_kind_ignored`, is the implementation's
-reading of that open point's record half (S2a-4's phase B): HP12 lists the point as a known divergence, held
-exactly by this fault (`tests/property/test_model_properties.py`). It and `members_of_the_other_kind_read` also
-ignore the implied half, since the model reads both halves by one function, and so the two cases of the
-maintainer's token ruling kill both; neither is a survivor since. The last four are the model's readings until fuzz
+fixed, and the fault seeded. The tenth, `members_of_the_other_kind_ignored`, was the implementation's
+reading of that open point's record half (S2a-4's phase B), which HP12 listed as a known divergence, held
+exactly by this fault, until the maintainer ruled it fail closed (2026-10-19) and the implementation came to
+refuse it; HP12 lists no divergence of it since. It and `members_of_the_other_kind_read` also ignore the
+implied half, since the model reads both halves by one function, and so the two cases of the maintainer's
+token ruling kill both, as the two of the record half's ruling do; neither is a survivor since. The last four are the model's readings until fuzz
 target 4, held to the model, found them on its first minutes: a population level whose `within` is missing
 or slipped had its `level` token left unchecked, so did a `dof` status object under a Student's t
 distribution, against `read_side_contract.md` section 2 item 2, "Each step makes all its checks before the

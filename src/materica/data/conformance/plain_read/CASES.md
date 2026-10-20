@@ -446,6 +446,7 @@ See `README.md` beside this file for how to read a case.
 | `near_typo_section_fact_tissue_stat` | the section's `specimen` holds a fact `tissue_stat`, one slip from `tissue_state`: each field read from the section is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_section_specimens` | the `fluid` section holds `specimens`, one slip from `specimen`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_source_ranges` | a table holding `source_ranges`, one slip from `source_range`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `near_typo_token_on_numeric_condition` | the numeric condition `temperature` holds `tokens`, one slip from `token`, which its place names as a member of the other kind: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_z` | a table holding `z`, one slip from `x` and from `y`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `slip_of_a_field_member_in_interval` | the `interval` holds `values`, one slip from `value`, a member the field's shape names but the interval's does not: ignored, the bounds returned without it, `met` | 13 | met; value `{"lower": 1150.0, "upper": 1250.0, "basis": "specification_limits"}`; unit `"kg/m3"`; labels none |
 | `table_unknown_member_ignored` | a table holding `curation_note`, a member the reader does not know and more than one slip from every member of a table: ignored; read at 310 K, `met` | 13 | met; value `993.0`; unit `"kg/m3"`; labels none |
@@ -700,8 +701,12 @@ See `README.md` beside this file for how to read a case.
 | `field_fault_refuses_that_field` | the same record's `bulk.density`, whose value is a string, is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `interval_basis_missing` | an interval holding `lower` and `upper` and no `basis`: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
 | `interval_basis_of_a_statistics_block` | the interval's `basis` holding `reported_sd`, a token the reader knows for `basis` in a statistics block, not in an interval: `form_invalid`, not `unknown_token` | 8 | not_met; `form_invalid`; labels none |
+| `numeric_condition_holding_token` | the numeric condition `temperature` holds `token` `apparent` beside its value and unit, a member of the other kind of condition's shape: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `numeric_condition_holding_token_status` | the numeric condition `temperature` holds `token` as the status object `unstated` beside its value and unit, a member of the other kind of condition's shape, whatever it holds: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `section_specimen_fault_other_section_read` | the same record's `bulk.density`, in a section whose `specimen` is sound, is read: `met` | 13 | met; value `1261.0`; unit `"kg/m3"`; labels none |
 | `section_specimen_fault_refuses_section` | the `fluid` section's `specimen` holds `preparation` as a string, not its object: `fluid.dynamic_viscosity` is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `token_condition_holding_value` | the token condition `density_kind` holds `value` 1 beside its token, a member of the other kind of condition's shape: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
+| `token_condition_holding_value_null` | the token condition `density_kind` holds `value` as `null` beside its token, a member of the other kind of condition's shape, whatever it holds: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 
 ## PR-046
 
@@ -1169,6 +1174,7 @@ See `README.md` beside this file for how to read a case.
 | `hash_and_pin_mismatch_hs` | a reader with HS: an interface record edited after pinning gives both `hash_mismatch` and one `pin_mismatch` at step 4 (so never reaches the type check) | 4 | not_met; `hash_mismatch`, `pin_mismatch`; labels none; claims `hash: true` |
 | `hash_and_pin_mismatch_no_hs` | the same read for a reader without HS: the stated hash equals the pin, nothing is recomputed, the read reaches step 5 (`unknown_type`) labelled `hash_not_checked` | 5 | not_met; `unknown_type`; labels `hash_not_checked`; claims `hash: false` |
 | `incomplete_and_unit_mismatch` | field off the pattern and temperature in Cel: both reported | 0 | not_met; `request_incomplete`, `request_unit_mismatch (temperature)` |
+| `other_kind_beside_unknown_basis` | the numeric condition `temperature` holds `token`, a member of the other kind of condition's shape, beside the basis `estimated`, a token the reader knows for no basis: step 8 makes all its checks, `form_invalid` and `unknown_token` | 8 | not_met; `form_invalid`, `unknown_token`; labels none |
 | `step0_ends_read` | a request fault ends the read at step 0: the unparseable record is never reported | 0 | not_met; `request_incomplete` |
 | `step1_ends_read` | a record that is of schema 0.2.0 and has a bad licence, pinned by another hash: only pin_mismatch | 1 | not_met; `pin_mismatch` |
 | `step2_ends_read` | the same record pinned by its own hash: only other_version (step 2), not malformed | 2 | not_met; `other_version` |

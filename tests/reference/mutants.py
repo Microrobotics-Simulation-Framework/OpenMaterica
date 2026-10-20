@@ -1318,7 +1318,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "every_status_object_an_unstated_kind": Mutant(
         "a `plus_minus` entry whose `stated_as` holds any status object counted as of unstated kind",
-        "provenance.md:262-263",
+        "provenance.md:265-266",
         {"check_plus_minus": every_status_object_an_unstated_kind},
         survives="no case holds a `stated_as` of another status token beside an entry of a stated kind",
     ),
@@ -1350,18 +1350,20 @@ MUTANTS: Mapping[str, Mutant] = {
         {"status_object": broken_status_reports_its_token},
         survives="no case holds a status object breaking its shape with a token the reader does not know",
     ),
-    # The points the text leaves open (`OPEN_POINTS`). The first two break the implied half too, which the
-    # maintainer's token ruling settled (2026-10-18): its two cases kill both, while no case holds a record's
-    # condition with a member of the other kind.
+    # The points the text left open (`OPEN_POINTS` until the maintainer ruled each). The first two break the
+    # implied half too, which the maintainer's token ruling settled (2026-10-18), and the record half, ruled
+    # with `provenance.md` section 6.1 item 1 (2026-10-19): the cases of both rulings kill both.
     "members_of_the_other_kind_read": Mutant(
         "a numeric condition holding `token`, or a token condition holding `value`, read",
-        "OPEN_POINTS: members_of_the_other_kind, in a record; read_side_contract.md:76-77, implied",
+        "provenance.md:246-249, in a record (the maintainer's "
+        "ruling, 2026-10-19); read_side_contract.md:76-77, implied",
         {"holds_another_kind": holds_no_other_kind},
     ),
     "members_of_the_other_kind_ignored": Mutant(
         "a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does "
         "not know: not refused, and not returned",
-        "OPEN_POINTS: members_of_the_other_kind, in a record; read_side_contract.md:76-77, implied",
+        "provenance.md:246-249, in a record (the maintainer's "
+        "ruling, 2026-10-19); read_side_contract.md:76-77, implied",
         {"holds_another_kind": holds_no_other_kind, "condition_entry": entry_without_the_other_kind},
     ),
     "slips_of_alternatives_ignored": Mutant(
@@ -1532,7 +1534,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "donor_age_of_neither_accepted": Mutant(
         "a `donor_age` holding neither `value` nor `range` accepted",
-        "provenance.md:295",
+        "provenance.md:298",
         {"check_fact": donor_age_of_neither_accepted},
         survives="no case holds a `donor_age` with neither `value` nor `range`",
     ),

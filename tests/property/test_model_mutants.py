@@ -531,9 +531,9 @@ MODEL = [
         ("derivation.input_specimens_missing",),
         ("derivation.input_specimens_missing",),
     ),
-    # Open point 1's record half, read as the implementation reads it: the two cases of the maintainer's
-    # token ruling (2026-10-18) kill these by the implied half, which each breaks too; no case holds the
-    # record half.
+    # Open point 1, read as the implementation read its record half until the maintainer's ruling of
+    # 2026-10-19: the two cases of the token ruling (2026-10-18) kill these by the implied half, which each
+    # breaks too, and the two of the record half's ruling by that half.
     ModelFault(
         "members_of_the_other_kind_read",
         "unpinned",

@@ -128,14 +128,15 @@ def t1_disagreements(
 # machine, nearly all of it python-jsonschema's (2026-10-16); S2b-1's full interval and composition among T1's
 # bases make them 5,383, and its review's 19 case inputs 5,402; S2b-2's full evidence, every report withheld
 # and not, 7,146, and its review's ten case inputs 7,156; the case inputs of the pieces since, 7,332; the four
-# of the rulings on a report's provenance 7,336, of which the share holds 967. At `dev` and `ci` the share
-# takes every STRIDE-th example of each group, from its first: the inputs that read each registered field, and
-# the variants of each base by each change and origin. So it holds each registered field the inputs read, each
-# base, each origin and each change, alone and beside each origin, which `share_misses` checks: T1's order
-# cycles through the origins in a period of five, and a plain stride of 10 through all of T1 held none of the
-# 117 variants that set `measured_by_source`; from whichever of its first ten examples it starts, such a
-# stride misses some kind (with S2b-2's evidence bases, the first holds every origin beside a change, and
-# misses bases and registered fields). A disagreement the share misses is left to `deep`, weekly.
+# of the rulings on a report's provenance 7,336, and the six of the ruling on a condition holding the other
+# kind's member 7,342, of which the share holds 967. At `dev` and `ci` the share takes every STRIDE-th example
+# of each group, from its first: the inputs that read each registered field, and the variants of each base by
+# each change and origin. So it holds each registered field the inputs read, each base, each origin and each
+# change, alone and beside each origin, which `share_misses` checks: T1's order cycles through the origins in
+# a period of five, and a plain stride of 10 through all of T1 held none of the 117 variants that set
+# `measured_by_source`; from whichever of its first ten examples it starts, such a stride misses some kind
+# (with S2b-2's evidence bases, the first holds every origin beside a change, and misses bases and registered
+# fields). A disagreement the share misses is left to `deep`, weekly.
 STRIDE = 1 if PROFILE == "deep" else 10
 PARTS = 12
 

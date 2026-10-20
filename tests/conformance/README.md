@@ -36,7 +36,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | `content_hash` (HS-001 to HS-003) | 51 | run, passed |
 | reads S1 runs, which end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
-| S2's reads that end at step 0, 7 or 8 (plain read) | 162 | run, passed |
+| S2's reads that end at step 0, 7 or 8 (plain read) | 168 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
 | S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape (plain read) | 166 | run, passed |
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
@@ -53,9 +53,14 @@ step 5 and is S4's. Two arms S4's decision 12 gives S2a-4, `PR-044.entry_holds_a
 `alternatives`) and `PR-336.want_mismatch_over_alternatives_no_hs` (step 7's `want_mismatch`), are S2a-4's
 since its fix round. So are the two arms of the maintainer's token ruling, which end at step 0
 (`PR-330.implied_token_for_numeric_condition`, `PR-330.implied_unit_for_token_condition`): S2a-3's step 0
-ignored each member, and S2a-4's fix round refuses it.
+ignored each member, and S2a-4's fix round refuses it. The six arms of the ruling on a record's condition
+holding the other kind's member (`PR-045.numeric_condition_holding_token`,
+`PR-045.numeric_condition_holding_token_status`, `PR-045.token_condition_holding_value`,
+`PR-045.token_condition_holding_value_null`, `PR-030.near_typo_token_on_numeric_condition`,
+`PR-301.other_kind_beside_unknown_basis`) are S2a-2's, whose step 8 checks a condition's shape: it ignored each
+member until that ruling (2026-10-19), and refuses it since.
 
-Of the 1496 case files, 1249 agree with plain read and the hash suite, 1191 with plain read alone, and 1249
+Of the 1502 case files, 1255 agree with plain read and the hash suite, 1197 with plain read alone, and 1255
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
 record-check suite agree with none, since it claims no record checks.

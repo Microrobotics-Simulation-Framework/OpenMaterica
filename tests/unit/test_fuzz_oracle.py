@@ -6,10 +6,10 @@ another unit through and a step 10 that lets a condition outside its tolerance t
 quiet on every result the core gives the full fields under each `want`, and failing on each law broken; and
 against the reference model (HP12), quiet on the core as it is, and failing on a step 8 that refuses what the
 text reads or lets through what it refuses. Each on the full constants, and on the full interval and
-composition (S2b-1), with a fault of their own members. And HP12's open point `members_of_the_other_kind`
-known by its shape, in a field or an alternative, where the oracle failed before it knew it, a step not built
-beside it kept, and a fault beside it still seen; and S4a's control fault in step 7, which the model alone
-sees."""
+composition (S2b-1), with a fault of their own members. And a condition holding a member of the other
+kind's shape, HP12's open point `members_of_the_other_kind` until the maintainer's ruling of 2026-10-19, held
+to the model in a field or an alternative, the oracle failing on the core as it read the point before, and a
+step not built beside it kept; and S4a's control fault in step 7, which the model alone sees."""
 
 import copy
 import json
@@ -377,10 +377,10 @@ def test_the_model_oracle_sees_a_refusal_step_8_misses(monkeypatch: pytest.Monke
         against_the_model(*model_case(a_count_of_the_wrong_type()))
 
 
-# HP12's open point `members_of_the_other_kind` on the target's reads (S2a-4's review B, M1): the core ignores
-# a member of the other kind's shape on a condition, the model refuses it. HP12 knows the point by its draw's
-# plant, which a fuzzed field carries none of, so the oracle knows it by its shape (`holds_the_other_kind`).
-# The field is met, each condition it holds checked, so that two alternatives of it reach `no_pick`.
+# A condition holding a member of the other kind's shape on the target's reads: HP12's open point
+# `members_of_the_other_kind` (S2a-4's review B, M1), which the oracle knew by its shape until the maintainer
+# ruled it fail closed (2026-10-19, `provenance.md` section 6.1 item 1); the core and the model both refuse it
+# since. The field is met, each condition it holds checked, so that two alternatives of it reach `no_pick`.
 
 MET_CONDITIONS: dict[str, JsonValue] = {
     "temperature": {"value": 310.15, "unit": "K", "basis": "stated"},
@@ -443,10 +443,6 @@ def as_the_field(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
     return field
 
 
-def never(example: object) -> bool:
-    return False
-
-
 def as_a_table(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
     del field["value"]
     return {**field, "form": "table", "table": []}
@@ -456,18 +452,40 @@ def _a_table_refused(*arguments: object) -> value_shapes.Found:
     return [value_shapes.invalid("a table refused by a fault")]
 
 
+def _read_as_before_its_ruling(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Step 8 as it read a condition until the maintainer's ruling of 2026-10-19: a member of the other kind's
+    shape ignored, as a member the reader does not know."""
+    conditions = value_shapes.conditions
+
+    def ignoring(value: JsonValue, where: str, found: value_shapes.Found) -> None:
+        if isinstance(value, dict):
+            value = {
+                name: {
+                    held: member
+                    for held, member in entry.items()
+                    if held not in value_shapes.OF_THE_OTHER_KIND[VOCABULARY.conditions[name].shape]
+                }
+                if isinstance(entry, dict) and name in VOCABULARY.conditions
+                else entry
+                for name, entry in value.items()
+            }
+        conditions(value, where, found)
+
+    monkeypatch.setattr(value_shapes, "conditions", ignoring)
+
+
 @pytest.mark.parametrize("held", sorted(OTHER_KIND))
 @pytest.mark.parametrize(
     "place", [pytest.param(as_the_field, id="field"), pytest.param(as_alternatives, id="alternative")]
 )
-def test_the_model_oracle_knows_the_other_kind_by_its_shape(
+def test_the_model_oracle_holds_the_other_kind_to_the_model(
     monkeypatch: pytest.MonkeyPatch, held: str, place: Callable[[dict[str, JsonValue]], dict[str, JsonValue]]
 ) -> None:
-    """Quiet on the core as it is; failing, as it did before the oracle knew the shape, where it does not:
-    the target then fails on a divergence HP12 lists, with no fault behind it."""
+    """Quiet on the core as it is, which refuses the member; failing on the core as it read it before the
+    ruling, which the oracle once let through as a known divergence."""
     sources, request = met_case(place(with_the_other_kind(*OTHER_KIND[held])))
     against_the_model(sources, request)
-    monkeypatch.setattr("tests.fuzz.field_oracle.holds_the_other_kind", never)
+    _read_as_before_its_ruling(monkeypatch)
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(sources, request)
 
@@ -476,26 +494,14 @@ def test_the_model_oracle_keeps_a_step_not_built_beside_the_other_kind(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A table holding the shape, on its row, is a step neither side has built (S3): the core says "not yet"
-    and the model, given the plant's reading, gives no verdict, so the oracle passes it, and a core that
-    answered there fails. Evidence was that step until S2b-2 read it, as an interval was until S2b-1; HP12's
-    one step not built that the model decides, an overlay as the target, the target never reads."""
+    and the model gives no verdict, so the oracle passes it, and a core that answered there fails. Evidence
+    was that step until S2b-2 read it, as an interval was until S2b-1; HP12's one step not built that the
+    model decides, an overlay as the target, the target never reads."""
     field = as_a_table(with_the_other_kind(*OTHER_KIND["numeric-holding-token"]))
     sources, request = met_case(field)
     assert written_read(sources, request) == "not yet"
     against_the_model(sources, request)
     monkeypatch.setattr("materica.core.read.form_problems", _a_table_refused)
-    with pytest.raises(AssertionError, match="the implementation gives"):
-        against_the_model(sources, request)
-
-
-@pytest.mark.parametrize("held", sorted(OTHER_KIND))
-def test_the_model_oracle_sees_a_fault_beside_the_other_kind(
-    monkeypatch: pytest.MonkeyPatch, held: str
-) -> None:
-    """The shape changes only the model's reading of the open point: a refusal step 8 gives wrongly beside it
-    is still seen."""
-    sources, request = met_case(with_the_other_kind(*OTHER_KIND[held]))
-    monkeypatch.setattr(value_shapes, "FIELD_STATISTICS", _refuses_every_block)
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(sources, request)
 

@@ -24,15 +24,10 @@ from tests.property import condition_oracle
 from tests.property.condition_oracle import AFTER_STEP_8, REASONS
 from tests.property.model_strategies import Example
 from tests.property.test_model_properties import (
-    OPEN_POINTS,
     Outcome,
     check_outcome,
-    request_of,
-    targets,
     written_outcome,
 )
-from tests.reference import read_model
-from tests.reference.mutants import MUTANTS
 from tests.spec_sync.schemas import BASE, takes, why_refused
 
 JsonObject = dict[str, JsonValue]
@@ -274,65 +269,15 @@ def objects(result: JsonValue, member: str) -> list[JsonObject]:
     return [item for item in found if isinstance(item, dict)] if isinstance(found, list) else []
 
 
-# HP12's open point `members_of_the_other_kind` (`test_model_properties.OPEN_POINTS`), its record half: a
-# condition the reader knows, in the read field or one of its alternatives, holding a member of the other
-# kind's shape. HP12 knows an open point by the plant its draw makes; a fuzzed field carries none, so the
-# target knows this one by its shape, as `NOT_BUILT` knows each step not built by what the draw holds. Its
-# request half, an implied condition, cannot arise here: the target's requests hold no acceptance.
-OTHER_KIND = OPEN_POINTS["members_of_the_other_kind"]
-
-
-def values_read(example: Example) -> list[JsonObject]:
-    """The value objects at the request's field in the records its pin names: the field, or each of its
-    alternatives."""
-    request = request_of(example)
-    target = request.get("target") if isinstance(request, dict) else None
-    name = target.get("field") if isinstance(target, dict) else None
-    if not isinstance(name, str):
-        return []
-    section_name, _, field_name = name.partition(".")
-    found: list[JsonObject] = []
-    for record in targets(example):
-        body = record.get("body")
-        sections = body.get("sections") if isinstance(body, dict) else None
-        section = sections.get(section_name) if isinstance(sections, dict) else None
-        fields = section.get("fields") if isinstance(section, dict) else None
-        field = fields.get(field_name) if isinstance(fields, dict) else None
-        held = field.get("alternatives") if isinstance(field, dict) else None
-        found += [value for value in (held if isinstance(held, list) else [field]) if isinstance(value, dict)]
-    return found
-
-
-def holds_the_other_kind(example: Example) -> bool:
-    """Whether the read field, or one of its alternatives, holds the open point's shape: a numeric condition
-    holding `token`, or a token condition holding a member only a numeric one holds (the model's
-    `NUMERIC_CONDITION_ONLY`); a token condition's `unit` has its own rule, step 9's."""
-    for value in values_read(example):
-        conditions = value.get("conditions")
-        for name, condition in conditions.items() if isinstance(conditions, dict) else ():
-            row = read_model.CONDITIONS.get(name)
-            if row is None or not isinstance(condition, dict):
-                continue
-            other = ("token",) if row.shape == "numeric" else read_model.NUMERIC_CONDITION_ONLY
-            if any(member in condition for member in other):
-                return True
-    return False
-
-
 def check_against_the_model(
     sources: tuple[bytes, ...], request: JsonObject, claims: frozenset[Suite], implementation: Outcome
 ) -> None:
     """HP12 on the target's read, whose outcome the target took once (`read_outcome`): the core and the
-    reference model agree, or diverge as a known divergence says (`test_model_properties.py`). Where the read
-    field holds open point `members_of_the_other_kind`'s shape (`holds_the_other_kind`), the core is held to
-    the model given the implementation's reading of it, the open point's seeded fault, as HP12 holds a draw
-    that plants it; and a step not built is still found by `NOT_BUILT`, which a plant would skip."""
-    example = Example("fuzzed", sources, json.dumps(request).encode(), claims)
-    if not holds_the_other_kind(example):
-        check_outcome(example, implementation)
-        return
-    with MUTANTS[OTHER_KIND.reading].applied():
-        check_outcome(example, implementation)
+    reference model agree, or diverge as a known divergence says (`test_model_properties.py`); a step not
+    built is found by `NOT_BUILT`. A fuzzed field plants nothing, so no open point is known here: the last,
+    a record condition holding a member of the other kind's shape, which the target knew by its shape, the two
+    read alike since its ruling (maintainer, 2026-10-19)."""
+    check_outcome(Example("fuzzed", sources, json.dumps(request).encode(), claims), implementation)
 
 
 def read_outcome(read: Callable[[], ReadResult]) -> tuple[JsonValue, Outcome]:
