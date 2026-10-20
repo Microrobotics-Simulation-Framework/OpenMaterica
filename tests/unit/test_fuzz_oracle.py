@@ -444,8 +444,25 @@ def as_the_field(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
 
 
 def as_a_table(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
-    del field["value"]
-    return {**field, "form": "table", "table": []}
+    """`field` as a table over shear rate that steps 8 and 9 pass, its axis condition `not_applicable`,
+    without the Newtonian label, which a table over shear rate does not take."""
+    del field["value"], field["label"]
+    conditions = field["conditions"]
+    assert isinstance(conditions, dict)
+    table: JsonObject = {
+        "axis": "shear_rate",
+        "axis_unit": "1/s",
+        "x": [1.0, 10.0],
+        "y": [0.0007, 0.0006],
+        "scheme": "linear",
+        "edges": [],
+    }
+    return {
+        **field,
+        "form": "table",
+        "table": table,
+        "conditions": {**conditions, "shear_rate": {"status": "not_applicable"}},
+    }
 
 
 def _a_table_refused(*arguments: object) -> value_shapes.Found:
@@ -490,14 +507,14 @@ def test_the_model_oracle_holds_the_other_kind_to_the_model(
         against_the_model(sources, request)
 
 
-def test_the_model_oracle_keeps_a_step_not_built_beside_the_other_kind(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A table holding the shape, on its row, is a step neither side has built (S3): the core says "not yet"
-    and the model gives no verdict, so the oracle passes it, and a core that answered there fails. Evidence
-    was that step until S2b-2 read it, as an interval was until S2b-1; HP12's one step not built that the
-    model decides, an overlay as the target, the target never reads."""
-    field = as_a_table(with_the_other_kind(*OTHER_KIND["numeric-holding-token"]))
+def test_the_model_oracle_keeps_a_step_not_built(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A table on its row that steps 8 and 9 pass is a step neither side has built (S3b-2's steps 10 to 13):
+    the core says "not yet" and the model gives no verdict, so the oracle passes it, and a core that answered
+    there fails. Evidence was that step until S2b-2 read it, as an interval was until S2b-1; HP12's one step
+    not built that the model decides, an overlay as the target, the target never reads. The table held a
+    member of the other kind's shape until both sides read a table at step 8, where they now refuse that
+    member (the maintainer's ruling of 2026-10-19), so that no step is left unbuilt beside it."""
+    field = as_a_table(met_field())
     sources, request = met_case(field)
     assert written_read(sources, request) == "not yet"
     against_the_model(sources, request)
