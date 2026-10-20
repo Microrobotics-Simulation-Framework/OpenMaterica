@@ -67,7 +67,7 @@ model that reads material fields.
 | `combinations` | lists of fields of one material, from different sections, that the model combines into one quantity (section 3) |
 | `acceptances` | every pick, waiver, implied condition, accepted difference, extrapolation, nominal, distribution and overlay (section 4) |
 | `chains` | hand-overs at events, as pairs of family and record (section 6) |
-| `trainable` | fields the model fits, each with its region, interval or record (section 7) |
+| `trainable` | fields the model fits, each `{"field", <location>}`, its region, interval or record (section 7) |
 | `precision` | per model, the floating-point precision it evaluates in, `binary32` or `binary64`, where the model evaluates tables or parameter sets [BC-047] |
 | `engine` | for a model that is a physics engine: `crosswalk`, the pin of its engine crosswalk (`usd_binding.md` section 10.1), OpenMaterica's or one the consumer writes and passes to the build with the declaration; `values`, per crosswalk attribute with no OpenMaterica field, `{"value", "unit", "reason", "basis"}` in SI, with no `unit` for an attribute with no dimension; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
 
@@ -111,10 +111,11 @@ model that reads material fields.
 
 The build reads every required field in every region, interval or record a model is checked over, by the read
 of `read_side_contract.md`, and returns one result each: the read result (`read_side_contract.md` section 2)
-with `model`, the location it was read for, `record`, `specimen_differences`, `accepted` and `accepted_by`
-added. A read applies an acceptance only at its own record or region (`read_side_contract.md` section 1), and
-a read request names no interval, so the build reads an interval by its record and gives that read the
-acceptances located at that interval as located at that record. [not yet covered]
+with `model`, the location it was read for, `record`, `specimen_differences`, `accepted`, `accepted_by` and,
+on a field listed in `trainable`, `trainable_by` added. A read applies an acceptance only at its own record or
+region (`read_side_contract.md` section 1), and a read request names no interval, so the build reads an
+interval by its record and gives that read the acceptances located at that interval as located at that
+record. [not yet covered]
 
 ```json
 {"model": "stokes_drag", "region": "lumen", "field": "fluid.dynamic_viscosity",
@@ -235,7 +236,7 @@ reason not listed is never accepted. [BC-038]
 | `engine_mass_not_comparable` | unknown | a `waiver` naming that code |
 | `overlay_scope_mismatch` | not_met | an `overlay_scope` naming every member that differs |
 | a specimen difference | (not a status) | an `accepted_difference` |
-| a condition reason, `outside_range`, `range_unstated`, `outside_coverage` or a specimen difference, on a field listed in `trainable` | any | its `trainable` entry (section 7) |
+| a condition reason, `outside_range`, `range_unstated`, `outside_coverage` or a specimen difference, on a field listed in `trainable` | any | its `trainable` entry (section 7), on a result that carries a value |
 
 ### 4.3 A declared distribution
 
@@ -289,12 +290,18 @@ The reader applies a declared overlay and refuses a base mismatch or a conflict 
 
 ## 7. Trainable fields
 
-1. A field listed in `trainable`, with its region, interval or record, is a parameter the consumer fits. Its
-   result carries the label `initial_value_only`: the record's value is used only as the initial value.
-2. For a trainable field, the reasons about conditions, the form's range (`outside_range`, `range_unstated`
-   and `outside_coverage`, never `at_edge`) and specimen differences are reported, not refused, because the
-   consumer will move the value. Every other `not_met` reason (a malformed record, a hash or pin mismatch, a
-   unit mismatch, a withheld value, an overlay's base) still refuses. [BC-029]
+1. A field listed in `trainable`, with its region, interval or record, is a parameter the consumer fits. An
+   entry is `{"field", <location>}`, its location one of `record`, `region` and `interval`; it names a field in
+   `reads` at a location the model is checked over, and no other entry names that field there (section 1). The
+   build gives each read of that field there a `trainable` acceptance (`read_side_contract.md` section 1), and
+   the result names the entry by its 0-based index in `trainable`, in `trainable_by`. The result carries the
+   label `initial_value_only`: the record's value is used only as the initial value. [BC-029] [PR-339]
+2. For a trainable field, the reasons about conditions (`condition_outside` and `condition_not_accepted`
+   included), the form's range (`outside_range`, `range_unstated` and `outside_coverage`, never `at_edge`) and
+   specimen differences are reported, not refused, because the consumer will move the value. Every other
+   `not_met` reason (a malformed record, a hash or pin mismatch, a unit mismatch, a withheld value, an
+   overlay's base) still refuses, and so does a result that carries no value: an alternative is set aside as
+   it would be without the acceptance, so a field all of whose alternatives are set aside refuses. [BC-029]
 3. A fitted result is written back only as an overlay of purpose `fit` (`record_format.md` section 4.4).
    [not yet covered]
 
@@ -372,7 +379,7 @@ The sheet is one JSON document per build. [BC-033]
 | BC-026 | build checks | a chain is recorded as pairs of family and record (planned with R7) |
 | BC-027 | build checks | a required label that differs or is absent gives `label_mismatch` |
 | BC-028 | build checks | every result names its model and the region, interval or record it was read for |
-| BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported; its other refusals stand, `at_edge` among them |
+| BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported, not refused: the build gives its read a `trainable` acceptance, and the result carries the record's value with `initial_value_only` and names its entry in `trainable_by`; its other refusals stand, `at_edge` among them, and so does a result that carries no value |
 | BC-030 | build checks | a tolerance watch holds the interval, or the accept list, within which the entry stays met, narrowed by a stated bound, each end rounded inward; a waived `condition_uncertain` gets the tolerance's interval |
 | BC-031 | build checks | a form-range watch holding the readable range is emitted for every table or power law, unwidened |
 | BC-032 | build checks | an operating condition on a table knot is noted (planned with R7) |

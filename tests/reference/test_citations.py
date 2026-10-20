@@ -249,13 +249,13 @@ def test_every_seeded_fault_cites_the_text_or_names_the_open_point_it_rests_on()
 @pytest.mark.parametrize(
     ("rules", "no_line", "problem"),
     [
-        ({"a": 'read_side_contract.md:231 "Find the field (`absent`)"'}, {}, None),
+        ({"a": 'read_side_contract.md:240 "Find the field (`absent`)"'}, {}, None),
         ({"a": "an open point (OPEN_POINTS: known)"}, {}, None),
         ({"a": "a rule the text states"}, {}, "a: cites neither the text nor an open point"),
         ({"a": "(OPEN_POINTS: unknown)"}, {}, "names the open point unknown, which is not listed"),
         ({"a": "an implementation property"}, {"a": "no line says it"}, None),
         (
-            {"a": 'read_side_contract.md:231 "Find the field"'},
+            {"a": 'read_side_contract.md:240 "Find the field"'},
             {"a": "no line"},
             "a: listed as having no line",
         ),
@@ -299,25 +299,25 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
 @pytest.mark.parametrize(
     ("text", "problem"),
     [
-        ('read_side_contract.md:231 "Find the field (`absent`)"', None),
-        ('read_side_contract.md:230-231 "Find the field (`absent`)"', None),
-        ('read_side_contract.md:232 "Find the field (`absent`)"', "is not at lines 232 to 232"),
-        ('read_side_contract.md:230 "Find the field (`absent`)"', "is not at lines 230 to 230"),
-        ('read_side_contract.md:231 "Find the record of the field"', "is not at lines 231 to 231"),
+        ('read_side_contract.md:240 "Find the field (`absent`)"', None),
+        ('read_side_contract.md:239-240 "Find the field (`absent`)"', None),
+        ('read_side_contract.md:241 "Find the field (`absent`)"', "is not at lines 241 to 241"),
+        ('read_side_contract.md:239 "Find the field (`absent`)"', "is not at lines 239 to 239"),
+        ('read_side_contract.md:240 "Find the record of the field"', "is not at lines 240 to 240"),
         (
-            'read_side_contract.md:231 "Find the field (`absent`)" and "a quote not there at all"',
+            'read_side_contract.md:240 "Find the field (`absent`)" and "a quote not there at all"',
             "'a quote not there at all'",
         ),
         ('read_side_contracts.md:222 "Find the field (`absent`)"', "no file read_side_contracts.md"),
-        ('read_side_contract.md:231 "Find"', "'Find' is shorter than 20 characters"),
-        ('read_side_contract.md:231 "the"', "'the' is shorter than 20 characters"),
+        ('read_side_contract.md:240 "Find"', "'Find' is shorter than 20 characters"),
+        ('read_side_contract.md:240 "the"', "'the' is shorter than 20 characters"),
         (
             'record_format.md:591 "Two names are **one slip** apart when one becomes the other by '
             'inserting,"',
             None,
         ),
-        ("read_side_contract.md:231, where the field is found", "read_side_contract.md:231: no quote"),
-        ('see read_side_contract.md:230-231 (step 7), "Find the field"', "read_side_contract.md:230-231: no"),
+        ("read_side_contract.md:240, where the field is found", "read_side_contract.md:240: no quote"),
+        ('see read_side_contract.md:239-240 (step 7), "Find the field"', "read_side_contract.md:239-240: no"),
         (
             'provenance.md:265-266 "or `{"status": "unstated"}` (a ± whose kind the source does not state)"',
             None,
@@ -379,11 +379,11 @@ def test_the_evaluator_is_held_to_the_same_citation_rules() -> None:
     ("old", "new", "problem"),
     [
         pytest.param(
-            "read_side_contract.md:558 ", "read_side_contract.md:567 ", "is not at lines 567", id="line"
+            "read_side_contract.md:568 ", "read_side_contract.md:577 ", "is not at lines 577", id="line"
         ),
         pytest.param('"Linear interpolation within', '"Linear interpolation outside', "outside", id="quote"),
         pytest.param(
-            "read_side_contract.md:558 ", "read_contract.md:557 ", "no file read_contract.md", id="file"
+            "read_side_contract.md:568 ", "read_contract.md:557 ", "no file read_contract.md", id="file"
         ),
     ],
 )
@@ -402,30 +402,30 @@ def test_a_citation_of_the_evaluator_that_drifts_fails(old: str, new: str, probl
     [
         pytest.param(
             SEEDED_FAULTS_SOURCE,
-            "read_side_contract.md:139 ",
-            "read_side_contract.md:140 ",
-            "lines 140 to 140",
+            "read_side_contract.md:143 ",
+            "read_side_contract.md:144 ",
+            "lines 144 to 144",
             id="mutants-one-line-after",
         ),
         pytest.param(
             SEEDED_FAULTS_SOURCE,
-            "read_side_contract.md:139 ",
-            "read_side_contract.md:138 ",
-            "lines 138 to 138",
+            "read_side_contract.md:143 ",
+            "read_side_contract.md:142 ",
+            "lines 142 to 142",
             id="mutants-one-line-before",
         ),
         pytest.param(
             SEEDED_FAULTS_SOURCE,
             ' "A reason carries `condition` exactly when it concerns one condition"',
             "",
-            "read_side_contract.md:139: no quote",
+            "read_side_contract.md:143: no quote",
             id="mutants-no-quote",
         ),
         pytest.param(
             SEEDED_FAULTS_SOURCE,
             "A reason carries `condition` exactly when",
             "A reason carries `alternative` exactly when",
-            "is not at lines 139 to 139",
+            "is not at lines 143 to 143",
             id="mutants-quote-changed",
         ),
         pytest.param(
