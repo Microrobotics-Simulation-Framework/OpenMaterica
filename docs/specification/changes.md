@@ -460,3 +460,10 @@ request side's sentence of 2026-10-18 (`read_side_contract.md` section 1), less 
 which keeps step 9's `unit_mismatch`. The text gave each kind its shape but did not say whether the other
 kind's member is one the reader knows at that place; S2a-2's reader ignored it as unknown, and the reader
 refuses it now.
+
+Settled with S2b-2's review (maintainer, 2026-10-19): a member one slip from `alternatives` beside a value
+field's members, `alternative` beside a constant's say, refuses the field (`form_invalid`), as a slip of any
+member named at a field's place does: `record_format.md` section 5 names both shapes at that place, a value
+field's members and an `alternatives` object, and `record_format.md` section 10 item 5 refuses a slip of a
+member named there (PR-030). The text decides it, and the reader has read it so since S2a-2; no sentence
+changes.

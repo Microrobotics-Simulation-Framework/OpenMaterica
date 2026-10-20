@@ -407,6 +407,20 @@ def reads_nothing_else_beside_the_other_kind(monkeypatch: pytest.MonkeyPatch) ->
     return _each_condition(monkeypatch, refusing)
 
 
+def names_no_alternatives_at_a_field(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    """`alternatives` not named at a field's place beside the value field's members, so a slip of it there is
+    ignored (`record_format.md` section 5, and the maintainer's ruling of 2026-10-19)."""
+    slips = value_shapes.slips
+
+    def without_alternatives(
+        value: dict[str, JsonValue], named: Collection[str], where: str, found: list[Reason]
+    ) -> None:
+        slips(value, [name for name in named if name != "alternatives"], where, found)
+
+    monkeypatch.setattr(value_shapes, "slips", without_alternatives)
+    return EXECUTORS["read"]
+
+
 def leaves_the_section_unchecked(monkeypatch: pytest.MonkeyPatch) -> Executor:
     def nothing(name: str, section: dict[str, JsonValue]) -> list[Reason]:
         return []
@@ -848,6 +862,7 @@ FAULTS: list[tuple[Fault, str]] = [
     (ignores_the_other_kinds_member_holding_an_object, "PR-045.numeric_condition_holding_token_status.json"),
     (ignores_the_other_kinds_member_holding_null, "PR-045.token_condition_holding_value_null.json"),
     (reads_nothing_else_beside_the_other_kind, "PR-301.other_kind_beside_unknown_basis.json"),
+    (names_no_alternatives_at_a_field, "PR-030.near_typo_alternative_beside_constant.json"),
     (leaves_the_section_unchecked, "PR-045.section_specimen_fault_refuses_section.json"),
     (allows_every_form, "PR-036.power_law_on_bulk_density.json"),
     (reads_null_as_absent, "PR-049.field_specimen_null.json"),

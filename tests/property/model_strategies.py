@@ -755,7 +755,7 @@ def broken_status_object(draw: Draw, read: Read) -> None:
 
 def alternatives_slip_beside(draw: Draw, read: Read) -> None:
     """A member one slip from `alternatives` beside a value field's members (open point
-    `alternatives_named_at_a_field`, which the two read alike)."""
+    `alternatives_named_at_a_field`, ruled fail closed as both read it: the maintainer, 2026-10-19)."""
     field_of(read)[
         draw(st.sampled_from(["alternative", "alternativess", "alternatives_", "altenratives"]))
     ] = []

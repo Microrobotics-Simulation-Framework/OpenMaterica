@@ -96,6 +96,10 @@ every family entry goes in `families/CHANGELOG.md`.
     temperature holding `token` beside a basis the reader does not know, which gives `unknown_token` beside
     `form_invalid`, as step 8 makes all its checks. HP12 lists no open point since, and fuzz target 4 holds
     such a field to the model as any other.
+  - `alternatives_named_at_a_field`: fail closed, as built and as the text decides it (`record_format.md`
+    section 5 names `alternatives` at a field's place, and section 10 item 5 refuses a slip of a member named
+    there); no text changes. One PR-030 case, `alternative` beside a constant (`form_invalid`), which kills
+    the reference model's fault that ignores such a slip, a survivor of the cases until then.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from
@@ -123,7 +127,11 @@ every family entry goes in `families/CHANGELOG.md`.
   (**Schema**, above), which run and pass. Six broken implementations, each an old or partial reading, fail
   none but these cases: no earlier case held the record half. The unknown-member positions R11 and R12 name
   the other kind's members, so a slip of each is injected in every host, and T1 lists the four PR-045 inputs
-  and the PR-301 one under a new kind, `other_kind`, and the slip under `slip`. 955 of 1502 case files pass.
+  and the PR-301 one under a new kind, `other_kind`, and the slip under `slip`.
+- The ruling on a slip of `alternatives` at a field's place (2026-10-19) comes with one PR-030 case
+  (**Schema**, above), which runs and passes. A broken implementation whose step 8 does not name
+  `alternatives` at a field's place fails it, and no other case; T1 lists its input under `slip`. 956 of 1503
+  case files pass.
 
 ## [0.1.0.dev2] - 2026-10-20
 

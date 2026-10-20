@@ -314,6 +314,7 @@
     "PR-027.major_1_0_0.json": "S1",
     "PR-027.major_1_1_0.json": "S1",
     "PR-027.major_2_0_0.json": "S1",
+    "PR-030.near_typo_alternative_beside_constant.json": "S2a-2",
     "PR-030.near_typo_axis_units.json": "S3a",
     "PR-030.near_typo_body_extension.json": "S2a-2",
     "PR-030.near_typo_composition_stated_sums.json": "S2b-1",

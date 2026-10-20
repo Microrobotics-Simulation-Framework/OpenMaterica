@@ -1368,9 +1368,8 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "slips_of_alternatives_ignored": Mutant(
         "a member one slip from `alternatives` beside a value field's members ignored",
-        "OPEN_POINTS: alternatives_named_at_a_field",
+        "record_format.md:315 (the maintainer's ruling, 2026-10-19)",
         {"FIELD_PLACE_NAMES": model.VALUE_FIELD_NAMES},
-        survives="no case holds a member one slip from `alternatives`: the text leaves it open",
     ),
     "evidence_entry_provenance_unchecked": Mutant(
         "an evidence entry's `provenance` not checked",

@@ -109,6 +109,7 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-011.base_envelope_slip_crad",
                 "PR-011.base_section_member_slip_not_refused",
                 "PR-011.base_section_specimen_slip_not_refused",
+                "PR-030.near_typo_alternative_beside_constant",
                 "PR-030.near_typo_body_extension",
                 "PR-030.near_typo_composition_stated_sums",
                 "PR-030.near_typo_derivation_mixed_condition",

@@ -49,10 +49,6 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "stands among the others, since every alternative is read before the outcome is decided: step 11's "
         "set-aside, `at_edge` and `request_incomplete` are a table's, which the model does not read"
     ),
-    "alternatives_named_at_a_field": (
-        "`alternatives` is named at a field's place beside the value field's members, so a member one slip "
-        "from any of them, beside either, is refused: fail closed"
-    ),
     "evidence_entry_provenance": (
         "an evidence entry's `provenance` is returned holding, below the provenance table's own members, "
         "those the writer schema defines at every depth, a member it does not define left out, since the "
@@ -451,7 +447,9 @@ VALUE_FIELD_NAMES: Final = (
     "form", "unit", *dict.fromkeys(FORM_MEMBERS.values()), "conditions", "specimen", "statistics",
     "provenance", "label", "fit",
 )  # fmt: skip
-# Open point: alternatives_named_at_a_field.
+# Both shapes are named at a field's place, so a slip of `alternatives` beside a value field's members is
+# refused (the maintainer's ruling, 2026-10-19, as built): record_format.md:315 "A value field is an object
+# with these members, or an `alternatives` object (below)."
 FIELD_PLACE_NAMES: Final = (*VALUE_FIELD_NAMES, "alternatives")
 # provenance.md:46-47 "for a condition, `value`," and "`range`, `token`, `unit`, `basis`, `inferred_from`"
 CONDITION_NAMES: Final = (
@@ -2826,7 +2824,6 @@ def alternatives_broken(field_value: JsonObject) -> bool:
         not isinstance(alternatives, list)
         or not alternatives
         or any(name in field_value for name in VALUE_FIELD_NAMES)
-        # Open point: alternatives_named_at_a_field.
         or slipped(field_value, FIELD_PLACE_NAMES)
         or any(
             not isinstance(alternative, dict) or "alternatives" in alternative for alternative in alternatives
