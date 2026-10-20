@@ -72,7 +72,8 @@ model that reads material fields.
 | `engine` | for a model that is a physics engine: `crosswalk`, the pin of its engine crosswalk (`usd_binding.md` section 10.1), OpenMaterica's or one the consumer writes and passes to the build with the declaration; `values`, per crosswalk attribute with no OpenMaterica field, `{"value", "unit", "reason", "basis"}` in SI, with no `unit` for an attribute with no dimension; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
 
 1. Only a model that reads a field declares anything about it. A field in `reads` with no requirement gives
-   `unknown` with the reason `no_requirement`. [BC-003]
+   `unknown` with the reason `no_requirement`; the build reads nothing for it, so its result holds no value.
+   [BC-003]
 2. A requirement belongs to the model that reads the field, never to the experiment as a whole. [not yet
    covered]
 3. A tolerance or accept list MUST carry its reason; the build refuses one without. [BC-004]
@@ -135,15 +136,34 @@ record. [not yet covered]
 
 1. `status` is one of three: `met`, `not_met` or `unknown`. It states a fact about the record against the
    requirement, and declarations never change it. [BC-006]
-2. The result carries `model`, and the region, interval or record it was read for. [BC-028]
+2. The result carries `model`, and the region, interval or record it was read for. [BC-028] Over records the
+   location is the record read: the result holds `record` and neither `region` nor `interval`. Every result
+   holds the `field` read. [BC-028]
 3. `specimen_differences` lists, for each fact the target names, the record's fact where it differs from the
    target, as facts, never as a grade (section 3). [BC-008]
 4. `accepted` is true when each reason and each specimen difference of the result is covered as the table in
    section 4.2 says, and `accepted_by` lists the 0-based indexes, in the model's `acceptances`, of every
    acceptance used, the ones the read itself applied (a pick, an overlay, an implied condition) included.
-   [BC-009]
+   [BC-009] `not_accepted` lists each reason and each specimen difference that nothing covers, empty exactly
+   when `accepted` is true. [BC-009]
 5. The build MUST refuse to build while any result is not accepted, and reports every such result, not only
    the first. [BC-010]
+
+The build gives one report:
+- `consumer`, as declared;
+- `records`, every record a read resolved, as `{"id", "version", "content_hash"}`;
+- `declaration`, as given;
+- `refusals`, the declaration's own (section 1);
+- `results`, every result of this section and of section 3 item 6, each with the `provenance` its read
+  returned, which holds the review the result's answer rested on;
+- `watches` (section 8);
+- `unused` (item 9).
+
+A declaration the build refuses on its own gives no results, no watches and nothing unused. The build refuses
+to build while the report holds a refusal, or a result that is not accepted. The material input sheet (section
+9) holds the report's `consumer`, `records`, `declaration`, `results` and `watches` under those names, and adds
+its own; `refusals` and `unused` are the report's alone. [BC-010]
+
 6. **Engine results.** A model with `engine` is judged in order: the build reads its fields; the adapter
    writes where those results are accepted (`usd_binding.md` section 10); the stage check runs; and the build
    then gives one engine result per shape of the model's regions, `{"model", "region", "shape", "status",
@@ -163,6 +183,37 @@ record. [not yet covered]
 
    The build refuses while any engine result is not accepted (section 4.2). [BC-039] [BC-041]
 
+**The build's terms.** An acceptance is **given** to a read when the build puts it in the read's request (item
+7). A read **applied** an acceptance given to it where its result shows it: an implied condition that filled a
+condition (a `conditions` entry whose `record` is the value the implied condition supplies, with basis
+`implied`); a nominal or an extrapolation that the result's `assumption` names; a `trainable` acceptance, on a
+result that carries `initial_value_only`. An acceptance given and not so shown was not applied. An acceptance
+is **located at** a result's location when it names the record read, equal in `id`, `version` and
+`content_hash`; one located at a region or an interval is located at no record, and an accepted difference
+with no location is located at every location its model is checked over. An acceptance **covers** a reason or
+a specimen difference of a result when it names the result's field (an accepted difference, its section), is
+located at the result's location, and is of a kind section 4.2's row for that reason names, under that row's
+own condition (the code and condition named; the `assumption`), and, for a waiver naming a label, as section
+4.1 item 4 says. A label is **trusted** on a result where the record stores it on the value the result rests
+on (item 8) with `label_basis` `{"basis": "stated"}` (`record_format.md` section 4.1), or where the result's
+review is a completed review (section 1 item 11). An acceptance is **used** where it covers a reason or a
+specimen difference of a result, or a read applied it. [BC-009] [BC-053] [BC-050]
+
+7. The build gives each read the acceptances of the kinds a read takes (`read_side_contract.md` section 1),
+   overlays aside, that name the read's field and are located at its location, and the `trainable` acceptance
+   section 7 gives. It maps the ones the read applied to their indexes in the model's `acceptances` for
+   `accepted_by`. [BC-009]
+8. The build's own reasons (`no_requirement`, `label_mismatch`, `not_reviewed`) join the read's, and the
+   result's status is the worst of them all. Every other member of the result is as the read returned it. The
+   build checks a requirement's `label` against the label stored on the value the result rests on (the field,
+   or the alternative read), whether or not the read reached step 12, so a label never hides behind another
+   refusal. A result that rests on no stored value (its record or field not found, a refusal before step 7
+   finds the field, or no single alternative: `read_side_contract.md` section 3, step 7) is checked against
+   none. [BC-027] [BC-049]
+9. The build lists in `unused`, per model, each acceptance not used (the build's terms), as `{"model",
+   "acceptance": <its index>}`, so a waiver for another field, record or code is seen. An unused acceptance
+   refuses nothing. [BC-053]
+
 ## 3. Specimen differences
 
 1. For each fact the target names, the build compares the record's fact (the section's merged with the
@@ -171,7 +222,8 @@ record. [not yet covered]
    within the record's value or range. Text members are never compared. [BC-011]
 2. A fact the target names that the record holds as any status object, or does not hold at all, is a
    difference, listed with the record's status object, or with no `record` where the record does not hold the
-   fact. [BC-012]
+   fact. [BC-012] A result that holds no `specimen` (`read_side_contract.md` section 2 item 6) lists no
+   specimen differences. [BC-008]
 3. Facts the target does not name are not compared. [not yet covered]
 4. The build MAY add the ontology's relation where one exists (`relation`: `part_of`, `sibling`). [not yet
    covered]
@@ -189,12 +241,13 @@ record. [not yet covered]
 ### 4.1 The list
 
 One list, `acceptances`. Every entry has `acceptance`, one of the kinds below; names where it applies; names
-the `field`; holds its kind's own members; and carries `reason`.
+the `field` it covers (an `accepted_difference` names its `section` in place of a field, section 3 item 5, and
+an `overlay_scope` names none); holds its kind's own members; and carries `reason`.
 
 | `acceptance` | Location | Own members | Effect |
 |---|---|---|---|
 | `pick` | `record` (pinned by hash): the target's, or an overlay the read applies to the field; a pick that also names a `region` or an `interval` is not applied in a plain read, both being its location too (`read_side_contract.md` section 1) | `index`, a whole number not below zero (0-based, into the stored `alternatives` of the field read) [PR-330] | the read uses that alternative, read like any field; if its conditions are not met, its own reasons stand [BC-015]; an index naming no stored alternative of the field read, or a pick located at the base of a field an applied overlay replaces, gives `pick_invalid`, which nothing accepts (`read_side_contract.md` section 3, step 7) [PR-304] |
-| `waiver` | `region`, `interval` or `record` | `code`, and `condition` where the code names one | covers one reason of one result (section 4.2) [BC-016] |
+| `waiver` | `region`, `interval` or `record` | `code`, and `condition` where the code names one; optionally `label`, the label the consumer's judgement rests on | covers one reason of one result (section 4.2) [BC-016]; one naming a `label` covers only where that label is trusted (item 4) [BC-050] |
 | `implied_condition` | `region`, `interval` or `record` | `fact`, a specimen fact whose shape has a `token` member, and `token`, one of its tokens (`provenance.md` section 6.2); `implies`, per registered condition `{"value", "unit"}` or `{"range": [lo, hi], "unit"}` for a numeric one and `{"token"}`, with a token of its row, for a token one: a record condition's shapes without `basis` (one there is ignored), `plus_minus` or `set_or_measured`, and never a status object (`provenance.md` section 6.1) | supplies a value for a condition the record leaves unstated, on fields whose specimen states that fact and token; the value is checked like a stated one, with basis `implied` [BC-017] |
 | `accepted_difference` | optional: absent, every location the model is checked over | `section`, `fact`, `value` (in the fact's shape, or `"any"`) | covers specimen differences in that section and fact whose record value equals `value` under section 3 item 1 [BC-018] |
 | `extrapolation` | `region`, `interval` or `record` | `method` (`constant` or `consumer_law`), `law` (text of at least one character, which a reader does not judge), `basis` [PR-330] | where the read applies it (under `want: value`, never at or across a declared edge: `read_side_contract.md` section 5), the result carries the end value and the operating value; the consumer computes the extrapolated value by its method, and the sheet records it [BC-019] |
@@ -219,6 +272,16 @@ An acceptance whose kind needs a location and names none is refused. [BC-037]
    value a read under that extrapolation returns, at the readable range's nearest end, taken from inside the
    range (`read_side_contract.md` section 5), or the one the evaluator returns there, where it returns one
    (`read_side_contract.md` section 7 item 1). [PR-307] [TE-003]
+4. Treating a value as its label's trivial model beyond what the record states (a Newtonian fluid at a shear
+   rate the record leaves unstated) is the consumer's judgement, never the label's (`record_format.md`
+   section 4.1). A waiver that names no label is the consumer's judgement alone: its `reason` states the
+   judgement and what it rests on, which is its basis. A waiver that names a label is still the consumer's
+   judgement, narrowed to values whose label is trusted, and so needs the label's value reviewed, through the
+   requirement: the build refuses it at build unless the requirement for its field names that `label` and
+   holds `review: "reviewed"` (section 1 item 11). It covers its reason only on a result whose stored label
+   (section 2 item 8) is that label and is trusted (section 2): stated by the source, or on a value whose
+   review is completed. So only a waiver of `not_reviewed` the consumer declares lets an unreviewed value
+   build, and no waiver makes an inferred, unreviewed label cover anything. [BC-050] [BC-016]
 
 ### 4.2 What covers which reason
 
@@ -237,6 +300,8 @@ reason not listed is never accepted. [BC-038]
 | `overlay_scope_mismatch` | not_met | an `overlay_scope` naming every member that differs |
 | a specimen difference | (not a status) | an `accepted_difference` |
 | a condition reason, `outside_range`, `range_unstated`, `outside_coverage` or a specimen difference, on a field listed in `trainable` | any | its `trainable` entry (section 7), on a result that carries a value |
+
+A waiver covers a reason whatever its `alternative` (`read_side_contract.md` section 2 item 2). [BC-016]
 
 ### 4.3 A declared distribution
 
@@ -355,19 +420,19 @@ The sheet is one JSON document per build. [BC-033]
 |---|---|---|
 | BC-001 | build checks | requirements are checked against the declared operating conditions, per region where overridden |
 | BC-002 | build checks | requirements are checked only over what `checked_over` names: a domain's regions, a path's intervals, or listed records |
-| BC-003 | build checks | a field read with no requirement gives `unknown` (`no_requirement`) |
+| BC-003 | build checks | a field read with no requirement gives `unknown` (`no_requirement`) and holds no value, since nothing is read for it |
 | BC-004 | build checks | a tolerance or accept list without a reason is refused |
 | BC-005 | build checks | an acceptance without a reason, or a basis where its kind needs one, is refused |
 | BC-006 | build checks | declarations never change a result's status |
 | BC-008 | build checks | specimen differences are listed as facts |
-| BC-009 | build checks | `accepted` follows section 4.2, with `accepted_by` indexes, in-read acceptances included |
-| BC-010 | build checks | the build refuses while any result is not accepted, and lists them all |
+| BC-009 | build checks | `accepted` follows section 4.2, with `accepted_by` indexes, in-read acceptances included, by the build's terms: a read is given the acceptances that name its field at its location, and applied only those its result shows; `not_accepted` lists what nothing covers, empty exactly when `accepted` is true |
+| BC-010 | build checks | the build refuses while any result is not accepted, and lists them all, in one report; a declaration refused on its own gives no results, no watches and nothing unused |
 | BC-011 | build checks | each fact shape is compared with the target as stated; text members never |
 | BC-012 | build checks | a fact holding a status object (unstated, not applicable, withheld), or absent from the record, against a named target fact is a difference |
 | BC-013 | build checks | one accepted difference for a section covers every field of it |
 | BC-014 | build checks | a combination's fields with different specimens give one combination result needing acceptance |
 | BC-015 | build checks | a pick by stored index selects that alternative, which is then read like any field |
-| BC-016 | build checks | a waiver covers only its own location, condition and code |
+| BC-016 | build checks | a waiver covers only its own location, condition and code, whatever the reason's `alternative`; one that names no label is the consumer's judgement alone |
 | BC-017 | build checks | an implied condition fills only an unstated or absent condition, never one holding another status object, and is checked against the tolerance |
 | BC-018 | build checks | an accepted difference covers only its value, or every value with `any` |
 | BC-019 | build checks | an extrapolation covers `outside_range` only on a result whose `assumption` names it (under `want: value`, never at or across a declared edge), and `range_unstated` and `outside_coverage`; undeclared, they stand; a table read under `want: bounds` outside its range is refused, though an extrapolation names it |
@@ -377,8 +442,8 @@ The sheet is one JSON document per build. [BC-033]
 | BC-023 | build checks | an overlay scope difference gives `overlay_scope_mismatch`, accepted only in the members named; `scope.consumer` is compared with the consumer's `name`; a `fit` scope without `model` or `model_configuration_hash` differs |
 | BC-025 | build checks | an applied overlay is recorded in the sheet (planned with R7) |
 | BC-026 | build checks | a chain is recorded as pairs of family and record (planned with R7) |
-| BC-027 | build checks | a required label that differs or is absent gives `label_mismatch` |
-| BC-028 | build checks | every result names its model and the region, interval or record it was read for |
+| BC-027 | build checks | a required label that differs from the label stored on the value the result rests on, or is absent there, gives `label_mismatch`, beside any other reason, whether or not the read reached step 12; a result that rests on no stored value gives none |
+| BC-028 | build checks | every result names its model, the field read, and the region, interval or record it was read for: over records, the record and neither a region nor an interval |
 | BC-029 | build checks | a trainable field's condition, range and specimen reasons are reported, not refused: the build gives its read a `trainable` acceptance, and the result carries the record's value with `initial_value_only` and names its entry in `trainable_by`; its other refusals stand, `at_edge` among them, and so does a result that carries no value |
 | BC-030 | build checks | a tolerance watch holds the interval, or the accept list, within which the entry stays met, narrowed by a stated bound, each end rounded inward; a waived `condition_uncertain` gets the tolerance's interval |
 | BC-031 | build checks | a form-range watch holding the readable range is emitted for every table or power law, unwidened |
@@ -398,3 +463,5 @@ The sheet is one JSON document per build. [BC-033]
 | BC-046 | build checks | a run that samples two fields outside every `sampling.independence` entry is refused at build; the entries are recorded |
 | BC-047 | build checks | a model that evaluates tables or parameter sets without `precision` is refused at build; the precision is recorded |
 | BC-049 | build checks | a requirement holding `review: "reviewed"` gives `unknown` (`not_reviewed`) on a result whose review is not completed, which a waiver of that code covers; a completed review gives no such reason, nor does a result that holds no `provenance` |
+| BC-050 | build checks | a waiver naming a `label` is refused at build unless the requirement for its field names that label and holds `review: "reviewed"`; it covers only a result whose stored label is that label and trusted, stated by the source or on a value whose review is completed |
+| BC-053 | build checks | the build lists, per model, each acceptance no result used in `unused`: a waiver for another field, record or code, and an acceptance given to a read and not applied; an unused acceptance refuses nothing |
