@@ -14,6 +14,42 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Schema
+- The specification of declarations and the build check over records (S7-spec; the maintainer's rulings of
+  2026-10-20 on the build order and of 2026-10-21 on the build check; `docs/specification/changes.md`).
+  `declarations.md` gains:
+  - the declaration checked on its own: one table of every member at its place, required or optional, with the
+    tokens and registered names each takes; a declaration that departs from it is refused at build before any
+    read, each refusal its rule's case and a JSON pointer (BC-048); and what a build refuses because it does
+    not claim the scene suite, USD read or the sampling suite (BC-051);
+  - a requirement's `review: "reviewed"`, and the build's reason `not_reviewed` (unknown), which a waiver
+    covers, with the limit that a review lies outside the content hash (BC-049);
+  - a waiver naming the `label` it rests on, refused unless the requirement for its field names that label and
+    asks for review, and covering only where the label is trusted, stated by the source or on a reviewed value
+    (BC-050);
+  - the build's results over records; its terms (given, applied, located at, covers, trusted, used); the
+    acceptances each read is given; its own reasons joining the read's; `not_accepted`; `unused` (BC-053); and
+    its report (BC-010); a field read with no requirement is read for nothing (BC-003);
+  - a `trainable` entry's shape, the `trainable` acceptance the build gives its read, and `trainable_by`
+    (BC-029);
+  - watches of accepted results only, an operating value outside joined in, a `declared` watch for a waived
+    unstated numeric condition (BC-052), and a form-range watch cut at a declared edge (BC-031).
+
+  `read_side_contract.md`: a request whose requirement holds `review` is refused (PR-330), and a request takes a
+  `trainable` acceptance, under which a read goes on past `condition_outside`, `condition_not_accepted` and
+  `outside_range`, carrying the value and `initial_value_only` (PR-339); the reason table gains `not_reviewed`,
+  regenerated into `vocabulary/reasons.json` and the typed shapes' `ReasonCode`, and added to the reference
+  model's table of reasons. `record_format.md` section 4.1: a label's basis, `label_basis`, which no read checks
+  or returns; section 5's table of a value field's members does not list it until the writer schema names it,
+  since `tests/spec_sync/test_value_fields.py` holds the two equal. The specification README: the case range
+  BC-001 to BC-099; with the architecture draft (12.2, 15), the build order, declarations over records before
+  record checks and scenes. The read does not change yet: run on `main`, a request whose requirement holds
+  `review` reads as without it (a control holding `label` is refused), and one holding a `trainable` acceptance
+  is refused, `request_incomplete` (a control holding a nominal reads `met`), until S7a-2 and S7a-4 build them.
+  No case file or schema changes. The reference model's citations of the edited documents move to their new
+  lines, three of them re-quoted to the words that stay, and `plain_read/CASES.md`'s PR-330 heading quotes the
+  widened row.
+
 ## [0.1.0.dev3] - 2026-10-22
 
 A development pre-release. It holds S3: a field holding a table, read through every step (its checks at steps 8 and

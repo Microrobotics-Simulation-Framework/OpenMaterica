@@ -283,11 +283,15 @@ no case compares one sampler's draws with another's. [SA-022] [SA-024]
 Schema 0.1.0 is the minimal set of the AD's phasing (AD 12.1, M1 to M10) with the scene documents,
 layered paths and the USD binding (R1 and R14), built in that order: plain records with the envelope, the
 bulk, fluid, magnetic and biocompatibility sections, the constant, table, interval, composition and evidence
-forms in use, provenance, conditions, statistics, the reader and its reasons, `materica check`; then the plain
-scene manifest with regions, domains, layered paths and label crosswalks, with the helper that derives a
-layered path from 3-D geometry (AD 12.1, R14); then declarations and the three results; then the scene
-documents' USD form, the stage check, the engine crosswalk with OpenMaterica's one crosswalk (`UsdPhysics`),
-and the engine adapter. Their cases are planned for 0.1.0, except the material input sheet's (R7, 0.2); the
+forms in use, provenance, conditions, statistics, the reader and its reasons over constants, intervals,
+compositions, evidence and tables; declarations over records, with their field results; their specimen
+differences, combinations and watches, and what a waiver resting on a label covers; the reader's overlays,
+fill-ins and picks, with the declarations' arms for them and trainable fields; `materica check`; then the
+plain scene manifest with regions, domains, layered paths and label crosswalks, with the helper that derives
+a layered path from 3-D geometry (AD 12.1, R14), and the declarations' scene arms; then the scene documents'
+USD form, the stage check, the engine crosswalk with OpenMaterica's one crosswalk (`UsdPhysics`), and the
+engine adapter, with the engine results. Their cases are planned for 0.1.0, except the material input
+sheet's (R7, 0.2); the
 scaffold that drafts engine crosswalks is an `openmaterica-authoring` tool, tested there. Label volumes, field
 overrides and the label crosswalk's USD form wait for the minor version that brings their first consumer. The
 other forms (the power law, whose first field arrives with the acoustic section; the model parameter set;

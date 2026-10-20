@@ -2257,11 +2257,17 @@ OpenMaterica; an experiment whose materials are not ready keeps declaring its va
 
 **USD and layered paths in 0.1** (maintainer, 2026-10-12). The core read path depends on scenes (a read's
 target can be a region, and requirements are checked over a domain or a path), so the code is designed with
-them from the start. 0.1 is built in this order: plain records, the reader and the hash; record checks; plain
-scene documents (regions, domains, layered paths with the L5 helper, label crosswalks); declarations and build
-checks; the USD binding, the stage check, the engine crosswalk and the engine adapter. Scenes come before
-declarations because the build checks requirements over domains and paths (maintainer, 2026-10-13, reordering
-the 2026-10-12 order). Nothing slips: the maintainer ruled out a cut line. USD is how MIME saves scenes and
+them from the start. 0.1 is built in this order: plain records, the hash, and the reader of constants,
+intervals, compositions, evidence and tables; declarations and build checks over records, with their field
+results; the build's specimen differences, combinations and run-time watches, and what a waiver resting on a
+label covers; the reader's overlays, fill-ins and picks, with the build's arms for them and its trainable
+fields; record checks; plain scene documents (regions, domains, layered paths with the L5 helper, label
+crosswalks), and the build's scene arms; the USD binding, the stage check, the engine crosswalk and the engine
+adapter, with the build's engine results. The build over records comes before scenes because it needs none: a
+model may be checked over records with no scene, and every acceptance that needs a location may be located at
+a record (`declarations.md` sections 1 and 4.1). It is the seam MIME 0.3.0 builds on (maintainer, 2026-10-20,
+reordering the order of 2026-10-13, which put scenes first, and 2026-10-21, which put the build's field results
+first). Nothing slips: the maintainer ruled out a cut line. USD is how MIME saves scenes and
 how the patient twin of Isaac for Healthcare would carry OpenMaterica materials; its novel parts (the
 layered-path prim, overlay prims, region markers, binding refusals, the units rules, engine materials) are
 found only by implementing them. The material input sheet stays R7, in 0.2. Label volumes, field overrides and
@@ -2456,7 +2462,7 @@ Still open:
   my arithmetic. The absorption edges, the Fåhræus-Lindqvist effect, ISO 10993-1's scope, USD's fallback
   behaviour and the units of `UsdPhysics` density are recalled.
 
-## 15. Revisions of 2026-10-11 to 2026-10-17
+## 15. Revisions of 2026-10-11 to 2026-10-21
 
 A design review, using an existing per-paper tissue calibration code base as a case study, changed the
 draft as follows. A follow-up the same day on distribution, drawing on the Hugging Face Hub, added four rows
@@ -2729,6 +2735,12 @@ proposals.
 | the core's extras `[authoring]`, `[families]` and `[all]` pinning the matching siblings | `[authoring]` and `[families]` pin the matching minor with a range, `>=X.Y.0,<X.(Y+1)`, never `==`; `[all]` brings both siblings only, not `[usd]` or `[mcp]` (7.2; DA 7.1) | a sibling's patch needs no core release; `usd-core` has no wheel for Linux on aarch64 |
 | one CHANGELOG with a **Families** section, the one DA 14's update policy names | family entries in `families/CHANGELOG.md`; DA 14 names each changelog a consumer reviews (DA 7.4, DA 14) | a consumer's update review would otherwise miss family changes |
 | when the version machinery is built, and how authoring's name is claimed, unstated | built with `openmaterica-authoring`'s first release after the `0.1.0.devN`; authoring's name claimed by a `0.1.0.devN` once the uv workspace and the release workflow's change land (7.2, 14) | the maintainer's call; a pending publisher on PyPI does not reserve a name |
+
+The maintainer's rulings of 2026-10-20 and 2026-10-21 on the build order gave the row below.
+
+| Before | After | Why |
+|---|---|---|
+| scene documents before declarations, because the build checks requirements over domains and paths (12.2) | declarations and build checks over records before record checks and scenes, their field results first and their trainable fields with the reader's picks; the build's scene arms with the scene documents (12.2) | a build over records needs no scene, and it is the seam a consumer builds on first |
 
 ## Appendix A. Photoacoustics in MIME: the first consumer of the optical sections
 
