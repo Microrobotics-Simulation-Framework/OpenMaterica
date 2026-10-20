@@ -265,6 +265,32 @@ every family entry goes in `families/CHANGELOG.md`.
   being 0.004 to 0.04 of their properties' draws (`tests/property/README.md`, "The regions held to a floor"). No
   example count, size, fault, mutant or check changed. The new draws and searches moved the kill points of 43 of
   the 479 mutants; the latest kill is still the 487th (`tests/property/kill_points.json`).
+- The S3 design's HP13 to HP16 for a table's steps 8 and 9 (`tests/property/test_table_form_*.py`, the
+  properties in the `records` shard, their mutant searches in `step8_mutants`), over tables `tables.py` draws
+  on a field whose row allows one, over a numeric axis drawn, beside a composition in the record: HP13, in
+  four parts, one fault of a catalogue written from the text (31, three of them near misses) gives exactly the
+  reasons its rule gives, the base passes, and the read of the record's other field is unchanged; HP14, a
+  member one slip from one a table names refuses, any other is ignored; HP15, an `axis_unit` other than the
+  registered one, of each kind HP8 draws, gives `unit_mismatch` with the axis; HP16, the row's label refused
+  exactly on a table over the axis its Label cell names. Each draws its fault, kind or way first, at most
+  eight, held to its draw floor (at `ci`, 50 to 440, each failing a correct run with a probability of at most
+  1e-6 by the audits' model), and each has an audit control, three more for the regions below. Twenty
+  mutants, the design's eighteen, one that lets a table's fault refuse its record's other fields and one that
+  reads an empty `x`'s ends, each die at the assertion and the fault they name (`scripts/gen_kill_counts.py`
+  records them). Three searches are planned, each drawing alone the faults where its mutant shows: an edge at
+  zero held as `-0` and `0`, on bases whose zeros are held as `0` or on any base, and the axis condition held
+  as a value, which one fault now draws in two of its four ways, a region declared by its chance (a floor of
+  10 at `ci`); over 40 seeds a size each dies at the first or second example, at its own assertion.
+- The writer schema's table: a family of twelve faults of its shape, each refused, and fifteen mutants of its
+  constraints and bindings (M62 to M69, B17 to B19, T10, T11, TB7 and U4), each killed; the writer's step-9
+  relation holds a table's `axis_unit`. T1 judges step 8 on tables, its inputs and one-fault variants of a
+  full table and of one drawn on each row that allows one, with five kinds of exception for the rules no
+  schema states; the unknown-member positions read a table's members and status objects; the reference model
+  reads a table through step 9 and agrees with every case file it decides.
+- Fuzz target 4 holds a table to the reference model, to T1's third relation and to step 9's units, its
+  `axis_unit` among them. Its control, `MATERICA_FUZZ_SEEDED_FAULT=tables`, refuses a table over temperature
+  whose first knot lies below 250, which no seed holds: two local runs side by side found it, after 26 s and
+  after 319 s. Like S4a's, it is not in CI's control step.
 
 ## [0.1.0.dev2] - 2026-10-20
 

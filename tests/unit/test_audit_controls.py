@@ -4,11 +4,12 @@ their chances (`@pytest.mark.chances`), of the conditions shard's, steps 9 and 1
 declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12's and HP4's form of the field
 read (S2b-1, and PR #37's review), of S2b-2's evidence and nominal, of the relations shard's audit of the
 monotonicity relations' worlds, by their chances, of S4a's outcome of step 7, drawn first, of HP12's draws
-of S4a's alternatives, by their chance, and of the regions where a planned search's mutant shows, each held on
-the property whose own draws the search stands in for, by their chances: run at the `ci` profile's examples
-with a generator that stops producing one of them, each property fails its audit, on that feature alone; a
-parametrised property, on one of its parameters, by the marks that parameter carries. Outside
-`tests/property/`, whose audits would fail these runs too."""
+of S4a's alternatives, by their chance, of the regions where a planned search's mutant shows, each held on
+the property whose own draws the search stands in for, by their chances, and of S3a's HP13 to HP16, each
+drawing its fault, kind or way first, among them the regions of HP13's planned searches: run at the `ci`
+profile's examples with a generator that stops producing one of them, each property fails its audit, on that
+feature alone; a parametrised property, on one of its parameters, by the marks that parameter carries.
+Outside `tests/property/`, whose audits would fail these runs too."""
 
 import sys
 from collections.abc import Callable
@@ -31,6 +32,7 @@ from tests.property import test_monotonicity_properties as monotonicity_properti
 from tests.property import test_read_properties as read_properties
 from tests.property import test_result_properties as result_properties
 from tests.property import test_slip_properties as slip_properties
+from tests.property import test_table_form_properties as table_form_properties
 from tests.property import test_value_field_properties as value_field_properties
 from tests.property import test_version_properties as version_properties
 
@@ -257,6 +259,43 @@ CONTROLS = [
         model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
         "standing",
         ("check_outcome",),
+    ),
+    # S3a's: HP13's four parts, each its faults drawn first; HP14's kinds, HP15's and HP16's.
+    *(
+        Control(
+            table_form_properties.test_one_table_fault_gives_the_reasons_its_rule_gives,
+            never,
+            ("check_one_fault",),
+            (("part", part),),
+        )
+        for part, never in (
+            ("knots", "y_longer"),
+            ("edges", "edge_at_an_end"),
+            ("tokens", "scheme_unknown"),
+            ("source_range_and_points", "points"),
+            # The regions of the planned searches of the S3a review's fix round: the edge at zero held as `-0`
+            # and `0`, a fault drawn first (`x_strictly_increasing`, and `zero_and_minus_zero_by_sign_bit`,
+            # which dies there, the check reading the fault before its base), and the axis condition held as
+            # a value, a way of one fault declared by its chance; and the fault the review's H1 added.
+            ("edges", "zero_edge_both_signs"),
+            ("tokens", "axis_condition_held_as_a_value"),
+            ("source_range_and_points", "x_empty_beside_edges_or_a_source_range"),
+        )
+    ),
+    Control(
+        table_form_properties.test_a_member_one_slip_from_a_tables_refuses_and_any_other_is_ignored,
+        "far",
+        ("check_added",),
+    ),
+    Control(
+        table_form_properties.test_any_other_axis_unit_gives_unit_mismatch_with_the_axis,
+        "status_object",
+        ("check_other_axis_unit",),
+    ),
+    Control(
+        table_form_properties.test_a_rows_label_is_refused_exactly_on_a_table_over_its_axis,
+        "on_another_axis",
+        ("check_label",),
     ),
 ]
 
