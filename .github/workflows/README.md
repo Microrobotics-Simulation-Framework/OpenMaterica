@@ -227,9 +227,9 @@ variables": write access suffices for a repository of an organisation), which is
 read or remove one with the GitHub CLI:
 
 ```sh
-gh variable set PER_COMMIT_MAX_PARALLEL --body 12 -R Microrobotics-Simulation-Framework/OpenMaterica
-gh variable list -R Microrobotics-Simulation-Framework/OpenMaterica
-gh variable delete PER_COMMIT_MAX_PARALLEL -R Microrobotics-Simulation-Framework/OpenMaterica  # the default again
+gh variable set PER_COMMIT_MAX_PARALLEL --body 12 -R OpenMaterica/OpenMaterica
+gh variable list -R OpenMaterica/OpenMaterica
+gh variable delete PER_COMMIT_MAX_PARALLEL -R OpenMaterica/OpenMaterica  # the default again
 ```
 
 Each takes a whole number from 1 to 20, written plainly in ASCII digits. A step of the job the capped jobs need,

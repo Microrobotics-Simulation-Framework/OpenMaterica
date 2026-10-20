@@ -373,7 +373,7 @@ def test_the_manifests_icons_resolve_and_come_from_the_site(site: Path) -> None:
     assert problems(site)[0].startswith("home.html: its manifest is not a JSON object")
 
 
-RAW = "https://raw.githubusercontent.com/Microrobotics-Simulation-Framework/OpenMaterica/"
+RAW = "https://raw.githubusercontent.com/OpenMaterica/OpenMaterica/"
 README = f"""<h1 align="center"><img src="{RAW}main/art/logo.png" alt="Logo" width="70%"></h1>
 
 An image ![diagram](art/diagram.png), and a badge from elsewhere ![badge](https://img.example.org/b.svg).
@@ -394,7 +394,7 @@ def test_the_readmes_images_name_files_of_the_tree(tree: Path) -> None:
     (tree / "art" / "logo.png").unlink()
     (tree / "art" / "diagram.png").unlink()
     assert check_site.readme_problems(tree / "README.md") == [
-        "README.md: its image 'https://raw.githubusercontent.com/Microrobotics-Simulation-Framework/OpenMaterica/"
+        "README.md: its image 'https://raw.githubusercontent.com/OpenMaterica/OpenMaterica/"
         "main/art/logo.png' names art/logo.png, which the tree does not hold",
         "README.md: its image 'art/diagram.png' names art/diagram.png, which the tree does not hold",
     ]
@@ -430,15 +430,15 @@ def test_a_reference_style_link_of_the_readme_is_not_an_image(tree: Path) -> Non
     ("url", "path"),
     [
         (
-            "https://raw.githubusercontent.com/Microrobotics-Simulation-Framework/OpenMaterica/main/a/b.png",
+            "https://raw.githubusercontent.com/OpenMaterica/OpenMaterica/main/a/b.png",
             "a/b.png",
         ),
         (
-            "https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/raw/main/a/b%20c.png",
+            "https://github.com/OpenMaterica/OpenMaterica/raw/main/a/b%20c.png",
             "a/b c.png",
         ),
         (
-            "https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/blob/v1/a.png?raw=true",
+            "https://github.com/OpenMaterica/OpenMaterica/blob/v1/a.png?raw=true",
             "a.png",
         ),
         ("a/b.png#x", "a/b.png"),

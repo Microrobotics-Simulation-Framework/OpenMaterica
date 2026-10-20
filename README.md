@@ -1,8 +1,8 @@
-<h1 align="center"><img src="https://raw.githubusercontent.com/Microrobotics-Simulation-Framework/OpenMaterica/main/assets/images/logo.png" alt="OpenMaterica" width="70%"></h1>
+<h1 align="center"><img src="https://raw.githubusercontent.com/OpenMaterica/OpenMaterica/main/assets/images/logo.png" alt="OpenMaterica" width="70%"></h1>
 
-[![CI](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/actions/workflows/ci.yml?query=branch%3Amain)
+[![CI](https://github.com/OpenMaterica/OpenMaterica/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OpenMaterica/OpenMaterica/actions/workflows/ci.yml?query=branch%3Amain)
 [![PyPI](https://img.shields.io/pypi/v/openmaterica?include_prereleases)](https://pypi.org/project/openmaterica/)
-[![Code licence: Apache-2.0](https://img.shields.io/pypi/l/openmaterica?label=code%20licence)](https://github.com/Microrobotics-Simulation-Framework/OpenMaterica/blob/main/LICENSE)
+[![Code licence: Apache-2.0](https://img.shields.io/pypi/l/openmaterica?label=code%20licence)](https://github.com/OpenMaterica/OpenMaterica/blob/main/LICENSE)
 
 **Material properties for biomedical simulation, each stored with the conditions it holds under, so a simulation
 can check that a value applies before it uses it.**
@@ -127,7 +127,10 @@ pip install openmaterica==0.1.0.dev2
 ```
 
 It needs Python 3.11 or later. To check where a release came from, verify its PyPI attestation (PEP 740), which
-names the repository that built it:
+names the repository that built it. The repository moved to the OpenMaterica organisation after 0.1.0.dev2: name
+`https://github.com/OpenMaterica/OpenMaterica` for every release from the next on, and the former
+`https://github.com/Microrobotics-Simulation-Framework/OpenMaterica` for 0.1.0.dev1 and 0.1.0.dev2, which were built
+there:
 
 ```sh
 uvx pypi-attestations verify pypi \
@@ -135,7 +138,7 @@ uvx pypi-attestations verify pypi \
   pypi:openmaterica-0.1.0.dev2-py3-none-any.whl
 ```
 
-The command prints `OK` for a file built from this repository, and fails for any other repository.
+The command prints `OK` for a file built from the repository it names, and fails for any other repository.
 
 ## Intended use and disclaimers
 
