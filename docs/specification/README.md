@@ -115,7 +115,7 @@ Numbers are reserved by document, so each document can add cases without collidi
 | `model_families.md` | FE-001 to FE-039; RC-060 to RC-079; RC-180 to RC-199 |
 | `usd_binding.md` | UR-001 to UR-099; RC-100 to RC-119; RC-140 to RC-159; EA-001 to EA-049 |
 | `mixing_rules.md` | MX-001 to MX-049 |
-| `declarations.md` | BC-001 to BC-049 |
+| `declarations.md` | BC-001 to BC-099 |
 
 ## Case files
 
