@@ -24,7 +24,8 @@ from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
 from materica.core.record import Record, RecordStore
 from materica.core.resolve import Refused, ResolvedRecord
-from materica.core.vocabulary import ConditionSpec, RecordFieldSpec
+from materica.core.slips import one_slip
+from materica.core.vocabulary import VOCABULARY, ConditionSpec, RecordFieldSpec
 from materica.shapes import Suite
 from tests.conformance import runner
 from tests.conformance.runner import (
@@ -299,6 +300,111 @@ def ignores_members_beside_a_status(monkeypatch: pytest.MonkeyPatch) -> Executor
 def knows_no_token_of_another_member(monkeypatch: pytest.MonkeyPatch) -> Executor:
     monkeypatch.setattr(value_shapes, "KNOWN", {member: frozenset[str]() for member in value_shapes.KNOWN})
     return EXECUTORS["read"]
+
+
+def _ignoring_the_other_kind(
+    monkeypatch: pytest.MonkeyPatch, shapes_of: Collection[str], *, exact: bool, slips: bool
+) -> Executor:
+    """A read that ignores, in a condition of a shape among `shapes_of`, the members of the other kind's
+    shape (`exact`) or a slip of one (`slips`), as S2a-2's step 8 did before the maintainer's ruling of
+    2026-10-19 (`provenance.md` section 6.1 item 1)."""
+    conditions = value_shapes.conditions
+    shaped = {name for name, spec in VOCABULARY.conditions.items() if spec.shape in shapes_of}
+
+    def ignored(name: str, held: str) -> bool:
+        other = value_shapes.OF_THE_OTHER_KIND[VOCABULARY.conditions[name].shape]
+        return (exact and held in other) or (
+            slips and held not in other and any(one_slip(held, member) for member in other)
+        )
+
+    def ignoring(value: JsonValue, where: str, found: list[Reason]) -> None:
+        if isinstance(value, dict):
+            value = {
+                name: {held: member for held, member in entry.items() if not ignored(name, held)}
+                if isinstance(entry, dict) and name in shaped
+                else entry
+                for name, entry in value.items()
+            }
+        conditions(value, where, found)
+
+    monkeypatch.setattr(value_shapes, "conditions", ignoring)
+    return EXECUTORS["read"]
+
+
+def ignores_a_numeric_conditions_token(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    return _ignoring_the_other_kind(monkeypatch, ("numeric",), exact=True, slips=True)
+
+
+def ignores_a_token_conditions_numeric_members(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    return _ignoring_the_other_kind(monkeypatch, ("token",), exact=True, slips=True)
+
+
+def ignores_a_slip_of_the_other_kinds_member(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    return _ignoring_the_other_kind(monkeypatch, ("numeric", "token"), exact=False, slips=True)
+
+
+def _each_condition(
+    monkeypatch: pytest.MonkeyPatch,
+    checked: Callable[[value_shapes.Check, Collection[str]], value_shapes.Check],
+) -> Executor:
+    """A read whose step 8 checks each condition it knows through `checked`, given the condition's own check
+    and the members of the other kind of condition's shape."""
+    monkeypatch.setattr(
+        value_shapes,
+        "CONDITIONS",
+        {
+            name: checked(check, value_shapes.OF_THE_OTHER_KIND[VOCABULARY.conditions[name].shape])
+            for name, check in value_shapes.CONDITIONS.items()
+        },
+    )
+    return EXECUTORS["read"]
+
+
+def _ignoring_the_other_kind_holding(
+    monkeypatch: pytest.MonkeyPatch, holding: Callable[[JsonValue], bool]
+) -> Executor:
+    """A read that refuses a member of the other kind of condition's shape only where it holds a value
+    `holding` does not take, against "whatever that member holds" (`provenance.md` section 6.1 item 1)."""
+
+    def ignoring(check: value_shapes.Check, other: Collection[str]) -> value_shapes.Check:
+        def checked(value: JsonValue, where: str, found: value_shapes.Found) -> None:
+            if isinstance(value, dict):
+                value = {name: held for name, held in value.items() if not (name in other and holding(held))}
+            check(value, where, found)
+
+        return checked
+
+    return _each_condition(monkeypatch, ignoring)
+
+
+def ignores_the_other_kinds_member_holding_an_object(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    return _ignoring_the_other_kind_holding(monkeypatch, lambda held: isinstance(held, dict))
+
+
+def ignores_the_other_kinds_member_holding_null(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    return _ignoring_the_other_kind_holding(monkeypatch, lambda held: held is None)
+
+
+def reads_nothing_else_beside_the_other_kind(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    """A condition holding a member of the other kind of condition's shape refused for that alone, as a status
+    object that breaks its shape is (`provenance.md` section 1), where step 8 makes all its checks
+    (`read_side_contract.md` section 2 item 2) and the sentence that refuses the member makes no exception."""
+
+    def refusing(check: value_shapes.Check, other: Collection[str]) -> value_shapes.Check:
+        def checked(value: JsonValue, where: str, found: value_shapes.Found) -> None:
+            held = [name for name in other if isinstance(value, dict) and name in value]
+            if not held:
+                check(value, where, found)
+            found.extend(
+                value_shapes.invalid(
+                    f"{where} holds {name!r}, a member of the other kind of condition's shape"
+                )
+                for name in held
+            )
+
+        return checked
+
+    return _each_condition(monkeypatch, refusing)
 
 
 def leaves_the_section_unchecked(monkeypatch: pytest.MonkeyPatch) -> Executor:
@@ -736,6 +842,12 @@ FAULTS: list[tuple[Fault, str]] = [
     (ignores_slips, "PR-005.near_typo_crad.json"),
     (ignores_members_beside_a_status, "PR-110.sd_status_beside_other_member.json"),
     (knows_no_token_of_another_member, "PR-045.condition_token_of_another_row.json"),
+    (ignores_a_numeric_conditions_token, "PR-045.numeric_condition_holding_token.json"),
+    (ignores_a_token_conditions_numeric_members, "PR-045.token_condition_holding_value.json"),
+    (ignores_a_slip_of_the_other_kinds_member, "PR-030.near_typo_token_on_numeric_condition.json"),
+    (ignores_the_other_kinds_member_holding_an_object, "PR-045.numeric_condition_holding_token_status.json"),
+    (ignores_the_other_kinds_member_holding_null, "PR-045.token_condition_holding_value_null.json"),
+    (reads_nothing_else_beside_the_other_kind, "PR-301.other_kind_beside_unknown_basis.json"),
     (leaves_the_section_unchecked, "PR-045.section_specimen_fault_refuses_section.json"),
     (allows_every_form, "PR-036.power_law_on_bulk_density.json"),
     (reads_null_as_absent, "PR-049.field_specimen_null.json"),

@@ -451,3 +451,12 @@ inside it, the sentence also says that each provenance those members hold, at an
 every review: one of a status token a review does not take, or absent, is returned as
 `{"status": "not_checked"}` (PR-052). S2b-2's reader read every review so; the text said so of the
 provenance's own review alone.
+
+Settled with S2b-2's review (maintainer, 2026-10-19): a record's numeric condition holding `token`, or token
+condition holding `value`, `range`, `plus_minus` or `set_or_measured`, breaks its shape (`form_invalid`),
+whatever that member holds, each being a member of the other kind of condition's shape, and so does a member
+one slip from one (`provenance.md` section 6.1 item 1; PR-045, PR-030, PR-301). This is the record half of the
+request side's sentence of 2026-10-18 (`read_side_contract.md` section 1), less a `unit` on a token condition,
+which keeps step 9's `unit_mismatch`. The text gave each kind its shape but did not say whether the other
+kind's member is one the reader knows at that place; S2a-2's reader ignored it as unknown, and the reader
+refuses it now.

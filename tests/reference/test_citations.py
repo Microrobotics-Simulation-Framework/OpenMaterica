@@ -137,12 +137,12 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
         ("read_side_contract.md:225, where the field is found", "read_side_contract.md:225: no quote"),
         ('see read_side_contract.md:224-225 (step 7), "Find the field"', "read_side_contract.md:224-225: no"),
         (
-            'provenance.md:262-263 "or `{"status": "unstated"}` (a ± whose kind the source does not state)"',
+            'provenance.md:265-266 "or `{"status": "unstated"}` (a ± whose kind the source does not state)"',
             None,
         ),
         (
-            'provenance.md:262-263 "or `{"status": "unstated"}` (a ± whose kind the source does state)"',
-            "is not at lines 262 to 263",
+            'provenance.md:265-266 "or `{"status": "unstated"}` (a ± whose kind the source does state)"',
+            "is not at lines 265 to 266",
         ),
         ('provenance.md:97 "`{"status": "not_checked"}`, or" and "with who checked"', None),
         ('provenance.md:97 "`{"status": "not_checked"}`, or `{"result"" and "with who', "no quote"),

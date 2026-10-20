@@ -243,7 +243,10 @@ them; where the two differ, these tables hold. The vocabulary grows by minor ver
    a string or a status object (`record_format.md` section 4.2), compared with the condition's unit at step 9
    alone (`read_side_contract.md` section 3), and MAY add `plus_minus` and `set_or_measured` (items 6 and 7);
    a token condition holds `{"token"}`, and registers no unit, so a `unit` on one gives `unit_mismatch` at
-   step 9; either may instead hold a status object. [RC-047] [PR-037]
+   step 9; either may instead hold a status object. A numeric condition holding `token`, or a token condition
+   holding `value`, `range`, `plus_minus` or `set_or_measured`, breaks its shape (`form_invalid`), whatever
+   that member holds: each is a member of the other kind of condition's shape, so a member one slip from one
+   is refused too (`record_format.md` section 10 item 5). [RC-047] [PR-037] [PR-045]
 2. A condition name a reader does not know gives `unknown`; a token it does not know refuses the field
    (`record_format.md` section 10). [PR-103]
 3. A check against an `unstated` condition gives `unknown`, never `met`, and the result carries the value

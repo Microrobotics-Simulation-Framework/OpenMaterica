@@ -19,7 +19,8 @@ exactly what each side gives there:
 - an open point on which the two read the text differently (`OPEN_POINTS`), planted by the draw alone: there
   the model must refuse, as its fail-closed reading does, and the model given the implementation's reading (a
   seeded fault of the model that is that reading, `tests/reference/mutants.py`) must agree with the
-  implementation.
+  implementation. None is listed today: the last, open point 1's record half, was ruled fail closed
+  (maintainer, 2026-10-19), and the two read it alike since.
 """
 
 import json
@@ -221,18 +222,18 @@ NOT_BUILT = {
 
 
 # The open points on which the implementation reads the text otherwise than the model, which fails closed
-# (`read_model.OPEN_POINTS`): each by the model's seeded fault that reads it as the implementation does. Left:
-# open point 1's record half, a record condition holding a member of the other kind, which the text does not
-# decide in so many words; the maintainer rules (the decision log, phase B, and the fix round). Its request
-# half and a slip of a declaration's name, which the text decides, both read alike since the fix round.
+# (`read_model.OPEN_POINTS`): each by the model's seeded fault that reads it as the implementation does. None
+# is left. Open point 1's record half, a record condition holding a member of the other kind, was the last:
+# the maintainer ruled it fail closed (2026-10-19, `provenance.md` section 6.1 item 1), and the implementation
+# refuses it since, as its request half (the token ruling, 2026-10-18) and a slip of a declaration's name
+# (which the text decides, ruled with S2a-4's review) were already read alike. `test_model_controls.py` holds
+# the check of an open point to failing, on that point as the implementation read it before its ruling.
 class OpenPoint(NamedTuple):
     refused: str  # the reason the model's fail-closed reading refuses with
     reading: str  # the model's seeded fault that reads the point as the implementation does
 
 
-OPEN_POINTS: Mapping[str, OpenPoint] = {
-    "members_of_the_other_kind": OpenPoint("form_invalid", "members_of_the_other_kind_ignored"),
-}
+OPEN_POINTS: Mapping[str, OpenPoint] = {}
 
 
 def refusals(outcome: Outcome) -> list[JsonValue]:

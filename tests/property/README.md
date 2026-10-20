@@ -198,14 +198,16 @@ check's reader (the last bullet).
   planted. The known divergences are listed by kind with their reasons and held exactly, failing on any other:
   one step not built that the model decides (an overlay as the target, S4's decision 8; evidence and the
   nominal, which S2b-2 reads, are no divergence any more), found by the implementation's own
-  `NotImplementedError` and held to the draw and to what the model gives; and one open point on which the two
-  read the text differently, open point 1's record half (`members_of_the_other_kind`: a record condition
-  holding a member of the other kind), where the model must refuse as it fails closed, and the model given the
-  implementation's reading must agree with it. Open point 1's request half (an implied value holding a member
-  of the other kind's shape) and a slip of a name a declaration gives a requirement
-  (`names_a_declaration_gives_a_requirement`), which the text decides, are planted too, and the two must agree
-  on them (S2a-4's fix round). Can-fail controls of the
-  check itself: `test_model_controls.py`.
+  `NotImplementedError` and held to the draw and to what the model gives; and the open points on which the two
+  read the text differently, where the model must refuse as it fails closed, and the model given the
+  implementation's reading must agree with it: none since the maintainer ruled the last, open point 1's
+  record half (`members_of_the_other_kind`: a record condition holding a member of the other kind), fail
+  closed (2026-10-19, `provenance.md` section 6.1 item 1), which the implementation now refuses. It is planted
+  still, and so are open point 1's request half (an implied value holding a member of the other kind's
+  shape; the token ruling, 2026-10-18) and a slip of a name a declaration gives a requirement
+  (`names_a_declaration_gives_a_requirement`, which the text decides: S2a-4's review, approved 2026-10-18), and
+  the two must agree on each. Can-fail controls of the check itself: `test_model_controls.py`, an open point's
+  on open point 1's record half as the implementation read it before its ruling.
 - **What a read must not look at:** (13) the S2 design's HP4 and HP10 (`test_invariance_properties.py`,
   `invariance_strategies.py`). HP4: a fault in another field, registered or not, or in another section's
   specimen never changes a read (the oracle, the read of the record without it); one in the read field's own
@@ -959,8 +961,8 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `member_checked_off_its_row` | unpinned | `form_off_its_row` | 90, 66 |
 | `composition_checked_beyond_its_basis` | unpinned | `composition_basis_off_its_row` | 110, 119 |
 | `broken_status_object_reports_its_token` | unpinned | `broken_status_object` | 10, 45 |
-| `members_of_the_other_kind_read` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 4, 11 |
-| `members_of_the_other_kind_ignored` | unpinned, at the open point's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 4, 11 |
+| `members_of_the_other_kind_read` | unpinned, at the record condition's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 4, 11 |
+| `members_of_the_other_kind_ignored` | unpinned, at the record condition's refusal or the implied value's | `members_of_the_other_kind`, `implied_member_of_the_other_kind` | 4, 11 |
 | `slips_of_alternatives_ignored` | unpinned | `alternatives_slip_beside` | 1, 1 |
 | `declaration_names_not_named_in_a_request` | unpinned | `names_a_declaration_gives_a_requirement` | 47, 38 |
 | `population_level_checks_stop_at_a_missing_member` | unpinned | `checks_beside_a_broken_object` | 164, 84 |

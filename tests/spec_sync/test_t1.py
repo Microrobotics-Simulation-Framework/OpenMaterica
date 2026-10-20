@@ -131,6 +131,7 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-030.near_typo_of_provenance_in_evidence_entry",
                 "PR-030.near_typo_section_fact_tissue_stat",
                 "PR-030.near_typo_section_specimens",
+                "PR-030.near_typo_token_on_numeric_condition",
                 "PR-108.near_typo_in_plus_minus_entry",
                 "PR-108.near_typo_plus_minsu",
             ),
@@ -217,6 +218,22 @@ EXCEPTIONS: dict[str, Kind] = {
             ),
         },
         mark=r"holds '[^']*', a token its row does not allow",
+    ),
+    "other_kind": Kind(
+        "a condition holding a member of the other kind of condition's shape, a numeric one's `token` or a "
+        "token one's `value`, whatever it holds (`provenance.md` section 6.1 item 1, the maintainer's "
+        "ruling of 2026-10-19): the reader `$defs` allow members they do not name, where the writer's closed "
+        "shapes refuse them",
+        {
+            2: (
+                "PR-045.numeric_condition_holding_token",
+                "PR-045.numeric_condition_holding_token_status",
+                "PR-045.token_condition_holding_value",
+                "PR-045.token_condition_holding_value_null",
+                "PR-301.other_kind_beside_unknown_basis",
+            )
+        },
+        mark=r"a member of the other kind of condition's shape",
     ),
     "row_condition": Kind(
         "a registered condition under evidence: the reader `$defs` take any member of `conditions` there, "

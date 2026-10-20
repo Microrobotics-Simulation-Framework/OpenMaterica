@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Can-fail controls of HP12's check (`test_model_properties.check_agreement`), on reads written out here: it
 fails on a divergence its list does not hold, on a listed one that does not hold as listed, and on an open
-point the model no longer refuses or that the implementation no longer reads as listed. The mutant searches
+point the model no longer refuses or that the implementation no longer reads as listed. HP12 lists no open
+point since the maintainer's ruling of 2026-10-19, so its controls take the last one, open point 1's record
+half, as the implementation read it before that ruling, with the listing it had. The mutant searches
 (`test_model_mutants.py`) show it failing on faults of either side."""
 
 import json
@@ -10,8 +12,10 @@ from typing import Any
 
 import pytest
 
+from materica.core import value_shapes
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
+from materica.core.reasons import Reason
 from materica.shapes import Suite
 from tests.property import test_model_properties as properties
 from tests.property.condition_strategies import at
@@ -54,6 +58,28 @@ def token_on_a_numeric_condition() -> Example:
     return pinned_example(record, request, "members_of_the_other_kind")
 
 
+def read_as_before_its_ruling(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Open point 1's record half listed as it was until the maintainer's ruling of 2026-10-19, and read by
+    the implementation as it was: a numeric condition's `token` ignored by step 8."""
+    conditions = value_shapes.conditions
+
+    def ignoring(value: JsonValue, where: str, found: list[Reason]) -> None:
+        temperature = value.get("temperature") if isinstance(value, dict) else None
+        if isinstance(value, dict) and isinstance(temperature, dict):
+            value = {
+                **value,
+                "temperature": {name: held for name, held in temperature.items() if name != "token"},
+            }
+        conditions(value, where, found)
+
+    monkeypatch.setattr(value_shapes, "conditions", ignoring)
+    monkeypatch.setitem(
+        properties.OPEN_POINTS,
+        "members_of_the_other_kind",
+        properties.OpenPoint("form_invalid", "members_of_the_other_kind_ignored"),
+    )
+
+
 def test_a_read_both_decide_alike_passes() -> None:
     record, request = water_read()
     assert properties.check_agreement(pinned_example(record, request)) == "agrees"
@@ -80,7 +106,15 @@ def test_a_listed_divergence_fails_where_the_draw_does_not_hold_it(monkeypatch: 
         properties.check_agreement(pinned_example(record, request))
 
 
+def test_open_point_1s_record_half_reads_alike_since_its_ruling() -> None:
+    """Both refuse a numeric condition holding `token` (`provenance.md` section 6.1 item 1), so the draw that
+    plants it agrees, and HP12 lists no divergence of it."""
+    assert "members_of_the_other_kind" not in properties.OPEN_POINTS
+    assert properties.check_agreement(token_on_a_numeric_condition()) == "agrees"
+
+
 def test_an_open_point_passes_as_listed_and_fails_unlisted(monkeypatch: pytest.MonkeyPatch) -> None:
+    read_as_before_its_ruling(monkeypatch)
     example = token_on_a_numeric_condition()
     assert properties.check_agreement(example) == "open_point"
     monkeypatch.delitem(properties.OPEN_POINTS, "members_of_the_other_kind")
@@ -88,7 +122,8 @@ def test_an_open_point_passes_as_listed_and_fails_unlisted(monkeypatch: pytest.M
         properties.check_agreement(example)
 
 
-def test_an_open_point_fails_where_the_model_no_longer_refuses() -> None:
+def test_an_open_point_fails_where_the_model_no_longer_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    read_as_before_its_ruling(monkeypatch)
     with (
         MODEL_FAULTS["members_of_the_other_kind_ignored"].applied(),
         pytest.raises(AssertionError, match="the model does not refuse it"),
@@ -99,6 +134,7 @@ def test_an_open_point_fails_where_the_model_no_longer_refuses() -> None:
 def test_an_open_point_fails_where_the_listed_reading_is_not_the_implementations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    read_as_before_its_ruling(monkeypatch)
     monkeypatch.setitem(
         properties.OPEN_POINTS,
         "members_of_the_other_kind",

@@ -84,6 +84,18 @@ every family entry goes in `families/CHANGELOG.md`.
     parameter to), returns its `review` as every review is read; the reader has done so since S2b-2, and the
     reference model, which returned such a review as found, reads it so too. Two more PR-052 cases: such a
     review of a status token a review does not take, and one absent, each returned as `not_checked`.
+  - `members_of_the_other_kind`, its record half: `provenance.md` section 6.1 item 1 now says that a numeric
+    condition holding `token`, or a token condition holding `value`, `range`, `plus_minus` or
+    `set_or_measured`, breaks its shape (`form_invalid`), whatever that member holds, and so does a member one
+    slip from one (`record_format.md` section 10 item 5), as the request half's sentence says for an implied
+    value. Step 8 ignored each until now, as a member the reader does not know, and its slips too; it refuses
+    them (`value_shapes.OF_THE_OTHER_KIND`, and `based`'s `other_kind`), and a token condition's `unit` keeps
+    step 9's rule. Six cases: under PR-045, a temperature holding `token`, and a density kind holding `value`,
+    each with a value of its own kind's type, and a temperature holding `token` as a status object and a
+    density kind holding `value` as `null`; under PR-030, a temperature holding `tokens`; under PR-301, a
+    temperature holding `token` beside a basis the reader does not know, which gives `unknown_token` beside
+    `form_invalid`, as step 8 makes all its checks. HP12 lists no open point since, and fuzz target 4 holds
+    such a field to the model as any other.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from
@@ -102,12 +114,16 @@ every family entry goes in `families/CHANGELOG.md`.
 - The maintainer's rulings on a report's provenance (2026-10-19 and 2026-10-20) come with four PR-052 case
   files, which run and pass: a report's provenance whose origin the reader does not know, and one whose
   `extraction` is a number; a review inside a provenance that a report's `per_parameter` maps a parameter to,
-  of a status token a review does not take, and one absent. 949 of 1496 case files pass. Four broken
-  implementations show the runner fails on them: a report's provenance left unchecked, or checked in every
-  member; such a nested review returned as found, or none returned where it holds none. Each fails under its
-  broken implementation alone; the first kills the reference model's fault that leaves a report's provenance
-  unchecked, a survivor of the cases until then, and the last two kill the model's new fault that returns
-  such a review as found.
+  of a status token a review does not take, and one absent. Four broken implementations show the runner fails
+  on them: a report's provenance left unchecked, or checked in every member; such a nested review returned as
+  found, or none returned where it holds none. Each fails under its broken implementation alone; the first
+  kills the reference model's fault that leaves a report's provenance unchecked, a survivor of the cases until
+  then, and the last two kill the model's new fault that returns such a review as found.
+- The ruling on a record's condition holding the other kind's member (2026-10-19) comes with six case files
+  (**Schema**, above), which run and pass. Six broken implementations, each an old or partial reading, fail
+  none but these cases: no earlier case held the record half. The unknown-member positions R11 and R12 name
+  the other kind's members, so a slip of each is injected in every host, and T1 lists the four PR-045 inputs
+  and the PR-301 one under a new kind, `other_kind`, and the slip under `slip`. 955 of 1502 case files pass.
 
 ## [0.1.0.dev2] - 2026-10-20
 

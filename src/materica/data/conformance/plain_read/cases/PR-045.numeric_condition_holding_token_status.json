@@ -1,0 +1,67 @@
+{
+  "case": "PR-045",
+  "variant": "numeric_condition_holding_token_status",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "glycerol_numeric_condition_holding_token_status.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/glycerol_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:92fbfb69a9469905be25181470ac5d77ac921748de3944a83c9d9455bdb78e1f"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

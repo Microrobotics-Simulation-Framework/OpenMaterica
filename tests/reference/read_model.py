@@ -49,13 +49,6 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "stands among the others, since every alternative is read before the outcome is decided: step 11's "
         "set-aside, `at_edge` and `request_incomplete` are a table's, which the model does not read"
     ),
-    "members_of_the_other_kind": (
-        "in a record, a numeric condition holding `token`, and a token condition holding `value`, `range`, "
-        "`plus_minus` or `set_or_measured`, break the condition's shape (`form_invalid`): fail closed, since "
-        "each kind has a shape of its own and only a token condition's `unit` has a rule of its own. Its "
-        "request half, the same members in an implied condition (`request_incomplete`), is not open: "
-        "`read_side_contract.md` section 1 refuses them (maintainer, 2026-10-18), as `implied_value` does"
-    ),
     "alternatives_named_at_a_field": (
         "`alternatives` is named at a field's place beside the value field's members, so a member one slip "
         "from any of them, beside either, is refused: fail closed"
@@ -179,28 +172,28 @@ class FactRow:
     basis: str | None = None  # the basis the row fixes
 
 
-# provenance.md:286 "| Name | JSON shape |"
+# provenance.md:289 "| Name | JSON shape |"
 FACTS: Final[Mapping[str, FactRow]] = {
     "species": FactRow({"ncbi_taxon": "integer", "label": "text"}, ("ncbi_taxon", "label")),
     "anatomical_site": FactRow({"uberon": "text", "label": "text"}, ("uberon", "label")),
     "tissue_state": FactRow(
         {"token": "token"}, ("token",), ("in_vivo", "ex_vivo_fresh", "frozen_thawed", "fixed", "phantom")
     ),
-    # provenance.md:291 "is present exactly when `token` is `diseased` or `treated`"
+    # provenance.md:294 "is present exactly when `token` is `diseased` or `treated`"
     "disease_and_treatment_state": FactRow(
         {"token": "token", "text": "text"}, ("token",), ("normal", "diseased", "treated")
     ),
     "preparation": FactRow({"text": "text"}, ("text",)),
-    # provenance.md:293 "required for other"
+    # provenance.md:296 "required for other"
     "preservation": FactRow(
         {"token": "token", "text": "text"},
         ("token",),
         ("none", "refrigerated", "frozen", "fixed_formalin", "other"),
     ),
     "post_mortem_interval": FactRow({"value": "number", "unit": "unit"}, ("value", "unit"), unit="s"),
-    # provenance.md:295 "| `donor_age` |"
+    # provenance.md:298 "| `donor_age` |"
     "donor_age": FactRow({"value": "number", "range": "range", "unit": "unit"}, ("unit",), unit="s"),
-    # provenance.md:296 "its `basis` is fixed to `stated`, so it takes no `inferred_from`"
+    # provenance.md:299 "its `basis` is fixed to `stated`, so it takes no `inferred_from`"
     "mimics": FactRow({"text": "text"}, ("text",), basis="stated"),
     "supply_form": FactRow({"token": "token"}, ("token",), ("stock", "coupon", "finished_component")),
     "lot": FactRow({"text": "text"}, ("text",)),
@@ -362,9 +355,9 @@ REVIEW_RESULTS: Final = ("reviewed",)
 CONDITION_BASES: Final = ("stated", "inferred")
 # read_side_contract.md:464 "with basis `implied`"
 IMPLIED_BASIS: Final = "implied"
-# provenance.md:261-262 "`stated_as` is `bound`"
+# provenance.md:264-265 "`stated_as` is `bound`"
 STATED_AS: Final = ("bound", "sd")
-# provenance.md:269 "`set_or_measured` is `set_point`"
+# provenance.md:272 "`set_or_measured` is `set_point`"
 SET_OR_MEASURED: Final = ("set_point", "measured")
 
 # read_side_contract.md:125 "the result's labels, from this list only: `user_extracted`"
@@ -465,7 +458,7 @@ CONDITION_NAMES: Final = (
     "value", "range", "token", "unit", "basis", "inferred_from", "plus_minus", "set_or_measured"
 )  # fmt: skip
 NUMERIC_CONDITION_ONLY: Final = ("value", "range", "plus_minus", "set_or_measured")
-# provenance.md:260 "a non-empty list of"
+# provenance.md:263 "a non-empty list of"
 PLUS_MINUS_NAMES: Final = ("stated_as", "value", "unit")
 # uncertainty.md:29 "| Member | Contents |"
 BLOCK_MEMBERS: Final = (
@@ -1115,8 +1108,8 @@ def implied_value(name: str, value: JsonValue, reasons: Reasons) -> JsonObject |
         return None
     # read_side_contract.md:76-77 "It breaks its shape too (`request_incomplete`, with that `condition`) where
     # `implies` gives a numeric condition a `token`, or a token condition a `value`, `range` or `unit`" (the
-    # maintainer's ruling, 2026-10-18): not open, though the same members in a record are
-    # (`holds_another_kind`).
+    # maintainer's ruling, 2026-10-18), as the same members in a record do since the ruling of 2026-10-19
+    # (`provenance.md` section 6.1 item 1, `holds_another_kind`).
     if condition.shape == "token":
         if slipped(value, IMPLIED_VALUE_NAMES) or holds_another_kind(value, ("value", "range", "unit")):
             reasons.add("request_incomplete", name)
@@ -1475,7 +1468,7 @@ def check_form_member(field_value: JsonObject, form: str, row: FieldRow, faults:
 
 
 def withheld_value(stated: StatusObject, faults: Reasons) -> None:
-    # provenance.md:336 "A reader refuses a withheld value, with the reason `withheld`."
+    # provenance.md:339 "A reader refuses a withheld value, with the reason `withheld`."
     if stated.token == "withheld":
         faults.add("withheld")
 
@@ -1537,7 +1530,9 @@ def check_condition(name: str, condition: JsonValue, faults: Reasons) -> None:
 
 
 def holds_another_kind(value: JsonObject, members: tuple[str, ...]) -> bool:
-    # Open point: members_of_the_other_kind, in a record; an implied value's is the text's (`implied_value`).
+    # In a record (the maintainer's ruling, 2026-10-19), as in an implied value (`implied_value`):
+    # provenance.md:246-248 "A numeric condition holding `token`, or a token condition holding `value`,
+    # `range`, `plus_minus` or `set_or_measured`, breaks its shape (`form_invalid`)"
     return any(member in value for member in members)
 
 
@@ -1566,7 +1561,7 @@ def check_basis(value: JsonObject, fixed: str | None, faults: Reasons) -> None:
 
 
 def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
-    # provenance.md:260 "a non-empty list of"
+    # provenance.md:263 "a non-empty list of"
     if not isinstance(entries, list) or not entries:
         faults.add("form_invalid")
         return
@@ -1581,7 +1576,7 @@ def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
             kind = entry["stated_as"]
             unstated = status_object(kind, faults, allowed=frozenset({"unstated"}), scalar=True)
             if unstated is not None:
-                # provenance.md:262-263 "or `{"status": "unstated"}` (a ± whose kind the source does not
+                # provenance.md:265-266 "or `{"status": "unstated"}` (a ± whose kind the source does not
                 # state)", so another token is no kind of the list's rules, refused by its own.
                 if unstated.token == "unstated":
                     kinds.append("unstated")
@@ -1589,12 +1584,12 @@ def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
                 known_token(kind, "stated_as", STATED_AS, faults)
                 if isinstance(kind, str):
                     kinds.append(kind)
-        # provenance.md:263 "`value` is a number not below zero"
+        # provenance.md:266 "`value` is a number not below zero"
         if "value" in entry and not not_negative(entry["value"]):
             faults.add("form_invalid")
         if "unit" in entry:
             check_unit(entry["unit"], faults)
-    # provenance.md:265-266 "The list holds at most one entry of each kind, and an entry of unstated kind
+    # provenance.md:268-269 "The list holds at most one entry of each kind, and an entry of unstated kind
     # stands alone."
     if len(kinds) != len(set(kinds)) or ("unstated" in kinds and len(kinds) > 1):
         faults.add("form_invalid")
@@ -1619,7 +1614,7 @@ def check_specimen(specimen: JsonValue, faults: Reasons) -> None:
 def check_fact(name: str, fact: JsonValue, faults: Reasons) -> None:
     row = FACTS[name]
     names = fact_names(row)
-    # provenance.md:300 "Every fact takes its row's shape or a status object"
+    # provenance.md:303 "Every fact takes its row's shape or a status object"
     if status_object(fact, faults, allowed=ANY_STATUS, shape=names) is not None:
         return
     if not isinstance(fact, dict):

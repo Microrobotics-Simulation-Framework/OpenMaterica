@@ -1,0 +1,67 @@
+{
+  "case": "PR-030",
+  "variant": "near_typo_token_on_numeric_condition",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "glycerol_near_typo_token_on_numeric_condition.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/glycerol_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:0d77f11fd2694c50ff6ebad3fbb0eb8e202644028c1a05628a9accb45d1d8a28"
+      },
+      "field": "bulk.density"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 293.15,
+        "unit": "K"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "temperature": {
+          "tolerance": {
+            "value": 1.0,
+            "unit": "K"
+          }
+        },
+        "density_kind": {
+          "accept": [
+            "apparent"
+          ]
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "form_invalid"
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption"
+    ]
+  }
+}

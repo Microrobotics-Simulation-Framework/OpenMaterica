@@ -338,18 +338,33 @@ def based(
     rule: Check | None = None,
     *,
     fixed_basis: str | None = None,
+    other_kind: Collection[str] = (),
 ) -> Check:
     """A condition's or a specimen fact's shape: `required` and `optional` with a `basis`, `stated`, or
     `inferred` with the text `inferred_from` (`provenance.md` section 6); then `rule`, a rule between its
     members, on an object. A row that fixes the basis to one token (`mimics`, `stated`) leaves nothing to
-    infer from, so its shape names no `inferred_from`."""
+    infer from, so its shape names no `inferred_from`. A condition's `other_kind` are the members of the other
+    kind of condition's shape, named at its place: one of them, whatever it holds, or a slip of one breaks its
+    shape."""
     basis = listed("basis", "basis") if fixed_basis is None else token("basis", (fixed_basis,))
     inferred: Members = {"inferred_from": string} if fixed_basis is None else {}
 
     def check(value: JsonValue, where: str, found: Found) -> None:
-        entry = members(value, where, found, {**required, "basis": basis}, {**(optional or {}), **inferred})
+        entry = members(
+            value,
+            where,
+            found,
+            {**required, "basis": basis},
+            {**(optional or {}), **inferred},
+            named=other_kind,
+        )
         if entry is None:
             return
+        found.extend(
+            invalid(f"{where} holds {name!r}, a member of the other kind of condition's shape")
+            for name in other_kind
+            if name in entry
+        )
         if inferred and entry.get("basis") == "inferred" and "inferred_from" not in entry:
             found.append(invalid(f"{where} is inferred and does not say from what"))
         if rule is not None:
@@ -397,6 +412,14 @@ def plus_minus(value: JsonValue, where: str, found: Found) -> None:
         found.append(invalid(f"{where} holds an entry of unstated kind beside another"))
 
 
+# The members of the other kind of condition's shape, which a condition never holds, whatever they hold, nor a
+# slip of one (`provenance.md` section 6.1 item 1, the maintainer's ruling of 2026-10-19): a numeric
+# condition's `token`, and a token condition's `value`, `range`, `plus_minus` and `set_or_measured`; a token
+# condition's `unit` has a rule of its own, step 9's.
+OF_THE_OTHER_KIND: dict[str, tuple[str, ...]] = {
+    "numeric": ("token",),
+    "token": ("value", "range", "plus_minus", "set_or_measured"),
+}
 NUMERIC_CONDITION = based(
     {"unit": unit},
     {
@@ -406,6 +429,7 @@ NUMERIC_CONDITION = based(
         "set_or_measured": listed("set_or_measured", "set_or_measured"),
     },
     one_of_value_and_range,
+    other_kind=OF_THE_OTHER_KIND["numeric"],
 )
 
 
@@ -415,7 +439,9 @@ def condition(spec: ConditionSpec) -> Check:
     own = (
         NUMERIC_CONDITION
         if spec.shape == "numeric"
-        else based({"token": token("token", spec.tokens)}, {"unit": unit})
+        else based(
+            {"token": token("token", spec.tokens)}, {"unit": unit}, other_kind=OF_THE_OTHER_KIND["token"]
+        )
     )
     return or_status(own, shapes.Conditions, spec.name, CONDITION_MEMBERS)
 

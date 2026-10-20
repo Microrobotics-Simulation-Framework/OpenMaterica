@@ -23,8 +23,8 @@ property can tell a planted open point from anything else. The kinds:
 - **ends early**: a read that ends before step 4, at step 5 or at step 7, a store of `stores.worlds`, or an
   overlay as the target;
 - **unpinned**: the rules the reference model's case-agreement leaves unpinned (its survivors and the faults
-  one case file alone kills), and the open point on which the implementation and the model read the text
-  differently (`OPEN_POINTS`).
+  one case file alone kills), and the open points the maintainer has ruled since, on which the two read alike
+  (`test_model_properties.OPEN_POINTS` lists none they read differently).
 """
 
 import copy
@@ -657,12 +657,11 @@ def ends_early(draw: Draw, size: Size) -> Example:
 
 
 # The rules the model's case-agreement leaves unpinned (`tests/reference/README.md`, "The mutant table"), and
-# the open point the implementation and the model read differently: open point 1's record half, a record
-# condition holding a member of the other kind. Its request half, and a slip of a name a declaration gives a
-# requirement, the text decides, and both read them alike (the fix round of S2a-4's review, and the
-# maintainer's ruling of 2026-10-18 for the request half).
+# open point 1, a condition holding a member of the other kind: its record half, ruled fail closed by the
+# maintainer (2026-10-19, `provenance.md` section 6.1 item 1), which the two read alike since; its request
+# half (the token ruling, 2026-10-18) and a slip of a name a declaration gives a requirement, which the text
+# decides (S2a-4's review, approved 2026-10-18), both read alike since S2a-4's fix round.
 
-OPEN_POINTS = ("members_of_the_other_kind",)
 OTHER_KIND: dict[str, tuple[str, JsonValue]] = {
     "temperature": ("token", "tube"),
     "measurement_geometry": ("value", 1.0),
@@ -763,8 +762,9 @@ def alternatives_slip_beside(draw: Draw, read: Read) -> None:
 
 
 def other_kind(draw: Draw, read: Read) -> None:
-    """Open point `members_of_the_other_kind`: a numeric condition holding `token`, or a token condition
-    holding `value`."""
+    """Open point `members_of_the_other_kind`, its record half (`provenance.md` section 6.1 item 1, the
+    maintainer's ruling of 2026-10-19): a numeric condition holding `token`, or a token condition holding
+    `value`, which breaks its shape."""
     name = draw(st.sampled_from(sorted(OTHER_KIND)))
     member, value = OTHER_KIND[name]
     at(field_of(read), "conditions", name)[member] = value
