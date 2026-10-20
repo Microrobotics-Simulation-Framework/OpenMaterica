@@ -379,11 +379,11 @@ def test_the_evaluator_is_held_to_the_same_citation_rules() -> None:
     ("old", "new", "problem"),
     [
         pytest.param(
-            "read_side_contract.md:557 ", "read_side_contract.md:566 ", "is not at lines 566", id="line"
+            "read_side_contract.md:558 ", "read_side_contract.md:567 ", "is not at lines 567", id="line"
         ),
         pytest.param('"Linear interpolation within', '"Linear interpolation outside', "outside", id="quote"),
         pytest.param(
-            "read_side_contract.md:557 ", "read_contract.md:557 ", "no file read_contract.md", id="file"
+            "read_side_contract.md:558 ", "read_contract.md:557 ", "no file read_contract.md", id="file"
         ),
     ],
 )

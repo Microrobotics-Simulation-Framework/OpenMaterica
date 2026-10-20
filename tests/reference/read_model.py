@@ -286,6 +286,7 @@ REASONS: Final[Mapping[str, ReasonRow]] = {
     "path_arrays_mismatch": ReasonRow("not_met", procedures=("USD read",)),
     "no_requirement": ReasonRow("unknown", procedures=("build",)),
     "label_mismatch": ReasonRow("not_met", procedures=("build",)),
+    "not_reviewed": ReasonRow("unknown", procedures=("build",)),
     "unknown_family": ReasonRow("not_met", procedures=("family evaluation",)),
     "parameters_mismatch": ReasonRow("not_met", procedures=("family evaluation",)),
     "check_point_failed": ReasonRow("not_met", procedures=("family evaluation",)),
@@ -311,7 +312,7 @@ FORM_MEMBERS: Final[Mapping[str, str]] = {form: "value" if form == "constant" el
 INTERVAL_BASES: Final = ("reported_range", "proxy_range", "specification_limits", "stated_bound")
 # record_format.md:398 "`scheme` is `linear` or `loglog`"
 TABLE_SCHEMES: Final = ("linear", "loglog")
-# declarations.md:192 "`method` (`constant` or `consumer_law`)"
+# declarations.md:199 "`method` (`constant` or `consumer_law`)"
 EXTRAPOLATION_METHODS: Final = ("constant", "consumer_law")
 # record_format.md:472 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`"
 COMPOSITION_BASES: Final = ("mass_fraction", "volume_fraction", "mole_fraction")
@@ -366,7 +367,7 @@ ORIGINS: Final = (
 REVIEW_RESULTS: Final = ("reviewed",)
 # provenance.md:211 "`stated`, or `inferred` with an `inferred_from` text"
 CONDITION_BASES: Final = ("stated", "inferred")
-# read_side_contract.md:470 "with basis `implied`"
+# read_side_contract.md:471 "with basis `implied`"
 IMPLIED_BASIS: Final = "implied"
 # provenance.md:264-265 "`stated_as` is `bound`"
 STATED_AS: Final = ("bound", "sd")
@@ -378,11 +379,11 @@ RESULT_LABELS: Final = (
     "user_extracted", "no_independent_witness", "mean_of_specimen_fits", "mixed_conditions",
     "hash_not_checked", "initial_value_only",
 )  # fmt: skip
-# read_side_contract.md:514 "| `want` | constant, table, power law | interval | composition | evidence |"
+# read_side_contract.md:515 "| `want` | constant, table, power law | interval | composition | evidence |"
 WANTS: Final = ("value", "bounds", "components", "evidence", "reference_data", "fit", "coverage")
-# read_side_contract.md:521-524 "the fits and reference data suite"
+# read_side_contract.md:522-525 "the fits and reference data suite"
 FITS_AND_REFERENCE_DATA_WANTS: Final = ("reference_data", "fit", "coverage")
-# Each want's row, the forms it gives: read_side_contract.md:516-519 "| `value` | the number at the operating
+# Each want's row, the forms it gives: read_side_contract.md:517-520 "| `value` | the number at the operating
 # conditions" and "| `bounds` | `not_met` (`want_mismatch`) | `{"lower", "upper", "basis"}`, as stored"
 GIVES: Final[Mapping[str, tuple[str, ...]]] = {
     "value": ("constant", "table", "power_law"),
@@ -391,14 +392,14 @@ GIVES: Final[Mapping[str, tuple[str, ...]]] = {
     "evidence": ("evidence",),
     "reference_data": ("reference_data",),
 }
-# declarations.md:186 "| `acceptance` | Location | Own members | Effect |"
+# declarations.md:193 "| `acceptance` | Location | Own members | Effect |"
 ACCEPTANCE_KINDS: Final = (
     "pick", "waiver", "implied_condition", "accepted_difference", "extrapolation", "nominal", "distribution",
     "overlay", "overlay_scope",
 )  # fmt: skip
 # read_side_contract.md:64-65 "take only the kinds `pick`, `overlay`, `extrapolation`, `nominal` and"
 READ_ACCEPTANCE_KINDS: Final = ("pick", "overlay", "extrapolation", "nominal", "implied_condition")
-# declarations.md:183-184 "names the `field`; holds its kind's own members; and carries `reason`"
+# declarations.md:190-191 "names the `field`; holds its kind's own members; and carries `reason`"
 ACCEPTANCE_NAMES: Final = ("acceptance", "field", "record", "region", "interval", "reason", "basis")
 ACCEPTANCE_OWN_NAMES: Final[Mapping[str, tuple[str, ...]]] = {
     "pick": ("index",),
@@ -561,7 +562,7 @@ OPERATING_NAMES: Final = ("value", "range", "unit")
 REQUIREMENT_NAMES: Final = ("want", "conditions", "label", "represents", "population_level", "field")
 REQUIREMENT_CONDITION_NAMES: Final = ("tolerance", "accept", "reason", "consequence")
 TOLERANCE_NAMES: Final = ("value", "unit")
-# read_side_contract.md:37 "its `requirement` holds `label`, `represents` or `population_level`"
+# read_side_contract.md:37 "its `requirement` holds `label`, `represents`"
 DECLARATION_ONLY_REQUIREMENT_NAMES: Final = ("label", "represents", "population_level")
 IMPLIED_VALUE_NAMES: Final = (*CONDITION_NAMES, "status", "reason")
 
@@ -1076,7 +1077,7 @@ def checked_acceptances(
             named[kind].append(str(acceptance["field"]))
         if kind == "extrapolation":
             method, law = acceptance.get("method"), acceptance.get("law")
-            # declarations.md:192 "`method` (`constant` or `consumer_law`), `law` (text of at least one
+            # declarations.md:199 "`method` (`constant` or `consumer_law`), `law` (text of at least one
             # character, which a reader does not judge)"
             if method not in EXTRAPOLATION_METHODS or not is_law(law):
                 reasons.add("request_incomplete")
@@ -1109,7 +1110,7 @@ def checked_acceptances(
 
 
 def is_law(value: JsonValue) -> TypeGuard[str]:
-    """declarations.md:192 "`law` (text of at least one character, which a reader does not judge)": a string
+    """declarations.md:199 "`law` (text of at least one character, which a reader does not judge)": a string
     of one code point or more, white space alone included, since a reader does not judge what it says."""
     return isinstance(value, str) and len(value) >= 1
 
@@ -1125,7 +1126,7 @@ def at_the_read(acceptance: JsonObject, reference: Reference | None) -> bool:
 
 def checked_implied_condition(acceptance: JsonObject, reasons: Reasons) -> ImpliedCondition | None:
     """An implied condition's shape, and its units: read_side_contract.md:76 "An implied condition breaks its
-    shape" and declarations.md:190 "| `implied_condition` | `region`, `interval` or `record` |"."""
+    shape" and declarations.md:197 "| `implied_condition` | `region`, `interval` or `record` |"."""
     whole_shape = True
     fact, token, implies = acceptance.get("fact"), acceptance.get("token"), acceptance.get("implies")
     # read_side_contract.md:76-77 "where its `fact` is not a specimen fact with tokens or its `token` is not
@@ -2377,7 +2378,7 @@ def check_against_request(
         for name in disagreeing:
             reasons.add("request_incomplete", name)
         return ConditionsChecked(reasons, None)
-    # declarations.md:200-201 "it fills only an unstated one, which is a condition the record holds as"
+    # declarations.md:207-208 "it fills only an unstated one, which is a condition the record holds as"
     applied = {name: value for name, value in supplied.items() if unstated_or_absent(held.get(name))}
     entries: list[JsonValue] = [
         condition_entry(name, held, applied, request, reasons, axis)
@@ -2391,7 +2392,7 @@ def unstated_or_absent(condition: JsonValue) -> bool:
 
 
 def conditions_checked(held: JsonObject, applied: Mapping[str, JsonObject], request: Request) -> list[str]:
-    # read_side_contract.md:452-455 "The conditions checked are those the record holds; those an implied
+    # read_side_contract.md:453-456 "The conditions checked are those the record holds; those an implied
     # condition the read applies fills" ... "those the field's row requires" ... "those another condition
     # requires with the token it holds" ... "and those the request's `requirement.conditions` names"
     names = dict.fromkeys((*held, *applied, *FIELDS[request.field].requires))
@@ -2435,35 +2436,35 @@ def condition_entry(
             reasons.add(code, name)
         return entry
 
-    # read_side_contract.md:463 "| a name the reader does not know | anything | `unknown`
+    # read_side_contract.md:464 "| a name the reader does not know | anything | `unknown`
     # (`condition_unknown_name`)"
     if name not in CONDITIONS:
         return give("unknown", "condition_unknown_name")
     if name in applied:
-        # read_side_contract.md:470 "| a value implied by an acceptance (`declarations.md`) | as for a stated
+        # read_side_contract.md:471 "| a value implied by an acceptance (`declarations.md`) | as for a stated
         # value |"
         stated = applied[name]
         record = {**copied_object(stated), "basis": IMPLIED_BASIS}
     elif name not in held:
-        # read_side_contract.md:462 "| any other status object, on any condition; or the condition is absent"
+        # read_side_contract.md:463 "| any other status object, on any condition; or the condition is absent"
         return give("unknown", "condition_unstated")
     else:
         condition = held[name]
         assert isinstance(condition, dict)
         if axis is not None and name == axis.name and condition.get("status") == "not_applicable":
-            # read_side_contract.md:461 "| `{"status": "not_applicable"}`, on the form's own axis | anything
+            # read_side_contract.md:462 "| `{"status": "not_applicable"}`, on the form's own axis | anything
             # |" ... "Step 10 gives no reason for it and does not end the read on it"
             return give(axis.status, record=status_returned(condition))
         if "status" in condition:
             return give("unknown", "condition_unstated", status_returned(condition))
         stated, record = condition, condition_returned(condition)
     if name in request.accepts:
-        # read_side_contract.md:469 "| a token | an accept list | `met` when the token is in the list"
+        # read_side_contract.md:470 "| a token | an accept list | `met` when the token is in the list"
         if stated.get("token") in request.accepts[name]:
             return give("met", record=record)
         return give("not_met", "condition_not_accepted", record)
     if name not in request.tolerances:
-        # read_side_contract.md:464 "| any stated value, range or token | no tolerance and no accept list for
+        # read_side_contract.md:465 "| any stated value, range or token | no tolerance and no accept list for
         # it |"
         return give("unknown", "condition_unchecked", record)
     status = within_tolerance(stated, request.operating[name], request.tolerances[name])
@@ -2484,28 +2485,28 @@ def ends(value: JsonObject) -> tuple[Fraction, Fraction]:
 
 
 def within_tolerance(stated: JsonObject, operating: JsonObject, tolerance: float) -> Status:
-    """read_side_contract.md:465 "`met` when `abs(r - v) <= t`, else `not_met` (`condition_outside`)" to
-    read_side_contract.md:468 "`met` when `a - t <= lo` and `hi <= b + t`", and a stated plus or minus as
-    read_side_contract.md:485-486 "Where `plus_minus` holds a `bound` entry, it decides" says, on the exact
-    values of the doubles: read_side_contract.md:474 "Every comparison in this table is made on the exact
+    """read_side_contract.md:466 "`met` when `abs(r - v) <= t`, else `not_met` (`condition_outside`)" to
+    read_side_contract.md:469 "`met` when `a - t <= lo` and `hi <= b + t`", and a stated plus or minus as
+    read_side_contract.md:486-487 "Where `plus_minus` holds a `bound` entry, it decides" says, on the exact
+    values of the doubles: read_side_contract.md:475 "Every comparison in this table is made on the exact
     values of the numbers as read"."""
     low, high = ends(stated)
     operating_low, operating_high = ends(operating)
     t = Fraction(tolerance)
-    # read_side_contract.md:466 "`met` when `r - t <= lo` and `hi <= r + t`", and its three other rows
+    # read_side_contract.md:467 "`met` when `r - t <= lo` and `hi <= r + t`", and its three other rows
     if not (low - t <= operating_low and operating_high <= high + t):
         return "not_met"
     entries = stated.get("plus_minus", [])
     entries = entries if isinstance(entries, list) else []
     bounds = [entry for entry in entries if isinstance(entry, dict) and entry.get("stated_as") == "bound"]
     if bounds:
-        # read_side_contract.md:485-490 "Where `plus_minus` holds a `bound` entry, it decides" ... "both ends
+        # read_side_contract.md:486-491 "Where `plus_minus` holds a `bound` entry, it decides" ... "both ends
         # move inward by u"
         bound = bounds[0]["value"]
         assert number(bound)
         u = Fraction(bound)
         return "met" if low + u - t <= operating_low and operating_high <= high - u + t else "unknown"
-    # read_side_contract.md:491-492 "an `sd` entry, or one of unstated kind, with a value above zero makes the
+    # read_side_contract.md:492-493 "an `sd` entry, or one of unstated kind, with a value above zero makes the
     # entry `unknown`"
     values = [entry.get("value") for entry in entries if isinstance(entry, dict)]
     return "unknown" if any(number(value) and value > 0 for value in values) else "met"
@@ -2670,7 +2671,7 @@ def form_member_returned(form: str, member: JsonValue) -> JsonValue:
     """A form's member as stored: a number, or the known members of an interval, a composition or a list of
     evidence."""
     if form == "interval" and isinstance(member, dict):
-        # read_side_contract.md:517 "| `bounds` | `not_met` (`want_mismatch`)"
+        # read_side_contract.md:518 "| `bounds` | `not_met` (`want_mismatch`)"
         return {
             side: status_returned(given) if isinstance(given, dict) else copied(given)
             for side, given in known_members(member, INTERVAL_NAMES).items()
@@ -2852,7 +2853,7 @@ def inside(table: JsonObject, point: float) -> bool:
 
 
 def table_axis(field_value: JsonObject, request: Request) -> TableAxis:
-    """The table's axis entry: read_side_contract.md:461 "the entry is `met` when the operating value lies in
+    """The table's axis entry: read_side_contract.md:462 "the entry is `met` when the operating value lies in
     the form's range and on no declared edge" ... "and otherwise `not_met`, with no operating value or over an
     operating range included"."""
     table = field_value["table"]
@@ -2893,7 +2894,7 @@ def read_the_table(read: "FieldRead", table: JsonObject, request: Request) -> fl
     # lies"; read_side_contract.md:347-348 "`at_edge` for a table read exactly at an edge"
     if at_an_edge(table, point):
         read.own.add("at_edge", axis)
-    # read_side_contract.md:498-500 "A **table** is read at the operating value of its axis, which must lie
+    # read_side_contract.md:499-501 "A **table** is read at the operating value of its axis, which must lie
     # within its readable range" ... "the tolerance never widens a table" ... "Outside the range, the result
     # is `not_met` (`outside_range`)"; record_format.md:410-411 "Where the edge lies outside the readable
     # range" ... "`outside_range` stands beside `at_edge`"
@@ -2906,7 +2907,7 @@ def read_the_table(read: "FieldRead", table: JsonObject, request: Request) -> fl
             read.ended_at = 11
             return None
         # read_side_contract.md:178-180 "except step 11's `outside_range` under an extrapolation that applies
-        # (section 5), after which the read goes on to steps 12 and 13"; read_side_contract.md:502-503 "the
+        # (section 5), after which the read goes on to steps 12 and 13"; read_side_contract.md:503-504 "the
         # result stays `not_met`, its reasons kept" ... "and the result carries the value at the range's
         # nearest end, taken from inside the range"
         read.covered = request.extrapolation
@@ -2935,9 +2936,9 @@ def read_the_table(read: "FieldRead", table: JsonObject, request: Request) -> fl
 
 def extrapolation_covers(table: JsonObject, point: float, request: Request) -> bool:
     """Whether the request's extrapolation covers a read outside the readable range:
-    read_side_contract.md:501 "Under `want: value`, a declared extrapolation that applies to the read (section
-    1) covers it"; read_side_contract.md:505-506 "Under any other `want` an extrapolation is not applied, nor
-    at a declared edge"; read_side_contract.md:508-509 "Nor is an extrapolation applied across a declared
+    read_side_contract.md:502 "Under `want: value`, a declared extrapolation that applies to the read (section
+    1) covers it"; read_side_contract.md:506-507 "Under any other `want` an extrapolation is not applied, nor
+    at a declared edge"; read_side_contract.md:509-510 "Nor is an extrapolation applied across a declared
     edge: where an edge lies between the operating value and the readable range's nearest end, or on that
     end"."""
     if request.want != "value" or request.extrapolation is None or at_an_edge(table, point):
@@ -2947,7 +2948,7 @@ def extrapolation_covers(table: JsonObject, point: float, request: Request) -> b
 
 
 def nearest_end(table: JsonObject, point: float) -> float:
-    """The end of the readable range nearest `point`, which lies outside it: read_side_contract.md:503 "the
+    """The end of the readable range nearest `point`, which lies outside it: read_side_contract.md:504 "the
     value at the range's nearest end, taken from inside the range"."""
     low, high = readable_range(table)
     return low if point < low else high
@@ -3015,7 +3016,7 @@ def read_value_field(
     if read.own.end_the_read():
         read.ended_at = 10
         return read
-    # read_side_contract.md:497-498 "A **constant's** range is its conditions: once they are met, it is read;
+    # read_side_contract.md:498-499 "A **constant's** range is its conditions: once they are met, it is read;
     # step 11 adds nothing."
     point = None
     if read.form == "table":
@@ -3083,12 +3084,12 @@ def shape_by_want(
     if request.want == "fit" and "fit" in field_value:
         raise _Undecided("`want: fit` on a field holding a fit record (the fits and reference data suite)")
     if read.form == "table" and request.want == "value":
-        # read_side_contract.md:516 "| `value` | the number at the operating conditions";
+        # read_side_contract.md:517 "| `value` | the number at the operating conditions";
         # read_side_contract.md:130 "where the value is read from a table: that table as stored (item 5)"
         read.members["value"] = point
         read.members["table"] = read.stored
         if read.covered is not None:
-            # read_side_contract.md:503 "taken from inside the range, and `assumption`";
+            # read_side_contract.md:504 "taken from inside the range, and `assumption`";
             # read_side_contract.md:129 "the declaration it rests on"
             read.members["assumption"] = read.covered
         return
@@ -3099,20 +3100,20 @@ def shape_by_want(
         member = field_value["interval"]
         assert isinstance(member, dict)
         lower, upper = member["lower"], member["upper"]
-        # read_side_contract.md:530-531 "A nominal applies only under `want: value`, inside or on the
+        # read_side_contract.md:531-532 "A nominal applies only under `want: value`, inside or on the
         # interval's bounds, compared exactly, on the bounded side of a one-sided interval"
         inside = (not isinstance(lower, float) or Fraction(lower) <= Fraction(nominal)) and (
             not isinstance(upper, float) or Fraction(nominal) <= Fraction(upper)
         )
         if inside:
-            # read_side_contract.md:516 "a declared nominal inside or on the bounds supplies `value` and
+            # read_side_contract.md:517 "a declared nominal inside or on the bounds supplies `value` and
             # `assumption`"
             read.by_want.add("want_mismatch")
             read.members["value"] = nominal
             # read_side_contract.md:129 "the declaration it rests on"
             read.members["assumption"] = {"acceptance": "nominal", "value": nominal}
         else:
-            # read_side_contract.md:516 "and one outside them gives `nominal_invalid` in place of
+            # read_side_contract.md:517 "and one outside them gives `nominal_invalid` in place of
             # `want_mismatch`"
             read.by_want.add("nominal_invalid")
         return

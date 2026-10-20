@@ -61,7 +61,7 @@ model that reads material fields.
 | `target` | the specimen facts the model stands for, each in the record's fact shape (`provenance.md` section 6.2) without `basis`; differences are computed against it (section 3) |
 | `reads` | every field the model reads |
 | `consumer_parameters` | every consumer parameter a record feeds; each needs a derivation in the sheet (section 9) |
-| `requirements` | per field: `want` (`read_side_contract.md` section 6), required; `conditions`, per condition either `tolerance` (absolute, in the condition's unit) or `accept` (a token list), each with its `reason` and, where known, its `consequence`; optionally `label`, the label the model assumes; and `represents`, the spread its question needs where it samples (`uncertainty.md`); and, where `represents` is `population` and the field is sampled, `population_level`: `{"level", "within"}` as in `uncertainty.md` section 1, or `{"level", "balanced_over": <level>}` for a balanced draw from an ensemble [BC-043] |
+| `requirements` | per field: `want` (`read_side_contract.md` section 6), required; `conditions`, per condition either `tolerance` (absolute, in the condition's unit) or `accept` (a token list), each with its `reason` and, where known, its `consequence`; optionally `label`, the label the model assumes; and `represents`, the spread its question needs where it samples (`uncertainty.md`); and, where `represents` is `population` and the field is sampled, `population_level`: `{"level", "within"}` as in `uncertainty.md` section 1, or `{"level", "balanced_over": <level>}` for a balanced draw from an ensemble [BC-043]; and optionally `review`, `reviewed` where the model needs a value someone checked against its source (item 11) [BC-049] |
 | `families` | for each parameter-set field, the family version the model's evaluator implements (`model_families.md`) |
 | `mixing` | `fraction_sum_tolerance`, set by the model's precision, and per field the rule the model applies in a cell holding more than one material: `identity`, a named rule, or `refuse` (`mixing_rules.md`) |
 | `combinations` | lists of fields of one material, from different sections, that the model combines into one quantity (section 3) |
@@ -99,6 +99,13 @@ model that reads material fields.
    sheet. [BC-046]
 10. `precision` is recorded in the sheet, and a model that evaluates tables or parameter sets without it is
     refused at build. [BC-047]
+11. A requirement's `review` holds `reviewed`, the one token of schema 0.1.0. A requirement holding it gives
+    `unknown` with the reason `not_reviewed` on a result whose `provenance.review` (`read_side_contract.md`
+    section 2) is not a completed review: one holding `result` `reviewed` (`provenance.md` section 2 item 6). A
+    result that holds no `provenance` gets no such reason. A review lies outside the content hash, so the build
+    reads the review the record holds when it runs (section 9 item 3): a review added after a record was
+    pinned can let a refused build pass, and one removed can refuse an accepted build, the pin unchanged. Each
+    result's `provenance` holds the review its answer rested on (section 2). [BC-049]
 
 ## 2. Results
 
@@ -220,7 +227,7 @@ reason not listed is never accepted. [BC-038]
 | Reason | Status | Covered by |
 |---|---|---|
 | `condition_unstated`, `condition_unknown_name`, `condition_unchecked`, `condition_uncertain` | unknown | a `waiver` naming that condition and code |
-| `no_requirement`, `stated_without_origin`, `outside_check_points`, `fill_in_version_mismatch`, `entries_withheld` | unknown | a `waiver` naming that code |
+| `no_requirement`, `stated_without_origin`, `outside_check_points`, `fill_in_version_mismatch`, `entries_withheld`, `not_reviewed` | unknown | a `waiver` naming that code |
 | `no_pick` | unknown | a `pick` only |
 | `range_unstated`, `outside_coverage` | unknown | an `extrapolation` only |
 | `outside_range` | not_met | an `extrapolation`, only on a result whose `assumption` names it |
@@ -383,3 +390,4 @@ The sheet is one JSON document per build. [BC-033]
 | BC-044 | build checks | a declaration with a sampled requirement and no `sampling.min_acceptance`, or one outside (0, 1], is refused at build |
 | BC-046 | build checks | a run that samples two fields outside every `sampling.independence` entry is refused at build; the entries are recorded |
 | BC-047 | build checks | a model that evaluates tables or parameter sets without `precision` is refused at build; the precision is recorded |
+| BC-049 | build checks | a requirement holding `review: "reviewed"` gives `unknown` (`not_reviewed`) on a result whose review is not completed, which a waiver of that code covers; a completed review gives no such reason, nor does a result that holds no `provenance` |

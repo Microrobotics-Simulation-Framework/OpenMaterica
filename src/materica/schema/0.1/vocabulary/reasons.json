@@ -71,6 +71,7 @@
         "path_arrays_mismatch",
         "no_requirement",
         "label_mismatch",
+        "not_reviewed",
         "unknown_family",
         "parameters_mismatch",
         "check_point_failed",
@@ -501,6 +502,12 @@
     },
     "label_mismatch": {
       "status": "not_met",
+      "procedures": [
+        "build"
+      ]
+    },
+    "not_reviewed": {
+      "status": "unknown",
       "procedures": [
         "build"
       ]
