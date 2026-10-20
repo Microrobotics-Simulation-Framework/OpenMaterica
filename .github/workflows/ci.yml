@@ -6,11 +6,12 @@
 # only the site the gate and the site job. A merge to main runs every job, whatever it changed, and the
 # `result` job fails where a job the gate asked for did not succeed.
 # Every pull request tests all five Pythons, in parallel, so breadth costs no waiting. The
-# per-push critical path is the Hypothesis job at the `ci` profile, which runs on every change but one confined
-# to paths no part of it reads (the gate lists them). Keep it short: work that would lengthen the
-# longest job runs beside it as a job of its own (the generated files) or a shard (the property tests), so that
-# a push waits for the longest job only. The `deep` profile and Atheris fuzzing, slow by design, run weekly and
-# on manual runs only.
+# per-push critical path is the longest of the test, control and Hypothesis jobs. Keep it short: work that
+# would lengthen the longest job runs beside it as a job of its own (the generated files), a shard (the
+# property tests) or a part of equal time (`--partition`, tests/partition.py: the test and control jobs, and the
+# Hypothesis job's three longest shards), so that a push waits for the longest job only. The Hypothesis job at the
+# `ci` profile runs on every change but one confined to paths no part of it reads (the gate lists them). The
+# `deep` profile and Atheris fuzzing, slow by design, run weekly and on manual runs only.
 
 name: CI
 
@@ -345,7 +346,7 @@ jobs:
       - run: uv run python scripts/gen_kill_counts.py --check
 
   tests:
-    name: tests (Python ${{ matrix.python }})
+    name: tests (Python ${{ matrix.python }}, part ${{ matrix.part }} of 2)
     needs: gate
     if: needs.gate.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -365,6 +366,10 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        # Two parts of about equal time (`--partition`, tests/partition.py), side by side: each Python's tests
+        # in the one job were the longest of the head's jobs once the controls were split. The parts together
+        # hold every test once, which tests/unit/test_ci_workflows.py checks on the tests it collects.
+        part: [1, 2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -402,7 +407,8 @@ jobs:
       - id: pytest
         run: >-
           uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"
-          pytest -n auto --dist worksteal --property-controls none --junitxml="$RUNNER_TEMP/durations.xml"
+          pytest -n auto --dist worksteal --property-controls none --partition ${{ matrix.part }}/2
+          --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
           # The trace test of scripts/pre_review.py's tables (tests/unit/test_pre_review.py) runs the whole suite
@@ -421,19 +427,19 @@ jobs:
       - name: Test durations
         if: always() && steps.pytest.outcome != 'skipped'
         env:
-          TITLE: "Test durations: tests, Python ${{ matrix.python }}"
+          TITLE: "Test durations: tests, Python ${{ matrix.python }}, part ${{ matrix.part }} of 2"
         run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
       - name: Keep the durations
         if: always() && steps.pytest.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: durations-tests-${{ matrix.python }}
+          name: durations-tests-${{ matrix.python }}-${{ matrix.part }}of2
           path: ${{ runner.temp }}/durations.xml
           if-no-files-found: error
           retention-days: 90
 
   controls:
-    name: mutant searches and audit controls (Python ${{ matrix.python }})
+    name: mutant searches and audit controls (Python ${{ matrix.python }}, part ${{ matrix.part }} of ${{ matrix.parts }})
     # The mutant searches and the audit controls show that each property and each feature audit can fail
     # (tests/README.md, "Every check can fail"). They run at the `ci` profile's examples whatever the profile,
     # so on each Python they cost about as much as all its other tests. They run on the supported range's
@@ -441,11 +447,17 @@ jobs:
     # in a job of their own beside each end's test job, so that neither job is the longest: 3.11's was. The
     # Hypothesis job's shards run the mutant searches too. tests/unit/test_ci_workflows.py checks that the two
     # jobs together leave nothing out on 3.11 and 3.15, and only these tests on the Pythons between.
+    # The audit controls are most of the work (82 percent of the CPU time, 25 to 280 s a test), and 3.11 took
+    # 12 to 25 minutes in one job, the longest of the run (CI runs of 2026-10-19). So the tests are split into
+    # parts of about equal time that run side by side (`--partition`, tests/partition.py): four on 3.11, which
+    # is the slower interpreter, two on 3.15. The parts together hold every test once, which
+    # tests/unit/test_ci_workflows.py checks on the tests CI's matrix selects. The kill points are checked after
+    # them, in the `kill_points` job, on all the parts' reports at once.
     needs: gate
     if: needs.gate.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    # Measured on CI in its first run: 3.4 minutes on 3.11 and 2.3 on 3.15 (run 38954710616, 2026-10-16). The test
-    # job's timeout, until more runs are measured.
+    # A part took at most 6 minutes on the first run of the parts, against the 12 to 25 of one job above. 40 is
+    # the test job's timeout, kept until more runs of the parts are measured.
     timeout-minutes: 40
     env:
       JOB_MINUTES: 40
@@ -453,6 +465,14 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.11", "3.15"]
+        part: [1, 2, 3, 4]
+        # 3.15 has two parts, so its third and fourth are left out; `parts` is how many a Python has.
+        exclude:
+          - { python: "3.15", part: 3 }
+          - { python: "3.15", part: 4 }
+        include:
+          - { python: "3.11", parts: 4 }
+          - { python: "3.15", parts: 2 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -469,29 +489,74 @@ jobs:
       - id: pytest
         run: >-
           uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"
-          pytest -n auto --dist worksteal --property-controls only --junitxml="$RUNNER_TEMP/durations.xml"
+          pytest -n auto --dist worksteal --property-controls only --partition ${{ matrix.part }}/${{ matrix.parts }}
+          --junitxml="$RUNNER_TEMP/durations.xml"
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
-      # Each search's kill point, as the report gives it, is the one `tests/property/kill_points.json` records,
-      # every recorded group and search ran and recorded its kill, and every row of the property README's
-      # tables names one that ran: the
-      # README's counts are written from that file, so this holds them to the code at the head. A search's
-      # kill does not depend on the profile or the Python (scripts/gen_kill_counts.py).
-      - name: Each kill point is the recorded one
-        run: uv run python scripts/gen_kill_counts.py --against "$RUNNER_TEMP/durations.xml"
       - name: Test durations
         if: always() && steps.pytest.outcome != 'skipped'
         env:
-          TITLE: "Test durations: mutant searches and audit controls, Python ${{ matrix.python }}"
+          TITLE: "Test durations: mutant searches and audit controls, Python ${{ matrix.python }}, part ${{ matrix.part }} of ${{ matrix.parts }}"
         run: uv run python scripts/report_test_durations.py "$RUNNER_TEMP/durations.xml" --title "$TITLE"
+      # The report is kept whenever pytest ran, for the durations and for the `kill_points` job, which reads all
+      # of a Python's parts' reports together.
       - name: Keep the durations
         if: always() && steps.pytest.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: durations-controls-${{ matrix.python }}
+          name: durations-controls-${{ matrix.python }}-${{ matrix.part }}of${{ matrix.parts }}
           path: ${{ runner.temp }}/durations.xml
           if-no-files-found: error
           retention-days: 90
+
+  kill_points:
+    name: kill points (Python ${{ matrix.python }})
+    # Each search's kill point, as the reports give it, is the one `tests/property/kill_points.json` records,
+    # every recorded group and search ran and recorded its kill, and every row of the property README's tables
+    # names one that ran: the README's counts are written from that file, so this holds them to the code at the
+    # head. A search's kill does not depend on the profile or the Python (scripts/gen_kill_counts.py). It reads
+    # the reports of all the parts of a Python's `controls` jobs together, as the one report of every search it
+    # read before the jobs were split, and not with `--partial`: a search that ran in no part is a recorded
+    # group missing from the run, which fails. The reports are counted as well, so that a part whose report is
+    # missing is named as that and not as the searches it held.
+    needs: [gate, controls]
+    if: needs.gate.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.15"]
+        include:
+          - { python: "3.11", parts: 4 }
+          - { python: "3.15", parts: 2 }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      - name: Fetch the reports of the parts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: durations-controls-${{ matrix.python }}-*
+          path: ${{ runner.temp }}/controls
+      - name: Each kill point is the recorded one
+        env:
+          PARTS: ${{ matrix.parts }}
+        run: |
+          shopt -s nullglob
+          reports=("$RUNNER_TEMP"/controls/*/durations.xml)
+          if [ "${#reports[@]}" -ne "$PARTS" ]; then
+            echo "::error::${#reports[@]} reports of the controls' parts, not the $PARTS that ran"
+            exit 1
+          fi
+          uv run python scripts/gen_kill_counts.py --against "${reports[@]}"
 
   hypothesis:
     name: hypothesis (${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}, ${{ matrix.shard }})
@@ -539,36 +604,48 @@ jobs:
     # holds `conditions` once it has run on CI.
     # The table evaluator's four properties, in the json shard, took 31 s of CPU at `ci` and 556 s at `deep` (262 s
     # wall on four workers), locally (2026-10-17, S3b-1's fix round).
+    # `agreement`, `relations` and `alternatives` run in two parts each (the matrix, below), whose timeouts are the shard's own:
+    # a part holds about half the shard's tests, so it cannot take longer than the shard did, and the margins above
+    # hold for it (tests/unit/test_ci_workflows.py holds each part to its shard's measured time). The parts have
+    # not run on CI, so no part has a time of its own yet.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
-      || matrix.shard == 'relations' && 300
-      || matrix.shard == 'agreement' && 360
+      || startsWith(matrix.shard, 'relations') && 300
+      || startsWith(matrix.shard, 'agreement') && 360
       || matrix.shard == 'records' && 90 || 45)
-      || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || matrix.shard == 'relations') && 30
-      || matrix.shard == 'agreement' && 45 || 20) }}
+      || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
+      || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
     strategy:
       fail-fast: false
       matrix:
-        # Eight shards side by side (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785, the hash and the
-        # table evaluator; the envelope checks, versions and the read; the writer schema's value fields; the two
-        # JSON Schema libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
+        # Eight shards (`SHARDS` in tests/conftest.py): the JSON reader, RFC 8785, the hash and the table
+        # evaluator; the envelope checks, versions and the read; the writer schema's value fields; the two JSON
+        # Schema libraries' agreement, whose python-jsonschema validations make it the longest; step 8's mutant
         # searches, which were most of the records shard's time; steps 9 and 10's properties and the result's,
         # with their mutant searches; the read's relations (HP12, the agreement with the reference model,
         # HP4, HP10 and the information-monotonicity relations), with theirs; and S4a's step 7 over
         # alternatives (HP27 to HP29), with theirs, which take the default timeouts until CI measures them.
-        shard: [json, records, writer, agreement, step8_mutants, conditions, relations, alternatives]
+        # The three longest, `agreement`, `relations` and `alternatives`, each run as two jobs side by side,
+        # `agreement_1of2` and `agreement_2of2` (`--shard`, tests/partition.py): the shard's tests in two parts of
+        # about equal time, which together hold every one once (tests/unit/test_ci_workflows.py checks it on the
+        # tests they collect). At `ci`, on CI, `relations` took 9.0 minutes, `agreement` 7.1 and `alternatives`
+        # 6.6 (run 39390324975, 2026-10-20, the pytest run's wall time in each durations report; the run before,
+        # 39335066688, took 7.3 and 5.9 for the first two), the longest of the Hypothesis job's shards. The times
+        # by test of run 39390324975, summed over each half's tests, are 1,038 and 1,039 s for `relations`, 498
+        # and 498 s for `agreement` and 680 and 678 s for `alternatives`, where the longest single test is 185 s.
+        shard: [json, records, writer, agreement_1of2, agreement_2of2, step8_mutants, conditions, relations_1of2, relations_2of2, alternatives_1of2, alternatives_2of2]
     env:
       MATERICA_HYPOTHESIS_PROFILE: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 'deep' || 'ci' }}
       # The job's `timeout-minutes`, as above, from which the pytest step's interrupt is set.
       JOB_MINUTES: >-
         ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
-        || matrix.shard == 'relations' && 300
-        || matrix.shard == 'agreement' && 360
+        || startsWith(matrix.shard, 'relations') && 300
+        || startsWith(matrix.shard, 'agreement') && 360
         || matrix.shard == 'records' && 90 || 45)
-        || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || matrix.shard == 'relations') && 30
-        || matrix.shard == 'agreement' && 45 || 20) }}
+        || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
+        || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -823,7 +900,7 @@ jobs:
     # requiring the jobs by name would leave docs-only pull requests waiting. A job skipped by its `if` reports
     # success, so a gate wired wrongly (a renamed step id leaves its outputs empty) would skip every job and pass
     # a check that only looks for failures: this one fails unless every job the gate asked for succeeded.
-    needs: [gate, static, generated, tests, controls, hypothesis, site, commit, site_commit]
+    needs: [gate, static, generated, tests, controls, kill_points, hypothesis, site, commit, site_commit]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -840,6 +917,7 @@ jobs:
           GENERATED_JOB: ${{ needs.generated.result }}
           TESTS_JOB: ${{ needs.tests.result }}
           CONTROLS_JOB: ${{ needs.controls.result }}
+          KILL_POINTS_JOB: ${{ needs.kill_points.result }}
           HYPOTHESIS_JOB: ${{ needs.hypothesis.result }}
           SITE_JOB: ${{ needs.site.result }}
           COMMIT_JOB: ${{ needs.commit.result }}
@@ -848,7 +926,7 @@ jobs:
           status=0
           fail() { echo "::error::$1"; status=1; }
           asked() { [ "$2" = success ] || fail "the gate asked for $1, which ended in '$2'"; }
-          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS, site $SITE, commits $COMMITS, site_commits $SITE_COMMITS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, controls $CONTROLS_JOB, hypothesis $HYPOTHESIS_JOB, site $SITE_JOB, commit $COMMIT_JOB, site_commit $SITE_COMMIT_JOB"
+          echo "gate $GATE (code $CODE, hypothesis $HYPOTHESIS, site $SITE, commits $COMMITS, site_commits $SITE_COMMITS); static $STATIC_JOB, generated $GENERATED_JOB, tests $TESTS_JOB, controls $CONTROLS_JOB, kill_points $KILL_POINTS_JOB, hypothesis $HYPOTHESIS_JOB, site $SITE_JOB, commit $COMMIT_JOB, site_commit $SITE_COMMIT_JOB"
           [ "$GATE" = success ] || fail "the gate ended in '$GATE'"
           for output in "code $CODE" "hypothesis $HYPOTHESIS" "site $SITE"; do
             case "${output#* }" in
@@ -861,6 +939,7 @@ jobs:
             asked generated "$GENERATED_JOB"
             asked tests "$TESTS_JOB"
             asked controls "$CONTROLS_JOB"
+            asked "the kill points" "$KILL_POINTS_JOB"
           fi
           if [ "$HYPOTHESIS" = true ]; then asked hypothesis "$HYPOTHESIS_JOB"; fi
           if [ "$SITE" = true ]; then asked site "$SITE_JOB"; fi
@@ -876,7 +955,7 @@ jobs:
             \[\"*\"\]) asked "the commits before the head that change the site alone" "$SITE_COMMIT_JOB" ;;
             *) fail "the gate's site_commits are '$SITE_COMMITS', not a list" ;;
           esac
-          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$CONTROLS_JOB" "$HYPOTHESIS_JOB" "$SITE_JOB" "$COMMIT_JOB" "$SITE_COMMIT_JOB"; do
+          for result in "$STATIC_JOB" "$GENERATED_JOB" "$TESTS_JOB" "$CONTROLS_JOB" "$KILL_POINTS_JOB" "$HYPOTHESIS_JOB" "$SITE_JOB" "$COMMIT_JOB" "$SITE_COMMIT_JOB"; do
             case "$result" in failure | cancelled) fail "a job ended in '$result'" ;; esac
           done
           exit "$status"
@@ -993,12 +1072,18 @@ jobs:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-conditions-${{ github.run_id }}
           restore-keys: hypothesis-${{ runner.os }}-conditions-
-      - name: Restore the example database of the relations shard
+      - name: Restore the example database of the relations_1of2 shard
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
-          key: hypothesis-${{ runner.os }}-relations-${{ github.run_id }}
-          restore-keys: hypothesis-${{ runner.os }}-relations-
+          key: hypothesis-${{ runner.os }}-relations_1of2-${{ github.run_id }}
+          restore-keys: hypothesis-${{ runner.os }}-relations_1of2-
+      - name: Restore the example database of the relations_2of2 shard
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-relations_2of2-${{ github.run_id }}
+          restore-keys: hypothesis-${{ runner.os }}-relations_2of2-
       # Target 1's corpus from earlier runs, so that its coverage builds up; it is seeded afresh as well.
       - name: Restore the raw-bytes corpus
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1091,9 +1176,15 @@ jobs:
         with:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-conditions-${{ github.run_id }}-fuzz
-      - name: Save the example database for the relations shard
+      - name: Save the example database for the relations_1of2 shard
         if: always()
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .hypothesis
-          key: hypothesis-${{ runner.os }}-relations-${{ github.run_id }}-fuzz
+          key: hypothesis-${{ runner.os }}-relations_1of2-${{ github.run_id }}-fuzz
+      - name: Save the example database for the relations_2of2 shard
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .hypothesis
+          key: hypothesis-${{ runner.os }}-relations_2of2-${{ github.run_id }}-fuzz

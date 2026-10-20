@@ -22,7 +22,7 @@ import sys
 import time
 import tomllib
 from collections import Counter
-from collections.abc import Callable, Mapping, Sequence, Set
+from collections.abc import Callable, Collection, Mapping, Sequence, Set
 from pathlib import Path
 from typing import Any, NamedTuple, cast
 
@@ -30,6 +30,8 @@ import pytest
 import yaml
 
 from scripts import check_confidential, mutant_runs, repeat_runs, schema_index
+from tests import partition
+from tests.conftest import SHARDS
 from tests.unit.test_report_test_durations import INTERRUPT_AS_CI
 from tests.unit.throwaway_git import throwaway_repository
 
@@ -51,11 +53,15 @@ GATED = {
     "generated": "code",
     "tests": "code",
     "controls": "code",
+    "kill_points": "code",
     "hypothesis": "hypothesis",
     "site": "site",
     "commit": "commits",
     "site_commit": "site_commits",
 }
+# The jobs that wait for another job beside the gate: the kill points are read from the controls jobs'
+# reports.
+ALSO_AFTER = {"kill_points": "controls"}
 # How each output runs its jobs: `code`, `hypothesis` and `site` when true, `commits` and `site_commits` when
 # it lists one.
 RUNS_WHEN = {
@@ -142,15 +148,26 @@ def step(job: dict[str, Any], name: str) -> dict[str, Any]:
 
 
 # GitHub's expressions as far as the workflows use them: strings, numbers, true, false and null, context paths
-# (`github.event_name`), the status functions (`success()`), `fromJSON(...)`, `!`, `==`, `!=`, `&&`, `||` and
-# parentheses. Anything else fails the test, rather than be guessed.
+# (`github.event_name`), the status functions (`success()`), `fromJSON(...)`, `startsWith(...)`, `!`, `==`,
+# `!=`, `&&`, `||` and parentheses. Anything else fails the test, rather than be guessed.
 EXPRESSION_TOKEN = re.compile(
-    r"\s*('(?:[^']|'')*'|\d+(?:\.\d+)?|[A-Za-z_][\w.-]*(?:\(\))?|==|!=|&&|\|\||[!()])"
+    r"\s*('(?:[^']|'')*'|\d+(?:\.\d+)?|[A-Za-z_][\w.-]*(?:\(\))?|==|!=|&&|\|\||[!(),])"
 )
 STATUS_FUNCTION = re.compile(r"\b(?:success|failure|cancelled|always)\(\)")
-# The functions of one argument the workflows call, as GitHub computes them. Python's JSON parser and GitHub's
-# differ at the edges (`010`, `NaN`), which no test here reaches: each value it parses is checked first.
-FUNCTIONS: dict[str, Callable[[object], object]] = {"fromJSON": lambda value: json.loads(as_text(value))}
+
+
+# The functions the workflows call, as GitHub computes them. Python's JSON parser and GitHub's differ at the
+# edges (`010`, `NaN`), which no test here reaches: each value it parses is checked first. `startsWith`
+# ignores case, as GitHub's does.
+def from_json(value: object) -> object:
+    return json.loads(as_text(value))
+
+
+def starts_with(text: object, prefix: object) -> bool:
+    return as_text(text).casefold().startswith(as_text(prefix).casefold())
+
+
+FUNCTIONS: dict[str, Callable[..., object]] = {"fromJSON": from_json, "startsWith": starts_with}
 
 
 def as_number(value: object) -> float:
@@ -240,9 +257,11 @@ def evaluated(expression: str, context: Mapping[str, object]) -> object:
             assert take(")"), f"a parenthesis left open in {expression!r}"
             return value
         if token in FUNCTIONS and take("("):
-            argument = either()
+            arguments = [either()]
+            while take(","):
+                arguments.append(either())
             assert take(")"), f"a call left open in {expression!r}"
-            return FUNCTIONS[token](argument)
+            return FUNCTIONS[token](*arguments)
         if token.startswith("'"):
             return token[1:-1].replace("''", "'")
         if re.fullmatch(r"\d+(?:\.\d+)?", token):
@@ -293,6 +312,9 @@ def test_the_expressions_are_evaluated_as_github_evaluates_them() -> None:
         "fromJSON(vars.cap || '6')": 6,
         "fromJSON(vars.other || '6')": 10,
         "fromJSON('[\"a\", 2]')": ["a", 2],
+        "startsWith(matrix.python, '3.1')": True,
+        "startsWith(matrix.python, '3.2') || startsWith('ABC', 'ab')": True,
+        "startsWith(matrix.python, '3.2')": False,
     }
     assert {expression: evaluated(expression, context) for expression in cases} == cases
     assert condition({"if": "matrix.python != '3.15'"}) == "success() && (matrix.python != '3.15')"
@@ -1889,6 +1911,8 @@ def test_the_result_passes_when_every_job_the_gate_asked_for_succeeded(
     [
         ("success", "true", "true", all_jobs("success", tests="skipped")),
         ("success", "true", "false", all_jobs("success", controls="skipped", hypothesis="skipped")),
+        ("success", "true", "false", all_jobs("success", kill_points="skipped", hypothesis="skipped")),
+        ("success", "true", "false", all_jobs("success", kill_points="", hypothesis="skipped")),
         ("success", "true", "true", all_jobs("success", hypothesis="skipped")),
         ("success", "true", "false", all_jobs("success", static="cancelled", hypothesis="skipped")),
         ("success", "", "", all_jobs("skipped")),
@@ -1899,6 +1923,8 @@ def test_the_result_passes_when_every_job_the_gate_asked_for_succeeded(
     ids=[
         "asked-for-and-skipped",
         "controls-asked-for-and-skipped",
+        "kill-points-asked-for-and-skipped",
+        "kill-points-without-a-result",
         "hypothesis-asked-for-and-skipped",
         "asked-for-and-cancelled",
         "outputs-empty",
@@ -2029,8 +2055,9 @@ def wiring_problems(ci: Workflow) -> list[str]:
             problems.append(f"the gate's output {output} is {gate['outputs'].get(output)!r}")
     for job_id, output in GATED.items():
         job = jobs.get(job_id, {})
-        if job.get("needs") != "gate":
-            problems.append(f"{job_id} needs {job.get('needs')!r}, not the gate alone")
+        needs: str | list[str] = ["gate", ALSO_AFTER[job_id]] if job_id in ALSO_AFTER else "gate"
+        if job.get("needs") != needs:
+            problems.append(f"{job_id} needs {job.get('needs')!r}, not {needs!r}")
         if job.get("if") != f"needs.gate.outputs.{output} {RUNS_WHEN[output]}":
             problems.append(f"{job_id} runs if {job.get('if')!r}")
     result = jobs["result"]
@@ -2204,14 +2231,6 @@ def pytest_commands(job: dict[str, Any]) -> list[list[str]]:
     return commands
 
 
-def property_controls(job: dict[str, Any]) -> str | None:
-    """What the job's one pytest command gives `--property-controls`, or None."""
-    [command] = pytest_commands(job)
-    if "--property-controls" in command:
-        return command[command.index("--property-controls") + 1]
-    return None
-
-
 # The mutant searches and the audit controls, by the test's name: a mutant search tests that a mutant is
 # killed or dies, an audit control that a property fails its feature audit. CI selects them by module
 # instead (`--property-controls`, `PROPERTY_CONTROLS` in tests/conftest.py), so a new module of either is
@@ -2294,18 +2313,39 @@ EVENTS = ("pull_request", "push", "schedule", "workflow_dispatch")
 SO_FAR_SUCCEEDED = {"success()": True, "failure()": False, "cancelled()": False, "always()": True}
 
 
-def matrix_problems(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> list[str]:
-    """Where the test matrix's jobs, together, leave a test out on a Python: any test on the supported
-    range's ends, any but the mutant searches and the audit controls between them, which run there.
-    `selected` gives the tests that each value of `--property-controls` selects, None for a run without it.
-    What a job runs is computed as GitHub runs it: its matrix after `exclude` and `include`, the Python each
-    combination installs, and whether its pytest step's `if` skips it there, on any event."""
-    every = selected[None]
+class Selection(NamedTuple):
+    """What a pytest command selects, by the options that choose tests: `--property-controls`, `--shard` and
+    `--partition`, each None where the command does not give it."""
+
+    controls: str | None
+    shard: str | None
+    part: str | None
+
+
+def selection_of(command: Sequence[str], context: Mapping[str, object]) -> Selection:
+    """The selection of the job's pytest command for one combination of its matrix, each option's value as
+    GitHub renders it there."""
+
+    def value(option: str) -> str | None:
+        return rendered(command[command.index(option) + 1], context) if option in command else None
+
+    return Selection(value("--property-controls"), value("--shard"), value("--partition"))
+
+
+def matrix_problems(ci: Workflow, selected: Mapping[Selection, frozenset[str]]) -> list[str]:
+    """Where the test matrix's jobs, together, leave a test out on a Python, or run it twice: any test on the
+    supported range's ends, any but the mutant searches and the audit controls between them, which run there.
+    `selected` gives the tests that each selection collects (`Selection`), none of the options for a run
+    without them. What a job runs is computed as GitHub runs it: its matrix after `exclude` and `include`, the
+    Python each combination installs, the part of the selection its command gives (`--partition`, as the
+    combination renders it), and whether its pytest step's `if` skips it there, on any event. The parts of a
+    job must hold each test of its selection once: the test that is in none of them, or in two, is named."""
+    every = selected[Selection(None, None, None)]
     controls = {test for test in every if is_control(test)}
     # The supported range, which tests/unit/test_python_versions.py holds to pyproject.toml.
     pythons: list[str] = ci["jobs"]["tests"]["strategy"]["matrix"]["python"]
     ends = {min(pythons, key=version), max(pythons, key=version)}
-    run: dict[str, set[str]] = {python: set() for python in pythons}
+    run: dict[str, Counter[str]] = {python: Counter() for python in pythons}
     problems: list[str] = []
     for job_id in ("tests", "controls"):
         job = ci["jobs"][job_id]
@@ -2322,7 +2362,12 @@ def matrix_problems(ci: Workflow, selected: dict[str | None, frozenset[str]]) ->
             if not isinstance(python, str):
                 problems.append(f"{job_id} has a combination with no Python: {combination}")
                 continue
-            context = {f"matrix.{key}": value for key, value in combination.items()} | SO_FAR_SUCCEEDED
+            # A property the combination lacks is null for GitHub, and renders as nothing.
+            context = (
+                {"matrix.part": None, "matrix.parts": None}
+                | {f"matrix.{key}": value for key, value in combination.items()}
+                | SO_FAR_SUCCEEDED
+            )
             skipped = [
                 event
                 for event in EVENTS
@@ -2334,68 +2379,132 @@ def matrix_problems(ci: Workflow, selected: dict[str | None, frozenset[str]]) ->
                     f"if {runs_pytest.get('if')!r}"
                 )
                 continue
-            run.setdefault(python, set()).update(selected[property_controls(job)])
+            [command] = pytest_commands(job)
+            chosen = selection_of(command, context)
+            if chosen.part is not None:
+                try:
+                    partition.parse_part(chosen.part)
+                except ValueError:
+                    problems.append(
+                        f"{job_id} on Python {python} runs part {chosen.part!r}, which is no part"
+                    )
+                    continue
+            run.setdefault(python, Counter()).update(selected[chosen])
 
     def by_file(tests: Set[str]) -> str:
         files = Counter(test.partition("::")[0] for test in tests)
         return ", ".join(f"{count} of {file}" for file, count in sorted(files.items()))
 
-    if others := selected["only"] - controls:
+    if others := selected[Selection("only", None, None)] - controls:
         problems.append(f"the controls' modules hold {by_file(others)}: no mutant search or audit control")
     for python in sorted(run, key=version):
         wanted = every if python in ends else every - controls
-        if wanted - run[python]:
-            problems.append(f"Python {python} leaves out {by_file(wanted - run[python])}")
-        if run[python] - wanted:
-            problems.append(f"Python {python} runs {by_file(run[python] - wanted)}")
+        if wanted - run[python].keys():
+            problems.append(f"Python {python} leaves out {by_file(wanted - run[python].keys())}")
+        if run[python].keys() - wanted:
+            problems.append(f"Python {python} runs {by_file(run[python].keys() - wanted)}")
+        if twice := {test for test, count in run[python].items() if count > 1}:
+            problems.append(f"Python {python} runs {by_file(twice)} more than once")
     return problems
 
 
-def collected(options: list[str | None]) -> dict[str | None, frozenset[str]]:
-    """The tests that a run of the whole suite collects with each value of `--property-controls`, collected
-    side by side."""
+def selections_of(ci: Workflow) -> set[Selection]:
+    """What the test matrix's jobs ask pytest to collect, each combination of each, on a push."""
+    found: set[Selection] = set()
+    for job_id in ("tests", "controls"):
+        [command] = pytest_commands(ci["jobs"][job_id])
+        for context in matrix_contexts(ci["jobs"][job_id]):
+            if context["github.event_name"] == "push":
+                found.add(selection_of(command, context))
+    return found
+
+
+def collected(
+    selections: Collection[Selection], profile: str, together: int = 4
+) -> dict[Selection, frozenset[str]]:
+    """The tests that a run of the whole suite collects with each selection, at the profile the job runs, a
+    few at a time."""
     environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
-    runs = {
-        option: subprocess.Popen(
-            [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"]
-            + (["--property-controls", option] if option else []),
-            cwd=REPOSITORY,
-            env=environment,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        for option in options
-    }
-    found: dict[str | None, frozenset[str]] = {}
-    for option, run in runs.items():
-        printed, _ = run.communicate()
-        assert run.returncode == 0, printed[-3000:]
-        found[option] = frozenset(line for line in printed.splitlines() if "::" in line)
+    environment["MATERICA_HYPOTHESIS_PROFILE"] = profile
+    found: dict[Selection, frozenset[str]] = {}
+    ordered = sorted(selections, key=str)
+    for start in range(0, len(ordered), together):
+        runs = {
+            chosen: subprocess.Popen(
+                [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"]
+                + [
+                    word
+                    for option, value in zip(
+                        ("--property-controls", "--shard", "--partition"), chosen, strict=True
+                    )
+                    if value is not None
+                    for word in (option, value)
+                ],
+                cwd=REPOSITORY,
+                env=environment,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            for chosen in ordered[start : start + together]
+        }
+        for chosen, process in runs.items():
+            printed, _ = process.communicate()
+            assert process.returncode == 0, f"{chosen}: {printed[-3000:]}"
+            found[chosen] = frozenset(line for line in printed.splitlines() if "::" in line)
     return found
 
 
 def test_the_mutant_searches_and_audit_controls_run_at_the_range_ends_and_nothing_else_is_left_out() -> None:
-    selected = collected([None, "none", "only"])
+    ci = workflow("ci.yml")
+    whole = {Selection(None, None, None), Selection("none", None, None), Selection("only", None, None)}
+    selected = collected(whole | selections_of(ci), "dev")
     # Every test module is collected, so that none is out of every job unseen; and the names find both kinds.
     on_disk = {path.relative_to(REPOSITORY).as_posix() for path in (REPOSITORY / "tests").rglob("test_*.py")}
-    assert on_disk - {test.partition("::")[0] for test in selected[None]} == set()
-    functions = {function(test) for test in selected["only"]}
+    assert on_disk - {test.partition("::")[0] for test in selected[Selection(None, None, None)]} == set()
+    functions = {function(test) for test in selected[Selection("only", None, None)]}
     assert any(MUTANT_SEARCH.fullmatch(name) for name in functions)
     assert any(AUDIT_CONTROL.fullmatch(name) for name in functions)
-    assert matrix_problems(workflow("ci.yml"), selected) == []
+    # The parts are the parts of the whole selection they say, each of the whole's tests in one of them.
+    parts = [chosen for chosen in selected if chosen.part is not None]
+    assert len(parts) == len(selections_of(ci)) > 4
+    assert matrix_problems(ci, selected) == []
 
 
 READ = "tests/unit/test_read.py::test_reads"
+READ_AGAIN = "tests/unit/test_read.py::test_reads_again"
+READ_THIRD = "tests/unit/test_read.py::test_reads_third"
 AUDIT = "tests/unit/test_audit_controls.py::test_a_generator_fails_the_audit_at_ci[a]"
 MUTANTS = "tests/property/test_mutants.py::test_the_mutant_is_killed[b-small]"
 WRITER_MUTANTS = "tests/property/test_writer_mutants.py::test_the_writer_mutant_is_killed_at_its_assertion[c]"
-EVERY = frozenset({READ, AUDIT, MUTANTS, WRITER_MUTANTS})
-SELECTED: dict[str | None, frozenset[str]] = {None: EVERY, "none": frozenset({READ}), "only": EVERY - {READ}}
+PLAIN = frozenset({READ, READ_AGAIN, READ_THIRD})
+EVERY = PLAIN | {AUDIT, MUTANTS, WRITER_MUTANTS}
+WHOLE = {None: EVERY, "none": PLAIN, "only": EVERY - PLAIN}
+
+
+class Selections(dict[Selection, frozenset[str]]):
+    """Stand-in collections for the tests of the check: each selection's whole is `wholes`', and a part of it
+    takes every N-th test of its sorted list, so that the parts of a selection are a partition by
+    construction. A fault is a selection set by hand, or a whole changed."""
+
+    def __init__(self, wholes: Mapping[str | None, frozenset[str]]) -> None:
+        super().__init__()
+        self.wholes = dict(wholes)
+
+    def __missing__(self, chosen: Selection) -> frozenset[str]:
+        whole = self.wholes[chosen.controls]
+        if chosen.part is None:
+            return whole
+        index, count = partition.parse_part(chosen.part)
+        return frozenset(test for place, test in enumerate(sorted(whole)) if place % count == index - 1)
+
+
+def selected_as_meant() -> Selections:
+    return Selections(WHOLE)
 
 
 def test_the_matrix_check_passes_the_selection_meant() -> None:
-    assert matrix_problems(workflow("ci.yml"), SELECTED) == []
+    assert matrix_problems(workflow("ci.yml"), selected_as_meant()) == []
 
 
 def test_the_matrix_check_takes_a_new_module_of_mutant_searches_or_audit_controls_unedited() -> None:
@@ -2403,63 +2512,97 @@ def test_the_matrix_check_takes_a_new_module_of_mutant_searches_or_audit_control
         "tests/unit/test_cli_mutants.py::test_a_cli_mutant_dies",
         "tests/unit/test_audit_controls_writer.py::test_a_writer_generator_fails_the_audit_at_ci[d]",
     }
-    selected = SELECTED | {None: EVERY | new, "only": SELECTED["only"] | new}
+    selected = Selections({None: EVERY | new, "none": WHOLE["none"], "only": WHOLE["only"] | new})
     assert matrix_problems(workflow("ci.yml"), selected) == []
 
 
-def controls_on_3_11_alone(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def controls_on_3_11_alone(ci: Workflow, selected: Selections) -> None:
     ci["jobs"]["controls"]["strategy"]["matrix"]["python"] = ["3.11"]
 
 
-def controls_job_running_none(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def controls_job_running_none(ci: Workflow, selected: Selections) -> None:
     ci["jobs"]["controls"]["steps"][3]["run"] = ci["jobs"]["controls"]["steps"][3]["run"].replace(
         "only", "none"
     )
 
 
-def a_mutant_module_left_unselected(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
-    selected["only"] = selected["only"] - {WRITER_MUTANTS}
+def a_mutant_module_left_unselected(ci: Workflow, selected: Selections) -> None:
+    selected.wholes["only"] = selected.wholes["only"] - {WRITER_MUTANTS}
 
 
-def a_plain_test_in_a_mutants_module(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def a_plain_test_in_a_mutants_module(ci: Workflow, selected: Selections) -> None:
     plain = "tests/property/test_record_mutants.py::test_the_reader_round_trips"
-    selected[None] |= {plain}
-    selected["only"] |= {plain}
+    selected.wholes[None] |= {plain}
+    selected.wholes["only"] |= {plain}
 
 
-def another_test_deselected(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
-    selected["none"] = frozenset()
-    selected["only"] = EVERY
+def another_test_deselected(ci: Workflow, selected: Selections) -> None:
+    selected.wholes["none"] = frozenset()
+    selected.wholes["only"] = EVERY
 
 
-def plain_job_without_the_option(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def plain_job_without_the_option(ci: Workflow, selected: Selections) -> None:
     ci["jobs"]["tests"]["steps"][3]["run"] = ci["jobs"]["tests"]["steps"][3]["run"].replace(
         " --property-controls none", ""
     )
 
 
-def controls_excluding_3_15(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def controls_excluding_3_15(ci: Workflow, selected: Selections) -> None:
     ci["jobs"]["controls"]["strategy"]["matrix"]["exclude"] = [{"python": "3.15"}]
 
 
-def the_tests_job_excluding_3_13(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def the_tests_job_excluding_3_13(ci: Workflow, selected: Selections) -> None:
     ci["jobs"]["tests"]["strategy"]["matrix"]["exclude"] = [{"python": "3.13"}]
 
 
-def controls_including_3_12(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
-    ci["jobs"]["controls"]["strategy"]["matrix"]["include"] = [{"python": "3.12"}]
+def controls_including_3_12(ci: Workflow, selected: Selections) -> None:
+    ci["jobs"]["controls"]["strategy"]["matrix"]["include"].append({"python": "3.12", "part": 1, "parts": 1})
 
 
-def controls_step_skipped_on_3_15(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def controls_step_skipped_on_3_15(ci: Workflow, selected: Selections) -> None:
     pytest_step(ci["jobs"]["controls"])["if"] = "matrix.python != '3.15'"
 
 
-def pull_requests_skipping_the_tests_step(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def pull_requests_skipping_the_tests_step(ci: Workflow, selected: Selections) -> None:
     pytest_step(ci["jobs"]["tests"])["if"] = "${{ github.event_name != 'pull_request' }}"
 
 
-def controls_on_one_python(ci: Workflow, selected: dict[str | None, frozenset[str]]) -> None:
+def controls_on_one_python(ci: Workflow, selected: Selections) -> None:
     ci["jobs"]["controls"]["steps"][1]["with"]["python-version"] = "3.11"
+
+
+# The parts. The synthetic selections hold three controls, so the first part of four holds MUTANTS, the second
+# WRITER_MUTANTS, the third AUDIT, and the fourth none; the tests job's two parts hold READ and READ_THIRD in
+# the first and READ_AGAIN in the second, so that a part count of three leaves READ_THIRD out.
+def a_part_of_the_controls_left_out(ci: Workflow, selected: Selections) -> None:
+    ci["jobs"]["controls"]["strategy"]["matrix"]["exclude"].append({"python": "3.11", "part": 1})
+
+
+def a_part_of_the_tests_left_out(ci: Workflow, selected: Selections) -> None:
+    ci["jobs"]["tests"]["strategy"]["matrix"]["exclude"] = [{"part": 1}]
+
+
+def every_job_of_the_tests_running_the_first_part(ci: Workflow, selected: Selections) -> None:
+    found = pytest_step(ci["jobs"]["tests"])
+    found["run"] = found["run"].replace("${{ matrix.part }}/2", "1/2")
+
+
+def parts_counted_as_three_of_two(ci: Workflow, selected: Selections) -> None:
+    found = pytest_step(ci["jobs"]["tests"])
+    found["run"] = found["run"].replace("${{ matrix.part }}/2", "${{ matrix.part }}/3")
+
+
+def more_parts_than_the_count(ci: Workflow, selected: Selections) -> None:
+    ci["jobs"]["controls"]["strategy"]["matrix"]["include"][0]["parts"] = 3
+
+
+def a_test_in_two_parts(ci: Workflow, selected: Selections) -> None:
+    first, second = Selection("only", None, "1/4"), Selection("only", None, "2/4")
+    selected[first] = selected[first] | selected[second]
+
+
+def a_test_in_no_part(ci: Workflow, selected: Selections) -> None:
+    selected[Selection("only", None, "3/4")] = frozenset()
 
 
 @pytest.mark.parametrize(
@@ -2471,14 +2614,14 @@ def controls_on_one_python(ci: Workflow, selected: dict[str | None, frozenset[st
             a_mutant_module_left_unselected,
             "Python 3.15 leaves out 1 of tests/property/test_writer_mutants.py",
         ),
-        (another_test_deselected, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
+        (another_test_deselected, "Python 3.13 leaves out 3 of tests/unit/test_read.py"),
         (
             a_plain_test_in_a_mutants_module,
             "the controls' modules hold 1 of tests/property/test_record_mutants.py: no mutant search",
         ),
         (plain_job_without_the_option, "Python 3.12 runs 1 of tests/property/test_mutants.py"),
         (controls_excluding_3_15, "Python 3.15 leaves out 1 of tests/property/test_mutants.py"),
-        (the_tests_job_excluding_3_13, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
+        (the_tests_job_excluding_3_13, "Python 3.13 leaves out 3 of tests/unit/test_read.py"),
         (controls_including_3_12, "Python 3.12 runs 1 of tests/property/test_mutants.py"),
         (
             controls_step_skipped_on_3_15,
@@ -2489,14 +2632,169 @@ def controls_on_one_python(ci: Workflow, selected: dict[str | None, frozenset[st
             "tests's pytest step is skipped on Python 3.11 (pull_request)",
         ),
         (controls_on_one_python, "controls installs Python ['3.11'], not the matrix's"),
+        (a_part_of_the_controls_left_out, "Python 3.11 leaves out 1 of tests/property/test_mutants.py"),
+        (a_part_of_the_tests_left_out, "Python 3.13 leaves out 2 of tests/unit/test_read.py"),
+        (
+            every_job_of_the_tests_running_the_first_part,
+            "Python 3.13 runs 2 of tests/unit/test_read.py more than once",
+        ),
+        (
+            every_job_of_the_tests_running_the_first_part,
+            "Python 3.13 leaves out 1 of tests/unit/test_read.py",
+        ),
+        (parts_counted_as_three_of_two, "Python 3.13 leaves out 1 of tests/unit/test_read.py"),
+        (more_parts_than_the_count, "controls on Python 3.11 runs part '4/3', which is no part"),
+        (a_test_in_two_parts, "Python 3.11 runs 1 of tests/property/test_writer_mutants.py more than once"),
+        (a_test_in_no_part, "Python 3.11 leaves out 1 of tests/unit/test_audit_controls.py"),
     ],
 )
-def test_the_matrix_check_can_fail(
-    fault: Callable[[Workflow, dict[str | None, frozenset[str]]], None], problem: str
-) -> None:
-    ci, selected = copy.deepcopy(workflow("ci.yml")), dict(SELECTED)
+def test_the_matrix_check_can_fail(fault: Callable[[Workflow, Selections], None], problem: str) -> None:
+    ci, selected = copy.deepcopy(workflow("ci.yml")), selected_as_meant()
     fault(ci, selected)
     found = matrix_problems(ci, selected)
+    assert any(problem in line for line in found), found
+
+
+def shard_problems(ci: Workflow, selected: Mapping[Selection, frozenset[str]]) -> list[str]:
+    """Where the Hypothesis job's matrix leaves out a shard of `SHARDS`, names one it lacks, or runs a shard
+    in parts that are no partition of it: the shard's name must be there whole, or its parts `NAME_IofN`,
+    each of I from 1 to N once, N the same in all and at least two; and the parts together must hold each of
+    the shard's tests once, `selected` giving the tests each `--shard` collects."""
+    names: list[str] = ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"]
+    problems: list[str] = []
+    for base in sorted({partition.split_shard(name)[0] for name in names} - SHARDS.keys()):
+        problems.append(f"the matrix runs {base!r}, which is no shard of SHARDS")
+    for base in sorted(SHARDS):
+        mine = [name for name in names if partition.split_shard(name)[0] == base]
+        parts = [partition.split_shard(name)[1] for name in mine]
+        if not mine:
+            problems.append(f"the matrix leaves out the shard {base}")
+            continue
+        if None in parts:
+            if len(mine) > 1:
+                problems.append(f"the shard {base} runs whole and in parts: {mine}")
+            continue
+        counts = {part[1] for part in parts if part is not None}
+        indexes = Counter(part[0] for part in parts if part is not None)
+        if len(counts) != 1 or indexes != Counter(range(1, max(counts) + 1)):
+            problems.append(f"the shard {base} does not run in parts I of N, each I once, for one N: {mine}")
+            continue
+        seen = Counter(test for name in mine for test in selected[Selection(None, name, None)])
+        whole = selected[Selection(None, base, None)]
+        for test in sorted(whole - seen.keys()):
+            problems.append(f"{test} of the shard {base} is in none of its parts")
+        for test in sorted(test for test, count in seen.items() if count > 1):
+            problems.append(f"{test} of the shard {base} is in more than one of its parts")
+        for test in sorted(seen.keys() - whole):
+            problems.append(f"{test} is in a part of the shard {base} but not in the shard")
+    return problems
+
+
+def shard_selections(ci: Workflow) -> set[Selection]:
+    """What the shard check collects: each shard the matrix runs in parts, whole and in each part."""
+    names: list[str] = ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"]
+    parted = {partition.split_shard(name)[0] for name in names if partition.split_shard(name)[1]}
+    return {Selection(None, base, None) for base in parted} | {
+        Selection(None, name, None) for name in names if partition.split_shard(name)[0] in parted
+    }
+
+
+def test_the_hypothesis_shards_run_in_parts_that_hold_each_of_their_tests_once() -> None:
+    ci = workflow("ci.yml")
+    selected = collected(shard_selections(ci), "ci")
+    assert len(selected) >= 6
+    assert all(selected.values())
+    assert shard_problems(ci, selected) == []
+
+
+SHARD_TESTS = {
+    base: frozenset(f"tests/property/test_{base}.py::test_{number}" for number in range(6)) for base in SHARDS
+}
+
+
+class ShardSelections(dict[Selection, frozenset[str]]):
+    """Stand-in collections for the check: a shard's whole is `SHARD_TESTS`', and its part I of N takes every
+    N-th test of its sorted list."""
+
+    def __missing__(self, chosen: Selection) -> frozenset[str]:
+        assert chosen.shard is not None
+        base, part = partition.split_shard(chosen.shard)
+        whole = SHARD_TESTS[base]
+        if part is None:
+            return whole
+        return frozenset(test for place, test in enumerate(sorted(whole)) if place % part[1] == part[0] - 1)
+
+
+def test_the_shard_check_passes_the_matrix_meant() -> None:
+    assert shard_problems(workflow("ci.yml"), ShardSelections()) == []
+
+
+def a_part_left_out(ci: Workflow, selected: ShardSelections) -> None:
+    ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"].remove("agreement_2of2")
+
+
+def parts_of_another_count(ci: Workflow, selected: ShardSelections) -> None:
+    names: list[str] = ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"]
+    names[names.index("relations_2of2")] = "relations_2of3"
+
+
+def a_shard_whole_and_in_parts(ci: Workflow, selected: ShardSelections) -> None:
+    ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"].append("relations")
+
+
+def a_shard_left_out(ci: Workflow, selected: ShardSelections) -> None:
+    ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"].remove("writer")
+
+
+def a_shard_that_is_none(ci: Workflow, selected: ShardSelections) -> None:
+    ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"].append("nothing_1of2")
+
+
+def a_part_run_twice(ci: Workflow, selected: ShardSelections) -> None:
+    ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"].append("agreement_1of2")
+
+
+def a_test_in_two_parts_of_a_shard(ci: Workflow, selected: ShardSelections) -> None:
+    first, second = Selection(None, "relations_1of2", None), Selection(None, "relations_2of2", None)
+    selected[first] = selected[first] | selected[second]
+
+
+def a_test_in_no_part_of_a_shard(ci: Workflow, selected: ShardSelections) -> None:
+    selected[Selection(None, "agreement_1of2", None)] = frozenset()
+
+
+def a_test_in_a_part_and_not_in_the_shard(ci: Workflow, selected: ShardSelections) -> None:
+    first = Selection(None, "agreement_1of2", None)
+    selected[first] = selected[first] | {"tests/property/test_elsewhere.py::test_it"}
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (a_part_left_out, "the shard agreement does not run in parts I of N, each I once, for one N"),
+        (parts_of_another_count, "the shard relations does not run in parts I of N, each I once, for one N"),
+        (a_shard_whole_and_in_parts, "the shard relations runs whole and in parts"),
+        (a_shard_left_out, "the matrix leaves out the shard writer"),
+        (a_shard_that_is_none, "the matrix runs 'nothing', which is no shard of SHARDS"),
+        (a_part_run_twice, "the shard agreement does not run in parts I of N, each I once, for one N"),
+        (
+            a_test_in_two_parts_of_a_shard,
+            "test_relations.py::test_1 of the shard relations is in more than one of its parts",
+        ),
+        (
+            a_test_in_no_part_of_a_shard,
+            "tests/property/test_agreement.py::test_0 of the shard agreement is in none of its parts",
+        ),
+        (
+            a_test_in_a_part_and_not_in_the_shard,
+            "test_elsewhere.py::test_it is in a part of the shard agreement",
+        ),
+    ],
+)
+def test_the_shard_check_can_fail(fault: Callable[[Workflow, ShardSelections], None], problem: str) -> None:
+    ci, selected = copy.deepcopy(workflow("ci.yml")), ShardSelections()
+    fault(ci, selected)
+    found = shard_problems(ci, selected)
     assert any(problem in line for line in found), found
 
 
@@ -2504,10 +2802,10 @@ def test_the_matrix_check_can_fail(
 # not in `NOT_SELECTING`. A stray `-k`, `-m`, `--ignore`, plugin (`-p`, which can deselect anything) or other
 # argument fails the check until it is written here too, beside the comment that gives its reason.
 SELECTIONS: dict[str, list[list[str]]] = {
-    # Every test but the mutant searches and the audit controls.
-    "tests": [["--property-controls", "none"]],
-    # The mutant searches and the audit controls alone.
-    "controls": [["--property-controls", "only"]],
+    # Every test but the mutant searches and the audit controls, in two parts side by side.
+    "tests": [["--property-controls", "none", "--partition", "${{matrix.part}}/2"]],
+    # The mutant searches and the audit controls alone, in as many parts as the Python has.
+    "controls": [["--property-controls", "only", "--partition", "${{matrix.part}}/${{matrix.parts}}"]],
     # The property tests of one shard.
     "hypothesis": [["tests/property", "--shard", "${{matrix.shard}}"]],
     # Each commit before a pull request's head: the whole suite.
@@ -2669,7 +2967,7 @@ def plugins_exported(ci: Workflow) -> None:
         (a_job_that_carries_on, "sets continue-on-error"),
         (a_step_that_carries_on, "sets continue-on-error"),
         (pytest_in_another_job, "static's pytest commands select [['tests/unit']]"),
-        (a_plugin, "tests's pytest commands select [['--property-controls', 'none', '-p', 'tests.drop']]"),
+        (a_plugin, "tests's pytest commands select [['--property-controls', 'none', '-p', 'tests.drop', "),
         (plugins_from_the_step, "sets PYTEST_PLUGINS"),
         (plugins_exported, "sets PYTEST_PLUGINS"),
     ],
@@ -2851,7 +3149,7 @@ def minutes_of_another_job(ci: Workflow) -> None:
 def minutes_of_another_shard(ci: Workflow) -> None:
     hypothesis = ci["jobs"]["hypothesis"]
     hypothesis["env"]["JOB_MINUTES"] = hypothesis["env"]["JOB_MINUTES"].replace(
-        "'agreement' && 360", "'agreement' && 350"
+        "'agreement') && 360", "'agreement') && 350"
     )
 
 
@@ -2873,7 +3171,7 @@ def a_timeout_with_no_room(ci: Workflow) -> None:
         (minutes_of_another_job, "controls times out at 40 minutes, its JOB_MINUTES are 30"),
         (
             minutes_of_another_shard,
-            "hypothesis times out at 360.0 minutes, its JOB_MINUTES are 350.0 (matrix.shard agreement, "
+            "hypothesis times out at 360.0 minutes, its JOB_MINUTES are 350.0 (matrix.shard agreement_1of2, "
             "github.event_name schedule)",
         ),
         (minutes_unset, "tests times out at 40 minutes, its JOB_MINUTES are None"),
@@ -2894,8 +3192,10 @@ TRACE_TEST_FILE = REPOSITORY / "tests" / "unit" / "test_pre_review.py"
 
 
 def trace_setters(ci: Workflow, event: str) -> list[str]:
-    """The jobs, each combination of a matrix apart, that set the trace variable to `1` on `event`: in the
-    workflow's, the job's or a step's environment, or by naming it in a script (an `export`, a prefix)."""
+    """The jobs, each combination of a matrix apart but for its parts (`part`, `parts`: the tests of a job's
+    combination, split by `--partition`, hold the trace test in one part, which the partition check holds),
+    that set the trace variable to `1` on `event`: in the workflow's, the job's or a step's environment, or by
+    naming it in a script (an `export`, a prefix)."""
     setters: list[str] = []
     for job_id, job in ci["jobs"].items():
         steps: list[dict[str, Any]] = job.get("steps", [])
@@ -2912,9 +3212,11 @@ def trace_setters(ci: Workflow, event: str) -> list[str]:
                 where = ", ".join(
                     f"{key[len('matrix.') :]} {value}"
                     for key, value in context.items()
-                    if key.startswith("matrix.")
+                    if key.startswith("matrix.") and key not in ("matrix.part", "matrix.parts")
                 )
-                setters.append(f"{job_id} ({where})" if where else job_id)
+                named = f"{job_id} ({where})" if where else job_id
+                if named not in setters:
+                    setters.append(named)
     return setters
 
 
@@ -3055,10 +3357,13 @@ def test_a_job_whose_timeout_signals_the_group_fails_the_interrupt_check(job_id:
     assert [line for line in found if not line.startswith(f"{job_id} ")] == [], found
 
 
-# The slowest run of each Hypothesis shard measured on CI, in minutes, by profile, with the five shards of
-# today's map (ci.yml, above the job): at `ci` in run 39002323592, at `deep` in manual run 39002750375, both
-# 2026-10-17; `conditions` and `relations` at `ci` in run 39039695416, the same day. A shard not measured yet
-# is not held, but to the estimate ci.yml gives it, where it gives one (`ESTIMATED_ON_CI`).
+# The slowest run of each Hypothesis shard measured on CI, in minutes, by profile: at `ci` in run
+# 39002323592, at `deep` in manual run 39002750375, both 2026-10-17; `conditions` and `relations` at `ci` in
+# run 39039695416, the same day; `alternatives` at `ci` in run 39390324975, 2026-10-20. A shard not measured
+# yet is not held, but to the estimate ci.yml gives it, where it gives one (`ESTIMATED_ON_CI`). A shard that
+# CI runs in parts (`agreement`, `relations`, `alternatives`) is held, in each part, to the time of the
+# shard whole, which a part's fraction of its tests cannot exceed; a part has no measurement of its own
+# before it has run.
 MEASURED_ON_CI = {
     "ci": {
         "agreement": 5.93,
@@ -3068,6 +3373,7 @@ MEASURED_ON_CI = {
         "step8_mutants": 1.62,
         "relations": 7.42,
         "conditions": 5.09,
+        "alternatives": 6.64,
     },
     "deep": {
         "writer": 63.63,
@@ -3088,17 +3394,19 @@ def margin_problems(ci: Workflow) -> list[str]:
     slowest run measured on CI: a runner half as fast would lose the run."""
     job = ci["jobs"]["hypothesis"]
     problems: list[str] = []
+    names = job["strategy"]["matrix"]["shard"]
     for how, runs in (("measured", MEASURED_ON_CI), ("estimated", ESTIMATED_ON_CI)):
         for profile, slowest in runs.items():
             for shard, minutes in slowest.items():
-                context = {"github.event_name": PROFILE_EVENTS[profile], "matrix.shard": shard}
-                interrupt = as_number(setting(job["timeout-minutes"], context)) - 3
-                if interrupt < 2 * minutes:
-                    problems.append(
-                        f"hypothesis ({profile}, {shard}) is interrupted at {interrupt:g} minutes, less than "
-                        f"twice its {minutes:g} {how} on CI"
-                    )
-    shards = set(job["strategy"]["matrix"]["shard"])
+                for name in [name for name in names if partition.split_shard(name)[0] == shard] or [shard]:
+                    context = {"github.event_name": PROFILE_EVENTS[profile], "matrix.shard": name}
+                    interrupt = as_number(setting(job["timeout-minutes"], context)) - 3
+                    if interrupt < 2 * minutes:
+                        problems.append(
+                            f"hypothesis ({profile}, {name}) is interrupted at {interrupt:g} minutes, less "
+                            f"than twice its {minutes:g} {how} on CI"
+                        )
+    shards = {partition.split_shard(name)[0] for name in names}
     problems += [
         f"a measured shard the matrix no longer has: {shard}"
         for runs in (MEASURED_ON_CI, ESTIMATED_ON_CI)
@@ -3126,9 +3434,10 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
             "hypothesis (ci, writer) is interrupted at 9 minutes, less than twice its 5.17",
         ),
         (
-            "matrix.shard == 'relations' && 300",
-            "matrix.shard == 'relations' && 180",
-            "hypothesis (deep, relations) is interrupted at 177 minutes, less than twice its 140 estimated",
+            "startsWith(matrix.shard, 'relations') && 300",
+            "startsWith(matrix.shard, 'relations') && 180",
+            "hypothesis (deep, relations_1of2) is interrupted at 177 minutes, less than twice its 140 "
+            "estimated",
         ),
     ],
     ids=["records-deep-at-45", "writer-ci-at-12", "relations-deep-at-180"],
@@ -3915,7 +4224,18 @@ def test_the_settings_check_can_fail(name: str, value: object, problem: str) -> 
     assert any(problem in line for line in found), found
 
 
-NUMBERS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9}
+NUMBERS = {
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+}
 
 
 def table_problems(readme: str, ci: Workflow) -> list[str]:
@@ -3927,9 +4247,9 @@ def table_problems(readme: str, ci: Workflow) -> list[str]:
     if sorted(rows) != sorted(ci["jobs"]):
         problems.append(f"the table's jobs are {sorted(rows)}, ci.yml's {sorted(ci['jobs'])}")
     shards: list[str] = ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"]
-    found = re.search(r"in (\w+) shards side by side \(([^)]*)\)", rows.get("hypothesis", ""))
+    found = re.search(r"in (\w+) jobs side by side \(([^)]*)\)", rows.get("hypothesis", ""))
     if found is None:
-        problems.append("the table's hypothesis row names no shards side by side")
+        problems.append("the table's hypothesis row names no jobs side by side")
     elif NUMBERS.get(found[1]) != len(shards) or re.findall(r"`(\w+)`", found[2]) != shards:
         problems.append(f"the table's shards are {found[1]}, {found[2]}; ci.yml's {shards}")
     return problems
@@ -3944,9 +4264,9 @@ def test_the_workflows_readme_names_the_jobs_and_shards_of_ci() -> None:
     ("old", "new", "problem"),
     [
         ("| `controls` |", "| `mutants` |", "the table's jobs are"),
-        ("eight shards side by side", "seven shards side by side", "the table's shards are seven"),
-        (", `alternatives`)", ")", "the table's shards are eight"),
-        ("shards side by side", "shards", "names no shards"),
+        ("eleven jobs side by side", "ten jobs side by side", "the table's shards are ten"),
+        (", `alternatives_2of2`)", ")", "the table's shards are eleven"),
+        ("in eleven jobs side by side (", "in eleven jobs (", "names no jobs"),
     ],
     ids=["a-job-renamed", "a-count-wrong", "a-shard-missing", "no-shards"],
 )
@@ -7191,69 +7511,206 @@ def test_the_target_4_check_finds_no_run() -> None:
     assert target_4_problems(ci) == ["no run of fuzz target 4"]
 
 
-# --- the kill points against the controls job's run ---------------------------------------------------------
+# --- the kill points against the controls jobs' parts -------------------------------------------------------
 
-KILL_POINTS_STEP = "Each kill point is the recorded one"
+KILL_POINTS_STEP, KILL_POINTS_FETCH = "Each kill point is the recorded one", "Fetch the reports of the parts"
+CONTROLS_REPORT = "durations-controls-"
+
+
+def controls_parts(ci: Workflow) -> dict[str, list[dict[str, object]]]:
+    """The controls job's combinations, by Python, each with its context."""
+    found: dict[str, list[dict[str, object]]] = {}
+    for context in matrix_contexts(ci["jobs"]["controls"]):
+        if context["github.event_name"] == "push":
+            found.setdefault(str(context["matrix.python"]), []).append(context)
+    return found
 
 
 def kill_points_problems(ci: Workflow) -> list[str]:
-    """Where the controls job does not hold `tests/property/kill_points.json` to its own run of every mutant
-    search: one step, after the pytest step, run when that step passed and failing the job when it fails,
-    reading the report that step writes (`scripts/gen_kill_counts.py --against`)."""
-    steps: list[dict[str, Any]] = ci["jobs"]["controls"]["steps"]
-    searches = pytest_step(ci["jobs"]["controls"])
-    report = re.search(r'--junitxml="([^"]+)"', searches["run"])
-    checks = [found for found in steps if "scripts/gen_kill_counts.py --against" in str(found.get("run", ""))]
-    if len(checks) != 1:
-        return [f"the controls job checks its kill points {len(checks)} times, not once"]
-    [check] = checks
+    """Where CI does not hold `tests/property/kill_points.json` to the run of every mutant search that the
+    controls job's parts make together: the `kill_points` job waits for every part, for each Python fetches
+    the reports of that Python's parts alone (the artifact the controls job keeps, by the name it gives it),
+    and has one step, after the fetch, that fails the job unless there are as many reports as the Python has
+    parts and then reads all of them with `scripts/gen_kill_counts.py --against`, without `--partial`."""
+    job, controls = ci["jobs"]["kill_points"], ci["jobs"]["controls"]
     problems: list[str] = []
-    if steps.index(check) < steps.index(searches):
-        problems.append("it checks the kill points before the searches run")
-    if report is None or f'--against "{report.group(1)}"' not in check["run"]:
-        problems.append("it checks another report than the one the searches write")
+    if "controls" not in job.get("needs", []):
+        problems.append("the kill points job does not wait for the controls job")
+    if job.get("if") != controls.get("if"):
+        problems.append(
+            f"the kill points job runs {job.get('if')!r}, the controls job {controls.get('if')!r}"
+        )
+    if "continue-on-error" in job or "continue-on-error" in str(job["steps"]):
+        problems.append("the kill points job carries on after a failure")
+    steps: list[dict[str, Any]] = job["steps"]
+    [kept] = [found for found in controls["steps"] if found.get("name") == "Keep the durations"]
+    checks = [found for found in steps if "scripts/gen_kill_counts.py" in str(found.get("run", ""))]
+    fetches = [
+        found for found in steps if str(found.get("uses", "")).startswith("actions/download-artifact@")
+    ]
+    if len(checks) != 1 or len(fetches) != 1:
+        return [*problems, f"the kill points job checks {len(checks)} times, fetches {len(fetches)} times"]
+    [check], [fetch] = checks, fetches
+    if steps.index(check) < steps.index(fetch):
+        problems.append("it checks the kill points before it fetches the reports")
     if "if" in check or check.get("continue-on-error"):
         problems.append("its check does not run on every passing run, or does not fail the job")
+    if "scripts/gen_kill_counts.py --against " not in check["run"] or "--partial" in check["run"]:
+        problems.append("it does not read the reports with --against alone")
+    pattern, path = fetch["with"]["pattern"], fetch["with"]["path"]
+    if '"$RUNNER_TEMP"/' + path.removeprefix("${{ runner.temp }}/") + "/*/durations.xml" not in check["run"]:
+        problems.append(f"it reads another folder than the one it fetches into ({path})")
+    parts = controls_parts(ci)
+    for context in matrix_contexts(job):
+        if context["github.event_name"] != "push":
+            continue
+        python = str(context["matrix.python"])
+        mine = parts.get(python, [])
+        names = [rendered(kept["with"]["name"], part) for part in mine]
+        wanted = rendered(pattern, context)
+        if not mine:
+            problems.append(f"it checks Python {python}, which the controls job does not run")
+        if [name for name in names if not fnmatch.fnmatchcase(name, wanted)]:
+            problems.append(f"its pattern {wanted!r} leaves out a part's report of Python {python}: {names}")
+        others = [
+            rendered(kept["with"]["name"], part)
+            for other, ps in parts.items()
+            if other != python
+            for part in ps
+        ]
+        if [name for name in others if fnmatch.fnmatchcase(name, wanted)]:
+            problems.append(f"its pattern {wanted!r} takes another Python's report")
+        counted = as_text(setting(check["env"]["PARTS"], {"matrix.parts": None} | context))
+        if counted != str(len(mine)):
+            problems.append(
+                f"it expects {counted} reports of Python {python}, the controls job runs {len(mine)}"
+            )
     return problems
 
 
 def without_the_kill_points(ci: Workflow) -> None:
-    ci["jobs"]["controls"]["steps"].remove(step(ci["jobs"]["controls"], KILL_POINTS_STEP))
+    ci["jobs"]["kill_points"]["steps"].remove(step(ci["jobs"]["kill_points"], KILL_POINTS_STEP))
 
 
 def kill_points_first(ci: Workflow) -> None:
-    steps = ci["jobs"]["controls"]["steps"]
-    steps.insert(0, steps.pop(steps.index(step(ci["jobs"]["controls"], KILL_POINTS_STEP))))
+    steps = ci["jobs"]["kill_points"]["steps"]
+    steps.insert(0, steps.pop(steps.index(step(ci["jobs"]["kill_points"], KILL_POINTS_STEP))))
 
 
-def kill_points_of_another_report(ci: Workflow) -> None:
-    found = step(ci["jobs"]["controls"], KILL_POINTS_STEP)
-    found["run"] = found["run"].replace("durations.xml", "other.xml")
+def kill_points_of_another_folder(ci: Workflow) -> None:
+    found = step(ci["jobs"]["kill_points"], KILL_POINTS_STEP)
+    found["run"] = found["run"].replace("/controls/", "/other/")
 
 
 def kill_points_that_carry_on(ci: Workflow) -> None:
-    step(ci["jobs"]["controls"], KILL_POINTS_STEP)["continue-on-error"] = True
+    step(ci["jobs"]["kill_points"], KILL_POINTS_STEP)["continue-on-error"] = True
 
 
 def kill_points_never(ci: Workflow) -> None:
-    step(ci["jobs"]["controls"], KILL_POINTS_STEP)["if"] = "false"
+    step(ci["jobs"]["kill_points"], KILL_POINTS_STEP)["if"] = "false"
 
 
-def test_the_controls_job_holds_the_recorded_kill_points_to_its_own_run() -> None:
+def kill_points_partial(ci: Workflow) -> None:
+    found = step(ci["jobs"]["kill_points"], KILL_POINTS_STEP)
+    found["run"] = found["run"].replace("--against ", "--partial --against ")
+
+
+def kill_points_not_waiting(ci: Workflow) -> None:
+    ci["jobs"]["kill_points"]["needs"] = ["gate"]
+
+
+def kill_points_of_all_the_pythons(ci: Workflow) -> None:
+    step(ci["jobs"]["kill_points"], KILL_POINTS_FETCH)["with"]["pattern"] = "durations-controls-*"
+
+
+def kill_points_of_the_other_python(ci: Workflow) -> None:
+    step(ci["jobs"]["kill_points"], KILL_POINTS_FETCH)["with"]["pattern"] = "durations-controls-3.15-*"
+
+
+def kill_points_expecting_fewer_reports(ci: Workflow) -> None:
+    ci["jobs"]["kill_points"]["strategy"]["matrix"]["include"][0]["parts"] = 3
+    step(ci["jobs"]["kill_points"], KILL_POINTS_STEP)["env"]["PARTS"] = "${{ matrix.parts }}"
+
+
+def kill_points_for_a_python_the_controls_lack(ci: Workflow) -> None:
+    ci["jobs"]["kill_points"]["strategy"]["matrix"]["python"].append("3.13")
+
+
+def controls_artifacts_renamed(ci: Workflow) -> None:
+    [kept] = [found for found in ci["jobs"]["controls"]["steps"] if found.get("name") == "Keep the durations"]
+    kept["with"]["name"] = "controls-${{ matrix.python }}-${{ matrix.part }}of${{ matrix.parts }}"
+
+
+def test_the_kill_points_are_held_to_the_run_of_all_the_controls_parts() -> None:
     assert kill_points_problems(workflow("ci.yml")) == []
 
 
 @pytest.mark.parametrize(
     ("fault", "problem"),
     [
-        (without_the_kill_points, "0 times"),
-        (kill_points_first, "before the searches run"),
-        (kill_points_of_another_report, "another report"),
+        (without_the_kill_points, "checks 0 times"),
+        (kill_points_first, "before it fetches"),
+        (kill_points_of_another_folder, "another folder"),
         (kill_points_that_carry_on, "does not fail the job"),
         (kill_points_never, "does not run on every passing run"),
+        (kill_points_partial, "does not read the reports with --against alone"),
+        (kill_points_not_waiting, "does not wait for the controls job"),
+        (kill_points_of_all_the_pythons, "takes another Python's report"),
+        (kill_points_of_the_other_python, "leaves out a part's report of Python 3.11"),
+        (kill_points_expecting_fewer_reports, "expects 3 reports of Python 3.11, the controls job runs 4"),
+        (
+            kill_points_for_a_python_the_controls_lack,
+            "checks Python 3.13, which the controls job does not run",
+        ),
+        (controls_artifacts_renamed, "leaves out a part's report of Python 3.11"),
     ],
 )
 def test_the_kill_points_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     fault(ci)
     assert any(problem in line for line in kill_points_problems(ci)), kill_points_problems(ci)
+
+
+UV_RECORDING = """#!/bin/sh
+printf '%s\\n' "$@" > "$RUNNER_TEMP/uv.arguments"
+"""
+
+
+def kill_points_run(tmp_path: Path, reports: int, parts: int) -> tuple[int, list[str]]:
+    """The kill points step as written, in a workspace holding `reports` folders of one report each, expecting
+    `parts`, with a `uv` that records its arguments in place of the check: the step's status and those
+    arguments."""
+    temp = tmp_path / "runner"
+    for index in range(reports):
+        (temp / "controls" / f"durations-controls-3.11-{index + 1}of{parts}").mkdir(parents=True)
+        (temp / "controls" / f"durations-controls-3.11-{index + 1}of{parts}" / "durations.xml").write_text("")
+    (tmp_path / "bin").mkdir()
+    stub = tmp_path / "bin" / "uv"
+    stub.write_text(UV_RECORDING, encoding="utf-8")
+    stub.chmod(0o755)
+    (tmp_path / "work").mkdir()
+    base = dict(os.environ) | {"RUNNER_TEMP": str(temp), "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"}
+    context = {"matrix.python": "3.11", "matrix.parts": parts, "runner.temp": str(temp)}
+    found = step(workflow("ci.yml")["jobs"]["kill_points"], KILL_POINTS_STEP)
+    status, _, _ = run_step(found, context, tmp_path / "work", base, tmp_path)
+    recorded = temp / "uv.arguments"
+    return status, recorded.read_text(encoding="utf-8").split() if recorded.exists() else []
+
+
+def test_the_kill_points_step_reads_every_part_s_report_in_one_check(tmp_path: Path) -> None:
+    status, arguments = kill_points_run(tmp_path, reports=4, parts=4)
+    assert status == 0
+    assert arguments[:4] == ["run", "python", "scripts/gen_kill_counts.py", "--against"]
+    assert len(arguments) == 4 + 4
+    assert all(path.endswith("/durations.xml") for path in arguments[4:])
+    assert "--partial" not in arguments
+
+
+@pytest.mark.parametrize("reports", [0, 3, 5])
+def test_the_kill_points_step_fails_unless_it_has_the_report_of_every_part(
+    tmp_path: Path, reports: int
+) -> None:
+    """The control: a part whose report is missing, or one too many, fails the step before any check runs."""
+    status, arguments = kill_points_run(tmp_path, reports=reports, parts=4)
+    assert status == 1
+    assert arguments == []
