@@ -39,6 +39,11 @@ every family entry goes in `families/CHANGELOG.md`.
   architecture draft's section 7.2 says the same. The architecture draft's section 12.2 places the curation
   tools (R15) in 0.1, as decided on 2026-10-15: quote attach-and-verify and the page text it reads by 0.1.0a1,
   the other tools by 0.1.0b1; its release table had them in 0.2.
+- The quickstart and the examples' README no longer say a viscosity read stays `unknown` "until the
+  consumer's declaration waives it". A waiver leaves the read `unknown` and covers the reason when the build checks
+  it (`declarations.md` section 4.2); an implied condition that states the shear rate is what changes the read, to
+  `met` where the request's tolerance for it holds (`read_side_contract.md` section 5). Wording only; no case, no
+  schema and no behaviour changes.
 
 ### Schema
 - `test_method` gains `reference_formulation` (maintainer, 2026-10-19): the test method of a value evaluated from

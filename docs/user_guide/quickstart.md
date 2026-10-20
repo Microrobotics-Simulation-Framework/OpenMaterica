@@ -133,7 +133,9 @@ At 293.15 K the alternative at 310.15 K lies outside the tolerance and is set as
 other's read. At 300 ± 20 K both are met, and the read cannot choose: a consumer declares a pick, which a
 later release reads (S4). The viscosity alternatives state no shear rate, which the field's row requires, so
 a viscosity read gives `unknown` (`condition_unstated`), each such reason naming the alternative it was found
-in, until the consumer's declaration waives it.
+in. A waiver does not change that read: the result stays `unknown`, and the waiver covers the reason when the
+build checks it. A declaration whose implied condition states the shear rate does change it: the read checks
+that value like a stated one, and it reads `met` where the request's tolerance for it holds.
 
 ## What this release does not read yet
 
