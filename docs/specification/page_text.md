@@ -216,10 +216,10 @@ that place.
    located text holds more than eight line-end hyphens. The failures of items 2 and 4 stand whatever this item
    finds. [RC-225]
 8. The value's numbers (`provenance.md` section 4 item 3) are read in the characters `value_characters` marks,
-   and nowhere else in the quote; with no `value_characters`, that half of the check reports `not_checked`.
-   How a number is found there is specified with the record checks; it reads a page's `raised` and `lowered`
-   text, and an XML file's elements, so that an exponent or a footnote marker is never read as a digit of the
-   value. [RC-032]
+   and nowhere else in the quote; with no `value_characters`, that half of the check reports `not_checked`,
+   and so does the whole check unless the quote fails to match its place (item 6). How a number is found there
+   is specified with the record checks; it reads a page's `raised` and `lowered` text, and an XML file's
+   elements, so that an exponent or a footnote marker is never read as a digit of the value. [RC-032]
 
 ## Cases
 
