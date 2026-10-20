@@ -548,6 +548,7 @@ ReasonCode: TypeAlias = Literal[
     "path_arrays_mismatch",
     "no_requirement",
     "label_mismatch",
+    "not_reviewed",
     "unknown_family",
     "parameters_mismatch",
     "check_point_failed",

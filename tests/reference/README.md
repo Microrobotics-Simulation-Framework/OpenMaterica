@@ -349,7 +349,7 @@ stays, and to `PR-316.implied_two_disagree_in_alternative`. It lets the other tw
 alternative stays, the fault sets every alternative aside, and that result reports what the refusal does.
 
 S3b-2's seven break each rule of a table's steps 10 to 13 the model decides: the axis entry `not_met` at an edge
-(`read_side_contract.md:461`), `outside_range` beside `at_edge` at an edge outside the readable range
+(`read_side_contract.md:462`), `outside_range` beside `at_edge` at an edge outside the readable range
 (`record_format.md:410-411`), the readable range narrowed by `source_range` (`record_format.md:406-407`),
 `want_mismatch` alone over an operating range of the axis (`read_side_contract.md:100-102`), step 11's reasons
 each with the axis (`read_side_contract.md:139`), a table returned with only the members the reader knows
