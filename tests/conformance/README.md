@@ -36,7 +36,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | `content_hash` (HS-001 to HS-003) | 51 | run, passed |
 | reads S1 runs, which end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
-| S2's reads that end at step 0, 7 or 8 (plain read) | 168 | run, passed |
+| S2's reads that end at step 0, 7 or 8 (plain read) | 169 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
 | S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape (plain read) | 166 | run, passed |
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
@@ -60,7 +60,7 @@ holding the other kind's member (`PR-045.numeric_condition_holding_token`,
 `PR-301.other_kind_beside_unknown_basis`) are S2a-2's, whose step 8 checks a condition's shape: it ignored each
 member until that ruling (2026-10-19), and refuses it since.
 
-Of the 1502 case files, 1255 agree with plain read and the hash suite, 1197 with plain read alone, and 1255
+Of the 1503 case files, 1256 agree with plain read and the hash suite, 1198 with plain read alone, and 1256
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
 record-check suite agree with none, since it claims no record checks.

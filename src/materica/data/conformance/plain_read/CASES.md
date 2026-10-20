@@ -417,6 +417,7 @@ See `README.md` beside this file for how to read a case.
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
+| `near_typo_alternative_beside_constant` | the constant holds `alternative`, one slip from `alternatives`, which a field's place names: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_axis_units` | a table holding `axis_units` beside `axis_unit`: refused as a member one slip from a member named there (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_body_extension` | the body holds `extension`, one slip from `extensions`: the field is refused (`form_invalid`) | 8 | not_met; `form_invalid`; labels none |
 | `near_typo_composition_stated_sums` | a composition with `stated_sums`, one slip from `stated_sum`, in place of it: `form_invalid` | 8 | not_met; `form_invalid`; labels none |
