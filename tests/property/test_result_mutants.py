@@ -38,6 +38,7 @@ from tests.property.result_strategies import (
     Drawn,
     drawn_reads,
     nominal_reads,
+    own_member_reads,
     unknown_at_step_10,
     valued_reads,
 )
@@ -63,6 +64,27 @@ KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any
     # A planned search of HP2: the reads under a nominal alone, whose mutants HP2's eleven kinds meet too
     # seldom for a safe margin (over twelve random seeds, one survived 2,000 examples).
     "HP2 under a nominal": (lambda size: drawn_reads(size, ("nominal",)), properties.check_status_law),
+    # Planned searches of HP2 and HP1: the kinds, or the form, a mutant dies at alone, since HP1's draws of a
+    # result holding `condition_unchecked` (2026-10-20) moved these mutants' kills past the 500th example on
+    # more streams than main's.
+    "HP2 among alternatives": (
+        lambda size: drawn_reads(size, ("alternatives",)),
+        properties.check_status_law,
+    ),
+    "HP1 at steps 8 to 10": (
+        lambda size: drawn_reads(size, ("step_8_fault", "step_9_or_10_fault")),
+        properties.check_totality,
+    ),
+    "HP1 over the kinds of a stated value": (
+        lambda size: drawn_reads(
+            size, ("met", "met_own_member", "nominal", "step_9_or_10_fault", "unknown_at_step_10")
+        ),
+        properties.check_totality,
+    ),
+    "HP2 over a composition under its own want": (
+        lambda size: own_member_reads(size, ("composition",)),
+        properties.check_status_law,
+    ),
     "HP6": (valued_reads, properties.check_returned_as_stored),
     "HP6_nominal": (nominal_reads, properties.check_nominal_supplied),
     "HP11": (drawn_reads, properties.check_claims),
@@ -369,7 +391,7 @@ MUTANTS = [
     ),
     Mutant(
         "stated_without_origin_with_a_condition",
-        "HP1",
+        "HP1 over the kinds of a stated value",
         setting(read, "_origin", _origin_with_a_condition),
         ("met", "met_own_member", "nominal", "step_9_or_10_fault", "unknown_at_step_10"),
     ),
@@ -397,7 +419,7 @@ MUTANTS = [
     # this dies at a fault of steps 9 and 10 as well.
     Mutant(
         "reasons_not_merged",
-        "HP1",
+        "HP1 at steps 8 to 10",
         setting(read, "merged", _unmerged),
         ("step_8_fault", "step_9_or_10_fault"),
     ),
@@ -425,19 +447,19 @@ MUTANTS = [
     Mutant("best_status", "HP2", setting(read, "_status", _best_status), KINDS),
     Mutant(
         "conditions_beside_no_pick",
-        "HP2",
+        "HP2 among alternatives",
         setting(read, "_read_alternatives", _conditions_beside_no_pick),
         ("alternatives",),
     ),
     Mutant(
         "no_unit_beside_alternative_values",
-        "HP2",
+        "HP2 among alternatives",
         setting(read, "_read_alternatives", _no_unit_beside_alternative_values),
         ("alternatives",),
     ),
     Mutant(
         "no_statistics_beside_a_composition",
-        "HP2",
+        "HP2 over a composition under its own want",
         setting(read, "read_value_field", _no_statistics_beside_a_composition),
         ("form_composition",),
     ),

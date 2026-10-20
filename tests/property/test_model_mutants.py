@@ -63,16 +63,32 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     # which the read gives its bounds for, `upper: none` among them. Drawn whole, `upper_none_as_infinity`
     # died at the 503rd example at the small size once S4a's alternatives joined the part's draws.
     "an interval under bounds": lambda size: strategies.valued(size, interval_under_bounds=True),
+    # A planned search of the first part: a composition under `want: components`, as drawn or with an implied
+    # temperature, every one of which the read gives its components for.
+    "a composition under components": lambda size: strategies.valued(
+        size, ("as_drawn", "implied"), composition_under_components=True
+    ),
     # A planned search of the second part: a condition the request gives no tolerance for, which step 10
     # gives as `condition_unchecked` (HP1's mutant drops its condition there).
     "an unchecked condition": lambda size: strategies.step_9_or_10_faults(size, ("unchecked",)),
+    # A planned search of the second part: a `plus_minus` entry whose unit is not the condition's registered
+    # one, which step 9 refuses.
+    "a plus or minus unit": lambda size: strategies.step_9_or_10_faults(size, ("unit_plus_minus",)),
+    # A planned search of the second part: a token condition given a unit, which step 9 refuses.
+    "a token condition's unit": lambda size: strategies.step_9_or_10_faults(size, ("unit_token_condition",)),
     # A planned search of the first part: constants at section 5's boundaries alone.
     "values at a boundary": lambda size: strategies.valued(size, ("at_a_boundary",)),
     # Planned searches of the first part: an interval's read under a nominal, alone and over alternatives.
     "values under a nominal": lambda size: strategies.valued(size, nominal=True),
     "alternatives under a nominal": lambda size: strategies.alternatives(size, nominal=True),
+    # A planned search of the first part: alternatives whose first raises a fault of the request and each
+    # further one a fault of its own, where step 7 must give every faulted alternative's reasons.
+    "request faults apart": lambda size: strategies.alternatives(size, request_faults_apart=True),
     # A planned search of the first part: evidence whose unit is a status object with a reason.
     "evidence's unit with a reason": lambda size: strategies.valued(size, unit_with_a_reason=True),
+    # A planned search of the first part: a read whose field holds a member the reader does not know, where
+    # HP5's mutant shows that returns such a member (`result_strategies.enriched`).
+    "an unknown member": lambda size: strategies.valued(size, unknown_member=True),
     "faults": lambda size: strategies.drawn(size, properties.PARTS["faults"]),
     "two of one step": strategies.two_faults_of_one_step,
     "early": lambda size: strategies.drawn(size, properties.PARTS["early"]),
@@ -351,10 +367,13 @@ IMPLEMENTATION = [
         ("component.element_unknown",),
         ("component.element_unknown",),
     ),
-    # HP5 (an unknown member returned) and HP6
+    # HP5 (an unknown member returned) and HP6. Drawn with the first part whole, `unknown_members_returned`
+    # died at members no shape defines in evidence's reports, not at a planted one, on 10 of 80 streams on
+    # main and at the pinned one once that part drew a constant's `bounds` more often (2026-10-20): planned on
+    # the planted member alone, which the first part holds to a floor (`test_model_properties.py`).
     Mutant(
         "unknown_members_returned",
-        "values",
+        "an unknown member",
         taken(result_mutants.MUTANTS, "unknown_members_returned"),
         ("unknown_member",),
     ),
@@ -370,9 +389,12 @@ IMPLEMENTATION = [
         taken(result_mutants.MUTANTS, "upper_none_as_infinity"),
         ("form_interval",),
     ),
+    # Drawn with the first part whole it died at the 71st and 11th examples, and at up to the 510th once that
+    # part drew a constant's `bounds` more often (2026-10-20, past the 500th on 2 of 400 streams as the part
+    # is drawn now, none on main): planned.
     Mutant(
         "components_normalised",
-        "values",
+        "a composition under components",
         taken(result_mutants.MUTANTS, "components_normalised"),
         ("form_composition",),
     ),
@@ -438,9 +460,11 @@ IMPLEMENTATION = [
         ("before_step_4", "stores"),
     ),
     # Step 7 over alternatives: each alternative's faults of the request, and each entry's own read.
+    # Drawn with the first part whole, it died past the 500th example on 10 of 400 streams once that part
+    # drew a constant's `bounds` first in about one draw in eight (2 of 400 on main, 2026-10-20): planned.
     Mutant(
         "request_faults_of_the_first_alternative_alone",
-        "values",
+        "request faults apart",
         setting(read, "_read_alternatives", _request_faults_of_the_first_alternative),
         ("request_faults_apart",),
     ),
@@ -548,8 +572,13 @@ MODEL = [
     ),
     # One case file alone kills these.
     ModelFault("hash_not_checked_before_step_4", "early", ("request", "before_step_4", "stores")),
-    ModelFault("token_condition_unit_accepted", "faults", ("unit_token_condition",)),
-    ModelFault("plus_minus_units_unchecked", "faults", ("unit_plus_minus",)),
+    # Drawn with the faults' part whole, it died past the 500th example on 8 of 200 streams once that part
+    # drew `unchecked` first (2026-10-20), 3 on main: planned.
+    ModelFault("token_condition_unit_accepted", "a token condition's unit", ("unit_token_condition",)),
+    # Drawn with the faults' part whole it died at the 19th and 330th examples, and at up to the 704th once
+    # that part drew `unchecked` more often (2026-10-20, past the 500th on 27 of 400 streams as the part is
+    # drawn now, 13 on main): planned.
+    ModelFault("plus_minus_units_unchecked", "a plus or minus unit", ("unit_plus_minus",)),
     ModelFault("implied_values_compared_by_value", "unpinned", ("implied_zero_beside_minus_zero",)),
     ModelFault("stated_without_origin_unreported", "values", ("valued", "alternatives")),
     # Case files kill these; HP12 holds the model to them on the forms S2b-1 reads.

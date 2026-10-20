@@ -297,9 +297,19 @@ def stated_numeric(draw: st.DrawFn, name: str) -> tuple[JsonObject, JsonObject, 
     return stated(name, drawn), operating_of(name, drawn), tolerance_of(name, drawn)
 
 
+def held_nowhere(case: Case) -> list[str]:
+    """The conditions the field's row requires that the record does not hold and the request does not name:
+    the row alone asks for them."""
+    requires = VOCABULARY.fields[FIELD].requires
+    return [name for name in requires if name not in case.conditions and name not in case.required]
+
+
 @st.composite
 def table_cases(draw: st.DrawFn) -> tuple[str, Case]:
-    """Some conditions of each kind of row, one of the kind drawn first among them."""
+    """Some conditions of each kind of row, one of the kind drawn first among them; and, after them, in about
+    one draw in seven (0.14 of the examples, measured), one the row requires held nowhere, neither in the
+    record nor in the request (`held_nowhere`), which the kinds give only where `absent_but_required` and
+    `unchecked` fall on the same condition, in about one draw in 250."""
     kind = draw(st.sampled_from(TABLE_KINDS))
     conditions: JsonObject = {}
     operating: dict[str, JsonObject] = {}
@@ -342,6 +352,10 @@ def table_cases(draw: st.DrawFn) -> tuple[str, Case]:
                 st.sampled_from(tokens if current == "required_with_its_token" else UNREQUIRING[other])
             )
             conditions[other] = {"token": held, "basis": "stated"}
+    if draw(st.integers(0, 4)) == 4:
+        name = draw(st.sampled_from(VOCABULARY.fields[FIELD].requires))
+        conditions.pop(name, None)
+        required.pop(name, None)
     return kind, Case(conditions, operating, required, (), {}, {})
 
 
@@ -373,11 +387,17 @@ UNREQUIRING = {
 }
 
 
+# A condition the row requires held nowhere, where `row_requirements_ignored` shows, by its chance, below its
+# least share over 48 runs at `ci` (2026-10-20, derandomised, each its own stream; mean 0.142, least 0.104).
+# By `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of 30 examples with
+# a probability of 3e-11, and with 3e-19 at the variance measured (5.2 times a binomial count's).
+@pytest.mark.chances(required_held_nowhere=0.1)
 @pytest.mark.drawn(*TABLE_KINDS)
 @given(table_cases())
 def test_each_row_of_the_table_and_the_conditions_it_checks(drawn: tuple[str, Case]) -> None:
     kind, case = drawn
     feature(kind)
+    feature("required_held_nowhere", bool(held_nowhere(case)))
     check_against_the_oracle(case)
 
 

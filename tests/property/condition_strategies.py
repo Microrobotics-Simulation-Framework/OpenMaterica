@@ -673,10 +673,10 @@ def combined(names: tuple[str, ...], pairs: list[Pairs]) -> tuple[str, Pairs, bo
 
 
 @st.composite
-def faulty_reads(draw: Draw, among: tuple[str, ...], size: Size) -> Faulty:
+def faulty_reads(draw: Draw, among: tuple[str, ...], size: Size, alone: bool = False) -> Faulty:
     """A base read with one fault, its first drawn among `among` before the read, or in one draw in four a
-    second of another group from the whole catalogue."""
-    two = draw(st.integers(0, 3)) == 0
+    second of another group from the whole catalogue; with `alone`, never a second."""
+    two = not alone and draw(st.integers(0, 3)) == 0
     first = draw(st.sampled_from(among))
     read = draw(base_reads(size))
     others = [name for name in FAULTS if FAULTS[name].group != FAULTS[first].group]

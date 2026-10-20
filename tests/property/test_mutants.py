@@ -378,48 +378,12 @@ def edit_kills(fault: str) -> Callable[[Size], int]:
     return killed_by(edits, lambda edit: hashing_properties.check_edit(mutant_digest(fault), edit))
 
 
-@st.composite
-def edits_below_a_non_object_provenance(
-    draw: st.DrawFn,
-    size: Size,
-    inside: st.SearchStrategy[JsonValue] | None = None,
-    only_kept: bool = True,
-) -> hashing_properties.Edit:
-    """An edit of a leaf below a `review` or `copy` that sits in a provenance whose value is not an object
-    (an array, and the object inside it, up to two arrays deep, among other items). Section 9 item 1 removes
-    `review` and `copy` only inside a provenance object, so the hash keeps the leaf; `edits` reaches such a
-    leaf seldom, since it must draw a non-object provenance, an object inside it holding one of the two
-    names, and that leaf among the record's, and a search drawn whole took up to 872 of 2,000 examples.
-
-    `inside` draws the tree below `review` or `copy` (`trees(size)` where none is given), and
-    `only_kept=False` lets the edit fall on a leaf the hash removes. Both are for `test_mutant_view.py`, which
-    plans draws that reach such a leaf, to show its control refuses the strategy without the filter."""
-    record = draw(hashing_properties.records(size))
-    assert isinstance(record, dict)
-    name = draw(st.sampled_from(hashing_properties.REMOVED_IN_PROVENANCE))
-    node: JsonValue = {
-        **draw(hashing_properties.objects(size)),
-        name: draw(hashing_properties.trees(size) if inside is None else inside),
-    }
-    below: hashing_properties.Path = (name,)
-    for _ in range(draw(st.integers(0, 2))):
-        node, below = [node], (0, *below)
-    items = draw(st.lists(hashing_properties.trees(size), max_size=size.members))
-    index = draw(st.integers(0, len(items)))
-    items.insert(index, node)
-    record["held"] = {"provenance": items}
-    prefix: hashing_properties.Path = ("held", "provenance", index, *below)
-    # A leaf the hash keeps: one below a provenance object nested in the tree is removed with it, and where
-    # every leaf is, the whole of `review` or `copy` is the edit.
-    below_the_prefix = [leaf for leaf in hashing_properties.leaves(record) if leaf[: len(prefix)] == prefix]
-    kept = [leaf for leaf in below_the_prefix if not hashing_properties.removed(record, leaf)]
-    path = draw(st.sampled_from((kept or [prefix]) if only_kept else below_the_prefix))
-    return hashing_properties.edit_at(record, path, draw(strategies.SCALARS))
-
-
 def edit_below_a_non_object_provenance_kills(fault: str) -> Callable[[Size], int]:
+    """The planned search of an edit below a `review` or `copy` in a provenance that is not an object, which
+    the hash keeps: drawn whole, a search took up to 872 of 2,000 examples, before `edits` drew such an edit
+    in about three draws in ten of those outside every provenance object."""
     return killed_by(
-        edits_below_a_non_object_provenance,
+        hashing_properties.edits_below_a_non_object_provenance,
         lambda edit: hashing_properties.check_edit(mutant_digest(fault), edit),
     )
 
@@ -502,35 +466,66 @@ def _swap_of_any_two(a: str, b: str) -> str | None:
 
 
 SLIPS = killed_by(lambda size: slip_properties.pairs(), slip_properties.check_one_slip)
+# The planned search of `empty_word_made_plural`: (9)'s pairs through an empty word alone. Drawn whole, a
+# search took 629 of 2,000 examples, before (9) drew them in about one draw in six.
+EMPTY_WORDS = killed_by(
+    lambda size: slip_properties.pairs_through_an_empty_word(), slip_properties.check_one_slip
+)
 
 
 @st.composite
-def pairs_through_an_empty_word(draw: st.DrawFn) -> slip_properties.Pair:
-    """A name with an empty word between underscores, or the empty name, and the name with `s` or `es` in
-    that word, in either order, among words of section 10's and words of letters: `x__y` and `x_s_y` are one
-    character apart, `x__y` and `x_es_y` two. `pairs` reaches one only by an insertion at the one empty word
-    of a name that has one (`es`, by two), and a search drawn whole took 629 of 2,000 examples."""
+def pairs_through_an_irregular_plural(draw: st.DrawFn) -> slip_properties.Pair:
+    """A name holding one of section 10's irregular singulars, among words of section 10's and words of
+    letters, and the same with its plural in its place, in either order: one slip apart, a plural only the
+    irregular list makes (`irregular_plurals_missed`), which (9)'s pairs give in about one example in 250."""
     words = draw(
         st.lists(
             st.one_of(
                 st.sampled_from(slip_properties.WORDS),
                 st.text(slip_properties.LETTERS, min_size=1, max_size=4),
             ),
-            max_size=3,
+            max_size=2,
         )
     )
     index = draw(st.integers(0, len(words)))
-    suffix = draw(st.sampled_from(("s", "es")))
-    empty, plural = [*words[:index], "", *words[index:]], [*words[:index], suffix, *words[index:]]
-    a, b = "_".join(empty), "_".join(plural)
-    return (
-        slip_properties.Pair(a, b, len(suffix))
-        if draw(st.booleans())
-        else slip_properties.Pair(b, a, len(suffix))
+    singular, plural = draw(st.sampled_from(slip_properties.IRREGULAR))
+    a = "_".join([*words[:index], singular, *words[index:]])
+    b = "_".join([*words[:index], plural, *words[index:]])
+    return slip_properties.Pair(a, b, 1) if draw(st.booleans()) else slip_properties.Pair(b, a, 1)
+
+
+@st.composite
+def pairs_through_an_ies_plural(draw: st.DrawFn) -> slip_properties.Pair:
+    """A name holding a word that ends in `y`, among words of section 10's and words of letters, and the same
+    with that `y` made `ies`, in either order: one slip apart, the plural `ies_plural_missed` misses."""
+    words = draw(
+        st.lists(
+            st.one_of(
+                st.sampled_from(slip_properties.WORDS),
+                st.text(slip_properties.LETTERS, min_size=1, max_size=4),
+            ),
+            max_size=2,
+        )
     )
+    stems = sorted({word[:-1] for word in slip_properties.WORDS if word.endswith("y")})
+    stem = draw(
+        st.one_of(st.sampled_from(stems), st.text(slip_properties.LETTERS.replace("_", ""), max_size=3))
+    )
+    index = draw(st.integers(0, len(words)))
+    a = "_".join([*words[:index], stem + "y", *words[index:]])
+    b = "_".join([*words[:index], stem + "ies", *words[index:]])
+    return slip_properties.Pair(a, b, 1) if draw(st.booleans()) else slip_properties.Pair(b, a, 1)
 
 
-EMPTY_WORDS = killed_by(lambda size: pairs_through_an_empty_word(), slip_properties.check_one_slip)
+# The planned search of `ies_plural_missed`: drawn with (9) whole, its search died past the 500th example on
+# 88 of 400 streams on main and 80 once (9) drew a pair through an empty word (2026-10-20), and at the 700th
+# on the recorded stream.
+IES_PLURALS = killed_by(lambda size: pairs_through_an_ies_plural(), slip_properties.check_one_slip)
+# The planned search of `irregular_plurals_missed`: (9)'s searches drawn whole took past the 500th example on
+# about one stream in nine on main and one in six once (9) drew a pair through an empty word (2026-10-20).
+IRREGULAR_PLURALS = killed_by(
+    lambda size: pairs_through_an_irregular_plural(), slip_properties.check_one_slip
+)
 SLIP_MUTANTS = [
     *[
         Mutant(f"{name}_missed", SLIPS, setting(slips, "one_slip", _without_kind(kind)))
@@ -545,9 +540,9 @@ SLIP_MUTANTS = [
     Mutant("underscore_read_as_a_character", SLIPS, setting(slips, "one_slip", _underscore_as_a_character)),
     Mutant("two_characters_added_one_slip", SLIPS, setting(slips, "one_slip", _two_characters_added)),
     Mutant("swap_of_any_two_characters", SLIPS, setting(slips, "one_slip", _swap_of_any_two)),
-    Mutant("ies_plural_missed", SLIPS, setting(slips, "plural_of", _plural_without_ies)),
+    Mutant("ies_plural_missed", IES_PLURALS, setting(slips, "plural_of", _plural_without_ies)),
     Mutant("es_plural_missed", SLIPS, setting(slips, "plural_of", _plural_without_es)),
-    Mutant("irregular_plurals_missed", SLIPS, setting(slips, "_IRREGULAR_PLURALS", {})),
+    Mutant("irregular_plurals_missed", IRREGULAR_PLURALS, setting(slips, "_IRREGULAR_PLURALS", {})),
     Mutant("empty_word_made_plural", EMPTY_WORDS, setting(slips, "plural_of", _empty_word_made_plural)),
 ]
 
