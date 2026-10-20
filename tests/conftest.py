@@ -10,6 +10,7 @@ import os
 import sys
 import time
 from collections import Counter
+from collections.abc import Callable
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -238,6 +239,44 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]) ->
         children_now = children_cpu()
         if children is not None and children_now is not None:
             item.user_properties.append(("children_cpu_seconds", f"{children_now - children:.3f}"))
+
+
+# Room on CPython's frame stack for every test on Python 3.11 and 3.12. CPython keeps the frames of running
+# calls in 16 KiB chunks and, before 3.13, unmaps a chunk as soon as the call that opened it returns, so a
+# call repeated across a chunk's edge maps, faults in and unmaps a chunk at every call (CPython gh-142183,
+# fixed in 3.13 and 3.14 by a backport of March 2026 and in 3.15; 3.11 and 3.12 take security fixes only).
+# Hypothesis's draws do that: one audit control made 1.52 million `mmap` calls on 3.11 and 264 on 3.13
+# (2026-10-20, one local core). So each test runs inside `in_a_large_frame`, whose frame of `FRAME_SLOTS`
+# never-set locals gets a 1 MiB chunk of its own (`push_chunk`, CPython's `Python/pystate.c`), and the test's
+# frames run in the other half and meet no edge. It changes where frames are kept, not what they compute; a
+# test runs two frames deeper. From 3.13 on the spare chunk makes the frame useless, so it is not applied.
+# tests/unit/test_frame_room.py holds each case.
+FRAME_SLOTS = 65_536
+FRAME_CHUNKS_ARE_UNMAPPED = sys.version_info < (3, 13)
+
+
+def large_frame_function(slots: int) -> Callable[[Callable[[], object]], object]:
+    """A function that returns `call()` from a frame with `slots` local variables besides `call`."""
+    names = " = ".join(f"_{index}" for index in range(slots))
+    source = f"def in_a_large_frame(call):\n    if call is None:\n        {names} = None\n    return call()\n"
+    namespace: dict[str, Callable[[Callable[[], object]], object]] = {}
+    exec(compile(source, "<in_a_large_frame>", "exec"), namespace)
+    return namespace["in_a_large_frame"]
+
+
+in_a_large_frame = large_frame_function(FRAME_SLOTS)
+
+
+def pytest_itemcollected(item: pytest.Item) -> None:
+    if not FRAME_CHUNKS_ARE_UNMAPPED:
+        return
+    runtest = item.runtest
+
+    def runtest_in_a_large_frame() -> None:
+        in_a_large_frame(runtest)
+
+    # An attribute of the item, which pytest's `pytest_runtest_call` calls as `item.runtest()`.
+    item.runtest = runtest_in_a_large_frame  # type: ignore[method-assign]
 
 
 # Here rather than in `conformance/`, so that it runs where pytest-xdist's controller, which collects nothing,
