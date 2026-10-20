@@ -192,17 +192,18 @@ every family entry goes in `families/CHANGELOG.md`.
   their region. A floor catches a region no longer drawn; HP1's and HP12's lie below the thin shares main drew,
   which no floor at 1e-6 could tell apart, though `deep`, holding each chance at a third, would catch most such
   slides. A control for each (`tests/unit/test_audit_controls.py`) shows the audit failing on that feature alone
-  when the generator stops producing it. Over 96 runs, main against the branch, every other region of HP1, HP2 and
-  HP11 that the reviews of this change measured kept 0.81 to 1.26 of main's mean share (HP1's branch draws, in one
-  of its draws in 32, a read that gives `request_incomplete`, so that the branch takes none of that code's share),
-  HP12's values' 0.84 to 0.99 and the one-slip relation's 0.88 to 1.01; each first fault of HP12's steps 9 and 10,
-  the kind that holds the region, kept 0.66 to 0.82. The hash's records hold a provenance object in an array in
-  half their draws and a `card` or `content_hash` in their provenance object in half, which lifts four of its
-  chances, below their least shares on main, above them; HP1's kinds (0.07) and four of HP12's values'
-  (`form_interval`, `form_composition`, `form_evidence` and `standing`) still lie above their least shares, each
-  far above its floor (`tests/property/README.md`, "The regions held to a floor"). Kill points past the 500th
-  example on more of 400 streams than main's (one-sided Fisher p below 0.05) are planned, on the region where each
-  mutant shows: `reasons_not_merged` (HP1 over its step 8 and steps 9 and 10 kinds),
+  when the generator stops producing it, and a second shows, over the property's own draws, that an example shows
+  the feature exactly where the mutant fails the property's check. Over 96 runs, main against the branch, every
+  other region of HP1, HP2 and HP11 that the reviews of this change measured kept 0.81 to 1.26 of main's mean
+  share (HP1's branch draws, in one of its draws in 32, a read that gives `request_incomplete`, so that the branch
+  takes none of that code's share), HP12's values' 0.84 to 0.99 and the one-slip relation's 0.88 to 1.01; each
+  first fault of HP12's steps 9 and 10, the kind that holds the region, kept 0.66 to 0.82. The hash's records hold
+  a provenance object in an array in half their draws and a `card` or `content_hash` in their provenance object in
+  half, which lifts four of its chances, below their least shares on main, above them; HP1's kinds (0.07) and four
+  of HP12's values' (`form_interval`, `form_composition`, `form_evidence` and `standing`) still lie above their
+  least shares, each far above its floor (`tests/property/README.md`, "The regions held to a floor"). Kill points
+  past the 500th example on more of 400 streams than main's (one-sided Fisher p below 0.05) are planned, on the
+  region where each mutant shows: `reasons_not_merged` (HP1 over its step 8 and steps 9 and 10 kinds),
   `stated_without_origin_with_a_condition` (HP1 over the five kinds it dies at), `conditions_beside_no_pick` and
   `no_unit_beside_alternative_values` (HP2 over its alternatives), `no_statistics_beside_a_composition` (HP2 over
   compositions under their own `want`), `request_faults_of_the_first_alternative_alone` (alternatives with request

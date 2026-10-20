@@ -7,11 +7,13 @@ from hypothesis import given, settings
 
 from tests.conftest import EXAMPLES
 from tests.property import model_strategies as strategies
+from tests.property import test_model_properties as properties
 from tests.property.alternatives_strategies import OUTCOMES
 from tests.property.condition_strategies import FAULTS
+from tests.property.model_strategies import Example
 from tests.property.result_strategies import REVIEWS
-from tests.property.strategies import ORIGINAL, SMALL, Size
-from tests.property.support import MARGIN
+from tests.property.strategies import ORIGINAL, SIZE, SMALL, Size
+from tests.property.support import MARGIN, fails
 from tests.property.test_model_mutants import IMPLEMENTATION, KILLERS, MODEL, NOT_SHOWN, agreement
 from tests.property.value_field_strategies import CATALOGUE
 from tests.reference.mutants import MUTANTS as MODEL_FAULTS
@@ -112,3 +114,25 @@ def test_a_planned_search_draws_its_region_in_every_example(name: str, size: Siz
         assert REGION_OF[name] in example.planted, example.planted
 
     run()
+
+
+# The regions HP12's first two parts hold to a floor are where the planned searches' mutants show: over each
+# part's own draws, an example shows the feature exactly where the mutant fails the agreement.
+def killed_by(name: str, example: Example) -> bool:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        next(each for each in IMPLEMENTATION if each.name == name).inject(monkeypatch)
+        return fails(properties.check_agreement, example)
+
+
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(strategies.drawn(SIZE, properties.PARTS["faults"]))
+def test_a_result_holding_condition_unchecked_is_where_its_mutant_shows(example: Example) -> None:
+    shown = properties.gives(properties.implementation_outcome(example), "condition_unchecked")
+    assert shown == killed_by("condition_unchecked_without_its_condition", example), example.planted
+
+
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(strategies.drawn(SIZE, properties.PARTS["valued"]))
+def test_a_constant_refused_bounds_is_where_its_mutant_shows(example: Example) -> None:
+    shown = properties.a_constant_refused_bounds(example, properties.implementation_outcome(example))
+    assert shown == killed_by("bounds_given_by_a_constant", example), example.planted

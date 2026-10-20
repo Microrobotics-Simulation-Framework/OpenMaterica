@@ -3,11 +3,13 @@
 against the core, in a module apart from the searches, so that it runs on every Python
 (`--property-controls` in `tests/conftest.py`)."""
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from tests.conftest import EXAMPLES
 from tests.property import test_condition_properties as properties
+from tests.property.support import fails
 from tests.property.test_condition_mutants import KILLERS, MUTANTS, kill, table_cases_without_a_requirement
 
 
@@ -22,6 +24,17 @@ def test_each_mutant_names_a_killer() -> None:
 @given(table_cases_without_a_requirement())
 def test_a_requirement_held_nowhere_is_checked_by_the_core(drawn: tuple[str, properties.Case]) -> None:
     properties.check_against_the_oracle(drawn[1])
+
+
+# The region HP7's table holds to a floor is where the planned search's mutant shows: over the property's own
+# draws, a case holds a required condition nowhere exactly where `row_requirements_ignored` fails the oracle.
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(properties.table_cases())
+def test_a_requirement_held_nowhere_is_where_its_mutant_shows(drawn: tuple[str, properties.Case]) -> None:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        next(mutant for mutant in MUTANTS if mutant.name == "row_requirements_ignored").inject(monkeypatch)
+        killed = fails(properties.check_against_the_oracle, drawn[1])
+    assert bool(properties.held_nowhere(drawn[1])) == killed, drawn
 
 
 def test_a_kill_at_an_example_with_a_long_repr_is_counted() -> None:

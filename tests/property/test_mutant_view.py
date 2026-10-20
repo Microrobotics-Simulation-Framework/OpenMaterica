@@ -17,9 +17,11 @@ from tests.conftest import EXAMPLES
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_slip_properties as slip_properties
 from tests.property.strategies import ORIGINAL, SCALARS, SIZE, SMALL, Size
-from tests.property.support import examples_to_kill
+from tests.property.support import examples_to_kill, fails
 from tests.property.test_hashing_properties import edits_below_a_non_object_provenance
 from tests.property.test_mutants import (
+    MUTANTS,
+    mutant_digest,
     mutant_view,
     pairs_through_an_ies_plural,
     pairs_through_an_irregular_plural,
@@ -109,6 +111,35 @@ def test_a_pair_through_an_ies_plural_is_the_cores_to_the_generator(pair: slip_p
 @given(pairs_through_an_irregular_plural())
 def test_a_pair_through_an_irregular_plural_is_the_cores_to_the_generator(pair: slip_properties.Pair) -> None:
     slip_properties.check_one_slip(pair)
+
+
+# The regions the hash's edit property and (9) hold to a floor are where their planned searches' mutants
+# show: over the property's own draws, an example shows the feature exactly where the mutant fails its check,
+# so that the floor counts the region, no wider and no narrower (`tests/property/README.md`, "The regions held
+# to a floor").
+
+
+@pytest.mark.parametrize("size", SIZES)
+def test_an_edit_below_review_in_an_array_provenance_is_where_its_mutant_shows(size: Size) -> None:
+    digest = mutant_digest("a_non_object_provenance_opens")
+
+    @settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+    @given(hashing_properties.edits(size))
+    def check(edit: hashing_properties.Edit) -> None:
+        shown = hashing_properties.below_review_or_copy_in_a_non_object_provenance(edit.original, edit.path)
+        killed = fails(lambda drawn: hashing_properties.check_edit(digest, drawn), edit)
+        assert shown == killed, edit.path
+
+    check()
+
+
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(slip_properties.pairs())
+def test_a_pair_through_an_empty_word_is_where_its_mutant_shows(pair: slip_properties.Pair) -> None:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        next(mutant for mutant in MUTANTS if mutant.name == "empty_word_made_plural").inject(monkeypatch)
+        killed = fails(slip_properties.check_one_slip, pair)
+    assert slip_properties.through_an_empty_word(pair) == killed, pair
 
 
 def test_a_strategy_that_raises_is_not_a_kill() -> None:
