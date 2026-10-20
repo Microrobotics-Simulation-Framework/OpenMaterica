@@ -36,8 +36,10 @@ these read with no pick, and applies a declared nominal to an interval (`read_si
   left. A density request that both alternatives meet gives `unknown` with `no_pick`, and holds both values,
   until the consumer picks one (S4). The viscosity states no shear rate, which its row requires, so a
   viscosity request at one temperature gives the one left, `unknown` (`condition_unstated`, naming that
-  alternative), until the consumer's declaration waives it; one that both meet gives `no_pick`, each
-  alternative's `condition_unstated` beside it.
+  alternative). A waiver leaves that read `unknown` and covers the reason at the build check; an implied
+  condition that states the shear rate is checked like a stated one and reads `met` where the request's tolerance
+  for it holds. A viscosity request that both meet gives `no_pick`, each alternative's `condition_unstated`
+  beside it.
 - `example/ndfeb_n45` is an interval, read since S2b-1. `want: bounds` gives its limits as stored, 1.32 and
   1.37 T with the basis `specification_limits`, and the status `unknown`: its origin is `stated_without_origin`,
   and its temperature, specimen shape and test method are unstated, so the reasons are `stated_without_origin`
