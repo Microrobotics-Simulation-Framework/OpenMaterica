@@ -74,6 +74,15 @@ def feature(name: str, shown: bool = True) -> None:
         event(FEATURE + name)
 
 
+def fails(check: Callable[[Example], object], example: Example) -> bool:
+    """Whether `check` fails on `example` by an AssertionError, as a mutant search counts a kill."""
+    try:
+        check(example)
+    except AssertionError:
+        return True
+    return False
+
+
 def examples_to_kill(
     examples: st.SearchStrategy[Example],
     check: Callable[[Example], None],

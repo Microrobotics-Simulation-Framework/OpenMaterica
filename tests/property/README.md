@@ -525,8 +525,12 @@ three (the slip's first draw, `Pair('s', '')`, is the degenerate whole name `''`
 property's own strategy still draws the region where the fault shows, so a change that stopped drawing it would
 pass every test (PR #49's review, M1; maintainer, 2026-10-19). The property whose draws each planned search
 stands in for records its region as a feature and holds it to a draw floor at `ci` (Audits, below), declared by
-its chance; and a control in `tests/unit/test_audit_controls.py` shows each audit failing, on that feature
-alone, when the generator stops producing it. The member the reader does not know that
+its chance; a control in `tests/unit/test_audit_controls.py` shows each audit failing, on that feature alone,
+when the generator stops producing it; and a second control, beside each planned search's own
+(`test_mutant_view.py`, `test_condition_mutant_table.py`, `test_result_mutant_table.py`,
+`test_model_mutant_table.py`), shows that over the property's own draws (200 at `dev`, 2,000 at `ci` and
+`deep`) an example shows the feature exactly where the mutant fails the property's check, so that the floor
+counts the region where the fault shows, no wider and no narrower. The member the reader does not know that
 HP12's values plant is held as HP6 holds it, by its chance and its audit control alone; its planned search
 draws it always. Main drew six of these regions in under 0.03 of the examples, too seldom for a floor: one of
 10 examples, the least `ci` judges, needs a chance of about 0.065 (`audits.draw_floor`). So each strategy draws
