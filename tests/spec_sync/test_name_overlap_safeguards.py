@@ -113,7 +113,8 @@ MEANINGS: dict[str, dict[str, Meaning]] = {
 }
 
 # Each place a schema gives a guarded name, and the meanings whose values it refuses: every meaning but its
-# own, but where its own is free text, which takes any string.
+# own, but where its own is free text, which takes any string, or a member a read returns as found, which
+# takes any JSON value (a test report's provenance, `record_format.md` section 4.3 item 2).
 REFUSES: dict[str, dict[str, tuple[str, ...]]] = {
     "evidence": {
         "record.writer.json#/$defs/licence/properties/evidence": ("provenance", "test_reports"),
@@ -121,6 +122,7 @@ REFUSES: dict[str, dict[str, tuple[str, ...]]] = {
         "record.writer.json#/$defs/evidence_field/properties/evidence": ("licence", "provenance"),
         "record.reader.json#/properties/licence/properties/evidence": ("provenance", "test_reports"),
         "record.reader.json#/$defs/evidence_field/properties/evidence": ("licence", "provenance"),
+        "read_result.json#/$defs/result_entry_provenance/properties/evidence": (),
     },
     "inputs": {
         "case.json#/properties/inputs": ("derivation", "search"),

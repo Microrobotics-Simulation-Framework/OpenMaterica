@@ -739,8 +739,9 @@ def _returned(value: JsonValue, shape: object) -> JsonValue:
         return copy.deepcopy(value)
     returned = {name: _returned(member, defined[name]) for name, member in value.items() if name in defined}
     if shape is shapes.Provenance:
-        # A provenance returned whole, an evidence entry's (`record_format.md` section 4.3 item 2): its review
-        # as `provenance.md` section 2 item 6 reads every review a reader returns.
+        # A provenance returned whole, an evidence entry's or one it holds at any depth, one that
+        # `per_parameter` maps a parameter to say (`record_format.md` section 4.3 item 2, the maintainer's
+        # ruling of 2026-10-20): its review as `provenance.md` section 2 item 6 reads every review.
         returned["review"] = _review(value.get("review"))
     return returned
 

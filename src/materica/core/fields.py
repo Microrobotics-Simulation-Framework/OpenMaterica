@@ -256,9 +256,9 @@ def evidence(value: JsonValue, where: str, found: Found) -> None:
 
 
 def evidence_entry(value: JsonValue, where: str, found: Found) -> bool:
-    """A test report, holding every member; its provenance checked as a field's is (the open point
-    `evidence_entry_provenance` of `tests/reference/read_model.py`). Whether it is withheld: each member but
-    its provenance a withheld marker that keeps its shape."""
+    """A test report, holding every member; its provenance checked as a field's is, the members that check
+    leaves unchecked returned as found (`record_format.md` section 4.3 item 2). Whether it is withheld: each
+    member but its provenance a withheld marker that keeps its shape."""
     if not isinstance(value, dict):
         found.append(invalid(f"{where} is not an object"))
         return False

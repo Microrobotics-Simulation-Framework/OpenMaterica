@@ -189,10 +189,6 @@ The inputs come in families, named by what they break:
   takes a power law, and step 8 refuses one (`form_not_registered`, PR-036) before step 11. That refusal of
   the field is tested (`PR-044.refused_form_not_registered`); only the set-aside rule for a power law's range
   is unreachable.
-- **Answers the text leaves open.** No arm meets them; each waits for the text:
-  - whether `provenance.md` section 2 item 6 reads the `review` inside an evidence entry's `provenance`, which
-    is returned whole: every evidence fixture's entry review is a status object holding `not_checked`, where
-    both readings agree.
 - **Answers the text leaves open for tables:**
   - a table on `biocompatibility.evidence` whose `conditions` hold its axis (PR-036): whether step 8, refusing
     the form, finds the table's axis condition a condition evidence's own `conditions` may not hold. With

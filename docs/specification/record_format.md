@@ -242,9 +242,12 @@ lists of `contact_category`, `contact_duration` and `material_form` will follow 
    shape (`form_invalid`). Any other status stands in an entry's member as in any required member
    (`provenance.md` section 1), `unstated` for a contact duration the source does not give, say. A reader
    returns an entry with its statuses and its `provenance` whole, holding the members `read_side_contract.md`
-   section 2 item 5 defines, never cut to the members a result's own `provenance` holds. [PR-038] [PR-337] A
-   read gives `withheld` when every entry is withheld, and `unknown` with the reason `entries_withheld` when
-   some are (`read_side_contract.md` section 3, step 8). [PR-052]
+   section 2 item 5 defines, never cut to the members a result's own `provenance` holds. [PR-038] [PR-337]
+   Step 8 checks an entry's `provenance` as a field's (`provenance.md` section 2 item 6); the members that
+   item leaves unchecked are returned as found, the record checks' (RC-044), except that each provenance
+   they hold, at any depth (one that `per_parameter` maps a parameter to, say), returns its `review` as that
+   item reads every review. A read gives `withheld` when every entry is withheld, and `unknown` with the
+   reason `entries_withheld` when some are (`read_side_contract.md` section 3, step 8). [PR-052]
 3. `conditions` holds no registered condition: one there is a shape error (`form_invalid`), while a name the
    reader does not know gives `unknown`, as anywhere (section 10). [PR-052] [PR-031]
 

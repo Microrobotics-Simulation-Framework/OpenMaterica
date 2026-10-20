@@ -65,6 +65,25 @@ every family entry goes in `families/CHANGELOG.md`.
   `quote_sha256` vectors, RC-220 to RC-226), waiting for the code that runs them, and the case-file format
   gains what they need (`docs/specification/README.md`, "Case files"; `case.json`): `inputs.page_texts`,
   `compare.rules_compared`, the comparison of a quote reported under RC-032, and the operation `quote_sha256`.
+- The maintainer's rulings on S2b-2's review (2026-10-19; `docs/specification/changes.md`), on the reference
+  model's open points:
+  - `evidence_entry_provenance`: `record_format.md` section 4.3 item 2 now says that step 8 checks an evidence
+    entry's `provenance` as a field's (`provenance.md` section 2 item 6), and returns the members that check
+    leaves unchecked as found. The reader has read it so since S2b-2. Two PR-052 cases come with it: a
+    report's provenance whose origin the reader does not know (`unknown_token`), and one whose `extraction`
+    is a number (`met`, returned as stored). `read_result.json` returns a report as one now: its own
+    definitions of a report, a withheld report, a report's provenance and its source take every member the
+    writer marks write-only as any JSON value, required nowhere, and the rest as the writer's, a review as a
+    result's and a derived value's derivation as a result's; `tests/spec_sync/test_schemas.py` holds each to
+    the writer's. Until now the result typed a report as the writer's, so the second case's correct result
+    did not validate. So the result schema no longer refuses a member the version does not define inside a
+    member it takes as any JSON value (`extraction`, say): `read_side_contract.md` section 2 item 5 leaves
+    such a member out, the reader does (a unit test holds it), and no case or schema holds another reader to
+    it. With the maintainer's ruling of 2026-10-20 on the reviews inside a report's provenance, the sentence
+    also says that each provenance those members hold, at any depth (one that `per_parameter` maps a
+    parameter to), returns its `review` as every review is read; the reader has done so since S2b-2, and the
+    reference model, which returned such a review as found, reads it so too. Two more PR-052 cases: such a
+    review of a status token a review does not take, and one absent, each returned as `not_checked`.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from
@@ -78,6 +97,17 @@ every family entry goes in `families/CHANGELOG.md`.
   measured, `unknown` (`condition_unstated`) once its method is removed, by a request that also accepts
   `reference_formulation`, and `not_met` (`condition_not_accepted`) by one that accepts `reference_formulation`
   alone.
+
+### Verification
+- The maintainer's rulings on a report's provenance (2026-10-19 and 2026-10-20) come with four PR-052 case
+  files, which run and pass: a report's provenance whose origin the reader does not know, and one whose
+  `extraction` is a number; a review inside a provenance that a report's `per_parameter` maps a parameter to,
+  of a status token a review does not take, and one absent. 949 of 1496 case files pass. Four broken
+  implementations show the runner fails on them: a report's provenance left unchecked, or checked in every
+  member; such a nested review returned as found, or none returned where it holds none. Each fails under its
+  broken implementation alone; the first kills the reference model's fault that leaves a report's provenance
+  unchecked, a survivor of the cases until then, and the last two kill the model's new fault that returns
+  such a review as found.
 
 ## [0.1.0.dev2] - 2026-10-20
 

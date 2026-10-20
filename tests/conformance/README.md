@@ -40,7 +40,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
 | S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape (plain read) | 166 | run, passed |
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
-| S2's reads of evidence, and reads under a nominal or an acceptance a read does not take, to the value or ending at step 0, 8 or 13 (plain read) | 64 | run, passed |
+| S2's reads of evidence, and reads under a nominal or an acceptance a read does not take, to the value or ending at step 0, 8 or 13 (plain read) | 68 | run, passed |
 | reads S3's pieces run (plain read): tables, and reads under an extrapolation | 180 | not yet runnable: the step that runs each is not done |
 | S4a's reads over alternatives with no pick and no overlay: each alternative set aside, kept or refusing the field, and the outcome (plain read) | 24 | run, passed |
 | reads S4's later pieces run (plain read): over alternatives with a pick or a table, or through an overlay | 135 | not yet runnable: S4, which runs each, is not done |
@@ -55,7 +55,7 @@ since its fix round. So are the two arms of the maintainer's token ruling, which
 (`PR-330.implied_token_for_numeric_condition`, `PR-330.implied_unit_for_token_condition`): S2a-3's step 0
 ignored each member, and S2a-4's fix round refuses it.
 
-Of the 1492 case files, 1245 agree with plain read and the hash suite, 1187 with plain read alone, and 1245
+Of the 1496 case files, 1249 agree with plain read and the hash suite, 1191 with plain read alone, and 1249
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
 record-check suite agree with none, since it claims no record checks.

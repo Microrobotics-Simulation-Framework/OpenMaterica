@@ -5,6 +5,7 @@ Faults inside a function are injected by replacing that function for the test, s
 implementation stays the one under test.
 """
 
+import copy
 import hashlib
 import math
 import re
@@ -493,6 +494,70 @@ def cuts_a_reports_provenance_to_a_results(monkeypatch: pytest.MonkeyPatch) -> E
     return EXECUTORS["read"]
 
 
+def _per_parameter_returned(
+    monkeypatch: pytest.MonkeyPatch, changed: Callable[[JsonObject, JsonObject], None]
+) -> Executor:
+    """A read whose provenance returned whole hands each provenance its `per_parameter` maps a parameter to,
+    as returned and as stored, to `changed`."""
+    returned = read._returned  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def per_parameter(value: JsonValue, shape: object) -> JsonValue:
+        found = returned(value, shape)
+        if shape is shapes.Provenance and isinstance(value, dict) and isinstance(found, dict):
+            stored, mapped = value.get("per_parameter"), found.get("per_parameter")
+            if isinstance(stored, dict) and isinstance(mapped, dict):
+                for name, held in stored.items():
+                    nested = mapped.get(name)
+                    if isinstance(held, dict) and isinstance(nested, dict):
+                        changed(nested, held)
+        return found
+
+    monkeypatch.setattr(read, "_returned", per_parameter)
+    return EXECUTORS["read"]
+
+
+def returns_a_nested_review_as_found(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    """A review inside a provenance `per_parameter` maps a parameter to returned as stored, against
+    `record_format.md` section 4.3 item 2 (the maintainer's ruling of 2026-10-20)."""
+
+    def as_found(nested: JsonObject, stored: JsonObject) -> None:
+        if "review" in stored:
+            nested["review"] = copy.deepcopy(stored["review"])
+
+    return _per_parameter_returned(monkeypatch, as_found)
+
+
+def returns_no_nested_review_where_none_is_held(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    """A provenance `per_parameter` maps a parameter to, holding no review, returned with none, against
+    `record_format.md` section 4.3 item 2 (the maintainer's ruling of 2026-10-20)."""
+
+    def none_held(nested: JsonObject, stored: JsonObject) -> None:
+        if "review" not in stored:
+            nested.pop("review", None)
+
+    return _per_parameter_returned(monkeypatch, none_held)
+
+
+def leaves_a_reports_provenance_unchecked(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    def unchecked(value: JsonValue, where: str, found: list[Reason]) -> None:
+        pass
+
+    monkeypatch.setattr(fields, "provenance", unchecked)
+    return EXECUTORS["read"]
+
+
+def checks_every_member_of_a_reports_provenance(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    checked = value_shapes.provenance  # the check `fields` imports, which the fault wraps
+
+    def every_member(value: JsonValue, where: str, found: list[Reason]) -> None:
+        checked(value, where, found)
+        if isinstance(value, dict) and not isinstance(value.get("extraction", {}), dict):
+            found.append(value_shapes.invalid(f"{where}.extraction is not an object"))
+
+    monkeypatch.setattr(fields, "provenance", every_member)
+    return EXECUTORS["read"]
+
+
 def applies_a_nominal_outside_its_bounds(monkeypatch: pytest.MonkeyPatch) -> Executor:
     def anywhere(
         interval: JsonObject, name: str, nominal: read.Nominal
@@ -686,6 +751,10 @@ FAULTS: list[tuple[Fault, str]] = [
     (takes_a_report_withheld_in_part, "PR-052.entry_partly_withheld.json"),
     (takes_a_registered_condition_under_evidence, "PR-052.registered_condition_in_conditions.json"),
     (cuts_a_reports_provenance_to_a_results, "PR-038.evidence_list.json"),
+    (leaves_a_reports_provenance_unchecked, "PR-052.entry_provenance_origin_unknown.json"),
+    (checks_every_member_of_a_reports_provenance, "PR-052.entry_provenance_extraction_number.json"),
+    (returns_a_nested_review_as_found, "PR-052.entry_provenance_per_parameter_review_unknown.json"),
+    (returns_no_nested_review_where_none_is_held, "PR-052.entry_provenance_per_parameter_review_absent.json"),
     (applies_a_nominal_outside_its_bounds, "PR-338.nominal_outside.json"),
     (drops_a_nominals_value_under_not_met, "PR-302.nominal_value_under_not_met.json"),
     (applies_a_nominal_wherever_it_is_located, "PR-338.nominal_other_record.json"),
