@@ -388,9 +388,9 @@ UNREQUIRING = {
 
 
 # A condition the row requires held nowhere, where `row_requirements_ignored` shows, by its chance, below its
-# least share over 48 runs at `ci` (2026-10-20, derandomised, each its own stream; mean 0.142, least 0.104).
+# least share over 144 runs at `ci` (2026-10-20, derandomised, each its own stream; mean 0.144, least 0.104).
 # By `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of 30 examples with
-# a probability of 3e-11, and with 3e-19 at the variance measured (5.2 times a binomial count's).
+# a probability of 2e-11, and with 7e-21 at the variance measured (4.7 times a binomial count's).
 @pytest.mark.chances(required_held_nowhere=0.1)
 @pytest.mark.drawn(*TABLE_KINDS)
 @given(table_cases())
