@@ -55,12 +55,31 @@ def reason_text(reason: dict[str, JsonValue]) -> str:
     return f"{reason['code']} ({', '.join(inside)})" if inside else str(reason["code"])
 
 
+def found(entries: list[JsonValue]) -> str:
+    """A record-check case's findings or listing as `CASES.md` writes them: each rule's case id, at its input
+    and its JSON pointer there."""
+    written = [
+        f"`{entry['item']}` at `{entry['document']}#{entry['pointer']}`"
+        for entry in entries
+        if isinstance(entry, dict)
+    ]
+    return ", ".join(written) or "nothing"
+
+
 def expected_column(case_file: CaseFile) -> str:
     """The column as `CASES.md` writes it, from the case file: status and reasons with their condition and
     alternative, or that the two are not compared; the listing, the shortened hash, or a read's value, unit,
     alternative values and assumption, as JSON; then labels and claims (sorted) where the case states them. A
-    table evaluation case's is its evaluations, as JSON, and its binary32 tolerance."""
+    table evaluation case's is its evaluations, as JSON, and its binary32 tolerance; a record-check case's its
+    findings, its listing and the rules it compares; a `quote_sha256` operation's its status and shortened
+    hash."""
     expected = case_file.expected
+    if case_file.operation == "check":
+        items, listing = expected["items"], expected["listing"]
+        assert isinstance(items, list)
+        assert isinstance(listing, list)
+        rules = f"; rules {', '.join(code(rule) for rule in case_file.rules)}" if case_file.rules else ""
+        return f"finds {found(items)}; lists {found(listing)}{rules}"
     if case_file.operation == "evaluate":
         tolerances = case_file.precision_tolerances
         assert tolerances is not None
@@ -82,7 +101,7 @@ def expected_column(case_file: CaseFile) -> str:
         assert isinstance(listed, list)
         entries = [f"{code(entry['id'])} {entry['version']}" for entry in listed if isinstance(entry, dict)]
         parts.append("lists " + (", ".join(entries) or "nothing"))
-    elif case_file.operation == "content_hash":
+    elif case_file.operation in ("content_hash", "quote_sha256"):
         if "value" in expected:
             parts.append(code(str(expected["value"])[: len("sha256:") + 8] + "\u2026"))
     else:

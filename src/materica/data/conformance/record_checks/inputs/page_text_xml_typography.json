@@ -1,0 +1,67 @@
+{
+  "page_text_schema_version": "0.1.0",
+  "document_type": "page_text",
+  "document": {
+    "identifier": "https://example.org/conformance-fixture-paper",
+    "version": "version_of_record"
+  },
+  "copy": {
+    "sha256": "sha256:9977ae460c7c5c22180b0bb60765ea31bcabe07b1751f89db09cea16304c8a32"
+  },
+  "text_extraction": "conformance fixture: an illustrative text extraction, 1.0.0",
+  "readings": [
+    "conformance fixture: XML reading, 1.0.0"
+  ],
+  "text": "MethodsEach pulse lasted 10 mS on the “fast” timer.The ﬁrst sample was dis\u200bcarded.Its density was 1.06 g cm−3 at 5‐6 bar.",
+  "elements": [
+    {
+      "element": "/article[1]",
+      "characters": [
+        0,
+        121
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]",
+      "characters": [
+        0,
+        121
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]",
+      "characters": [
+        0,
+        121
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/title[1]",
+      "characters": [
+        0,
+        7
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[1]",
+      "characters": [
+        7,
+        51
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[2]",
+      "characters": [
+        51,
+        82
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[3]",
+      "characters": [
+        82,
+        121
+      ]
+    }
+  ]
+}

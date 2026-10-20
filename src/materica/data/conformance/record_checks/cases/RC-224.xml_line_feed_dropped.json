@@ -1,0 +1,33 @@
+{
+  "case": "RC-224",
+  "variant": "xml_line_feed_dropped",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc224_xml_line_feed_dropped.json"
+    ],
+    "page_texts": [
+      "page_text_xml.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-032",
+        "document": "rc224_xml_line_feed_dropped.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032"
+    ]
+  }
+}

@@ -27,15 +27,18 @@
       ]
     },
     "expected": {
-      "description": "The members of the result compared: a read result's, or a table evaluation case's evaluations.",
-      "anyOf": [{"$ref": "#/$defs/compared_result"}, {"$ref": "#/$defs/table_evaluations"}]
+      "description": "The members of the result compared: a read result's, a table evaluation case's evaluations, or a record-check case's findings and listing.",
+      "anyOf": [{"$ref": "#/$defs/compared_result"}, {"$ref": "#/$defs/table_evaluations"}, {"$ref": "#/$defs/record_check_expected"}]
     },
     "compare": {"$ref": "#/$defs/case_compare"}
   },
   "additionalProperties": false,
   "if": {"required": ["inputs"], "properties": {"inputs": {"required": ["request"]}}},
   "then": {"not": {"required": ["request"]}},
-  "else": {"required": ["request"]},
+  "else": {
+    "description": "A request, except in a record-check case, which has none unless it names an operation.",
+    "anyOf": [{"required": ["request"]}, {"required": ["suite"], "properties": {"suite": {"const": "record_checks"}}}]
+  },
   "allOf": [
     {
       "description": "A table evaluation case (README.md, \"Case files\"): the evaluate operation, no inputs, its evaluations, and a tolerance per precision; every other case, a read result and one tolerance.",
@@ -56,9 +59,20 @@
         }
       },
       "else": {
-        "properties": {
-          "expected": {"$ref": "#/$defs/compared_result"},
-          "compare": {"properties": {"relative_tolerance": {"type": "number"}}}
+        "properties": {"compare": {"properties": {"relative_tolerance": {"type": "number"}}}},
+        "if": {"required": ["suite"], "properties": {"suite": {"const": "record_checks"}}, "not": {"required": ["request"]}},
+        "then": {
+          "description": "A record-check case (README.md, \"Case files\"): no request, the findings and the listing it expects, and the rules whose items it compares where it names any.",
+          "properties": {
+            "expected": {"$ref": "#/$defs/record_check_expected"},
+            "compare": {"properties": {"members": {"items": {"enum": ["items", "listing"]}}}}
+          }
+        },
+        "else": {
+          "properties": {
+            "expected": {"$ref": "#/$defs/compared_result"},
+            "compare": {"properties": {"rules_compared": false}}
+          }
         }
       }
     },
@@ -121,7 +135,12 @@
       "properties": {
         "records": {"type": "array", "items": {"type": "string"}},
         "value": {"type": "string"},
-        "request": {"description": "A request that breaks the JSON rules, in place of request.", "type": "string"}
+        "request": {"description": "A request that breaks the JSON rules, in place of request.", "type": "string"},
+        "page_texts": {
+          "description": "A record-check case's page-text documents, given to the checker beside the records (page_text.md section 3 item 1).",
+          "type": "array",
+          "items": {"type": "string"}
+        }
       },
       "additionalProperties": false
     },
@@ -135,7 +154,13 @@
           "description": "One relative tolerance, or a table evaluation case's tolerance per precision.",
           "anyOf": [{"type": "number", "minimum": 0}, {"$ref": "#/$defs/precision_tolerances"}]
         },
-        "exact": {"type": "boolean"}
+        "exact": {"type": "boolean"},
+        "rules_compared": {
+          "description": "A record-check case's rules, by case id, whose findings and listing it compares; the items of other rules are not compared.",
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{3}(?![\\s\\S])"}
+        }
       },
       "additionalProperties": false,
       "not": {"required": ["relative_tolerance", "exact"]}
@@ -145,10 +170,33 @@
       "type": "object",
       "required": ["operation"],
       "properties": {
-        "operation": {"enum": ["content_hash", "list_records", "transform_draws", "evaluate"]},
+        "operation": {"enum": ["content_hash", "list_records", "quote_sha256", "transform_draws", "evaluate"]},
+        "text": {"description": "A quote_sha256 operation's text, whose quote hash it gives.", "type": "string"},
         "normals": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
         "uniforms": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}}
       }
+    },
+    "record_check_expected": {
+      "title": "RecordCheckExpected",
+      "description": "A record-check case's expected answer (README.md, \"Case files\"): the findings, which fail the check, and the facts it lists without failing, each compared as a set.",
+      "type": "object",
+      "properties": {
+        "items": {"type": "array", "items": {"$ref": "#/$defs/check_item"}},
+        "listing": {"type": "array", "items": {"$ref": "#/$defs/check_item"}}
+      },
+      "additionalProperties": false
+    },
+    "check_item": {
+      "title": "CheckItem",
+      "description": "A finding or a listed fact: the case id of the rule that gives it, the input it is in, by file name, and a JSON pointer into that input.",
+      "type": "object",
+      "required": ["item", "document", "pointer"],
+      "properties": {
+        "item": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{3}(?![\\s\\S])"},
+        "document": {"type": "string"},
+        "pointer": {"type": "string"}
+      },
+      "additionalProperties": false
     },
     "evaluate_operation": {
       "description": "A table evaluation case's request (README.md, \"Case files\"): one table as record_format.md section 6 gives it, the axis condition aside, and the axis values it is evaluated at.",

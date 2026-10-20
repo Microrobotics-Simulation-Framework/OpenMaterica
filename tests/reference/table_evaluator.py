@@ -237,7 +237,7 @@ def _exact_arithmetic(digits: int) -> "_Arithmetic[Fraction]":
 
 
 _BINARY64 = _Arithmetic[float](number=float, ln=math.log, exp=math.exp)
-# README.md:218 "a `binary32` evaluator first rounds each number of the case to the nearest `binary32`"
+# README.md:221 "a `binary32` evaluator first rounds each number of the case to the nearest `binary32`"
 _BINARY32 = _Arithmetic[_Binary32](number=_Binary32, ln=_binary32_ln, exp=_binary32_exp)
 
 

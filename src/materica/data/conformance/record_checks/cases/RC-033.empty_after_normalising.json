@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "empty_after_normalising",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "\u200b \u00ad\u3000"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

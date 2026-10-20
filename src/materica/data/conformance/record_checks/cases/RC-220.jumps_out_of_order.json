@@ -1,0 +1,40 @@
+{
+  "case": "RC-220",
+  "variant": "jumps_out_of_order",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc220_jumps_out_of_order.json"
+    ],
+    "page_texts": [
+      "page_text_pdf_jumps_out_of_order.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-220",
+        "document": "page_text_pdf_jumps_out_of_order.json",
+        "pointer": ""
+      }
+    ],
+    "listing": [
+      {
+        "item": "RC-032",
+        "document": "rc220_jumps_out_of_order.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032",
+      "RC-220"
+    ]
+  }
+}

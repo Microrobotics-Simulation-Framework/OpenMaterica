@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "format_characters_removed",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "Liv\u00ad\u061c\u180e\u200b\u200c\u200d\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2060\u2061\u2062\u2063\u2064\u2066\u2067\u2068\u2069\ufeffer 1.06"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:2f56f15eab3d77544741289633740ff15c63f8569b9b469319ee3c7f5bcf139d"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "case": "RC-031",
+  "variant": "copy_hash_well_formed",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc031_copy_hash_well_formed.json"
+    ]
+  },
+  "expected": {
+    "items": [],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-031"
+    ]
+  }
+}

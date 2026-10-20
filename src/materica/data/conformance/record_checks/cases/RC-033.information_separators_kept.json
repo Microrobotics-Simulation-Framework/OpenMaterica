@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "information_separators_kept",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "Liver\u001c1.06\u001f"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:c9e9468391c9208d196f4ce40eb6b9ff00bbc698701df7516b0b014159f884df"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

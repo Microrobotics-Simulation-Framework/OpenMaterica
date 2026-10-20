@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "nfkc_before_white_space",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "῁x"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:0e651f0859f5e73316d34bc1d2997ee4bb883db6193d4ac9a7c0b9563aff9c07"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

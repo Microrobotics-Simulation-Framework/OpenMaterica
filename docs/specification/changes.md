@@ -429,4 +429,11 @@ the place, `page_text` and `spans`, present together or not at all, and `sha256`
 gives a page-text document's shape, its rules across members being RC-220's. The conformance inputs and the
 example record that wrote a copy's hash as bare digits now write the prefix: eleven plain-read fill-ins and
 `examples/records/human_plasma.json`. `copy` is outside the content hash, so no hash or pin moves. Two inputs
-of the hash suite keep their bare digits: they are hash vectors, which the writer schema does not judge.
+of the hash suite keep their bare digits: they are hash vectors, which the writer schema does not judge. The
+record-check cases come with it, 197 case files of RC-031, RC-032, RC-033's `quote_sha256` vectors and RC-220
+to RC-226, waiting for the curation track's quote attach-and-verify, whose core half runs them with the record
+checks. The case-file format gains what they need (`README.md`, "Case files"): a record-check case's page-text
+documents, `inputs.page_texts`; `compare.rules_compared`, the rules whose items a case compares; the
+comparison of a quote with its place reported under RC-032 at the quote's evidence, a failure as a finding and
+`not_checked` as a listing; and the operation `quote_sha256`, which gives a text's quote hash. `case.json`
+takes them.

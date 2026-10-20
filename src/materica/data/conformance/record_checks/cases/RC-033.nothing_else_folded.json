@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "nothing_else_folded",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "LIVER “1.06” − 0.02"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:f4f2895043e8efe0843c13cab73be21147af3a6b98b60641d3b53e329b9ed98e"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

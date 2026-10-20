@@ -1,0 +1,30 @@
+{
+  "case": "RC-031",
+  "variant": "document_without_version",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc031_document_without_version.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-031",
+        "document": "rc031_document_without_version.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-031"
+    ]
+  }
+}

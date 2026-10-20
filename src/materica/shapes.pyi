@@ -633,6 +633,19 @@ class CaseInputs(TypedDict):
     records: NotRequired[list[str]]
     value: NotRequired[str]
     request: NotRequired[str]
+    page_texts: NotRequired[list[str]]
+
+RulesComparedItem: TypeAlias = str
+
+class CheckItem(TypedDict):
+    """
+    A finding or a listed fact: the case id of the rule that gives it, the input it is in, by file name, and a
+    JSON pointer into that input.
+    """
+
+    item: str
+    document: str
+    pointer: str
 
 class DerivativeSides(TypedDict):
     left: float
@@ -934,6 +947,16 @@ class CaseCompare(TypedDict):
     members: list[str]
     relative_tolerance: NotRequired[float | PrecisionTolerances]
     exact: NotRequired[bool]
+    rules_compared: NotRequired[list[RulesComparedItem]]
+
+class RecordCheckExpected(TypedDict):
+    """
+    A record-check case's expected answer (README.md, "Case files"): the findings, which fail the check, and
+    the facts it lists without failing, each compared as a set.
+    """
+
+    items: NotRequired[list[CheckItem]]
+    listing: NotRequired[list[CheckItem]]
 
 class TableEvaluations(TypedDict):
     """
@@ -1333,7 +1356,7 @@ class Case(TypedDict):
     claims: NotRequired[dict[Suite, bool]]
     inputs: CaseInputs
     request: NotRequired[ReadRequest | CaseOperation | JsonValue]
-    expected: ComparedResult | TableEvaluations
+    expected: ComparedResult | TableEvaluations | RecordCheckExpected
     compare: CaseCompare
 
 class ReadRequest(TypedDict):
@@ -1441,7 +1464,8 @@ class CaseOperation(TypedDict):
     not yet specified.
     """
 
-    operation: Literal["content_hash", "list_records", "transform_draws", "evaluate"]
+    operation: Literal["content_hash", "list_records", "quote_sha256", "transform_draws", "evaluate"]
+    text: NotRequired[str]
     normals: NotRequired[list[JsonValue]]
     uniforms: NotRequired[list[JsonValue]]
 

@@ -403,7 +403,7 @@ A model never sets a redistribution state or a review (AD 8.2). [not yet covered
 | RC-029 | record checks | a digitised figure without calibration or digitising error is flagged |
 | RC-030 | record checks | a quote present is verified; a curated value from text or a table without one is flagged |
 | RC-031 | record checks | evidence without the document's identity and version beside the copy's hash is flagged, and so is a copy's `sha256` other than `sha256:` and 64 lowercase hexadecimal digits |
-| RC-032 | record checks | a quote absent at its place in the page-text document its copy names, or whose value's numbers are not where the place marks the value, fails; with no `copy`, no place, or no page-text document of the hash `copy.page_text` gives, `not_checked` |
+| RC-032 | record checks | a quote absent at its place in the page-text document its copy names, or whose value's numbers are not where the place marks the value, fails; with no `copy`, no place, or no page-text document of the hash `copy.page_text`, `not_checked` |
 | RC-033 | record checks | `quote_sha256` vectors: the invisible format characters removed, NFKC, `White_Space` runs (U+001C to U+001F not among them), trimming, lowercase hexadecimal |
 | RC-034 | record checks | a stamped copy, or anything taken from it (a quote's place in it, or the hash of its page-text document, among them), in a release is flagged |
 | RC-035 | record checks | a derivation without its method, inputs with hashes, and assumptions is flagged |

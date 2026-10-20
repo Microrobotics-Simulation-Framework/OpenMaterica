@@ -45,6 +45,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | S4a's reads over alternatives with no pick and no overlay: each alternative set aside, kept or refusing the field, and the outcome (plain read) | 24 | run, passed |
 | reads S4's later pieces run (plain read): over alternatives with a pick or a table, or through an overlay | 135 | not yet runnable: S4, which runs each, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | run, verified against the reference evaluator under each of its four configurations |
+| record checks (`check`: RC-031, RC-032, RC-220 to RC-226) and `quote_sha256` (RC-033's vectors) | 164 and 13 | not yet runnable: no executor; C2, with S5's record checks, adds them |
 
 Each read is counted by the step whose code runs it (`case_steps.json`), not by what it reads:
 `PR-044.alternatives_beside_value` holds alternatives and is S2a-4's, and `PR-007.target_is_overlay` ends at
@@ -54,9 +55,10 @@ since its fix round. So are the two arms of the maintainer's token ruling, which
 (`PR-330.implied_token_for_numeric_condition`, `PR-330.implied_unit_for_token_condition`): S2a-3's step 0
 ignored each member, and S2a-4's fix round refuses it.
 
-Of the 1295 case files, 1245 agree with plain read and the hash suite, 1187 with plain read alone, and 1245
+Of the 1492 case files, 1245 agree with plain read and the hash suite, 1187 with plain read alone, and 1245
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
-evaluator's configuration alone, since this implementation claims no evaluator.
+evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
+record-check suite agree with none, since it claims no record checks.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`
 names (`materica.load_records`), and passes its result through JSON text, as a consumer would receive it. Each

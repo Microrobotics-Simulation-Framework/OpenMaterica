@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "white_space_runs",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "Liver\t\n \u00a0\u2003\u3000 1.06"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:2f56f15eab3d77544741289633740ff15c63f8569b9b469319ee3c7f5bcf139d"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

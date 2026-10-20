@@ -1,0 +1,40 @@
+{
+  "case": "RC-220",
+  "variant": "another_minor_version",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc220_another_minor_version.json"
+    ],
+    "page_texts": [
+      "page_text_pdf_another_minor_version.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-220",
+        "document": "page_text_pdf_another_minor_version.json",
+        "pointer": ""
+      }
+    ],
+    "listing": [
+      {
+        "item": "RC-032",
+        "document": "rc220_another_minor_version.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032",
+      "RC-220"
+    ]
+  }
+}

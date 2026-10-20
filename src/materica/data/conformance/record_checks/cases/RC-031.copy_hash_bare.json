@@ -1,0 +1,30 @@
+{
+  "case": "RC-031",
+  "variant": "copy_hash_bare",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc031_copy_hash_bare.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-031",
+        "document": "rc031_copy_hash_bare.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence/copy/sha256"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-031"
+    ]
+  }
+}

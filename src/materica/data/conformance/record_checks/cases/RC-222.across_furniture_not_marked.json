@@ -1,0 +1,40 @@
+{
+  "case": "RC-222",
+  "variant": "across_furniture_not_marked",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc222_across_furniture_not_marked.json"
+    ],
+    "page_texts": [
+      "page_text_pdf_footnote_unmarked.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-222",
+        "document": "rc222_across_furniture_not_marked.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence/copy"
+      }
+    ],
+    "listing": [
+      {
+        "item": "RC-032",
+        "document": "rc222_across_furniture_not_marked.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032",
+      "RC-222"
+    ]
+  }
+}

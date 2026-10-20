@@ -1,0 +1,655 @@
+{
+  "page_text_schema_version": "0.1.0",
+  "document_type": "page_text",
+  "document": {
+    "identifier": "https://example.org/conformance-fixture-paper",
+    "version": "version_of_record"
+  },
+  "copy": {
+    "sha256": "sha256:7c8c0e791ec811a9c00063544ad246ebabb38506c10ba9fa726a9443af3cbf91"
+  },
+  "text_extraction": "conformance fixture: an illustrative text extraction, 1.0.0",
+  "readings": [
+    "conformance fixture: XML reading, 1.0.0"
+  ],
+  "text": "Densities of soft tissuesMethodsSamples were kept counterproduc-\ntively warm.The density of the liver was 1.06 g cm-3.ρTable 2\nTissueMeanDensity (g cm-3)\nLiver1.03 ± 0.011.06 ± 0.02\nSpleen-1.05 ± 0.01\nMarrow\ue0001.01 ± 0.021.02 ± 0.03\nTable 3\nTissueABDensity\nHeart\ue0001.04 ± 0.031.05 ± 0.02\nMuscle\ue0001.061.071.08 ± 0.01\n1.09\ue0001.101.11 ± 0.01\nBone\ue0001.901.95 ± 0.051.92\nFat\ue0000.910.920.90 ± 0.01\n",
+  "elements": [
+    {
+      "element": "/article[1]/front[1]",
+      "characters": [
+        0,
+        25
+      ]
+    },
+    {
+      "element": "/article[1]/front[1]/title[1]",
+      "characters": [
+        0,
+        25
+      ]
+    },
+    {
+      "element": "/article[1]/front[1]/break[1]",
+      "characters": [
+        25,
+        25
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]",
+      "characters": [
+        25,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]",
+      "characters": [
+        25,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/title[1]",
+      "characters": [
+        25,
+        32
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[1]",
+      "characters": [
+        32,
+        77
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[2]",
+      "characters": [
+        77,
+        118
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[2]/bold[1]",
+      "characters": [
+        106,
+        110
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[2]/sup[1]",
+      "characters": [
+        115,
+        117
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/disp-formula[1]",
+      "characters": [
+        118,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/disp-formula[1]/{http://www.w3.org/1998/Math/MathML}math[1]",
+      "characters": [
+        118,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/disp-formula[1]/{http://www.w3.org/1998/Math/MathML}math[1]/{http://www.w3.org/1998/Math/MathML}mi[1]",
+      "characters": [
+        118,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]",
+      "characters": [
+        119,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]",
+      "characters": [
+        119,
+        231
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/label[1]",
+      "characters": [
+        119,
+        126
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]",
+      "characters": [
+        126,
+        231
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]",
+      "characters": [
+        126,
+        231
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]",
+      "characters": [
+        127,
+        153
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]/th[1]",
+      "characters": [
+        127,
+        133
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]/th[2]",
+      "characters": [
+        133,
+        137
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]/th[3]",
+      "characters": [
+        137,
+        153
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]",
+      "characters": [
+        154,
+        181
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]/td[1]",
+      "characters": [
+        154,
+        159
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]/td[2]",
+      "characters": [
+        159,
+        170
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]/td[3]",
+      "characters": [
+        170,
+        181
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]",
+      "characters": [
+        182,
+        200
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]/td[1]",
+      "characters": [
+        182,
+        188
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]/td[2]",
+      "characters": [
+        188,
+        189
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]/td[3]",
+      "characters": [
+        189,
+        200
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]",
+      "characters": [
+        201,
+        230
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]/td[1]",
+      "characters": [
+        201,
+        208
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]/td[2]",
+      "characters": [
+        208,
+        219
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]/td[3]",
+      "characters": [
+        219,
+        230
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]",
+      "characters": [
+        231,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/label[1]",
+      "characters": [
+        231,
+        238
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]",
+      "characters": [
+        238,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]",
+      "characters": [
+        238,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]",
+      "characters": [
+        239,
+        254
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[1]",
+      "characters": [
+        239,
+        245
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[2]",
+      "characters": [
+        245,
+        246
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[3]",
+      "characters": [
+        246,
+        247
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[4]",
+      "characters": [
+        247,
+        254
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]",
+      "characters": [
+        255,
+        283
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]/td[1]",
+      "characters": [
+        255,
+        261
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]/td[2]",
+      "characters": [
+        261,
+        272
+      ],
+      "cell_columns": [
+        2,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]/td[3]",
+      "characters": [
+        272,
+        283
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]",
+      "characters": [
+        284,
+        310
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[1]",
+      "characters": [
+        284,
+        291
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[2]",
+      "characters": [
+        291,
+        295
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[3]",
+      "characters": [
+        295,
+        299
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[4]",
+      "characters": [
+        299,
+        310
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]",
+      "characters": [
+        311,
+        331
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]/td[1]",
+      "characters": [
+        311,
+        316
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]/td[2]",
+      "characters": [
+        316,
+        320
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]/td[3]",
+      "characters": [
+        320,
+        331
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]",
+      "characters": [
+        332,
+        356
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[1]",
+      "characters": [
+        332,
+        337
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]",
+      "characters": [
+        337,
+        352
+      ],
+      "cell_columns": [
+        2,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]",
+      "characters": [
+        337,
+        352
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]",
+      "characters": [
+        337,
+        352
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]/tr[1]",
+      "characters": [
+        337,
+        352
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]/tr[1]/td[1]",
+      "characters": [
+        337,
+        341
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]/tr[1]/td[2]",
+      "characters": [
+        341,
+        352
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[3]",
+      "characters": [
+        352,
+        356
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]",
+      "characters": [
+        357,
+        380
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[1]",
+      "characters": [
+        357,
+        361
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[2]",
+      "characters": [
+        361,
+        365
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[3]",
+      "characters": [
+        365,
+        369
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[4]",
+      "characters": [
+        369,
+        380
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[4]/bold[1]",
+      "characters": [
+        369,
+        380
+      ]
+    }
+  ]
+}

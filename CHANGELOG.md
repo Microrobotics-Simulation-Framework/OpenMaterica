@@ -55,7 +55,10 @@ every family entry goes in `families/CHANGELOG.md`.
   digits. No reader change: a read never checks `copy`. The writer schema's `copy` takes the place and
   `sha256`'s form, and `schema/0.1/page_text.json` gives a page-text document's shape. The eleven plain-read
   fill-in inputs and `examples/records/human_plasma.json` write a copy's hash with the prefix; no content hash
-  or pin moves.
+  or pin moves. The record-check suite's first 197 case files come with it (RC-031, RC-032, RC-033's
+  `quote_sha256` vectors, RC-220 to RC-226), waiting for the code that runs them, and the case-file format
+  gains what they need (`docs/specification/README.md`, "Case files"; `case.json`): `inputs.page_texts`,
+  `compare.rules_compared`, the comparison of a quote reported under RC-032, and the operation `quote_sha256`.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from

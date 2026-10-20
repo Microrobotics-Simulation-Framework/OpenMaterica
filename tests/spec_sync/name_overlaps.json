@@ -258,6 +258,17 @@
         "quote": "An object with a `document_type` member and no `record_type` member is a scene document (`geometry.md`), an engine crosswalk (`usd_binding.md` section 10.1) or another OpenMaterica document, not a record",
         "what": "Section 3 item 2 (PR-006): document_type names the document's kind, whichever kind it is, and page_text.md section 1 item 1 gives a page-text document's."
       }
+    },
+    {
+      "rule": "A",
+      "names": ["document"],
+      "meanings": 2,
+      "reason": "A document read, by its identifier and version (a provenance object's, an evidence's, a page-text document's), and, in a record-check case's findings, the input a finding is in, by its file name: one word for what a finding points into, named by the specification's record-check case before case.json gave it a shape.",
+      "safeguard": {
+        "document": "docs/specification/README.md",
+        "quote": "`document` naming an input by its file name and `pointer` a JSON pointer into it",
+        "what": "Case files: a finding's document is a case input's file name, in case files only; a record's and a page-text document's is an object."
+      }
     }
   ]
 }

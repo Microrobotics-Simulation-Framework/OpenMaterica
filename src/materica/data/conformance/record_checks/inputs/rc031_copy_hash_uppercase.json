@@ -1,0 +1,128 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/quote_fixture",
+  "version": "1.0.0",
+  "name": "Quote check (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:20b285c9c502e024041d5a59d16f631f8066c6000a557ca4744ea78184f40217",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "bulk": {
+        "fields": {
+          "density": {
+            "form": "constant",
+            "unit": "kg/m3",
+            "value": 1060.0,
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "density_kind": {
+                "token": "apparent",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "central": "stated",
+              "n_specimens": {
+                "status": "unstated"
+              },
+              "n_donors": {
+                "status": "not_applicable"
+              },
+              "mean": {
+                "status": "unstated"
+              },
+              "sd": {
+                "status": "unstated"
+              },
+              "min": {
+                "status": "unstated"
+              },
+              "max": {
+                "status": "unstated"
+              },
+              "distribution": {
+                "status": "unstated"
+              },
+              "basis": {
+                "status": "not_applicable"
+              },
+              "represents": {
+                "status": "unstated"
+              },
+              "dispersion": "not_reported",
+              "relative_uncertainty": {
+                "status": "none"
+              },
+              "expanded_uncertainty": {
+                "status": "none"
+              }
+            },
+            "provenance": {
+              "origin": "measured_by_source",
+              "source": {
+                "key": "conformance_fixture_paper",
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-paper",
+                  "version": "version_of_record"
+                },
+                "locator": {
+                  "type": "table",
+                  "label": "Table 2",
+                  "page": 3,
+                  "column": {
+                    "header": "Density (g cm-3)",
+                    "index": 2
+                  },
+                  "row": "liver"
+                }
+              },
+              "extraction": {
+                "method": "table",
+                "source_unit": "g/cm3",
+                "conversion": "multiplied by 1000",
+                "text_extraction": "conformance fixture: an illustrative text extraction, 1.0.0"
+              },
+              "evidence": {
+                "quote": "Liver 1.06 ± 0.02",
+                "locator": {
+                  "type": "table",
+                  "label": "Table 2",
+                  "page": 3,
+                  "column": {
+                    "header": "Density (g cm-3)",
+                    "index": 2
+                  },
+                  "row": "liver"
+                },
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-paper",
+                  "version": "version_of_record"
+                },
+                "copy": {
+                  "sha256": "sha256:B4B61256E469F858D98611618F7FD83FA486F3C8502CEDC2D9F5BE3E0A94CFF2",
+                  "retrieved": "2026-10-20"
+                }
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

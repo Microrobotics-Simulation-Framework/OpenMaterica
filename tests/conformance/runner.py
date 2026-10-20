@@ -68,6 +68,8 @@ class CaseFile:
     # A table evaluation case's tolerance per precision, `binary64` and `binary32` (README, "Case files"), in
     # place of `relative_tolerance`; its executor compares by the precision an evaluator claims.
     precision_tolerances: dict[str, float] | None = None
+    # A record-check case's rules, by case id, whose findings and listing it compares (README, "Case files").
+    rules: tuple[str, ...] = ()
 
     @classmethod
     def from_document(cls, path: Path, document: JsonValue) -> "CaseFile":
@@ -77,8 +79,11 @@ class CaseFile:
         if not re.fullmatch(r"[a-z0-9_]+", variant) or path.name != f"{case}.{variant}.json":
             raise CaseFileError(f"{path.name}: the file is not named <case>.<variant>.json")
         # A request may itself be broken on purpose (PR-330 gives an array and a string): that is a read too.
+        # A record-check case without a request runs the record checks (README, "Case files").
         request = document.get("request")
         operation = request.get("operation", "read") if isinstance(request, dict) else "read"
+        if request is None and document.get("suite") == "record_checks":
+            operation = "check"
         compare = _object(document.get("compare"), "compare")
         members = tuple(
             _string(member, "compare.members") for member in _list(compare.get("members"), "members")
@@ -92,6 +97,10 @@ class CaseFile:
             raise CaseFileError(f"{path.name}: compare's exact is not true or false")
         if (tolerance is not None or precision_tolerances is not None) and exact:
             raise CaseFileError(f"{path.name}: compare gives both relative_tolerance and exact")
+        rules = tuple(
+            _string(rule, "compare.rules_compared")
+            for rule in _list(compare.get("rules_compared", []), "rules_compared")
+        )
         claims = _object(document.get("claims", {}), "claims")
         if not all(isinstance(claimed, bool) for claimed in claims.values()):
             raise CaseFileError(f"{path.name}: a claim is not true or false")
@@ -109,6 +118,7 @@ class CaseFile:
             relative_tolerance=tolerance,
             exact=exact,
             precision_tolerances=precision_tolerances,
+            rules=rules,
         )
 
     def input_bytes(self, member: str) -> bytes:
