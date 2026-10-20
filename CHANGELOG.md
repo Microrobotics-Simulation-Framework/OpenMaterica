@@ -14,6 +14,14 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Changed
+- The Hypothesis job's `alternatives` parts have a `deep` timeout of 90 minutes, from 45, set by estimate before
+  the weekly `deep` run: at `ci` the parts took 196.8 and 218.0 s of pytest time (run 39404674681), ten times the
+  examples is 33 and 36 minutes, and the timeout is twice the upper end, rounded up to the figure `records` has,
+  until a `deep` run measures it. The job's `timeout-minutes` and the `JOB_MINUTES` its pytest step reads, which
+  the interrupt is set from, change together; `tests/unit/test_ci_workflows.py` holds the interrupt at twice the
+  estimate and fails where the clause is removed.
+
 ## [0.1.0.dev2] - 2026-10-20
 
 A development pre-release. It holds S2: the read of a field holding a constant, an interval, a composition or
