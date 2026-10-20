@@ -210,6 +210,20 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   (`tests/examples/`). The README's documentation table links it and the examples.
 
 ### Changed
+- CI's longest jobs run in parts of about equal time side by side (maintainer, 2026-10-20), so that a push waits
+  for the longest part and not the longest job; what is checked is the same tests, profiles, example counts
+  and Pythons. The `controls` job (the mutant searches and the audit controls) runs in four parts on Python 3.11
+  and two on 3.15, the `tests` job in two parts on each Python, and the Hypothesis job's three longest shards,
+  `agreement`, `relations` and `alternatives`, in two parts each, so 30 jobs on a push's head where there were 18. A new
+  pytest option, `--partition I/N`, and for a Hypothesis shard `--shard NAME_IofN`, choose the I-th of N parts
+  of the tests the other options select (`tests/partition.py`): the heaviest test left goes to the lightest
+  part, by the seconds each long test took in a CI run (`tests/partition_weights.json`); a stale weight makes a
+  part slower and loses no test. `tests/unit/test_ci_workflows.py` collects the tests of every part of every
+  matrix and fails where a test is in none or in two, with a control for each; `tests/unit/test_partition.py`
+  holds the assignment to a partition on random selections. The kill points of the mutant searches are checked
+  in a `kill_points` job per Python that reads the reports of all that Python's `controls` parts together (no
+  `--partial`), after counting them. The example databases of `agreement`, `relations` and `alternatives` start afresh
+  under their parts' names.
 - `CLAUDE.md` states the proportionality rule (maintainer, 2026-10-17) beside the review budget it was decided
   with: a finding that matters only where real data is very unlikely to reach gets a stated limit, not new
   machinery, and becomes a known anomaly if real data is found to reach it; reviews mark each finding by whether

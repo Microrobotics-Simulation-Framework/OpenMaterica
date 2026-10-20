@@ -44,11 +44,11 @@ search it ran is not recorded, a recorded search of a group it holds did not rec
 group's table names a mutant it did not run, a recorded group is missing from the run (a renamed or deleted
 test function leaves counts nothing runs: `--measure --record` drops it), or a search passed without
 recording `examples_to_kill`, which the file, the README and the margin guard cannot see. `--partial` is for a
-hand-run report of part of the searches: groups it lacks are not required. CI's `controls` job runs
-`--against` on its report of every search. `--measure` runs every search (`pytest tests/property
---property-controls only`) into a temporary report, then checks it as `--against` does, or with `--record`
-records it, the file then holding exactly the groups of that run; it needs the project's environment
-(`uv run`).
+hand-run report of part of the searches: groups it lacks are not required. CI's `kill_points` job runs
+`--against` on the reports of all of a Python's `controls` parts together. `--measure` runs every search
+(`pytest tests/property --property-controls only`) into a temporary report, then checks it as `--against`
+does, or with `--record` records it, the file then holding exactly the groups of that run; it needs the
+project's environment (`uv run`).
 """
 
 import argparse

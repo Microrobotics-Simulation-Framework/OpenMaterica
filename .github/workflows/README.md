@@ -13,11 +13,12 @@ one table of what became of each, when dispatched by hand (below).
 | `gate` | the per-commit jobs' cap, `PER_COMMIT_MAX_PARALLEL` (below); the sign-off check (`scripts/check_signoff.py`) on a pull request, the confidentiality scan, and the known-anomalies registry's check (`scripts/check_anomalies.py`); decides which jobs run: on a pull request from the paths it touched, otherwise every job (no other job with `fuzz_only`) | always |
 | `static` | ruff, mypy and pyright; `uv build` and the wheel check; the consumer snippet against the installed wheel, and its control | a pull request that changes code, which is any path the gate lists neither as documentation (`docs_paths` in its step) nor as the site's (`site_paths`: `site/`, `assets/`), and any Python file wherever it sits (`python_paths`), since ruff reads it; every merge to main; weekly; manual |
 | `generated` | every generator of `scripts/` with `--check`: the vocabulary, the reader schema, the typed shapes, and the property README's kill counts with the margin guard (`gen_kill_counts.py`); on Python 3.11 | as `static` |
-| `tests` | `uv run pytest -n auto`, property tests at the `dev` profile, but the mutant searches and the audit controls (`--property-controls none`) | as `static`; Python 3.11 to 3.15, in parallel; on 3.15 alone also the pre-review script's trace test (`MATERICA_TRACE_SELECTION=1`, which no other job sets) |
-| `controls` | the mutant searches and the audit controls alone (`--property-controls only`), which run at the `ci` profile's examples whatever the profile, so cost about as much as a Python's other tests: on the supported range's ends, the oldest Python and the newest, which bracket the versions between, each in a job beside that Python's `tests` job, so that neither is the longest; then each search's kill point, from the run's JUnit report, against `tests/property/kill_points.json` (`gen_kill_counts.py --against`) | as `static`; Python 3.11 and 3.15 |
-| `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run, in eight shards side by side (`json`, `records`, `writer`, `agreement`, `step8_mutants`, `conditions`, `relations`, `alternatives`), each with its own example database; on Python 3.15, a worker per vCPU | a pull request that changes any path but the documentation and those no part of the job reads (`hypothesis_free` in the gate's step), any test included; every merge to main; weekly; manual |
+| `tests` | `uv run pytest -n auto`, property tests at the `dev` profile, but the mutant searches and the audit controls (`--property-controls none`), in two parts of about equal time side by side (`--partition 1/2` and `2/2`, `tests/partition.py`) that together hold every test once | as `static`; Python 3.11 to 3.15, in parallel, two jobs each; on 3.15 alone also the pre-review script's trace test (`MATERICA_TRACE_SELECTION=1`, which no other job sets, and which sits in one of the two parts) |
+| `controls` | the mutant searches and the audit controls alone (`--property-controls only`), which run at the `ci` profile's examples whatever the profile, so cost about as much as a Python's other tests: on the supported range's ends, the oldest Python and the newest, which bracket the versions between, each in jobs beside that Python's `tests` jobs, so that none is the longest; in parts of about equal time side by side (`--partition`), four on 3.11, the slower interpreter, and two on 3.15, which together hold every one of them once | as `static`; Python 3.11 (four jobs) and 3.15 (two jobs) |
+| `kill_points` | after a Python's `controls` jobs: each search's kill point, from the JUnit reports of all that Python's parts together, against `tests/property/kill_points.json` (`gen_kill_counts.py --against`, without `--partial`, so a search that ran in no part fails it); it first counts the reports, so that a part whose report is missing is named as that; a failed `controls` part skips it, so one Python's failing part hides the other's kill-point verdict, and `result` names the failed job | as `static`; Python 3.11 and 3.15 |
+| `hypothesis` | the property tests and mutants at the `ci` profile, or `deep` weekly and on a manual run, in eleven jobs side by side (`json`, `records`, `writer`, `agreement_1of2`, `agreement_2of2`, `step8_mutants`, `conditions`, `relations_1of2`, `relations_2of2`, `alternatives_1of2`, `alternatives_2of2`): the eight shards of `SHARDS` in `tests/conftest.py`, the three longest of which, `agreement`, `relations` and `alternatives`, run in two parts of about equal time each (`--shard agreement_1of2`, `tests/partition.py`), the parts together holding every test of the shard once; each job with its own example database; on Python 3.15, a worker per vCPU | a pull request that changes any path but the documentation and those no part of the job reads (`hypothesis_free` in the gate's step), any test included; every merge to main; weekly; manual |
 | `site` | the site staged exactly as `pages.yml` stages it (its step, word for word), which fails where a file it copies is missing; then `scripts/check_site.py` on the copy: every local link, image and icon of each page and of the web manifest resolves, every page keeps one content security policy, before anything it loads, that lets nothing load from elsewhere, nothing loads from elsewhere, and the README's images name files of the tree; on the runner's Python, seconds long | a pull request that changes any path but documentation alone, `site/` and `assets/` included, which run this job and no code job; every merge to main; weekly; manual |
-| `commit` | each commit of a pull request but its head, checked out on its own: the site job's steps, ruff, mypy and pyright, `uv build` and the wheel check, every generator's `--check` (on Python 3.11, as `generated`), and the whole suite at the `dev` profile, the mutant searches and audit controls included, on Python 3.15 under `--dist worksteal`; at most `PER_COMMIT_MAX_PARALLEL` at once, 6 where it is unset (below); a commit whose tree passed the same checks earlier in the pull request (kept in the cache under its tree, `ci.yml`'s blob and the runner's image version) is not checked again | a pull request of two commits or more: each commit before the head that changes code, as the gate counts it for `static` |
+| `commit` | each commit of a pull request but its head, checked out on its own: the site job's steps, ruff, mypy and pyright, `uv build` and the wheel check, every generator's `--check` (on Python 3.11, as `generated`), and the whole suite at the `dev` profile, the mutant searches and audit controls included, in one job, on Python 3.15 under `--dist worksteal`; at most `PER_COMMIT_MAX_PARALLEL` at once, 6 where it is unset (below); a commit whose tree passed the same checks earlier in the pull request (kept in the cache under its tree, `ci.yml`'s blob and the runner's image version) is not checked again | a pull request of two commits or more: each commit before the head that changes code, as the gate counts it for `static` |
 | `site_commit` | each commit of a pull request but its head that changes the site alone (beside documentation or not), checked out on its own: the site job's steps, word for word; at most `PER_COMMIT_MAX_PARALLEL` at once, as `commit` | a pull request of two commits or more with such a commit before the head |
 | `fuzz` | after `hypothesis`, from the union of the shards' example databases: the Atheris targets of `tests/fuzz/`, after a control with seeded faults, for `fuzz_seconds` each; then the property tests, to replay and shrink what was found; on Python 3.14 | weekly; manual, alone with `fuzz_only` |
 | `result` | fails unless every job the gate asked for succeeded (a job skipped by its `if` reports success), and when any job failed or was cancelled: the one check the ruleset on main requires | always |
@@ -31,10 +32,33 @@ also judges least shares, whose figure is known for some properties only, and th
 searches and controls are derandomised, adds nothing. Such a failure names the seed that draws its run again,
 and `repeat.yml` tells chance from a fault (`tests/property/README.md`, "Audits").
 
+The `tests`, `controls` and `hypothesis` jobs run their tests in parts that run side by side, which
+`tests/unit/test_ci_workflows.py` holds to a partition: it collects the tests each part of each matrix selects, on
+this repository, and fails where a test is in none of a job's parts or in two (the test's own controls fail where a part
+is left out of the matrix, a count is wrong, or a test is in two parts). A part is chosen with `--partition I/N`, or for
+a Hypothesis shard `--shard NAME_IofN`: the tests the other options select, split by the seconds each took in a CI
+run (`tests/partition_weights.json`, written from such a run's reports by `python -m tests.partition`), the heaviest
+test left to the lightest part. The weights decide how even the parts are and never which tests run: a stale or
+missing weight makes a part slower and loses no test. Their evenness shows in the durations reports (one per part,
+so a part that runs well beyond the others is read there); the weights are measured seconds of one CI run, so they
+age: a test added since weighs the default until a run lists it, and a long test renamed or moved loses its weight.
+
+Maintaining the weights. Record them again when a part runs visibly longer than its siblings, or after long tests
+are added, renamed or moved. Download the durations reports of one CI run on Python 3.15, the Python the weights
+come from and the only one on which the pre-review script's trace test runs: for the `dev` table every part of the
+`tests` job and of the `controls` job (`durations-tests-3.15-1of2`, `durations-controls-3.15-1of2`, ...); for the
+`ci` table every part of the `hypothesis` job's shards from a run at the `ci` profile, not `deep`
+(`durations-hypothesis-agreement_1of2`, ...). Then run `python -m tests.partition PROFILE SOURCE REPORT ...` with
+the profile (`dev` or `ci`), a line saying which run the reports are from, and the reports' paths. A test file the
+reports hold has its entries replaced and a file they do not hold keeps its own, so one job's reports leave the
+other job's weights; give every part of the jobs that run a file, since the tests of a missing part lose their
+weights. On Python 3.11 to 3.14 the trace test is skipped but still assigned its 3.15 weight, so a part there can
+run up to about 9 percent over an even split: the weights are one Python's, not each Python's own.
+
 Each pytest job but `commit`, which runs on each earlier commit the suite the head's jobs run, writes a JUnit
 report, summarised on the run's page (`scripts/report_test_durations.py`: the tests in each band of wall time, the
 slowest tests and files, and the total, wall time and CPU time, the tests' own and their child processes') and kept
-90 days as the artifact `durations-<job>-<Python or shard>`, whenever pytest ran.
+90 days as the artifact `durations-<job>-<Python and part, or shard>`, whenever pytest ran.
 pytest runs under `timeout --foreground --signal=INT`, three minutes before its job's timeout, so that a run out of
 time is sent one SIGINT, stops, writes the report of the tests that finished (about 5 s later, after pytest-xdist
 ends its workers) and fails, rather than be cancelled without one (`ci.yml` says why).
@@ -158,27 +182,52 @@ matrix jobs run at once (maintainer, 2026-10-17):
 | `REPEAT_MAX_PARALLEL` | `repeat.yml`'s `runs`, for each dispatch | 10 |
 | `MUTANT_MAX_PARALLEL` | `mutants.yml`'s `mutants`, for each dispatch | 10 |
 
-Raise `PER_COMMIT_MAX_PARALLEL`, to 10 say, while OpenMaterica is the organisation's only repository at work,
+Raise `PER_COMMIT_MAX_PARALLEL`, to 12 say, while OpenMaterica is the organisation's only repository at work,
 so that a pull request's commits are checked sooner; lower it again, to 6 or less, when MIME's or MADDENING's
-work runs at the same time, so that their jobs do not wait behind these. Count the rest too: beside the
-per-commit jobs, a push to a pull request runs, once the gate has passed, 18 jobs on its head at once
-(`static`, `generated`, `tests` on five Pythons, `controls` on two, `hypothesis` in eight shards, `site`), and
-each repeat dispatch runs its own `REPEAT_MAX_PARALLEL`. `PER_COMMIT_MAX_PARALLEL` caps `commit` and
-`site_commit` each apart, so at the ceiling of 20 one push can hold 18 + 20 + 20 = 58 of the organisation's 60
-runners, and each repeat dispatch 20 more; a commit that changes the site alone is rare, so the usual peak of one
-push is 18 + 20 = 38. Each mutant dispatch runs its own `MUTANT_MAX_PARALLEL`, 20 at the ceiling, and
-nothing beside them: its request job ends before they start and its table job starts after them. So its
-worst case is 20 runners for as long as its mutants queue (up to 201 jobs, 200 mutants and the baseline),
-and one push at the ceiling, one repeat dispatch and one mutant dispatch together ask for 58 + 20 + 20 = 98,
-more than the 60: the rest wait for a runner, MIME's and MADDENING's jobs among them. Each further dispatch,
-of other inputs or on another ref, asks for its own 20 more.
+work runs at the same time, so that their jobs do not wait behind these. Where it is unset the cap is 6. A
+repository's variable can change without a change to this file: read it with `gh variable list` (below) before
+relying on a figure here. The figures below are written for a variable of V, and take V = 12, the value the
+maintainer set on 2026-10-20, as the example.
+
+Count the rest too. Once the gate has passed, a push to a pull request runs 30 jobs on its head at once:
+`static`, `generated`, `tests` on five Pythons in two parts each (10), `controls` in six parts (four on 3.11,
+two on 3.15), `hypothesis` in eleven jobs, and `site`; the two `kill_points` jobs start as the `controls` parts
+end, so they raise no peak. Before the parts it was 18. Each part costs a runner's set-up (checkout, uv and its
+cache, `uv sync`: about 1.5 minutes of runner time, an estimate from the set-up steps of the CI runs of
+2026-10-19 to 2026-10-20, not measured on the parts), so the 14 added jobs add about 21 minutes to the push's
+roughly 95 minutes of runner time (a figure from before S4a's `alternatives` shard, which adds two parts of about half the 6.6
+minutes it took whole on the run that measured it, and their set-up). The head's jobs took a median of 16.8 minutes of wall time before the parts
+(CI runs of 2026-10-19 to 2026-10-20). On the first run of the parts (the pull request that introduced them, #63, before
+it was moved onto S4a's `alternatives` shard, which it also splits) they took
+7 minutes: the `controls` parts at most 6 minutes each, the `tests` parts at most 5, the halves of `agreement`
+and `relations` 2 to 3, and each `kill_points` job under 1. The per-commit job took 19 minutes, unchanged by
+this change, so a pull request with earlier commits is still bound by it. One run, on hosts that differ in
+speed by up to a factor of two from job to job, is a measurement of that run and not of the median.
+
+| | The head alone | With `commit` jobs at V | At the cap's ceiling of 20 |
+|---|---|---|---|
+| Runners one push holds | 30 | 30 + V (42 at V = 12) | 50 (70 with `site_commit` jobs, which run beside `commit`'s and are rare) |
+| Left of 60 at once | 30 | 30 - V (18 at V = 12) | 10 (none, and 10 wait, with `site_commit` jobs) |
+| Left of 20 at once | none, 10 wait | none, 10 + V wait (22 at V = 12) | none, 30 wait |
+
+At 60, one push at V leaves 30 - V for MIME's and MADDENING's jobs (18 at V = 12); at the ceiling with a
+`site_commit` job (70) it is over, and the rest wait for a runner. At 20 a push's head alone is over the limit:
+the runners start what fits in the order the jobs queued, so the parts' gain is bounded by the runners and not
+by the longest job; on such a plan keep the per-commit cap at 3 or less and expect the head jobs' wall time to
+fall less than at 60. `PER_COMMIT_MAX_PARALLEL` caps `commit` and `site_commit` each apart; each repeat dispatch
+runs its own `REPEAT_MAX_PARALLEL` (20 at the ceiling) and each mutant dispatch its own `MUTANT_MAX_PARALLEL` (20
+at the ceiling, and nothing beside them: its request job ends before they start and its table job starts after
+them), up to 201 jobs for 200 mutants and the baseline. One push at the ceiling with a `site_commit` job, one
+repeat dispatch and one mutant dispatch together ask for 70 + 20 + 20 = 110, more than the 60: the rest wait for
+a runner, MIME's and MADDENING's jobs among them. Each further dispatch, of other inputs or on another ref,
+asks for its own 20 more.
 
 Anyone with write access to the repository can set these variables, not its maintainers alone (GitHub's "Use
 variables": write access suffices for a repository of an organisation), which is why the check bounds them. Set,
 read or remove one with the GitHub CLI:
 
 ```sh
-gh variable set PER_COMMIT_MAX_PARALLEL --body 10 -R Microrobotics-Simulation-Framework/OpenMaterica
+gh variable set PER_COMMIT_MAX_PARALLEL --body 12 -R Microrobotics-Simulation-Framework/OpenMaterica
 gh variable list -R Microrobotics-Simulation-Framework/OpenMaterica
 gh variable delete PER_COMMIT_MAX_PARALLEL -R Microrobotics-Simulation-Framework/OpenMaterica  # the default again
 ```

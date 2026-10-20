@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 import materica.core
+from tests import partition
 from tests.conftest import SHARDS
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -208,9 +209,14 @@ def test_every_property_module_is_in_one_shard() -> None:
 
 
 def hypothesis_shards(workflow: str) -> list[str]:
-    """The shards CI's Hypothesis job runs, from its matrix line `shard: [a, b]`."""
+    """The shards CI's Hypothesis job runs, from its matrix line `shard: [a, b]`: a shard that runs in parts
+    (`agreement_1of2`, `agreement_2of2`) once, by its name. That the parts of a shard are all of it is
+    `test_ci_workflows.py`'s."""
     found = [line.strip() for line in workflow.splitlines() if line.strip().startswith("shard: [")]
-    return [shard.strip() for line in found for shard in line.removeprefix("shard: [").rstrip("]").split(",")]
+    names = [
+        shard.strip() for line in found for shard in line.removeprefix("shard: [").rstrip("]").split(",")
+    ]
+    return sorted({partition.split_shard(name)[0] for name in names})
 
 
 def test_ci_runs_every_shard() -> None:
@@ -218,3 +224,6 @@ def test_ci_runs_every_shard() -> None:
     workflow = (REPOSITORY / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert sorted(hypothesis_shards(workflow)) == sorted(SHARDS)
     assert sorted(hypothesis_shards("        shard: [json, records, writer]\n")) != sorted(SHARDS)
+    # A shard run in its parts is run; a part of a shard that does not exist is not a shard.
+    parts = "        shard: [json, agreement_1of2, agreement_2of2]\n"
+    assert hypothesis_shards(parts) == ["agreement", "json"]

@@ -334,7 +334,9 @@ failure prints a blob that replays it anywhere.
 
 ## Shards
 
-CI runs the groups in eight shards side by side, each in a job of its own: `pytest tests/property --shard
+CI runs the groups in eight shards, the three longest of them, `agreement`, `relations` and `alternatives`, in two parts each
+(`--shard agreement_1of2` and `--shard agreement_2of2`, and the same for `relations` and `alternatives`: the shard's tests split in
+two parts of about equal time, `tests/partition.py`), so in eleven jobs side by side: `pytest tests/property --shard
 json`, which also holds the tables group, `--shard records`, which holds the record and step-8 groups, `--shard writer`, `--shard agreement`, the
 two validators' agreement (below), `--shard step8_mutants`, step 8's mutant searches, which keep no example
 database and were most of the records shard's time, `--shard conditions`, steps 9 and 10's group and the
@@ -453,8 +455,9 @@ file, where an input differs from the tree's, where a recorded group has no tabl
 the records', which have none), where a table of every search of its group lacks a recorded mutant's row, or
 where a kill falls after the 500th example: the margin guard (maintainer, 2026-10-19), which names each such
 search, to be planned as below. The guard bounds the pinned seed's kill, not the margin: a search that is early
-at this seed and long over others is not seen by it (below). CI's `controls` job, which runs every search on
-Python 3.11 and 3.15, holds the file to its own run (`--against`): it fails where a kill point differs, a search
+at this seed and long over others is not seen by it (below). CI's `kill_points` job, which reads the reports of all
+of a Python's `controls` parts, which together run every search on Python 3.11 and 3.15, holds the file to that
+run (`--against`): it fails where a kill point differs, a search
 it ran is not recorded, a recorded group is missing from its run (a test function renamed or deleted leaves
 counts nothing runs; `--measure --record` drops it), a search passed without recording `examples_to_kill`
 (which neither the file, the counts nor the guard would otherwise see), or a row of these tables names a search

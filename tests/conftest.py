@@ -65,9 +65,10 @@ harvested_constants.pin()
 
 # CI's Hypothesis job runs the property modules in eight shards, `--shard json`, `--shard records`, `--shard
 # writer`, `--shard agreement`, `--shard step8_mutants`, `--shard conditions`, `--shard relations` and
-# `--shard alternatives`, the two longest, `agreement` and `relations`, each as two parts side by side
-# (`--shard agreement_1of2`, `--shard agreement_2of2`: the shard's tests in two parts of about equal time,
-# `tests/partition.py`); `tests/unit/test_source_files.py` checks that each module is in exactly one shard.
+# `--shard alternatives`, the three longest, `agreement`, `relations` and `alternatives`, each as two parts
+# side by side (`--shard agreement_1of2`, `--shard agreement_2of2`: the shard's tests in two parts of about
+# equal time, `tests/partition.py`); `tests/unit/test_source_files.py` checks that each module is in exactly
+# one shard.
 SHARDS = {
     "json": (
         "test_jsonio_properties",
