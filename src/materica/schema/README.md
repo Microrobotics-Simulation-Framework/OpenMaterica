@@ -2,16 +2,17 @@
 
 The JSON Schemas (layer L0, AD 7.1), in the dialect of JSON Schema 2020-12, one directory per schema version.
 Each version has a closed writer schema and an open reader schema for records (`record_format.md` section 1
-item 2), schemas for the read request and result, a schema for conformance case files, and the vocabulary.
-Every file's `$id` is its path under `https://w3id.org/materica/schema/`; an `$id` is an identifier and need
-not resolve.
+item 2), schemas for the read request and result, a schema for conformance case files, a schema for page-text
+documents (`page_text.md`), and the vocabulary. Every file's `$id` is its path under
+`https://w3id.org/materica/schema/`; an `$id` is an identifier and need not resolve.
 
 ## Where each fact is edited
 
 - **Structure** is edited in the writer schemas, by hand. The specification's member tables (the envelope, the
   read request and result, a value field, the provenance object, the statistics block, the conditions and the
-  specimen facts, and the members that may hold a status object) are checked against them, not generated from
-  them, so the specification keeps its prose (`tests/spec_sync/test_schemas.py`, `test_value_fields.py`).
+  specimen facts, the members that may hold a status object, and the page-text document) are checked against
+  them, not generated from them, so the specification keeps its prose (`tests/spec_sync/test_schemas.py`,
+  `test_value_fields.py`).
 - **Tokens** are edited in the specification's tables and token lists. The vocabulary is generated from them
   (`0.1/vocabulary/`), and a schema takes a token list from it by `$ref`: a reason's code in `read_result.json`,
   and every token list of a value field in `record.writer.json` but the status-object tokens, which are

@@ -137,15 +137,15 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
         ("read_side_contract.md:225, where the field is found", "read_side_contract.md:225: no quote"),
         ('see read_side_contract.md:224-225 (step 7), "Find the field"', "read_side_contract.md:224-225: no"),
         (
-            'provenance.md:261-262 "or `{"status": "unstated"}` (a ± whose kind the source does not state)"',
+            'provenance.md:262-263 "or `{"status": "unstated"}` (a ± whose kind the source does not state)"',
             None,
         ),
         (
-            'provenance.md:261-262 "or `{"status": "unstated"}` (a ± whose kind the source does state)"',
-            "is not at lines 261 to 262",
+            'provenance.md:262-263 "or `{"status": "unstated"}` (a ± whose kind the source does state)"',
+            "is not at lines 262 to 263",
         ),
-        ('provenance.md:96 "`{"status": "not_checked"}`, or" and "with who checked"', None),
-        ('provenance.md:96 "`{"status": "not_checked"}`, or `{"result"" and "with who', "no quote"),
+        ('provenance.md:97 "`{"status": "not_checked"}`, or" and "with who checked"', None),
+        ('provenance.md:97 "`{"status": "not_checked"}`, or `{"result"" and "with who', "no quote"),
     ],
 )
 def test_a_citation_that_drifts_fails(text: str, problem: str | None) -> None:

@@ -984,7 +984,7 @@
       ]
     },
     "evidence": {
-      "description": "provenance.md section 4: the quote, or its hash where quotes may not ship, the place and document it was read at, and the copy read.",
+      "description": "provenance.md section 4: the quote, or its hash where quotes may not ship, the locator and document it was read at, and the copy read, with the quote's place in it.",
       "type": "object",
       "properties": {
         "quote": {"type": "string"},
@@ -997,11 +997,59 @@
       "not": {"required": ["quote", "quote_sha256"]}
     },
     "copy": {
-      "description": "The SHA-256 of the copy read, and the date it was retrieved; outside the content hash.",
+      "description": "provenance.md section 4 item 2: the SHA-256 of the copy read, the date it was retrieved, and the quote's place in that copy, the hash of the page-text document it counts in and its spans, present together or not at all (page_text.md section 2); outside the content hash. A place's rules across members (a place only beside a quote or its hash, a range in order and within its text, the boxes and the lines, one span per page, what may lie between two spans) are the record checks' (RC-222).",
       "type": "object",
       "required": ["sha256", "retrieved"],
-      "properties": {"sha256": {"type": "string"}, "retrieved": {"type": "string"}},
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"},
+        "retrieved": {"type": "string"},
+        "page_text": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}(?![\\s\\S])"},
+        "spans": {"type": "array", "minItems": 1, "items": {"anyOf": [{"$ref": "#/$defs/page_span"}, {"$ref": "#/$defs/element_span"}]}}
+      },
+      "dependentRequired": {"page_text": ["spans"], "spans": ["page_text"]},
       "additionalProperties": false
+    },
+    "page_span": {
+      "description": "A span of a place in a PDF's page-text document (page_text.md section 2 items 2 to 5): the page by its position in the copy's file, from 1; the characters of its text; one box per line it touches, for a viewer; and the characters that print the value.",
+      "type": "object",
+      "required": ["page", "characters"],
+      "properties": {
+        "page": {"type": "integer", "minimum": 1},
+        "characters": {"$ref": "#/$defs/character_range"},
+        "boxes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/box"}},
+        "value_characters": {"$ref": "#/$defs/character_range"}
+      },
+      "additionalProperties": false
+    },
+    "element_span": {
+      "description": "A span of a place in an XML file's page-text document (page_text.md section 2 items 2, 3 and 5): the element by its path, the characters of its string value, and the characters that print the value.",
+      "type": "object",
+      "required": ["element", "characters"],
+      "properties": {
+        "element": {"$ref": "#/$defs/element_path"},
+        "characters": {"$ref": "#/$defs/character_range"},
+        "value_characters": {"$ref": "#/$defs/character_range"}
+      },
+      "additionalProperties": false
+    },
+    "character_range": {
+      "description": "[start, end]: Unicode code points counted from 0, end excluded (page_text.md section 2 item 3).",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "integer", "minimum": 0}
+    },
+    "box": {
+      "description": "[x0, y0, x1, y1] in the page's default user space, before its /Rotate (page_text.md section 2 item 4).",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"type": "number"}
+    },
+    "element_path": {
+      "description": "An element's absolute path, every step positioned, a namespaced name as {uri}local (page_text.md section 1 item 9).",
+      "type": "string",
+      "pattern": "^(/(\\{[^}]+\\})?[^/{}\\[\\]]+\\[[1-9][0-9]*\\])+(?![\\s\\S])"
     },
     "review": {
       "description": "Who checked the value against the source, their ORCID, the date, whether they are independent of whoever or whatever extracted it, and the checklist items covered.",

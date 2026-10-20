@@ -360,13 +360,22 @@ class Column(TypedDict):
     index: float
 
 
-class Copy(TypedDict):
-    """
-    The SHA-256 of the copy read, and the date it was retrieved; outside the content hash.
-    """
+CharacterRangeItem: TypeAlias = float
 
-    sha256: str
-    retrieved: str
+
+CharacterRange: TypeAlias = list[CharacterRangeItem]
+"""
+[start, end]: Unicode code points counted from 0, end excluded (page_text.md section 2 item 3).
+"""
+
+
+Box: TypeAlias = list[float]
+"""
+[x0, y0, x1, y1] in the page's default user space, before its /Rotate (page_text.md section 2 item 4).
+"""
+
+
+ElementPath: TypeAlias = str
 
 
 class Review(TypedDict):
@@ -955,17 +964,28 @@ class Locator(TypedDict):
     entry: NotRequired[str]
 
 
-class Evidence(TypedDict):
+class PageSpan(TypedDict):
     """
-    provenance.md section 4: the quote, or its hash where quotes may not ship, the place and document it was
-    read at, and the copy read.
+    A span of a place in a PDF's page-text document (page_text.md section 2 items 2 to 5): the page by its
+    position in the copy's file, from 1; the characters of its text; one box per line it touches, for a
+    viewer; and the characters that print the value.
     """
 
-    quote: NotRequired[str]
-    quote_sha256: NotRequired[str]
-    locator: NotRequired[Locator]
-    document: NotRequired[Document]
-    copy: NotRequired[Copy]
+    page: float
+    characters: CharacterRange
+    boxes: NotRequired[list[Box]]
+    value_characters: NotRequired[CharacterRange]
+
+
+class ElementSpan(TypedDict):
+    """
+    A span of a place in an XML file's page-text document (page_text.md section 2 items 2, 3 and 5): the
+    element by its path, the characters of its string value, and the characters that print the value.
+    """
+
+    element: ElementPath
+    characters: CharacterRange
+    value_characters: NotRequired[CharacterRange]
 
 
 class DerivationInput(TypedDict):
@@ -1112,6 +1132,21 @@ class Source(TypedDict):
     locator: Locator
 
 
+class Copy(TypedDict):
+    """
+    provenance.md section 4 item 2: the SHA-256 of the copy read, the date it was retrieved, and the quote's
+    place in that copy, the hash of the page-text document it counts in and its spans, present together or not
+    at all (page_text.md section 2); outside the content hash. A place's rules across members (a place only
+    beside a quote or its hash, a range in order and within its text, the boxes and the lines, one span per
+    page, what may lie between two spans) are the record checks' (RC-222).
+    """
+
+    sha256: str
+    retrieved: str
+    page_text: NotRequired[str]
+    spans: NotRequired[list[PageSpan | ElementSpan]]
+
+
 class InputSpecimen(TypedDict):
     """
     An input's specimen facts, input being its index in inputs.
@@ -1170,6 +1205,19 @@ class NumericCondition(Based):
 
 
 FieldStatistics: TypeAlias = StatisticsBlock | StatusWithheld
+
+
+class Evidence(TypedDict):
+    """
+    provenance.md section 4: the quote, or its hash where quotes may not ship, the locator and document it was
+    read at, and the copy read, with the quote's place in it.
+    """
+
+    quote: NotRequired[str]
+    quote_sha256: NotRequired[str]
+    locator: NotRequired[Locator]
+    document: NotRequired[Document]
+    copy: NotRequired[Copy]
 
 
 class Derivation(TypedDict):

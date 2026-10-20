@@ -17,6 +17,7 @@ base beside it with the fault's name and place, so that a refusal can be traced 
 
 import copy
 import functools
+import hashlib
 import json
 import re
 from collections.abc import Callable
@@ -169,6 +170,10 @@ NOT_POSITIVE = st.floats(max_value=0.0, allow_nan=False, allow_infinity=False)
 # A whole number, as the reader gives it: a double with no fractional part (`record_format.md` 1 item 6).
 WHOLE = st.integers(0, 10**9).map(float)
 HASHES = st.text(alphabet="0123456789abcdef", min_size=64, max_size=64).map(lambda digits: "sha256:" + digits)
+# A copy's hash, `sha256:` and 64 lowercase hexadecimal digits (`provenance.md` section 4 item 2): the text
+# drawn there before the form was fixed, mapped to its digest, so that the choices a search makes, and so its
+# recorded kill points, do not move.
+COPY_HASHES = TEXT.map(lambda text: "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest())
 RECORD_IDS = st.from_regex(r"[a-z0-9_]{1,8}/[A-Za-z0-9_.-]{1,8}", fullmatch=True)
 VERSIONS = st.tuples(*[st.integers(0, 99)] * 3).map(lambda parts: ".".join(map(str, parts)))
 
@@ -602,7 +607,7 @@ def evidence_record(draw: st.DrawFn, plan: Plan) -> Json:
     if optional(draw, plan, "provenance"):
         found["document"] = draw(documents())
     if optional(draw, plan, "provenance"):
-        found["copy"] = {"sha256": draw(TEXT), "retrieved": draw(TEXT)}
+        found["copy"] = {"sha256": draw(COPY_HASHES), "retrieved": draw(TEXT)}
     return found
 
 

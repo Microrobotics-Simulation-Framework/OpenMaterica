@@ -424,4 +424,9 @@ format characters, and lists the 25 `White_Space` code points, which are not tho
 RC-032 compares a `quote` by the same normalised form (`provenance.md` section 4 item 4; RC-033).
 `copy.sha256` is written as `sha256:` and 64 lowercase hexadecimal digits (RC-031). A page-text document's
 schema version follows the version rule (`record_format.md` section 8), and its JSON the strict rules
-(`record_format.md` section 1). No reader change: a read never checks `copy`.
+(`record_format.md` section 1). No reader change: a read never checks `copy`. The writer schema's `copy` takes
+the place, `page_text` and `spans`, present together or not at all, and `sha256`'s form; `page_text.json`
+gives a page-text document's shape, its rules across members being RC-220's. The conformance inputs and the
+example record that wrote a copy's hash as bare digits now write the prefix: eleven plain-read fill-ins and
+`examples/records/human_plasma.json`. `copy` is outside the content hash, so no hash or pin moves. Two inputs
+of the hash suite keep their bare digits: they are hash vectors, which the writer schema does not judge.

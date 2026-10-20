@@ -120,7 +120,7 @@
                   "row": "conformance fixture row"
                 },
                 "copy": {
-                  "sha256": "3a285061746557f23b71d97ddcbb1a51d01b0cbe17c7522c3829ca81e21d3de2",
+                  "sha256": "sha256:3a285061746557f23b71d97ddcbb1a51d01b0cbe17c7522c3829ca81e21d3de2",
                   "retrieved": "2026-10-15"
                 },
                 "document": {
@@ -235,7 +235,7 @@
                   "row": "conformance fixture row"
                 },
                 "copy": {
-                  "sha256": "3a285061746557f23b71d97ddcbb1a51d01b0cbe17c7522c3829ca81e21d3de2",
+                  "sha256": "sha256:3a285061746557f23b71d97ddcbb1a51d01b0cbe17c7522c3829ca81e21d3de2",
                   "retrieved": "2026-10-15"
                 },
                 "document": {

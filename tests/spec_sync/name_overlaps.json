@@ -247,6 +247,17 @@
         "quote": "An evaluator returns, beside the value, `in_range`: whether its condition lies inside the form's range",
         "what": "Section 7 item 1: in_range has one meaning, true inside the range and false outside it; the README's table evaluation case gives each entry its value."
       }
+    },
+    {
+      "rule": "A",
+      "names": ["document_type"],
+      "meanings": 2,
+      "reason": "One fact, the kind of an OpenMaterica document that is not a record: a scene document's, an engine crosswalk's or a page-text document's. Each kind's schema holds its own token alone, and only the page-text document's schema is written yet, so its token list, page_text, meets the other kinds' tokens in the specification's examples.",
+      "safeguard": {
+        "document": "docs/specification/record_format.md",
+        "quote": "An object with a `document_type` member and no `record_type` member is a scene document (`geometry.md`), an engine crosswalk (`usd_binding.md` section 10.1) or another OpenMaterica document, not a record",
+        "what": "Section 3 item 2 (PR-006): document_type names the document's kind, whichever kind it is, and page_text.md section 1 item 1 gives a page-text document's."
+      }
     }
   ]
 }

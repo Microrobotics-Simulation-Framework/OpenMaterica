@@ -1279,7 +1279,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "unreadable_review_refuses": Mutant(
         "a review the reader cannot read refuses the field",
-        "provenance.md:119-125",
+        "provenance.md:120-126",
         {"check_provenance": unreadable_review_refused},
     ),
     "null_read_as_absent": Mutant(
@@ -1296,7 +1296,7 @@ MUTANTS: Mapping[str, Mutant] = {
         {"check_uncertainty": unchecked},
     ),
     "derivation_unchecked": Mutant(
-        "a derived value's derivation not checked", "provenance.md:200-204", {"check_derivation": unchecked}
+        "a derived value's derivation not checked", "provenance.md:201-205", {"check_derivation": unchecked}
     ),
     "population_level_checks_stop_at_a_missing_member": Mutant(
         "a population level missing a member has its `level` and `within` left unchecked",
@@ -1312,7 +1312,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "every_status_object_an_unstated_kind": Mutant(
         "a `plus_minus` entry whose `stated_as` holds any status object counted as of unstated kind",
-        "provenance.md:261-262",
+        "provenance.md:262-263",
         {"check_plus_minus": every_status_object_an_unstated_kind},
         survives="no case holds a `stated_as` of another status token beside an entry of a stated kind",
     ),
@@ -1324,7 +1324,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "input_specimens_optional": Mutant(
         "a derivation without `input_specimens` read",
-        "provenance.md:200",
+        "provenance.md:201",
         {"check_input_specimens": input_specimens_optional},
         survives="every derivation in the cases holds `input_specimens`",
     ),
@@ -1493,7 +1493,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "review_returned_as_its_result": Mutant(
         "a known review returned as its `result` alone",
-        "provenance.md:119-122",
+        "provenance.md:120-123",
         {"review_read": review_result_alone},
     ),
     "unit_returned_without_its_reason": Mutant(
@@ -1521,19 +1521,19 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "donor_age_of_neither_accepted": Mutant(
         "a `donor_age` holding neither `value` nor `range` accepted",
-        "provenance.md:294",
+        "provenance.md:295",
         {"check_fact": donor_age_of_neither_accepted},
         survives="no case holds a `donor_age` with neither `value` nor `range`",
     ),
     "review_of_both_shapes_read_as_its_status": Mutant(
         "a review holding both `status` and `result` read as its status object",
-        "provenance.md:123",
+        "provenance.md:124",
         {"review_read": both_shapes_read_as_the_status_object},
         survives="no case holds a review holding both `status` and `result`",
     ),
     "reviewed_review_keeps_a_status_objects_members": Mutant(
         "a reviewed review returned with a status object's members, its `reason` among them",
-        "provenance.md:96",
+        "provenance.md:97",
         {"review_read": reviewed_with_a_status_objects_members},
         survives="no case holds a reviewed review beside a `reason`",
     ),

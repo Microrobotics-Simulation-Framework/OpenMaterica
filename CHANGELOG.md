@@ -37,22 +37,25 @@ every family entry goes in `families/CHANGELOG.md`.
   declaration, never the label's: an implied condition that supplies a shear rate (PR-316), or a declaration that
   covers the reason. No rule widens a label beyond its stated `shear_rate` condition.
 - Page-text documents and the place of a quote in a copy (maintainer, 2026-10-20;
-  `docs/specification/page_text.md`; `changes.md`). A checker, which reads only
-  JSON, reads a copy's text from a page-text document: the text of one copy as one named extraction gave it, a
-  PDF's visible text per page with its doubtful ranges (two readings compared glyph by glyph), reading-order
-  jumps, furniture and raised and lowered text, or an XML file's text and elements with table cells' columns;
-  it names its readings, is identified by its RFC 8785 hash and is never published. A quote's place in a copy
-  (pages or element paths, character ranges counted in code points, the value's characters, and, for a PDF,
-  user-space boxes for a viewer) sits in the evidence's `copy`, outside the content hash, with the hash of the
-  page-text document it counts in; across a page break it leaves out only whitespace and furniture, and a
-  stamped copy's place never ships. RC-032 compares a quote with that place alone, under every reading of its
-  line-end hyphens, reads the value's numbers where the place marks the value, fails a value marked in an XML
-  table cell outside the locator's column, and reports `not_checked`, never a pass, where the place is
-  flagged, a PDF's readings are fewer than two, or the located text is doubtful, crosses a jump, or holds a
-  code point unassigned or private-use in the checker's Unicode database. The normalisation of `quote_sha256`,
-  which a `quote`'s comparison now shares, removes invisible format characters first and lists the 25
-  `White_Space` code points (`provenance.md` section 4 item 4). `copy.sha256` is written as `sha256:` and 64
-  lowercase hexadecimal digits. No reader change: a read never checks `copy`.
+  `docs/specification/page_text.md`; `changes.md`). A checker, which reads only JSON, reads a copy's text from
+  a page-text document: the text of one copy as one named extraction gave it, a PDF's visible text per page
+  with its doubtful ranges (two readings compared glyph by glyph), reading-order jumps, furniture and raised
+  and lowered text, or an XML file's text and elements with table cells' columns; it names its readings, is
+  identified by its RFC 8785 hash and is never published. A quote's place in a copy (pages or element paths,
+  character ranges counted in code points, the value's characters, and, for a PDF, user-space boxes for a
+  viewer) sits in the evidence's `copy`, outside the content hash, with the hash of the page-text document it
+  counts in; across a page break it leaves out only whitespace and furniture, and a stamped copy's place never
+  ships. RC-032 compares a quote with that place alone, under every reading of its line-end hyphens, reads the
+  value's numbers where the place marks the value, fails a value marked in an XML table cell outside the
+  locator's column, and reports `not_checked`, never a pass, where the place is flagged, a PDF's readings are
+  fewer than two, or the located text is doubtful, crosses a jump, or holds a code point unassigned or
+  private-use in the checker's Unicode database. The normalisation of `quote_sha256`, which a `quote`'s
+  comparison now shares, removes invisible format characters first and lists the 25 `White_Space` code points
+  (`provenance.md` section 4 item 4). `copy.sha256` is written as `sha256:` and 64 lowercase hexadecimal
+  digits. No reader change: a read never checks `copy`. The writer schema's `copy` takes the place and
+  `sha256`'s form, and `schema/0.1/page_text.json` gives a page-text document's shape. The eleven plain-read
+  fill-in inputs and `examples/records/human_plasma.json` write a copy's hash with the prefix; no content hash
+  or pin moves.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from
