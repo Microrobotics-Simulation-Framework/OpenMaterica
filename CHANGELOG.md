@@ -335,6 +335,27 @@ change before 0.1.0. The entries below are everything since 0.1.0.dev1.
   of the 24 broken evaluators the best file is the same under each claim. The clause that a difference no
   tolerance passes counts as beyond the cap is ratified as written, and the 13 files named beside no broken
   evaluator keep no cap.
+- On Python 3.11 and 3.12, every test runs inside a function with a large frame (`in_a_large_frame`,
+  `tests/conftest.py`), which removes about half of 3.11's extra time on the mutant searches and the audit
+  controls, and all of 3.12's. CPython 3.11 and 3.12 keep the frames of running calls in chunks of 16 KiB and
+  unmap a chunk as soon as the call that opened it returns, so a call repeated across a chunk's edge maps and
+  unmaps a chunk at every call (CPython gh-142183: 3.13 and 3.14, by a backport of March 2026, and 3.15 keep a
+  spare chunk, so from 3.13 on the large frame is not applied; 3.11 and 3.12 take security fixes only).
+  Hypothesis's draws do that: the controls job's tests (`--property-controls only`) made 70.8 million minor page
+  faults on 3.11 and spent 205 s of CPU in the kernel, against 1.4 million and 4.8 s on 3.15. The large frame is
+  given a chunk of its own, 1 MiB, and the test's frames run in the half it leaves, meeting no edge. On 8 local
+  workers, one to a performance core (2026-10-20; local figures, CI's share is measured on the pull request's
+  run), the CPU time of those tests went from 1,896 s to 1,632 s on 3.11 and, on part of them (the result's
+  mutant searches and the audit controls), 3.12 went from 1,400 s to 1,145 s, level with 3.13's 1,157 s; 3.11's
+  excess over 3.15 went from 1.33x to 1.15x. Every kill point, outcome and feature-audit count was the same with
+  it and without, on 3.11 and on 3.15 (`scripts/gen_kill_counts.py --against` on each run, and the counts given
+  to each of the 949 tests' audits compared). The rest of 3.11's excess is its interpreter, spread over
+  Hypothesis's own functions. On CI 3.11 took about 1.9 times 3.15's time; how much of that this removes there is
+  known only once CI has run it. Explain-phase tracing, which runs under `sys.settrace` before 3.12, was the
+  cause first suspected and is not one: in the result's mutant searches and the audit controls it traced none of
+  about 114,000 test cases, and forcing it off left their time within its run-to-run spread.
+  `tests/unit/test_frame_room.py` holds every test on 3.11 and 3.12 to the large frame and shows the chunk edge it
+  removes, and on 3.13 and later asserts that no test runs in it.
 
 ### Schema
 - `read_request.json`'s acceptances, a JSON object each until now, take the shapes of the kinds a read takes
