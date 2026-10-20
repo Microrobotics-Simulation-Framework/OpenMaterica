@@ -3384,8 +3384,10 @@ MEASURED_ON_CI = {
     },
 }
 # `relations` at `deep`: 108 to 140 minutes, from its `ci` run's times by module (S2a-4's review B, L5), until
-# a manual run measures it.
-ESTIMATED_ON_CI = {"deep": {"relations": 140.0}}
+# a manual run measures it. `alternatives` at `deep`: ten times the slower part's pytest wall time at `ci`,
+# 217.96 s in run 39404674681 (`alternatives_2of2`; `alternatives_1of2` took 196.80 s), 36.3 minutes, until a
+# manual run measures it.
+ESTIMATED_ON_CI = {"deep": {"relations": 140.0, "alternatives": 36.3}}
 PROFILE_EVENTS = {"ci": "pull_request", "deep": "schedule"}
 
 
@@ -3439,8 +3441,14 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
             "hypothesis (deep, relations_1of2) is interrupted at 177 minutes, less than twice its 140 "
             "estimated",
         ),
+        (
+            "|| startsWith(matrix.shard, 'alternatives') && 90",
+            "",
+            "hypothesis (deep, alternatives_1of2) is interrupted at 42 minutes, less than twice its 36.3 "
+            "estimated",
+        ),
     ],
-    ids=["records-deep-at-45", "writer-ci-at-12", "relations-deep-at-180"],
+    ids=["records-deep-at-45", "writer-ci-at-12", "relations-deep-at-180", "alternatives-deep-clause-gone"],
 )
 def test_the_margin_check_can_fail(old: str, new: str, problem: str) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
