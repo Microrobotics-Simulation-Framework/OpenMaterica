@@ -1,0 +1,33 @@
+{
+  "case": "RC-032",
+  "variant": "hyphen_not_folded",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc032_hyphen_not_folded.json"
+    ],
+    "page_texts": [
+      "page_text_xml_typography.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-032",
+        "document": "rc032_hyphen_not_folded.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032"
+    ]
+  }
+}

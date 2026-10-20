@@ -1,0 +1,34 @@
+{
+  "case": "RC-220",
+  "variant": "line_ending_in_a_format_character",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc220_line_ending_in_a_format_character.json"
+    ],
+    "page_texts": [
+      "page_text_pdf_line_ending_in_a_format_character.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-032",
+        "document": "rc220_line_ending_in_a_format_character.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032",
+      "RC-220"
+    ]
+  }
+}

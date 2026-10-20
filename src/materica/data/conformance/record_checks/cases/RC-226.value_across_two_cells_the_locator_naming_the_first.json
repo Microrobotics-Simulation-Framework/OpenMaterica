@@ -1,0 +1,33 @@
+{
+  "case": "RC-226",
+  "variant": "value_across_two_cells_the_locator_naming_the_first",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc226_value_across_two_cells_the_locator_naming_the_first.json"
+    ],
+    "page_texts": [
+      "page_text_xml.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-032",
+        "document": "rc226_value_across_two_cells_the_locator_naming_the_first.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032"
+    ]
+  }
+}

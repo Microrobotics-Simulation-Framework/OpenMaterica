@@ -20,7 +20,8 @@ from materica.core.jsonio import JsonValue
 from materica.core.vocabulary import VOCABULARY
 from scripts.freeze_schema import misplaced_ids
 from scripts.gen_vocabulary import SPECIFICATION, codes, only_code, outside_parentheses, table
-from tests.spec_sync.schemas import BASE, RESULT_TWINS, SCHEMA, as_returned, validator
+from tests.spec_sync.schemas import BASE, PACKAGE, RESULT_TWINS, SCHEMA, agreed, as_returned, validator
+from tests.verdicts import Json
 
 WRITER = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
 CASE = json.loads((SCHEMA / "case.json").read_text(encoding="utf-8"))
@@ -75,6 +76,84 @@ def test_a_page_text_member_left_out_of_the_schema_is_found() -> None:
     del schema["$defs"]["page"]["properties"]["furniture"]
     schema["required"].remove("readings")
     assert len(page_text_table_problems(schema)) == 2
+
+
+# The record-check suite's fixtures against the schemas a page-text document and a place are written to
+# (`page_text.json`; `record.writer.json`'s `copy`, whose place a curation tool writes): for each shape those
+# schemas state (the two kinds, a page's text, the copy hash's and an element path's patterns, a place's two
+# members together, a span's two kinds), an instance taken and one refused.
+FIXTURES = PACKAGE / "data" / "conformance" / "record_checks" / "inputs"
+EVIDENCE = ("body", "sections", "bulk", "fields", "density", "provenance", "evidence")
+DOCUMENTS_TAKEN = (
+    "page_text_pdf.json",
+    "page_text_xml.json",
+    "page_text_xml_typography.json",
+    "page_text_pdf_tab.json",
+)
+DOCUMENTS_REFUSED = (
+    "page_text_pdf_members_of_both_kinds.json",
+    "page_text_pdf_carriage_return.json",
+    "page_text_pdf_copy_hash_bare.json",
+    "page_text_xml_path_without_a_position.json",
+)
+PLACES_TAKEN = ("rc032_quote_at_its_place.json", "rc032_xml_quote_at_its_place.json")
+PLACES_REFUSED = (
+    "rc222_span_with_page_and_element.json",
+    "rc222_boxes_beside_an_element.json",
+    "rc222_page_text_without_spans.json",
+    "rc031_copy_hash_bare.json",
+)
+
+
+def fixture(name: str) -> JsonValue:
+    return cast(JsonValue, json.loads((FIXTURES / name).read_text(encoding="utf-8")))
+
+
+def evidence_copy(name: str) -> JsonValue:
+    found = fixture(name)
+    for member in EVIDENCE:
+        found = cast(dict[str, JsonValue], found)[member]
+    return cast(dict[str, JsonValue], found)["copy"]
+
+
+def misjudged_fixtures(page_text: Json, writer: Json) -> set[str]:
+    """The fixtures judged otherwise than above, with `page_text` and `writer` in place of the package's
+    files: a document by `page_text.json`, and a record's place by the writer's `copy`."""
+    files = (page_text, writer)
+    document_taken, copy_taken = (
+        agreed("page_text.json", files),
+        agreed("record.writer.json#/$defs/copy", files),
+    )
+    judged = [(name, document_taken(fixture(name)), True) for name in DOCUMENTS_TAKEN]
+    judged += [(name, document_taken(fixture(name)), False) for name in DOCUMENTS_REFUSED]
+    judged += [(name, copy_taken(evidence_copy(name)), True) for name in PLACES_TAKEN]
+    judged += [(name, copy_taken(evidence_copy(name)), False) for name in PLACES_REFUSED]
+    return {name for name, taken, should in judged if taken != should}
+
+
+def test_the_fixtures_documents_and_places_are_judged_by_the_schemas() -> None:
+    assert misjudged_fixtures(PAGE_TEXT, WRITER) == set()
+
+
+def test_schemas_stating_less_or_more_misjudge_the_fixtures() -> None:
+    """The control: each shape loosened, every refused fixture is taken; an element path's pattern tightened,
+    the XML documents and the XML place are refused."""
+    page_text, writer = copy.deepcopy(PAGE_TEXT), copy.deepcopy(WRITER)
+    del page_text["anyOf"]
+    del page_text["$defs"]["page"]["properties"]["text"]["pattern"]
+    page_text["properties"]["copy"]["properties"]["sha256"] = {"type": "string"}
+    del writer["$defs"]["element_path"]["pattern"]
+    del writer["$defs"]["copy"]["dependentRequired"]
+    writer["$defs"]["copy"]["properties"]["sha256"] = {"type": "string"}
+    writer["$defs"]["copy"]["properties"]["spans"]["items"] = {"type": "object"}
+    assert misjudged_fixtures(page_text, writer) == {*DOCUMENTS_REFUSED, *PLACES_REFUSED}
+    tightened = copy.deepcopy(WRITER)
+    tightened["$defs"]["element_path"]["pattern"] = "^/x"
+    assert misjudged_fixtures(PAGE_TEXT, tightened) == {
+        "page_text_xml.json",
+        "page_text_xml_typography.json",
+        "rc032_xml_quote_at_its_place.json",
+    }
 
 
 def test_the_request_table_is_the_request_schemas() -> None:
@@ -254,7 +333,7 @@ def test_the_suites_are_the_readmes() -> None:
 
 
 def test_the_operations_are_the_readmes() -> None:
-    named = re.findall(r'\{"operation": "([a-z_]+)"', document("README.md"))
+    named = re.findall(r'\{"operation": "([a-z][a-z0-9_]*)"', document("README.md"))
     assert sorted(named) == sorted(CASE["$defs"]["case_operation"]["properties"]["operation"]["enum"])
 
 

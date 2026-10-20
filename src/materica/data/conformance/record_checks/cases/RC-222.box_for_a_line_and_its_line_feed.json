@@ -1,0 +1,34 @@
+{
+  "case": "RC-222",
+  "variant": "box_for_a_line_and_its_line_feed",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc222_box_for_a_line_and_its_line_feed.json"
+    ],
+    "page_texts": [
+      "page_text_pdf.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-032",
+        "document": "rc222_box_for_a_line_and_its_line_feed.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032",
+      "RC-222"
+    ]
+  }
+}

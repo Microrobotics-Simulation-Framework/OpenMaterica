@@ -1,0 +1,246 @@
+{
+  "page_text_schema_version": "0.1.0",
+  "document_type": "page_text",
+  "document": {
+    "identifier": "https://example.org/conformance-fixture-paper",
+    "version": "version_of_record"
+  },
+  "copy": {
+    "sha256": "sha256:b4b61256e469f858d98611618f7fd83fa486f3c8502cedc2d9f5be3e0a94cff2"
+  },
+  "text_extraction": "conformance fixture: an illustrative text extraction, 1.0.0",
+  "readings": [
+    "conformance fixture: reading A, 1.0.0",
+    "conformance fixture: reading B, 1.0.0"
+  ],
+  "pages": [
+    {
+      "page": 1,
+      "text": "Densities of soft tissues\nA. Smith and B. Jones\n1",
+      "doubtful": [],
+      "jumps": [
+        47
+      ],
+      "furniture": [
+        [
+          48,
+          49
+        ]
+      ],
+      "raised": [
+        [
+          48,
+          50
+        ]
+      ],
+      "lowered": []
+    },
+    {
+      "page": 2,
+      "text": "Smith et al. 2\nThe liver density was not measured in this study.\nSamples were kept counterproduc-\ntively warm, and electromagnetically-\nactuated mixers ran at 5-\n10 K above ambient over a range -\nwide band of rates, by electro‐\nmagnetic and electro−\nstatic drives, all counterproduc\u00ad\ntively slow.\n2",
+      "doubtful": [],
+      "jumps": [
+        14,
+        296
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          297,
+          298
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 3,
+      "text": "Smith et al. 3\nTable 2\nTissue Density (g cm-3)\nLiver 1.06 ± 0.02\nSpleen 1.05 ± 0.01\nEach value is a mean of five samples, which were again counterproduc-\na Measured at 310 K.\n3",
+      "doubtful": [],
+      "jumps": [
+        14,
+        83,
+        153,
+        174
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          154,
+          174
+        ],
+        [
+          175,
+          176
+        ]
+      ],
+      "raised": [
+        [
+          43,
+          45
+        ],
+        [
+          154,
+          155
+        ]
+      ],
+      "lowered": []
+    },
+    {
+      "page": 4,
+      "text": "Smith et al. 4\ntively cooled before the next run.\n4",
+      "doubtful": [],
+      "jumps": [
+        14,
+        49
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          50,
+          51
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 5,
+      "text": "Smith et al. 5\nTable 3: kidney and heart, a full page of results\nKidney 1.05 ± 0.02\n5",
+      "doubtful": [],
+      "jumps": [
+        14,
+        83
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          84,
+          85
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 6,
+      "text": "Smith et al. 6\nThe heart samples were measured counterproduc-\n6",
+      "doubtful": [],
+      "jumps": [
+        14,
+        61
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          62,
+          63
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 7,
+      "text": "7",
+      "doubtful": [],
+      "jumps": [],
+      "furniture": [
+        [
+          0,
+          1
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 8,
+      "text": "Smith et al. 8\ntively late in the series.\n8",
+      "doubtful": [],
+      "jumps": [
+        14,
+        41
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          42,
+          43
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 9,
+      "text": "Smith et al. 9\nDoubtful: the density was 1.04 g cm-3.\nUnmapped: the density was 1.0� g cm-3.\nPrivate: the density was 1.03 \ue000 0.01.\nNoncharacter: the density was 1.02 \ufffe 0.01.\nUnassigned: the density was 1.01 \ud900\udc00 0.01.\nColumn one ends here\ncolumn two starts here\nAdjacent: the density was 1.00 g cm-3.\n9",
+      "doubtful": [
+        [
+          41,
+          45
+        ],
+        [
+          259,
+          269
+        ]
+      ],
+      "jumps": [
+        14,
+        235,
+        297
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          298,
+          299
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 10,
+      "text": "Smith et al. 10\none-\ntwo-\nthree-\nfour-\nfive-\nsix-\nseven-\neight-\nnine-\nten\n10",
+      "doubtful": [],
+      "jumps": [
+        15,
+        73
+      ],
+      "furniture": [
+        [
+          0,
+          15
+        ],
+        [
+          74,
+          76
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    }
+  ]
+}

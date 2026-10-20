@@ -1,0 +1,30 @@
+{
+  "case": "RC-032",
+  "variant": "no_page_text_given",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc032_quote_absent_at_its_place.json"
+    ]
+  },
+  "expected": {
+    "items": [],
+    "listing": [
+      {
+        "item": "RC-032",
+        "document": "rc032_quote_absent_at_its_place.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032"
+    ]
+  }
+}

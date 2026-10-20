@@ -1,0 +1,33 @@
+{
+  "case": "RC-032",
+  "variant": "ligature_mapped_by_nfkc",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc032_ligature_mapped_by_nfkc.json"
+    ],
+    "page_texts": [
+      "page_text_xml_typography.json"
+    ]
+  },
+  "expected": {
+    "items": [],
+    "listing": [
+      {
+        "item": "RC-032",
+        "document": "rc032_ligature_mapped_by_nfkc.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032"
+    ]
+  }
+}

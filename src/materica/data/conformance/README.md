@@ -11,6 +11,7 @@ file or the ones beside it differ. These files only help you find your way.
 | `plain_read/` | plain read | `read_side_contract.md`, `record_format.md`, `provenance.md`, `uncertainty.md` | a read of one field of one record: the request's own check; steps 1 to 5 of the read (resolve, version, validate, hash, type); steps 6 to 13, which read the value (field, form and tokens, units, conditions, origin, `want`); and `list_records` |
 | `hash/` | hash (HS) | `record_format.md` section 9; `read_side_contract.md` steps 1 and 4 | the content hash, as an operation on any JSON value, and the reads of a reader that recomputes it |
 | `table_evaluation/` | table evaluation (TE) | `read_side_contract.md` section 7; `record_format.md` section 6 | what a consumer's own evaluator of a table returns: the value, `in_range`, the derivative by side, and the refusal at or across an edge, at each precision |
+| `record_checks/` | record checks (RC) | `page_text.md`; `provenance.md` section 4 | what a checker of records finds and lists: page-text documents, the place of a quote in a copy, the comparison of a quote with its place, the copy hash's form, and the `quote_sha256` vectors |
 
 The tree grows with the implementation. The plain-read cases cover the read through step 13 for the forms
 0.1.0's fields use: constant, table, interval, composition and evidence, and reads under an extrapolation.
@@ -110,6 +111,9 @@ where the text leaves an answer open, no arm is written (the suite's `README.md`
 The cases of tables and extrapolations (S3) were written the same way, from the text alone, before any code
 for tables existed. Their content hashes, pins and quotes are checked as above; no independent pass has
 checked their answers yet.
+
+The record-check cases (C0) were written the same way, before any code that runs them; `record_checks/README.md`
+says how their hashes and answers were checked, and what they cannot show.
 
 The scripts that first generated these files are not part of the repository. The files are the source.
 

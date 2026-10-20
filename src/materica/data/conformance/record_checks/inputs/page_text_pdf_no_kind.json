@@ -1,0 +1,16 @@
+{
+  "page_text_schema_version": "0.1.0",
+  "document_type": "page_text",
+  "document": {
+    "identifier": "https://example.org/conformance-fixture-paper",
+    "version": "version_of_record"
+  },
+  "copy": {
+    "sha256": "sha256:b4b61256e469f858d98611618f7fd83fa486f3c8502cedc2d9f5be3e0a94cff2"
+  },
+  "text_extraction": "conformance fixture: an illustrative text extraction, 1.0.0",
+  "readings": [
+    "conformance fixture: reading A, 1.0.0",
+    "conformance fixture: reading B, 1.0.0"
+  ]
+}

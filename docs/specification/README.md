@@ -178,8 +178,8 @@ variants whose `claims` agree with the suites it is given, and reports the other
 those that passed or failed. A case passes when at least one of its variants ran, every variant that ran
 passed, and none failed; a case none of whose variants ran is not run, and never counts as passed.
 
-**Operations.** Two kinds of plain-read and hash case are not reads, and name an `operation` in `request`.
-Both give a result shaped as `read_side_contract.md` section 2 defines:
+**Operations.** Two kinds of plain-read and hash case, and one kind of record-check case, are not reads, and
+name an `operation` in `request`. Each gives a result shaped as `read_side_contract.md` section 2 defines:
 - `{"operation": "content_hash"}` takes the JSON file `inputs.value` names (one file name), reads it by
   `record_format.md` section 1 item 6, checks no envelope, and gives the content hash of its value, whatever
   that value's JSON type (top-level members are removed only from an object) (`record_format.md` section 9) as
@@ -189,7 +189,10 @@ Both give a result shaped as `read_side_contract.md` section 2 defines:
   `value` the `{"id", "version"}` of exactly those sources that are candidates (`read_side_contract.md`
   section 3, step 1) and pass steps 2, 3 and 5 on their own, compared as a set. It says nothing of the other
   sources: sources that did not parse, are not candidates or fail those steps, set-aside documents and records
-  of a type the reader cannot read among them, are not listed (`record_format.md` section 3) (PR-006).
+  of a type the reader cannot read among them, are not listed (`record_format.md` section 3) (PR-006);
+- `{"operation": "quote_sha256", "text": "..."}`, a record-check case's, gives the `quote_sha256` of the
+  string `text` (`provenance.md` section 4 item 4) as `value`, with the status `met` and no reason. The vectors
+  of RC-033 are given this way.
 
 A **table evaluation case** (`read_side_contract.md` section 7) names `{"operation": "evaluate", "form":
 "table", "table": <table>, "at": [<axis values>]}` in `request`, `<table>` being a table as `record_format.md`
@@ -248,11 +251,21 @@ Three kinds of case take other inputs. Each names the schema files it passes in 
   written and their values, or the reasons the adapter refused. A build-check case of an engine model
   (BC-039 to BC-041) names the same inputs and expects the build's results.
 
-A **record-check case** names its records in `inputs.records`, with the path each is given from where a rule
-needs one (RC-121), and has no `request`. `expected.items` lists the findings and `expected.listing` the facts
-the check lists without failing (an inadmissible ensemble member, say: `uncertainty.md` section 2), each as
-`{"item": "<the rule's case id>", "document", "pointer"}`, both compared as sets. A finding fails the check; a
-listing never does.
+A **record-check case** names its records in `inputs.records`, with the path each is given from where a rule needs
+one (RC-121), and the page-text documents it gives the checker in `inputs.page_texts` (`page_text.md` section 3
+item 1), and has no `request` unless it names a `quote_sha256` operation. `expected.items` lists the findings and
+`expected.listing` the facts the check lists without failing (an inadmissible ensemble member, say:
+`uncertainty.md` section 2), each as `{"item": "<the rule's case id>", "document", "pointer"}`, `document` naming
+an input by its file name and `pointer` a JSON pointer into it, both compared as sets. A finding fails the check;
+a listing never does. Where `compare.rules_compared` lists case ids, only the findings and listed facts of those
+rules are compared, so that a case of one rule does not rest on another's findings. The comparison of a quote with
+its place (`page_text.md` section 3) gives one report per quote under RC-032, at the quote's evidence, whichever
+item of that section decides it: the check's failure, of either half, as a finding; else `not_checked`, of either
+half, as a listing; and a pass as neither. A place that `page_text.md` section 2 flags is a finding of RC-222 at
+the evidence's `copy`, and a page-text document that RC-220 or RC-221 flags is one at the document itself, its
+pointer empty. A page-text document given among `inputs.records` stands for one found in a library (RC-221).
+RC-031 flags a `copy.sha256` not of its form at that member, and evidence without the document's identity and
+version at the evidence.
 
 A **sampling case** may name `{"operation": "transform_draws", "normals": [...], "uniforms": [...]}` in
 `request`. The runner maps the given standard normals and uniforms through the record's structure (a

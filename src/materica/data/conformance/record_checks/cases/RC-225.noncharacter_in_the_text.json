@@ -1,0 +1,33 @@
+{
+  "case": "RC-225",
+  "variant": "noncharacter_in_the_text",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc225_noncharacter_in_the_text.json"
+    ],
+    "page_texts": [
+      "page_text_pdf.json"
+    ]
+  },
+  "expected": {
+    "items": [],
+    "listing": [
+      {
+        "item": "RC-032",
+        "document": "rc225_noncharacter_in_the_text.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032"
+    ]
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "schema_version": "0.1.0",
+  "record_type": "material",
+  "id": "conformance/quote_fixture",
+  "version": "1.0.0",
+  "name": "Quote check (conformance fixture)",
+  "licence": {
+    "values": "CC0-1.0",
+    "evidence": "excluded"
+  },
+  "content_hash": "sha256:73087eed7be78d4ca85cc48d2511a0aa01755d36c2272d57aec713103bdda21b",
+  "card": "conformance fixture: illustrative values, not a measurement",
+  "body": {
+    "sections": {
+      "bulk": {
+        "fields": {
+          "density": {
+            "form": "constant",
+            "unit": "kg/m3",
+            "value": 1060.0,
+            "conditions": {
+              "temperature": {
+                "value": 310.15,
+                "unit": "K",
+                "basis": "stated"
+              },
+              "density_kind": {
+                "token": "apparent",
+                "basis": "stated"
+              }
+            },
+            "statistics": {
+              "central": "stated",
+              "n_specimens": {
+                "status": "unstated"
+              },
+              "n_donors": {
+                "status": "not_applicable"
+              },
+              "mean": {
+                "status": "unstated"
+              },
+              "sd": {
+                "status": "unstated"
+              },
+              "min": {
+                "status": "unstated"
+              },
+              "max": {
+                "status": "unstated"
+              },
+              "distribution": {
+                "status": "unstated"
+              },
+              "basis": {
+                "status": "not_applicable"
+              },
+              "represents": {
+                "status": "unstated"
+              },
+              "dispersion": "not_reported",
+              "relative_uncertainty": {
+                "status": "none"
+              },
+              "expanded_uncertainty": {
+                "status": "none"
+              }
+            },
+            "provenance": {
+              "origin": "measured_by_source",
+              "source": {
+                "key": "conformance_fixture_paper",
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-paper",
+                  "version": "version_of_record"
+                },
+                "locator": {
+                  "type": "table",
+                  "label": "Table 2",
+                  "page": 3,
+                  "column": {
+                    "header": "Density (g cm-3)",
+                    "index": 2
+                  },
+                  "row": "liver"
+                }
+              },
+              "extraction": {
+                "method": "table",
+                "source_unit": "g/cm3",
+                "conversion": "multiplied by 1000",
+                "text_extraction": "conformance fixture: an illustrative text extraction, 1.0.0"
+              },
+              "evidence": {
+                "quote": "was discarded.",
+                "locator": {
+                  "type": "table",
+                  "label": "Table 2",
+                  "column": {
+                    "header": "Density (g cm-3)",
+                    "index": 3
+                  },
+                  "row": "liver"
+                },
+                "document": {
+                  "identifier": "https://example.org/conformance-fixture-paper",
+                  "version": "version_of_record"
+                },
+                "copy": {
+                  "sha256": "sha256:9977ae460c7c5c22180b0bb60765ea31bcabe07b1751f89db09cea16304c8a32",
+                  "retrieved": "2026-10-20",
+                  "page_text": "sha256:96a6d9b4814ce59d30d6cee8ba1e98aa70f57b3893844c112191938c642a55f6",
+                  "spans": [
+                    {
+                      "element": "/article[1]/body[1]/sec[1]/p[2]",
+                      "characters": [
+                        16,
+                        31
+                      ]
+                    }
+                  ]
+                }
+              },
+              "assistance": {
+                "status": "none"
+              },
+              "review": {
+                "status": "not_checked",
+                "reason": "conformance fixture: illustrative values, not a measurement"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

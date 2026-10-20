@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "plain",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "Liver 1.06 ± 0.02"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:0b65e659886cf3781faf0b9fbd75fe21b51d453bb8dc4c4afea6fe6359976c44"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

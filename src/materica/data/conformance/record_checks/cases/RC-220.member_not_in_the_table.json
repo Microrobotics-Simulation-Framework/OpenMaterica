@@ -1,0 +1,40 @@
+{
+  "case": "RC-220",
+  "variant": "member_not_in_the_table",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc220_member_not_in_the_table.json"
+    ],
+    "page_texts": [
+      "page_text_pdf_member_not_in_the_table.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-220",
+        "document": "page_text_pdf_member_not_in_the_table.json",
+        "pointer": ""
+      }
+    ],
+    "listing": [
+      {
+        "item": "RC-032",
+        "document": "rc220_member_not_in_the_table.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032",
+      "RC-220"
+    ]
+  }
+}

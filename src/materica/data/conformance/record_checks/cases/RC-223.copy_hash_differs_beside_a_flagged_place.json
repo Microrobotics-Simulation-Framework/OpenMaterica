@@ -1,0 +1,39 @@
+{
+  "case": "RC-223",
+  "variant": "copy_hash_differs_beside_a_flagged_place",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "rc223_copy_hash_differs_beside_a_flagged_place.json"
+    ],
+    "page_texts": [
+      "page_text_pdf_other_copy.json"
+    ]
+  },
+  "expected": {
+    "items": [
+      {
+        "item": "RC-222",
+        "document": "rc223_copy_hash_differs_beside_a_flagged_place.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence/copy"
+      },
+      {
+        "item": "RC-032",
+        "document": "rc223_copy_hash_differs_beside_a_flagged_place.json",
+        "pointer": "/body/sections/bulk/fields/density/provenance/evidence"
+      }
+    ],
+    "listing": []
+  },
+  "compare": {
+    "members": [
+      "items",
+      "listing"
+    ],
+    "rules_compared": [
+      "RC-032",
+      "RC-222"
+    ]
+  }
+}

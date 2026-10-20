@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "nfkc",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "ﬁbre at 10³ µm, １０ Å"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:fd178e9a6d425b228be3008eaa31b33316994808b39ffc47b8e74284ba79b152"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

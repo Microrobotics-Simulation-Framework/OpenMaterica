@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "removal_before_nfkc",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "cafe\u200b́"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:850f7dc43910ff890f8879c0ed26fe697c93a067ad93a7d50f466a7028a9bf4e"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}

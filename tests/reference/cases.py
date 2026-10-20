@@ -35,10 +35,11 @@ class Outcome:
 
 
 # The table evaluation suite is not a read. Each of its files asks an evaluator for a table's values at points
-# (README.md:194 "A **table evaluation case** (`read_side_contract.md` section 7) names `{"operation":
+# (README.md:197 "A **table evaluation case** (`read_side_contract.md` section 7) names `{"operation":
 # "evaluate"`), as a consumer's own evaluator does, outside the read; the model, a model of the read, has no
-# answer to it, and those files are the table evaluator's to agree with.
-NOT_A_READ: Final = "table_evaluation"
+# answer to it, and those files are the table evaluator's to agree with. Nor are the record-check suite's
+# files, record checks and `quote_sha256` operations, which are the record checks' to agree with.
+NOT_A_READ: Final = ("table_evaluation", "record_checks")
 
 
 @cache
@@ -51,7 +52,7 @@ def case_files() -> tuple[CaseFile, ...]:
 
 @cache
 def read_case_files() -> tuple[CaseFile, ...]:
-    return tuple(case_file for case_file in case_files() if case_file.suite != NOT_A_READ)
+    return tuple(case_file for case_file in case_files() if case_file.suite not in NOT_A_READ)
 
 
 @cache

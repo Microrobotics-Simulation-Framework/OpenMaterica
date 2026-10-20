@@ -1,0 +1,888 @@
+{
+  "page_text_schema_version": "0.1.0",
+  "document_type": "page_text",
+  "document": {
+    "identifier": "https://example.org/conformance-fixture-paper",
+    "version": "version_of_record"
+  },
+  "copy": {
+    "sha256": "sha256:b4b61256e469f858d98611618f7fd83fa486f3c8502cedc2d9f5be3e0a94cff2"
+  },
+  "text_extraction": "conformance fixture: an illustrative text extraction, 1.0.0",
+  "readings": [
+    "conformance fixture: reading A, 1.0.0",
+    "conformance fixture: reading B, 1.0.0"
+  ],
+  "pages": [
+    {
+      "page": 1,
+      "text": "Densities of soft tissues\nA. Smith and B. Jones\n1",
+      "doubtful": [],
+      "jumps": [
+        47
+      ],
+      "furniture": [
+        [
+          48,
+          49
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 2,
+      "text": "Smith et al. 2\nThe liver density was not measured in this study.\nSamples were kept counterproduc-\ntively warm, and electromagnetically-\nactuated mixers ran at 5-\n10 K above ambient over a range -\nwide band of rates, by electro‐\nmagnetic and electro−\nstatic drives, all counterproduc\u00ad\ntively slow.\n2",
+      "doubtful": [],
+      "jumps": [
+        14,
+        296
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          297,
+          298
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 3,
+      "text": "Smith et al. 3\nTable 2\nTissue Density (g cm-3)\nLiver 1.06 ± 0.02\nSpleen 1.05 ± 0.01\nEach value is a mean of five samples, which were again counterproduc-\na Measured at 310 K.\n3",
+      "doubtful": [],
+      "jumps": [
+        14,
+        83,
+        153,
+        174
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          154,
+          174
+        ],
+        [
+          175,
+          176
+        ]
+      ],
+      "raised": [
+        [
+          43,
+          45
+        ],
+        [
+          154,
+          155
+        ]
+      ],
+      "lowered": []
+    },
+    {
+      "page": 4,
+      "text": "Smith et al. 4\ntively cooled before the next run.\n4",
+      "doubtful": [],
+      "jumps": [
+        14,
+        49
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          50,
+          51
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 5,
+      "text": "Smith et al. 5\nTable 3: kidney and heart, a full page of results\nKidney 1.05 ± 0.02\n5",
+      "doubtful": [],
+      "jumps": [
+        14,
+        83
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          84,
+          85
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 6,
+      "text": "Smith et al. 6\nThe heart samples were measured counterproduc-\n6",
+      "doubtful": [],
+      "jumps": [
+        14,
+        61
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          62,
+          63
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 7,
+      "text": "7",
+      "doubtful": [],
+      "jumps": [],
+      "furniture": [
+        [
+          0,
+          1
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 8,
+      "text": "Smith et al. 8\ntively late in the series.\n8",
+      "doubtful": [],
+      "jumps": [
+        14,
+        41
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          42,
+          43
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 9,
+      "text": "Smith et al. 9\nDoubtful: the density was 1.04 g cm-3.\nUnmapped: the density was 1.0� g cm-3.\nPrivate: the density was 1.03 \ue000 0.01.\nNoncharacter: the density was 1.02 \ufffe 0.01.\nUnassigned: the density was 1.01 \ud900\udc00 0.01.\nColumn one ends here\ncolumn two starts here\nAdjacent: the density was 1.00 g cm-3.\n9",
+      "doubtful": [
+        [
+          41,
+          45
+        ],
+        [
+          259,
+          269
+        ]
+      ],
+      "jumps": [
+        14,
+        235,
+        297
+      ],
+      "furniture": [
+        [
+          0,
+          14
+        ],
+        [
+          298,
+          299
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    },
+    {
+      "page": 10,
+      "text": "Smith et al. 10\none-\ntwo-\nthree-\nfour-\nfive-\nsix-\nseven-\neight-\nnine-\nten\n10",
+      "doubtful": [],
+      "jumps": [
+        15,
+        73
+      ],
+      "furniture": [
+        [
+          0,
+          15
+        ],
+        [
+          74,
+          76
+        ]
+      ],
+      "raised": [],
+      "lowered": []
+    }
+  ],
+  "text": "Densities of soft tissuesMethodsSamples were kept counterproduc-\ntively warm.The density of the liver was 1.06 g cm-3.ρTable 2\nTissueMeanDensity (g cm-3)\nLiver1.03 ± 0.011.06 ± 0.02\nSpleen-1.05 ± 0.01\nMarrow\ue0001.01 ± 0.021.02 ± 0.03\nTable 3\nTissueABDensity\nHeart\ue0001.04 ± 0.031.05 ± 0.02\nMuscle\ue0001.061.071.08 ± 0.01\n1.09\ue0001.101.11 ± 0.01\nBone\ue0001.901.95 ± 0.051.92\nFat\ue0000.910.920.90 ± 0.01\n",
+  "elements": [
+    {
+      "element": "/article[1]",
+      "characters": [
+        0,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/front[1]",
+      "characters": [
+        0,
+        25
+      ]
+    },
+    {
+      "element": "/article[1]/front[1]/title[1]",
+      "characters": [
+        0,
+        25
+      ]
+    },
+    {
+      "element": "/article[1]/front[1]/break[1]",
+      "characters": [
+        25,
+        25
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]",
+      "characters": [
+        25,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]",
+      "characters": [
+        25,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/title[1]",
+      "characters": [
+        25,
+        32
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[1]",
+      "characters": [
+        32,
+        77
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[2]",
+      "characters": [
+        77,
+        118
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[2]/bold[1]",
+      "characters": [
+        106,
+        110
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/p[2]/sup[1]",
+      "characters": [
+        115,
+        117
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/disp-formula[1]",
+      "characters": [
+        118,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/disp-formula[1]/{http://www.w3.org/1998/Math/MathML}math[1]",
+      "characters": [
+        118,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/body[1]/sec[1]/disp-formula[1]/{http://www.w3.org/1998/Math/MathML}math[1]/{http://www.w3.org/1998/Math/MathML}mi[1]",
+      "characters": [
+        118,
+        119
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]",
+      "characters": [
+        119,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]",
+      "characters": [
+        119,
+        231
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/label[1]",
+      "characters": [
+        119,
+        126
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]",
+      "characters": [
+        126,
+        231
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]",
+      "characters": [
+        126,
+        231
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]",
+      "characters": [
+        127,
+        153
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]/th[1]",
+      "characters": [
+        127,
+        133
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]/th[2]",
+      "characters": [
+        133,
+        137
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[1]/th[3]",
+      "characters": [
+        137,
+        153
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]",
+      "characters": [
+        154,
+        181
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]/td[1]",
+      "characters": [
+        154,
+        159
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]/td[2]",
+      "characters": [
+        159,
+        170
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[2]/td[3]",
+      "characters": [
+        170,
+        181
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]",
+      "characters": [
+        182,
+        200
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]/td[1]",
+      "characters": [
+        182,
+        188
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]/td[2]",
+      "characters": [
+        188,
+        189
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[3]/td[3]",
+      "characters": [
+        189,
+        200
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]",
+      "characters": [
+        201,
+        230
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]/td[1]",
+      "characters": [
+        201,
+        208
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]/td[2]",
+      "characters": [
+        208,
+        219
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[1]/table[1]/tbody[1]/tr[4]/td[3]",
+      "characters": [
+        219,
+        230
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]",
+      "characters": [
+        231,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/label[1]",
+      "characters": [
+        231,
+        238
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]",
+      "characters": [
+        238,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]",
+      "characters": [
+        238,
+        381
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]",
+      "characters": [
+        239,
+        254
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[1]",
+      "characters": [
+        239,
+        245
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[2]",
+      "characters": [
+        245,
+        246
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[3]",
+      "characters": [
+        246,
+        247
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[1]/th[4]",
+      "characters": [
+        247,
+        254
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]",
+      "characters": [
+        255,
+        283
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]/td[1]",
+      "characters": [
+        255,
+        261
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]/td[2]",
+      "characters": [
+        261,
+        272
+      ],
+      "cell_columns": [
+        2,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[2]/td[3]",
+      "characters": [
+        272,
+        283
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]",
+      "characters": [
+        284,
+        310
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[1]",
+      "characters": [
+        284,
+        291
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[2]",
+      "characters": [
+        291,
+        295
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[3]",
+      "characters": [
+        295,
+        299
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[3]/td[4]",
+      "characters": [
+        299,
+        310
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]",
+      "characters": [
+        311,
+        331
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]/td[1]",
+      "characters": [
+        311,
+        316
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]/td[2]",
+      "characters": [
+        316,
+        320
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[4]/td[3]",
+      "characters": [
+        320,
+        331
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]",
+      "characters": [
+        332,
+        356
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[1]",
+      "characters": [
+        332,
+        337
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]",
+      "characters": [
+        337,
+        352
+      ],
+      "cell_columns": [
+        2,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]",
+      "characters": [
+        337,
+        352
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]",
+      "characters": [
+        337,
+        352
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]/tr[1]",
+      "characters": [
+        337,
+        352
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]/tr[1]/td[1]",
+      "characters": [
+        337,
+        341
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[2]/table[1]/tbody[1]/tr[1]/td[2]",
+      "characters": [
+        341,
+        352
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[5]/td[3]",
+      "characters": [
+        352,
+        356
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]",
+      "characters": [
+        357,
+        380
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[1]",
+      "characters": [
+        357,
+        361
+      ],
+      "cell_columns": [
+        1,
+        1
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[2]",
+      "characters": [
+        361,
+        365
+      ],
+      "cell_columns": [
+        2,
+        2
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[3]",
+      "characters": [
+        365,
+        369
+      ],
+      "cell_columns": [
+        3,
+        3
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[4]",
+      "characters": [
+        369,
+        380
+      ],
+      "cell_columns": [
+        4,
+        4
+      ]
+    },
+    {
+      "element": "/article[1]/floats-group[1]/table-wrap[2]/table[1]/tbody[1]/tr[6]/td[4]/bold[1]",
+      "characters": [
+        369,
+        380
+      ]
+    }
+  ]
+}

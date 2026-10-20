@@ -1,0 +1,23 @@
+{
+  "case": "RC-033",
+  "variant": "white_space_nfkc_leaves",
+  "suite": "record_checks",
+  "schema_version": "0.1.0",
+  "inputs": {},
+  "request": {
+    "operation": "quote_sha256",
+    "text": "Liver\u000b\f\r\u0085\u1680\u2029 1.06"
+  },
+  "expected": {
+    "status": "met",
+    "reasons": [],
+    "value": "sha256:2f56f15eab3d77544741289633740ff15c63f8569b9b469319ee3c7f5bcf139d"
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value"
+    ]
+  }
+}
