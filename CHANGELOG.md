@@ -104,6 +104,13 @@ every family entry goes in `families/CHANGELOG.md`.
     a requirement's `field`, or of a requirement condition's `reason` or `consequence`, is refused at step 0,
     as `read_side_contract.md` section 1 says of a slip of a member `declarations.md` names. The reference
     model, its seeded faults, HP12 and the READMEs cite the ruling; no text changes.
+  - A nominal's `params` in place of its value: `read_side_contract.md` section 1 now says that a nominal
+    takes `params` in place of `value` only where the row of the field it names allows the form
+    `parameter_set`, so a nominal holding `params` and no `value`, for a field whose row allows none, breaks
+    its shape (`request_incomplete`). Step 0 has required a `value` in every nominal since S2b-2, which is
+    that reading while no row of this version allows a parameter set; the text did not say whether step 0
+    consults the named field's row. A unit row (`params` alone), which the review's mutant fails, and one
+    PR-330 case come with it.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from
@@ -134,8 +141,10 @@ every family entry goes in `families/CHANGELOG.md`.
   and the PR-301 one under a new kind, `other_kind`, and the slip under `slip`.
 - The ruling on a slip of `alternatives` at a field's place (2026-10-19) comes with one PR-030 case
   (**Schema**, above), which runs and passes. A broken implementation whose step 8 does not name
-  `alternatives` at a field's place fails it, and no other case; T1 lists its input under `slip`. 956 of 1503
-  case files pass.
+  `alternatives` at a field's place fails it, and no other case; T1 lists its input under `slip`.
+- The ruling on a nominal's `params` (2026-10-19) comes with one PR-330 case (**Schema**, above), which runs
+  and passes; a broken implementation taking `params` in place of a value fails it alone. 957 of 1504 case
+  files pass.
 
 ## [0.1.0.dev2] - 2026-10-20
 

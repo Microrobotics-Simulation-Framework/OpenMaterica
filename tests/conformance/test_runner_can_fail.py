@@ -717,6 +717,20 @@ def takes_two_nominals_for_one_field(monkeypatch: pytest.MonkeyPatch) -> Executo
     return EXECUTORS["read"]
 
 
+def takes_params_in_place_of_a_value(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    """A nominal holding `params` and no `value` passes step 0, whatever row its field has, and is never
+    applied: reading B of S2b-2's review, M56, which the maintainer ruled out (2026-10-19)."""
+    nominal = read._nominal  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
+
+    def without_a_value(index: int, entry: dict[str, JsonValue], found: list[Reason]) -> object:
+        if "params" in entry and "value" not in entry:
+            return None
+        return nominal(index, entry, found)
+
+    monkeypatch.setattr(read, "_nominal", without_a_value)
+    return EXECUTORS["read"]
+
+
 def ignores_a_waiver(monkeypatch: pytest.MonkeyPatch) -> Executor:
     acceptances = read._acceptances  # pyright: ignore[reportPrivateUsage]  # the function the fault wraps
 
@@ -886,6 +900,7 @@ FAULTS: list[tuple[Fault, str]] = [
     (drops_a_nominals_value_under_not_met, "PR-302.nominal_value_under_not_met.json"),
     (applies_a_nominal_wherever_it_is_located, "PR-338.nominal_other_record.json"),
     (takes_two_nominals_for_one_field, "PR-330.two_nominals_one_field.json"),
+    (takes_params_in_place_of_a_value, "PR-330.nominal_params_in_place_of_value.json"),
     (ignores_a_waiver, "PR-310.waiver_refused.json"),
     (compares_a_nominal_under_no_pick, "PR-338.no_pick_nominal_outside_not_reported.json"),
     (sets_a_refusal_aside, "PR-044.refused_reports_waiting_want_mismatch.json"),
