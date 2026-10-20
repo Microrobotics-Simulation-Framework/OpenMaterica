@@ -654,7 +654,17 @@ def with_origin(field: JsonValue, provenance: Path_, token: str) -> JsonValue:
 
 # Every part of a field the writer's strategies draw in full where a plan names it.
 RICH = frozenset(
-    {"block", "uncertainty", "conditions", "specimen", "provenance", "composition", "evidence", "label"}
+    {
+        "block",
+        "uncertainty",
+        "conditions",
+        "specimen",
+        "provenance",
+        "table",
+        "composition",
+        "evidence",
+        "label",
+    }
 )
 
 

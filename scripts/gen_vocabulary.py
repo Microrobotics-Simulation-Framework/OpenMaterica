@@ -387,7 +387,13 @@ def conditions(rows: list[Row]) -> Vocabulary:
         )
     # Each token condition's tokens again as an enumeration, which the writer schema binds its `token` to.
     tokens = {f"{name}_token": enumeration(found) for name, found in token_conditions.items()}
-    return {"$defs": {**tokens, "units": condition_units(entries)}, "conditions": entries}
+    # The numeric conditions' names: the tokens a table's `axis` takes (`record_format.md` section 6, table
+    # item 1, "a numeric condition").
+    axis = enumeration([name for name, entry in entries.items() if entry["shape"] == "numeric"])
+    return {
+        "$defs": {**tokens, "axis": axis, "units": condition_units(entries), "axes": table_axes(entries)},
+        "conditions": entries,
+    }
 
 
 def condition_units(entries: dict[str, dict[str, object]]) -> dict[str, object]:
@@ -401,6 +407,50 @@ def condition_units(entries: dict[str, dict[str, object]]) -> dict[str, object]:
             name: {"properties": {"unit": unit, "plus_minus": {"items": {"properties": {"unit": unit}}}}}
             for name, unit in units.items()
         },
+    }
+
+
+def table_axes(entries: dict[str, dict[str, object]]) -> dict[str, object]:
+    """What the writer schema binds to a table's axis (`record_format.md` section 6, table item 1): for each
+    numeric condition, a table whose `axis` names it holds that condition's registered unit in `axis_unit`,
+    and its field's `conditions` hold the condition as `{"status": "not_applicable"}`."""
+    numeric = {name: entry["unit"] for name, entry in entries.items() if entry["shape"] == "numeric"}
+
+    def naming(name: str) -> dict[str, object]:
+        return {
+            "required": ["table"],
+            "properties": {"table": {"required": ["axis"], "properties": {"axis": {"const": name}}}},
+        }
+
+    not_applicable = {
+        "type": "object",
+        "required": ["status"],
+        "properties": {"status": {"const": "not_applicable"}},
+    }
+    return {
+        "description": "A table's axis: its axis_unit holds that numeric condition's registered unit, and "
+        "the field's conditions hold the condition as not_applicable.",
+        "properties": {
+            "table": {
+                "allOf": [
+                    {
+                        "if": {"required": ["axis"], "properties": {"axis": {"const": name}}},
+                        "then": {"properties": {"axis_unit": {"const": unit}}},
+                    }
+                    for name, unit in numeric.items()
+                ]
+            }
+        },
+        "allOf": [
+            {
+                "if": naming(name),
+                "then": {
+                    "required": ["conditions"],
+                    "properties": {"conditions": {"required": [name], "properties": {name: not_applicable}}},
+                },
+            }
+            for name in numeric
+        ],
     }
 
 
@@ -504,11 +554,12 @@ def acceptance_kinds(rows: list[Row]) -> Vocabulary:
 
 
 def forms(read: Documents) -> Vocabulary:
-    """`record_format.md` sections 5 and 6: the form tokens, an interval's and a composition's tokens, and the
-    components, `element:<symbol>` for each symbol of the element table."""
+    """`record_format.md` sections 5 and 6: the form tokens, a table's schemes, an interval's and a
+    composition's tokens, and the components, `element:<symbol>` for each symbol of the element table."""
     document = read("record_format.md")
     text = prose(document)
     members = table(document, "## 5. Value fields")
+    table_form = between(text, "**Table.**", "**Power law.**")
     interval = between(text, "**Interval.**", "**Composition.**")
     composition = between(text, "**Composition.**", "**Model parameter set.**")
     once(composition, "`component` is `element:<symbol>`")
@@ -525,6 +576,7 @@ def forms(read: Documents) -> Vocabulary:
     return {
         "$defs": {
             "form": enumeration(listed(cell_of(members, "form"), "one of ", None)),
+            "table_scheme": enumeration(listed(table_form, "2. `scheme` is ", ".")),
             "interval_basis": enumeration(listed(interval, "2. `basis` is ", ".")),
             "composition_basis": enumeration(listed(composition, "1. `basis` is ", ". `component`")),
             "sum_rule": enumeration(listed(composition, "2. `sum_rule` is ", ". Where")),

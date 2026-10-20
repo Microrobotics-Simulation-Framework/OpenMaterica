@@ -88,6 +88,7 @@ VERBATIM = (
     "exclusiveMaximum",
     "minItems",
     "maxItems",
+    "uniqueItems",
     "title",
     "description",
     "$schema",

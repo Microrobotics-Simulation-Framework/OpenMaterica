@@ -28,7 +28,7 @@ from hypothesis import strategies as st
 
 from materica.core.jsonio import JsonValue
 from scripts.gen_vocabulary import SPECIFICATION, between, cell_of, codes, listed, only_code, prose, table
-from tests.property import strategies
+from tests.property import strategies, tables
 from tests.property.strategies import SIZE, Size
 from tests.spec_sync.schemas import SCHEMA
 
@@ -135,10 +135,10 @@ WITHHELD_WHOLE = tuple(member for member in ENTRY_MEMBERS if member != "provenan
 class Plan:
     """What a field drawn must hold; None draws it. Each part named in `rich` is drawn with every optional
     member and every member that may hold a status object in its own shape (the parts: block, uncertainty,
-    conditions, specimen, provenance, composition, evidence, label), so that each place a fault may change
-    exists. A `minimal` plan leaves out what is optional outside those parts. `registered` draws the field
-    for a registered name, bound to its row; `place` and `alternatives` say where a body holds it and whether
-    it is the alternatives of several."""
+    conditions, specimen, provenance, table, composition, evidence, label), so that each place a fault may
+    change exists. A `minimal` plan leaves out what is optional outside those parts. `registered` draws the
+    field for a registered name, bound to its row; `place` and `alternatives` say where a body holds it and
+    whether it is the alternatives of several."""
 
     registered: str | None = None
     place: str | None = None
@@ -481,6 +481,39 @@ def interval(draw: st.DrawFn, full: bool) -> Json:
 
 
 @st.composite
+def table_member(draw: st.DrawFn, plan: Plan, size: Size) -> Json:
+    """Items 1 to 4: an axis, a numeric condition (section 4.1's rows bind none), its registered unit in
+    `axis_unit` (section 4.2), and `x`, `y`, `scheme`, `edges` and `source_range` as `tables.py` draws a table
+    step 8 accepts; in full, with edges and a `source_range`."""
+    full = plan.full("table")
+    # In full, every kind of `source_range` but its absence, the first.
+    kinds = tables.RANGE_KINDS[1:] if full else tables.RANGE_KINDS
+    drawn, _ = draw(tables.tables(size, with_edges=True if full else None, range_kinds=kinds))
+    axis = draw(st.sampled_from(NUMERIC_CONDITIONS))
+    found: Json = {
+        "axis": axis,
+        "axis_unit": registered_unit(axis),
+        "x": list(drawn.x),
+        "y": list(drawn.y),
+        "scheme": drawn.scheme,
+        "edges": list(drawn.edges),
+    }
+    if drawn.source_range is not None:
+        found["source_range"] = list(drawn.source_range)
+    return found
+
+
+@st.composite
+def axis_condition(draw: st.DrawFn) -> Json:
+    """Item 1: the field's `conditions` hold its table's axis as `{"status": "not_applicable"}`, a `reason`
+    allowed."""
+    found: Json = {"status": "not_applicable"}
+    if draw(st.booleans()):
+        found["reason"] = draw(TEXT)
+    return found
+
+
+@st.composite
 def composition(draw: st.DrawFn, plan: Plan, size: Size) -> Json:
     """Items 1 to 5: a basis, a sum rule, a stated sum where given, one or more components, none twice; for a
     registered field, a basis its row allows (`record_format.md` section 4.1)."""
@@ -717,10 +750,15 @@ def form_fields(draw: st.DrawFn, plan: Plan = ANY, size: Size = SIZE) -> Json:
             member = draw(interval(plan.full("block")))
         elif form == "composition":
             member = draw(composition(plan, size))
+        elif form == "table":
+            member = draw(table_member(plan, size))
         else:
             member = draw(placeholders(size))
         found[form_member(form)] = member
         found["conditions"] = draw(conditions(plan))
+        if form == "table" and not withheld:
+            axis = str(mapping(member)["axis"])
+            found["conditions"] = {**mapping(found["conditions"]), axis: draw(axis_condition())}
         if withheld:
             found["statistics"] = {"status": "withheld"}
         elif form == "reference_data" and not plan.rich and not draw(st.integers(0, 3)):
@@ -1548,6 +1586,123 @@ def _evidence_block(draw: st.DrawFn, found: Json) -> str:
 def _evidence_condition(draw: st.DrawFn, found: Json) -> str:
     found["conditions"] = {NUMERIC_CONDITIONS[0]: {"status": "unstated"}}
     return "conditions"
+
+
+# A table's members (`record_format.md` section 6, table items 1 to 5), each fault one a schema can state:
+# the rules across members (an order, a length, an edge's place) are step 8's alone (`test_t1.py`).
+TABLE = replace(MINIMAL, form="table", rich=frozenset({"table"}))
+TABLE_MEMBERS = ("axis", "axis_unit", "x", "y", "scheme", "edges")
+
+
+def table_of(found: Json) -> Json:
+    return mapping(found["table"])
+
+
+fault("table_member_missing", "table", TABLE)(
+    lambda draw, found: removed(draw, table_of(found), TABLE_MEMBERS, "table")
+)
+
+
+@fault("table_member_retyped", "table", TABLE)
+def _table_retyped(draw: st.DrawFn, found: Json) -> str:
+    member = draw(st.sampled_from([*TABLE_MEMBERS, "source_range"]))
+    # `edges` may be empty ("empty where the table has none", `record_format.md` section 6, table item 1), so
+    # it takes a list of a string where each other member takes `[]`.
+    retyped: list[JsonValue] = [1.0, "x", ["x"] if member == "edges" else [], {}]
+    table_of(found)[member] = draw(st.sampled_from(retyped if member != "axis_unit" else [1.0, []]))
+    return f"table.{member}"
+
+
+@fault("table_axis_unknown", "table", TABLE)
+def _axis_unknown(draw: st.DrawFn, found: Json) -> str:
+    """Item 2: an axis naming no numeric condition, a token condition's name included."""
+    table_of(found)["axis"] = draw(st.sampled_from([*TOKEN_CONDITIONS, "frequency", "Temperature", "x"]))
+    return "table.axis"
+
+
+@fault("table_scheme_unknown", "table", TABLE)
+def _scheme_unknown(draw: st.DrawFn, found: Json) -> str:
+    table_of(found)["scheme"] = draw(st.sampled_from(["cubic", "log_log", "Linear", "", *LISTS["form"]]))
+    return "table.scheme"
+
+
+@fault("table_x_one_value", "table", TABLE)
+def _x_one(draw: st.DrawFn, found: Json) -> str:
+    """Item 1: `x` holds at least two values; here one, `y` left as it is, so that only `x`'s own size, which
+    the writer states, refuses it (a `y` of another length is a rule across members, step 8's)."""
+    table = table_of(found)
+    table.update(x=listing(table["x"])[:1], edges=[])
+    table.pop("source_range", None)
+    return "table.x"
+
+
+@fault("table_loglog_not_positive", "table", TABLE)
+def _not_positive(draw: st.DrawFn, found: Json) -> str:
+    """Item 2: a log-log table holds only positive `x` and `y`; here one is zero, of either sign, or below."""
+    table = table_of(found)
+    table["scheme"] = "loglog"
+    member = draw(st.sampled_from(["x", "y"]))
+    values = listing(table[member])
+    values[draw(st.integers(0, len(values) - 1))] = draw(st.one_of(NOT_POSITIVE, st.just(-0.0)))
+    return f"table.{member}"
+
+
+@fault("table_edge_listed_twice", "table", TABLE)
+def _edge_twice(draw: st.DrawFn, found: Json) -> str:
+    """Item 1: no number twice in `edges`, compared by value, so `-0` repeats `0`."""
+    edges = listing(table_of(found)["edges"])
+    edge = edges[0]
+    assert isinstance(edge, float)
+    edges.append(-edge if edge == 0.0 else edge)
+    return "table.edges"
+
+
+@fault("table_source_range_not_two_numbers", "table", TABLE)
+def _source_range_shape(draw: st.DrawFn, found: Json) -> str:
+    table = table_of(found)
+    low, high = listing(table["source_range"])
+    table["source_range"] = draw(st.sampled_from([[low], [low, high, high], [low, str(high)]]))
+    return "table.source_range"
+
+
+@fault("table_member_unknown", "table", TABLE)
+def _table_unknown(draw: st.DrawFn, found: Json) -> str:
+    table_of(found)["note"] = draw(TEXT)
+    return "table.note"
+
+
+@fault("table_points", "table", TABLE)
+def _points(draw: st.DrawFn, found: Json) -> str:
+    """Item 5: a 0.1.0 writer MUST NOT write `points`, whatever it holds."""
+    held: list[JsonValue] = [[], None, [{}], {}, "x"]
+    table_of(found)["points"] = draw(st.sampled_from(held))
+    return "table.points"
+
+
+@fault("table_axis_unit_not_registered", "table", TABLE)
+def _axis_unit(draw: st.DrawFn, found: Json) -> str:
+    """Section 4.2: a table's `axis_unit` is its axis condition's registered unit."""
+    table = table_of(found)
+    table["axis_unit"] = draw(foreign_unit(registered_unit(str(table["axis"]))))
+    return "table.axis_unit"
+
+
+@fault("table_axis_condition_not_not_applicable", "table", TABLE)
+def _axis_condition(draw: st.DrawFn, found: Json) -> str:
+    """Item 1: the field's `conditions` hold the axis as `not_applicable`, not absent, another status or a
+    value."""
+    axis = str(table_of(found)["axis"])
+    conditions = mapping(found["conditions"])
+    way = draw(st.sampled_from(["absent", "status", "value"]))
+    if way == "absent":
+        del conditions[axis]
+    elif way == "status":
+        conditions[axis] = {
+            "status": draw(st.sampled_from([token for token in ANY_STATUS if token != "not_applicable"]))
+        }
+    else:
+        conditions[axis] = draw(numeric_condition(MINIMAL, axis))
+    return f"conditions.{axis}"
 
 
 @fault("alternatives_empty", "forms", MINIMAL)

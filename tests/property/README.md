@@ -41,7 +41,11 @@ check's reader (the last bullet).
   and rules each builder cites. A fault is one change the text says breaks a field (a
   member missing, a bound crossed, a token of another member's list or of none, a status token its row does
   not allow, a rule across objects broken, a unit other than the registered one, a field under a name or
-  holding what its row does not give), 167 of them in ten families, each drawn as often as another of its
+  holding what its row does not give), 183 of them in eleven families, the eleventh a table's shape (S3a: a
+  member missing or of another type, an axis or a scheme the reader does not know, one knot, a log-log number
+  not positive, an edge listed twice, a `source_range` not two numbers, a member the table does not define or
+  its reserved `points`, an `axis_unit` other than its axis's, and the axis condition held otherwise than
+  `not_applicable`), each drawn as often as another of its
   family on a field, or a body, planned so that its place exists; a family of more than 15 faults is drawn
   in parts of at most 15, each a property of its own, so that the feature audit at `ci` can judge each fault
   (below).

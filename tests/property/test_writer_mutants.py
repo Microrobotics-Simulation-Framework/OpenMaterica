@@ -7,12 +7,12 @@ one of the faults it names, searched among those faults: the refusal properties 
 alike, and their feature audit holds each to its draw floor, so they meet them too. One that tightens the
 schema dies when the acceptance property finds it refusing a field the text allows. The table is the S2a-1
 review's 29 mutants and its two controls (M1 to M31, its numbering kept), then one per constraint added since
-and a few that tighten, then those of the bindings the writer applies from the vocabulary (B1 to B12, TB1 to
-TB4, maintainer 2026-10-15; B13, B14 and TB5, a specimen fact's unit, 2026-10-15; B15, B16 and TB6, a
-label's forms, PR #37's review), which change the writer or a vocabulary file; and three bindings removed
-again (U1 to U3), each killed by the relation that what the writer takes, step 9 passes, searched on bodies
-with a unit changed where the binding held it. Each test records the examples its kill took as
-`examples_to_kill`.
+(a table's shape, S3a: M62 to M69) and a few that tighten, then those of the bindings the writer applies from
+the vocabulary (B1 to B12, TB1 to TB4, maintainer 2026-10-15; B13, B14 and TB5, a specimen fact's unit,
+2026-10-15; B15, B16 and TB6, a label's forms, PR #37's review; B17 to B19 and TB7, a table's axis, S3a),
+which change the writer or a vocabulary file; and three bindings removed again (U1 to U3), each killed by the
+relation that what the writer takes, step 9 passes, searched on bodies with a unit changed where the binding
+held it. Each test records the examples its kill took as `examples_to_kill`.
 """
 
 import copy
@@ -650,6 +650,72 @@ MUTANTS = [
         ("label_on_its_rows_axis", "alternative_label_on_its_rows_axis"),
         FIELDS_FILE,
     ),
+    # A table's shape (S3a; `record_format.md` section 6, table items 1, 2, 4 and 5), each loosened.
+    WriterMutant(
+        "M62 a table's axis any string",
+        setting(D, "table", P, "axis", to={"type": "string"}),
+        "table",
+        ("table_axis_unknown",),
+    ),
+    WriterMutant(
+        "M63 a table's scheme any string",
+        setting(D, "table", P, "scheme", to={"type": "string"}),
+        "table",
+        ("table_scheme_unknown",),
+    ),
+    WriterMutant(
+        "M64 a table of one knot", deleting(D, "table", P, "x", "minItems"), "table", ("table_x_one_value",)
+    ),
+    WriterMutant(
+        "M65 an edge listed twice",
+        deleting(D, "table", P, "edges", "uniqueItems"),
+        "table",
+        ("table_edge_listed_twice",),
+    ),
+    WriterMutant(
+        "M66 a log-log table's numbers of any sign",
+        deleting(D, "table", "then"),
+        "table",
+        ("table_loglog_not_positive",),
+    ),
+    WriterMutant(
+        "M67 a table open to members it does not define",
+        deleting(D, "table", "additionalProperties"),
+        "table",
+        ("table_member_unknown", "table_points"),
+    ),
+    WriterMutant(
+        "M68 a table's members optional",
+        setting(D, "table", "required", to=[]),
+        "table",
+        ("table_member_missing",),
+    ),
+    WriterMutant(
+        "M69 a source_range of any shape",
+        setting(D, "table", P, "source_range", to={}),
+        "table",
+        ("table_source_range_not_two_numbers",),
+    ),
+    WriterMutant(
+        "B17 the writer applies no binding to a table's axis",
+        deleting(D, "table_field", "allOf", 1),
+        "table",
+        ("table_axis_unit_not_registered", "table_axis_condition_not_not_applicable"),
+    ),
+    WriterMutant(
+        "B18 a table's axis unit unbound",
+        setting(D, "axes", P, "table", "allOf", to=[]),
+        "table",
+        ("table_axis_unit_not_registered",),
+        CONDITIONS_FILE,
+    ),
+    WriterMutant(
+        "B19 a table's axis condition unbound",
+        setting(D, "axes", "allOf", to=[]),
+        "table",
+        ("table_axis_condition_not_not_applicable",),
+        CONDITIONS_FILE,
+    ),
     # Tightened: each refuses a field the text allows.
     WriterMutant(
         "T1 an interval's basis without stated_bound",
@@ -697,6 +763,37 @@ MUTANTS = [
         setting(D, "disease_and_treatment_state", "required", to=["token", "text"]),
         TAKES,
         (REFUSED,),
+    ),
+    WriterMutant(
+        "T10 a table of three knots or more", setting(D, "table", P, "x", "minItems", to=3), TAKES, (REFUSED,)
+    ),
+    WriterMutant(
+        "T11 a table's source_range required",
+        setting(
+            D, "table", "required", to=["axis", "axis_unit", "x", "y", "scheme", "edges", "source_range"]
+        ),
+        TAKES,
+        (REFUSED,),
+    ),
+    WriterMutant(
+        "TB7 a table's axis condition bound to unstated",
+        setting(
+            D,
+            "axes",
+            "allOf",
+            0,
+            "then",
+            P,
+            "conditions",
+            P,
+            "temperature",
+            P,
+            "status",
+            to={"const": "unstated"},
+        ),
+        TAKES,
+        (REFUSED,),
+        CONDITIONS_FILE,
     ),
     WriterMutant(
         "TB1 a field bound to another unit",
@@ -787,6 +884,9 @@ SEARCHED_ON = {
     "T7": replace(CONSTANT, rich=frozenset({"block"})),
     "T8": replace(CONSTANT, rich=frozenset({"conditions"})),
     "T9": replace(CONSTANT, rich=frozenset({"specimen"})),
+    "T10": Plan(form="table", withheld=False),
+    "T11": Plan(form="table", withheld=False),
+    "TB7": Plan(registered="bulk.density", form="table", withheld=False),
     "TB1": Plan(registered="bulk.density"),
     "TB2": Plan(registered="bulk.density", form="table"),
     "TB3": Plan(registered="bulk.elemental_composition", place="fields"),

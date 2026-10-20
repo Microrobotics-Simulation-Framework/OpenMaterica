@@ -283,15 +283,17 @@ def tables(
     with_edges: bool | None = None,
     signed_zeros: bool | None = None,
     order: Order | None = None,
+    range_kinds: tuple[RangeKind, ...] = RANGE_KINDS,
 ) -> tuple[Table, Choices]:
     """A table step 8 accepts, and its choices. `with_edges` and `signed_zeros` fix those; `order` draws
-    values in that order along `x`, with no edges."""
+    values in that order along `x`, with no edges; `range_kinds` are the kinds of `source_range` drawn
+    among."""
     scheme = draw(st.sampled_from(SCHEMES))
     positive = scheme == "loglog"
     magnitude = draw(st.sampled_from(MAGNITUDES))
     edged = order is None and (draw(BOOLEANS) if with_edges is None else with_edges)
     zeros = not positive and (draw(BOOLEANS) if signed_zeros is None else signed_zeros)
-    kind = draw(st.sampled_from(RANGE_KINDS))
+    kind = draw(st.sampled_from(range_kinds))
     least = 3 if edged or kind == "narrower" else 2
     distinct = draw(knots(magnitude, positive, draw(st.integers(least, max(least, size.leaves // 2)))))
     if zeros and all(knot != 0 for knot in distinct):

@@ -112,6 +112,8 @@ BOUND: dict[str, tuple[str, ...]] = {
     "label": ("label",),
     "sum_rule": ("sum_rule",),
     "component": ("component",),
+    "axis": ("axis",),
+    "scheme": ("table_scheme",),
 }
 ROW_TOKENS = frozenset(
     {token for spec in VOCABULARY.conditions.values() for token in spec.tokens}

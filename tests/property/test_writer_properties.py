@@ -236,7 +236,9 @@ def bodies_with_a_unit_changed(
     if place == "field":
         field["unit"] = draw(another_unit(row_of(registered)["unit"]))
     elif place in ("condition", "plus_minus"):
-        condition_name = draw(st.sampled_from(NUMERIC_CONDITIONS))
+        # A table's axis condition is `not_applicable`, a status object, which holds no unit.
+        held = [name for name in NUMERIC_CONDITIONS if "status" not in mapping(conditions[name])]
+        condition_name = draw(st.sampled_from(held))
         condition = mapping(conditions[condition_name])
         entries = listing(condition["plus_minus"])
         holder = condition if place == "condition" else mapping(draw(st.sampled_from(entries)))
