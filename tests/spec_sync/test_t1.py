@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """T1 (the S2 design, section 1.7): step 8's shapes, written by hand in `core/value_shapes.py` and
 `core/fields.py`, against the writer schema's value-field `$defs` and the reader `$defs` generated from them.
-A table, whose own member waits for S3a (`form_problems` will not answer), has no step-8 verdict yet: the
-writer schema holds its member as a placeholder until S3a writes it, and with it T1 on the table fixtures (the
-S3 design, section 6.5). T1 holds step 8 itself on the constants, the intervals, the compositions, the
-evidence and the forms a row does not allow.
+T1 holds step 8 itself on the constants, the tables (since S3a, the S3 design's section 6.5), the intervals,
+the compositions, the evidence and the forms a row does not allow.
 
 It runs on every value field a registered field's row reads, with its section's `specimen`, in every material
 record among the conformance inputs, and on one-fault variants of its bases: the full fields and forms of
@@ -18,8 +16,8 @@ other token of the origin's row, alone and beside each change inside it. Each ex
 - the reader `$defs`', alike;
 - step 8's, read in the field's own record (so a slip in its envelope or section counts), which accepts where
   it gives none of `form_invalid`, `unknown_token` and `form_not_registered`. A `withheld` value is a refusal
-  to read, not of a shape, nor is `entries_withheld`, and `family_suite_absent` follows the claims. A table
-  has none, as above.
+  to read, not of a shape, nor is `entries_withheld`, nor `points_unsupported` (a table holding a member
+  reserved for a later version), and `family_suite_absent` follows the claims.
 Three relations hold, each but for listed exceptions:
 1. what the writer schema accepts, step 8 accepts;
 2. what step 8 refuses with `form_invalid`, the reader `$defs` refuse;
@@ -69,8 +67,7 @@ REFUSALS = frozenset({"form_invalid", "unknown_token", "form_not_registered"})
 class Kind(NamedTuple):
     """A kind of exception: why no JSON Schema states its rule here, and, by relation, the case files whose
     read field breaks it and the examples no case file reads that do; and `mark`, what shows a refusal is of
-    this kind, in the details of step 8's reasons, or, where step 8 does not read the field yet, in the arm
-    of the case file that reads it (`CASES.md`)."""
+    this kind, in the details of step 8's reasons."""
 
     reason: str
     case_files: Mapping[int, tuple[str, ...]]
@@ -83,7 +80,8 @@ class Kind(NamedTuple):
 # 2026-10-15), PR-036's forms and PR-053's labels no longer among them. A variant renamed by one slip is
 # excepted from relation 2 by its change. S4's overlay cases add their own, PR-011's bases with a slip and
 # PR-042's broken withheld markers: each names the base's field as its target, which T1 reads in the base, not
-# through the overlay.
+# through the overlay. S3a's tables add five kinds of rules across a table's members, its axis condition the
+# writer binds, and `null` in the reserved `points`.
 EXCEPTIONS: dict[str, Kind] = {
     "slip": Kind(
         "a member one slip from a member named at its place (`record_format.md` section 10 item 5), in the "
@@ -133,6 +131,11 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-030.near_typo_section_fact_tissue_stat",
                 "PR-030.near_typo_section_specimens",
                 "PR-030.near_typo_token_on_numeric_condition",
+                "PR-030.near_typo_axis_units",
+                "PR-030.near_typo_edgse",
+                "PR-030.near_typo_point",
+                "PR-030.near_typo_source_ranges",
+                "PR-030.near_typo_z",
                 "PR-108.near_typo_in_plus_minus_entry",
                 "PR-108.near_typo_plus_minsu",
             ),
@@ -156,8 +159,18 @@ EXCEPTIONS: dict[str, Kind] = {
     "range_order": Kind(
         "a range's or an interval's lower end above its upper: a schema does not compare members",
         {
-            1: ("PR-045.condition_range_reversed", "PR-045.fact_range_reversed", "PR-050.lower_above_upper"),
-            2: ("PR-045.condition_range_reversed", "PR-045.fact_range_reversed", "PR-050.lower_above_upper"),
+            1: (
+                "PR-045.condition_range_reversed",
+                "PR-045.fact_range_reversed",
+                "PR-050.lower_above_upper",
+                "PR-019.source_range_reversed",
+            ),
+            2: (
+                "PR-045.condition_range_reversed",
+                "PR-045.fact_range_reversed",
+                "PR-050.lower_above_upper",
+                "PR-019.source_range_reversed",
+            ),
         },
         mark=r"lo above hi|lower bound above its upper",
     ),
@@ -201,6 +214,8 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-053.label_not_named_for_field",
                 "PR-053.linear_label_on_viscosity",
                 "PR-053.newtonian_label_on_interval",
+                "PR-053.linear_label_on_flux_density_table",
+                "PR-053.newtonian_label_on_shear_rate_table",
             ),
         },
         mark=r"does not name for|names only on",
@@ -238,8 +253,13 @@ EXCEPTIONS: dict[str, Kind] = {
     ),
     "row_condition": Kind(
         "a registered condition under evidence: the reader `$defs` take any member of `conditions` there, "
-        "where step 8 refuses a registered name and gives `unknown` for another",
-        {2: ("PR-052.registered_condition_as_status_object", "PR-052.registered_condition_in_conditions")},
+        "where step 8 refuses a registered name and gives `unknown` for another, whatever the field's form",
+        {
+            2: (
+                "PR-052.registered_condition_as_status_object",
+                "PR-052.registered_condition_in_conditions",
+            )
+        },
         mark=r"a registered condition",
     ),
     "status_beside": Kind(
@@ -257,6 +277,8 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-110.interval_upper_status_beside_other_member",
                 "PR-110.interval_withheld_beside_a_bound",
                 "PR-110.sd_status_beside_other_member",
+                "PR-110.table_status_beside_members",
+                "PR-110.table_unknown_status_beside_members",
             ),
         },
         mark=r"beside its status|a status object beside",
@@ -268,6 +290,65 @@ EXCEPTIONS: dict[str, Kind] = {
             r"holds the status '[a-z_]+', which its row does not allow"
             r'|`\{"status": "[a-z_]+"\}`, a token its row does not allow'
         ),
+    ),
+    "table_lengths": Kind(
+        "a table's `y` of another length than its `x` (`record_format.md` section 6, table item 1): a schema "
+        "does not compare one member's length with another's",
+        {1: ("PR-322.y_longer", "PR-322.y_shorter"), 2: ("PR-322.y_longer", "PR-322.y_shorter")},
+        {
+            relation: tuple(f"table removed table.{member}.{index}" for member in "xy" for index in range(5))
+            for relation in (1, 2)
+        },
+        mark=r"not one for each",
+    ),
+    "table_knots": Kind(
+        "a table's `x` out of order or with one distinct value, or an edge not strictly between its ends, "
+        "not in it twice in a row, or a value of it repeated that is no edge (table item 1): a schema does "
+        "not compare a list's items with each other or with another member's",
+        {
+            relation: (
+                "PR-322.edge_at_end",
+                "PR-322.edge_not_in_x",
+                "PR-322.edge_not_repeated",
+                "PR-322.edge_repeated_thrice",
+                "PR-322.repeated_x_no_edge",
+                "PR-322.x_decreasing",
+                "PR-322.x_minus_zero_and_zero_repeated",
+            )
+            for relation in (1, 2)
+        },
+        {relation: ("table removed table.edges.0",) for relation in (1, 2)},
+        mark=r"decreases|not strictly between|twice in a row|which are no edges|fewer than two distinct",
+    ),
+    "source_range_overlap": Kind(
+        "a `source_range` sharing no value that is no edge with `x`'s range (table item 4): a schema does "
+        "not compare one member's numbers with another's",
+        {
+            relation: ("PR-019.source_range_disjoint", "PR-019.source_range_meets_only_at_edge")
+            for relation in (1, 2)
+        },
+        mark=r"shares no value that is no edge",
+    ),
+    "axis_condition": Kind(
+        "a table's axis condition absent from its field's `conditions` or held as other than "
+        "`not_applicable` (table item 1): the writer binds it through the vocabulary (`conditions.json`, "
+        "`axes`), which the reader `$defs` leave out, as every binding, step 8 checking it in its own steps",
+        {
+            2: (
+                "PR-322.axis_condition_absent",
+                "PR-322.axis_condition_stated",
+                "PR-322.axis_condition_unstated",
+            )
+        },
+        mark=r"does not hold its table's axis",
+    ),
+    "points_null": Kind(
+        "`null` in a table's `points`, a name reserved at a table's place that the writer schema does not "
+        "define, since a 0.1.0 writer does not write it (table item 5), and that the reader `$defs` leave "
+        "open: step 8 refuses a table holding it whatever it holds, and `null` there as a member it checks "
+        "(`record_format.md` section 1 item 5)",
+        {2: ("PR-049.points_null",)},
+        mark=r"points is null",
     ),
     "withheld_in_part": Kind(
         "an evidence entry withholding some of its members but not every one: the reader `$defs` take any "
@@ -332,13 +413,7 @@ def readers() -> dict[str, list[tuple[str, frozenset[str] | None]]]:
 
 def step_8(example: Example) -> frozenset[str] | None:
     spec = VOCABULARY.fields[example.field]
-    try:
-        found = form_problems(
-            RecordField(spec, example.value, example.section), example.record, {"plain_read"}
-        )
-    except NotImplementedError:
-        # A table its row allows, whose member S3a writes.
-        return None
+    found = form_problems(RecordField(spec, example.value, example.section), example.record, {"plain_read"})
     return frozenset(reason.code for reason in found)
 
 
@@ -438,26 +513,10 @@ def problems(
     ]
 
 
-@cache
-def arms() -> dict[str, str]:
-    """Each plain-read case file's arm, as its `CASES.md` row states it."""
-    return {
-        f"{case}.{row['Variant'].strip('`')}": row["Arm"]
-        for case, (_, _, rows) in sections("plain_read").items()
-        for row in rows
-    }
-
-
-def refusal(example: Example, case: str | None) -> str:
-    """What says why step 8 refuses `example`: the details of its reasons, or, where step 8 does not read the
-    field yet, the arm of `case`, the case file that reads it."""
+def refusal(example: Example) -> str:
+    """What says why step 8 refuses `example`: the details of its reasons."""
     spec = VOCABULARY.fields[example.field]
-    try:
-        found = form_problems(
-            RecordField(spec, example.value, example.section), example.record, {"plain_read"}
-        )
-    except NotImplementedError:
-        return arms()[case] if case is not None else ""
+    found = form_problems(RecordField(spec, example.value, example.section), example.record, {"plain_read"})
     return "; ".join(str(reason.detail) for reason in found)
 
 
@@ -475,7 +534,7 @@ def misplaced(examples: list[Example], exceptions: dict[str, Kind]) -> list[str]
         for case, named in sorted(listed, key=str):
             reading = [example for example, cases in readers().items() if case in {c for c, _ in cases}]
             for example in [named] if named is not None else reading:
-                if example in by_name and not re.search(kind.mark, refusal(by_name[example], case)):
+                if example in by_name and not re.search(kind.mark, refusal(by_name[example])):
                     found.append(
                         f"{case or example}: listed under {name}, but its refusal is not of that kind"
                     )
@@ -805,13 +864,12 @@ def base_examples() -> list[Example]:
 
 
 def test_the_bases_are_valid_and_pass_step_8() -> None:
-    """Each base the variants change, the full fields and the drawn ones; a drawn table, whose own member
-    waits for S3a, has no step-8 verdict yet."""
+    """Each base the variants change, the full fields and the drawn ones."""
     withholding = (frozenset({"withheld"}), frozenset({"entries_withheld"}))
     for example in base_examples():
         assert WRITER["value_field"](example.value), example.name
         assert ROW[example.field](example.value), example.name
-        assert step_8(example) in (frozenset(), *withholding, None), example.name
+        assert step_8(example) in (frozenset(), *withholding), example.name
     forms = {str(example.value["form"]) for example in base_examples() if isinstance(example.value, dict)}
     assert forms == {"constant", "table", "interval", "composition", "evidence"}
 

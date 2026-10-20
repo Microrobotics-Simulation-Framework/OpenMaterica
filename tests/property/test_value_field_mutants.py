@@ -75,16 +75,26 @@ STATUS_OBJECT = value_shapes.status_object
 
 
 def _status_tokens_unchecked(
-    value: JsonObject, where: str, tokens: Collection[str] | None, defines: Collection[str], found: Found
+    value: JsonObject,
+    where: str,
+    tokens: Collection[str] | None,
+    defines: Collection[str],
+    found: Found,
+    named: Collection[str] = (),
 ) -> None:
-    STATUS_OBJECT(value, where, None, defines, found)
+    STATUS_OBJECT(value, where, None, defines, found, named)
 
 
 def _members_beside_a_status_ignored(
-    value: JsonObject, where: str, tokens: Collection[str] | None, defines: Collection[str], found: Found
+    value: JsonObject,
+    where: str,
+    tokens: Collection[str] | None,
+    defines: Collection[str],
+    found: Found,
+    named: Collection[str] = (),
 ) -> None:
     kept = value if not defines else {name: member for name, member in value.items() if name not in defines}
-    STATUS_OBJECT(kept, where, tokens, defines, found)
+    STATUS_OBJECT(kept, where, tokens, defines, found, named)
 
 
 def slipped_by(
@@ -428,10 +438,15 @@ def _field_slips_ignored(field: JsonObject, spec: Any, form: str | None) -> Foun
 
 
 def _status_slips_ignored(
-    value: JsonObject, where: str, tokens: Collection[str] | None, defines: Collection[str], found: Found
+    value: JsonObject,
+    where: str,
+    tokens: Collection[str] | None,
+    defines: Collection[str],
+    found: Found,
+    named: Collection[str] = (),
 ) -> None:
     mine: Found = []
-    STATUS_OBJECT(value, where, tokens, defines, mine)
+    STATUS_OBJECT(value, where, tokens, defines, mine, named)
     found += [reason for reason in mine if "one slip" not in str(reason.detail)]
 
 

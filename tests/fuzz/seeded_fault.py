@@ -28,14 +28,20 @@
   only the model's tells wrong. Of the 56 seed fields that hold alternatives, two hold three or more, and none
   a unit other than the registered one past the second (2026-10-19), so the fuzzer has to change one.
 
-Each of the first four raises its own message, so that CI can tell which fault a run found; the fifth is
-found by the oracle's assertion that the implementation and the model disagree.
+- In step 8, S3a's control for the fourth target: a table over temperature whose first knot lies below 250
+  is refused (`form_invalid`) where the text reads it, and the model with it, through step 9. Nothing raises:
+  only the model's answer tells it wrong. Of the 113 seed fields that hold a table over temperature, none
+  starts below 250 (2026-10-20), so the fuzzer has to lower one's first knot, in a table no other fault makes
+  `form_invalid`.
+
+Each of the first four raises its own message, so that CI can tell which fault a run found; the fifth and the
+sixth are found by the oracle's assertion that the implementation and the model disagree.
 
 The first three targets seed the first two faults when `MATERICA_FUZZ_SEEDED_FAULT` is set, and pytest seeds
 them when loaded as a plugin, `python -m pytest -p tests.fuzz.seeded_fault`. Only the fourth target seeds the
 third, since the property targets draw conditions too and would find it before their own. Set to
 `composition`, the variable seeds the composition's fault alone, in the third target and the fourth; set to
-`alternatives`, step 7's alone, in the fourth.
+`alternatives`, step 7's alone, in the fourth; set to `tables`, step 8's table fault alone, in the fourth.
 """
 
 import os
@@ -53,13 +59,14 @@ from materica.core.read import FieldRead, Standing
 from materica.core.reasons import Reason
 from materica.core.record import RecordStore
 from materica.core.resolve import Refused, ResolvedRecord, resolve_record
-from materica.core.value_shapes import Found
+from materica.core.value_shapes import Found, JsonObject, invalid
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import OperatingCondition, RequirementCondition, Suite
 
 COMPOSITION = "composition"
 ALTERNATIVES = "alternatives"
-NAMED = (COMPOSITION, ALTERNATIVES)
+TABLES = "tables"
+NAMED = (COMPOSITION, ALTERNATIVES, TABLES)
 
 _parse = jsonio.parse
 
@@ -128,6 +135,16 @@ def faulty_standing(found: FieldRead) -> Standing:
     return "set_aside" if standing == "refuses" and refused_for_its_unit and third_or_later else standing
 
 
+_points = fields._points  # pyright: ignore[reportPrivateUsage]
+
+
+def faulty_points(entry: JsonObject, where: str, found: Found) -> None:
+    _points(entry, where, found)
+    x = fields._numbers(entry.get("x"))  # pyright: ignore[reportPrivateUsage]
+    if entry.get("axis") == "temperature" and x and x[0] < 250.0:
+        found.append(invalid(f"{where}: the seeded fault in a table"))
+
+
 def seed() -> None:
     jsonio.parse = faulty_parse
     read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
@@ -166,6 +183,13 @@ def seed_alternatives_if_asked(instrument: Instrument) -> None:
     if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == ALTERNATIVES:
         # Its parameter is named otherwise than `read._standing`'s, whose name is the module's here.
         read._standing = instrument(faulty_standing)  # type: ignore[assignment]  # pyright: ignore[reportPrivateUsage]
+
+
+def seed_tables_if_asked(instrument: Instrument) -> None:
+    """S3a's control, which the fourth target seeds where the variable asks for it by name, instrumented as
+    its other faults are."""
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == TABLES:
+        fields._points = instrument(faulty_points)  # pyright: ignore[reportPrivateUsage]
 
 
 def pytest_configure(config: pytest.Config) -> None:

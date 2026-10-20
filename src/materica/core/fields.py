@@ -4,17 +4,16 @@ the shape of the alternatives it may hold (step 7 of `read_side_contract.md` sec
 shape (step 8) and its units (step 9).
 
 Step 8 checks the form token against the field's row, a composition's basis included, then the members every
-form shares (`value_shapes.py`), then the form's own member, where the row allows the form. A constant's, an
-interval's, a composition's and evidence's are read so far: a table the row allows raises
-`NotImplementedError`, whatever the other members hold, rather than give an answer its own member could add a
-reason to (every reason found is reported, `read_side_contract.md` section 2 item 2). A form the row does not
-allow is refused whatever its own member holds, which the read neither uses nor returns.
+form shares (`value_shapes.py`), then the form's own member, where the row allows the form: a constant's, a
+table's, an interval's, a composition's and evidence's, and for a table its axis condition too. A form the row
+does not allow is refused whatever its own member holds, which the read neither uses nor returns.
 
 Step 9 compares each unit the field states with the one registered for it, code point for code point, as
 step 0 does a request's, and a unit registered as a status object by its token (`record_format.md` section
-4.2): none is parsed or converted.
+4.2): none is parsed or converted. A table's `axis_unit` is compared with its axis condition's unit.
 """
 
+import itertools
 from collections.abc import Collection
 from dataclasses import dataclass
 from typing import get_type_hints
@@ -33,6 +32,7 @@ from materica.core.value_shapes import (
     a_list,
     an_object,
     field_problems,
+    in_order,
     invalid,
     is_status_object,
     listed,
@@ -47,21 +47,22 @@ from materica.core.value_shapes import (
     status_or,
     status_row,
     string,
+    unit,
     unknown_token,
     whole,
 )
 from materica.core.vocabulary import STATUS_TOKENS, VOCABULARY, RecordFieldSpec
 from materica.shapes import Suite
 
-# The forms whose own member step 8 reads so far, each with the shape of a field of that form; another form a
-# row allows waits for a step not built yet.
+# The forms whose own member step 8 reads, each with the shape of a field of that form: every form a row of
+# schema 0.1 allows.
 FIELD_SHAPES: dict[str, type] = {
     "constant": shapes.ConstantField,
+    "table": shapes.TableField,
     "interval": shapes.IntervalField,
     "composition": shapes.CompositionField,
     "evidence": shapes.EvidenceField,
 }
-FORMS_READ = tuple(FIELD_SHAPES)
 
 
 @dataclass(frozen=True)
@@ -117,19 +118,20 @@ def alternatives_problems(holder: JsonObject, name: str) -> Found:
 
 
 def form_problems(field: RecordField, record: JsonObject, claims: Collection[Suite]) -> Found:
-    """Step 8: every reason the record's structure, the field's section and the field give; or
-    `NotImplementedError` where the row allows the field's form and that form's own member waits for a step
-    not built yet, whatever the rest holds."""
+    """Step 8: every reason the record's structure, the field's section and the field give."""
     found = record_problems(record) + section_problems(field.spec.section, field.section)
     if not isinstance(field.value, dict):
         return [*found, invalid(f"{field.spec.name} is not an object")]
     form, allowed = _form(field.value, field.spec, claims, found)
-    if allowed and form not in FORMS_READ:
-        raise NotImplementedError(f"the member of a field of form {form} is not read yet")
     found += field_problems(field.value, field.spec, form)
     if form is not None and allowed:
         _own_member(field.value, field.spec.name, form, found)
-    if form == "evidence" and allowed:
+    if form == "table" and allowed:
+        _axis_condition(field.value, field.spec.name, found)
+    if "evidence" in field.spec.forms:
+        # `record_format.md` section 4.3 item 3 binds the evidence field, whatever its form: "`conditions`
+        # holds no registered condition: one there is a shape error" (maintainer, 2026-10-19: a table there
+        # holding its axis condition gives `form_invalid` beside `form_not_registered`).
         _no_registered_condition(field.value.get("conditions"), f"{field.spec.name}.conditions", found)
     return found
 
@@ -169,6 +171,143 @@ def _basis_allowed(field: JsonObject, spec: RecordFieldSpec, form: str, found: F
 
 
 # The forms' own members (`record_format.md` section 6).
+
+
+def table(value: JsonValue, where: str, found: Found) -> None:
+    """A table's members, each checked, so that a table returned as stored holds only checked members
+    (`read_side_contract.md` section 3, step 8): items 1, 2 and 4's rules on them, each a function of its
+    own, and `points`, a reserved name, refused by its presence whatever it holds (item 5)."""
+    entry = members(value, where, found, TABLE, TABLE_OPTIONAL, named=TABLE_RESERVED)
+    if entry is None:
+        return
+    _points(entry, where, found)
+    x, y, edges = (_numbers(entry.get(name)) for name in ("x", "y", "edges"))
+    if x is not None:
+        _abscissae(x, edges, where, found)
+    if x is not None and y is not None:
+        _one_y_for_each_x(x, y, where, found)
+    if edges is not None:
+        _edges_once(edges, where, found)
+    _positive_where_log_log(entry.get("scheme"), [*(x or ()), *(y or ())], where, found)
+    source_range = _numbers(entry.get("source_range"))
+    if x is not None and edges is not None and source_range is not None and len(source_range) == 2:
+        _shares_a_value_no_edge(source_range, x, edges, f"{where}.source_range", found)
+
+
+def _points(entry: JsonObject, where: str, found: Found) -> None:
+    """Item 5: `points_unsupported` for a table holding `points`, whatever it holds; and `form_invalid` for
+    `null` there, in a member step 8 checks (`record_format.md` section 1 item 5)."""
+    if "points" not in entry:
+        return
+    found.append(
+        Reason("points_unsupported", detail=f"{where} holds points, which this reader does not read")
+    )
+    if entry["points"] is None:
+        found.append(invalid(f"{where}.points is null"))
+
+
+def _one_y_for_each_x(x: list[float], y: list[float], where: str, found: Found) -> None:
+    """Item 1: "`y` holds one number for each entry of `x`"."""
+    if len(y) != len(x):
+        found.append(invalid(f"{where}.y holds {len(y)} numbers, not one for each of x's {len(x)}"))
+
+
+def _edges_once(edges: list[float], where: str, found: Found) -> None:
+    """Item 1: no number twice in `edges`, compared by value, so `-0` repeats `0`."""
+    if len(set(edges)) < len(edges):
+        found.append(invalid(f"{where}.edges lists a number twice"))
+
+
+def _positive_where_log_log(scheme: JsonValue, values: list[float], where: str, found: Found) -> None:
+    """Item 2: "A `loglog` table holds only positive `x` and `y`", `-0` no more than `0`."""
+    if scheme == "loglog" and any(value <= 0 for value in values):
+        found.append(invalid(f"{where} is log-log and holds an x or a y that is not positive"))
+
+
+def numbers(value: JsonValue, where: str, found: Found) -> None:
+    if _numbers(value) is None:
+        found.append(invalid(f"{where} is not a list of numbers"))
+
+
+def _numbers(value: JsonValue) -> list[float] | None:
+    if isinstance(value, list) and all(isinstance(item, float) for item in value):
+        return [item for item in value if isinstance(item, float)]
+    return None
+
+
+def _abscissae(x: list[float], edges: list[float] | None, where: str, found: Found) -> None:
+    """Item 1's rules on `x`, numbers compared by value (`-0` equals `0`): at least two distinct values, in
+    an order that never decreases; each edge strictly between `x[0]` and `x[-1]` (an empty `x` has no ends
+    to hold one between), in `x` exactly twice and consecutively; and no other value of `x` twice. `x` is
+    indexed once, so that the edges are checked in time linear in the table's length."""
+    if len(set(x)) < 2:
+        found.append(invalid(f"{where}.x holds fewer than two distinct values"))
+    if any(later < earlier for earlier, later in itertools.pairwise(x)):
+        found.append(invalid(f"{where}.x decreases"))
+    held = _indexes_by_value(x)
+    for edge in edges or ():
+        if not (x and x[0] < edge < x[-1]):
+            found.append(invalid(f"{where}.edges holds {edge!r}, not strictly between x's ends"))
+        at = held.get(edge, [])
+        if len(at) != 2 or at[1] != at[0] + 1:
+            found.append(invalid(f"{where}.edges holds {edge!r}, which x does not hold twice in a row"))
+    edged = set(edges or ())
+    if repeated := sorted(value for value, at in held.items() if len(at) > 1 and value not in edged):
+        found.append(invalid(f"{where}.x repeats {repeated}, which are no edges"))
+
+
+def _indexes_by_value(x: list[float]) -> dict[float, list[int]]:
+    """Each value of `x` and the indexes that hold it. A float key is found by value, so `-0` and `0` are one
+    key."""
+    held: dict[float, list[int]] = {}
+    for index, value in enumerate(x):
+        held.setdefault(value, []).append(index)
+    return held
+
+
+def _shares_a_value_no_edge(
+    source_range: list[float], x: list[float], edges: list[float], where: str, found: Found
+) -> None:
+    """Item 4: `source_range`, two numbers in order, shares with `[x[0], x[-1]]` at least one value that is no
+    edge. Two ranges that overlap in more than a point share infinitely many values, and so one that is no
+    edge. An empty `x` has no range to share a value with, and item 1 refuses it already."""
+    lo, hi = source_range
+    if lo > hi or not x:
+        return
+    shared_lo, shared_hi = max(lo, x[0]), min(hi, x[-1])
+    if shared_lo > shared_hi or (shared_lo == shared_hi and shared_lo in edges):
+        found.append(invalid(f"{where} shares no value that is no edge with x's range"))
+
+
+TABLE: dict[str, Check] = {
+    "axis": listed("axis", "axis"),
+    "axis_unit": unit,
+    "x": numbers,
+    "y": numbers,
+    "scheme": listed("scheme", "table_scheme"),
+    "edges": numbers,
+}
+TABLE_OPTIONAL: dict[str, Check] = {"source_range": in_order}
+# Item 5: "`points` counts as a member named at a table's place"; a 0.1.0 reader refuses it by its presence.
+TABLE_RESERVED = ("points",)
+
+
+def _axis_condition(field: JsonObject, name: str, found: Found) -> None:
+    """Item 1: the field's `conditions` hold a known axis as `{"status": "not_applicable"}`, a `reason`
+    allowed. An axis the reader does not know was refused as a token, and its rule is not checked (item 2)."""
+    table_member, conditions = field.get("table"), field.get("conditions")
+    if (
+        not isinstance(table_member, dict)
+        or is_status_object(table_member)
+        or not isinstance(conditions, dict)
+    ):
+        return
+    axis = table_member.get("axis")
+    if not isinstance(axis, str) or axis not in VOCABULARY.token_lists["axis"]:
+        return
+    held = conditions.get(axis)
+    if not (is_status_object(held) and an_object(held)["status"] == "not_applicable"):
+        found.append(invalid(f"{name}.conditions does not hold its table's axis {axis} as not_applicable"))
 
 
 def interval(value: JsonValue, where: str, found: Found) -> None:
@@ -316,6 +455,11 @@ REPORT: dict[str, Check] = {
 # (`provenance.md` section 7), but evidence, which never holds a status object (section 1 item 5).
 OWN_MEMBERS: dict[str, Check] = {
     "constant": or_status(number, shapes.ConstantField, "value"),
+    # `points` is named at a table's place (`record_format.md` section 6, table item 5), so a status object
+    # standing for a table that holds a member one slip from it breaks its shape; `points` itself, which the
+    # table's shape does not define, is ignored there: "Elsewhere a member beside `status` and `reason` that S
+    # does not define is ignored" (`provenance.md` section 1 item 5).
+    "table": or_status(table, shapes.TableField, "table", named=TABLE_RESERVED),
     "interval": or_status(interval, shapes.IntervalField, "interval"),
     "composition": or_status(composition, shapes.CompositionField, "composition"),
     "evidence": evidence,
@@ -346,13 +490,19 @@ def same_unit(stored: JsonValue, registered: JsonValue) -> bool:
 
 def unit_problems(field: RecordField) -> Found:
     """Step 9, for a field that passed step 8 (`read_side_contract.md` section 3): `unit_mismatch` for each
-    unit other than the one registered for it: the field's; a known numeric condition's and its `plus_minus`
-    entries', with that condition; a `unit` on a token condition, which registers none, with that condition;
-    and a specimen fact's, against the unit its row fixes, wherever step 8 checks the fact (the section's
-    specimen, the field's, and a derived value's inputs')."""
+    unit other than the one registered for it: the field's; a table's `axis_unit`, with its axis; a known
+    numeric condition's and its `plus_minus` entries', with that condition; a `unit` on a token condition,
+    which registers none, with that condition; and a specimen fact's, against the unit its row fixes, wherever
+    step 8 checks the fact (the section's specimen, the field's, and a derived value's inputs')."""
     value = an_object(field.value)
     found: Found = []
     _compare_unit(value["unit"], field.spec.unit, f"{field.spec.name}.unit", None, found)
+    if value["form"] == "table" and not is_status_object(table_member := value["table"]):
+        axis = str(an_object(table_member)["axis"])
+        held = an_object(table_member)["axis_unit"]
+        _compare_unit(
+            held, VOCABULARY.conditions[axis].unit, f"{field.spec.name}.table.axis_unit", axis, found
+        )
     for name, condition in an_object(value["conditions"]).items():
         spec = VOCABULARY.conditions.get(name)
         if spec is None or is_status_object(condition):
@@ -372,9 +522,9 @@ def unit_problems(field: RecordField) -> Found:
             )
     for where, specimen in _specimens(field):
         for name, fact in specimen.items():
-            unit = VOCABULARY.facts[name].fixed.get("unit") if name in VOCABULARY.facts else None
-            if unit is not None and not is_status_object(fact):
-                _compare_unit(an_object(fact)["unit"], unit, f"{where}.{name}.unit", None, found)
+            fixed = VOCABULARY.facts[name].fixed.get("unit") if name in VOCABULARY.facts else None
+            if fixed is not None and not is_status_object(fact):
+                _compare_unit(an_object(fact)["unit"], fixed, f"{where}.{name}.unit", None, found)
     return found
 
 

@@ -190,6 +190,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("fields.py", "_basis_allowed"): 8,
     ("fields.py", "_own_member"): 8,
     ("fields.py", "evidence"): 8,
+    ("fields.py", "_points"): 8,
     ("fields.py", "_mismatch"): 9,
     ("conditions.py", "_entry"): 10,
     ("conditions.py", "_compared"): 10,

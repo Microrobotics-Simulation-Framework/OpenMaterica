@@ -157,10 +157,15 @@ STATUS_OBJECT = value_shapes.status_object
 
 
 def _broken_status_reports_its_token(
-    value: JsonObject, where: str, tokens: Collection[str] | None, defines: Collection[str], found: Found
+    value: JsonObject,
+    where: str,
+    tokens: Collection[str] | None,
+    defines: Collection[str],
+    found: Found,
+    named: Collection[str] = (),
 ) -> None:
     before = len(found)
-    STATUS_OBJECT(value, where, tokens, defines, found)
+    STATUS_OBJECT(value, where, tokens, defines, found, named)
     broken = any(reason.code == "form_invalid" for reason in found[before:])
     status = value["status"]
     if broken and tokens is not None and isinstance(status, str) and status not in STATUS_TOKENS:

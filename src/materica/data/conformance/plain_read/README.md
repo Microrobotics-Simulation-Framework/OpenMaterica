@@ -143,7 +143,7 @@ All are illustrative, in the namespace `conformance`. See the conformance tree's
 | `composition_*` | `conformance/composition_fixture`: `bulk.elemental_composition`, a partial mass-fraction composition, and its faults |
 | `evidence_fixture.json`, `evidence_*` | `conformance/evidence_fixture`: `biocompatibility.evidence`, two reports, and its faults |
 | `mixture_*` | `conformance/mixture_fixture`: a derived viscosity whose derivation names the water and glycerol records |
-| `form_*` | `conformance/form_fixture`: a form on a field whose row does not allow it (`form_table_on_*`: a well-formed table, on evidence without its axis condition; `form_broken_table_on_*`: a table without `edges`) |
+| `form_*` | `conformance/form_fixture`: a form on a field whose row does not allow it (`form_table_on_*`: a well-formed table, on evidence without its axis condition, or holding it, which evidence's `conditions` may not hold whatever the form, `record_format.md` section 4.3 item 3, the maintainer's ruling of 2026-10-19; `form_broken_table_on_*`: a table without `edges`) |
 | `density_table*.json` | `conformance/density_table_fixture`: `bulk.density` as a linear table over temperature, x [280, 300, 320, 340] K, and its variants: a `source_range` (`density_table_range_*`), a fault of structure, member or token, `points`, a statistics block, 10,000 knots, and alternatives beside a constant, an interval or a second table |
 | `density_edge*.json` | `conformance/density_edge_fixture`: the same over x [263, 273, 273, 283] K with an edge at 273 K, and its `source_range` and structural variants (the edge below, inside, on an end of and above the readable range), and alternatives beside a constant or an interval |
 | `viscosity_table*.json` | `conformance/viscosity_table_fixture`: `fluid.dynamic_viscosity` as a linear table over temperature, shear rate stated, the Newtonian label; once stated without origin |
@@ -189,11 +189,6 @@ The inputs come in families, named by what they break:
   takes a power law, and step 8 refuses one (`form_not_registered`, PR-036) before step 11. That refusal of
   the field is tested (`PR-044.refused_form_not_registered`); only the set-aside rule for a power law's range
   is unreachable.
-- **Answers the text leaves open for tables:**
-  - a table on `biocompatibility.evidence` whose `conditions` hold its axis (PR-036): whether step 8, refusing
-    the form, finds the table's axis condition a condition evidence's own `conditions` may not hold. With
-    `conditions` `{}` the text decides it (`form_not_registered`, and `form_invalid` for the absent axis
-    condition), and that arm is written.
 - **A power law** (PR-020, PR-021, TE-009): no 0.1.0 field takes one; its arms come with the acoustic section.
 - **Acceptances located at a region.** Regions belong to the scene suite. An acceptance located at an
   `interval` is checked and not applied (`PR-316.implied_at_interval`, `PR-338.nominal_at_interval`,

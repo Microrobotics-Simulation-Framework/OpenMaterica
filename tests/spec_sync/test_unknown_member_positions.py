@@ -66,7 +66,13 @@ UNKNOWN = "x_unknown_member"
 UNSTATED: JsonObject = {"status": "unstated"}
 FIELD = "fluid.dynamic_viscosity"
 # What a read of each form wants, so that it reaches step 13 (`read_side_contract.md` section 6).
-WANT = {"constant": "value", "interval": "bounds", "composition": "components", "evidence": "evidence"}
+WANT = {
+    "constant": "value",
+    "table": "value",
+    "interval": "bounds",
+    "composition": "components",
+    "evidence": "evidence",
+}
 PAST_STEP_8 = "past step 8"
 REFUSAL = {"record": "form_invalid", "request": "request_incomplete"}
 # The one `unknown` reason step 8 gives (`read_side_contract.md` section 4), which a refusal there keeps
@@ -144,6 +150,15 @@ def hosts() -> tuple[Host, ...]:
             inputs = an_object(a_list(derivation["input_specimens"])[0])
             facts = an_object(inputs["specimen"])
             facts["post_mortem_interval"] = {"value": 60.0, "unit": UNSTATED, "basis": "stated"}
+        if name == "table":
+            # A host whose table holds its `axis_unit` as a status object, which step 9 refuses, beside the
+            # one whose read passes steps 8 and 9 (`provenance.md` section 1 item 5: a unit "any").
+            unstated = copy.deepcopy(field)
+            an_object(unstated["table"])["axis_unit"] = UNSTATED
+            unstated_record = record_of(unstated, registered, specimen=copy.deepcopy(section_specimen))
+            an_object(unstated_record["body"])["extensions"] = {"acme": {"sections": {"x": 1.0}}}
+            unstated_record["content_hash"] = content_hash(unstated_record)
+            found.append(Host("table_axis_unit_unstated", unstated_record, None, registered, "table"))
         record = record_of(field, registered, specimen=section_specimen)
         record_body = record["body"]
         assert isinstance(record_body, dict)
@@ -432,14 +447,16 @@ def test_a_deferred_position_waits_for_a_piece_not_done() -> None:
     never done."""
     done = [str(piece) for piece in STEPS["done"]]
     assert done_too_soon(TABLE, done) == []
-    assert done_too_soon(TABLE, [*done, "S3a", "S4b"]) == [
-        "D04: S3a is done, so the position needs its verdict",
-        "D06: S4b is done, so the position needs its verdict",
+    assert done_too_soon(TABLE, [*done, "S4b"]) == ["D06: S4b is done, so the position needs its verdict"]
+    assert done_too_soon([{**BY_ID["D06"], "deferred": ["S2c"]}], done) != []
+    # The table's row as it stood before S3a, which built it: deferred, and now due.
+    deferred_table = {name: value for name, value in BY_ID["R78"].items() if name != "verdict"}
+    assert done_too_soon([{**deferred_table, "deferred": ["S3a"]}], done) == [
+        "R78: S3a is done, so the position needs its verdict"
     ]
-    assert done_too_soon([{**BY_ID["D04"], "deferred": ["S2c"]}], done) != []
     # The rows as they stood before S4a, which named S3 and S4 once those were built in pieces.
-    assert done_too_soon([{**BY_ID["D04"], "deferred": ["S3"]}], [*done, "S3a", "S3c"]) == [
-        "D04: S3 is built in pieces, so it is never done: name the piece"
+    assert done_too_soon([{**deferred_table, "deferred": ["S3"]}], [*done, "S3c"]) == [
+        "R78: S3 is built in pieces, so it is never done: name the piece"
     ]
     assert done_too_soon([{**BY_ID["D06"], "deferred": ["S3", "S4"]}], [*done, "S4a", "S4b", "S4c"]) == [
         "D06: S3 is built in pieces, so it is never done: name the piece",

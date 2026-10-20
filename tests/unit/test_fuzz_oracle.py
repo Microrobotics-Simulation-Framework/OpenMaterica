@@ -38,7 +38,7 @@ from tests.fuzz.field_oracle import (
     passed_step_8,
     read_outcome,
 )
-from tests.fuzz.seeded_fault import faulty_standing
+from tests.fuzz.seeded_fault import faulty_points, faulty_standing
 from tests.property.full_fields import full_fields, full_forms, record_of, request_for
 
 FIELD = "fluid.dynamic_viscosity"
@@ -155,6 +155,67 @@ def test_the_oracle_sees_a_derived_value_s_derivation_step_8_misses(monkeypatch:
     monkeypatch.setattr(value_shapes, "derivation_inputs", _any)
     with pytest.raises(AssertionError, match="the reader \\$defs refuse"):
         check_no_refusal_missing(FIELD, field, result_of(field))
+
+
+# A table, which S3a reads through step 9: T1's third relation, and step 9 with its `axis_unit`.
+
+
+def a_table(**table: JsonValue) -> tuple[str, dict[str, JsonValue]]:
+    """The full table form, its table's members changed."""
+    name, field = full_forms()["table"]
+    member = field["table"]
+    assert isinstance(member, dict)
+    member.update(table)
+    return name, field
+
+
+def _no_table_checked(value: JsonValue, where: str, found: value_shapes.Found) -> None:
+    pass
+
+
+def test_the_oracle_sees_a_refusal_step_8_misses_in_a_table(monkeypatch: pytest.MonkeyPatch) -> None:
+    name, field = a_table(x="not a list")
+    check_no_refusal_missing(name, field, result_of(field, name))
+    monkeypatch.setitem(fields.OWN_MEMBERS, "table", _no_table_checked)
+    with pytest.raises(AssertionError, match="the reader \\$defs refuse"):
+        check_no_refusal_missing(name, field, result_of(field, name))
+
+
+def table_read(name: str, field: dict[str, JsonValue]) -> JsonValue:
+    record = record_of(field, name)
+    record["content_hash"] = content_hash(record)
+    store = RecordStore()
+    store.add("record", json.dumps(record).encode())
+    try:
+        result = read(request_for(record, name), store)
+    except NotImplementedError:
+        return "not yet"
+    written: JsonValue = json.loads(json.dumps(result.to_json()))
+    return written
+
+
+def _units_blind_to_the_axis(field: fields.RecordField) -> list[Reason]:
+    return []
+
+
+def _a_unit_refused(field: fields.RecordField) -> list[Reason]:
+    return [Reason("unit_mismatch")]
+
+
+def test_the_oracle_holds_a_tables_step_9_to_its_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Quiet on a table steps 8 and 9 pass and on one whose `axis_unit` step 9 refuses; failing on a step 9
+    that misses the `axis_unit`, and on a table answered past step 9, before step 10 is built for it."""
+    name, passing = a_table()
+    _, other_unit = a_table(axis_unit="Cel")
+    for field in (passing, other_unit):
+        check_steps_9_and_10(name, field, {}, {}, table_read(name, field))
+    with monkeypatch.context() as patched:
+        patched.setattr(read_module, "unit_problems", _units_blind_to_the_axis)
+        with pytest.raises(AssertionError, match="step 9 gave"):
+            check_steps_9_and_10(name, other_unit, {}, {}, table_read(name, other_unit))
+    monkeypatch.setattr(read_module, "unit_problems", _a_unit_refused)
+    with pytest.raises(AssertionError, match="a table steps 8 and 9 pass gave"):
+        check_steps_9_and_10(name, passing, {}, {}, table_read(name, passing))
 
 
 # Steps 9 and 10: units by code point, and conditions by HP7's oracle, as the target reads a field.
@@ -352,6 +413,18 @@ def test_the_model_oracle_sees_step_7_s_seeded_fault(monkeypatch: pytest.MonkeyP
     sources, request = model_case({"alternatives": [base, base, {**base, "unit": "mPa.s"}]})
     against_the_model(sources, request)
     monkeypatch.setattr(read_module, "_standing", faulty_standing)
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        against_the_model(sources, request)
+
+
+def test_the_model_oracle_sees_the_table_s_seeded_fault(monkeypatch: pytest.MonkeyPatch) -> None:
+    """S3a's control fault (`tests/fuzz/seeded_fault.py`, `faulty_points`): a table over temperature whose
+    first knot lies below 250 refused at step 8, which the text and the model read through step 9, leaving it
+    to steps 10 to 13. The read gives an answer where the model's is "not yet"."""
+    name, field = a_table(x=[200.0, 303.15, 313.15, 313.15, 323.15])
+    sources, request = form_read(name, field, "value")
+    against_the_model(sources, request)
+    monkeypatch.setattr(fields, "_points", faulty_points)
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(sources, request)
 

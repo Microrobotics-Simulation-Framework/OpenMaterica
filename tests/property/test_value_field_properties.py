@@ -10,9 +10,9 @@ interval, a composition or evidence drawn from `value_field_strategies.py`. The 
   checks. Some of an evidence list's reports withheld give `entries_withheld`, an `unknown` reason beside a
   read that goes on: no refusal, so HP3 reads it as passing step 8.
 - **The label's rule** (`record_format.md` section 4.1, "Labels"): the row's label goes on a constant, and on
-  a table whose axis is not the condition its Label cell names, and on no other form. A read reaches a label
-  on a table only once S3 reads tables, so the property calls step 8's shared check of a field's members,
-  `value_shapes.field_problems`, as `fields.form_problems` calls it; its oracle reads the Label column itself.
+  a table whose axis is not the condition its Label cell names, and on no other form. The property calls step
+  8's shared check of a field's members, `value_shapes.field_problems`, as `fields.form_problems` calls it, on
+  every form; its oracle reads the Label column itself. HP16 (S3a) holds a label on a table through the read.
 - **HP5, ignorance.** Members the reader does not know, added where they may go, never change the outcome,
   whether the field passes step 8 or a fault refuses it: a name more than one slip from every member named at
   its place is ignored, two slips off included. The pin is recomputed. As the S2 design says, no member is

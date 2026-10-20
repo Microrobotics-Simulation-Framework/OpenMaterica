@@ -13,10 +13,10 @@ Of a request's acceptances, a read applies the two S2 builds (`declarations.md` 
 condition at step 10, and a nominal at step 13, which supplies the value of an interval under `want: value`.
 Step 0 refuses an acceptance of a kind a read does not take.
 
-Overlays (step 6), picks and tables are not built yet. A read that would need one raises
-`NotImplementedError`, and so does a request whose answer a check still to come could change, whatever else
-is wrong with it: one with a region target, or a pick, an overlay or an extrapolation among its acceptances.
-It raises rather than give an answer a later step would contradict.
+Overlays (step 6), picks and a table's steps 10 to 13 are not built yet. A read that would need one raises
+`NotImplementedError`, a table once steps 8 and 9 pass it, and so does a request whose answer a check still
+to come could change, whatever else is wrong with it: one with a region target, or a pick, an overlay or an
+extrapolation among its acceptances. It raises rather than give an answer a later step would contradict.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -502,6 +502,8 @@ def read_value_field(
     found += unit_problems(field)
     if _ends(found):
         return FieldRead(merged(found))
+    if an_object(field.value)["form"] == "table":
+        raise NotImplementedError("a table's steps 10 to 13 are S3b-2's")
     implied = [
         condition for condition in request.implied if condition.located_at(request.field, request.target)
     ]
@@ -616,8 +618,8 @@ def _read_alternatives(
     by steps 8 to 13, `nominal` applied at step 13 where it applies to the read; each then refuses the field,
     is set aside or stays (`_standing`), and the result is the first outcome that applies: a refusal, or every
     alternative set aside; the one left; `want_mismatch` where none that stays has a form `want` can give;
-    otherwise `no_pick`. A pick and an overlay raise at step 0, and a table at step 8, so no alternative here
-    reaches step 11's range."""
+    otherwise `no_pick`. A pick and an overlay raise at step 0, and a table after step 9, so no alternative
+    here reaches step 11's range."""
     holder = an_object(field.value)
     shape = alternatives_problems(holder, field.spec.name)
     if shape:
@@ -682,7 +684,7 @@ def _reported_beside_two_or_more(staying: Sequence[FieldRead]) -> tuple[Reason, 
 
 def _standing(read: FieldRead) -> Standing:
     """Whether one alternative's read refuses the field, sets it aside or leaves it standing (section 3, step
-    7), as far as the forms read so far reach: a table's range at step 11 waits for S3."""
+    7), as far as the forms read so far reach: a table's range at step 11 waits for S3b-2."""
     if read.request_fault:
         # "So does a fault of the request (section 1)"
         return "refuses"

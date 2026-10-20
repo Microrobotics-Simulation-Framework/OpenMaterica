@@ -30,7 +30,8 @@ from tests.spec_sync import status_rows
 JsonObject = dict[str, JsonValue]
 Draw = st.DrawFn
 
-# The forms whose own member step 8 reads so far, each with its own member (`record_format.md` section 5:
+# The forms whose own member HP3 draws (a table's step 8 is HP13's, S3a), each with its own member
+# (`record_format.md` section 5:
 # "`value` for a constant; otherwise the member named like the form"), the `want` that gives it
 # (`read_side_contract.md` section 6) and the fields whose row allows it.
 OWN_MEMBERS = {

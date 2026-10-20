@@ -201,14 +201,128 @@ def water_field() -> dict[str, JsonValue]:
     return found
 
 
-def test_a_table_its_row_allows_raises_whatever_else_is_wrong() -> None:
-    """Its own member could add a reason, and every reason found is reported (`read_side_contract.md` section
-    2 item 2): a table's unknown `scheme` beside a broken `unit` gives `unknown_token` too, once read."""
-    field = {**water_field(), "form": "table", "table": {}}
-    del field["label"]
-    for broken in ({}, {"unit": None}, {"statistics": None, "label": "materica.fluid.newtonian.v1"}):
+def viscosity_table(**table: JsonValue) -> dict[str, JsonValue]:
+    """The water viscosity as a table over temperature, its axis condition `not_applicable`, with `table`'s
+    members changed."""
+    field = {**water_field(), "form": "table"}
+    del field["value"]
+    conditions = field["conditions"]
+    assert isinstance(conditions, dict)
+    field["conditions"] = {**conditions, "temperature": {"status": "not_applicable"}}
+    field["table"] = {
+        "axis": "temperature",
+        "axis_unit": "K",
+        "x": [300.0, 320.0],
+        "y": [0.000853, 0.000577],
+        "scheme": "linear",
+        "edges": [],
+        **table,
+    }
+    return field
+
+
+def test_a_table_steps_8_and_9_pass_raises_and_one_they_refuse_is_refused() -> None:
+    """S3a reads a table through step 9 (`read_side_contract.md` section 3), and steps 10 to 13 are not built
+    yet: a table they pass raises, the Newtonian label on a temperature table included, and one they refuse
+    gives every reason they find."""
+    for passing in ({}, {"label": "materica.fluid.newtonian.v1"}):
         with pytest.raises(NotImplementedError):
-            read(*stored(with_field("fluid.dynamic_viscosity", {**field, **broken})))
+            read(*stored(with_field("fluid.dynamic_viscosity", {**viscosity_table(), **passing})))
+    for refused, codes in (
+        (
+            {"unit": None, "table": viscosity_table(scheme="cubic")["table"]},
+            {"form_invalid", "unknown_token"},
+        ),
+        ({"table": viscosity_table(axis_unit="Cel")["table"]}, {"unit_mismatch"}),
+        ({"table": viscosity_table(points=[])["table"]}, {"points_unsupported"}),
+        ({"conditions": water_field()["conditions"]}, {"form_invalid"}),
+    ):
+        result = read(*stored(with_field("fluid.dynamic_viscosity", {**viscosity_table(), **refused})))
+        assert {reason.code for reason in result.reasons} == codes, refused
+
+
+def test_a_tables_axis_unit_gives_unit_mismatch_with_its_axis() -> None:
+    """`read_side_contract.md` section 2 item 2: `unit_mismatch` carries `condition` where it concerns an
+    axis."""
+    field = viscosity_table(axis_unit="Cel")
+    assert read(*stored(with_field("fluid.dynamic_viscosity", field))).reasons == (
+        Reason("unit_mismatch", "temperature"),
+    )
+
+
+EMPTY_X: list[dict[str, JsonValue]] = [
+    {"x": [], "y": [], "edges": [310.0]},
+    {"x": [], "y": [], "edges": [], "source_range": [290.0, 330.0]},
+    {"x": [], "y": [], "edges": [310.0], "source_range": [290.0, 330.0]},
+]
+
+
+@pytest.mark.parametrize("table", EMPTY_X)
+def test_an_empty_x_beside_edges_or_a_source_range_is_refused_and_never_raises(
+    table: dict[str, JsonValue],
+) -> None:
+    """`record_format.md` section 6, table item 1: "`x` holds at least two distinct values", so the table is
+    `form_invalid`, alone and as an alternative; `read_side_contract.md` section 2: "A read never stops with
+    an error for anything a record or request contains" (the S3a review's H1: an edge's and `source_range`'s
+    rules read `x`'s ends)."""
+    alone = read(*stored(with_field("fluid.dynamic_viscosity", viscosity_table(**table))))
+    assert (alone.status, alone.reasons) == ("not_met", (Reason("form_invalid"),))
+    second = read(
+        *stored(
+            with_field("fluid.dynamic_viscosity", {"alternatives": [water_field(), viscosity_table(**table)]})
+        )
+    )
+    assert second.status == "not_met"
+    assert Reason("form_invalid", alternative=1) in second.reasons
+
+
+@pytest.mark.parametrize(
+    ("beside", "codes"),
+    [
+        ({}, {"withheld"}),
+        ({"points": []}, {"withheld"}),
+        ({"points": None}, {"withheld"}),
+        ({"point": []}, {"form_invalid"}),
+        ({"pointz": 1.0}, {"form_invalid"}),
+        ({"x_unknown_member": 1.0}, {"withheld"}),
+        ({"edges": []}, {"form_invalid"}),
+    ],
+)
+def test_a_withheld_table_ignores_points_beside_its_status_and_refuses_a_slip_of_it(
+    beside: dict[str, JsonValue], codes: set[str]
+) -> None:
+    """`provenance.md` section 1 item 5: a status object breaks its shape where it "also holds a member S
+    defines", and "Elsewhere a member beside `status` and `reason` that S does not define is ignored". A
+    table's shape does not define `points` (the writer schema refuses it, `record_format.md` section 6, table
+    item 5), so `points` is ignored there, whatever it holds; a member one slip from it is refused, `points`
+    being named at a table's place for section 10 item 5, and the broken status object gives no `withheld`."""
+    field: dict[str, JsonValue] = {
+        **viscosity_table(),
+        "table": {"status": "withheld", **beside},
+        "statistics": {"status": "withheld"},
+    }
+    result = read(*stored(with_field("fluid.dynamic_viscosity", field)))
+    assert (result.status, {reason.code for reason in result.reasons}) == ("not_met", codes), beside
+
+
+def test_a_registered_condition_on_the_evidence_field_is_refused_whatever_its_form() -> None:
+    """`record_format.md` section 4.3 item 3 binds the field: a table on `biocompatibility.evidence` whose
+    `conditions` hold its axis gives `form_invalid` beside `form_not_registered` (maintainer, 2026-10-19);
+    with `conditions` `{}`, `form_not_registered` alone."""
+    table: dict[str, JsonValue] = {**viscosity_table(), "unit": {"status": "not_applicable"}}
+    del table["label"]
+    name = "biocompatibility.evidence"
+    with_its_axis: dict[str, JsonValue] = {
+        **table,
+        "conditions": {"temperature": {"status": "not_applicable"}},
+    }
+    assert {reason.code for reason in read(*stored(with_field(name, with_its_axis), name)).reasons} == {
+        "form_not_registered",
+        "form_invalid",
+    }
+    assert read(*stored(with_field(name, {**table, "conditions": {}}), name)).reasons == (
+        Reason("form_not_registered"),
+    )
 
 
 @pytest.mark.parametrize(
@@ -227,6 +341,9 @@ def test_a_form_its_row_does_not_allow_is_refused_with_every_shared_reason_and_n
     it: a constant's `value` that is not a number adds nothing beside `form_not_registered`."""
     field = {**water_field(), "form": form, FORM_MEMBERS[form]: "not this form's member"}
     del field["label"]
+    if name == "biocompatibility.evidence":
+        # Its conditions hold no registered condition, whatever its form (`record_format.md` section 4.3).
+        field["conditions"] = {}
     assert read(*stored(with_field(name, field), name)).reasons == (Reason("form_not_registered"),)
     refused = read(*stored(with_field(name, {**field, "unit": None}), name))
     assert {reason.code for reason in refused.reasons} == {"form_not_registered", "form_invalid"}
@@ -2119,6 +2236,62 @@ def test_a_request_keeps_its_nominals_with_the_members_their_shape_names() -> No
         "value": 0.0007,
     }
     assert ReadRequest.from_json(checked.to_json()) == checked
+
+
+# A table among alternatives (S3a): step 7 reads every alternative before it decides the outcome, so a table
+# that steps 8 and 9 pass raises wherever it stands, and one they refuse refuses the field (S4a's rule).
+TABLE_NOT_YET = "a table's steps 10 to 13 are S3b-2's"
+BESIDE_A_TABLE: dict[str, Callable[[], dict[str, JsonValue]]] = {
+    "constant": lambda: met_field(),
+    "interval": lambda: met_interval(lower=0.0006, upper=0.0008, basis="specification_limits"),
+    "broken constant": lambda: met_field(value="not a number"),
+}
+TABLE_AMONG_OTHERS: list[tuple[str, ...]] = [
+    ("table",),
+    *((other, "table") for other in BESIDE_A_TABLE),
+    *(("table", other) for other in BESIDE_A_TABLE),
+]
+
+
+def alternatives_of(names: tuple[str, ...], table: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """The water field as alternatives, `table` where `names` says "table", each other a fresh copy."""
+    return {"alternatives": [table if name == "table" else BESIDE_A_TABLE[name]() for name in names]}
+
+
+@pytest.mark.parametrize("want", ["value", "bounds", "components", "evidence"])
+@pytest.mark.parametrize("names", TABLE_AMONG_OTHERS, ids=" and ".join)
+def test_a_table_alternative_steps_8_and_9_pass_raises_first_or_last_beside_any_other(
+    names: tuple[str, ...], want: str
+) -> None:
+    """S4a's `_read_alternatives` reads each alternative alone by steps 8 to 13: a table they pass raises, as
+    the field does, so that no outcome stands in for a table's steps 10 to 13 (the S3a review's hand mutant,
+    which read that raise as a read with no reasons, gave `met` and `no_pick` here)."""
+    with pytest.raises(NotImplementedError, match=TABLE_NOT_YET):
+        read_accepting(alternatives_of(names, viscosity_table()), [], want=want)
+
+
+@pytest.mark.parametrize(
+    "names", [("table",), ("interval", "table"), ("table", "interval")], ids=" and ".join
+)
+def test_a_table_alternative_steps_8_and_9_pass_raises_under_a_nominal(names: tuple[str, ...]) -> None:
+    """A nominal applies at step 13, which an interval beside the table reaches and the table does not."""
+    with pytest.raises(NotImplementedError, match=TABLE_NOT_YET):
+        read_accepting(alternatives_of(names, viscosity_table()), [nominal()])
+
+
+@pytest.mark.parametrize(
+    "names", [names for names in TABLE_AMONG_OTHERS if "broken constant" not in names], ids=" and ".join
+)
+def test_a_table_alternative_step_8_refuses_refuses_the_field(names: tuple[str, ...]) -> None:
+    """`read_side_contract.md` section 3, step 7: an alternative that steps 8 to 13 refuse refuses the field,
+    its reasons carrying its index: here a table whose `x` decreases (table item 1). An interval beside it
+    under `want: value`, with no nominal, adds its own `want_mismatch`."""
+    result = read_accepting(alternatives_of(names, viscosity_table(x=[320.0, 300.0])), [])
+    at = names.index("table")
+    assert result.status == "not_met"
+    assert [reason for reason in result.reasons if reason.alternative == at] == [
+        Reason("form_invalid", alternative=at)
+    ]
 
 
 DERIVED_INPUTS: dict[str, JsonValue] = {
