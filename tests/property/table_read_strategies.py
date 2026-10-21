@@ -62,8 +62,10 @@ KEEPING_EDGES: tuple[tables.RangeKind, ...] = ("no_source_range", "narrower", "w
 
 class TableRead(NamedTuple):
     """A read of a table field: the way drawn, the record, the field's registered name, the axis, the table's
-    numbers, the axis's operating value or range (both None for none), a tolerance on the axis, `want`, and
-    for HP22 the blocks of `points`, one for each knot, where the table holds them."""
+    numbers, the axis's operating value or range (both None for none), a tolerance on the axis, `want`, for
+    HP22 the blocks of `points`, one for each knot, where the table holds them, and the regions `table_reads`
+    drew beside the way, by name (`UNKNOWN_MEMBER_DRAWN`, `STATED_WITHOUT_ORIGIN_DRAWN`), which HP12's table
+    part plants for the mutants searched there."""
 
     way: str
     record: Json
@@ -75,6 +77,7 @@ class TableRead(NamedTuple):
     tolerance: float | None = None
     want: str = "value"
     points: tuple[Json, ...] | None = None
+    planted: tuple[str, ...] = ()
 
 
 def table_json(table: tables.Table, axis: str) -> Json:
@@ -511,20 +514,22 @@ def table_reads(
 # A member no table defines, and more than one slip from every member one does (`record_format.md` section 6,
 # table item 1), so that step 8 ignores it, as PR-030's and PR-337's case files hold one.
 UNKNOWN_MEMBER = "curation_note"
+UNKNOWN_MEMBER_DRAWN = "unknown_member"
+STATED_WITHOUT_ORIGIN_DRAWN = "stated_without_origin"
 
 
 def with_a_member_unknown(drawn: TableRead) -> TableRead:
     """`drawn` with its table holding `UNKNOWN_MEMBER`."""
     record = copy.deepcopy(drawn.record)
     mapping(table_field(drawn._replace(record=record))["table"])[UNKNOWN_MEMBER] = "a member no reader knows"
-    return drawn._replace(record=record)
+    return drawn._replace(record=record, planted=(*drawn.planted, UNKNOWN_MEMBER_DRAWN))
 
 
 def stated_without_origin(drawn: TableRead) -> TableRead:
     """`drawn` with its field's value stated without origin."""
     record = copy.deepcopy(drawn.record)
     mapping(table_field(drawn._replace(record=record))["provenance"])["origin"] = "stated_without_origin"
-    return drawn._replace(record=record)
+    return drawn._replace(record=record, planted=(*drawn.planted, STATED_WITHOUT_ORIGIN_DRAWN))
 
 
 def among_alternatives(draw: st.DrawFn, drawn: TableRead) -> TableRead:

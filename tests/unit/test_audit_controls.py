@@ -8,7 +8,8 @@ of S4a's alternatives, by their chance, of the regions where a planned search's 
 the property whose own draws the search stands in for, by their chances, of S3a's HP13 to HP16, each
 drawing its fault, kind or way first, among them the regions of HP13's planned searches, and of S3b-2's HP20
 to HP23, HP21's relation, the monotonicity property over a table, HP12's table part and HP1, HP2 and HP11's
-table reads, each drawing its way or kind first: run at the `ci` profile's examples with a generator that
+table reads, each drawing its way or kind first, and the monotonicity property's worlds stated without origin,
+by their chance: run at the `ci` profile's examples with a generator that
 stops producing one of them, each property fails its audit, on that feature alone; a parametrised property,
 on one of its parameters, by the marks that parameter carries. The controls of the floors held at `deep`
 alone, which run where `deep` runs, are in `tests/property/test_model_deep_floor_controls.py` and use the run
@@ -336,8 +337,9 @@ CONTROLS = [
         "on_another_axis",
         ("check_label",),
     ),
-    # S3b-2's: HP20 to HP23, HP21's relation and the monotonicity property, each its way drawn first; HP12's
-    # table part and HP1, HP2 and HP11's table reads, each its kind drawn first.
+    # S3b-2's: HP20 to HP23, HP21's relation and the monotonicity property, each its way drawn first, and the
+    # monotonicity property's worlds stated without origin, by their chance; HP12's table part and HP1, HP2
+    # and HP11's table reads, each its kind drawn first.
     Control(
         table_read_properties.test_a_read_at_an_edge_is_refused_and_beside_one_reads_its_own_side,
         "across_an_edge",
@@ -366,6 +368,11 @@ CONTROLS = [
     Control(
         table_read_properties.test_a_source_range_or_a_tolerance_on_the_axis_never_turns_a_read_met,
         "one_double_outside",
+        ("check_monotone",),
+    ),
+    Control(
+        table_read_properties.test_a_source_range_or_a_tolerance_on_the_axis_never_turns_a_read_met,
+        "stated_without_origin",
         ("check_monotone",),
     ),
     Control(

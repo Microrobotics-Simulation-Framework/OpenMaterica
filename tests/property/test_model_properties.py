@@ -507,7 +507,9 @@ def test_the_read_agrees_with_the_model_where_no_case_pins_a_rule(example: Examp
 
 # A table read to the end (S3b-2): one of the five kinds drawn first, four of HP20 to HP23's families and a
 # table beside a constant among alternatives, then the family's way, which the example plants, its `want`, a
-# tolerance on the axis across the range in half those draws, and the claims, with and without the hash suite.
+# tolerance on the axis across the range in half those draws, the regions drawn beside it, a member the reader
+# does not know and a field stated without origin, which it plants too, and the claims, with and without the
+# hash suite.
 # The model reads a table with the reference evaluator's `exact` mode; the implementation with
 # `core/evaluate.py`.
 TABLE_KINDS = (*table_reads.TABLE_KINDS, table_reads.ALTERNATIVES_KIND)
@@ -518,7 +520,9 @@ def tables_read(draw: st.DrawFn, size: Size = SIZE, kinds: tuple[str, ...] = TAB
     kind, drawn = draw(table_reads.table_reads(size, kinds))
     claims = draw(st.sampled_from(strategies.CLAIMS))
     request = json.dumps(table_reads.request_of(drawn)).encode()
-    return Example(kind, (table_reads.source_of(drawn),), request, claims, (drawn.way, drawn.want))
+    return Example(
+        kind, (table_reads.source_of(drawn),), request, claims, (drawn.way, drawn.want, *drawn.planted)
+    )
 
 
 @pytest.mark.drawn(*TABLE_KINDS)
