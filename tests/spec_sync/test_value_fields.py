@@ -777,9 +777,11 @@ def test_a_rule_across_objects_requires_its_member_where_its_condition_holds(
     assert reader(field) == []
 
 
-# A label's basis (`record_format.md` section 5's row): `{"basis": "stated"}`, or `{"basis": "inferred",
-# "inferred_from": <text>}`, and nothing else, in the writer; a read neither checks its shape nor returns it
-# (section 4.1), so the reader's `$defs` take any value there.
+# A label's basis (`record_format.md` section 5's row): a condition's basis shape, closed, in the writer; a
+# read neither checks its shape nor returns it (section 4.1), so the reader's `$defs` take any value there.
+# The shape takes `inferred_from` beside `stated`, and an empty one, for a condition and a label alike:
+# narrowing it is a schema change for a later pull request, and the last two cases hold it as it is until
+# then.
 LABELLED: JsonValue = {**mapping(CONSTANT), "label": "materica.fluid.newtonian.v1"}
 LABEL_BASES: list[tuple[str, JsonValue, bool]] = [
     ("stated", {"basis": "stated"}, True),
@@ -789,6 +791,8 @@ LABEL_BASES: list[tuple[str, JsonValue, bool]] = [
     ("an_unknown_member", {"basis": "stated", "x_note": "n"}, False),
     ("a_status_object", {"status": "unstated"}, False),
     ("not_an_object", "stated", False),
+    ("stated_with_a_text", {"basis": "stated", "inferred_from": "a curator's note"}, True),
+    ("inferred_from_an_empty_text", {"basis": "inferred", "inferred_from": ""}, True),
 ]
 
 
@@ -815,7 +819,7 @@ UNCHECKED = {
         "read_side_contract.md",
         "the other members of a value field are left to the record checks",
     ),
-    ("field_members", "label_basis"): ("record_format.md", "and neither checks its shape nor returns it"),
+    ("field_members", "label_basis"): ("record_format.md", "It neither checks its shape nor returns it"),
     **{
         ("provenance", member): ("provenance.md", "The other members are checked on the write side only.")
         for member in (

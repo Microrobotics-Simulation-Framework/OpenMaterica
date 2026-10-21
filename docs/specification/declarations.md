@@ -277,18 +277,18 @@ names, and adds its own; `refusals` and `unused` are the report's alone. [BC-010
 7). A read **applied** an acceptance given to it where its result shows it: an implied condition that filled a
 condition (a `conditions` entry whose `record` is the value the implied condition supplies, with basis
 `implied`); a nominal or an extrapolation that the result's `assumption` names; a `trainable` acceptance, on a
-result that carries `initial_value_only`. An implied condition, nominal, extrapolation or `trainable` acceptance
-given and not so shown was not applied; when a pick or an overlay is applied is [not yet covered]. An acceptance
-is **located at** a result's location when it names the record read, equal in `id`, `version` and `content_hash`;
-one located at a region or an interval is located at no record, and an accepted difference with no location is
-located at every location its model is checked over. An acceptance **covers** a reason or a specimen difference
-of a result when it names the result's field (an accepted difference, its section), is located at the result's
-location, and is of a kind section 4.2's row for that reason names, under that row's own condition (the code and
-condition named; the `assumption`), and, for a waiver naming a label, as section 4.1 item 4 says. A label is
-**trusted** on a result where the record stores it on the value the result rests on (item 8) with `label_basis`
-`{"basis": "stated"}` (`record_format.md` section 4.1), or where the result's review is a completed review
-(section 1 item 11). An acceptance is **used** where it covers a reason or a specimen difference of a result, or
-a read applied it. [BC-009] [BC-053] [BC-050]
+result that carries `initial_value_only`. An implied condition, nominal, extrapolation or `trainable`
+acceptance given and not so shown was not applied; when a pick or an overlay is applied is [not yet covered].
+An acceptance is **located at** a result's location when it names the record read, equal in `id`, `version`
+and `content_hash`; one located at a region or an interval is located at no record, and an accepted difference
+with no location is located at every location its model is checked over. An acceptance **covers** a reason or
+a specimen difference of a result when it names the result's field (an accepted difference, its section), is
+located at the result's location, and is of a kind section 4.2's row for that reason names, under that row's
+own condition (the code and condition named; the `assumption`), and, for a waiver naming a label, as section
+4.1 item 4 says. A label is **trusted** on a result where the record stores it on the value the result rests
+on (item 8) with a `label_basis` whose `basis` is `stated` (`record_format.md` section 4.1), or where the
+result's review is a completed review (section 1 item 11). An acceptance is **used** where it covers a reason
+or a specimen difference of a result, or a read applied it. [BC-009] [BC-053] [BC-050]
 
 7. The build gives each read the acceptances of the kinds a read takes (`read_side_contract.md` section 1),
    overlays aside (which overlays it gives a read is [not yet covered]), that name the read's field and are

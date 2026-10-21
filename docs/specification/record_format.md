@@ -197,13 +197,14 @@ condition MUST be present, holding `{"status": "unstated"}` if the source does n
   missing label is not refused at read, since the value does not depend on it: a model that assumes the label
   refuses its absence (`declarations.md` section 1 item 5), and a record check flags it. [PR-053] [RC-122]
   A label records its basis in the field's `label_basis`, in the shape of a condition's basis (`provenance.md`
-  section 6): `{"basis": "stated"}` where the source states the trivial model the label names (a source
-  reporting the viscosity independent of shear rate over the range it measured), `{"basis": "inferred",
-  "inferred_from": <text>}` where a curator inferred it. A reader checks only its name, for slips, as it checks
-  every member named at its place (section 10 item 5), and neither checks its shape nor returns it, so no read
-  depends on it. [PR-030] The build reads it from the record as stored, beside the label, and trusts a label
-  whose basis is stated, or whose value's review is completed (`declarations.md` sections 2 and 4.1). A record
-  check flags a label without one, or a basis that breaks its shape. [RC-122] [BC-050]
+  section 6): its `basis` is `stated` where the source states the trivial model the label names (a source
+  reporting the viscosity independent of shear rate over the range it measured), and `inferred`, with
+  `inferred_from`, where a curator inferred it. A reader checks only its name: for slips, as it checks every
+  member named at its place (section 10 item 5), and beside `alternatives` (section 5). It neither checks its
+  shape nor returns it, so no read depends on it. [PR-030] The build reads it from the record as stored,
+  beside the label, and trusts a label whose basis is stated, or whose value's review is completed
+  (`declarations.md` sections 2 and 4.1). A record check flags a label without one, or a basis that breaks its
+  shape. [RC-122] [BC-050]
 - `test_method` is required on remanence and saturation magnetisation: a closed magnetic circuit
   (`hysteresigraph`, as in ASTM A977/A977M and IEC 60404-5; makers also write "hysteresisgraph") measures
   without the specimen's demagnetisation and an open-circuit magnetometer with it, so on one specimen shape
@@ -332,7 +333,7 @@ A value field is an object with these members, or an `alternatives` object (belo
 | `statistics` | yes, except for `evidence` | the statistics block (`uncertainty.md`). For a table or a power law it applies to every value the form gives (`uncertainty.md` section 1 rule 2). In a reference-only value it holds `{"status": "withheld"}` |
 | `provenance` | yes | origin, source, extraction, evidence, review (`provenance.md`) |
 | `label` | where the field's row names one; a reader does not refuse its absence (section 4.1) | the field's label (section 4.1) |
-| `label_basis` | no; where `label` is present, a record check flags its absence | `{"basis": "stated"}`, or `{"basis": "inferred", "inferred_from": <text>}`: whether the source states the trivial model the label names, or a curator inferred it (section 4.1) |
+| `label_basis` | no; where `label` is present, a record check flags its absence | a condition's basis shape (`provenance.md` section 6): its `basis` `stated` where the source states the trivial model the label names, and `inferred`, with `inferred_from`, where a curator inferred it (section 4.1) |
 | `fit` | where `provenance.origin` is `fitted` | the fit record (`fits_and_reference_data.md` section 2) |
 
 **Alternatives.** Where sources disagree, or one source gives values at several conditions, or a grade's

@@ -852,8 +852,9 @@ class Based(TypedDict):
 class LabelBasis(Based):
     """
     Where a field's label comes from (record_format.md section 4.1): stated by the source, or inferred by a
-    curator with the text it was inferred from, in a condition's basis shape (provenance.md section 6). A read
-    checks only its name, for slips, and neither checks nor returns it.
+    curator with the text it was inferred from, in a condition's basis shape (provenance.md section 6). A
+    reader checks only its name, for slips and beside `alternatives`, and neither checks its shape nor returns
+    it.
     """
 
 

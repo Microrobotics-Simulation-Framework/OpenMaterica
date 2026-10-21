@@ -1384,9 +1384,9 @@ def test_a_met_constant_returns_its_value_and_the_members_beside_it() -> None:
     assert written["labels"] == ["materica.fluid.newtonian.v1"]
 
 
-# A label's basis (`record_format.md` section 4.1): "A reader checks only its name, for slips, as it checks
-# every member named at its place (section 10 item 5), and neither checks its shape nor returns it, so no read
-# depends on it." [PR-030]
+# A label's basis (`record_format.md` section 4.1): "A reader checks only its name: for slips, as it checks
+# every member named at its place (section 10 item 5), and beside `alternatives` (section 5). It neither
+# checks its shape nor returns it, so no read depends on it." [PR-030]
 LABEL_BASES = [
     pytest.param({"basis": "stated"}, id="stated"),
     pytest.param({"basis": "inferred", "inferred_from": "a curator's reading of the source"}, id="inferred"),
