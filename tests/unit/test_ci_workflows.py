@@ -2980,13 +2980,21 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
 # (a manual run of 600 s a target). The job has no interrupt, so its timeout is held to twice the slowest run
 # itself, as the Hypothesis job's interrupt is to its shards' (`MEASURED_ON_CI`).
 FUZZ_SLOWEST_ON_CI = 59.52
+# The minutes the job's steps added after that run, by estimate, until a run on CI measures them: the table's
+# control (2026-10-21), two runs side by side of `TABLES_RUN_SECONDS` each, 8 minutes, and their start, which
+# loads the corpus (2.5 s for a run of 60 s, locally): half a minute.
+FUZZ_ADDED_SINCE = 8.5
 
 
 def fuzz_margin_problems(ci: Workflow) -> list[str]:
-    """Where the fuzz job times out in less than twice its slowest run measured on CI."""
+    """Where the fuzz job times out in less than twice its slowest run measured on CI and the minutes added
+    since."""
     limit = as_number(ci["jobs"]["fuzz"]["timeout-minutes"])
-    if limit < 2 * FUZZ_SLOWEST_ON_CI:
-        return [f"fuzz times out at {limit:g} minutes, less than twice its {FUZZ_SLOWEST_ON_CI:g} on CI"]
+    if limit < 2 * (FUZZ_SLOWEST_ON_CI + FUZZ_ADDED_SINCE):
+        return [
+            f"fuzz times out at {limit:g} minutes, less than twice its {FUZZ_SLOWEST_ON_CI:g} on CI and the "
+            f"{FUZZ_ADDED_SINCE:g} added since"
+        ]
     return []
 
 
@@ -2994,12 +3002,13 @@ def test_the_fuzz_job_has_twice_its_slowest_run_on_ci() -> None:
     assert fuzz_margin_problems(workflow("ci.yml")) == []
 
 
-@pytest.mark.parametrize("minutes", [65, 100, 119])
+@pytest.mark.parametrize("minutes", [65, 100, 119, 136])
 def test_the_fuzz_margin_check_can_fail(minutes: int) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     ci["jobs"]["fuzz"]["timeout-minutes"] = minutes
     found = fuzz_margin_problems(ci)
-    assert found == [f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI"], found
+    expected = f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI and the 8.5 added since"
+    assert found == [expected], found
 
 
 PROPERTY_TESTS = REPOSITORY / "tests" / "property"
@@ -7663,6 +7672,198 @@ def test_the_target_4_check_finds_no_run() -> None:
         step for step in ci["jobs"]["fuzz"]["steps"] if "read_field_bytes" not in str(step.get("run"))
     ]
     assert target_4_problems(ci) == ["no run of fuzz target 4"]
+
+
+# Fuzz target 4's table control (S3a; maintainer, 2026-10-21): the fault seeded in a table
+# (`MATERICA_FUZZ_SEEDED_FAULT=tables`, `tests/fuzz/seeded_fault.py`), run by a pair of its own side by side
+# in the control step, as the fault of step 10 is. Six local runs found it after 16 to 319 s (2026-10-20);
+# each run of the pair lasts one and a half times the slowest find, to the minute, as the step-10 pair's
+# 900 s do of its slowest, 601 s. The step passes where either run finds it, at the model's assertion.
+TARGET_4, TABLES = "tests.fuzz.read_field_bytes", "tables"
+TABLES_SLOWEST_FIND = 319
+TABLES_RUN_SECONDS = 60 * round(1.5 * TABLES_SLOWEST_FIND / 60)
+TABLES_ERROR = "::error::the tables runs did not find the fault seeded in a table"
+# The table's fault as fuzz target 4 reported it, a seed's first knot of 280 made 140 (2026-10-21); and
+# another disagreement, the model refusing a table the implementation reads on, which is not that fault's.
+TABLES_FINDING = (
+    "AssertionError: the implementation gives Outcome(kind='result', result={'status': 'not_met', 'reasons': "
+    "[{'code': 'form_invalid'}], 'labels': []}, why=''), the model Outcome(kind='not_yet', result=None, "
+    "why=\"a table's steps 10 to 13 are S3b-2's\")"
+)
+ANOTHER_FINDING = (
+    "AssertionError: the implementation gives Outcome(kind='not_yet', result=None, why='steps 10 to 13'), "
+    "the model Outcome(kind='result', result={'status': 'not_met', 'reasons': [{'code': 'form_invalid'}], "
+    "'labels': []}, why='')"
+)
+# Each case: the corpora of the runs that report a finding, the finding, and whether the step passes.
+TABLES_CASES = (
+    ("tables-1", TABLES_FINDING, True),
+    ("tables-2", TABLES_FINDING, True),
+    ("", TABLES_FINDING, False),
+    ("tables-1 tables-2", ANOTHER_FINDING, False),
+)
+
+# A `uv` that stands for each `uv run python -m ...` of the control step: it records the module, its
+# arguments and the fault seeded; seeds the corpus or writes the dictionary it is asked for; prints the
+# message of each fault seeded by `MATERICA_FUZZ_SEEDED_FAULT=1` as a run that found it does, and the replay's
+# reuse phase with a failing example; and on a run of the table's fault, waits up to `STUB_PARTNER_WAIT`
+# seconds for the other run to start, records whether it did, and prints `STUB_FINDING` where its corpus is
+# among `STUB_FINDS`.
+FUZZ_CONTROL_UV = """
+import json, os, sys, time
+from pathlib import Path
+
+arguments = sys.argv[1:]
+module = arguments[arguments.index("-m") + 1]
+given = arguments[arguments.index("-m") + 2 :]
+fault = os.environ.get("MATERICA_FUZZ_SEEDED_FAULT", "")
+record = {"module": module, "arguments": given, "fault": fault}
+found_in = {
+    "tests.fuzz.jsonio_bytes": "in parse",
+    "tests.fuzz.properties": "in parse",
+    "tests.fuzz.record_properties": "in the read",
+    "tests.fuzz.read_field_bytes": "in step 10",
+}
+if given[0] == "--seed":
+    Path(given[1]).mkdir(parents=True, exist_ok=True)
+elif given[0] == "--dict":
+    Path(given[1]).write_text("", encoding="utf-8")
+elif module == "pytest":
+    print("IndexError: the seeded fault in parse")
+    print("IndexError: the seeded fault in the read")
+    print("  - during reuse phase (0.00 seconds):")
+    print("    - 0 passing examples, 1 failing examples, 0 invalid examples")
+elif fault == "tables":
+    corpus = Path(given[0]).name
+    started = Path(os.environ["RUNNER_TEMP"], "started")
+    started.mkdir(exist_ok=True)
+    (started / corpus).touch()
+    deadline = time.monotonic() + float(os.environ["STUB_PARTNER_WAIT"])
+    while not [other for other in started.iterdir() if other.name != corpus] and time.monotonic() < deadline:
+        time.sleep(0.05)
+    record["partner"] = any(other.name != corpus for other in started.iterdir())
+    if corpus in os.environ["STUB_FINDS"].split():
+        print(os.environ["STUB_FINDING"])
+else:
+    print(f"IndexError: the seeded fault {found_in[module]}")
+with open(os.environ["STUB_CALLS"], "a", encoding="utf-8") as calls:
+    print(json.dumps(record), file=calls)
+"""
+
+
+def control_step(ci: Workflow) -> dict[str, Any]:
+    steps: list[dict[str, Any]] = ci["jobs"]["fuzz"]["steps"]
+    [found] = [each for each in steps if str(each.get("name", "")).startswith("Control")]
+    return found
+
+
+def table_runs_problems(runs: list[dict[str, Any]]) -> list[str]:
+    """Where the table's fault is not run twice, on two corpora, side by side, each `TABLES_RUN_SECONDS`."""
+    problems = [] if len(runs) == 2 else [f"{len(runs)} runs of the table's fault, not two"]
+    if len({run["arguments"][0] for run in runs}) != len(runs):
+        problems.append("the table's runs share a corpus")
+    for run in runs:
+        seconds = [word.partition("=")[2] for word in run["arguments"] if word.startswith("-max_total_time=")]
+        if seconds != [str(TABLES_RUN_SECONDS)]:
+            lasting = " and ".join(seconds) or "unlimited"
+            problems.append(f"a run of the table's fault for {lasting} s, not {TABLES_RUN_SECONDS}")
+        if not run["partner"]:
+            problems.append("a run of the table's fault not side by side with the other")
+    return problems
+
+
+def tables_control_problems(ci: Workflow, directory: Path) -> list[str]:
+    """The control step run as written with `FUZZ_CONTROL_UV`, in each of `TABLES_CASES`: where its runs of
+    the table's fault are not as `table_runs_problems` holds them, or where it passes or fails otherwise than
+    the case says, failing at the table's check."""
+    problems: list[str] = []
+    for index, (finds, finding, passes) in enumerate(TABLES_CASES):
+        where = directory / str(index)
+        (where / "work").mkdir(parents=True)
+        environment = runner(where, FUZZ_CONTROL_UV) | {
+            "STUB_FINDS": finds,
+            "STUB_FINDING": finding,
+            "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
+        }
+        status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
+        recorded = where / "calls.jsonl"
+        calls = (
+            [json.loads(line) for line in recorded.read_text("utf-8").splitlines()]
+            if recorded.exists()
+            else []
+        )
+        runs = [call for call in calls if (call["module"], call["fault"]) == (TARGET_4, TABLES)]
+        if index == 0:
+            problems += table_runs_problems(runs)
+        case = f"{finds or 'no run'} reporting {'the' if finding == TABLES_FINDING else 'another'} finding"
+        if passes and status != 0:
+            problems.append(f"the step fails where {case}")
+        if not passes and (status == 0 or TABLES_ERROR not in printed):
+            problems.append(f"the step does not fail at the table's check where {case}")
+    return problems
+
+
+def test_the_control_step_runs_the_table_s_fault_and_sees_its_finding(tmp_path: Path) -> None:
+    assert tables_control_problems(workflow("ci.yml"), tmp_path) == []
+
+
+# Parts of the control step's script, as YAML gives it, without the block's indentation.
+TABLES_LOOP = """\
+for worker in 1 2; do
+  cp -r "$control/fields" "$control/tables-$worker"
+"""
+TABLES_RUN_END = """\
+    > "$control/tables-$worker.log" 2>&1 &
+done
+wait || true
+cat "$control/tables-1.log" "$control/tables-2.log" > "$control/tables.log"
+"""
+TABLES_CHECK = """\
+refused="^AssertionError: the implementation gives .*'form_invalid'.*, the model "
+"""
+
+
+def without_the_table_s_runs(text: str) -> str:
+    start, end = text.index(TABLES_LOOP), text.index(TABLES_RUN_END) + len(TABLES_RUN_END)
+    return text[:start] + text[end:]
+
+
+def without_the_table_s_check(text: str) -> str:
+    start = text.index(TABLES_CHECK)
+    return text[:start] + text[text.index("\nfi\n", start) + len("\nfi\n") :]
+
+
+def with_one_table_run(text: str) -> str:
+    return text.replace(TABLES_LOOP, TABLES_LOOP.replace("in 1 2;", "in 1;"))
+
+
+def with_shorter_table_runs(text: str) -> str:
+    return text.replace("-max_total_time=480", "-max_total_time=300")
+
+
+def with_the_table_s_runs_one_after_the_other(text: str) -> str:
+    return text.replace(TABLES_RUN_END, TABLES_RUN_END.replace("2>&1 &", "2>&1"))
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (without_the_table_s_runs, "0 runs of the table's fault, not two"),
+        (with_one_table_run, "1 runs of the table's fault, not two"),
+        (with_shorter_table_runs, "for 300 s, not 480"),
+        (with_the_table_s_runs_one_after_the_other, "not side by side"),
+        (without_the_table_s_check, "the step does not fail at the table's check where no run reporting"),
+    ],
+    ids=["runs-removed", "one-run", "shorter", "one-after-the-other", "check-removed"],
+)
+def test_the_table_control_check_can_fail(tmp_path: Path, fault: Callable[[str], str], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    found = control_step(ci)
+    changed = fault(found["run"])
+    assert changed != found["run"]
+    found["run"] = changed
+    problems = tables_control_problems(ci, tmp_path)
+    assert any(problem in line for line in problems), problems
 
 
 # --- the kill points against the controls jobs' parts -------------------------------------------------------
