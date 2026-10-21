@@ -42,7 +42,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
 | S2's reads of evidence, and reads under a nominal or an acceptance a read does not take, to the value or ending at step 0, 8 or 13 (plain read) | 69 | run, passed |
 | S3a's reads of a table that end at step 8 or 9: its shape, its tokens, a form its field's row does not allow, its `axis_unit` (plain read) | 72 | run, passed |
-| S3b-2's reads of a table to the end: steps 10 to 13, its readable range and edges, its axis entry, its value, statistics and labels, and among alternatives where none gives a reason at step 11 (plain read) | 68 | run, passed |
+| S3b-2's reads of a table to the end: steps 10 to 13, its readable range and edges, its axis entry, its value, statistics and labels, and among alternatives where none gives a reason at step 11, and the result's `table` (plain read) | 73 | run, passed |
 | reads S3c runs (plain read): reads under an extrapolation | 45 | not yet runnable: the step that runs each is not done |
 | S4a's reads over alternatives with no pick and no overlay: each alternative set aside, kept or refusing the field, and the outcome (plain read) | 24 | run, passed |
 | reads S4's later pieces run (plain read): over alternatives with a pick or a table, or through an overlay | 134 | not yet runnable: S4, which runs each, is not done |
@@ -64,7 +64,7 @@ member until that ruling (2026-10-19), and refuses it since. `PR-308.table_set_a
 whose table alternative step 10 sets aside, is S3b-2's: it needs no rule of step 7's over a table's reasons at
 step 11, which S4 builds.
 
-Of the 1508 case files, 1261 agree with plain read and the hash suite, 1203 with plain read alone, and 1261
+Of the 1513 case files, 1266 agree with plain read and the hash suite, 1208 with plain read alone, and 1266
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
 record-check suite agree with none, since it claims no record checks.
