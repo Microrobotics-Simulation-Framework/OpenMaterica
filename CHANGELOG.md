@@ -127,6 +127,22 @@ every family entry goes in `families/CHANGELOG.md`.
   other part, the test moved to the other part or to a Hypothesis shard, the test in both parts, the step
   skipped on pull requests, and the variable set by the job and cleared by the step. No job changes; the
   tests job's comment names the check.
+- The Hypothesis job's `deep` timeouts are held to the times measured on CI, where estimates set several of
+  them: each is at least twice the shard's slowest job measured at `deep`, with the interrupt's three minutes
+  to spare, a shard run in parts taking its slowest part's time. The measurements are each job's time,
+  started to completed, in two dispatched `deep` runs of 2026-10-21 (39540221119, main at 76907779;
+  39553647007, at the tree main now holds, with the audit controls of the floors held at `deep` alone in
+  `relations`) and the first `deep` run (39002750375, 2026-10-17). `records` goes from 90 to 105 minutes
+  (slowest 50.8) and `json` from 45 to 55 (23.9), whose interrupts had fallen below twice their measured
+  times. The others stay as they were, each above the rule: `agreement` 360 (slowest part 77.3), `relations`
+  345 (65.2), `writer` 180 (67.4), `conditions` 180 (62.4), `alternatives` 90 (38.7), step 8's mutants 45
+  (1.6). They are not lowered to the rule: the same code has run at least 2.7 times as long on one runner as
+  on another (the writer shard at `ci`, 11 minutes and past 30), which three runs do not bound; lowering them
+  is the maintainer's call. `tests/unit/test_ci_workflows.py` holds each interrupt at twice these times
+  (`MEASURED_ON_CI`; the estimates it held for `relations` and `alternatives` are gone) and each timeout at
+  most GitHub's 360, with controls under the rule for `records`, `relations`, `agreement`, `json` and the
+  default, the `alternatives` clause removed, and `agreement` at 365. The job's comment and the property
+  README give each figure as measured, with its run and date.
 
 ### Schema
 - `test_method` gains `reference_formulation` (maintainer, 2026-10-19): the test method of a value evaluated from

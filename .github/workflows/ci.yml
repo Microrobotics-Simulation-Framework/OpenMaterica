@@ -563,71 +563,44 @@ jobs:
     needs: gate
     if: needs.gate.outputs.hypothesis == 'true'
     runs-on: ubuntu-24.04
-    # On two workers locally, `deep` took 14.5 minutes for json and 10 for records (2026-10-14); step 8's
-    # properties added about 17 minutes of CPU to the records shard's `deep` (2026-10-15, by S2a-2's review, on
-    # three workers), unmeasured as a shard. At `ci`, records took 98 s on two workers and 58 s on four, and
-    # step 8's mutants, a shard of their own, 51 s and 53 s; that shard's `deep` took 68 s on four, since its
-    # searches do not grow with the profile (2026-10-15, S2a-2's fix round; a runner perhaps two to three times
-    # slower a core, by estimate). The writer shard's `ci` took 11 minutes on two workers locally (2026-10-15),
-    # and its `deep`, ten times the examples, about ten times that, unmeasured. Steps 9 and 10's properties,
-    # which read records end to end, are a shard of their own, `conditions`, with their mutant searches, which
-    # take seconds and do not grow with the profile. Measured locally at `ci` on four workers (Python 3.15,
-    # 2026-10-16, S2a-3's fix round): `conditions` 112 s, records 62 s, and the writer shard 9.3 minutes, 158 s
-    # of it one worker's, S2a-3's relation of the writer to step 9; `conditions` at `deep`, ten times the
-    # examples, about 17 minutes by my arithmetic, unmeasured. The result's laws (S2a-4: HP1, HP2, HP6, HP11)
-    # joined `conditions`, which then took 155 s at `ci` on four local workers (Python 3.15, 2026-10-17).
-    # The read's relations (S2a-4's phase B: HP12, HP4, HP10 and the monotonicity relations, each reading two
-    # records or two reads an example) are a shard of their own, `relations`: at `ci` on four local workers,
-    # 198 s, and `conditions` 151 s beside it (Python 3.15, 2026-10-17). Measured on CI at `ci` (run
-    # 39039695416, 2026-10-17): `relations` 7.4 minutes, `conditions` 5.1. `relations` has not run at `deep`.
-    # From that run's times by module, ten times the examples and an example at `deep`'s size costing 1.7 to
-    # 2.2 times one at `ci`'s (S2a-4's review B, L5), it would take 108 to 140 minutes on a runner's four
-    # cores, the fourteen monotonicity properties alone 65 to 84; so its `deep` timeout was 300 minutes, twice
-    # the estimate's upper end with the interrupt's three to spare, until a manual `deep` run measures it.
-    # At `deep` alone the shard also runs the audit controls of HP12's floors held at `deep` alone (marked
-    # `deep_controls`, which every other profile deselects: tests/conftest.py), each running a property for
-    # 20,000 examples at `deep`'s size. Locally (2026-10-21, eight at once) the faults part's run of 20,000
-    # took 670 to 769 s and the values part's of 2,000 82 to 113 s, ten times that for 20,000 (one of the four
-    # controls did not finish within 14.8 minutes, four at once); CI takes 1.54 times as long (an HP12 control
-    # of 2,000 examples took 65 s here and weighs 100 on CI): 17.2 to 29.0 minutes each, about 84 minutes of
-    # CPU in all. With the longest added whole, the shard's estimate is 169 minutes, and its `deep` timeout
-    # 345, twice that with the interrupt's three to spare and within GitHub's 360.
-    # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
-    # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
-    # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
-    # runner, not the code, made the difference. At S2a-2's head json took 0.9 to 1.4 minutes, records 2.3 to 2.5
-    # and step 8's mutants 1.6 to 2.1. Each `ci` timeout is set well above the slowest measured run. `conditions`
-    # has not run on CI: a hosted runner has taken 1.6 to 4 times as long as this machine (the matrix's comment),
-    # which would be 3 to 7.5 minutes; its `ci` timeout is 30.
-    # The agreement shard, on four workers locally (PR #24's fix round, 2026-10-17): at `ci`, 4.0 minutes, its
-    # longest property 1.9, at load 4 to 7, and 8.0 minutes, its longest 4.7, at load 15 to 17; at `deep`, 112
-    # minutes, its longest property 70, at load 18 to 30. A runner 1.6 to 4 times slower a core would take 13 to
-    # 32 minutes at `ci`, and 3 to 7.5 hours at `deep`, so its `deep` timeout is GitHub's limit for a job on a
-    # hosted runner.
-    # Measured on CI with the five shards (2026-10-17): at `ci` (run 39002323592) agreement 5.9 minutes, writer
-    # 5.2, records 2.5, json and step 8's mutants 1.6; at `deep`, the first run there (manual run 39002750375),
-    # writer 63.6, agreement 47.0, records 31.4, json 14.1 and step 8's mutants 1.6. Records' `deep` timeout went
-    # from 45 to 90 minutes on that run (the maintainer's default); agreement's stays 360 until a second run
-    # agrees. tests/unit/test_ci_workflows.py holds each interrupt at twice the slowest run measured here, and
-    # holds `conditions` once it has run on CI.
-    # The table evaluator's four properties, in the json shard, took 31 s of CPU at `ci` and 556 s at `deep` (262 s
-    # wall on four workers), locally (2026-10-17, S3b-1's fix round).
-    # `agreement`, `relations` and `alternatives` run in two parts each (the matrix, below), whose timeouts are the shard's own:
-    # a part holds about half the shard's tests, so it cannot take longer than the shard did, and the margins above
-    # hold for it (tests/unit/test_ci_workflows.py holds each part to its shard's measured time). The parts have
-    # not run at `deep`, so no part has a `deep` time of its own yet.
-    # `alternatives` at `ci`, on CI, in the parts' first run (run 39404674681, 2026-10-20), took 196.8 s for
-    # `alternatives_1of2` and 218.0 s for `alternatives_2of2` (pytest's wall time in each job's log; the shard
-    # whole took 398 s in run 39390324975). At `deep`, ten times the examples: 33 and 36 minutes by that
-    # arithmetic, unmeasured. Its `deep` timeout is 90 minutes, twice the estimate's upper end (73) rounded up to
-    # the figure `records` has, until a manual `deep` run measures it.
+    # Each shard's timeout, by profile. The pytest step is interrupted three minutes before it (below), and
+    # tests/unit/test_ci_workflows.py holds that interrupt at twice the shard's slowest run measured on CI
+    # (`MEASURED_ON_CI`), so that a runner half as fast still finishes. GitHub ends a job on a hosted runner at
+    # 360 minutes.
+    # `deep`: at least twice the shard's slowest job measured, with the interrupt's three minutes to spare.
+    # Measured on CI in three dispatched `deep` runs, each job's time on the runner (started to completed, its
+    # set-up included), in minutes: run 39002750375 (2026-10-17, the five shards there then, each whole), run
+    # 39540221119 (2026-10-21, main at 76907779) and run 39553647007 (2026-10-21, at 7288ebd5, whose tree main
+    # holds at bb2523e8, with the four audit controls of HP12's floors held at `deep` alone in `relations`, 10.4
+    # to 21.0 minutes each by its durations reports). A shard run in parts takes its slowest part's time, both
+    # parts the one timeout: the weights split the parts by their times at `ci`, and at `deep` two parts can
+    # differ, as agreement's did. Each shard's times in that order, then the least timeout the rule allows
+    # (twice the slowest, and three) and its timeout:
+    #   writer 63.6, 67.4, 61.4: 137.9, 180; conditions (not in the first) 62.4, 49.1: 127.8, 180;
+    #   agreement 47.0 whole, then its parts 49.8 and 77.3, 25.4 and 76.1: 157.6, 360;
+    #   relations (not in the first), its parts 50.3 and 49.6, 58.2 and 65.2: 133.4, 345;
+    #   alternatives (not in the first), its parts 22.0 and 20.6, 38.7 and 32.2: 80.5, 90;
+    #   records 31.4, 37.2, 50.8: 104.6, 105; json 14.1, 22.6, 23.9: 50.7, 55;
+    #   step 8's mutants 1.6, 0.6, 0.7: 6.1, 45 (the default, which a shard not yet measured at `deep` has too).
+    # records and json had fallen below the rule and are raised to it, rounded up to a multiple of five. The
+    # others are kept, not lowered to the rule: the same code has run at least 2.7 times as long on one runner
+    # as on another (the writer shard at `ci`, below: 11 minutes, and past 30), and three runs, two of them on
+    # one morning, do not bound that. Lowering them is the maintainer's call.
+    # `ci`: each well above its shard's slowest run measured on CI, since a hosted runner has taken 1.6 to 4
+    # times as long as this machine and varies from run to run: agreement 5.9 minutes, writer 5.2, records 2.5,
+    # json and step 8's mutants 1.6 (run 39002323592, 2026-10-17); relations 7.4 and conditions 5.1 (run
+    # 39039695416, 2026-10-17); and, in pytest's wall time, relations 9.0, agreement 7.1 and alternatives 6.6
+    # (run 39390324975, 2026-10-20; the matrix's comment). The writer shard took 17 minutes at S2a-1's head (run
+    # 38726723407, 2026-10-15) and passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then
+    # took 11 at the same code (run 38859424951), though locally its four workers took 8.1 and 7.1 minutes at
+    # those heads (Python 3.15): the runner, not the code, made the difference. Its `ci` timeout is 75.
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
       || startsWith(matrix.shard, 'relations') && 345
       || startsWith(matrix.shard, 'agreement') && 360
       || startsWith(matrix.shard, 'alternatives') && 90
-      || matrix.shard == 'records' && 90 || 45)
+      || matrix.shard == 'records' && 105 || matrix.shard == 'json' && 55 || 45)
       || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
       || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
     strategy:
@@ -658,7 +631,7 @@ jobs:
         || startsWith(matrix.shard, 'relations') && 345
         || startsWith(matrix.shard, 'agreement') && 360
         || startsWith(matrix.shard, 'alternatives') && 90
-        || matrix.shard == 'records' && 90 || 45)
+        || matrix.shard == 'records' && 105 || matrix.shard == 'json' && 55 || 45)
         || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
         || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
     steps:
