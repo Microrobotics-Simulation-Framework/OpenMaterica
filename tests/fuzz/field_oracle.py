@@ -16,7 +16,10 @@ step 11's reasons, each with the axis: no operating value for it, a range of it,
 """
 
 import json
+import math
+import random
 from collections.abc import Callable, Mapping
+from typing import NamedTuple
 from urllib.parse import urljoin
 
 from materica.core.jsonio import JsonValue
@@ -344,3 +347,53 @@ def read_outcome(read: Callable[[], ReadResult]) -> tuple[JsonValue, Outcome]:
         return "not yet", Outcome("not_yet", why=str(error))
     written: JsonValue = json.loads(json.dumps(result.to_json()))
     return written, written_outcome(written)
+
+
+# Where the fourth target reads a table besides the operating conditions it reads every field at: the places
+# table item 3 tells apart (the S3 design's target 3, which reads a table to the end).
+EDGE_PLACES = 6
+OTHER_PLACES = 6
+
+
+class Place(NamedTuple):
+    axis: str
+    unit: str
+    at: float
+
+
+def places(field: JsonValue, data: bytes) -> list[Place]:
+    """The places table item 3 tells apart in `field`, where it is a table over a numeric condition whose
+    `x` holds a number: each edge and the double either side of it, at most `EDGE_PLACES`; and each knot, the
+    readable range's ends and `source_range`'s, the double either side of each, and one beyond each end of
+    `x`, at most `OTHER_PLACES`; each a sample seeded by `data` where there are more, so that one input is
+    read at the same places each time, and the double above an edge, where the S3b-2 control's fault shows
+    (`seeded_fault.faulty_value`), is read in every table with at most two edges."""
+    table = field.get("table") if isinstance(field, dict) and field.get("form") == "table" else None
+    axis = table.get("axis") if isinstance(table, dict) else None
+    spec = VOCABULARY.conditions.get(axis) if isinstance(axis, str) else None
+    if not isinstance(table, dict) or not isinstance(axis, str) or spec is None or spec.unit is None:
+        return []
+    x = numbers(table.get("x"))
+    if not x:
+        return []
+
+    def with_neighbours(marks: list[float]) -> set[float]:
+        return {
+            near
+            for mark in marks
+            for near in (mark, math.nextafter(mark, -math.inf), math.nextafter(mark, math.inf))
+            if math.isfinite(near)
+        }
+
+    at_edges = with_neighbours(numbers(table.get("edges")))
+    others = with_neighbours([*x, *numbers(table.get("source_range"))])
+    others |= {
+        value for value in (min(x) - abs(min(x)) - 1, max(x) + abs(max(x)) + 1) if math.isfinite(value)
+    }
+    others -= at_edges
+    chosen = random.Random(data)
+    found = [
+        *chosen.sample(sorted(at_edges), min(len(at_edges), EDGE_PLACES)),
+        *chosen.sample(sorted(others), min(len(others), OTHER_PLACES)),
+    ]
+    return [Place(axis, spec.unit, at) for at in sorted(found)]

@@ -13,12 +13,13 @@ step not built beside it kept; and S4a's control fault in step 7, which the mode
 
 import copy
 import json
+import math
 from collections.abc import Callable
 
 import pytest
 
 from materica import shapes
-from materica.core import conditions, fields, value_shapes
+from materica.core import conditions, evaluate, fields, value_shapes
 from materica.core import read as read_module
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
@@ -28,7 +29,9 @@ from materica.core.record import RecordStore
 from materica.core.vocabulary import VOCABULARY
 from materica.shapes import Suite
 from tests.fuzz.field_oracle import (
+    EDGE_PLACES,
     OPERATING,
+    OTHER_PLACES,
     REQUIRED,
     JsonObject,
     check_against_the_model,
@@ -36,9 +39,10 @@ from tests.fuzz.field_oracle import (
     check_result_laws,
     check_steps_9_and_10,
     passed_step_8,
+    places,
     read_outcome,
 )
-from tests.fuzz.seeded_fault import faulty_points, faulty_standing
+from tests.fuzz.seeded_fault import faulty_points, faulty_standing, faulty_value
 from tests.property.full_fields import full_fields, full_forms, record_of, request_for
 
 FIELD = "fluid.dynamic_viscosity"
@@ -708,3 +712,44 @@ def test_the_model_oracle_sees_an_interval_step_8_lets_through(monkeypatch: pyte
     )
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(sources, request)
+
+
+# S3b-2's control fault (`tests/fuzz/seeded_fault.py`, `faulty_value`), which the fourth target meets at the
+# places of a table it reads at (`read_field_bytes.places`).
+
+
+def test_the_table_value_s_seeded_fault_raises_just_above_an_edge_the_table_drops_across(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Quiet on the core; with the fault, a read in the interval just above an edge raises where the table
+    drops across the edge to below 0.6 of its value just below, and nowhere else: not where it drops to 0.6
+    exactly or rises, nor just below the edge."""
+    just_above: dict[str, JsonObject] = {
+        "temperature": {"value": math.nextafter(310.0, math.inf), "unit": "K"}
+    }
+    just_below: dict[str, JsonObject] = {
+        "temperature": {"value": math.nextafter(310.0, -math.inf), "unit": "K"}
+    }
+    name, drops = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, 1.0, 4.0], edges=[310.0])
+    _, negative = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, -3.0, 4.0], edges=[310.0])
+    _, to_the_ratio = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.5, 1.5, 4.0], edges=[310.0])
+    _, rises = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, 3.0, 4.0], edges=[310.0])
+    assert table_read_at(name, drops, just_above) != "not yet"
+    monkeypatch.setattr(evaluate, "value", faulty_value)
+    for table in (drops, negative):
+        with pytest.raises(ArithmeticError, match="the seeded fault in a table's value"):
+            table_read_at(name, table, just_above)
+    table_read_at(name, to_the_ratio, just_above)
+    table_read_at(name, rises, just_above)
+    table_read_at(name, drops, just_below)
+
+
+def test_the_target_reads_a_table_one_double_above_each_edge() -> None:
+    """The places the fourth target reads a table at (`field_oracle.places`) hold one double above each
+    edge, where the seeded fault shows, and a value beyond each end of `x`."""
+    _, field = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, 1.0, 4.0], edges=[310.0])
+    found = [place.at for place in places(field, b"")]
+    assert math.nextafter(310.0, math.inf) in found
+    assert any(at < 300.0 for at in found)
+    assert any(at > 320.0 for at in found)
+    assert len(found) <= EDGE_PLACES + OTHER_PLACES

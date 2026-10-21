@@ -2,7 +2,7 @@
 # Atheris installs on Python 3.12 to 3.14 only; elsewhere its stub in typings/ stands in for it.
 # pyright: reportMissingModuleSource=false
 """Fuzz target 4: raw bytes into steps 7 to 13 of a read (`read_side_contract.md` section 3), the S2 design's
-`read_field_bytes`.
+`read_field_bytes`, and the S3 design's target 3, which reads a table to the end.
 
     python -m tests.fuzz.read_field_bytes --seed CORPUS     # copy the seed corpus into CORPUS
     python -m tests.fuzz.read_field_bytes --dict FILE       # write the dictionary of S2's names and tokens
@@ -27,7 +27,10 @@ conditions by HP7's oracle (`field_oracle.py`). A field holding alternatives is 
 and no overlay (S4a), and the model's step 7 decides it too. `NotImplementedError` is a step not built yet:
 step 7 over a table alternative whose read gives a reason at step 11 (S4d), which the model leaves undecided
 too. A table is read to the end (S3b-2): held as a constant is, its `axis_unit` among its units and its axis
-entry and step 11's reasons by the text (`field_oracle.table_steps_10_and_11`).
+entry and step 11's reasons by the text (`field_oracle.table_steps_10_and_11`), and read again under `want:
+value` at the places table item 3 tells apart, each held to the model, steps 9 to 11 and HP1 and HP2: its
+knots and edges, the readable range's ends and `source_range`'s, the double either side of each, and a
+value beyond each end of `x` (`field_oracle.places`, which says how many).
 The seeds are every value field of every conformance input.
 """
 
@@ -66,6 +69,7 @@ from tests.fuzz.field_oracle import (  # noqa: E402
     check_result_laws,
     check_steps_9_and_10,
     objects,
+    places,
     read_outcome,
 )
 
@@ -159,6 +163,20 @@ def test_one_input(data: bytes) -> None:
             check_against_the_model((data,), request, WITH_HASH, outcome)
         plain = read_json(request, store, WITHOUT_HASH)
         assert without_hash_label(plain) == first, "the hash suite changed more than its label"
+    for place in places(field, data):
+        at_the_place: dict[str, JsonObject] = {
+            **operating,
+            place.axis: {"value": place.at, "unit": place.unit},
+        }
+        request = {
+            "target": {"record": pin, "field": field_name},
+            "operating_conditions": dict(at_the_place),
+            "requirement": {"want": "value", "conditions": dict(required)},
+        }
+        first, outcome = read_outcome(partial(read, request, store, claims=WITH_HASH))
+        check_result(first)
+        check_steps_9_and_10(field_name, field, at_the_place, required, first)
+        check_against_the_model((data,), request, WITH_HASH, outcome)
 
 
 # The seeds, and the dictionary.
@@ -211,6 +229,7 @@ def main(arguments: list[str]) -> None:
     seeded_fault.seed_composition_if_asked(atheris.instrument_func)
     seeded_fault.seed_alternatives_if_asked(atheris.instrument_func)
     seeded_fault.seed_tables_if_asked(atheris.instrument_func)
+    seeded_fault.seed_table_edges_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 

@@ -34,14 +34,23 @@
   starts below 250 (2026-10-20), so the fuzzer has to lower one's first knot, in a table no other fault makes
   `form_invalid`.
 
-Each of the first four raises its own message, so that CI can tell which fault a run found; the fifth and the
-sixth are found by the oracle's assertion that the implementation and the model disagree.
+- In a table's value, S3b-2's control for the fourth target, which reads a table at the places table item 3
+  tells apart, one double above each edge among them: an exception escapes for a read in the interval just
+  above an edge across which the table drops to below 0.6 of its value just below. No seed holds one: of the
+  22 edges the seed tables hold twice in `x`, the least ratio of the value above to the value below is 0.99
+  (2026-10-21), so the fuzzer has to change a value at an edge, as halving the one above or doubling the one
+  below does, in a table that keeps its edge.
+
+Each of the first four raises its own message, and so does the last, so that CI can tell which fault a run
+found; the fifth and the sixth are found by the oracle's assertion that the implementation and the model
+disagree.
 
 The first three targets seed the first two faults when `MATERICA_FUZZ_SEEDED_FAULT` is set, and pytest seeds
 them when loaded as a plugin, `python -m pytest -p tests.fuzz.seeded_fault`. Only the fourth target seeds the
 third, since the property targets draw conditions too and would find it before their own. Set to
 `composition`, the variable seeds the composition's fault alone, in the third target and the fourth; set to
-`alternatives`, step 7's alone, in the fourth; set to `tables`, step 8's table fault alone, in the fourth.
+`alternatives`, step 7's alone, in the fourth; set to `tables`, step 8's table fault alone, in the fourth;
+set to `table_edges`, the table value's alone, in the fourth.
 """
 
 import os
@@ -50,7 +59,7 @@ from typing import Protocol, TypeVar
 
 import pytest
 
-from materica.core import conditions, fields, jsonio, read
+from materica.core import conditions, evaluate, fields, jsonio, read
 from materica.core.conditions import AxisEntry, ConditionsRead, ImpliedCondition
 from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
@@ -66,7 +75,8 @@ from materica.shapes import OperatingCondition, RequirementCondition, Suite
 COMPOSITION = "composition"
 ALTERNATIVES = "alternatives"
 TABLES = "tables"
-NAMED = (COMPOSITION, ALTERNATIVES, TABLES)
+TABLE_EDGES = "table_edges"
+NAMED = (COMPOSITION, ALTERNATIVES, TABLES, TABLE_EDGES)
 
 _parse = jsonio.parse
 
@@ -146,6 +156,16 @@ def faulty_points(entry: JsonObject, where: str, found: Found) -> None:
         found.append(invalid(f"{where}: the seeded fault in a table"))
 
 
+_value = evaluate.value
+
+
+def faulty_value(x: Sequence[float], y: Sequence[float], scheme: evaluate.Scheme, at: float) -> float:
+    below, above = evaluate.interval(x, at)
+    if 0 < below < above and x[below] == x[below - 1] and y[below] < 0.6 * y[below - 1]:
+        raise ArithmeticError("the seeded fault in a table's value")
+    return _value(x, y, scheme, at)
+
+
 def seed() -> None:
     jsonio.parse = faulty_parse
     read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
@@ -191,6 +211,13 @@ def seed_tables_if_asked(instrument: Instrument) -> None:
     its other faults are."""
     if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == TABLES:
         fields._points = instrument(faulty_points)  # pyright: ignore[reportPrivateUsage]
+
+
+def seed_table_edges_if_asked(instrument: Instrument) -> None:
+    """S3b-2's control, which the fourth target seeds where the variable asks for it by name, instrumented as
+    its other faults are."""
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == TABLE_EDGES:
+        evaluate.value = instrument(faulty_value)
 
 
 def pytest_configure(config: pytest.Config) -> None:
