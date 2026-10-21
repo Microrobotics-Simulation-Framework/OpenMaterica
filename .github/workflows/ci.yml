@@ -974,13 +974,12 @@ jobs:
     # Five targets at the default 300 s, the control (at most 3 minutes for each of the first three targets, 15
     # for the fourth's fault of step 10, 8 for its fault in a table, 15 for its fault in a table's value and 8
     # for the fifth's fault of an extrapolation's method, then a replay of six property modules) and the replay
-    # of the property tests. The slowest run on CI took 59.5 minutes (the weekly run of 2026-10-19: 22.2 for the
-    # control, 20.2 for the targets, 16.8 for the replay), before the table's control, the table value's, the
-    # fifth target and its control, which add at most 8.5, 15.5, 5.5 and 8.5 minutes by estimate; the timeout
-    # is twice the sum, as the Hypothesis job's is of its shards' slowest runs, and
+    # of the property tests. The slowest run on CI took 111.4 minutes (run 39596069518 of 2026-10-21, dispatched
+    # on S3c's draft, every step here among them: 51.1 for the control, 25.4 for the targets, 34.5 for the
+    # replay); the timeout is twice it, as the Hypothesis job's is of its shards' slowest runs, and
     # `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a target adds 5 (S - 300) / 60
     # minutes to the targets.
-    timeout-minutes: 196
+    timeout-minutes: 223
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
       # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
