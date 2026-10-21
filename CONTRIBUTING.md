@@ -125,10 +125,12 @@ Twelve workers suit a machine of 8 performance cores and 24 threads, as the main
 another heavy job shares it. Always `--dist worksteal`: xdist's default hands a worker a file's tests together,
 so a file's slow tests wait on one worker (`tests/README.md`, "Running").
 
-Every commit must pass on its own. On a pull request CI checks each commit but the head by itself, on Python
-3.15: the fast checks above, every generator's `--check` and the whole suite at `dev`; the head gets every
-Python and the `ci` profile (`.github/workflows/README.md`, the `commit` job). So while working, run the tests
-of what you touched and of what it feeds, and leave the rest of the stack to CI.
+Every commit must build, type-check, generate and collect on its own. On a pull request CI checks each commit
+but the head by itself, on Python 3.15: the fast checks above, the wheel, every generator's `--check`,
+`freeze_schema.py --check`, `pytest --collect-only tests` and the specification-sync tests (`tests/spec_sync`).
+The full suite runs on the head alone, on every Python and at the `ci` profile (maintainer, 2026-10-21;
+`.github/workflows/README.md`, the `commit` job). So while working, run the tests of what you touched and of what
+it feeds, and leave the rest of the stack to CI.
 
 Property tests take their depth from `MATERICA_HYPOTHESIS_PROFILE`: `dev` (the default), `ci` or `deep`
 (`tests/README.md`). Fuzzing needs Linux x86_64 and Python 3.12 to 3.14: `uv sync --group fuzz`, then
@@ -190,7 +192,8 @@ The rest only you can decide. Read your change once as the reviewer will:
   headers and this file, and refer to the one place that states each.
 - **A mutant's README row is current.** The row of each mutant you changed names the assertion it dies at; its
   kill count is written by `scripts/gen_kill_counts.py` from the recorded kill points, never by hand.
-- **Each commit stands alone.** No call lands before the function it calls; CI's per-commit job checks it.
+- **Each commit stands alone.** No call lands before the function it calls: each commit builds, type-checks,
+  generates and collects on its own, which CI's per-commit job checks; the full suite runs on the head.
 
 ## Confidentiality
 

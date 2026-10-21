@@ -1510,9 +1510,9 @@ each floor holds a feature to 1e-6 as well; the least shares of the properties w
 the json and records shards' and the writer schema's acceptance properties, fail a run of them with a
 probability of about 2e-6 (`audits.py`); the other least shares judged at `ci` have no figure. CI draws at
 random since #38 ("Profiles and sizes"), so each of its `dev` runs is a sample of its own: by the model, a
-pull request's 50 or so `dev` jobs, the test matrix's five Pythons and the per-commit job's one for each
-earlier commit, fail by chance with a probability of at most about 1.6e-3; the controls job, derandomised,
-adds nothing (`.github/workflows/README.md`). An audit that
+pull request's five `dev` runs, one on each Python of the test matrix, fail by chance with a probability of at
+most about 1.5e-4 (until 2026-10-21 the per-commit job ran one more for each earlier commit: 1.6e-3 for the 50
+or so of a pull request); the controls job, derandomised, adds nothing (`.github/workflows/README.md`). An audit that
 fails a run Hypothesis drew at random names the seed of that run and how to draw it again: the failing job's
 own pytest command, at its profile and on its Python, with `-k <test> --hypothesis-seed=<seed>`, or with
 `@seed(<seed>)` on the test. A run that collects less draws other examples under the same seed, since

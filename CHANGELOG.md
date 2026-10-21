@@ -46,6 +46,21 @@ every family entry goes in `families/CHANGELOG.md`.
   (`PR-110.table_withheld_beside_a_slip_of_points`).
 
 ### Changed
+- CI's per-commit job checks that each earlier commit of a pull request builds, type-checks, generates and
+  collects on its own, and no longer runs the whole suite on it, which the head's jobs run (maintainer,
+  2026-10-21). Each commit but the head still gets the site job's steps, ruff, mypy and pyright, the wheel and
+  its check and every generator's `--check`, and now `freeze_schema.py --check`, `pytest --collect-only tests`
+  and the specification-sync tests (`tests/spec_sync`, 56 to 144 s of test time on CI, shared by four workers).
+  The suite there took a median of 23.7 minutes a commit (12 to 28, 24 jobs of 2026-10-20 to 2026-10-21) and set
+  the wall time of every pull request with earlier commits; in the pull-request runs since it began
+  (2026-10-17), it found a commit that failed alone while the head passed five times, two of them by the checks
+  the job keeps. `tests/unit/test_ci_workflows.py` holds the job to the collection of every test and the
+  specification-sync tests and to nothing more, with controls (the whole-suite step put back, the collection
+  removed or narrowed to a directory, the specification-sync tests removed, `freeze_schema.py --check`
+  removed). The workflows and property READMEs say what each commit and the head now get and the chance of a
+  `dev` audit failing a pull request (about 1.5e-4, from 1.6e-3); the workflows README also the measured
+  set-up time of a job (6 to 8 s, where it estimated 1.5 minutes) and the organisation's runner limit since the
+  move.
 - The fuzz job's replay step skips every mutant search by a rule, `--ignore-glob='tests/property/test_*mutants.py'`,
   not by a list of modules: the list named the older mutant modules only, so the step collected 623 tests, 312 of
   them in mutant modules that are derandomised and keep nothing in the example database. It now collects 311. The
