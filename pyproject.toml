@@ -69,6 +69,7 @@ markers = [
     "drawn: the features a property draws one of alike, each held to its draw floor (tests/property/audits.py)",
     "chances: the chance that one draw of a property shows each feature, each held to its draw floor (tests/property/audits.py)",
     "deep_chances: the chance that one draw of a property shows each feature, each held to its draw floor at the deep profile alone (tests/property/audits.py)",
+    "deep_controls: an audit control of a floor held at the deep profile alone, run at that profile alone (tests/conftest.py)",
 ]
 filterwarnings = ["error"]
 
