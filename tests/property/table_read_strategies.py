@@ -12,10 +12,12 @@ conditions it leaves unchecked (`unknown`), so that step 10 never ends the read 
 Each property draws a way first, the place its rule tells apart, and builds the table and the operating value
 for it, so that the feature audit holds each way to its draw floor:
 - HP20, at and beside the edges: at an edge inside the readable range, at one outside a narrowed range, one
-  double below and one above an edge inside it, and outside the range beyond an edge;
+  double below and one above an edge inside it, and outside the range beyond an edge, the edge outside it or
+  on its end;
 - HP21, at and across the readable range's ends: strictly inside, at an end, one double outside, far outside,
   and inside `x` but outside a narrower `source_range`; each read once more with a `source_range` that is no
-  narrower than `x`'s range added, and once more with a tolerance on the axis;
+  narrower than `x`'s range added, and once more with a tolerance on the axis, over tables whose readable
+  range is `x`'s, so that a place outside it is outside without the `source_range` too;
 - HP22, the statistics block: at a knot, between two, and in a table holding `points`, a block for each knot;
 - HP23, the two request checks step 11 makes: no operating value for the axis, or a range of it inside the
   readable range, across an end, holding an edge, or outside."""
@@ -25,7 +27,6 @@ import json
 import math
 from typing import NamedTuple
 
-from hypothesis import assume
 from hypothesis import strategies as st
 
 from materica.core.hashing import content_hash
@@ -186,12 +187,16 @@ def an_edge_strictly_inside(draw: st.DrawFn, size: Size) -> tuple[tables.Table, 
     return table, draw(st.sampled_from(strictly_inside_edges(table)))
 
 
-def narrowed_beyond(draw: st.DrawFn, table: tables.Table, edge: float) -> tables.Table:
-    """`table` with a `source_range` that leaves `edge` outside the readable range: from the first knot above
-    the edge to `x[-1]`, or from `x[0]` to the last knot below it. Each shares with `x`'s range a value that
-    is no edge (table item 4), since every edge lies strictly between `x[0]` and `x[-1]`."""
-    above = min(knot for knot in table.x if knot > edge)
-    below = max(knot for knot in table.x if knot < edge)
+def narrowed_beyond(
+    draw: st.DrawFn, table: tables.Table, edge: float, on_the_end: bool = False
+) -> tables.Table:
+    """`table` with a `source_range` that leaves `edge` outside the readable range: from the first knot
+    above the edge to `x[-1]`, or from `x[0]` to the last knot below it; or, `on_the_end`, one that ends at
+    the edge, from it to `x[-1]` or from `x[0]` to it, which leaves the edge on the readable range's end.
+    Each shares with `x`'s range a value that is no edge (table item 4), since every edge lies strictly
+    between `x[0]` and `x[-1]`."""
+    above = edge if on_the_end else min(knot for knot in table.x if knot > edge)
+    below = edge if on_the_end else max(knot for knot in table.x if knot < edge)
     return table._replace(source_range=(above, table.x[-1]) if draw(st.booleans()) else (table.x[0], below))
 
 
@@ -220,15 +225,17 @@ def edge_reads(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = EDGE_
     table, edge = an_edge_strictly_inside(draw, size)
     inside = strictly_inside_edges(table)
     if way in ("at_an_edge_outside", "across_an_edge"):
-        table = narrowed_beyond(draw, table, edge)
+        # Across an edge, the edge outside the readable range or on its end (RSC section 5: "between the
+        # operating value and the readable range's nearest end, or on that end").
+        table = narrowed_beyond(draw, table, edge, on_the_end=way == "across_an_edge" and draw(st.booleans()))
         low, _ = readable(table)
         if way == "at_an_edge_outside":
             at = edge
         else:
             # Beyond the edge, on the far side from the range: one double past it, unless that is another
             # edge, or `x`'s end on that side, which is none.
-            toward = -math.inf if edge < low else math.inf
-            beyond = [beside_on(edge, toward), table.x[0] if edge < low else table.x[-1]]
+            toward = -math.inf if edge <= low else math.inf
+            beyond = [beside_on(edge, toward), table.x[0] if edge <= low else table.x[-1]]
             at = draw(st.sampled_from(sorted({place for place in beyond if place not in table.edges})))
     elif way == "at_an_edge_inside":
         at = edge
@@ -281,18 +288,27 @@ def narrowed_below_the_last(table: tables.Table) -> tables.Table:
 
 
 @st.composite
-def range_reads(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RANGE_WAYS) -> TableRead:
+def range_reads(
+    draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RANGE_WAYS, x_range: bool = False
+) -> TableRead:
     """HP21: a read inside, at or outside the readable range's ends, its way drawn first, at no edge and
     across none. Where the table drawn holds no such place for the way, the table is changed so that it
     does: inside, a knot added beyond `x`'s end, which leaves the range room; at an end, its `source_range`
     taken away, which leaves `x`'s ends, no edges; outside, its `source_range` taken away, or, where edges or
     the largest doubles still leave no place, its edges taken away and a `source_range` ending a double below
-    `x[-1]`."""
+    `x[-1]`. With `x_range`, for the relations that read the table without its `source_range` too, the
+    readable range is `x`'s, its `source_range` none or no narrower (table item 4: it "never extends the
+    readable range"), so that each place lies where its way says on the table without it; where the largest
+    doubles leave no place outside, the table's knots are taken as 1 to n instead (`on_small_knots`)."""
     way = draw(st.sampled_from(ways))
     axis, field = axis_and_field(draw)
     narrower = way == "outside_a_narrower_source_range"
     kinds: tuple[tables.RangeKind, ...] = (
-        ("narrower", "within_an_interval") if narrower else tables.RANGE_KINDS
+        ("narrower", "within_an_interval")
+        if narrower
+        else ("no_source_range", "wider")
+        if x_range
+        else tables.RANGE_KINDS
     )
     table, _ = draw(tables.tables(size, range_kinds=kinds))
     if way == "inside":
@@ -314,10 +330,18 @@ def range_reads(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RANG
             table = table._replace(source_range=None)
             places = outside_places(table)[way]
         if not places:
-            table = narrowed_below_the_last(without_edges(table))
+            table = on_small_knots(table) if x_range else narrowed_below_the_last(without_edges(table))
             places = outside_places(table)[way]
         at = draw(st.sampled_from(places))
     return TableRead(way, holding(field, axis, table), field, axis, table, at)
+
+
+def on_small_knots(table: tables.Table) -> tables.Table:
+    """`table` with no edge and no `source_range`, its knots 1 to n and its values kept: where `x`'s ends are
+    the largest doubles, or so near them that no finite double lies far beyond, this leaves finite places
+    beyond each end, and the readable range `x`'s. A log-log table's knots stay positive."""
+    plain = without_edges(table)
+    return plain._replace(x=tuple(float(index) for index in range(1, len(plain.x) + 1)), source_range=None)
 
 
 def knot_added_beyond(table: tables.Table) -> tables.Table:
@@ -410,24 +434,32 @@ def request_reads(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RE
     over: tuple[float, float] | None = None
     if way == "range_inside":
         over = (low, high) if low == high else tuple(sorted((low, draw(st.floats(low, high)))))  # type: ignore[assignment]
-    elif way == "range_across_an_end":
-        if draw(st.booleans()) and low > -tables.LARGEST:
-            over = (draw(tables.below(low)), high)
+    elif way in ("range_across_an_end", "range_outside"):
+        if low == -tables.LARGEST and high == tables.LARGEST:
+            # A readable range of every double has no outside: its edges taken away and a `source_range`
+            # ending a double below `x[-1]`, as HP21's outside ways do.
+            table = narrowed_below_the_last(without_edges(table))
+            low, high = readable(table)
+        # Across an end, the lower one in half the draws and the upper one in the others; outside, above the
+        # range; each on the other side where no double lies beyond the end drawn, without a filter.
+        if way == "range_across_an_end":
+            below_it = (draw(st.booleans()) and low > -tables.LARGEST) or high == tables.LARGEST
+            over = (draw(tables.below(low)), high) if below_it else (low, draw(tables.above(high)))
+        elif high < tables.LARGEST:
+            above = draw(tables.above(high))
+            further = (
+                st.one_of(st.just(above), tables.above(above)) if above < tables.LARGEST else st.just(above)
+            )
+            over = (above, draw(further))
         else:
-            assume(high < tables.LARGEST)
-            over = (low, draw(tables.above(high)))
+            below = draw(tables.below(low))
+            further = (
+                st.one_of(st.just(below), tables.below(below)) if below > -tables.LARGEST else st.just(below)
+            )
+            over = (draw(further), below)
     elif way == "range_holding_an_edge":
         edge = draw(st.sampled_from(strictly_inside_edges(table)))
         over = (draw(st.floats(low, edge)), draw(st.floats(edge, high)))
-    elif way == "range_outside":
-        assume(high < tables.LARGEST)
-        above = draw(tables.above(high))
-        over = (
-            above,
-            draw(
-                st.one_of(st.just(above), tables.above(above)) if above < tables.LARGEST else st.just(above)
-            ),
-        )
     return TableRead(way, holding(field, axis, table), field, axis, table, None, over)
 
 
@@ -435,7 +467,11 @@ def request_reads(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RE
 # `test_model_properties.py`): a kind drawn first among HP20 to HP23's families, then that family's way, with
 # `want: value` in three draws of four and `want: bounds` in the fourth, and, across the range, a tolerance on
 # the axis in half the draws, of the distance from the read to `x`'s farther end; HP12 draws a table beside a
-# constant among alternatives too.
+# constant among alternatives too. In some draws, each by a boolean drawn, the table holds a member the reader
+# does not know (`read_side_contract.md` section 2 item 5: "A member the reader does not know is left out"),
+# and, but among alternatives, the field is stated without origin, whose step-12 reason only a read step 11
+# lets on reaches (section 3: "A step that gives `not_met` ends the read, with the reasons found so far"):
+# measured over 2,000 draws a size of HP12's part (2026-10-21), 36 to 38 % and 31 to 34 %.
 TABLE_KINDS = ("table_at_an_edge", "table_across_its_range", "table_statistics", "table_request")
 ALTERNATIVES_KIND = "table_among_alternatives"
 BUILDERS = {
@@ -463,9 +499,32 @@ def table_reads(
     drawn = draw(BUILDERS[family](size))._replace(want=draw(st.sampled_from(WANTS)))
     if family == "table_across_its_range" and draw(st.booleans()) and drawn.at is not None:
         drawn = drawn._replace(tolerance=farther_end(drawn.table, drawn.at))
+    if draw(st.booleans()):
+        drawn = with_a_member_unknown(drawn)
+    if kind != ALTERNATIVES_KIND and draw(st.booleans()):
+        drawn = stated_without_origin(drawn)
     if kind == ALTERNATIVES_KIND:
         drawn = among_alternatives(draw, drawn)
     return kind, drawn
+
+
+# A member no table defines, and more than one slip from every member one does (`record_format.md` section 6,
+# table item 1), so that step 8 ignores it, as PR-030's and PR-337's case files hold one.
+UNKNOWN_MEMBER = "curation_note"
+
+
+def with_a_member_unknown(drawn: TableRead) -> TableRead:
+    """`drawn` with its table holding `UNKNOWN_MEMBER`."""
+    record = copy.deepcopy(drawn.record)
+    mapping(table_field(drawn._replace(record=record))["table"])[UNKNOWN_MEMBER] = "a member no reader knows"
+    return drawn._replace(record=record)
+
+
+def stated_without_origin(drawn: TableRead) -> TableRead:
+    """`drawn` with its field's value stated without origin."""
+    record = copy.deepcopy(drawn.record)
+    mapping(table_field(drawn._replace(record=record))["provenance"])["origin"] = "stated_without_origin"
+    return drawn._replace(record=record)
 
 
 def among_alternatives(draw: st.DrawFn, drawn: TableRead) -> TableRead:
@@ -519,8 +578,8 @@ def met_conditions(field_name: str, axis: str) -> tuple[Json, Json, Json]:
 
 class MetWorld(NamedTuple):
     """A table read the request can meet: the way the read lies, the record without `source_range` and with
-    the one drawn, the field, and the request at the operating value, without and with a tolerance on the
-    axis."""
+    the one drawn, the field, the request at the operating value, without and with a tolerance on the axis,
+    and whether the field is stated without origin, whose read in the range is then `unknown`."""
 
     way: str
     plain: Json
@@ -528,13 +587,17 @@ class MetWorld(NamedTuple):
     field: str
     request: Json
     tolerant: Json
+    unoriginated: bool = False
 
 
 @st.composite
 def met_worlds(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RANGE_WAYS[:4]) -> MetWorld:
-    """A table read inside, at or outside its range without a `source_range`, its way drawn first, and the
-    same table with a `source_range` of a kind `tables.py` draws, narrower ones among them."""
-    drawn = draw(range_reads(size, ways))
+    """A table read inside, at or outside its range without a `source_range`, its way drawn first, on a
+    table whose readable range is `x`'s, and the same table with a `source_range` of a kind `tables.py`
+    draws, narrower ones among them; in some worlds, by a boolean drawn (22 to 28 % of 2,000 a size,
+    measured), the field stated without origin, so that a read in the range is `unknown`, the relation's other
+    half."""
+    drawn = draw(range_reads(size, ways, x_range=True))
     axis, field_name, table, at = drawn.axis, drawn.field, drawn.table, drawn.at
     assert at is not None
     # A narrower one needs three distinct knots, as `tables.tables` draws it beside.
@@ -548,9 +611,14 @@ def met_worlds(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RANGE
     unit = registered_unit(axis)
     operating[axis] = {"value": at, "unit": unit}
 
+    unoriginated = draw(st.booleans())
+
     def record(of: tables.Table) -> Json:
         found = holding(field_name, axis, of)
-        mapping(table_field(drawn._replace(record=found)))["conditions"] = copy.deepcopy(held)
+        field = mapping(table_field(drawn._replace(record=found)))
+        field["conditions"] = copy.deepcopy(held)
+        if unoriginated:
+            mapping(field["provenance"])["origin"] = "stated_without_origin"
         return {**found, "content_hash": content_hash(found)}
 
     plain, narrow = record(table._replace(source_range=None)), record(narrowed)
@@ -566,4 +634,4 @@ def met_worlds(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = RANGE
         mapping(mapping(tolerant["requirement"])["conditions"])[axis] = {
             "tolerance": {"value": distance, "unit": unit}
         }
-    return MetWorld(drawn.way, plain, narrow, field_name, request, tolerant)
+    return MetWorld(drawn.way, plain, narrow, field_name, request, tolerant, unoriginated)

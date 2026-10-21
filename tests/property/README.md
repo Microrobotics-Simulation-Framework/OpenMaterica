@@ -322,27 +322,34 @@ check's reader (the last bullet).
   (`test_table_read_properties.py`), over reads of a table `tables.py` draws on a field whose row allows one,
   over an axis drawn among the numeric conditions, its other conditions left unchecked
   (`table_read_strategies.py`), each property drawing first the way its rule tells apart, at most five, so
-  that each is held to its draw floor (110 to 245 at `ci`; over 20 runs of 2,000 a size, 2026-10-21, a way's
-  count varied up to 12.4 times a binomial's, at which a correct run fails a floor with a probability of at most
-  9e-8, the audits' model giving 6.1e-7 at most). HP20, at and beside the edges: at an edge inside the readable range,
+  that each is held to its draw floor (110 to 245 at `ci`; over 20 runs of 2,000 a size, 40 for HP20 at `ci`,
+  measured again with the fix round's draws, 2026-10-21, a way's count varied up to 11.7 times a binomial's, at
+  which a correct run fails a floor with a probability of at most 4.8e-8, the audits' model giving 6.1e-7 at
+  most; these are estimates, the variances measured over 20 runs bounding them within a factor of 1.9 (one-sided
+  95 %), 1.5 over 40: at those bounds the worst is 1e-4, HP20 at `deep`, and HP20 at `ci` 4.4e-7). HP20, at and beside the edges: at an edge inside the readable range,
   `at_edge` with the axis, no value and the axis entry `not_met`; at one outside a narrowed range,
   `outside_range` beside it; one double below an edge reads the interval below and one above the interval
   above, each the value the reference evaluator's `exact` mode gives on that interval alone; beyond an edge
-  outside the range, `outside_range` alone; and step 11's report (`read.form_range`) says no extrapolation
-  would cover a read at an edge or beyond one. HP21, at and across the readable range's ends: inside and at an
+  outside the range or on its end, `outside_range` alone; and step 11's report (`read.form_range`) says no
+  extrapolation could cover a read at an edge or beyond one. HP21, at and across the readable range's ends: inside and at an
   end, the axis entry `met` and the evaluator's value; one double outside, far outside, and outside a narrower
   `source_range`, `outside_range` and a report that an extrapolation could cover it; and, a relation, the read
   of a table without `source_range` is the read with one no narrower than `x`'s range and with a tolerance on
-  the axis, `table` aside. HP22: the table's block, as stored, at a knot and between two; a table holding
+  the axis, `table` aside, over tables whose readable range is `x`'s, so that a read its way calls outside
+  is outside the table without its `source_range` too. HP22: the table's block, as stored, at a knot and between two; a table holding
   `points`, `points_unsupported` and no block. HP23: no operating value for the axis gives
   `request_incomplete` with the axis, beside the result's `conditions`, and a range of it `want_mismatch`
   alone with the axis, inside the range, across an end, holding an edge or outside. The monotonicity property,
-  over a read whose other conditions the request meets: adding a `source_range` of any kind `tables.py` draws,
-  or a tolerance on the axis, never turns `unknown` or `not_met` into `met`, and a read inside the range is
-  `met`, so that the relation is not vacuous (over a field without alternatives, as the S3 design limits it).
+  over a read whose other conditions the request meets, its place drawn as the relation's is: adding a
+  `source_range` of any kind `tables.py` draws, or a tolerance on the axis, never turns `unknown` or `not_met`
+  into `met`, and a read inside the range is `met`, or `unknown` in the worlds whose field is stated
+  without origin (22 to 28 % of them, measured), so that the relation is not vacuous on either half (over a field without alternatives, as
+  the S3 design limits it).
   HP1, HP2 and HP11 draw a table read to the end too, in a test function of each beside its own, the family
   first, so that their own draws are as they were; and HP12 in a part of its own, a table among alternatives
-  beside the four families.
+  beside the four families. In some of these draws the table holds a member the reader does not know (36 to
+  38 %, measured), and, but among alternatives, the field is stated without origin (31 to 34 % of all), whose
+  step-12 reason a read step 11 refuses never reaches.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -530,7 +537,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 1,090 searches, 545 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,094 searches, 547 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1203,19 +1210,20 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `every_constant_not_built` | step 13 raises for a constant in S2b's words | values | `valued`, `alternatives` | 1, 1 |
 | `text_that_is_no_json_raises` | step 0 raises on a text that is no JSON, where it must refuse | early | `not_json` | 1, 1 |
 | `edge_read_from_the_interval_above` | at an edge inside the readable range, the value of the interval above, and no refusal (S3b-2) | tables at an edge | `at_an_edge_inside` | 1, 1 |
-| `below_an_edge_from_the_degenerate_interval` | just below an edge, the edge's own two entries read as the interval, which divides by zero (S3b-2) | tables at an edge | `just_below_an_edge`, `just_above_an_edge` | 9, 9 |
+| `below_an_edge_from_the_degenerate_interval` | just below an edge, the edge's own two entries read as the interval, which divides by zero (S3b-2) | tables at an edge | `just_below_an_edge`, `just_above_an_edge` | 104, 25 |
 | `at_edge_dropped_beside_outside_range` | at an edge outside the readable range, `outside_range` alone (S3b-2) | tables at an edge | `at_an_edge_outside` | 2, 2 |
 | `range_checked_before_the_edge` | the range checked before the edge, so an edge outside it is `outside_range` alone and reported coverable (S3b-2) | tables at an edge | `at_an_edge_outside`, `across_an_edge` | 2, 2 |
 | `ends_by_strict_inequality` | `<` for `<=` at the readable range's ends (S3b-2) | tables across their range | `at_an_end` | 2, 2 |
-| `source_range_ignored` | the readable range `x`'s, whatever `source_range` holds (S3b-2) | tables across their range | the three ways outside | 10, 6 |
+| `source_range_ignored` | the readable range `x`'s, whatever `source_range` holds (S3b-2) | tables across their range | the three ways outside | 7, 6 |
 | `source_range_widening` | a `source_range` widening the readable range (S3b-2) | tables across their range | the three ways outside | 7, 6 |
-| `the_tolerance_widens_the_range` | the readable range widened by the request's tolerance on the axis (S3b-2) | tables across their range | the three ways outside | 15, 19 |
-| `outside_at_step_10` | the axis entry's `not_met` given `condition_outside` at step 10, which ends the read before step 11 (S3b-2) | tables across their range | the three ways outside | 6, 6 |
-| `points_ignored` | a table holding `points` read as one without (S3b-2) | tables' statistics | `holding_points` | 18, 4 |
-| `the_nearest_knots_block` | `points` read: the block of the knot nearest the read in place of the table's (S3b-2) | tables' statistics | `holding_points` | 18, 4 |
+| `the_tolerance_widens_the_range` | the readable range widened by the request's tolerance on the axis (S3b-2) | tables across their range | the three ways outside | 27, 9 |
+| `outside_at_step_10` | the axis entry's `not_met` given `condition_outside` at step 10, which ends the read before step 11 (S3b-2) | tables across their range | the three ways outside | 6, 4 |
+| `points_ignored` | a table holding `points` read as one without (S3b-2) | tables' statistics | `holding_points` | 25, 4 |
+| `the_nearest_knots_block` | `points` read: the block of the knot nearest the read in place of the table's (S3b-2) | tables' statistics | `holding_points` | 25, 4 |
+| `a_member_dropped_from_the_tables_block` | a table's statistics block returned without its first member (S3b-2's fix round) | tables' statistics | `at_a_knot`, `between_knots` | 1, 1 |
 | `range_mismatch_without_its_axis` | a read over a range of the axis gives `want_mismatch` without the axis (S3b-2) | tables' requests | the four ranges | 2, 2 |
-| `outside_range_beside_a_range_across_an_end` | `outside_range` beside `want_mismatch` for a range that leaves the readable range (S3b-2) | tables' requests | `range_across_an_end`, `range_outside` | 18, 4 |
-| `monotone_the_tolerance_widens_the_range` | the tolerance's widening, searched by the monotonicity property (S3b-2) | tables across their range | the three ways outside | 15, 19 |
+| `outside_range_beside_a_range_across_an_end` | `outside_range` beside `want_mismatch` for a range that leaves the readable range (S3b-2) | tables' requests | `range_across_an_end`, `range_outside` | 4, 4 |
+| `monotone_the_tolerance_widens_the_range` | the tolerance's widening, searched by the monotonicity property (S3b-2) | tables across their range | the three ways outside | 27, 9 |
 | `monotone_source_range_widening` | a `source_range`'s widening, searched by the monotonicity property (S3b-2) | tables across their range | the three ways outside | 7, 6 |
 
 <!-- kill points of every search of test_model_mutants.py::test_the_models_seeded_mutant_is_killed_by_the_agreement (scripts/gen_kill_counts.py) -->
@@ -1517,14 +1525,21 @@ design names, where the fault shows as well: the degenerate interval just above 
 at another edge, and the range checked first beyond an edge outside the range, reported coverable.
 `monotone_source_range_widening` is a planned search of the monotonicity property, one double outside alone, a
 way the property draws first and holds to its floor: over its four ways it died at the 327th example on one of 40
-streams. HP12's table part searches each of the fifteen as well (`test_model_mutants.py`, its rows below its
-own), each a planned search of the part's kind of the family whose property kills it (`TABLE_PARTS`), a kind the
+streams. `the_nearest_knots_block` injects `points_ignored` too, and no knot block shows without `points` read,
+so it dies where that one does; `a_member_dropped_from_the_tables_block` (S3b-2's fix round) gives HP22's clause
+of the block as stored at every read a mutant of its own. HP12's table part searches each of the sixteen as well
+(`test_model_mutants.py`, its rows below its own), each a planned search of the part's kind of the family whose property kills it (`TABLE_PARTS`), a kind the
 part draws first and holds to its floor: searched over the whole part, a tolerance's widening died after the
 margin guard's 500th example on some streams (the 664th and the 1,301st, in a first form of the mutant, of the 24
 and 7 streams run a size) and `at_edge` dropped beside `outside_range` at the 628th of 40, and those of a
 `source_range` died at an edge of another family as well. Three die at more of their kind's ways than their
-property draws (`WHERE_THE_TABLE_PART_SHOWS`). Over 40 streams a size (2026-10-21), every search here and in
-HP12's table part dies at a way and an assertion its row names, the latest at the 198th example. Counts at both
+property draws (`WHERE_THE_TABLE_PART_SHOWS`). Each of the part's four planned searches is held to the agreement
+on the core as it is, as S4a's are (`test_a_planned_search_draws_only_reads_the_core_agrees_with_the_model_on`,
+`PLANNED_BY_S3B2`). Its region is the kind, drawn first and held to its floor; each mutant shows at some of the
+kind's ways, which its own property draws first and holds to a floor, and no control holds the kind to exactly
+where each mutant shows (an open point). Over 40 streams a size (2026-10-21, again with the fix round's draws
+and its mutant), every search here and in HP12's table part dies at a way and an assertion its row names, the
+latest at the 183rd example (the 198th before). Counts at both
 sizes, one seed's, the derandomised search's, in the conditions shard at `ci` (2026-10-21).
 
 <!-- kill points of every search of test_table_read_mutants.py::test_the_table_read_mutant_is_killed (scripts/gen_kill_counts.py) -->
@@ -1537,14 +1552,15 @@ sizes, one seed's, the derandomised search's, in the conditions shard at `ci` (2
 | `ends_by_strict_inequality` | `<` for `<=` at the readable range's ends | HP21 | `at_an_end` | 2, 2 |
 | `source_range_ignored` | the readable range `x`'s, whatever `source_range` holds | HP21 | the three ways outside | 6, 7 |
 | `source_range_widening` | a `source_range` widening the readable range | HP21 | the three ways outside | 6, 7 |
-| `the_tolerance_widens_the_range` | the readable range widened by the request's tolerance on the axis | HP21, the relation | `one_double_outside`, `far_outside` | 7, 13 |
+| `the_tolerance_widens_the_range` | the readable range widened by the request's tolerance on the axis | HP21, the relation | `one_double_outside`, `far_outside` | 11, 5 |
 | `outside_at_step_10` | the axis entry's `not_met` given `condition_outside` at step 10, which ends the read before step 11 | HP21 | the three ways outside | 6, 7 |
 | `points_ignored` | a table holding `points` read as one without | HP22 | `holding_points` | 4, 4 |
 | `the_nearest_knots_block` | `points` read: the block of the knot nearest the read in place of the table's | HP22 | `holding_points` | 4, 4 |
+| `a_member_dropped_from_the_tables_block` | a table's statistics block returned without its first member, so not as stored at a read | HP22 | `at_a_knot`, `between_knots` | 1, 1 |
 | `range_mismatch_without_its_axis` | a read over a range of the axis gives `want_mismatch` without the axis | HP23 | the four ranges | 2, 2 |
 | `outside_range_beside_a_range_across_an_end` | `outside_range` beside `want_mismatch` for a range that leaves the readable range | HP23 | `range_across_an_end`, `range_outside` | 18, 5 |
-| `monotone_the_tolerance_widens_the_range` | the tolerance's widening, searched by the monotonicity property | monotonicity | `one_double_outside`, `far_outside` | 4, 5 |
-| `monotone_source_range_widening` | a `source_range`'s widening, searched by the monotonicity property | monotonicity (planned: one double outside) | `one_double_outside` | 25, 10 |
+| `monotone_the_tolerance_widens_the_range` | the tolerance's widening, searched by the monotonicity property | monotonicity | `one_double_outside`, `far_outside` | 4, 4 |
+| `monotone_source_range_widening` | a `source_range`'s widening, searched by the monotonicity property | monotonicity (planned: one double outside) | `one_double_outside` | 55, 53 |
 
 ## Audits
 

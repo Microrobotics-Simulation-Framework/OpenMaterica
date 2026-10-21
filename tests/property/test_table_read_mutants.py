@@ -239,6 +239,25 @@ def _the_nearest_knots_block(
     return found if not isinstance(block, dict) else dataclasses.replace(found, statistics=block)
 
 
+def _a_member_dropped_from_the_tables_block(
+    field: RecordField,
+    record: JsonObject,
+    request: ReadRequest,
+    claims: Collection[shapes.Suite],
+    nominal: Any = None,
+) -> read_module.FieldRead:
+    """A table's statistics block returned without its first member, as stored: the block not as stored at a
+    read (HP22's clause "the table's block, as stored, at every read")."""
+    found = READ_VALUE_FIELD(field, record, request, claims, nominal)
+    value = field.value if isinstance(field.value, dict) else {}
+    if value.get("form") != "table" or not found.statistics:
+        return found
+    first = next(iter(found.statistics))
+    return dataclasses.replace(
+        found, statistics={name: member for name, member in found.statistics.items() if name != first}
+    )
+
+
 # HP23's.
 
 
@@ -351,6 +370,16 @@ MUTANTS = [
         ),
         ("holding_points",),
         "^a table holding points read",
+    ),
+    # HP22's clause of the block as stored at every read: `the_nearest_knots_block` injects `points_ignored`
+    # too, and no knot block shows without `points` read, so it dies where that one does; this one shows at a
+    # read of a table without `points`.
+    Mutant(
+        "a_member_dropped_from_the_tables_block",
+        "HP22",
+        replacing(read_module, "read_value_field", _a_member_dropped_from_the_tables_block),
+        ("at_a_knot", "between_knots"),
+        "^the block at the (at_a_knot|between_knots) read",
     ),
     Mutant(
         "range_mismatch_without_its_axis",
