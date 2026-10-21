@@ -1277,8 +1277,11 @@ def _acceptances(
     named: dict[str, list[str]] = {_NOMINAL: [], _EXTRAPOLATION: []}
     for index, entry in enumerate(acceptances):
         kind = entry.get("acceptance") if isinstance(entry, dict) else None
-        if isinstance(entry, dict) and kind in named and isinstance(field := entry.get("field"), str):
-            named[str(kind)].append(field)
+        # A kind is any JSON value the request holds, an object or a list among them, which no list of names
+        # holds.
+        if isinstance(entry, dict) and isinstance(kind, str) and kind in named:
+            if isinstance(field := entry.get("field"), str):
+                named[kind].append(field)
         if isinstance(entry, dict) and kind == _IMPLIED_CONDITION:
             if (condition := _implied_condition(index, entry, found)) is not None:
                 implied.append(condition)
