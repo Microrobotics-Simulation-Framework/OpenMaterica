@@ -64,7 +64,7 @@ specification's README says ("Case files"), by the conformance runner's comparis
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 1153 files, under every configuration each allows (8,848 runs), and gives no verdict on
+The model agrees with 1154 files, under every configuration each allows (8,856 runs), and gives no verdict on
 131, each listed in `exceptions.py` under the kind its outcome names: an overlay (71), a pick (36), and a
 table alternative whose read gives a reason at step 11, one an extrapolation covers included (24), whose rules
 of step 7 are S4d's. It disagrees with none (measured at S3c's head, which reads an extrapolation, 2026-10-21:
@@ -108,7 +108,12 @@ head (2026-10-21), and none made the model raise: 117 faults, 104 killed, 13 sur
 in their first form, each on reads it reached past its first kill: one applying an extrapolation across an
 edge on the readable range's end, and one taking the end value at `x[0]`, outside a narrower `source_range`,
 where the reference evaluator gives no value; each answers there now, still breaking its rule (an edge on the
-end is still looked at; the end value is `y[0]` or `y[-1]` as stored).
+end is still looked at; the end value is `y[0]` or `y[-1]` as stored). S3c's fuzz target 5 found the model
+reading an implied value for a numeric condition that holds a `token` beside a unit other than the registered
+one as `request_incomplete` alone, where the text gives `request_unit_mismatch` beside it, its unit "checked
+as an operating condition is", "whatever else is wrong with that entry" (`read_side_contract.md:51-53,
+:82-83`): the model is corrected, and an arm pins it (`PR-320.implied_value_holding_a_token_in_another_unit`),
+which moves three rows; every fault was measured again with it, none raising.
 
 A fault that makes the model raise on a case file its search reads fails the search, with the model's
 traceback and a note naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke
@@ -137,7 +142,7 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `want_outside_section_6` | a `want` that is none of section 6's tokens is read | 2 |
 | `fits_wants_without_their_suite` | `fit`, `coverage` and `reference_data` read by a reader without their suite | 6 |
 | `tolerance_without_an_operating_condition` | a tolerance with no operating condition accepted | 3 |
-| `request_units_not_compared` | an operating condition's, a tolerance's or an implied value's unit not compared | 29 |
+| `request_units_not_compared` | an operating condition's, a tolerance's or an implied value's unit not compared | 30 |
 | `negative_zero_tolerance_refused` | a tolerance of `-0` read as below zero | 2 |
 | `declaration_members_in_a_requirement_read` | a requirement holding `label`, `represents` or `population_level` read | 3 |
 | `acceptances_applied_anywhere` | an acceptance applied at another record, a region, an interval or no location | 18 |
@@ -178,8 +183,8 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `section_specimen_unchecked` | a section's `specimen` not checked for a field read from it | 3 |
 | `condition_shapes_unchecked` | a condition of a name the reader knows not checked | 25 |
 | `broken_status_object_reports_its_token` | a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid` | 1, `PR-110.table_unknown_status_beside_members` alone (since S3a) |
-| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | 7: `PR-330.implied_token_for_numeric_condition` and `PR-330.implied_unit_for_token_condition`, the implied half, which the token ruling settled; `PR-045.numeric_condition_holding_token`, `PR-045.numeric_condition_holding_token_status`, `PR-045.token_condition_holding_value`, `PR-045.token_condition_holding_value_null` and `PR-301.other_kind_beside_unknown_basis`, the record half, ruled on 2026-10-19 |
-| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | 7, the same seven, the implied half's two and the record half's five |
+| `members_of_the_other_kind_read` | a numeric condition holding `token`, or a token condition holding `value`, read | 8: `PR-330.implied_token_for_numeric_condition`, `PR-330.implied_unit_for_token_condition` and `PR-320.implied_value_holding_a_token_in_another_unit`, the implied half, which the token ruling settled; `PR-045.numeric_condition_holding_token`, `PR-045.numeric_condition_holding_token_status`, `PR-045.token_condition_holding_value`, `PR-045.token_condition_holding_value_null` and `PR-301.other_kind_beside_unknown_basis`, the record half, ruled on 2026-10-19 |
+| `members_of_the_other_kind_ignored` | a numeric condition's `token`, or a token condition's `value`, ignored as a member the reader does not know: not refused, and not returned | 8, the same eight, the implied half's three and the record half's five |
 | `slips_of_alternatives_ignored` | a member one slip from `alternatives` beside a value field's members ignored | 1, `PR-030.near_typo_alternative_beside_constant` alone, the case of the maintainer's ruling (2026-10-19) |
 | `evidence_entry_provenance_unchecked` | an evidence entry's `provenance` not checked | 1, `PR-052.entry_provenance_origin_unknown` alone, the case of the maintainer's ruling (2026-10-19) |
 | `nested_reviews_returned_as_found` | a review inside a provenance an evidence entry's `per_parameter` maps a parameter to returned as found, and none where that provenance holds none | 2, `PR-052.entry_provenance_per_parameter_review_unknown` and `PR-052.entry_provenance_per_parameter_review_absent`, the cases of the maintainer's ruling (2026-10-20) |

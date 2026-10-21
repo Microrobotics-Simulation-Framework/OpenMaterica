@@ -945,6 +945,7 @@
     "PR-318.value_on_table.json": "S3b-2",
     "PR-318.value_on_table_with_its_table.json": "S3b-2",
     "PR-320.accept_entry_with_unit_accepted.json": "S1",
+    "PR-320.implied_value_holding_a_token_in_another_unit.json": "S2a-4",
     "PR-320.implied_value_in_other_unit.json": "S2a-3",
     "PR-320.operating_range_lo_above_hi_wrong_unit.json": "S1",
     "PR-320.operating_range_per_minute.json": "S1",

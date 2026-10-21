@@ -1157,6 +1157,14 @@ def checked_implied_condition(acceptance: JsonObject, reasons: Reasons) -> Impli
 
 def implied_value(name: str, value: JsonValue, reasons: Reasons) -> JsonObject | None:
     condition = CONDITIONS.get(name)
+    # read_side_contract.md:82-83 "A value an implied condition supplies for a registered numeric condition is
+    # checked as an operating condition is, its `unit` included", and an operating condition's unit
+    # read_side_contract.md:51-53 "where an operating condition or tolerance of a registered numeric condition
+    # has a string `unit` other than the condition's registered unit, whatever else is wrong with that entry":
+    # whatever else the value breaks below
+    if condition is not None and condition.shape == "numeric" and isinstance(value, dict):
+        if request_unit_differs(value.get("unit"), condition):
+            reasons.add("request_unit_mismatch", name)
     # read_side_contract.md:77-78 "where `implies` names a condition that is not registered, or gives one a
     # status object, `plus_minus`, `set_or_measured` or a token outside the condition's row"
     if condition is None or not isinstance(value, dict) or "status" in value:

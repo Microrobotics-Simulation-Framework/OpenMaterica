@@ -1469,6 +1469,7 @@ See `README.md` beside this file for how to read a case.
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|
 | `accept_entry_with_unit_accepted` | control: density_kind requirement {"accept": ["apparent"], "unit": "K"}: the `unit` member, which the accept shape does not name, is ignored and, on a token condition, compared with nothing, so step 0 gives no reason; the reference has no candidate (water 2.0.0 not supplied): `absent` | 1 | not_met; `absent` |
+| `implied_value_holding_a_token_in_another_unit` | an implied condition supplies the temperature as 37 `Cel` with `token` `matrix` beside it: the token breaks its shape (`request_incomplete`, temperature), and its unit is compared whatever else is wrong, `request_unit_mismatch` (temperature), at step 0 | 0 | not_met; `request_incomplete (temperature)`, `request_unit_mismatch (temperature)`; labels none |
 | `implied_value_in_other_unit` | an implied condition supplies the temperature as 37 `Cel`: checked as an operating condition is, `request_unit_mismatch` (temperature) at step 0 | 0 | not_met; `request_unit_mismatch (temperature)`; labels none |
 | `operating_range_lo_above_hi_wrong_unit` | operating shear_rate range [30000, 3000], unit 1/min: both `request_incomplete` and `request_unit_mismatch` for shear_rate | 0 | not_met; `request_incomplete (shear_rate)`, `request_unit_mismatch (shear_rate)` |
 | `operating_range_per_minute` | operating shear_rate range in 1/min (registered 1/s) | 0 | not_met; `request_unit_mismatch (shear_rate)` |

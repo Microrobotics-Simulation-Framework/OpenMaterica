@@ -38,7 +38,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | `list_records` | 25 | run, passed |
 | S2's reads that end at step 0, 7 or 8 (plain read) | 169 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
-| S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape (plain read) | 166 | run, passed |
+| S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape, its unit compared beside it (plain read) | 167 | run, passed |
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
 | S2's reads of evidence, and reads under a nominal or an acceptance a read does not take, to the value or ending at step 0, 8 or 13 (plain read) | 69 | run, passed |
 | S3a's reads of a table that end at step 8 or 9: its shape, its tokens, a form its field's row does not allow, its `axis_unit` (plain read) | 72 | run, passed |
@@ -64,7 +64,7 @@ member until that ruling (2026-10-19), and refuses it since. `PR-308.table_set_a
 whose table alternative step 10 sets aside, is S3b-2's: it needs no rule of step 7's over a table's reasons at
 step 11, which S4 builds.
 
-Of the 1516 case files, 1269 agree with plain read and the hash suite, 1211 with plain read alone, and 1269
+Of the 1517 case files, 1270 agree with plain read and the hash suite, 1212 with plain read alone, and 1270
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
 record-check suite agree with none, since it claims no record checks.
