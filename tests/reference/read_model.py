@@ -312,7 +312,7 @@ FORM_MEMBERS: Final[Mapping[str, str]] = {form: "value" if form == "constant" el
 INTERVAL_BASES: Final = ("reported_range", "proxy_range", "specification_limits", "stated_bound")
 # record_format.md:407 "`scheme` is `linear` or `loglog`"
 TABLE_SCHEMES: Final = ("linear", "loglog")
-# declarations.md:343 "`method` (`constant` or `consumer_law`)"
+# declarations.md:345 "`method` (`constant` or `consumer_law`)"
 EXTRAPOLATION_METHODS: Final = ("constant", "consumer_law")
 # record_format.md:481 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`"
 COMPOSITION_BASES: Final = ("mass_fraction", "volume_fraction", "mole_fraction")
@@ -392,7 +392,7 @@ GIVES: Final[Mapping[str, tuple[str, ...]]] = {
     "evidence": ("evidence",),
     "reference_data": ("reference_data",),
 }
-# declarations.md:337 "| `acceptance` | Location | Own members | Effect |"
+# declarations.md:339 "| `acceptance` | Location | Own members | Effect |"
 ACCEPTANCE_KINDS: Final = (
     "pick", "waiver", "implied_condition", "accepted_difference", "extrapolation", "nominal", "distribution",
     "overlay", "overlay_scope",
@@ -401,7 +401,7 @@ ACCEPTANCE_KINDS: Final = (
 # `implied_condition` and `trainable`": the model takes the first five; `trainable` waits for S7a-4, which
 # builds it in the read.
 READ_ACCEPTANCE_KINDS: Final = ("pick", "overlay", "extrapolation", "nominal", "implied_condition")
-# declarations.md:333-335 "names the `field` it covers" and "its kind's own members; and carries `reason`"
+# declarations.md:335-337 "names the `field` it covers" and "its kind's own members; and carries `reason`"
 ACCEPTANCE_NAMES: Final = ("acceptance", "field", "record", "region", "interval", "reason", "basis")
 ACCEPTANCE_OWN_NAMES: Final[Mapping[str, tuple[str, ...]]] = {
     "pick": ("index",),
@@ -1080,7 +1080,7 @@ def checked_acceptances(
             named[kind].append(str(acceptance["field"]))
         if kind == "extrapolation":
             method, law = acceptance.get("method"), acceptance.get("law")
-            # declarations.md:343 "`method` (`constant` or `consumer_law`), `law` (text of at least one
+            # declarations.md:345 "`method` (`constant` or `consumer_law`), `law` (text of at least one
             # character, which a reader does not judge)"
             if method not in EXTRAPOLATION_METHODS or not is_law(law):
                 reasons.add("request_incomplete")
@@ -1114,7 +1114,7 @@ def checked_acceptances(
 
 
 def is_law(value: JsonValue) -> TypeGuard[str]:
-    """declarations.md:343 "`law` (text of at least one character, which a reader does not judge)": a string
+    """declarations.md:345 "`law` (text of at least one character, which a reader does not judge)": a string
     of one code point or more, white space alone included, since a reader does not judge what it says."""
     return isinstance(value, str) and len(value) >= 1
 
@@ -1130,7 +1130,7 @@ def at_the_read(acceptance: JsonObject, reference: Reference | None) -> bool:
 
 def checked_implied_condition(acceptance: JsonObject, reasons: Reasons) -> ImpliedCondition | None:
     """An implied condition's shape, and its units: read_side_contract.md:80 "An implied condition breaks its
-    shape" and declarations.md:341 "| `implied_condition` | `region`, `interval` or `record` |"."""
+    shape" and declarations.md:343 "| `implied_condition` | `region`, `interval` or `record` |"."""
     whole_shape = True
     fact, token, implies = acceptance.get("fact"), acceptance.get("token"), acceptance.get("implies")
     # read_side_contract.md:80-81 "where its `fact` is not a specimen fact with tokens or its `token` is not
@@ -2382,7 +2382,7 @@ def check_against_request(
         for name in disagreeing:
             reasons.add("request_incomplete", name)
         return ConditionsChecked(reasons, None)
-    # declarations.md:351-352 "it fills only an unstated one, which is a condition the record holds as"
+    # declarations.md:353-354 "it fills only an unstated one, which is a condition the record holds as"
     applied = {name: value for name, value in supplied.items() if unstated_or_absent(held.get(name))}
     entries: list[JsonValue] = [
         condition_entry(name, held, applied, request, reasons, axis)
