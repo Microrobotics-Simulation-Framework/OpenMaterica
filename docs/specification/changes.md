@@ -506,7 +506,8 @@ start from. A request's extrapolation now has its shape in `read_request.json`, 
 4.1 gives it (`method`, one of its two tokens; `law`, text of at least one character), and a result's
 `assumption` under it holds exactly `acceptance`, `method` and `law` in `read_result.json` (PR-330, PR-307).
 
-Declarations over records come before scenes, and their scene arms after them. A declaration is checked on its
+Settled with the build check's design (maintainer, 2026-10-20 on the order; 2026-10-21, as recommended):
+declarations over records come before scenes, and their scene arms after them. A declaration is checked on its
 own before any read, against a table of its members, each required or optional: a missing or unknown member, a
 slip, a token a member does not take, a name given twice, a requirement or trainable entry for a field not read,
 or an empty reason or basis refuses it, each refusal naming its rule's case and a JSON pointer (BC-048). A build
@@ -516,10 +517,13 @@ gives one report, with `not_accepted` on each result and the acceptances no resu
 defines what a read applied. A field with no requirement is read for nothing (BC-003). A requirement may ask for
 a reviewed value, `review: "reviewed"`, and a value not reviewed gives `unknown` with `not_reviewed`, which a
 waiver covers (BC-049). A request's requirement holding `review` is refused (PR-330). A label records its basis
-in `label_basis`, which no read checks or returns; a waiver that names a label needs a requirement that names the
-label and asks for review, and covers only where the label is stated or the value reviewed (BC-050). A read takes
-a `trainable` acceptance, which the build makes from the declaration's `trainable` entries, and goes on past the
-condition and range reasons with the value as the initial value; the result names its entry (PR-339, BC-029).
-Only accepted results are watched; a result accepted while not met watches with its operating value; a waived
-unstated condition gets a `declared` watch (BC-030, BC-052), and a form-range watch stops at a declared edge
-(BC-031). The case range of `declarations.md` is BC-001 to BC-099.
+in `label_basis`, whose shape no read checks and which no read returns; a waiver that names a label needs a
+requirement that names the label and asks for review, and covers only where the label is stated or the value
+reviewed (BC-050). The writer schema names `label_basis` at a field's place, optional and closed, and so does the
+reader: a member one slip from it (`label_basi`) now refuses the field (`form_invalid`, PR-030), and so does
+`label_basis` beside `alternatives` (`record_format.md` section 5), where the reader before ignored both. A read
+takes a `trainable` acceptance, which the build makes from the declaration's `trainable` entries, and goes on
+past the condition and range reasons with the value as the initial value; the result names its entry (PR-339,
+BC-029). Only accepted results are watched; a result accepted while not met watches with its operating value; a
+waived unstated condition gets a `declared` watch (BC-030, BC-052), and a form-range watch stops at a declared
+edge (BC-031). The case range of `declarations.md` is BC-001 to BC-099.

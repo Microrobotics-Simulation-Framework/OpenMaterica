@@ -413,7 +413,7 @@ See `README.md` beside this file for how to read a case.
 
 ## PR-030
 
-`record_format.md`: an unknown member inside a field is ignored; one that is one slip from a member named at its place refuses the field (`form_invalid`): a field's `specimne`, and in a section's `specimen` a fact `tissue_stat`, which refuses each field read from the section; one inside a `review` reads it as `{"status": "not_checked"}`, and one inside `extraction` refuses nothing
+`record_format.md`: an unknown member inside a field is ignored; one that is one slip from a member named at its place refuses the field (`form_invalid`): a field's `specimne`, and in a section's `specimen` a fact `tissue_stat`, which refuses each field read from the section; one inside a `review` reads it as `{"status": "not_checked"}`, and one inside `extraction` refuses nothing; a field's `label_basis` is neither checked nor returned, whatever it holds, and a member one slip from it (`label_basi`) refuses the field
 
 | Variant | Arm | Ends at | Expected |
 |---|---|---|---|

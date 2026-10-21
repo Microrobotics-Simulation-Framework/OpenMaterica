@@ -195,6 +195,7 @@
           {"required": ["statistics"]},
           {"required": ["provenance"]},
           {"required": ["label"]},
+          {"required": ["label_basis"]},
           {"required": ["fit"]}
         ]
       }
@@ -208,6 +209,7 @@
         "specimen": {"$ref": "#/$defs/specimen"},
         "provenance": {"$ref": "#/$defs/provenance"},
         "label": {"$ref": "vocabulary/fields.json#/$defs/label"},
+        "label_basis": {"x-materica-write-only": true, "$ref": "#/$defs/label_basis"},
         "fit": {
           "description": "The fit record (fits_and_reference_data.md section 2), where the origin is fitted. A placeholder until its shape is written.",
           "x-materica-write-only": true,
@@ -519,6 +521,12 @@
       },
       "if": {"required": ["basis"], "properties": {"basis": {"const": "inferred"}}},
       "then": {"required": ["inferred_from"]}
+    },
+    "label_basis": {
+      "description": "Where a field's label comes from (record_format.md section 4.1): stated by the source, or inferred by a curator with the text it was inferred from, in a condition's basis shape (provenance.md section 6). A read checks only its name, for slips, and neither checks nor returns it.",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/based"}],
+      "unevaluatedProperties": false
     },
     "numeric_condition": {
       "description": "A value or a range [lo, hi], lo not above hi, in the condition's registered unit; optionally the source's plus or minus and whether it was set or measured (provenance.md section 6.1 items 1, 6 and 7).",

@@ -19,9 +19,10 @@ every family entry goes in `families/CHANGELOG.md`.
   2026-10-20 on the build order and of 2026-10-21 on the build check; `docs/specification/changes.md`).
   `declarations.md` gains:
   - the declaration checked on its own: one table of every member at its place, required or optional, with the
-    tokens and registered names each takes; a declaration that departs from it is refused at build before any
-    read, each refusal its rule's case and a JSON pointer (BC-048); and what a build refuses because it does
-    not claim the scene suite, USD read or the sampling suite (BC-051);
+    tokens and registered names each takes and the constraints its values hold; a declaration that departs
+    from it is refused at build before any read, each refusal its rule's case, a JSON pointer and optionally a
+    `detail` no case compares (BC-048); and what a build refuses because it does not claim the scene suite, USD
+    read or the sampling suite (BC-051);
   - a requirement's `review: "reviewed"`, and the build's reason `not_reviewed` (unknown), which a waiver
     covers, with the limit that a review lies outside the content hash (BC-049);
   - a waiver naming the `label` it rests on, refused unless the requirement for its field names that label and
@@ -36,19 +37,27 @@ every family entry goes in `families/CHANGELOG.md`.
     unstated numeric condition (BC-052), and a form-range watch cut at a declared edge (BC-031).
 
   `read_side_contract.md`: a request whose requirement holds `review` is refused (PR-330), and a request takes a
-  `trainable` acceptance, under which a read goes on past `condition_outside`, `condition_not_accepted` and
-  `outside_range`, carrying the value and `initial_value_only` (PR-339); the reason table gains `not_reviewed`,
-  regenerated into `vocabulary/reasons.json` and the typed shapes' `ReasonCode`, and added to the reference
-  model's table of reasons. `record_format.md` section 4.1: a label's basis, `label_basis`, which no read checks
-  or returns; section 5's table of a value field's members does not list it until the writer schema names it,
-  since `tests/spec_sync/test_value_fields.py` holds the two equal. The specification README: the case range
-  BC-001 to BC-099; with the architecture draft (12.2, 15), the build order, declarations over records before
-  record checks and scenes. The read does not change yet: run on `main`, a request whose requirement holds
-  `review` reads as without it (a control holding `label` is refused), and one holding a `trainable` acceptance
-  is refused, `request_incomplete` (a control holding a nominal reads `met`), until S7a-2 and S7a-4 build them.
-  No case file or schema changes. The reference model's citations of the edited documents move to their new
-  lines, three of them re-quoted to the words that stay, and `plain_read/CASES.md`'s PR-330 heading quotes the
+  `trainable` acceptance, two of which for one field are refused (PR-330), under which a read goes on past
+  `condition_outside`, `condition_not_accepted` and `outside_range`, carrying the value and `initial_value_only`,
+  and ends across or at a declared edge (PR-339); the reason table gains `not_reviewed`, regenerated into
+  `vocabulary/reasons.json` and the typed shapes' `ReasonCode`, and added to the reference model's table of
+  reasons. The specification README: the case range BC-001 to BC-099; the value a result under a trainable
+  acceptance carries; with the architecture draft (12.2, 15), the build order, declarations over records before
+  record checks and scenes. The read of a request does not change yet: run on `main`, a request whose
+  requirement holds `review` reads as without it (a control holding `label` is refused), and one holding a
+  `trainable` acceptance is refused, `request_incomplete` (a control holding a nominal reads `met`), until S7a-2
+  and S7a-4 build them. The reference model's citations of the edited documents move to their new lines, some
+  re-quoted, each saying where the model lags the text, and `plain_read/CASES.md`'s PR-330 heading quotes the
   widened row.
+
+  A label's basis, `label_basis` (`record_format.md` sections 4.1 and 5): an optional member of a value field,
+  `{"basis": "stated"}` or `{"basis": "inferred", "inferred_from"}` and nothing else, in the writer schema,
+  marked `x-materica-write-only`: no read checks its shape or returns it. The reader schema and the typed shapes
+  (`LabelBasis`) are regenerated with it. A record check flags a label without one, or one that breaks its shape
+  (RC-122). **The reader changes**: `label_basis` is named at a field's place, so a member one slip from it
+  (`label_basi`) refuses the field (`form_invalid`, PR-030), and so does `label_basis` beside `alternatives`
+  (`record_format.md` section 5), where the reader before ignored both. No case file changes: PR-030's arm for
+  it comes from a separate case pass.
 
 ## [0.1.0.dev3] - 2026-10-22
 
