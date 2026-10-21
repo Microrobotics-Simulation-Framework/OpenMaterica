@@ -143,9 +143,9 @@ that value like a stated one, and it reads `met` where the request's tolerance f
 ## What this release does not read yet
 
 - **Extrapolation** beyond a table's readable range (S3), **picks and overlays**, and a table among
-  alternatives whose read is outside its range or at an edge (S4), **scenes** (a region target, and a target
-  record that is an overlay), **fit records** (`want: fit` on a field holding one), **sampling**, **USD** and
-  **`materica check`**.
+  alternatives whose read is outside its range, at an edge or without a single operating value for its axis
+  (S4), **scenes** (a region target, and a target record that is an overlay), **fit records** (`want: fit` on a
+  field holding one), **sampling**, **USD** and **`materica check`**.
 
 The example `example/human_plasma` holds one constant, and reads `met` at 310.15 K when the request gives a
 shear-rate range inside 10 to 100 s⁻¹, requires tolerances on temperature (0.5 K, say) and on shear rate (0
