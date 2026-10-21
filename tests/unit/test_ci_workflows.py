@@ -3833,13 +3833,14 @@ def test_a_job_whose_timeout_signals_the_group_fails_the_interrupt_check(job_id:
     assert [line for line in found if not line.startswith(f"{job_id} ")] == [], found
 
 
-# The slowest run of each Hypothesis shard measured on CI, in minutes, by profile: at `ci` in run
-# 39002323592, at `deep` in manual run 39002750375, both 2026-10-17; `conditions` and `relations` at `ci` in
-# run 39039695416, the same day; `alternatives` at `ci` in run 39390324975, 2026-10-20. A shard not measured
-# yet is not held, but to the estimate ci.yml gives it, where it gives one (`ESTIMATED_ON_CI`). A shard that
-# CI runs in parts (`agreement`, `relations`, `alternatives`) is held, in each part, to the time of the
-# shard whole, which a part's fraction of its tests cannot exceed; a part has no measurement of its own
-# before it has run.
+# The slowest run of each Hypothesis shard measured on CI, in minutes, by profile. At `ci` in run
+# 39002323592, 2026-10-17; `conditions` and `relations` in run 39039695416, the same day; `alternatives` in
+# run 39390324975, 2026-10-20. At `deep`, each job's time (started to completed) in the slowest of three
+# dispatched runs, as ci.yml's comment gives each: 39002750375 (2026-10-17; `step8_mutants`), 39540221119
+# (2026-10-21; `writer`, `conditions`, `agreement`) and 39553647007 (2026-10-21; `relations`, `records`,
+# `json`, `alternatives`). A shard that CI runs in parts (`agreement`, `relations`, `alternatives`) is held,
+# in each part, at `ci` to the time of the shard whole, measured before the split, and at `deep` to its
+# slowest part's. A shard not measured yet is not held.
 MEASURED_ON_CI = {
     "ci": {
         "agreement": 5.93,
@@ -3852,44 +3853,54 @@ MEASURED_ON_CI = {
         "alternatives": 6.64,
     },
     "deep": {
-        "writer": 63.63,
-        "agreement": 47.02,
-        "records": 31.40,
-        "json": 14.13,
+        "writer": 67.43,
+        "agreement": 77.30,
+        "records": 50.82,
+        "json": 23.85,
         "step8_mutants": 1.55,
+        "relations": 65.22,
+        "conditions": 62.42,
+        "alternatives": 38.73,
     },
 }
-# `relations` at `deep`: 108 to 140 minutes, from its `ci` run's times by module (S2a-4's review B, L5), and
-# 29.0 more for the audit controls of HP12's floors held at `deep` alone, the longest of them by ci.yml's
-# estimate, until a manual run measures it. `alternatives` at `deep`: ten times the slower part's pytest wall
-# time at `ci`, 217.96 s in run 39404674681 (`alternatives_2of2`; `alternatives_1of2` took 196.80 s), 36.3
-# minutes, until a manual run measures it.
-ESTIMATED_ON_CI = {"deep": {"relations": 169.0, "alternatives": 36.3}}
 PROFILE_EVENTS = {"ci": "pull_request", "deep": "schedule"}
+
+
+# GitHub's limit on a job on a hosted runner, in minutes: a longer timeout is cut to it.
+HOSTED_JOB_LIMIT = 360
 
 
 def margin_problems(ci: Workflow) -> list[str]:
     """Where a Hypothesis shard's interrupt, three minutes before its timeout, leaves less than twice its
-    slowest run measured on CI: a runner half as fast would lose the run."""
+    slowest run measured on CI: a runner half as fast would lose the run; or where a shard's timeout is above
+    GitHub's limit, which would end the job before its interrupt."""
     job = ci["jobs"]["hypothesis"]
     problems: list[str] = []
     names = job["strategy"]["matrix"]["shard"]
-    for how, runs in (("measured", MEASURED_ON_CI), ("estimated", ESTIMATED_ON_CI)):
-        for profile, slowest in runs.items():
-            for shard, minutes in slowest.items():
-                for name in [name for name in names if partition.split_shard(name)[0] == shard] or [shard]:
-                    context = {"github.event_name": PROFILE_EVENTS[profile], "matrix.shard": name}
-                    interrupt = as_number(setting(job["timeout-minutes"], context)) - 3
-                    if interrupt < 2 * minutes:
-                        problems.append(
-                            f"hypothesis ({profile}, {name}) is interrupted at {interrupt:g} minutes, less "
-                            f"than twice its {minutes:g} {how} on CI"
-                        )
+    for profile, event in PROFILE_EVENTS.items():
+        for name in names:
+            minutes = as_number(
+                setting(job["timeout-minutes"], {"github.event_name": event, "matrix.shard": name})
+            )
+            if minutes > HOSTED_JOB_LIMIT:
+                problems.append(
+                    f"hypothesis ({profile}, {name}) times out at {minutes:g} minutes, above GitHub's"
+                    f" {HOSTED_JOB_LIMIT} for a job on a hosted runner"
+                )
+    for profile, slowest in MEASURED_ON_CI.items():
+        for shard, minutes in slowest.items():
+            for name in [name for name in names if partition.split_shard(name)[0] == shard] or [shard]:
+                context = {"github.event_name": PROFILE_EVENTS[profile], "matrix.shard": name}
+                interrupt = as_number(setting(job["timeout-minutes"], context)) - 3
+                if interrupt < 2 * minutes:
+                    problems.append(
+                        f"hypothesis ({profile}, {name}) is interrupted at {interrupt:g} minutes, less than "
+                        f"twice its {minutes:g} measured on CI"
+                    )
     shards = {partition.split_shard(name)[0] for name in names}
     problems += [
         f"a measured shard the matrix no longer has: {shard}"
-        for runs in (MEASURED_ON_CI, ESTIMATED_ON_CI)
-        for profile in runs.values()
+        for profile in MEASURED_ON_CI.values()
         for shard in sorted(profile.keys() - shards)
     ]
     return problems
@@ -3903,9 +3914,9 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
     ("old", "new", "problem"),
     [
         (
-            "matrix.shard == 'records' && 90 || 45",
-            "45",
-            "hypothesis (deep, records) is interrupted at 42 minutes, less than twice its 31.4 ",
+            "matrix.shard == 'records' && 105",
+            "matrix.shard == 'records' && 104",
+            "hypothesis (deep, records) is interrupted at 101 minutes, less than twice its 50.82 measured",
         ),
         (
             "matrix.shard == 'writer' && 75",
@@ -3914,18 +3925,48 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
         ),
         (
             "startsWith(matrix.shard, 'relations') && 345",
-            "startsWith(matrix.shard, 'relations') && 320",
-            "hypothesis (deep, relations_1of2) is interrupted at 317 minutes, less than twice its 169 "
-            "estimated",
+            "startsWith(matrix.shard, 'relations') && 130",
+            "hypothesis (deep, relations_2of2) is interrupted at 127 minutes, less than twice its 65.22 "
+            "measured",
+        ),
+        (
+            "startsWith(matrix.shard, 'agreement') && 360",
+            "startsWith(matrix.shard, 'agreement') && 155",
+            "hypothesis (deep, agreement_1of2) is interrupted at 152 minutes, less than twice its 77.3 "
+            "measured",
+        ),
+        (
+            "matrix.shard == 'json' && 55",
+            "matrix.shard == 'json' && 50",
+            "hypothesis (deep, json) is interrupted at 47 minutes, less than twice its 23.85 measured",
+        ),
+        (
+            "|| 45)",
+            "|| 5)",
+            "hypothesis (deep, step8_mutants) is interrupted at 2 minutes, less than twice its 1.55 measured",
         ),
         (
             "|| startsWith(matrix.shard, 'alternatives') && 90",
             "",
-            "hypothesis (deep, alternatives_1of2) is interrupted at 42 minutes, less than twice its 36.3 "
-            "estimated",
+            "hypothesis (deep, alternatives_1of2) is interrupted at 42 minutes, less than twice its 38.73 "
+            "measured",
+        ),
+        (
+            "startsWith(matrix.shard, 'agreement') && 360",
+            "startsWith(matrix.shard, 'agreement') && 365",
+            "hypothesis (deep, agreement_2of2) times out at 365 minutes, above GitHub's 360",
         ),
     ],
-    ids=["records-deep-at-45", "writer-ci-at-12", "relations-deep-at-320", "alternatives-deep-clause-gone"],
+    ids=[
+        "records-deep-at-104",
+        "writer-ci-at-12",
+        "relations-deep-at-130",
+        "agreement-deep-at-155",
+        "json-deep-at-50",
+        "default-deep-at-5",
+        "alternatives-deep-clause-gone",
+        "agreement-deep-at-365",
+    ],
 )
 def test_the_margin_check_can_fail(old: str, new: str, problem: str) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))

@@ -675,11 +675,11 @@ A floor held at `deep` alone is judged only where `deep` runs, CI's scheduled an
 Hypothesis job, so its control runs there too and in no pull request's job (2026-10-21; an open point for the
 maintainer). Each control runs a property for 20,000 examples: 5 to 8 minutes here at the small size, about 35
 to 40 minutes of CPU in all on CI, which a pull request's controls job would carry on each Python; at `deep`'s
-size, an estimated 17 to 29 minutes each on CI. The controls are marked `deep_controls`, which every other
-profile deselects (`tests/conftest.py`), and sit in the `relations` shard beside the properties they control
-(`test_model_deep_floor_controls.py`, whose audits `conftest.py` leaves to the control); there `deep` adds an
-estimated 84 minutes of CPU, at most 29 of wall, and the shard's `deep` timeout went from 300 to 345 minutes,
-twice its estimate (`.github/workflows/ci.yml`). `tests/unit/test_ci_workflows.py` fails where a scheduled or
+size, 10.4 to 21.0 minutes each on CI (measured in dispatched run 39553647007, 2026-10-21, 67.1 minutes in all).
+The controls are marked `deep_controls`, which every other profile deselects (`tests/conftest.py`), and sit in
+the `relations` shard beside the properties they control (`test_model_deep_floor_controls.py`, whose audits
+`conftest.py` leaves to the control); the shard's `deep` timeout is held to at least twice its measured runs,
+which hold them (`.github/workflows/ci.yml`). `tests/unit/test_ci_workflows.py` fails where a scheduled or
 dispatched run leaves one out or runs it twice, or a pull request's job runs one, and the module fails where a
 feature held at `deep` alone has no control.
 
