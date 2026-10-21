@@ -88,15 +88,20 @@ def agreeing(case_file: CaseFile) -> list[frozenset[str]]:
 
 
 def outcome(case_file: CaseFile) -> Outcome:
-    """Whether the model agrees with the case file under every configuration of claims it allows."""
+    """Whether the model agrees with the case file under every configuration of claims it allows.
+
+    A raise of the model goes through, named with the case file and the claims: the model answers every case
+    file, faulted or not, so a seeded fault that makes it raise has broken the model, which shows nothing of
+    whether the case's expected answer tells that fault apart, and is never counted as a disagreement."""
     configurations = agreeing(case_file)
     if not configurations:
         return Outcome("differs", "no configuration of claims agrees with the case")
     for claims in configurations:
         try:
             given = answer(case_file, claims)
-        except Exception as error:  # a seeded fault may make the model raise: that is a disagreement too
-            return Outcome("differs", f"claiming {sorted(claims)}, the model raised {error!r}")
+        except Exception as error:
+            error.add_note(f"the model raised reading {case_file.path.name}, claiming {sorted(claims)}")
+            raise
         if isinstance(given, read_model.NoVerdict):
             return Outcome("no verdict", given.why)
         differences = compare(case_file, given)

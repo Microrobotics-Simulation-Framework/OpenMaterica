@@ -326,6 +326,13 @@ every family entry goes in `families/CHANGELOG.md`.
   hold. Over 225 shapes where the three take effect, each read under two configurations of claims, the faults
   as they were raised on 107 reads and now raise on none. Every fault is killed by the same case files as
   before, from the same first file, each by an answer.
+- The seeded-fault check fails on a fault that makes the reference model raise, with the model's traceback
+  and a note naming the case file and the claims, where it counted the raise as a kill: a raise shows that
+  the fault broke the model, not that a case's expected answer tells it apart (`tests/reference/cases.py`).
+  The model's agreement with the cases, which runs through the same comparison, errors the same way where the
+  model raises. A control fault, `status_object` replaced by a function raising `TypeError`, fails the
+  check; with the raise counted as before, the check passes on it and the control's test fails. A case on
+  which the implementation raises still fails that case in the conformance runner, as before.
 
 ## [0.1.0.dev2] - 2026-10-20
 
