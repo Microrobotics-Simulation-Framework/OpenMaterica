@@ -502,6 +502,7 @@ SCHEMA_READERS = ("tests/unit/test_freeze_schema.py", "tests/unit/test_schema_in
             (f"docs/specification/{name}.md", PROVENANCE_READERS)
             for name in ("provenance", "record_format", "uncertainty")
         ),
+        ("docs/specification/read_side_contract.md", ("tests/reference/test_cases.py",)),
         (f"{PLAIN_READ}/water_fixture.json", ("tests/unit/test_read.py", "tests/unit/test_conditions.py")),
         (
             f"{PLAIN_READ}/water_overlay_fixture.json",
