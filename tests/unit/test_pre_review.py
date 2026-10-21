@@ -1500,8 +1500,9 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> list[tuple[str, str, str]
     assert ("opened", "tests/unit/test_read.py", f"{PLAIN_READ}/water_fixture.json") in found
     assert ("listed", "tests/unit/test_source_files.py", "tests/property") in found
     # control: the run read each package's source, as a cold cache makes the import system do. With the
-    # repository's own warm `__pycache__` it would have read the `.pyc`, which the trace ignores
-    assert ("opened", "tests/unit/test_fuzz_oracle.py", "tests/fuzz/__init__.py") in found
+    # repository's own warm `__pycache__` it would have read the `.pyc`, which the trace ignores. It names the
+    # test that imported the package first on its worker, whichever of the fuzz oracles' tests that is
+    assert any(("opened", test, "tests/fuzz/__init__.py") in found for test in FUZZ_ORACLE_TESTS)
     # control: the run held every group of tests, since a group left out of the run opens nothing and so
     # would pass every test below without being seen
     for group in pre_review.TEST_GROUPS:
@@ -1534,7 +1535,8 @@ def lists_python(trace: list[tuple[str, str, str]]) -> set[tuple[str, str]]:
     }
 
 
-FUZZ_ORACLE_TEST = "tests/unit/test_fuzz_oracle.py"
+# The tests of the fuzz targets' oracles, the only tests that import the fuzz package.
+FUZZ_ORACLE_TESTS = ("tests/unit/test_fuzz_oracle.py", "tests/unit/test_acceptance_oracle.py")
 
 
 def test_the_declared_readers_hold_against_a_trace_of_the_files_the_tests_open(
@@ -1568,10 +1570,12 @@ def test_the_declared_readers_hold_against_a_trace_of_the_files_the_tests_open(
         absent = [(d, test) for d, test in listed if not selects(plan(f"{d}/zz_new.py")[0], test)]
         assert not absent, f"a new Python file does not select a test that lists its directory: {absent}"
 
-        # control: the trace names the fuzz package's file for the oracle's test, and no declared reader
-        # lists that test, so the import graph alone selects it (the cold run once named this pair)
-        assert ("tests/fuzz/__init__.py", FUZZ_ORACLE_TEST) in opened
-        assert all(FUZZ_ORACLE_TEST not in reader.tests for reader in pre_review.TREE_READERS)
+        # control: the trace names the fuzz package's file for an oracle's test, and no declared reader lists
+        # either test, so the import graph alone selects it (the cold run once named this pair)
+        assert any(("tests/fuzz/__init__.py", test) in opened for test in FUZZ_ORACLE_TESTS)
+        assert all(
+            test not in reader.tests for reader in pre_review.TREE_READERS for test in FUZZ_ORACLE_TESTS
+        )
 
         # control: with the table of whole-tree readers emptied, the same check names the readers it held
         unmapped.setattr(pre_review, "TREE_READERS", ())

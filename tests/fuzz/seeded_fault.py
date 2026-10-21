@@ -41,18 +41,31 @@
   value below lie between 0.99 and 1.2 (2026-10-21), so the fuzzer has to change a value at an edge, as
   halving or doubling either one does, in a table that keeps its edge.
 
-Each of the first four raises its own message, and so does the last, so that CI can tell which fault a run
-found; the fifth and the sixth are found by the oracle's assertion that the implementation and the model
-disagree.
+- In step 0, S3c's control for the fifth target, which parses its bytes as one acceptance of fixed reads of
+  two tables: an extrapolation's `method` compared ignoring case, so that `Constant` or `consumer_LAW` is
+  taken where step 0 must refuse it (`declarations.md` section 4.1: "`method` (`constant` or
+  `consumer_law`)"). Nothing raises: the read goes on, and the target's oracle, which holds an extrapolation
+  that breaks its shape to a refusal wherever it is located (`acceptance_oracle.check_shape_refused`), finds
+  it, and the model's answer too. No seed holds such a method (2026-10-21), and every seed holding an
+  extrapolation is one changed letter from one. The S3 design names a `law` that is a number taken under
+  `constant`, which a seed holds (`PR-330.extrapolation_law_not_string`); under `consumer_law`, which no seed
+  holds beside a number, it is two aligned changes away, and five local runs of 600 s found it in none
+  (2026-10-21).
+
+Each of the first four raises its own message, and so does the sixth, so that CI can tell which fault a run
+found; the fifth and the seventh are found by the oracle's assertion that the implementation and the model
+disagree, and the last by the oracle's assertion that an extrapolation breaking its shape is refused.
 
 The first three targets seed the first two faults when `MATERICA_FUZZ_SEEDED_FAULT` is set, and pytest seeds
 them when loaded as a plugin, `python -m pytest -p tests.fuzz.seeded_fault`. Only the fourth target seeds the
 third, since the property targets draw conditions too and would find it before their own. Set to
 `composition`, the variable seeds the composition's fault alone, in the third target and the fourth; set to
 `alternatives`, step 7's alone, in the fourth; set to `tables`, step 8's table fault alone, in the fourth;
-set to `table_edges`, the table value's alone, in the fourth.
+set to `table_edges`, the table value's alone, in the fourth; set to `extrapolation_method`, step 0's method
+alone, in the fifth.
 """
 
+import dataclasses
 import math
 import os
 from collections.abc import Callable, Collection, Mapping, Sequence
@@ -77,7 +90,8 @@ COMPOSITION = "composition"
 ALTERNATIVES = "alternatives"
 TABLES = "tables"
 TABLE_EDGES = "table_edges"
-NAMED = (COMPOSITION, ALTERNATIVES, TABLES, TABLE_EDGES)
+EXTRAPOLATION_METHOD = "extrapolation_method"
+NAMED = (COMPOSITION, ALTERNATIVES, TABLES, TABLE_EDGES, EXTRAPOLATION_METHOD)
 
 _parse = jsonio.parse
 
@@ -174,6 +188,19 @@ def faulty_value(x: Sequence[float], y: Sequence[float], scheme: evaluate.Scheme
     return _value(x, y, scheme, at)
 
 
+_extrapolation = read._extrapolation  # pyright: ignore[reportPrivateUsage]
+
+
+def faulty_extrapolation(
+    index: int, entry: dict[str, JsonValue], found: list[Reason]
+) -> read.Extrapolation | None:
+    method = entry.get("method")
+    if isinstance(method, str) and method.lower() in read._EXTRAPOLATION_METHODS:  # pyright: ignore[reportPrivateUsage]
+        taken = _extrapolation(index, {**entry, "method": method.lower()}, found)
+        return None if taken is None else dataclasses.replace(taken, method=method)  # type: ignore[arg-type]
+    return _extrapolation(index, entry, found)
+
+
 def seed() -> None:
     jsonio.parse = faulty_parse
     read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
@@ -226,6 +253,13 @@ def seed_table_edges_if_asked(instrument: Instrument) -> None:
     its other faults are."""
     if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == TABLE_EDGES:
         evaluate.value = instrument(faulty_value)
+
+
+def seed_extrapolation_method_if_asked(instrument: Instrument) -> None:
+    """S3c's control, which the fifth target seeds where the variable asks for it by name, instrumented as the
+    fourth's faults are."""
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == EXTRAPOLATION_METHOD:
+        read._extrapolation = instrument(faulty_extrapolation)  # pyright: ignore[reportPrivateUsage]
 
 
 def pytest_configure(config: pytest.Config) -> None:

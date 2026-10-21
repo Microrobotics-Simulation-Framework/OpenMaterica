@@ -971,15 +971,16 @@ jobs:
     # Weekly and on a manual run only: every second of fuzzing is a second billed.
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
-    # Four targets at the default 300 s, the control (at most 3 minutes for each of the first three targets, 15
-    # for the fourth's fault of step 10, 8 for its fault in a table and 15 for its fault in a table's value,
-    # then a replay of six property modules) and the replay of the property tests. The slowest run on CI took
-    # 59.5 minutes (the weekly run of 2026-10-19: 22.2 for the control, 20.2 for the targets, 16.8 for the
-    # replay), before the table's control and the table value's, which add at most 8.5 and 15.5 minutes by
-    # estimate; the timeout is twice the sum, as the Hypothesis job's is of its shards' slowest runs, and
-    # `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a target adds 4 (S - 300) / 60
+    # Five targets at the default 300 s, the control (at most 3 minutes for each of the first three targets, 15
+    # for the fourth's fault of step 10, 8 for its fault in a table, 15 for its fault in a table's value and 8
+    # for the fifth's fault of an extrapolation's method, then a replay of six property modules) and the replay
+    # of the property tests. The slowest run on CI took 59.5 minutes (the weekly run of 2026-10-19: 22.2 for the
+    # control, 20.2 for the targets, 16.8 for the replay), before the table's control, the table value's, the
+    # fifth target and its control, which add at most 8.5, 15.5, 5.5 and 8.5 minutes by estimate; the timeout
+    # is twice the sum, as the Hypothesis job's is of its shards' slowest runs, and
+    # `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a target adds 5 (S - 300) / 60
     # minutes to the targets.
-    timeout-minutes: 168
+    timeout-minutes: 196
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
       # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
@@ -999,10 +1000,11 @@ jobs:
       - run: uv sync --locked --group fuzz
 
       # Before the example database is restored, and with it removed after: the first two targets must find a
-      # fault seeded in `parse`, the third one seeded in the read, and the fourth one seeded in step 10 and, in
-      # runs of its own, one seeded in a table (tests/fuzz/seeded_fault.py); the replay must find what the
-      # property targets saved again and shrink it.
-      - name: Control, the faults seeded in parse, the read, step 10, a table and a table's value are found, replayed and shrunk
+      # fault seeded in `parse`, the third one seeded in the read, the fourth one seeded in step 10 and, in
+      # runs of its own, one seeded in a table and one in a table's value, and the fifth one seeded in step 0's
+      # check of an extrapolation (tests/fuzz/seeded_fault.py); the replay must find what the property targets
+      # saved again and shrink it.
+      - name: Control, the faults seeded in parse, the read, step 10, a table, a table's value and an extrapolation's method are found, replayed and shrunk
         env:
           MATERICA_FUZZ_SEEDED_FAULT: "1"
         run: |
@@ -1065,6 +1067,27 @@ jobs:
           done
           wait || true
           cat "$control"/table-edges-[1-4].log > "$control/table_edges.log"
+          uv run python -m tests.fuzz.read_acceptance_bytes --seed "$control/acceptances"
+          uv run python -m tests.fuzz.read_acceptance_bytes --dict "$control/acceptance.dict"
+          # Fuzz target 5's fault (`MATERICA_FUZZ_SEEDED_FAULT=extrapolation_method`, S3c): an extrapolation's
+          # `method` compared ignoring case at step 0, one changed letter from every seed extrapolation, none of
+          # which holds it, found by the target's oracle as an extrapolation that breaks its shape not refused. Ten
+          # local runs, five at a time side by side, each of up to 600 s with these arguments, found it in all ten,
+          # after 7, 9, 25, 58, 84, 152, 154, 173, 174 and 482 s (Python 3.14, 2026-10-21; each find `constant`
+          # with one letter's case changed): a rate of 7.6e-3 finds a second. Four runs side by side, each of up
+          # to 480 s, the slowest find to the minute: at that rate all four miss with about 3e-5 on a runner 1.4
+          # times slower than the laptop, an estimate until CI's own runs measure it. The control passes where any
+          # of the four finds it. It moves to the fuzz controls' own job when S4's piece builds it, as the table
+          # value's does.
+          for worker in 1 2 3 4; do
+            cp -r "$control/acceptances" "$control/method-$worker"
+            MATERICA_FUZZ_SEEDED_FAULT=extrapolation_method uv run python -m tests.fuzz.read_acceptance_bytes \
+              "$control/method-$worker" -dict="$control/acceptance.dict" -max_total_time=480 \
+              -artifact_prefix="$control/findings/" \
+              > "$control/method-$worker.log" 2>&1 &
+          done
+          wait || true
+          cat "$control"/method-[1-4].log > "$control/extrapolation_method.log"
           uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
             tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
             tests/property/test_hashing_properties.py tests/property/test_read_properties.py \
@@ -1093,6 +1116,13 @@ jobs:
           if ! grep -q "ArithmeticError: the seeded fault in a table's value" "$control/table_edges.log"; then
             tail -40 "$control/table_edges.log"
             echo "::error::the table_edges runs did not find the fault seeded in a table's value, so they could not find a real one"
+            exit 1
+          fi
+          # The extrapolation method's fault raises nothing: the target's oracle finds the read going on where an
+          # extrapolation breaks its shape, which step 0 must refuse.
+          if ! grep -q "AssertionError: an extrapolation that breaks its shape not refused" "$control/extrapolation_method.log"; then
+            tail -40 "$control/extrapolation_method.log"
+            echo "::error::the extrapolation_method runs did not find the fault seeded in an extrapolation's method, so they could not find a real one"
             exit 1
           fi
           # Only a stored example can fail in the reuse phase: the replay found what the fuzzing saved. Each
@@ -1191,6 +1221,14 @@ jobs:
           uv run python -m tests.fuzz.read_field_bytes --dict "$RUNNER_TEMP/value_field.dict"
           uv run python -m tests.fuzz.read_field_bytes "$RUNNER_TEMP/fields" -dict="$RUNNER_TEMP/value_field.dict" \
             -max_total_time="$FUZZ_SECONDS" -entropic_scale_per_exec_time=1 -artifact_prefix="$RUNNER_TEMP/findings/"
+      - name: Fuzz raw bytes as an acceptance (tests/fuzz/read_acceptance_bytes.py)
+        if: success() || failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/findings"
+          uv run python -m tests.fuzz.read_acceptance_bytes --seed "$RUNNER_TEMP/acceptances"
+          uv run python -m tests.fuzz.read_acceptance_bytes --dict "$RUNNER_TEMP/acceptance.dict"
+          uv run python -m tests.fuzz.read_acceptance_bytes "$RUNNER_TEMP/acceptances" \
+            -dict="$RUNNER_TEMP/acceptance.dict" -max_total_time="$FUZZ_SECONDS" -artifact_prefix="$RUNNER_TEMP/findings/"
       # What the property target found is in the example database: replayed first here, and shrunk. The writer
       # schema's properties and the two JSON Schema libraries' agreement are no fuzz target, and their shards
       # keep their own databases. Every mutant search, a module named `test_*mutants.py`, is derandomised and
