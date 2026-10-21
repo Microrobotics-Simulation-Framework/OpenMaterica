@@ -17,9 +17,11 @@ from typing import NamedTuple
 
 import pytest
 from hypothesis import HealthCheck, reject, settings
+from hypothesis import strategies as st
 
+from materica.core.jsonio import JsonValue
 from tests.conftest import EXAMPLES
-from tests.property import audits
+from tests.property import audits, result_strategies
 from tests.property import test_alternatives_properties as alternatives_properties
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_condition_properties as condition_properties
@@ -35,6 +37,7 @@ from tests.property import test_slip_properties as slip_properties
 from tests.property import test_table_form_properties as table_form_properties
 from tests.property import test_value_field_properties as value_field_properties
 from tests.property import test_version_properties as version_properties
+from tests.property.result_strategies import JsonObject
 
 
 class Control(NamedTuple):
@@ -44,6 +47,37 @@ class Control(NamedTuple):
     # change, and skipping them saves most of the run.
     skipped: tuple[str, ...]
     parameters: tuple[tuple[str, object], ...] = ()  # of a parametrised property, the one it runs with
+    # How the generator stops producing the feature, where rejecting each example that shows it would stop
+    # another feature's draws too; by default, that rejection.
+    stops: Callable[[pytest.MonkeyPatch], None] | None = None
+
+
+def strip_unknown_members(value: JsonValue) -> None:
+    if isinstance(value, dict):
+        value.pop("x_unknown_member", None)
+        for member in value.values():
+            strip_unknown_members(member)
+    elif isinstance(value, list):
+        for item in value:
+            strip_unknown_members(item)
+
+
+def without_unknown_members(monkeypatch: pytest.MonkeyPatch) -> None:
+    """HP12's values with no member the reader does not know: each field `result_strategies.enriched` draws
+    loses the member it planted, and the draws are otherwise the same. Its region of a constant under
+    `want: bounds` plants the member in every draw (`model_strategies.REGIONS`), so rejecting each example
+    that shows the member stops that region too. A derandomised run draws by the property's source, so an edit
+    of the property draws another stream: after one (2026-10-21) the run held the region in 4 of 2,000
+    examples, below its floor of 20, where main's had held it above."""
+    drawn = result_strategies.enriched
+
+    @st.composite
+    def enriched(draw: st.DrawFn, field: JsonObject, *, unknown_member: bool = False) -> tuple[str, ...]:
+        shown: tuple[str, ...] = draw(drawn(field, unknown_member=unknown_member))
+        strip_unknown_members(field)
+        return tuple(name for name in shown if name != "unknown_member")
+
+    monkeypatch.setattr(result_strategies, "enriched", enriched)
 
 
 CONTROLS = [
@@ -233,6 +267,7 @@ CONTROLS = [
         model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
         "unknown_member",
         ("check_outcome",),
+        stops=without_unknown_members,
     ),
     # The table evaluator's: each stops one choice that no other feature it declares depends on.
     Control(
@@ -345,7 +380,10 @@ def run_without(control: Control, monkeypatch: pytest.MonkeyPatch, examples: int
 
     # The property's own strategy, its example rejected wherever it would show the feature: a generator that
     # stops producing it, drawing the rest as before.
-    monkeypatch.setattr(module, "feature", feature)
+    if control.stops is None:
+        monkeypatch.setattr(module, "feature", feature)
+    else:
+        control.stops(monkeypatch)
     for check in control.skipped:
         monkeypatch.setattr(module, check, skipped)
     # Derandomised, so that the run is the same each time. Hypothesis keeps a test's settings on it from when
