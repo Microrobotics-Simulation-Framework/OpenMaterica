@@ -1163,6 +1163,9 @@ NOT_TAKEN: list[JsonValue] = [
     {"acceptance": "overlay_scope", "overlay": {}, "accepts": ["model"]},
     {"acceptance": "implied"},
     {"acceptance": 1.0},
+    # A kind that is an object or a list, which fuzz target 5 found raising (S3c).
+    {"acceptance": {"id": "conformance/fixture"}, "field": "fluid.dynamic_viscosity"},
+    {"acceptance": ["nominal"], "field": "fluid.dynamic_viscosity"},
     {"field": "fluid.dynamic_viscosity"},
     1.0,
     None,
