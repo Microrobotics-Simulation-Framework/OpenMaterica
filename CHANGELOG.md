@@ -585,6 +585,12 @@ every family entry goes in `families/CHANGELOG.md`.
   way and the assertion each names, at both sizes; over 40 streams a size, the latest at the 150th example.
   S3b-2's two mutants of step 11's report on an edge on the readable range's end, which had no reader in a
   result, are searched in one too, across an edge.
+- The reference model compares an implied value's unit for a numeric condition whatever else breaks the value
+  (`read_side_contract.md` section 1: "checked as an operating condition is, its `unit` included", and an
+  operating condition's unit "whatever else is wrong with that entry"). It stopped at a `token` beside the
+  value, where the read gives `request_unit_mismatch` beside `request_incomplete`; fuzz target 5 (below) found
+  the two answering differently. A new arm, written through the case tools, pins it
+  (`PR-320.implied_value_holding_a_token_in_another_unit`, run by S2a-4's code), and fails the model as it was.
 
 ## [0.1.0.dev2] - 2026-10-20
 
