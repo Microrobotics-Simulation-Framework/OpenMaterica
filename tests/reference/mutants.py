@@ -78,6 +78,8 @@ _unit_returned = model.unit_returned
 _within_tolerance = model.within_tolerance
 _table_axis = model.table_axis
 _read_the_table = model.read_the_table
+_extrapolation_covers = model.extrapolation_covers
+_at_the_read = model.at_the_read
 _readable_range = model.readable_range
 _form_member_returned = model.form_member_returned
 
@@ -168,7 +170,7 @@ def anywhere(acceptance: JsonObject, reference: Reference | None) -> bool:
 
 def first_nominal_of_each_field(
     request: JsonObject, field_name: str | None, reference: Reference | None, reasons: Reasons
-) -> tuple[tuple[ImpliedCondition, ...], float | None]:
+) -> tuple[tuple[ImpliedCondition, ...], float | None, JsonObject | None]:
     given = request.get("acceptances")
     if isinstance(given, list):
         kept: list[JsonValue] = []
@@ -1278,6 +1280,134 @@ def table_member_dropped(
     read.members.pop("table", None)
 
 
+# S3c's: an extrapolation, at step 0 and at step 11.
+
+
+def extrapolation_under_any_want(table: JsonObject, point: float, request: Request) -> bool:
+    """An extrapolation applied under any `want`, as under `want: value`."""
+    return _extrapolation_covers(table, point, dataclasses.replace(request, want="value"))
+
+
+def extrapolation_at_an_edge(table: JsonObject, point: float, request: Request) -> bool:
+    """An extrapolation applied at an edge outside the readable range, the edge's refusal not deciding."""
+    if request.want == "value" and request.extrapolation is not None and model.at_an_edge(table, point):
+        return not model.inside(table, point)
+    return _extrapolation_covers(table, point, request)
+
+
+def extrapolation_across_an_edge(table: JsonObject, point: float, request: Request) -> bool:
+    """An extrapolation applied across an edge strictly between the read and the readable range's nearest
+    end, an edge on that end alone looked at (where the table has no one-sided value to give, so the fault
+    answers there as the text does)."""
+    if request.want != "value" or request.extrapolation is None or model.at_an_edge(table, point):
+        return False
+    return not model.at_an_edge(table, model.nearest_end(table, point))
+
+
+def end_value_of_x(read: FieldRead, table: JsonObject, request: Request) -> float | None:
+    """Under an extrapolation, the end value `y[0]` or `y[-1]`, where `source_range` narrows the range or
+    not: the value at `x`'s end, not the readable range's."""
+    point = _read_the_table(read, table, request)
+    if read.covered is None:
+        return point
+    axis = table["axis"]
+    assert isinstance(axis, str)
+    operating = request.operating[axis].get("value")
+    assert model.number(operating)
+    y = model.table_numbers(table, "y")
+    return y[0] if operating < model.readable_range(table)[0] else y[-1]
+
+
+def the_far_end(table: JsonObject, point: float) -> float:
+    """The end value taken at the readable range's far end."""
+    low, high = model.readable_range(table)
+    return high if point < low else low
+
+
+def extrapolated_read_ends_at_step_11(
+    field_value: JsonValue,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    *,
+    record_fault: bool,
+    nominal: float | None,
+) -> FieldRead:
+    """A read an extrapolation covers given step 13's value but not step 12's reasons and labels."""
+    read = _read_value_field(
+        field_value, section, request, claims, record_fault=record_fault, nominal=nominal
+    )
+    if read.covered is not None:
+        read.own = Reasons(reason for reason in read.own if reason.code != "stated_without_origin")
+        read.labels = []
+    return read
+
+
+def extrapolation_located_anywhere(acceptance: JsonObject, reference: Reference | None) -> bool:
+    """An extrapolation applied wherever it is located, or with no location."""
+    return acceptance.get("acceptance") == "extrapolation" or _at_the_read(acceptance, reference)
+
+
+def first_extrapolation_of_each_field(
+    request: JsonObject, field_name: str | None, reference: Reference | None, reasons: Reasons
+) -> tuple[tuple[ImpliedCondition, ...], float | None, JsonObject | None]:
+    """Two extrapolations naming one field read as the first, the second dropped, not refused."""
+    given = request.get("acceptances")
+    if isinstance(given, list):
+        kept: list[JsonValue] = []
+        named: set[str] = set()
+        for acceptance in given:
+            field_name_given = acceptance.get("field") if isinstance(acceptance, dict) else None
+            if isinstance(acceptance, dict) and acceptance.get("acceptance") == "extrapolation":
+                if isinstance(field_name_given, str) and field_name_given in named:
+                    continue
+                if isinstance(field_name_given, str):
+                    named.add(field_name_given)
+            kept.append(acceptance)
+        request = {**request, "acceptances": kept}
+    return _checked_acceptances(request, field_name, reference, reasons)
+
+
+def any_string_a_law(value: JsonValue) -> bool:
+    """An empty `law` accepted."""
+    return isinstance(value, str)
+
+
+def white_space_no_law(value: JsonValue) -> bool:
+    """A `law` of white space refused, read stripped."""
+    return isinstance(value, str) and len(value.strip()) >= 1
+
+
+class EveryMethod:
+    """Every value a method: an extrapolation's `method` unchecked."""
+
+    def __contains__(self, value: object) -> bool:
+        return True
+
+
+def assumption_with_its_basis(
+    request: JsonObject, field_name: str | None, reference: Reference | None, reasons: Reasons
+) -> tuple[tuple[ImpliedCondition, ...], float | None, JsonObject | None]:
+    """An extrapolation's `assumption` holding its `basis` too."""
+    implied, nominal, extrapolation = _checked_acceptances(request, field_name, reference, reasons)
+    given = request.get("acceptances")
+    if extrapolation is not None and isinstance(given, list):
+        for acceptance in given:
+            if isinstance(acceptance, dict) and acceptance.get("acceptance") == "extrapolation":
+                if "basis" in acceptance:
+                    extrapolation = {**extrapolation, "basis": acceptance["basis"]}
+                break
+    return implied, nominal, extrapolation
+
+
+def covered_outside_range_dropped(read: FieldRead, table: JsonObject, request: Request) -> float | None:
+    """A read an extrapolation covers without its `outside_range`, so `met` or `unknown`."""
+    point = _read_the_table(read, table, request)
+    if read.covered is not None:
+        read.own = Reasons(reason for reason in read.own if reason.code != "outside_range")
+    return point
+
+
 MUTANTS: Mapping[str, Mutant] = {
     # Step 0
     "want_outside_section_6": Mutant(
@@ -1843,5 +1973,72 @@ MUTANTS: Mapping[str, Mutant] = {
         "a value read from a table returned without the table it is read from",
         "read_side_contract.md:130",
         {"shape_by_want": table_member_dropped},
+    ),
+    # S3c's: an extrapolation, measured 2026-10-21 at S3c's head.
+    "extrapolation_under_any_want": Mutant(
+        "an extrapolation applied under any `want`",
+        "read_side_contract.md:505",
+        {"extrapolation_covers": extrapolation_under_any_want},
+    ),
+    "extrapolation_at_an_edge": Mutant(
+        "an extrapolation applied at an edge outside the readable range",
+        "read_side_contract.md:505-507",
+        {"extrapolation_covers": extrapolation_at_an_edge},
+    ),
+    "extrapolation_across_an_edge": Mutant(
+        "an extrapolation applied across an edge strictly between the read and the readable range's nearest "
+        "end",
+        "read_side_contract.md:508-510",
+        {"extrapolation_covers": extrapolation_across_an_edge},
+    ),
+    "extrapolation_end_of_x": Mutant(
+        "the end value `y[0]` or `y[-1]` where `source_range` narrows the range",
+        "read_side_contract.md:503",
+        {"read_the_table": end_value_of_x},
+    ),
+    "extrapolation_far_end": Mutant(
+        "the end value taken at the readable range's far end",
+        "read_side_contract.md:503",
+        {"nearest_end": the_far_end},
+    ),
+    "extrapolated_read_ends_at_step_11": Mutant(
+        "a read an extrapolation covers given no step-12 reason or label",
+        "read_side_contract.md:178-180",
+        {"read_value_field": extrapolated_read_ends_at_step_11},
+    ),
+    "extrapolation_located_anywhere": Mutant(
+        "an extrapolation applied wherever it is located",
+        "read_side_contract.md:89-92",
+        {"at_the_read": extrapolation_located_anywhere},
+    ),
+    "two_extrapolations_read_as_the_first": Mutant(
+        "two extrapolations naming one field read as the first",
+        "read_side_contract.md:68-69",
+        {"checked_acceptances": first_extrapolation_of_each_field},
+    ),
+    "empty_law_accepted": Mutant(
+        "an empty `law` accepted",
+        "declarations.md:192",
+        {"is_law": any_string_a_law},
+    ),
+    "white_space_law_refused": Mutant(
+        "a `law` of white space refused",
+        "declarations.md:192",
+        {"is_law": white_space_no_law},
+    ),
+    "extrapolation_method_unchecked": Mutant(
+        "an extrapolation's `method` unchecked",
+        "declarations.md:192",
+        {"EXTRAPOLATION_METHODS": EveryMethod()},
+    ),
+    "assumption_with_its_basis": Mutant(
+        "an extrapolation's `assumption` holding its `basis`",
+        "read_side_contract.md:129",
+        {"checked_acceptances": assumption_with_its_basis},
+    ),
+    "covered_outside_range_dropped": Mutant(
+        "a read an extrapolation covers without its `outside_range`",
+        "read_side_contract.md:502",
+        {"read_the_table": covered_outside_range_dropped},
     ),
 }

@@ -7,10 +7,11 @@ drift apart.
 > **This release reads constants, intervals, compositions, evidence and tables.** A read gives the value of a
 > constant field, the bounds of an interval, the components of a composition, the reports of evidence, or a
 > table's value at the operating value of its axis, with the table it is read from; a read outside the table's
-> readable range or at a declared edge is refused. A request with a pick, an overlay or an extrapolation is not
-> read yet, nor a table among alternatives whose read is outside its range, at an edge or without a single
-> operating value for its axis: the read raises `NotImplementedError`, rather than give an answer a later
-> release could contradict. A field holding alternatives is read one alternative at a time: one whose
+> readable range or at a declared edge is refused, unless, outside the range, the request declares an
+> extrapolation: the read then stays refused and carries the value at the range's nearest end, from which the
+> consumer computes its own. A request with a pick or an overlay is not read yet, nor a table among
+> alternatives whose read is outside its range, at an edge or without a single operating value for its axis:
+> the read raises `NotImplementedError`, rather than give an answer a later release could contradict. A field holding alternatives is read one alternative at a time: one whose
 > conditions the request does not meet is set aside, one that breaks its shape, holds another unit or withholds
 > its value refuses the field, and the one left is read; where more than one is left, the result is `no_pick`
 > until picks are read (S4).
@@ -142,9 +143,8 @@ that value like a stated one, and it reads `met` where the request's tolerance f
 
 ## What this release does not read yet
 
-- **Extrapolation** beyond a table's readable range (S3), **picks and overlays**, and a table among
-  alternatives whose read is outside its range, at an edge or without a single operating value for its axis
-  (S4), **scenes** (a region target, and a target record that is an overlay), **fit records** (`want: fit` on a
+- **Picks and overlays**, and a table among alternatives whose read is outside its range, at an edge or
+  without a single operating value for its axis, an extrapolation declared or not (S4), **scenes** (a region target, and a target record that is an overlay), **fit records** (`want: fit` on a
   field holding one), **sampling**, **USD** and **`materica check`**.
 
 The example `example/human_plasma` holds one constant, and reads `met` at 310.15 K when the request gives a

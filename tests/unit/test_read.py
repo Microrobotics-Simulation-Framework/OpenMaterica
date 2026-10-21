@@ -1171,7 +1171,6 @@ NOT_TAKEN: list[JsonValue] = [
 APPLIED_LATER: list[JsonValue] = [
     {"acceptance": "pick", "index": 0.0},
     {"acceptance": "overlay", "overlay": {}},
-    {"acceptance": "extrapolation", "method": "constant", "law": "the end value"},
 ]
 
 
@@ -1186,10 +1185,8 @@ def test_an_acceptance_of_a_kind_a_read_does_not_take_is_refused(acceptance: Jso
 
 
 @pytest.mark.parametrize("acceptance", APPLIED_LATER)
-def test_a_pick_an_overlay_and_an_extrapolation_raise_whatever_else_the_request_holds(
-    acceptance: JsonValue,
-) -> None:
-    """S3 and S4 apply them, and each could change the answer: beside a refusal, beside another kind."""
+def test_a_pick_and_an_overlay_raise_whatever_else_the_request_holds(acceptance: JsonValue) -> None:
+    """S4 applies them, and each could change the answer: beside a refusal, beside another kind."""
     for acceptances in ([acceptance], [*NOT_TAKEN, acceptance]):
         with pytest.raises(NotImplementedError):
             read(with_members(acceptances=acceptances), store())
@@ -2247,6 +2244,225 @@ def test_a_request_keeps_its_nominals_with_the_members_their_shape_names() -> No
     assert ReadRequest.from_json(checked.to_json()) == checked
 
 
+# An extrapolation (S3c; `declarations.md` section 4.1; `read_side_contract.md` sections 1, 2 and 5): checked
+# at step 0 whatever it names, and applied at step 11 to a table read outside its readable range under `want:
+# value`, at no declared edge and across none, where it names the read's field at the read's record.
+
+
+def extrapolation(**members: JsonValue) -> dict[str, JsonValue]:
+    """An extrapolation for the water field at the read's record, `members` changed in it, None removing
+    one."""
+    acceptance: dict[str, JsonValue] = {
+        "acceptance": "extrapolation",
+        "record": PINNED_AT_THE_READ,
+        "field": "fluid.dynamic_viscosity",
+        "method": "constant",
+        "law": "the end value held",
+        "basis": "the source's last point",
+        "reason": "a fixture's",
+        **members,
+    }
+    return {name: member for name, member in acceptance.items() if member is not None}
+
+
+def read_at(
+    at: float,
+    acceptances: list[dict[str, JsonValue]],
+    *,
+    field: JsonValue = None,
+    want: str = "value",
+) -> ReadResult:
+    """`field`, the viscosity table `met_table` gives by default, read as `read_accepting` reads it, at `at`
+    K."""
+    request, records = stored(with_field("fluid.dynamic_viscosity", field or met_table()))
+    assert isinstance(request, dict)
+    request.update(copy.deepcopy(MET_REQUEST))
+    cast(dict[str, JsonValue], request["requirement"])["want"] = want
+    cast(dict[str, JsonValue], request["operating_conditions"])["temperature"] = {"value": at, "unit": "K"}
+    pin = cast(dict[str, JsonValue], request["target"])["record"]
+    request["acceptances"] = [
+        {**acceptance, "record": pin} if acceptance.get("record") == PINNED_AT_THE_READ else acceptance
+        for acceptance in acceptances
+    ]
+    return read(request, records)
+
+
+def axis_status(result: ReadResult) -> str:
+    (entry,) = [entry for entry in result.conditions or () if entry.name == "temperature"]
+    return entry.status
+
+
+OUTSIDE = Reason("outside_range", "temperature")
+
+
+@pytest.mark.parametrize(("at", "end"), [(290.0, 0.000853), (330.0, 0.000577), (-1e300, 0.000853)])
+@pytest.mark.parametrize("method", ["constant", "consumer_law"])
+def test_an_extrapolation_covers_outside_range_with_the_end_value_and_its_assumption(
+    at: float, end: float, method: str
+) -> None:
+    """Section 5: "the result stays `not_met`, its reasons kept; the read goes on to steps 12 and 13, which
+    add theirs; and the result carries the value at the range's nearest end, taken from inside the range, and
+    `assumption`, the operating value being the axis entry's `operating`" [PR-307]; section 2: `assumption`
+    is "`{"acceptance"}` with its kind's own members as the request gives them, `basis` aside", and the table
+    the value is read from is returned "under an extrapolation too"; `applied` holds its index."""
+    result = read_at(at, [nominal(), extrapolation(method=method)])
+    assert (result.status, result.reasons, result.value) == ("not_met", (OUTSIDE,), end)
+    assert result.assumption == {"acceptance": "extrapolation", "method": method, "law": "the end value held"}
+    assert (result.table, result.applied) == (met_table()["table"], (1,))
+    assert axis_status(result) == "not_met"
+    assert result.labels == ("materica.fluid.newtonian.v1",)
+    assert json.loads(json.dumps(result.to_json()))["assumption"] == result.assumption
+
+
+def test_an_extrapolation_takes_the_end_of_a_narrower_source_range_from_inside_it() -> None:
+    """Section 5: "the value at the range's nearest end, taken from inside the range": at a `source_range` end
+    inside an interval, the table's value interpolated there, never `x[0]`'s."""
+    field = met_table(source_range=[305.0, 315.0])
+    result = read_at(301.0, [extrapolation()], field=field)
+    assert (result.status, result.reasons) == ("not_met", (OUTSIDE,))
+    assert result.value == evaluate.value([300.0, 320.0], [0.000853, 0.000577], "linear", 305.0)
+
+
+def test_steps_12_and_13_run_under_an_extrapolation() -> None:
+    """Section 3: "except step 11's `outside_range` under an extrapolation that applies (section 5), after
+    which the read goes on to steps 12 and 13": a value stated without origin gives its reason, beside
+    `outside_range`, and the field's label stands."""
+    field = met_table()
+    cast(dict[str, JsonValue], field["provenance"])["origin"] = "stated_without_origin"
+    result = read_at(330.0, [extrapolation()], field=field)
+    assert result.reasons == (OUTSIDE, Reason("stated_without_origin"))
+    assert (result.status, result.value, result.labels) == (
+        "not_met",
+        0.000577,
+        ("materica.fluid.newtonian.v1",),
+    )
+
+
+EDGED: dict[str, JsonValue] = {
+    "x": [300.0, 310.0, 310.0, 320.0],
+    "y": [9e-4, 8e-4, 7e-4, 6e-4],
+    "edges": [310.0],
+}
+NOT_APPLIED: dict[str, tuple[float, dict[str, JsonValue], str, tuple[Reason, ...]]] = {
+    "inside the range": (310.15, {}, "value", ()),
+    "under want bounds": (330.0, {}, "bounds", (OUTSIDE,)),
+    "at an edge inside the range": (310.0, EDGED, "value", (Reason("at_edge", "temperature"),)),
+    "at an edge outside the range": (
+        310.0,
+        {**EDGED, "source_range": [311.0, 320.0]},
+        "value",
+        (Reason("at_edge", "temperature"), OUTSIDE),
+    ),
+    "across an edge outside the range": (
+        305.0,
+        {**EDGED, "source_range": [312.0, 320.0]},
+        "value",
+        (OUTSIDE,),
+    ),
+    "across an edge on the range's end": (
+        305.0,
+        {**EDGED, "source_range": [310.0, 320.0]},
+        "value",
+        (OUTSIDE,),
+    ),
+}
+
+
+@pytest.mark.parametrize("situation", NOT_APPLIED)
+def test_an_extrapolation_is_not_applied_in_the_range_under_another_want_or_at_or_across_an_edge(
+    situation: str,
+) -> None:
+    """Section 5: "Under any other `want` an extrapolation is not applied, nor at a declared edge" ... "Nor is
+    an extrapolation applied across a declared edge: where an edge lies between the operating value and the
+    readable range's nearest end, or on that end, `outside_range` stands and the result carries no value"."""
+    at, table, want, reasons = NOT_APPLIED[situation]
+    result = read_at(at, [extrapolation()], field=met_table(**table), want=want)
+    assert (result.reasons, result.applied, result.assumption) == (reasons, (), None)
+    if reasons:
+        assert (result.status, result.value, result.table) == ("not_met", None, None)
+    else:
+        assert result.status == "met"
+
+
+EXTRAPOLATIONS_ELSEWHERE: list[dict[str, JsonValue]] = [
+    extrapolation(field="bulk.density"),
+    extrapolation(record=None),
+    extrapolation(record=None, region="lumen"),
+    extrapolation(interval="skin"),
+    extrapolation(region="lumen"),
+    extrapolation(record={"id": "conformance/water_fixture", "version": "2.0.0", "content_hash": PIN}),
+    extrapolation(record=1.0),
+]
+
+
+@pytest.mark.parametrize("elsewhere", EXTRAPOLATIONS_ELSEWHERE)
+def test_an_extrapolation_naming_another_field_or_located_elsewhere_is_checked_and_not_applied(
+    elsewhere: dict[str, JsonValue],
+) -> None:
+    """Section 1: "One naming another field, another record or region, an `interval` ... or no location is
+    checked and not applied" [PR-307]."""
+    result = read_at(330.0, [elsewhere])
+    assert (result.status, result.reasons, result.value, result.applied) == ("not_met", (OUTSIDE,), None, ())
+
+
+EXTRAPOLATION_SHAPES: list[tuple[list[dict[str, JsonValue]], str]] = [
+    ([extrapolation(method=None)], "refused"),
+    ([extrapolation(method="linear")], "refused"),
+    ([extrapolation(method="Constant")], "refused"),
+    ([extrapolation(method=1.0)], "refused"),
+    ([extrapolation(law=None)], "refused"),
+    ([extrapolation(law=1.0)], "refused"),
+    ([extrapolation(law=["the end value"])], "refused"),
+    # `law`: "text of at least one character, which a reader does not judge" (`declarations.md` section 4.1).
+    ([extrapolation(law="")], "refused"),
+    ([extrapolation(law=" ")], "read"),
+    ([extrapolation(law="\u00e9")], "read"),
+    ([extrapolation(laws="the end value held")], "refused"),
+    ([extrapolation(methd="constant")], "refused"),
+    ([extrapolation(field="bulk.porosity")], "refused"),
+    ([extrapolation(field=None)], "refused"),
+    ([extrapolation(record={"id": "x", "versoin": "1.0.0"})], "refused"),
+    # "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`, that name one field, whatever
+    # location or other members each holds."
+    ([extrapolation(), extrapolation(record=None, law="")], "refused"),
+    ([extrapolation(), extrapolation(record=None)], "refused"),
+    ([extrapolation(), extrapolation(field="bulk.density")], "read"),
+    ([extrapolation(), nominal()], "read"),
+    # Its `reason` and `basis` are ignored, and so is a member no document names.
+    ([extrapolation(basis=None, reason=1.0, x_unknown_member=1.0)], "read"),
+]
+
+
+@pytest.mark.parametrize(("acceptances", "outcome"), EXTRAPOLATION_SHAPES)
+def test_an_extrapolations_shape_is_checked_at_step_0_whatever_it_names(
+    acceptances: list[dict[str, JsonValue]], outcome: str
+) -> None:
+    """Section 1: "Each is checked here, whatever field or location it names: its `field` as the target's is
+    (the pattern, and a registered field), and its kind's own members, have their shapes" [PR-330]."""
+    result = read_at(330.0, acceptances)
+    if outcome == "refused":
+        assert (result.status, result.reasons) == ("not_met", (Reason("request_incomplete"),)), acceptances
+    else:
+        assert (result.reasons, result.value) == ((OUTSIDE,), 0.000577), acceptances
+
+
+def test_a_request_keeps_its_extrapolations_with_the_members_their_shape_names() -> None:
+    request = with_members(acceptances=[IMPLIED, extrapolation(record=WATER_PIN, x_note=1.0)])
+    checked = ReadRequest.from_json(request)
+    assert isinstance(checked, ReadRequest)
+    (given,) = checked.extrapolations
+    assert (given.index, checked.extrapolation()) == (1, given)
+    acceptances = cast(list[JsonValue], checked.to_json().get("acceptances"))
+    assert acceptances[1] == {
+        "acceptance": "extrapolation",
+        "record": WATER_PIN,
+        "field": "fluid.dynamic_viscosity",
+        "method": "constant",
+        "law": "the end value held",
+    }
+    assert ReadRequest.from_json(checked.to_json()) == checked
+
+
 # A table among alternatives: step 7 reads every alternative before it decides the outcome. A table read
 # inside its readable range is read as any form is (S3b-2), and one whose read gives a reason at step 11
 # raises wherever it stands, since step 7's rules for it are a later piece's (S4d).
@@ -2362,6 +2578,15 @@ def test_a_table_alternative_whose_read_gives_a_reason_at_step_11_raises_whereve
             given[name] = value
     with pytest.raises(NotImplementedError, match=STEP_11_NOT_YET):
         read(request, records)
+
+
+@pytest.mark.parametrize("names", TABLE_AMONG_OTHERS, ids=" and ".join)
+def test_a_table_alternative_an_extrapolation_would_cover_raises_too(names: tuple[str, ...]) -> None:
+    """Section 3, step 7 keeps one "that an extrapolation the request carries would cover", and applies it
+    "only where that alternative is the one left": S4d's rules, so the read raises, the alternative alone
+    included."""
+    with pytest.raises(NotImplementedError, match=STEP_11_NOT_YET):
+        read_at(330.0, [extrapolation()], field=alternatives_of(names, met_table()))
 
 
 @pytest.mark.parametrize(

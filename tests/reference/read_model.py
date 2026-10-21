@@ -8,14 +8,16 @@ text's, checked against the generated vocabulary (`test_tables.py`), and each ru
 from, as `file:line` and a short quote, which `test_citations.py` finds at that line.
 
 **What it decides.** Steps 0 to 13 for the forms constant, table, interval, composition and evidence, a
-table's value from the reference evaluator's `exact` mode (`table_evaluator.py`); implied conditions and
-nominals; step 7 over alternatives read with no pick and no overlay (S4a): the shape of `alternatives`, each
-alternative read alone and set aside, kept or refusing the field, and the outcome with its reasons and
-members; and the operations `list_records` and `content_hash`.
+table's value from the reference evaluator's `exact` mode (`table_evaluator.py`); implied conditions,
+nominals and extrapolations, an extrapolation covering a table's `outside_range` at step 11 under `want:
+value` with the value at the readable range's nearest end; step 7 over alternatives read with no pick and no
+overlay (S4a): the shape of `alternatives`, each alternative read alone and set aside, kept or refusing the
+field, and the outcome with its reasons and members; and the operations `list_records` and `content_hash`.
 
-**What it does not.** Everything else gives `NoVerdict`, a distinct outcome a test counts and never reads as a
-pass: a table alternative whose read gives a reason at step 11 (open point `table_alternatives_at_step_11`), a
-pick, an overlay, an extrapolation, a region target, and `want: fit` on a field holding a fit record.
+**What it does not.** Everything else gives `NoVerdict`, a distinct outcome a test counts and never reads as
+a pass: a table alternative whose read gives a reason at step 11, one an extrapolation covers included (open
+point `table_alternatives_at_step_11`), a pick, an overlay, a region target, and `want: fit` on a field
+holding a fit record.
 
 **Where the text is silent.** The model takes the maintainer's ruling where there is one, else the fail-closed
 choice. Each such point is listed once in `OPEN_POINTS`, and named where it is applied ("Open point: <name>").
@@ -52,9 +54,10 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "or refuses as any form's"
     ),
     "table_alternatives_at_step_11": (
-        "a table alternative whose read gives a reason at step 11 (`outside_range`, `at_edge`, "
-        "`want_mismatch` over an operating range of its axis, or `request_incomplete` with no operating "
-        "value for it) gives no verdict, wherever it stands among the others, since every alternative is "
+        "a table alternative whose read gives a reason at step 11 (`outside_range`, an extrapolation "
+        "covering it or not, `at_edge`, `want_mismatch` over an operating range of its axis, or "
+        "`request_incomplete` with no operating value for it) gives no verdict, wherever it stands among "
+        "the others, since every alternative is "
         "read before the outcome is decided: the text decides those arms (`read_side_contract.md` section 3, "
         "step 7: set aside, kept for an extrapolation, kept over an operating range, refusing at an edge or "
         "for the request's fault), and a later piece (S4d) builds them, as the read raises there"
@@ -312,6 +315,8 @@ FORM_MEMBERS: Final[Mapping[str, str]] = {form: "value" if form == "constant" el
 INTERVAL_BASES: Final = ("reported_range", "proxy_range", "specification_limits", "stated_bound")
 # record_format.md:398 "`scheme` is `linear` or `loglog`"
 TABLE_SCHEMES: Final = ("linear", "loglog")
+# declarations.md:192 "`method` (`constant` or `consumer_law`)"
+EXTRAPOLATION_METHODS: Final = ("constant", "consumer_law")
 # record_format.md:472 "`basis` is `mass_fraction`, `volume_fraction` or `mole_fraction`"
 COMPOSITION_BASES: Final = ("mass_fraction", "volume_fraction", "mole_fraction")
 # record_format.md:476 "`sum_rule` is `sums_to_one` or `partial`"
@@ -656,7 +661,6 @@ class _Undecided(Exception):
 UNDECIDED_ACCEPTANCES: Final[Mapping[str, str]] = {
     "pick": "a pick acceptance (S4)",
     "overlay": "an overlay acceptance (S4)",
-    "extrapolation": "an extrapolation acceptance (S3 and S4)",
 }
 
 
@@ -833,6 +837,8 @@ class Request:
     accepts: Mapping[str, tuple[str, ...]]
     implied: tuple[ImpliedCondition, ...]  # those that apply to this read: its field, at its record
     nominal: float | None  # the nominal that applies to this read
+    # the extrapolation that applies to this read: its own members as the request gives them, `basis` aside
+    extrapolation: JsonObject | None = None
 
 
 def reference_of(value: JsonValue) -> Reference | None:
@@ -885,12 +891,14 @@ def check_request(request: JsonValue, claims: frozenset[str], reasons: Reasons) 
             incomplete()
     operating = checked_operating(request, reasons)
     want, tolerances, accepts = checked_requirement(request, claims, reasons)
-    implied, nominal = checked_acceptances(request, field_name, reference, reasons)
+    implied, nominal, extrapolation = checked_acceptances(request, field_name, reference, reasons)
     if reasons.end_the_read() or field_name is None or want is None:
         return None
     if region:
         raise _Undecided("a region target is read through a scene (the scene suite)")
-    return Request(reference, field_name, want, operating, tolerances, accepts, implied, nominal)
+    return Request(
+        reference, field_name, want, operating, tolerances, accepts, implied, nominal, extrapolation
+    )
 
 
 def registered_field(value: JsonValue) -> str | None:
@@ -1032,16 +1040,19 @@ def checked_requirement(
 
 def checked_acceptances(
     request: JsonObject, field_name: str | None, reference: Reference | None, reasons: Reasons
-) -> tuple[tuple[ImpliedCondition, ...], float | None]:
+) -> tuple[tuple[ImpliedCondition, ...], float | None, JsonObject | None]:
     """read_side_contract.md:65-66 "Each is checked here, whatever field or location it names": every
     acceptance checked; those of this read's field at its record returned."""
     given = request.get("acceptances", [])
     if not isinstance(given, list):
         reasons.add("request_incomplete")
-        return (), None
+        return (), None, None
     implied: list[ImpliedCondition] = []
     nominals: list[float] = []
-    nominal_fields: list[str] = []
+    extrapolations: list[JsonObject] = []
+    # read_side_contract.md:68-69 "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`,
+    # that name one field": the fields each kind names, as written
+    named: dict[str, list[str]] = {"nominal": [], "extrapolation": []}
     for acceptance in given:
         if not isinstance(acceptance, dict):
             reasons.add("request_incomplete")
@@ -1064,10 +1075,20 @@ def checked_acceptances(
         if named_field is None:
             reasons.add("request_incomplete")
         applies = named_field is not None and named_field == field_name and at_the_read(acceptance, reference)
-        if kind == "nominal":
+        if kind in named and isinstance(acceptance.get("field"), str):
+            named[kind].append(str(acceptance["field"]))
+        if kind == "extrapolation":
+            method, law = acceptance.get("method"), acceptance.get("law")
+            # declarations.md:192 "`method` (`constant` or `consumer_law`), `law` (text of at least one
+            # character, which a reader does not judge)"
+            if method not in EXTRAPOLATION_METHODS or not is_law(law):
+                reasons.add("request_incomplete")
+            elif applies:
+                # read_side_contract.md:129 "with its kind's own members as the request gives them, `basis`
+                # aside"
+                extrapolations.append({"acceptance": "extrapolation", "method": method, "law": law})
+        elif kind == "nominal":
             value = acceptance.get("value")
-            if isinstance(acceptance.get("field"), str):
-                nominal_fields.append(str(acceptance["field"]))
             # read_side_contract.md:73-75 "A nominal takes `params` in place of `value` only where the row of
             # the field it names allows the form `parameter_set`": no row the model's FIELDS hold allows one.
             if not isinstance(value, float):
@@ -1079,11 +1100,21 @@ def checked_acceptances(
             if checked is not None and applies:
                 implied.append(checked)
     # read_side_contract.md:68-69 "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`,
-    # that name one field, whatever location or other members each holds": a pick or an extrapolation gives
-    # no verdict above, so only nominals are counted here.
-    if len(nominal_fields) != len(set(nominal_fields)):
+    # that name one field, whatever location or other members each holds": a pick gives no verdict above, so
+    # nominals and extrapolations are counted here.
+    if any(len(fields) != len(set(fields)) for fields in named.values()):
         reasons.add("request_incomplete")
-    return tuple(implied), nominals[0] if nominals else None
+    return (
+        tuple(implied),
+        nominals[0] if nominals else None,
+        extrapolations[0] if extrapolations else None,
+    )
+
+
+def is_law(value: JsonValue) -> TypeGuard[str]:
+    """declarations.md:192 "`law` (text of at least one character, which a reader does not judge)": a string
+    of one code point or more, white space alone included, since a reader does not judge what it says."""
+    return isinstance(value, str) and len(value) >= 1
 
 
 def at_the_read(acceptance: JsonObject, reference: Reference | None) -> bool:
@@ -2860,9 +2891,17 @@ def read_the_table(read: "FieldRead", table: JsonObject, request: Request) -> fl
     if not inside(table, point):
         read.own.add("outside_range", axis)
     if read.own.end_the_read():
-        # read_side_contract.md:178 "A step that gives `not_met` ends the read, with the reasons found so far"
-        read.ended_at = 11
-        return None
+        if not extrapolation_covers(table, point, request):
+            # read_side_contract.md:178 "A step that gives `not_met` ends the read, with the reasons found so
+            # far"
+            read.ended_at = 11
+            return None
+        # read_side_contract.md:178-180 "except step 11's `outside_range` under an extrapolation that applies
+        # (section 5), after which the read goes on to steps 12 and 13"; read_side_contract.md:502-503 "the
+        # result stays `not_met`, its reasons kept" ... "and the result carries the value at the range's
+        # nearest end, taken from inside the range"
+        read.covered = request.extrapolation
+        point = nearest_end(table, point)
     # record_format.md:413-416 "the interval used is the one whose two knots bracket the read, strictly where
     # an edge is concerned" ... "a knot outside `source_range` is used where it brackets a read inside the
     # readable range": the reference evaluator's exact value, rounded once to a double, a knot's `-0` kept
@@ -2885,6 +2924,26 @@ def read_the_table(read: "FieldRead", table: JsonObject, request: Request) -> fl
     return float(evaluated.value)
 
 
+def extrapolation_covers(table: JsonObject, point: float, request: Request) -> bool:
+    """Whether the request's extrapolation covers a read outside the readable range:
+    read_side_contract.md:501 "Under `want: value`, a declared extrapolation that applies to the read (section
+    1) covers it"; read_side_contract.md:505-506 "Under any other `want` an extrapolation is not applied, nor
+    at a declared edge"; read_side_contract.md:508-509 "Nor is an extrapolation applied across a declared
+    edge: where an edge lies between the operating value and the readable range's nearest end, or on that
+    end"."""
+    if request.want != "value" or request.extrapolation is None or at_an_edge(table, point):
+        return False
+    end = nearest_end(table, point)
+    return not any(min(point, end) <= edge <= max(point, end) for edge in table_numbers(table, "edges"))
+
+
+def nearest_end(table: JsonObject, point: float) -> float:
+    """The end of the readable range nearest `point`, which lies outside it: read_side_contract.md:503 "the
+    value at the range's nearest end, taken from inside the range"."""
+    low, high = readable_range(table)
+    return low if point < low else high
+
+
 # Steps 8 to 13 of one value field
 
 
@@ -2896,6 +2955,7 @@ class FieldRead:
     by_want: Reasons = field(default_factory=Reasons)  # step 13
     by_request: Reasons = field(default_factory=Reasons)  # step 10's `request_incomplete`, the request's
     ended_at: int | None = None  # the step whose `not_met` ended the read, None where it reached step 13
+    covered: JsonObject | None = None  # the assumption of an extrapolation that covered step 11's reason
     form: str | None = None
     conditions: list[JsonValue] | None = None
     labels: list[str] = field(default_factory=list[str])
@@ -3000,6 +3060,10 @@ def shape_by_want(
         # read_side_contract.md:130 "where the value is read from a table: that table as stored (item 5)"
         read.members["value"] = point
         read.members["table"] = read.stored
+        if read.covered is not None:
+            # read_side_contract.md:503 "and `assumption`"; read_side_contract.md:129 "the declaration it
+            # rests on"
+            read.members["assumption"] = read.covered
         return
     if read.form in GIVES.get(request.want, ()):
         read.members["value"] = read.stored
@@ -3225,8 +3289,8 @@ def fate_of(read: FieldRead) -> Fate:
     """What step 7 does with one alternative read with no pick: read_side_contract.md:249 "Each alternative is
     set aside, stays, or refuses the field"."""
     # Open point: table_alternatives_at_step_11. A table alternative whose read gives a step-11 reason, its
-    # axis's `request_incomplete` included.
-    if read.ended_at == 11:
+    # axis's `request_incomplete` included, and one whose `outside_range` an extrapolation covers.
+    if read.ended_at == 11 or read.covered is not None:
         raise _Undecided("a table alternative's step-11 reason in step 7 is S4d's")
     # read_side_contract.md:264-265 "So does a fault of the request (section 1)"
     if read.by_request:
