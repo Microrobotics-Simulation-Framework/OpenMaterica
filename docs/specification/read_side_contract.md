@@ -120,9 +120,9 @@ in one alternative it ends that alternative's read and refuses the field: the al
 
 | Member | Contents |
 |---|---|
-| `status` | `met`, `not_met` or `unknown`. A build result adds the model, the region and what accepted it (`declarations.md`) |
+| `status` | `met`, `not_met` or `unknown`. A build result adds the members `declarations.md` section 2 lists |
 | `reasons` | a list of `{"code", "condition"?, "alternative"?, "detail"?}`, one per reason, codes from section 4; empty only when `met` |
-| `value` | present unless `not_met` with neither an assumption nor a `trainable` acceptance that applies (item 3); its shape follows `want` (section 6) |
+| `value` | present unless `not_met` with neither an assumption nor a `trainable` acceptance under which the read went on (item 3); its shape follows `want` (section 6) |
 | `alternative_values` | in place of `value` for `no_pick`: one entry per remaining alternative, in stored order, `{"alternative", "value", "unit", "conditions", "specimen", "statistics", "provenance", "labels"}`. `alternative` is its index among the stored alternatives of the field read. `value` is its value as `want` shapes it. Where `want` cannot give its form, or where the alternative is kept outside its form's range or is a table read over an operating range of its axis, the entry holds its form's member as stored instead, with no nominal or extrapolation applied (sections 5 and 6). [PR-013] The other members are as this table gives them for a read of that alternative alone, `hash_not_checked` aside (section 3, step 7), except that its `labels` are those step 12 gives that alternative even where its read ended at step 11, as a table read over an operating range of its axis does, so that an entry never drops `user_extracted` or the field's `label` [PR-013] |
 | `unit` | the field's unit, as stored: a unit held as a status object keeps its `reason` [PR-010]. Under `no_pick` the result holds none: each `alternative_values` entry holds its own alternative's unit, as stored, so that remaining alternatives whose units are stored differently, which only a unit registered as a status object allows (different `reason`s, or a `reason` in one and none in another), each keep their own [PR-013] |
 | `conditions` | one entry per condition checked (section 5): `{"name", "status", "record"?, "operating"?}` (item 6) |
@@ -152,10 +152,13 @@ in one alternative it ends that alternative's read and refuses the field: the al
    `pick_invalid`, and `want_mismatch` over two or more alternatives. So two alternatives' `condition_outside`
    for one condition are two reasons. [PR-331]
 3. An `unknown` result carries the value the record holds, so that a waiver has something to use. A `not_met`
-   result carries no value, except where a declared extrapolation or nominal covers it, or a `trainable`
-   acceptance applies: the status stays `not_met` and the value is present; `assumption` names an
-   extrapolation or a nominal, and a trainable read has none. [PR-302] [PR-307] [PR-339] A result that rests
-   on no single alternative carries no value either way (section 3, step 7). [PR-336]
+   result carries no value, except where a declared extrapolation or nominal covers it, or where the read goes
+   on under a `trainable` acceptance (section 3), past its reasons, to steps 12 and 13: the status stays
+   `not_met` and the value is present; `assumption` names an extrapolation or a nominal, and a trainable read
+   has none. A `trainable` acceptance gives a `not_met` result a value nowhere else: not at `at_edge`, not
+   across a declared edge, and not at `unit_mismatch`, `withheld`, `form_invalid` or any other `not_met` at
+   which the stop rule ends the read. [PR-302] [PR-307] [PR-339] A result that rests on no single alternative
+   carries no value either way (section 3, step 7). [PR-336]
 4. A value whose origin is `stated_without_origin` (a number found in code or a datasheet with nothing behind
    it) gives `unknown` with the reason `stated_without_origin`, which a waiver may accept, so that the
    material input sheet records it (AD 4.7). [PR-309]
@@ -182,12 +185,12 @@ in one alternative it ends that alternative's read and refuses the field: the al
 
 A reader takes these steps in this order. A step that gives `not_met` ends the read, with the reasons found so
 far, except step 11's `outside_range` under an extrapolation that applies (section 5), after which the read
-goes on to steps 12 and 13, and, under a `trainable` acceptance that applies, step 10's `condition_outside` and
-`condition_not_accepted`, after which the read goes on, and step 11's `outside_range`, after which it goes on to
-steps 12 and 13, a table read outside its readable range carrying the value at the range's nearest end, from
-inside it; across or at a declared edge it ends, as section 5 says; and except the form's own axis entry at step
-10, which step 10 gives no reason for and does not end the read on (section 5, first row); a step that gives
-`unknown` does not. [PR-339]
+goes on to steps 12 and 13, and, under a `trainable` acceptance that applies, step 10's `condition_outside`
+and `condition_not_accepted`, after which the read goes on, and step 11's `outside_range`, after which it goes
+on to steps 12 and 13, a table or power law read outside its range carrying the value at the range's nearest
+end, from inside it; across or at a declared edge it ends, as section 5 says; and except the form's own axis
+entry at step 10, which step 10 gives no reason for and does not end the read on (section 5, first row); a
+step that gives `unknown` does not. [PR-339]
 
 0. **Request.** Check the request on its own (section 1: `request_incomplete`, `want_mismatch` for a suite the
    reader does not claim, `request_unit_mismatch`). [PR-308] [PR-320] [PR-330]

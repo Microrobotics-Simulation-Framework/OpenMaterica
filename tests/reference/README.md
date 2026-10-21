@@ -352,11 +352,11 @@ stays, and to `PR-316.implied_two_disagree_in_alternative`. It lets the other tw
 alternative stays, the fault sets every alternative aside, and that result reports what the refusal does.
 
 S3b-2's seven break each rule of a table's steps 10 to 13 the model decides: the axis entry `not_met` at an edge
-(`read_side_contract.md:472`), `outside_range` beside `at_edge` at an edge outside the readable range
+(`read_side_contract.md:475`), `outside_range` beside `at_edge` at an edge outside the readable range
 (`record_format.md:419-420`), the readable range narrowed by `source_range` (`record_format.md:415-416`),
 `want_mismatch` alone over an operating range of the axis (`read_side_contract.md:104-106`), step 11's reasons
 each with the axis (`read_side_contract.md:143`), a table returned with only the members the reader knows
-(`read_side_contract.md:165`), and the result's `table` (`read_side_contract.md:134`). Each kill is a
+(`read_side_contract.md:168`), and the result's `table` (`read_side_contract.md:134`). Each kill is a
 disagreement, none a raise of the model (checked). `table_returned_whole` dies to the two arms that hold a
 table's unknown member, and `table_member_dropped` to the three where `table` is present. Two older faults made
 the model raise in its table code, each on one case file (`best_status` on `PR-301.unknown_beside_outside_range`,
@@ -377,13 +377,13 @@ are held on three table reads among them.
 
 S4d's twelve break each rule of step 7 for a table alternative whose read gives a reason at step 11, or that
 an extrapolation covers: an alternative outside its range, off every edge, set aside unless an extrapolation
-the request carries would cover it (`read_side_contract.md:261-262`), and kept where one would
-(`read_side_contract.md:265-266`), as `want: value` alone lets it (`record_format.md:358-359`), read on through
-steps 12 and 13 (`read_side_contract.md:268-269`), with no extrapolation applied under `no_pick`
-(`read_side_contract.md:291-292`); one at an edge refusing the field inside the readable range and outside it
-(`read_side_contract.md:272-273`, `record_format.md:365-367`); one set aside at step 10 never reaching step 11
-(`read_side_contract.md:275-276`); and one over an operating range of its axis kept
-(`read_side_contract.md:265-268`), counted as a form `want` cannot give (`read_side_contract.md:288`), its
+the request carries would cover it (`read_side_contract.md:264-265`), and kept where one would
+(`read_side_contract.md:268-269`), as `want: value` alone lets it (`record_format.md:358-359`), read on through
+steps 12 and 13 (`read_side_contract.md:271-272`), with no extrapolation applied under `no_pick`
+(`read_side_contract.md:294-295`); one at an edge refusing the field inside the readable range and outside it
+(`read_side_contract.md:275-276`, `record_format.md:365-367`); one set aside at step 10 never reaching step 11
+(`read_side_contract.md:278-279`); and one over an operating range of its axis kept
+(`read_side_contract.md:268-271`), counted as a form `want` cannot give (`read_side_contract.md:291`), its
 `no_pick` entry holding step 12's labels (`read_side_contract.md:126`) and its own unit, conditions, specimen,
 statistics and provenance (`record_format.md:377-379`). The two rows of the request's fault at step 11, that it
 refuses the field and that its reason carries no `alternative`, are S4a's `request_fault_sets_aside` and

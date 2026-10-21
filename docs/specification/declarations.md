@@ -200,11 +200,11 @@ every refusal it finds, and reads nothing for a declaration it refuses. [BC-048]
 
 The build reads every required field in every region, interval or record a model is checked over, by the read
 of `read_side_contract.md`, and returns one result each: the read result (`read_side_contract.md` section 2)
-with `model`, the location it was read for, `record`, `field`, `specimen_differences`, `accepted`, `accepted_by`,
-`not_accepted` and, on a field listed in `trainable`, `trainable_by` added. A read applies an acceptance only at
-its own record or region (`read_side_contract.md` section 1), and a read request names no interval, so the build
-reads an interval by its record and gives that read the acceptances located at that interval as located at that
-record. [not yet covered]
+with `model`, the location it was read for, `record`, `field`, `specimen_differences`, `accepted`,
+`accepted_by`, `not_accepted` and, on a result at a location where its field is listed in `trainable`,
+`trainable_by` added. A read applies an acceptance only at its own record or region (`read_side_contract.md`
+section 1), and a read request names no interval, so the build reads an interval by its record and gives that
+read the acceptances located at that interval as located at that record. [not yet covered]
 
 ```json
 {"model": "stokes_drag", "region": "lumen", "field": "fluid.dynamic_viscosity",
@@ -242,8 +242,8 @@ The build gives one report:
 - `records`, every record a read resolved, as `{"id", "version", "content_hash"}`;
 - `declaration`, as given;
 - `refusals`, the declaration's own (section 1);
-- `results`, every result of this section and of section 3 item 6, each with the `provenance` its read
-  returned, which holds the review the result's answer rested on;
+- `results`, every result of this section and of section 3 item 6, each field result with the `provenance` its
+  read returned, which holds the review the result's answer rested on;
 - `watches` (section 8);
 - `unused` (item 9).
 
@@ -449,8 +449,9 @@ The reader applies a declared overlay and refuses a base mismatch or a conflict 
    entry is `{"field", <location>}`, its location one of `record`, `region` and `interval`; it names a field in
    `reads` at a location the model is checked over, and no other entry names that field there (section 1). The
    build gives each read of that field there a `trainable` acceptance (`read_side_contract.md` section 1), and
-   the result names the entry by its 0-based index in `trainable`, in `trainable_by`. The result carries the
-   label `initial_value_only`: the record's value is used only as the initial value. [BC-029] [PR-339]
+   the result names the entry by its 0-based index in `trainable`, in `trainable_by`. A result whose read went
+   on to step 12 under it carries the label `initial_value_only` (`read_side_contract.md` section 3, step 12):
+   the record's value is used only as the initial value. [BC-029] [PR-339]
 2. For a trainable field, the reasons about conditions (`condition_outside` and `condition_not_accepted`
    included), the form's range (`outside_range`, `range_unstated` and `outside_coverage`, never `at_edge`) and
    specimen differences are reported, not refused, because the consumer will move the value. Every other

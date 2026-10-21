@@ -201,7 +201,7 @@ def targets(example: Example) -> list[JsonObject]:
 
 
 def an_overlay_as_the_target(example: Example, model: Outcome) -> bool:
-    """read_side_contract.md:227-228 "Refuse a referenced record of a type the reader cannot read in its
+    """read_side_contract.md:230-231 "Refuse a referenced record of a type the reader cannot read in its
     role" refuses at step 5 a target's record that is not a material; the implementation raises there until
     S4 (S4's decision 8, its case mapped to S4)."""
     refused = (

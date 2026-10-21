@@ -36,19 +36,20 @@ every family entry goes in `families/CHANGELOG.md`.
   - watches of accepted results only, an operating value outside joined in, a `declared` watch for a waived
     unstated numeric condition (BC-052), and a form-range watch cut at a declared edge (BC-031).
 
-  `read_side_contract.md`: a request whose requirement holds `review` is refused (PR-330), and a request takes a
-  `trainable` acceptance, two of which for one field are refused (PR-330), under which a read goes on past
-  `condition_outside`, `condition_not_accepted` and `outside_range`, carrying the value and `initial_value_only`,
-  and ends across or at a declared edge (PR-339); the reason table gains `not_reviewed`, regenerated into
-  `vocabulary/reasons.json` and the typed shapes' `ReasonCode`, and added to the reference model's table of
-  reasons. The specification README: the case range BC-001 to BC-099; the value a result under a trainable
-  acceptance carries; with the architecture draft (12.2, 15), the build order, declarations over records before
-  record checks and scenes. The read of a request does not change yet: run on `main`, a request whose
-  requirement holds `review` reads as without it (a control holding `label` is refused), and one holding a
-  `trainable` acceptance is refused, `request_incomplete` (a control holding a nominal reads `met`), until S7a-2
-  and S7a-4 build them. The reference model's citations of the edited documents move to their new lines, some
-  re-quoted, each saying where the model lags the text, and `plain_read/CASES.md`'s PR-330 heading quotes the
-  widened row.
+  `read_side_contract.md`: a request whose requirement holds `review` is refused (PR-330), and a request takes
+  a `trainable` acceptance, two of which for one field are refused (PR-330), under which a read goes on past
+  `condition_outside`, `condition_not_accepted` and `outside_range`, carrying the value and
+  `initial_value_only`, and ends across or at a declared edge with no value (PR-339); the reason table gains
+  `not_reviewed`, regenerated into `vocabulary/reasons.json` and the typed shapes' `ReasonCode`, and added to
+  the reference model's table of reasons. The specification README: the case range BC-001 to BC-099; the value
+  a result carries where a read goes on under a trainable acceptance; with the architecture draft (12.2, 15),
+  the build order, declarations over records before record checks and scenes. The read of a request does not
+  change yet: run on `main`, a request whose requirement holds `review` reads as without it, and so does one
+  holding a member one slip from it (`reviev`), while a control holding `label` is refused; and one holding a
+  `trainable` acceptance is refused, `request_incomplete` (a control holding a nominal reads `met`), until
+  S7a-2 and S7a-4 build them. The reference model's citations of the edited documents move to their new lines,
+  some re-quoted, each saying where the model lags the text, and `plain_read/CASES.md`'s PR-330 heading quotes
+  the widened row.
 
   A label's basis, `label_basis` (`record_format.md` sections 4.1 and 5): an optional member of a value field,
   `{"basis": "stated"}` or `{"basis": "inferred", "inferred_from"}` and nothing else, in the writer schema,
