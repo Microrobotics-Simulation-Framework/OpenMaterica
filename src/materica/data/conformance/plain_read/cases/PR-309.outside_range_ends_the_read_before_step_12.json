@@ -1,0 +1,98 @@
+{
+  "case": "PR-309",
+  "variant": "outside_range_ends_the_read_before_step_12",
+  "suite": "plain_read",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "viscosity_table_stated_without_origin.json"
+    ]
+  },
+  "request": {
+    "target": {
+      "record": {
+        "id": "conformance/viscosity_table_fixture",
+        "version": "1.0.0",
+        "content_hash": "sha256:c6c201f5be5e70392bf06e199aecf8f97a8e93d02e14d47848757c8850d740a2"
+      },
+      "field": "fluid.dynamic_viscosity"
+    },
+    "operating_conditions": {
+      "temperature": {
+        "value": 350.0,
+        "unit": "K"
+      },
+      "shear_rate": {
+        "value": 100.0,
+        "unit": "1/s"
+      }
+    },
+    "requirement": {
+      "want": "value",
+      "conditions": {
+        "shear_rate": {
+          "tolerance": {
+            "value": 0.0,
+            "unit": "1/s"
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "status": "not_met",
+    "reasons": [
+      {
+        "code": "outside_range",
+        "condition": "temperature"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "temperature",
+        "status": "not_met",
+        "record": {
+          "status": "not_applicable"
+        },
+        "operating": {
+          "value": 350.0,
+          "unit": "K"
+        }
+      },
+      {
+        "name": "shear_rate",
+        "status": "met",
+        "record": {
+          "range": [
+            10.0,
+            1000.0
+          ],
+          "unit": "1/s",
+          "basis": "stated"
+        },
+        "operating": {
+          "value": 100.0,
+          "unit": "1/s"
+        }
+      }
+    ],
+    "labels": []
+  },
+  "compare": {
+    "members": [
+      "status",
+      "reasons",
+      "value",
+      "alternative_values",
+      "unit",
+      "conditions",
+      "specimen",
+      "statistics",
+      "provenance",
+      "labels",
+      "assumption",
+      "table"
+    ],
+    "exact": true
+  }
+}
