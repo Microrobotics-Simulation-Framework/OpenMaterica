@@ -520,11 +520,11 @@ requirement may ask for a reviewed value, `review: "reviewed"`, and a value not 
 A label records its basis in `label_basis`, whose shape no read checks and which no read returns; a waiver
 that names a label needs a requirement that names the label and asks for review, and covers only where the
 label is stated or the value reviewed (BC-050). The writer schema names `label_basis` at a field's place,
-optional and closed, and so does the reader: a member one slip from it (`label_basi`) now refuses the field
-(`form_invalid`, PR-030), and so does `label_basis` beside `alternatives` (`record_format.md` section 5),
-where the reader before ignored both. A read takes a `trainable` acceptance, which the build makes from the
-declaration's `trainable` entries, and goes on past the condition and range reasons with the value as the
-initial value, and ends with no value at or across a declared edge; the result names its entry (PR-339,
-BC-029). Only accepted results are watched; a result accepted while not met watches with its operating value;
-a waived unstated condition gets a `declared` watch (BC-030, BC-052), and a form-range watch stops at a
-declared edge (BC-031). The case range of `declarations.md` is BC-001 to BC-099.
+optional and closed; the reader names it too, and checks only its name: a member one slip from it
+(`label_basi`) now refuses the field (`form_invalid`, PR-030), and so does `label_basis` beside `alternatives`
+(`record_format.md` section 5), where the reader before ignored both. A read takes a `trainable` acceptance,
+which the build makes from the declaration's `trainable` entries, and goes on past the condition and range
+reasons with the value as the initial value, and ends with no value at or across a declared edge; the result
+names its entry (PR-339, BC-029). Only accepted results are watched; a result accepted while not met watches
+with its operating value; a waived unstated condition gets a `declared` watch (BC-030, BC-052), and a
+form-range watch stops at a declared edge (BC-031). The case range of `declarations.md` is BC-001 to BC-099.

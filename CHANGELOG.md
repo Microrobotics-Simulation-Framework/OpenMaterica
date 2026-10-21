@@ -52,15 +52,14 @@ every family entry goes in `families/CHANGELOG.md`.
   the widened row.
 
   A label's basis, `label_basis` (`record_format.md` sections 4.1 and 5): an optional member of a value field,
-  `{"basis": "stated"}` or `{"basis": "inferred", "inferred_from"}` and nothing else, in the writer schema,
-  marked `x-materica-write-only`: no read checks its shape or returns it. The reader schema and the typed shapes
-  (`LabelBasis`) are regenerated with it. A record check flags a label without one, or one that breaks its shape
-  (RC-122). **The reader changes**: `label_basis` is named at a field's place, so a member one slip from it
-  (`label_basi`) refuses the field (`form_invalid`, PR-030), and so does `label_basis` beside `alternatives`
-  (`record_format.md` section 5), where the reader before ignored both. Four case files hold it, written through
-  the case tools: three of PR-030 (`label_basi` beside the label refuses the field; `label_basis`, well formed or
-  not, is neither checked nor returned) and one of PR-044, whose row now names `label_basis` beside
-  `alternatives`.
+  closed, in a condition's basis shape, in the writer schema, marked `x-materica-write-only`: no read checks
+  its shape or returns it. The reader schema and the typed shapes (`LabelBasis`) are regenerated with it. A
+  record check flags a label without one, or one that breaks its shape (RC-122). **The reader changes**:
+  `label_basis` is named at a field's place, so a member one slip from it (`label_basi`) refuses the field
+  (`form_invalid`, PR-030), and so does `label_basis` beside `alternatives` (`record_format.md` section 5),
+  where the reader before ignored both. Four case files hold it, written through the case tools: three of
+  PR-030 (`label_basi` beside the label refuses the field; `label_basis`, well formed or not, is neither
+  checked nor returned) and one of PR-044, whose row now names `label_basis` beside `alternatives`.
 
 ### Verification
 - A label's basis (**Schema**, above) comes with four case files, written through the case tools, which run and

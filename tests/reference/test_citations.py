@@ -312,7 +312,7 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
         ('read_side_contract.md:243 "Find"', "'Find' is shorter than 20 characters"),
         ('read_side_contract.md:243 "the"', "'the' is shorter than 20 characters"),
         (
-            'record_format.md:600 "Two names are **one slip** apart when one becomes the other by '
+            'record_format.md:601 "Two names are **one slip** apart when one becomes the other by '
             'inserting,"',
             None,
         ),
