@@ -182,15 +182,120 @@ def test_a_search_killed_at_two_examples_or_at_one_size_alone_is_refused(tree: P
         gen_kill_counts.recorded_from(gen_kill_counts.reported([first]).kills)
 
 
-def test_recording_replaces_each_group_a_report_holds_and_no_other(tree: Path) -> None:
-    holding(tree, {GROUP: {"a": (1, 1), "gone": (5, 5)}, OTHER: {"b": (2, 2)}}, readme("| `a` | x | 0, 0 |"))
-    path = report(tree, *both("test_x_mutants", "test_the_mutant_is_killed", "a", 6, 8))
+# The kill points a partial report would drop: GROUP's `gone` and all of OTHER.
+PARTLY_RECORDED: KillPoints = {GROUP: {"a": (1, 1), "gone": (5, 5)}, OTHER: {"b": (2, 2)}}
+
+
+def of_group(mutant: str, small: int, original: int) -> list[tuple[str, str, int]]:
+    return both("test_x_mutants", "test_the_mutant_is_killed", mutant, small, original)
+
+
+def of_other(mutant: str, small: int, original: int) -> list[tuple[str, str, int]]:
+    return both("test_y_mutants", "test_the_other_is_killed", mutant, small, original)
+
+
+def test_recording_a_report_that_covers_every_recorded_group_replaces_them_and_adds_what_is_new(
+    tree: Path,
+) -> None:
+    holding(
+        tree, PARTLY_RECORDED, readme("| `a` | x | 0, 0 |", "| `gone` | y | 0, 0 |", "| `new` | z | 0, 0 |")
+    )
+    path = report(
+        tree, *of_group("a", 6, 8), *of_group("gone", 7, 9), *of_group("new", 1, 3), *of_other("b", 4, 4)
+    )
     assert gen_kill_counts.main(["--record", str(path)]) == 0
-    assert gen_kill_counts.load((tree / "kill_points.json").read_text()).kills == {
-        GROUP: {"a": (6, 8)},
+    assert gen_kill_counts.load(kept(tree)).kills == {
+        GROUP: {"a": (6, 8), "gone": (7, 9), "new": (1, 3)},
+        OTHER: {"b": (4, 4)},
+    }
+    assert "| `new` | z | 1, 3 |" in (tree / "README.md").read_text()
+
+
+@pytest.mark.parametrize(
+    ("cases", "lacked"),
+    [
+        (
+            of_group("a", 6, 8),
+            [
+                f"{GROUP}: the reports hold no kill of 1 of its 2 recorded mutants: `gone`",
+                f"{OTHER}: the reports hold no search of it",
+            ],
+        ),
+        (
+            [*of_group("a", 6, 8), *of_other("b", 4, 4)],
+            [f"{GROUP}: the reports hold no kill of 1 of its 2 recorded mutants: `gone`"],
+        ),
+        (
+            [*of_group("a", 6, 8), *of_group("gone", 7, 9)],
+            [f"{OTHER}: the reports hold no search of it"],
+        ),
+    ],
+    ids=["part-of-a-group-and-no-other", "part-of-a-group", "a-group-left-out"],
+)
+def test_recording_a_report_that_lacks_a_recorded_search_is_refused_naming_each_group_it_lacks(
+    tree: Path, capsys: pytest.CaptureFixture[str], cases: list[tuple[str, str, int]], lacked: list[str]
+) -> None:
+    holding(tree, PARTLY_RECORDED, readme("| `a` | x | 1, 1 |", "| `gone` | y | 5, 5 |"))
+    before = kept(tree), (tree / "README.md").read_text()
+    assert gen_kill_counts.main(["--record", str(report(tree, *cases))]) == 2
+    said = capsys.readouterr().err
+    named = [line.strip() for line in said.splitlines()[1:]]
+    assert named == lacked
+    assert "do not cover every recorded group" in said
+    assert "--measure --record" in said
+    assert (kept(tree), (tree / "README.md").read_text()) == before  # nothing was written
+
+
+def test_without_the_cover_check_a_report_of_part_of_a_group_drops_the_rest_of_its_kill_points(
+    tree: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The control of the refusal above: with the check gone, as before it, a report of `a` alone records,
+    and the kill points of `gone`, which nothing about changed, are lost."""
+    holding(tree, PARTLY_RECORDED, readme("| `a` | x | 1, 1 |"))
+
+    def covering_all(kills: object, recorded: object, groups: object) -> list[str]:
+        return []
+
+    monkeypatch.setattr(gen_kill_counts, "uncovered", covering_all)
+    path = report(tree, *of_group("a", 6, 8), *of_other("b", 2, 2))
+    assert gen_kill_counts.main(["--record", str(path)]) == 0
+    assert gen_kill_counts.load(kept(tree)).kills[GROUP] == {"a": (6, 8)}
+
+
+def test_a_group_named_with_group_is_recorded_alone_and_the_others_kept(
+    tree: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    holding(tree, PARTLY_RECORDED, readme("| `a` | x | 1, 1 |", "| `gone` | y | 5, 5 |"))
+    path = report(tree, *of_group("a", 6, 8), *of_group("gone", 7, 9), *of_other("b", 4, 4))
+    assert gen_kill_counts.main(["--record", str(path), "--group", GROUP]) == 0
+    assert gen_kill_counts.load(kept(tree)).kills == {
+        GROUP: {"a": (6, 8), "gone": (7, 9)},
         OTHER: {"b": (2, 2)},
     }
-    assert "| `a` | x | 6, 8 |" in (tree / "README.md").read_text()
+    assert f"left {OTHER} as recorded" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("cases", "lacked"),
+    [
+        (
+            [*of_group("a", 6, 8), *of_other("b", 4, 4)],
+            f"{GROUP}: the reports hold no kill of 1 of its 2 recorded mutants: `gone`",
+        ),
+        (of_other("b", 4, 4), f"{GROUP}: the reports hold no search of it"),
+    ],
+    ids=["part-of-the-group", "none-of-it"],
+)
+def test_a_group_named_with_group_that_the_reports_do_not_cover_is_refused(
+    tree: Path, capsys: pytest.CaptureFixture[str], cases: list[tuple[str, str, int]], lacked: str
+) -> None:
+    holding(tree, PARTLY_RECORDED, readme("| `a` | x | 1, 1 |", "| `gone` | y | 5, 5 |"))
+    before = kept(tree)
+    assert gen_kill_counts.main(["--record", str(report(tree, *cases)), "--group", GROUP]) == 2
+    said = capsys.readouterr().err
+    assert "do not cover the groups --group names" in said
+    assert [line.strip() for line in said.splitlines()[1:]] == [lacked]
+    assert kept(tree) == before
 
 
 # --- the README ---------------------------------------------------------------------------------------------
@@ -516,6 +621,11 @@ def test_the_search_run_is_every_mutant_search_with_a_junit_report(
         ["--measure", "--check"],
         ["--measure", "--against", "x.xml"],
         ["--measure", "--record", "x.xml"],
+        ["--group", GROUP],
+        ["--check", "--group", GROUP],
+        ["--against", "x.xml", "--group", GROUP],
+        ["--measure", "--record", "--group", GROUP],
+        ["--record", "x.xml", "--group", "test_x_mutants.py"],
     ],
 )
 def test_a_mode_the_script_does_not_take_is_refused(arguments: list[str]) -> None:
@@ -626,12 +736,17 @@ def test_a_late_kill_beside_changed_inputs_is_told_to_record_first(
     assert "if it is still late after recording again, plan its search" in capsys.readouterr().err
 
 
-def test_recording_part_of_the_searches_where_the_inputs_changed_is_refused(tree: Path) -> None:
+def test_recording_part_of_the_searches_where_the_inputs_changed_is_refused(
+    tree: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     holding(tree, {GROUP: {"a": (1, 2)}, OTHER: {"b": (2, 2)}}, readme("| `a` | x | 1, 2 |"))
     SEEDED_BY[HELPER] = "bbbbbbbbbbbb"
     before = kept(tree)
     part = report(tree, *both("test_x_mutants", "test_the_mutant_is_killed", "a", 6, 8))
-    assert gen_kill_counts.main(["--record", str(part)]) == 2
+    assert gen_kill_counts.main(["--record", str(part), "--group", GROUP]) == 2
+    assert "inputs changed, so every kill may have moved, and --group records 1 of the 2" in (
+        capsys.readouterr().err
+    )
     assert kept(tree) == before  # nothing was written
     both_groups = report(
         tree,
@@ -644,10 +759,10 @@ def test_recording_part_of_the_searches_where_the_inputs_changed_is_refused(tree
 
 
 def test_recording_part_of_the_searches_keeps_the_inputs_it_was_recorded_with(tree: Path) -> None:
-    """The control of the refusal above: with the inputs unchanged, a part may be recorded."""
+    """The control of the refusal above: with the inputs unchanged, a part may be recorded, by naming it."""
     holding(tree, {GROUP: {"a": (1, 2)}, OTHER: {"b": (2, 2)}}, readme("| `a` | x | 1, 2 |"))
     part = report(tree, *both("test_x_mutants", "test_the_mutant_is_killed", "a", 6, 8))
-    assert gen_kill_counts.main(["--record", str(part)]) == 0
+    assert gen_kill_counts.main(["--record", str(part), "--group", GROUP]) == 0
     assert gen_kill_counts.load(kept(tree)).kills[OTHER] == {"b": (2, 2)}
 
 

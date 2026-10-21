@@ -4,6 +4,7 @@
     python scripts/gen_kill_counts.py                      # write the README's counts from kill_points.json
     python scripts/gen_kill_counts.py --check              # fail where they differ, or where a kill is late
     python scripts/gen_kill_counts.py --record REPORT ...  # record the kills of JUnit reports, then write
+    python scripts/gen_kill_counts.py --record REPORT ... --group GROUP ...  # record those groups alone
     python scripts/gen_kill_counts.py --against REPORT ... # fail where a report's kills are not the recorded
     uv run python scripts/gen_kill_counts.py --measure [--record] [--workers N]
 
@@ -37,8 +38,12 @@ recorded mutant of its group, or a kill point lies after the 500th example (the 
 mutant the file does not hold yet passes `--check`: `--against` holds it, at the head, against the run of
 every search.
 
-`--record` replaces each group a report holds with the report's kill points: a report of part of a module
-records part of it, unless the inputs changed, when only a run of every search can be recorded. `--against`
+`--record` records reports that cover every recorded group, each of its recorded mutants at both sizes, and
+refuses others, naming each recorded group they lack: recording them would drop that group's kill points, or
+those of the mutants they lack, though nothing about them changed. `--group GROUP` records the groups it names
+alone, which the reports must cover, and keeps every other group as recorded, unless the inputs changed, when
+only a run of every search can be recorded. A mutant or group that is gone is dropped by `--measure --record`
+alone, from a run of every search. `--against`
 holds the file to a run of every search: it fails where a report's kill point differs from the recorded one, a
 search it ran is not recorded, a recorded search of a group it holds did not record a kill, a row of such a
 group's table names a mutant it did not run, a recorded group is missing from the run (a renamed or deleted
@@ -62,7 +67,7 @@ import sys
 import tempfile
 import tomllib
 import xml.etree.ElementTree as ElementTree
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -559,10 +564,28 @@ def written(record: Record, check: bool) -> int:
     return failed(problems, "the kill counts") if problems else 0
 
 
-def recorded_with(report: Report, whole: bool) -> Record:
-    """The file with each group the reports hold replaced by theirs, or, for a run of every search, holding
-    those groups alone; written. Reports of part of the searches cannot be recorded where the inputs changed:
-    the groups they lack would keep kills of the old seed."""
+def uncovered(kills: Reported, recorded: KillPoints, groups: Iterable[str]) -> list[str]:
+    """Each of `groups` that the reports do not cover, with what they lack: every search of it, or the
+    recorded mutants of it that they hold no kill of."""
+    lacked: list[str] = []
+    for group in sorted(groups):
+        if group not in kills:
+            lacked.append(f"{group}: the reports hold no search of it")
+            continue
+        missing = sorted(set(recorded.get(group, {})) - set(kills[group]))
+        if missing:
+            lacked.append(
+                f"{group}: the reports hold no kill of {len(missing)} of its {len(recorded[group])} recorded"
+                f" mutants: " + ", ".join(f"`{mutant}`" for mutant in missing)
+            )
+    return lacked
+
+
+def recorded_with(report: Report, whole: bool, named: Collection[str] = ()) -> Record:
+    """The file holding the reports' kill points, written: for a run of every search (`whole`), those groups
+    alone; otherwise every recorded group, which the reports must cover, or with `named`, the groups it names,
+    which they must cover, beside the others as recorded. Reports of part of the searches cannot be recorded
+    where the inputs changed: the groups they lack would keep kills of the old seed."""
     if report.silent:
         raise CountsError(
             "searches passed without recording examples_to_kill, so their kills are not known: "
@@ -572,13 +595,36 @@ def recorded_with(report: Report, whole: bool) -> Record:
     previous = load(KILL_POINTS.read_text(encoding="utf-8")) if KILL_POINTS.exists() else Record({}, {})
     tree = inputs_of_tree()
     held = recorded_from(report.kills)
-    kills = dict(held) if whole else {**previous.kills, **held}
-    if not whole and stale(previous.inputs, tree) and set(previous.kills) - set(held):
-        raise CountsError(
-            "the kill points' inputs changed, so every kill may have moved, and these reports lack"
-            f" {len(set(previous.kills) - set(held))} recorded groups: record a run of every search"
-            " (--measure --record)\n  " + "\n  ".join(stale(previous.inputs, tree))
-        )
+    if whole:
+        kills = dict(held)
+    else:
+        lacked = uncovered(report.kills, previous.kills, named or previous.kills)
+        if lacked:
+            cure = (
+                "run every search of each group --group names"
+                if named
+                else "record a run of every search (--measure --record), which also drops a mutant or a group"
+                " that is gone, or name with --group the groups the reports cover"
+            )
+            raise CountsError(
+                f"the reports do not cover {'the groups --group names' if named else 'every recorded group'},"
+                f" and recording them would drop the kill points of what they lack: {cure}\n  "
+                + "\n  ".join(lacked)
+            )
+        if named and stale(previous.inputs, tree) and set(previous.kills) - set(named):
+            raise CountsError(
+                "the kill points' inputs changed, so every kill may have moved, and --group records"
+                f" {len(set(named) & set(previous.kills))} of the {len(previous.kills)} recorded groups:"
+                " record a run of every search (--measure --record)\n  "
+                + "\n  ".join(stale(previous.inputs, tree))
+            )
+        chosen = set(named or held)
+        kills = previous.kills | {group: held[group] for group in chosen}
+        for group in sorted(set(held) - chosen):
+            print(
+                f"left {group} as recorded: the reports hold it, and --group does not name it",
+                file=sys.stderr,
+            )
     for group in sorted(set(previous.kills) - set(kills)):
         print(f"dropped {group}: the run holds no search of it", file=sys.stderr)
     record = Record(tree, kills)
@@ -611,6 +657,13 @@ def main(arguments: Sequence[str] | None = None) -> int:
     mode.add_argument("--record", nargs="*", metavar="REPORT", help="record the kill points of JUnit reports")
     mode.add_argument("--against", nargs="+", metavar="REPORT", help="fail where a report's kills differ")
     parser.add_argument(
+        "--group",
+        action="append",
+        default=[],
+        metavar="GROUP",
+        help="with --record REPORT: record this group alone (<file>::<test function>), keeping the others",
+    )
+    parser.add_argument(
         "--partial",
         action="store_true",
         help="with --against: the reports are of part of the searches; recorded groups they lack are fine",
@@ -628,6 +681,11 @@ def main(arguments: Sequence[str] | None = None) -> int:
         )
     if options.record == [] and not options.measure:
         parser.error("--record takes a report, or --measure to run one")
+    if options.group and not options.record:
+        parser.error("--group goes with --record REPORT: a run of every search records every group")
+    for group in options.group:
+        if not GROUP.fullmatch(group):
+            parser.error(f"--group {group!r} is not a group, <file>::<test function>")
     try:
         if options.measure:
             with tempfile.TemporaryDirectory() as directory:
@@ -649,7 +707,10 @@ def main(arguments: Sequence[str] | None = None) -> int:
             return against([Path(path) for path in options.against], options.partial)
         if options.record:
             return written(
-                recorded_with(reported(Path(path) for path in options.record), whole=False), check=False
+                recorded_with(
+                    reported(Path(path) for path in options.record), whole=False, named=options.group
+                ),
+                check=False,
             )
         return written(load(KILL_POINTS.read_text(encoding="utf-8")), check=options.check)
     except (CountsError, OSError) as error:
