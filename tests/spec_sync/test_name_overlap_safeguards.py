@@ -94,6 +94,9 @@ MEANINGS: dict[str, dict[str, Meaning]] = {
         "free_text": Meaning(
             "density_from_mass_and_volume", "record.writer.json#/$defs/derivation/properties/method"
         ),
+        "extrapolation": Meaning(
+            "consumer_law", "read_request.json#/$defs/extrapolation_acceptance/properties/method"
+        ),
     },
     "target": {
         "request": Meaning(
@@ -139,8 +142,10 @@ REFUSES: dict[str, dict[str, tuple[str, ...]]] = {
         "record.reader.json#/$defs/statistics_block/properties/mean": ("per_parameter",),
     },
     "method": {
-        "record.writer.json#/$defs/extraction/properties/method": ("free_text",),
+        "record.writer.json#/$defs/extraction/properties/method": ("free_text", "extrapolation"),
         "record.writer.json#/$defs/derivation/properties/method": (),
+        "read_request.json#/$defs/extrapolation_acceptance/properties/method": ("extraction", "free_text"),
+        "read_result.json#/$defs/extrapolation_assumption/properties/method": ("extraction", "free_text"),
     },
     "target": {
         "read_request.json#/properties/target": ("declared_model", "specimen_difference"),

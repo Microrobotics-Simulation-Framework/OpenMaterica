@@ -303,13 +303,15 @@
       "additionalProperties": false
     },
     "extrapolation_assumption": {
-      "description": "An extrapolation's members as the request gives them, method and law among them, which S3's extrapolations type.",
+      "description": "An extrapolation's own members as the request gives them, basis aside: its method and law.",
       "type": "object",
-      "required": ["acceptance"],
+      "required": ["acceptance", "method", "law"],
       "properties": {
-        "acceptance": {"const": "extrapolation"}
+        "acceptance": {"const": "extrapolation"},
+        "method": {"$ref": "vocabulary/acceptances.json#/$defs/extrapolation_method"},
+        "law": {"type": "string", "minLength": 1}
       },
-      "additionalProperties": {"$ref": "record.writer.json#/$defs/json_value"}
+      "additionalProperties": false
     }
   }
 }

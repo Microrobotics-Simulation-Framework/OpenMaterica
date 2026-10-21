@@ -11,5 +11,13 @@
     "distribution",
     "overlay",
     "overlay_scope"
-  ]
+  ],
+  "$defs": {
+    "extrapolation_method": {
+      "enum": [
+        "constant",
+        "consumer_law"
+      ]
+    }
+  }
 }

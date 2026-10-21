@@ -105,7 +105,8 @@
       "oneOf": [
         {"$ref": "#/$defs/nominal_acceptance"},
         {"$ref": "#/$defs/implied_condition_acceptance"},
-        {"$ref": "#/$defs/pick_overlay_or_extrapolation"}
+        {"$ref": "#/$defs/extrapolation_acceptance"},
+        {"$ref": "#/$defs/pick_or_overlay"}
       ]
     },
     "acceptance_members": {
@@ -121,12 +122,23 @@
         "basis": {"$ref": "record.writer.json#/$defs/json_value", "description": "What it rests on; a read ignores it."}
       }
     },
-    "pick_overlay_or_extrapolation": {
-      "description": "A pick, an overlay or an extrapolation (declarations.md section 4.1). Their own members are written with the steps that apply them: an extrapolation's with tables, a pick's and an overlay's with alternatives and overlays.",
+    "pick_or_overlay": {
+      "description": "A pick or an overlay (declarations.md section 4.1). Their own members are written with the steps that apply them, with alternatives and overlays.",
       "type": "object",
       "allOf": [{"$ref": "#/$defs/acceptance_members"}],
       "required": ["acceptance"],
-      "properties": {"acceptance": {"enum": ["pick", "overlay", "extrapolation"]}}
+      "properties": {"acceptance": {"enum": ["pick", "overlay"]}}
+    },
+    "extrapolation_acceptance": {
+      "description": "How the consumer computes a value outside a form's range, from the end value a read under it returns (declarations.md section 4.1). A read applies it only under want value, outside the readable range, at no declared edge and across none (read_side_contract.md section 5).",
+      "type": "object",
+      "allOf": [{"$ref": "#/$defs/acceptance_members"}],
+      "required": ["acceptance", "method", "law"],
+      "properties": {
+        "acceptance": {"const": "extrapolation"},
+        "method": {"$ref": "vocabulary/acceptances.json#/$defs/extrapolation_method"},
+        "law": {"description": "Text of at least one character, which a reader does not judge: white space alone is accepted.", "type": "string", "minLength": 1}
+      }
     },
     "nominal_acceptance": {
       "description": "A value for an interval, in the field's registered unit. A parameter set's nominal holds params in place of a value; no field of this version takes a parameter set, and a read ignores params.",
