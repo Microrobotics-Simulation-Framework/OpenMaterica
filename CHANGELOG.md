@@ -21,8 +21,8 @@ every family entry goes in `families/CHANGELOG.md`.
   - the declaration checked on its own: one table of every member at its place, required or optional, with the
     tokens and registered names each takes and the constraints its values hold; a declaration that departs
     from it is refused at build before any read, each refusal its rule's case, a JSON pointer and optionally a
-    `detail` no case compares (BC-048); and what a build refuses because it does not claim the scene suite, USD
-    read or the sampling suite (BC-051);
+    `detail` no case compares (BC-048); and what a build refuses because it does not claim the scene suite,
+    USD read or the sampling suite (BC-051);
   - a requirement's `review: "reviewed"`, and the build's reason `not_reviewed` (unknown), which a waiver
     covers, with the limit that a review lies outside the content hash (BC-049);
   - a waiver naming the `label` it rests on, refused unless the requirement for its field names that label and
@@ -62,13 +62,14 @@ every family entry goes in `families/CHANGELOG.md`.
   checked nor returned) and one of PR-044, whose row now names `label_basis` beside `alternatives`.
 
 ### Verification
-- A label's basis (**Schema**, above) comes with four case files, written through the case tools, which run and
-  pass: `PR-030.near_typo_label_basi_beside_label`, `label_basi` beside the label, refused at step 8;
+- A label's basis (**Schema**, above) comes with four case files, written through the case tools, which run
+  and pass: `PR-030.near_typo_label_basi_beside_label`, `label_basi` beside the label, refused at step 8;
   `PR-030.label_basis_stated_not_returned` and `PR-030.label_basis_guessed_not_checked`, `label_basis` well
   formed and not, each `met` with every member as without it; and `PR-044.alternatives_beside_label_basis`,
-  refused at step 7. A reader, or the reference model, that does not name `label_basis` at a field's place fails
-  the first and the last and no other case file; no case file caught the model's before. A reader that checks its
-  shape fails the third alone. T1 lists the slip's input under `slip`. 1180 of 1521 case files pass.
+  refused at step 7. A reader, or the reference model, that does not name `label_basis` at a field's place
+  fails the first and the last and no other case file; no case file caught the model's before. A reader that
+  checks its shape fails the third alone. T1 lists the slip's input under `slip`. 1180 of 1521 case files
+  pass.
 
 ## [0.1.0.dev3] - 2026-10-22
 
