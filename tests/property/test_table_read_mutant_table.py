@@ -3,12 +3,13 @@
 that it runs on every Python (`--property-controls` in `tests/conftest.py`)."""
 
 from tests.property.table_read_strategies import EDGE_WAYS, RANGE_WAYS, REQUEST_WAYS, STATISTICS_WAYS
-from tests.property.test_model_mutants import IMPLEMENTATION, TABLE_PARTS
+from tests.property.test_model_mutants import IMPLEMENTATION, REPORT_ALONE, TABLE_PARTS
 from tests.property.test_table_read_mutants import KILLERS, MUTANTS
 
 # What each property's examples draw first, which a mutant's `dies_at` names.
 DRAWN = {
     "HP20": EDGE_WAYS,
+    "HP20, across an edge": ("across_an_edge",),
     "HP21": RANGE_WAYS,
     "HP21 no wider and tolerance": RANGE_WAYS[:4],
     "HP22": STATISTICS_WAYS,
@@ -32,11 +33,19 @@ def test_every_property_kills_a_mutant() -> None:
     assert {mutant.killer for mutant in MUTANTS} == set(KILLERS)
 
 
-def test_hp12_searches_every_mutant_of_a_tables_steps_10_to_13() -> None:
+# HP12's own mutants of a table's read, searched in its table part beside those above (S3b-2's review).
+TABLE_PART_OWN = {"step_11_refusal_goes_on_to_step_12": "tables' requests"}
+
+
+def test_hp12_searches_every_mutant_of_a_tables_steps_10_to_13_that_a_result_shows() -> None:
     """The S3 design's HP12, widened: the agreement with the reference model kills each mutant above too, each
-    in the table part's kind of the family whose property kills it."""
+    in the table part's kind of the family whose property kills it, but those whose fault shows in step 11's
+    report alone, which no result holds (`REPORT_ALONE`), which HP20 kills across an edge."""
     searched = {
         mutant.name: mutant.killer for mutant in IMPLEMENTATION if mutant.killer in TABLE_PARTS.values()
     }
-    assert searched == {mutant.name: TABLE_PARTS[mutant.killer] for mutant in MUTANTS}
+    shown = {mutant.name: TABLE_PARTS[mutant.killer] for mutant in MUTANTS if mutant.name not in REPORT_ALONE}
+    assert searched == {**shown, **TABLE_PART_OWN}
+    assert {mutant.killer for mutant in MUTANTS if mutant.name in REPORT_ALONE} == {"HP20, across an edge"}
+    assert len(REPORT_ALONE) == len([mutant for mutant in MUTANTS if mutant.name in REPORT_ALONE])
     assert set(TABLE_PARTS) == set(KILLERS)

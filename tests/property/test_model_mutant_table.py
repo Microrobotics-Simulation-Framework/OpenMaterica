@@ -56,6 +56,8 @@ SHOWN = {
     *table_reads.RANGE_WAYS,
     *table_reads.STATISTICS_WAYS,
     *table_reads.REQUEST_WAYS,
+    table_reads.STATED_WITHOUT_ORIGIN_DRAWN,
+    table_reads.UNKNOWN_MEMBER_DRAWN,
 }
 
 

@@ -43,6 +43,14 @@ def way_of(drawn: strategies.TableRead) -> str:
 
 KILLERS: dict[str, Killer] = {
     "HP20": (lambda size: strategies.edge_reads(size), properties.check_edge, way_of),
+    # A planned search of HP20: across an edge alone, the way that draws an edge on the readable range's end
+    # (in half its draws, on one end or the other), where the mutants of step 11's report on such an edge
+    # show; over HP20's five ways they died after the 500th example on 1 or 2 of 40 streams a size.
+    "HP20, across an edge": (
+        lambda size: strategies.edge_reads(size, ("across_an_edge",)),
+        properties.check_edge,
+        way_of,
+    ),
     "HP21": (lambda size: strategies.range_reads(size), properties.check_range, way_of),
     "HP21 no wider and tolerance": (
         properties.no_wider_and_tolerance,
@@ -92,6 +100,7 @@ FORM_RANGE = read_module.form_range
 AXIS_STATUS = read_module.axis_status
 CHECK_CONDITIONS = conditions.check_conditions
 READ_VALUE_FIELD = read_module.read_value_field
+BEYOND_AN_EDGE = evaluate.beyond_an_edge
 
 
 def _numbers(table: JsonObject, name: str) -> list[float]:
@@ -147,6 +156,28 @@ def _range_checked_before_the_edge(table: JsonObject, request: ReadRequest) -> F
         axis = str(table["axis"])
         return FormRange((Reason("outside_range", axis),), outside_alone=True, coverable=True)
     return FORM_RANGE(table, request)
+
+
+def _an_edge_on_the_lower_end_not_across(
+    x: Sequence[float], edges: Collection[float], source_range: Sequence[float] | None, at: float
+) -> bool:
+    """Below the readable range, an edge on its lower end read as none between the read and the range, so
+    that a read beyond it is reported coverable by an extrapolation (`read_side_contract.md` section 5: "or
+    on that end")."""
+    low, _ = evaluate.readable_range(x, source_range)
+    if at < low:
+        return any(at < edge < low for edge in edges)
+    return BEYOND_AN_EDGE(x, edges, source_range, at)
+
+
+def _an_edge_on_the_upper_end_not_across(
+    x: Sequence[float], edges: Collection[float], source_range: Sequence[float] | None, at: float
+) -> bool:
+    """Above the readable range, the same of an edge on its upper end."""
+    _, high = evaluate.readable_range(x, source_range)
+    if at > high:
+        return any(high < edge < at for edge in edges)
+    return BEYOND_AN_EDGE(x, edges, source_range, at)
 
 
 # HP21's.
@@ -315,6 +346,23 @@ MUTANTS = [
         # Beyond an edge outside the range too, a read it reports coverable across the edge.
         ("at_an_edge_outside", "across_an_edge"),
         "^the (at_an_edge_outside read's step 11|across_an_edge read reported coverable)",
+    ),
+    # The review's hand mutant of step 11's report on an edge on the readable range's end, on each end,
+    # searched by HP20 across an edge (planned). The report has no reader in a result yet (S3c and S4d read
+    # it), so HP12's table part cannot search these (`test_model_mutants.REPORT_ALONE`).
+    Mutant(
+        "an_edge_on_the_lower_end_not_across",
+        "HP20, across an edge",
+        replacing(evaluate, "beyond_an_edge", _an_edge_on_the_lower_end_not_across),
+        ("across_an_edge",),
+        "^the across_an_edge read reported coverable",
+    ),
+    Mutant(
+        "an_edge_on_the_upper_end_not_across",
+        "HP20, across an edge",
+        replacing(evaluate, "beyond_an_edge", _an_edge_on_the_upper_end_not_across),
+        ("across_an_edge",),
+        "^the across_an_edge read reported coverable",
     ),
     Mutant(
         "ends_by_strict_inequality",

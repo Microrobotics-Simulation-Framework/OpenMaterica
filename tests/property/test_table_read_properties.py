@@ -183,9 +183,15 @@ def without_table(result: ReadResult) -> object:
 
 def check_no_wider_and_tolerance(example: tuple[TableRead, TableRead, TableRead]) -> None:
     """The read of a table without `source_range`, with one no narrower than `x`'s range, and with a tolerance
-    on the axis: the three alike but for the `table` returned."""
+    on the axis: the three alike but for the `table` returned; and where the way lies outside, the first read
+    `outside_range`, so that the relation holds a read outside the range, which a tolerance could widen."""
     plain, wider, tolerant = example
-    expected = without_table(read_of(plain))
+    found = read_of(plain)
+    if plain.way in OUTSIDE:
+        assert on_the_axis(plain, found) == {("outside_range", plain.axis)}, (
+            f"the {plain.way} read without a source_range: {on_the_axis(plain, found)}"
+        )
+    expected = without_table(found)
     assert without_table(read_of(wider)) == expected, (
         f"a source_range {wider.table.source_range} changed the read"
     )
@@ -284,13 +290,16 @@ def status_of(record: JsonObject, request: JsonObject) -> str:
 def check_monotone(world: MetWorld) -> None:
     """Adding a `source_range`, or a tolerance on the axis, never turns `unknown` or `not_met` into `met`; and
     a read inside the range of a table without `source_range`, where the request meets every other condition,
-    is `met`, or `unknown` where the field is stated without origin, so that the relation is not vacuous on
-    either half. Over a field without alternatives: among alternatives a narrower `source_range` can set a
-    table alternative aside and turn `no_pick` into another one's `met`."""
+    is `met`, or `unknown` where the field is stated without origin, and one outside it `not_met`, so that the
+    relation is not vacuous on either half and each way lies where it says. Over a field without
+    alternatives: among alternatives a narrower `source_range` can set a table alternative aside and turn
+    `no_pick` into another one's `met`."""
     plain = status_of(world.plain, world.request)
     if world.way in ("inside", "at_an_end"):
         expected = "unknown" if world.unoriginated else "met"
         assert plain == expected, f"a read {world.way} its range, every condition met: {plain}"
+    else:
+        assert plain == "not_met", f"a read {world.way} its range without a source_range: {plain}"
     narrowed = status_of(world.narrowed, world.request)
     tolerant = status_of(world.plain, world.tolerant)
     if plain != "met":
@@ -298,8 +307,20 @@ def check_monotone(world: MetWorld) -> None:
         assert tolerant != "met", f"a tolerance on the axis turned a read {plain} at {world.way} into met"
 
 
+# A world stated without origin, whose read in the range is `unknown`: the relation's other half, which
+# `met_worlds` draws by a boolean, so that a change that stopped drawing it would otherwise pass every test.
+# Held by its chance, below its least share measured: over 40 runs at `ci` (2026-10-21, 2,000 examples each,
+# seeds 1 to 40, the check skipped) a mean of 0.255 and a least of 0.2335 (467), over 20 at `deep`'s size
+# 0.250 and 0.226. By `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of
+# 110 with a probability of 3.9e-7, and with 3e-73 at the variance measured (1.7 times a binomial count's;
+# 2e-48 at that variance's one-sided 95 % upper bound, 1.52 times it).
+STATED_WITHOUT_ORIGIN_CHANCE = 0.2
+
+
+@pytest.mark.chances(stated_without_origin=STATED_WITHOUT_ORIGIN_CHANCE)
 @pytest.mark.drawn(*RANGE_WAYS[:4])
 @given(strategies.met_worlds())
 def test_a_source_range_or_a_tolerance_on_the_axis_never_turns_a_read_met(world: MetWorld) -> None:
     feature(world.way)
+    feature("stated_without_origin", world.unoriginated)
     check_monotone(world)

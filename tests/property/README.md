@@ -537,7 +537,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 1,094 searches, 547 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,102 searches, 551 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1225,6 +1225,7 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `outside_range_beside_a_range_across_an_end` | `outside_range` beside `want_mismatch` for a range that leaves the readable range (S3b-2) | tables' requests | `range_across_an_end`, `range_outside` | 4, 4 |
 | `monotone_the_tolerance_widens_the_range` | the tolerance's widening, searched by the monotonicity property (S3b-2) | tables across their range | the three ways outside | 27, 9 |
 | `monotone_source_range_widening` | a `source_range`'s widening, searched by the monotonicity property (S3b-2) | tables across their range | the three ways outside | 7, 6 |
+| `step_11_refusal_goes_on_to_step_12` | a read step 11 refused goes on to step 12, which adds `stated_without_origin` (S3b-2's review) | tables' requests | `stated_without_origin` | 3, 3 |
 
 <!-- kill points of every search of test_model_mutants.py::test_the_models_seeded_mutant_is_killed_by_the_agreement (scripts/gen_kill_counts.py) -->
 | Fault of the model | Part | Dies at | Examples |
@@ -1265,6 +1266,7 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `unknown_reasons_dropped_beside_no_pick` | outcomes of step 7 (planned) | `want_mismatch`, `no_pick` | 7, 5 |
 | `set_aside_reasons_beside_no_pick` | outcomes of step 7 (planned) | `want_mismatch`, `no_pick` | 58, 39 |
 | `unit_of_the_first_stored_alternative` | evidence set aside first (planned) | `no_pick` | 52, 52 |
+| `table_returned_whole` | tables' statistics (planned, S3b-2's review) | `unknown_member` | 5, 7 |
 
 S4a's five are the faults of the model's step 7 that one case file alone kills, each searched over S4a's
 alternatives alone (`model_strategies.outcomes_of_step_7`), three of them narrowed further, as HP27's planned
@@ -1527,7 +1529,13 @@ at another edge, and the range checked first beyond an edge outside the range, r
 way the property draws first and holds to its floor: over its four ways it died at the 327th example on one of 40
 streams. `the_nearest_knots_block` injects `points_ignored` too, and no knot block shows without `points` read,
 so it dies where that one does; `a_member_dropped_from_the_tables_block` (S3b-2's fix round) gives HP22's clause
-of the block as stored at every read a mutant of its own. HP12's table part searches each of the sixteen as well
+of the block as stored at every read a mutant of its own. The review's hand mutant of step 11's report on an edge
+on the readable range's end (`read_side_contract.md` section 5: "or on that end"), read as none between the read
+and the range, is two rows, one for each end (S3b-2's second fix round), searched by HP20 across an edge alone,
+the way that draws such an edge in half its draws (planned: over HP20's five ways they died after the 500th
+example on 1 or 2 of 40 streams a size, the latest at the 934th; across an edge alone, at the 150th at the
+latest). The report has no reader in a result until S3c and S4d, so HP12 cannot search those two
+(`REPORT_ALONE`). HP12's table part searches each of the sixteen others as well
 (`test_model_mutants.py`, its rows below its own), each a planned search of the part's kind of the family whose property kills it (`TABLE_PARTS`), a kind the
 part draws first and holds to its floor: searched over the whole part, a tolerance's widening died after the
 margin guard's 500th example on some streams (the 664th and the 1,301st, in a first form of the mutant, of the 24
@@ -1539,8 +1547,20 @@ on the core as it is, as S4a's are (`test_a_planned_search_draws_only_reads_the_
 kind's ways, which its own property draws first and holds to a floor, and no control holds the kind to exactly
 where each mutant shows (an open point). Over 40 streams a size (2026-10-21, again with the fix round's draws
 and its mutant), every search here and in HP12's table part dies at a way and an assertion its row names, the
-latest at the 183rd example (the 198th before). Counts at both
+latest at the 183rd example (the 198th before); the second fix round's four searches (the two above, and HP12's
+two of the review's kinds, below) over 40 more a size, the latest at the 150th. Counts at both
 sizes, one seed's, the derandomised search's, in the conditions shard at `ci` (2026-10-21).
+
+HP12's table part searches two more of the review's kinds (S3b-2's second fix round), each where its fault
+shows, a region the part draws beside the way and plants (`table_read_strategies.table_reads`): a read step 11
+refused that goes on to step 12, among tables' requests, every one of which step 11 refuses, dying where the
+field is stated without origin (`step_11_refusal_goes_on_to_step_12`, of the core); and the model's
+`table_returned_whole`, among tables' statistics, whose reads give a value and the table it is read from,
+dying where the table holds a member the reader does not know. So a change that stopped drawing either region
+fails these searches, as one that stopped drawing an edge on the readable range's end fails HP20's planned
+search above. The monotonicity property holds its worlds stated without origin, whose read in the range is
+`unknown`, by their chance (0.2: 0.2335 the least share over 40 runs at `ci`), with an audit control; it and
+HP21's relation hold each way outside to a read outside the range of the table without its `source_range`.
 
 <!-- kill points of every search of test_table_read_mutants.py::test_the_table_read_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
@@ -1549,6 +1569,8 @@ sizes, one seed's, the derandomised search's, in the conditions shard at `ci` (2
 | `below_an_edge_from_the_degenerate_interval` | just below an edge, the edge's own two entries read as the interval, which divides by zero | HP20 | `just_below_an_edge`, `just_above_an_edge` | 7, 7 |
 | `at_edge_dropped_beside_outside_range` | at an edge outside the readable range, `outside_range` alone | HP20 | `at_an_edge_outside` | 2, 2 |
 | `range_checked_before_the_edge` | the range checked before the edge, so an edge outside it is `outside_range` alone and reported coverable | HP20 | `at_an_edge_outside`, `across_an_edge` | 2, 2 |
+| `an_edge_on_the_lower_end_not_across` | below the readable range, an edge on its lower end read as none between, so a read beyond it is reported coverable | HP20 (planned: across an edge) | `across_an_edge` | 3, 5 |
+| `an_edge_on_the_upper_end_not_across` | above the readable range, an edge on its upper end read as none between, so a read beyond it is reported coverable | HP20 (planned: across an edge) | `across_an_edge` | 19, 9 |
 | `ends_by_strict_inequality` | `<` for `<=` at the readable range's ends | HP21 | `at_an_end` | 2, 2 |
 | `source_range_ignored` | the readable range `x`'s, whatever `source_range` holds | HP21 | the three ways outside | 6, 7 |
 | `source_range_widening` | a `source_range` widening the readable range | HP21 | the three ways outside | 6, 7 |
@@ -1619,13 +1641,15 @@ sizes, one seed's, the derandomised search's, in the conditions shard at `ci` (2
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on
   which it held (applied, a verdict on both sides, not vacuous: a third of the share measured at both sizes),
   and those that draw a way first declare their ways drawn; S4a's HP27 to HP29 draw step 7's outcome first,
-  each declared drawn. The table evaluator's properties declare every
+  each declared drawn; the monotonicity property over a table (S3b-2) draws its way first, declared drawn, and
+  declares its worlds stated without origin by their chance. The table evaluator's properties declare every
   feature by its chance: the least share it showed in eight runs of 2,000 examples (seeds 1 to 4, at both sizes,
   2026-10-17, measured again after the S3b-1 review's strategy changes), rounded down. For each such
   property, five of steps 9 and 10's, two of the result's (HP1 by a kind, HP6 by a chance) and two of HP4's
   (a form by its chance, in each of its two properties), S2b-2's five (HP3's fourth part by a region,
   HP12, HP6 and HP4 by evidence's form, HP6's second property by a nominal's way and by `behind_another`),
-  and S4a's HP27 by `no_pick`,
+  S4a's HP27 by `no_pick`, and S3b-2's monotonicity property over a table by its worlds stated without
+  origin,
   `tests/unit/test_audit_controls.py` runs it at `ci`'s examples with a generator that stops producing one of
   those features: its audit fails, on that feature alone; each of the table evaluator's has a control, on a choice no other
   feature it declares depends on. Such a chance is a lower estimate of a share, held only to its floor, which

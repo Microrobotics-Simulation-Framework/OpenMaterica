@@ -28,6 +28,7 @@ from materica.core.reasons import Reason, merged
 from materica.core.value_shapes import Found, JsonObject, a_list, an_object
 from materica.core.vocabulary import STATUS_TOKENS
 from tests.property import model_strategies as strategies
+from tests.property import table_read_strategies as table_reads
 from tests.property import test_condition_mutants as condition_mutants
 from tests.property import test_invariance_mutants as invariance_mutants
 from tests.property import test_model_properties as properties
@@ -257,6 +258,23 @@ def _text_that_is_no_json_raises(request: Any) -> JsonValue | Reason:
     return value
 
 
+def _step_11_refusal_goes_on_to_step_12(
+    field: RecordField, record: JsonObject, request: read.ReadRequest, claims: Any, nominal: Any = None
+) -> read.FieldRead:
+    """A table's read that step 11 refused given step 12's reason too, where the field is stated without
+    origin: the read gone on past the step that ends it (`read_side_contract.md` section 3), the review's hand
+    mutant."""
+    found = READ_VALUE_FIELD(field, record, request, claims, nominal)
+    value = field.value if isinstance(field.value, dict) else {}
+    provenance = value.get("provenance")
+    if found.form_range is None or not found.form_range.reasons:
+        return found
+    if not isinstance(provenance, dict) or provenance.get("origin") != "stated_without_origin":
+        return found
+    step_12 = Reason("stated_without_origin", detail=f"{field.spec.name} is stated with nothing behind it")
+    return dataclasses.replace(found, reasons=merged((*found.reasons, step_12)))
+
+
 # The design's mutants of HP1 to HP11, from the mutant modules of their properties.
 
 
@@ -273,6 +291,7 @@ def taken(module_mutants: list[Any], name: str) -> Callable[[pytest.MonkeyPatch]
 # edge of another family too (an edge outside a narrowed range), where the fault shows as well.
 TABLE_PARTS: dict[str, str] = {
     "HP20": "tables at an edge",
+    "HP20, across an edge": "tables at an edge",
     "HP21": "tables across their range",
     "HP21 no wider and tolerance": "tables across their range",
     "HP22": "tables' statistics",
@@ -285,6 +304,9 @@ TABLE_PARTS: dict[str, str] = {
 # draws across the range, and a `source_range`'s widening, show outside a narrower `source_range` as well,
 # which the relation and the monotonicity property do not draw.
 OUTSIDE = ("one_double_outside", "far_outside", "outside_a_narrower_source_range")
+# The table read mutants whose fault shows in step 11's report alone, which no result holds until S3c and S4d
+# read it: HP12 compares results, so its table part cannot search them; HP20 kills each, across an edge.
+REPORT_ALONE = frozenset({"an_edge_on_the_lower_end_not_across", "an_edge_on_the_upper_end_not_across"})
 WHERE_THE_TABLE_PART_SHOWS: dict[str, tuple[str, ...]] = {
     "the_tolerance_widens_the_range": OUTSIDE,
     "monotone_the_tolerance_widens_the_range": OUTSIDE,
@@ -546,6 +568,16 @@ IMPLEMENTATION = [
             WHERE_THE_TABLE_PART_SHOWS.get(mutant.name, mutant.dies_at),
         )
         for mutant in table_read_mutants.MUTANTS
+        if mutant.name not in REPORT_ALONE
+    ),
+    # A read step 11 refused goes on to step 12 (S3b-2's review): searched where every read is refused at
+    # step 11, among tables' requests, and dying where the field is stated without origin, a region the table
+    # part draws beside the way (`table_read_strategies.table_reads`).
+    Mutant(
+        "step_11_refusal_goes_on_to_step_12",
+        "tables' requests",
+        setting(read, "read_value_field", _step_11_refusal_goes_on_to_step_12),
+        (table_reads.STATED_WITHOUT_ORIGIN_DRAWN,),
     ),
 ]
 
@@ -649,6 +681,10 @@ MODEL = [
     ModelFault("unknown_reasons_dropped_beside_no_pick", "outcomes of step 7", ("want_mismatch", "no_pick")),
     ModelFault("set_aside_reasons_beside_no_pick", "outcomes of step 7", ("want_mismatch", "no_pick")),
     ModelFault("unit_of_the_first_stored_alternative", "evidence set aside first", ("no_pick",)),
+    # S3b-2's: a table returned with a member the reader does not know (two case files kill it), searched
+    # among tables' statistics, whose reads give a value and the table it is read from at a knot or between
+    # two, and dying where the table holds such a member, a region the table part draws beside the way.
+    ModelFault("table_returned_whole", "tables' statistics", (table_reads.UNKNOWN_MEMBER_DRAWN,)),
 ]
 
 

@@ -483,16 +483,22 @@ every family entry goes in `families/CHANGELOG.md`.
   and no extrapolation reported able to cover a read at or beyond an edge, an edge on the readable range's end
   among them; HP21, at and across the readable range's ends, with a relation (a `source_range` no narrower than
   `x`'s range and a tolerance on the axis change nothing), drawn over tables whose readable range is `x`'s, so
-  that a read its way puts outside is outside without the `source_range` too; HP22, the statistics block at
-  every read and `points` refused; HP23, step 11's two request checks, each with the axis; and the monotonicity
-  property, a `source_range` or a tolerance on the axis never turning a read `met`, drawn as the relation is,
-  over a read that is `met` inside the range or `unknown` where the field is stated without origin. Each draws
-  its way first among at most five, held to its draw floor (110 to 245 at `ci`), each failing a correct run with
-  a probability of at most 1e-6 by the audits' model and at most 4.8e-8 at the variance measured over 20 runs of
-  2,000 a size (40 for HP20 at `ci`), an estimate, and each has an audit control. Sixteen mutants (the design's,
-  two of the monotonicity property and a table's block not as stored) die at the way and assertion they name, at
-  both sizes, and HP12's table part kills each as well, as planned searches of its kinds; over 40 streams a
-  size, the latest at the 183rd example. HP1, HP2, HP11 and HP12 draw a table read to the end in a test function
+  that a read its way puts outside is outside without the `source_range` too, which it asserts; HP22, the
+  statistics block at every read and `points` refused; HP23, step 11's two request checks, each with the axis;
+  and the monotonicity property, a `source_range` or a tolerance on the axis never turning a read `met`, drawn
+  as the relation is, over a read that is `met` inside the range, `unknown` where the field is stated without
+  origin, and `not_met` outside it, each asserted. Each draws its way first among at most five, held to its
+  draw floor (110 to 245 at `ci`), each failing a correct run with a probability of at most 1e-6 by the audits'
+  model and at most 4.8e-8 at the variance measured over 20 runs of 2,000 a size (40 for HP20 at `ci`), an
+  estimate, and each has an audit control; the monotonicity property holds its worlds stated without origin by
+  their chance (0.2, below the least share of 40 runs at `ci`, 0.2335; a floor of 110), with an audit control.
+  Eighteen mutants (the design's, two of the monotonicity property, a table's block not as stored, and an edge on
+  the readable range's end read as none between the read and the range, on each end, searched by HP20 across an
+  edge alone) die at the way and assertion they name, at both sizes, and HP12's table part kills each that a
+  result shows, sixteen, as planned searches of its kinds, and two more: a read step 11 refused that goes on to
+  step 12, where the field is stated without origin, and the model's `table_returned_whole`, where the table
+  holds a member the reader does not know, each a region the part draws and plants; over 40 streams a size, the
+  latest at the 183rd example. HP1, HP2, HP11 and HP12 draw a table read to the end in a test function
   or part of their own, some holding a member the reader does not know or stated without origin, their own draws
   unchanged: with the harvested constants held out, their draws on `main` and here are the same, example for
   example. HP2's law of the members gains `table`, with a mutant of its own.
