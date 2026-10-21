@@ -102,11 +102,14 @@ one's first knot, in a table no other fault makes `form_invalid`; the target the
 assertion. In two local runs side by
 side, as CI's control runs the target, it was found after 26 and 319 s, each by one change to a first knot of
 280: a `-` inserted, in a table holding `points`, and the number halved, in a table stored as an alternative
-(Python 3.14, 2026-10-20). Two faults tried first were missed by two such runs of 600 s, about 1.2 million
-inputs each: a log-log table holding a `source_range`, which no seed holds, since `linear` has to be
-overwritten whole or a `source_range` written in; and a `source_range` reaching above 400, which 15 seed
-tables are one change from, its upper end two bytes after its lower, as above. It is not in CI's control step
-either.
+(Python 3.14, 2026-10-20); four more found it after 16, 34, 57 and 250 s. Two faults tried first were missed
+by two such runs of 600 s, about 1.2 million inputs each: a log-log table holding a `source_range`, which no
+seed holds, since `linear` has to be overwritten whole or a `source_range` written in; and a `source_range`
+reaching above 400, which 15 seed tables are one change from, its upper end two bytes after its lower, as
+above. CI's control step runs it (maintainer, 2026-10-21) in two runs of its own side by side, each of up to
+480 s, one and a half times the slowest of those six finds to the minute, as its runs of the step-10 fault
+are of theirs, and passes where either finds it: a line of the model's assertion in which the implementation
+gives `form_invalid` and the model does not.
 
 ## In CI
 

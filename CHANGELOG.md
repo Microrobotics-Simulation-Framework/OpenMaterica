@@ -58,6 +58,16 @@ every family entry goes in `families/CHANGELOG.md`.
   2026-10-19, run 39234564233; the replay 16.8 minutes against 2.6 to 6.3 before), and the job is held to twice
   its slowest run as the Hypothesis job's shards are (`FUZZ_SLOWEST_ON_CI`, which fails below it). What the job
   runs is unchanged.
+- The fuzz job's control step runs fuzz target 4 on the fault seeded in a table as well
+  (`MATERICA_FUZZ_SEEDED_FAULT=tables`; the maintainer's ruling of 2026-10-21), in two runs of its own side by
+  side after the step-10 fault's, each of up to 480 s: one and a half times the slowest of six local finds (16
+  to 319 s), to the minute, as the step-10 fault's 900 s are of its slowest, 601 s. The step passes where either
+  run reports a line of the model's assertion in which the implementation gives `form_invalid` and the model
+  does not. `tests/unit/test_ci_workflows.py` runs the step as written, a stub standing for each fuzz run, and
+  fails with the table's runs removed, with one run, with shorter runs, with the two one after the other and
+  with the check removed; the check fails where no run finds the fault and where the only finding is another
+  disagreement. The job's timeout rises from 120 to 137 minutes: twice its slowest run on CI (59.5 minutes)
+  and the 8.5 minutes the two runs add by estimate (`FUZZ_ADDED_SINCE`, until a run on CI measures them).
 - The repository moved from `Microrobotics-Simulation-Framework/OpenMaterica` to `OpenMaterica/OpenMaterica`.
   GitHub redirects the old git and web URLs; the README, the site, the scripts, the unit test and the workflow
   documentation name the new place. MIME and MADDENING stay where they are. The README's attestation command says
@@ -289,8 +299,8 @@ every family entry goes in `families/CHANGELOG.md`.
   reads a table through step 9 and agrees with every case file it decides.
 - Fuzz target 4 holds a table to the reference model, to T1's third relation and to step 9's units, its
   `axis_unit` among them. Its control, `MATERICA_FUZZ_SEEDED_FAULT=tables`, refuses a table over temperature
-  whose first knot lies below 250, which no seed holds: two local runs side by side found it, after 26 s and
-  after 319 s. Like S4a's, it is not in CI's control step.
+  whose first knot lies below 250, which no seed holds: six local runs found it, after 16 to 319 s. CI's
+  control step runs it (**Changed**, above).
 
 ## [0.1.0.dev2] - 2026-10-20
 
