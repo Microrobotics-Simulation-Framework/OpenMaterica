@@ -623,7 +623,7 @@ every family entry goes in `families/CHANGELOG.md`.
   extrapolation's result breaks section 5 (`not_met` with `outside_range`, the members beside the value, the
   table, and the entry's own `method` and `law` in `assumption`), where an acceptance makes a status better than
   the same read without it, and where the read and the reference model disagree but as HP12 lists. Its seeds are
-  every acceptance of every conformance case's request (216), with a dictionary that `--dict` writes. Its
+  every acceptance of every conformance case's request (217), with a dictionary that `--dict` writes. Its
   oracles live apart (`tests/fuzz/acceptance_oracle.py`), and `tests/unit/test_acceptance_oracle.py` shows each
   failing and quiet on the core at every place under every seed. On the correct core it found two things: step 0
   raising `TypeError` for an acceptance whose kind is an object or a list (S3c's own, fixed here), and the
