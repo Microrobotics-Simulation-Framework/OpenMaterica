@@ -56,8 +56,19 @@ every family entry goes in `families/CHANGELOG.md`.
   (`LabelBasis`) are regenerated with it. A record check flags a label without one, or one that breaks its shape
   (RC-122). **The reader changes**: `label_basis` is named at a field's place, so a member one slip from it
   (`label_basi`) refuses the field (`form_invalid`, PR-030), and so does `label_basis` beside `alternatives`
-  (`record_format.md` section 5), where the reader before ignored both. No case file changes: PR-030's arm for
-  it comes from a separate case pass.
+  (`record_format.md` section 5), where the reader before ignored both. Four case files hold it, written through
+  the case tools: three of PR-030 (`label_basi` beside the label refuses the field; `label_basis`, well formed or
+  not, is neither checked nor returned) and one of PR-044, whose row now names `label_basis` beside
+  `alternatives`.
+
+### Verification
+- A label's basis (**Schema**, above) comes with four case files, written through the case tools, which run and
+  pass: `PR-030.near_typo_label_basi_beside_label`, `label_basi` beside the label, refused at step 8;
+  `PR-030.label_basis_stated_not_returned` and `PR-030.label_basis_guessed_not_checked`, `label_basis` well
+  formed and not, each `met` with every member as without it; and `PR-044.alternatives_beside_label_basis`,
+  refused at step 7. A reader, or the reference model, that does not name `label_basis` at a field's place fails
+  the first and the last and no other case file; no case file caught the model's before. A reader that checks its
+  shape fails the third alone. T1 lists the slip's input under `slip`. 1180 of 1521 case files pass.
 
 ## [0.1.0.dev3] - 2026-10-22
 
