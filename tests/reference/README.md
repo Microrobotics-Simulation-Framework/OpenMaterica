@@ -74,7 +74,11 @@ detail that kind names; a listed one it agrees with fails as stale.
 `test_seeded_faults.py` gives the model one fault at a time and requires a case file to give an outcome the list of
 exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
-of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
+of S2a-4's phase B must kill. A fault that makes the model raise on a case file fails its search instead,
+with the model's traceback and a note naming the file and the claims (`cases.py`, `outcome`): a raise shows
+that the fault broke the model, not that a case's expected answer tells it apart, so it is never a kill. Its
+control, `status_object` replaced by a function raising `TypeError`, fails the check, which counting the raise
+as a kill would pass. The search stops at the first such case file; the count is of all of them,
 measured 2026-10-17 on `main` at `6c9ab9f`, but `member_checked_off_its_row`'s, which PR #37's review's cases
 kill (the same day). 75 faults: 61 killed, 14 survive; S2a-4's review added five survivors, each a rule no
 case pins (below the table), so 80 faults: 61 killed, 19 survive. The two cases of the maintainer's token
