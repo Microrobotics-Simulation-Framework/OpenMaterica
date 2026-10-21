@@ -19,7 +19,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from materica.core import conditions, fields, read
-from materica.core.conditions import ConditionsRead, ImpliedCondition
+from materica.core.conditions import AxisEntry, ConditionsRead, ImpliedCondition
 from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
@@ -534,9 +534,13 @@ def step_10_after_step_9(monkeypatch: pytest.MonkeyPatch) -> None:
         return []
 
     def checked(
-        field: RecordField, operating: Any, required: Any, implied: Sequence[ImpliedCondition] = ()
+        field: RecordField,
+        operating: Any,
+        required: Any,
+        implied: Sequence[ImpliedCondition] = (),
+        axis: AxisEntry | None = None,
     ) -> ConditionsRead:
-        found = READ_CHECK_CONDITIONS(field, operating, required, implied)
+        found = READ_CHECK_CONDITIONS(field, operating, required, implied, axis)
         return dataclasses.replace(found, reasons=(*held, *found.reasons))
 
     monkeypatch.setattr(read, "unit_problems", units)
@@ -548,26 +552,38 @@ def _first_unit_reason_only(field: RecordField) -> Found:
 
 
 def _unknown_reasons_dropped(
-    field: RecordField, operating: Any, required: Any, implied: Sequence[ImpliedCondition] = ()
+    field: RecordField,
+    operating: Any,
+    required: Any,
+    implied: Sequence[ImpliedCondition] = (),
+    axis: AxisEntry | None = None,
 ) -> ConditionsRead:
-    found = READ_CHECK_CONDITIONS(field, operating, required, implied)
+    found = READ_CHECK_CONDITIONS(field, operating, required, implied, axis)
     kept = tuple(reason for reason in found.reasons if VOCABULARY.reasons[reason.code].status == "not_met")
     return dataclasses.replace(found, reasons=kept)
 
 
 def _conditions_withheld(
-    field: RecordField, operating: Any, required: Any, implied: Sequence[ImpliedCondition] = ()
+    field: RecordField,
+    operating: Any,
+    required: Any,
+    implied: Sequence[ImpliedCondition] = (),
+    axis: AxisEntry | None = None,
 ) -> ConditionsRead:
-    return dataclasses.replace(READ_CHECK_CONDITIONS(field, operating, required, implied), entries=None)
+    return dataclasses.replace(READ_CHECK_CONDITIONS(field, operating, required, implied, axis), entries=None)
 
 
 def _disagreement_checks_the_others(
-    field: RecordField, operating: Any, required: Any, implied: Sequence[ImpliedCondition] = ()
+    field: RecordField,
+    operating: Any,
+    required: Any,
+    implied: Sequence[ImpliedCondition] = (),
+    axis: AxisEntry | None = None,
 ) -> ConditionsRead:
-    found = READ_CHECK_CONDITIONS(field, operating, required, implied)
+    found = READ_CHECK_CONDITIONS(field, operating, required, implied, axis)
     if found.entries is not None:
         return found
-    rest = READ_CHECK_CONDITIONS(field, operating, required, ())
+    rest = READ_CHECK_CONDITIONS(field, operating, required, (), axis)
     return ConditionsRead(found.reasons + rest.reasons, rest.entries)
 
 

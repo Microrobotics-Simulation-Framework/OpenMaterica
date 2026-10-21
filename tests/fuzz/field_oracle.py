@@ -9,9 +9,10 @@ other oracle here can see (S2a-2's review, L3). Beside it, the target holds step
 composition or evidence step 8 passes it holds to steps 9 and 10 as the text gives them: its units each
 compared with the one registered for it, code point for code point, written here from `record_format.md`
 section 4.2 and step 9; and its conditions against the request by `condition_oracle.py`, HP7's oracle,
-written from section 5 alone. A table step 8 passes it holds to step 9 alone, its `axis_unit` among its
-units, since steps 10 to 13 are not built for tables yet (S3a): where its units are the registered ones, the
-read is not yet decided.
+written from section 5 alone. A table step 8 passes it holds to step 9 with its `axis_unit` among its units,
+to step 10 as the others, but its own axis's entry, section 5's first row, written here from the text, and to
+step 11's reasons, each with the axis: no operating value for it, a range of it, an edge, the readable range
+(`record_format.md` section 6, table item 3, written here too).
 """
 
 import json
@@ -78,17 +79,17 @@ STEP_10 = frozenset(code for code, row in REASONS["reasons"].items() if 10 in ro
 
 def passed_step_8(result: JsonValue) -> bool:
     """Whether a read's result, as the target takes it, is one of a field that passed step 8: "not yet", where
-    a step not built yet decides it, or a result whose every reason a later step gives, none included."""
+    a step not built yet decides it, or a result whose every reason a later step gives, none included: step
+    11's `request_incomplete` among them, which carries a table's axis, where the request's own faults, which
+    the target's requests do not hold, would carry none or a condition's name at step 0."""
     if result == "not yet":
         return True
     reasons = result.get("reasons") if isinstance(result, dict) else None
-    codes = (
-        [reason.get("code") for reason in reasons if isinstance(reason, dict)]
-        if isinstance(reasons, list)
-        else []
-    )
+    found = [reason for reason in reasons if isinstance(reason, dict)] if isinstance(reasons, list) else []
     return isinstance(reasons, list) and all(
-        code in AFTER_STEP_8 | STEPS_12_AND_13 | STEP_8_UNKNOWN for code in codes
+        reason.get("code") in AFTER_STEP_8 | STEPS_12_AND_13 | STEP_8_UNKNOWN
+        or (reason.get("code") == "request_incomplete" and isinstance(reason.get("condition"), str))
+        for reason in found
     )
 
 
@@ -192,25 +193,60 @@ def check_steps_9_and_10(
             f"step 9 gave {sorted(pairs, key=str)}, where its text gives {sorted(units, key=str)}"
         )
         return
-    if field.get("form") == "table":
-        assert result == "not yet", f"a table steps 8 and 9 pass gave {result}, before step 10 is built"
-        return
+    table = field["table"] if field.get("form") == "table" else None
     conditions = field["conditions"]
     specimen = field.get("specimen", {})
     assert isinstance(conditions, dict)
     assert isinstance(specimen, dict)
     expected = condition_oracle.expected(field_name, conditions, specimen, operating, required)
-    statuses = expected.statuses or {}
-    later = {pair for pair in pairs if pair[0] not in STEP_10}
-    assert pairs - later == expected.reasons, (
-        f"step 10 gave {sorted(pairs - later, key=str)}, its text {sorted(expected.reasons, key=str)}"
+    statuses = dict(expected.statuses or {})
+    step_10 = set(expected.reasons)
+    step_11: set[tuple[str, str | None]] = set()
+    axis = str(table["axis"]) if isinstance(table, dict) else None
+    if isinstance(table, dict) and axis is not None:
+        # HP7's oracle reads the axis's `not_applicable` as any status object; section 5's first row reads it
+        # "on the form's own axis", with no reason, and step 11 gives the reasons.
+        step_10.discard(("condition_unstated", axis))
+        statuses[axis], step_11 = table_steps_10_and_11(table, operating.get(axis))
+    later = {pair for pair in pairs if pair[0] not in STEP_10 or pair in step_11}
+    assert pairs - later == step_10, (
+        f"step 10 gave {sorted(pairs - later, key=str)}, its text {sorted(step_10, key=str)}"
     )
-    if "not_met" in statuses.values():
+    if "not_met" in [status for name, status in statuses.items() if name != axis]:
         assert not later, f"a read step 10 refused went on: {sorted(later, key=str)}"
+    elif step_11:
+        assert later == step_11, f"step 11 gave {sorted(later, key=str)}, its text {sorted(step_11, key=str)}"
     else:
         assert {code for code, _ in later} <= STEPS_12_AND_13, f"steps 11 to 13 gave {sorted(later, key=str)}"
     entries = objects(result, "conditions")
     assert {entry.get("name"): entry.get("status") for entry in entries} == statuses, entries
+
+
+def numbers(value: JsonValue) -> list[float]:
+    return [number for number in value if isinstance(number, float)] if isinstance(value, list) else []
+
+
+def table_steps_10_and_11(
+    table: JsonObject, operating: JsonObject | None
+) -> tuple[str, set[tuple[str, str | None]]]:
+    """A table's axis entry and step 11's reasons, each with the axis, from the text: "the entry is `met` when
+    the operating value lies in the form's range and on no declared edge" (`read_side_contract.md` section 5,
+    first row); no operating value gives `request_incomplete`, a range `want_mismatch` alone (section 1); the
+    readable range runs "from `x[0]`, or `source_range[0]` where that is greater, to `x[-1]`, or
+    `source_range[1]` where that is smaller, inclusive", "A read exactly at an edge is refused", and outside
+    the range `outside_range` (`record_format.md` section 6, table item 3; section 5)."""
+    axis = str(table["axis"])
+    if operating is None:
+        return "not_met", {("request_incomplete", axis)}
+    at = operating.get("value")
+    if not isinstance(at, float):
+        return "not_met", {("want_mismatch", axis)}
+    x, bounds = numbers(table["x"]), numbers(table.get("source_range"))
+    low, high = (max(x[0], bounds[0]), min(x[-1], bounds[1])) if bounds else (x[0], x[-1])
+    found: set[tuple[str, str | None]] = {("at_edge", axis)} if at in numbers(table["edges"]) else set()
+    if not low <= at <= high:
+        found.add(("outside_range", axis))
+    return ("not_met" if found else "met"), found
 
 
 # HP1 and HP2 (the S2 design), on any result as the target takes it: section 2 item 2's codes that carry

@@ -10,6 +10,7 @@
     "S2b-2",
     "S3-te",
     "S3a",
+    "S3b-2",
     "S4a"
   ],
   "case_files": {
@@ -854,7 +855,7 @@
     "PR-308.no_operating_value_reverse_order.json": "S4",
     "PR-308.no_want.json": "S1",
     "PR-308.operating_conditions_without_axis.json": "S3b-2",
-    "PR-308.table_set_aside_never_reaches_step_11.json": "S4",
+    "PR-308.table_set_aside_never_reaches_step_11.json": "S3b-2",
     "PR-308.tolerance_with_other_operating_condition.json": "S1",
     "PR-308.tolerance_without_operating_conditions.json": "S1",
     "PR-309.stated_without_origin.json": "S2a-4",

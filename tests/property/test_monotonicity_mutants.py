@@ -13,7 +13,7 @@ import pytest
 
 from materica import shapes
 from materica.core import conditions, read, value_shapes
-from materica.core.conditions import ConditionEntry, ConditionsRead, ImpliedCondition
+from materica.core.conditions import AxisEntry, ConditionEntry, ConditionsRead, ImpliedCondition
 from materica.core.fields import RecordField
 from materica.core.jsonio import JsonValue
 from materica.core.reasons import Reason
@@ -180,8 +180,9 @@ def _operating_conditions_checked(
     operating: Mapping[str, shapes.OperatingCondition],
     required: Mapping[str, shapes.RequirementCondition],
     implied: Sequence[ImpliedCondition] = (),
+    axis: AxisEntry | None = None,
 ) -> ConditionsRead:
-    found: ConditionsRead = CHECK_CONDITIONS(field, operating, required, implied)
+    found: ConditionsRead = CHECK_CONDITIONS(field, operating, required, implied, axis)
     if found.entries is None:
         return found
     held = an_object(an_object(field.value)["conditions"])

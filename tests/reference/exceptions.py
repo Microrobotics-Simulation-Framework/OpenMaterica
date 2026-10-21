@@ -18,54 +18,21 @@ class Excepted:
 
 
 EXCEPTIONS: Final[Mapping[str, Excepted]] = {
-    "tables": Excepted(
+    "table_alternatives_at_step_11": Excepted(
         (
-            "S3 reads a table: step 8 checks its members and step 11 evaluates it within its readable range "
-            "(`read_side_contract.md` section 3; section 7). The model reads a table through steps 8 and 9, "
-            "as S3a does, and a table they pass, alone or among alternatives, waits for S3b-2's steps 10 to "
-            "13."
+            "A table alternative whose read gives a reason at step 11 (`outside_range`, `at_edge`, "
+            "`want_mismatch` over an operating range of its axis, or `request_incomplete` with no operating "
+            "value for it) is set aside, kept or refuses the field by step 7's rules "
+            "(`read_side_contract.md` section 3, step 7), which a later piece builds; the read raises there, "
+            "and the model gives no verdict (its open point `table_alternatives_at_step_11`)."
         ),
         "no verdict",
         frozenset(
             {
-                "PR-013.table_and_constant_no_pick.json",
-                "PR-013.table_and_interval_bounds_no_pick.json",
                 "PR-013.table_over_operating_range_as_stored.json",
                 "PR-013.table_over_operating_range_keeps_labels.json",
                 "PR-013.two_tables_over_operating_range_want_mismatch.json",
                 "PR-013.want_mismatch_unknown_reasons_stand.json",
-                "PR-014.minus_zero_at_first_knot_zero.json",
-                "PR-014.table_at_first_knot.json",
-                "PR-014.table_at_last_knot.json",
-                "PR-016.linear_at_interior_knot.json",
-                "PR-016.linear_between_knots.json",
-                "PR-016.loglog_at_interior_knot.json",
-                "PR-016.loglog_between_knots_high.json",
-                "PR-016.loglog_between_knots_low.json",
-                "PR-017.far_above.json",
-                "PR-017.far_below.json",
-                "PR-017.one_double_above_last_knot.json",
-                "PR-017.one_double_below_first_knot.json",
-                "PR-018.at_edge.json",
-                "PR-018.edge_inside_narrowed_range.json",
-                "PR-018.edge_on_readable_range_end.json",
-                "PR-018.edge_on_readable_range_end_above.json",
-                "PR-018.edge_outside_readable_range.json",
-                "PR-018.edge_outside_readable_range_above.json",
-                "PR-018.just_above_edge.json",
-                "PR-018.just_below_edge.json",
-                "PR-018.minus_zero_at_edge_at_zero.json",
-                "PR-018.minus_zero_operating_kept_at_edge.json",
-                "PR-019.narrower_above_range.json",
-                "PR-019.narrower_at_lower_end.json",
-                "PR-019.narrower_at_upper_end.json",
-                "PR-019.narrower_below_range.json",
-                "PR-019.narrower_uses_knot_outside_range.json",
-                "PR-019.one_point_range_outside.json",
-                "PR-019.one_point_range_read.json",
-                "PR-019.wider_does_not_extend.json",
-                "PR-030.table_unknown_member_ignored.json",
-                "PR-037.axis_unit_escaped_k.json",
                 "PR-044.all_set_aside.json",
                 "PR-044.beside_edge_outside_narrowed_range_set_aside.json",
                 "PR-044.edge_outside_narrowed_range_refuses.json",
@@ -73,47 +40,13 @@ EXCEPTIONS: Final[Mapping[str, Excepted]] = {
                 "PR-044.operating_range_one_left.json",
                 "PR-044.table_at_edge_not_set_aside.json",
                 "PR-044.table_outside_range_set_aside.json",
-                "PR-053.linear_label_on_temperature_table.json",
-                "PR-053.newtonian_label_on_temperature_table.json",
-                "PR-157.block_at_knot.json",
-                "PR-157.block_between_knots.json",
-                "PR-157.central_token_returned.json",
-                "PR-157.numeric_mean_returned.json",
-                "PR-157.numeric_min_max_returned.json",
-                "PR-300.loglog_adjacent_double_knots.json",
-                "PR-300.table_10000_knots.json",
-                "PR-301.unknown_beside_outside_range.json",
                 "PR-308.no_operating_value_beside_unchecked_constant.json",
-                "PR-308.no_operating_value_for_axis.json",
                 "PR-308.no_operating_value_in_alternative.json",
                 "PR-308.no_operating_value_one_not_set_aside_refuses.json",
                 "PR-308.no_operating_value_reverse_order.json",
-                "PR-308.operating_conditions_without_axis.json",
-                "PR-308.table_set_aside_never_reaches_step_11.json",
-                "PR-312.axis_entry_when_step_10_ends.json",
-                "PR-312.met_at_first_knot.json",
-                "PR-312.met_at_last_knot.json",
-                "PR-312.met_inside.json",
-                "PR-312.not_met_outside.json",
-                "PR-317.axis_tolerance_never_widens.json",
-                "PR-318.bounds_on_table.json",
-                "PR-318.bounds_outside_range.json",
-                "PR-318.components_on_table.json",
-                "PR-318.evidence_on_table.json",
-                "PR-318.value_on_table.json",
-                "PR-321.range_holding_edge.json",
-                "PR-321.range_inside.json",
-                "PR-321.range_outside.json",
-                "PR-321.range_straddling_end.json",
-                "PR-322.axis_condition_with_reason_read.json",
-                "PR-322.edge_minus_zero_matches_knot_read.json",
-                "PR-322.edges_in_any_order_read.json",
-                "PR-323.table_other_condition_not_applicable.json",
-                "PR-337.table_as_stored_keeps_edges_and_source_range.json",
-                "PR-337.unknown_member_in_table_as_stored.json",
             }
         ),
-        detail="a table's steps 10 to 13 are S3b-2's",
+        detail="a table alternative's step-11 reason in step 7 is S4d's",
     ),
     "extrapolations": Excepted(
         (

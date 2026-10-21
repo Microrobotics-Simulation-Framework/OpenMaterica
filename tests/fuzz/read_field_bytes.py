@@ -25,9 +25,10 @@ constant, an interval, a composition or evidence its row allows that the reader 
 relation), or when steps 9 and 10 read such a field otherwise than their text, its units by code point and its
 conditions by HP7's oracle (`field_oracle.py`). A field holding alternatives is read by step 7 with no pick
 and no overlay (S4a), and the model's step 7 decides it too. `NotImplementedError` is a step not built yet:
-a table that steps 8 and 9 pass, whose steps 10 to 13 wait for S3b-2, alone or as an alternative. Step 8 and 9
-of a table are held as a constant's are, to the model, to T1's third relation and, its `axis_unit` among its
-units, to step 9's text. The seeds are every value field of every conformance input.
+step 7 over a table alternative whose read gives a reason at step 11 (S4d), which the model leaves undecided
+too. A table is read to the end (S3b-2): held as a constant is, its `axis_unit` among its units and its axis
+entry and step 11's reasons by the text (`field_oracle.table_steps_10_and_11`).
+The seeds are every value field of every conformance input.
 """
 
 import importlib

@@ -6,8 +6,8 @@ A base read holds a table that steps 8 and 9 pass: its knots, values, scheme, ed
 `tables.py` draws a table step 8 accepts, on a field whose row allows a table, over an axis drawn among the
 numeric conditions, its `axis_unit` that condition's registered unit and its axis condition `not_applicable`.
 Beside it, in the record, stands a full composition (`full_fields.py`), in the same section as a density. A
-read of a table that steps 8 and 9 pass raises `NotImplementedError`, since steps 10 to 13 are S3b-2's: its
-outcome is then `PAST_STEP_9`.
+read of a table that steps 8 and 9 pass goes on to steps 10 to 13, read with no operating condition: its
+outcome is then `PAST_STEP_9`, whatever those steps give, as it was while they raised `NotImplementedError`.
 
 HP13's catalogue changes a base read by one fault the text names, written here from the text with the codes
 its rule gives, or by a near miss the text allows, which gives none; HP14 adds a member the reader does not
@@ -29,6 +29,7 @@ from materica.core.jsonio import JsonValue
 from materica.core.read import read
 from materica.core.record import RecordStore
 from tests.property import tables
+from tests.property.condition_oracle import REASONS
 from tests.property.condition_strategies import OTHER_UNITS, other_unit
 from tests.property.full_fields import CONDITIONS, full_forms, record_of
 from tests.property.strategies import SIZE, Size
@@ -51,6 +52,7 @@ NEIGHBOUR, NEIGHBOUR_FIELD = full_forms()["composition"]
 NAMED = ("axis", "axis_unit", "x", "y", "scheme", "edges", "source_range", "points")
 REQUIRED = ("axis", "axis_unit", "x", "y", "scheme", "edges")
 PAST_STEP_9 = "past step 9"
+STEPS_8_AND_9 = {8, 9}
 
 
 class Outcome(NamedTuple):
@@ -64,19 +66,21 @@ class Read(NamedTuple):
 
 
 def outcome(record: Json, field: str, want: str = "value") -> Outcome:
-    """The read of `field` in `record`, pinned by its hash recomputed. Another exception than the one steps
-    10 to 13 raise is an outcome no rule gives: "A read never stops with an error for anything a record or
-    request contains" (`read_side_contract.md` section 2 item 1)."""
+    """The read of `field` in `record`, pinned by its hash recomputed: `PAST_STEP_9` where steps 8 and 9 pass
+    it, so that it gives no reason of a code either step gives (`read_side_contract.md` section 4, its `Step`
+    column), as a step that gives `not_met` ends the read. An exception is an outcome no rule gives: "A read
+    never stops with an error for anything a record or request contains" (`read_side_contract.md` section 2
+    item 1)."""
     record = {**record, "content_hash": content_hash(record)}
     store = RecordStore()
     store.add("record", json.dumps(record).encode())
     pin = {member: record[member] for member in ("id", "version", "content_hash")}
     try:
         result = read({"target": {"record": pin, "field": field}, "requirement": {"want": want}}, store)
-    except NotImplementedError:
-        return Outcome(PAST_STEP_9)
     except Exception as error:
         return Outcome(f"raised {error!r}")
+    if not any(STEPS_8_AND_9 & set(REASONS["reasons"][reason.code]["steps"]) for reason in result.reasons):
+        return Outcome(PAST_STEP_9)
     return Outcome(result.status, frozenset((reason.code, reason.condition) for reason in result.reasons))
 
 

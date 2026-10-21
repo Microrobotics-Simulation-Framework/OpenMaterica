@@ -8,6 +8,10 @@ compared with the request by section 5's table, every comparison made on the exa
 rationals, so that no rounding of `r - v` passes a value outside its tolerance; a stated `plus_minus` can only
 turn `met` into `unknown`.
 
+A table's own axis, held as `not_applicable` (`record_format.md` section 6, table item 1), is section 5's
+first row: its entry's status is the table's (`AxisEntry`), and step 10 gives no reason for it and does not
+end the read on it; step 11 does both.
+
 An implied condition (`declarations.md` section 4.1) applies where the request locates it at the read
 (section 1) and the field's specimen, the section's facts merged with the field's, states its fact and token.
 It fills a condition the record does not hold, or holds as `unstated`, as if the record stated it with the
@@ -107,6 +111,16 @@ class ConditionEntry:
 
 
 @dataclass(frozen=True)
+class AxisEntry:
+    """A table's axis and the status of its entry (section 5, first row): "the entry is `met` when the
+    operating value lies in the form's range and on no declared edge ... and otherwise `not_met`, with no
+    operating value or over an operating range included"."""
+
+    name: str
+    status: ReadStatus
+
+
+@dataclass(frozen=True)
 class ConditionsRead:
     """What step 10 found: its reasons; the entries of the result's `conditions`, or None where two implied
     conditions disagree and no condition is checked; and the indexes, in the request's `acceptances`, of the
@@ -122,10 +136,11 @@ def check_conditions(
     operating: Mapping[str, shapes.OperatingCondition],
     required: Mapping[str, shapes.RequirementCondition],
     implied: Sequence[ImpliedCondition] = (),
+    axis: AxisEntry | None = None,
 ) -> ConditionsRead:
     """Step 10 for `field`, which passed steps 8 and 9, against the request's operating conditions and the
     conditions its requirement names (step 0 gives a tolerance only with an operating condition), with the
-    implied conditions the request locates at the read."""
+    implied conditions the request locates at the read; `axis`, a table's own axis entry."""
     specimen = field.specimen()
     applying = [condition for condition in implied if _states(specimen, condition.fact, condition.token)]
     disagreeing = _disagreeing(applying)
@@ -136,7 +151,9 @@ def check_conditions(
     held = {**stored, **filled}
     reasons: list[Reason] = []
     entries = tuple(
-        _entry(name, held.get(name), operating.get(name), required.get(name), reasons)
+        _axis_entry(axis, held[name], operating.get(name))
+        if axis is not None and name == axis.name and _on_its_axis(held[name])
+        else _entry(name, held.get(name), operating.get(name), required.get(name), reasons)
         for name in _checked(held, field.spec.requires, required)
     )
     return ConditionsRead(tuple(reasons), entries, applied)
@@ -203,6 +220,21 @@ def _checked(held: JsonObject, requires: Collection[str], required: Mapping[str,
         if _token(held.get(other)) in tokens
     ]
     return list(dict.fromkeys([*held, *requires, *with_tokens, *required]))
+
+
+def _on_its_axis(entry: JsonValue) -> bool:
+    """A condition held as `{"status": "not_applicable"}`, which on a table's own axis is section 5's first
+    row (step 8 refused any other entry there)."""
+    return is_status_object(entry) and an_object(entry)["status"] == "not_applicable"
+
+
+def _axis_entry(
+    axis: AxisEntry, held: JsonValue, operating: shapes.OperatingCondition | None
+) -> ConditionEntry:
+    """A table's own axis entry: its status the table's, and no reason, since "Step 10 gives no reason for it
+    and does not end the read on it: the form checks it, at step 11, which gives the reason" (section 5, first
+    row); a tolerance on the axis plays no part, as "the tolerance never widens a table" (section 5)."""
+    return ConditionEntry(axis.name, axis.status, _as_read(axis.name, an_object(held)), operating)
 
 
 def _entry(
