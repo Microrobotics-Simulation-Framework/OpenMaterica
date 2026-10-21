@@ -73,7 +73,8 @@ every family entry goes in `families/CHANGELOG.md`.
   `tests/spec_sync/test_t1.py` lists the slip's input under `slip`. Since a case compares only the members its
   `compare` names, `tests/reference/test_cases.py` also holds the reference model's whole result, over every
   case file of a read it gives a verdict on, to the members of `read_side_contract.md` section 2's table, read
-  from the text: a model that returns `label_basis` beside them passes every case file and fails it.
+  from the text: a model that returns `label_basis` beside them passes every case file and fails it. A change
+  to `read_side_contract.md` now selects that test in `scripts/pre_review.py`.
 - PR-339's arm across a declared edge, written through the case tools: `PR-339.across_edge_no_value`, the edge
   table narrowed to [275, 283], read at 272 K under a `trainable` acceptance, ends at step 11 with
   `outside_range` and no value, as `read_side_contract.md` section 2 item 3 now says; `declarations.md`

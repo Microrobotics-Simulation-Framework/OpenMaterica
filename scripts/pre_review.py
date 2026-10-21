@@ -131,6 +131,12 @@ DATA_RULES = (
         ),
     ),
     DataRule(
+        "the read result's table, to which the reference model's results are held",
+        r"docs/specification/read_side_contract\.md",
+        "the reference model's case test reads section 2's table, the members a read's result may hold",
+        tests=("tests/reference/test_cases.py",),
+    ),
+    DataRule(
         "a schema",
         r"src/materica/schema/.+",
         "the schemas and the vocabulary are read by the reader and held to the specification, and the frozen "
