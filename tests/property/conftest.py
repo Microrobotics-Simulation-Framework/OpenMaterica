@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Every test here passes the draw-rejection audit, and every property its feature audit (`audits.py`)."""
+"""Every test here passes the draw-rejection audit, and every property its feature audit (`audits.py`), but
+the audit controls marked `deep_controls`, which judge another property's run."""
 
 from collections.abc import Generator
 
@@ -18,6 +19,10 @@ def replay(item: pytest.Item) -> str:
 # statistics on to the plugin's.
 @pytest.hookimpl(wrapper=True, trylast=True)
 def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
+    if item.get_closest_marker("deep_controls") is not None:
+        # An audit control runs another property and judges that run's audit itself.
+        yield
+        return
     with audits.counting() as counts:
         yield
     share = audits.rejection(counts.draws)

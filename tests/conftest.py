@@ -114,7 +114,8 @@ SHARDS = {
     ),
     # The read's relations (S2a-4's phase B): HP12, the agreement with the reference model, HP4 and HP10, and
     # the information-monotonicity relations, each example reading two records or a read twice, with their
-    # mutant searches, which set no example database, their tables' checks and HP12's controls. A shard of
+    # mutant searches, which set no example database, their tables' checks, HP12's controls and the audit
+    # controls of HP12's floors held at `deep` alone, which run at `deep` alone. A shard of
     # their own: beside steps 9 and 10's they took 198 s at `ci` on four local workers, and `conditions` 151
     # s (2026-10-17).
     "relations": (
@@ -122,6 +123,7 @@ SHARDS = {
         "test_model_mutants",
         "test_model_mutant_table",
         "test_model_controls",
+        "test_model_deep_floor_controls",
         "test_invariance_properties",
         "test_invariance_mutants",
         "test_invariance_mutant_table",
@@ -144,7 +146,10 @@ SHARDS = {
 # fail, by module. They run at the `ci` profile's examples whatever the profile. CI's test matrix runs them on
 # the supported range's ends alone, in jobs of their own (`--property-controls only`), and everything else on
 # every Python (`--property-controls none`); `tests/unit/test_ci_workflows.py` checks that together the jobs
-# leave nothing out. A run without the option runs both.
+# leave nothing out. A run without the option runs both. The audit controls of the floors held at `deep` alone
+# (marked `deep_controls`) run only at `deep`: every other profile deselects them, whatever the options, since
+# a floor held at `deep` alone is judged nowhere else and each control runs `deep`'s 20,000 examples
+# (`tests/property/test_model_deep_floor_controls.py`, 2026-10-21).
 PROPERTY_CONTROLS = ("test_*mutants*", "test_audit_controls*")
 
 
@@ -200,7 +205,12 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
     def kept(item: pytest.Item) -> bool:
         in_shard = name is None or item.path.stem in SHARDS[name]
-        return in_shard and (controls is None or is_property_control(item.path) == (controls == "only"))
+        deep_alone = PROFILE == "deep" or item.get_closest_marker("deep_controls") is None
+        return (
+            in_shard
+            and deep_alone
+            and (controls is None or is_property_control(item.path) == (controls == "only"))
+        )
 
     selected = [item for item in items if kept(item)]
     if part := shard_part or (partition.parse_part(split) if split else None):

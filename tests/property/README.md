@@ -648,9 +648,9 @@ are held to a floor at `deep` alone, whose 20,000 examples make one possible at 
 Each part records its region as a feature computed from the example and the read's result, declares it with
 `deep_chances` (Audits, below) by a chance at or below its least share over 24 runs at `ci` (2026-10-21, 2,000
 examples a run, derandomised, each run its own stream, the checks skipped), and has a control at `deep`'s
-examples and rule in `tests/unit/test_audit_controls.py`; a second, beside the planned searches' own
-(`test_model_mutant_table.py`), shows that over the part's own draws an example shows the feature exactly
-where the mutant fails the agreement. No draw changed:
+examples and rule in `test_model_deep_floor_controls.py`, which runs where `deep` runs (below); a second,
+beside the planned searches' own (`test_model_mutant_table.py`), shows that over the part's own draws an
+example shows the feature exactly where the mutant fails the agreement. No draw changed:
 
 | Planned search | Region (feature) | Part | `ci`: mean (least), variance | `deep`'s size: mean (least) | Chance | Floor | Falls below it, a run |
 |---|---|---|---|---|---|---|---|
@@ -671,6 +671,18 @@ Features read from the example alone counted more than the region where the muta
 the fault planted (reads that end at `want_mismatch` before step 9 plant it too), the plant
 `request_faults_apart`, and a composition under `want: components`.
 
+A floor held at `deep` alone is judged only where `deep` runs, CI's scheduled and dispatched runs of the
+Hypothesis job, so its control runs there too and in no pull request's job (2026-10-21; an open point for the
+maintainer). Each control runs a property for 20,000 examples: 5 to 8 minutes here at the small size, about 35
+to 40 minutes of CPU in all on CI, which a pull request's controls job would carry on each Python; at `deep`'s
+size, an estimated 17 to 29 minutes each on CI. The controls are marked `deep_controls`, which every other
+profile deselects (`tests/conftest.py`), and sit in the `relations` shard beside the properties they control
+(`test_model_deep_floor_controls.py`, whose audits `conftest.py` leaves to the control); there `deep` adds an
+estimated 84 minutes of CPU, at most 29 of wall, and the shard's `deep` timeout went from 300 to 345 minutes,
+twice its estimate (`.github/workflows/ci.yml`). `tests/unit/test_ci_workflows.py` fails where a scheduled or
+dispatched run leaves one out or runs it twice, or a pull request's job runs one, and the module fails where a
+feature held at `deep` alone has no control.
+
 Every count in these tables is one seed's: the derandomised search's. Another seed takes
 another count, often several times larger or smaller (PR #37's review measured 19 and 1,406 for a mutant
 listed at 52 and 414), so a count says how a search went, not a mutant's margin to the 2,000 examples. That
@@ -682,7 +694,8 @@ CI's test matrix runs the mutant modules, `test_*mutants*`, on the supported ran
 the mutants' own code, which run on every Python, are in modules of their own: `test_mutant_view.py` (the hash
 mutants' view, without a fault, is the core's), `test_value_field_mutant_table.py`,
 `test_writer_mutant_table.py`, `test_condition_mutant_table.py`, `test_result_mutant_table.py`,
-`test_model_mutant_table.py` with HP12's controls in `test_model_controls.py`,
+`test_model_mutant_table.py` with HP12's controls in `test_model_controls.py` and the audit controls of its
+floors held at `deep` alone in `test_model_deep_floor_controls.py` (run at `deep` alone),
 `test_invariance_mutant_table.py` and `test_monotonicity_mutant_table.py`.
 
 `test_mutants.py` also gives the one-slip relation twelve faults, each killed by (9) (its strategy has no size,

@@ -2798,6 +2798,154 @@ def test_the_shard_check_can_fail(fault: Callable[[Workflow, ShardSelections], N
     assert any(problem in line for line in found), found
 
 
+# The audit controls of the floors held at `deep` alone (marked `deep_controls`, which tests/conftest.py
+# deselects at every other profile) run where `deep` runs, the Hypothesis job's scheduled and dispatched runs,
+# each in one shard's run, and in no pull request's job: each takes `deep`'s 20,000 examples.
+DEEP_EVENTS = ("schedule", "workflow_dispatch")
+DEEP_JOBS = ("tests", "controls", "hypothesis")
+Collector = Callable[[Selection, str], frozenset[str]]
+
+
+def profile_of(job: dict[str, Any], context: Mapping[str, object]) -> str:
+    """The profile a job's pytest step runs at, as GitHub renders its step's or its job's
+    `MATERICA_HYPOTHESIS_PROFILE`; `dev`, tests/conftest.py's default, where neither sets one."""
+    written = (
+        pytest_step(job)
+        .get("env", {})
+        .get("MATERICA_HYPOTHESIS_PROFILE", job.get("env", {}).get("MATERICA_HYPOTHESIS_PROFILE", "dev"))
+    )
+    return as_text(setting(written, context))
+
+
+def deep_control_problems(ci: Workflow, collect: Collector, deep_controls: frozenset[str]) -> list[str]:
+    """Where a pull request's job runs an audit control of a floor held at `deep` alone, or a scheduled or
+    dispatched run leaves one out or runs it twice: each job's pytest selection, for each combination of its
+    matrix whose pytest step runs on the event, collected (`collect`) at the profile the job renders there."""
+    problems = [] if deep_controls else ["no audit control of a floor held at `deep` alone is collected"]
+    for event in ("pull_request", *DEEP_EVENTS):
+        run: Counter[str] = Counter()
+        for job_id in DEEP_JOBS:
+            job = ci["jobs"][job_id]
+            [command] = pytest_commands(job)
+            for context in matrix_contexts(job):
+                if context["github.event_name"] != event:
+                    continue
+                context = context | SO_FAR_SUCCEEDED
+                if not truthy(evaluated(condition(pytest_step(job)), context)):
+                    continue
+                chosen, profile = selection_of(command, context), profile_of(job, context)
+                found = collect(chosen, profile) & deep_controls
+                if event == "pull_request" and found:
+                    problems.append(
+                        f"a pull request's {job_id} job runs {len(found)} of the audit controls of floors "
+                        f"held at `deep` alone, at {profile} ({chosen})"
+                    )
+                run.update(found)
+        if event in DEEP_EVENTS:
+            problems += [f"a {event} run leaves out {test}" for test in sorted(deep_controls - run.keys())]
+            problems += [
+                f"a {event} run runs {test} twice" for test, count in sorted(run.items()) if count > 1
+            ]
+    return problems
+
+
+def test_the_audit_controls_of_floors_held_at_deep_run_at_deep_and_in_no_pull_request() -> None:
+    ci = workflow("ci.yml")
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("PYTEST_")}
+
+    def ids(profile: str, *arguments: str) -> frozenset[str]:
+        printed = subprocess.run(
+            [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider", *arguments],
+            cwd=REPOSITORY,
+            env=environment | {"MATERICA_HYPOTHESIS_PROFILE": profile},
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        return frozenset(line for line in printed.splitlines() if "::" in line)
+
+    deep_controls = ids("deep", "-m", "deep_controls")
+    # At a profile that deselects them, a selection holds none of them if the whole suite holds none; at
+    # `deep`, each selection of the Hypothesis job is collected as its command gives it.
+    wholes = {profile: ids(profile) for profile in ("dev", "ci")}
+    names: list[str] = ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"]
+    shards = collected({Selection(None, name, None) for name in names}, "deep")
+
+    def collect(chosen: Selection, profile: str) -> frozenset[str]:
+        return shards[chosen] if profile == "deep" else wholes[profile]
+
+    assert len(deep_controls) == 4
+    assert all(wholes.values())
+    assert deep_control_problems(ci, collect, deep_controls) == []
+
+
+DEEP_CONTROLS_MEANT = frozenset(
+    f"tests/property/test_model_deep_floor_controls.py::test_a_region_fails_the_audit_at_deep[{name}]"
+    for name in "ab"
+)
+
+
+def collected_as_meant(chosen: Selection, profile: str) -> frozenset[str]:
+    """Stand-in collections: the deep controls at `deep` alone, in `relations` and in no module of the
+    controls, each part of `relations` or of the whole suite taking every N-th of them."""
+    if profile != "deep" or chosen.controls == "only":
+        return frozenset()
+    if chosen.shard is not None and partition.split_shard(chosen.shard)[0] != "relations":
+        return frozenset()
+    part = partition.split_shard(chosen.shard)[1] if chosen.shard else None
+    if chosen.part is not None:
+        part = partition.parse_part(chosen.part)
+    ordered = sorted(DEEP_CONTROLS_MEANT)
+    return frozenset(
+        test for place, test in enumerate(ordered) if part is None or place % part[1] == part[0] - 1
+    )
+
+
+def test_the_deep_control_check_passes_the_workflow_meant() -> None:
+    assert deep_control_problems(workflow("ci.yml"), collected_as_meant, DEEP_CONTROLS_MEANT) == []
+
+
+def relations_left_out(ci: Workflow) -> Collector:
+    shards: list[str] = ci["jobs"]["hypothesis"]["strategy"]["matrix"]["shard"]
+    shards[:] = [name for name in shards if not name.startswith("relations")]
+    return collected_as_meant
+
+
+def hypothesis_at_ci_on_a_schedule(ci: Workflow) -> Collector:
+    ci["jobs"]["hypothesis"]["env"]["MATERICA_HYPOTHESIS_PROFILE"] = "ci"
+    return collected_as_meant
+
+
+def the_tests_job_at_deep(ci: Workflow) -> Collector:
+    pytest_step(ci["jobs"]["tests"])["env"]["MATERICA_HYPOTHESIS_PROFILE"] = "deep"
+    return collected_as_meant
+
+
+def no_profile_deselects_them(ci: Workflow) -> Collector:
+    return lambda chosen, profile: collected_as_meant(chosen, "deep")
+
+
+def in_both_parts(ci: Workflow) -> Collector:
+    return lambda chosen, profile: collected_as_meant(chosen._replace(shard="relations"), profile)
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (relations_left_out, "a schedule run leaves out tests/property/test_model_deep_floor_controls.py"),
+        (hypothesis_at_ci_on_a_schedule, "a workflow_dispatch run leaves out tests/property/"),
+        (the_tests_job_at_deep, "a pull request's tests job runs 1 of the audit controls of floors held"),
+        (no_profile_deselects_them, "a pull request's hypothesis job runs 1 of the audit controls"),
+        (in_both_parts, "a schedule run runs tests/property/test_model_deep_floor_controls.py"),
+    ],
+)
+def test_the_deep_control_check_can_fail(fault: Callable[[Workflow], Collector], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    collect = fault(ci)
+    found = deep_control_problems(ci, collect, DEEP_CONTROLS_MEANT)
+    assert any(problem in line for line in found), found
+
+
 # What each job's pytest commands select, in order, as the comment above each says: every argument that is
 # not in `NOT_SELECTING`. A stray `-k`, `-m`, `--ignore`, plugin (`-p`, which can deselect anything) or other
 # argument fails the check until it is written here too, beside the comment that gives its reason.
@@ -3539,11 +3687,12 @@ MEASURED_ON_CI = {
         "step8_mutants": 1.55,
     },
 }
-# `relations` at `deep`: 108 to 140 minutes, from its `ci` run's times by module (S2a-4's review B, L5), until
-# a manual run measures it. `alternatives` at `deep`: ten times the slower part's pytest wall time at `ci`,
-# 217.96 s in run 39404674681 (`alternatives_2of2`; `alternatives_1of2` took 196.80 s), 36.3 minutes, until a
-# manual run measures it.
-ESTIMATED_ON_CI = {"deep": {"relations": 140.0, "alternatives": 36.3}}
+# `relations` at `deep`: 108 to 140 minutes, from its `ci` run's times by module (S2a-4's review B, L5), and
+# 29.0 more for the audit controls of HP12's floors held at `deep` alone, the longest of them by ci.yml's
+# estimate, until a manual run measures it. `alternatives` at `deep`: ten times the slower part's pytest wall
+# time at `ci`, 217.96 s in run 39404674681 (`alternatives_2of2`; `alternatives_1of2` took 196.80 s), 36.3
+# minutes, until a manual run measures it.
+ESTIMATED_ON_CI = {"deep": {"relations": 169.0, "alternatives": 36.3}}
 PROFILE_EVENTS = {"ci": "pull_request", "deep": "schedule"}
 
 
@@ -3592,9 +3741,9 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
             "hypothesis (ci, writer) is interrupted at 9 minutes, less than twice its 5.17",
         ),
         (
-            "startsWith(matrix.shard, 'relations') && 300",
-            "startsWith(matrix.shard, 'relations') && 180",
-            "hypothesis (deep, relations_1of2) is interrupted at 177 minutes, less than twice its 140 "
+            "startsWith(matrix.shard, 'relations') && 345",
+            "startsWith(matrix.shard, 'relations') && 320",
+            "hypothesis (deep, relations_1of2) is interrupted at 317 minutes, less than twice its 169 "
             "estimated",
         ),
         (
@@ -3604,7 +3753,7 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
             "estimated",
         ),
     ],
-    ids=["records-deep-at-45", "writer-ci-at-12", "relations-deep-at-180", "alternatives-deep-clause-gone"],
+    ids=["records-deep-at-45", "writer-ci-at-12", "relations-deep-at-320", "alternatives-deep-clause-gone"],
 )
 def test_the_margin_check_can_fail(old: str, new: str, problem: str) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))

@@ -352,15 +352,20 @@ every family entry goes in `families/CHANGELOG.md`.
   0.025 to 0.036), whose floor at `deep` is 25, 10, 15 and 95 examples of 20,000: a correct run falls below it
   with a probability of at most 7.3e-7 by the audits' model at the chance (2,500 draws each shown in 5
   examples), and of at most 6e-22 at the means and variances measured. A control for each
-  (`tests/unit/test_audit_controls.py`) runs its property for `deep`'s 20,000 examples with the region stopped
-  and fails `deep`'s audit on that feature alone. (9)'s irregular plurals and plurals in `ies` keep no floor:
-  (9) draws them in 0.0043 and 0.0032 of its examples, and by the audits' model a floor at `deep` needs a
-  chance of about 0.0067 (`tests/property/README.md`, "The regions held to a floor"). The audit control of
-  HP12's values' `unknown_member` removes the member as drawn instead of rejecting each example that shows it:
-  the region of a constant under `want: bounds` plants the member in every draw, so the rejection stopped that
-  region too, and whether the control passed rested on the derandomised stream: main's code drew the region
-  above its floor of 20, this change's 4 of 2,000 examples. No example count, size, draw, fault, mutant or
-  check changed.
+  (`tests/property/test_model_deep_floor_controls.py`) runs its property for `deep`'s 20,000 examples with the
+  region stopped and fails `deep`'s audit on that feature alone. The controls run where `deep` runs, in the
+  Hypothesis job's scheduled and dispatched runs of the `relations` shard, and in no pull request's job:
+  marked `deep_controls`, they are deselected at every other profile (`tests/conftest.py`), and
+  `tests/unit/test_ci_workflows.py` fails where a `deep` run leaves one out or a pull request's job runs one.
+  They add an estimated 84 minutes of CPU to the shard's `deep` run, at most 29 of wall, so its `deep` timeout
+  goes from 300 to 345 minutes, twice its estimate, as the timeouts are set. (9)'s irregular plurals and
+  plurals in `ies` keep no floor: (9) draws them in 0.0043 and 0.0032 of its examples, and by the audits'
+  model a floor at `deep` needs a chance of about 0.0067 (`tests/property/README.md`, "The regions held to a
+  floor"). The audit control of HP12's values' `unknown_member` removes the member as drawn instead of
+  rejecting each example that shows it: the region of a constant under `want: bounds` plants the member in
+  every draw, so the rejection stopped that region too, and whether the control passed rested on the
+  derandomised stream: main's code drew the region above its floor of 20, this change's 4 of 2,000 examples.
+  No example count, size, draw, fault, mutant or check changed.
 
 ## [0.1.0.dev2] - 2026-10-20
 

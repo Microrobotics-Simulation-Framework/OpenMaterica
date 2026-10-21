@@ -581,8 +581,16 @@ jobs:
     # 39039695416, 2026-10-17): `relations` 7.4 minutes, `conditions` 5.1. `relations` has not run at `deep`.
     # From that run's times by module, ten times the examples and an example at `deep`'s size costing 1.7 to
     # 2.2 times one at `ci`'s (S2a-4's review B, L5), it would take 108 to 140 minutes on a runner's four
-    # cores, the fourteen monotonicity properties alone 65 to 84; so its `deep` timeout is 300 minutes, twice
+    # cores, the fourteen monotonicity properties alone 65 to 84; so its `deep` timeout was 300 minutes, twice
     # the estimate's upper end with the interrupt's three to spare, until a manual `deep` run measures it.
+    # At `deep` alone the shard also runs the audit controls of HP12's floors held at `deep` alone (marked
+    # `deep_controls`, which every other profile deselects: tests/conftest.py), each running a property for
+    # 20,000 examples at `deep`'s size. Locally (2026-10-21, eight at once) the faults part's run of 20,000
+    # took 670 to 769 s and the values part's of 2,000 82 to 113 s, ten times that for 20,000 (one of the four
+    # controls did not finish within 14.8 minutes, four at once); CI takes 1.54 times as long (an HP12 control
+    # of 2,000 examples took 65 s here and weighs 100 on CI): 17.2 to 29.0 minutes each, about 84 minutes of
+    # CPU in all. With the longest added whole, the shard's estimate is 169 minutes, and its `deep` timeout
+    # 345, twice that with the interrupt's three to spare and within GitHub's 360.
     # Measured on CI at `ci` (2026-10-15): the writer shard took 17 minutes at S2a-1's head (run 38726723407) and
     # passed 30 at S2a-2's (run 38818013140), where its timeout cancelled it, then took 11 at the same code (run
     # 38859424951), though locally its four workers took 8.1 and 7.1 minutes at those heads (Python 3.15): the
@@ -615,7 +623,7 @@ jobs:
     timeout-minutes: >-
       ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
       && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
-      || startsWith(matrix.shard, 'relations') && 300
+      || startsWith(matrix.shard, 'relations') && 345
       || startsWith(matrix.shard, 'agreement') && 360
       || startsWith(matrix.shard, 'alternatives') && 90
       || matrix.shard == 'records' && 90 || 45)
@@ -646,7 +654,7 @@ jobs:
       JOB_MINUTES: >-
         ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
-        || startsWith(matrix.shard, 'relations') && 300
+        || startsWith(matrix.shard, 'relations') && 345
         || startsWith(matrix.shard, 'agreement') && 360
         || startsWith(matrix.shard, 'alternatives') && 90
         || matrix.shard == 'records' && 90 || 45)
