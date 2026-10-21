@@ -588,17 +588,22 @@ every family entry goes in `families/CHANGELOG.md`.
   above).
 - The S3 design's HP24 to HP26 and its monotonicity property over an extrapolation
   (`tests/property/test_extrapolation_*.py`, in the `conditions` shard): where one applies, adding it keeps the
-  read `not_met` with its reasons, adds step 12's, and gives the end value from inside the readable range, the
-  members beside a value, the table and its `assumption`, `basis` aside; where one at the read does not apply
-  (inside the range, at or across an edge, under `want: bounds`), and where one is located elsewhere, it changes
-  nothing; two naming one field are refused wherever located; step 0 refuses a method or a law that breaks its
-  shape and reads white space, `basis`, `reason` and an unknown member; and adding one never turns a read
+  read `not_met` with its reasons, adds step 12's reasons and labels (the field's `label`, drawn where the value
+  is stated without origin), and gives the end value from inside the readable range, the members beside a value,
+  the table and its `assumption`, `basis` aside; where one at the read does not apply (inside the range, at or
+  across an edge, under `want: bounds`, `components` or `evidence`), and where one is located elsewhere, it
+  changes nothing; two naming one field are refused wherever located; step 0 refuses a method or a law that breaks
+  its shape and reads white space, `basis`, `reason` and an unknown member; and adding one never turns a read
   `met`. Each property draws its way first among at most five, held to its draw floor (110 to 160 at `ci`): over
-  20 runs of 2,000 a size, a correct run fails a floor with at most 4.1e-7 at the variance measured, 9.2e-5 at
-  its one-sided 95 % bound. 33 mutants, the design's and six that each hold one draw of the strategy, die at the
-  way and the assertion each names, at both sizes; over 40 streams a size, the latest at the 150th example.
-  S3b-2's two mutants of step 11's report on an edge on the readable range's end, which had no reader in a
-  result, are searched in one too, across an edge.
+  20 runs of 2,000 a size, a correct run fails a floor with at most 4.1e-7 at the variance measured, 9.2e-5 at its
+  one-sided 95 % bound. 57 mutants die at the way and the assertion each names, at both sizes; over 40 streams a
+  size, the latest at the 215th example. Beside the design's, 30 each hold a draw of the strategy, showing at it
+  alone, so that a draw cut to one value leaves one alive: among them the field's label, each `want` under which
+  one does not apply, and each kind of value of the lists HP26 draws from (its methods that are no token, a
+  capital among them, the fuzz control's own fault; its laws that are no text, a number among them, the S3
+  design's own; its laws of white space; and a slip's name and the place of its character). S3b-2's two mutants of
+  step 11's report on an edge on the readable range's end, which had no reader in a result, are searched in one
+  too, across an edge.
 - The reference model compares an implied value's unit for a numeric condition whatever else breaks the value
   (`read_side_contract.md` section 1: "checked as an operating condition is, its `unit` included", and an
   operating condition's unit "whatever else is wrong with that entry"). It stopped at a `token` beside the
@@ -622,7 +627,8 @@ every family entry goes in `families/CHANGELOG.md`.
   extrapolation's `method` ignoring case, one changed letter from every seed extrapolation, none of which holds
   it: ten local runs, each of up to 600 s, found it in all ten, after 7 to 482 s, a rate of 7.6e-3 finds a
   second. The S3 design's own fault, a number taken as a `constant`'s `law`, a seed holds, and under
-  `consumer_law` five runs of 600 s found it in none; HP26's mutant `a_law_of_any_type` holds it. CI's control
+  `consumer_law` five runs of 600 s found it in none; HP26's mutants `a_law_of_any_type` and
+  `a_number_taken_as_a_law` hold it, and `a_method_compared_ignoring_case` the control's. CI's control
   step runs the method's (**Changed**, above).
 
 ## [0.1.0.dev2] - 2026-10-20

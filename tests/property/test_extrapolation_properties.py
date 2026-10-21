@@ -118,6 +118,13 @@ def check_applied(example: Extrapolated) -> None:
     assert codes(found) == codes(plain) | step_12, (
         f"the {example.way} read's reasons under an extrapolation: {codes(found)}"
     )
+    # Step 12: "add the labels of section 2" (section 3), among them "the field's `label`" (section 2, the
+    # `labels` row), after the labels the read without it gives.
+    label = table_field(drawn).get("label")
+    step_12_labels = (label,) if isinstance(label, str) else ()
+    assert found.labels == (*plain.labels, *step_12_labels), (
+        f"the {example.way} read's labels under an extrapolation: {found.labels}"
+    )
     assert found.conditions == plain.conditions, f"the {example.way} read's conditions changed"
     # "and the result carries the value at the range's nearest end, taken from inside the range, and
     # `assumption`"

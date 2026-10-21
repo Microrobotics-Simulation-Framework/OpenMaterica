@@ -18,10 +18,15 @@ DRAWN = {
     "HP24": APPLIED_WAYS,
     "HP24 not applied": NOT_APPLIED_WAYS,
     "HP24 not applied, across an edge": ("across_an_edge",),
+    "HP24 not applied, under another want": ("under_another_want",),
     "HP25": ELSEWHERE_WAYS,
     "HP25 two": TWO_WAYS,
     "HP26 refused": REFUSED_SHAPE_WAYS,
     "HP26 read": READ_SHAPE_WAYS,
+    "HP26 refused, a method no token": ("method_unknown",),
+    "HP26 refused, a law no text": ("law_not_text",),
+    "HP26 read, a law of white space": ("law_white_space",),
+    "HP26 read, a slip": ("a_slip_of_a_member",),
     "monotonicity": MONOTONE_WAYS,
 }
 
