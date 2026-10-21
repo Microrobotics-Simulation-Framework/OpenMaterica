@@ -6,8 +6,8 @@ they kill are in `test_table_read_mutants.py`.
 
 - HP20, edges: at an edge, wherever it lies, `at_edge` with the axis and no value; outside the readable range
   `outside_range` beside it; one double below an edge reads the interval below, one above the interval above;
-  outside the range beyond an edge, `outside_range` alone and no value; and step 11 reports that no
-  extrapolation would cover a read at an edge or beyond one.
+  outside the range beyond an edge, the edge outside it or on its end, `outside_range` alone and no value; and
+  step 11 reports that no extrapolation could cover a read at an edge or beyond one.
 - HP21, the range: outside the readable range, `outside_range` with the axis, the axis entry `not_met` and no
   value, an extrapolation able to cover it; inside it, at its ends included, the axis entry `met` and the
   table's value; a `source_range` no narrower than `x`'s range, and a tolerance on the axis, change nothing;
@@ -196,10 +196,11 @@ def check_no_wider_and_tolerance(example: tuple[TableRead, TableRead, TableRead]
 
 @st.composite
 def no_wider_and_tolerance(draw: st.DrawFn, size: Size = SIZE) -> tuple[TableRead, TableRead, TableRead]:
-    """A read of HP21 inside, at or outside the readable range off any `source_range`, and the two reads
-    that must give it again: with a `source_range` no narrower than `x`'s range, and with a tolerance on the
-    axis of zero, of the distance to `x`'s farther end, or twice that."""
-    drawn = draw(strategies.range_reads(size, ways=RANGE_WAYS[:4]))
+    """A read of HP21 inside, at or outside the readable range, on a table whose readable range is `x`'s, read
+    off any `source_range`, and the two reads that must give it again: with a `source_range` no narrower than
+    `x`'s range, and with a tolerance on the axis of zero, of the distance to `x`'s farther end, or twice
+    that."""
+    drawn = draw(strategies.range_reads(size, ways=RANGE_WAYS[:4], x_range=True))
     plain = strategies.with_table(drawn, drawn.table._replace(source_range=None))
     x = drawn.table.x
     wider = strategies.with_table(drawn, drawn.table._replace(source_range=strategies.no_narrower(draw, x)))
@@ -283,11 +284,13 @@ def status_of(record: JsonObject, request: JsonObject) -> str:
 def check_monotone(world: MetWorld) -> None:
     """Adding a `source_range`, or a tolerance on the axis, never turns `unknown` or `not_met` into `met`; and
     a read inside the range of a table without `source_range`, where the request meets every other condition,
-    is `met`, so that the relation is not vacuous. Over a field without alternatives: among alternatives a
-    narrower `source_range` can set a table alternative aside and turn `no_pick` into another one's `met`."""
+    is `met`, or `unknown` where the field is stated without origin, so that the relation is not vacuous on
+    either half. Over a field without alternatives: among alternatives a narrower `source_range` can set a
+    table alternative aside and turn `no_pick` into another one's `met`."""
     plain = status_of(world.plain, world.request)
     if world.way in ("inside", "at_an_end"):
-        assert plain == "met", f"a read {world.way} its range, every condition met: {plain}"
+        expected = "unknown" if world.unoriginated else "met"
+        assert plain == expected, f"a read {world.way} its range, every condition met: {plain}"
     narrowed = status_of(world.narrowed, world.request)
     tolerant = status_of(world.plain, world.tolerant)
     if plain != "met":

@@ -15,7 +15,14 @@ from tests.property.model_strategies import Example
 from tests.property.result_strategies import REVIEWS
 from tests.property.strategies import ORIGINAL, SIZE, SMALL, Size
 from tests.property.support import MARGIN, fails
-from tests.property.test_model_mutants import IMPLEMENTATION, KILLERS, MODEL, NOT_SHOWN, agreement
+from tests.property.test_model_mutants import (
+    IMPLEMENTATION,
+    KILLERS,
+    MODEL,
+    NOT_SHOWN,
+    TABLE_PARTS,
+    agreement,
+)
 from tests.property.value_field_strategies import CATALOGUE
 from tests.reference.mutants import MUTANTS as MODEL_FAULTS
 
@@ -89,10 +96,12 @@ PLANNED_BY_S4A = (
     "request faults apart",
     "a token condition's unit",
 )
+# S3b-2's planned searches of HP12's table part (`TABLE_PARTS`), each a kind of the part drawn alone.
+PLANNED_BY_S3B2 = tuple(sorted(set(TABLE_PARTS.values())))
 
 
 @pytest.mark.parametrize("size", [pytest.param(SMALL, id="small"), pytest.param(ORIGINAL, id="original")])
-@pytest.mark.parametrize("name", PLANNED_BY_S4A)
+@pytest.mark.parametrize("name", [*PLANNED_BY_S4A, *PLANNED_BY_S3B2])
 def test_a_planned_search_draws_only_reads_the_core_agrees_with_the_model_on(name: str, size: Size) -> None:
     @settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], MARGIN), deadline=None)
     @given(KILLERS[name](size))
