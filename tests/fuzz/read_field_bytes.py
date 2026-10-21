@@ -68,6 +68,7 @@ from tests.fuzz.field_oracle import (  # noqa: E402
     check_no_refusal_missing,
     check_result_laws,
     check_steps_9_and_10,
+    check_table_member,
     objects,
     places,
     read_outcome,
@@ -115,9 +116,11 @@ def read_json(request: JsonObject, store: RecordStore, claims: frozenset[Suite])
     return written
 
 
-def check_result(result: JsonValue) -> None:
-    """HP1 and HP2 (`field_oracle.check_result_laws`), every code one the steps built give."""
+def check_result(field: JsonValue, result: JsonValue) -> None:
+    """HP1 and HP2 (`field_oracle.check_result_laws`, and `check_table_member` for HP2's `table`), every code
+    one the steps built give."""
     check_result_laws(result)
+    check_table_member(field, result)
     if result == "not yet":
         return
     codes = {str(reason.get("code")) for reason in objects(result, "reasons")}
@@ -156,7 +159,7 @@ def test_one_input(data: bytes) -> None:
         }
         first, outcome = read_outcome(partial(read, request, store, claims=WITH_HASH))
         assert read_json(request, store, WITH_HASH) == first, "two reads differ"
-        check_result(first)
+        check_result(field, first)
         check_no_refusal_missing(field_name, field, first)
         check_steps_9_and_10(field_name, field, operating, required, first)
         if want == compared:
@@ -174,7 +177,7 @@ def test_one_input(data: bytes) -> None:
             "requirement": {"want": "value", "conditions": dict(required)},
         }
         first, outcome = read_outcome(partial(read, request, store, claims=WITH_HASH))
-        check_result(first)
+        check_result(field, first)
         check_steps_9_and_10(field_name, field, at_the_place, required, first)
         check_against_the_model((data,), request, WITH_HASH, outcome)
 

@@ -104,6 +104,16 @@ every family entry goes in `families/CHANGELOG.md`.
   with the check removed; the check fails where no run finds the fault and where the only finding is another
   disagreement. The job's timeout rises from 120 to 137 minutes: twice its slowest run on CI (59.5 minutes)
   and the 8.5 minutes the two runs add by estimate (`FUZZ_ADDED_SINCE`, until a run on CI measures them).
+- The fuzz job's control step runs fuzz target 4 on the fault seeded in a table's value too
+  (`MATERICA_FUZZ_SEEDED_FAULT=table_edges`, S3b-2; the maintainer's ruling on the fuzz controls, 2026-10-21),
+  in two pairs side by side, four runs of up to 900 s each, after the table's: the step passes where any of the
+  four reports the fault's message. `tests/unit/test_ci_workflows.py` runs the step as written, a stub
+  standing for each fuzz run, and fails with the four runs removed, with three, with shorter runs, with the
+  four one after the other and with the check removed; the check fails where no run finds the fault and where
+  the only finding is another fault's. The job's timeout rises from 137 to 168 minutes: twice its slowest run
+  on CI (59.5 minutes) and the 24 minutes the table's runs and these add by estimate (`FUZZ_ADDED_SINCE`). The
+  ruling gives the fuzz controls a job of their own, a runner for each pair: this control moves there when S4's
+  piece builds it.
 - The repository moved from `Microrobotics-Simulation-Framework/OpenMaterica` to `OpenMaterica/OpenMaterica`.
   GitHub redirects the old git and web URLs; the README, the site, the scripts, the unit test and the workflow
   documentation name the new place. MIME and MADDENING stay where they are. The README's attestation command says
@@ -474,11 +484,14 @@ every family entry goes in `families/CHANGELOG.md`.
 - Fuzz target 4 reads a table to the end (S3b-2): beside the drawn request it reads each table again under `want:
   value` at the places table item 3 tells apart (its knots and edges, the readable range's ends and
   `source_range`'s, the double either side of each, a value beyond each end of `x`; twelve at most), each read
-  held to the reference model, to steps 9 to 11 and to HP1 and HP2. Its control,
-  `MATERICA_FUZZ_SEEDED_FAULT=table_edges`, raises for a read just above an edge across which the table drops to
-  below 0.6 of its value just below, which no seed holds: in ten local runs of up to 600 s it was found in two,
-  after 34 and 423 s, and a first form, a value below zero there, in one of ten. Like S3a's, it is not in CI's
-  control step.
+  held to the reference model, to steps 9 to 11 and to HP1 and HP2, `table` exactly beside a value read from a
+  table among them. Its control, `MATERICA_FUZZ_SEEDED_FAULT=table_edges`, raises for a read just above an edge
+  where the value above lies outside 0.6 to 1.6 times the value below, either way, which no seed holds. In ten
+  local runs, in pairs, each of up to 900 s with the control step's arguments, it was found in nine, after 65 to
+  725 s, and missed once: a rate of 2.7e-3 finds a second, so that the control step's four runs all miss with
+  about 1.1e-3 on a runner 1.4 times slower than the laptop, an estimate. Not every run finds it within 900 s
+  of the runner's time (one missed, one found it after 725 s, past 643). CI's control step runs it (**Changed**,
+  above).
 
 ## [0.1.0.dev2] - 2026-10-20
 

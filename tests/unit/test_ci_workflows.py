@@ -3131,8 +3131,9 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
 FUZZ_SLOWEST_ON_CI = 59.52
 # The minutes the job's steps added after that run, by estimate, until a run on CI measures them: the table's
 # control (2026-10-21), two runs side by side of `TABLES_RUN_SECONDS` each, 8 minutes, and their start, which
-# loads the corpus (2.5 s for a run of 60 s, locally): half a minute.
-FUZZ_ADDED_SINCE = 8.5
+# loads the corpus (2.5 s for a run of 60 s, locally): half a minute; and the table value's control (S3b-2),
+# four runs side by side of `TABLE_EDGES_RUN_SECONDS` each, 15 minutes, and their start, half a minute.
+FUZZ_ADDED_SINCE = 8.5 + 15.5
 
 
 def fuzz_margin_problems(ci: Workflow) -> list[str]:
@@ -3151,12 +3152,12 @@ def test_the_fuzz_job_has_twice_its_slowest_run_on_ci() -> None:
     assert fuzz_margin_problems(workflow("ci.yml")) == []
 
 
-@pytest.mark.parametrize("minutes", [65, 100, 119, 136])
+@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167])
 def test_the_fuzz_margin_check_can_fail(minutes: int) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     ci["jobs"]["fuzz"]["timeout-minutes"] = minutes
     found = fuzz_margin_problems(ci)
-    expected = f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI and the 8.5 added since"
+    expected = f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI and the 24 added since"
     assert found == [expected], found
 
 
@@ -8133,7 +8134,8 @@ TABLES_CASES = (
 # message of each fault seeded by `MATERICA_FUZZ_SEEDED_FAULT=1` as a run that found it does, and the replay's
 # reuse phase with a failing example; and on a run of the table's fault, waits up to `STUB_PARTNER_WAIT`
 # seconds for the other run to start, records whether it did, and prints `STUB_FINDING` where its corpus is
-# among `STUB_FINDS`.
+# among `STUB_FINDS`; on a run of the table value's fault, likewise for the three others, `STUB_EDGE_FINDING`
+# and `STUB_EDGE_FINDS`.
 FUZZ_CONTROL_UV = """
 import json, os, sys, time
 from pathlib import Path
@@ -8158,17 +8160,23 @@ elif module == "pytest":
     print("IndexError: the seeded fault in the read")
     print("  - during reuse phase (0.00 seconds):")
     print("    - 0 passing examples, 1 failing examples, 0 invalid examples")
-elif fault == "tables":
+elif fault in ("tables", "table_edges"):
     corpus = Path(given[0]).name
-    started = Path(os.environ["RUNNER_TEMP"], "started")
-    started.mkdir(exist_ok=True)
+    started = Path(os.environ["RUNNER_TEMP"], "started", fault)
+    started.mkdir(parents=True, exist_ok=True)
     (started / corpus).touch()
+    wanted = 1 if fault == "tables" else 3
     deadline = time.monotonic() + float(os.environ["STUB_PARTNER_WAIT"])
-    while not [other for other in started.iterdir() if other.name != corpus] and time.monotonic() < deadline:
+    while (
+        len([other for other in started.iterdir() if other.name != corpus]) < wanted
+        and time.monotonic() < deadline
+    ):
         time.sleep(0.05)
-    record["partner"] = any(other.name != corpus for other in started.iterdir())
-    if corpus in os.environ["STUB_FINDS"].split():
-        print(os.environ["STUB_FINDING"])
+    record["beside"] = len([other for other in started.iterdir() if other.name != corpus])
+    record["partner"] = record["beside"] > 0
+    stub = "STUB_" if fault == "tables" else "STUB_EDGE_"
+    if corpus in os.environ[stub + "FINDS"].split():
+        print(os.environ[stub + "FINDING"])
 else:
     print(f"IndexError: the seeded fault {found_in[module]}")
 with open(os.environ["STUB_CALLS"], "a", encoding="utf-8") as calls:
@@ -8208,6 +8216,8 @@ def tables_control_problems(ci: Workflow, directory: Path) -> list[str]:
         environment = runner(where, FUZZ_CONTROL_UV) | {
             "STUB_FINDS": finds,
             "STUB_FINDING": finding,
+            "STUB_EDGE_FINDS": "table-edges-1",
+            "STUB_EDGE_FINDING": TABLE_EDGES_FINDING,
             "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
         }
         status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
@@ -8288,6 +8298,155 @@ def test_the_table_control_check_can_fail(tmp_path: Path, fault: Callable[[str],
     assert changed != found["run"]
     found["run"] = changed
     problems = tables_control_problems(ci, tmp_path)
+    assert any(problem in line for line in problems), problems
+
+
+# Fuzz target 4's table value control (S3b-2; the maintainer's ruling on the fuzz controls, 2026-10-21): the
+# fault seeded in a table's value (`MATERICA_FUZZ_SEEDED_FAULT=table_edges`), a read just above an edge
+# raising where the value above lies outside 0.6 to 1.6 times the value below. Ten local runs, in pairs, each
+# of up to 900 s with the control step's arguments, found it in nine, after 65 to 725 s, and missed once
+# (2026-10-21, the review): two pairs side by side, four runs of 900 s each, in the control step until the
+# fuzz controls' own job is built. The step passes where any of the four finds it, at the fault's message.
+TABLE_EDGES = "table_edges"
+TABLE_EDGES_RUNS = 4
+TABLE_EDGES_RUN_SECONDS = 900
+TABLE_EDGES_ERROR = "::error::the table_edges runs did not find the fault seeded in a table's value"
+TABLE_EDGES_FINDING = "ArithmeticError: the seeded fault in a table's value"
+ANOTHER_EDGE_FINDING = "IndexError: the seeded fault in step 10"
+# Each case: the corpora of the runs that report a finding, the finding, and whether the step passes.
+TABLE_EDGES_CASES = (
+    ("table-edges-1", TABLE_EDGES_FINDING, True),
+    ("table-edges-4", TABLE_EDGES_FINDING, True),
+    ("", TABLE_EDGES_FINDING, False),
+    ("table-edges-1 table-edges-2 table-edges-3 table-edges-4", ANOTHER_EDGE_FINDING, False),
+)
+
+
+def table_edges_runs_problems(runs: list[dict[str, Any]]) -> list[str]:
+    """Where the table value's fault is not run four times, on four corpora, side by side, each
+    `TABLE_EDGES_RUN_SECONDS`."""
+    problems = (
+        []
+        if len(runs) == TABLE_EDGES_RUNS
+        else [f"{len(runs)} runs of the table value's fault, not {TABLE_EDGES_RUNS}"]
+    )
+    if len({run["arguments"][0] for run in runs}) != len(runs):
+        problems.append("the table value's runs share a corpus")
+    for run in runs:
+        seconds = [word.partition("=")[2] for word in run["arguments"] if word.startswith("-max_total_time=")]
+        if seconds != [str(TABLE_EDGES_RUN_SECONDS)]:
+            lasting = " and ".join(seconds) or "unlimited"
+            problems.append(
+                f"a run of the table value's fault for {lasting} s, not {TABLE_EDGES_RUN_SECONDS}"
+            )
+        if run["beside"] < TABLE_EDGES_RUNS - 1:
+            problems.append(
+                f"a run of the table value's fault beside {run['beside']} others, not side by side"
+            )
+    return problems
+
+
+def table_edges_control_problems(ci: Workflow, directory: Path) -> list[str]:
+    """The control step run as written with `FUZZ_CONTROL_UV`, in each of `TABLE_EDGES_CASES`: where its runs
+    of the table value's fault are not as `table_edges_runs_problems` holds them, or where it passes or fails
+    otherwise than the case says, failing at the table value's check."""
+    problems: list[str] = []
+    for index, (finds, finding, passes) in enumerate(TABLE_EDGES_CASES):
+        where = directory / str(index)
+        (where / "work").mkdir(parents=True)
+        environment = runner(where, FUZZ_CONTROL_UV) | {
+            "STUB_FINDS": "tables-1",
+            "STUB_FINDING": TABLES_FINDING,
+            "STUB_EDGE_FINDS": finds,
+            "STUB_EDGE_FINDING": finding,
+            "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
+        }
+        status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
+        recorded = where / "calls.jsonl"
+        calls = (
+            [json.loads(line) for line in recorded.read_text("utf-8").splitlines()]
+            if recorded.exists()
+            else []
+        )
+        runs = [call for call in calls if (call["module"], call["fault"]) == (TARGET_4, TABLE_EDGES)]
+        if index == 0:
+            problems += table_edges_runs_problems(runs)
+        case = (
+            f"{finds or 'no run'} reporting {'the' if finding == TABLE_EDGES_FINDING else 'another'} finding"
+        )
+        if passes and status != 0:
+            problems.append(f"the step fails where {case}")
+        if not passes and (status == 0 or TABLE_EDGES_ERROR not in printed):
+            problems.append(f"the step does not fail at the table value's check where {case}")
+    return problems
+
+
+def test_the_control_step_runs_the_table_value_s_fault_and_sees_its_finding(tmp_path: Path) -> None:
+    assert table_edges_control_problems(workflow("ci.yml"), tmp_path) == []
+
+
+# Parts of the control step's script, as YAML gives it, without the block's indentation.
+TABLE_EDGES_LOOP = """\
+for worker in 1 2 3 4; do
+  cp -r "$control/fields" "$control/table-edges-$worker"
+"""
+TABLE_EDGES_RUN_END = """\
+    > "$control/table-edges-$worker.log" 2>&1 &
+done
+wait || true
+cat "$control"/table-edges-[1-4].log > "$control/table_edges.log"
+"""
+TABLE_EDGES_CHECK = """\
+if ! grep -q "ArithmeticError: the seeded fault in a table's value" "$control/table_edges.log"; then
+"""
+
+
+def without_the_table_value_s_runs(text: str) -> str:
+    start, end = text.index(TABLE_EDGES_LOOP), text.index(TABLE_EDGES_RUN_END) + len(TABLE_EDGES_RUN_END)
+    return text[:start] + text[end:]
+
+
+def without_the_table_value_s_check(text: str) -> str:
+    start = text.index(TABLE_EDGES_CHECK)
+    return text[:start] + text[text.index("\nfi\n", start) + len("\nfi\n") :]
+
+
+def with_three_table_value_runs(text: str) -> str:
+    return text.replace(TABLE_EDGES_LOOP, TABLE_EDGES_LOOP.replace("in 1 2 3 4;", "in 1 2 3;"))
+
+
+def with_shorter_table_value_runs(text: str) -> str:
+    start = text.index(TABLE_EDGES_LOOP)
+    return text[:start] + text[start:].replace("-max_total_time=900", "-max_total_time=600", 1)
+
+
+def with_the_table_value_s_runs_one_after_the_other(text: str) -> str:
+    return text.replace(TABLE_EDGES_RUN_END, TABLE_EDGES_RUN_END.replace("2>&1 &", "2>&1"))
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (without_the_table_value_s_runs, "0 runs of the table value's fault, not 4"),
+        (with_three_table_value_runs, "3 runs of the table value's fault, not 4"),
+        (with_shorter_table_value_runs, "for 600 s, not 900"),
+        (with_the_table_value_s_runs_one_after_the_other, "beside 0 others, not side by side"),
+        (
+            without_the_table_value_s_check,
+            "the step does not fail at the table value's check where no run reporting",
+        ),
+    ],
+    ids=["runs-removed", "three-runs", "shorter", "one-after-the-other", "check-removed"],
+)
+def test_the_table_value_control_check_can_fail(
+    tmp_path: Path, fault: Callable[[str], str], problem: str
+) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    found = control_step(ci)
+    changed = fault(found["run"])
+    assert changed != found["run"]
+    found["run"] = changed
+    problems = table_edges_control_problems(ci, tmp_path)
     assert any(problem in line for line in problems), problems
 
 
