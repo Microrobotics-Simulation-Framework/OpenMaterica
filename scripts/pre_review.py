@@ -7,8 +7,10 @@
 `BASE` is a ref, `origin/main` where none is given. The changed files are those from the merge base of `BASE`
 and `HEAD` to the working tree, committed or not, with the files git does not track yet. From them it plans
 the checks, prints each with the paths that selected it, and runs them in three stages: the fast checks
-(sign-offs, confidential names, every generator's `--check`, and for a change to code the linters and type
-checkers), the tests of what changed and of what imports it, and the property shards at the `ci` profile that
+(sign-offs, confidential names, every generator's `--check`, for a change to code the linters and type
+checkers, and where a README's kill points marker was added or removed the kill counts' unit tests, which hold
+the markers to the recorded groups by name), the tests of what changed and of what imports it, and the
+property shards at the `ci` profile that
 hold a changed or affected property module, with, where one of them holds mutant searches or the recorded kill
 points or their README changed, every mutant search's kill against the recorded one
 (`scripts/gen_kill_counts.py --measure`, as CI's controls job checks its own run). A stage that fails stops
@@ -72,6 +74,17 @@ GENERATOR_PYTHON = "3.11"
 # `--against`), and the modules whose searches record one.
 KILL_COUNTS = r"tests/property/(kill_points\.json|README\.md)"
 MUTANT_SEARCHES = "test_*mutants"
+
+# A README's kill points marker, the comment line that names the group of the table under it:
+# `scripts/gen_kill_counts.py`'s `MARKER`, which `tests/unit/test_pre_review.py` holds this to. The
+# generator's `--check` holds each table to the group its marker names; the kill counts' unit tests also hold
+# the markers to the groups the repository has, by name, and they run in the tests stage, which CI runs and a
+# build may not. They take seconds, so a marker added or removed runs them with the fast checks.
+KILL_POINTS_MARKER = re.compile(
+    r"<!-- kill points of (?P<extent>every search|some searches) of (?P<group>\S+)"
+    r" \(scripts/gen_kill_counts\.py\) -->"
+)
+KILL_COUNTS_TESTS = "tests/unit/test_gen_kill_counts.py"
 
 PROFILE_VARIABLE = "MATERICA_HYPOTHESIS_PROFILE"
 SPECIFICATION = r"docs/specification/.+|design/ARCHITECTURE_DRAFT\.md|DOCUMENTATION_ARCHITECTURE\.md"
@@ -375,6 +388,37 @@ def changed_files(base: str, root: Path = REPOSITORY) -> list[str]:
     return sorted({*tracked, *untracked})
 
 
+def changed_markers(changed: Sequence[str], base: str, root: Path = REPOSITORY) -> list[str]:
+    """The changed READMEs in which a kill points marker was added or removed, from the merge base of `base`
+    and HEAD to the working tree (a marker moved or edited is both); an untracked README by every line it
+    holds, and one that is no regular file not opened."""
+    readmes = [path for path in changed if Path(path).name == "README.md"]
+    if not readmes:
+        return []
+    merge_base = git("merge-base", base, "HEAD", root=root).stdout.strip()
+    untracked = set(git_paths("ls-files", "--others", "--exclude-standard", "-z", root=root))
+    found: list[str] = []
+    for path in readmes:
+        if path in untracked:
+            try:
+                regular = stat.S_ISREG((root / path).stat().st_mode)
+            except OSError:
+                regular = False
+            data = (root / path).read_bytes() if regular else b""
+            lines = data.decode("utf-8", errors="replace").splitlines()
+        else:
+            diff = subprocess.run(
+                ["git", "--literal-pathspecs", "diff", "--no-renames", "-U0", merge_base, "--", path],
+                capture_output=True,
+                check=True,
+                cwd=root,
+            ).stdout.decode("utf-8", errors="replace")
+            lines = [line[1:] for line in diff.splitlines() if line[:1] in ("+", "-")]
+        if any(KILL_POINTS_MARKER.fullmatch(line) for line in lines):
+            found.append(path)
+    return found
+
+
 # How git writes a name on the line of `git diff --name-only`, which is what CI's gate reads: in double
 # quotes, with these characters as a backslash and a letter, and any other control character, DEL and any
 # byte of 0x80 or more as a backslash and three octal digits.
@@ -646,8 +690,10 @@ def plan_checks(
     base: str = DEFAULT_BASE,
     workers: int = 12,
     key_file: str | None = None,
+    markers: Sequence[str] = (),
 ) -> tuple[list[Planned], list[str]]:
-    """The checks that apply to `changed`, and the changed paths no rule selects a check for."""
+    """The checks that apply to `changed`, and the changed paths no rule selects a check for; `markers` are
+    the changed READMEs whose kill points markers changed (`changed_markers`)."""
     plan = Plan()
     covered: set[str] = set()
 
@@ -734,6 +780,17 @@ def plan_checks(
         ),
         "every change",
     )
+    for path in markers:
+        plan.add(
+            Planned(
+                "fast",
+                ("uv", "run", "--locked", "pytest", KILL_COUNTS_TESTS, "-q", "--tb=short"),
+                "the kill counts' tests hold the README's markers to the recorded groups by name, which the "
+                "generator's `--check` does not; CI runs them in its tests stage, and they take seconds",
+                paths=(KILL_COUNTS_TESTS,),
+            ),
+            f"{path} (a kill points marker added or removed)",
+        )
 
     # A change to code.
     if is_code(changed):
@@ -1099,7 +1156,14 @@ def main(arguments: Sequence[str] | None = None) -> int:
         print(f"cannot find the changes from {options.base}: {error.stderr.strip()}", file=sys.stderr)
         return 2
     tree = Tree()
-    checks, uncovered = plan_checks(files, tree, options.base, options.workers, options.key_file)
+    checks, uncovered = plan_checks(
+        files,
+        tree,
+        options.base,
+        options.workers,
+        options.key_file,
+        markers=changed_markers(files, options.base),
+    )
     print_plan(checks, uncovered, files, reminders(files, added_figures(options.base)), tree.notes)
     if options.list:
         return 0

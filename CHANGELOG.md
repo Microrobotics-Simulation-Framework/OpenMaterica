@@ -67,6 +67,10 @@ every family entry goes in `families/CHANGELOG.md`.
   checks, C2 (197).
 
 ### Changed
+- `scripts/pre_review.py` runs the kill counts' unit tests (`tests/unit/test_gen_kill_counts.py`) with its
+  fast checks wherever a kill points marker of a README was added or removed, as well as in its tests stage:
+  they hold the markers to the recorded groups by name, which the generator's `--check` does not, and a
+  group the README gained and they did not name once failed on CI alone.
 - CI's per-commit job checks that each earlier commit of a pull request builds, type-checks, generates and
   collects on its own, and no longer runs the whole suite on it, which the head's jobs run (maintainer,
   2026-10-21). Each commit but the head still gets the site job's steps, ruff, mypy and pyright, the wheel and
