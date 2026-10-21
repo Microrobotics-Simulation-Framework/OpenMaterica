@@ -286,8 +286,8 @@ every family entry goes in `families/CHANGELOG.md`.
   named), `components_normalised` (a composition under `want: components`) and `unknown_members_returned` (a
   member the reader does not know, where its HP12 row names `unknown_member` alone again). The first five draw
   kinds their properties hold to their chances, and `unknown_members_returned` a region with a floor of its own
-  (HP12's values, `unknown_member`, chance 0.2, floor 110); the others have no floor of their own, their regions
-  being 0.004 to 0.04 of their properties' draws (`tests/property/README.md`, "The regions held to a floor"). No
+  (HP12's values, `unknown_member`, chance 0.2, floor 110); the others have no floor of their own at `ci`,
+  their regions being 0.004 to 0.04 of their properties' draws (four have one at `deep`, below). No
   example count, size, fault, mutant or check changed. The new draws and searches moved the kill points of 43 of
   the 479 mutants; the latest kill is still the 487th (`tests/property/kill_points.json`).
 - The S3 design's HP13 to HP16 for a table's steps 8 and 9 (`tests/property/test_table_form_*.py`, the
@@ -335,6 +335,32 @@ every family entry goes in `families/CHANGELOG.md`.
   on each and the control's three tests fail, and with a raise of one kind counted, that kind's test alone
   fails. A case on which the implementation raises still fails that case in the conformance runner, as
   before.
+- Four of the planned searches' regions that the region floors (above) left with no floor of their own are
+  held to a floor at `deep` (maintainer, 2026-10-21): in HP12's faults, a read that plants a `plus_minus`
+  entry's unit, or a token condition's, and whose result gives `unit_mismatch` on its condition
+  (`plus_minus_units_unchecked`, `token_condition_unit_accepted`); in HP12's values, a composition's
+  components given that a normalising read would change, and alternatives refused by faults of the request
+  alone on two conditions or more (`components_normalised`, `request_faults_of_the_first_alternative_alone`).
+  Each is 0.025 to 0.036 of its part's draws, too thin for a floor at `ci` that a correct run fails at most
+  1e-6 (one needs a chance of about 0.065). A new marker, `deep_chances`, declares a feature by its chance and
+  holds it to its draw floor at `deep` alone, a floor below 10 failing; `ci` and `dev` count it as declared
+  and judge it nowhere (`audits.RULES`, `deep_floors`), and `tests/unit/test_audits.py` holds that, with a
+  grid of chances none of which fails a correct `deep` run above 1e-6 by the audits' model. Each feature is
+  computed from the example and the read's result, and a control beside the planned searches' own shows that
+  over the part's draws an example shows it exactly where the mutant fails the agreement. Each is declared by
+  a chance at or below its least share over 24 derandomised runs at `ci` (0.01, 0.007, 0.008 and 0.019; means
+  0.025 to 0.036), whose floor at `deep` is 25, 10, 15 and 95 examples of 20,000: a correct run falls below it
+  with a probability of at most 7.3e-7 by the audits' model at the chance (2,500 draws each shown in 5
+  examples), and of at most 6e-22 at the means and variances measured. A control for each
+  (`tests/unit/test_audit_controls.py`) runs its property for `deep`'s 20,000 examples with the region stopped
+  and fails `deep`'s audit on that feature alone. (9)'s irregular plurals and plurals in `ies` keep no floor:
+  (9) draws them in 0.0043 and 0.0032 of its examples, and by the audits' model a floor at `deep` needs a
+  chance of about 0.0067 (`tests/property/README.md`, "The regions held to a floor"). The audit control of
+  HP12's values' `unknown_member` removes the member as drawn instead of rejecting each example that shows it:
+  the region of a constant under `want: bounds` plants the member in every draw, so the rejection stopped that
+  region too, and whether the control passed rested on the derandomised stream: main's code drew the region
+  above its floor of 20, this change's 4 of 2,000 examples. No example count, size, draw, fault, mutant or
+  check changed.
 
 ## [0.1.0.dev2] - 2026-10-20
 

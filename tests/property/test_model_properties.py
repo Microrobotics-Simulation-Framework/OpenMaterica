@@ -24,6 +24,7 @@ exactly what each side gives there:
 """
 
 import json
+import math
 from collections.abc import Callable, Mapping
 from typing import Literal, NamedTuple
 
@@ -298,12 +299,14 @@ def checked(example: Example, shown: str) -> None:
     check_agreement(example)
 
 
-def gives(outcome: Outcome, code: str) -> bool:
-    """Whether the implementation's result holds a reason of `code`."""
+def gives(outcome: Outcome, code: str, *on: str) -> bool:
+    """Whether the implementation's result holds a reason of `code`, on one of the conditions `on` where it
+    names some."""
     result = outcome.result
     reasons = result.get("reasons") if isinstance(result, dict) else None
     return isinstance(reasons, list) and any(
-        isinstance(reason, dict) and reason.get("code") == code for reason in reasons
+        isinstance(reason, dict) and reason.get("code") == code and (not on or reason.get("condition") in on)
+        for reason in reasons
     )
 
 
@@ -326,6 +329,44 @@ def forms_read(example: Example) -> set[JsonValue]:
         held = alternatives if isinstance(alternatives, list) else [value]
         forms.update(at(each, "form") for each in held)
     return forms
+
+
+def normalising_changes(value: JsonValue) -> bool:
+    """Whether `value` is a composition's that a read which normalised it would change: one that states its
+    sum, or whose fractions dividing each by their sum changes."""
+    components = at(value, "components")
+    if not isinstance(components, list):
+        return False
+    if isinstance(value, dict) and "stated_sum" in value:
+        return True
+    fractions = [fraction for each in components if isinstance(fraction := at(each, "fraction"), float)]
+    total = math.fsum(fractions)
+    return bool(total) and any(fraction / total != fraction for fraction in fractions)
+
+
+def components_not_normalised(implementation: Outcome) -> bool:
+    """Whether the read gives, as its value or an alternative's, a composition's components that a read which
+    normalised them would change (`components_normalised`)."""
+    result = implementation.result
+    entries = at(result, "alternative_values")
+    held = entries if isinstance(entries, list) else []
+    given_ = [at(result, "value"), *(at(entry, "value") for entry in held)]
+    return any(normalising_changes(value) for value in given_)
+
+
+def request_faults_of_two_alternatives(example: Example, implementation: Outcome) -> bool:
+    """Whether alternatives are refused by faults of the request alone (`request_incomplete`), on two
+    conditions or more: the faults of more than one alternative, which step 7 gives together
+    (`request_faults_of_the_first_alternative_alone`)."""
+    reasons = at(implementation.result, "reasons")
+    found = [reason for reason in reasons if isinstance(reason, dict)] if isinstance(reasons, list) else []
+    return (
+        example.kind == "alternatives"
+        and at(implementation.result, "status") == "not_met"
+        and bool(found)
+        and all(reason.get("code") == "request_incomplete" for reason in found)
+        and len({json.dumps(reason.get("condition")) for reason in found}) >= 2
+    )
 
 
 def a_constant_refused_bounds(example: Example, implementation: Outcome) -> bool:
@@ -365,7 +406,18 @@ UNKNOWN_MEMBER_CHANCE = 0.2
 # below its least share over 96 runs at `ci` (2026-10-20, derandomised, each its own stream; mean 0.157, least
 # 0.116). By `audits.py`'s model, 250 draws each shown in 5 examples, a run falls below its floor of 20
 # examples with a probability of 5e-15, and with 6e-22 at the variance measured (5.7 times a binomial
-# count's).
+# count's). A composition's components that a normalising read would change and alternatives refused by
+# request faults on two conditions or more, where `components_normalised` and
+# `request_faults_of_the_first_alternative_alone` show, are too thin for a floor at `ci`, and each is held to
+# one at `deep` alone (`deep_chances`; README, "The regions held to a floor"). Over 24 runs at `ci`
+# (2026-10-21, derandomised, each its own stream) both showed in 0.036 of the examples, least 0.0085 and
+# 0.0195, a count varying 7.3 and 8.7 times a binomial count's, and over 16 runs of 2,000 at `deep`'s size in
+# 0.036 (least 0.014 and 0.019; a run of 20,000 takes about 15 minutes, too long to measure here). Each is
+# declared by a chance at or below its least, 0.008 and 0.019, whose floors at `deep` are 15 and 95 examples
+# of 20,000. A correct run falls below them with a probability of 4.3e-7 and 7.3e-7 by `audits.py`'s model at
+# those chances (2,500 draws each shown in 5 examples), and of at most 7e-35 and 6e-22 at the means and
+# variances measured, scaled to `deep`'s examples.
+@pytest.mark.deep_chances(components_not_normalised=0.008, request_faults_of_two_alternatives=0.019)
 @pytest.mark.chances(
     form_constant=0.29,
     form_interval=0.14,
@@ -382,8 +434,25 @@ def test_the_read_agrees_with_the_model_on_values_and_alternatives(example: Exam
         feature(planted, planted.startswith("form_") or planted in ("standing", "unknown_member"))
     implementation = implementation_outcome(example)
     feature("constant_refused_bounds", a_constant_refused_bounds(example, implementation))
+    feature("components_not_normalised", components_not_normalised(implementation))
+    feature("request_faults_of_two_alternatives", request_faults_of_two_alternatives(example, implementation))
     feature(example.kind)
     check_outcome(example, implementation)
+
+
+# The units of steps 9 and 10 that the model's faults pass (`plus_minus_units_unchecked` and
+# `token_condition_unit_accepted`), by the region where each shows: a read that plants the fault and whose
+# result gives `unit_mismatch` on the condition holding the unit. A read that ends before step 9, at a `want`
+# its field's form cannot give (`want_mismatch`), gives none.
+UNIT_REFUSALS: dict[str, tuple[str, str]] = {
+    "plus_minus_unit_refused": ("unit_plus_minus", "temperature"),
+    "token_condition_unit_refused": ("unit_token_condition", "measurement_geometry"),
+}
+
+
+def refuses_its_planted_unit(example: Example, implementation: Outcome, region: str) -> bool:
+    fault, condition = UNIT_REFUSALS[region]
+    return fault in example.planted and gives(implementation, "unit_mismatch", condition)
 
 
 # A result holding `condition_unchecked`, where HP1's mutant that drops that reason's condition shows
@@ -395,12 +464,23 @@ def test_the_read_agrees_with_the_model_on_values_and_alternatives(example: Exam
 # binomial count's) and with 5e-11 at that of the 20 (10.4 times). The region takes about a quarter of the
 # draws of steps 9 and 10, the one kind that can hold it, so each of their first faults shows in about three
 # quarters of its share on main.
+# The two refused units (`UNIT_REFUSALS`), too thin for a floor at `ci`, each held to one at `deep` alone
+# (`deep_chances`; README, "The regions held to a floor"). Over 24 runs at `ci` (2026-10-21, derandomised,
+# each its own stream) they showed in 0.0247 and 0.0255 of the examples, least 0.0105 and 0.0075, a count
+# varying 3.8 and 6.1 times a binomial count's, and over 4 runs at `deep` in 0.0256 and 0.0283 (least 0.0226
+# and 0.0260). Each is declared by a chance below its least at `ci`, 0.01 and 0.007, whose floors at `deep`
+# are 25 and 10 examples of 20,000. A correct run falls below them with a probability of 2.4e-7 and 4.4e-7 by
+# `audits.py`'s model at those chances (2,500 draws each shown in 5 examples), and of 3e-47 and 3e-35 at the
+# means and variances measured at `ci`, scaled to `deep`'s examples.
+@pytest.mark.deep_chances(plus_minus_unit_refused=0.01, token_condition_unit_refused=0.007)
 @pytest.mark.chances(condition_unchecked=0.08)
 @pytest.mark.drawn(*PARTS["faults"])
 @given(strategies.drawn(SIZE, PARTS["faults"]))
 def test_the_read_agrees_with_the_model_on_faults_of_steps_8_to_10(example: Example) -> None:
     implementation = implementation_outcome(example)
     feature("condition_unchecked", gives(implementation, "condition_unchecked"))
+    for region in UNIT_REFUSALS:
+        feature(region, refuses_its_planted_unit(example, implementation, region))
     feature(example.kind)
     check_outcome(example, implementation)
 
