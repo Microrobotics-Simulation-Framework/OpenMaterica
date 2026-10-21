@@ -4,13 +4,16 @@ Write a record, then read a value from it, in Python. A test runs every line of 
 what it prints with what is shown here (`tests/examples/test_quickstart.py`), so the page and the code cannot
 drift apart.
 
-> **This release reads constants, intervals, compositions and evidence.** A read gives the value of a constant
-> field, the bounds of an interval, the components of a composition or the reports of evidence. A field holding
-> a table, and a request with a pick, an overlay or an extrapolation, are not read yet: the read raises
-> `NotImplementedError`, rather than give an answer a later release could contradict. A field holding
-> alternatives is read one alternative at a time: one whose conditions the request does not meet is set aside,
-> one that breaks its shape, holds another unit or withholds its value refuses the field, and the one left is
-> read; where more than one is left, the result is `no_pick` until picks are read (S4).
+> **This release reads constants, intervals, compositions, evidence and tables.** A read gives the value of a
+> constant field, the bounds of an interval, the components of a composition, the reports of evidence, or a
+> table's value at the operating value of its axis, with the table it is read from; a read outside the table's
+> readable range or at a declared edge is refused. A request with a pick, an overlay or an extrapolation is not
+> read yet, nor a table among alternatives whose read is outside its range, at an edge or without a single
+> operating value for its axis: the read raises `NotImplementedError`, rather than give an answer a later
+> release could contradict. A field holding alternatives is read one alternative at a time: one whose
+> conditions the request does not meet is set aside, one that breaks its shape, holds another unit or withholds
+> its value refuses the field, and the one left is read; where more than one is left, the result is `no_pick`
+> until picks are read (S4).
 
 > **The example records are examples, not reviewed library data.** They are not yet fully human-reviewed, and
 > may change in a later commit ([`examples/README.md`](../../examples/README.md)).
@@ -139,7 +142,8 @@ that value like a stated one, and it reads `met` where the request's tolerance f
 
 ## What this release does not read yet
 
-- **Tables and extrapolation** (S3), **picks and overlays** (S4), **scenes** (a region target, and a target
+- **Extrapolation** beyond a table's readable range (S3), **picks and overlays**, and a table among
+  alternatives whose read is outside its range or at an edge (S4), **scenes** (a region target, and a target
   record that is an overlay), **fit records** (`want: fit` on a field holding one), **sampling**, **USD** and
   **`materica check`**.
 
