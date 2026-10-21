@@ -291,14 +291,13 @@ fill-ins and picks, with the declarations' arms for them and trainable fields; `
 plain scene manifest with regions, domains, layered paths and label crosswalks, with the helper that derives
 a layered path from 3-D geometry (AD 12.1, R14), and the declarations' scene arms; then the scene documents'
 USD form, the stage check, the engine crosswalk with OpenMaterica's one crosswalk (`UsdPhysics`), and the
-engine adapter, with the engine results. Their cases are planned for 0.1.0, except the material input
-sheet's (R7, 0.2); the
-scaffold that drafts engine crosswalks is an `openmaterica-authoring` tool, tested there. Label volumes, field
-overrides and the label crosswalk's USD form wait for the minor version that brings their first consumer. The
-other forms (the power law, whose first field arrives with the acoustic section; the model parameter set;
-reference data), families and mixing are specified here so that 0.1.0's records do not have to change when
-they arrive; their suites are optional until that version (AD 12.2). So are sampling (the sampling suite and
-BC-021), direction-dependent values (SC-016), and what the uncertainty structures, families and declarations
-specify for them: `params` per structure, the admissibility manifest, ensembles' levels and groups, nominal
-vectors, the sampling contract, the declaration's `sampling` and `population_level`, and `precision`. Every
-suite is a claim a reader chooses to make: a reader of plain records need not claim USD read.
+engine adapter, with the engine results. Their cases are planned for 0.1.0, except the material input sheet's
+(R7, 0.2); the scaffold that drafts engine crosswalks is an `openmaterica-authoring` tool, tested there. Label
+volumes, field overrides and the label crosswalk's USD form wait for the minor version that brings their first
+consumer. The other forms (the power law, whose first field arrives with the acoustic section; the model
+parameter set; reference data), families and mixing are specified here so that 0.1.0's records do not have to
+change when they arrive; their suites are optional until that version (AD 12.2). So are sampling (the sampling
+suite and BC-021), direction-dependent values (SC-016), and what the uncertainty structures, families and
+declarations specify for them: `params` per structure, the admissibility manifest, ensembles' levels and groups,
+nominal vectors, the sampling contract, the declaration's `sampling` and `population_level`, and `precision`.
+Every suite is a claim a reader chooses to make: a reader of plain records need not claim USD read.
