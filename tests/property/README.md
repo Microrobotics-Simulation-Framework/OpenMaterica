@@ -1477,7 +1477,8 @@ died at its own assertion too, none past the 267th example.
   as the audit holds each parameter to its own;
 - **each profile's rule** (`audits.RULES`): `ci` holds the drawn features and those declared by their chances
   to their draw floors, and a declared feature to its least share; `deep` holds each feature to its least
-  share, a third of its share or chance where it is drawn or declared by its chance; and `dev` holds every
+  share, a third of its share or chance where it is drawn or declared by its chance, and each declared by
+  `deep_chances` to its draw floor, which no other profile judges; and `dev` holds every
   feature to its draw floor where that is at least 10, judging no other (2026-10-18). There a declared feature
   counts as drawn with three times its least share, and is never held above its least share. So, at the chance
   its floor assumes, no feature `dev` judges fails a correct run with a probability above 1e-6 by the floors'
@@ -1491,8 +1492,10 @@ died at its own assertion too, none past the 267th example.
   third of their share, with a bound of about 1e-3 a feature set before CI's per-commit job (#30) ran every
   property at `dev` once for each commit: three of about 75 `dev` jobs of pull requests #35 and #37 failed so
   by chance that day, each a feature drawn among three. `tests/unit/test_audits.py` holds those three runs'
-  counts, pins what `ci` and `deep` judge (in runs of any size, with `interesting` and `invalid` draws), and fails if a feature judged by a floor, at any profile and any
-  declaration on a grid, fails a correct run with a probability above 1e-6 by the model.
+  counts, pins what `ci` and `deep` judge of the features declared, drawn or declared by their chances (in
+  runs of any size, with `interesting` and `invalid` draws), holds those declared by `deep_chances` to be
+  judged at `deep` alone, and fails if a feature judged by a floor, at any profile and any declaration on a
+  grid, fails a correct run with a probability above 1e-6 by the model.
 
 An audit judges random draws, so a sound property fails it now and then by chance. By the floors' model, each
 feature judged at `dev` fails a correct run with a probability of at most 1e-6, and a run of every property on

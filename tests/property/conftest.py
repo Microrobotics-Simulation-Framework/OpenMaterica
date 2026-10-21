@@ -32,11 +32,13 @@ def pytest_runtest_call(item: pytest.Item) -> Generator[None, None, None]:
     declared = item.get_closest_marker("features")
     drawn = item.get_closest_marker("drawn")
     chances = item.get_closest_marker("chances")
+    deep_chances = item.get_closest_marker("deep_chances")
     problems = audits.feature_shortfalls(
         counts,
         {} if declared is None else dict(declared.kwargs),
         () if drawn is None else drawn.args,
         chances={} if chances is None else dict(chances.kwargs),
+        deep_chances={} if deep_chances is None else dict(deep_chances.kwargs),
         **audits.RULES[PROFILE],
     )
     if problems:
