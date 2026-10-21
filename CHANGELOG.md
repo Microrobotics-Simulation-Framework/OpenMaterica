@@ -105,6 +105,16 @@ every family entry goes in `families/CHANGELOG.md`.
   it (`declarations.md` section 4.2); an implied condition that states the shear rate is what changes the read, to
   `met` where the request's tolerance for it holds (`read_side_contract.md` section 5). Wording only; no case, no
   schema and no behaviour changes.
+- `scripts/gen_kill_counts.py --record` refuses reports that do not cover every recorded group, each of its
+  recorded mutants at both sizes, and names each group they lack, and the mutants they lack of a group they
+  hold. It replaced each group a report held, so a report of part of a group's searches dropped the kill
+  points of the rest, and `--check` still passed (a README row of a mutant the file lacks passes it). Recording
+  one group alone is kept, and made explicit: `--group GROUP` records the groups it names, which the reports
+  must cover, and keeps the others (refused, as before, where the inputs changed). A mutant or a group that is
+  gone is dropped by `--measure --record` alone, from a run of every search. `tests/unit/test_gen_kill_counts.py`
+  holds the refusal for a report of part of a group, of a group left out and of both, and for a group `--group`
+  names that the reports do not cover; its control, the check removed, records a report of part of a group and
+  loses the kill points of the rest. `--measure --record` and `--against` are unchanged.
 
 ### Schema
 - `test_method` gains `reference_formulation` (maintainer, 2026-10-19): the test method of a value evaluated from
