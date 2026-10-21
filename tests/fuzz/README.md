@@ -116,7 +116,7 @@ places table item 3 tells apart (`field_oracle.places`), one double above each e
 interval just above an edge raises (`ArithmeticError`) where the value just above the edge lies outside 0.6 to
 1.6 times the value just below, either way (`seeded_fault.faulty_value`). `MATERICA_FUZZ_SEEDED_FAULT=table_edges`
 seeds it alone, in the fourth target. Of the 22 edges the seed tables hold twice in `x` (read as JSON,
-2026-10-21), the ratio of the value above to the value below lies between 0.99 and 1.092, and the target reads
+2026-10-21), the ratio of the value above to the value below lies between 0.99 and 1.2, and the target reads
 all 816 seeds with the fault seeded and finds nothing (`-runs=0`), so the fuzzer has to change a value at an
 edge, as halving or doubling either one does, in a table that keeps its edge. A fault raising for every read
 just above an edge, as the S3 design words it, every seed with an edge would hold, since the target reads there.
