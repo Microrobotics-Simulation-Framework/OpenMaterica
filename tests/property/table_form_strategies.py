@@ -109,6 +109,11 @@ def base_reads(draw: st.DrawFn, size: Size = SIZE, fields: tuple[str, ...] = TAB
     registered = draw(st.sampled_from(fields))
     drawn, _ = draw(tables.tables(size))
     axis = draw(st.sampled_from(NUMERIC_CONDITIONS))
+    return read_of(drawn, registered, axis)
+
+
+def read_of(drawn: tables.Table, registered: str, axis: str) -> Read:
+    """A record holding `drawn` as the table of the field `registered`, over `axis`, and its neighbour."""
     table: Json = {
         "axis": axis,
         "axis_unit": registered_unit(axis),
@@ -454,19 +459,20 @@ def _source_range_reversed(draw: st.DrawFn, drawn: Read) -> Reasons:
 
 
 def _source_range_disjoint(draw: st.DrawFn, drawn: Read) -> Reasons:
+    source_range_past_x(table_of(drawn))
+    return FORM_INVALID
+
+
+def source_range_past_x(table: Json) -> None:
     """A `source_range` past `x`'s range: two doubles above its end, or below its start, or one where only one
-    lies there. An `x` from the least double to the largest has its last knot lowered by one double first,
-    which leaves the table one step 8 accepts, the knot before it lying lower."""
-    table = table_of(drawn)
-    x = listing(table["x"])
-    knots = [float(str(value)) for value in x]
+    lies there. Where neither end has a finite double beyond it, `x` holding the least double and the
+    largest, the knots at its top are lowered first (`top_lowered`)."""
+    knots = [float(str(value)) for value in listing(table["x"])]
     if not any(
         math.isfinite(math.nextafter(end, away))
         for end, away in ((knots[-1], math.inf), (knots[0], -math.inf))
     ):
-        lowered = math.nextafter(knots[-1], -math.inf)
-        assert knots[-2] < lowered, "x holds the two largest doubles and the least"
-        x[-1] = knots[-1] = lowered
+        knots = top_lowered(table)
     for end, away in ((knots[-1], math.inf), (knots[0], -math.inf)):
         near = math.nextafter(end, away)
         if math.isfinite(near):
@@ -474,7 +480,28 @@ def _source_range_disjoint(draw: st.DrawFn, drawn: Read) -> Reasons:
             ends = sorted((near, far if math.isfinite(far) else near))
             table["source_range"] = [ends[0], ends[1]]
             break
-    return FORM_INVALID
+
+
+def top_lowered(table: Json) -> list[float]:
+    """`table` with the run at the top of `x` lowered by one double, and its knots after. The run is the last
+    knot and each before it that is the knot after it (an edge's two entries) or the double just below it;
+    each of its knots is lowered by one double, an edge among them in `edges` too, and each value of `y`
+    stays at its knot. The knot before the run lies more than one double below the run's lowest knot, so below
+    where that knot is lowered to: `x` still rises, each edge is held twice strictly inside it, and step 8
+    accepts the table as it did. It is called where `x` holds the least double, which no run from the top
+    reaches, so that a knot lies before the run."""
+    x, edges = listing(table["x"]), listing(table["edges"])
+    knots = [float(str(value)) for value in x]
+    start = len(knots) - 1
+    while start > 0 and knots[start - 1] in (knots[start], math.nextafter(knots[start], -math.inf)):
+        start -= 1
+    run = set(knots[start:])
+    for index in range(start, len(knots)):
+        x[index] = knots[index] = math.nextafter(knots[index], -math.inf)
+    for index, edge in enumerate(edges):
+        if float(str(edge)) in run:
+            edges[index] = math.nextafter(float(str(edge)), -math.inf)
+    return knots
 
 
 def _source_range_only_at_an_edge(draw: st.DrawFn, drawn: Read) -> Reasons:

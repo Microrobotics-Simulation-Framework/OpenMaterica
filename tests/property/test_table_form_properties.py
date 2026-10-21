@@ -15,6 +15,9 @@ outcome is then "past step 9", whatever they give. The mutants they kill are in 
   condition its Label cell names.
 """
 
+import copy
+import math
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -24,18 +27,24 @@ from tests.property.condition_strategies import OTHER_UNITS
 from tests.property.support import feature
 from tests.property.table_form_strategies import (
     CATALOGUE,
+    FORM_INVALID,
     KINDS,
     ON_ITS_ROWS_AXIS,
     PAST_STEP_9,
     REGIONS,
+    TABLE_FIELDS,
     Added,
     Faulty,
     Labelled,
     OtherAxisUnit,
     Outcome,
+    Read,
     neighbour,
     outcome,
+    table_of,
 )
+from tests.property.tables import LARGEST, Table
+from tests.property.value_fields import NUMERIC_CONDITIONS, listing
 
 # HP13.
 
@@ -76,6 +85,54 @@ def test_one_table_fault_gives_the_reasons_its_rule_gives(part: str, data: st.Da
     for region, shows in REGIONS.get(part, {}).items():
         feature(region, shows(faulty))
     check_one_fault(faulty)
+
+
+# HP13's fault `source_range_disjoint` where no finite double lies beyond either end of `x`, which holds the
+# least double and the largest, so that the fault lowers the run of knots at `x`'s top by one double first
+# (`top_lowered`). Before it did, the fault refused to build each but the second: `main`'s `deep` run of
+# 2026-10-21 drew the last. The second, its run at the bottom, holds that the run lowered is the top's.
+SECOND_LARGEST = math.nextafter(LARGEST, -math.inf)
+
+
+def upward(start: float, count: int) -> tuple[float, ...]:
+    """`count` adjacent doubles, from `start` up."""
+    found = [start]
+    while len(found) < count:
+        found.append(math.nextafter(found[-1], math.inf))
+    return tuple(found)
+
+
+NO_DOUBLE_BEYOND: dict[str, tuple[tuple[float, ...], tuple[float, ...]]] = {
+    "the_least_and_the_two_largest": ((-LARGEST, SECOND_LARGEST, LARGEST), ()),
+    "the_two_least_and_the_largest": ((-LARGEST, -SECOND_LARGEST, LARGEST), ()),
+    "both_ends_beside_knots": ((-LARGEST, -SECOND_LARGEST, SECOND_LARGEST, LARGEST), ()),
+    "an_edge_beside_the_largest": ((-LARGEST, SECOND_LARGEST, SECOND_LARGEST, LARGEST), (SECOND_LARGEST,)),
+    "the_deep_runs": ((*upward(-LARGEST, 12), 0.0, SECOND_LARGEST, LARGEST), ()),
+}
+
+
+@pytest.mark.parametrize(
+    ("x", "edges"), [pytest.param(*corner, id=name) for name, corner in NO_DOUBLE_BEYOND.items()]
+)
+def test_a_source_range_past_x_is_built_where_no_double_lies_beyond_either_end(
+    x: tuple[float, ...], edges: tuple[float, ...]
+) -> None:
+    """The fault reads as HP13 holds it, its `source_range` lies past `x`'s range, and its table without
+    that `source_range` passes steps 8 and 9, each value of `y` at its knot: the knots it lowered leave a
+    table step 8 accepts, so that the refusal is the `source_range`'s."""
+    y = tuple(float(index) for index in range(len(x)))
+    base = strategies.read_of(Table(x, y, "linear", edges, None), TABLE_FIELDS[0], NUMERIC_CONDITIONS[0])
+    read = Read(copy.deepcopy(base.record), base.field)
+    table = table_of(read)
+    strategies.source_range_past_x(table)
+    check_one_fault(Faulty("source_range_disjoint", base, read, Outcome("not_met", FORM_INVALID)))
+    knots = [float(str(value)) for value in listing(table["x"])]
+    low, high = (float(str(value)) for value in listing(table.pop("source_range")))
+    assert knots[-1] < low <= high or low <= high < knots[0], f"{[low, high]} beside x {knots}"
+    assert listing(table["y"]) == list(y), f"y moved: {table['y']}"
+    assert outcome(read.record, read.field) == Outcome(PAST_STEP_9), (
+        f"x {knots}, edges {table['edges']}: {outcome(read.record, read.field)}"
+    )
 
 
 # HP14.
