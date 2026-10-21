@@ -102,8 +102,8 @@ def structural_fault(table: Table) -> str | None:
     """How `table` breaks `record_format.md` section 6 table items 1, 2 and 4, which a reader refuses
     (`form_invalid`), or `None`. An evaluator is given no such table, and this one refuses to evaluate one."""
     x, edges = table.x, table.edges
-    # record_format.md:401-402 "`x` holds at least two distinct values and is non-decreasing, and `y` holds
-    # one number for each entry of `x`"; record_format.md:405 "Numbers are compared by value, so `-0` equals
+    # record_format.md:402-403 "`x` holds at least two distinct values and is non-decreasing, and `y` holds
+    # one number for each entry of `x`"; record_format.md:406 "Numbers are compared by value, so `-0` equals
     # `0`."
     if len(set(x)) < 2:
         return "x holds fewer than two distinct values"
@@ -111,7 +111,7 @@ def structural_fault(table: Table) -> str | None:
         return "x decreases"
     if len(table.y) != len(x):
         return "y does not hold one number for each entry of x"
-    # record_format.md:403-405 "with no number twice; each edge lies strictly between `x[0]` and `x[-1]` and
+    # record_format.md:404-406 "with no number twice; each edge lies strictly between `x[0]` and `x[-1]` and
     # appears in `x` exactly twice, consecutively" ... "and no other x value repeats"
     if len(set(edges)) != len(edges):
         return "an edge is listed twice"
@@ -121,10 +121,10 @@ def structural_fault(table: Table) -> str | None:
         return "an edge is not in x exactly twice"
     if any(x.count(value) > 1 for value in x if value not in edges):
         return "an x value that is no edge repeats"
-    # record_format.md:406 "A `loglog` table holds only positive `x` and `y`."
+    # record_format.md:407 "A `loglog` table holds only positive `x` and `y`."
     if table.scheme == "loglog" and not all(number > 0 for number in (*x, *table.y)):
         return "a log-log table holds a number that is not positive"
-    # record_format.md:425-427 "the first not greater than the second, sharing with `[x[0], x[-1]]` at least
+    # record_format.md:426-428 "the first not greater than the second, sharing with `[x[0], x[-1]]` at least
     # one value that is no edge"
     if table.source_range is not None:
         low, high = table.source_range
@@ -269,7 +269,7 @@ def _knots(table: Table, arithmetic: _Arithmetic[N]) -> _Knots[N]:
 def _evaluate(table: Table, at: float, side: Side, arithmetic: _Arithmetic[N]) -> Evaluation:
     knots = _knots(table, arithmetic)
     point = arithmetic.number(at)
-    # record_format.md:415-416 "An operating value is compared with these ends and with the edges by value and
+    # record_format.md:416-417 "An operating value is compared with these ends and with the edges by value and
     # exactly"; read_side_contract.md:581 "At a declared edge, wherever it lies, inside the readable range or
     # outside it, an evaluator refuses"
     if point in knots.edges:
@@ -296,7 +296,7 @@ def _evaluate(table: Table, at: float, side: Side, arithmetic: _Arithmetic[N]) -
 
 
 def _readable_range(x: tuple[N, ...], source_range: tuple[N, N] | None) -> tuple[N, N]:
-    # record_format.md:414-415 "from `x[0]`, or `source_range[0]` where that is greater, to `x[-1]`, or
+    # record_format.md:415-416 "from `x[0]`, or `source_range[0]` where that is greater, to `x[-1]`, or
     # `source_range[1]` where that is smaller, inclusive"
     if source_range is None:
         return x[0], x[-1]
@@ -307,12 +307,12 @@ def _readable_range(x: tuple[N, ...], source_range: tuple[N, N] | None) -> tuple
 def _value(knots: _Knots[N], point: N) -> N:
     """The value at `point`, a point of the table that is no edge."""
     if point in knots.x:
-        # A knot that is no edge is in `x` once (record_format.md:404-405 "no other x value repeats"), and the
+        # A knot that is no edge is in `x` once (record_format.md:405-406 "no other x value repeats"), and the
         # formulas of both intervals beside it give its `y` there. The `y` is returned as stored, as the TE
         # suite's README has it ("At a knot the value is that knot's `y`"), so a `-0` stays negative zero,
         # in `exact` mode too (`_NegativeZero`).
         return knots.y[knots.x.index(point)]
-    # record_format.md:421-422 "the interval used is the one whose two knots bracket the read"
+    # record_format.md:422-423 "the interval used is the one whose two knots bracket the read"
     return _interpolate(knots, _interval(knots.x, point, "right"), point)
 
 
@@ -336,7 +336,7 @@ def _derivative(knots: _Knots[N], point: N, value: N, side: Side, low: N, high: 
 def _interval(x: tuple[N, ...], point: N, side: Side) -> int:
     """The index `i` of the interval `[x[i], x[i + 1]]` on `side` of `point`: below it, `x[i] < point <= x[i +
     1]`, or above it, `x[i] <= point < x[i + 1]`. Between two knots both are the interval that brackets it."""
-    # record_format.md:422-423 "strictly where an edge is concerned, so a read just below an edge uses the
+    # record_format.md:423-424 "strictly where an edge is concerned, so a read just below an edge uses the
     # knot below it"; read_side_contract.md:575-576 "the value and derivative below it come from the interval
     # below, and above it from the interval above"
     return (bisect_left(x, point) if side == "left" else bisect_right(x, point)) - 1

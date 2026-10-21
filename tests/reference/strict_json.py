@@ -171,15 +171,15 @@ def _string(text: str) -> str:
 def content_hash(value: JsonValue) -> str:
     """`record_format.md` section 9 item 1: the hash of `value` as stored, less the members it names."""
     if isinstance(value, dict):
-        # record_format.md:560 "the top-level `content_hash` and `card`"
+        # record_format.md:561 "the top-level `content_hash` and `card`"
         value = {name: member for name, member in value.items() if name not in ("content_hash", "card")}
     digest = hashlib.sha256(canonical(_without_reviews(value, inside_provenance=False)).encode("utf-8"))
-    # record_format.md:566 "`sha256:` followed by the 64 lowercase hexadecimal digits of the digest"
+    # record_format.md:567 "`sha256:` followed by the 64 lowercase hexadecimal digits of the digest"
     return "sha256:" + digest.hexdigest()
 
 
 def _without_reviews(value: JsonValue, *, inside_provenance: bool) -> JsonValue:
-    # record_format.md:560-561 "every member named `review` or `copy` at any depth inside any object that is
+    # record_format.md:561-562 "every member named `review` or `copy` at any depth inside any object that is
     # the value of a member named `provenance`"
     if isinstance(value, list):
         return [_without_reviews(item, inside_provenance=inside_provenance) for item in value]

@@ -1691,7 +1691,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # The slip rule, in a request and a record
     "every_slip_ignored": Mutant(
         "a member one slip from a named one ignored, in a request and in a record",
-        'record_format.md:586-591 "refuses a member it does not know, where items 1 and 4 would ignore or '
+        'record_format.md:587-592 "refuses a member it does not know, where items 1 and 4 would ignore or '
         'skip it, that is one slip (below)", read_side_contract.md:40-41 "a member one slip '
         "(`record_format.md` section 10) from a member this section or `declarations.md` names at that "
         'place"',
@@ -1699,13 +1699,13 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "plurals_not_slips": Mutant(
         "a word made plural or singular not one slip",
-        'record_format.md:600-602 "making one of its `_`-separated words plural or singular"',
+        'record_format.md:601-603 "making one of its `_`-separated words plural or singular"',
         {"_plural_of_either": no_plural},
         survives="each plural slip in the cases adds an `s` (`fluids`), and so is one character inserted",
     ),
     "envelope_body_and_section_slips_ignored": Mutant(
         "a slip in the envelope, the body or a section refuses no field",
-        'record_format.md:588-590 "in the envelope or the body, the names in `sections` included, each '
+        'record_format.md:589-591 "in the envelope or the body, the names in `sections` included, each '
         'field read from that record"',
         {"record_slips": no_record_slip, "section_slips": no_section_slip},
     ),
@@ -1738,7 +1738,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # Step 7
     "alternatives_shape_unchecked": Mutant(
         "an `alternatives` that is empty, not a list or beside a value field's members read",
-        'record_format.md:340-344 "`alternatives` is a non-empty list"',
+        'record_format.md:341-345 "`alternatives` is a non-empty list"',
         {"alternatives_broken": never_broken, "read_alternatives": alternatives_of_any_shape},
     ),
     "want_mismatch_beside_no_pick": Mutant(
@@ -2005,7 +2005,7 @@ MUTANTS: Mapping[str, Mutant] = {
     "slips_of_alternatives_ignored": Mutant(
         "a member one slip from `alternatives` beside a value field's members ignored",
         'record_format.md:323 "A value field is an object with these members, or an `alternatives` object '
-        '(below)" (the maintainer\'s ruling, 2026-10-19), record_format.md:586 "refuses a member it does not '
+        '(below)" (the maintainer\'s ruling, 2026-10-19), record_format.md:587 "refuses a member it does not '
         'know, where items 1 and 4 would ignore or skip it, that is one slip (below)"',
         {"FIELD_PLACE_NAMES": model.VALUE_FIELD_NAMES},
     ),
@@ -2181,7 +2181,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # Rules S2a-4's review pinned (half B, L4; half A, L6)
     "ies_not_a_plural": Mutant(
         "a final `y` exchanged with `ies` not one slip",
-        'record_format.md:601-602 "a final `y` exchanged with `ies`"',
+        'record_format.md:602-603 "a final `y` exchanged with `ies`"',
         {"_plural_of_either": ies_not_a_plural},
         survives="no case holds a slip of a final `y` made `ies`",
     ),
@@ -2222,12 +2222,12 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "outside_range_dropped_at_an_edge": Mutant(
         "at an edge outside the readable range, `at_edge` alone",
-        'record_format.md:418-419 "`outside_range` stands beside `at_edge`"',
+        'record_format.md:419-420 "`outside_range` stands beside `at_edge`"',
         {"read_the_table": outside_range_dropped_at_an_edge},
     ),
     "source_range_never_narrows": Mutant(
         "the readable range `x`'s, whatever `source_range` holds",
-        'record_format.md:414-415 "or `source_range[0]` where that is greater"',
+        'record_format.md:415-416 "or `source_range[0]` where that is greater"',
         {
             "read_the_table": source_range_never_narrows_the_read,
             "table_axis": source_range_never_narrows_the_axis,
@@ -2273,7 +2273,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "extrapolation_end_of_x": Mutant(
         "the end value `y[0]` or `y[-1]` where `source_range` narrows the range",
-        'read_side_contract.md:514 "the result carries the value at the range" and record_format.md:414-415 '
+        'read_side_contract.md:514 "the result carries the value at the range" and record_format.md:415-416 '
         '"or `source_range[0]` where that is greater, to `x[-1]`, or `source_range[1]` where that is '
         'smaller"',
         {"read_the_table": end_value_of_x},
@@ -2345,7 +2345,7 @@ MUTANTS: Mapping[str, Mutant] = {
     "edge_outside_the_range_sets_aside": Mutant(
         "a table alternative read exactly at an edge outside its readable range, `outside_range` beside "
         "`at_edge`, set aside, not refusing",
-        'record_format.md:364-366 "A table alternative read exactly at a declared edge (`at_edge`) '
+        'record_format.md:365-367 "A table alternative read exactly at a declared edge (`at_edge`) '
         'refuses the field"',
         {"fate_of": edge_outside_the_range_sets_aside},
     ),
@@ -2375,7 +2375,7 @@ MUTANTS: Mapping[str, Mutant] = {
     "over_a_range_entry_bare": Mutant(
         "the `no_pick` entry of a table read over an operating range of its axis without its unit, "
         "specimen, statistics and provenance",
-        'record_format.md:376-378 "with its own unit, conditions, specimen, statistics, provenance and '
+        'record_format.md:377-379 "with its own unit, conditions, specimen, statistics, provenance and '
         'labels"',
         {"read_value_field": over_a_range_entry_bare},
     ),
@@ -2394,7 +2394,7 @@ MUTANTS: Mapping[str, Mutant] = {
     "kept_for_an_extrapolation_under_any_want": Mutant(
         "an alternative outside its range kept for an extrapolation that would cover it under `want: "
         "value`, whatever the `want`",
-        'record_format.md:357-358 "unless an extrapolation the request carries would cover it"',
+        'record_format.md:358-359 "unless an extrapolation the request carries would cover it"',
         {"read_alternatives": kept_under_any_want},
     ),
 }

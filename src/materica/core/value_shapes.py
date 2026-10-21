@@ -68,7 +68,17 @@ SECTION_MEMBERS = ("fields", "specimen")
 
 # A value field's members (`record_format.md` section 5), and each form's own member: `value` for a constant,
 # otherwise the member named like the form. `alternatives` is named at a field's place too, in place of them.
-FIELD_MEMBERS = ("form", "unit", "conditions", "specimen", "statistics", "provenance", "label", "fit")
+FIELD_MEMBERS = (
+    "form",
+    "unit",
+    "conditions",
+    "specimen",
+    "statistics",
+    "provenance",
+    "label",
+    "label_basis",
+    "fit",
+)
 FORM_MEMBERS = {form: "value" if form == "constant" else form for form in VOCABULARY.token_lists["form"]}
 PROVENANCE_MEMBERS = (
     "origin",

@@ -332,6 +332,7 @@ A value field is an object with these members, or an `alternatives` object (belo
 | `statistics` | yes, except for `evidence` | the statistics block (`uncertainty.md`). For a table or a power law it applies to every value the form gives (`uncertainty.md` section 1 rule 2). In a reference-only value it holds `{"status": "withheld"}` |
 | `provenance` | yes | origin, source, extraction, evidence, review (`provenance.md`) |
 | `label` | where the field's row names one; a reader does not refuse its absence (section 4.1) | the field's label (section 4.1) |
+| `label_basis` | no; where `label` is present, a record check flags its absence | `{"basis": "stated"}`, or `{"basis": "inferred", "inferred_from": <text>}`: whether the source states the trivial model the label names, or a curator inferred it (section 4.1) |
 | `fit` | where `provenance.origin` is `fitted` | the fit record (`fits_and_reference_data.md` section 2) |
 
 **Alternatives.** Where sources disagree, or one source gives values at several conditions, or a grade's
@@ -646,7 +647,7 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | PR-025 | plain read | reference data is never returned as a property |
 | PR-026 | plain read | before 1.0.0, a record of another minor version is refused (`other_version`) |
 | PR-027 | plain read | a record of another major version is refused (`other_version`) |
-| PR-030 | plain read | an unknown member inside a field is ignored; one that is one slip from a member named at its place refuses the field (`form_invalid`): a field's `specimne`, and in a section's `specimen` a fact `tissue_stat`, which refuses each field read from the section; one inside a `review` reads it as `{"status": "not_checked"}`, and one inside `extraction` refuses nothing |
+| PR-030 | plain read | an unknown member inside a field is ignored; one that is one slip from a member named at its place refuses the field (`form_invalid`): a field's `specimne`, and in a section's `specimen` a fact `tissue_stat`, which refuses each field read from the section; one inside a `review` reads it as `{"status": "not_checked"}`, and one inside `extraction` refuses nothing; a field's `label_basis` is neither checked nor returned, whatever it holds, and a member one slip from it (`label_basi`) refuses the field |
 | PR-031 | plain read | an unknown condition name gives `unknown` |
 | PR-032 | plain read | an unknown token in an enumerated member refuses the field only (`unknown_token`) |
 | PR-033 | plain read | a record with one unknown token is not malformed; its other fields are read |
@@ -693,4 +694,4 @@ schema, a new `MAJOR` in `schema_version`, not in a record's `version` (section 
 | RC-019 | record checks | a log-log table with a non-positive x or y is flagged |
 | RC-120 | record checks | every registered unit code, for fields and conditions, parses as UCUM 2.2 with no special unit in a product or quotient; `Np/m` is refused by that rule; `/m` passes |
 | RC-121 | record checks | a record or document in the `conformance` namespace given from a path outside a conformance tree (a directory `conformance` whose parent is `data`) is flagged, and one given from inside it is not; a check of a whole library leaves conformance trees out |
-| RC-122 | record checks | a field missing the label its row names, or holding a label the row does not name for it, is flagged |
+| RC-122 | record checks | a field missing the label its row names, or holding a label the row does not name for it, is flagged; so is a label without `label_basis`, and a `label_basis` that breaks its shape |

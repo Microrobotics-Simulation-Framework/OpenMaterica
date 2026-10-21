@@ -397,6 +397,11 @@
           },
           {
             "required": [
+              "label_basis"
+            ]
+          },
+          {
+            "required": [
               "fit"
             ]
           }
@@ -423,6 +428,7 @@
         "label": {
           "type": "string"
         },
+        "label_basis": true,
         "fit": true
       }
     },

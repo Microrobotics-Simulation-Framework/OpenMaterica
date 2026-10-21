@@ -750,6 +750,13 @@ class Based(TypedDict):
     basis: Basis
     inferred_from: NotRequired[str]
 
+class LabelBasis(Based):
+    """
+    Where a field's label comes from (record_format.md section 4.1): stated by the source, or inferred by a
+    curator with the text it was inferred from, in a condition's basis shape (provenance.md section 6). A read
+    checks only its name, for slips, and neither checks nor returns it.
+    """
+
 class ConditionDensityKind(Based):
     """
     The token condition density_kind: a token of its row (provenance.md section 6.1 item 1); it registers no
@@ -1317,6 +1324,7 @@ class FieldMembers(TypedDict):
     specimen: NotRequired[Specimen]
     provenance: Provenance
     label: NotRequired[Label]
+    label_basis: NotRequired[LabelBasis]
     fit: NotRequired[JsonObject]
 
 class EvidenceEntry(TypedDict):

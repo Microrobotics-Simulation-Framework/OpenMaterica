@@ -1384,6 +1384,42 @@ def test_a_met_constant_returns_its_value_and_the_members_beside_it() -> None:
     assert written["labels"] == ["materica.fluid.newtonian.v1"]
 
 
+# A label's basis (`record_format.md` section 4.1): "A reader checks only its name, for slips, as it checks
+# every member named at its place (section 10 item 5), and neither checks its shape nor returns it, so no read
+# depends on it." [PR-030]
+LABEL_BASES = [
+    pytest.param({"basis": "stated"}, id="stated"),
+    pytest.param({"basis": "inferred", "inferred_from": "a curator's reading of the source"}, id="inferred"),
+    pytest.param({"basis": "guessed", "x_note": 1.0}, id="breaking_its_shape"),
+    pytest.param(5.0, id="not_an_object"),
+]
+
+
+@pytest.mark.parametrize("basis", LABEL_BASES)
+def test_a_labels_basis_is_neither_checked_nor_returned(basis: JsonValue) -> None:
+    without = json.loads(json.dumps(read_met(met_field()).to_json()))
+    result = read_met(met_field(label_basis=basis))
+    assert (result.status, result.reasons) == ("met", ())
+    assert json.loads(json.dumps(result.to_json())) == without
+
+
+@pytest.mark.parametrize("slip", ["label_basi", "label_bases", "labelbasis", "label_basiss", "lable_basis"])
+def test_a_member_one_slip_from_a_labels_basis_refuses_the_field(slip: str) -> None:
+    """`record_format.md` section 10 item 5: a member one slip from one named at a field's place refuses the
+    field, `label_basis` among them (section 5)."""
+    basis: JsonValue = {"basis": "stated"}
+    result = read_met(met_field(**{slip: basis}))
+    assert (result.status, [reason.code for reason in result.reasons]) == ("not_met", ["form_invalid"]), slip
+
+
+def test_a_labels_basis_beside_alternatives_refuses_the_field() -> None:
+    """`record_format.md` section 5: the object holding `alternatives` holds no member of a value field, and
+    `label_basis` is one."""
+    assert read_met({"alternatives": [met_field()]}).status == "met"
+    result = read_met({"alternatives": [met_field()], "label_basis": {"basis": "stated"}})
+    assert (result.status, [reason.code for reason in result.reasons]) == ("not_met", ["form_invalid"])
+
+
 @pytest.mark.parametrize("held", [{"status": "withheld"}, {"status": "withheld", "reason": "licensed"}])
 def test_a_statistics_block_held_as_a_status_object_is_returned_as_one(held: dict[str, JsonValue]) -> None:
     """`provenance.md` section 1 item 4: a reader returns a status as a status, here the one a constant's

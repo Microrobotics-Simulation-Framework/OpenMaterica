@@ -777,6 +777,37 @@ def test_a_rule_across_objects_requires_its_member_where_its_condition_holds(
     assert reader(field) == []
 
 
+# A label's basis (`record_format.md` section 5's row): `{"basis": "stated"}`, or `{"basis": "inferred",
+# "inferred_from": <text>}`, and nothing else, in the writer; a read neither checks its shape nor returns it
+# (section 4.1), so the reader's `$defs` take any value there.
+LABELLED: JsonValue = {**mapping(CONSTANT), "label": "materica.fluid.newtonian.v1"}
+LABEL_BASES: list[tuple[str, JsonValue, bool]] = [
+    ("stated", {"basis": "stated"}, True),
+    ("inferred", {"basis": "inferred", "inferred_from": "one viscosity over the shear rates measured"}, True),
+    ("inferred_without_its_text", {"basis": "inferred"}, False),
+    ("another_token", {"basis": "measured"}, False),
+    ("an_unknown_member", {"basis": "stated", "x_note": "n"}, False),
+    ("a_status_object", {"status": "unstated"}, False),
+    ("not_an_object", "stated", False),
+]
+
+
+@pytest.mark.parametrize(
+    ("basis", "valid"),
+    [(basis, valid) for _, basis, valid in LABEL_BASES],
+    ids=[case[0] for case in LABEL_BASES],
+)
+def test_a_labels_basis_is_closed_in_the_writer_and_unchecked_in_the_reader(
+    basis: JsonValue, valid: bool
+) -> None:
+    writer = validator("record.writer.json#/$defs/value_field")
+    reader = validator("record.reader.json#/$defs/value_field")
+    field = {**mapping(LABELLED), "label_basis": basis}
+    assert writer(LABELLED) == []
+    assert (writer(field) == []) is valid
+    assert reader(field) == []
+
+
 # The members a read does not check, each with the text that says so: `read_side_contract.md` section 3, step
 # 8, and `provenance.md` section 2 item 6.
 UNCHECKED = {
@@ -784,6 +815,7 @@ UNCHECKED = {
         "read_side_contract.md",
         "the other members of a value field are left to the record checks",
     ),
+    ("field_members", "label_basis"): ("record_format.md", "and neither checks its shape nor returns it"),
     **{
         ("provenance", member): ("provenance.md", "The other members are checked on the write side only.")
         for member in (
