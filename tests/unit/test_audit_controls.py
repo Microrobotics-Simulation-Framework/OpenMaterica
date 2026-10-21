@@ -9,7 +9,9 @@ the property whose own draws the search stands in for, by their chances, of S3a'
 drawing its fault, kind or way first, among them the regions of HP13's planned searches, and of S3b-2's HP20
 to HP23, HP21's relation, the monotonicity property over a table, HP12's table part and HP1, HP2 and HP11's
 table reads, each drawing its way or kind first, and the monotonicity property's worlds stated without origin,
-by their chance: run at the `ci` profile's examples with a generator that
+by their chance, and of S3c's HP24 to HP26 and the monotonicity property over an extrapolation, each drawing
+its way first, and that property's worlds stated without origin, by their chance: run at the `ci` profile's
+examples with a generator that
 stops producing one of them, each property fails its audit, on that feature alone; a parametrised property,
 on one of its parameters, by the marks that parameter carries. The controls of the floors held at `deep`
 alone, which run where `deep` runs, are in `tests/property/test_model_deep_floor_controls.py` and use the run
@@ -30,6 +32,7 @@ from tests.property import test_alternatives_properties as alternatives_properti
 from tests.property import test_canonical_properties as canonical_properties
 from tests.property import test_condition_properties as condition_properties
 from tests.property import test_evaluate_properties as evaluate_properties
+from tests.property import test_extrapolation_properties as extrapolation_properties
 from tests.property import test_hashing_properties as hashing_properties
 from tests.property import test_invariance_properties as invariance_properties
 from tests.property import test_jsonio_properties as jsonio_properties
@@ -394,6 +397,48 @@ CONTROLS = [
         result_properties.test_without_the_hash_suite_the_label_marks_a_table_read,
         "table_at_an_edge",
         ("check_claims",),
+    ),
+    # S3c's: HP24 to HP26 and the monotonicity property over an extrapolation, each its way drawn first, and
+    # the monotonicity property's worlds stated without origin, by their chance.
+    Control(
+        extrapolation_properties.test_an_extrapolation_that_applies_adds_the_end_value_and_what_rests_on_it,
+        "outside_a_narrower_source_range",
+        ("check_applied",),
+    ),
+    Control(
+        extrapolation_properties.test_an_extrapolation_changes_no_read_in_the_range_at_or_across_an_edge_or_under_another_want,
+        "at_an_edge_outside",
+        ("check_not_applied",),
+    ),
+    Control(
+        extrapolation_properties.test_an_extrapolation_located_elsewhere_is_checked_and_never_applied,
+        "an_interval",
+        ("check_elsewhere",),
+    ),
+    Control(
+        extrapolation_properties.test_two_extrapolations_naming_one_field_are_refused_wherever_located,
+        "each_its_own_field",
+        ("check_two",),
+    ),
+    Control(
+        extrapolation_properties.test_an_extrapolation_whose_method_or_law_breaks_its_shape_is_refused,
+        "law_empty",
+        ("check_refused_shape",),
+    ),
+    Control(
+        extrapolation_properties.test_an_extrapolations_ignored_members_and_white_space_law_are_read_and_a_slip_refused,
+        "law_white_space",
+        ("check_read_shape",),
+    ),
+    Control(
+        extrapolation_properties.test_an_extrapolation_never_turns_a_read_met,
+        "far_outside",
+        ("check_monotone",),
+    ),
+    Control(
+        extrapolation_properties.test_an_extrapolation_never_turns_a_read_met,
+        "stated_without_origin",
+        ("check_monotone",),
     ),
 ]
 

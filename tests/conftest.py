@@ -117,6 +117,12 @@ SHARDS = {
         # database, and their table's check.
         "test_table_read_mutants",
         "test_table_read_mutant_table",
+        # A request's extrapolation (S3c's HP24 to HP26 and its monotonicity property), which reads a table
+        # field end to end, twice an example, its mutant searches and their table's check: here, not in
+        # `records`, whose time at `ci` S3b-2's properties brought near a third of its timeout.
+        "test_extrapolation_properties",
+        "test_extrapolation_mutants",
+        "test_extrapolation_mutant_table",
     ),
     # The read's relations (S2a-4's phase B): HP12, the agreement with the reference model, HP4 and HP10, and
     # the information-monotonicity relations, each example reading two records or a read twice, with their

@@ -350,6 +350,35 @@ check's reader (the last bullet).
   beside the four families. In some of these draws the table holds a member the reader does not know (36 to
   38 %, measured), and, but among alternatives, the field is stated without origin (31 to 34 % of all), whose
   step-12 reason a read step 11 refuses never reaches.
+- **An extrapolation (S3c):** (19) the laws of a request's `extrapolation` (`declarations.md` section 4.1;
+  `read_side_contract.md` sections 1, 2, 3 and 5), the S3 design's HP24 to HP26 and its monotonicity property
+  over an extrapolation (`test_extrapolation_properties.py`, in the `conditions` shard), over HP20 and HP21's
+  table reads with the request's acceptances drawn beside them (`extrapolation_strategies.py`): an
+  extrapolation's method one of the vocabulary's tokens, its law any text of at least one character, its
+  `basis` and `reason` any JSON value or absent. Each property draws first the way its rule tells apart, at most
+  five, held to its draw floor (110 to 160 at `ci`; over 20 runs of 2,000 a size, 2026-10-21, a way's count
+  varied up to 14.5 times a binomial's, at which a correct run fails a floor with a probability of at most
+  4.1e-7, the audits' model giving 6.1e-7 at most; at the variances' one-sided 95 % bounds, 1.9 times those
+  measured over 20 runs, the worst is 9.2e-5, HP26's refusals at `deep`'s size). HP24, where the extrapolation
+  applies, one double or far outside the readable range, outside a narrower `source_range`, and outside it with
+  the value stated without origin: adding it keeps the status `not_met` and the reasons the read without it
+  gives, step 12's added (`stated_without_origin`), and gives the value at the readable range's nearest end,
+  the reference evaluator's `exact` value there, the members HP6's oracle gives beside a value, the table as
+  stored and `assumption`, its method and law as the request gives them and no `basis`; `applied` names it.
+  HP24 where one at the read does not apply, inside the readable range or at an end, at an edge inside or
+  outside it, beyond one, and under `want: bounds`: the read is the read without it, member for member. HP25:
+  one located at another field, record, region or interval, or nowhere, changes nothing; two that name one
+  field are `request_incomplete` alone, both at the read, one with no location, or one at a region and one with
+  none, in an order drawn, and two that name two fields are read as the one at the read alone, its index in
+  `applied`. HP26: a method missing or not a token, a law missing, of another type or empty, each refused,
+  located at the read or nowhere; a law of white space alone, `basis` and `reason` of any value and a member
+  no document names each read as the extrapolation without them, a member one slip from a named one refused.
+  The monotonicity property, over HP21's reads of a table the request can meet: adding an extrapolation at the
+  read never turns `unknown` or `not_met` into `met`, and outside the range it applies, its value present, so
+  that the relation is not vacuous; its worlds stated without origin are declared by their chance, 0.2 (over 20
+  runs at `ci` a mean share of 0.264, the least 0.245; 0.255 and 0.2195 at `deep`'s size). Every draw of the
+  strategy is held: each way by its floor, and each draw within one (the method `consumer_law`, a law outside
+  ASCII, a `reason`, the order of two, a refused shape with no location) by a mutant that shows there alone.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -413,7 +442,10 @@ database and were most of the records shard's time, `--shard conditions`, steps 
 result's with their mutant searches, which take seconds and set no example database (112 s on four local
 workers at `ci`, 2026-10-16; 155 s with the result's, 2026-10-17; 151 s beside the relations' shard,
 2026-10-17), and since S3b-2 a table's steps 10 to 13's mutant searches too, whose properties are in `records`
-(about three minutes of CPU at `ci` between them, locally, 2026-10-21), and `--shard relations`, the reference
+(about three minutes of CPU at `ci` between them, locally, 2026-10-21), and since S3c an extrapolation's
+properties with their mutant searches (`test_extrapolation_*.py`: 143 s of CPU at `ci` for the properties and 5
+s for the 66 searches, locally, 2026-10-21; here, not in `records`, which S3b-2's properties brought to 5.4
+minutes of its 20 at `ci` on CI), and `--shard relations`, the reference
 model's, isolation and byte form's, and monotonicity groups with their mutant searches, each example reading two records or a read twice (198 s on four local
 workers at `ci`, 2026-10-17; `SHARDS` in `tests/conftest.py`), and `--shard alternatives`, S4a's step 7 over
 alternatives with its mutant searches (122 s on eight local workers at `ci`, 342 s of test time, 2026-10-19;
@@ -537,7 +569,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 1,102 searches, 551 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,168 searches, 584 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1583,6 +1615,66 @@ HP21's relation hold each way outside to a read outside the range of the table w
 | `outside_range_beside_a_range_across_an_end` | `outside_range` beside `want_mismatch` for a range that leaves the readable range | HP23 | `range_across_an_end`, `range_outside` | 18, 5 |
 | `monotone_the_tolerance_widens_the_range` | the tolerance's widening, searched by the monotonicity property | monotonicity | `one_double_outside`, `far_outside` | 4, 4 |
 | `monotone_source_range_widening` | a `source_range`'s widening, searched by the monotonicity property | monotonicity (planned: one double outside) | `one_double_outside` | 55, 53 |
+
+### An extrapolation's mutants (S3c)
+
+`test_extrapolation_mutants.py`, each injected at a name the read looks up when it runs (`read.form_range`, step
+11; `read.read_value_field`, steps 8 to 13; `read._extrapolation` and `read._acceptances`, step 0;
+`read.Extrapolation.located_at`; `evaluate.beyond_an_edge`), and each dying at a way it names and at the
+assertion it names: the S3 design's mutants of HP24 to HP26 and of its monotonicity property over an
+extrapolation (sections 6.7 and 6.8; `test_extrapolation_mutant_table.py` holds each to the row that stands for
+it), beside a few more the read's code invites: the end value read at the far end; an edge read on under an
+extrapolation; an extrapolation applied inside the range, or across an edge; the field it names ignored; a law
+of any type; the method unchecked; a slip ignored and an unknown member refused. And six that hold a draw of
+`extrapolation_strategies.py` each, showing where that draw alone puts them, so that a change that stopped
+drawing it fails here: the extrapolation's `reason` (`reason_in_the_assumption`), its method `consumer_law`
+(`the_method_read_as_constant`), a law outside ASCII (`a_law_outside_ascii_refused`), a read at an end of the
+readable range (`an_end_read_as_outside`), the extrapolation that applies drawn second
+(`applied_at_the_first_index`), and a refused shape with no location (`shape_unchecked_off_a_record`); the
+ways are held by their floors, and `basis` and the method `constant` by the design's own mutants. The design's "the end value
+taken at `x[0]` where `source_range` narrows the range" shows at every way HP24 draws, since each draws tables
+of every kind of `source_range`; its way of its own, outside a narrower `source_range`, is held by its floor.
+S3b-2's two mutants of step 11's report on an edge on the readable range's end, which HP20 searches in the
+report alone, are searched here in a result too: under an extrapolation a read beyond such an edge is given the
+end value, which HP24 sees where it does not apply, across an edge alone (planned: the way that draws an edge
+on the range's end in half its draws).
+
+<!-- kill points of every search of test_extrapolation_mutants.py::test_the_extrapolation_mutant_is_killed (scripts/gen_kill_counts.py) -->
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `status_met_under_an_extrapolation` | a read an extrapolation covers given `met`, its reasons dropped | HP24 | each way | 1, 1 |
+| `status_unknown_under_an_extrapolation` | a read an extrapolation covers given `unknown`, `outside_range` replaced by an `unknown` code | HP24 | each way | 1, 1 |
+| `extrapolated_linearly` | the value extrapolated by the slope of the interval at the range's nearest end, not the end value | HP24 | each way | 3, 3 |
+| `the_far_ends_value` | the value at the readable range's far end | HP24 | each way | 3, 3 |
+| `end_value_at_x_where_source_range_narrows` | the end value `y[0]` or `y[-1]` where `source_range` narrows the range | HP24 | each way | 3, 9 |
+| `steps_12_and_13_skipped` | a read an extrapolation covers given its value, but not step 12's reason | HP24 | `stated_without_origin` | 10, 6 |
+| `basis_in_the_assumption` | the extrapolation's `basis` in `assumption` | HP24 | each way | 5, 9 |
+| `reason_in_the_assumption` | the extrapolation's `reason` in `assumption`, where it holds one | HP24 | each way | 7, 3 |
+| `the_method_read_as_constant` | `assumption` naming the method `constant`, whatever the request gives | HP24 | each way | 5, 9 |
+| `a_law_outside_ascii_refused` | a `law` holding a character outside ASCII refused | HP24 | each way | 3, 3 |
+| `applied_under_want_bounds` | an extrapolation applied under any `want` | HP24 where it does not apply | `under_another_want` | 8, 4 |
+| `applied_at_an_edge_outside_the_readable_range` | at an edge outside the readable range, the extrapolation applied, the end value given | HP24 where it does not apply | `at_an_edge_outside` | 25, 19 |
+| `an_edge_read_under_an_extrapolation` | at an edge inside the readable range, under an extrapolation, the value below the edge | HP24 where it does not apply | `at_an_edge_inside` | 2, 2 |
+| `applied_across_an_edge` | beyond an edge outside the readable range or on its end, the extrapolation applied | HP24 where it does not apply | `across_an_edge` | 56, 8 |
+| `an_end_read_as_outside` | a read at an end of the readable range read as outside it, so that an extrapolation covers it | HP24 where it does not apply | `inside_the_range` | 33, 48 |
+| `applied_inside_the_range` | an extrapolation at the read applied to a read inside the range: `assumption` and `applied` | HP24 where it does not apply | `inside_the_range` | 1, 1 |
+| `an_edge_on_the_lower_end_read_as_none_between` | below the readable range, an edge on its lower end read as none between, so a read beyond it is given the end value | HP24 (planned: across an edge) | `across_an_edge` | 3, 5 |
+| `an_edge_on_the_upper_end_read_as_none_between` | above the readable range, the same of an edge on its upper end | HP24 (planned: across an edge) | `across_an_edge` | 11, 9 |
+| `the_location_ignored` | an extrapolation applied wherever it is located, or with no location | HP25 | `another_record`, `a_region`, `an_interval`, `no_location` | 2, 2 |
+| `the_field_ignored` | an extrapolation at the read's record applied whatever field it names | HP25 | `another_field` | 1, 1 |
+| `two_read_the_first_applied` | two extrapolations naming one field read, the first applied | HP25, two | the three ways of one field | 1, 1 |
+| `two_read_the_second_applied` | two extrapolations naming one field read, the second applied | HP25, two | the three ways of one field | 1, 1 |
+| `applied_at_the_first_index` | `applied` holding the first acceptance's index, whichever covered the read | HP25, two | `each_its_own_field` | 10, 3 |
+| `law_optional_under_constant` | `law` optional under `method: constant` | HP26, refused | `law_missing` | 16, 27 |
+| `an_empty_law_accepted` | an empty `law` accepted | HP26, refused | `law_empty` | 6, 5 |
+| `a_law_of_any_type` | a `law` that is no string accepted | HP26, refused | `law_not_text` | 10, 7 |
+| `the_method_unchecked` | `method` missing or not one of its tokens accepted | HP26, refused | `method_missing`, `method_unknown` | 1, 1 |
+| `shape_unchecked_off_a_record` | an extrapolation with no record, or at a region or an interval, taken whatever its method and law | HP26, refused | each way | 5, 10 |
+| `a_law_of_white_space_refused` | a `law` of white space refused, read stripped | HP26, read | `law_white_space` | 1, 1 |
+| `basis_checked` | a `basis` that is no string refused | HP26, read | `law_white_space`, `basis_and_reason_any`, `an_unknown_member` | 2, 2 |
+| `a_slip_ignored` | a member one slip from a named one ignored | HP26, read | `a_slip_of_a_member` | 17, 19 |
+| `an_unknown_member_refused` | a member no document names refused | HP26, read | `an_unknown_member` | 6, 25 |
+| `monotone_status_met` | under an extrapolation that covers the read, `met` | monotonicity | `one_double_outside`, `far_outside` | 4, 4 |
 
 ## Audits
 
