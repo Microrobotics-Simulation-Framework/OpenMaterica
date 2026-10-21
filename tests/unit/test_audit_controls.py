@@ -8,8 +8,10 @@ of S4a's alternatives, by their chance, of the regions where a planned search's 
 the property whose own draws the search stands in for, by their chances, and of S3a's HP13 to HP16, each
 drawing its fault, kind or way first, among them the regions of HP13's planned searches: run at the `ci`
 profile's examples with a generator that stops producing one of them, each property fails its audit, on that
-feature alone; a parametrised property, on one of its parameters, by the marks that parameter carries.
-Outside `tests/property/`, whose audits would fail these runs too."""
+feature alone; a parametrised property, on one of its parameters, by the marks that parameter carries. The
+regions too thin for a floor at `ci`, held to one at `deep` alone (`@pytest.mark.deep_chances`), run so at
+`deep`'s examples, judged by `deep`'s rule. Outside `tests/property/`, whose audits would fail these runs
+too."""
 
 import sys
 from collections.abc import Callable
@@ -425,4 +427,56 @@ def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
     assert floor >= audits.LEAST_DRAWS
     assert problems == [
         f"feature {control.never!r} in 0 of {EXAMPLES['ci']} examples, below its floor of {floor}"
+    ]
+
+
+# The regions too thin for a floor at `ci`, each held to its draw floor at `deep` alone (`deep_chances`), on
+# the property whose own draws its planned search stands in for (`tests/property/README.md`, "The regions held
+# to a floor"). Run at `deep`'s examples and judged by `deep`'s rule, the property fails its audit on the
+# feature its generator stops producing, alone: every other feature passes, the other region of its part,
+# drawn as the property draws it, among them. They run at the size of the profile the controls run at, as the
+# others do.
+DEEP_CONTROLS = [
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_faults_of_steps_8_to_10,
+        "plus_minus_unit_refused",
+        ("check_outcome",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_faults_of_steps_8_to_10,
+        "token_condition_unit_refused",
+        ("check_outcome",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
+        "components_not_normalised",
+        ("check_outcome",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_values_and_alternatives,
+        "request_faults_of_two_alternatives",
+        ("check_outcome",),
+    ),
+]
+
+
+@pytest.mark.parametrize("control", DEEP_CONTROLS, ids=[control_id(control) for control in DEEP_CONTROLS])
+def test_a_generator_that_stops_producing_a_region_held_at_deep_fails_the_audit_at_deep(
+    control: Control, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    deep_chances = marker_kwargs(control, "deep_chances")
+    assert control.never in deep_chances
+    counts = run_without(control, monkeypatch, EXAMPLES["deep"])
+    problems = audits.feature_shortfalls(
+        counts,
+        marker_kwargs(control, "features"),
+        marker_args(control, "drawn"),
+        chances=marker_kwargs(control, "chances"),
+        deep_chances=deep_chances,
+        **audits.RULES["deep"],
+    )
+    floor = audits.draw_floor(EXAMPLES["deep"], deep_chances[control.never])
+    assert floor >= audits.LEAST_DRAWS
+    assert problems == [
+        f"feature {control.never!r} in 0 of {EXAMPLES['deep']} examples, below its floor of {floor}"
     ]

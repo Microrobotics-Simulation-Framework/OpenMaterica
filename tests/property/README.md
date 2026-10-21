@@ -557,7 +557,9 @@ when the generator stops producing it; and a second control, beside each planned
 `deep`) an example shows the feature exactly where the mutant fails the property's check, so that the floor
 counts the region where the fault shows, no wider and no narrower. The member the reader does not know that
 HP12's values plant is held as HP6 holds it, by its chance and its audit control alone; its planned search
-draws it always. Main drew six of these regions in under 0.03 of the examples, too seldom for a floor: one of
+draws it always. That control removes the member as drawn, rather than rejecting each example that shows it:
+the region of a constant under `bounds` plants it in every draw, and the rejection stopped that region too
+(2026-10-21). Main drew six of these regions in under 0.03 of the examples, too seldom for a floor: one of
 10 examples, the least `ci` judges, needs a chance of about 0.065 (`audits.draw_floor`). So each strategy draws
 its region in a weighted branch, and each chance is declared below the least share measured (2026-10-20: 2,000
 examples a run at `ci`, derandomised, each run its own stream, the checks skipped; 48 runs, HP1's and HP12's
@@ -630,13 +632,44 @@ property draws first and holds to its floor; HP5's members in a report are its `
 planned searches of step 8, and HP12's that draw step 8's faults among those named, draw faults HP3 holds by
 region, the precedent of Step 8's mutants ("the region audit that HP3 draws it"), not by fault: 154 faults
 cannot each be drawn often enough for a floor at `ci`. These have no floor of their own yet: HP12's planned
-searches of values at a boundary, under a nominal, alternatives under a nominal, evidence's unit with a reason,
-step 0's nominal faults, and those planned on 2026-10-20 (a `plus_minus` unit, a token condition's unit, a
-composition under `components`, request faults apart; S4a's, an interval under bounds, the outcomes of step 7 and three narrower);
-HP27's planned searches (a request fault, under a nominal, evidence set aside first or under `no_pick`); and
-(9)'s irregular plurals and plurals in `ies`. The regions of those planned on 2026-10-20 are 0.03 to 0.04 of their property's draws
-(the irregular plurals' 0.004; each mutant injected, 24 runs), and a floor at `ci` needs about 0.065: a second
-branch in a strategy already drawing one would take its other draws below 0.8 of main's.
+searches of values at a boundary, under a nominal, alternatives under a nominal, evidence's unit with a
+reason, step 0's nominal faults, and S4a's (an interval under bounds, the outcomes of step 7 and three
+narrower); HP27's planned searches (a request fault, under a nominal, evidence set aside first or under
+`no_pick`); and (9)'s irregular plurals and plurals in `ies`, too thin for a floor even at `deep`: (9) draws a
+pair through an irregular plural in 0.0043 of its examples and one through an `ies` plural in 0.0032 (means
+over 24 runs of 2,000, each mutant injected beside the region, which it fails exactly; least 0.0020 and
+0.0005), and by `audits.py`'s model a floor at `deep`'s 20,000 examples reaches 10 only at a chance of about
+0.0067 (2026-10-21). Their draws were left as they are: lifting them is the maintainer's call. Four searches
+planned on 2026-10-20, too thin for a floor at `ci`, are held at `deep` (below). A floor at `ci` needs about
+0.065: a second branch in a strategy already drawing one would take its other draws below 0.8 of main's.
+
+**Held at `deep`.** Four regions of the searches planned on 2026-10-20, 0.025 to 0.036 of their parts' draws,
+are held to a floor at `deep` alone, whose 20,000 examples make one possible at 1e-6 (maintainer, 2026-10-21).
+Each part records its region as a feature computed from the example and the read's result, declares it with
+`deep_chances` (Audits, below) by a chance at or below its least share over 24 runs at `ci` (2026-10-21, 2,000
+examples a run, derandomised, each run its own stream, the checks skipped), and has a control at `deep`'s
+examples and rule in `tests/unit/test_audit_controls.py`; a second, beside the planned searches' own
+(`test_model_mutant_table.py`), shows that over the part's own draws an example shows the feature exactly
+where the mutant fails the agreement. No draw changed:
+
+| Planned search | Region (feature) | Part | `ci`: mean (least), variance | `deep`'s size: mean (least) | Chance | Floor | Falls below it, a run |
+|---|---|---|---|---|---|---|---|
+| `plus_minus_units_unchecked` ("a plus or minus unit") | a read that plants a `plus_minus` entry's unit and whose result gives `unit_mismatch` on `temperature` (`plus_minus_unit_refused`) | HP12's faults | 0.0247 (0.0105), 3.8 | 0.0256 (0.0226), 4 runs of 20,000 | 0.01 | 25 | 2.4e-7; 3e-47 |
+| `token_condition_unit_accepted` ("a token condition's unit") | the same of a token condition's unit, on `measurement_geometry` (`token_condition_unit_refused`) | HP12's faults | 0.0255 (0.0075), 6.1 | 0.0283 (0.0260), 4 runs of 20,000 | 0.007 | 10 | 4.4e-7; 3e-35 |
+| `components_normalised` ("a composition under components") | a composition's components given, as the value or an alternative's, that state their sum or whose fractions dividing by their sum changes (`components_not_normalised`) | HP12's values | 0.0359 (0.0085), 7.3 | 0.0357 (0.014), 16 runs of 2,000 | 0.008 | 15 | 4.3e-7; 7e-35 |
+| `request_faults_of_the_first_alternative_alone` ("request faults apart") | alternatives refused by `request_incomplete` reasons alone, on two conditions or more (`request_faults_of_two_alternatives`) | HP12's values | 0.0359 (0.0195), 8.7 | 0.0358 (0.019), 16 runs of 2,000 | 0.019 | 95 | 7.3e-7; 6e-22 |
+
+The floor is the count of 20,000 examples below which a `deep` run fails. The last column is the probability
+that a correct run falls below it by `audits.py`'s model (20,000 / `CLUSTER` = 2,500 draws, each shown in
+`SHOWN` = 5 examples) at the declared chance, and at the means and variances measured (the count taken as that
+many examples' clusters, scaled to 20,000 examples; the variance is the count's over a binomial count's). A
+run of HP12's faults at `deep` took 11 to 13 minutes here; one of its values about 15, too long to measure, so
+its share at `deep`'s size is from runs of 2,000. Each chance lies at or below the least of 2,000-example
+runs, so each floor catches a region no longer drawn, or drawn 8 to 57 times more thinly than its mean at
+`deep`; `deep`'s own least shares, by the examples' ratio, would hold chances 1.4 to 3.4 times higher.
+Features read from the example alone counted more than the region where the mutant shows, over the same draws:
+the fault planted (reads that end at `want_mismatch` before step 9 plant it too), the plant
+`request_faults_apart`, and a composition under `want: components`.
 
 Every count in these tables is one seed's: the derandomised search's. Another seed takes
 another count, often several times larger or smaller (PR #37's review measured 19 and 1,406 for a mutant
@@ -678,8 +711,9 @@ plural (`pairs_through_an_irregular_plural`), and on a name holding a word that 
 with `ies` in its place (`pairs_through_an_ies_plural`), each of which the core passes (`test_mutant_view.py`).
 Drawn with (9) whole, the first died past the 500th example on 46 of 400 streams on main and on 73 once (9)
 drew a pair through an empty word (one-sided Fisher p = 0.005); the second on 88 and 80, about as on main, but
-at the 700th on the recorded stream. (9) draws either region in about one example in 250 or fewer, too seldom
-for a floor of its own; each dies at the 1st example.
+at the 700th on the recorded stream. (9) draws the regions in about one example in 230 and one in 310, too
+seldom for a floor of their own even at `deep` ("The regions held to a floor", above); each dies at the 1st
+example.
 
 `test_writer_mutants.py` gives the writer schema one change at a time: the S2a-1 review's 29 mutants of its
 value-field part and its two controls (M1 to M31, its numbering kept), one for each constraint written since
@@ -1070,8 +1104,9 @@ planned searches must, and its region in every example (`test_model_mutant_table
 a second fault, of step 9, or a `want` step 0 refuses), all at a read showing its fault; of the composition's, 1,570
 and 1,545 kill `components_normalised` at the small size and 1,505 and 1,578 at the original, all at a
 composition (measured 2026-10-20). Each dies at the 1st example at both sizes, but `components_normalised`
-at the 3rd and 5th. None has a floor of its own yet: their regions are 0.03 to 0.04 of the parts' draws
-(Mutants, "The regions held to a floor").
+at the 3rd and 5th. Since 2026-10-21 the first four regions, 0.025 to 0.036 of the parts' draws, are each
+held to a floor at `deep` alone, and the unknown member has its floor at `ci` (Mutants, "The regions held to
+a floor").
 S2b-1's: three of HP3's planned on an own member, HP6's `upper: none`
 as infinity and normalised components, and two faults of the model that case files kill, held here on the forms
 S2b-1 reads.
@@ -1456,7 +1491,12 @@ died at its own assertion too, none past the 267th example.
   HP12 declares the read field's form by its chance measured over 22 runs at `ci`, since a tenth of its
   examples show none. Seven regions where a planned search's mutant shows are declared by their chances
   on the properties the searches stand in for, each with a control (Mutants, "The regions held to a floor");
-  HP12's first two parts draw their region inside a kind, so that their kinds stay drawn alike.
+  HP12's first two parts draw their region inside a kind, so that their kinds stay drawn alike. Four more,
+  in the same two parts, are too thin for a floor at `ci`, where 2,000 examples give a floor of 10 only at a
+  chance of about 0.065: each is declared with `@pytest.mark.deep_chances(name=chance, ...)`, held to the draw
+  floor of its chance at `deep` alone, where 20,000 examples give one from about 0.007, a floor below 10
+  failing, and judged at no other profile, where it counts as declared; each has a control at `deep`'s
+  examples and rule.
   HP12's parts draw their kinds, steps or planted rules first (at most twelve), HP4 its
   ways and
   HP10 its kinds, each declared drawn, and HP4 the read field's form by its chance; each monotonicity relation declares the least share of its examples on

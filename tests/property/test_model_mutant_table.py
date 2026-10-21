@@ -136,3 +136,38 @@ def test_a_result_holding_condition_unchecked_is_where_its_mutant_shows(example:
 def test_a_constant_refused_bounds_is_where_its_mutant_shows(example: Example) -> None:
     shown = properties.a_constant_refused_bounds(example, properties.implementation_outcome(example))
     assert shown == killed_by("bounds_given_by_a_constant", example), example.planted
+
+
+# The regions the two parts hold to a floor at `deep` alone, likewise: in the faults, a refused unit where the
+# model's fault that passes it shows; in the values, a composition a normalising read would change and
+# request faults of two alternatives, where the implementation's mutants that do so show.
+UNIT_FAULTS = {
+    "plus_minus_unit_refused": "plus_minus_units_unchecked",
+    "token_condition_unit_refused": "token_condition_unit_accepted",
+}
+
+
+def killed_by_the_models(name: str, example: Example) -> bool:
+    with MODEL_FAULTS[name].applied():
+        return fails(properties.check_agreement, example)
+
+
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(strategies.drawn(SIZE, properties.PARTS["faults"]))
+def test_a_refused_unit_is_where_the_models_fault_that_passes_it_shows(example: Example) -> None:
+    implementation = properties.implementation_outcome(example)
+    for region, fault in UNIT_FAULTS.items():
+        shown = properties.refuses_its_planted_unit(example, implementation, region)
+        assert shown == killed_by_the_models(fault, example), (region, example.planted)
+
+
+@settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], EXAMPLES["ci"]))
+@given(strategies.drawn(SIZE, properties.PARTS["valued"]))
+def test_components_not_normalised_and_request_faults_apart_are_where_their_mutants_show(
+    example: Example,
+) -> None:
+    implementation = properties.implementation_outcome(example)
+    shown = properties.components_not_normalised(implementation)
+    assert shown == killed_by("components_normalised", example), example.planted
+    shown = properties.request_faults_of_two_alternatives(example, implementation)
+    assert shown == killed_by("request_faults_of_the_first_alternative_alone", example), example.planted
