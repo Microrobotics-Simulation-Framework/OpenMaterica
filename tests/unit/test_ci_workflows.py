@@ -2808,8 +2808,9 @@ SELECTIONS: dict[str, list[list[str]]] = {
     "controls": [["--property-controls", "only", "--partition", "${{matrix.part}}/${{matrix.parts}}"]],
     # The property tests of one shard.
     "hypothesis": [["tests/property", "--shard", "${{matrix.shard}}"]],
-    # Each commit before a pull request's head: the whole suite.
-    "commit": [[]],
+    # Each commit before a pull request's head: the collection of every test, and the specification-sync
+    # tests; the whole suite runs on the head (maintainer, 2026-10-21).
+    "commit": [["--collect-only", "tests"], ["tests/spec_sync"]],
     "fuzz": [
         # The control's replay: the properties of the faults seeded in parse and in the read, which a plugin
         # seeds, and the agreement with the reference model and the byte form, which draw the stores the
@@ -3341,7 +3342,7 @@ def test_the_interrupt_check_can_fail(fault: Callable[[Workflow], None], problem
 
 
 # The variable that makes the trace test of tests/unit/test_pre_review.py run. That test runs the whole suite
-# once, so ci.yml sets it in one job of a run, not in each job that runs tests/unit (each per-commit job too).
+# once, so ci.yml sets it in one job of a run, not in each job that runs tests/unit.
 TRACE_VARIABLE = "MATERICA_TRACE_SELECTION"
 TRACE_TEST_FILE = REPOSITORY / "tests" / "unit" / "test_pre_review.py"
 
@@ -3414,7 +3415,7 @@ def trace_set_in_a_second_job(ci: Workflow) -> None:
 
 
 def trace_set_in_the_per_commit_job(ci: Workflow) -> None:
-    pytest_step(ci["jobs"]["commit"])["env"][TRACE_VARIABLE] = "1"
+    ci["jobs"]["commit"].setdefault("env", {})[TRACE_VARIABLE] = "1"
 
 
 def trace_set_on_every_python(ci: Workflow) -> None:
@@ -4088,11 +4089,20 @@ def test_the_variable_check_can_fail(fault: Callable[[dict[str, Workflow]], None
     assert [line for line in problems if problem in line] == problems != [], problems
 
 
-# The per-commit job (ci.yml says why, above it): the checks an agent runs on a commit locally, every
-# commit but a pull request's head on its own, at most PER_COMMIT_MAX_PARALLEL at once (`CAPS`), and a pass
-# kept under the commit's tree and the workflow's blob, so that a tree passed under the same checks is not
-# checked again.
-PER_COMMIT_FAST_CHECKS = ("uv run ruff check", "uv run ruff format --check", "uv run mypy", "uv run pyright")
+# The per-commit job (ci.yml says why, above it): the fast checks an agent runs on a commit locally, the
+# collection of every test and the specification-sync tests, every commit but a pull request's head on its
+# own, at most PER_COMMIT_MAX_PARALLEL at once (`CAPS`), and a pass kept under the commit's tree and the
+# workflow's blob, so that a tree passed under the same checks is not checked again. The whole suite runs on
+# the head alone (maintainer, 2026-10-21).
+PER_COMMIT_FAST_CHECKS = (
+    "uv run ruff check",
+    "uv run ruff format --check",
+    "uv run mypy",
+    "uv run pyright",
+    "uv run python scripts/freeze_schema.py --check",
+)
+# What the per-commit job's pytest runs beside the collection of every test.
+PER_COMMIT_TESTS = ["tests/spec_sync"]
 CACHE_HIT = "steps.passed.outputs.cache-hit"
 # The steps that make the key of a pass and write the pass, which check nothing.
 KEYING = {"tree", "keep"}
@@ -4145,6 +4155,16 @@ def per_commit_problems(ci: Workflow) -> list[str]:
     ]
     if pytest_step(job).get("env", {}).get("MATERICA_HYPOTHESIS_PROFILE") != "dev":
         problems.append("the per-commit job's pytest does not run at the `dev` profile")
+    chosen = [selecting(command) for command in pytest_commands(job)]
+    if ["--collect-only", "tests"] not in chosen:
+        problems.append("the per-commit job does not collect every test (`pytest --collect-only tests`)")
+    if PER_COMMIT_TESTS not in chosen:
+        problems.append(f"the per-commit job does not run {' '.join(PER_COMMIT_TESTS)}")
+    problems += [
+        f"the per-commit job runs pytest {words!r}: tests beyond {' '.join(PER_COMMIT_TESTS)}, the head's"
+        for words in chosen
+        if "--collect-only" not in words and words != PER_COMMIT_TESTS
+    ]
     if (
         ci["jobs"]["gate"]["outputs"].get("workflow_blob")
         != f"${{{{ steps.{GATE_STEP_ID}.outputs.workflow_blob }}}}"
@@ -4264,6 +4284,43 @@ def without_the_wheel_check(ci: Workflow) -> None:
     ]
 
 
+def without_freezes_check(ci: Workflow) -> None:
+    ci["jobs"]["commit"]["steps"] = [
+        found for found in ci["jobs"]["commit"]["steps"] if "freeze_schema.py" not in str(found.get("run"))
+    ]
+
+
+def the_whole_suite_again(ci: Workflow) -> None:
+    """The step the job ran until 2026-10-21, put back."""
+    pytest_step(ci["jobs"]["commit"])["run"] += (
+        'uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m" pytest -n auto --dist worksteal\n'
+    )
+
+
+def without_the_collection(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["commit"])
+    found["run"] = (
+        "\n".join(line for line in found["run"].splitlines() if "--collect-only" not in line) + "\n"
+    )
+
+
+def the_collection_of_one_directory(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["commit"])
+    found["run"] = found["run"].replace("--collect-only -q tests", "--collect-only -q tests/unit")
+
+
+def the_suite_not_collected_but_run(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["commit"])
+    found["run"] = found["run"].replace("pytest --collect-only -q tests", "pytest -q tests")
+
+
+def without_the_specification_sync_tests(ci: Workflow) -> None:
+    found = pytest_step(ci["jobs"]["commit"])
+    found["run"] = (
+        "\n".join(line for line in found["run"].splitlines() if "tests/spec_sync" not in line) + "\n"
+    )
+
+
 def without_a_generator(ci: Workflow) -> None:
     found = step(ci["jobs"]["commit"], "Every generator's check, on Python 3.11")
     found["run"] = found["run"].replace("gen_shapes.py --check", "gen_shapes.py")
@@ -4326,6 +4383,12 @@ def a_check_after_the_pass_is_kept(ci: Workflow) -> None:
         (without_pyright, "does not run 'uv run pyright'"),
         (without_a_generator, "does not run 'uv run python scripts/gen_shapes.py --check'"),
         (without_the_wheel_check, "does not run 'uv run python scripts/check_wheel.py dist/*.whl'"),
+        (without_freezes_check, "does not run 'uv run python scripts/freeze_schema.py --check'"),
+        (the_whole_suite_again, "the per-commit job runs pytest []: tests beyond tests/spec_sync"),
+        (without_the_collection, "the per-commit job does not collect every test"),
+        (the_collection_of_one_directory, "the per-commit job does not collect every test"),
+        (the_suite_not_collected_but_run, "the per-commit job runs pytest ['tests']: tests beyond"),
+        (without_the_specification_sync_tests, "the per-commit job does not run tests/spec_sync"),
         (at_the_ci_profile, "not run at the `dev` profile"),
         (no_blob_from_the_gate, "the gate does not give its workflow's blob"),
         (kept_under_another_key, "keeps a pass under another key or path"),

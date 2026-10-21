@@ -412,12 +412,11 @@ jobs:
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
           # The trace test of scripts/pre_review.py's tables (tests/unit/test_pre_review.py) runs the whole suite
-          # once inside one test, about a minute of wall time and three of CPU locally, and is skipped unless
-          # this is `1`. It runs here on Python 3.15 alone, so once per CI run and not in every job that runs
-          # tests/unit, each per-commit job among them. 3.15 is the Python of the project's own environment, in
-          # which a builder runs the same test, and the newest, where a change to the audit events or the import
-          # system that the trace reads would show first. tests/unit/test_ci_workflows.py holds that exactly one
-          # job of this workflow sets it.
+          # once inside one test, about a minute of wall time and three of CPU locally, and is skipped unless this is
+          # `1`. It runs here on Python 3.15 alone, so once per CI run and not in every job that runs tests/unit.
+          # 3.15 is the Python of the project's own environment, in which a builder runs the same test, and the
+          # newest, where a change to the audit events or the import system that the trace reads would show first.
+          # tests/unit/test_ci_workflows.py holds that exactly one job of this workflow sets it.
           MATERICA_TRACE_SELECTION: ${{ matrix.python == '3.15' && '1' || '' }}
       # Where the time went, on the run's page, and the report kept for later runs to compare (no time fails
       # the job): scripts/report_test_durations.py. Whenever pytest ran, passed, failed, was interrupted before
@@ -738,14 +737,19 @@ jobs:
 
   commit:
     name: commit ${{ matrix.sha }} on its own
-    # Every commit of a pull request passes on its own before the merge, which CI checks commit by commit
-    # (maintainer, 2026-10-16): each commit but the head, checked out as it is, gets the checks an agent runs
-    # on a commit locally, on Python 3.15 alone, the site job's checks, the fast checks, the wheel and its check,
-    # and the whole suite at the `dev` profile, the mutant searches and audit controls included; the head keeps
-    # the jobs above, every Python and the `ci` profile. The gate lists the commits, but those that change documentation alone; a pull request of one
-    # commit lists none, and this job is skipped. At most PER_COMMIT_MAX_PARALLEL run at once, a repository
-    # variable, 6 where it is unset, as the gate checks it and gives it: the organisation's 60 concurrent jobs
-    # are shared by this repository's CI and MIME's and MADDENING's (.github/workflows/README.md).
+    # Every commit of a pull request builds, type-checks, generates and collects on its own before the merge,
+    # which CI checks commit by commit: each commit but the head, checked out as it is, gets on Python 3.15
+    # alone the fast checks an agent runs on a commit locally, the site job's checks, ruff, mypy and pyright, the
+    # wheel and its check, every generator's check and `freeze_schema.py --check`, then the collection of every
+    # test and the specification-sync tests (tests/spec_sync); the whole suite runs on the head alone, in the
+    # jobs above, every Python and the `ci` profile (maintainer, 2026-10-21). Until then this job ran the whole
+    # suite at the `dev` profile as well (maintainer, 2026-10-16), a median of 23.7 minutes, 12 to 28 (CI runs
+    # of 2026-10-20 to 2026-10-21, 24 jobs), the longest job of every pull request with earlier commits; in the
+    # pull-request runs since it began (2026-10-17), it found a commit that failed alone while the head passed
+    # five times, two of them by the checks this job keeps. The gate lists the commits, but those that change
+    # documentation alone; a pull request of one commit lists none, and this job is skipped. At most
+    # PER_COMMIT_MAX_PARALLEL run at once, a repository variable, 6 where it is unset, as the gate checks it and
+    # gives it (.github/workflows/README.md, "Jobs at once").
     # A tree that passed these checks in an earlier run of the same pull request is not checked again. The
     # pass is kept in the cache, under the tree, this workflow's blob and the runner's image version, so that a
     # push that adds commits or rewrites their messages, or one after a run it cancelled, checks only the trees
@@ -759,11 +763,12 @@ jobs:
     needs: gate
     if: needs.gate.outputs.commits != '[]'
     runs-on: ubuntu-24.04
-    # A Python 3.15 test job and controls job together: 3.8 and 2.6 minutes (run 39002323592, 2026-10-17). The
-    # test job's timeout, until measured.
-    timeout-minutes: 40
+    # Its steps but the suite took a median of 45 s of the job that ran the suite too (87 runs of 2026-10-19 to
+    # 2026-10-21); the specification-sync tests, 56 to 144 s of test time in the test jobs' reports (nine runs,
+    # every Python), which four workers share, and the collection, about 15 s of a test job's start.
+    timeout-minutes: 15
     env:
-      JOB_MINUTES: 40
+      JOB_MINUTES: 15
     strategy:
       fail-fast: false
       max-parallel: ${{ fromJSON(needs.gate.outputs.per_commit_max_parallel) }}
@@ -851,12 +856,18 @@ jobs:
           uv run --locked --python 3.11 python scripts/gen_reader_schema.py --check
           uv run --locked --python 3.11 python scripts/gen_shapes.py --check
           uv run --locked --python 3.11 python scripts/gen_kill_counts.py --check
-      # The whole suite, as an agent runs it locally, under the interrupt the tests job's comment describes.
-      - id: pytest
+      - name: The released schema versions are as frozen
         if: steps.passed.outputs.cache-hit != 'true'
-        run: >-
-          uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m"
-          pytest -n auto --dist worksteal
+        run: uv run python scripts/freeze_schema.py --check
+      # Every test collects, so that a test module that no longer imports, or a test pytest refuses, fails here;
+      # then the specification-sync tests, which hold the code, the schemas and the specification's text to each
+      # other. Each under the interrupt the tests job's comment describes.
+      - name: Every test collects, and the specification-sync tests pass
+        id: pytest
+        if: steps.passed.outputs.cache-hit != 'true'
+        run: |
+          uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m" pytest --collect-only -q tests
+          uv run timeout --foreground --signal=INT "$((JOB_MINUTES - 3))m" pytest tests/spec_sync -n auto --dist worksteal
         env:
           MATERICA_HYPOTHESIS_PROFILE: dev
       - name: Keep the pass of this tree
