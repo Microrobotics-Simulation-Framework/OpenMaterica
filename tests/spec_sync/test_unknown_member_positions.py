@@ -185,7 +185,7 @@ def hosts() -> tuple[Host, ...]:
         "implies": {"specimen_size": {"value": 1.0e-3, "unit": "m"}, "density_kind": {"token": "apparent"}},
         "reason": "a fixture's",
     }
-    # And a nominal, which a constant leaves unused.
+    # And a nominal and an extrapolation, which a constant leaves unused.
     nominal: JsonObject = {
         "acceptance": "nominal",
         "record": pin(found[0].record),
@@ -193,8 +193,16 @@ def hosts() -> tuple[Host, ...]:
         "value": 0.0007,
         "basis": "a fixture's",
     }
+    extrapolation: JsonObject = {
+        "acceptance": "extrapolation",
+        "record": pin(found[0].record),
+        "field": FIELD,
+        "method": "constant",
+        "law": "the end value held",
+        "basis": "a fixture's",
+    }
     request: JsonObject = {
-        "acceptances": [implied, nominal],
+        "acceptances": [implied, nominal, extrapolation],
         "target": {"record": pin(found[0].record), "field": FIELD},
         "operating_conditions": {
             "temperature": {"value": 310.15, "unit": "K"},
@@ -634,6 +642,7 @@ def _no_slip(members: object, names: object) -> list[tuple[str, str]]:
 
 
 NAMED_AT_A_NOMINAL = read_module._NOMINAL_MEMBERS  # pyright: ignore[reportPrivateUsage]
+NAMED_AT_AN_EXTRAPOLATION = read_module._EXTRAPOLATION_MEMBERS  # pyright: ignore[reportPrivateUsage]
 ALTERNATIVES_PROBLEMS = fields.alternatives_problems
 
 
@@ -665,6 +674,13 @@ BY_ID = {str(position["id"]): position for position in TABLE}
         pytest.param(read_module, "slipped", _no_slip, "Q13", id="a_slip_in_an_implied_value_ignored"),
         pytest.param(read_module, "_IMPLIED_REFUSED", (), "Q14", id="an_implied_value_holding_a_status"),
         pytest.param(read_module, "_NOMINAL_MEMBERS", NAMED_AT_A_NOMINAL[:-1], "Q15", id="a_slip_of_params"),
+        pytest.param(
+            read_module,
+            "_EXTRAPOLATION_MEMBERS",
+            NAMED_AT_AN_EXTRAPOLATION[:-1],
+            "Q17",
+            id="a_slip_of_an_extrapolations_law",
+        ),
         pytest.param(
             read_module,
             "alternatives_problems",
@@ -1005,8 +1021,8 @@ def nominal_name_problems(
     """Each way `names`, `read_request.json`'s `definition` and the read's tuple part."""
     named = {member for named in names for member in named.members}
     held = {
-        "read_request.json's nominal": set(members_of(SCHEMAS["request"], definition)),
-        "read._NOMINAL_MEMBERS": set(read_names),
+        f"read_request.json's {definition}": set(members_of(SCHEMAS["request"], definition)),
+        "the read's tuple": set(read_names),
     }
     return quote_problems(names, read_document) + [
         f"{where} names {sorted(members - named)} beyond the text and lacks {sorted(named - members)}"
@@ -1025,4 +1041,51 @@ def test_a_nominals_member_dropped_or_its_quote_lost_is_found() -> None:
     lost = NOMINAL_NAMES[4]._replace(quote="`value` alone")
     assert nominal_name_problems(
         [*NOMINAL_NAMES[:4], lost], "nominal_acceptance", NAMED_AT_A_NOMINAL, document
+    )
+
+
+# An extrapolation's members against the text, alike (S3c): `read_request.json`'s definition, which row Q17
+# names, and the read's tuple.
+
+AN_EXTRAPOLATION = "an extrapolation"
+EXTRAPOLATION_OWN = (
+    "`method` (`constant` or `consumer_law`), `law` (text of at least one character, which a reader does not "
+    "judge), `basis`"
+)
+EXTRAPOLATION_NAMES = [
+    Named(AN_EXTRAPOLATION, "read", ("acceptance",), "declarations.md", "Every entry has `acceptance`"),
+    Named(AN_EXTRAPOLATION, "read", ("field",), "declarations.md", "names the `field`"),
+    Named(
+        AN_EXTRAPOLATION, "ignored", ("reason", "basis"), "read_side_contract.md", "its `reason` and `basis`"
+    ),
+    Named(
+        AN_EXTRAPOLATION,
+        "location",
+        ("record", "region", "interval"),
+        "declarations.md",
+        "| `extrapolation` | `region`, `interval` or `record` |",
+    ),
+    Named(AN_EXTRAPOLATION, "read", ("method", "law"), "declarations.md", EXTRAPOLATION_OWN),
+]
+
+
+def test_an_extrapolations_members_are_those_the_text_names() -> None:
+    assert (
+        nominal_name_problems(
+            EXTRAPOLATION_NAMES, "extrapolation_acceptance", NAMED_AT_AN_EXTRAPOLATION, document
+        )
+        == []
+    )
+
+
+def test_an_extrapolations_member_dropped_or_its_quote_lost_is_found() -> None:
+    assert nominal_name_problems(
+        EXTRAPOLATION_NAMES, "extrapolation_acceptance", NAMED_AT_AN_EXTRAPOLATION[:-1], document
+    )
+    assert nominal_name_problems(
+        EXTRAPOLATION_NAMES, "nominal_acceptance", NAMED_AT_AN_EXTRAPOLATION, document
+    )
+    lost = EXTRAPOLATION_NAMES[4]._replace(quote="`method` (`constant`)")
+    assert nominal_name_problems(
+        [*EXTRAPOLATION_NAMES[:4], lost], "extrapolation_acceptance", NAMED_AT_AN_EXTRAPOLATION, document
     )

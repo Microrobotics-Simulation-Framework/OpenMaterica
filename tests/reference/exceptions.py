@@ -20,24 +20,34 @@ class Excepted:
 EXCEPTIONS: Final[Mapping[str, Excepted]] = {
     "table_alternatives_at_step_11": Excepted(
         (
-            "A table alternative whose read gives a reason at step 11 (`outside_range`, `at_edge`, "
-            "`want_mismatch` over an operating range of its axis, or `request_incomplete` with no operating "
-            "value for it) is set aside, kept or refuses the field by step 7's rules "
-            "(`read_side_contract.md` section 3, step 7), which a later piece builds; the read raises there, "
-            "and the model gives no verdict (its open point `table_alternatives_at_step_11`)."
+            "A table alternative whose read gives a reason at step 11 (`outside_range`, an extrapolation "
+            "covering it or not, `at_edge`, `want_mismatch` over an operating range of its axis, or "
+            "`request_incomplete` with no operating value for it) is set aside, kept or refuses the field "
+            "by step 7's rules (`read_side_contract.md` section 3, step 7), which a later piece builds; the "
+            "read raises there, and the model gives no verdict (its open point "
+            "`table_alternatives_at_step_11`)."
         ),
         "no verdict",
         frozenset(
             {
+                "PR-013.kept_table_step12_reason_beside_no_pick.json",
+                "PR-013.table_outside_under_extrapolation.json",
                 "PR-013.table_over_operating_range_as_stored.json",
                 "PR-013.table_over_operating_range_keeps_labels.json",
                 "PR-013.two_tables_over_operating_range_want_mismatch.json",
                 "PR-013.want_mismatch_unknown_reasons_stand.json",
+                "PR-044.across_edge_under_extrapolation_set_aside.json",
                 "PR-044.all_set_aside.json",
+                "PR-044.at_edge_under_extrapolation_refuses.json",
                 "PR-044.beside_edge_outside_narrowed_range_set_aside.json",
+                "PR-044.beside_edge_under_extrapolation_kept.json",
                 "PR-044.edge_outside_narrowed_range_refuses.json",
+                "PR-044.edge_outside_narrowed_range_under_extrapolation_refuses.json",
                 "PR-044.one_not_set_aside_refuses.json",
                 "PR-044.operating_range_one_left.json",
+                "PR-044.outside_under_extrapolation_one_left.json",
+                "PR-044.outside_under_extrapolation_want_bounds_set_aside.json",
+                "PR-044.refused_reports_waiting_outside_range.json",
                 "PR-044.table_at_edge_not_set_aside.json",
                 "PR-044.table_outside_range_set_aside.json",
                 "PR-308.no_operating_value_beside_unchecked_constant.json",
@@ -47,73 +57,6 @@ EXCEPTIONS: Final[Mapping[str, Excepted]] = {
             }
         ),
         detail="a table alternative's step-11 reason in step 7 is S4d's",
-    ),
-    "extrapolations": Excepted(
-        (
-            "An extrapolation applies at step 11 to a read outside its form's range (S3), and keeps an "
-            "alternative at step 7 (S4); the model applies none."
-        ),
-        "no verdict",
-        frozenset(
-            {
-                "PR-013.kept_table_step12_reason_beside_no_pick.json",
-                "PR-013.table_outside_under_extrapolation.json",
-                "PR-044.across_edge_under_extrapolation_set_aside.json",
-                "PR-044.at_edge_under_extrapolation_refuses.json",
-                "PR-044.beside_edge_under_extrapolation_kept.json",
-                "PR-044.edge_outside_narrowed_range_under_extrapolation_refuses.json",
-                "PR-044.outside_under_extrapolation_one_left.json",
-                "PR-044.outside_under_extrapolation_want_bounds_set_aside.json",
-                "PR-044.refused_reports_waiting_outside_range.json",
-                "PR-304.pick_kept_table_extrapolation_applied.json",
-                "PR-307.above_consumer_law.json",
-                "PR-307.above_narrowed_range.json",
-                "PR-307.above_range_edge_inside.json",
-                "PR-307.across_edge.json",
-                "PR-307.across_edge_above.json",
-                "PR-307.across_edge_on_range_end.json",
-                "PR-307.across_edge_on_range_end_above.json",
-                "PR-307.at_edge.json",
-                "PR-307.at_edge_outside_readable_range.json",
-                "PR-307.at_edge_outside_readable_range_above.json",
-                "PR-307.at_interval.json",
-                "PR-307.at_record_and_interval.json",
-                "PR-307.below_constant.json",
-                "PR-307.below_narrowed_range.json",
-                "PR-307.below_range_edge_inside.json",
-                "PR-307.edge_beyond_point_not_between.json",
-                "PR-307.edge_beyond_point_not_between_above.json",
-                "PR-307.inside_range_not_applied.json",
-                "PR-307.no_location.json",
-                "PR-307.other_field.json",
-                "PR-307.other_hash.json",
-                "PR-307.other_record.json",
-                "PR-307.reasons_of_step_10_kept.json",
-                "PR-307.step_10_not_met_not_extrapolated.json",
-                "PR-307.steps_12_and_13_run.json",
-                "PR-307.want_bounds.json",
-                "PR-307.want_components.json",
-                "PR-307.want_evidence.json",
-                "PR-317.constant_extrapolation_not_applied.json",
-                "PR-317.constant_outside_conditions_not_extrapolated.json",
-                "PR-321.range_outside_under_extrapolation.json",
-                "PR-330.extrapolation_basis_absent_read.json",
-                "PR-330.extrapolation_field_not_registered.json",
-                "PR-330.extrapolation_law_empty.json",
-                "PR-330.extrapolation_law_missing.json",
-                "PR-330.extrapolation_law_not_string.json",
-                "PR-330.extrapolation_law_white_space_read.json",
-                "PR-330.extrapolation_method_missing.json",
-                "PR-330.extrapolation_method_unknown.json",
-                "PR-330.extrapolation_near_typo_laws.json",
-                "PR-330.extrapolation_other_field_law_empty.json",
-                "PR-330.extrapolation_other_record_law_empty.json",
-                "PR-330.two_extrapolations_one_field.json",
-                "PR-330.two_extrapolations_one_field_one_without_location.json",
-                "PR-330.two_extrapolations_two_fields_read.json",
-            }
-        ),
-        detail="an extrapolation acceptance (S3 and S4)",
     ),
     "picks": Excepted(
         ("A pick is checked and applied at step 7 (S4); the model reads alternatives with no pick alone."),
@@ -135,6 +78,7 @@ EXCEPTIONS: Final[Mapping[str, Excepted]] = {
                 "PR-304.pick_index_minus_zero.json",
                 "PR-304.pick_index_one_point_zero.json",
                 "PR-304.pick_interval_nominal_applied.json",
+                "PR-304.pick_kept_table_extrapolation_applied.json",
                 "PR-304.pick_no_location_not_applied.json",
                 "PR-304.pick_on_field_without_alternatives.json",
                 "PR-304.pick_other_field_not_applied.json",

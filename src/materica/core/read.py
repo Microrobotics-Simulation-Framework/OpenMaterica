@@ -10,15 +10,17 @@ labels (step 12) and its value by `want` (step 13), and gives a `ReadResult`. A 
 is read at step 7 with no pick and no overlay (S4a): each alternative read alone, as a field, then set aside,
 kept or refusing the field, and the outcome the first that applies (`_read_alternatives`).
 
-Of a request's acceptances, a read applies the two S2 builds (`declarations.md` section 4.1): an implied
-condition at step 10, and a nominal at step 13, which supplies the value of an interval under `want: value`.
-Step 0 refuses an acceptance of a kind a read does not take.
+Of a request's acceptances, a read applies three (`declarations.md` section 4.1): an implied condition at
+step 10; a nominal at step 13, which supplies the value of an interval under `want: value`; and an
+extrapolation at step 11, which, under `want: value`, covers a table's `outside_range` at no declared edge and
+across none, so that the read goes on to steps 12 and 13 and the result carries the value at the readable
+range's nearest end with its `assumption` (section 5, "The form's range"). Step 0 refuses an acceptance of a
+kind a read does not take.
 
-Overlays (step 6), picks, extrapolations and step 7's rules for a table alternative whose read gives a reason
-at step 11 are not built yet. A read that would need one raises `NotImplementedError`, and so does a request
-whose answer a check still to come could change, whatever else is wrong with it: one with a region target, or
-a pick, an overlay or an extrapolation among its acceptances. It raises rather than give an answer a later
-step would contradict.
+Overlays (step 6), picks and step 7's rules for a table alternative whose read gives a reason at step 11 are
+not built yet. A read that would need one raises `NotImplementedError`, and so does a request whose answer a
+check still to come could change, whatever else is wrong with it: one with a region target, or a pick or an
+overlay among its acceptances. It raises rather than give an answer a later step would contradict.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -121,15 +123,22 @@ _WANT_OF_FORM: dict[str, Want] = {
 }
 # The shape of each member of a field of each form step 8 reads, by name.
 _FIELD_HINTS = {form: get_type_hints(shape) for form, shape in FIELD_SHAPES.items()}
-# The kinds of acceptance a read takes but S2 does not apply (section 1): an extrapolation (S3), a pick and an
-# overlay (S4). A request holding one raises, whatever else it holds.
-_APPLIED_LATER = ("pick", "overlay", "extrapolation")
+# The kinds of acceptance a read takes but does not apply yet (section 1): a pick and an overlay (S4). A
+# request holding one raises, whatever else it holds.
+_APPLIED_LATER = ("pick", "overlay")
 # The members named at a nominal's place (`declarations.md` section 4.1): every acceptance's kind, location,
 # field, reason and basis, the last two of which a read ignores; its `value`; and `params`, which a nominal
 # holds in place of a value only for a field whose row allows a parameter set (section 1), as no row of this
 # version does: so every nominal holds a `value`, and a `params` beside it is ignored.
 _NOMINAL = "nominal"
 _NOMINAL_MEMBERS = ("acceptance", *_LOCATION_MEMBERS, "field", "reason", "basis", "value", "params")
+# The members named at an extrapolation's place (`declarations.md` section 4.1): every acceptance's kind,
+# location, field, reason and basis, the last two of which a read ignores (section 1); and its own `method`,
+# one of the tokens its row lists, and `law`, "text of at least one character, which a reader does not
+# judge".
+_EXTRAPOLATION = "extrapolation"
+_EXTRAPOLATION_MEMBERS = ("acceptance", *_LOCATION_MEMBERS, "field", "reason", "basis", "method", "law")
+_EXTRAPOLATION_METHODS = VOCABULARY.token_lists["extrapolation_method"]
 
 
 @dataclass(frozen=True)
@@ -161,6 +170,36 @@ class Nominal:
 
 
 @dataclass(frozen=True)
+class Extrapolation:
+    """An extrapolation of a request's `acceptances` that passed step 0 (`declarations.md` section 4.1): its
+    index there; the field it names; where it is located, as a nominal's location is; its `method`, one of
+    its row's tokens; and its `law`, as the request gives it, which a reader does not judge."""
+
+    index: int
+    field: str
+    location: JsonObject
+    method: shapes.ExtrapolationMethod
+    law: str
+
+    def located_at(self, field: str, record: MaterialRef) -> bool:
+        return located_at(self.field, self.location, field, record)
+
+    def assumption(self) -> shapes.ExtrapolationAssumption:
+        """The declaration a value it covers rests on: "`{"acceptance"}` with its kind's own members as the
+        request gives them, `basis` aside" (section 2)."""
+        return {"acceptance": "extrapolation", "method": self.method, "law": self.law}
+
+    def to_json(self) -> JsonObject:
+        return {
+            "acceptance": _EXTRAPOLATION,
+            **copy.deepcopy(self.location),
+            "field": self.field,
+            "method": self.method,
+            "law": self.law,
+        }
+
+
+@dataclass(frozen=True)
 class ReadRequest:
     """A request that passed step 0, holding the members its shape names and no others (section 1)."""
 
@@ -171,6 +210,7 @@ class ReadRequest:
     conditions: dict[str, shapes.RequirementCondition]
     implied: tuple[ImpliedCondition, ...] = ()
     nominals: tuple[Nominal, ...] = ()
+    extrapolations: tuple[Extrapolation, ...] = ()
 
     @classmethod
     def from_json(
@@ -180,8 +220,8 @@ class ReadRequest:
 
         `request` is JSON text, read by `record_format.md` section 1 item 6, as a `str` or bytes-like; any
         other value is read as the JSON text `json.dumps` writes of it. A request with a region target, or
-        with a pick, an overlay or an extrapolation, raises `NotImplementedError`, and claims no reader makes
-        raise `ValueError`, as in `read`.
+        with a pick or an overlay, raises `NotImplementedError`, and claims no reader makes raise
+        `ValueError`, as in `read`.
         """
         _check(claims)
         value = _parsed(request)
@@ -191,7 +231,7 @@ class ReadRequest:
             return (Reason("request_incomplete", detail="the request is not an object"),)
         acceptances = value.get("acceptances", [])
         if isinstance(acceptances, list) and any(map(_applied_later, acceptances)):
-            raise NotImplementedError("a request's picks, overlays and extrapolations are not read yet")
+            raise NotImplementedError("a request's picks and overlays are not read yet")
         named = value.get("target")
         if isinstance(named, dict) and "region" in named:
             raise NotImplementedError("a region target resolves through a scene, which is not read yet")
@@ -220,10 +260,21 @@ class ReadRequest:
             for name, entry in conditions.items()
             if (required := _requirement_condition(name, entry, name in operating, found)) is not None
         }
-        implied, nominals = _acceptances(acceptances if isinstance(acceptances, list) else [], found)
+        implied, nominals, extrapolations = _acceptances(
+            acceptances if isinstance(acceptances, list) else [], found
+        )
         if found or target is None or want is None:
             return merged(found)
-        return cls(target[0], target[1], want, checked_operating, checked_conditions, implied, nominals)
+        return cls(
+            target[0],
+            target[1],
+            want,
+            checked_operating,
+            checked_conditions,
+            implied,
+            nominals,
+            extrapolations,
+        )
 
     def to_json(self) -> shapes.ReadRequest:
         target: shapes.Target = {"record": self.target.to_json(), "field": self.field}
@@ -233,8 +284,8 @@ class ReadRequest:
         request: shapes.ReadRequest = {"target": target, "requirement": requirement}
         if self.operating_conditions:
             request["operating_conditions"] = dict(self.operating_conditions)
-        acceptances: list[ImpliedCondition | Nominal] = sorted(
-            (*self.implied, *self.nominals), key=lambda acceptance: acceptance.index
+        acceptances: list[ImpliedCondition | Nominal | Extrapolation] = sorted(
+            (*self.implied, *self.nominals, *self.extrapolations), key=lambda acceptance: acceptance.index
         )
         if acceptances:
             request["acceptances"] = [
@@ -247,6 +298,13 @@ class ReadRequest:
         nominals for one field are refused at step 0)."""
         return next(
             (nominal for nominal in self.nominals if nominal.located_at(self.field, self.target)), None
+        )
+
+    def extrapolation(self) -> Extrapolation | None:
+        """The extrapolation that applies to this read (section 1): the one, if any, located at its field and
+        record (two extrapolations for one field are refused at step 0)."""
+        return next(
+            (found for found in self.extrapolations if found.located_at(self.field, self.target)), None
         )
 
 
@@ -308,12 +366,13 @@ class FieldRead:
     alternative aside, and `request_fault` that step 10 or step 11 ended on a fault of the request (section 1:
     two implied conditions that disagree, or no operating value for a table's axis), which refuses a field
     holding alternatives whichever alternative found it. `form_range` is a table's step 11, where it gave a
-    reason, which ends the read. The other members are those a read returns, once step 8 has passed, as stored
-    and copied: the form's member (`member`); the value as `want` shapes it, or as a nominal supplies it with
-    its `assumption`, where it can (`value`); the unit, the specimen facts, the statistics block (none for
+    reason, which ends the read but where an extrapolation covers it. The other members are those a read
+    returns, once step 8 has passed, as stored and copied: the form's member (`member`); the value as `want`
+    shapes it, or as a nominal supplies it, or a table's end value under an extrapolation, with its
+    `assumption`, where it can (`value`); the unit, the specimen facts, the statistics block (none for
     evidence) and the provenance; the table the value is read from (`table`); and the labels step 12 adds.
-    `applied` holds the indexes of the acceptances steps 10 and 13 applied, and `alternative` the read's index
-    among the stored alternatives of the field, where it reads one of them."""
+    `applied` holds the indexes of the acceptances steps 10, 11 and 13 applied, and `alternative` the read's
+    index among the stored alternatives of the field, where it reads one of them."""
 
     reasons: tuple[Reason, ...]
     conditions: tuple[ConditionEntry, ...] | None = None
@@ -325,7 +384,7 @@ class FieldRead:
     want_mismatch: Reason | None = None
     member: JsonValue = None
     value: JsonValue = None
-    assumption: shapes.NominalAssumption | None = None
+    assumption: shapes.Assumption | None = None
     unit: JsonValue = None
     specimen: JsonObject | None = None
     statistics: JsonObject | None = None
@@ -362,8 +421,9 @@ class ReadResult:
     """A read's result (section 2): its status, the worst of its reasons; every reason found; its labels;
     `conditions` once step 10 has run to its end (item 6); and the members that carry a value, each present
     as item 6 says, as stored: `value` with its `unit`, `specimen`, `statistics` and `provenance`, and the
-    `assumption` a nominal's value rests on (item 3), and the `table` a value is read from, or under `no_pick`
-    the `alternative_values`, each an alternative's read, its unit among its members."""
+    `assumption` a nominal's or an extrapolation's value rests on (item 3), and the `table` a value is read
+    from, or under `no_pick` the `alternative_values`, each an alternative's read, its unit among its
+    members."""
 
     status: ReadStatus
     reasons: tuple[Reason, ...]
@@ -371,8 +431,9 @@ class ReadResult:
     conditions: tuple[ConditionEntry, ...] | None = None
     applied: tuple[int, ...] = dataclasses.field(default=(), compare=False)
     """Outside `to_json`, and so outside equality, which compares what section 2 gives: the indexes, in the
-    request's `acceptances`, of those the read applied, the implied conditions that filled a condition and the
-    nominal that supplied the value, which a build maps to what accepted the result."""
+    request's `acceptances`, of those the read applied, the implied conditions that filled a condition, the
+    nominal that supplied the value and the extrapolation that covered `outside_range`, which a build maps to
+    what accepted the result."""
     value: JsonValue = dataclasses.field(default=None, kw_only=True)
     alternative_values: tuple[FieldRead, ...] | None = dataclasses.field(default=None, kw_only=True)
     unit: JsonValue = dataclasses.field(default=None, kw_only=True)
@@ -496,8 +557,7 @@ def _resting_on(found: FieldRead, reasons: tuple[Reason, ...], labels: tuple[str
 
 def _value_returned(status: ReadStatus, found: FieldRead) -> bool:
     """Section 2 item 3: a read that steps 8 to 13 shaped a value for returns it unless it is `not_met`, a
-    declared nominal aside, whose value a `not_met` read carries with its `assumption` (an extrapolation waits
-    for S3)."""
+    declared extrapolation or nominal aside, whose value a `not_met` read carries with its `assumption`."""
     return found.value is not None and (status != "not_met" or found.assumption is not None)
 
 
@@ -534,7 +594,7 @@ def read_value_field(
     # a constant's range is its conditions, once they are met, and an interval, a composition and evidence
     # have none (section 5).
     ranged = None if table is None else form_range(table, request)
-    if ranged is not None and ranged.reasons:
+    if ranged is not None and ranged.reasons and ranged.extrapolation is None:
         return FieldRead(
             merged((*found, *ranged.reasons)),
             checked.entries,
@@ -542,6 +602,11 @@ def read_value_field(
             request_fault=ranged.request_fault,
             form_range=ranged,
         )
+    # Section 3: "except step 11's `outside_range` under an extrapolation that applies (section 5), after
+    # which the read goes on to steps 12 and 13"; section 5: "the result stays `not_met`, its reasons kept".
+    extrapolation = None if ranged is None else ranged.extrapolation
+    if ranged is not None:
+        found += ranged.reasons
     provenance = an_object(value["provenance"])
     found += _origin(provenance, field.spec.name)
     hints = _FIELD_HINTS[form]
@@ -550,18 +615,21 @@ def read_value_field(
     supplied = None
     if mismatch is not None and nominal is not None and form == "interval" and request.want == "value":
         mismatch, supplied = _nominal_read(an_object(value["interval"]), field.spec.name, nominal)
-    applied = checked.applied if supplied is None else tuple(sorted((*checked.applied, supplied.index)))
+    rests_on = supplied or extrapolation
+    applied = checked.applied if rests_on is None else tuple(sorted((*checked.applied, rests_on.index)))
     # Section 6: under `want: value` a table gives "the number at the operating conditions", and the result
-    # the table it is read from (section 2, the `table` row).
+    # the table it is read from (section 2, the `table` row); under an extrapolation, "the value at the
+    # range's nearest end, taken from inside the range" (section 5).
     given = member if ranged is None else ranged.value
     return FieldRead(
         merged(found),
         checked.entries,
         applied,
+        form_range=ranged if extrapolation is not None else None,
         want_mismatch=mismatch,
         member=member,
         value=_value(given, mismatch, supplied),
-        assumption=None if supplied is None else supplied.assumption(),
+        assumption=None if rests_on is None else rests_on.assumption(),
         unit=_returned(value["unit"], shapes.Unit),
         specimen=cast(JsonObject, _returned(field.specimen(), shapes.Specimen)),
         # Evidence has no statistics (section 2 item 6).
@@ -577,15 +645,17 @@ def read_value_field(
 @dataclass(frozen=True)
 class FormRange:
     """Step 11 of a table (section 3, step 11; section 5, "The form's range"; `record_format.md` section 6,
-    table item 3): the reasons it gives, each carrying the axis (section 2 item 2), which end the read, or,
-    where it gives none, the table's value at the operating value (`value`). Beside its reasons it reports
-    what step 7's rules for a table alternative read (section 3, step 7), which a later piece builds:
-    `request_fault`, the request gave no operating value for the axis; `over_a_range`, it gave a range of
-    it; `outside_alone`, `outside_range` stands without `at_edge`; and `coverable`, an extrapolation that
-    applies to the read would cover that `outside_range` (section 5): outside the readable range, at no
-    declared edge and across none, so that the range's nearest end, on the operating value's side of every
-    edge, has a value to start from. Whether the request carries such an extrapolation, and under `want:
-    value`, is the extrapolation's piece's to decide."""
+    table item 3): the reasons it gives, each carrying the axis (section 2 item 2), which end the read but
+    where an extrapolation covers them, and the table's number (`value`): at the operating value where it
+    gives none, and, where an extrapolation covers its `outside_range`, the value at the readable range's
+    nearest end, taken from inside the range. Beside its reasons it reports what step 7's rules for a table
+    alternative read (section 3, step 7), which a later piece builds: `request_fault`, the request gave no
+    operating value for the axis; `over_a_range`, it gave a range of it; `outside_alone`, `outside_range`
+    stands without `at_edge`; `coverable`, an extrapolation that applies to the read could cover that
+    `outside_range` (section 5): outside the readable range, at no declared edge and across none, so that the
+    range's nearest end, on the operating value's side of every edge, has a value to start from; and
+    `extrapolation`, the one the request carries that covers it, "a declared extrapolation that applies to the
+    read" under `want: value`, where `coverable`."""
 
     reasons: tuple[Reason, ...] = ()
     value: float | None = None
@@ -593,6 +663,7 @@ class FormRange:
     over_a_range: bool = False
     outside_alone: bool = False
     coverable: bool = False
+    extrapolation: Extrapolation | None = None
 
 
 def _table_numbers(table: JsonObject, name: str) -> list[float]:
@@ -619,15 +690,19 @@ def _a_value(given: shapes.OperatingCondition) -> TypeGuard[shapes.OperatingValu
 
 def form_range(table: JsonObject, request: ReadRequest) -> FormRange:
     """Step 11 of `table`, a table steps 8 and 9 passed, at the request's operating value of its axis: its
-    report, and where it gives no reason the table's value there."""
+    report, the extrapolation that covers its `outside_range` where one does, and the table's number, at the
+    operating value where it gives no reason, or at the readable range's nearest end where an extrapolation
+    covers it (section 5: "Under `want: value`, a declared extrapolation that applies to the read (section 1)
+    covers it")."""
     report = range_report(table, request)
-    if report.reasons:
+    covering = request.extrapolation() if report.coverable and request.want == "value" else None
+    if report.reasons and covering is None:
         return report
     at = cast(shapes.OperatingValue, request.operating_conditions[str(table["axis"])])["value"]
     scheme: evaluate.Scheme = "loglog" if table["scheme"] == "loglog" else "linear"
-    return dataclasses.replace(
-        report, value=evaluate.value(_table_numbers(table, "x"), _table_numbers(table, "y"), scheme, at)
-    )
+    x, y = _table_numbers(table, "x"), _table_numbers(table, "y")
+    found = evaluate.table_value(x, y, scheme, _table_numbers(table, "edges"), _source_range(table), at)
+    return dataclasses.replace(report, value=found, extrapolation=covering)
 
 
 def range_report(table: JsonObject, request: ReadRequest) -> FormRange:
@@ -1191,30 +1266,38 @@ def _applied_later(entry: JsonValue) -> bool:
 
 def _acceptances(
     acceptances: list[JsonValue], found: list[Reason]
-) -> tuple[tuple[ImpliedCondition, ...], tuple[Nominal, ...]]:
-    """The implied conditions and nominals of a request's acceptances, each checked whatever field or location
-    it names (section 1): an acceptance of another kind, or not an object, is refused, and so are two nominals
-    that name one field, whatever else each holds. A pick, an overlay and an extrapolation raised before."""
+) -> tuple[tuple[ImpliedCondition, ...], tuple[Nominal, ...], tuple[Extrapolation, ...]]:
+    """The implied conditions, nominals and extrapolations of a request's acceptances, each checked whatever
+    field or location it names (section 1): an acceptance of another kind, or not an object, is refused, and
+    so are two nominals, or two extrapolations, that name one field, whatever else each holds. A pick and an
+    overlay raised before."""
     implied: list[ImpliedCondition] = []
     nominals: list[Nominal] = []
-    named: list[str] = []
+    extrapolations: list[Extrapolation] = []
+    named: dict[str, list[str]] = {_NOMINAL: [], _EXTRAPOLATION: []}
     for index, entry in enumerate(acceptances):
         kind = entry.get("acceptance") if isinstance(entry, dict) else None
+        if isinstance(entry, dict) and kind in named and isinstance(field := entry.get("field"), str):
+            named[str(kind)].append(field)
         if isinstance(entry, dict) and kind == _IMPLIED_CONDITION:
             if (condition := _implied_condition(index, entry, found)) is not None:
                 implied.append(condition)
         elif isinstance(entry, dict) and kind == _NOMINAL:
-            if isinstance(field := entry.get("field"), str):
-                named.append(field)
             if (nominal := _nominal(index, entry, found)) is not None:
                 nominals.append(nominal)
+        elif isinstance(entry, dict) and kind == _EXTRAPOLATION:
+            if (extrapolation := _extrapolation(index, entry, found)) is not None:
+                extrapolations.append(extrapolation)
         else:
             found.append(
                 _incomplete(f"acceptances[{index}] is no acceptance of a kind a read takes: {kind!r}")
             )
-    for field in sorted({field for field in named if named.count(field) > 1}):
-        found.append(_incomplete(f"acceptances hold two nominals for {field}"))
-    return tuple(implied), tuple(nominals)
+    # Section 1: "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`, that name one
+    # field, whatever location or other members each holds."
+    for kind, fields in named.items():
+        for field in sorted({field for field in fields if fields.count(field) > 1}):
+            found.append(_incomplete(f"acceptances hold two {kind}s for {field}"))
+    return tuple(implied), tuple(nominals), tuple(extrapolations)
 
 
 def _nominal(index: int, entry: dict[str, JsonValue], found: list[Reason]) -> Nominal | None:
@@ -1231,6 +1314,30 @@ def _nominal(index: int, entry: dict[str, JsonValue], found: list[Reason]) -> No
     if len(found) > before or not (isinstance(field, str) and isinstance(value, float)):
         return None
     return Nominal(index, field, location, value)
+
+
+def _extrapolation(index: int, entry: dict[str, JsonValue], found: list[Reason]) -> Extrapolation | None:
+    """An extrapolation's shape (`declarations.md` section 4.1), whatever field or location it names: its
+    field, as the target's is; its `method`, one of the tokens its row lists; and its `law`, "text of at least
+    one character, which a reader does not judge", so that white space alone is one. None, its reasons in
+    `found`, where it breaks its shape."""
+    where = f"acceptances[{index}]"
+    before = len(found)
+    _slips(entry, _EXTRAPOLATION_MEMBERS, where, found)
+    field, method, law = entry.get("field"), entry.get("method"), entry.get("law")
+    _acceptance_field(field, where, found)
+    location = _acceptance_location(entry, where, found)
+    if method not in _EXTRAPOLATION_METHODS:
+        found.append(
+            _incomplete(f"{where}.method is not one of {', '.join(_EXTRAPOLATION_METHODS)}: {method!r}")
+        )
+    if not (isinstance(law, str) and law):
+        found.append(_incomplete(f"{where}.law is missing or not text of at least one character: {law!r}"))
+    if len(found) > before or not (
+        isinstance(field, str) and isinstance(method, str) and isinstance(law, str)
+    ):
+        return None
+    return Extrapolation(index, field, location, cast(shapes.ExtrapolationMethod, method), law)
 
 
 def _acceptance_field(field: JsonValue, where: str, found: list[Reason]) -> None:

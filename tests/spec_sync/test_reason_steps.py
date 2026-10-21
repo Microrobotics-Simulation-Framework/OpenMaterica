@@ -176,6 +176,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("read.py", "_implied_value"): 0,
     ("read.py", "_acceptances"): 0,
     ("read.py", "_nominal"): 0,
+    ("read.py", "_extrapolation"): 0,
     ("read.py", "_acceptance_field"): 0,
     ("resolve.py", "_candidate"): 1,
     ("record.py", "Record.version_refusal"): 2,

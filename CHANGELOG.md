@@ -65,6 +65,24 @@ every family entry goes in `families/CHANGELOG.md`.
   table's unknown member left out of the `table` beside its value), run and pass: 1104 of 1515 case files pass and
   35 are verified against the reference evaluator; 376 wait for S3c (45), S4's later pieces (134) and the record
   checks, C2 (197).
+- The `extrapolation` acceptance (S3c; `declarations.md` section 4.1; `read_side_contract.md` sections 1, 2, 3
+  and 5). Step 0 checks an extrapolation whatever field or location it names: its `field` as a target's, its
+  `method` one of `constant` and `consumer_law`, its `law` a string of at least one character, white space
+  alone included, which the reader does not judge, a member one slip from a named one refused, its `reason` and
+  `basis` ignored; two naming one field are `request_incomplete`, whatever else each holds. One naming the
+  read's field at the read's record applies to it: under `want: value`, a table read outside its readable range,
+  at no declared edge and with none between the read and the range's nearest end or on that end, goes on past
+  step 11's `outside_range` to steps 12 and 13, its status `not_met` and its reasons kept, step 12's added; the
+  result carries the value at the readable range's nearest end, taken from inside the range (at a `source_range`
+  end inside an interval, interpolated there), with its unit, specimen, statistics, provenance and the table it is
+  read from, and `assumption`, the extrapolation's `method` and `law` as the request gives them; `applied` holds
+  its index. Under any other `want`, at or across an edge, inside the range, on a constant, or named for another
+  field or location, it is checked and not applied. Step 11's report names the extrapolation that covers its
+  `outside_range` beside `coverable`, for S4d's step 7, where a table alternative whose read gives a reason at
+  step 11 still raises `NotImplementedError`, one an extrapolation covers included. The reference model applies
+  an extrapolation as the read does, written from the text. The 45 case files mapped to S3c run and pass: 1149 of
+  1515 case files pass and 35 are verified against the reference evaluator; 331 wait for S4's later pieces (134)
+  and the record checks, C2 (197).
 
 ### Changed
 - `scripts/pre_review.py` runs the kill counts' unit tests (`tests/unit/test_gen_kill_counts.py`) with its
