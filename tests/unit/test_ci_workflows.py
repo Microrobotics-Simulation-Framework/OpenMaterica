@@ -3131,9 +3131,12 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
 FUZZ_SLOWEST_ON_CI = 59.52
 # The minutes the job's steps added after that run, by estimate, until a run on CI measures them: the table's
 # control (2026-10-21), two runs side by side of `TABLES_RUN_SECONDS` each, 8 minutes, and their start, which
-# loads the corpus (2.5 s for a run of 60 s, locally): half a minute; and the table value's control (S3b-2),
-# four runs side by side of `TABLE_EDGES_RUN_SECONDS` each, 15 minutes, and their start, half a minute.
-FUZZ_ADDED_SINCE = 8.5 + 15.5
+# loads the corpus (2.5 s for a run of 60 s, locally): half a minute; the table value's control (S3b-2),
+# four runs side by side of `TABLE_EDGES_RUN_SECONDS` each, 15 minutes, and their start, half a minute; and
+# fuzz target 5 (S3c), its weekly run of the default 300 s, 5 minutes, and its seeds and dictionary written
+# and loaded, half a minute, and its control, four runs side by side of `METHOD_RUN_SECONDS` each, 8 minutes,
+# and their start, half a minute.
+FUZZ_ADDED_SINCE = 8.5 + 15.5 + 5.5 + 8.5
 
 
 def fuzz_margin_problems(ci: Workflow) -> list[str]:
@@ -3152,12 +3155,12 @@ def test_the_fuzz_job_has_twice_its_slowest_run_on_ci() -> None:
     assert fuzz_margin_problems(workflow("ci.yml")) == []
 
 
-@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167])
+@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167, 195])
 def test_the_fuzz_margin_check_can_fail(minutes: int) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     ci["jobs"]["fuzz"]["timeout-minutes"] = minutes
     found = fuzz_margin_problems(ci)
-    expected = f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI and the 24 added since"
+    expected = f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI and the 38 added since"
     assert found == [expected], found
 
 
@@ -8135,7 +8138,8 @@ TABLES_CASES = (
 # reuse phase with a failing example; and on a run of the table's fault, waits up to `STUB_PARTNER_WAIT`
 # seconds for the other run to start, records whether it did, and prints `STUB_FINDING` where its corpus is
 # among `STUB_FINDS`; on a run of the table value's fault, likewise for the three others, `STUB_EDGE_FINDING`
-# and `STUB_EDGE_FINDS`.
+# and `STUB_EDGE_FINDS`; and on a run of fuzz target 5's fault (S3c), likewise for the others of its runs,
+# `STUB_METHOD_FINDING` and `STUB_METHOD_FINDS`.
 FUZZ_CONTROL_UV = """
 import json, os, sys, time
 from pathlib import Path
@@ -8160,12 +8164,13 @@ elif module == "pytest":
     print("IndexError: the seeded fault in the read")
     print("  - during reuse phase (0.00 seconds):")
     print("    - 0 passing examples, 1 failing examples, 0 invalid examples")
-elif fault in ("tables", "table_edges"):
+elif fault in ("tables", "table_edges", "extrapolation_method"):
     corpus = Path(given[0]).name
     started = Path(os.environ["RUNNER_TEMP"], "started", fault)
     started.mkdir(parents=True, exist_ok=True)
     (started / corpus).touch()
-    wanted = 1 if fault == "tables" else 3
+    others = {"tables": 1, "table_edges": 3}
+    wanted = others[fault] if fault in others else int(os.environ["STUB_METHOD_OTHERS"])
     deadline = time.monotonic() + float(os.environ["STUB_PARTNER_WAIT"])
     while (
         len([other for other in started.iterdir() if other.name != corpus]) < wanted
@@ -8174,7 +8179,7 @@ elif fault in ("tables", "table_edges"):
         time.sleep(0.05)
     record["beside"] = len([other for other in started.iterdir() if other.name != corpus])
     record["partner"] = record["beside"] > 0
-    stub = "STUB_" if fault == "tables" else "STUB_EDGE_"
+    stub = {"tables": "STUB_", "table_edges": "STUB_EDGE_", "extrapolation_method": "STUB_METHOD_"}[fault]
     if corpus in os.environ[stub + "FINDS"].split():
         print(os.environ[stub + "FINDING"])
 else:
@@ -8190,9 +8195,16 @@ def control_step(ci: Workflow) -> dict[str, Any]:
     return found
 
 
-def control_dictionary(calls: list[dict[str, Any]]) -> str | None:
-    """The dictionary the control step writes for fuzz target 4's runs, where it writes one."""
-    written = [call["arguments"][1] for call in calls if call["arguments"][:1] == ["--dict"]]
+def control_dictionary(
+    calls: list[dict[str, Any]], module: str = "tests.fuzz.read_field_bytes"
+) -> str | None:
+    """The dictionary the control step writes for the runs of a fuzz target, `module`, fuzz target 4 by
+    default, where it writes one."""
+    written = [
+        call["arguments"][1]
+        for call in calls
+        if call["arguments"][:1] == ["--dict"] and call["module"] == module
+    ]
     return written[0] if len(written) == 1 else None
 
 
@@ -8233,6 +8245,7 @@ def tables_control_problems(ci: Workflow, directory: Path) -> list[str]:
             "STUB_FINDING": finding,
             "STUB_EDGE_FINDS": "table-edges-1",
             "STUB_EDGE_FINDING": TABLE_EDGES_FINDING,
+            **METHOD_FOUND,
             "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
         }
         status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
@@ -8384,6 +8397,7 @@ def table_edges_control_problems(ci: Workflow, directory: Path) -> list[str]:
             "STUB_FINDING": TABLES_FINDING,
             "STUB_EDGE_FINDS": finds,
             "STUB_EDGE_FINDING": finding,
+            **METHOD_FOUND,
             "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
         }
         status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
@@ -8501,6 +8515,196 @@ def test_the_table_value_control_check_can_fail(
     assert changed != found["run"]
     found["run"] = changed
     problems = table_edges_control_problems(ci, tmp_path)
+    assert any(problem in line for line in problems), problems
+
+
+# Fuzz target 5's control (S3c): the fault seeded in step 0
+# (`MATERICA_FUZZ_SEEDED_FAULT=extrapolation_method`, `tests/fuzz/seeded_fault.py`), an extrapolation's
+# `method` compared ignoring case, which the target's oracle finds as an extrapolation that breaks its shape
+# not refused. Ten local runs, five at a time side by side, each of up to 600 s, found it in all ten, after 7
+# to 482 s (2026-10-21). Run in the control step until the fuzz controls' own job is built (the maintainer's
+# ruling, 2026-10-21): four runs side by side, each of up to the slowest find, to the minute. At the rate
+# measured, 7.6e-3 finds a second, all four miss with about 3e-5 on a runner 1.4 times slower
+# (`tests/fuzz/README.md`). The step passes where any finds it.
+TARGET_5, METHOD = "tests.fuzz.read_acceptance_bytes", "extrapolation_method"
+METHOD_SLOWEST_FIND = 482
+METHOD_RUNS = 4
+METHOD_RUN_SECONDS = 60 * round(METHOD_SLOWEST_FIND / 60)
+METHOD_ERROR = (
+    "::error::the extrapolation_method runs did not find the fault seeded in an extrapolation's method"
+)
+# The method's fault as fuzz target 5 reported it, `constant` written `constanT` (2026-10-21); and another of
+# the target's findings, which is not that fault's.
+METHOD_FINDING = (
+    "AssertionError: an extrapolation that breaks its shape not refused: {('outside_range', 'temperature')}"
+)
+ANOTHER_METHOD_FINDING = "AssertionError: an acceptance turned a read not_met into met"
+# The stub's environment where every case of another fault's control finds target 5's fault in its first run.
+METHOD_FOUND = {
+    "STUB_METHOD_FINDS": "method-1",
+    "STUB_METHOD_FINDING": METHOD_FINDING,
+    "STUB_METHOD_OTHERS": str(METHOD_RUNS - 1),
+}
+# Each case: the corpora of the runs that report a finding, the finding, and whether the step passes.
+METHOD_CASES = (
+    ("method-1", METHOD_FINDING, True),
+    (f"method-{METHOD_RUNS}", METHOD_FINDING, True),
+    ("", METHOD_FINDING, False),
+    (" ".join(f"method-{run}" for run in range(1, METHOD_RUNS + 1)), ANOTHER_METHOD_FINDING, False),
+)
+
+
+def method_runs_problems(runs: list[dict[str, Any]], dictionary: str | None) -> list[str]:
+    """Where target 5's fault is not run `METHOD_RUNS` times, on as many corpora, side by side, each
+    `METHOD_RUN_SECONDS`, with the dictionary the step writes for target 5 (`dictionary`), as its rate was
+    measured."""
+    problems = (
+        [] if len(runs) == METHOD_RUNS else [f"{len(runs)} runs of the method's fault, not {METHOD_RUNS}"]
+    )
+    if len({run["arguments"][0] for run in runs}) != len(runs):
+        problems.append("the method's runs share a corpus")
+    for run in runs:
+        seconds = [word.partition("=")[2] for word in run["arguments"] if word.startswith("-max_total_time=")]
+        if seconds != [str(METHOD_RUN_SECONDS)]:
+            lasting = " and ".join(seconds) or "unlimited"
+            problems.append(f"a run of the method's fault for {lasting} s, not {METHOD_RUN_SECONDS}")
+        if run["beside"] < METHOD_RUNS - 1:
+            problems.append(f"a run of the method's fault beside {run['beside']} others, not side by side")
+        if dictionary is None or dictionaries(run) != [dictionary]:
+            problems.append(
+                f"a run of the method's fault with the dictionaries {dictionaries(run)}, not the step's"
+            )
+    return problems
+
+
+def method_control_problems(ci: Workflow, directory: Path) -> list[str]:
+    """The control step run as written with `FUZZ_CONTROL_UV`, in each of `METHOD_CASES`: where its runs of
+    target 5's fault are not as `method_runs_problems` holds them, or where it passes or fails otherwise than
+    the case says, failing at the method's check."""
+    problems: list[str] = []
+    for index, (finds, finding, passes) in enumerate(METHOD_CASES):
+        where = directory / str(index)
+        (where / "work").mkdir(parents=True)
+        environment = runner(where, FUZZ_CONTROL_UV) | {
+            "STUB_FINDS": "tables-1",
+            "STUB_FINDING": TABLES_FINDING,
+            "STUB_EDGE_FINDS": "table-edges-1",
+            "STUB_EDGE_FINDING": TABLE_EDGES_FINDING,
+            "STUB_METHOD_FINDS": finds,
+            "STUB_METHOD_FINDING": finding,
+            "STUB_METHOD_OTHERS": str(METHOD_RUNS - 1),
+            "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
+        }
+        status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
+        recorded = where / "calls.jsonl"
+        calls = (
+            [json.loads(line) for line in recorded.read_text("utf-8").splitlines()]
+            if recorded.exists()
+            else []
+        )
+        runs = [call for call in calls if (call["module"], call["fault"]) == (TARGET_5, METHOD)]
+        if index == 0:
+            problems += method_runs_problems(runs, control_dictionary(calls, TARGET_5))
+        case = f"{finds or 'no run'} reporting {'the' if finding == METHOD_FINDING else 'another'} finding"
+        if passes and status != 0:
+            problems.append(f"the step fails where {case}")
+        if not passes and (status == 0 or METHOD_ERROR not in printed):
+            problems.append(f"the step does not fail at the method's check where {case}")
+    return problems
+
+
+def test_the_control_step_runs_target_5_s_fault_and_sees_its_finding(tmp_path: Path) -> None:
+    assert method_control_problems(workflow("ci.yml"), tmp_path) == []
+
+
+# Parts of the control step's script, as YAML gives it, without the block's indentation.
+METHOD_LOOP = f"""\
+for worker in {" ".join(str(run) for run in range(1, METHOD_RUNS + 1))}; do
+  cp -r "$control/acceptances" "$control/method-$worker"
+"""
+METHOD_RUN_END = f"""\
+    > "$control/method-$worker.log" 2>&1 &
+done
+wait || true
+cat "$control"/method-[1-{METHOD_RUNS}].log > "$control/extrapolation_method.log"
+"""
+METHOD_CHECK = (
+    'if ! grep -q "AssertionError: an extrapolation that breaks its shape not refused" '
+    '"$control/extrapolation_method.log"; then\n'
+)
+METHOD_DICTIONARY = (
+    f'"$control/method-$worker" -dict="$control/acceptance.dict" -max_total_time={METHOD_RUN_SECONDS}'
+)
+
+
+def without_the_method_s_runs(text: str) -> str:
+    start, end = text.index(METHOD_LOOP), text.index(METHOD_RUN_END) + len(METHOD_RUN_END)
+    return text[:start] + text[end:]
+
+
+def without_the_method_s_check(text: str) -> str:
+    start = text.index(METHOD_CHECK)
+    return text[:start] + text[text.index("\nfi\n", start) + len("\nfi\n") :]
+
+
+def with_one_method_run_fewer(text: str) -> str:
+    fewer = " ".join(str(run) for run in range(1, METHOD_RUNS))
+    return text.replace(METHOD_LOOP, METHOD_LOOP.replace(f"in {fewer} {METHOD_RUNS};", f"in {fewer};"))
+
+
+def with_shorter_method_runs(text: str) -> str:
+    start = text.index(METHOD_LOOP)
+    return text[:start] + text[start:].replace(
+        f"-max_total_time={METHOD_RUN_SECONDS}", f"-max_total_time={METHOD_RUN_SECONDS - 60}", 1
+    )
+
+
+def with_the_method_s_runs_one_after_the_other(text: str) -> str:
+    return text.replace(METHOD_RUN_END, METHOD_RUN_END.replace("2>&1 &", "2>&1"))
+
+
+def with_the_method_s_runs_without_the_dictionary(text: str) -> str:
+    return text.replace(METHOD_DICTIONARY, f'"$control/method-$worker" -max_total_time={METHOD_RUN_SECONDS}')
+
+
+def with_the_method_s_runs_on_another_dictionary(text: str) -> str:
+    return text.replace(
+        METHOD_DICTIONARY,
+        f'"$control/method-$worker" -dict=tests/fuzz/json.dict -max_total_time={METHOD_RUN_SECONDS}',
+    )
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (without_the_method_s_runs, f"0 runs of the method's fault, not {METHOD_RUNS}"),
+        (with_one_method_run_fewer, f"{METHOD_RUNS - 1} runs of the method's fault, not {METHOD_RUNS}"),
+        (with_shorter_method_runs, f"for {METHOD_RUN_SECONDS - 60} s, not {METHOD_RUN_SECONDS}"),
+        (with_the_method_s_runs_one_after_the_other, "beside 0 others, not side by side"),
+        (without_the_method_s_check, "the step does not fail at the method's check where no run reporting"),
+        (with_the_method_s_runs_without_the_dictionary, "method's fault with the dictionaries [], not"),
+        (
+            with_the_method_s_runs_on_another_dictionary,
+            "method's fault with the dictionaries ['tests/fuzz/json.dict'], not",
+        ),
+    ],
+    ids=[
+        "runs-removed",
+        "one-run-fewer",
+        "shorter",
+        "one-after-the-other",
+        "check-removed",
+        "no-dictionary",
+        "another-dictionary",
+    ],
+)
+def test_the_method_control_check_can_fail(tmp_path: Path, fault: Callable[[str], str], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    found = control_step(ci)
+    changed = fault(found["run"])
+    assert changed != found["run"]
+    found["run"] = changed
+    problems = method_control_problems(ci, tmp_path)
     assert any(problem in line for line in problems), problems
 
 

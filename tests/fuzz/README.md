@@ -1,6 +1,6 @@
 # Fuzzing
 
-Four Atheris targets, which run coverage-guided fuzzing against the core. They live under `tests/` because
+Five Atheris targets, which run coverage-guided fuzzing against the core. They live under `tests/` because
 they are tests of the core, outside the package and its layers: they reuse the property tests' strategies,
 profiles and example database, and are typed, linted and SPDX-checked with the other tests. pytest does not
 collect them. Atheris ships no types, so `typings/atheris/` holds stubs for the part of it the targets use.
@@ -11,6 +11,7 @@ collect them. Atheris ships no types, so `typings/atheris/` holds stubs for the 
 | `properties.py` | the JSON properties of `tests/property/` (the reader, RFC 8785, the hash), through `fuzz_one_input`, in-process; the first byte picks the property | a property fails. The failure goes into the example database, and `pytest tests/property`, under the same `MATERICA_HYPOTHESIS_PROFILE`, replays it first and shrinks it |
 | `record_properties.py` | the record properties of `tests/property/` (the envelope checks, versions, the read's laws, step 8's over a constant, an interval and a composition, steps 9 and 10's, and the S2 design's HP1, HP2, HP4, HP6, HP10, HP11 and HP12, the agreement with the reference model) in the same way: structure-aware, since their strategies build records, stores and requests from the bytes Atheris gives | as above |
 | `read_field_bytes.py` | raw bytes into steps 7 to 13 of a read: the first byte picks a registered field, and the rest, read by `jsonio.parse`, stands in that field's place in a record valid otherwise, pinned by its recomputed hash, read at operating conditions with a tolerance or an accept list for each condition its row requires; seeded with every value field of every conformance input, with a dictionary of the member names and tokens a value field holds, a table's reserved `points` among them, that `--dict` writes from the schema and the vocabulary | a read raises anything but `NotImplementedError`; two reads differ; a result breaks HP1 or HP2 (a code of the table, of steps 7 to 13 only, each with its condition once and `condition` where section 2 item 2 puts it, the worst status, the members item 6 gives, `table` exactly beside a value read from a table: `field_oracle.check_table_member`); the read without the hash suite differs by more than the label `hash_not_checked`; the read under the `want` that gives the field's form (`value`, or `bounds` for an interval, `components` for a composition and `evidence` for evidence) and the reference model (`tests/reference/read_model.py`) disagree but as HP12 lists (`field_oracle.check_against_the_model`), which sees a refusal step 8 misses or gives wrongly, a condition holding a member of the other kind's shape among them (HP12's open point `members_of_the_other_kind`, which the target knew by its shape until the maintainer ruled it fail closed, 2026-10-19); step 8 lets through a constant, a table, an interval, a composition or evidence its row allows that the reader `$defs` refuse (`field_oracle.py`, T1's third relation); or steps 9 and 10 read such a field otherwise than their text: its units by code point, a table's `axis_unit` among them, and its conditions by HP7's oracle (`tests/property/condition_oracle.py`), a table that step 9 passes giving "not yet". `NotImplementedError` is "not yet": step 7 over a table alternative whose read gives a reason at step 11 (S4d's), which the model leaves undecided too; a field holding alternatives is read by S4a's step 7, which the model decides too. A table is read to the end (S3b-2): its axis entry and step 11's reasons by the text (`field_oracle.table_steps_10_and_11`), and the table read again under `want: value` at the places table item 3 tells apart (`field_oracle.places`: its knots and edges, the readable range's ends, the double either side of each, a value beyond each end of `x`), each read held to the model, to steps 9 and 10 and to HP1 and HP2 |
+| `read_acceptance_bytes.py` | raw bytes as the one entry of a request's `acceptances` (S3c, the S3 design's `read_acceptance_bytes`): `jsonio.parse` reads them, and the entry stands in fixed reads of two conformance tables (`acceptance_oracle.PLACES`): the density table below, inside and above its range and below it under `want: bounds`, and the edge table narrowed to [275, 283] K at its edge outside the range, beyond it and between it and the range; seeded with every acceptance of every conformance case's request, its extrapolations located at both tables among them, with a dictionary of an acceptance's names, the kinds, an extrapolation's methods, the registered fields and conditions and the two records' references, that `--dict` writes | a read raises anything but `NotImplementedError` (a pick or an overlay, which S4 reads); two reads differ; an extrapolation that breaks its shape is not refused with `request_incomplete`, wherever it is located (`acceptance_oracle.check_shape_refused`); a result breaks HP1 and HP2 as an acceptance leaves them, an extrapolation's result `not_met` with `outside_range`, the value with the members beside it and the table, and its `assumption` the entry's own `method` and `law`, the law text of at least one character (`acceptance_oracle.check_acceptance_laws`), or holds `table` other than beside its value; the status is better than the same read without the entry (`acceptance_oracle.check_no_better`); or the read and the reference model disagree but as HP12 lists (`field_oracle.check_against_the_model`) |
 
 ## Running
 
@@ -25,6 +26,8 @@ MATERICA_HYPOTHESIS_PROFILE=ci uv run python -m tests.fuzz.properties -max_total
 MATERICA_HYPOTHESIS_PROFILE=ci uv run python -m tests.fuzz.record_properties -max_total_time=300
 uv run python -m tests.fuzz.read_field_bytes --seed fields && uv run python -m tests.fuzz.read_field_bytes --dict value_field.dict
 uv run python -m tests.fuzz.read_field_bytes fields -dict=value_field.dict -max_total_time=300
+uv run python -m tests.fuzz.read_acceptance_bytes --seed acceptances && uv run python -m tests.fuzz.read_acceptance_bytes --dict acceptance.dict
+uv run python -m tests.fuzz.read_acceptance_bytes acceptances -dict=acceptance.dict -max_total_time=300
 MATERICA_HYPOTHESIS_PROFILE=ci uv run pytest tests/property     # replays and shrinks what was found
 mkdir smaller && uv run python -m tests.fuzz.jsonio_bytes -merge=1 smaller corpus   # what adds coverage
 ```
@@ -134,6 +137,24 @@ there. A find in each run within 900 s on the runner's time is not met: one of t
 it after 725 s, past the 643 s that 900 s are on a runner 1.4 times slower. The maintainer's ruling on the fuzz
 controls gives them a job of their own, a runner for each pair; this control moves there when S4's piece builds
 it.
+
+S3c's control, for the fifth target, is of S4a's kind, in step 0: an extrapolation's `method` compared ignoring
+case, so that `Constant` or `consumer_LAW` is taken where `declarations.md` section 4.1 allows `constant` or
+`consumer_law` alone (`seeded_fault.faulty_extrapolation`). `MATERICA_FUZZ_SEEDED_FAULT=extrapolation_method`
+seeds it alone, in the fifth target. Nothing raises: the read goes on, and the target's oracle, which holds an
+extrapolation that breaks its shape to `request_incomplete` wherever it is located
+(`acceptance_oracle.check_shape_refused`), finds it, as the model does. No seed holds such a method, and every
+seed holding an extrapolation is one changed letter from one (2026-10-21). The S3 design names another fault, a
+`law` that is a number taken under `constant`; a seed holds exactly that (PR-330's case of a law that is no
+string), so the fuzzer would find it at once and show nothing. Under `consumer_law`, which no seed holds beside a
+number, it is two aligned changes away, and five local runs of 600 s side by side, about 1.1 million inputs
+each, found it in none. The method's fault, in ten local runs, five at a time side by side, each of
+up to 600 s with the arguments CI's control gives the target, was found in all ten, after 7, 9, 25, 58, 84, 152,
+154, 173, 174 and 482 s (Python 3.14, 2026-10-21; each find `constant` with one letter's case changed): a rate of
+7.6e-3 finds a second. CI's control step runs it in four runs side by side, each of up to 480 s, the slowest find
+to the minute, and passes where any of the four reports the oracle's message. At the rate measured, all four miss
+with about 3e-5 on a runner 1.4 times slower than the laptop, an estimate until CI's own runs measure it. It moves
+to the fuzz controls' own job when S4's piece builds it.
 
 ## In CI
 

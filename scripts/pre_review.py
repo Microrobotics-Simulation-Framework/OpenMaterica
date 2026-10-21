@@ -119,13 +119,15 @@ DATA_RULES = (
     DataRule(
         "the specification text the verdicts, the audits and the conditions read",
         r"docs/specification/(provenance|record_format|uncertainty)\.md",
-        "the verdicts' tests and the audit controls quote it, and the agreement and conditions shards read "
-        "it when they are imported",
+        "the verdicts' tests and the audit controls quote it, the agreement and conditions shards read it "
+        "when they are imported, and so do the property modules the fuzz oracles' tests import",
         tests=(
             "tests/unit/test_audit_controls.py",
             "tests/unit/test_verdicts.py",
             "tests/property/test_validators_agree.py",
             "tests/property/test_condition_mutant_table.py",
+            "tests/unit/test_fuzz_oracle.py",
+            "tests/unit/test_acceptance_oracle.py",
         ),
     ),
     DataRule(
@@ -156,9 +158,10 @@ DATA_RULES = (
     DataRule(
         "a conformance case",
         r"src/materica/data/conformance/.+",
-        "the cases are run by the conformance runner and held to CASES.md and the step map",
+        "the cases are run by the conformance runner and held to CASES.md and the step map, and fuzz target "
+        "5's oracle reads two of the inputs",
         tests=("tests/conformance", "tests/spec_sync"),
-        readers=("tests/conformance/runner.py", "scripts/check_wheel.py"),
+        readers=("tests/conformance/runner.py", "scripts/check_wheel.py", "tests/fuzz/acceptance_oracle.py"),
     ),
     DataRule(
         "a plain-read input the read tests load",
@@ -343,6 +346,7 @@ LOCATES_NO_RULED_DATA = {
     "tests/conftest.py": "locates the example database; a change to a conftest selects every test",
     "tests/fuzz/jsonio_bytes.py": "an Atheris target: CI's fuzz job runs it, this script cannot",
     "tests/fuzz/read_field_bytes.py": "an Atheris target: CI's fuzz job runs it, this script cannot",
+    "tests/fuzz/read_acceptance_bytes.py": "an Atheris target: CI's fuzz job runs it, this script cannot",
     "tests/spec_sync/name_overlaps.py": "read by `tests/spec_sync`, which the schema rule runs whole",
 }
 

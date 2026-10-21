@@ -140,6 +140,20 @@ every family entry goes in `families/CHANGELOG.md`.
   on CI (59.5 minutes) and the 24 minutes the table's runs and these add by estimate (`FUZZ_ADDED_SINCE`). The
   ruling gives the fuzz controls a job of their own, a runner for each pair: this control moves there when S4's
   piece builds it.
+- The fuzz job runs fuzz target 5 (S3c, **Verification**) weekly for `fuzz_seconds` as it runs the others, and
+  its control step runs it on the fault seeded in an extrapolation's method
+  (`MATERICA_FUZZ_SEEDED_FAULT=extrapolation_method`), in four runs side by side, each of up to 480 s, the
+  slowest of ten local finds to the minute: at the rate measured, all four miss with about 3e-5 on a runner 1.4
+  times slower than the laptop, an estimate. The step passes where any of the four reports the oracle's message
+  that an extrapolation breaking its shape is not refused. `tests/unit/test_ci_workflows.py` runs the step as
+  written, a stub standing for each fuzz run, and fails with the four runs removed, with three, with shorter
+  runs, with the four one after the other, with the check removed, and with the runs without the step's
+  dictionary or with another; the check fails where no run finds the fault and where the only finding is
+  another. The job's timeout rises from 168 to 196 minutes: twice its slowest run on CI (59.5 minutes) and the
+  38 minutes added since by estimate, the table's and the table value's controls, this target and its control
+  (`FUZZ_ADDED_SINCE`). `scripts/pre_review.py` runs the two fuzz oracles' tests where the specification text
+  their property imports read changes, as a trace of the files the tests open showed, and target 5's oracle's
+  where a conformance file changes, since the oracle reads two inputs.
 - The repository moved from `Microrobotics-Simulation-Framework/OpenMaterica` to `OpenMaterica/OpenMaterica`.
   GitHub redirects the old git and web URLs; the README, the site, the scripts, the unit test and the workflow
   documentation name the new place. MIME and MADDENING stay where they are. The README's attestation command says
@@ -591,6 +605,25 @@ every family entry goes in `families/CHANGELOG.md`.
   value, where the read gives `request_unit_mismatch` beside `request_incomplete`; fuzz target 5 (below) found
   the two answering differently. A new arm, written through the case tools, pins it
   (`PR-320.implied_value_holding_a_token_in_another_unit`, run by S2a-4's code), and fails the model as it was.
+- Fuzz target 5, `tests/fuzz/read_acceptance_bytes.py` (S3c): raw bytes, parsed, as the one acceptance of seven
+  fixed reads of two conformance tables, below, inside and above the density table's range and below it under
+  `want: bounds`, and at the edge table's declared edge outside its narrowed range, beyond it and between it and
+  the range, each read twice. It fails where a read raises anything but `NotImplementedError`, where two reads
+  differ, where an extrapolation that breaks its shape is not refused wherever it is located
+  (`read_side_contract.md` section 1), where a result breaks HP1 and HP2 as an acceptance leaves them or an
+  extrapolation's result breaks section 5 (`not_met` with `outside_range`, the members beside the value, the
+  table, and the entry's own `method` and `law` in `assumption`), where an acceptance makes a status better than
+  the same read without it, and where the read and the reference model disagree but as HP12 lists. Its seeds are
+  every acceptance of every conformance case's request (216), with a dictionary that `--dict` writes. Its
+  oracles live apart (`tests/fuzz/acceptance_oracle.py`), and `tests/unit/test_acceptance_oracle.py` shows each
+  failing and quiet on the core at every place under every seed. On the correct core it found two things: step 0
+  raising `TypeError` for an acceptance whose kind is an object or a list (S3c's own, fixed here), and the
+  model's implied value (above). Its control, `MATERICA_FUZZ_SEEDED_FAULT=extrapolation_method`, compares an
+  extrapolation's `method` ignoring case, one changed letter from every seed extrapolation, none of which holds
+  it: ten local runs, each of up to 600 s, found it in all ten, after 7 to 482 s, a rate of 7.6e-3 finds a
+  second. The S3 design's own fault, a number taken as a `constant`'s `law`, a seed holds, and under
+  `consumer_law` five runs of 600 s found it in none; HP26's mutant `a_law_of_any_type` holds it. CI's control
+  step runs the method's (**Changed**, above).
 
 ## [0.1.0.dev2] - 2026-10-20
 
