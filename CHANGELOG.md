@@ -59,16 +59,21 @@ every family entry goes in `families/CHANGELOG.md`.
   (`form_invalid`, PR-030), and so does `label_basis` beside `alternatives` (`record_format.md` section 5),
   where the reader before ignored both. Four case files hold it, written through the case tools: three of
   PR-030 (`label_basi` beside the label refuses the field; `label_basis`, well formed or not, is neither
-  checked nor returned) and one of PR-044, whose row now names `label_basis` beside `alternatives`.
+  checked nor returned in any member a case compares) and one of PR-044, whose row now names `label_basis`
+  beside `alternatives`.
 
 ### Verification
 - A label's basis (**Schema**, above) comes with four case files, written through the case tools, which run
   and pass: `PR-030.near_typo_label_basi_beside_label`, `label_basi` beside the label, refused at step 8;
   `PR-030.label_basis_stated_not_returned` and `PR-030.label_basis_guessed_not_checked`, `label_basis` well
-  formed and not, each `met` with every member as without it; and `PR-044.alternatives_beside_label_basis`,
-  refused at step 7. A reader, or the reference model, that does not name `label_basis` at a field's place
-  fails the first and the last and no other case file; no case file caught the model's before. A reader that
-  checks its shape fails the third alone. `tests/spec_sync/test_t1.py` lists the slip's input under `slip`.
+  formed and not, each `met`, every member a case compares as without it; and
+  `PR-044.alternatives_beside_label_basis`, refused at step 7. A reader, or the reference model, that does not
+  name `label_basis` at a field's place fails the first and the last and no other case file; no case file
+  caught the model's before. A reader that checks its shape fails the third alone.
+  `tests/spec_sync/test_t1.py` lists the slip's input under `slip`. Since a case compares only the members its
+  `compare` names, `tests/reference/test_cases.py` also holds the reference model's whole result, over every
+  case file of a read it gives a verdict on, to the members of `read_side_contract.md` section 2's table, read
+  from the text: a model that returns `label_basis` beside them passes every case file and fails it.
 - PR-339's arm across a declared edge, written through the case tools: `PR-339.across_edge_no_value`, the edge
   table narrowed to [275, 283], read at 272 K under a `trainable` acceptance, ends at step 11 with
   `outside_range` and no value, as `read_side_contract.md` section 2 item 3 now says; `declarations.md`

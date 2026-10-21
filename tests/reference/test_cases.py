@@ -9,13 +9,15 @@ is a disagreement, never a pass. Where the model and a case disagree, the text d
 is fixed; a case that contradicts the text is listed, with the quotes, and left for the maintainer, never
 edited here (case files change through the case tools alone)."""
 
-from collections.abc import Mapping
+import re
+from collections.abc import Iterator, Mapping, Sequence
+from pathlib import Path
 
 import pytest
 
 from tests.conformance.runner import CaseFile
 from tests.reference import read_model
-from tests.reference.cases import Outcome, case_files, judged, outcome, read_case_files
+from tests.reference.cases import Outcome, agreeing, answer, case_files, judged, outcome, read_case_files
 from tests.reference.exceptions import EXCEPTIONS, Excepted
 from tests.reference.strict_json import JsonObject
 
@@ -104,3 +106,65 @@ def test_a_fault_seeded_in_the_model_disagrees(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(read_model, "step_12_labels", no_labels)
     assert outcome(case_file).kind == "differs"
+
+
+# A case compares only the members its `compare` names (README.md, "Case files"), so no case file sees a
+# member a result holds outside `read_side_contract.md` section 2's table. The model's whole result is held to
+# the table's names here, read from the text.
+RESULT_SECTION = "## 2. The read result"
+SPECIFICATION = Path(__file__).resolve().parents[2] / "docs" / "specification"
+
+
+def result_members() -> frozenset[str]:
+    """The member names of `read_side_contract.md` section 2's table, as the text writes them."""
+    text = (SPECIFICATION / "read_side_contract.md").read_text(encoding="utf-8")
+    lines = text[text.index(RESULT_SECTION) :].splitlines()
+    start = next(number for number, line in enumerate(lines) if line.startswith("|"))
+    end = next(number for number, line in enumerate(lines[start:], start) if not line.startswith("|"))
+    rows = lines[start + 2 : end]  # the header and its rule aside
+    names = [re.match(r"^\| `([a-z_]+)` \|", row) for row in rows]
+    assert all(names), rows
+    return frozenset(name[1] for name in names if name)
+
+
+def members_outside_the_table() -> Iterator[str]:
+    """Each read's result, under each configuration of claims its case file allows, that holds a member the
+    result table does not name."""
+    members = result_members()
+    for case_file in read_case_files():
+        if case_file.operation != "read":
+            continue
+        for claims in agreeing(case_file):
+            given = answer(case_file, claims)
+            if isinstance(given, read_model.NoVerdict):
+                break
+            outside = sorted(set(given) - members)
+            if outside:
+                yield f"{case_file.path.name}, claiming {sorted(claims)}: {outside}"
+
+
+def test_the_models_results_hold_no_member_outside_the_result_table() -> None:
+    assert {"status", "reasons", "value", "labels", "assumption"} <= result_members()
+    assert list(members_outside_the_table()) == []
+
+
+def test_a_result_holding_a_labels_basis_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Control: a model that returns a field's `label_basis` beside the table's members, which the case files'
+    comparisons pass (they compare only the members `compare` names)."""
+    (case_file,) = [
+        found for found in case_files() if found.path.name == "PR-030.label_basis_stated_not_returned.json"
+    ]
+    returned = read_model.result
+
+    def with_its_basis(
+        reasons: read_model.Reasons, labels: Sequence[str], members: JsonObject | None = None
+    ) -> JsonObject:
+        result = returned(reasons, labels, members)
+        result["label_basis"] = {"basis": "stated"}
+        return result
+
+    monkeypatch.setattr(read_model, "result", with_its_basis)
+    assert outcome(case_file).kind == "agrees"
+    found = next(members_outside_the_table(), None)
+    assert found is not None
+    assert found.endswith("['label_basis']")
