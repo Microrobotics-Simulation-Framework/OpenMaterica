@@ -468,6 +468,14 @@ every family entry goes in `families/CHANGELOG.md`.
   function or part of their own, their own draws unchanged: over 18 runs of 2,000 against `main`, every feature
   they audit keeps at least 0.87 of its share there. HP2's law of the members gains `table`, with a mutant of
   its own.
+- Fuzz target 4 reads a table to the end (S3b-2): beside the drawn request it reads each table again under `want:
+  value` at the places table item 3 tells apart (its knots and edges, the readable range's ends and
+  `source_range`'s, the double either side of each, a value beyond each end of `x`; twelve at most), each read
+  held to the reference model, to steps 9 to 11 and to HP1 and HP2. Its control,
+  `MATERICA_FUZZ_SEEDED_FAULT=table_edges`, raises for a read just above an edge across which the table drops to
+  below 0.6 of its value just below, which no seed holds: in ten local runs of up to 600 s it was found in two,
+  after 34 and 423 s, and a first form, a value below zero there, in one of ten. Like S3a's, it is not in CI's
+  control step.
 
 ## [0.1.0.dev2] - 2026-10-20
 
