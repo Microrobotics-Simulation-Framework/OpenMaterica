@@ -607,14 +607,9 @@ def _source_range(table: JsonObject) -> list[float] | None:
 def axis_status(table: JsonObject, request: ReadRequest) -> ReadStatus:
     """The status of a table's own axis entry (section 5, first row): "`met` when the operating value lies in
     the form's range and on no declared edge ... and otherwise `not_met`, with no operating value or over an
-    operating range included"."""
-    given = request.operating_conditions.get(str(table["axis"]))
-    if given is None or not _a_value(given):
-        return "not_met"
-    at = given["value"]
-    x, edges = _table_numbers(table, "x"), _table_numbers(table, "edges")
-    inside = evaluate.in_readable_range(x, _source_range(table), at) and not evaluate.on_edge(edges, at)
-    return "met" if inside else "not_met"
+    operating range included": `met` exactly where step 11 gives no reason, read from its report, so that the
+    range and the edges are judged in one place."""
+    return "not_met" if range_report(table, request).reasons else "met"
 
 
 def _a_value(given: shapes.OperatingCondition) -> TypeGuard[shapes.OperatingValue]:
@@ -623,7 +618,21 @@ def _a_value(given: shapes.OperatingCondition) -> TypeGuard[shapes.OperatingValu
 
 
 def form_range(table: JsonObject, request: ReadRequest) -> FormRange:
-    """Step 11 of `table`, a table steps 8 and 9 passed, at the request's operating value of its axis."""
+    """Step 11 of `table`, a table steps 8 and 9 passed, at the request's operating value of its axis: its
+    report, and where it gives no reason the table's value there."""
+    report = range_report(table, request)
+    if report.reasons:
+        return report
+    at = cast(shapes.OperatingValue, request.operating_conditions[str(table["axis"])])["value"]
+    scheme: evaluate.Scheme = "loglog" if table["scheme"] == "loglog" else "linear"
+    return dataclasses.replace(
+        report, value=evaluate.value(_table_numbers(table, "x"), _table_numbers(table, "y"), scheme, at)
+    )
+
+
+def range_report(table: JsonObject, request: ReadRequest) -> FormRange:
+    """Step 11's reasons and report for `table` at the request's operating value of its axis, without the
+    value, which step 13 reads only once steps 10 and 11 have let the read on."""
     axis = str(table["axis"])
     given = request.operating_conditions.get(axis)
     if given is None:
@@ -649,15 +658,14 @@ def form_range(table: JsonObject, request: ReadRequest) -> FormRange:
         # Section 5: "Outside the range, the result is `not_met` (`outside_range`)"; table item 3: where the
         # edge lies outside the readable range, "`outside_range` stands beside `at_edge`".
         reasons.append(Reason("outside_range", axis, f"{axis} {at!r} lies outside the readable range"))
-    if reasons:
-        across = evaluate.beyond_an_edge(x, edges, source_range, at)
-        return FormRange(
-            tuple(reasons),
-            outside_alone=outside and not at_edge,
-            coverable=outside and not at_edge and not across,
-        )
-    scheme: evaluate.Scheme = "loglog" if table["scheme"] == "loglog" else "linear"
-    return FormRange(value=evaluate.value(x, _table_numbers(table, "y"), scheme, at))
+    if not reasons:
+        return FormRange()
+    across = evaluate.beyond_an_edge(x, edges, source_range, at)
+    return FormRange(
+        tuple(reasons),
+        outside_alone=outside and not at_edge,
+        coverable=outside and not at_edge and not across,
+    )
 
 
 def _value(member: JsonValue, mismatch: Reason | None, supplied: Nominal | None) -> JsonValue:
