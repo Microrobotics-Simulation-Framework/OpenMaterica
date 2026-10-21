@@ -115,6 +115,18 @@ every family entry goes in `families/CHANGELOG.md`.
   holds the refusal for a report of part of a group, of a group left out and of both, and for a group `--group`
   names that the reports do not cover; its control, the check removed, records a report of part of a group and
   loses the kill points of the rest. `--measure --record` and `--against` are unchanged.
+- `tests/unit/test_ci_workflows.py` holds that the parts of CI's test matrix that run with
+  `MATERICA_TRACE_SELECTION=1` run the pre-review script's trace test once on every event. Its check counted
+  the jobs that set the variable, each combination whole, so the variable on a part that does not hold the
+  test (after a re-shard or a change of weights), the test moved to another job's selection, the pytest step
+  skipped on an event, or the step's own setting clearing the job's, each left the test unrun and the check
+  green. The new check reads the variable as the pytest step sees it (the step's setting, else the job's, else
+  the workflow's), keeps the parts whose step runs on the event, and collects their selections for real (two
+  collections, about 9 s locally), the trace tests being those of `tests/unit/test_pre_review.py` that take its `trace`
+  fixture. On stand-in collections it fails, where the older check passes, with the variable moved to the
+  other part, the test moved to the other part or to a Hypothesis shard, the test in both parts, the step
+  skipped on pull requests, and the variable set by the job and cleared by the step. No job changes; the
+  tests job's comment names the check.
 
 ### Schema
 - `test_method` gains `reference_formulation` (maintainer, 2026-10-19): the test method of a value evaluated from
