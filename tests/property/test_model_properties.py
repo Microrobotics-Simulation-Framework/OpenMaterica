@@ -30,12 +30,14 @@ from typing import Literal, NamedTuple
 
 import pytest
 from hypothesis import given
+from hypothesis import strategies as st
 
 from materica.core.read import read
 from materica.core.record import RecordStore
 from tests.property import model_strategies as strategies
+from tests.property import table_read_strategies as table_reads
 from tests.property.model_strategies import Example
-from tests.property.strategies import SIZE
+from tests.property.strategies import SIZE, Size
 from tests.property.support import feature, same
 from tests.reference import read_model
 from tests.reference.mutants import MUTANTS
@@ -501,3 +503,25 @@ def test_the_read_agrees_with_the_model_on_requests_and_reads_that_end_early(exa
 @given(strategies.unpinned(SIZE))
 def test_the_read_agrees_with_the_model_where_no_case_pins_a_rule(example: Example) -> None:
     checked(example, example.planted[0])
+
+
+# A table read to the end (S3b-2): one of the five kinds drawn first, four of HP20 to HP23's families and a
+# table beside a constant among alternatives, then the family's way, which the example plants, its `want`, a
+# tolerance on the axis across the range in half those draws, and the claims, with and without the hash suite.
+# The model reads a table with the reference evaluator's `exact` mode; the implementation with
+# `core/evaluate.py`.
+TABLE_KINDS = (*table_reads.TABLE_KINDS, table_reads.ALTERNATIVES_KIND)
+
+
+@st.composite
+def tables_read(draw: st.DrawFn, size: Size = SIZE, kinds: tuple[str, ...] = TABLE_KINDS) -> Example:
+    kind, drawn = draw(table_reads.table_reads(size, kinds))
+    claims = draw(st.sampled_from(strategies.CLAIMS))
+    request = json.dumps(table_reads.request_of(drawn)).encode()
+    return Example(kind, (table_reads.source_of(drawn),), request, claims, (drawn.way, drawn.want))
+
+
+@pytest.mark.drawn(*TABLE_KINDS)
+@given(tables_read())
+def test_the_read_agrees_with_the_model_on_tables(example: Example) -> None:
+    checked(example, example.kind)

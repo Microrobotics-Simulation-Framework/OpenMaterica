@@ -5,13 +5,14 @@ declare them by their chances or draw them alike (`@pytest.mark.drawn`), of HP12
 read (S2b-1, and PR #37's review), of S2b-2's evidence and nominal, of the relations shard's audit of the
 monotonicity relations' worlds, by their chances, of S4a's outcome of step 7, drawn first, of HP12's draws
 of S4a's alternatives, by their chance, of the regions where a planned search's mutant shows, each held on
-the property whose own draws the search stands in for, by their chances, and of S3a's HP13 to HP16, each
-drawing its fault, kind or way first, among them the regions of HP13's planned searches: run at the `ci`
-profile's examples with a generator that stops producing one of them, each property fails its audit, on that
-feature alone; a parametrised property, on one of its parameters, by the marks that parameter carries. The
-controls of the floors held at `deep` alone, which run where `deep` runs, are in
-`tests/property/test_model_deep_floor_controls.py` and use the run defined here. Outside `tests/property/`,
-whose audits would fail these runs too."""
+the property whose own draws the search stands in for, by their chances, of S3a's HP13 to HP16, each
+drawing its fault, kind or way first, among them the regions of HP13's planned searches, and of S3b-2's HP20
+to HP23, HP21's relation, the monotonicity property over a table, HP12's table part and HP1, HP2 and HP11's
+table reads, each drawing its way or kind first: run at the `ci` profile's examples with a generator that
+stops producing one of them, each property fails its audit, on that feature alone; a parametrised property,
+on one of its parameters, by the marks that parameter carries. The controls of the floors held at `deep`
+alone, which run where `deep` runs, are in `tests/property/test_model_deep_floor_controls.py` and use the run
+defined here. Outside `tests/property/`, whose audits would fail these runs too."""
 
 import sys
 from collections.abc import Callable
@@ -37,6 +38,7 @@ from tests.property import test_read_properties as read_properties
 from tests.property import test_result_properties as result_properties
 from tests.property import test_slip_properties as slip_properties
 from tests.property import test_table_form_properties as table_form_properties
+from tests.property import test_table_read_properties as table_read_properties
 from tests.property import test_value_field_properties as value_field_properties
 from tests.property import test_version_properties as version_properties
 from tests.property.result_strategies import JsonObject
@@ -333,6 +335,58 @@ CONTROLS = [
         table_form_properties.test_a_rows_label_is_refused_exactly_on_a_table_over_its_axis,
         "on_another_axis",
         ("check_label",),
+    ),
+    # S3b-2's: HP20 to HP23, HP21's relation and the monotonicity property, each its way drawn first; HP12's
+    # table part and HP1, HP2 and HP11's table reads, each its kind drawn first.
+    Control(
+        table_read_properties.test_a_read_at_an_edge_is_refused_and_beside_one_reads_its_own_side,
+        "across_an_edge",
+        ("check_edge",),
+    ),
+    Control(
+        table_read_properties.test_the_readable_range_holds_its_ends_and_nothing_beyond,
+        "outside_a_narrower_source_range",
+        ("check_range",),
+    ),
+    Control(
+        table_read_properties.test_a_source_range_no_narrower_than_x_and_a_tolerance_on_the_axis_change_nothing,
+        "far_outside",
+        ("check_no_wider_and_tolerance",),
+    ),
+    Control(
+        table_read_properties.test_a_tables_block_stands_at_every_read_and_points_are_refused,
+        "holding_points",
+        ("check_statistics",),
+    ),
+    Control(
+        table_read_properties.test_step_11s_request_checks_give_their_reason_with_the_axis,
+        "range_holding_an_edge",
+        ("check_request",),
+    ),
+    Control(
+        table_read_properties.test_a_source_range_or_a_tolerance_on_the_axis_never_turns_a_read_met,
+        "one_double_outside",
+        ("check_monotone",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_tables,
+        "table_among_alternatives",
+        ("check_agreement",),
+    ),
+    Control(
+        result_properties.test_a_table_read_gives_a_result_whose_reasons_are_the_tables,
+        "table_request",
+        ("check_totality",),
+    ),
+    Control(
+        result_properties.test_on_a_table_the_status_is_the_worst_reason_and_the_members_are_item_6s,
+        "table_statistics",
+        ("check_status_law",),
+    ),
+    Control(
+        result_properties.test_without_the_hash_suite_the_label_marks_a_table_read,
+        "table_at_an_edge",
+        ("check_claims",),
     ),
 ]
 
