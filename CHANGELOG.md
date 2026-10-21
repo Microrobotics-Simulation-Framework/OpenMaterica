@@ -86,6 +86,9 @@ every family entry goes in `families/CHANGELOG.md`.
   end value a `consumer_law` extrapolation starts from), run and pass: 1151 of 1517 case files pass (one more arm,
   of an implied value, under **Verification**) and 35 are verified against the reference evaluator; 331 wait for
   S4's later pieces (134) and the record checks, C2 (197).
+- `CITATION.cff`, so that GitHub's "Cite this repository" gives the software's citation: its title, author with
+  ORCID, licence and repository. Its version and release date are added from 0.1.0, with the first archived
+  release.
 
 ### Changed
 - `scripts/pre_review.py` runs the kill counts' unit tests (`tests/unit/test_gen_kill_counts.py`) with its
