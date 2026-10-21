@@ -69,7 +69,8 @@ MIME's private 0.3.0 structure draft (the **structure draft**) and used there by
   7.2).
 - Engine results are computed in `openmaterica[usd]`; only the engine adapter and the crosswalk scaffold are
   in `openmaterica-authoring` (section 7.2).
-- 0.1 builds the plain scene documents before declarations and build checks (section 12.2).
+- 0.1 builds the plain scene documents before declarations and build checks (section 12.2); reordered 2026-10-20
+  and 2026-10-21 (section 12.2; section 15).
 - The package is typed (`py.typed`), and the JSON shapes of its public API are generated from the writer JSON
   Schemas, which are the single hand-edited source of structure; the specification's tables stay the source of
   tokens (section 7.1).
@@ -2266,7 +2267,7 @@ crosswalks), and the build's scene arms; the USD binding, the stage check, the e
 adapter, with the build's engine results. The build over records comes before scenes because it needs none: a
 model may be checked over records with no scene, and every acceptance that needs a location may be located at
 a record (`declarations.md` sections 1 and 4.1). It is the seam MIME 0.3.0 builds on (maintainer, 2026-10-20,
-reordering the order of 2026-10-13, which put scenes first, and 2026-10-21, which put the build's field results
+reordering the order of 2026-10-13, which put scenes first; and 2026-10-21, putting the build's field results
 first). Nothing slips: the maintainer ruled out a cut line. USD is how MIME saves scenes and
 how the patient twin of Isaac for Healthcare would carry OpenMaterica materials; its novel parts (the
 layered-path prim, overlay prims, region markers, binding refusals, the units rules, engine materials) are
