@@ -366,10 +366,10 @@ new alternative is appended. [RC-017] A reader reads alternatives as follows. `r
    - Where more than one stays and none has a form `want` can give, the result is `not_met` (`want_mismatch`).
      A table read over an operating range of its axis counts as a form `want` cannot give.
    - Otherwise the result is `unknown`, with the reason `no_pick`. It carries each alternative that stays, in
-     stored order, with its own conditions, specimen, statistics and provenance (`read_side_contract.md`
-     section 2). Each one's `unknown` reasons stand beside `no_pick`, each naming it by index. No
-     extrapolation is applied: the entry of an alternative kept outside its form's range holds its form's
-     member as stored. A waiver never accepts a `no_pick`; only a pick does.
+     stored order, with its own unit, conditions, specimen, statistics, provenance and labels
+     (`read_side_contract.md` section 2). Each one's `unknown` reasons stand beside `no_pick`, each naming it
+     by index. No extrapolation is applied: the entry of an alternative kept outside its form's range holds
+     its form's member as stored. A waiver never accepts a `no_pick`; only a pick does.
 
 ## 6. The value forms
 
