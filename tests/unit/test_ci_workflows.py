@@ -3124,19 +3124,18 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
     assert any(problem in line for line in found), found
 
 
-# The slowest run of the fuzz job measured on CI, in minutes: the weekly run 39234564233 of 2026-10-19
-# (control 22.2, targets 20.2, replay 16.8). The earlier runs since 2026-10-14 took 26.7, 37.0, 46.0 and 55.2
-# (a manual run of 600 s a target). The job has no interrupt, so its timeout is held to twice the slowest run
-# itself, as the Hypothesis job's interrupt is to its shards' (`MEASURED_ON_CI`).
-FUZZ_SLOWEST_ON_CI = 59.52
-# The minutes the job's steps added after that run, by estimate, until a run on CI measures them: the table's
-# control (2026-10-21), two runs side by side of `TABLES_RUN_SECONDS` each, 8 minutes, and their start, which
-# loads the corpus (2.5 s for a run of 60 s, locally): half a minute; the table value's control (S3b-2),
-# four runs side by side of `TABLE_EDGES_RUN_SECONDS` each, 15 minutes, and their start, half a minute; and
-# fuzz target 5 (S3c), its weekly run of the default 300 s, 5 minutes, and its seeds and dictionary written
-# and loaded, half a minute, and its control, four runs side by side of `METHOD_RUN_SECONDS` each, 8 minutes,
-# and their start, half a minute.
-FUZZ_ADDED_SINCE = 8.5 + 15.5 + 5.5 + 8.5
+# The slowest run of the fuzz job measured on CI, in minutes: the run 39596069518 of 2026-10-21, dispatched on
+# S3c's draft at 4f8b044b, with every step the job now holds (control 51.1, the five targets 25.4, replay
+# 34.5). The earlier runs since 2026-10-14 took 26.7, 37.0, 46.0, 55.2 (a manual run of 600 s a target) and
+# 59.5 (the weekly run 39234564233 of 2026-10-19: control 22.2, targets 20.2, replay 16.8), which held the
+# timeout until this one. The job has no interrupt, so its timeout is held to twice the slowest run itself, as
+# the Hypothesis job's interrupt is to its shards' (`MEASURED_ON_CI`).
+FUZZ_SLOWEST_ON_CI = 111.42
+# The minutes the job's steps added after that run, by estimate, until a run on CI measures them: none. The 38
+# minutes estimated after the run of 2026-10-19 for the table's control, the table value's, fuzz target 5 and
+# its control came to 34.0 measured in this one (the control step 28.9 longer, target 5's weekly run 5.1); the
+# replay, which no estimate counted, took 17.7 minutes longer.
+FUZZ_ADDED_SINCE = 0.0
 
 
 def fuzz_margin_problems(ci: Workflow) -> list[str]:
@@ -3155,12 +3154,12 @@ def test_the_fuzz_job_has_twice_its_slowest_run_on_ci() -> None:
     assert fuzz_margin_problems(workflow("ci.yml")) == []
 
 
-@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167, 195])
+@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167, 195, 222])
 def test_the_fuzz_margin_check_can_fail(minutes: int) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     ci["jobs"]["fuzz"]["timeout-minutes"] = minutes
     found = fuzz_margin_problems(ci)
-    expected = f"fuzz times out at {minutes} minutes, less than twice its 59.52 on CI and the 38 added since"
+    expected = f"fuzz times out at {minutes} minutes, less than twice its 111.42 on CI and the 0 added since"
     assert found == [expected], found
 
 

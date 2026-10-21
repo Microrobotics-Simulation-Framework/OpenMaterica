@@ -149,9 +149,13 @@ every family entry goes in `families/CHANGELOG.md`.
   written, a stub standing for each fuzz run, and fails with the four runs removed, with three, with shorter
   runs, with the four one after the other, with the check removed, and with the runs without the step's
   dictionary or with another; the check fails where no run finds the fault and where the only finding is
-  another. The job's timeout rises from 168 to 196 minutes: twice its slowest run on CI (59.5 minutes) and the
-  38 minutes added since by estimate, the table's and the table value's controls, this target and its control
-  (`FUZZ_ADDED_SINCE`). `scripts/pre_review.py` runs the two fuzz oracles' tests where the specification text
+  another. The job's timeout rises from 168 to 223 minutes: twice its slowest run on CI, 111.4 minutes, the job
+  dispatched on S3c's draft (run 39596069518, 2026-10-21), which holds every step the job now runs and passed
+  (control 51.1 minutes, the five targets 25.4, the replay 34.5). The run of 2026-10-19 that had set it took
+  59.5; the 38 minutes estimated since for the table's and the table value's controls, this target and its
+  control came to 34.0 measured, and the replay of the property tests, which no estimate counted, took 17.7
+  minutes longer (`FUZZ_SLOWEST_ON_CI`; nothing is added since by estimate). The run shows the control passing
+  on one runner, not its rate, which stays the estimate above. `scripts/pre_review.py` runs the two fuzz oracles' tests where the specification text
   their property imports read changes, as a trace of the files the tests open showed, and target 5's oracle's
   where a conformance file changes, since the oracle reads two inputs.
 - The repository moved from `Microrobotics-Simulation-Framework/OpenMaterica` to `OpenMaterica/OpenMaterica`.
