@@ -398,6 +398,25 @@ every family entry goes in `families/CHANGELOG.md`.
   zero held as `-0` and `0`, on bases whose zeros are held as `0` or on any base, and the axis condition held
   as a value, which one fault now draws in two of its four ways, a region declared by its chance (a floor of
   10 at `ci`); over 40 seeds a size each dies at the first or second example, at its own assertion.
+- HP13's fault `source_range_disjoint` is built for every `x` step 8 accepts. Where no finite double lies
+  beyond either end of `x`, which then holds the least double and the largest, it lowered the last knot by one
+  double first, and refused to build the case (an assertion in the strategy) where the knot before it was that
+  double: `main`'s dispatched `deep` run of 2026-10-21 (39578840767) drew such an `x`, twelve adjacent doubles
+  from the least, `0` and the two largest. It now lowers the run at `x`'s top, the last knot and each before
+  it that is the knot after it (an edge's two entries) or the double below it, each by one double, an edge
+  among them in `edges` too, each value of `y` kept at its knot. The knot before the run lies below where the
+  run's lowest knot goes, so step 8 accepts the table as before and the `source_range` past `x`'s range,
+  here the largest double alone, is its one refusal. Five cases pin it: `x` the least and the two largest
+  doubles, its mirror, both ends beside knots, an edge beside the largest, and the deep run's `x`. Each holds
+  HP13's check, the `source_range` past `x`'s range, `y` unchanged and the table without the `source_range`
+  past steps 8 and 9; the old fault fails four of them, and the mirror, whose run lies at the bottom, passes
+  under both. The last check is the one that holds the fault's meaning: with the edges left where they were,
+  or the last knot alone lowered, HP13's own check still passes, as a broken `x` gives `form_invalid` too.
+  The fault draws nothing, so no example's draws, kill point or feature share moved. The other faults of HP13
+  that take a double beside an end, and S3b-2's table reads, take one only where it is finite (where `x` has
+  no room, past a guard of the largest doubles, or among the places kept finite), and need no change: in a
+  local run on tables whose `x` reaches the largest doubles, every fault of HP13 and every way of S3b-2's six
+  properties passes.
 - The writer schema's table: a family of twelve faults of its shape, each refused, and fifteen mutants of its
   constraints and bindings (M62 to M69, B17 to B19, T10, T11, TB7 and U4), each killed; the writer's step-9
   relation holds a table's `axis_unit`. T1 judges step 8 on tables, its inputs and one-fault variants of a
