@@ -55,7 +55,7 @@ every family entry goes in `families/CHANGELOG.md`.
   each ends the read. Under `want: value` a read in the range gives the table's number at the operating value,
   and the result holds the table it is read from, as stored, in its new `table` member (**Schema**, below); under
   another `want` the table is the entry's value as stored and `want_mismatch` stands. Step 11 also reports
-  whether an extrapolation would cover its `outside_range` (outside, at no edge and across none), for the
+  whether an extrapolation could cover its `outside_range` (outside, at no edge and across none), for the
   extrapolations' piece to complete. A table alternative read in its range stays, and one set aside by its
   conditions never reaches step 11; one whose read gives a reason at step 11 raises `NotImplementedError` at step
   7, whose rules for it are S4d's, and the reference model gives no verdict there. The 68 case files mapped to
