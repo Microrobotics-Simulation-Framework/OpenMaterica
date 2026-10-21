@@ -3,12 +3,15 @@
 that bracket the value, and the number (`record_format.md` section 6, table items 1 to 4;
 `read_side_contract.md` section 5, "The form's range").
 
-Step 11 of a read is to use these; nothing calls them yet. The table is one step 8 has accepted (table items
-1, 2 and 4): `x` non-decreasing, with two distinct values or more; `y` as long; each edge strictly between
-`x[0]` and `x[-1]` and in `x` exactly twice, side by side, and no other value of `x` repeated; a log-log
-table's numbers positive; a `source_range` two numbers in order sharing with `[x[0], x[-1]]` a value that is
-no edge. Its numbers and the operating value are finite doubles (`record_format.md` section 1 item 6).
-Outside that contract the functions here may raise or return any number.
+Step 11 of a read uses these: `read.range_report` for its reasons and report (an edge, the readable range, an
+edge between the operating value and the range's nearest end), and `read.form_range` for the table's number,
+at the operating value or, under an extrapolation that covers the read, at the readable range's nearest end.
+The table is one step 8 has accepted (table items 1, 2 and 4): `x` non-decreasing, with two distinct values or
+more; `y` as long; each edge strictly between `x[0]` and `x[-1]` and in `x` exactly twice, side by side, and
+no other value of `x` repeated; a log-log table's numbers positive; a `source_range` two numbers in order
+sharing with `[x[0], x[-1]]` a value that is no edge. Its numbers and the operating value are finite doubles
+(`record_format.md` section 1 item 6). Outside that contract the functions here may raise or return any
+number.
 
 Numbers are compared by value and exactly, as Python compares doubles, so `-0` lies at an end, a knot or an
 edge at `0` (table item 3). A value is the exact value of the text's formula rounded once to the nearest
