@@ -10,6 +10,7 @@ from tests.property import test_result_properties as properties
 from tests.property.result_strategies import KINDS, NOMINAL_WAYS, REVIEWS, Drawn, drawn_reads
 from tests.property.strategies import SIZE
 from tests.property.support import fails
+from tests.property.table_read_strategies import TABLE_KINDS
 from tests.property.test_result_mutants import KILLERS, MUTANTS
 from tests.property.value_field_strategies import READ_FORMS
 
@@ -19,7 +20,16 @@ def test_each_mutant_names_a_killer_and_what_it_must_show_where_killed() -> None
     assert len({mutant.name for mutant in MUTANTS}) == len(MUTANTS)
     forms = {f"form_{form}" for form in READ_FORMS}
     nominals = {f"nominal_{way}" for way in NOMINAL_WAYS}
-    shown = {*KINDS, *REVIEWS, *forms, *nominals, "negative_zero", "unknown_member", "statistics_withheld"}
+    shown = {
+        *KINDS,
+        *REVIEWS,
+        *forms,
+        *nominals,
+        *TABLE_KINDS,
+        "negative_zero",
+        "unknown_member",
+        "statistics_withheld",
+    }
     assert all(mutant.dies_at and set(mutant.dies_at) <= shown for mutant in MUTANTS)
 
 

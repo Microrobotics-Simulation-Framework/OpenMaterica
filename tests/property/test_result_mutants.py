@@ -88,6 +88,8 @@ KILLERS: dict[str, tuple[Callable[[Size], st.SearchStrategy[Any]], Callable[[Any
     "HP6": (valued_reads, properties.check_returned_as_stored),
     "HP6_nominal": (nominal_reads, properties.check_nominal_supplied),
     "HP11": (drawn_reads, properties.check_claims),
+    # HP2's law of the members on a table read to the end (S3b-2), where it gains `table`.
+    "HP2 on a table": (properties.table_drawn, properties.check_status_law),
 }
 
 
@@ -193,6 +195,11 @@ def _unit_beside_alternative_values(*arguments: Any) -> ReadResult:
     if not result.alternative_values:
         return result
     return dataclasses.replace(result, unit=result.alternative_values[0].unit)
+
+
+def _no_table_beside_its_value(*arguments: Any) -> FieldRead:
+    """A value read from a table returned without the table it is read from."""
+    return dataclasses.replace(READ_VALUE_FIELD(*arguments), table=None)
 
 
 def _no_statistics_beside_a_composition(*arguments: Any) -> FieldRead:
@@ -596,6 +603,14 @@ MUTANTS = [
         "HP6_nominal",
         setting(read, "read_value_field", _applied_without_the_nominal),
         ("nominal",),
+    ),
+    # Section 2 item 6: "`table` exactly when `value` is and is read from a table" (S3b-2).
+    Mutant(
+        "no_table_beside_its_value",
+        "HP2 on a table",
+        setting(read, "read_value_field", _no_table_beside_its_value),
+        ("table_at_an_edge", "table_across_its_range", "table_statistics"),
+        "^table beside a value from a table",
     ),
     Mutant(
         "labelled_before_step_4",

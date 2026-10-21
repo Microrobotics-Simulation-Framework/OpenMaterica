@@ -7,6 +7,7 @@ from hypothesis import given, settings
 
 from tests.conftest import EXAMPLES
 from tests.property import model_strategies as strategies
+from tests.property import table_read_strategies as table_reads
 from tests.property import test_model_properties as properties
 from tests.property.alternatives_strategies import OUTCOMES
 from tests.property.condition_strategies import FAULTS
@@ -41,6 +42,13 @@ SHOWN = {
     "unit_with_a_reason",
     *strategies.NOMINAL_PLANTS,
     *OUTCOMES,
+    # The table part's kinds and ways (S3b-2).
+    *table_reads.TABLE_KINDS,
+    table_reads.ALTERNATIVES_KIND,
+    *table_reads.EDGE_WAYS,
+    *table_reads.RANGE_WAYS,
+    *table_reads.STATISTICS_WAYS,
+    *table_reads.REQUEST_WAYS,
 }
 
 

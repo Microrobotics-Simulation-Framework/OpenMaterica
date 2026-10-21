@@ -450,6 +450,24 @@ every family entry goes in `families/CHANGELOG.md`.
   `table_member_dropped` by the two arms where `table` is present; S3b-2's case files move the counts of sixteen
   other faults. The fuzz oracle of target 4 holds a table's axis entry and step 11's reasons to the text
   (`field_oracle.table_steps_10_and_11`).
+- The S3 design's HP20 to HP23 and its monotonicity property for a table's steps 10 to 13
+  (`tests/property/test_table_read_*.py`; the properties in the `records` shard, their mutant searches in
+  `conditions`), over tables `tables.py` draws on a field whose row allows one, over a numeric axis: HP20, at and
+  beside the edges, an edge refused wherever it lies, `outside_range` beside it outside the readable range, one
+  double either side of an edge reading its own side's interval as the reference evaluator's `exact` mode does,
+  and no extrapolation reported able to cover a read at or beyond an edge; HP21, at and across the readable
+  range's ends, with a relation (a `source_range` no narrower than `x`'s range and a tolerance on the axis change
+  nothing); HP22, the statistics block at every read and `points` refused; HP23, step 11's two request checks,
+  each with the axis; and the monotonicity property, a `source_range` or a tolerance on the axis never turning a
+  read `met`, over a read that is `met` inside the range. Each draws its way first among at most five, held to
+  its draw floor (110 to 245 at `ci`), each failing a correct run with a probability of at most 1e-6 by the
+  audits' model and at most 9e-8 at the variance measured over 20 runs of 2,000 a size, and each has an audit
+  control. Fifteen mutants (the design's and two of the monotonicity property) die at the way and assertion they
+  name, at both sizes, and HP12's table part kills each as well, as planned searches of its kinds; over 40
+  streams a size, the latest at the 198th example. HP1, HP2, HP11 and HP12 draw a table read to the end in a test
+  function or part of their own, their own draws unchanged: over 18 runs of 2,000 against `main`, every feature
+  they audit keeps at least 0.87 of its share there. HP2's law of the members gains `table`, with a mutant of
+  its own.
 
 ## [0.1.0.dev2] - 2026-10-20
 

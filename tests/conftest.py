@@ -88,6 +88,8 @@ SHARDS = {
         "test_record_mutants",
         "test_value_field_properties",
         "test_table_form_properties",
+        # A table's steps 10 to 13 (S3b-2's HP20 to HP23), which read a table field end to end.
+        "test_table_read_properties",
     ),
     "writer": ("test_writer_properties", "test_writer_mutants", "test_writer_mutant_table"),
     # The two JSON Schema libraries' agreement, whose drawn properties run python-jsonschema on every example
@@ -111,6 +113,10 @@ SHARDS = {
         "test_result_properties",
         "test_result_mutants",
         "test_result_mutant_table",
+        # The mutant searches of a table's steps 10 to 13 (S3b-2), which take seconds and set no example
+        # database, and their table's check.
+        "test_table_read_mutants",
+        "test_table_read_mutant_table",
     ),
     # The read's relations (S2a-4's phase B): HP12, the agreement with the reference model, HP4 and HP10, and
     # the information-monotonicity relations, each example reading two records or a read twice, with their

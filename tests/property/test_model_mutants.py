@@ -32,6 +32,7 @@ from tests.property import test_condition_mutants as condition_mutants
 from tests.property import test_invariance_mutants as invariance_mutants
 from tests.property import test_model_properties as properties
 from tests.property import test_result_mutants as result_mutants
+from tests.property import test_table_read_mutants as table_read_mutants
 from tests.property import test_value_field_mutants as value_field_mutants
 from tests.property.model_strategies import Example
 from tests.property.strategies import ORIGINAL, SMALL, Size
@@ -108,6 +109,12 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     "evidence set aside first": lambda size: strategies.outcomes_of_step_7(
         size, ("no_pick",), forms=("evidence",), set_aside_first=True
     ),
+    # Planned searches of the table part (S3b-2), each drawing one of its kinds alone, the family whose
+    # property kills the mutant searched (`TABLE_PARTS`).
+    "tables at an edge": lambda size: properties.tables_read(size, ("table_at_an_edge",)),
+    "tables across their range": lambda size: properties.tables_read(size, ("table_across_its_range",)),
+    "tables' statistics": lambda size: properties.tables_read(size, ("table_statistics",)),
+    "tables' requests": lambda size: properties.tables_read(size, ("table_request",)),
 }
 
 
@@ -257,6 +264,32 @@ def taken(module_mutants: list[Any], name: str) -> Callable[[pytest.MonkeyPatch]
     (found,) = [mutant for mutant in module_mutants if mutant.name == name]
     inject: Callable[[pytest.MonkeyPatch], None] = found.inject
     return inject
+
+
+# S3b-2's mutants of a table's steps 10 to 13 (`test_table_read_mutants.py`), each searched by HP12's table
+# part as a planned search: the part's kind of the family whose property kills it, drawn alone, as the part
+# draws it. Searched over the whole part, the slowest (a tolerance's widening, `at_edge` dropped beside
+# `outside_range`) died after 500 examples on some of 40 streams, and those of a `source_range` died at an
+# edge of another family too (an edge outside a narrowed range), where the fault shows as well.
+TABLE_PARTS: dict[str, str] = {
+    "HP20": "tables at an edge",
+    "HP21": "tables across their range",
+    "HP21 no wider and tolerance": "tables across their range",
+    "HP22": "tables' statistics",
+    "HP23": "tables' requests",
+    "monotonicity": "tables across their range",
+    "monotonicity, one double outside": "tables across their range",
+}
+# Each dies at an example that plants one of the ways its own property kills it at, but three, which the
+# part's kind shows at more of its ways than their property draws: a tolerance on the axis, which the part
+# draws across the range, and a `source_range`'s widening, show outside a narrower `source_range` as well,
+# which the relation and the monotonicity property do not draw.
+OUTSIDE = ("one_double_outside", "far_outside", "outside_a_narrower_source_range")
+WHERE_THE_TABLE_PART_SHOWS: dict[str, tuple[str, ...]] = {
+    "the_tolerance_widens_the_range": OUTSIDE,
+    "monotone_the_tolerance_widens_the_range": OUTSIDE,
+    "monotone_source_range_widening": OUTSIDE,
+}
 
 
 IMPLEMENTATION = [
@@ -504,6 +537,15 @@ IMPLEMENTATION = [
         "early",
         setting(read, "_parsed", _text_that_is_no_json_raises),
         ("not_json",),
+    ),
+    *(
+        Mutant(
+            mutant.name,
+            TABLE_PARTS[mutant.killer],
+            mutant.inject,
+            WHERE_THE_TABLE_PART_SHOWS.get(mutant.name, mutant.dies_at),
+        )
+        for mutant in table_read_mutants.MUTANTS
     ),
 ]
 

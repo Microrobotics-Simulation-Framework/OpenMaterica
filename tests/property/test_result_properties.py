@@ -32,6 +32,12 @@ reads that end at each step S2 builds (`result_strategies.py`). The mutants they
   `{"acceptance": "nominal", "value"}`, its `basis` aside (section 2).
 - **HP11, claims.** Without the hash suite, `hash_not_checked` is present exactly where the read reached step
   4, which the draw knows; with a correct hash the two reads differ by that label alone.
+
+HP1, HP2 and HP11 hold a table read to the end too (S3b-2), in a test function of each beside its own: a
+table at or beside an edge, across its readable range, at a knot or between two for its block, or with no
+operating value or a range of its axis, the family drawn first (`table_read_strategies.table_reads`), so that
+their own draws are as they were. HP2's law of the members adds `table`: present exactly beside a value read
+from a table.
 """
 
 import json
@@ -42,13 +48,16 @@ from typing import Any, NamedTuple, Union, cast, get_args, get_origin, get_type_
 
 import pytest
 from hypothesis import given
+from hypothesis import strategies as st
 
 from materica import shapes
+from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
 from materica.core.read import ReadResult, read
 from materica.core.record import RecordStore
 from materica.core.slips import one_slip
 from tests.property import condition_oracle
+from tests.property import table_read_strategies as table_reads
 from tests.property.condition_strategies import at
 from tests.property.result_strategies import (
     KINDS,
@@ -61,7 +70,7 @@ from tests.property.result_strategies import (
     nominal_reads,
     valued_reads,
 )
-from tests.property.strategies import SIZE
+from tests.property.strategies import SIZE, Size
 from tests.property.support import feature
 
 # HP1, HP2 and HP11 draw their kind first among eleven, alike. At the draw floor of one in eleven, 25 examples
@@ -235,6 +244,9 @@ def check_status_law(drawn: Drawn) -> None:
     assert ("alternative_values" in members) == no_pick, members
     for name in ("unit", "specimen", "provenance"):
         assert (name in members) == valued, (name, members)
+    # Section 2 item 6: "`table` exactly when `value` is and is read from a table".
+    from_a_table = field_at(drawn.record, drawn.field).get("form") == "table"
+    assert ("table" in members) == (valued and from_a_table), f"table beside a value from a table: {members}"
     assert ("statistics" in members) == (valued and not evidence), members
     assert ("assumption" in members) == supplied, members
     assert ("nominal_invalid" in codes) == (nominal is not None and not nominal.supplies), (codes, nominal)
@@ -578,5 +590,38 @@ def check_claims(drawn: Drawn) -> None:
 @pytest.mark.chances(**dict.fromkeys(KINDS, KIND_CHANCE))
 @given(drawn_reads(SIZE))
 def test_without_the_hash_suite_the_label_marks_exactly_a_read_that_reached_step_4(drawn: Drawn) -> None:
+    kind_feature(drawn)
+    check_claims(drawn)
+
+
+# A table read to the end (S3b-2), each law in a test function of its own beside the kinds above.
+
+
+@st.composite
+def table_drawn(draw: st.DrawFn, size: Size = SIZE) -> Drawn:
+    kind, drawn = draw(table_reads.table_reads(size))
+    record = {**drawn.record, "content_hash": content_hash(drawn.record)}
+    claims = draw(st.sampled_from((WITH_HASH, WITHOUT_HASH)))
+    request = table_reads.request_of(drawn)
+    return Drawn(kind, (table_reads.source_of(drawn),), request, claims, True, record, drawn.field)
+
+
+@pytest.mark.drawn(*table_reads.TABLE_KINDS)
+@given(table_drawn())
+def test_a_table_read_gives_a_result_whose_reasons_are_the_tables(drawn: Drawn) -> None:
+    kind_feature(drawn)
+    check_totality(drawn)
+
+
+@pytest.mark.drawn(*table_reads.TABLE_KINDS)
+@given(table_drawn())
+def test_on_a_table_the_status_is_the_worst_reason_and_the_members_are_item_6s(drawn: Drawn) -> None:
+    kind_feature(drawn)
+    check_status_law(drawn)
+
+
+@pytest.mark.drawn(*table_reads.TABLE_KINDS)
+@given(table_drawn())
+def test_without_the_hash_suite_the_label_marks_a_table_read(drawn: Drawn) -> None:
     kind_feature(drawn)
     check_claims(drawn)
