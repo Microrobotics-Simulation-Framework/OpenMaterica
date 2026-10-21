@@ -258,13 +258,14 @@ every family entry goes in `families/CHANGELOG.md`.
   `axes` is left out of both. `gen_reader_schema.py` copies `uniqueItems`. No specification text changed: the
   text, its cases and `changes.md`'s entry landed with S3-spec and S3-cases.
 - The result's shape (the maintainer's rulings of 2026-10-19, landing with S3b-2;
-  `docs/specification/changes.md`). Under `no_pick` each `alternative_values` entry holds its own
-  alternative's `unit`, as stored, and the result holds no `unit` of its own (`read_side_contract.md` section
-  2: the `unit` and `alternative_values` rows, and item 6). This replaces S4a's interim rule, under which the
-  result held the first remaining alternative's unit and another alternative's `reason` was not returned. And
-  a result whose value is read from a table holds that table as stored, in a new member `table`, present
-  exactly when `value` is and is read from a table (the field's, the one alternative left or the one a pick
-  names, under an extrapolation too), so that a consumer's own evaluator takes the table the read checked;
+  `docs/specification/changes.md`). Under `no_pick` each `alternative_values` entry holds its own alternative's
+  `unit`, as stored, and the result holds no `unit` of its own (`read_side_contract.md` section 2: the `unit`
+  and `alternative_values` rows, and item 6; `record_format.md` section 5 item 5 now lists each entry's own unit
+  and labels beside its conditions, specimen, statistics and provenance). This replaces S4a's interim rule,
+  under which the result held the first remaining alternative's unit and another alternative's `reason` was not
+  returned. And a result whose value is read from a table holds that table as stored, in a new member `table`,
+  present exactly when `value` is and is read from a table (the field's, the one alternative left or the one a
+  pick names, under an extrapolation too), so that a consumer's own evaluator takes the table the read checked;
   PR-318's and PR-336's rows say so. `read_result.json`'s `alternative_value` requires `unit`, the result
   gains `table`, and `result_value` names the table's shape, which it took through the placeholder before;
   `case.json`'s compared result gains `table`; the typed shapes are generated again. The 31 case files whose

@@ -493,4 +493,6 @@ present exactly when `value` is and is read from a table: the field's, the one a
 pick names, under an extrapolation too (`read_side_contract.md` section 2; PR-318, PR-336). A consumer that
 evaluates the table in its own code (`read_side_contract.md` section 7) so takes the table the read checked,
 through the overlays, the pick and the alternatives set aside that the read applied, with the readable range's
-two ends, where before it would have read the record's JSON again on its own.
+two ends, where before it would have read the record's JSON again on its own. `record_format.md` section 5
+item 5 now lists each `no_pick` entry's own `unit` and `labels` beside its conditions, specimen, statistics and
+provenance, as `read_side_contract.md` section 2 gives them.
