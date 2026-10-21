@@ -16,7 +16,8 @@ field, a table alternative whose read gives a reason at step 11 or that an extra
 (S4d), and the outcome with its reasons and members; and the operations `list_records` and `content_hash`.
 
 **What it does not.** Everything else gives `NoVerdict`, a distinct outcome a test counts and never reads as
-a pass: a pick, an overlay, a region target, and `want: fit` on a field holding a fit record.
+a pass: a pick, an overlay, a `trainable` acceptance, a region target, and `want: fit` on a field holding a
+fit record.
 
 **Where the text is silent.** The model takes the maintainer's ruling where there is one, else the fail-closed
 choice. Each such point is listed once in `OPEN_POINTS`, and named where it is applied ("Open point: <name>").
@@ -398,8 +399,8 @@ ACCEPTANCE_KINDS: Final = (
     "overlay", "overlay_scope",
 )  # fmt: skip
 # read_side_contract.md:64-65 "take only the kinds `pick`, `overlay`, `extrapolation`, `nominal`,
-# `implied_condition` and `trainable`": the model takes the first five; `trainable` waits for S7a-4, which
-# builds it in the read.
+# `implied_condition` and `trainable`": the model takes the first five, and gives no verdict on a request
+# holding a `trainable` acceptance (`UNDECIDED_ACCEPTANCES`), which S7a-4 builds in the read.
 READ_ACCEPTANCE_KINDS: Final = ("pick", "overlay", "extrapolation", "nominal", "implied_condition")
 # declarations.md:336-338 "names the `field` it covers" and "its kind's own members; and carries `reason`"
 ACCEPTANCE_NAMES: Final = ("acceptance", "field", "record", "region", "interval", "reason", "basis")
@@ -662,6 +663,7 @@ class _Undecided(Exception):
 UNDECIDED_ACCEPTANCES: Final[Mapping[str, str]] = {
     "pick": "a pick acceptance (S4)",
     "overlay": "an overlay acceptance (S4)",
+    "trainable": "a trainable acceptance (S7a-4)",
 }
 
 
@@ -1101,9 +1103,9 @@ def checked_acceptances(
             if checked is not None and applies:
                 implied.append(checked)
     # read_side_contract.md:71-73 "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` or
-    # `trainable`, that name one field, whatever location or other members each holds": a pick gives no
-    # verdict above, and the model refuses a `trainable` acceptance as a kind it does not take (S7a-4 builds
-    # it), so nominals and extrapolations are counted here.
+    # `trainable`, that name one field, whatever location or other members each holds": a pick or a
+    # `trainable` acceptance gives no verdict above (S7a-4 builds the last), so nominals and extrapolations
+    # are counted here.
     if any(len(fields) != len(set(fields)) for fields in named.values()):
         reasons.add("request_incomplete")
     return (
@@ -3197,7 +3199,8 @@ def field_result(reasons: Reasons, labels: Sequence[str], read_field: FieldRead)
 
 def value_returned(status: Status, members: JsonObject) -> bool:
     # read_side_contract.md:125 "| `value` | present unless `not_met` with neither an assumption": the model
-    # takes no `trainable` acceptance (S7a-4 builds it), so an assumption alone keeps the value here.
+    # gives no verdict under a `trainable` acceptance (S7a-4 builds it), so an assumption alone keeps the
+    # value here.
     # read_side_contract.md:176-177 "`unit`, `specimen` (an empty object where no fact is stated) and
     # `provenance` are present exactly when `value` is"
     return "value" in members and (status != "not_met" or "assumption" in members)

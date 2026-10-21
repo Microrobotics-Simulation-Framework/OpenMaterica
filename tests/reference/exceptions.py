@@ -143,4 +143,13 @@ EXCEPTIONS: Final[Mapping[str, Excepted]] = {
         ),
         detail="an overlay acceptance (S4)",
     ),
+    "trainable": Excepted(
+        (
+            "A read goes on under a `trainable` acceptance, the one a build makes, past the reasons "
+            "`read_side_contract.md` section 3's stop rule names (S7a-4); the model applies none."
+        ),
+        "no verdict",
+        frozenset({"PR-339.across_edge_no_value.json"}),
+        detail="a trainable acceptance (S7a-4)",
+    ),
 }
