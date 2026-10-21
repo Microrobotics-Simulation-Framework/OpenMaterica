@@ -14,8 +14,8 @@ exactly what each side gives there:
 
 - a step the implementation has not built that the model decides (`NOT_BUILT`): an overlay as the target,
   found by the implementation's own words for what it has not built, and held to what the draw holds and the
-  model gives (a pick, an overlay or an extrapolation in a request, which the implementation raises at, the
-  model gives no verdict on);
+  model gives (a pick or an overlay in a request, which the implementation raises at, the model gives no
+  verdict on);
 - an open point on which the two read the text differently (`OPEN_POINTS`), planted by the draw alone: there
   the model must refuse, as its fail-closed reading does, and the model given the implementation's reading (a
   seeded fault of the model that is that reading, `tests/reference/mutants.py`) must agree with the
