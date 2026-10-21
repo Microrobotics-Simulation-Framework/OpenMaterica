@@ -43,20 +43,25 @@ def test_a_fault_leaves_the_model_as_it_was_once_its_search_is_done() -> None:
     assert outcome(case_file).kind == "agrees"
 
 
-def raising(*args: object, **kwargs: object) -> NoReturn:
-    raise TypeError("the model broken, not a rule of the text")
+def broken_model(kind: type[Exception]) -> Mutant:
+    """A fault that breaks the model rather than a rule of the text: `status_object`, which nearly every read
+    reaches, replaced by a function raising `kind`."""
+
+    def raising(*args: object, **kwargs: object) -> NoReturn:
+        raise kind("the model broken, not a rule of the text")
+
+    return Mutant("the model raises wherever it reads a status object", "none", {"status_object": raising})
 
 
-# The control: a fault that breaks the model rather than a rule of the text, `status_object`, which nearly
-# every read reaches, replaced by a function that raises. A check that counted the raise as a kill would pass.
-MODEL_BROKEN = Mutant(
-    "the model raises wherever it reads a status object", "none", {"status_object": raising}
-)
-
-
-def test_a_fault_that_makes_the_model_raise_fails_its_check_and_leaves_the_model_as_it_was() -> None:
-    with pytest.raises(TypeError, match="the model broken") as raised:
-        check("model_broken", MODEL_BROKEN)
-    assert any(note.startswith("the model raised reading PR-") for note in raised.value.__notes__)
+# The control: `TypeError`, and the `KeyError` and `AssertionError` that seeded faults once made the model
+# raise. A check that counted the raise as a kill, of every kind or of one, would pass on it.
+@pytest.mark.parametrize("kind", [TypeError, KeyError, AssertionError])
+def test_a_fault_that_makes_the_model_raise_fails_its_check_and_leaves_the_model_as_it_was(
+    kind: type[Exception],
+) -> None:
+    with pytest.raises(kind, match="the model broken") as raised:
+        check("broken_model", broken_model(kind))
+    notes = getattr(raised.value, "__notes__", [])
+    assert any(note.startswith("the model raised reading PR-") for note in notes), notes
     (case_file,) = [found for found in case_files() if found.path.name == "PR-035.linear_label_returned.json"]
     assert outcome(case_file).kind == "agrees"

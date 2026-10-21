@@ -330,9 +330,11 @@ every family entry goes in `families/CHANGELOG.md`.
   and a note naming the case file and the claims, where it counted the raise as a kill: a raise shows that
   the fault broke the model, not that a case's expected answer tells it apart (`tests/reference/cases.py`).
   The model's agreement with the cases, which runs through the same comparison, errors the same way where the
-  model raises. A control fault, `status_object` replaced by a function raising `TypeError`, fails the
-  check; with the raise counted as before, the check passes on it and the control's test fails. A case on
-  which the implementation raises still fails that case in the conformance runner, as before.
+  model raises. A control fault, `status_object` replaced by a function raising `TypeError`, `KeyError` or
+  `AssertionError`, fails the check in each; with a raise of every kind counted as before, the check passes
+  on each and the control's three tests fail, and with a raise of one kind counted, that kind's test alone
+  fails. A case on which the implementation raises still fails that case in the conformance runner, as
+  before.
 
 ## [0.1.0.dev2] - 2026-10-20
 

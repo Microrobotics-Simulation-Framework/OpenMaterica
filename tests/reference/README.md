@@ -74,11 +74,7 @@ detail that kind names; a listed one it agrees with fails as stale.
 `test_seeded_faults.py` gives the model one fault at a time and requires a case file to give an outcome the list of
 exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
 fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
-of S2a-4's phase B must kill. A fault that makes the model raise on a case file fails its search instead,
-with the model's traceback and a note naming the file and the claims (`cases.py`, `outcome`): a raise shows
-that the fault broke the model, not that a case's expected answer tells it apart, so it is never a kill. Its
-control, `status_object` replaced by a function raising `TypeError`, fails the check, which counting the raise
-as a kill would pass. The search stops at the first such case file; the count is of all of them,
+of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
 measured 2026-10-17 on `main` at `6c9ab9f`, but `member_checked_off_its_row`'s, which PR #37's review's cases
 kill (the same day). 75 faults: 61 killed, 14 survive; S2a-4's review added five survivors, each a rule no
 case pins (below the table), so 80 faults: 61 killed, 19 survive. The two cases of the maintainer's token
@@ -94,19 +90,22 @@ measured with them, and so are those their cases move that were current before t
 S3a's case files kill one more, `broken_status_object_reports_its_token`
 (`PR-110.table_unknown_status_beside_members` alone): 84 killed, 13 survive.
 
-Until 2026-10-21 three faults made the model raise, and the search counted each raise as a kill. Measured that
-day over all 97 faults and every case file of a read, on `main` at `76907779`: no other fault raised on any;
-`tolerance_without_an_operating_condition` raised `KeyError` on two of its three files, its first
-(`PR-308.tolerance_with_other_operating_condition`) and `PR-308.tolerance_without_operating_conditions`, by
-indexing the operating condition the request lacks; `alternatives_shape_unchecked` raised on
-`PR-044.alternatives_not_list`, one of its five, and `condition_shapes_unchecked` on
-`PR-049.condition_value_null`, one of its 25, each after its first file. A raise shows that the fault broke
-the model, not that a case's expected answer tells the fault apart, so each now answers wherever it takes
-effect and still breaks its rule: the first reads a condition whose tolerance has no operating condition as
-one given no tolerance; the second reads an `alternatives` that is not a list as a list of its one entry; the
-third has steps 9 and 10 read a condition it leaves unchecked that they cannot index as one the record does
-not hold. Measured again with the three fixed, no fault raises on any case file, and every fault is killed by
-the same files as before, from the same first file, each by an answer.
+A fault that makes the model raise on a case file fails its search, with the model's traceback and a note
+naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke the model, not that
+a case's expected answer tells the fault apart, so it is never a kill. Its control, `status_object` replaced
+by a function raising `TypeError`, `KeyError` or `AssertionError`, fails the check in each, where counting a
+raise of that kind as a kill would pass it. Until 2026-10-21 the search counted a raise as a kill. Measured
+that day over all 97 faults and every case file of a read, on `main` at `76907779`, three faults made the
+model raise and no other did: `tolerance_without_an_operating_condition` raised `KeyError` on two of its three
+files, its first (`PR-308.tolerance_with_other_operating_condition`) and
+`PR-308.tolerance_without_operating_conditions`, by indexing the operating condition the request lacks;
+`alternatives_shape_unchecked` raised on `PR-044.alternatives_not_list`, one of its five, and
+`condition_shapes_unchecked` on `PR-049.condition_value_null`, one of its 25, each after its first file. Each
+now answers wherever it takes effect and still breaks its rule: the first reads a condition whose tolerance
+has no operating condition as one given no tolerance; the second reads an `alternatives` that is not a list as
+a list of its one entry; the third has steps 9 and 10 read a condition it leaves unchecked that they cannot
+index as one the record does not hold. Measured again with the three fixed, no fault raises on any case file,
+and every fault is killed by the same files as before, from the same first file, each by an answer.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
