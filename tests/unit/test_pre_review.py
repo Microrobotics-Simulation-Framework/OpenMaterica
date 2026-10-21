@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import pre_review
+from scripts import gen_kill_counts, pre_review
 from scripts.pre_review import (
     DATA_RULES,
     GENERATORS,
@@ -224,6 +224,28 @@ def test_the_kill_counts_file_and_readme_run_the_generators_tests_and_check() ->
         assert any(
             command.endswith("scripts/gen_kill_counts.py --check") for command in commands(checks, "fast")
         )
+
+
+KILL_COUNTS_TESTS = "uv run --locked pytest tests/unit/test_gen_kill_counts.py -q --tb=short"
+
+
+def test_a_kill_points_marker_added_or_removed_runs_the_kill_counts_tests_with_the_fast_checks() -> None:
+    """The tests stage runs them for any change of the README; a marker runs them before it, so that a group
+    the README gains and the tests do not name fails where a build runs its fast checks (it once failed on CI
+    alone)."""
+    readme = "tests/property/README.md"
+    marked, _ = plan_checks([readme], TREE, base="BASE", workers=3, key_file=KEY, markers=[readme])
+    (planned,) = [check for check in marked if " ".join(check.command) == KILL_COUNTS_TESTS]
+    assert planned.stage == "fast"
+    assert planned.because == [f"{readme} (a kill points marker added or removed)"]
+    # control: the README changed elsewhere than a marker leaves them to the tests stage
+    unmarked, _ = plan(readme)
+    assert KILL_COUNTS_TESTS not in commands(unmarked, "fast")
+    assert "tests/unit/test_gen_kill_counts.py" in run_paths(unmarked)
+
+
+def test_the_kill_points_marker_is_the_generators() -> None:
+    assert pre_review.KILL_POINTS_MARKER.pattern == gen_kill_counts.MARKER.pattern
 
 
 def test_a_property_helper_runs_the_shards_of_the_modules_that_import_it() -> None:
@@ -1019,6 +1041,38 @@ def test_a_path_with_a_newline_in_it_is_one_path(repository: Path) -> None:
     assert pre_review.changed_files("main", repository) == ["kept", "tab\there.py", "two\nlines.py"]
 
 
+MARKER_LINE = "<!-- kill points of every search of test_x_mutants.py::test_x (scripts/gen_kill_counts.py) -->"
+OTHER_MARKER = "<!-- kill points of some searches of test_y.py::test_y (scripts/gen_kill_counts.py) -->"
+
+
+def test_the_readmes_whose_kill_points_markers_changed_are_found(repository: Path) -> None:
+    readme = repository / "tests" / "property" / "README.md"
+    readme.parent.mkdir(parents=True)
+    readme.write_text(f"# Mutants\n\n{MARKER_LINE}\n| a | 1 |\n")
+    (repository / "notes.md").write_text("notes\n")
+    commit("base")
+    subprocess.run(["git", "checkout", "-q", "-b", "branch"], check=True)
+
+    def found() -> list[str]:
+        return pre_review.changed_markers(pre_review.changed_files("main", repository), "main", repository)
+
+    readme.write_text(f"# Mutants\n\n{MARKER_LINE}\n| a | 2 |\n")
+    commit("a count changed, the marker kept")
+    assert found() == []
+    (repository / "notes.md").write_text(f"notes\n{OTHER_MARKER}\n")  # a marker outside any README
+    assert found() == []
+    readme.write_text(f"# Mutants\n\n{MARKER_LINE}\n| a | 2 |\n\n{OTHER_MARKER}\n| b | 3 |\n")
+    commit("a group added")
+    assert found() == ["tests/property/README.md"]
+    readme.write_text("# Mutants\n\n| a | 2 |\n")  # unstaged: both markers gone
+    assert found() == ["tests/property/README.md"]
+    subprocess.run(["git", "checkout", "-q", "-f", "-b", "other", "main"], check=True)
+    (repository / "guide").mkdir()
+    (repository / "guide" / "README.md").write_text(f"{OTHER_MARKER}\n")  # untracked
+    (repository / "tests" / "README.md").write_text("no marker\n")  # untracked
+    assert found() == ["guide/README.md"]
+
+
 def test_an_unknown_base_is_refused() -> None:
     assert pre_review.main(["no-such-ref-anywhere", "--list"]) == 2
 
@@ -1103,6 +1157,17 @@ def test_the_command_lists_its_plan_without_running_it(capsys: pytest.CaptureFix
     assert "check(s) selected" in printed
     assert "[fast]" in printed
     assert "selected by" in printed
+
+
+def test_the_command_plans_for_the_readmes_whose_markers_git_shows_changed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def changed_markers(changed: Sequence[str], base: str) -> list[str]:
+        return ["tests/property/README.md"]
+
+    monkeypatch.setattr(pre_review, "changed_markers", changed_markers)
+    assert pre_review.main(["HEAD", "--list"]) == 0
+    assert "tests/property/README.md (a kill points marker added or removed)" in capsys.readouterr().out
 
 
 def test_the_script_runs_as_a_command() -> None:
