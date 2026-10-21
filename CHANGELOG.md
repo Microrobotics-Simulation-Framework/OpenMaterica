@@ -80,9 +80,12 @@ every family entry goes in `families/CHANGELOG.md`.
   field or location, it is checked and not applied. Step 11's report names the extrapolation that covers its
   `outside_range` beside `coverable`, for S4d's step 7, where a table alternative whose read gives a reason at
   step 11 still raises `NotImplementedError`, one an extrapolation covers included. The reference model applies
-  an extrapolation as the read does, written from the text. The 45 case files mapped to S3c run and pass: 1149 of
-  1515 case files pass and 35 are verified against the reference evaluator; 331 wait for S4's later pieces (134)
-  and the record checks, C2 (197).
+  an extrapolation as the read does, written from the text. The 45 case files mapped to S3c, and a new arm of
+  the result's `table` under an extrapolation, written through the case tools
+  (`PR-307.table_under_an_extrapolation`: the table returned as stored, its `source_range` included, beside the
+  end value a `consumer_law` extrapolation starts from), run and pass: 1150 of 1516 case files pass and 35 are
+  verified against the reference evaluator; 331 wait for S4's later pieces (134) and the record checks, C2
+  (197).
 
 ### Changed
 - `scripts/pre_review.py` runs the kill counts' unit tests (`tests/unit/test_gen_kill_counts.py`) with its

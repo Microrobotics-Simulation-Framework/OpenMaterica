@@ -64,27 +64,27 @@ specification's README says ("Case files"), by the conformance runner's comparis
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 1152 files, under every configuration each allows (8,840 runs), and gives no verdict on
-131, each listed in `exceptions.py` under the kind its outcome names: an overlay (71), a pick (36), and a table
-alternative whose read gives a reason at step 11, one an extrapolation covers included (24), whose rules of
-step 7 are S4d's. It disagrees with none (measured at S3c's head, which reads an extrapolation, 2026-10-21: of
-the 55 files the kind of an extrapolation listed, the 45 S3c runs gained a verdict, the nine of a table
-alternative under one moved to S4d's kind, and the one holding a pick to the picks'; at S3b-2's head, of the
-83 files of a table that steps 8 and 9 pass, listed at S3a's head, 68 gained a verdict and 15 moved to the new
-kind, and S3b-2 added seven). Until S4a it also gave no verdict on 21 files of alternatives with reasons of their own, with which
-it now agrees, as with S4a's three cases of `unit` under `no_pick`. A case file the model disagrees with, or
-gives no verdict on, fails unless a kind lists it, for the detail that kind names; a listed one it agrees with
-fails as stale.
+The model agrees with 1153 files, under every configuration each allows (8,848 runs), and gives no verdict on
+131, each listed in `exceptions.py` under the kind its outcome names: an overlay (71), a pick (36), and a
+table alternative whose read gives a reason at step 11, one an extrapolation covers included (24), whose rules
+of step 7 are S4d's. It disagrees with none (measured at S3c's head, which reads an extrapolation, 2026-10-21:
+of the 55 files the kind of an extrapolation listed, the 45 S3c runs gained a verdict, as did S3c's arm of
+`table` under an extrapolation, the nine of a table alternative under one moved to S4d's kind, and the one
+holding a pick to the picks'; at S3b-2's head, of the 83 files of a table that steps 8 and 9 pass, listed at
+S3a's head, 68 gained a verdict and 15 moved to the new kind, and S3b-2 added seven). Until S4a it also gave
+no verdict on 21 files of alternatives with reasons of their own, with which it now agrees, as with S4a's
+three cases of `unit` under `no_pick`. A case file the model disagrees with, or gives no verdict on, fails
+unless a kind lists it, for the detail that kind names; a listed one it agrees with fails as stale.
 
 ## The mutant table
 
-`test_seeded_faults.py` gives the model one fault at a time and requires a case file to give an outcome the list of
-exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file), or the
-fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the properties
-of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of them,
-measured 2026-10-17 on `main` at `6c9ab9f`, but `member_checked_off_its_row`'s, which PR #37's review's cases
-kill (the same day). 75 faults: 61 killed, 14 survive; S2a-4's review added five survivors, each a rule no
-case pins (below the table), so 80 faults: 61 killed, 19 survive. The two cases of the maintainer's token
+`test_seeded_faults.py` gives the model one fault at a time and requires a case file to give an outcome the
+list of exceptions does not (a disagreement, a no verdict no kind lists, or an agreement with a listed file),
+or the fault to be listed as a survivor with its reason: each survivor is a rule no case pins, which the
+properties of S2a-4's phase B must kill. The search stops at the first such case file; the count is of all of
+them, measured 2026-10-17 on `main` at `6c9ab9f`, but `member_checked_off_its_row`'s, which PR #37's review's
+cases kill (the same day). 75 faults: 61 killed, 14 survive; S2a-4's review added five survivors, each a rule
+no case pins (below the table), so 80 faults: 61 killed, 19 survive. The two cases of the maintainer's token
 ruling (2026-10-18) kill two of the survivors, so 63 killed, 17 survive. S4a replaced the fifth survivor
 S2a-4's review added, `units_stored_differently_read_as_no_pick`, which the maintainer's ruling on `unit`
 under `no_pick` (2026-10-19) made the text's reading, by `unit_of_the_last_remaining_alternative`, which that
@@ -93,22 +93,22 @@ faults, 80 killed, 16 survive. The maintainer's rulings of 2026-10-19 and 2026-1
 more, `evidence_entry_provenance_unchecked` and `slips_of_alternatives_ignored`, and a fault their cases kill,
 `nested_reviews_returned_as_found`, so 97 faults: 83 killed, 14 survive. The rows these rulings change are
 measured with them, and so are those their cases move that were current before them,
-`condition_shapes_unchecked`, `every_slip_ignored` and `null_read_as_absent`; the others are as stamped.
-S3a's case files kill one more, `broken_status_object_reports_its_token`
+`condition_shapes_unchecked`, `every_slip_ignored` and `null_read_as_absent`; the others are as stamped. S3a's
+case files kill one more, `broken_status_object_reports_its_token`
 (`PR-110.table_unknown_status_beside_members` alone): 84 killed, 13 survive. S3b-2 adds seven faults of a
 table's steps 10 to 13, each killed (below the table), and its case files, which read a table to the end, five
 arms of the result's `table` among them, move the rows of sixteen others, measured with them at its head
 (2026-10-21): 104 faults, 91 killed, 13 survive. Its fix round's two arms (a table whose read step 11 ends,
 stated without origin, and a table's unknown member left out beside its value) move six rows; every row was
-measured again with them (2026-10-21), and fifteen others differed from what the case files now give, each
-now as measured. S3c adds thirteen faults of an extrapolation, at step 0 and at step 11, each killed (below
-the table), and its 45 case files, to which the model now gives a verdict, move fourteen rows; every fault was
-measured over every case file of a read at S3c's head (2026-10-21), and none made the model raise: 117 faults,
-104 killed, 13 survive. Two of its faults raised in their first form, each on reads it reached past its first
-kill: one applying an extrapolation across an edge on the readable range's end, and one taking the end value
-at `x[0]`, outside a narrower `source_range`, where the reference evaluator gives no value; each answers there
-now, still breaking its rule (an edge on the end is still looked at; the end value is `y[0]` or `y[-1]` as
-stored).
+measured again with them (2026-10-21), and fifteen others differed from what the case files now give, each now
+as measured. S3c adds thirteen faults of an extrapolation, at step 0 and at step 11, each killed (below the
+table), and its 46 case files, to which the model now gives a verdict, its arm of `table` under an
+extrapolation among them, move fifteen rows; every fault was measured over every case file of a read at S3c's
+head (2026-10-21), and none made the model raise: 117 faults, 104 killed, 13 survive. Two of its faults raised
+in their first form, each on reads it reached past its first kill: one applying an extrapolation across an
+edge on the readable range's end, and one taking the end value at `x[0]`, outside a narrower `source_range`,
+where the reference evaluator gives no value; each answers there now, still breaking its rule (an edge on the
+end is still looked at; the end value is `y[0]` or `y[-1]` as stored).
 
 A fault that makes the model raise on a case file its search reads fails the search, with the model's
 traceback and a note naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke
@@ -164,7 +164,7 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `composition_checked_beyond_its_basis` | a composition whose basis the row does not allow checked further | survives: each composition whose basis its row does not allow is otherwise well formed in the cases |
 | `family_suite_ignored` | a parameter set read without the family evaluation suite not `family_suite_absent` | 8 |
 | `entry_withheld_in_part_read` | an evidence entry withheld in some members but not every one read | 1, `PR-052.entry_partly_withheld` alone |
-| `missing_label_refused` | a field without its row's label refused | 283 |
+| `missing_label_refused` | a field without its row's label refused | 284 |
 | `unreadable_review_refuses` | a review the reader cannot read refuses the field | 9 |
 | `null_read_as_absent` | `null` in a member step 8 checks read as the member absent | 10 |
 | `statistics_unchecked` | a statistics block not checked | 47 |
@@ -192,7 +192,7 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `strict_inequalities` | `<` for `<=` in section 5's table | 11 |
 | `plus_minus_ignored` | a stated plus or minus ignored | 15 |
 | `unchecked_read_as_met` | a stated condition the request gives no tolerance or accept list for read as `met` | 4 |
-| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 323 |
+| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 324 |
 | `implied_fills_any_condition` | an implied condition fills a stated condition, or one held as another status object | 2 |
 | `disagreeing_implied_conditions_read` | two implied conditions that disagree read as the first | 8 |
 | `implied_values_compared_by_value` | two implied values compared as numbers, so that `0` and `-0` agree | 1, `PR-316.implied_zero_beside_minus_zero` alone |
@@ -203,7 +203,7 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `bounds_given_by_a_constant` | `want: bounds` gives a constant's value | 3 |
 | `value_given_by_an_interval` | `want: value` gives an interval's bounds without a nominal | 22 |
 | `nominal_outside_supplies_the_value` | a nominal outside an interval's bounds supplies the value | 3 |
-| `best_status` | the status the best of the reasons, not the worst | 19 |
+| `best_status` | the status the best of the reasons, not the worst | 20 |
 | `value_beside_not_met` | a value returned beside `not_met` without an assumption, as beside `condition_outside` | 22 |
 | `unknown_members_returned` | a member the reader does not know returned | 15 |
 | `review_returned_as_its_result` | a known review returned as its `result` alone | 2 |
@@ -233,24 +233,24 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `unit_of_the_first_stored_alternative` | under `no_pick`, every entry's `unit` the first stored alternative's, set aside or not | 3, the three `PR-013.evidence_unit*` arms |
 | `edge_unseen_by_the_axis_entry` | the axis entry `met` at an edge inside the readable range | 7 |
 | `outside_range_dropped_at_an_edge` | at an edge outside the readable range, `at_edge` alone | 4, PR-018's and PR-307's arms at an edge outside the readable range, below it and above it |
-| `source_range_never_narrows` | the readable range `x`'s, whatever `source_range` holds | 20 |
+| `source_range_never_narrows` | the readable range `x`'s, whatever `source_range` holds | 21 |
 | `outside_range_beside_a_range` | over an operating range of the axis that leaves the readable range, `outside_range` beside `want_mismatch` | 3, `PR-321.range_outside`, `PR-321.range_outside_under_extrapolation` and `PR-321.range_straddling_end` |
-| `step_11_reasons_without_the_axis` | step 11's reasons without the axis as their `condition` | 58 |
+| `step_11_reasons_without_the_axis` | step 11's reasons without the axis as their `condition` | 59 |
 | `table_returned_whole` | a table returned as stored with the members the reader does not know | 2, `PR-337.unknown_member_in_table_as_stored` and `PR-337.unknown_member_left_out_of_the_table_beside_its_value` |
-| `table_member_dropped` | a value read from a table returned without the table it is read from | 3 |
+| `table_member_dropped` | a value read from a table returned without the table it is read from | 4 |
 | `extrapolation_under_any_want` | an extrapolation applied under any `want` | 3, PR-307's arms under `want: bounds`, `components` and `evidence` |
 | `extrapolation_at_an_edge` | an extrapolation applied at an edge outside the readable range | 2, `PR-307.at_edge_outside_readable_range` and `PR-307.at_edge_outside_readable_range_above` |
 | `extrapolation_across_an_edge` | an extrapolation applied across an edge strictly between the read and the readable range's nearest end | 2, `PR-307.across_edge` and `PR-307.across_edge_above` |
-| `extrapolation_end_of_x` | the end value `y[0]` or `y[-1]` where `source_range` narrows the range | 6 |
-| `extrapolation_far_end` | the end value taken at the readable range's far end | 13 |
+| `extrapolation_end_of_x` | the end value `y[0]` or `y[-1]` where `source_range` narrows the range | 7 |
+| `extrapolation_far_end` | the end value taken at the readable range's far end | 14 |
 | `extrapolated_read_ends_at_step_11` | a read an extrapolation covers given no step-12 reason or label | 1, `PR-307.steps_12_and_13_run` alone |
 | `extrapolation_located_anywhere` | an extrapolation applied wherever it is located | 5 |
 | `two_extrapolations_read_as_the_first` | two extrapolations naming one field read as the first | 2, `PR-330.two_extrapolations_one_field` and `PR-330.two_extrapolations_one_field_one_without_location` |
 | `empty_law_accepted` | an empty `law` accepted | 3, PR-330's three arms of an empty `law` |
 | `white_space_law_refused` | a `law` of white space refused | 1, `PR-330.extrapolation_law_white_space_read` alone |
 | `extrapolation_method_unchecked` | an extrapolation's `method` unchecked | 2, `PR-330.extrapolation_method_missing` and `PR-330.extrapolation_method_unknown` |
-| `assumption_with_its_basis` | an extrapolation's `assumption` holding its `basis` | 12 |
-| `covered_outside_range_dropped` | a read an extrapolation covers without its `outside_range` | 13 |
+| `assumption_with_its_basis` | an extrapolation's `assumption` holding its `basis` | 13 |
+| `covered_outside_range_dropped` | a read an extrapolation covers without its `outside_range` | 14 |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the eight survivors, three were the open points (`members_of_the_other_kind_read`,
