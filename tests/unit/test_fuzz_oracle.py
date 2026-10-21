@@ -758,7 +758,8 @@ def test_the_table_value_s_seeded_fault_raises_just_above_an_edge_the_table_drop
 ) -> None:
     """Quiet on the core; with the fault, a read in the interval just above an edge raises where the value
     just above lies outside 0.6 to 1.6 times the value just below, either way, and nowhere else: not at 0.6
-    or 1.6 exactly, nor at a change of a tenth, nor just below the edge."""
+    or 1.6 exactly, nor at a change of a tenth, nor just below the edge. Of a table of two edges, the edge the
+    read lies just above is the one gated: the second's change raises there, the first's does not."""
     just_above: dict[str, JsonObject] = {
         "temperature": {"value": math.nextafter(310.0, math.inf), "unit": "K"}
     }
@@ -769,9 +770,19 @@ def test_the_table_value_s_seeded_fault_raises_just_above_an_edge_the_table_drop
     def across(below: float, above: float) -> JsonObject:
         return a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, below, above, 4.0], edges=[310.0])[1]
 
+    def two_edges(first: float, second: float) -> JsonObject:
+        """Edges at 300 and 310, the value just above each `first` and `second` times the value below."""
+        return a_table(
+            x=[290.0, 300.0, 300.0, 310.0, 310.0, 320.0],
+            y=[1.0, 2.0, 2.0 * first, 3.0, 3.0 * second, 4.0],
+            edges=[300.0, 310.0],
+        )[1]
+
     name, drops = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, 1.0, 4.0], edges=[310.0])
     raising = [drops, across(2.0, -3.0), across(1.0, 2.0), across(0.0, 1.0), across(2.0, 3.25)]
+    raising += [two_edges(1.0, 2.0)]
     quiet = [across(2.5, 1.5), across(2.5, 4.0), across(2.0, 2.2), across(2.0, 1.8), across(2.0, 2.0)]
+    quiet += [two_edges(2.0, 1.0)]
     assert table_read_at(name, drops, just_above) != "not yet"
     monkeypatch.setattr(evaluate, "value", faulty_value)
     for table in raising:
