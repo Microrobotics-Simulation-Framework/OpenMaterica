@@ -3623,6 +3623,178 @@ def test_the_trace_variable_check_finds_a_skip_reason_that_names_another_job() -
     assert any("skip reason does not name the `tests` job on Python 3.15" in line for line in found), found
 
 
+# The check above counts the jobs that set the trace variable, each combination whole; the test runs only in
+# the part, among those, whose selection holds it, which moves with the weights and with a re-shard. So the
+# parts whose pytest step sees the variable `1` are collected for real, and must hold the trace test once.
+TRACE_TEST_MEANT = (
+    "tests/unit/test_pre_review.py::"
+    "test_the_declared_readers_hold_against_a_trace_of_the_files_the_tests_open"
+)
+
+
+def trace_tests(source: str) -> frozenset[str]:
+    """The tests of the trace test's file that take its `trace` fixture, by node id: each runs the trace."""
+    where = TRACE_TEST_FILE.relative_to(REPOSITORY).as_posix()
+    return frozenset(
+        f"{where}::{node.name}"
+        for node in ast.parse(source).body
+        if isinstance(node, ast.FunctionDef)
+        and node.name.startswith("test")
+        and any(argument.arg == "trace" for argument in node.args.args)
+    )
+
+
+def trace_value(ci: Workflow, job: dict[str, Any], context: Mapping[str, object]) -> str:
+    """The trace variable as a job's pytest step sees it on one combination and event: the step's own setting,
+    else the job's, else the workflow's, as GitHub gives a step the nearest."""
+    for environment in (pytest_step(job).get("env", {}), job.get("env", {}), ci.get("env", {})):
+        if TRACE_VARIABLE in environment:
+            return as_text(setting(environment[TRACE_VARIABLE], context))
+    return ""
+
+
+def traced_runs(ci: Workflow, event: str) -> list[tuple[str, Selection, str]]:
+    """Each run of a test matrix job's pytest step on `event` that sees the trace variable `1`, each part of a
+    combination apart: where it runs, its selection and the profile it collects at."""
+    runs: list[tuple[str, Selection, str]] = []
+    for job_id in DEEP_JOBS:
+        job = ci["jobs"][job_id]
+        [command] = pytest_commands(job)
+        for context in matrix_contexts(job):
+            if context["github.event_name"] != event:
+                continue
+            context = context | SO_FAR_SUCCEEDED
+            if trace_value(ci, job, context) != "1":
+                continue
+            if not truthy(evaluated(condition(pytest_step(job)), context)):
+                continue
+            where = ", ".join(
+                f"{key[len('matrix.') :]} {value}"
+                for key, value in context.items()
+                if key.startswith("matrix.")
+            )
+            runs.append((f"{job_id} ({where})", selection_of(command, context), profile_of(job, context)))
+    return runs
+
+
+def trace_run_problems(ci: Workflow, collect: Collector, traced: frozenset[str]) -> list[str]:
+    """Where a run of ci.yml, on an event that runs the test matrix, does not run each trace test once: the
+    selection of each part whose pytest step runs with the trace variable `1` there, collected (`collect`) at
+    the profile the job renders there."""
+    problems = [] if traced else [f"no test of {TRACE_TEST_FILE.name} takes the `trace` fixture"]
+    for event in EVENTS:
+        runs = traced_runs(ci, event)
+        run: Counter[str] = Counter()
+        for _, chosen, profile in runs:
+            run.update(collect(chosen, profile) & traced)
+        setters = "; ".join(where for where, _, _ in runs) or "none"
+        problems += [
+            f"a {event} run never runs {test}: the parts that run with {TRACE_VARIABLE}=1 ({setters}) do not"
+            f" hold it"
+            for test in sorted(traced - run.keys())
+        ]
+        problems += [
+            f"a {event} run runs {test} {count} times" for test, count in sorted(run.items()) if count > 1
+        ]
+    return problems
+
+
+def test_the_parts_that_set_the_trace_variable_hold_the_trace_test_once_on_every_event() -> None:
+    ci = workflow("ci.yml")
+    traced = trace_tests(TRACE_TEST_FILE.read_text(encoding="utf-8"))
+    runs = {(chosen, profile) for event in EVENTS for _, chosen, profile in traced_runs(ci, event)}
+    found = {
+        profile: collected({chosen for chosen, at in runs if at == profile}, profile)
+        for profile in {at for _, at in runs}
+    }
+
+    def collect(chosen: Selection, profile: str) -> frozenset[str]:
+        return found[profile][chosen]
+
+    assert traced == {TRACE_TEST_MEANT}
+    assert trace_run_problems(ci, collect, traced) == []
+
+
+def traced_as_meant(chosen: Selection, profile: str) -> frozenset[str]:
+    """Stand-in collections: the trace test in the first part of the tests job's selection alone."""
+    return frozenset({TRACE_TEST_MEANT}) if chosen == Selection("none", None, "1/2") else frozenset()
+
+
+def test_the_trace_run_check_passes_the_workflow_meant() -> None:
+    assert trace_run_problems(workflow("ci.yml"), traced_as_meant, frozenset({TRACE_TEST_MEANT})) == []
+
+
+def trace_on_one_part(ci: Workflow, part: int) -> None:
+    pytest_step(ci["jobs"]["tests"])["env"][TRACE_VARIABLE] = (
+        f"${{{{ matrix.python == '3.15' && matrix.part == {part} && '1' || '' }}}}"
+    )
+
+
+def trace_moved_to_the_other_part(ci: Workflow) -> Collector:
+    trace_on_one_part(ci, 2)
+    return traced_as_meant
+
+
+def trace_test_moved_to_the_other_part(ci: Workflow) -> Collector:
+    trace_on_one_part(ci, 1)
+    return lambda chosen, profile: traced_as_meant(
+        chosen._replace(part="1/2" if chosen.part == "2/2" else None), profile
+    )
+
+
+def trace_test_moved_to_a_hypothesis_shard(ci: Workflow) -> Collector:
+    return lambda chosen, profile: (
+        frozenset({TRACE_TEST_MEANT}) if chosen.shard == "relations_1of2" else frozenset()
+    )
+
+
+def trace_test_in_both_parts(ci: Workflow) -> Collector:
+    return lambda chosen, profile: traced_as_meant(chosen._replace(part="1/2"), profile)
+
+
+def trace_step_skipped_on_pull_requests(ci: Workflow) -> Collector:
+    pytest_step(ci["jobs"]["tests"])["if"] = "github.event_name != 'pull_request' || matrix.python != '3.15'"
+    return traced_as_meant
+
+
+def trace_set_by_the_job_and_cleared_by_the_step(ci: Workflow) -> Collector:
+    step_environment = pytest_step(ci["jobs"]["tests"])["env"]
+    ci["jobs"]["tests"]["env"][TRACE_VARIABLE] = step_environment[TRACE_VARIABLE]
+    step_environment[TRACE_VARIABLE] = ""
+    return traced_as_meant
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (trace_moved_to_the_other_part, f"a push run never runs {TRACE_TEST_MEANT}"),
+        (trace_test_moved_to_the_other_part, f"a schedule run never runs {TRACE_TEST_MEANT}"),
+        (trace_test_moved_to_a_hypothesis_shard, f"a workflow_dispatch run never runs {TRACE_TEST_MEANT}"),
+        (trace_test_in_both_parts, f"a pull_request run runs {TRACE_TEST_MEANT} 2 times"),
+        (trace_step_skipped_on_pull_requests, f"a pull_request run never runs {TRACE_TEST_MEANT}"),
+        (trace_set_by_the_job_and_cleared_by_the_step, f"a push run never runs {TRACE_TEST_MEANT}"),
+    ],
+)
+def test_the_trace_run_check_can_fail(fault: Callable[[Workflow], Collector], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    collect = fault(ci)
+    found = trace_run_problems(ci, collect, frozenset({TRACE_TEST_MEANT}))
+    assert any(problem in line for line in found), found
+
+
+def test_the_trace_tests_are_those_that_take_the_trace_fixture() -> None:
+    source = "\n".join(
+        (
+            "def test_traced(trace, monkeypatch): ...",
+            "def test_untraced(monkeypatch): ...",
+            "def trace_helper(trace): ...",
+        )
+    )
+    assert trace_tests(source) == {"tests/unit/test_pre_review.py::test_traced"}
+    found = trace_run_problems(workflow("ci.yml"), traced_as_meant, trace_tests(""))
+    assert "no test of test_pre_review.py takes the `trace` fixture" in found
+
+
 def interrupt_drift(words: Sequence[str]) -> bool:
     """Whether a test that interrupts pytest with `words` interrupts it otherwise than the workflows do."""
     return f"uv run {' '.join(words)} " not in INTERRUPTED
