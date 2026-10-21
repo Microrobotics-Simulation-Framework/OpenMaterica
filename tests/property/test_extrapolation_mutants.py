@@ -58,10 +58,40 @@ KILLERS: dict[str, Killer] = {
         properties.check_not_applied,
         way_of,
     ),
+    # A planned search of HP24 where it does not apply: under another `want` alone, where the mutants that
+    # hold the `want` drawn there show.
+    "HP24 not applied, under another want": (
+        lambda size: strategies.not_applied(size, ("under_another_want",)),
+        properties.check_not_applied,
+        way_of,
+    ),
     "HP25": (lambda size: strategies.elsewhere(size), properties.check_elsewhere, way_of),
     "HP25 two": (lambda size: strategies.two(size), properties.check_two, way_of),
     "HP26 refused": (lambda size: strategies.refused_shapes(size), properties.check_refused_shape, way_of),
     "HP26 read": (lambda size: strategies.read_shapes(size), properties.check_read_shape, way_of),
+    # Planned searches of HP26, each at one way alone, where the mutants that hold a list that way draws a
+    # value from show: the methods that are no token, the laws that are no text, the laws of white space, and
+    # a slip's name and the place of its character.
+    "HP26 refused, a method no token": (
+        lambda size: strategies.refused_shapes(size, ("method_unknown",)),
+        properties.check_refused_shape,
+        way_of,
+    ),
+    "HP26 refused, a law no text": (
+        lambda size: strategies.refused_shapes(size, ("law_not_text",)),
+        properties.check_refused_shape,
+        way_of,
+    ),
+    "HP26 read, a law of white space": (
+        lambda size: strategies.read_shapes(size, ("law_white_space",)),
+        properties.check_read_shape,
+        way_of,
+    ),
+    "HP26 read, a slip": (
+        lambda size: strategies.read_shapes(size, ("a_slip_of_a_member",)),
+        properties.check_read_shape,
+        way_of,
+    ),
     "monotonicity": (
         lambda size: strategies.monotone_worlds(size),
         properties.check_monotone,
@@ -201,6 +231,16 @@ def _end_value_at_x(table: JsonObject, request: ReadRequest) -> FormRange:
     return dataclasses.replace(found, value=y[0] if at < low else y[-1])
 
 
+def _labels_dropped(
+    field: RecordField, record: JsonObject, request: ReadRequest, claims: Any, nominal: Any = None
+) -> FieldRead:
+    """A read an extrapolation covers given its value and step 12's reasons, but not its labels."""
+    found = READ_VALUE_FIELD(field, record, request, claims, nominal)
+    if found.form_range is None or found.form_range.extrapolation is None:
+        return found
+    return dataclasses.replace(found, labels=())
+
+
 def _steps_12_and_13_skipped(
     field: RecordField, record: JsonObject, request: ReadRequest, claims: Any, nominal: Any = None
 ) -> FieldRead:
@@ -250,6 +290,17 @@ END_BY_STRICT_INEQUALITY = (
 def _applied_under_any_want(table: JsonObject, request: ReadRequest) -> FormRange:
     """An extrapolation applied under any `want`, as under `want: value`."""
     return FORM_RANGE(table, dataclasses.replace(request, want="value"))
+
+
+def _applied_under(wants: tuple[str, ...]) -> Callable[[JsonObject, ReadRequest], FormRange]:
+    """An extrapolation applied under each of `wants`, as under `want: value`."""
+
+    def mutated(table: JsonObject, request: ReadRequest) -> FormRange:
+        if request.want in wants:
+            return FORM_RANGE(table, dataclasses.replace(request, want="value"))
+        return FORM_RANGE(table, request)
+
+    return mutated
 
 
 def _applied_at_an_edge_outside(table: JsonObject, request: ReadRequest) -> FormRange:
@@ -395,6 +446,125 @@ def _an_unknown_member_refused(entry: dict[str, JsonValue]) -> dict[str, JsonVal
     return None if any(name not in strategies.NAMED for name in entry) else entry
 
 
+# The kinds of value of `extrapolation_strategies.NOT_METHODS`, each taken by one of these alone.
+
+
+def _method_compared_ignoring_case(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """The fuzz control's fault (`tests/fuzz/seeded_fault.py`, `extrapolation_method`): a method compared
+    ignoring case, kept as written."""
+    method = entry.get("method")
+    if isinstance(method, str) and method.lower() in strategies.METHODS:
+        entry["method"] = method.lower()
+    return entry
+
+
+def _method_stripped(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    method = entry.get("method")
+    if isinstance(method, str) and method.strip() in strategies.METHODS:
+        entry["method"] = method.strip()
+    return entry
+
+
+def _a_space_read_as_an_underscore(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    method = entry.get("method")
+    if isinstance(method, str) and method.replace(" ", "_") in strategies.METHODS:
+        entry["method"] = method.replace(" ", "_")
+    return entry
+
+
+def _method_checked_by_its_pattern(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """A method checked against a token's pattern, lower-case letters and underscores, not the tokens."""
+    method = entry.get("method")
+    if isinstance(method, str) and re.fullmatch("[a-z_]+", method):
+        entry["method"] = strategies.METHODS[0]
+    return entry
+
+
+def _an_empty_method_taken(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    if entry.get("method") == "":
+        entry["method"] = strategies.METHODS[0]
+    return entry
+
+
+def _a_method_of_another_type_taken(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    if "method" in entry and not isinstance(entry["method"], str):
+        entry["method"] = strategies.METHODS[0]
+    return entry
+
+
+# The kinds of `extrapolation_strategies.NOT_TEXT`, each taken as a law by one of these alone.
+
+
+def _a_law_of_one_kind_taken(kind: Callable[[JsonValue], bool]) -> Callable[..., dict[str, JsonValue]]:
+    def change(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        if "law" in entry and kind(entry["law"]):
+            entry["law"] = "any law"
+        return entry
+
+    return change
+
+
+# The kinds of `extrapolation_strategies.WHITE_SPACE`, each refused as a law by one of these alone.
+
+
+def _white_space_alone(law: JsonValue) -> bool:
+    return isinstance(law, str) and bool(law) and not law.strip()
+
+
+def _a_law_of_spaces_refused(entry: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
+    """A law stripped of spaces alone, and refused where nothing is left."""
+    law = entry.get("law")
+    return None if isinstance(law, str) and law and not law.strip(" ") else entry
+
+
+def _a_law_of_tabs_or_newlines_refused(entry: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
+    law = entry.get("law")
+    return None if _white_space_alone(law) and any(character in "\t\n" for character in str(law)) else entry
+
+
+def _a_law_of_white_space_outside_ascii_refused(entry: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
+    law = entry.get("law")
+    return None if _white_space_alone(law) and not str(law).isascii() else entry
+
+
+# A slip of each kind of member `extrapolation_strategies.NAMED` holds, and at each place of its character,
+# ignored by one of these alone.
+
+
+def _a_slip_of_one_of(named: tuple[str, ...]) -> Callable[..., dict[str, JsonValue]]:
+    """A member one slip from one of `named` ignored, as if they were checked for slips apart."""
+
+    def change(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        return {
+            name: member
+            for name, member in entry.items()
+            if name in strategies.NAMED or not slipped([name], named)
+        }
+
+    return change
+
+
+def _inserted_at(name: str) -> str | None:
+    """Where `name` holds one character more than a named member: `before`, `inside` or `after` it."""
+    for index in range(len(name)):
+        if name[:index] + name[index + 1 :] in strategies.NAMED:
+            return "before" if index == 0 else "after" if index == len(name) - 1 else "inside"
+    return None
+
+
+def _a_character_not_read_as_a_slip(where: str) -> Callable[..., dict[str, JsonValue]]:
+    """A member holding a named one with one character more `where`, ignored as another name."""
+
+    def change(entry: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        return {
+            name: member
+            for name, member in entry.items()
+            if name in strategies.NAMED or _inserted_at(name) != where
+        }
+
+    return change
+
+
 def _a_law_outside_ascii_refused(entry: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
     law = entry.get("law")
     return None if isinstance(law, str) and not law.isascii() else entry
@@ -459,6 +629,15 @@ MUTANTS = [
         APPLIED_ON_ANY_SIDE,
         "read's value .*, not the end value",
     ),
+    # Step 12's labels (`read_side_contract.md` section 2, the `labels` row: "the field's `label`"), which
+    # HP24 draws where the value is stated without origin.
+    Mutant(
+        "labels_dropped_under_an_extrapolation",
+        "HP24",
+        replacing(read_module, "read_value_field", _labels_dropped),
+        ("stated_without_origin",),
+        "^the stated_without_origin read's labels under an extrapolation",
+    ),
     Mutant(
         "steps_12_and_13_skipped",
         "HP24",
@@ -495,7 +674,7 @@ MUTANTS = [
         "HP24",
         replacing(read_module, "_extrapolation", _reshaped(_a_law_outside_ascii_refused)),
         APPLIED_ON_ANY_SIDE,
-        "read under an extrapolation: not_met|read's reasons under an extrapolation",
+        "read's reasons under an extrapolation",
     ),
     # HP24's, where it does not apply.
     Mutant(
@@ -558,6 +737,22 @@ MUTANTS = [
         replacing(evaluate, "beyond_an_edge", UPPER_END_NOT_ACROSS),
         ("across_an_edge",),
         "^the across_an_edge read changed",
+    ),
+    # The `want` HP24 draws where it does not apply under another one, each held by a mutant that shows at it
+    # alone: `bounds`, the design's "applied under `want: bounds`", and `components` and `evidence`.
+    Mutant(
+        "applied_under_want_bounds_alone",
+        "HP24 not applied, under another want",
+        replacing(read_module, "form_range", _applied_under(("bounds",))),
+        ("under_another_want",),
+        "^the under_another_want read changed",
+    ),
+    Mutant(
+        "applied_under_every_want_but_bounds",
+        "HP24 not applied, under another want",
+        replacing(read_module, "form_range", _applied_under(("components", "evidence"))),
+        ("under_another_want",),
+        "^the under_another_want read changed",
     ),
     # HP25's.
     Mutant(
@@ -634,6 +829,107 @@ MUTANTS = [
         REFUSED_SHAPE_WAYS,
         "^an extrapolation with its",
     ),
+    # Each kind of value of the lists HP26 draws from within a way, held by a mutant that shows at it alone,
+    # so that a list cut to one value leaves a mutant here alive. The methods that are no token
+    # (`extrapolation_strategies.NOT_METHODS`): a capital, the fuzz control's own fault; a space added; a
+    # space for the underscore; another word; the empty string; a value that is no string.
+    Mutant(
+        "a_method_compared_ignoring_case",
+        "HP26 refused, a method no token",
+        replacing(read_module, "_extrapolation", _reshaped(_method_compared_ignoring_case)),
+        ("method_unknown",),
+        "^an extrapolation with its method_unknown",
+    ),
+    Mutant(
+        "a_method_read_stripped",
+        "HP26 refused, a method no token",
+        replacing(read_module, "_extrapolation", _reshaped(_method_stripped)),
+        ("method_unknown",),
+        "^an extrapolation with its method_unknown",
+    ),
+    Mutant(
+        "a_space_in_a_method_read_as_an_underscore",
+        "HP26 refused, a method no token",
+        replacing(read_module, "_extrapolation", _reshaped(_a_space_read_as_an_underscore)),
+        ("method_unknown",),
+        "^an extrapolation with its method_unknown",
+    ),
+    Mutant(
+        "a_method_checked_by_its_pattern",
+        "HP26 refused, a method no token",
+        replacing(read_module, "_extrapolation", _reshaped(_method_checked_by_its_pattern)),
+        ("method_unknown",),
+        "^an extrapolation with its method_unknown",
+    ),
+    Mutant(
+        "an_empty_method_taken",
+        "HP26 refused, a method no token",
+        replacing(read_module, "_extrapolation", _reshaped(_an_empty_method_taken)),
+        ("method_unknown",),
+        "^an extrapolation with its method_unknown",
+    ),
+    Mutant(
+        "a_method_of_another_type_taken",
+        "HP26 refused, a method no token",
+        replacing(read_module, "_extrapolation", _reshaped(_a_method_of_another_type_taken)),
+        ("method_unknown",),
+        "^an extrapolation with its method_unknown",
+    ),
+    # The laws that are no text (`extrapolation_strategies.NOT_TEXT`), of each of JSON's five other kinds; a
+    # number is the S3 design's own control fault for fuzz target 5.
+    Mutant(
+        "a_number_taken_as_a_law",
+        "HP26 refused, a law no text",
+        replacing(
+            read_module,
+            "_extrapolation",
+            _reshaped(_a_law_of_one_kind_taken(lambda law: isinstance(law, float))),
+        ),
+        ("law_not_text",),
+        "^an extrapolation with its law_not_text",
+    ),
+    Mutant(
+        "a_null_law_taken",
+        "HP26 refused, a law no text",
+        replacing(
+            read_module, "_extrapolation", _reshaped(_a_law_of_one_kind_taken(lambda law: law is None))
+        ),
+        ("law_not_text",),
+        "^an extrapolation with its law_not_text",
+    ),
+    Mutant(
+        "a_boolean_law_taken",
+        "HP26 refused, a law no text",
+        replacing(
+            read_module,
+            "_extrapolation",
+            _reshaped(_a_law_of_one_kind_taken(lambda law: isinstance(law, bool))),
+        ),
+        ("law_not_text",),
+        "^an extrapolation with its law_not_text",
+    ),
+    Mutant(
+        "a_list_taken_as_a_law",
+        "HP26 refused, a law no text",
+        replacing(
+            read_module,
+            "_extrapolation",
+            _reshaped(_a_law_of_one_kind_taken(lambda law: isinstance(law, list))),
+        ),
+        ("law_not_text",),
+        "^an extrapolation with its law_not_text",
+    ),
+    Mutant(
+        "an_object_taken_as_a_law",
+        "HP26 refused, a law no text",
+        replacing(
+            read_module,
+            "_extrapolation",
+            _reshaped(_a_law_of_one_kind_taken(lambda law: isinstance(law, dict))),
+        ),
+        ("law_not_text",),
+        "^an extrapolation with its law_not_text",
+    ),
     Mutant(
         "a_law_of_white_space_refused",
         "HP26 read",
@@ -661,6 +957,82 @@ MUTANTS = [
         replacing(read_module, "_extrapolation", _reshaped(_an_unknown_member_refused)),
         ("an_unknown_member",),
         "^an extrapolation with its an_unknown_member read as",
+    ),
+    # The laws of white space (`extrapolation_strategies.WHITE_SPACE`): ASCII's spaces, its tab and newline,
+    # and white space outside ASCII.
+    Mutant(
+        "a_law_of_spaces_refused",
+        "HP26 read, a law of white space",
+        replacing(read_module, "_extrapolation", _reshaped(_a_law_of_spaces_refused)),
+        ("law_white_space",),
+        "^an extrapolation with its law_white_space",
+    ),
+    Mutant(
+        "a_law_of_tabs_or_newlines_refused",
+        "HP26 read, a law of white space",
+        replacing(read_module, "_extrapolation", _reshaped(_a_law_of_tabs_or_newlines_refused)),
+        ("law_white_space",),
+        "^an extrapolation with its law_white_space",
+    ),
+    Mutant(
+        "a_law_of_white_space_outside_ascii_refused",
+        "HP26 read, a law of white space",
+        replacing(read_module, "_extrapolation", _reshaped(_a_law_of_white_space_outside_ascii_refused)),
+        ("law_white_space",),
+        "^an extrapolation with its law_white_space",
+    ),
+    # A slip's name (`extrapolation_strategies.NAMED`): the kind or the field, a location, the members a read
+    # ignores, and the kind's own; and the place of its character: before the name, inside it, after it.
+    Mutant(
+        "a_slip_of_the_kind_or_field_ignored",
+        "HP26 read, a slip",
+        replacing(read_module, "_extrapolation", _reshaped(_a_slip_of_one_of(("acceptance", "field")))),
+        ("a_slip_of_a_member",),
+        "^an extrapolation holding a slip",
+    ),
+    Mutant(
+        "a_slip_of_a_location_ignored",
+        "HP26 read, a slip",
+        replacing(
+            read_module, "_extrapolation", _reshaped(_a_slip_of_one_of(("record", "region", "interval")))
+        ),
+        ("a_slip_of_a_member",),
+        "^an extrapolation holding a slip",
+    ),
+    Mutant(
+        "a_slip_of_basis_or_reason_ignored",
+        "HP26 read, a slip",
+        replacing(read_module, "_extrapolation", _reshaped(_a_slip_of_one_of(("basis", "reason")))),
+        ("a_slip_of_a_member",),
+        "^an extrapolation holding a slip",
+    ),
+    Mutant(
+        "a_slip_of_method_or_law_ignored",
+        "HP26 read, a slip",
+        replacing(read_module, "_extrapolation", _reshaped(_a_slip_of_one_of(("method", "law")))),
+        ("a_slip_of_a_member",),
+        "^an extrapolation holding a slip",
+    ),
+    Mutant(
+        "a_character_before_a_name_not_read_as_a_slip",
+        "HP26 read, a slip",
+        replacing(read_module, "_extrapolation", _reshaped(_a_character_not_read_as_a_slip("before"))),
+        ("a_slip_of_a_member",),
+        "^an extrapolation holding a slip",
+    ),
+    Mutant(
+        "a_character_inside_a_name_not_read_as_a_slip",
+        "HP26 read, a slip",
+        replacing(read_module, "_extrapolation", _reshaped(_a_character_not_read_as_a_slip("inside"))),
+        ("a_slip_of_a_member",),
+        "^an extrapolation holding a slip",
+    ),
+    Mutant(
+        "a_character_after_a_name_not_read_as_a_slip",
+        "HP26 read, a slip",
+        replacing(read_module, "_extrapolation", _reshaped(_a_character_not_read_as_a_slip("after"))),
+        ("a_slip_of_a_member",),
+        "^an extrapolation holding a slip",
     ),
     # The monotonicity property's (the S3 design's section 6.7 of v1: "status set to `met`").
     Mutant(

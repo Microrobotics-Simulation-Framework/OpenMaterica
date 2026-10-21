@@ -13,15 +13,19 @@ Each property draws a way first, the place its rule tells apart, and builds the 
 feature audit holds each way to its draw floor:
 - HP24, where an extrapolation applies: one double outside the readable range, far outside it, outside a
   narrower `source_range` (inside `x`), and outside it with the value stated without origin, whose step-12
-  reason only a read the extrapolation lets on reaches;
+  reason only a read the extrapolation lets on reaches, the field holding the `label` its row names for a
+  table over the axis drawn, where it names one, which step 12 adds too;
 - HP24, where one does not apply although it names the read: inside the readable range, at an edge inside
-  it, at an edge outside it, outside it beyond an edge, and outside it under another `want`;
+  it, at an edge outside it, outside it beyond an edge, and outside it under another `want` of plain read's,
+  `bounds`, `components` or `evidence`;
 - HP25, where one is located elsewhere: at another field, another record, a region, an interval, or nowhere;
   and two that name one field: both at the read, one of them elsewhere, both elsewhere, and, as the control,
   two naming two fields;
 - HP26, step 0's shape: `method` missing or not one of its tokens, `law` missing, not text or empty, each
   refused; and `law` of white space alone, `basis` and `reason` of any value, a member no document names, each
-  read, and a member one slip from a named one, refused;
+  read, and a member one slip from a named one, refused. Within a way, each list a value is drawn from (the
+  methods that are no token, the laws of white space, the laws that are no text, and a slip's name and the
+  place of its character) holds kinds of value a mutant shows at alone, one kind each;
 - the monotonicity property: HP21's reads inside, at an end and outside a table the request can meet, with and
   without an extrapolation at the read."""
 
@@ -38,17 +42,20 @@ from materica.core.record import RecordStore
 from materica.core.vocabulary import VOCABULARY
 from tests.property import table_read_strategies as tables
 from tests.property.strategies import SIZE, Size
-from tests.property.table_read_strategies import MetWorld, TableRead, request_of
-from tests.property.value_fields import Json, mapping
+from tests.property.table_read_strategies import MetWorld, TableRead, request_of, table_field
+from tests.property.value_fields import Json, mapping, row_of
 
 # An extrapolation's methods, as the vocabulary generates them from `declarations.md` section 4.1.
 METHODS = VOCABULARY.token_lists["extrapolation_method"]
 # Text of at least one character, which a reader does not judge (`declarations.md` section 4.1): any text,
 # so that one outside ASCII is drawn as often as it falls; and white space alone, which HP26 draws as a way of
-# its own.
+# its own, of three kinds, each held by a mutant that shows at it alone: ASCII's spaces, one or several;
+# ASCII's tab and newline; and white space outside ASCII, which readers that take Unicode's list of white
+# space and those that take ASCII's tell apart.
 LAWS = st.text(min_size=1, max_size=12)
 WHITE_SPACE = (" ", "\t", "\n", "\N{NO-BREAK SPACE}", "\N{IDEOGRAPHIC SPACE}", "   ")
-# A JSON value of any type but a string, and any JSON value, for the members a read ignores.
+# A JSON value of any type but a string, of each of JSON's five other kinds, each held as a `law` by a mutant
+# that shows at it alone; and any JSON value, for the members a read ignores.
 NOT_TEXT = cast(
     st.SearchStrategy[JsonValue],
     st.one_of(
@@ -74,6 +81,9 @@ NOT_APPLIED_WAYS = (
     "across_an_edge",
     "under_another_want",
 )
+# The `want`s of plain read but `value` (`read_side_contract.md` section 6), under which an extrapolation is
+# not applied: "Under any other `want`" (section 5).
+OTHER_WANTS = ("bounds", "components", "evidence")
 ELSEWHERE_WAYS = ("another_field", "another_record", "a_region", "an_interval", "no_location")
 TWO_WAYS = ("both_at_the_read", "one_at_the_read_one_elsewhere", "both_elsewhere", "each_its_own_field")
 REFUSED_SHAPE_WAYS = ("method_missing", "method_unknown", "law_missing", "law_not_text", "law_empty")
@@ -82,14 +92,16 @@ MONOTONE_WAYS = tables.RANGE_WAYS[:4]
 
 # The members named at an extrapolation's place (`declarations.md` section 4.1; `read_side_contract.md`
 # section 1), from the text: every acceptance's kind, location, field, reason and basis, and its own method
-# and law.
+# and law. A slip is drawn of each, its character put before the name, inside it or after it; each kind of
+# member and each place is held by a mutant that shows at it alone.
 NAMED = ("acceptance", "record", "region", "interval", "field", "reason", "basis", "method", "law")
 # A field other than any the reads draw, whose row the vocabulary registers.
 OTHER_FIELD = "bulk.elemental_composition"
 # A member more than one slip from every named one (`record_format.md` section 10).
 UNKNOWN_MEMBER = "curation_note"
 # Methods one change from a token, or none of them: a capital, a space for the underscore, another word, a
-# space added, the empty string, and values that are no string.
+# space added, the empty string, and values that are no string. Each kind is held by a mutant that shows at it
+# alone; the capital by the fuzz control's own fault, a method compared ignoring case.
 NOT_METHODS: tuple[JsonValue, ...] = (
     "Constant",
     "consumer law",
@@ -158,6 +170,19 @@ def extrapolations(draw: st.DrawFn, drawn: TableRead) -> Json:
     return found
 
 
+def labelled(drawn: TableRead) -> TableRead:
+    """`drawn` with its field's `label`, where the field's row names one that a table over the drawn axis may
+    hold (`vocabulary/fields.json`: `label`, and `label_not_on_axis`, the axis it may not be held over): the
+    label step 12 adds (`read_side_contract.md` section 2, the `labels` row: "and the field's `label`")."""
+    row = row_of(drawn.field)
+    label, not_on = row.get("label"), row.get("label_not_on_axis")
+    if not isinstance(label, str) or not isinstance(not_on, str) or not_on == drawn.axis:
+        return drawn
+    record = copy.deepcopy(drawn.record)
+    table_field(drawn._replace(record=record))["label"] = label
+    return drawn._replace(record=record)
+
+
 # The places outside the readable range that HP25 and HP26 read at, where an extrapolation at the read would
 # apply: HP21's one double and far outside, which `table_read_strategies.range_reads` draws between itself.
 OUTSIDE = tables.RANGE_WAYS[2:4]
@@ -166,11 +191,12 @@ OUTSIDE = tables.RANGE_WAYS[2:4]
 @st.composite
 def applied(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = APPLIED_WAYS) -> Extrapolated:
     """HP24 where the extrapolation applies: a read outside the readable range, at no edge and across none
-    (HP21's outside ways), under `want: value`; with the value stated without origin, one double outside."""
+    (HP21's outside ways), under `want: value`; with the value stated without origin, one double outside, the
+    field holding its row's `label` where the row names one for a table over the axis."""
     way = draw(st.sampled_from(ways))
     drawn = draw(tables.range_reads(size, ("one_double_outside" if way == "stated_without_origin" else way,)))
     if way == "stated_without_origin":
-        drawn = tables.stated_without_origin(drawn)
+        drawn = labelled(tables.stated_without_origin(drawn))
     extrapolation = draw(extrapolations(drawn))
     return Extrapolated(way, drawn, extrapolation, (extrapolation,))
 
@@ -179,12 +205,13 @@ def applied(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = APPLIED_
 def not_applied(draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] = NOT_APPLIED_WAYS) -> Extrapolated:
     """HP24 where an extrapolation at the read does not apply: strictly inside the readable range or at an end
     of it (HP21's two ways, which `range_reads` draws between itself), at an edge inside or outside it and
-    beyond one, the edge outside the range or on its end (HP20's), and outside it under `want: bounds`."""
+    beyond one, the edge outside the range or on its end (HP20's), and outside it under another `want`, one
+    of `OTHER_WANTS`."""
     way = draw(st.sampled_from(ways))
     if way == "inside_the_range":
         drawn = draw(tables.range_reads(size, tables.RANGE_WAYS[:2]))
     elif way == "under_another_want":
-        drawn = draw(tables.range_reads(size, OUTSIDE))._replace(want="bounds")
+        drawn = draw(tables.range_reads(size, OUTSIDE))._replace(want=draw(st.sampled_from(OTHER_WANTS)))
     else:
         drawn = draw(tables.edge_reads(size, (way,)))
     extrapolation = draw(extrapolations(drawn))

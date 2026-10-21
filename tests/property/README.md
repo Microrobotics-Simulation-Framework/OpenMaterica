@@ -361,12 +361,15 @@ check's reader (the last bullet).
   4.1e-7, the audits' model giving 6.1e-7 at most; at the variances' one-sided 95 % bounds, 1.9 times those
   measured over 20 runs, the worst is 9.2e-5, HP26's refusals at `deep`'s size). HP24, where the extrapolation
   applies, one double or far outside the readable range, outside a narrower `source_range`, and outside it with
-  the value stated without origin: adding it keeps the status `not_met` and the reasons the read without it
-  gives, step 12's added (`stated_without_origin`), and gives the value at the readable range's nearest end,
+  the value stated without origin, the field holding the `label` its row names for a table over the axis, where
+  it names one: adding it keeps the status `not_met` and the reasons the read without it gives, step 12's added
+  (`stated_without_origin`), and the labels it gives, step 12's added (the field's `label`), and gives the
+  value at the readable range's nearest end,
   the reference evaluator's `exact` value there, the members HP6's oracle gives beside a value, the table as
   stored and `assumption`, its method and law as the request gives them and no `basis`; `applied` names it.
   HP24 where one at the read does not apply, inside the readable range or at an end, at an edge inside or
-  outside it, beyond one, and under `want: bounds`: the read is the read without it, member for member. HP25:
+  outside it, beyond one, and under another `want` of plain read's, `bounds`, `components` or `evidence`: the
+  read is the read without it, member for member. HP25:
   one located at another field, record, region or interval, or nowhere, changes nothing; two that name one
   field are `request_incomplete` alone, both at the read, one with no location, or one at a region and one with
   none, in an order drawn, and two that name two fields are read as the one at the read alone, its index in
@@ -378,7 +381,10 @@ check's reader (the last bullet).
   that the relation is not vacuous; its worlds stated without origin are declared by their chance, 0.2 (over 20
   runs at `ci` a mean share of 0.264, the least 0.245; 0.255 and 0.2195 at `deep`'s size). Every draw of the
   strategy is held: each way by its floor, and each draw within one (the method `consumer_law`, a law outside
-  ASCII, a `reason`, the order of two, a refused shape with no location) by a mutant that shows there alone.
+  ASCII, a `reason`, the order of two, a refused shape with no location, the `want` under which one does not
+  apply, the field's `label`, and each kind of value of the lists HP26 draws from: the methods that are no
+  token, the laws of white space, the laws that are no text, and a slip's name and the place of its
+  character) by a mutant that shows there alone, so that a draw cut to one value leaves a mutant alive.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -444,7 +450,7 @@ workers at `ci`, 2026-10-16; 155 s with the result's, 2026-10-17; 151 s beside t
 2026-10-17), and since S3b-2 a table's steps 10 to 13's mutant searches too, whose properties are in `records`
 (about three minutes of CPU at `ci` between them, locally, 2026-10-21), and since S3c an extrapolation's
 properties with their mutant searches (`test_extrapolation_*.py`: 143 s of CPU at `ci` for the properties and 5
-s for the 66 searches, locally, 2026-10-21; here, not in `records`, which S3b-2's properties brought to 5.4
+s for the 66 searches, locally, 2026-10-21, 8 s for the 114 of its fix round; here, not in `records`, which S3b-2's properties brought to 5.4
 minutes of its 20 at `ci` on CI), and `--shard relations`, the reference
 model's, isolation and byte form's, and monotonicity groups with their mutant searches, each example reading two records or a read twice (198 s on four local
 workers at `ci`, 2026-10-17; `SHARDS` in `tests/conftest.py`), and `--shard alternatives`, S4a's step 7 over
@@ -569,7 +575,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 1,168 searches, 584 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,216 searches, 608 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1631,7 +1637,17 @@ drawing it fails here: the extrapolation's `reason` (`reason_in_the_assumption`)
 (`the_method_read_as_constant`), a law outside ASCII (`a_law_outside_ascii_refused`), a read at an end of the
 readable range (`an_end_read_as_outside`), the extrapolation that applies drawn second
 (`applied_at_the_first_index`), and a refused shape with no location (`shape_unchecked_off_a_record`); the
-ways are held by their floors, and `basis` and the method `constant` by the design's own mutants. The design's "the end value
+ways are held by their floors, and `basis` and the method `constant` by the design's own mutants. And 24 more,
+each showing at one kind of value a draw within a way takes, so that a draw cut to one value leaves one of them
+alive: the field's `label`, which HP24 draws where the value is stated without origin
+(`labels_dropped_under_an_extrapolation`); the `want` under which one does not apply, `bounds` alone, and
+`components` and `evidence`; and each kind of value of the lists HP26 draws from, its methods that are no
+token (a capital, the fuzz control's own fault of a method compared ignoring case; a space added; a space for
+the underscore; another word; the empty string; no string), its laws that are no text (each of JSON's five
+other kinds, a number among them, the S3 design's control fault for fuzz target 5), its laws of white space
+(ASCII's spaces, its tab and newline, white space outside ASCII), and a slip's name (the kind or the field, a
+location, `basis` or `reason`, the kind's own) and the place of its character (before the name, inside it,
+after it). Each is searched where its way alone is drawn (planned), but the label's. The design's "the end value
 taken at `x[0]` where `source_range` narrows the range" shows at every way HP24 draws, since each draws tables
 of every kind of `source_range`; its way of its own, outside a narrower `source_range`, is held by its floor.
 S3b-2's two mutants of step 11's report on an edge on the readable range's end, which HP20 searches in the
@@ -1647,19 +1663,22 @@ on the range's end in half its draws).
 | `extrapolated_linearly` | the value extrapolated by the slope of the interval at the range's nearest end, not the end value | HP24 | each way | 3, 3 |
 | `the_far_ends_value` | the value at the readable range's far end | HP24 | each way | 3, 3 |
 | `end_value_at_x_where_source_range_narrows` | the end value `y[0]` or `y[-1]` where `source_range` narrows the range | HP24 | each way | 3, 9 |
+| `labels_dropped_under_an_extrapolation` | a read an extrapolation covers given its value and step 12's reasons, but not its labels | HP24 | `stated_without_origin` | 24, 19 |
 | `steps_12_and_13_skipped` | a read an extrapolation covers given its value, but not step 12's reason | HP24 | `stated_without_origin` | 10, 6 |
 | `basis_in_the_assumption` | the extrapolation's `basis` in `assumption` | HP24 | each way | 5, 9 |
 | `reason_in_the_assumption` | the extrapolation's `reason` in `assumption`, where it holds one | HP24 | each way | 7, 3 |
 | `the_method_read_as_constant` | `assumption` naming the method `constant`, whatever the request gives | HP24 | each way | 5, 9 |
 | `a_law_outside_ascii_refused` | a `law` holding a character outside ASCII refused | HP24 | each way | 3, 3 |
 | `applied_under_want_bounds` | an extrapolation applied under any `want` | HP24 where it does not apply | `under_another_want` | 8, 4 |
-| `applied_at_an_edge_outside_the_readable_range` | at an edge outside the readable range, the extrapolation applied, the end value given | HP24 where it does not apply | `at_an_edge_outside` | 25, 19 |
+| `applied_at_an_edge_outside_the_readable_range` | at an edge outside the readable range, the extrapolation applied, the end value given | HP24 where it does not apply | `at_an_edge_outside` | 10, 24 |
 | `an_edge_read_under_an_extrapolation` | at an edge inside the readable range, under an extrapolation, the value below the edge | HP24 where it does not apply | `at_an_edge_inside` | 2, 2 |
-| `applied_across_an_edge` | beyond an edge outside the readable range or on its end, the extrapolation applied | HP24 where it does not apply | `across_an_edge` | 56, 8 |
-| `an_end_read_as_outside` | a read at an end of the readable range read as outside it, so that an extrapolation covers it | HP24 where it does not apply | `inside_the_range` | 33, 48 |
+| `applied_across_an_edge` | beyond an edge outside the readable range or on its end, the extrapolation applied | HP24 where it does not apply | `across_an_edge` | 39, 8 |
+| `an_end_read_as_outside` | a read at an end of the readable range read as outside it, so that an extrapolation covers it | HP24 where it does not apply | `inside_the_range` | 46, 56 |
 | `applied_inside_the_range` | an extrapolation at the read applied to a read inside the range: `assumption` and `applied` | HP24 where it does not apply | `inside_the_range` | 1, 1 |
 | `an_edge_on_the_lower_end_read_as_none_between` | below the readable range, an edge on its lower end read as none between, so a read beyond it is given the end value | HP24 (planned: across an edge) | `across_an_edge` | 3, 5 |
 | `an_edge_on_the_upper_end_read_as_none_between` | above the readable range, the same of an edge on its upper end | HP24 (planned: across an edge) | `across_an_edge` | 11, 9 |
+| `applied_under_want_bounds_alone` | an extrapolation applied under `want: bounds` alone | HP24 where it does not apply (planned: under another `want`) | `under_another_want` | 1, 1 |
+| `applied_under_every_want_but_bounds` | an extrapolation applied under `want: components` and `want: evidence` | HP24 where it does not apply (planned: under another `want`) | `under_another_want` | 3, 3 |
 | `the_location_ignored` | an extrapolation applied wherever it is located, or with no location | HP25 | `another_record`, `a_region`, `an_interval`, `no_location` | 2, 2 |
 | `the_field_ignored` | an extrapolation at the read's record applied whatever field it names | HP25 | `another_field` | 1, 1 |
 | `two_read_the_first_applied` | two extrapolations naming one field read, the first applied | HP25, two | the three ways of one field | 1, 1 |
@@ -1670,10 +1689,31 @@ on the range's end in half its draws).
 | `a_law_of_any_type` | a `law` that is no string accepted | HP26, refused | `law_not_text` | 10, 7 |
 | `the_method_unchecked` | `method` missing or not one of its tokens accepted | HP26, refused | `method_missing`, `method_unknown` | 1, 1 |
 | `shape_unchecked_off_a_record` | an extrapolation with no record, or at a region or an interval, taken whatever its method and law | HP26, refused | each way | 5, 10 |
+| `a_method_compared_ignoring_case` | a `method` compared ignoring case, kept as written (`Constant`): the fuzz control's fault | HP26, refused (planned: a method no token) | `method_unknown` | 1, 1 |
+| `a_method_read_stripped` | a `method` read stripped of white space (`constant `) | HP26, refused (planned: a method no token) | `method_unknown` | 22, 11 |
+| `a_space_in_a_method_read_as_an_underscore` | a space in a `method` read as an underscore (`consumer law`) | HP26, refused (planned: a method no token) | `method_unknown` | 3, 18 |
+| `a_method_checked_by_its_pattern` | a `method` checked against a token's pattern, lower-case letters and underscores, not the tokens (`linear`, `clamp`) | HP26, refused (planned: a method no token) | `method_unknown` | 5, 43 |
+| `an_empty_method_taken` | an empty `method` taken | HP26, refused (planned: a method no token) | `method_unknown` | 73, 7 |
+| `a_method_of_another_type_taken` | a `method` that is no string taken (a number, `null`) | HP26, refused (planned: a method no token) | `method_unknown` | 16, 3 |
+| `a_number_taken_as_a_law` | a `law` that is a number taken: the S3 design's control fault for fuzz target 5 | HP26, refused (planned: a law no text) | `law_not_text` | 9, 12 |
+| `a_null_law_taken` | a `law` of `null` taken | HP26, refused (planned: a law no text) | `law_not_text` | 1, 1 |
+| `a_boolean_law_taken` | a `law` that is a boolean taken | HP26, refused (planned: a law no text) | `law_not_text` | 3, 34 |
+| `a_list_taken_as_a_law` | a `law` that is a list taken | HP26, refused (planned: a law no text) | `law_not_text` | 16, 5 |
+| `an_object_taken_as_a_law` | a `law` that is an object taken | HP26, refused (planned: a law no text) | `law_not_text` | 7, 3 |
 | `a_law_of_white_space_refused` | a `law` of white space refused, read stripped | HP26, read | `law_white_space` | 1, 1 |
 | `basis_checked` | a `basis` that is no string refused | HP26, read | `law_white_space`, `basis_and_reason_any`, `an_unknown_member` | 2, 2 |
 | `a_slip_ignored` | a member one slip from a named one ignored | HP26, read | `a_slip_of_a_member` | 17, 19 |
 | `an_unknown_member_refused` | a member no document names refused | HP26, read | `an_unknown_member` | 6, 25 |
+| `a_law_of_spaces_refused` | a `law` stripped of spaces alone, and refused where nothing is left (one space, three) | HP26, read (planned: a law of white space) | `law_white_space` | 1, 1 |
+| `a_law_of_tabs_or_newlines_refused` | a `law` of white space holding a tab or a newline refused | HP26, read (planned: a law of white space) | `law_white_space` | 3, 42 |
+| `a_law_of_white_space_outside_ascii_refused` | a `law` of white space outside ASCII refused (a no-break space, an ideographic space) | HP26, read (planned: a law of white space) | `law_white_space` | 11, 7 |
+| `a_slip_of_the_kind_or_field_ignored` | a member one slip from `acceptance` or `field` ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 1, 1 |
+| `a_slip_of_a_location_ignored` | a member one slip from `record`, `region` or `interval` ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 3, 9 |
+| `a_slip_of_basis_or_reason_ignored` | a member one slip from `basis` or `reason`, which a read ignores, ignored too | HP26, read (planned: a slip) | `a_slip_of_a_member` | 7, 7 |
+| `a_slip_of_method_or_law_ignored` | a member one slip from `method` or `law` ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 5, 3 |
+| `a_character_before_a_name_not_read_as_a_slip` | a named member with a character put before it ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 1, 1 |
+| `a_character_inside_a_name_not_read_as_a_slip` | a named member with a character put inside it ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 3, 5 |
+| `a_character_after_a_name_not_read_as_a_slip` | a named member with a character put after it ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 5, 3 |
 | `monotone_status_met` | under an extrapolation that covers the read, `met` | monotonicity | `one_double_outside`, `far_outside` | 4, 4 |
 
 ## Audits
