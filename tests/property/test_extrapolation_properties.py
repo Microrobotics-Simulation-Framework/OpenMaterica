@@ -184,9 +184,9 @@ def test_an_extrapolation_located_elsewhere_is_checked_and_never_applied(example
 
 
 def check_two(example: Extrapolated) -> None:
-    """Section 1: "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`, that name one
-    field, whatever location or other members each holds"; two naming two fields are each read, the one at the
-    read applied."""
+    """Section 1: "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` or `trainable`, that
+    name one field, whatever location or other members each holds"; two naming two fields are each read, the
+    one at the read applied."""
     found = read_with(example.drawn, example.acceptances)
     if example.way == "each_its_own_field":
         assert example.extrapolation is not None
@@ -216,9 +216,9 @@ REFUSED = ("not_met", {("request_incomplete", None)})
 
 
 def check_refused_shape(example: Extrapolated) -> None:
-    """Section 1: "Each is checked here, whatever field or location it names: ... its kind's own members, have
-    their shapes"; `declarations.md` section 4.1: "`method` (`constant` or `consumer_law`), `law` (text of at
-    least one character, which a reader does not judge)"."""
+    """Section 1: "Each acceptance is checked here, whatever field or location it names: ... its kind's own
+    members, have their shapes"; `declarations.md` section 4.1: "`method` (`constant` or `consumer_law`),
+    `law` (text of at least one character, which a reader does not judge)"."""
     found = read_with(example.drawn, example.acceptances)
     assert (found.status, codes(found)) == REFUSED, (
         f"an extrapolation with its {example.way}: {found.status}, {codes(found)}"

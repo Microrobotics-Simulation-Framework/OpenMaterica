@@ -53,7 +53,8 @@ Read them in this order.
 - **Results.** A read gives `met`, `not_met` or `unknown`, with a list of reason codes
   (`read_side_contract.md`). "Refuse" means the result `not_met`, never an error. "Unknown" carries the value
   where the record holds one. Under a declared extrapolation or nominal, the status stays `not_met`, the value
-  is present, and the result names the declaration it rests on.
+  is present, and the result names the declaration it rests on; under a `trainable` acceptance that applies,
+  the value is present and the result names no declaration.
 - **Identifiers** (`record_format.md` section 7):
   - a namespace is `[a-z0-9_]+`;
   - a record is `<namespace>/<local id>`;
