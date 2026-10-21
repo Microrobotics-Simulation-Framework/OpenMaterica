@@ -157,7 +157,7 @@ The command prints `OK` for a file built from the repository it names, and fails
 
 | Document | Description |
 |---|---|
-| [docs/user_guide/quickstart.md](docs/user_guide/quickstart.md) | Quickstart: write a record and read a value from it; this release reads constants, intervals, compositions, evidence and tables, and alternatives with no pick, not yet extrapolation or picks |
+| [docs/user_guide/quickstart.md](docs/user_guide/quickstart.md) | Quickstart: write a record and read a value from it; this release reads constants, intervals, compositions, evidence and tables, a table's end value under an extrapolation, and alternatives with no pick, not yet picks or overlays |
 | [examples/](examples/) | Three example records, cited (water, NdFeB grade N45, human blood plasma): examples, not reviewed library data, not yet fully human-reviewed, and they may change in a later commit |
 | [design/ARCHITECTURE_DRAFT.md](design/ARCHITECTURE_DRAFT.md) | Architecture concept: components, data model, model families, geometry and USD binding, library and licensing, MIME and Isaac for Healthcare interfaces |
 | [DOCUMENTATION_ARCHITECTURE.md](DOCUMENTATION_ARCHITECTURE.md) | How OpenMaterica is documented and verified, and its SOUP readiness |

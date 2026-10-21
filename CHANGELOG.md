@@ -83,9 +83,9 @@ every family entry goes in `families/CHANGELOG.md`.
   an extrapolation as the read does, written from the text. The 45 case files mapped to S3c, and a new arm of
   the result's `table` under an extrapolation, written through the case tools
   (`PR-307.table_under_an_extrapolation`: the table returned as stored, its `source_range` included, beside the
-  end value a `consumer_law` extrapolation starts from), run and pass: 1150 of 1516 case files pass and 35 are
-  verified against the reference evaluator; 331 wait for S4's later pieces (134) and the record checks, C2
-  (197).
+  end value a `consumer_law` extrapolation starts from), run and pass: 1151 of 1517 case files pass (one more arm,
+  of an implied value, under **Verification**) and 35 are verified against the reference evaluator; 331 wait for
+  S4's later pieces (134) and the record checks, C2 (197).
 
 ### Changed
 - `scripts/pre_review.py` runs the kill counts' unit tests (`tests/unit/test_gen_kill_counts.py`) with its
