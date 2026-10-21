@@ -461,8 +461,12 @@ every family entry goes in `families/CHANGELOG.md`.
   narrowing, `want_mismatch` alone over a range, the axis on step 11's reasons, a table's unknown members, the
   `table` member), each killed by a disagreement, `table_returned_whole` by the two arms holding a table's
   unknown member and `table_member_dropped` by the three where `table` is present; S3b-2's case files move the
-  counts of sixteen other faults, and its fix round's two arms six, every row measured again. The fuzz oracle of
-  target 4 holds a table's axis entry and step 11's reasons to the text (`field_oracle.table_steps_10_and_11`).
+  counts of sixteen other faults, and its fix round's two arms six, every row measured again. Two older faults
+  made the model raise in its table code, which the seeded-fault check now fails: each answers there, still
+  breaking its rule (`best_status` ends a read at step 11 where the table has no value, `null_read_as_absent`
+  reads the field without its `null` members at every step), killed by the same files, each by an answer. The
+  fuzz oracle of target 4 holds a table's axis entry and step 11's reasons to the text
+  (`field_oracle.table_steps_10_and_11`).
 - The S3 design's HP20 to HP23 and its monotonicity property for a table's steps 10 to 13
   (`tests/property/test_table_read_*.py`; the properties in the `records` shard, their mutant searches in
   `conditions`), over tables `tables.py` draws on a field whose row allows one, over a numeric axis: HP20, at and

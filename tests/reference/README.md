@@ -285,12 +285,15 @@ S3b-2's seven break each rule of a table's steps 10 to 13 the model decides: the
 each with the axis (`read_side_contract.md:139`), a table returned with only the members the reader knows
 (`read_side_contract.md:160`), and the result's `table` (`read_side_contract.md:130`). Each kill is a
 disagreement, none a raise of the model (checked). `table_returned_whole` dies to the two arms that hold a
-table's unknown member, and `table_member_dropped` to the three where `table` is present. Two older faults now
-also make the model raise
-in its table code, each on one case file (`best_status` on `PR-301.unknown_beside_outside_range`, whose
-`outside_range` then ends no read, so that the evaluator is asked outside the range; `null_read_as_absent` on
-`PR-049.source_range_null`, whose `source_range: null` step 8 then reads as absent and step 11 as present), the
-class of S3a's open point 8; other files kill each by a disagreement (5 and 9).
+table's unknown member, and `table_member_dropped` to the three where `table` is present. Two older faults made
+the model raise in its table code, each on one case file (`best_status` on `PR-301.unknown_beside_outside_range`,
+whose `outside_range` then ended no read, so that the evaluator was asked outside the range;
+`null_read_as_absent` on `PR-049.source_range_null`, whose `source_range: null` step 8 then read as absent and
+step 11 as present), the class of S3a's open point 8. Since a raise fails the search (above), each answers there
+(S3b-2's fix round), still breaking its rule: under `best_status` a read at an edge or outside the readable
+range, where the table has no value, ends at step 11 all the same (`table_read_ended_where_it_has_no_value`),
+and under `null_read_as_absent` every step reads the field without its `null` members, as step 8 does
+(`field_read_without_nulls`). Each is killed by the same case files as before (6 and 10), each by an answer.
 
 The agreement property HP12 (`tests/property/test_model_properties.py`) kills 13 of the 14 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two
