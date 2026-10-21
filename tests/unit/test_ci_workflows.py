@@ -8190,8 +8190,19 @@ def control_step(ci: Workflow) -> dict[str, Any]:
     return found
 
 
-def table_runs_problems(runs: list[dict[str, Any]]) -> list[str]:
-    """Where the table's fault is not run twice, on two corpora, side by side, each `TABLES_RUN_SECONDS`."""
+def control_dictionary(calls: list[dict[str, Any]]) -> str | None:
+    """The dictionary the control step writes for fuzz target 4's runs, where it writes one."""
+    written = [call["arguments"][1] for call in calls if call["arguments"][:1] == ["--dict"]]
+    return written[0] if len(written) == 1 else None
+
+
+def dictionaries(run: dict[str, Any]) -> list[str]:
+    return [word.partition("=")[2] for word in run["arguments"] if word.startswith("-dict=")]
+
+
+def table_runs_problems(runs: list[dict[str, Any]], dictionary: str | None) -> list[str]:
+    """Where the table's fault is not run twice, on two corpora, side by side, each `TABLES_RUN_SECONDS`,
+    with the dictionary the step writes (`dictionary`), as its rate was measured."""
     problems = [] if len(runs) == 2 else [f"{len(runs)} runs of the table's fault, not two"]
     if len({run["arguments"][0] for run in runs}) != len(runs):
         problems.append("the table's runs share a corpus")
@@ -8200,6 +8211,10 @@ def table_runs_problems(runs: list[dict[str, Any]]) -> list[str]:
         if seconds != [str(TABLES_RUN_SECONDS)]:
             lasting = " and ".join(seconds) or "unlimited"
             problems.append(f"a run of the table's fault for {lasting} s, not {TABLES_RUN_SECONDS}")
+        if dictionary is None or dictionaries(run) != [dictionary]:
+            problems.append(
+                f"a run of the table's fault with the dictionaries {dictionaries(run)}, not the step's"
+            )
         if not run["partner"]:
             problems.append("a run of the table's fault not side by side with the other")
     return problems
@@ -8229,7 +8244,7 @@ def tables_control_problems(ci: Workflow, directory: Path) -> list[str]:
         )
         runs = [call for call in calls if (call["module"], call["fault"]) == (TARGET_4, TABLES)]
         if index == 0:
-            problems += table_runs_problems(runs)
+            problems += table_runs_problems(runs, control_dictionary(calls))
         case = f"{finds or 'no run'} reporting {'the' if finding == TABLES_FINDING else 'another'} finding"
         if passes and status != 0:
             problems.append(f"the step fails where {case}")
@@ -8280,6 +8295,10 @@ def with_the_table_s_runs_one_after_the_other(text: str) -> str:
     return text.replace(TABLES_RUN_END, TABLES_RUN_END.replace("2>&1 &", "2>&1"))
 
 
+def with_the_table_s_runs_without_the_dictionary(text: str) -> str:
+    return text.replace('-dict="$control/value_field.dict" -max_total_time=480', "-max_total_time=480")
+
+
 @pytest.mark.parametrize(
     ("fault", "problem"),
     [
@@ -8288,8 +8307,9 @@ def with_the_table_s_runs_one_after_the_other(text: str) -> str:
         (with_shorter_table_runs, "for 300 s, not 480"),
         (with_the_table_s_runs_one_after_the_other, "not side by side"),
         (without_the_table_s_check, "the step does not fail at the table's check where no run reporting"),
+        (with_the_table_s_runs_without_the_dictionary, "the table's fault with the dictionaries [], not"),
     ],
-    ids=["runs-removed", "one-run", "shorter", "one-after-the-other", "check-removed"],
+    ids=["runs-removed", "one-run", "shorter", "one-after-the-other", "check-removed", "no-dictionary"],
 )
 def test_the_table_control_check_can_fail(tmp_path: Path, fault: Callable[[str], str], problem: str) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
@@ -8322,9 +8342,10 @@ TABLE_EDGES_CASES = (
 )
 
 
-def table_edges_runs_problems(runs: list[dict[str, Any]]) -> list[str]:
+def table_edges_runs_problems(runs: list[dict[str, Any]], dictionary: str | None) -> list[str]:
     """Where the table value's fault is not run four times, on four corpora, side by side, each
-    `TABLE_EDGES_RUN_SECONDS`."""
+    `TABLE_EDGES_RUN_SECONDS`, with the dictionary the step writes (`dictionary`), as its rate was
+    measured."""
     problems = (
         []
         if len(runs) == TABLE_EDGES_RUNS
@@ -8342,6 +8363,10 @@ def table_edges_runs_problems(runs: list[dict[str, Any]]) -> list[str]:
         if run["beside"] < TABLE_EDGES_RUNS - 1:
             problems.append(
                 f"a run of the table value's fault beside {run['beside']} others, not side by side"
+            )
+        if dictionary is None or dictionaries(run) != [dictionary]:
+            problems.append(
+                f"a run of the table value's fault with the dictionaries {dictionaries(run)}, not the step's"
             )
     return problems
 
@@ -8370,7 +8395,7 @@ def table_edges_control_problems(ci: Workflow, directory: Path) -> list[str]:
         )
         runs = [call for call in calls if (call["module"], call["fault"]) == (TARGET_4, TABLE_EDGES)]
         if index == 0:
-            problems += table_edges_runs_problems(runs)
+            problems += table_edges_runs_problems(runs, control_dictionary(calls))
         case = (
             f"{finds or 'no run'} reporting {'the' if finding == TABLE_EDGES_FINDING else 'another'} finding"
         )
@@ -8424,6 +8449,22 @@ def with_the_table_value_s_runs_one_after_the_other(text: str) -> str:
     return text.replace(TABLE_EDGES_RUN_END, TABLE_EDGES_RUN_END.replace("2>&1 &", "2>&1"))
 
 
+TABLE_EDGES_DICTIONARY = (
+    '"$control/table-edges-$worker" -dict="$control/value_field.dict" -max_total_time=900'
+)
+
+
+def with_the_table_value_s_runs_without_the_dictionary(text: str) -> str:
+    return text.replace(TABLE_EDGES_DICTIONARY, '"$control/table-edges-$worker" -max_total_time=900')
+
+
+def with_the_table_value_s_runs_on_another_dictionary(text: str) -> str:
+    return text.replace(
+        TABLE_EDGES_DICTIONARY,
+        '"$control/table-edges-$worker" -dict=tests/fuzz/json.dict -max_total_time=900',
+    )
+
+
 @pytest.mark.parametrize(
     ("fault", "problem"),
     [
@@ -8435,8 +8476,21 @@ def with_the_table_value_s_runs_one_after_the_other(text: str) -> str:
             without_the_table_value_s_check,
             "the step does not fail at the table value's check where no run reporting",
         ),
+        (with_the_table_value_s_runs_without_the_dictionary, "value's fault with the dictionaries [], not"),
+        (
+            with_the_table_value_s_runs_on_another_dictionary,
+            "value's fault with the dictionaries ['tests/fuzz/json.dict'], not",
+        ),
     ],
-    ids=["runs-removed", "three-runs", "shorter", "one-after-the-other", "check-removed"],
+    ids=[
+        "runs-removed",
+        "three-runs",
+        "shorter",
+        "one-after-the-other",
+        "check-removed",
+        "no-dictionary",
+        "another-dictionary",
+    ],
 )
 def test_the_table_value_control_check_can_fail(
     tmp_path: Path, fault: Callable[[str], str], problem: str

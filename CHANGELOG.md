@@ -104,17 +104,18 @@ every family entry goes in `families/CHANGELOG.md`.
   to 319 s), to the minute, as the step-10 fault's 900 s are of its slowest, 601 s. The step passes where either
   run reports a line of the model's assertion in which the implementation gives `form_invalid` and the model
   does not. `tests/unit/test_ci_workflows.py` runs the step as written, a stub standing for each fuzz run, and
-  fails with the table's runs removed, with one run, with shorter runs, with the two one after the other and
-  with the check removed; the check fails where no run finds the fault and where the only finding is another
-  disagreement. The job's timeout rises from 120 to 137 minutes: twice its slowest run on CI (59.5 minutes)
+  fails with the table's runs removed, with one run, with shorter runs, with the two one after the other, with
+  the check removed and with the runs without the step's dictionary; the check fails where no run finds the
+  fault and where the only finding is another disagreement. The job's timeout rises from 120 to 137 minutes: twice its slowest run on CI (59.5 minutes)
   and the 8.5 minutes the two runs add by estimate (`FUZZ_ADDED_SINCE`, until a run on CI measures them).
 - The fuzz job's control step runs fuzz target 4 on the fault seeded in a table's value too
   (`MATERICA_FUZZ_SEEDED_FAULT=table_edges`, S3b-2; the maintainer's ruling on the fuzz controls, 2026-10-21),
   in two pairs side by side, four runs of up to 900 s each, after the table's: the step passes where any of the
   four reports the fault's message. `tests/unit/test_ci_workflows.py` runs the step as written, a stub
   standing for each fuzz run, and fails with the four runs removed, with three, with shorter runs, with the
-  four one after the other and with the check removed; the check fails where no run finds the fault and where
-  the only finding is another fault's. The job's timeout rises from 137 to 168 minutes: twice its slowest run
+  four one after the other, with the check removed, and with the runs without the step's dictionary or with
+  another, since the rate was measured with it; the check fails where no run finds the fault and where the
+  only finding is another fault's. The job's timeout rises from 137 to 168 minutes: twice its slowest run
   on CI (59.5 minutes) and the 24 minutes the table's runs and these add by estimate (`FUZZ_ADDED_SINCE`). The
   ruling gives the fuzz controls a job of their own, a runner for each pair: this control moves there when S4's
   piece builds it.
