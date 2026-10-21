@@ -846,6 +846,7 @@
     "PR-307.reasons_of_step_10_kept.json": "S3c",
     "PR-307.step_10_not_met_not_extrapolated.json": "S3c",
     "PR-307.steps_12_and_13_run.json": "S3c",
+    "PR-307.table_under_an_extrapolation.json": "S3c",
     "PR-307.want_bounds.json": "S3c",
     "PR-307.want_components.json": "S3c",
     "PR-307.want_evidence.json": "S3c",
