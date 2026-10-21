@@ -4,7 +4,7 @@
 pins, which the properties of S2a-4's phase B must kill. The table, with what each one's search found, is
 `README.md`'s.
 
-Each fault replaces one or two of the model's module-level names, which the model looks up when it runs."""
+Each fault replaces one to three of the model's module-level names, which the model looks up when it runs."""
 
 import dataclasses
 import math
@@ -109,6 +109,18 @@ def operating_for_every_tolerance(
     return _checked_requirement(request, claims, reasons)
 
 
+def unchecked_without_an_operating_condition(
+    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+) -> JsonObject:
+    """The entry of a condition whose tolerance has no operating condition, a request the fault above lets
+    through, read as one given no tolerance: there is nothing to compare it with, and the request holds no
+    operating condition of that name to index."""
+    if name in request.tolerances and name not in request.operating:
+        tolerances = {other: value for other, value in request.tolerances.items() if other != name}
+        request = dataclasses.replace(request, tolerances=tolerances)
+    return _condition_entry(name, held, applied, request, reasons)
+
+
 def negative_zero_tolerance_refused(
     request: JsonObject, claims: frozenset[str], reasons: Reasons
 ) -> tuple[str | None, dict[str, float], dict[str, tuple[str, ...]]]:
@@ -210,6 +222,26 @@ def hash_never_recomputed(
 
 def never_broken(field_value: JsonObject) -> bool:
     return False
+
+
+def alternatives_of_any_shape(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    """Step 7 over an `alternatives` whose shape the fault leaves unchecked: one that is not a list read as a
+    list of its one entry."""
+    alternatives = field_value["alternatives"]
+    if not isinstance(alternatives, list):
+        field_value = {**field_value, "alternatives": [alternatives]}
+    return _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
 
 
 def want_mismatch_beside_no_pick(
@@ -735,6 +767,62 @@ def condition_unchecked(name: str, condition: JsonValue, faults: Reasons) -> Non
     return None
 
 
+# Steps 9 and 10 index what step 8 holds a condition to. A condition the fault above leaves unchecked that
+# they cannot index is read by them as one the record does not hold, so that the faulted model answers.
+
+
+def unit_unreadable(name: str, condition: JsonValue) -> bool:
+    """A numeric condition, not a status object, without the `unit` step 9 compares, or holding a `plus_minus`
+    entry without one."""
+    row = model.CONDITIONS.get(name)
+    if row is None or row.shape != "numeric" or not isinstance(condition, dict) or "status" in condition:
+        return False
+    entries = condition.get("plus_minus", [])
+    return "unit" not in condition or (
+        isinstance(entries, list)
+        and any(isinstance(entry, dict) and "unit" not in entry for entry in entries)
+    )
+
+
+def units_of_readable_conditions(field_value: JsonObject, section: JsonObject, field_name: str) -> Reasons:
+    conditions = field_value["conditions"]
+    assert isinstance(conditions, dict)
+    readable = {
+        name: condition for name, condition in conditions.items() if not unit_unreadable(name, condition)
+    }
+    return _check_units({**field_value, "conditions": readable}, section, field_name)
+
+
+def comparable(condition: JsonObject) -> bool:
+    """A stated value step 10 can compare with a tolerance: a `value` that is a number, or else a `range` of
+    two numbers, and, where it holds a `bound` entry, the first one's `value` a number."""
+    given = condition["value"] if "value" in condition else condition.get("range")
+    ends = given if isinstance(given, list) else [given, given]
+    entries = condition.get("plus_minus", [])
+    bounds = [
+        entry
+        for entry in (entries if isinstance(entries, list) else [])
+        if isinstance(entry, dict) and entry.get("stated_as") == "bound"
+    ]
+    return (
+        len(ends) == 2
+        and all(model.number(end) for end in ends)
+        and (not bounds or model.number(bounds[0].get("value")))
+    )
+
+
+def entry_of_a_readable_condition(
+    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+) -> JsonObject:
+    condition = held.get(name)
+    if name in held and (
+        not isinstance(condition, dict)
+        or ("status" not in condition and name in request.tolerances and not comparable(condition))
+    ):
+        held = {other: value for other, value in held.items() if other != name}
+    return _condition_entry(name, held, applied, request, reasons)
+
+
 def case_folded(stored: JsonValue, registered: str | model.StatusUnit) -> bool:
     if isinstance(stored, str) and isinstance(registered, str):
         return stored.casefold() == registered.casefold()
@@ -1056,7 +1144,10 @@ MUTANTS: Mapping[str, Mutant] = {
     "tolerance_without_an_operating_condition": Mutant(
         "a tolerance with no operating condition accepted",
         "read_side_contract.md:43",
-        {"checked_requirement": operating_for_every_tolerance},
+        {
+            "checked_requirement": operating_for_every_tolerance,
+            "condition_entry": unchecked_without_an_operating_condition,
+        },
     ),
     "request_units_not_compared": Mutant(
         "an operating condition's, a tolerance's or an implied value's unit not compared",
@@ -1135,7 +1226,7 @@ MUTANTS: Mapping[str, Mutant] = {
     "alternatives_shape_unchecked": Mutant(
         "an `alternatives` that is empty, not a list or beside a value field's members read",
         "record_format.md:332-336",
-        {"alternatives_broken": never_broken},
+        {"alternatives_broken": never_broken, "read_alternatives": alternatives_of_any_shape},
     ),
     "want_mismatch_beside_no_pick": Mutant(
         "`want_mismatch` reported under `no_pick` for an alternative whose form `want` cannot give",
@@ -1344,7 +1435,11 @@ MUTANTS: Mapping[str, Mutant] = {
     "condition_shapes_unchecked": Mutant(
         "a condition of a name the reader knows not checked",
         "read_side_contract.md:301-302",
-        {"check_condition": condition_unchecked},
+        {
+            "check_condition": condition_unchecked,
+            "check_units": units_of_readable_conditions,
+            "condition_entry": entry_of_a_readable_condition,
+        },
     ),
     "broken_status_object_reports_its_token": Mutant(
         "a status object that breaks its shape gives its token's `unknown_token` beside `form_invalid`",
