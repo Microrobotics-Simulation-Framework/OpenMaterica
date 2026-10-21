@@ -417,9 +417,10 @@ every family entry goes in `families/CHANGELOG.md`.
   hold. Over 225 shapes where the three take effect, each read under two configurations of claims, the faults
   as they were raised on 107 reads and now raise on none. Every fault is killed by the same case files as
   before, from the same first file, each by an answer.
-- The seeded-fault check fails on a fault that makes the reference model raise, with the model's traceback
-  and a note naming the case file and the claims, where it counted the raise as a kill: a raise shows that
-  the fault broke the model, not that a case's expected answer tells it apart (`tests/reference/cases.py`).
+- The seeded-fault check fails on a fault that makes the reference model raise on a case file it reads (a
+  fault's files in name order, up to its first kill), with the model's traceback and a note naming the case
+  file and the claims, where it counted the raise as a kill: a raise shows that the fault broke the model, not
+  that a case's expected answer tells it apart (`tests/reference/cases.py`).
   The model's agreement with the cases, which runs through the same comparison, errors the same way where the
   model raises. A control fault, `status_object` replaced by a function raising `TypeError`, `KeyError` or
   `AssertionError`, fails the check in each; with a raise of every kind counted as before, the check passes
@@ -466,10 +467,13 @@ every family entry goes in `families/CHANGELOG.md`.
   `table` member), each killed by a disagreement, `table_returned_whole` by the two arms holding a table's
   unknown member and `table_member_dropped` by the three where `table` is present; S3b-2's case files move the
   counts of sixteen other faults, and its fix round's two arms six, every row measured again. Two older faults
-  made the model raise in its table code, which the seeded-fault check now fails: each answers there, still
+  made the model raise in its table code, found by measuring every fault over every case file of a read, which
+  the seeded-fault check, stopping at a fault's first killing file, does not do: each answers there, still
   breaking its rule (`best_status` ends a read at step 11 where the table has no value, `null_read_as_absent`
-  reads the field without its `null` members at every step), killed by the same files, each by an answer. The
-  fuzz oracle of target 4 holds a table's axis entry and step 11's reasons to the text
+  reads the field without its `null` members at every step), killed by the same files, each by an answer. A
+  test holds the five faults that once raised (these two, the three above, and the two `condition_entry`
+  wrappers as they were before they took the table axis) to their answers on the case files where they raised.
+  The fuzz oracle of target 4 holds a table's axis entry and step 11's reasons to the text
   (`field_oracle.table_steps_10_and_11`).
 - The S3 design's HP20 to HP23 and its monotonicity property for a table's steps 10 to 13
   (`tests/property/test_table_read_*.py`; the properties in the `records` shard, their mutant searches in
