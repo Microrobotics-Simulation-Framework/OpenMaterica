@@ -59,8 +59,10 @@ every family entry goes in `families/CHANGELOG.md`.
   extrapolations' piece to complete. A table alternative read in its range stays, and one set aside by its
   conditions never reaches step 11; one whose read gives a reason at step 11 raises `NotImplementedError` at step
   7, whose rules for it are S4d's, and the reference model gives no verdict there. The 68 case files mapped to
-  S3b-2 run and pass: 1097 of 1508 case files pass and 35 are verified against the reference evaluator; 376 wait
-  for S3c (45), S4's later pieces (134) and the record checks, C2 (197).
+  S3b-2, and five new arms written through the case tools (a value read from a table with its table, alone and as
+  the one alternative left; no `table` beside `want_mismatch`, outside the range and under `no_pick`), run and
+  pass: 1102 of 1513 case files pass and 35 are verified against the reference evaluator; 376 wait for S3c (45),
+  S4's later pieces (134) and the record checks, C2 (197).
 
 ### Changed
 - CI's per-commit job checks that each earlier commit of a pull request builds, type-checks, generates and
@@ -441,11 +443,12 @@ every family entry goes in `families/CHANGELOG.md`.
 - The reference model reads a table to the end as the read does, written from the text (S3b-2): its axis entry,
   step 11's readable range and edges, evaluated by the reference evaluator's `exact` mode, the request's two
   checks there, and the result's `table`. It agrees with every case file it decides, and gives no verdict on step
-  7 over a table alternative whose read gives a reason at step 11 (15 files of S4's later pieces, listed). Six
+  7 over a table alternative whose read gives a reason at step 11 (15 files of S4's later pieces, listed). Seven
   seeded faults break its rules (the axis entry at an edge, `outside_range` beside `at_edge`, `source_range`'s
-  narrowing, `want_mismatch` alone over a range, the axis on step 11's reasons, a table's unknown members), each
-  killed by a disagreement, `table_returned_whole` by one case file alone; S3b-2's case files move the counts of
-  fifteen other faults. The fuzz oracle of target 4 holds a table's axis entry and step 11's reasons to the text
+  narrowing, `want_mismatch` alone over a range, the axis on step 11's reasons, a table's unknown members, the
+  `table` member), each killed by a disagreement, `table_returned_whole` by one case file alone and
+  `table_member_dropped` by the two arms where `table` is present; S3b-2's case files move the counts of sixteen
+  other faults. The fuzz oracle of target 4 holds a table's axis entry and step 11's reasons to the text
   (`field_oracle.table_steps_10_and_11`).
 
 ## [0.1.0.dev2] - 2026-10-20

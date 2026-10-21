@@ -1270,6 +1270,14 @@ def table_returned_whole(form: str, member: JsonValue) -> JsonValue:
     return model.copied(member) if form == "table" else _form_member_returned(form, member)
 
 
+def table_member_dropped(
+    read: FieldRead, field_value: JsonObject, request: Request, nominal: float | None, point: float | None
+) -> None:
+    """A value read from a table returned without the table it is read from."""
+    _shape_by_want(read, field_value, request, nominal, point)
+    read.members.pop("table", None)
+
+
 MUTANTS: Mapping[str, Mutant] = {
     # Step 0
     "want_outside_section_6": Mutant(
@@ -1830,5 +1838,10 @@ MUTANTS: Mapping[str, Mutant] = {
         "a table returned as stored with the members the reader does not know",
         "read_side_contract.md:160",
         {"form_member_returned": table_returned_whole},
+    ),
+    "table_member_dropped": Mutant(
+        "a value read from a table returned without the table it is read from",
+        "read_side_contract.md:130",
+        {"shape_by_want": table_member_dropped},
     ),
 }

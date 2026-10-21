@@ -61,14 +61,15 @@ specification's README says ("Case files"), by the conformance runner's comparis
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 1100 files, under every configuration each allows (8,424 runs), and gives no verdict on
+The model agrees with 1105 files, under every configuration each allows (8,464 runs), and gives no verdict on
 176, each listed in `exceptions.py` under the kind its outcome names: an overlay (71), an extrapolation (55), a
 pick (35), and a table alternative whose read gives a reason at step 11 (15), whose rules of step 7 are S4d's. It
-disagrees with none (measured with S3b-2's read of a table to the end, 2026-10-21: of the 83 files of a table
-that steps 8 and 9 pass, listed at S3a's head, 68 gained a verdict and 15 moved to the new kind). Until S4a it
-also gave no verdict on 21 files of alternatives with reasons of their own, with which it now agrees, as with
-S4a's three cases of `unit` under `no_pick`. A case file the model disagrees with, or gives no verdict on, fails
-unless a kind lists it, for the detail that kind names; a listed one it agrees with fails as stale.
+disagrees with none (measured at S3b-2's head, which reads a table to the end, 2026-10-21: of the 83 files of a
+table that steps 8 and 9 pass, listed at S3a's head, 68 gained a verdict and 15 moved to the new kind, and S3b-2
+added five). Until S4a it also gave no verdict on 21 files of alternatives with reasons of their own, with which
+it now agrees, as with S4a's three cases of `unit` under `no_pick`. A case file the model disagrees with, or
+gives no verdict on, fails unless a kind lists it, for the detail that kind names; a listed one it agrees with
+fails as stale.
 
 ## The mutant table
 
@@ -89,9 +90,10 @@ more, `evidence_entry_provenance_unchecked` and `slips_of_alternatives_ignored`,
 measured with them, and so are those their cases move that were current before them,
 `condition_shapes_unchecked`, `every_slip_ignored` and `null_read_as_absent`; the others are as stamped.
 S3a's case files kill one more, `broken_status_object_reports_its_token`
-(`PR-110.table_unknown_status_beside_members` alone): 84 killed, 13 survive. S3b-2 adds six faults of a
-table's steps 10 to 13, each killed (below the table), and its case files, which read a table to the end, move
-the rows of fifteen others, measured with them (2026-10-21): 103 faults, 90 killed, 13 survive.
+(`PR-110.table_unknown_status_beside_members` alone): 84 killed, 13 survive. S3b-2 adds seven faults of a
+table's steps 10 to 13, each killed (below the table), and its case files, which read a table to the end, five
+arms of the result's `table` among them, move the rows of sixteen others, measured with them at its head
+(2026-10-21): 104 faults, 91 killed, 13 survive.
 
 A fault that makes the model raise on a case file fails its search, with the model's traceback and a note
 naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke the model, not that
@@ -131,8 +133,8 @@ and every fault is killed by the same files as before, from the same first file,
 | `other_minor_versions_read` | a record of another `MAJOR.MINOR` read | 15 |
 | `alternatives_shape_unchecked` | an `alternatives` that is empty, not a list or beside a value field's members read | 5 |
 | `want_mismatch_beside_no_pick` | `want_mismatch` reported under `no_pick` for an alternative whose form `want` cannot give | 7 |
-| `conditions_kept_under_no_pick` | a `no_pick` result holding `conditions` of its own | 14 |
-| `alternatives_counted_from_one` | an `alternative_values` entry's index counted from one | 14 |
+| `conditions_kept_under_no_pick` | a `no_pick` result holding `conditions` of its own | 15 |
+| `alternatives_counted_from_one` | an `alternative_values` entry's index counted from one | 15 |
 | `labels_raised_from_an_alternative` | an alternative's labels on the `no_pick` result's own | 2 |
 | `nominal_ignored_over_alternatives` | an interval beside other alternatives not counted as a form `want: value` gives under a nominal | 1, `PR-338.no_pick_two_intervals_nominal` alone |
 | `nominal_applied_under_no_pick` | a nominal applied to an interval alternative under `no_pick` | 1, `PR-338.no_pick_two_intervals_nominal` alone |
@@ -142,7 +144,7 @@ and every fault is killed by the same files as before, from the same first file,
 | `composition_checked_beyond_its_basis` | a composition whose basis the row does not allow checked further | survives: each composition whose basis its row does not allow is otherwise well formed in the cases |
 | `family_suite_ignored` | a parameter set read without the family evaluation suite not `family_suite_absent` | 7 |
 | `entry_withheld_in_part_read` | an evidence entry withheld in some members but not every one read | 1, `PR-052.entry_partly_withheld` alone |
-| `missing_label_refused` | a field without its row's label refused | 97 |
+| `missing_label_refused` | a field without its row's label refused | 242 |
 | `unreadable_review_refuses` | a review the reader cannot read refuses the field | 8 |
 | `null_read_as_absent` | `null` in a member step 8 checks read as the member absent | 8 |
 | `statistics_unchecked` | a statistics block not checked | 47 |
@@ -170,7 +172,7 @@ and every fault is killed by the same files as before, from the same first file,
 | `strict_inequalities` | `<` for `<=` in section 5's table | 11 |
 | `plus_minus_ignored` | a stated plus or minus ignored | 15 |
 | `unchecked_read_as_met` | a stated condition the request gives no tolerance or accept list for read as `met` | 4 |
-| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 282 |
+| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 287 |
 | `implied_fills_any_condition` | an implied condition fills a stated condition, or one held as another status object | 2 |
 | `disagreeing_implied_conditions_read` | two implied conditions that disagree read as the first | 7 |
 | `implied_values_compared_by_value` | two implied values compared as numbers, so that `0` and `-0` agree | 1, `PR-316.implied_zero_beside_minus_zero` alone |
@@ -194,13 +196,13 @@ and every fault is killed by the same files as before, from the same first file,
 | `reviewed_review_keeps_a_status_objects_members` | a reviewed review returned with a status object's members, its `reason` among them | survives: no case holds one |
 | `unit_of_the_last_remaining_alternative` | under `no_pick`, every entry's `unit` the last remaining alternative's | 3, the three `PR-013.evidence_unit*` arms |
 | `refused_alternative_set_aside` | an alternative refused at step 8 or 9 set aside, not refusing the field | 9 |
-| `set_aside_alternative_refuses` | an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside | 8 |
+| `set_aside_alternative_refuses` | an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside | 9 |
 | `request_fault_sets_aside` | an alternative whose read a fault of the request ends set aside, not refusing the field | 5 |
 | `want_mismatch_sets_aside` | an alternative whose form `want` cannot give set aside, not kept | 12 |
 | `set_aside_reasons_dropped_where_refused` | the set-aside alternatives' reasons dropped where another refuses the field | 3 |
 | `waiting_reasons_dropped_where_refused` | the `not_met` reasons of an alternative that stays dropped where the field is refused | 2, `PR-044.refused_reports_waiting_nominal_invalid` and `PR-044.refused_reports_waiting_want_mismatch` |
 | `labels_kept_where_refused` | the alternatives' labels on the result where the field is refused or every alternative set aside | 2, `PR-316.implied_two_disagree_in_alternative` and `PR-336.refused_over_alternatives_no_hs` |
-| `set_aside_reasons_beside_the_one_left` | the set-aside alternatives' reasons reported beside the one left | 6 |
+| `set_aside_reasons_beside_the_one_left` | the set-aside alternatives' reasons reported beside the one left | 7 |
 | `one_left_reasons_without_their_alternative` | the one left's reasons without their `alternative` | 4 |
 | `nominal_not_applied_to_the_one_left` | a nominal not applied to the interval left, which gives no value | 1, `PR-338.one_left_interval_nominal_applied` alone |
 | `not_met_reasons_beside_no_pick` | the `not_met` reasons of the alternatives that stay reported beside `no_pick` or `want_mismatch` | 10 |
@@ -213,8 +215,9 @@ and every fault is killed by the same files as before, from the same first file,
 | `outside_range_dropped_at_an_edge` | at an edge outside the readable range, `at_edge` alone | 2, `PR-018.edge_outside_readable_range` and `PR-018.edge_outside_readable_range_above` |
 | `source_range_never_narrows` | the readable range `x`'s, whatever `source_range` holds | 6 |
 | `outside_range_beside_a_range` | over an operating range of the axis that leaves the readable range, `outside_range` beside `want_mismatch` | 2, `PR-321.range_outside` and `PR-321.range_straddling_end` |
-| `step_11_reasons_without_the_axis` | step 11's reasons without the axis as their `condition` | 26 |
+| `step_11_reasons_without_the_axis` | step 11's reasons without the axis as their `condition` | 27 |
 | `table_returned_whole` | a table returned as stored with the members the reader does not know | 1, `PR-337.unknown_member_in_table_as_stored` alone |
+| `table_member_dropped` | a value read from a table returned without the table it is read from | 2, `PR-318.value_on_table_with_its_table` and `PR-318.table_left_among_alternatives_with_its_table` |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the eight survivors, three were the open points (`members_of_the_other_kind_read`,
@@ -272,15 +275,16 @@ three evidence arms, whose entries' units differ.
 Since S3b-2, `request_fault_sets_aside` dies to four more, PR-308's table alternatives read with no
 operating value for the axis, a fault of the request that refuses the field.
 
-S3b-2's six break each rule of a table's steps 10 to 13 the model decides: the axis entry `not_met` at an edge
+S3b-2's seven break each rule of a table's steps 10 to 13 the model decides: the axis entry `not_met` at an edge
 (`read_side_contract.md:461`), `outside_range` beside `at_edge` at an edge outside the readable range
 (`record_format.md:410-411`), the readable range narrowed by `source_range` (`record_format.md:406-407`),
 `want_mismatch` alone over an operating range of the axis (`read_side_contract.md:100-102`), step 11's reasons
-each with the axis (`read_side_contract.md:139`), and a table returned with only the members the reader knows
-(`read_side_contract.md:160`). Each kill is a disagreement, none a raise of the model (checked).
-`table_returned_whole` dies to one case file alone. Two older faults now also make the model raise in its table
-code, each on one case file (`best_status` on `PR-301.unknown_beside_outside_range`, whose `outside_range` then
-ends no read, so that the evaluator is asked outside the range; `null_read_as_absent` on
+each with the axis (`read_side_contract.md:139`), a table returned with only the members the reader knows
+(`read_side_contract.md:160`), and the result's `table` (`read_side_contract.md:130`). Each kill is a
+disagreement, none a raise of the model (checked). `table_returned_whole` dies to one case file alone, and
+`table_member_dropped` to the two arms where `table` is present. Two older faults now also make the model raise
+in its table code, each on one case file (`best_status` on `PR-301.unknown_beside_outside_range`, whose
+`outside_range` then ends no read, so that the evaluator is asked outside the range; `null_read_as_absent` on
 `PR-049.source_range_null`, whose `source_range: null` step 8 then reads as absent and step 11 as present), the
 class of S3a's open point 8; other files kill each by a disagreement (5 and 9).
 
