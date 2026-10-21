@@ -417,7 +417,7 @@ def with_reasons(answer: JsonObject, reasons: Reasons) -> JsonObject:
 
 
 def rests_on_one_alternative(answer: JsonObject) -> bool:
-    # read_side_contract.md:169 "a result that rests on no single alternative": of step 7's outcomes, only the
+    # read_side_contract.md:172 "a result that rests on no single alternative": of step 7's outcomes, only the
     # one left holds `conditions`
     return "conditions" in answer
 
@@ -1712,27 +1712,27 @@ MUTANTS: Mapping[str, Mutant] = {
     # Steps 1 to 5
     "unreadable_sources_ignored": Mutant(
         "an unreadable source never turns `absent` or `pin_mismatch` into `malformed`",
-        'read_side_contract.md:205-214 "unless a supplied source is unreadable: then it gives `malformed`"',
+        'read_side_contract.md:208-217 "unless a supplied source is unreadable: then it gives `malformed`"',
         {"unreadable": never_unreadable},
     ),
     "first_of_differing_copies_read": Mutant(
         "of two copies with the pin whose bytes differ, the first read",
-        'read_side_contract.md:209-210 "with two or more whose bytes differ, the read gives `malformed`"',
+        'read_side_contract.md:212-213 "with two or more whose bytes differ, the read gives `malformed`"',
         {"sources_read": first_copy_of_each_record},
     ),
     "hash_not_checked_before_step_4": Mutant(
         "`hash_not_checked` on a result that ends before step 4",
-        'read_side_contract.md:224-225 "a result that ends before it carries no such label"',
+        'read_side_contract.md:227-228 "a result that ends before it carries no such label"',
         {"read_decided": labelled_before_step_4},
     ),
     "hash_never_recomputed": Mutant(
         "a reader claiming HS never recomputes the hash",
-        'read_side_contract.md:221-223 "also recomputes the hash"',
+        'read_side_contract.md:224-226 "also recomputes the hash"',
         {"resolve": hash_never_recomputed},
     ),
     "other_minor_versions_read": Mutant(
         "a record of another `MAJOR.MINOR` read",
-        'read_side_contract.md:217-218 "another `MAJOR.MINOR` (before 1.0.0) gives `other_version`"',
+        'read_side_contract.md:220-221 "another `MAJOR.MINOR` (before 1.0.0) gives `other_version`"',
         {"READER_MAJOR_MINOR": EveryPair()},
     ),
     # Step 7
@@ -1743,12 +1743,12 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "want_mismatch_beside_no_pick": Mutant(
         "`want_mismatch` reported under `no_pick` for an alternative whose form `want` cannot give",
-        'read_side_contract.md:296-297 "under `no_pick` no `want_mismatch` is reported"',
+        'read_side_contract.md:299-300 "under `no_pick` no `want_mismatch` is reported"',
         {"read_alternatives": want_mismatch_beside_no_pick},
     ),
     "conditions_kept_under_no_pick": Mutant(
         "a `no_pick` result holding `conditions` of its own",
-        'read_side_contract.md:176-177 "Under `no_pick` the result holds none of `unit`, `conditions`, '
+        'read_side_contract.md:179-180 "Under `no_pick` the result holds none of `unit`, `conditions`, '
         '`specimen`, `statistics` and `provenance`"',
         {"read_alternatives": conditions_kept_under_no_pick},
     ),
@@ -1766,56 +1766,56 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "nominal_ignored_over_alternatives": Mutant(
         "an interval beside other alternatives not counted as a form `want: value` gives under a nominal",
-        'read_side_contract.md:289-290 "An interval counts as one `want: value` can give where a nominal '
+        'read_side_contract.md:292-293 "An interval counts as one `want: value` can give where a nominal '
         'the request carries applies"',
         {"read_alternatives": nominal_ignored_over_alternatives},
     ),
     "nominal_applied_under_no_pick": Mutant(
         "a nominal applied to an interval alternative under `no_pick`",
-        'read_side_contract.md:542-543 "Under `no_pick` no nominal is applied"',
+        'read_side_contract.md:545-546 "Under `no_pick` no nominal is applied"',
         {"read_value_field": nominal_applied_to_every_alternative},
     ),
     # Step 7 with no pick (S4a)
     "refused_alternative_set_aside": Mutant(
         "an alternative refused at step 8 or 9 set aside, not refusing the field",
-        'read_side_contract.md:271 "Every other `not_met` in an alternative"',
+        'read_side_contract.md:274 "Every other `not_met` in an alternative"',
         {"fate_of": refused_alternative_set_aside},
     ),
     "set_aside_alternative_refuses": Mutant(
         "an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside",
-        'read_side_contract.md:259-260 "An alternative is set aside where its conditions"',
+        'read_side_contract.md:262-263 "An alternative is set aside where its conditions"',
         {"fate_of": set_aside_alternative_refuses},
     ),
     "request_fault_sets_aside": Mutant(
         "an alternative whose read a fault of the request ends set aside, not refusing the field",
-        'read_side_contract.md:273-274 "fault of the request (section 1): an alternative whose read '
+        'read_side_contract.md:276-277 "fault of the request (section 1): an alternative whose read '
         'reaches step 11 with no operating value for"',
         {"fate_of": request_fault_sets_aside},
     ),
     "want_mismatch_sets_aside": Mutant(
         "an alternative whose form `want` cannot give set aside, not kept",
-        'read_side_contract.md:265-268 "whose form `want` cannot give"',
+        'read_side_contract.md:268-271 "whose form `want` cannot give"',
         {"fate_of": want_mismatch_sets_aside},
     ),
     "set_aside_reasons_dropped_where_refused": Mutant(
         "the set-aside alternatives' reasons dropped where another refuses the field",
-        'read_side_contract.md:283-284 "where an alternative refuses the field, or every alternative is '
+        'read_side_contract.md:286-287 "where an alternative refuses the field, or every alternative is '
         'set aside, `not_met`"',
         {"reasons_where_refused": set_aside_reasons_dropped_where_refused},
     ),
     "waiting_reasons_dropped_where_refused": Mutant(
         "the `not_met` reasons of an alternative that stays dropped where the field is refused",
-        'read_side_contract.md:278-280 "These wait: they are reported once a pick names that alternative"',
+        'read_side_contract.md:281-283 "These wait: they are reported once a pick names that alternative"',
         {"reasons_where_refused": waiting_reasons_dropped_where_refused},
     ),
     "labels_kept_where_refused": Mutant(
         "the alternatives' labels on the result where the field is refused or every alternative set aside",
-        'read_side_contract.md:299-301 "holds no `value`, `assumption` or `conditions`"',
+        'read_side_contract.md:302-304 "holds no `value`, `assumption` or `conditions`"',
         {"read_alternatives": labels_kept_where_refused},
     ),
     "set_aside_reasons_beside_the_one_left": Mutant(
         "the set-aside alternatives' reasons reported beside the one left",
-        'read_side_contract.md:285-286 "not reported, since they would refuse a sound value"',
+        'read_side_contract.md:288-289 "not reported, since they would refuse a sound value"',
         {"read_alternatives": set_aside_reasons_beside_the_one_left},
     ),
     "one_left_reasons_without_their_alternative": Mutant(
@@ -1825,24 +1825,24 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "nominal_not_applied_to_the_one_left": Mutant(
         "a nominal not applied to the interval left, which gives no value",
-        'read_side_contract.md:285 "where one alternative stays", '
-        "read_side_contract.md:541 \"A nominal applies only under `want: value`, inside or on the interval's "
+        'read_side_contract.md:288 "where one alternative stays", '
+        "read_side_contract.md:544 \"A nominal applies only under `want: value`, inside or on the interval's "
         'bounds"',
         {"read_alternatives": nominal_not_applied_to_the_one_left},
     ),
     "not_met_reasons_beside_no_pick": Mutant(
         "the `not_met` reasons of the alternatives that stay reported beside `no_pick` or `want_mismatch`",
-        'read_side_contract.md:296-297 "`not_met` reasons wait"',
+        'read_side_contract.md:299-300 "`not_met` reasons wait"',
         {"reasons_beside_two_or_more": not_met_reasons_beside_two_or_more},
     ),
     "unknown_reasons_dropped_beside_no_pick": Mutant(
         "the `unknown` reasons of the alternatives that stay dropped beside `no_pick` or `want_mismatch`",
-        'read_side_contract.md:296 "`unknown` reasons stand beside `want_mismatch` or `no_pick`"',
+        'read_side_contract.md:299 "`unknown` reasons stand beside `want_mismatch` or `no_pick`"',
         {"reasons_beside_two_or_more": unknown_reasons_dropped_beside_two_or_more},
     ),
     "set_aside_reasons_beside_no_pick": Mutant(
         "the set-aside alternatives' reasons reported beside `no_pick` or `want_mismatch`",
-        'read_side_contract.md:297-298 "are not reported there"',
+        'read_side_contract.md:300-301 "are not reported there"',
         {"reasons_beside_two_or_more": set_aside_reasons_beside_two_or_more},
     ),
     "request_fault_given_an_alternative": Mutant(
@@ -1865,7 +1865,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # Step 8
     "unknown_tokens_read_as_shape_faults": Mutant(
         "a token the reader knows for no member of that name gives `form_invalid`",
-        'read_side_contract.md:306-308 "a token the reader knows for no member of that name '
+        'read_side_contract.md:309-311 "a token the reader knows for no member of that name '
         '(`unknown_token`)"',
         {"known_token": every_unknown_token_a_shape_fault},
     ),
@@ -1876,7 +1876,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "member_checked_off_its_row": Mutant(
         "the member of a form the row does not allow checked as on a row allowing it",
-        'read_side_contract.md:310-312 "does not allow is refused, `form_not_registered`"',
+        'read_side_contract.md:313-315 "does not allow is refused, `form_not_registered`"',
         {"check_value_field": member_checked_off_its_row},
     ),
     "composition_checked_beyond_its_basis": Mutant(
@@ -1887,7 +1887,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "family_suite_ignored": Mutant(
         "a parameter set read without the family evaluation suite not `family_suite_absent`",
-        'read_side_contract.md:341-342 "read without the family evaluation suite is refused here '
+        'read_side_contract.md:344-345 "read without the family evaluation suite is refused here '
         '(`family_suite_absent`)"',
         {"check_value_field": family_suite_ignored},
     ),
@@ -1914,7 +1914,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "statistics_unchecked": Mutant(
         "a statistics block not checked",
-        'read_side_contract.md:314 "the statistics block and its uncertainties"',
+        'read_side_contract.md:317 "the statistics block and its uncertainties"',
         {"check_block": block_unchecked},
     ),
     "uncertainties_unchecked": Mutant(
@@ -1964,12 +1964,12 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "section_specimen_unchecked": Mutant(
         "a section's `specimen` not checked for a field read from it",
-        'read_side_contract.md:302-303 "form or section `specimen` that breaks its shape"',
+        'read_side_contract.md:305-306 "form or section `specimen` that breaks its shape"',
         {"check_value_field": section_specimen_unchecked},
     ),
     "condition_shapes_unchecked": Mutant(
         "a condition of a name the reader knows not checked",
-        'read_side_contract.md:313-314 "each condition and specimen fact whose name the reader knows"',
+        'read_side_contract.md:316-317 "each condition and specimen fact whose name the reader knows"',
         {
             "check_condition": condition_unchecked,
             "check_units": units_of_readable_conditions,
@@ -2045,44 +2045,44 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "fact_units_unchecked": Mutant(
         "a specimen fact's unit not compared with the one its row fixes",
-        'read_side_contract.md:350-353 "is compared in the same way with the unit its row fixes"',
+        'read_side_contract.md:353-356 "is compared in the same way with the unit its row fixes"',
         {"checked_specimens": no_specimen_checked},
     ),
     "token_condition_unit_accepted": Mutant(
         "a `unit` on a token condition passes step 9",
-        'read_side_contract.md:346-347 "a `unit` on a token condition, which registers none"',
+        'read_side_contract.md:349-350 "a `unit` on a token condition, which registers none"',
         {"check_units": token_condition_units_accepted},
     ),
     "plus_minus_units_unchecked": Mutant(
         "a `plus_minus` entry's unit not compared",
-        'read_side_contract.md:346 "`plus_minus` units included"',
+        'read_side_contract.md:349 "`plus_minus` units included"',
         {"check_units": plus_minus_units_unchecked},
     ),
     # Step 10
     "floating_point_as_written": Mutant(
         "section 5's tests computed in floating point as written",
-        'read_side_contract.md:485-488 "Computed in floating point as written, it could pass a value just '
+        'read_side_contract.md:488-491 "Computed in floating point as written, it could pass a value just '
         'outside the tolerance"',
         {"within_tolerance": in_floating_point},
     ),
     "strict_inequalities": Mutant(
         "`<` for `<=` in section 5's table",
-        'read_side_contract.md:476-479 "`met` when `abs(r - v) <= t`, else `not_met` (`condition_outside`)"',
+        'read_side_contract.md:479-482 "`met` when `abs(r - v) <= t`, else `not_met` (`condition_outside`)"',
         {"within_tolerance": strict_inequalities},
     ),
     "plus_minus_ignored": Mutant(
         "a stated plus or minus ignored",
-        'read_side_contract.md:493-504 "For a numeric condition holding `plus_minus`"',
+        'read_side_contract.md:496-507 "For a numeric condition holding `plus_minus`"',
         {"within_tolerance": plus_minus_ignored},
     ),
     "unchecked_read_as_met": Mutant(
         "a stated condition the request gives no tolerance or accept list for read as `met`",
-        'read_side_contract.md:475 "no tolerance and no accept list for it"',
+        'read_side_contract.md:478 "no tolerance and no accept list for it"',
         {"condition_entry": unchecked_read_as_met},
     ),
     "operating_omitted_from_entries": Mutant(
         "a condition entry without the request's operating condition",
-        'read_side_contract.md:171-172 "its `operating` is the request"',
+        'read_side_contract.md:174-175 "its `operating` is the request"',
         {"condition_entry": operating_omitted},
     ),
     "implied_fills_any_condition": Mutant(
@@ -2102,41 +2102,41 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "required_with_ignored": Mutant(
         "a condition another condition requires with its token not checked",
-        'read_side_contract.md:465 "condition requires with the token it holds"',
+        'read_side_contract.md:468 "condition requires with the token it holds"',
         {"CONDITIONS": NO_REQUIRED_WITH},
     ),
     "unknown_condition_names_ignored": Mutant(
         "a condition name the reader does not know gives no entry and no reason",
-        'read_side_contract.md:474 "a name the reader does not know"',
+        'read_side_contract.md:477 "a name the reader does not know"',
         {"conditions_checked": registered_names_only},
     ),
     # Step 12
     "stated_without_origin_unreported": Mutant(
         "a value stated without origin not `unknown`",
-        'read_side_contract.md:360 "Give `unknown` for a value stated without origin '
+        'read_side_contract.md:363 "Give `unknown` for a value stated without origin '
         '(`stated_without_origin`)"',
         {"read_value_field": origin_unreported},
     ),
     "step_12_labels_dropped": Mutant(
         "the field's label and `mixed_conditions` not added",
-        'read_side_contract.md:361-362 "add the labels of section 2"',
+        'read_side_contract.md:364-365 "add the labels of section 2"',
         {"step_12_labels": no_labels},
     ),
     # Step 13
     "bounds_given_by_a_constant": Mutant(
         "`want: bounds` gives a constant's value",
-        'read_side_contract.md:528 "`bounds` | `not_met` (`want_mismatch`)"',
+        'read_side_contract.md:531 "`bounds` | `not_met` (`want_mismatch`)"',
         {"GIVES": {**model.GIVES, "bounds": ("interval", "constant")}},
     ),
     "value_given_by_an_interval": Mutant(
         "`want: value` gives an interval's bounds without a nominal",
-        'read_side_contract.md:527 "a declared nominal inside or on the bounds supplies `value` and '
+        'read_side_contract.md:530 "a declared nominal inside or on the bounds supplies `value` and '
         '`assumption`"',
         {"GIVES": {**model.GIVES, "value": (*model.GIVES["value"], "interval")}},
     ),
     "nominal_outside_supplies_the_value": Mutant(
         "a nominal outside an interval's bounds supplies the value",
-        'read_side_contract.md:527 "and one outside them gives `nominal_invalid` in place of '
+        'read_side_contract.md:530 "and one outside them gives `nominal_invalid` in place of '
         '`want_mismatch`"',
         {"shape_by_want": nominal_outside_supplies_the_value},
     ),
@@ -2153,7 +2153,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "unknown_members_returned": Mutant(
         "a member the reader does not know returned",
-        'read_side_contract.md:165-166 "A member the reader does not know is left out"',
+        'read_side_contract.md:168-169 "A member the reader does not know is left out"',
         {"known_members": every_member},
     ),
     "review_returned_as_its_result": Mutant(
@@ -2216,7 +2216,7 @@ MUTANTS: Mapping[str, Mutant] = {
     # S3b-2's: a table's steps 10 to 13, measured 2026-10-21 at S3b-2's head.
     "edge_unseen_by_the_axis_entry": Mutant(
         "the axis entry `met` at an edge inside the readable range",
-        "read_side_contract.md:472 \"the entry is `met` when the operating value lies in the form's range "
+        "read_side_contract.md:475 \"the entry is `met` when the operating value lies in the form's range "
         'and on no declared edge"',
         {"table_axis": edge_unseen_by_the_axis_entry},
     ),
@@ -2246,7 +2246,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "table_returned_whole": Mutant(
         "a table returned as stored with the members the reader does not know",
-        'read_side_contract.md:165 "A member the reader does not know is left out"',
+        'read_side_contract.md:168 "A member the reader does not know is left out"',
         {"form_member_returned": table_returned_whole},
     ),
     "table_member_dropped": Mutant(
@@ -2257,35 +2257,35 @@ MUTANTS: Mapping[str, Mutant] = {
     # S3c's: an extrapolation, measured 2026-10-21 at S3c's head.
     "extrapolation_under_any_want": Mutant(
         "an extrapolation applied under any `want`",
-        'read_side_contract.md:516 "Under any other `want` an extrapolation is not applied"',
+        'read_side_contract.md:519 "Under any other `want` an extrapolation is not applied"',
         {"extrapolation_covers": extrapolation_under_any_want},
     ),
     "extrapolation_at_an_edge": Mutant(
         "an extrapolation applied at an edge outside the readable range",
-        'read_side_contract.md:516-518 "`outside_range` beside it where it lies outside"',
+        'read_side_contract.md:519-521 "`outside_range` beside it where it lies outside"',
         {"extrapolation_covers": extrapolation_at_an_edge},
     ),
     "extrapolation_across_an_edge": Mutant(
         "an extrapolation applied across an edge strictly between the read and the readable range's nearest "
         "end",
-        'read_side_contract.md:519-521 "Nor is an extrapolation applied across a declared edge"',
+        'read_side_contract.md:522-524 "Nor is an extrapolation applied across a declared edge"',
         {"extrapolation_covers": extrapolation_across_an_edge},
     ),
     "extrapolation_end_of_x": Mutant(
         "the end value `y[0]` or `y[-1]` where `source_range` narrows the range",
-        'read_side_contract.md:514 "the result carries the value at the range" and record_format.md:415-416 '
+        'read_side_contract.md:517 "the result carries the value at the range" and record_format.md:415-416 '
         '"or `source_range[0]` where that is greater, to `x[-1]`, or `source_range[1]` where that is '
         'smaller"',
         {"read_the_table": end_value_of_x},
     ),
     "extrapolation_far_end": Mutant(
         "the end value taken at the readable range's far end",
-        'read_side_contract.md:514 "taken from inside the range"',
+        'read_side_contract.md:517 "taken from inside the range"',
         {"nearest_end": the_far_end},
     ),
     "extrapolated_read_ends_at_step_11": Mutant(
         "a read an extrapolation covers given no step-12 reason or label",
-        'read_side_contract.md:183-185 "after which the read goes on to steps 12 and 13"',
+        'read_side_contract.md:186-188 "after which the read goes on to steps 12 and 13"',
         {"read_value_field": extrapolated_read_ends_at_step_11},
     ),
     "extrapolation_located_anywhere": Mutant(
@@ -2322,23 +2322,23 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "covered_outside_range_dropped": Mutant(
         "a read an extrapolation covers without its `outside_range`",
-        'read_side_contract.md:513 "the result stays `not_met`, its reasons kept"',
+        'read_side_contract.md:516 "the result stays `not_met`, its reasons kept"',
         {"read_the_table": covered_outside_range_dropped},
     ),
     # S4d's: step 7's rows for a table alternative at step 11, measured 2026-10-22.
     "outside_range_kept_without_an_extrapolation": Mutant(
         "an alternative outside its form's range, off every edge, kept with no extrapolation to cover it",
-        'read_side_contract.md:261-262 "An alternative is set aside where its read lies outside its form"',
+        'read_side_contract.md:264-265 "An alternative is set aside where its read lies outside its form"',
         {"fate_of": outside_range_kept, "read_value_field": outside_range_read_for_an_entry},
     ),
     "covered_alternative_set_aside": Mutant(
         "an alternative an extrapolation the request carries would cover set aside, not kept",
-        'read_side_contract.md:265-266 "one that an extrapolation the request carries would cover"',
+        'read_side_contract.md:268-269 "one that an extrapolation the request carries would cover"',
         {"fate_of": covered_set_aside},
     ),
     "edge_inside_the_range_sets_aside": Mutant(
         "a table alternative read exactly at an edge inside its readable range set aside, not refusing",
-        'read_side_contract.md:272-273 "A table alternative read exactly at a declared edge refuses the '
+        'read_side_contract.md:275-276 "A table alternative read exactly at a declared edge refuses the '
         'field"',
         {"fate_of": edge_inside_the_range_sets_aside},
     ),
@@ -2352,17 +2352,17 @@ MUTANTS: Mapping[str, Mutant] = {
     "set_aside_alternative_reaches_step_11": Mutant(
         "a table alternative set aside at step 10 read on to step 11, its missing operating value refusing "
         "the field",
-        'read_side_contract.md:275-276 "one set aside at step 10 never reaches step 11 and refuses nothing"',
+        'read_side_contract.md:278-279 "one set aside at step 10 never reaches step 11 and refuses nothing"',
         {"read_value_field": set_aside_read_on_to_step_11},
     ),
     "over_a_range_set_aside": Mutant(
         "a table alternative read over an operating range of its axis set aside, not kept",
-        'read_side_contract.md:265-268 "table read over an operating range of its axis, say"',
+        'read_side_contract.md:268-271 "table read over an operating range of its axis, say"',
         {"fate_of": over_a_range_set_aside},
     ),
     "over_a_range_counted_as_a_form_want_gives": Mutant(
         "a table read over an operating range of its axis counted as a form `want` gives",
-        'read_side_contract.md:288 "A table read over an operating range of its axis counts as a form '
+        'read_side_contract.md:291 "A table read over an operating range of its axis counts as a form '
         '`want` cannot give"',
         {"form_want_gives": over_a_range_given_by_want},
     ),
@@ -2382,12 +2382,12 @@ MUTANTS: Mapping[str, Mutant] = {
     "extrapolation_applied_under_no_pick": Mutant(
         "under `no_pick`, the entry of an alternative an extrapolation covers holding the end value and "
         "`assumption`",
-        'read_side_contract.md:291-292 "with no nominal or extrapolation applied"',
+        'read_side_contract.md:294-295 "with no nominal or extrapolation applied"',
         {"read_alternatives": kept_entries_extrapolated},
     ),
     "kept_alternative_read_no_further": Mutant(
         "an alternative kept for an extrapolation not read on through steps 12 and 13",
-        'read_side_contract.md:268-269 "An alternative kept for an extrapolation is read on through steps '
+        'read_side_contract.md:271-272 "An alternative kept for an extrapolation is read on through steps '
         '12 and 13"',
         {"read_alternatives": kept_reads_ending_at_step_11},
     ),
