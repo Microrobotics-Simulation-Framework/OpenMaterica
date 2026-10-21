@@ -179,6 +179,14 @@ every family entry goes in `families/CHANGELOG.md`.
   most GitHub's 360, with controls under the rule for `records`, `relations`, `agreement`, `json` and the
   default, the `alternatives` clause removed, and `agreement` at 365. The job's comment and the property
   README give each figure as measured, with its run and date.
+- The Hypothesis job's `records` shard has a `deep` timeout of 135 minutes, from 105. `main`'s dispatched
+  `deep` run of 2026-10-21 (39578840767, at 0b9f6a5e) took 64.3 minutes for the job (09:41:51 to 10:46:07),
+  pytest running the whole shard in 3,844 s, 99 passed and 1 failed, the failure a strategy that could not
+  build its case (HP13's `source_range_disjoint`, **Verification**), not time: above the 50.8 minutes that set
+  105, so that its interrupt, at 102, fell below twice it. 135 is twice 64.3 and three, rounded up to a
+  multiple of five, as the rule sets each. Every other timeout is as it was. The job's comment gives the run
+  beside the three before it, and `tests/unit/test_ci_workflows.py` holds the interrupt at twice 64.27
+  minutes, its control now at 131.
 
 ### Schema
 - `test_method` gains `reference_formulation` (maintainer, 2026-10-19): the test method of a value evaluated from
