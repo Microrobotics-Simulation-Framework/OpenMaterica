@@ -38,7 +38,7 @@
   tells apart, one double above each edge among them: an exception escapes for a read in the interval just
   above an edge where the value just above lies outside 0.6 to 1.6 times the value just below, either way. No
   seed holds one: of the 22 edges the seed tables hold twice in `x`, the ratios of the value above to the
-  value below lie between 0.99 and 1.092 (2026-10-21), so the fuzzer has to change a value at an edge, as
+  value below lie between 0.99 and 1.2 (2026-10-21), so the fuzzer has to change a value at an edge, as
   halving or doubling either one does, in a table that keeps its edge.
 
 Each of the first four raises its own message, and so does the last, so that CI can tell which fault a run
