@@ -13,7 +13,10 @@ property draws its fault, declares them with the `drawn` marker instead; one tha
 draw shows each feature, measured, as the writer schema's acceptance properties do, and the json and records
 shards' properties where a least share failed a run too often, declares them with the `chances` marker. At
 the `ci` profile, each drawn feature and each feature declared by its chance is held to its draw floor
-(`draw_floor`); at `dev`, every feature is, where that floor can be judged (RULES).
+(`draw_floor`); at `dev`, every feature is, where that floor can be judged (RULES). A feature too rare for a
+floor at `ci`, as some regions where a planned search's mutant shows are, declares its chance with the
+`deep_chances` marker instead, and is held to its draw floor at `deep` alone, whose ten times the examples
+make one possible.
 """
 
 import math
@@ -153,6 +156,9 @@ SHARE_PER_LEAST = 3
 # the floor's model, which overstates a common feature's spread. Run once for each commit of a pull request
 # (CI's per-commit job), three of about 75 `dev` jobs of two pull requests failed so on 2026-10-18, each a
 # feature drawn among three (`tests/unit/test_audits.py` holds their counts).
+# A feature declared by `deep_chances` is held to its draw floor at `deep` alone, a floor below LEAST_DRAWS
+# failing, as `ci` holds one declared by its chance; `ci` and `dev` judge it nowhere, since at 2,000 examples
+# a floor reaches LEAST_DRAWS only at a chance of about 0.065 (2026-10-21).
 # For the acceptance properties' chances, from the measured clusters: a run of both falls short with a
 # probability of about 3e-10 at `ci` and 7e-7 at `dev`, and at most 2e-22 at `deep` (three runs measured). For
 # the json and records shards': about 2e-8 a run of the two at `ci`, nearly all HP3's regions, and 1e-15 at
@@ -163,13 +169,14 @@ class Rule(TypedDict):
 
     by_draws: bool
     floors_only: bool
+    deep_floors: bool
 
 
 RULES: dict[str, Rule] = {
     # `by_draws` is read only where `floors_only` is False; `dev` states it so that every profile names both.
-    "dev": {"by_draws": False, "floors_only": True},
-    "ci": {"by_draws": True, "floors_only": False},
-    "deep": {"by_draws": False, "floors_only": False},
+    "dev": {"by_draws": False, "floors_only": True, "deep_floors": False},
+    "ci": {"by_draws": True, "floors_only": False, "deep_floors": False},
+    "deep": {"by_draws": False, "floors_only": False, "deep_floors": True},
 }
 
 
@@ -205,19 +212,28 @@ def feature_shortfalls(
     by_draws: bool = False,
     chances: Mapping[str, float] | None = None,
     floors_only: bool = False,
+    deep_chances: Mapping[str, float] | None = None,
+    deep_floors: bool = False,
 ) -> list[str]:
     """Each judged feature below its least share or its floor, and each feature recorded but not declared.
     `drawn` names the features of which each example shows one, drawn alike; `chances` gives other features
     each the chance that one draw shows it. `by_draws` holds both to their draw floors, a floor below
     LEAST_DRAWS failing; `floors_only` holds every feature to its draw floor where that is at least
     LEAST_DRAWS, judging no other (`floor_shortfalls`); and otherwise each is held to a third of its chance,
-    one over their number for the drawn, as a declared feature."""
+    one over their number for the drawn, as a declared feature. `deep_chances` gives yet others their chances,
+    each held to its draw floor, a floor below LEAST_DRAWS failing, where `deep_floors`, and judged nowhere
+    else."""
     examples = counts.draws["valid"] + counts.draws["interesting"]
     chances = {} if chances is None else dict(chances)
+    deep_chances = {} if deep_chances is None else dict(deep_chances)
     problems = [
         f"feature {name!r} recorded but not declared"
-        for name in sorted(counts.features.keys() - declared.keys() - set(drawn) - chances.keys())
+        for name in sorted(
+            counts.features.keys() - declared.keys() - set(drawn) - chances.keys() - deep_chances.keys()
+        )
     ]
+    if deep_floors:
+        problems.extend(chance_floor_shortfalls(counts, examples, deep_chances))
     if floors_only:
         return problems + floor_shortfalls(counts, examples, declared, drawn, chances)
     least_shares = dict(declared)
@@ -236,24 +252,32 @@ def feature_shortfalls(
     elif drawn:
         least_shares.update({name: 1 / len(drawn) / 3 for name in drawn})
     if by_draws:
-        floors = {name: draw_floor(examples, chance) for name, chance in chances.items()}
-        unjudged = sorted(name for name, floor in floors.items() if floor < LEAST_DRAWS)
-        if unjudged:
-            problems.append(
-                f"features {unjudged}: each, at its chance, has a floor below {LEAST_DRAWS} in {examples}"
-                " examples: draw it more often, its family in parts"
-            )
-        problems.extend(
-            f"feature {name!r} in {counts.features[name]} of {examples} examples, below its floor of {floor}"
-            for name, floor in sorted(floors.items())
-            if counts.features[name] < floor
-        )
+        problems.extend(chance_floor_shortfalls(counts, examples, chances))
     else:
         least_shares.update({name: chance / 3 for name, chance in chances.items()})
     for name, least in sorted(least_shares.items()):
         share = counts.features[name] / examples if examples else 0.0
         if least * examples >= JUDGED_FROM and share < least:
             problems.append(f"feature {name!r} in {share:.1%} of {examples} examples, below {least:.0%}")
+    return problems
+
+
+def chance_floor_shortfalls(counts: Counts, examples: int, chances: Mapping[str, float]) -> list[str]:
+    """Each feature below the draw floor of its chance, after those whose floor is below LEAST_DRAWS, which
+    fail however often shown."""
+    floors = {name: draw_floor(examples, chance) for name, chance in chances.items()}
+    unjudged = sorted(name for name, floor in floors.items() if floor < LEAST_DRAWS)
+    problems: list[str] = []
+    if unjudged:
+        problems.append(
+            f"features {unjudged}: each, at its chance, has a floor below {LEAST_DRAWS} in {examples}"
+            " examples: draw it more often, its family in parts"
+        )
+    problems.extend(
+        f"feature {name!r} in {counts.features[name]} of {examples} examples, below its floor of {floor}"
+        for name, floor in sorted(floors.items())
+        if counts.features[name] < floor
+    )
     return problems
 
 

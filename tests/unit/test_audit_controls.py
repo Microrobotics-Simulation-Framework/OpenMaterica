@@ -332,10 +332,9 @@ def control_id(control: Control) -> str:
     return f"{control.test.__name__}{parameters}-{control.never}"
 
 
-@pytest.mark.parametrize("control", CONTROLS, ids=[control_id(control) for control in CONTROLS])
-def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
-    control: Control, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def run_without(control: Control, monkeypatch: pytest.MonkeyPatch, examples: int) -> audits.Counts:
+    """The counts of a derandomised run of `examples` examples of the property, its generator stopped from
+    producing the control's feature and the checks it skips skipped."""
     module = sys.modules[control.test.__module__]
     record: Callable[..., None] = module.feature
 
@@ -349,29 +348,38 @@ def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
     monkeypatch.setattr(module, "feature", feature)
     for check in control.skipped:
         monkeypatch.setattr(module, check, skipped)
-    # The `ci` profile's examples, derandomised so that the run is the same each time. Hypothesis keeps a
-    # test's settings on it from when `@given` wraps it; this sets them for this test alone.
+    # Derandomised, so that the run is the same each time. Hypothesis keeps a test's settings on it from when
+    # `@given` wraps it; this sets them for this test alone.
     monkeypatch.setattr(
         control.test,
         "_hypothesis_internal_use_settings",
         settings(
             vars(control.test)["_hypothesis_internal_use_settings"],
-            max_examples=EXAMPLES["ci"],
+            max_examples=examples,
             derandomize=True,
             database=None,
             suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow],
         ),
     )
+    with audits.counting() as counts:
+        control.test(**dict(control.parameters))
+    return counts
+
+
+@pytest.mark.parametrize("control", CONTROLS, ids=[control_id(control) for control in CONTROLS])
+def test_a_generator_that_stops_producing_a_feature_fails_the_audit_at_ci(
+    control: Control, monkeypatch: pytest.MonkeyPatch
+) -> None:
     chances = marker_kwargs(control, "chances")
     drawn = marker_args(control, "drawn")
     assert control.never in chances or control.never in drawn
-    with audits.counting() as counts:
-        control.test(**dict(control.parameters))
+    counts = run_without(control, monkeypatch, EXAMPLES["ci"])
     problems = audits.feature_shortfalls(
         counts,
         marker_kwargs(control, "features"),
         drawn,
         chances=chances,
+        deep_chances=marker_kwargs(control, "deep_chances"),
         **audits.RULES["ci"],
     )
     chance = chances[control.never] if control.never in chances else 1 / len(drawn)
