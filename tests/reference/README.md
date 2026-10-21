@@ -133,7 +133,10 @@ each is narrowed to it, so that its row counts its own rule's kills: `refused_al
 aside an alternative refused at steps 8 and 9 alone, not one `at_edge` refuses, and
 `set_aside_alternative_refuses` refuses one set aside at step 10 alone, not one outside the range;
 `nominal_applied_under_no_pick` takes an interval's nominal alone, and `nominal_not_applied_to_the_one_left`
-drops a nominal's value alone, not an extrapolation's, whose `assumption` each had read as a nominal's.
+drops a nominal's value alone, not an extrapolation's, whose `assumption` each had read as a nominal's. The
+four cases of a label's basis (2026-10-21) kill no survivor; the four rows they move, each current before
+them, are measured with them (2026-10-22): `alternatives_shape_unchecked`, `every_slip_ignored`,
+`operating_omitted_from_entries` and `step_12_labels_dropped`.
 
 A fault that makes the model raise on a case file its search reads fails the search, with the model's
 traceback and a note naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke
@@ -168,7 +171,7 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `acceptances_applied_anywhere` | an acceptance applied at another record, a region, an interval or no location | 18 |
 | `two_nominals_for_one_field` | two nominals naming one field read as the first | 1, `PR-330.two_nominals_one_field` alone |
 | `unregistered_field_requested` | a field the reader's version does not register read, and found absent | 6 |
-| `every_slip_ignored` | a member one slip from a named one ignored, in a request and in a record | 48 |
+| `every_slip_ignored` | a member one slip from a named one ignored, in a request and in a record | 49 |
 | `plurals_not_slips` | a word made plural or singular not one slip | survives: each plural slip in the cases adds an `s` (`fluids`), and so is one character inserted |
 | `envelope_body_and_section_slips_ignored` | a slip in the envelope, the body or a section refuses no field | 6 |
 | `unreadable_sources_ignored` | an unreadable source never turns `absent` or `pin_mismatch` into `malformed` | 49 |
@@ -176,7 +179,7 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `hash_not_checked_before_step_4` | `hash_not_checked` on a result that ends before step 4 | 1, `PR-327.pin_no_hs` alone |
 | `hash_never_recomputed` | a reader claiming HS never recomputes the hash | 8 |
 | `other_minor_versions_read` | a record of another `MAJOR.MINOR` read | 15 |
-| `alternatives_shape_unchecked` | an `alternatives` that is empty, not a list or beside a value field's members read | 5 |
+| `alternatives_shape_unchecked` | an `alternatives` that is empty, not a list or beside a value field's members read | 6 |
 | `want_mismatch_beside_no_pick` | `want_mismatch` reported under `no_pick` for an alternative whose form `want` cannot give | 7 |
 | `conditions_kept_under_no_pick` | a `no_pick` result holding `conditions` of its own | 20 |
 | `alternatives_counted_from_one` | an `alternative_values` entry's index counted from one | 20 |
@@ -217,14 +220,14 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `strict_inequalities` | `<` for `<=` in section 5's table | 12 |
 | `plus_minus_ignored` | a stated plus or minus ignored | 15 |
 | `unchecked_read_as_met` | a stated condition the request gives no tolerance or accept list for read as `met` | 7 |
-| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 335 |
+| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 337 |
 | `implied_fills_any_condition` | an implied condition fills a stated condition, or one held as another status object | 2 |
 | `disagreeing_implied_conditions_read` | two implied conditions that disagree read as the first | 8 |
 | `implied_values_compared_by_value` | two implied values compared as numbers, so that `0` and `-0` agree | 1, `PR-316.implied_zero_beside_minus_zero` alone |
 | `required_with_ignored` | a condition another condition requires with its token not checked | 4 |
 | `unknown_condition_names_ignored` | a condition name the reader does not know gives no entry and no reason | 6 |
 | `stated_without_origin_unreported` | a value stated without origin not `unknown` | 3, `PR-013.kept_table_step12_reason_beside_no_pick`, `PR-307.steps_12_and_13_run` and `PR-309.stated_without_origin` |
-| `step_12_labels_dropped` | the field's label and `mixed_conditions` not added | 159 |
+| `step_12_labels_dropped` | the field's label and `mixed_conditions` not added | 161 |
 | `bounds_given_by_a_constant` | `want: bounds` gives a constant's value | 4 |
 | `value_given_by_an_interval` | `want: value` gives an interval's bounds without a nominal | 22 |
 | `nominal_outside_supplies_the_value` | a nominal outside an interval's bounds supplies the value | 3 |

@@ -37,9 +37,9 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | `content_hash` (HS-001 to HS-003) | 51 | run, passed |
 | reads S1 runs, which end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
-| S2's reads that end at step 0, 7 or 8 (plain read) | 169 | run, passed |
+| S2's reads that end at step 0, 7 or 8 (plain read) | 170 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
-| S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape, its unit compared beside it (plain read) | 167 | run, passed |
+| S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape, its unit compared beside it (plain read) | 170 | run, passed |
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
 | S2's reads of evidence, and reads under a nominal or an acceptance a read does not take, to the value or ending at step 0, 8 or 13 (plain read) | 69 | run, passed |
 | S3a's reads of a table that end at step 8 or 9: its shape, its tokens, a form its field's row does not allow, its `axis_unit` (plain read) | 72 | run, passed |
@@ -65,9 +65,14 @@ holding the other kind's member (`PR-045.numeric_condition_holding_token`,
 member until that ruling (2026-10-19), and refuses it since. `PR-308.table_set_aside_never_reaches_step_11`,
 whose table alternative step 10 sets aside, is S3b-2's: it needs no rule of step 7's over a table's reasons at
 step 11, which S4d builds. `PR-044.refused_points_unsupported`, a table alternative step 8 refuses, needs none
-either, and is S4d's, as the S4 cases left it.
+either, and is S4d's, as the S4 cases left it. The four arms of a label's basis, `label_basis` (2026-10-21),
+are S2a-2's (`PR-030.near_typo_label_basi_beside_label`, at step 8) and S2a-4's
+(`PR-030.label_basis_stated_not_returned`, `PR-030.label_basis_guessed_not_checked` and
+`PR-044.alternatives_beside_label_basis`): those steps ignored `label_basis` and a member one slip from it, as
+members they did not know, and since a value field names it, the slip and `label_basis` beside `alternatives`
+refuse the field.
 
-Of the 1517 case files, 1270 agree with plain read and the hash suite, 1212 with plain read alone, and 1270
+Of the 1521 case files, 1274 agree with plain read and the hash suite, 1216 with plain read alone, and 1274
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
 record-check suite agree with none, since it claims no record checks.

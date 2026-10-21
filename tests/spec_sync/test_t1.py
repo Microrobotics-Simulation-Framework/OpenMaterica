@@ -127,6 +127,7 @@ EXCEPTIONS: dict[str, Kind] = {
                 "PR-030.near_typo_in_statistics_means",
                 "PR-030.near_typo_in_status_object",
                 "PR-030.near_typo_in_uncertainty",
+                "PR-030.near_typo_label_basi_beside_label",
                 "PR-030.near_typo_of_provenance_in_evidence_entry",
                 "PR-030.near_typo_section_fact_tissue_stat",
                 "PR-030.near_typo_section_specimens",
