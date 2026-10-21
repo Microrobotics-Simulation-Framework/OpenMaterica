@@ -4,6 +4,7 @@ all: versions longer than `int` reads, the forms a request may be given in, the 
 steps not built yet, which raise rather than answer."""
 
 import copy
+import dataclasses
 import importlib
 import inspect
 import json
@@ -18,7 +19,8 @@ import pytest
 
 import materica
 from materica import shapes
-from materica.core import value_shapes
+from materica.core import evaluate, value_shapes
+from materica.core.conditions import ConditionEntry
 from materica.core.hashing import content_hash
 from materica.core.identifiers import FAMILY_ID, RECORD_ID, MaterialRef, Version, parse_version
 from materica.core.jsonio import JsonValue
@@ -221,13 +223,20 @@ def viscosity_table(**table: JsonValue) -> dict[str, JsonValue]:
     return field
 
 
-def test_a_table_steps_8_and_9_pass_raises_and_one_they_refuse_is_refused() -> None:
-    """S3a reads a table through step 9 (`read_side_contract.md` section 3), and steps 10 to 13 are not built
-    yet: a table they pass raises, the Newtonian label on a temperature table included, and one they refuse
-    gives every reason they find."""
-    for passing in ({}, {"label": "materica.fluid.newtonian.v1"}):
-        with pytest.raises(NotImplementedError):
-            read(*stored(with_field("fluid.dynamic_viscosity", {**viscosity_table(), **passing})))
+def test_a_table_steps_8_to_13_pass_gives_its_value_and_one_steps_8_and_9_refuse_is_refused() -> None:
+    """A table steps 8 and 9 pass is read on (`read_side_contract.md` section 3): at 310.15 K, between its two
+    knots, it gives its value, interpolated, and the table it is read from, as stored; its axis entry is `met`
+    and gives no reason (section 5, first row), so the water's unstated shear rate alone stands; and the
+    Newtonian label on a temperature table is returned (step 12). One that steps 8 and 9 refuse gives every
+    reason they find."""
+    result = read(*stored(with_field("fluid.dynamic_viscosity", viscosity_table())))
+    assert (result.status, result.reasons) == ("unknown", (Reason("condition_unstated", "shear_rate"),))
+    assert result.value == evaluate.value([300.0, 320.0], [0.000853, 0.000577], "linear", 310.15)
+    assert result.table == viscosity_table()["table"]
+    assert result.labels == ("materica.fluid.newtonian.v1",)
+    operating: shapes.OperatingCondition = {"value": 310.15, "unit": "K"}
+    axis = ConditionEntry("temperature", "met", {"status": "not_applicable"}, operating)
+    assert axis in (result.conditions or ())
     for refused, codes in (
         (
             {"unit": None, "table": viscosity_table(scheme="cubic")["table"]},
@@ -2238,9 +2247,10 @@ def test_a_request_keeps_its_nominals_with_the_members_their_shape_names() -> No
     assert ReadRequest.from_json(checked.to_json()) == checked
 
 
-# A table among alternatives (S3a): step 7 reads every alternative before it decides the outcome, so a table
-# that steps 8 and 9 pass raises wherever it stands, and one they refuse refuses the field (S4a's rule).
-TABLE_NOT_YET = "a table's steps 10 to 13 are S3b-2's"
+# A table among alternatives: step 7 reads every alternative before it decides the outcome. A table read
+# inside its readable range is read as any form is (S3b-2), and one whose read gives a reason at step 11
+# raises wherever it stands, since step 7's rules for it are a later piece's (S4d).
+STEP_11_NOT_YET = "step 7 over a table alternative's reason at step 11 is S4d's"
 BESIDE_A_TABLE: dict[str, Callable[[], dict[str, JsonValue]]] = {
     "constant": lambda: met_field(),
     "interval": lambda: met_interval(lower=0.0006, upper=0.0008, basis="specification_limits"),
@@ -2258,25 +2268,115 @@ def alternatives_of(names: tuple[str, ...], table: dict[str, JsonValue]) -> dict
     return {"alternatives": [table if name == "table" else BESIDE_A_TABLE[name]() for name in names]}
 
 
+def met_table(**table: JsonValue) -> dict[str, JsonValue]:
+    """The viscosity table, its shear rate stated and met by `MET_REQUEST` as `met_field`'s is."""
+    field = viscosity_table(**table)
+    cast(dict[str, JsonValue], field["conditions"])["shear_rate"] = dict(SHEAR_RATE)
+    return field
+
+
+# Each pair's outcome by step 7's rules (`read_side_contract.md` section 3, step 7), the table read at 310.15
+# K inside its range: under `want: value` a table and a constant give their form, an interval does not; under
+# `want: bounds` only the interval does; under `components` and `evidence` none; a broken constant refuses.
+GIVES_UNDER: dict[str, set[str]] = {
+    "value": {"table", "constant"},
+    "bounds": {"interval"},
+    "components": set(),
+    "evidence": set(),
+}
+
+
 @pytest.mark.parametrize("want", ["value", "bounds", "components", "evidence"])
 @pytest.mark.parametrize("names", TABLE_AMONG_OTHERS, ids=" and ".join)
-def test_a_table_alternative_steps_8_and_9_pass_raises_first_or_last_beside_any_other(
+def test_a_table_alternative_read_inside_its_range_is_read_as_any_alternative(
     names: tuple[str, ...], want: str
 ) -> None:
-    """S4a's `_read_alternatives` reads each alternative alone by steps 8 to 13: a table they pass raises, as
-    the field does, so that no outcome stands in for a table's steps 10 to 13 (the S3a review's hand mutant,
-    which read that raise as a read with no reasons, gave `met` and `no_pick` here)."""
-    with pytest.raises(NotImplementedError, match=TABLE_NOT_YET):
-        read_accepting(alternatives_of(names, viscosity_table()), [], want=want)
+    """Section 3, step 7, a table alternative met inside its readable range, first or last beside each other
+    form: a broken constant refuses the field; the one alternative left is read as the field; two that stay
+    give `no_pick` where one has a form `want` can give, its entry the table's number under `want: value`
+    (section 2, the `alternative_values` row), and `want_mismatch` where none has. The table and its axis
+    never set anything aside (section 5, first row: "Its status never sets an alternative aside")."""
+    result = read_accepting(alternatives_of(names, met_table()), [], want=want)
+    table_alone = read_met(met_table(), want=want)
+    if "broken constant" in names:
+        assert result.status == "not_met"
+        broken = names.index("broken constant")
+        assert Reason("form_invalid", alternative=broken) in result.reasons
+    elif names == ("table",):
+        assert (result.status, result.value, result.table) == (
+            table_alone.status,
+            table_alone.value,
+            table_alone.table,
+        )
+        assert result.reasons == tuple(
+            dataclasses.replace(reason, alternative=0) for reason in table_alone.reasons
+        )
+    elif GIVES_UNDER[want] & set(names):
+        assert (result.status, result.reasons) == ("unknown", (Reason("no_pick"),))
+        entries = {entry.alternative: entry for entry in result.alternative_values or ()}
+        at = names.index("table")
+        expected = table_alone.value if want == "value" else viscosity_table()["table"]
+        assert json.loads(json.dumps(entries[at].entry_json()))["value"] == expected
+        assert result.table is None
+    else:
+        assert (result.status, result.reasons) == ("not_met", (Reason("want_mismatch"),))
+
+
+STEP_11_REASONS: dict[str, tuple[dict[str, JsonValue], dict[str, JsonValue]]] = {
+    "outside its range": ({}, {"temperature": {"value": 330.0, "unit": "K"}}),
+    "at an edge": (
+        {"x": [300.0, 310.15, 310.15, 320.0], "y": [1e-3, 8e-4, 7e-4, 6e-4], "edges": [310.15]},
+        {},
+    ),
+    "outside a narrower source_range": ({"source_range": [300.0, 305.0]}, {}),
+    "over an operating range": ({}, {"temperature": {"range": [309.15, 311.15], "unit": "K"}}),
+    "with no operating value": ({}, {"temperature": None}),
+}
+
+
+@pytest.mark.parametrize("want", ["value", "bounds"])
+@pytest.mark.parametrize("names", TABLE_AMONG_OTHERS, ids=" and ".join)
+@pytest.mark.parametrize("situation", STEP_11_REASONS)
+def test_a_table_alternative_whose_read_gives_a_reason_at_step_11_raises_wherever_it_stands(
+    situation: str, names: tuple[str, ...], want: str
+) -> None:
+    """Section 3, step 7 sets aside, keeps or refuses on a table alternative's reasons at step 11 (outside its
+    readable range, at an edge, over an operating range of its axis, with no operating value for it), rules a
+    later piece builds: the read raises, first or last beside each other form, whatever the others give, even
+    a broken constant's refusal, rather than give an outcome those rules could change."""
+    table, operating = STEP_11_REASONS[situation]
+    request, records = stored(
+        with_field("fluid.dynamic_viscosity", alternatives_of(names, met_table(**table)))
+    )
+    assert isinstance(request, dict)
+    request.update(copy.deepcopy(MET_REQUEST))
+    cast(dict[str, JsonValue], request["requirement"])["want"] = want
+    given = cast(dict[str, JsonValue], request["operating_conditions"])
+    for name, value in operating.items():
+        if value is None:
+            del given[name]
+            del cast(dict[str, JsonValue], cast(dict[str, JsonValue], request["requirement"])["conditions"])[
+                name
+            ]
+        else:
+            given[name] = value
+    with pytest.raises(NotImplementedError, match=STEP_11_NOT_YET):
+        read(request, records)
 
 
 @pytest.mark.parametrize(
     "names", [("table",), ("interval", "table"), ("table", "interval")], ids=" and ".join
 )
-def test_a_table_alternative_steps_8_and_9_pass_raises_under_a_nominal(names: tuple[str, ...]) -> None:
-    """A nominal applies at step 13, which an interval beside the table reaches and the table does not."""
-    with pytest.raises(NotImplementedError, match=TABLE_NOT_YET):
-        read_accepting(alternatives_of(names, viscosity_table()), [nominal()])
+def test_a_table_alternative_beside_an_interval_under_a_nominal(names: tuple[str, ...]) -> None:
+    """Section 3, step 7: "An interval counts as one `want: value` can give where a nominal the request
+    carries applies to the read", and the table gives its number: two that stay give `no_pick`, with no
+    nominal applied (section 6); the table alone is read as the field, the nominal applying to nothing."""
+    result = read_accepting(alternatives_of(names, met_table()), [nominal()])
+    if names == ("table",):
+        assert (result.status, result.applied, result.assumption) == ("met", (), None)
+        assert result.value == read_met(met_table()).value
+    else:
+        assert (result.status, result.reasons, result.applied) == ("unknown", (Reason("no_pick"),), ())
 
 
 @pytest.mark.parametrize(

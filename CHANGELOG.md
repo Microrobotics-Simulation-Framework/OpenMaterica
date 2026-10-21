@@ -44,6 +44,23 @@ every family entry goes in `families/CHANGELOG.md`.
   (`PR-322.x_empty_beside_an_edge_and_a_source_range`); a withheld table beside `points`, `withheld`
   (`PR-110.table_withheld_beside_points`); and one beside `point`, one slip from it, `form_invalid`
   (`PR-110.table_withheld_beside_a_slip_of_points`).
+- A table's steps 10 to 13 (S3b-2; `record_format.md` section 6, table item 3; `read_side_contract.md` sections
+  1, 2, 3 steps 10 to 13, 5 and 6). Step 10 gives the table's own axis an entry beside the field's conditions,
+  `met` where the operating value lies in the readable range and on no edge, `not_met` otherwise (no operating
+  value and an operating range included), with no reason of its own. Step 11 reads the readable range, `x`'s
+  range narrowed by `source_range`, through `core/evaluate.py`: a read exactly at an edge gives `at_edge`
+  wherever the edge lies, one outside the range `outside_range`, beside `at_edge` where the edge lies outside it,
+  and it makes the request's two checks that need the form, no operating value of the axis (`request_incomplete`,
+  a fault of the request) and an operating range of it (`want_mismatch` alone); each reason carries the axis, and
+  each ends the read. Under `want: value` a read in the range gives the table's number at the operating value,
+  and the result holds the table it is read from, as stored, in its new `table` member (**Schema**, below); under
+  another `want` the table is the entry's value as stored and `want_mismatch` stands. Step 11 also reports
+  whether an extrapolation would cover its `outside_range` (outside, at no edge and across none), for the
+  extrapolations' piece to complete. A table alternative read in its range stays, and one set aside by its
+  conditions never reaches step 11; one whose read gives a reason at step 11 raises `NotImplementedError` at step
+  7, whose rules for it are S4d's, and the reference model gives no verdict there. The 68 case files mapped to
+  S3b-2 run and pass: 1097 of 1508 case files pass and 35 are verified against the reference evaluator; 376 wait
+  for S3c (45), S4's later pieces (134) and the record checks, C2 (197).
 
 ### Changed
 - CI's per-commit job checks that each earlier commit of a pull request builds, type-checks, generates and
@@ -421,6 +438,15 @@ every family entry goes in `families/CHANGELOG.md`.
   every draw, so the rejection stopped that region too, and whether the control passed rested on the
   derandomised stream: main's code drew the region above its floor of 20, this change's 4 of 2,000 examples.
   No example count, size, draw, fault, mutant or check changed.
+- The reference model reads a table to the end as the read does, written from the text (S3b-2): its axis entry,
+  step 11's readable range and edges, evaluated by the reference evaluator's `exact` mode, the request's two
+  checks there, and the result's `table`. It agrees with every case file it decides, and gives no verdict on step
+  7 over a table alternative whose read gives a reason at step 11 (15 files of S4's later pieces, listed). Six
+  seeded faults break its rules (the axis entry at an edge, `outside_range` beside `at_edge`, `source_range`'s
+  narrowing, `want_mismatch` alone over a range, the axis on step 11's reasons, a table's unknown members), each
+  killed by a disagreement, `table_returned_whole` by one case file alone; S3b-2's case files move the counts of
+  fifteen other faults. The fuzz oracle of target 4 holds a table's axis entry and step 11's reasons to the text
+  (`field_oracle.table_steps_10_and_11`).
 
 ## [0.1.0.dev2] - 2026-10-20
 

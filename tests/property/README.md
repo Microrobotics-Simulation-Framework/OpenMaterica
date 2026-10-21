@@ -299,24 +299,22 @@ check's reader (the last bullet).
   (`record_format.md` section 6, table items 1, 2, 4 and 5; `read_side_contract.md` section 3), the S3 design's
   HP13 to HP16 (`test_table_form_properties.py`), over reads of a table steps 8 and 9 pass, drawn by
   `tables.py` on a field whose row allows one, over an axis drawn among the numeric conditions, beside a full
-  composition in the record (`table_form_strategies.py`). A table they pass raises `NotImplementedError`, since
-  steps 10 to 13 are S3b-2's: its outcome is "past step 9". HP13, in four parts drawing their faults first
-  among at most eight (the knots, the edges and a log-log table's signs, the tokens and the axis condition,
-  `source_range` and `points`, an empty `x` among them): one fault of a catalogue written from the text gives
-  exactly the reasons its rule gives, and a near miss the text allows (an edge at zero held as `-0` and `0`,
-  an axis condition with its `reason`, a `source_range` of one point that is no edge) gives none, a read that
-  raises being an outcome no rule gives; each base passes, checked after its fault, so that a reader that
-  refuses some bases is reported at the fault wherever an example draws it; and the fault changes nothing of
-  the composition's read, which sits in the density's section. HP14: a member added to a
-  table more than one slip from every member named there, `points` included, changes nothing, and one slip
-  from one, by each kind section 10 names, refuses (`form_invalid`). HP15: an `axis_unit` of each kind HP8
-  draws other than the registered one gives `unit_mismatch` with the axis as `condition`. HP16: the row's
-  label on a table is refused exactly where its axis is the condition the Label cell names. Each property
-  declares what it draws first as drawn, at most eight, so each is held to a draw floor of 50 or more at
-  `ci`. The
-  writer's table family (7), T1's table examples (`tests/spec_sync/test_t1.py`) and the reference model, which
-  reads a table through step 9 as the read does (its case files, and the oracle of fuzz target 4; HP12's
-  strategies draw no table until S3b-2), hold the same rules from three other sides.
+  composition in the record (`table_form_strategies.py`). A table they pass goes on to steps 10 to 13 (S3b-2):
+  its outcome is "past step 9", a read that gives no reason of a code step 8 or 9 gives. HP13, in four parts
+  drawing their faults first among at most eight (the knots, the edges and a log-log table's signs, the tokens
+  and the axis condition, `source_range` and `points`, an empty `x` among them): one fault of a catalogue written
+  from the text gives exactly the reasons its rule gives, and a near miss the text allows (an edge at zero held
+  as `-0` and `0`, an axis condition with its `reason`, a `source_range` of one point that is no edge) gives
+  none, a read that raises being an outcome no rule gives; each base passes, checked after its fault, so that a
+  reader that refuses some bases is reported at the fault wherever an example draws it; and the fault changes
+  nothing of the composition's read, which sits in the density's section. HP14: a member added to a table more
+  than one slip from every member named there, `points` included, changes nothing, and one slip from one, by each
+  kind section 10 names, refuses (`form_invalid`). HP15: an `axis_unit` of each kind HP8 draws other than the
+  registered one gives `unit_mismatch` with the axis as `condition`. HP16: the row's label on a table is refused
+  exactly where its axis is the condition the Label cell names. Each property declares what it draws first as
+  drawn, at most eight, so each is held to a draw floor of 50 or more at `ci`. The writer's table family (7),
+  T1's table examples (`tests/spec_sync/test_t1.py`) and the reference model, which reads a table to the end as
+  the read does (its case files, and the oracle of fuzz target 4), hold the same rules from three other sides.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset

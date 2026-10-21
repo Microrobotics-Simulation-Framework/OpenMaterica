@@ -29,7 +29,7 @@
   a unit other than the registered one past the second (2026-10-19), so the fuzzer has to change one.
 
 - In step 8, S3a's control for the fourth target: a table over temperature whose first knot lies below 250
-  is refused (`form_invalid`) where the text reads it, and the model with it, through step 9. Nothing raises:
+  is refused (`form_invalid`) where the text reads it, and the model with it, to the end. Nothing raises:
   only the model's answer tells it wrong. Of the 113 seed fields that hold a table over temperature, none
   starts below 250 (2026-10-20), so the fuzzer has to lower one's first knot, in a table no other fault makes
   `form_invalid`.
@@ -51,7 +51,7 @@ from typing import Protocol, TypeVar
 import pytest
 
 from materica.core import conditions, fields, jsonio, read
-from materica.core.conditions import ConditionsRead, ImpliedCondition
+from materica.core.conditions import AxisEntry, ConditionsRead, ImpliedCondition
 from materica.core.fields import RecordField
 from materica.core.identifiers import MaterialRef
 from materica.core.jsonio import JsonValue
@@ -98,6 +98,7 @@ def faulty_check_conditions(
     operating: Mapping[str, OperatingCondition],
     required: Mapping[str, RequirementCondition],
     implied: Sequence[ImpliedCondition] = (),
+    axis: AxisEntry | None = None,
 ) -> ConditionsRead:
     value = field.value if isinstance(field.value, dict) else {}
     held = value.get("conditions")
@@ -111,7 +112,7 @@ def faulty_check_conditions(
                 ends = shear_rate.get("range")
                 if isinstance(ends, list) and len(ends) == 2 and ends != [10.0, 1000.0]:
                     raise IndexError("the seeded fault in step 10")
-    return _check_conditions(field, operating, required, implied)
+    return _check_conditions(field, operating, required, implied, axis)
 
 
 _components = fields.components

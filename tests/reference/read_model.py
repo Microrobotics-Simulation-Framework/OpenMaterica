@@ -7,21 +7,21 @@ It never ships and imports nothing from `materica`, at any depth (`test_layering
 text's, checked against the generated vocabulary (`test_tables.py`), and each rule cites the text it comes
 from, as `file:line` and a short quote, which `test_citations.py` finds at that line.
 
-**What it decides.** Steps 0 to 13 for the forms constant, interval, composition and evidence, and steps 0 to
-9 for a table (S3a); implied conditions and nominals; step 7 over alternatives read with no pick and no
-overlay (S4a): the shape of `alternatives`, each alternative read alone and set aside, kept or refusing the
-field, and the outcome with its reasons and members; and the operations `list_records` and `content_hash`.
+**What it decides.** Steps 0 to 13 for the forms constant, table, interval, composition and evidence, a
+table's value from the reference evaluator's `exact` mode (`table_evaluator.py`); implied conditions and
+nominals; step 7 over alternatives read with no pick and no overlay (S4a): the shape of `alternatives`, each
+alternative read alone and set aside, kept or refusing the field, and the outcome with its reasons and
+members; and the operations `list_records` and `content_hash`.
 
 **What it does not.** Everything else gives `NoVerdict`, a distinct outcome a test counts and never reads as a
-pass: a table that steps 8 and 9 pass, whose steps 10 to 13 are S3b-2's, alone or as one alternative, a pick,
-an overlay, an extrapolation, a region target, and `want: fit` on a field holding a fit record.
+pass: a table alternative whose read gives a reason at step 11 (open point `table_alternatives_at_step_11`), a
+pick, an overlay, an extrapolation, a region target, and `want: fit` on a field holding a fit record.
 
 **Where the text is silent.** The model takes the maintainer's ruling where there is one, else the fail-closed
 choice. Each such point is listed once in `OPEN_POINTS`, and named where it is applied ("Open point: <name>").
 
 The model reads JSON as `strict_json.parse` does: every number a float. Its results are JSON values of that
-kind, so that a case compares them as it compares an implementation's result read back from its text.
-"""
+kind, so that a case compares them as it compares an implementation's result read back from its text."""
 
 import itertools
 import json
@@ -33,6 +33,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Final, Literal, TypeAlias, TypeGuard
 
+from tests.reference import table_evaluator
 from tests.reference.strict_json import JsonObject, JsonValue, NotStrictJson, content_hash, parse
 
 OPEN_POINTS: Final[Mapping[str, str]] = {
@@ -46,10 +47,17 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "over alternatives the model decides step 7 for a read with no pick and no overlay (S4a): the shape "
         "of `alternatives`, each alternative of a form it reads read alone by steps 8 to 13, set aside, "
         "kept or refusing the field, and the outcome, its reasons and members. A pick or an overlay in the "
-        "request gives no verdict at step 0, and so does a table alternative that steps 8 and 9 pass, "
-        "wherever it stands among the others, since every alternative is read before the outcome is "
-        "decided: step 11's set-aside, `at_edge` and `request_incomplete` are a table's, which the model "
-        "does not read yet; one that steps 8 or 9 refuse refuses the field"
+        "request gives no verdict at step 0; a table alternative is read as a field, and one that steps 8 "
+        "or 9 refuse refuses the field, one step 10 sets aside is set aside, and one read to step 13 stays "
+        "or refuses as any form's"
+    ),
+    "table_alternatives_at_step_11": (
+        "a table alternative whose read gives a reason at step 11 (`outside_range`, `at_edge`, "
+        "`want_mismatch` over an operating range of its axis, or `request_incomplete` with no operating "
+        "value for it) gives no verdict, wherever it stands among the others, since every alternative is "
+        "read before the outcome is decided: the text decides those arms (`read_side_contract.md` section 3, "
+        "step 7: set aside, kept for an extrapolation, kept over an operating range, refusing at an edge or "
+        "for the request's fault), and a later piece (S4d) builds them, as the read raises there"
     ),
     "evidence_entry_provenance": (
         "an evidence entry's `provenance` is returned holding, below the provenance table's own members, "
@@ -2310,7 +2318,7 @@ class ConditionsChecked:
 
 
 def check_against_request(
-    field_value: JsonObject, specimen: JsonObject, request: Request
+    field_value: JsonObject, specimen: JsonObject, request: Request, axis: "TableAxis | None" = None
 ) -> ConditionsChecked:
     reasons = Reasons()
     held = field_value["conditions"]
@@ -2333,7 +2341,7 @@ def check_against_request(
     # declarations.md:200-201 "it fills only an unstated one, which is a condition the record holds as"
     applied = {name: value for name, value in supplied.items() if unstated_or_absent(held.get(name))}
     entries: list[JsonValue] = [
-        condition_entry(name, held, applied, request, reasons)
+        condition_entry(name, held, applied, request, reasons, axis)
         for name in conditions_checked(held, applied, request)
     ]
     return ConditionsChecked(reasons, entries)
@@ -2364,7 +2372,12 @@ def token_held(name: str, held: JsonObject, applied: Mapping[str, JsonObject]) -
 
 
 def condition_entry(
-    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+    name: str,
+    held: JsonObject,
+    applied: Mapping[str, JsonObject],
+    request: Request,
+    reasons: Reasons,
+    axis: "TableAxis | None" = None,
 ) -> JsonObject:
     """One entry of the result's `conditions`, its reason put in `reasons`: read_side_contract.md:165-166 "An
     entry's `record` is the record's entry, or the value an implied condition supplies with basis
@@ -2398,6 +2411,10 @@ def condition_entry(
     else:
         condition = held[name]
         assert isinstance(condition, dict)
+        if axis is not None and name == axis.name and condition.get("status") == "not_applicable":
+            # read_side_contract.md:461 "| `{"status": "not_applicable"}`, on the form's own axis | anything
+            # |" ... "Step 10 gives no reason for it and does not end the read on it"
+            return give(axis.status, record=status_returned(condition))
         if "status" in condition:
             return give("unknown", "condition_unstated", status_returned(condition))
         stated, record = condition, condition_returned(condition)
@@ -2630,6 +2647,10 @@ def form_member_returned(form: str, member: JsonValue) -> JsonValue:
         return returned
     if form == "evidence" and isinstance(member, list):
         return [evidence_entry_returned(entry) for entry in member if isinstance(entry, dict)]
+    if form == "table" and isinstance(member, dict):
+        # read_side_contract.md:158-159 "(statistics, bounds, components, a table)"; read_side_contract.md:160
+        # "A member the reader does not know is left out"
+        return known_members(member, TABLE_MEMBERS)
     return copied(member)
 
 
@@ -2752,6 +2773,118 @@ def evidence_entry_returned(entry: JsonObject) -> JsonValue:
     return returned
 
 
+# A table's steps 10 and 11
+
+
+@dataclass(frozen=True)
+class TableAxis:
+    """A table's axis and the status of its entry in `conditions` (step 10)."""
+
+    name: str
+    status: Status
+
+
+def table_numbers(table: JsonObject, name: str) -> list[float]:
+    found = numbers_of(table.get(name))
+    assert found is not None, f"step 8 passed a table whose {name} is not a list of numbers"
+    return found
+
+
+def readable_range(table: JsonObject) -> tuple[float, float]:
+    """record_format.md:406-407 "from `x[0]`, or `source_range[0]` where that is greater, to `x[-1]`, or
+    `source_range[1]` where that is smaller, inclusive"."""
+    x = table_numbers(table, "x")
+    low, high = x[0], x[-1]
+    if "source_range" in table:
+        bounds = table_numbers(table, "source_range")
+        low, high = max(low, bounds[0]), min(high, bounds[1])
+    return low, high
+
+
+def at_an_edge(table: JsonObject, point: float) -> bool:
+    """record_format.md:407-409 "An operating value is compared with these ends and with the edges by value
+    and exactly" ... "so `-0` lies at an end or an edge at `0`": as Python compares two doubles."""
+    return any(edge == point for edge in table_numbers(table, "edges"))
+
+
+def inside(table: JsonObject, point: float) -> bool:
+    low, high = readable_range(table)
+    return low <= point <= high
+
+
+def table_axis(field_value: JsonObject, request: Request) -> TableAxis:
+    """The table's axis entry: read_side_contract.md:461 "the entry is `met` when the operating value lies in
+    the form's range and on no declared edge" ... "and otherwise `not_met`, with no operating value or over an
+    operating range included"."""
+    table = field_value["table"]
+    assert isinstance(table, dict)
+    name = table["axis"]
+    assert isinstance(name, str)
+    operating = request.operating.get(name)
+    point = operating.get("value") if operating is not None else None
+    met = number(point) and inside(table, point) and not at_an_edge(table, point)
+    return TableAxis(name, "met" if met else "not_met")
+
+
+def read_the_table(read: "FieldRead", table: JsonObject, request: Request) -> float | None:
+    """Step 11 of a table (read_side_contract.md:347-348 "Evaluate the form at the operating conditions,
+    within its range"): its reasons put in `read`, which ends there where one is `not_met`; the value at the
+    operating value where the read goes on. Each reason carries the axis, read_side_contract.md:139 "A reason
+    carries `condition` exactly when it concerns one condition or a form's axis"."""
+    axis = table["axis"]
+    assert isinstance(axis, str)
+    operating = request.operating.get(axis)
+    if operating is None:
+        # read_side_contract.md:99-100 "a table or power law read with no operating value for its axis is
+        # refused with `request_incomplete`"; read_side_contract.md:111 "This fault, like step 11's
+        # `request_incomplete`, is the request's"
+        read.by_request.add("request_incomplete", axis)
+        read.ended_at = 11
+        return None
+    if "range" in operating:
+        # read_side_contract.md:100-102 "and one read over an operating range of its axis gives
+        # `want_mismatch`" ... "and no other reason of that step, since no point is read"
+        read.own.add("want_mismatch", axis)
+        read.ended_at = 11
+        return None
+    point = operating["value"]
+    assert number(point)
+    # record_format.md:409 "A read exactly at an edge is refused (the value is two-sided), wherever the edge
+    # lies"; read_side_contract.md:347-348 "`at_edge` for a table read exactly at an edge"
+    if at_an_edge(table, point):
+        read.own.add("at_edge", axis)
+    # read_side_contract.md:498-500 "A **table** is read at the operating value of its axis, which must lie
+    # within its readable range" ... "the tolerance never widens a table" ... "Outside the range, the result
+    # is `not_met` (`outside_range`)"; record_format.md:410-411 "Where the edge lies outside the readable
+    # range" ... "`outside_range` stands beside `at_edge`"
+    if not inside(table, point):
+        read.own.add("outside_range", axis)
+    if read.own.end_the_read():
+        # read_side_contract.md:178 "A step that gives `not_met` ends the read, with the reasons found so far"
+        read.ended_at = 11
+        return None
+    # record_format.md:413-416 "the interval used is the one whose two knots bracket the read, strictly where
+    # an edge is concerned" ... "a knot outside `source_range` is used where it brackets a read inside the
+    # readable range": the reference evaluator's exact value, rounded once to a double, a knot's `-0` kept
+    scheme = table["scheme"]
+    assert scheme in TABLE_SCHEMES
+    bounds = table_numbers(table, "source_range") if "source_range" in table else None
+    evaluated = table_evaluator.evaluate(
+        table_evaluator.Table(
+            x=tuple(table_numbers(table, "x")),
+            y=tuple(table_numbers(table, "y")),
+            scheme="linear" if scheme == "linear" else "loglog",
+            edges=tuple(table_numbers(table, "edges")),
+            source_range=None if bounds is None else (bounds[0], bounds[1]),
+        ),
+        point,
+        "exact",
+    )
+    assert evaluated.in_range, evaluated
+    assert evaluated.value is not None, evaluated
+    return float(evaluated.value)
+
+
 # Steps 8 to 13 of one value field
 
 
@@ -2766,7 +2899,8 @@ class FieldRead:
     form: str | None = None
     conditions: list[JsonValue] | None = None
     labels: list[str] = field(default_factory=list[str])
-    # what a result returns from the field: `unit`, `specimen`, `provenance`, `statistics` and `value` or none
+    # what a result returns from the field: `unit`, `specimen`, `provenance`, `statistics` and `value` or
+    # none, and `table` beside a value read from a table
     members: JsonObject = field(default_factory=dict[str, JsonValue])
     stored: JsonValue = None  # the form's member as stored, for an `alternative_values` entry
 
@@ -2796,10 +2930,9 @@ def read_value_field(
     if read.own.end_the_read():
         read.ended_at = 9
         return read
-    if read.form == "table":
-        raise _Undecided("a table's steps 10 to 13 are S3b-2's")
     specimen = merged_specimen(section, field_value)
-    checked = check_against_request(field_value, specimen, request)
+    axis = table_axis(field_value, request) if read.form == "table" else None
+    checked = check_against_request(field_value, specimen, request, axis)
     if checked.entries is None:
         # read_side_contract.md:110-111 "This fault, like step 11's `request_incomplete`, is the request's"
         read.by_request.extend(checked.reasons)
@@ -2813,6 +2946,13 @@ def read_value_field(
         return read
     # read_side_contract.md:497-498 "A **constant's** range is its conditions: once they are met, it is read;
     # step 11 adds nothing."
+    point = None
+    if read.form == "table":
+        table = field_value["table"]
+        assert isinstance(table, dict)
+        point = read_the_table(read, table, request)
+        if read.ended_at is not None:
+            return read
     provenance = field_value["provenance"]
     assert isinstance(provenance, dict)
     # read_side_contract.md:351 "Give `unknown` for a value stated without origin (`stated_without_origin`)"
@@ -2826,8 +2966,9 @@ def read_value_field(
         "provenance": provenance_returned(provenance),
     }
     if read.form != "evidence":
+        # uncertainty.md:61-62 "A block on a table or a power law applies to every value the form gives"
         read.members["statistics"] = block_returned(field_value["statistics"])
-    shape_by_want(read, field_value, request, nominal)
+    shape_by_want(read, field_value, request, nominal, point)
     return read
 
 
@@ -2847,11 +2988,19 @@ def step_12_labels(field_value: JsonObject, provenance: JsonObject) -> list[str]
     return labels
 
 
-def shape_by_want(read: FieldRead, field_value: JsonObject, request: Request, nominal: float | None) -> None:
-    """Step 13 (read_side_contract.md section 6)."""
+def shape_by_want(
+    read: FieldRead, field_value: JsonObject, request: Request, nominal: float | None, point: float | None
+) -> None:
+    """Step 13 (read_side_contract.md section 6), `point` a table's value at the operating value."""
     assert read.form is not None
     if request.want == "fit" and "fit" in field_value:
         raise _Undecided("`want: fit` on a field holding a fit record (the fits and reference data suite)")
+    if read.form == "table" and request.want == "value":
+        # read_side_contract.md:516 "| `value` | the number at the operating conditions";
+        # read_side_contract.md:130 "where the value is read from a table: that table as stored (item 5)"
+        read.members["value"] = point
+        read.members["table"] = read.stored
+        return
     if read.form in GIVES.get(request.want, ()):
         read.members["value"] = read.stored
         return
@@ -3050,8 +3199,9 @@ def read_alternatives(
         assert one.conditions is not None
         # read_side_contract.md:122 "`value` is its value as `want` shapes it. Where `want` cannot give its
         # form" ... "the entry holds its form's member as stored instead, with no nominal or extrapolation
-        # applied": for the forms the model decides, the two are one.
-        entry: JsonObject = {"alternative": float(index), "value": one.stored, "conditions": one.conditions}
+        # applied": a table's number where `want` gives the form, otherwise the member as stored.
+        value = one.members["value"] if one.form in GIVES.get(request.want, ()) else one.stored
+        entry: JsonObject = {"alternative": float(index), "value": value, "conditions": one.conditions}
         # read_side_contract.md:123 "each `alternative_values` entry holds its own alternative's unit, as
         # stored"
         entry.update(
@@ -3074,6 +3224,10 @@ Fate: TypeAlias = Literal["set_aside", "stays", "refuses"]
 def fate_of(read: FieldRead) -> Fate:
     """What step 7 does with one alternative read with no pick: read_side_contract.md:249 "Each alternative is
     set aside, stays, or refuses the field"."""
+    # Open point: table_alternatives_at_step_11. A table alternative whose read gives a step-11 reason, its
+    # axis's `request_incomplete` included.
+    if read.ended_at == 11:
+        raise _Undecided("a table alternative's step-11 reason in step 7 is S4d's")
     # read_side_contract.md:264-265 "So does a fault of the request (section 1)"
     if read.by_request:
         return "refuses"

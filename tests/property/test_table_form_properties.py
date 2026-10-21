@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """The table form through steps 8 and 9 (`record_format.md` section 6, table items 1, 2, 4 and 5;
 `read_side_contract.md` section 3, steps 8 and 9): the S3 design's HP13 to HP16, over reads that
-`table_form_strategies.py` draws. A read of a table that steps 8 and 9 pass raises `NotImplementedError`,
-since steps 10 to 13 are S3b-2's: its outcome is then "past step 9". The mutants they kill are in
-`test_table_form_mutants.py`.
+`table_form_strategies.py` draws. A read of a table that steps 8 and 9 pass goes on to steps 10 to 13: its
+outcome is then "past step 9", whatever they give. The mutants they kill are in `test_table_form_mutants.py`.
 
 - HP13: one fault of a catalogue written from the text gives exactly the reasons its rule gives, and a near
   miss the text allows gives none; the base passes steps 8 and 9; and the fault changes nothing of the read of

@@ -76,6 +76,10 @@ _sources_read = model.sources_read
 _status_object = model.status_object
 _unit_returned = model.unit_returned
 _within_tolerance = model.within_tolerance
+_table_axis = model.table_axis
+_read_the_table = model.read_the_table
+_readable_range = model.readable_range
+_form_member_returned = model.form_member_returned
 
 
 class EveryString:
@@ -110,7 +114,12 @@ def operating_for_every_tolerance(
 
 
 def unchecked_without_an_operating_condition(
-    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+    name: str,
+    held: JsonObject,
+    applied: Mapping[str, JsonObject],
+    request: Request,
+    reasons: Reasons,
+    axis: model.TableAxis | None = None,
 ) -> JsonObject:
     """The entry of a condition whose tolerance has no operating condition, a request the fault above lets
     through, read as one given no tolerance: there is nothing to compare it with, and the request holds no
@@ -118,7 +127,7 @@ def unchecked_without_an_operating_condition(
     if name in request.tolerances and name not in request.operating:
         tolerances = {other: value for other, value in request.tolerances.items() if other != name}
         request = dataclasses.replace(request, tolerances=tolerances)
-    return _condition_entry(name, held, applied, request, reasons)
+    return _condition_entry(name, held, applied, request, reasons, axis)
 
 
 def negative_zero_tolerance_refused(
@@ -704,6 +713,23 @@ def nulls_read_as_absent(
     )
 
 
+def field_read_without_nulls(
+    field_value: JsonValue,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    *,
+    record_fault: bool,
+    nominal: float | None,
+) -> FieldRead:
+    """Steps 8 to 13 of a field whose `null` members the fault above reads as absent, read so at every step:
+    a table's `source_range: null`, which step 8 then passes as absent, is absent at steps 10 and 11 too, so
+    that the faulted model answers where it would index the `null`."""
+    return _read_value_field(
+        without_nulls(field_value), section, request, claims, record_fault=record_fault, nominal=nominal
+    )
+
+
 def section_specimen_unchecked(
     field_value: JsonValue,
     section: JsonObject,
@@ -815,7 +841,12 @@ def comparable(condition: JsonObject) -> bool:
 
 
 def entry_of_a_readable_condition(
-    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+    name: str,
+    held: JsonObject,
+    applied: Mapping[str, JsonObject],
+    request: Request,
+    reasons: Reasons,
+    axis: model.TableAxis | None = None,
 ) -> JsonObject:
     condition = held.get(name)
     if name in held and (
@@ -823,7 +854,7 @@ def entry_of_a_readable_condition(
         or ("status" not in condition and name in request.tolerances and not comparable(condition))
     ):
         held = {other: value for other, value in held.items() if other != name}
-    return _condition_entry(name, held, applied, request, reasons)
+    return _condition_entry(name, held, applied, request, reasons, axis)
 
 
 def case_folded(stored: JsonValue, registered: str | model.StatusUnit) -> bool:
@@ -855,11 +886,16 @@ def holds_no_other_kind(value: JsonObject, members: tuple[str, ...]) -> bool:
 
 
 def entry_without_the_other_kind(
-    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+    name: str,
+    held: JsonObject,
+    applied: Mapping[str, JsonObject],
+    request: Request,
+    reasons: Reasons,
+    axis: model.TableAxis | None = None,
 ) -> JsonObject:
     """A condition entry whose `record` leaves out the members of the other kind's shape, as members the
     reader does not know at that place."""
-    entry = _condition_entry(name, held, applied, request, reasons)
+    entry = _condition_entry(name, held, applied, request, reasons, axis)
     record = entry.get("record")
     if isinstance(record, dict) and name in model.CONDITIONS and "status" not in record:
         other = ("token",) if model.CONDITIONS[name].shape == "numeric" else model.NUMERIC_CONDITION_ONLY
@@ -946,10 +982,15 @@ def plus_minus_ignored(stated: JsonObject, operating: JsonObject, tolerance: flo
 
 
 def unchecked_read_as_met(
-    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+    name: str,
+    held: JsonObject,
+    applied: Mapping[str, JsonObject],
+    request: Request,
+    reasons: Reasons,
+    axis: model.TableAxis | None = None,
 ) -> JsonObject:
     found = Reasons()
-    entry = _condition_entry(name, held, applied, request, found)
+    entry = _condition_entry(name, held, applied, request, found, axis)
     if Reason("condition_unchecked", name) in set(found):
         entry["status"] = "met"
     else:
@@ -958,9 +999,14 @@ def unchecked_read_as_met(
 
 
 def operating_omitted(
-    name: str, held: JsonObject, applied: Mapping[str, JsonObject], request: Request, reasons: Reasons
+    name: str,
+    held: JsonObject,
+    applied: Mapping[str, JsonObject],
+    request: Request,
+    reasons: Reasons,
+    axis: model.TableAxis | None = None,
 ) -> JsonObject:
-    entry = _condition_entry(name, held, applied, request, reasons)
+    entry = _condition_entry(name, held, applied, request, reasons, axis)
     entry.pop("operating", None)
     return entry
 
@@ -1002,9 +1048,9 @@ def no_labels(field_value: JsonObject, provenance: JsonObject) -> list[str]:
 
 
 def nominal_outside_supplies_the_value(
-    read: FieldRead, field_value: JsonObject, request: Request, nominal: float | None
+    read: FieldRead, field_value: JsonObject, request: Request, nominal: float | None, point: float | None
 ) -> None:
-    _shape_by_want(read, field_value, request, nominal)
+    _shape_by_want(read, field_value, request, nominal, point)
     if nominal is not None and Reason("nominal_invalid") in set(read.by_want):
         read.by_want = Reasons([Reason("want_mismatch")])
         read.members["value"] = nominal
@@ -1014,6 +1060,27 @@ def nominal_outside_supplies_the_value(
 def best(statuses: Iterable[Status]) -> Status:
     found = list(statuses)
     return min(found, key=model.STATUSES_BEST_FIRST.index) if found else "met"
+
+
+def table_read_ended_where_it_has_no_value(
+    read: FieldRead, table: JsonObject, request: Request
+) -> float | None:
+    """Step 11 of a table under the fault above, which reads on past a `not_met` reason beside a better one:
+    a read at an edge or outside the readable range, where the table has no value, ends at step 11 all the
+    same, with the reasons step 11 gives, so that the faulted model answers where it would evaluate the table
+    there; every other read as the model reads it."""
+    axis = table["axis"]
+    assert isinstance(axis, str)
+    operating = request.operating.get(axis)
+    point = operating.get("value") if operating is not None else None
+    if not model.number(point) or (not model.at_an_edge(table, point) and model.inside(table, point)):
+        return _read_the_table(read, table, request)
+    if model.at_an_edge(table, point):
+        read.own.add("at_edge", axis)
+    if not model.inside(table, point):
+        read.own.add("outside_range", axis)
+    read.ended_at = 11
+    return None
 
 
 def value_whatever_the_status(status: Status, members: JsonObject) -> bool:
@@ -1133,6 +1200,75 @@ def shared(value: JsonValue) -> JsonValue:
 NO_REQUIRED_WITH = {
     name: dataclasses.replace(row, required_with=()) for name, row in model.CONDITIONS.items()
 }
+
+# S3b-2's faults of a table's steps 10 to 13, each breaking one rule of the model's.
+
+
+def edge_unseen_by_the_axis_entry(field_value: JsonObject, request: Request) -> model.TableAxis:
+    """The axis entry `met` at an edge inside the readable range, as if the edge were none."""
+    found = _table_axis(field_value, request)
+    table = field_value["table"]
+    assert isinstance(table, dict)
+    operating = request.operating.get(found.name)
+    point = operating.get("value") if operating is not None else None
+    if model.number(point) and model.inside(table, point) and model.at_an_edge(table, point):
+        return model.TableAxis(found.name, "met")
+    return found
+
+
+def outside_range_dropped_at_an_edge(read: FieldRead, table: JsonObject, request: Request) -> float | None:
+    """At an edge outside the readable range, `at_edge` alone."""
+    point = _read_the_table(read, table, request)
+    codes = {reason.code for reason in read.own}
+    if {"at_edge", "outside_range"} <= codes:
+        read.own = Reasons(reason for reason in read.own if reason.code != "outside_range")
+    return point
+
+
+def without_source_range(table: JsonObject) -> JsonObject:
+    return {name: member for name, member in table.items() if name != "source_range"}
+
+
+def source_range_never_narrows_the_read(read: FieldRead, table: JsonObject, request: Request) -> float | None:
+    """The table read at step 11 as if it held no `source_range`."""
+    return _read_the_table(read, without_source_range(table), request)
+
+
+def source_range_never_narrows_the_axis(field_value: JsonObject, request: Request) -> model.TableAxis:
+    table = field_value["table"]
+    assert isinstance(table, dict)
+    return _table_axis({**field_value, "table": without_source_range(table)}, request)
+
+
+def outside_range_beside_a_range(read: FieldRead, table: JsonObject, request: Request) -> float | None:
+    """Over an operating range of the axis that leaves the readable range, `outside_range` beside
+    `want_mismatch`."""
+    point = _read_the_table(read, table, request)
+    axis = table["axis"]
+    assert isinstance(axis, str)
+    operating = request.operating.get(axis)
+    given = operating.get("range") if operating is not None else None
+    if isinstance(given, list) and len(given) == 2 and model.number(given[0]) and model.number(given[1]):
+        low, high = _readable_range(table)
+        if given[0] < low or given[1] > high:
+            read.own.add("outside_range", axis)
+    return point
+
+
+def step_11_reasons_without_the_axis(read: FieldRead, table: JsonObject, request: Request) -> float | None:
+    point = _read_the_table(read, table, request)
+    read.own = Reasons(
+        Reason(reason.code) if reason.code in ("outside_range", "at_edge", "want_mismatch") else reason
+        for reason in read.own
+    )
+    read.by_request = Reasons(Reason(reason.code) for reason in read.by_request)
+    return point
+
+
+def table_returned_whole(form: str, member: JsonValue) -> JsonValue:
+    """A table returned with every member it holds, those the reader does not know among them."""
+    return model.copied(member) if form == "table" else _form_member_returned(form, member)
+
 
 MUTANTS: Mapping[str, Mutant] = {
     # Step 0
@@ -1389,7 +1525,7 @@ MUTANTS: Mapping[str, Mutant] = {
     "null_read_as_absent": Mutant(
         "`null` in a member step 8 checks read as the member absent",
         "record_format.md:47-50",
-        {"check_value_field": nulls_read_as_absent},
+        {"check_value_field": nulls_read_as_absent, "read_value_field": field_read_without_nulls},
     ),
     "statistics_unchecked": Mutant(
         "a statistics block not checked", "read_side_contract.md:305", {"check_block": block_unchecked}
@@ -1593,7 +1729,9 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     # The status law and the result's members
     "best_status": Mutant(
-        "the status the best of the reasons, not the worst", "read_side_contract.md:134", {"worst": best}
+        "the status the best of the reasons, not the worst",
+        "read_side_contract.md:134",
+        {"worst": best, "read_the_table": table_read_ended_where_it_has_no_value},
     ),
     "value_beside_not_met": Mutant(
         "a value returned beside `not_met` without an assumption, as beside `condition_outside`",
@@ -1657,5 +1795,40 @@ MUTANTS: Mapping[str, Mutant] = {
         "under `no_pick`, every entry's `unit` the last remaining alternative's",
         "read_side_contract.md:123",
         {"read_alternatives": unit_of_the_last_remaining_alternative},
+    ),
+    # S3b-2's: a table's steps 10 to 13, measured 2026-10-21 at S3b-2's head.
+    "edge_unseen_by_the_axis_entry": Mutant(
+        "the axis entry `met` at an edge inside the readable range",
+        "read_side_contract.md:461",
+        {"table_axis": edge_unseen_by_the_axis_entry},
+    ),
+    "outside_range_dropped_at_an_edge": Mutant(
+        "at an edge outside the readable range, `at_edge` alone",
+        "record_format.md:410-411",
+        {"read_the_table": outside_range_dropped_at_an_edge},
+    ),
+    "source_range_never_narrows": Mutant(
+        "the readable range `x`'s, whatever `source_range` holds",
+        "record_format.md:406-407",
+        {
+            "read_the_table": source_range_never_narrows_the_read,
+            "table_axis": source_range_never_narrows_the_axis,
+        },
+    ),
+    "outside_range_beside_a_range": Mutant(
+        "over an operating range of the axis that leaves the readable range, `outside_range` beside "
+        "`want_mismatch`",
+        "read_side_contract.md:100-102",
+        {"read_the_table": outside_range_beside_a_range},
+    ),
+    "step_11_reasons_without_the_axis": Mutant(
+        "step 11's reasons without the axis as their `condition`",
+        "read_side_contract.md:139",
+        {"read_the_table": step_11_reasons_without_the_axis},
+    ),
+    "table_returned_whole": Mutant(
+        "a table returned as stored with the members the reader does not know",
+        "read_side_contract.md:160",
+        {"form_member_returned": table_returned_whole},
     ),
 }

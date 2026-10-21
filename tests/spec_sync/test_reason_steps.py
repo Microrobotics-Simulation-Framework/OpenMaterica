@@ -195,6 +195,7 @@ STEP_OF: dict[tuple[str, str], int | None] = {
     ("conditions.py", "_entry"): 10,
     ("conditions.py", "_compared"): 10,
     ("conditions.py", "_disagreeing"): 10,
+    ("read.py", "form_range"): 11,
     ("read.py", "_origin"): 12,
     ("read.py", "_by_want"): 13,
     ("read.py", "_nominal_read"): 13,
@@ -319,17 +320,12 @@ def test_each_reason_a_read_returns_was_constructed_at_a_step_that_gives_it(case
 
 
 # The codes the table gives at a step built in part, which the code of a step not built yet gives: at step 7,
-# a pick's (S4); at step 8, the refusal of a table that holds `points` (S3); at step 11, a table's and a power
-# law's range and the request's two faults there (S3), a constant's range being its conditions; at step 12, a
-# fill-in's (S4).
+# a pick's (S4); at step 11, a power law's unstated range (no 0.1.0 field takes a power law), a table's range
+# and the request's two faults there being built (S3b-2); at step 12, a fill-in's (S4). No read of a case file
+# returns one, so an entry left here once its code is built fails.
 NOT_BUILT = {
     ("pick_invalid", 7),
-    ("points_unsupported", 8),
-    ("outside_range", 11),
-    ("at_edge", 11),
     ("range_unstated", 11),
-    ("want_mismatch", 11),
-    ("request_incomplete", 11),
     ("fill_in_version_mismatch", 12),
 }
 BUILT = (0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13)
@@ -350,6 +346,15 @@ def test_the_reads_traced_reach_every_code_the_steps_built_give() -> None:
     assert allowed - NOT_BUILT - NO_CASE_YET - seen == set()
     assert NOT_BUILT | NO_CASE_YET <= allowed
     assert NO_CASE_YET.isdisjoint(seen)
+    assert NOT_BUILT.isdisjoint(seen)
+
+
+def test_a_code_built_but_listed_as_not_built_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The check above can fail on an entry left in `NOT_BUILT` once its code is built: step 11's
+    `outside_range`, which S3b-2 built, listed again."""
+    monkeypatch.setattr(sys.modules[__name__], "NOT_BUILT", NOT_BUILT | {("outside_range", 11)})
+    with pytest.raises(AssertionError):
+        test_the_reads_traced_reach_every_code_the_steps_built_give()
 
 
 def without(table: Table, code: str, step: int) -> Table:

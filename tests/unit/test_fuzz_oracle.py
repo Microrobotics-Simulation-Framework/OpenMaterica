@@ -157,7 +157,8 @@ def test_the_oracle_sees_a_derived_value_s_derivation_step_8_misses(monkeypatch:
         check_no_refusal_missing(FIELD, field, result_of(field))
 
 
-# A table, which S3a reads through step 9: T1's third relation, and step 9 with its `axis_unit`.
+# A table, read to the end since S3b-2: T1's third relation, step 9 with its `axis_unit`, and steps 10 and 11
+# with its axis.
 
 
 def a_table(**table: JsonValue) -> tuple[str, dict[str, JsonValue]]:
@@ -204,7 +205,8 @@ def _a_unit_refused(field: fields.RecordField) -> list[Reason]:
 
 def test_the_oracle_holds_a_tables_step_9_to_its_text(monkeypatch: pytest.MonkeyPatch) -> None:
     """Quiet on a table steps 8 and 9 pass and on one whose `axis_unit` step 9 refuses; failing on a step 9
-    that misses the `axis_unit`, and on a table answered past step 9, before step 10 is built for it."""
+    that misses the `axis_unit`, and on one that refuses a unit it should pass, which the text's step 10 does
+    not give."""
     name, passing = a_table()
     _, other_unit = a_table(axis_unit="Cel")
     for field in (passing, other_unit):
@@ -214,8 +216,53 @@ def test_the_oracle_holds_a_tables_step_9_to_its_text(monkeypatch: pytest.Monkey
         with pytest.raises(AssertionError, match="step 9 gave"):
             check_steps_9_and_10(name, other_unit, {}, {}, table_read(name, other_unit))
     monkeypatch.setattr(read_module, "unit_problems", _a_unit_refused)
-    with pytest.raises(AssertionError, match="a table steps 8 and 9 pass gave"):
+    with pytest.raises(AssertionError, match="step 10 gave"):
         check_steps_9_and_10(name, passing, {}, {}, table_read(name, passing))
+
+
+def table_read_at(name: str, field: dict[str, JsonValue], at: dict[str, JsonObject]) -> JsonValue:
+    """`field` read with `at` as its operating conditions."""
+    record = record_of(field, name)
+    record["content_hash"] = content_hash(record)
+    store = RecordStore()
+    store.add("record", json.dumps(record).encode())
+    request = request_for(record, name)
+    request["operating_conditions"] = dict(at)
+    try:
+        written: JsonValue = json.loads(json.dumps(read(request, store).to_json()))
+    except NotImplementedError:
+        return "not yet"
+    return written
+
+
+def _no_edge_refused(table: JsonObject, request: read_module.ReadRequest) -> read_module.FormRange:
+    found = FORM_RANGE(table, request)
+    kept = tuple(reason for reason in found.reasons if reason.code != "at_edge")
+    return read_module.FormRange(kept) if kept else read_module.FormRange(value=0.0)
+
+
+FORM_RANGE = read_module.form_range
+
+
+def test_the_oracle_holds_a_tables_step_11_to_its_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Quiet on a table read at an edge, at one outside a narrowed range, outside the range, over a range of
+    its axis and with no operating value; failing on a step 11 that refuses no edge."""
+    edged: JsonObject = {"x": [300.0, 310.0, 310.0, 320.0], "y": [1.0, 2.0, 3.0, 4.0], "edges": [310.0]}
+    name, field = a_table(**edged)
+    _, narrowed = a_table(**edged, source_range=[311.0, 320.0])
+    places: list[tuple[dict[str, JsonValue], dict[str, JsonObject]]] = [
+        (field, {"temperature": {"value": 310.0, "unit": "K"}}),
+        (narrowed, {"temperature": {"value": 310.0, "unit": "K"}}),
+        (field, {"temperature": {"value": 330.0, "unit": "K"}}),
+        (field, {"temperature": {"range": [305.0, 315.0], "unit": "K"}}),
+        (field, {}),
+    ]
+    for table_field, at in places:
+        check_steps_9_and_10(name, table_field, at, {}, table_read_at(name, table_field, at))
+    monkeypatch.setattr(read_module, "form_range", _no_edge_refused)
+    at_the_edge = places[0][1]
+    with pytest.raises(AssertionError, match="step"):
+        check_steps_9_and_10(name, field, at_the_edge, {}, table_read_at(name, field, at_the_edge))
 
 
 # Steps 9 and 10: units by code point, and conditions by HP7's oracle, as the target reads a field.
@@ -419,8 +466,7 @@ def test_the_model_oracle_sees_step_7_s_seeded_fault(monkeypatch: pytest.MonkeyP
 
 def test_the_model_oracle_sees_the_table_s_seeded_fault(monkeypatch: pytest.MonkeyPatch) -> None:
     """S3a's control fault (`tests/fuzz/seeded_fault.py`, `faulty_points`): a table over temperature whose
-    first knot lies below 250 refused at step 8, which the text and the model read through step 9, leaving it
-    to steps 10 to 13. The read gives an answer where the model's is "not yet"."""
+    first knot lies below 250 refused at step 8, which the text and the model read to the end."""
     name, field = a_table(x=[200.0, 303.15, 313.15, 313.15, 323.15])
     sources, request = form_read(name, field, "value")
     against_the_model(sources, request)
@@ -581,13 +627,14 @@ def test_the_model_oracle_holds_the_other_kind_to_the_model(
 
 
 def test_the_model_oracle_keeps_a_step_not_built(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A table on its row that steps 8 and 9 pass is a step neither side has built (S3b-2's steps 10 to 13):
-    the core says "not yet" and the model gives no verdict, so the oracle passes it, and a core that answered
-    there fails. Evidence was that step until S2b-2 read it, as an interval was until S2b-1; HP12's one step
-    not built that the model decides, an overlay as the target, the target never reads. The table held a
-    member of the other kind's shape until both sides read a table at step 8, where they now refuse that
-    member (the maintainer's ruling of 2026-10-19), so that no step is left unbuilt beside it."""
-    field = as_a_table(met_field())
+    """Step 7 over a table alternative whose read gives a reason at step 11 is a step neither side has built
+    (S4d's): the core says "not yet" and the model gives no verdict, so the oracle passes it, and a core that
+    answered there fails. A table read alone was that step until S3b-2 read it to the end, as evidence was
+    until S2b-2 read it; HP12's one step not built that the model decides, an overlay as the target, the
+    target never reads. Here the table over shear rate, `x` 1 to 10 1/s, is read at 100 1/s, outside its
+    range, beside the met constant."""
+    alternatives: list[JsonValue] = [as_a_table(met_field()), met_field()]
+    field: dict[str, JsonValue] = {"alternatives": alternatives}
     sources, request = met_case(field)
     assert written_read(sources, request) == "not yet"
     against_the_model(sources, request)
