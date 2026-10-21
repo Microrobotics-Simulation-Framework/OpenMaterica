@@ -90,6 +90,20 @@ measured with them, and so are those their cases move that were current before t
 S3a's case files kill one more, `broken_status_object_reports_its_token`
 (`PR-110.table_unknown_status_beside_members` alone): 84 killed, 13 survive.
 
+Until 2026-10-21 three faults made the model raise, and the search counted each raise as a kill. Measured that
+day over all 97 faults and every case file of a read, on `main` at `76907779`: no other fault raised on any;
+`tolerance_without_an_operating_condition` raised `KeyError` on two of its three files, its first
+(`PR-308.tolerance_with_other_operating_condition`) and `PR-308.tolerance_without_operating_conditions`, by
+indexing the operating condition the request lacks; `alternatives_shape_unchecked` raised on
+`PR-044.alternatives_not_list`, one of its five, and `condition_shapes_unchecked` on
+`PR-049.condition_value_null`, one of its 25, each after its first file. A raise shows that the fault broke
+the model, not that a case's expected answer tells the fault apart, so each now answers wherever it takes
+effect and still breaks its rule: the first reads a condition whose tolerance has no operating condition as
+one given no tolerance; the second reads an `alternatives` that is not a list as a list of its one entry; the
+third has steps 9 and 10 read a condition it leaves unchecked that they cannot index as one the record does
+not hold. Measured again with the three fixed, no fault raises on any case file, and every fault is killed by
+the same files as before, from the same first file, each by an answer.
+
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
 | `want_outside_section_6` | a `want` that is none of section 6's tokens is read | 2 |

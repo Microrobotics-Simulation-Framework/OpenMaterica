@@ -316,6 +316,16 @@ every family entry goes in `families/CHANGELOG.md`.
   `axis_unit` among them. Its control, `MATERICA_FUZZ_SEEDED_FAULT=tables`, refuses a table over temperature
   whose first knot lies below 250, which no seed holds: six local runs found it, after 16 to 319 s. CI's
   control step runs it (**Changed**, above).
+- No seeded fault of the reference model makes it raise. Three did, and the seeded-fault check counted each
+  raise as a kill (measured over all 97 faults and every case file of a read):
+  `tolerance_without_an_operating_condition` on two of its three files, by indexing an operating condition
+  the request lacks, and `alternatives_shape_unchecked` and `condition_shapes_unchecked` on one file each.
+  Each now answers where it takes effect and still breaks its rule: a condition whose tolerance has no
+  operating condition is read as one given no tolerance, an `alternatives` that is not a list as a list of
+  its one entry, and a condition left unchecked that steps 9 and 10 cannot index as one the record does not
+  hold. Over 225 shapes where the three take effect, each read under two configurations of claims, the faults
+  as they were raised on 107 reads and now raise on none. Every fault is killed by the same case files as
+  before, from the same first file, each by an answer.
 
 ## [0.1.0.dev2] - 2026-10-20
 
