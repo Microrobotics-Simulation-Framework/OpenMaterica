@@ -321,6 +321,26 @@ def check_result_laws(result: JsonValue) -> None:
         assert "conditions" not in result, f"conditions after a refusal before step 10: {result}"
 
 
+def check_table_member(field: JsonValue, result: JsonValue) -> None:
+    """HP2's clause of the `table` member (section 2 item 6: "`table` exactly when `value` is and is read from
+    a table"): on a field whose form is `table`, present exactly beside a value; on one whose forms, its own
+    or its alternatives', hold no table, absent; among alternatives that hold one, absent without a value
+    (which alternative a value is read from, the model's comparison holds)."""
+    if not isinstance(result, dict):
+        return
+    alternatives = field.get("alternatives") if isinstance(field, dict) else None
+    held = [field] if not isinstance(alternatives, list) else alternatives
+    # A form is any JSON value the fuzzer writes, an unhashable one too.
+    tables = [isinstance(each, dict) and each.get("form") == "table" for each in held]
+    valued, given = "value" in result, "table" in result
+    if not isinstance(alternatives, list) and tables == [True]:
+        assert given == valued, f"table beside a value from a table: {result}"
+    elif not any(tables):
+        assert not given, f"a table where no form is a table: {result}"
+    else:
+        assert valued or not given, f"a table without a value: {result}"
+
+
 def objects(result: JsonValue, member: str) -> list[JsonObject]:
     """The objects of the list `member` of a result as the target takes it, none where it holds none."""
     found = result.get(member) if isinstance(result, dict) else None

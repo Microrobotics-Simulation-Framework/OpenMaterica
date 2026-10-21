@@ -38,6 +38,7 @@ from tests.fuzz.field_oracle import (
     check_no_refusal_missing,
     check_result_laws,
     check_steps_9_and_10,
+    check_table_member,
     passed_step_8,
     places,
     read_outcome,
@@ -425,6 +426,40 @@ def test_the_oracle_of_hp1_and_hp2_sees_each_law_broken(result: dict[str, JsonVa
         check_result_laws(result)
 
 
+# A table's places: inside its range, at its edge, and outside it.
+PLACES = (305.0, 310.0, 315.0, 330.0)
+
+
+def test_the_oracle_of_hp2_s_table_member_is_quiet_on_the_core_and_sees_it_misplaced() -> None:
+    """HP2's `table` clause (`check_table_member`): quiet on the core's reads of every full field at every
+    `want`; it fails a value from a table without its table, a table beside a constant's value, and a table
+    without a value among alternatives that hold one."""
+    for field in full_fields().values():
+        for result in results_of_every_want(field):
+            check_table_member(field, result)
+    name, table_field = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, 3.0, 4.0], edges=[310.0])
+    read_at = [table_read_at(name, table_field, {"temperature": {"value": at, "unit": "K"}}) for at in PLACES]
+    assert {"table" in result for result in read_at if isinstance(result, dict)} == {True, False}, read_at
+    for result in read_at:
+        check_table_member(table_field, result)
+    table: dict[str, JsonValue] = {"axis": "temperature", "x": [300.0, 320.0]}
+    constant = full_fields()["population"]
+    alternatives: dict[str, JsonValue] = {"alternatives": [table_field, constant]}
+    refused: dict[str, JsonValue] = {"status": "not_met", "reasons": [OUTSIDE], "labels": []}
+    # A form the fuzzer writes as an object, which no set can hold (a find of the table value's control runs).
+    check_table_member({"form": {"table": 1.0}}, refused)
+    check_table_member({"alternatives": [{"form": ["table"]}, constant]}, MET)
+    misplaced: list[tuple[JsonValue, JsonValue, str]] = [
+        (table_field, MET, "table beside a value from a table"),
+        (table_field, {**refused, "table": table}, "table beside a value from a table"),
+        (constant, {**MET, "table": table}, "a table where no form is a table"),
+        (alternatives, {**refused, "table": table}, "a table without a value"),
+    ]
+    for held, given, complaint in misplaced:
+        with pytest.raises(AssertionError, match=complaint):
+            check_table_member(held, given)
+
+
 # HP12 on the target's reads: the core against the reference model.
 
 
@@ -721,26 +756,29 @@ def test_the_model_oracle_sees_an_interval_step_8_lets_through(monkeypatch: pyte
 def test_the_table_value_s_seeded_fault_raises_just_above_an_edge_the_table_drops_across(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Quiet on the core; with the fault, a read in the interval just above an edge raises where the table
-    drops across the edge to below 0.6 of its value just below, and nowhere else: not where it drops to 0.6
-    exactly or rises, nor just below the edge."""
+    """Quiet on the core; with the fault, a read in the interval just above an edge raises where the value
+    just above lies outside 0.6 to 1.6 times the value just below, either way, and nowhere else: not at 0.6
+    or 1.6 exactly, nor at a change of a tenth, nor just below the edge."""
     just_above: dict[str, JsonObject] = {
         "temperature": {"value": math.nextafter(310.0, math.inf), "unit": "K"}
     }
     just_below: dict[str, JsonObject] = {
         "temperature": {"value": math.nextafter(310.0, -math.inf), "unit": "K"}
     }
+
+    def across(below: float, above: float) -> JsonObject:
+        return a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, below, above, 4.0], edges=[310.0])[1]
+
     name, drops = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, 1.0, 4.0], edges=[310.0])
-    _, negative = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, -3.0, 4.0], edges=[310.0])
-    _, to_the_ratio = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.5, 1.5, 4.0], edges=[310.0])
-    _, rises = a_table(x=[300.0, 310.0, 310.0, 320.0], y=[1.0, 2.0, 3.0, 4.0], edges=[310.0])
+    raising = [drops, across(2.0, -3.0), across(1.0, 2.0), across(0.0, 1.0), across(2.0, 3.25)]
+    quiet = [across(2.5, 1.5), across(2.5, 4.0), across(2.0, 2.2), across(2.0, 1.8), across(2.0, 2.0)]
     assert table_read_at(name, drops, just_above) != "not yet"
     monkeypatch.setattr(evaluate, "value", faulty_value)
-    for table in (drops, negative):
+    for table in raising:
         with pytest.raises(ArithmeticError, match="the seeded fault in a table's value"):
             table_read_at(name, table, just_above)
-    table_read_at(name, to_the_ratio, just_above)
-    table_read_at(name, rises, just_above)
+    for table in quiet:
+        table_read_at(name, table, just_above)
     table_read_at(name, drops, just_below)
 
 

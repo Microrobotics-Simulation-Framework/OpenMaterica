@@ -969,13 +969,14 @@ jobs:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     # Four targets at the default 300 s, the control (at most 3 minutes for each of the first three targets, 15
-    # for the fourth's fault of step 10 and 8 for its fault in a table, then a replay of six property modules)
-    # and the replay of the property tests. The slowest run on CI took 59.5 minutes (the weekly run of
-    # 2026-10-19: 22.2 for the control, 20.2 for the targets, 16.8 for the replay), before the table's control,
-    # which adds at most 8.5 minutes by estimate; the timeout is twice the sum, as the Hypothesis job's is of its
-    # shards' slowest runs, and `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a
-    # target adds 4 (S - 300) / 60 minutes to the targets.
-    timeout-minutes: 137
+    # for the fourth's fault of step 10, 8 for its fault in a table and 15 for its fault in a table's value,
+    # then a replay of six property modules) and the replay of the property tests. The slowest run on CI took
+    # 59.5 minutes (the weekly run of 2026-10-19: 22.2 for the control, 20.2 for the targets, 16.8 for the
+    # replay), before the table's control and the table value's, which add at most 8.5 and 15.5 minutes by
+    # estimate; the timeout is twice the sum, as the Hypothesis job's is of its shards' slowest runs, and
+    # `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a target adds 4 (S - 300) / 60
+    # minutes to the targets.
+    timeout-minutes: 168
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
       # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
@@ -998,7 +999,7 @@ jobs:
       # fault seeded in `parse`, the third one seeded in the read, and the fourth one seeded in step 10 and, in
       # runs of its own, one seeded in a table (tests/fuzz/seeded_fault.py); the replay must find what the
       # property targets saved again and shrink it.
-      - name: Control, the faults seeded in parse, the read, step 10 and a table are found, replayed and shrunk
+      - name: Control, the faults seeded in parse, the read, step 10, a table and a table's value are found, replayed and shrunk
         env:
           MATERICA_FUZZ_SEEDED_FAULT: "1"
         run: |
@@ -1044,6 +1045,23 @@ jobs:
           done
           wait || true
           cat "$control/tables-1.log" "$control/tables-2.log" > "$control/tables.log"
+          # The fault seeded in a table's value (`MATERICA_FUZZ_SEEDED_FAULT=table_edges`): a read just above an
+          # edge raises where the value above lies outside 0.6 to 1.6 times the value below, one change to a
+          # value at an edge away. Ten local runs, in pairs, each of up to 900 s with these arguments, found it in
+          # nine, after 65 to 725 s, and missed once (2026-10-21): a rate of 2.7e-3 a second. Two pairs side by
+          # side, four runs of up to 900 s each: at that rate all four miss with about 1.1e-3 on a runner 1.4
+          # times slower than the laptop, an estimate until CI's own runs measure it. The control passes where
+          # any of the four finds it. The maintainer's ruling (S4) gives the fuzz controls a job of their own, a
+          # runner for each pair; this pair of pairs moves there when that job is built.
+          for worker in 1 2 3 4; do
+            cp -r "$control/fields" "$control/table-edges-$worker"
+            MATERICA_FUZZ_SEEDED_FAULT=table_edges uv run python -m tests.fuzz.read_field_bytes \
+              "$control/table-edges-$worker" -dict="$control/value_field.dict" -max_total_time=900 \
+              -entropic_scale_per_exec_time=1 -artifact_prefix="$control/findings/" \
+              > "$control/table-edges-$worker.log" 2>&1 &
+          done
+          wait || true
+          cat "$control"/table-edges-[1-4].log > "$control/table_edges.log"
           uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
             tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
             tests/property/test_hashing_properties.py tests/property/test_read_properties.py \
@@ -1066,6 +1084,12 @@ jobs:
           if ! grep -qv "the model .*'form_invalid'" <(grep "$refused" "$control/tables.log"); then
             tail -40 "$control/tables.log"
             echo "::error::the tables runs did not find the fault seeded in a table, so they could not find a real one"
+            exit 1
+          fi
+          # The table value's fault raises: its message is the finding.
+          if ! grep -q "ArithmeticError: the seeded fault in a table's value" "$control/table_edges.log"; then
+            tail -40 "$control/table_edges.log"
+            echo "::error::the table_edges runs did not find the fault seeded in a table's value, so they could not find a real one"
             exit 1
           fi
           # Only a stored example can fail in the reuse phase: the replay found what the fuzzing saved. Each

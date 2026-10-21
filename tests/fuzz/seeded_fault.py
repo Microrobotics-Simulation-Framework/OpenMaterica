@@ -36,10 +36,10 @@
 
 - In a table's value, S3b-2's control for the fourth target, which reads a table at the places table item 3
   tells apart, one double above each edge among them: an exception escapes for a read in the interval just
-  above an edge across which the table drops to below 0.6 of its value just below. No seed holds one: of the
-  22 edges the seed tables hold twice in `x`, the least ratio of the value above to the value below is 0.99
-  (2026-10-21), so the fuzzer has to change a value at an edge, as halving the one above or doubling the one
-  below does, in a table that keeps its edge.
+  above an edge where the value just above lies outside 0.6 to 1.6 times the value just below, either way. No
+  seed holds one: of the 22 edges the seed tables hold twice in `x`, the ratios of the value above to the
+  value below lie between 0.99 and 1.092 (2026-10-21), so the fuzzer has to change a value at an edge, as
+  halving or doubling either one does, in a table that keeps its edge.
 
 Each of the first four raises its own message, and so does the last, so that CI can tell which fault a run
 found; the fifth and the sixth are found by the oracle's assertion that the implementation and the model
@@ -53,6 +53,7 @@ third, since the property targets draw conditions too and would find it before t
 set to `table_edges`, the table value's alone, in the fourth.
 """
 
+import math
 import os
 from collections.abc import Callable, Collection, Mapping, Sequence
 from typing import Protocol, TypeVar
@@ -158,11 +159,18 @@ def faulty_points(entry: JsonObject, where: str, found: Found) -> None:
 
 _value = evaluate.value
 
+# The band of the table value's fault: the ratio of the value just above an edge to the value just below that
+# no read raises for, its ends included. Two-sided, so that halving or doubling either value leaves it, as
+# libFuzzer's changes to a number most often do; a one-sided band (below 0.6 alone) saw half of them.
+LEAST_RATIO, MOST_RATIO = 0.6, 1.6
+
 
 def faulty_value(x: Sequence[float], y: Sequence[float], scheme: evaluate.Scheme, at: float) -> float:
     below, above = evaluate.interval(x, at)
-    if 0 < below < above and x[below] == x[below - 1] and y[below] < 0.6 * y[below - 1]:
-        raise ArithmeticError("the seeded fault in a table's value")
+    if 0 < below < above and x[below] == x[below - 1]:
+        ratio = y[below] / y[below - 1] if y[below - 1] != 0 else math.inf
+        if not LEAST_RATIO <= ratio <= MOST_RATIO:
+            raise ArithmeticError("the seeded fault in a table's value")
     return _value(x, y, scheme, at)
 
 
