@@ -98,9 +98,13 @@ stated without origin, and a table's unknown member left out beside its value) m
 measured again with them (2026-10-21), and fifteen others differed from what the case files now give, each
 now as measured.
 
-A fault that makes the model raise on a case file fails its search, with the model's traceback and a note
-naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke the model, not that
-a case's expected answer tells the fault apart, so it is never a kill. Its control, `status_object` replaced
+A fault that makes the model raise on a case file its search reads fails the search, with the model's
+traceback and a note naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke
+the model, not that a case's expected answer tells the fault apart, so it is never a kill. The search reads
+the case files in name order and stops at a fault's first kill, so a raise on a later file is not seen there:
+each raise below was found by measuring every fault over every case file of a read, which the search does not
+do, and each fault that raised is held to its answer on the files where it did
+(`test_a_fault_that_once_raised_answers_on_the_files_it_raised_on`). Its control, `status_object` replaced
 by a function raising `TypeError`, `KeyError` or `AssertionError`, fails the check in each, where counting a
 raise of that kind as a kill would pass it. Until 2026-10-21 the search counted a raise as a kill. Measured
 that day over all 97 faults and every case file of a read, on `main` at `76907779`, three faults made the
@@ -113,7 +117,8 @@ now answers wherever it takes effect and still breaks its rule: the first reads 
 has no operating condition as one given no tolerance; the second reads an `alternatives` that is not a list as
 a list of its one entry; the third has steps 9 and 10 read a condition it leaves unchecked that they cannot
 index as one the record does not hold. Measured again with the three fixed, no fault raises on any case file,
-and every fault is killed by the same files as before, from the same first file, each by an answer.
+and every fault is killed by the same files as before, from the same first file, each by an answer. Of the
+three, the search reached a raise of `tolerance_without_an_operating_condition` alone, on its first file.
 
 | Mutant | Fault | Case files that kill it |
 |---|---|---|
@@ -289,11 +294,18 @@ table's unknown member, and `table_member_dropped` to the three where `table` is
 the model raise in its table code, each on one case file (`best_status` on `PR-301.unknown_beside_outside_range`,
 whose `outside_range` then ended no read, so that the evaluator was asked outside the range;
 `null_read_as_absent` on `PR-049.source_range_null`, whose `source_range: null` step 8 then read as absent and
-step 11 as present), the class of S3a's open point 8. Since a raise fails the search (above), each answers there
+step 11 as present), the class of S3a's open point 8. Both raises were found by measuring every fault over
+every case file of a read, which the search does not do: it stops at each fault's first kill, before the raise
+(`best_status` at `PR-013.index_past_set_aside_and_unknown_reasons`, `null_read_as_absent` at
+`PR-045.token_condition_holding_value_null`), with the fault as it was and as it is. Each answers there now
 (S3b-2's fix round), still breaking its rule: under `best_status` a read at an edge or outside the readable
 range, where the table has no value, ends at step 11 all the same (`table_read_ended_where_it_has_no_value`),
 and under `null_read_as_absent` every step reads the field without its `null` members, as step 8 does
-(`field_read_without_nulls`). Each is killed by the same case files as before (6 and 10), each by an answer.
+(`field_read_without_nulls`). Each is killed by the same case files as before (6 and 10), each by an answer,
+and is held to its answer on the file where it raised, as are the three above and the two `condition_entry`
+wrappers of `tolerance_without_an_operating_condition` and `condition_shapes_unchecked`, which, before they
+took the table axis S3b-2's model passes, raised on every file they reached (330 and 353 files), and which
+are held on three table reads among them.
 
 The agreement property HP12 (`tests/property/test_model_properties.py`) kills 13 of the 14 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two

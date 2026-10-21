@@ -3,15 +3,16 @@
 case file of a read an outcome the list of exceptions does not (a disagreement, a no verdict no kind lists, or
 an agreement with a listed file), or is listed as a survivor with the reason no case can kill it. A survivor
 the cases come to kill, and a killed fault that comes to survive, both fail, so that the table in `README.md`
-stays true. A fault that makes the model raise on a case file fails its check with the model's traceback: a
-crash shows that the fault broke the model, not that a case's expected answer tells the fault apart, so it is
-never counted as a kill."""
+stays true. A fault that makes the model raise on a case file the check reads fails its check with the model's
+traceback: a crash shows that the fault broke the model, not that a case's expected answer tells the fault
+apart, so it is never counted as a kill. The check reads a fault's case files up to its first kill, so a raise
+on a later one is not seen there; the faults that once raised are held on the files where they did."""
 
 from typing import NoReturn
 
 import pytest
 
-from tests.reference.cases import case_files, first_disagreement, outcome
+from tests.reference.cases import case_files, first_disagreement, outcome, read_case_files
 from tests.reference.mutants import MUTANTS, Mutant
 
 
@@ -28,6 +29,42 @@ def check(name: str, mutant: Mutant) -> None:
 @pytest.mark.parametrize("name", sorted(MUTANTS))
 def test_the_cases_kill_the_fault_or_it_is_listed_as_a_survivor(name: str) -> None:
     check(name, MUTANTS[name])
+
+
+# The check above stops at a fault's first killing file, so a raise on a later file is not seen. Five faults
+# once made the model raise, each found by measuring every fault over every case file of a read; each now
+# answers there, and is held to its answer on the files where it raised: a disagreement where the file kills
+# it, an agreement where it takes no effect. The `condition_entry` wrappers of the last two, before they took
+# the table axis, raised on every file they reached (353 and 330), the three table reads here among them.
+TABLE_READS_THE_WRAPPERS_RAISED_ON = {
+    "PR-016.linear_between_knots.json": "agrees",
+    "PR-017.far_above.json": "agrees",
+    "PR-018.at_edge.json": "agrees",
+}
+ONCE_RAISED = {
+    "best_status": {"PR-301.unknown_beside_outside_range.json": "differs"},
+    "null_read_as_absent": {"PR-049.source_range_null.json": "differs"},
+    "alternatives_shape_unchecked": {"PR-044.alternatives_not_list.json": "differs"},
+    "condition_shapes_unchecked": {
+        "PR-049.condition_value_null.json": "differs",
+        **TABLE_READS_THE_WRAPPERS_RAISED_ON,
+    },
+    "tolerance_without_an_operating_condition": {
+        "PR-308.tolerance_with_other_operating_condition.json": "differs",
+        "PR-308.tolerance_without_operating_conditions.json": "differs",
+        **TABLE_READS_THE_WRAPPERS_RAISED_ON,
+    },
+}
+
+
+@pytest.mark.parametrize(
+    ("name", "file", "kind"),
+    [(name, file, kind) for name, files in ONCE_RAISED.items() for file, kind in files.items()],
+)
+def test_a_fault_that_once_raised_answers_on_the_files_it_raised_on(name: str, file: str, kind: str) -> None:
+    (case_file,) = [found for found in read_case_files() if found.path.name == file]
+    with MUTANTS[name].applied():
+        assert outcome(case_file).kind == kind
 
 
 def test_the_table_holds_at_least_thirty_faults_and_says_why_each_survivor_survives() -> None:
