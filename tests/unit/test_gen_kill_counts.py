@@ -912,6 +912,7 @@ def test_the_readme_holds_a_table_for_exactly_the_recorded_groups_but_two() -> N
             ("every search", "test_alternatives_mutants.py::test_the_alternatives_mutant_is_killed"),
             ("every search", "test_table_form_mutants.py::test_the_table_form_mutant_is_killed"),
             ("every search", "test_table_read_mutants.py::test_the_table_read_mutant_is_killed"),
+            ("every search", "test_extrapolation_mutants.py::test_the_extrapolation_mutant_is_killed"),
             ("every search", "test_invariance_mutants.py::test_the_invariance_mutant_is_killed"),
             ("every search", "test_monotonicity_mutants.py::test_the_relations_mutant_is_killed"),
             (

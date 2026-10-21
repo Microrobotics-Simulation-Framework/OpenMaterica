@@ -572,6 +572,19 @@ every family entry goes in `families/CHANGELOG.md`.
   about 1.1e-3 on a runner 1.4 times slower than the laptop, an estimate. Not every run finds it within 900 s
   of the runner's time (one missed, one found it after 725 s, past 643). CI's control step runs it (**Changed**,
   above).
+- The S3 design's HP24 to HP26 and its monotonicity property over an extrapolation
+  (`tests/property/test_extrapolation_*.py`, in the `conditions` shard): where one applies, adding it keeps the
+  read `not_met` with its reasons, adds step 12's, and gives the end value from inside the readable range, the
+  members beside a value, the table and its `assumption`, `basis` aside; where one at the read does not apply
+  (inside the range, at or across an edge, under `want: bounds`), and where one is located elsewhere, it changes
+  nothing; two naming one field are refused wherever located; step 0 refuses a method or a law that breaks its
+  shape and reads white space, `basis`, `reason` and an unknown member; and adding one never turns a read
+  `met`. Each property draws its way first among at most five, held to its draw floor (110 to 160 at `ci`): over
+  20 runs of 2,000 a size, a correct run fails a floor with at most 4.1e-7 at the variance measured, 9.2e-5 at
+  its one-sided 95 % bound. 33 mutants, the design's and six that each hold one draw of the strategy, die at the
+  way and the assertion each names, at both sizes; over 40 streams a size, the latest at the 150th example.
+  S3b-2's two mutants of step 11's report on an edge on the readable range's end, which had no reader in a
+  result, are searched in one too, across an edge.
 
 ## [0.1.0.dev2] - 2026-10-20
 
