@@ -207,8 +207,10 @@ An acceptance whose kind needs a location and names none is refused. [BC-037]
 3. An evaluator that clamps a table at the ends of its readable range (`record_format.md` section 6, table
    item 3) is extrapolating by a constant: it needs an extrapolation of method `constant`, or its in-range
    flag MUST stop the run (`read_side_contract.md` section 7). [not yet covered] An evaluator returns no other
-   value outside that range, so a `consumer_law` extrapolation is computed beside it, from the end value it
-   returns (`read_side_contract.md` section 7 item 1). [TE-003]
+   value outside that range, so a `consumer_law` extrapolation is computed beside it, from the end value: the
+   value a read under that extrapolation returns, at the readable range's nearest end, taken from inside the
+   range (`read_side_contract.md` section 5), or the one the evaluator returns there, where it returns one
+   (`read_side_contract.md` section 7 item 1). [PR-307] [TE-003]
 
 ### 4.2 What covers which reason
 

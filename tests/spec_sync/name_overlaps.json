@@ -137,11 +137,11 @@
     {
       "rule": "A",
       "names": ["method"],
-      "meanings": 2,
-      "reason": "An extraction method, a closed list (provenance.md section 3), and the free text naming a derivation's or a fit procedure's method.",
+      "meanings": 3,
+      "reason": "An extraction method, a closed list (provenance.md section 3); the free text naming a derivation's or a fit procedure's method; and an extrapolation's method, a closed list of its own (declarations.md section 4.1), in a request and in a result's assumption (maintainer, 2026-10-19, the third meaning allowed with this safeguard).",
       "safeguard": {
         "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[method]",
-        "what": "The writer refuses a method's free text at an extraction's method; a derivation's method is free text, and takes any string. A read checks neither."
+        "what": "The writer refuses a method's free text and an extrapolation's method at an extraction's method; a request's extrapolation and a result's assumption refuse an extraction's method and free text; a derivation's method is free text, and takes any string. A read checks a request's extrapolation's method alone."
       }
     },
     {

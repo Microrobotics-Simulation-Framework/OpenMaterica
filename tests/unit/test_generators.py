@@ -145,7 +145,7 @@ def test_a_label_cell_of_another_form_is_refused(cell: str) -> None:
         (gen_vocabulary.fields, "Section.field"),
         (gen_vocabulary.conditions, "Name"),
         (gen_vocabulary.specimen_facts, "Name"),
-        (gen_vocabulary.acceptance_kinds, "`acceptance`"),
+        (gen_vocabulary.acceptances, "`acceptance`"),
     ],
 )
 def test_a_name_listed_twice_in_a_table_is_refused(
@@ -155,6 +155,37 @@ def test_a_name_listed_twice_in_a_table_is_refused(
     other cell is read."""
     with pytest.raises(TableError, match="listed twice"):
         reader([{column: "`a`"}, {column: "`b`"}, {column: "`a`"}])
+
+
+def extrapolation_row(own: str) -> list[gen_vocabulary.Row]:
+    return [
+        {"`acceptance`": "`nominal`", "Own members": "`value`"},
+        {"`acceptance`": "`extrapolation`", "Own members": own},
+    ]
+
+
+def test_an_extrapolations_methods_are_its_rows_list() -> None:
+    """`declarations.md` section 4.1: "`method` (`constant` or `consumer_law`)", read in full."""
+    found = gen_vocabulary.acceptances(
+        extrapolation_row("`method` (`constant` or `consumer_law`), `law` (text)")
+    )
+    assert found == {
+        "kinds": ["nominal", "extrapolation"],
+        "$defs": {"extrapolation_method": {"enum": ["constant", "consumer_law"]}},
+    }
+
+
+@pytest.mark.parametrize(
+    "own",
+    [
+        pytest.param("`method` (`constant` or a law of one's own), `law`", id="prose_in_the_list"),
+        pytest.param("`method`, `law`", id="no_list"),
+        pytest.param("`method` (`constant` or `constant`), `law`", id="a_token_twice"),
+    ],
+)
+def test_an_extrapolations_methods_are_read_in_full_or_refused(own: str) -> None:
+    with pytest.raises(TableError):
+        gen_vocabulary.acceptances(extrapolation_row(own))
 
 
 TISSUE_STATE = (

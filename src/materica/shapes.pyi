@@ -473,6 +473,8 @@ class Tolerance(TypedDict):
 class AcceptRequirement(TypedDict):
     accept: list[str]
 
+ExtrapolationMethod: TypeAlias = Literal["constant", "consumer_law"]
+
 class ImpliesToken(TypedDict):
     token: str
 
@@ -610,11 +612,12 @@ class NominalAssumption(TypedDict):
 
 class ExtrapolationAssumption(TypedDict):
     """
-    An extrapolation's members as the request gives them, method and law among them, which S3's extrapolations
-    type.
+    An extrapolation's own members as the request gives them, basis aside: its method and law.
     """
 
     acceptance: Literal["extrapolation"]
+    method: ExtrapolationMethod
+    law: str
 
 Suite: TypeAlias = Literal[
     "plain_read",
@@ -1395,7 +1398,9 @@ class ReadRequest(TypedDict):
     requirement: Requirement
     acceptances: NotRequired[list[Acceptance]]
 
-Acceptance: TypeAlias = Union["NominalAcceptance", "ImpliedConditionAcceptance", "PickOverlayOrExtrapolation"]
+Acceptance: TypeAlias = Union[
+    "NominalAcceptance", "ImpliedConditionAcceptance", "ExtrapolationAcceptance", "PickOrOverlay"
+]
 
 class AcceptanceMembers(TypedDict):
     """
@@ -1648,14 +1653,24 @@ class EvidenceField(FieldMembers):
     evidence: list[EvidenceEntry | WithheldEvidenceEntry]
     conditions: dict[str, JsonValue]
 
-class PickOverlayOrExtrapolation(AcceptanceMembers):
+class PickOrOverlay(AcceptanceMembers):
     """
-    A pick, an overlay or an extrapolation (declarations.md section 4.1). Their own members are written with
-    the steps that apply them: an extrapolation's with tables, a pick's and an overlay's with alternatives and
-    overlays.
+    A pick or an overlay (declarations.md section 4.1). Their own members are written with the steps that
+    apply them, with alternatives and overlays.
     """
 
-    acceptance: Literal["pick", "overlay", "extrapolation"]
+    acceptance: Literal["pick", "overlay"]
+
+class ExtrapolationAcceptance(AcceptanceMembers):
+    """
+    How the consumer computes a value outside a form's range, from the end value a read under it returns
+    (declarations.md section 4.1). A read applies it only under want value, outside the readable range, at no
+    declared edge and across none (read_side_contract.md section 5).
+    """
+
+    acceptance: Literal["extrapolation"]
+    method: ExtrapolationMethod
+    law: str
 
 class NominalAcceptance(AcceptanceMembers):
     """

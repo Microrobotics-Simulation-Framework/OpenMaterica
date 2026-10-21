@@ -496,3 +496,12 @@ through the overlays, the pick and the alternatives set aside that the read appl
 two ends, where before it would have read the record's JSON again on its own. `record_format.md` section 5
 item 5 now lists each `no_pick` entry's own `unit` and `labels` beside its conditions, specimen, statistics and
 provenance, as `read_side_contract.md` section 2 gives them.
+
+Settled with S3c, the extrapolation (maintainer, 2026-10-19, as recommended): a `consumer_law` extrapolation is
+computed from the end value a read under that extrapolation returns, at the readable range's nearest end, taken
+from inside it, or from the one an evaluator returns there, where it returns one (`declarations.md` section 4.1
+item 3; PR-307, TE-003). Before, item 3 named the evaluator's alone, which `read_side_contract.md` section 7
+item 1 lets be absent or NaN outside the range, so a consumer whose evaluator returns none had no end value to
+start from. A request's extrapolation now has its shape in `read_request.json`, as `declarations.md` section
+4.1 gives it (`method`, one of its two tokens; `law`, text of at least one character), and a result's
+`assumption` under it holds exactly `acceptance`, `method` and `law` in `read_result.json` (PR-330, PR-307).

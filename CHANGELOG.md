@@ -300,6 +300,16 @@ every family entry goes in `families/CHANGELOG.md`.
   input), with their `CASES.md` rows and PR-013's row. The read and the reference model give each entry its
   unit; the model's two seeded faults of the unit, and the three mutants of the properties, now set every
   entry's unit to one alternative's.
+- An extrapolation's shape (the maintainer's rulings of 2026-10-19, landing with S3c;
+  `docs/specification/changes.md`). `read_request.json` gives a request's extrapolation its own definition,
+  `method`, one of the two tokens `declarations.md` section 4.1 lists, which the vocabulary now generates
+  (`acceptances.json`'s `extrapolation_method`), and `law`, a string of at least one character; a pick and an
+  overlay keep their placeholder. A result's `assumption` under an extrapolation holds exactly `acceptance`,
+  `method` and `law` in `read_result.json`. `method` so has a third meaning, allowed in the name-overlap list
+  with its safeguard: each of its three places refuses the other two meanings' values. `declarations.md`
+  section 4.1 item 3 says where a `consumer_law` extrapolation's end value comes from: the read's, at the
+  readable range's nearest end, or the evaluator's where it returns one, which section 7 item 1 lets be absent
+  outside the range. The typed shapes are generated again.
 
 ### Data
 - `example/water` states the test method `reference_formulation` on each of its four values, all evaluated from

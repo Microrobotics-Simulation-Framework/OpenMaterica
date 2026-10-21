@@ -549,8 +549,12 @@ def identifier_patterns(shape: str) -> dict[str, str]:
     return found
 
 
-def acceptance_kinds(rows: list[Row]) -> Vocabulary:
-    return {"kinds": names(rows, "`acceptance`")}
+def acceptances(rows: list[Row]) -> Vocabulary:
+    """`declarations.md` section 4.1: the kinds of acceptance, and an extrapolation's methods, which its row's
+    own members name: "`method` (`constant` or `consumer_law`)"."""
+    kinds = names(rows, "`acceptance`")
+    own = cell_of(rows, "extrapolation", "Own members")
+    return {"kinds": kinds, "$defs": {"extrapolation_method": enumeration(listed(own, "`method` (", ")"))}}
 
 
 def forms(read: Documents) -> Vocabulary:
@@ -674,7 +678,7 @@ SOURCES: dict[str, tuple[str, Callable[[Documents], Vocabulary]]] = {
     ),
     "acceptances.json": (
         "declarations.md, 4.1 The list",
-        from_table("declarations.md", "### 4.1 The list", acceptance_kinds),
+        from_table("declarations.md", "### 4.1 The list", acceptances),
     ),
     "forms.json": ("record_format.md, 5. Value fields and 6. The value forms", forms),
     "statistics.json": ("uncertainty.md, 1. The statistics block and 4. Distribution tokens", statistics),
