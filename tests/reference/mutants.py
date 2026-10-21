@@ -1679,8 +1679,8 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "two_nominals_for_one_field": Mutant(
         "two nominals naming one field read as the first",
-        'read_side_contract.md:72-73 "So do two acceptances of one kind, `nominal`, `extrapolation` or '
-        '`pick`, that name one field"',
+        'read_side_contract.md:71-72 "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` '
+        'or `trainable`, that name one field"',
         {"checked_acceptances": first_nominal_of_each_field},
     ),
     "unregistered_field_requested": Mutant(
@@ -2148,7 +2148,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "value_beside_not_met": Mutant(
         "a value returned beside `not_met` without an assumption, as beside `condition_outside`",
-        'read_side_contract.md:125 "present unless `not_met` without an assumption"',
+        'read_side_contract.md:125 "present unless `not_met` with neither an assumption"',
         {"read_value_field": members_read_past_a_refusal, "value_returned": value_whatever_the_status},
     ),
     "unknown_members_returned": Mutant(
@@ -2296,8 +2296,8 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "two_extrapolations_read_as_the_first": Mutant(
         "two extrapolations naming one field read as the first",
-        'read_side_contract.md:72-73 "So do two acceptances of one kind, `nominal`, `extrapolation` or '
-        '`pick`, that name one field"',
+        'read_side_contract.md:71-72 "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` '
+        'or `trainable`, that name one field"',
         {"checked_acceptances": first_extrapolation_of_each_field},
     ),
     "empty_law_accepted": Mutant(

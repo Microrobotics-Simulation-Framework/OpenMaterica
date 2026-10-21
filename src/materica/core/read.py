@@ -1389,8 +1389,8 @@ def _acceptances(
             found.append(
                 _incomplete(f"acceptances[{index}] is no acceptance of a kind a read takes: {kind!r}")
             )
-    # Section 1: "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`, that name one
-    # field, whatever location or other members each holds."
+    # Section 1: "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` or `trainable`, that
+    # name one field, whatever location or other members each holds."
     for kind, fields in named.items():
         for field in sorted({field for field in fields if fields.count(field) > 1}):
             found.append(_incomplete(f"acceptances hold two {kind}s for {field}"))

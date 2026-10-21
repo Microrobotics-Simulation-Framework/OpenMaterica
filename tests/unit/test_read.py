@@ -2216,9 +2216,9 @@ NOMINAL_SHAPES: list[tuple[list[dict[str, JsonValue]], str]] = [
 def test_a_nominals_shape_is_checked_at_step_0_whatever_it_names(
     acceptances: list[dict[str, JsonValue]], outcome: str
 ) -> None:
-    """Section 1: "Each is checked here, whatever field or location it names: its `field` as the target's is
-    (the pattern, and a registered field), and its kind's own members, have their shapes; its `reason` and
-    `basis` are ignored" [PR-330]."""
+    """Section 1: "Each acceptance is checked here, whatever field or location it names: its `field` as the
+    target's is (the pattern, and a registered field), and its kind's own members, have their shapes; its
+    `reason` and `basis` are ignored" [PR-330]."""
     result = read_accepting(
         met_interval(lower=0.0006, upper=0.0008, basis="specification_limits"), acceptances
     )
@@ -2426,8 +2426,8 @@ EXTRAPOLATION_SHAPES: list[tuple[list[dict[str, JsonValue]], str]] = [
     ([extrapolation(field="bulk.porosity")], "refused"),
     ([extrapolation(field=None)], "refused"),
     ([extrapolation(record={"id": "x", "versoin": "1.0.0"})], "refused"),
-    # "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`, that name one field, whatever
-    # location or other members each holds."
+    # "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` or `trainable`, that name one
+    # field, whatever location or other members each holds."
     ([extrapolation(), extrapolation(record=None, law="")], "refused"),
     ([extrapolation(), extrapolation(record=None)], "refused"),
     ([extrapolation(), extrapolation(field="bulk.density")], "read"),
@@ -2441,8 +2441,9 @@ EXTRAPOLATION_SHAPES: list[tuple[list[dict[str, JsonValue]], str]] = [
 def test_an_extrapolations_shape_is_checked_at_step_0_whatever_it_names(
     acceptances: list[dict[str, JsonValue]], outcome: str
 ) -> None:
-    """Section 1: "Each is checked here, whatever field or location it names: its `field` as the target's is
-    (the pattern, and a registered field), and its kind's own members, have their shapes" [PR-330]."""
+    """Section 1: "Each acceptance is checked here, whatever field or location it names: its `field` as the
+    target's is (the pattern, and a registered field), and its kind's own members, have their shapes"
+    [PR-330]."""
     result = read_at(330.0, acceptances)
     if outcome == "refused":
         assert (result.status, result.reasons) == ("not_met", (Reason("request_incomplete"),)), acceptances

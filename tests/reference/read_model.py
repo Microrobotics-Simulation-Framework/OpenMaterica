@@ -397,7 +397,9 @@ ACCEPTANCE_KINDS: Final = (
     "pick", "waiver", "implied_condition", "accepted_difference", "extrapolation", "nominal", "distribution",
     "overlay", "overlay_scope",
 )  # fmt: skip
-# read_side_contract.md:64 "take only the kinds `pick`, `overlay`, `extrapolation`, `nominal`"
+# read_side_contract.md:64-65 "take only the kinds `pick`, `overlay`, `extrapolation`, `nominal`,
+# `implied_condition` and `trainable`": the model takes the first five; `trainable` waits for S7a-4, which
+# builds it in the read.
 READ_ACCEPTANCE_KINDS: Final = ("pick", "overlay", "extrapolation", "nominal", "implied_condition")
 # declarations.md:327-329 "names the `field` it covers" and "its kind's own members; and carries `reason`"
 ACCEPTANCE_NAMES: Final = ("acceptance", "field", "record", "region", "interval", "reason", "basis")
@@ -562,7 +564,8 @@ OPERATING_NAMES: Final = ("value", "range", "unit")
 REQUIREMENT_NAMES: Final = ("want", "conditions", "label", "represents", "population_level", "field")
 REQUIREMENT_CONDITION_NAMES: Final = ("tolerance", "accept", "reason", "consequence")
 TOLERANCE_NAMES: Final = ("value", "unit")
-# read_side_contract.md:37 "its `requirement` holds `label`, `represents`"
+# read_side_contract.md:37 "its `requirement` holds `label`, `represents`, `population_level` or `review`":
+# the model refuses the first three; `review` waits for S7a-2, which builds its refusal in the read.
 DECLARATION_ONLY_REQUIREMENT_NAMES: Final = ("label", "represents", "population_level")
 IMPLIED_VALUE_NAMES: Final = (*CONDITION_NAMES, "status", "reason")
 
@@ -574,7 +577,7 @@ VERSION_PATTERN: Final = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9]
 ID_PATTERN: Final = re.compile(r"[a-z0-9_]+/[A-Za-z0-9_.-]+")
 # record_format.md:94 "`sha256:` and 64 lowercase hexadecimal digits"
 HASH_PATTERN: Final = re.compile(r"sha256:[0-9a-f]{64}")
-# README.md:64 "a reader reads only records of its own `MAJOR.MINOR`"
+# README.md:65 "a reader reads only records of its own `MAJOR.MINOR`"
 READER_MAJOR_MINOR: Final = ("0", "1")
 
 # Reasons, results and what the model does not decide
@@ -1039,8 +1042,8 @@ def checked_requirement(
 def checked_acceptances(
     request: JsonObject, field_name: str | None, reference: Reference | None, reasons: Reasons
 ) -> tuple[tuple[ImpliedCondition, ...], float | None, JsonObject | None]:
-    """read_side_contract.md:69-70 "Each is checked here, whatever field or location it names": every
-    acceptance checked; those of this read's field at its record returned."""
+    """read_side_contract.md:68-69 "Each acceptance is checked here, whatever field or location it names":
+    every acceptance checked; those of this read's field at its record returned."""
     given = request.get("acceptances", [])
     if not isinstance(given, list):
         reasons.add("request_incomplete")
@@ -1048,8 +1051,8 @@ def checked_acceptances(
     implied: list[ImpliedCondition] = []
     nominals: list[float] = []
     extrapolations: list[JsonObject] = []
-    # read_side_contract.md:72-73 "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`,
-    # that name one field": the fields each kind names, as written
+    # read_side_contract.md:71-72 "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` or
+    # `trainable`, that name one field": the fields each kind names, as written
     named: dict[str, list[str]] = {"nominal": [], "extrapolation": []}
     for acceptance in given:
         if not isinstance(acceptance, dict):
@@ -1058,7 +1061,7 @@ def checked_acceptances(
         kind = acceptance.get("acceptance")
         if isinstance(kind, str) and kind in UNDECIDED_ACCEPTANCES:
             raise _Undecided(UNDECIDED_ACCEPTANCES[kind])
-        # read_side_contract.md:71-72 "An acceptance of any other kind, or one that breaks its shape, gives
+        # read_side_contract.md:70-71 "An acceptance of any other kind, or one that breaks its shape, gives
         # `request_incomplete`"
         if not isinstance(kind, str) or kind not in READ_ACCEPTANCE_KINDS:
             reasons.add("request_incomplete")
@@ -1068,7 +1071,7 @@ def checked_acceptances(
         location = acceptance.get("record")
         if isinstance(location, dict) and slipped(location, REFERENCE_NAMES):
             reasons.add("request_incomplete")
-        # read_side_contract.md:70 "its `field` as the target's is (the pattern, and a registered field)"
+        # read_side_contract.md:69 "its `field` as the target's is (the pattern, and a registered field)"
         named_field = registered_field(acceptance.get("field"))
         if named_field is None:
             reasons.add("request_incomplete")
@@ -1097,9 +1100,10 @@ def checked_acceptances(
             checked = checked_implied_condition(acceptance, reasons)
             if checked is not None and applies:
                 implied.append(checked)
-    # read_side_contract.md:72-73 "So do two acceptances of one kind, `nominal`, `extrapolation` or `pick`,
-    # that name one field, whatever location or other members each holds": a pick gives no verdict above, so
-    # nominals and extrapolations are counted here.
+    # read_side_contract.md:71-73 "So do two acceptances of one kind, `nominal`, `extrapolation`, `pick` or
+    # `trainable`, that name one field, whatever location or other members each holds": a pick gives no
+    # verdict above, and the model refuses a `trainable` acceptance as a kind it does not take (S7a-4 builds
+    # it), so nominals and extrapolations are counted here.
     if any(len(fields) != len(set(fields)) for fields in named.values()):
         reasons.add("request_incomplete")
     return (
@@ -1377,7 +1381,7 @@ def overlay_body_accepted(body: JsonObject) -> bool:
 
 
 def list_records(sources: Sequence[bytes]) -> JsonObject:
-    """The identity of each candidate that passes steps 2, 3 and 5 on its own: README.md:189-191 "the `{"id",
+    """The identity of each candidate that passes steps 2, 3 and 5 on its own: README.md:190-192 "the `{"id",
     "version"}` of exactly those sources that are candidates"."""
     listed: list[JsonValue] = []
     for source in sources_read(sources):
@@ -1392,7 +1396,7 @@ def list_records(sources: Sequence[bytes]) -> JsonObject:
 
 
 def hash_operation(data: bytes) -> JsonObject:
-    """The content hash of any JSON value, `malformed` for bytes item 6 refuses: README.md:184-186 "gives the
+    """The content hash of any JSON value, `malformed` for bytes item 6 refuses: README.md:185-187 "gives the
     content hash of its value, whatever that value's JSON type" and "a file that breaks item 6 gives `not_met`
     and `malformed`, and no value"."""
     try:
@@ -3192,7 +3196,8 @@ def field_result(reasons: Reasons, labels: Sequence[str], read_field: FieldRead)
 
 
 def value_returned(status: Status, members: JsonObject) -> bool:
-    # read_side_contract.md:125 "| `value` | present unless `not_met` without an assumption"
+    # read_side_contract.md:125 "| `value` | present unless `not_met` with neither an assumption": the model
+    # takes no `trainable` acceptance (S7a-4 builds it), so an assumption alone keeps the value here.
     # read_side_contract.md:173-174 "`unit`, `specimen` (an empty object where no fact is stated) and
     # `provenance` are present exactly when `value` is"
     return "value" in members and (status != "not_met" or "assumption" in members)
