@@ -69,8 +69,8 @@ MIME's private 0.3.0 structure draft (the **structure draft**) and used there by
   7.2).
 - Engine results are computed in `openmaterica[usd]`; only the engine adapter and the crosswalk scaffold are
   in `openmaterica-authoring` (section 7.2).
-- 0.1 builds the plain scene documents before declarations and build checks (section 12.2); reordered 2026-10-20
-  and 2026-10-21 (section 12.2; section 15).
+- 0.1 builds the plain scene documents before declarations and build checks (section 12.2); reordered
+  2026-10-20 and 2026-10-21 (section 12.2; section 15).
 - The package is typed (`py.typed`), and the JSON shapes of its public API are generated from the writer JSON
   Schemas, which are the single hand-edited source of structure; the specification's tables stay the source of
   tokens (section 7.1).

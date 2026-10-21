@@ -72,12 +72,12 @@ model that reads material fields.
 | `engine` | for a model that is a physics engine: `crosswalk`, the pin of its engine crosswalk (`usd_binding.md` section 10.1), OpenMaterica's or one the consumer writes and passes to the build with the declaration; `values`, per crosswalk attribute with no OpenMaterica field, `{"value", "unit", "reason", "basis"}` in SI, with no `unit` for an attribute with no dimension; and optionally `region_values`, per region, values that override `values` there, as `region_conditions` does for conditions [BC-039] |
 
 **The declaration's shape.** The build reads a declaration as JSON by `record_format.md` section 1 item 6 and
-checks it on its own, before any record is read, against the table below. A member this document marks optional,
-or gives only where a condition holds, may be absent. A member whose absence an accepted rule already refuses or
-leaves uncovered may be absent; the table names the rule. Every other member is required; where it holds a list
-or an object, an empty one is allowed and is the declaration (a `target` of `{}` names no fact). A member that
-holds a token holds one of those listed for it, and a name a field or condition, one the build's version
-registers. [BC-048]
+checks it on its own, before any record is read, against the table below. A member this document marks
+optional, or gives only where a condition holds, may be absent. A member whose absence an accepted rule
+already refuses or leaves uncovered may be absent; the table names the rule. Every other member is required;
+where it holds a list or an object, an empty one is allowed and is the declaration (a `target` of `{}` names
+no fact). A member that holds a token holds one of those listed for it, and a name a field or condition, one
+the build's version registers. [BC-048]
 
 | Place | Member | Required | Holds |
 |---|---|---|---|
@@ -121,38 +121,38 @@ registers. [BC-048]
 
 A declaration departs from its shape where:
 - it is not valid JSON by that item, or is not an object;
-- a required member is missing, or a member is of another JSON type, or empty where the table asks for one entry
-  or more;
-- it holds, at any depth, a member the table does not name at that place, a member one slip (`record_format.md`
-  section 10) from a named one included, but for a `basis` inside an implied condition's `implies`, which
-  section 4.1's row ignores;
+- a required member is missing, or a member is of another JSON type, or empty where the table asks for one
+  entry or more;
+- it holds, at any depth, a member the table does not name at that place, a member one slip
+  (`record_format.md` section 10) from a named one included, but for a `basis` inside an implied condition's
+  `implies`, which section 4.1's row ignores;
 - a token or a registered name is not one of those its member takes, a slip of one, another member's token and
   one in another case included;
 - a name is given twice where the table allows it once: two models of one `name`, a record listed twice in one
-  `checked_over`, a field twice in `reads`, two requirements for one field, two `trainable` entries for one field
-  at one location;
-- a requirement or a `trainable` entry names a field its model does not list in `reads`, or a `trainable` entry a
-  location its model is not checked over;
+  `checked_over`, a field twice in `reads`, two requirements for one field, two `trainable` entries for one
+  field at one location;
+- a requirement or a `trainable` entry names a field its model does not list in `reads`, or a `trainable`
+  entry a location its model is not checked over;
 - a `reason` or `basis` is not a string of at least one character;
 - a value breaks a constraint its row's Holds column states (a `range` whose `lo` is above its `hi`, a unit
-  other than the registered one, a number below zero, an `index` with a fractional part, a combination of fewer
-  than two fields or of fields of one section, two of a member's mutually exclusive alternatives, an empty
-  `law`, a distribution's parameters other than its token's, a repeated `accepts` token).
+  other than the registered one, a number below zero, an `index` with a fractional part, a combination of
+  fewer than two fields or of fields of one section, two of a member's mutually exclusive alternatives, an
+  empty `law`, a distribution's parameters other than its token's, a repeated `accepts` token).
 
-The build refuses at build a declaration that departs from its shape, or that breaks a rule of items 3, 4, 7, 8,
-12, the `population_level` rule, or section 4.1's location rule or item 4. Each refusal is
-`{"item", "pointer", "detail"?}`: the case of the rule broken, a JSON pointer (RFC 6901) into the declaration,
-and optionally `detail`, text for people that no case compares. The pointer names the member at
-fault; for a missing member, the object that should hold it; of two of one name, the later entry of its list,
-whole (the model entry, not its `model.name`; the requirement, not its `field`; the field in `reads` or the
-record in `checked_over.records` itself); for a waiver naming a `label` that section 4.1 item 4 refuses, that
-waiver's `label`; for a text that is not valid JSON, or a declaration that is not an object, the empty pointer,
-and nothing else is checked. A member deeper down that holds another JSON type is a member at fault like any
-other: the pointer names it, nothing inside it is checked, and the rest of the declaration is. A fault more than
-one rule names carries the case of the first of: items 3, 4, 7 and 8, the `population_level` rule and section
-4.1's location rule [BC-004] [BC-005] [BC-040] [BC-044] [BC-043] [BC-037]; section 4.1 item 4 [BC-050]; item 12
-[BC-051]; this paragraph [BC-048]. Two faults with one case and one pointer are one refusal. The build reports
-every refusal it finds, and reads nothing for a declaration it refuses. [BC-048]
+The build refuses at build a declaration that departs from its shape, or that breaks a rule of items 3, 4, 7,
+8, 12, the `population_level` rule, or section 4.1's location rule or item 4. Each refusal is `{"item",
+"pointer", "detail"?}`: the case of the rule broken, a JSON pointer (RFC 6901) into the declaration, and
+optionally `detail`, text for people that no case compares. The pointer names the member at fault; for a
+missing member, the object that should hold it; of two of one name, the later entry of its list, whole (the
+model entry, not its `model.name`; the requirement, not its `field`; the field in `reads` or the record in
+`checked_over.records` itself); for a waiver naming a `label` that section 4.1 item 4 refuses, that waiver's
+`label`; for a text that is not valid JSON, or a declaration that is not an object, the empty pointer, and
+nothing else is checked. A member deeper down that holds another JSON type is a member at fault like any
+other: the pointer names it, nothing inside it is checked, and the rest of the declaration is. A fault more
+than one rule names carries the case of the first of: items 3, 4, 7 and 8, the `population_level` rule and
+section 4.1's location rule [BC-004] [BC-005] [BC-040] [BC-044] [BC-043] [BC-037]; section 4.1 item 4
+[BC-050]; item 12 [BC-051]; this paragraph [BC-048]. Two faults with one case and one pointer are one refusal.
+The build reports every refusal it finds, and reads nothing for a declaration it refuses. [BC-048]
 
 1. Only a model that reads a field declares anything about it. A field in `reads` with no requirement gives
    `unknown` with the reason `no_requirement`; the build reads nothing for it, so its result holds `status`,
@@ -185,18 +185,19 @@ every refusal it finds, and reads nothing for a declaration it refuses. [BC-048]
     refused at build. [BC-047]
 11. A requirement's `review` holds `reviewed`, the one token of schema 0.1.0. A requirement holding it gives
     `unknown` with the reason `not_reviewed` on a result whose `provenance.review` (`read_side_contract.md`
-    section 2) is not a completed review: one holding `result` `reviewed` (`provenance.md` section 2 item 6). A
-    result that holds no `provenance` gets no such reason. A review lies outside the content hash, so the build
-    reads the review the record holds when it runs (section 9 item 3): a review added after a record was
+    section 2) is not a completed review: one holding `result` `reviewed` (`provenance.md` section 2 item 6).
+    A result that holds no `provenance` gets no such reason. A review lies outside the content hash, so the
+    build reads the review the record holds when it runs (section 9 item 3): a review added after a record was
     pinned can let a refused build pass, and one removed can refuse an accepted build, the pin unchanged. Each
     result's `provenance` holds the review its answer rested on (section 2). [BC-049]
-12. A build refuses at build what it cannot check: where it does not claim the scene suite, a model checked over
-    a domain or a path, `region_conditions`, and an acceptance or `trainable` entry located at a region or an
-    interval; where it does not claim USD read, a model with `engine`; where it does not claim the sampling
-    suite, `sampling`, a requirement's `represents` or `population_level`, and a `distribution` acceptance. A
-    requirement samples where it holds `represents`. Items 7 and 8 and the `population_level` rule (the members
-    table) come first: a model with `engine` that item 7 refuses, and a requirement over which item 8 or that
-    rule refuses the declaration, give no refusal under this item. [BC-051] [BC-040] [BC-043] [BC-044]
+12. A build refuses at build what it cannot check: where it does not claim the scene suite, a model checked
+    over a domain or a path, `region_conditions`, and an acceptance or `trainable` entry located at a region
+    or an interval; where it does not claim USD read, a model with `engine`; where it does not claim the
+    sampling suite, `sampling`, a requirement's `represents` or `population_level`, and a `distribution`
+    acceptance. A requirement samples where it holds `represents`. Items 7 and 8 and the `population_level`
+    rule (the members table) come first: a model with `engine` that item 7 refuses, and a requirement over
+    which item 8 or that rule refuses the declaration, give no refusal under this item. [BC-051] [BC-040]
+    [BC-043] [BC-044]
 
 ## 2. Results
 
@@ -227,8 +228,8 @@ read the acceptances located at that interval as located at that record. [not ye
 1. `status` is one of three: `met`, `not_met` or `unknown`. It states a fact about the record against the
    requirement, and declarations never change it. [BC-006]
 2. The result carries `model`, and the region, interval or record it was read for. [BC-028] Over records the
-   location is the record read: the result holds `record` and neither `region` nor `interval`. Every result of a
-   field holds the `field` read, and a combination's its `fields` (section 3 item 6). [BC-028]
+   location is the record read: the result holds `record` and neither `region` nor `interval`. Every result of
+   a field holds the `field` read, and a combination's its `fields` (section 3 item 6). [BC-028]
 3. `specimen_differences` lists, for each fact the target names, the record's fact where it differs from the
    target, as facts, never as a grade (section 3). [BC-008]
 4. `accepted` is true when each reason and each specimen difference of the result is covered as the table in
@@ -250,9 +251,9 @@ The build gives one report:
 - `unused` (item 9).
 
 A declaration the build refuses on its own gives no results, no watches and nothing unused. The build refuses
-to build while the report holds a refusal, as it does while a result is not accepted (item 5). The material input
-sheet (section 9) holds the report's `consumer`, `records`, `declaration`, `results` and `watches` under those
-names, and adds its own; `refusals` and `unused` are the report's alone. [BC-010]
+to build while the report holds a refusal, as it does while a result is not accepted (item 5). The material
+input sheet (section 9) holds the report's `consumer`, `records`, `declaration`, `results` and `watches` under
+those names, and adds its own; `refusals` and `unused` are the report's alone. [BC-010]
 
 6. **Engine results.** A model with `engine` is judged in order: the build reads its fields; the adapter
    writes where those results are accepted (`usd_binding.md` section 10); the stage check runs; and the build
@@ -292,8 +293,8 @@ or a specimen difference of a result, or a read applied it. [BC-009] [BC-053] [B
 
 7. The build gives each read the acceptances of the kinds a read takes (`read_side_contract.md` section 1),
    overlays aside (which overlays it gives a read is [not yet covered]), that name the read's field and are
-   located at its location, and the `trainable` acceptance section 7 gives. It maps the ones the read applied to
-   their indexes in the model's `acceptances` for `accepted_by`. [BC-009]
+   located at its location, and the `trainable` acceptance section 7 gives. It maps the ones the read applied
+   to their indexes in the model's `acceptances` for `accepted_by`. [BC-009]
 8. The build's own reasons (`no_requirement`, `label_mismatch`, `not_reviewed`) join the read's, and the
    result's status is the worst of them all. Every other member of the result is as the read returned it. The
    build checks a requirement's `label` against the label stored on the value the result rests on (the field,
@@ -324,8 +325,8 @@ or a specimen difference of a result, or a read applied it. [BC-009] [BC-053] [B
    (an impedance from `bulk.density` and an acoustic sound speed) lists them in `combinations`. The build
    compares the specimen facts of those fields with each other, by the rules of item 1, and returns one result
    per combination: `{"model", location, "record", "fields": [...], "specimen_differences": [...],
-   "accepted", "accepted_by", "not_accepted"}`, each difference accepted like a difference from the target, and
-   `not_accepted` as section 2 item 4 gives it. Two fields may describe different specimens even when each
+   "accepted", "accepted_by", "not_accepted"}`, each difference accepted like a difference from the target,
+   and `not_accepted` as section 2 item 4 gives it. Two fields may describe different specimens even when each
    matches the target (AD 4.2). [BC-014]
 
 ## 4. Acceptances
@@ -448,12 +449,12 @@ The reader applies a declared overlay and refuses a base mismatch or a conflict 
 ## 7. Trainable fields
 
 1. A field listed in `trainable`, with its region, interval or record, is a parameter the consumer fits. An
-   entry is `{"field", <location>}`, its location one of `record`, `region` and `interval`; it names a field in
-   `reads` at a location the model is checked over, and no other entry names that field there (section 1). The
-   build gives each read of that field there a `trainable` acceptance (`read_side_contract.md` section 1), and
-   the result names the entry by its 0-based index in `trainable`, in `trainable_by`. A result whose read went
-   on to step 12 under it carries the label `initial_value_only` (`read_side_contract.md` section 3, step 12):
-   the record's value is used only as the initial value. [BC-029] [PR-339]
+   entry is `{"field", <location>}`, its location one of `record`, `region` and `interval`; it names a field
+   in `reads` at a location the model is checked over, and no other entry names that field there (section 1).
+   The build gives each read of that field there a `trainable` acceptance (`read_side_contract.md` section 1),
+   and the result names the entry by its 0-based index in `trainable`, in `trainable_by`. A result whose read
+   went on to step 12 under it carries the label `initial_value_only` (`read_side_contract.md` section 3, step
+   12): the record's value is used only as the initial value. [BC-029] [PR-339]
 2. For a trainable field, the reasons about conditions (`condition_outside` and `condition_not_accepted`
    included), the form's range (`outside_range`, `range_unstated` and `outside_coverage`, never `at_edge`) and
    specimen differences are reported, not refused, because the consumer will move the value. Every other
