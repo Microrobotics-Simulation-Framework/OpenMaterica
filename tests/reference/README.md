@@ -39,8 +39,8 @@ its axis stays, counts as a form `want` cannot give, and under `no_pick` its ent
 beside its unit, conditions, specimen, statistics and provenance, with the labels step 12 gives it.
 
 Anything else gives `NoVerdict`, an outcome of its own, which a test counts and never reads as a pass: a pick
-or an overlay (S4), a region target (the scene suite), and `want: fit` on a field holding a fit record (the
-fits and reference data suite).
+or an overlay (S4), a `trainable` acceptance (S7a-4), a region target (the scene suite), and `want: fit` on a
+field holding a fit record (the fits and reference data suite).
 
 Each rule cites the text as `file:line` and a short quote. Where the text leaves a point open, the model takes
 the maintainer's ruling where there is one, else the fail-closed choice, each listed once in `OPEN_POINTS` and

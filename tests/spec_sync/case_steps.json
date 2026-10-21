@@ -1359,6 +1359,7 @@
     ],
     "PR-338.nominal_under_components.json": "S2b-2",
     "PR-338.one_left_interval_nominal_applied.json": "S4a",
+    "PR-339.across_edge_no_value.json": "S7a-4",
     "RC-031.copy_hash_63_digits.json": "C2",
     "RC-031.copy_hash_bare.json": "C2",
     "RC-031.copy_hash_uppercase.json": "C2",

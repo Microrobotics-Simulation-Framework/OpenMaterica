@@ -48,6 +48,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | S4a's reads over alternatives with no pick and no overlay: each alternative set aside, kept or refusing the field, and the outcome (plain read) | 24 | run, passed |
 | S4d's reads over alternatives where a table alternative's read gives a reason at step 11: set aside outside its readable range, kept for an extrapolation, staying over an operating range of its axis, refusing the field at an edge or with no operating value for its axis, and the outcome; and one ending at step 8 on a table's `points` (plain read) | 25 | run, passed |
 | reads S4's later pieces run (plain read): over alternatives with a pick, or through an overlay | 109 | not yet runnable: S4, which runs each, is not done |
+| reads S7a-4 runs (plain read): under a `trainable` acceptance | 1 | not yet runnable: S7a-4, which runs it, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | run, verified against the reference evaluator under each of its four configurations |
 | record checks (`check`: RC-031, RC-032, RC-220 to RC-226) and `quote_sha256` (RC-033's vectors) | 164 and 13 | not yet runnable: no executor; C2, with S5's record checks, adds them |
 
@@ -70,9 +71,11 @@ are S2a-2's (`PR-030.near_typo_label_basi_beside_label`, at step 8) and S2a-4's
 (`PR-030.label_basis_stated_not_returned`, `PR-030.label_basis_guessed_not_checked` and
 `PR-044.alternatives_beside_label_basis`): those steps ignored `label_basis` and a member one slip from it, as
 members they did not know, and since a value field names it, the slip and `label_basis` beside `alternatives`
-refuse the field.
+refuse the field. PR-339's arm across a declared edge (`PR-339.across_edge_no_value`, 2026-10-21) is S7a-4's,
+which builds the trainable read (the S7 design's map, 5.5): it needs S3b-2's step 11 as well, which comes
+before S7a-4.
 
-Of the 1521 case files, 1274 agree with plain read and the hash suite, 1216 with plain read alone, and 1274
+Of the 1522 case files, 1275 agree with plain read and the hash suite, 1217 with plain read alone, and 1275
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, and the 197 of the
 record-check suite agree with none, since it claims no record checks.

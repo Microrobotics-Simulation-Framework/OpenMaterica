@@ -17,6 +17,10 @@ exactly what each side gives there:
   found by the implementation's own words for what it has not built, and held to what the draw holds and the
   model gives (a pick or an overlay in a request, which the implementation raises at, the model gives no
   verdict on);
+- a kind of acceptance the text gives that the implementation does not read yet, on which the model gives no
+  verdict (`NOT_READ`): a `trainable` acceptance, which the implementation refuses with `request_incomplete`
+  as a kind it does not take, found by the model's own words for it, and held to the draw and to that
+  refusal alone;
 - an open point on which the two read the text differently (`OPEN_POINTS`), planted by the draw alone: there
   the model must refuse, as its fail-closed reading does, and the model given the implementation's reading (a
   seeded fault of the model that is that reading, `tests/reference/mutants.py`) must agree with the
@@ -227,6 +231,38 @@ NOT_BUILT = {
 }
 
 
+# A kind of acceptance the text gives that the implementation does not read yet, on which the model gives no
+# verdict: each found by the model's own words for it, and held to what the draw holds and the implementation
+# gives.
+
+
+def a_trainable_acceptance_refused(example: Example, implementation: Outcome) -> bool:
+    """read_side_contract.md:64-65 "take only the kinds `pick`, `overlay`, `extrapolation`, `nominal`,
+    `implied_condition` and `trainable`": the implementation takes the first five and refuses a request
+    holding a `trainable` acceptance with `request_incomplete` alone, as a kind it does not take, until S7a-4
+    builds the trainable read; the model gives no verdict on it (`read_model.UNDECIDED_ACCEPTANCES`)."""
+    request = request_of(example)
+    given = request.get("acceptances") if isinstance(request, dict) else None
+    entries = given if isinstance(given, list) else []
+    holds = any(isinstance(entry, dict) and entry.get("acceptance") == "trainable" for entry in entries)
+    return holds and implementation.kind == "result" and refusals(implementation) == ["request_incomplete"]
+
+
+class NotRead(NamedTuple):
+    said: str  # the model's `NoVerdict` for it
+    holds: Callable[[Example, Outcome], bool]
+    why: str
+
+
+NOT_READ = {
+    "a trainable acceptance": NotRead(
+        "a trainable acceptance (S7a-4)",
+        a_trainable_acceptance_refused,
+        "S7a-4 builds the read under a `trainable` acceptance, which `read_side_contract.md` section 1 gives",
+    ),
+}
+
+
 # The open points on which the implementation reads the text otherwise than the model, which fails closed
 # (`read_model.OPEN_POINTS`): each by the model's seeded fault that reads it as the implementation does. None
 # is left. Open point 1's record half, a record condition holding a member of the other kind, was the last:
@@ -280,6 +316,10 @@ def check_outcome(example: Example, implementation: Outcome) -> str:
         assert kinds, f"a step not built that no divergence lists: {described(implementation, model)}"
         assert NOT_BUILT[kinds[0]].holds(example, model), f"{kinds[0]}, not as listed: {model}"
         return "not_built"
+    if implementation.kind == "result" and model.kind == "not_yet":
+        kinds = [kind for kind, read_ in NOT_READ.items() if model.why == read_.said]
+        if kinds and NOT_READ[kinds[0]].holds(example, implementation):
+            return "not_read"
     assert agree(implementation, model), described(implementation, model)
     return {"result": "agrees", "not_yet": "neither_decides", "misuse": "misuse"}[model.kind]
 

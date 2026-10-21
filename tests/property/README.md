@@ -211,7 +211,10 @@ check's reader (the last bullet).
   planted. The known divergences are listed by kind with their reasons and held exactly, failing on any other:
   one step not built that the model decides (an overlay as the target, S4's decision 8; evidence and the
   nominal, which S2b-2 reads, are no divergence any more), found by the implementation's own
-  `NotImplementedError` and held to the draw and to what the model gives; and the open points on which the two
+  `NotImplementedError` and held to the draw and to what the model gives; one kind of acceptance the text
+  gives that the implementation does not read yet (a `trainable` acceptance, S7a-4's), which the
+  implementation refuses with `request_incomplete` alone and the model gives no verdict on, found by the
+  model's own words for it and held to the draw and to that refusal; and the open points on which the two
   read the text differently, where the model must refuse as it fails closed, and the model given the
   implementation's reading must agree with it: none since the maintainer ruled the last, open point 1's
   record half (`members_of_the_other_kind`: a record condition holding a member of the other kind), fail

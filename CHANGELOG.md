@@ -68,8 +68,20 @@ every family entry goes in `families/CHANGELOG.md`.
   formed and not, each `met` with every member as without it; and `PR-044.alternatives_beside_label_basis`,
   refused at step 7. A reader, or the reference model, that does not name `label_basis` at a field's place
   fails the first and the last and no other case file; no case file caught the model's before. A reader that
-  checks its shape fails the third alone. T1 lists the slip's input under `slip`. 1180 of 1521 case files
-  pass.
+  checks its shape fails the third alone. `tests/spec_sync/test_t1.py` lists the slip's input under `slip`.
+- PR-339's arm across a declared edge, written through the case tools: `PR-339.across_edge_no_value`, the edge
+  table narrowed to [275, 283], read at 272 K under a `trainable` acceptance, ends at step 11 with
+  `outside_range` and no value, as `read_side_contract.md` section 2 item 3 now says; `declarations.md`
+  section 4.2 covers a trainable field's `outside_range` only on a result that carries one (BC-029). It is
+  S7a-4's, and not yet runnable; the map of steps (`tests/spec_sync/test_case_steps.py`) now knows the S7
+  pieces, S7a-1 to S7a-5 and S7c. The reference model now gives no verdict on a request holding a `trainable`
+  acceptance, as on a pick, where it refused one with `request_incomplete`, and lists the arm so; none of its
+  129 seeded faults gives the arm another outcome. HP12's agreement check, which fuzz target 5 also runs over
+  every acceptance of the case files, lists the divergence this makes, held exactly: the implementation
+  refuses a request holding a `trainable` acceptance with `request_incomplete` alone, as the text did before,
+  where the model gives no verdict; `tests/property/test_model_controls.py` holds it to failing where it is
+  unlisted and where the implementation does not refuse. 1180 of 1522 case files pass, and 307 are not yet
+  runnable.
 
 ## [0.1.0.dev3] - 2026-10-22
 

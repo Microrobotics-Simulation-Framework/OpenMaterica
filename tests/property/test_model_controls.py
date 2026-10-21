@@ -15,6 +15,7 @@ import pytest
 from materica.core import value_shapes
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
+from materica.core.read import read
 from materica.core.reasons import Reason
 from materica.shapes import Suite
 from tests.property import test_model_properties as properties
@@ -48,6 +49,15 @@ def temperature_of(record: JsonObject) -> JsonObject:
 def overlay_as_the_target() -> Example:
     """PR-007's case of an overlay as the target, which S4 builds."""
     case: dict[str, Any] = json.loads((CASES / "PR-007.target_is_overlay.json").read_text(encoding="utf-8"))
+    sources = tuple(Path(INPUTS / name).read_bytes() for name in case["inputs"]["records"])
+    return Example("control", sources, json.dumps(case["request"]).encode(), CLAIMS)
+
+
+def trainable_across_the_edge() -> Example:
+    """PR-339's case file, a read under a `trainable` acceptance, which S7a-4 builds."""
+    case: dict[str, Any] = json.loads(
+        (CASES / "PR-339.across_edge_no_value.json").read_text(encoding="utf-8")
+    )
     sources = tuple(Path(INPUTS / name).read_bytes() for name in case["inputs"]["records"])
     return Example("control", sources, json.dumps(case["request"]).encode(), CLAIMS)
 
@@ -104,6 +114,30 @@ def test_a_listed_divergence_fails_where_the_draw_does_not_hold_it(monkeypatch: 
     record, request = water_read()
     with pytest.raises(AssertionError, match="an overlay as the target, not as listed"):
         properties.check_agreement(pinned_example(record, request))
+
+
+def test_a_kind_not_read_passes_as_listed_and_fails_once_unlisted(monkeypatch: pytest.MonkeyPatch) -> None:
+    example = trainable_across_the_edge()
+    assert properties.check_agreement(example) == "not_read"
+    monkeypatch.delitem(properties.NOT_READ, "a trainable acceptance")
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        properties.check_agreement(example)
+
+
+def test_a_kind_not_read_fails_where_the_implementation_does_not_refuse_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The model's words alone never list a divergence: an implementation that reads the request as without
+    its `trainable` acceptance, so that it gives `outside_range` and not `request_incomplete`, fails."""
+
+    def as_without_it(request: Any, store: Any, **members: Any) -> Any:
+        parsed = json.loads(request)
+        del parsed["acceptances"]
+        return read(json.dumps(parsed).encode(), store, **members)
+
+    monkeypatch.setattr(properties, "read", as_without_it)
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        properties.check_agreement(trainable_across_the_edge())
 
 
 def test_open_point_1s_record_half_reads_alike_since_its_ruling() -> None:
