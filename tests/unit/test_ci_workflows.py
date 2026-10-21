@@ -3836,12 +3836,12 @@ def test_a_job_whose_timeout_signals_the_group_fails_the_interrupt_check(job_id:
 
 # The slowest run of each Hypothesis shard measured on CI, in minutes, by profile. At `ci` in run
 # 39002323592, 2026-10-17; `conditions` and `relations` in run 39039695416, the same day; `alternatives` in
-# run 39390324975, 2026-10-20. At `deep`, each job's time (started to completed) in the slowest of three
-# dispatched runs, as ci.yml's comment gives each: 39002750375 (2026-10-17; `step8_mutants`), 39540221119
-# (2026-10-21; `writer`, `conditions`, `agreement`) and 39553647007 (2026-10-21; `relations`, `records`,
-# `json`, `alternatives`). A shard that CI runs in parts (`agreement`, `relations`, `alternatives`) is held,
-# in each part, at `ci` to the time of the shard whole, measured before the split, and at `deep` to its
-# slowest part's. A shard not measured yet is not held.
+# run 39390324975, 2026-10-20. At `deep`, each job's time (started to completed) in the slowest of the
+# dispatched runs ci.yml's comment gives: 39002750375 (2026-10-17; `step8_mutants`), 39540221119 (2026-10-21;
+# `writer`, `conditions`, `agreement`), 39553647007 (2026-10-21; `relations`, `json`, `alternatives`) and
+# 39578840767 (2026-10-21; `records`, 09:41:51 to 10:46:07). A shard that CI runs in parts (`agreement`,
+# `relations`, `alternatives`) is held, in each part, at `ci` to the time of the shard whole, measured before
+# the split, and at `deep` to its slowest part's. A shard not measured yet is not held.
 MEASURED_ON_CI = {
     "ci": {
         "agreement": 5.93,
@@ -3856,7 +3856,7 @@ MEASURED_ON_CI = {
     "deep": {
         "writer": 67.43,
         "agreement": 77.30,
-        "records": 50.82,
+        "records": 64.27,
         "json": 23.85,
         "step8_mutants": 1.55,
         "relations": 65.22,
@@ -3915,9 +3915,9 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
     ("old", "new", "problem"),
     [
         (
-            "matrix.shard == 'records' && 105",
-            "matrix.shard == 'records' && 104",
-            "hypothesis (deep, records) is interrupted at 101 minutes, less than twice its 50.82 measured",
+            "matrix.shard == 'records' && 135",
+            "matrix.shard == 'records' && 131",
+            "hypothesis (deep, records) is interrupted at 128 minutes, less than twice its 64.27 measured",
         ),
         (
             "matrix.shard == 'writer' && 75",
@@ -3959,7 +3959,7 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
         ),
     ],
     ids=[
-        "records-deep-at-104",
+        "records-deep-at-131",
         "writer-ci-at-12",
         "relations-deep-at-130",
         "agreement-deep-at-155",

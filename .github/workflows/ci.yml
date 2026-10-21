@@ -572,20 +572,23 @@ jobs:
     # set-up included), in minutes: run 39002750375 (2026-10-17, the five shards there then, each whole), run
     # 39540221119 (2026-10-21, main at 76907779) and run 39553647007 (2026-10-21, at 7288ebd5, whose tree main
     # holds at bb2523e8, with the four audit controls of HP12's floors held at `deep` alone in `relations`, 10.4
-    # to 21.0 minutes each by its durations reports). A shard run in parts takes its slowest part's time, both
-    # parts the one timeout: the weights split the parts by their times at `ci`, and at `deep` two parts can
-    # differ, as agreement's did. Each shard's times in that order, then the least timeout the rule allows
-    # (twice the slowest, and three) and its timeout:
+    # to 21.0 minutes each by its durations reports); and records in a fourth, run 39578840767 (2026-10-21, main
+    # at 0b9f6a5e), where pytest ran the whole shard in 3,844 s, 99 passed and 1 failed, the failure a strategy
+    # that could not build its case (HP13's `source_range_disjoint`), not time. A shard run in parts takes its
+    # slowest part's time, both parts the one timeout: the weights split the parts by their times at `ci`, and
+    # at `deep` two parts can differ, as agreement's did. Each shard's times in that order, then the least
+    # timeout the rule allows (twice the slowest, and three) and its timeout:
     #   writer 63.6, 67.4, 61.4: 137.9, 180; conditions (not in the first) 62.4, 49.1: 127.8, 180;
     #   agreement 47.0 whole, then its parts 49.8 and 77.3, 25.4 and 76.1: 157.6, 360;
     #   relations (not in the first), its parts 50.3 and 49.6, 58.2 and 65.2: 133.4, 345;
     #   alternatives (not in the first), its parts 22.0 and 20.6, 38.7 and 32.2: 80.5, 90;
-    #   records 31.4, 37.2, 50.8: 104.6, 105; json 14.1, 22.6, 23.9: 50.7, 55;
+    #   records 31.4, 37.2, 50.8, 64.3: 131.5, 135; json 14.1, 22.6, 23.9: 50.7, 55;
     #   step 8's mutants 1.6, 0.6, 0.7: 6.1, 45 (the default, which a shard not yet measured at `deep` has too).
-    # records and json had fallen below the rule and are raised to it, rounded up to a multiple of five. The
-    # others are kept, not lowered to the rule: the same code has run at least 2.7 times as long on one runner
-    # as on another (the writer shard at `ci`, below: 11 minutes, and past 30), and three runs, two of them on
-    # one morning, do not bound that. Lowering them is the maintainer's call.
+    # records and json had fallen below the rule and are raised to it, rounded up to a multiple of five: records
+    # twice, to 105 at 50.8 and to 135 at 64.3. The others are kept, not lowered to the rule: the same code has
+    # run at least 2.7 times as long on one runner as on another (the writer shard at `ci`, below: 11 minutes,
+    # and past 30), and three runs, two of them on one morning, do not bound that. Lowering them is the
+    # maintainer's call.
     # `ci`: each well above its shard's slowest run measured on CI, since a hosted runner has taken 1.6 to 4
     # times as long as this machine and varies from run to run: agreement 5.9 minutes, writer 5.2, records 2.5,
     # json and step 8's mutants 1.6 (run 39002323592, 2026-10-17); relations 7.4 and conditions 5.1 (run
@@ -600,7 +603,7 @@ jobs:
       || startsWith(matrix.shard, 'relations') && 345
       || startsWith(matrix.shard, 'agreement') && 360
       || startsWith(matrix.shard, 'alternatives') && 90
-      || matrix.shard == 'records' && 105 || matrix.shard == 'json' && 55 || 45)
+      || matrix.shard == 'records' && 135 || matrix.shard == 'json' && 55 || 45)
       || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
       || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
     strategy:
@@ -631,7 +634,7 @@ jobs:
         || startsWith(matrix.shard, 'relations') && 345
         || startsWith(matrix.shard, 'agreement') && 360
         || startsWith(matrix.shard, 'alternatives') && 90
-        || matrix.shard == 'records' && 105 || matrix.shard == 'json' && 55 || 45)
+        || matrix.shard == 'records' && 135 || matrix.shard == 'json' && 55 || 45)
         || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
         || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
     steps:
