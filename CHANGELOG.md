@@ -99,6 +99,14 @@ every family entry goes in `families/CHANGELOG.md`.
   its row's Holds and is BC-048's, items 3 and 4 refusing one that is absent. A refusal's pointer names the most
   specific member at fault: for a value that breaks its row's Holds, that member; for what item 12 refuses, the
   member that needs the suite, or the acceptance or `trainable` entry itself.
+- Three clarifying sentences, ruled on 2026-10-23 (`docs/specification/changes.md`), each settling a reading the
+  build check's case files would otherwise choose; no reader, schema or case file changes. `read_side_contract.md`
+  section 2: an `alternative_values` entry whose alternative is kept outside its form's range, or is a table read
+  over an operating range of its axis, holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as
+  `record_format.md` section 5 gives them, even where its read ended at step 11; and an alternative's index, an
+  entry's and a reason's `alternative`, counts from 0, in stored order. `declarations.md` section 1: a waiver
+  whose `code` is no reason names no condition, so such a waiver without `condition` is refused at its `code`
+  alone (BC-048).
 
 ### Verification
 - S7a-1's build-check case files (S7-cases-1; the S7 design's section 5.4, its S7a-1 rows), written through the

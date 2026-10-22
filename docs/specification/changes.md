@@ -546,3 +546,17 @@ BC-004 or BC-005 (BC-048). And the pointer names the most specific member at fau
 its row's Holds, that member, such as a requirement's `field` not in `reads` or a `trainable` entry's `record`
 its model is not checked over; for what item 12 refuses, the member that needs the suite, or the acceptance or
 `trainable` entry itself, such as a `distribution` acceptance (BC-048, BC-051).
+
+Settled after S7-cases-1 (maintainer, 2026-10-23, as recommended): three sentences, each a reading the build
+check's case files would otherwise have had to choose. In `read_side_contract.md` section 2, an
+`alternative_values` entry whose alternative is kept outside its form's range, or is a table read over an
+operating range of its axis, holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as
+`record_format.md` section 5 item 5 gives them, even where its read ended at step 11; before, the row gave the
+entry's other members "for a read of that alternative alone", and such a read, ending `not_met` at step 11
+with no value, holds none of the four, while `record_format.md` lists each entry with them (PR-013). And an
+alternative's index, an entry's and a reason's `alternative`, counts from 0 in stored order; before, the row
+said only "its index among the stored alternatives", where a pick's `index` is 0-based by `declarations.md`
+section 4.1 (PR-013, PR-331). In `declarations.md` section 1, a waiver whose `code` is no reason names no
+condition, so a `condition` beside it is refused, not required, and such a waiver without one gives one
+refusal, at its `code`; before, a `code` one slip from a condition reason could be read as still naming the
+condition, which would have added a refusal at the waiver for its missing `condition` (BC-048).
