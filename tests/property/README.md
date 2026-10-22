@@ -412,9 +412,10 @@ check's reader (the last bullet).
   over HP39's strategy. HP12 draws the same in a part of its own, the part first. Every draw S4d adds is held: the
   outcome and the ways by their floors, and within a way, the base form a named `want` needs, the others none in the
   form it gives under `want_mismatch`, the extrapolation, the operating range, the absent operating value and the
-  token set aside at step 10 by `check_drawn`, the kept table's origin, its label and its stored index by a mutant
-  each that shows there alone, so that a draw cut leaves it alive; the others' own draws are S4a's, which S4a's
-  properties hold.
+  token set aside at step 10 by `check_drawn`, the kept table's origin and its label by a mutant each that shows
+  there alone, and its stored index by two, one showing where the table is not stored first and one where it is
+  not stored last, so that a draw cut leaves one alive; HP40's three moves of the range by a test of each on a
+  table written by hand (`off_the_value`); the others' own draws are S4a's, which S4a's properties hold.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -605,7 +606,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 1,300 searches, 650 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,304 searches, 652 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1309,6 +1310,7 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `kept_entry_its_read` | a kept table's `no_pick` entry its read under the extrapolation: the end value (S4d) | tables among alternatives, `kept` (planned) | `kept` | 4, 4 |
 | `over_a_range_entry_without_step_12_labels` | an over-range table's `no_pick` entry with its read's labels, none (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 4, 3 |
 | `entry_labels_of_the_first_alternative` | a kept or over-range table's entry with the first stored alternative's labels (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 66, 19 |
+| `entry_labels_of_the_last_alternative` | a kept or over-range table's entry with the last stored alternative's labels (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 4, 3 |
 | `kept_unknown_dropped_beside_two_or_more` | a kept table's `unknown` reasons dropped beside `no_pick` or `want_mismatch` (S4d) | tables among alternatives, `kept` (planned) | `kept` | 4, 4 |
 | `outside_range_refuses` | `outside_range` refusing the field, as every other `not_met` does (S4d) | tables among alternatives, `outside` (planned) | `outside` | 6, 3 |
 | `narrowed_alternative_kept` | the table moved off its range kept (S4d) | tables among alternatives, `outside` (planned) | `outside` | 4, 3 |
@@ -1783,10 +1785,11 @@ on the range's end in half its draws).
 `_standing_at_step_11`, `_set_aside_by_its_range`, `_gives`, `_entry`, `_found_reading`,
 `_reported_beside_two_or_more`) or around `_read_alternatives`, and each dying at the table's way and at the
 assertion it names: the S4 design's mutants of HP39 and HP40 (`test_table_alternatives_mutant_table.py` holds
-each to the row that stands for it), beside four more the code invites: a kept table and an over-range table
+each to the row that stands for it), beside five more the code invites: a kept table and an over-range table
 each refusing the field, a table set aside at step 10 refusing the field for its missing operating value as if
 it reached step 11, and a kept or over-range table's entry given the labels of the first stored alternative,
-which holds the table's stored index: a table stored first shows it nowhere. Of the design's, "kept under
+or of the last, as a loop's variable left over would hold, which hold the table's stored index: a table stored
+first shows the one nowhere, and a table stored last the other. Of the design's, "kept under
 `want: bounds`" is a step 7 that keeps a table where the request carries an extrapolation its place could
 take, under any `want`, since step 7 reads the extrapolation that applies (`FormRange.extrapolation`), which no
 `want` but `value` gives; "the extrapolation applied under `no_pick`" shows in what the read applied alone,
@@ -1814,6 +1817,7 @@ shows (HP12's tables below).
 | `extrapolation_applied_under_no_pick` | a kept table's extrapolation among what a `no_pick` read applied | HP39, kept or set aside | `kept` | 99, 5 |
 | `over_a_range_entry_without_step_12_labels` | an over-range table's `no_pick` entry with its read's labels, none | HP39, kept or set aside | `over_an_operating_range` | 6, 9 |
 | `entry_labels_of_the_first_alternative` | a kept or over-range table's entry with the first stored alternative's labels | HP39, kept or set aside | `over_an_operating_range`, `kept` | 7, 5 |
+| `entry_labels_of_the_last_alternative` | a kept or over-range table's entry with the last stored alternative's labels | HP39, kept or set aside | `over_an_operating_range`, `kept` | 6, 5 |
 | `kept_unknown_dropped_beside_two_or_more` | a kept table's `unknown` reasons dropped beside `no_pick` or `want_mismatch` | HP39, kept or set aside | `kept` | 99, 5 |
 | `outside_range_refuses` | `outside_range` refusing the field, as every other `not_met` does | HP40 | `inside` | 6, 8 |
 | `narrowed_alternative_kept` | the table moved off its range kept | HP40 | `inside` | 2, 2 |

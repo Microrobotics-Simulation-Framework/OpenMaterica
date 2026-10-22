@@ -251,6 +251,17 @@ def _entry_labels_of_the_first_alternative(found: FieldRead, stored: list[Any]) 
     return dataclasses.replace(entry, labels=LABELS(first, an_object(first["provenance"])))
 
 
+def _entry_labels_of_the_last_alternative(found: FieldRead, stored: list[Any]) -> FieldRead:
+    """A kept or over-range table's entry with the labels step 12 gives the last stored alternative, as a
+    loop variable left from reading the alternatives would hold: where the table is not stored last, a draw's
+    stored index tells them apart."""
+    entry = ENTRY(found, stored)
+    if found.form_range is None:
+        return entry
+    last = an_object(stored[-1])
+    return dataclasses.replace(entry, labels=LABELS(last, an_object(last["provenance"])))
+
+
 def _extrapolation_applied_under_no_pick(monkeypatch: pytest.MonkeyPatch) -> None:
     """A kept table's extrapolation among what a `no_pick` read applied."""
 
@@ -385,6 +396,13 @@ MUTANTS: list[Mutant] = [
         "entry_labels_of_the_first_alternative",
         "HP39 kept or set aside",
         replacing("_entry", _entry_labels_of_the_first_alternative),
+        ("over_an_operating_range", "kept"),
+        "^alternative_values",
+    ),
+    Mutant(
+        "entry_labels_of_the_last_alternative",
+        "HP39 kept or set aside",
+        replacing("_entry", _entry_labels_of_the_last_alternative),
         ("over_an_operating_range", "kept"),
         "^alternative_values",
     ),
