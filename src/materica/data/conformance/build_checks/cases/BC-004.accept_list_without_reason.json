@@ -1,0 +1,31 @@
+{
+  "case": "BC-004",
+  "variant": "accept_list_without_reason",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc004_accept_list_without_reason.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [
+      {
+        "item": "BC-004",
+        "pointer": "/models/0/requirements/0/conditions/test_method"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ]
+  }
+}

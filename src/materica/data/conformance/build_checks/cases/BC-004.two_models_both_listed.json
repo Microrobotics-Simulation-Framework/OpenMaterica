@@ -1,0 +1,35 @@
+{
+  "case": "BC-004",
+  "variant": "two_models_both_listed",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc004_two_models_both_listed.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [
+      {
+        "item": "BC-004",
+        "pointer": "/models/0/requirements/0/conditions/temperature"
+      },
+      {
+        "item": "BC-004",
+        "pointer": "/models/1/requirements/0/conditions/test_method"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "case": "BC-004",
+  "variant": "tolerance_without_reason",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc004_tolerance_without_reason.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [
+      {
+        "item": "BC-004",
+        "pointer": "/models/0/requirements/0/conditions/temperature"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ]
+  }
+}
