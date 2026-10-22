@@ -329,7 +329,7 @@
       "rule": "A",
       "names": ["operation"],
       "meanings": 2,
-      "reason": "One meaning, the operation a case asks for in place of a read: the build-check case's, check_build, is a definition of its own, so that case.json holds a build-check case to it and no other case to it; the other operations' list holds the rest, the table evaluation case's evaluate among them.",
+      "reason": "One meaning, the operation a case asks for in place of a read: the build-check case's, check_build, is a definition of its own, so that case.json holds a build-check case to it and refuses it in any other case; the other operations' list holds the rest, the table evaluation case's evaluate among them.",
       "safeguard": {
         "document": "docs/specification/README.md",
         "quote": "its `request` is `{\"operation\": \"check_build\"}`",
