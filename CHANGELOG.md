@@ -747,9 +747,10 @@ every family entry goes in `families/CHANGELOG.md`.
   not found where it begins, a quote of fewer than 20 characters, a seeded fault that cites neither the text nor a
   listed open point nor stands in `NO_LINE_IN_THE_TEXT`, and a test module that cites the text and is not listed.
   Limit: a quote must begin on a cited line and may end on a later one, so a range may be shifted by less than its
-  width and still pass (a single line shifted by one, or a range shifted by its width, fails). Requiring the quote
-  to reach the last cited line too would fail 91 of the 544 citations read (the model's 408 and the four test
-  modules' 136), and is not done. Two citations moved to the line that says the rule: the `no_pick` result's
+  width and still pass (a single line shifted by one, or a range shifted by its width, fails). Measured at this
+  head, 280 of the 289 ranges among the 550 citations read (the model's 408 and the four test modules' 142) pass
+  shifted by one line in one direction or the other, and none of the 261 single lines does. Requiring the quote
+  to reach the last cited line too would fail 90 of the 550, and is not done. Two citations moved to the line that says the rule: the `no_pick` result's
   `conditions` (`read_side_contract.md:169-170` to 171-172) and a comment's (169-171 to 164). A `dof` held as a
   status object under a Student's t distribution keeps `read_side_contract.md:134-135`, the rule that every check
   is made, and cites `provenance.md:50-51`, the token check, and `uncertainty.md:48-49`, the shape. A seeded fault

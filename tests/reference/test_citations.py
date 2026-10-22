@@ -10,9 +10,10 @@ A quote is at least `MIN_QUOTE` characters, so that it cannot sit at a neighbour
 begins on a cited line. It may end on a later one, so a range may be shifted by less than its width and
 still hold its quote: a citation of lines 49 to 51 whose quote begins on 50 passes as 48 to 50 and as 50 to
 52, and fails as 47 to 49 and as 51 to 53. The controls below show which shifts pass and which fail.
-Requiring the quote to reach the last cited line too would close that; measured over the 544 citations the
-check read when this limit was set (the model's 408 and the four test modules' 136), it fails 91 of them,
-which are not re-anchored, so the check keeps the weaker rule and says so here.
+Requiring the quote to reach the last cited line too would close that; measured over the 550 citations the
+check reads at this writing (the model's 408 and the four test modules' 142), it fails 90 of them, which are
+not re-anchored, so the check keeps the weaker rule and says so here. At this writing 280 of the 289 ranges
+among them pass shifted by one line in one direction or the other, and none of the 261 single lines does.
 Each point the text leaves open is listed once in `OPEN_POINTS` and named
 where the model applies it, and the two agree."""
 
