@@ -1674,7 +1674,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "acceptances_applied_anywhere": Mutant(
         "an acceptance applied at another record, a region, an interval or no location",
-        'read_side_contract.md:85-92 "only at the read"',
+        'read_side_contract.md:85-92 "only at the read\'s own location"',
         {"at_the_read": anywhere},
     ),
     "two_nominals_for_one_field": Mutant(
@@ -1692,7 +1692,9 @@ MUTANTS: Mapping[str, Mutant] = {
     "every_slip_ignored": Mutant(
         "a member one slip from a named one ignored, in a request and in a record",
         'record_format.md:578-583 "refuses a member it does not know, where items 1 and 4 would ignore or '
-        'skip it, that is one slip (below)"',
+        'skip it, that is one slip (below)", read_side_contract.md:40-41 "a member one slip '
+        "(`record_format.md` section 10) from a member this section or `declarations.md` names at that "
+        'place"',
         {"slipped": no_slip},
     ),
     "plurals_not_slips": Mutant(
@@ -1753,12 +1755,13 @@ MUTANTS: Mapping[str, Mutant] = {
     "alternatives_counted_from_one": Mutant(
         "an `alternative_values` entry's index counted from one",
         'read_side_contract.md:122 "`alternative` is its index among the stored alternatives of the field '
-        'read"',
+        'read" gives the index and no base (OPEN_POINTS: alternative_index_base)',
         {"read_alternatives": alternatives_counted_from_one},
     ),
     "labels_raised_from_an_alternative": Mutant(
         "an alternative's labels on the `no_pick` result's own",
-        'read_side_contract.md:128 "labels, from this list only"',
+        "read_side_contract.md:128 \"each alternative's other labels sitting, under `no_pick`, in its "
+        '`alternative_values` entry"',
         {"read_alternatives": labels_raised_from_alternatives},
     ),
     "nominal_ignored_over_alternatives": Mutant(
@@ -1822,7 +1825,9 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "nominal_not_applied_to_the_one_left": Mutant(
         "a nominal not applied to the interval left, which gives no value",
-        'read_side_contract.md:276 "where one alternative stays"',
+        'read_side_contract.md:276 "where one alternative stays", '
+        "read_side_contract.md:530 \"A nominal applies only under `want: value`, inside or on the interval's "
+        'bounds"',
         {"read_alternatives": nominal_not_applied_to_the_one_left},
     ),
     "not_met_reasons_beside_no_pick": Mutant(
@@ -1926,13 +1931,16 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "population_level_checks_stop_at_a_missing_member": Mutant(
         "a population level missing a member has its `level` and `within` left unchecked",
-        'read_side_contract.md:134-135 "Each step makes all its checks before the read stops"',
+        'read_side_contract.md:134-135 "Each step makes all its checks before the read stops", '
+        'uncertainty.md:37 "present exactly where `represents` is `population`"',
         {"check_population_level": population_level_checks_stop_at_a_missing_member},
         survives="no case holds a population level missing a member beside a token of its own",
     ),
     "dof_token_unchecked_under_student_t": Mutant(
         "a `dof` held as a status object under a Student's t distribution has its token left unchecked",
-        'uncertainty.md:48-49 "a number where `distribution` is `student_t`"',
+        'read_side_contract.md:134-135 "Each step makes all its checks before the read stops", '
+        'provenance.md:50-51 "and one the reader does not know as `unknown_token`" and uncertainty.md:48-49 '
+        '"a number where `distribution` is `student_t`"',
         {"check_uncertainty": dof_token_unchecked_under_student_t},
         survives="no case holds a `dof` status object of an unknown token under a Student's t distribution",
     ),
@@ -1997,7 +2005,8 @@ MUTANTS: Mapping[str, Mutant] = {
     "slips_of_alternatives_ignored": Mutant(
         "a member one slip from `alternatives` beside a value field's members ignored",
         'record_format.md:315 "A value field is an object with these members, or an `alternatives` object '
-        "(below)\" (the maintainer's ruling, 2026-10-19)",
+        '(below)" (the maintainer\'s ruling, 2026-10-19), record_format.md:578 "refuses a member it does not '
+        'know, where items 1 and 4 would ignore or skip it, that is one slip (below)"',
         {"FIELD_PLACE_NAMES": model.VALUE_FIELD_NAMES},
     ),
     "evidence_entry_provenance_unchecked": Mutant(
@@ -2017,8 +2026,9 @@ MUTANTS: Mapping[str, Mutant] = {
     "declaration_names_not_named_in_a_request": Mutant(
         "a slip of a requirement's `field`, or of its conditions' `reason` or `consequence`, ignored",
         'read_side_contract.md:40-41 "a member one slip (`record_format.md` section 10) from a member '
-        'this section or", declarations.md:30 "fluid.dynamic_viscosity" and declarations.md:64 "each with '
-        'its `reason` and, where known, its `consequence`" (the text names them in a requirement)',
+        'this section or", declarations.md:64 "per field: `want` (`read_side_contract.md` section 6), '
+        'required" and "each with its `reason` and, where known, its `consequence`" (the text names them in '
+        "a requirement)",
         {
             "REQUIREMENT_NAMES": model.REQUIREMENT_NAMES[:-1],
             "REQUIREMENT_CONDITION_NAMES": model.REQUIREMENT_CONDITION_NAMES[:2],
@@ -2163,7 +2173,8 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "results_share_the_record": Mutant(
         "a result shares its members with the record read",
-        'read_side_contract.md:157-159 "Every member a result returns from a record"',
+        "an implementation property: no line of the text says a result's members are separate objects "
+        "(listed in `NO_LINE_IN_THE_TEXT`, tests/reference/test_citations.py)",
         {"copied": shared},
         survives="a case compares a result's JSON, in which no object is shared",
     ),
@@ -2189,7 +2200,8 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "reviewed_review_keeps_a_status_objects_members": Mutant(
         "a reviewed review returned with a status object's members, its `reason` among them",
-        'provenance.md:97 "with who checked the value against the source"',
+        'provenance.md:120 "A reader returns it as found in two cases only", provenance.md:122-123 "or an '
+        'object holding no `status` whose `result` is a token the reader knows (`reviewed`)"',
         {"review_read": reviewed_with_a_status_objects_members},
         survives="no case holds a reviewed review beside a `reason`",
     ),
@@ -2204,7 +2216,8 @@ MUTANTS: Mapping[str, Mutant] = {
     # S3b-2's: a table's steps 10 to 13, measured 2026-10-21 at S3b-2's head.
     "edge_unseen_by_the_axis_entry": Mutant(
         "the axis entry `met` at an edge inside the readable range",
-        'read_side_contract.md:461 "the entry is `met` when the operating value lies in the form"',
+        "read_side_contract.md:461 \"the entry is `met` when the operating value lies in the form's range "
+        'and on no declared edge"',
         {"table_axis": edge_unseen_by_the_axis_entry},
     ),
     "outside_range_dropped_at_an_edge": Mutant(
@@ -2260,7 +2273,9 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "extrapolation_end_of_x": Mutant(
         "the end value `y[0]` or `y[-1]` where `source_range` narrows the range",
-        'read_side_contract.md:503 "the result carries the value at the range"',
+        'read_side_contract.md:503 "the result carries the value at the range" and record_format.md:406-407 '
+        '"or `source_range[0]` where that is greater, to `x[-1]`, or `source_range[1]` where that is '
+        'smaller"',
         {"read_the_table": end_value_of_x},
     ),
     "extrapolation_far_end": Mutant(
@@ -2302,7 +2317,7 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "assumption_with_its_basis": Mutant(
         "an extrapolation's `assumption` holding its `basis`",
-        'read_side_contract.md:129 "`basis` aside"',
+        'read_side_contract.md:129 "as the request gives them, `basis` aside"',
         {"checked_acceptances": assumption_with_its_basis},
     ),
     "covered_outside_range_dropped": Mutant(
@@ -2353,7 +2368,8 @@ MUTANTS: Mapping[str, Mutant] = {
     ),
     "over_a_range_entry_unlabelled": Mutant(
         "the `no_pick` entry of a table read over an operating range of its axis without step 12's labels",
-        'read_side_contract.md:122 "one entry per remaining alternative, in stored order"',
+        'read_side_contract.md:122 "except that its `labels` are those step 12 gives that alternative even '
+        'where its read ended at step 11, as a table read over an operating range of its axis does"',
         {"read_value_field": over_a_range_entry_unlabelled},
     ),
     "over_a_range_entry_bare": Mutant(
