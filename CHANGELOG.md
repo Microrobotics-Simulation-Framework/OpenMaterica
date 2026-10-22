@@ -694,16 +694,18 @@ every family entry goes in `families/CHANGELOG.md`.
   95 % bound. 21 mutants of step 7 die at the way and assertion each names, at both sizes: the design's sixteen and
   five the code invites (a kept and an over-range table each refusing the field, a table set aside at step 10
   refusing it, a kept or over-range entry labelled as the first stored alternative, or as the last); over 40 streams
-  a size, the latest at the 321st example; kill points recorded, at most 99. Each of the 27 ways to cut one of the
+  a size, the latest at the 321st example; kill points recorded, at most 99. Each of the 28 ways to cut one of the
   strategy's draws to a single value fails a test (a floor, the check of the draw, a mutant left alive, or the test
   of HP40's three moves of the range), and with no cut all pass; the table's stored index is held at both ends, by a
-  mutant of the entry's labels each. HP12 gains a part over the same draws, its two parts drawn first and held to
-  their floors, which searches 20 of the mutants (the one of what the read applied shows outside the result's JSON)
-  and three of the reference model's new faults, each a planned search of the way where it shows. HP1, HP2, HP11 and
-  HP12's own draws are unchanged: over 18 derandomised runs of 2,000 examples, each its own stream, each of their
-  fourteen test functions draws and counts the same of each of its 102 features on `main` and here, and every
-  earlier search's kill point stands as recorded. HP27's oracle takes the standing and entry rules as arguments, its
-  own by default, so that HP39 composes it rather than copies it.
+  mutant of the entry's labels each, and the operating range's upper end by a mutant of HP12's alone, a range past
+  the readable range's end given `outside_range`, which the agreement kills. HP12 gains a part over the same draws,
+  its two parts drawn first and held to their floors, which searches 20 of the mutants (the one of what the read
+  applied shows outside the result's JSON), that one of its own and three of the reference model's new faults, each a
+  planned search of the way where it shows. HP1, HP2, HP11 and HP12's own draws are unchanged: over 18 derandomised
+  runs of 2,000 examples, each its own stream, each of their fourteen test functions draws and counts the same of
+  each of its 102 features on `main` and here, and every earlier search's kill point stands as recorded. HP27's
+  oracle takes the standing and entry rules as arguments, its own by default, so that HP39 composes it rather than
+  copies it.
 - The reference model's step 7 decides a table alternative whose read gives a reason at step 11, from the text
   (`read_side_contract.md` section 3, step 7; `record_format.md` section 5), by an agent that did not read the
   read's code: 1,285 read case files, 1,178 agreeing and 107 with no verdict (overlays 71, picks 36), none

@@ -414,8 +414,11 @@ check's reader (the last bullet).
   form it gives under `want_mismatch`, the extrapolation, the operating range, the absent operating value and the
   token set aside at step 10 by `check_drawn`, the kept table's origin and its label by a mutant each that shows
   there alone, and its stored index by two, one showing where the table is not stored first and one where it is
-  not stored last, so that a draw cut leaves one alive; HP40's three moves of the range by a test of each on a
-  table written by hand (`off_the_value`); the others' own draws are S4a's, which S4a's properties hold.
+  not stored last, so that a draw cut leaves one alive; the operating range's upper end, the double above the
+  operating value or any double above it, by HP12's mutant `a_range_across_the_readable_end_outside`, which shows
+  only where that end lies past the readable range's (HP12's tables below); HP40's three moves of the range by a
+  test of each on a table written by hand (`off_the_value`); the others' own draws are S4a's, which S4a's
+  properties hold.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -606,7 +609,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 1,304 searches, 652 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,306 searches, 653 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1315,6 +1318,7 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `outside_range_refuses` | `outside_range` refusing the field, as every other `not_met` does (S4d) | tables among alternatives, `outside` (planned) | `outside` | 6, 3 |
 | `narrowed_alternative_kept` | the table moved off its range kept (S4d) | tables among alternatives, `outside` (planned) | `outside` | 4, 3 |
 | `set_aside_by_its_range_beside_the_one_left` | the reasons of a table set aside by its range reported beside the one left (S4d) | tables among alternatives, `outside` (planned) | `outside` | 6, 3 |
+| `a_range_across_the_readable_end_outside` | a range of a table alternative's axis past the readable range's end given `outside_range` beside its `want_mismatch` (S4d's review) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 3, 54 |
 
 <!-- kill points of every search of test_model_mutants.py::test_the_models_seeded_mutant_is_killed_by_the_agreement (scripts/gen_kill_counts.py) -->
 | Fault of the model | Part | Dies at | Examples |
@@ -1394,7 +1398,14 @@ the table's way by chance (`table_alternatives_strategies.py`). Each of S4d's mu
 JSON (`APPLIED_ALONE`), is searched there as a planned search of the way where it shows, HP40's three at a
 table outside its range; and so are the three of the model's twelve faults of step 7's rows for a table that
 one case file alone kills. Each of these planned searches draws only reads the core and the model agree on
-(`test_model_mutant_table.py`).
+(`test_model_mutant_table.py`). One more mutant is HP12's alone (S4d's review): a read over a range of the
+table's axis that runs past the readable range's end given `outside_range` beside its `want_mismatch`
+(`a_range_across_the_readable_end_outside`), where section 1 gives "no other reason of that step". HP12 kills it
+at the agreement with the model. HP39 fails on it only at the check of its draw (`check_drawn`: the table's read
+alone then stands as set aside), not at an assertion of the read, which is no kill. It shows only where the
+range's upper end lies past the readable range's, so it holds that draw: with the end cut to the double above
+the operating value, which lies inside the range, it survives 2,000 examples at both sizes. Over 40 streams a
+size it died at the 125th example at the latest.
 
 Listed, with the reason no read shows it: `results_share_the_record` (a shared object never shows in JSON; HP6
 holds the core to sharing nothing). `units_stored_differently_read_as_no_pick`, listed here until S4a, became
