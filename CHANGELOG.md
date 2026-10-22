@@ -86,6 +86,21 @@ every family entry goes in `families/CHANGELOG.md`.
   end value a `consumer_law` extrapolation starts from), run and pass: 1151 of 1517 case files pass (one more arm,
   of an implied value, under **Verification**) and 35 are verified against the reference evaluator; 331 wait for
   S4's later pieces (134) and the record checks, C2 (197).
+- Step 7's rows for a table alternative whose read gives a reason at step 11 (S4d; `read_side_contract.md` section
+  3, step 7; `record_format.md` section 5 items 2 to 5), for a field holding alternatives read with no pick and no
+  overlay. One read outside its readable range, at no declared edge, is set aside, unless an extrapolation the
+  request carries would cover it under `want: value`: then it stays, is read on through steps 12 and 13, and the
+  extrapolation is applied only where it is the one left. One read at a declared edge refuses the field, wherever
+  the edge lies, `outside_range` beside it or not. One whose read reaches step 11 with no operating value for its
+  axis refuses the field, its `request_incomplete` carrying no `alternative`; one set aside at step 10 never reaches
+  step 11. One read over an operating range of its axis stays, and counts as a form `want` cannot give. Under
+  `no_pick` the entry of a table kept outside its range or read over a range holds its table as stored, with no end
+  value, no `assumption` and nothing applied, and the labels step 12 gives it even where its read ended at step 11.
+  Step 7 raised `NotImplementedError` there until now. The reference model decides the same rows, written from the
+  text by an agent that did not read the read's code. The 25 case files mapped to S4d run and pass (PR-013's six,
+  PR-044's fifteen and PR-308's four; the S4 design's 26th, `PR-308.table_set_aside_never_reaches_step_11`, has run
+  with S3b-2): 1176 of 1517 case files pass and 35 are verified against the reference evaluator; 306 wait for S4's
+  later pieces (109) and the record checks, C2 (197). No case file changes.
 - `CITATION.cff`, so that GitHub's "Cite this repository" gives the software's citation: its title, author with
   ORCID, licence and repository. Its version and release date are added from 0.1.0, with the first archived
   release.
@@ -161,6 +176,29 @@ every family entry goes in `families/CHANGELOG.md`.
   on one runner, not its rate, which stays the estimate above. `scripts/pre_review.py` runs the two fuzz oracles' tests where the specification text
   their property imports read changes, as a trace of the files the tests open showed, and target 5's oracle's
   where a conformance file changes, since the oracle reads two inputs.
+- The fuzz job's control step runs fuzz target 4 on the fault seeded in step 7 over a table alternative
+  (`MATERICA_FUZZ_SEEDED_FAULT=table_alternatives`, S4d, **Verification**), after the method's: a round of four runs
+  side by side, each of up to 900 s, and another where no run of a round found it, three rounds at most (about 16
+  minutes on average, 45 at most). At the rate measured locally, all miss with about 2e-4 on a runner 1.4 times
+  slower than the laptop, under the bar of 1e-3 a week the maintainer's ruling on the fuzz controls sets, where four
+  runs alone would miss with about 0.06; an estimate until CI's own runs measure it. The step passes where any run
+  reports a line of the model's assertion in which the implementation gives a table alternative's `outside_range`
+  and the model gives none. `tests/unit/test_ci_workflows.py` runs the step as written, a stub standing for each
+  fuzz run, and fails with the runs removed, with three a round, with one round, with every round run though the
+  first found it, with shorter runs, with the runs one after the other, with the check removed and with the runs
+  without the step's dictionary; the check fails where no run finds the fault and where the only finding is another
+  disagreement. The job's timeout rises from 223 to 333 minutes: twice its slowest run on CI (111.4 minutes) and the
+  55 minutes S4d adds by estimate (`FUZZ_ADDED_SINCE`), the control's 45 at most and 10 for the replay of S4d's
+  property modules (584 s of test time at `ci` locally, shared by four workers on a runner up to four times slower).
+  The control moves to the fuzz controls' own job when S4's piece builds it.
+- The Hypothesis job's `alternatives` parts have a `deep` timeout of 110 minutes, from 90, by estimate (S4d): S4d's
+  properties (HP39's two parts and HP40) take 175 and 110 s of the parts' test time at `ci` locally; ten times that
+  at `deep`, on a runner 1.9 times slower than the laptop, shared by four workers, adds about 13.9 and 8.7 minutes
+  to the parts' measured 38.7 and 32.2, and 110 is twice the slower, 52.6, and three, rounded up to a multiple of
+  five. `tests/unit/test_ci_workflows.py` holds the interrupt at twice the estimate until a `deep` run measures it.
+  At `ci` the parts take an estimated 5.3 and 4.2 minutes on CI (165 and 132 s locally; `main`'s take 121 and 114
+  locally and 197 and 218 on CI, at most 1.9 times as long), under a third of their 20-minute timeout, so S4d's
+  properties stay in the shard.
 - The repository moved from `Microrobotics-Simulation-Framework/OpenMaterica` to `OpenMaterica/OpenMaterica`.
   GitHub redirects the old git and web URLs; the README, the site, the scripts, the unit test and the workflow
   documentation name the new place. MIME and MADDENING stay where they are. The README's attestation command says
@@ -637,6 +675,60 @@ every family entry goes in `families/CHANGELOG.md`.
   `consumer_law` five runs of 600 s found it in none; HP26's mutants `a_law_of_any_type` and
   `a_number_taken_as_a_law` hold it, and `a_method_compared_ignoring_case` the control's. CI's control
   step runs the method's (**Changed**, above).
+- HP39 and HP40 (S4d; `tests/property/test_table_alternatives_*.py`, in the `alternatives` shard), over a field
+  holding S4a's alternatives beside a table over a condition no other alternative states
+  (`table_alternatives_strategies.py`, built from S4a's strategies, which stay as they were): the others' outcome
+  drawn first among S4a's five, then the table's way among the four of a part, outside its readable range, over an
+  operating range of its axis, and outside under an extrapolation under `want: value` and under `want: bounds`; or
+  at an edge inside the range, at one outside a narrowed range, with no operating value for its axis, and with none
+  but set aside at step 10. HP39: the read is HP27's oracle, which composes the reads of each alternative alone,
+  with step 11's standings, every member compared; a kept or over-range table's `no_pick` entry holds its table as
+  stored and step 12's labels; the extrapolation is among what the read applied exactly where the table it covers is
+  the one left; and each draw is what its outcome and way say. HP40: moving the table's readable range off the
+  operating value gives the read without it, its indexes moved, or `not_met` with every alternative's reasons, and
+  never turns a refusal `met`. Each outcome and way is held to the floor of a chance below its least share measured,
+  0.11 and 0.14 (floors of 35 and 60 at `ci`): over 20 runs of 2,000 a size an outcome's count and a way's varied up
+  to 13.7 times a binomial's, at which the draw floor of one in five failed a run of the first part with 1.2e-3 at
+  `ci`; at these chances a correct run fails with at most 2.3e-7 at the variance measured, 1.6e-4 at its one-sided
+  95 % bound. 21 mutants of step 7 die at the way and assertion each names, at both sizes: the design's sixteen and
+  five the code invites (a kept and an over-range table each refusing the field, a table set aside at step 10
+  refusing it, a kept or over-range entry labelled as the first stored alternative, or as the last); over 40 streams
+  a size, the latest at the 321st example; kill points recorded, at most 99. Each of the 27 ways to cut one of the
+  strategy's draws to a single value fails a test (a floor, the check of the draw, a mutant left alive, or the test
+  of HP40's three moves of the range), and with no cut all pass; the table's stored index is held at both ends, by a
+  mutant of the entry's labels each. HP12 gains a part over the same draws, its two parts drawn first and held to
+  their floors, which searches 20 of the mutants (the one of what the read applied shows outside the result's JSON)
+  and three of the reference model's new faults, each a planned search of the way where it shows. HP1, HP2, HP11 and
+  HP12's own draws are unchanged: over 18 derandomised runs of 2,000 examples, each its own stream, each of their
+  fourteen test functions draws and counts the same of each of its 102 features on `main` and here, and every
+  earlier search's kill point stands as recorded. HP27's oracle takes the standing and entry rules as arguments, its
+  own by default, so that HP39 composes it rather than copies it.
+- The reference model's step 7 decides a table alternative whose read gives a reason at step 11, from the text
+  (`read_side_contract.md` section 3, step 7; `record_format.md` section 5), by an agent that did not read the
+  read's code: 1,285 read case files, 1,178 agreeing and 107 with no verdict (overlays 71, picks 36), none
+  disagreeing. Twelve new seeded faults of those rows, each killed by a case file; every fault over every case file
+  at the head: 129, 116 killed, 13 surviving, none raising. Four older step-7 faults narrowed back to their own rule
+  once these files had a verdict, and `PR-044.across_edge_under_extrapolation_set_aside`, which one of them raised
+  on, now agrees (`ONCE_RAISED`).
+- Two broken implementations that S4d's case files alone catch (`tests/conformance/test_runner_can_fail.py`): an
+  edge setting a table alternative aside, which fails four of them, and a table read over a range counted as a form
+  `want` can give, which fails two. `tests/spec_sync/test_unknown_member_positions.py` gates a condition name step
+  10 checks on whether step 10 ran, on the field or on its alternative alone, since step 7 now refuses a wrapped
+  table host with no operating value for the request's fault.
+- Fuzz target 4 reads a field's table alternatives at their places as well (`field_oracle.alternative_places`, S4d):
+  each table alternative's places, as many in all as one table's, read under `want: value` and held to the model,
+  steps 9 and 10 and HP1 and HP2, so that step 7 meets a table alternative read at an edge, outside its range and
+  inside it beside the others; all 817 seeds pass on the correct core. Its control,
+  `MATERICA_FUZZ_SEEDED_FAULT=table_alternatives`, refuses the field where a table alternative read outside its
+  range at no edge and with no covering extrapolation is set aside, where a value of the table's `y` lies below 900:
+  no seed shows it, and one change does (a density table's value lowered below 900, or a byte of a constant's
+  condition name beside a viscosity table, each held in `tests/unit/test_fuzz_oracle.py`). The design's candidate, a
+  log-log table alternative refused, no seed can show: every seed's table alternative read outside its range at the
+  target's 310.15 K sits beside alternatives all set aside, where refusing and setting aside give one answer. In ten
+  local runs, in pairs, each of up to 900 s with the control step's arguments, it was found in seven, after 125 to
+  866 s, and missed three times: a rate of 1.1e-3 finds a second, 0.80 a million inputs. CI's control step runs it
+  (**Changed**, above). `seeded_fault.py`'s count of which faults raise is corrected (the seventh raises; the sixth
+  is the model's).
 
 ## [0.1.0.dev2] - 2026-10-20
 
