@@ -1123,6 +1123,58 @@ jobs:
               break
             fi
           done
+          # What each run found and when, one line a run, printed before any check below can end the step:
+          # `fuzz-control <name> round=<r> run=<i> found=<yes|no> seconds=<s>`, then a line a control,
+          # `fuzz-control-summary <name> runs=<n> found=<k> seconds=<total> rate=<finds a second>`. A run's seconds
+          # come from its own log: from the log's creation, when the shell opened it to start the run, to its last
+          # write. libFuzzer stops a run at its first crash, so for a run that found the fault they are the time
+          # to the find, with the interpreter's start in them; for a run that did not, they are its whole length,
+          # which a rate over the runs needs. `found` is read from the log with the patterns the checks below use.
+          fuzz_times="$control/find-times.txt"
+          : > "$fuzz_times"
+          fuzz_report() {
+            local name="$1" round="$2" run="$3" log="$4" pattern="$5" except="$6" outcome=no born ended seconds
+            if [ -z "$except" ]; then
+              if grep -q "$pattern" "$log"; then outcome=yes; fi
+            elif grep -qv "$except" <(grep "$pattern" "$log"); then
+              outcome=yes
+            fi
+            born=$(stat -c %.9W "$log")
+            ended=$(stat -c %.9Y "$log")
+            seconds=unknown
+            if [ "${born%%.*}" != 0 ]; then
+              seconds=$(awk -v born="$born" -v ended="$ended" 'BEGIN { printf "%.1f", ended - born }')
+            else
+              echo "::warning::the filesystem does not record when $log was created, so its seconds are unknown"
+            fi
+            echo "fuzz-control $name round=$round run=$run found=$outcome seconds=$seconds" | tee -a "$fuzz_times"
+          }
+          summing='$2 == n { r++; f += ($5 ~ /yes/); split($6, s, "="); t += s[2] } END { print r + 0, f + 0, t + 0, (t > 0 ? f / t : 0) }'
+          fuzz_runs() {
+            local name="$1" side_by_side="$2" pattern="$3" except="$4" run=0 log
+            shift 4
+            for log in "$@"; do
+              [ -e "$log" ] || continue
+              run=$((run + 1))
+              fuzz_report "$name" $(( (run - 1) / side_by_side + 1 )) "$run" "$log" "$pattern" "$except"
+            done
+            read -r runs finds total rate < <(awk -v n="$name" "$summing" "$fuzz_times")
+            printf 'fuzz-control-summary %s runs=%d found=%d seconds=%.1f rate=%.2e\n' \
+              "$name" "$runs" "$finds" "$total" "$rate"
+          }
+          seeded="IndexError: the seeded fault"
+          fuzz_runs bytes 1 "$seeded in parse" "" "$control/bytes.log"
+          fuzz_runs properties 1 "$seeded in parse" "" "$control/properties.log"
+          fuzz_runs record_properties 1 "$seeded in the read" "" "$control/record_properties.log"
+          fuzz_runs read_field_bytes 2 "$seeded in step 10" "" "$control"/read_field_bytes-[12].log
+          fuzz_runs tables 2 "^AssertionError: the implementation gives .*'form_invalid'.*, the model " \
+            "the model .*'form_invalid'" "$control"/tables-[12].log
+          fuzz_runs table_edges 4 "ArithmeticError: the seeded fault in a table's value" "" \
+            "$control"/table-edges-[1-4].log
+          fuzz_runs extrapolation_method 4 "AssertionError: an extrapolation that breaks its shape not refused" "" \
+            "$control"/method-[1-4].log
+          mapfile -t alternatives < <(ls -v "$control"/table-alternatives-*.log 2>/dev/null)
+          fuzz_runs table_alternatives 4 "$found" "the model .*'outside_range'" "${alternatives[@]}"
           uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
             tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
             tests/property/test_hashing_properties.py tests/property/test_read_properties.py \

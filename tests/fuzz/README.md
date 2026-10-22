@@ -201,3 +201,6 @@ starts from the union of the example databases the Hypothesis job's `json`, `rec
 `fuzz_only`), and saves the two jobs' finds together, for each shard. Target 1's corpus is cached from run to
 run, seeded afresh each time, and merged into a fresh directory before it is saved, so that it keeps only the
 inputs that add coverage. The job keeps the inputs that failed.
+
+The control step prints each run's find time in the job's log, a `fuzz-control` line a run and a
+`fuzz-control-summary` line a control, and the rates quoted above are local until CI's runs are collected.

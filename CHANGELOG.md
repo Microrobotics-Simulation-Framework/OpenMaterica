@@ -14,6 +14,17 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Changed
+- CI's fuzz control step prints each run's find time (the maintainer's ruling of 2026-10-23), so that CI's runs
+  measure the rates the fuzz controls' bar is judged by, which the rates in `ci.yml` and `tests/fuzz/README.md`
+  only estimate from local runs. For every control, one line a run, `fuzz-control <name> round=<r> run=<i>
+  found=<yes|no> seconds=<s>`, and one line a control, `fuzz-control-summary <name> runs=<n> found=<k>
+  seconds=<total> rate=<finds a second>`, printed before any check can end the step. A run's seconds are those
+  between its log's creation and its last write, which for a run that found the fault is the time to the find
+  (libFuzzer stops a run at its first crash). The step's runs, and its passing and failing, do not change.
+  `tests/unit/test_ci_workflows.py` holds the lines' shape and counts for every control, with a control in which
+  a step without them, or reading a find otherwise than the checks do, fails.
+
 ### Schema
 - The specification of declarations and the build check over records (S7-spec; the maintainer's rulings of
   2026-10-20 on the build order and of 2026-10-21 on the build check; `docs/specification/changes.md`).
