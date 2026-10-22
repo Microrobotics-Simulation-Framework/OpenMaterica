@@ -158,14 +158,18 @@ def test_a_source_range_past_x_is_built_where_no_double_lies_beyond_either_end(
     )
 
 
-# HP13's faults made beside a knot `an_edge` makes an edge, on a base whose `source_range` is that knot alone:
-# the range would then share with `x`'s range no value that is no edge (table item 4), a second rule broken,
-# which HP13's last assertion found in about one draw in a hundred of each until `an_edge` removed the range.
-# The only draw here is the knot, the one `x` holds once inside.
+# HP13's faults that put an edge on the one point where a base's `source_range` meets `x`'s range: the range
+# would then share with it no value that is no edge (table item 4), a second rule broken. `an_edge` (two
+# faults), `edge_at_an_end`, `edge_not_repeated` and `edge_not_in_x` remove the range. HP13's last assertion
+# found it for the first two, in about one draw in a hundred of each; it cannot see it for the other three,
+# whose undo takes the edge away and so mends the range too, so the range removed is asserted here. The only
+# draws are the knot, the end, or the gap: where the edge does not lie on that point, the range stays.
 @st.composite
-def beside_a_knot_made_an_edge(draw: st.DrawFn, fault: str) -> Faulty:
+def beside_a_range_meeting_x_at_a_point(
+    draw: st.DrawFn, fault: str, source_range: tuple[float, float]
+) -> Faulty:
     base = strategies.read_of(
-        Table((1.0, 2.0, 3.0), (1.0, 2.0, 3.0), "linear", (), (2.0, 2.0)),
+        Table((1.0, 2.0, 3.0), (1.0, 2.0, 3.0), "linear", (), source_range),
         TABLE_FIELDS[0],
         NUMERIC_CONDITIONS[0],
     )
@@ -175,14 +179,29 @@ def beside_a_knot_made_an_edge(draw: st.DrawFn, fault: str) -> Faulty:
     return Faulty(fault, base, read, Outcome("not_met", reasons))
 
 
-@pytest.mark.parametrize("fault", ["edge_repeated_thrice", "edge_listed_twice"])
+# The fault, the base's `source_range`, and the point where it meets `x`'s range, [1, 3].
+RANGES_MEETING_X_AT_A_POINT = [
+    ("edge_repeated_thrice", (2.0, 2.0), 2.0),
+    ("edge_listed_twice", (2.0, 2.0), 2.0),
+    ("edge_not_repeated", (2.0, 2.0), 2.0),
+    ("edge_at_an_end", (1.0, 1.0), 1.0),
+    ("edge_at_an_end", (3.0, 3.0), 3.0),
+    ("edge_at_an_end", (0.5, 1.0), 1.0),
+    ("edge_at_an_end", (3.0, 3.5), 3.0),
+    ("edge_not_in_x", (math.nextafter(1.0, math.inf),) * 2, math.nextafter(1.0, math.inf)),
+    ("edge_not_in_x", (math.nextafter(2.0, math.inf),) * 2, math.nextafter(2.0, math.inf)),
+]
+
+
+@pytest.mark.parametrize(("fault", "source_range", "point"), RANGES_MEETING_X_AT_A_POINT)
 @given(data=st.data())
-def test_a_knot_made_an_edge_takes_a_source_range_of_that_knot_alone_away(
-    fault: str, data: st.DataObject
+def test_an_edge_put_where_a_source_range_meets_x_alone_takes_the_range_away(
+    fault: str, source_range: tuple[float, float], point: float, data: st.DataObject
 ) -> None:
-    faulty = data.draw(beside_a_knot_made_an_edge(fault))
+    faulty = data.draw(beside_a_range_meeting_x_at_a_point(fault, source_range))
     check_one_fault(faulty)
-    assert "source_range" not in table_of(faulty.read), table_of(faulty.read)
+    table = table_of(faulty.read)
+    assert ("source_range" not in table) == (point in listing(table["edges"])), table
 
 
 # HP14.

@@ -180,10 +180,23 @@ def interior_knot(draw: st.DrawFn, drawn: Read) -> float:
     return knots[0]
 
 
+def without_a_range_at_an_edge(table: Json, edge: float) -> None:
+    """A `source_range` that meets `x`'s range at the point `edge` alone (one of that point alone, or ending
+    there from outside), which an edge there leaves sharing with `x`'s range no value that is no edge (table
+    item 4), removed: the edge is the fault's, the second break is not."""
+    held = table.get("source_range")
+    if not isinstance(held, list) or len(held) != 2:
+        return
+    knots = listing(table["x"])
+    low = max(float(str(held[0])), float(str(knots[0])))
+    high = min(float(str(held[1])), float(str(knots[-1])))
+    if low == high == edge:
+        del table["source_range"]
+
+
 def an_edge(draw: st.DrawFn, drawn: Read) -> float:
-    """An edge of the table: one it has, or an interior knot made one (held twice, a value above it added).
-    A `source_range` of that knot alone, which would then share with `x`'s range no value that is no edge
-    (table item 4), is removed, so that the fault made beside the edge is its rule's alone."""
+    """An edge of the table: one it has, or an interior knot made one (held twice, a value above it added),
+    a `source_range` of that knot alone removed (`without_a_range_at_an_edge`)."""
     table = table_of(drawn)
     edges = listing(table["edges"])
     if edges:
@@ -194,8 +207,7 @@ def an_edge(draw: st.DrawFn, drawn: Read) -> float:
     x.insert(at + 1, knot)
     y.insert(at + 1, y[at])
     edges.append(knot)
-    if table.get("source_range") == [knot, knot]:
-        del table["source_range"]
+    without_a_range_at_an_edge(table, knot)
     return knot
 
 
@@ -275,11 +287,13 @@ def _edge_at_an_end(draw: st.DrawFn, drawn: Read) -> Reasons:
     if draw(st.booleans()):
         x.insert(0, x[0])
         y.insert(0, y[0])
-        listing(table["edges"]).append(x[0])
+        edge = x[0]
     else:
         x.append(x[-1])
         y.append(y[-1])
-        listing(table["edges"]).append(x[-1])
+        edge = x[-1]
+    listing(table["edges"]).append(edge)
+    without_a_range_at_an_edge(table, float(str(edge)))
     return FORM_INVALID
 
 
@@ -296,11 +310,15 @@ def _edge_not_in_x(draw: st.DrawFn, drawn: Read) -> Reasons:
         edge = math.nextafter(x[-1], math.inf)
         edge = edge if math.isfinite(edge) else math.nextafter(x[0], -math.inf)
     listing(table["edges"]).append(edge)
+    without_a_range_at_an_edge(table, edge)
     return FORM_INVALID
 
 
 def _edge_not_repeated(draw: st.DrawFn, drawn: Read) -> Reasons:
-    listing(table_of(drawn)["edges"]).append(interior_knot(draw, drawn))
+    edge = interior_knot(draw, drawn)
+    table = table_of(drawn)
+    listing(table["edges"]).append(edge)
+    without_a_range_at_an_edge(table, edge)
     return FORM_INVALID
 
 
