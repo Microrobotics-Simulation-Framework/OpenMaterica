@@ -53,6 +53,11 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "extrapolation covers is set aside, kept or refusing by the text's rows of step 7 (S4d), and one "
         "read to step 13 stays or refuses as any form's"
     ),
+    "alternative_index_base": (
+        "an alternative's index, in an `alternative_values` entry and in a reason's `alternative`, counts "
+        "from zero, as `declarations.md` states of intervals and acceptances; no line of the text states a "
+        'base for alternatives (the nearest, a pick\'s `index` "not below zero", implies it for a pick)'
+    ),
     "evidence_entry_provenance": (
         "an evidence entry's `provenance` is returned holding, below the provenance table's own members, "
         "those the writer schema defines at every depth, a member it does not define left out, since the "
@@ -188,14 +193,14 @@ FACTS: Final[Mapping[str, FactRow]] = {
         {"token": "token", "text": "text"}, ("token",), ("normal", "diseased", "treated")
     ),
     "preparation": FactRow({"text": "text"}, ("text",)),
-    # provenance.md:296 "required for other"
+    # provenance.md:296 "<text, required for other>"
     "preservation": FactRow(
         {"token": "token", "text": "text"},
         ("token",),
         ("none", "refrigerated", "frozen", "fixed_formalin", "other"),
     ),
     "post_mortem_interval": FactRow({"value": "number", "unit": "unit"}, ("value", "unit"), unit="s"),
-    # provenance.md:298 "| `donor_age` |"
+    # provenance.md:298 "| `donor_age` | `{"value", "unit": "s", "basis"}`"
     "donor_age": FactRow({"value": "number", "range": "range", "unit": "unit"}, ("unit",), unit="s"),
     # provenance.md:299 "its `basis` is fixed to `stated`, so it takes no `inferred_from`"
     "mimics": FactRow({"text": "text"}, ("text",), basis="stated"),
@@ -470,14 +475,15 @@ TABLE_MEMBERS: Final = ("axis", "axis_unit", "x", "y", "scheme", "edges", "sourc
 # record_format.md:427-428 "`points` counts as a member named at a table's place"
 TABLE_RESERVED: Final = ("points",)
 TABLE_NAMES: Final = (*TABLE_MEMBERS, *TABLE_RESERVED)
-# record_format.md:394 "`edges` is required"; record_format.md:417 "`source_range`, where present"
+# record_format.md:394 "`edges` is required: a list of numbers"; record_format.md:417 "`source_range`, where
+# present"
 TABLE_REQUIRED: Final = ("axis", "axis_unit", "x", "y", "scheme", "edges")
 # provenance.md:46-47 "for a condition, `value`," and "`range`, `token`, `unit`, `basis`, `inferred_from`"
 CONDITION_NAMES: Final = (
     "value", "range", "token", "unit", "basis", "inferred_from", "plus_minus", "set_or_measured"
 )  # fmt: skip
 NUMERIC_CONDITION_ONLY: Final = ("value", "range", "plus_minus", "set_or_measured")
-# provenance.md:263 "a non-empty list of"
+# provenance.md:263 "numeric condition: a non-empty list of"
 PLUS_MINUS_NAMES: Final = ("stated_as", "value", "unit")
 # uncertainty.md:29 "| Member | Contents |"
 BLOCK_MEMBERS: Final = (
@@ -1517,7 +1523,7 @@ def check_form_member(field_value: JsonObject, form: str, row: FieldRow, faults:
     if form == "table":
         check_table(value, field_value.get("conditions"), faults)
     elif form == "constant":
-        # record_format.md:381 "**Constant.**"
+        # record_format.md:381 "**Constant.** `"value": <number>`"
         stated = status_object(value, faults, allowed=frozenset({"withheld"}), scalar=True)
         if stated is not None:
             withheld_value(stated, faults)
@@ -1715,7 +1721,8 @@ def holds_another_kind(value: JsonObject, members: tuple[str, ...]) -> bool:
 
 
 def check_value_or_range(value: JsonObject, faults: Reasons) -> None:
-    # provenance.md:242 "with `lo <= hi`"; read_side_contract.md:314 "a condition's or fact's `range`"
+    # provenance.md:242 "`{"range": [lo, hi], "unit"}` with `lo <= hi`"; read_side_contract.md:314 "a
+    # condition's or fact's `range`"
     if ("value" in value) == ("range" in value):
         faults.add("form_invalid")
     if "value" in value and not number(value["value"]):
@@ -1739,7 +1746,7 @@ def check_basis(value: JsonObject, fixed: str | None, faults: Reasons) -> None:
 
 
 def check_plus_minus(entries: JsonValue, faults: Reasons) -> None:
-    # provenance.md:263 "a non-empty list of"
+    # provenance.md:263 "numeric condition: a non-empty list of"
     if not isinstance(entries, list) or not entries:
         faults.add("form_invalid")
         return
@@ -1862,7 +1869,8 @@ def check_block_member(member: str, value: JsonValue, faults: Reasons) -> None:
         check_population_level(value, faults)
     elif status_object(value, faults, allowed=ANY_STATUS, scalar=True) is None:
         # read_side_contract.md:312 "counts (`n_specimens`, `n_donors`, `n_sources`" and "are whole and not
-        # negative"; read_side_contract.md:315-316 "a statistics block's `sd`" and "are not below zero"
+        # negative"; read_side_contract.md:315-316 "a statistics block's `sd`" and "an uncertainty's `value`
+        # are not below zero"
         if member in BLOCK_COUNTS:
             acceptable = whole(value) and value >= 0
         elif member == "sd":
@@ -2087,7 +2095,8 @@ def check_interval(value: JsonValue, faults: Reasons) -> None:
         elif not number(value[side]):
             faults.add("form_invalid")
     lower, upper = value.get("lower"), value.get("upper")
-    # record_format.md:456-457 "at most one holds" and "`lower <= upper` where both are numbers"
+    # record_format.md:456-457 "at most one holds `{"status": "none"}`" and "`lower <= upper` where both are
+    # numbers"
     if nones == 2 or (number(lower) and number(upper) and lower > upper):
         faults.add("form_invalid")
     if "basis" not in value:
@@ -2615,7 +2624,7 @@ def review_read(provenance: JsonObject) -> JsonObject:
 
 
 def provenance_returned(provenance: JsonObject) -> JsonObject:
-    # read_side_contract.md:127 "| `provenance` |"
+    # read_side_contract.md:127 "| `provenance` | `{"origin", "review", "source", "derivation"}`"
     returned: JsonObject = {"origin": copied(provenance["origin"]), "review": review_read(provenance)}
     source = provenance.get("source")
     if isinstance(source, dict) and isinstance(source.get("key"), str):
@@ -2661,7 +2670,7 @@ def form_member_returned(form: str, member: JsonValue) -> JsonValue:
     """A form's member as stored: a number, or the known members of an interval, a composition or a list of
     evidence."""
     if form == "interval" and isinstance(member, dict):
-        # read_side_contract.md:517 "| `bounds` |"
+        # read_side_contract.md:517 "| `bounds` | `not_met` (`want_mismatch`)"
         return {
             side: status_returned(given) if isinstance(given, dict) else copied(given)
             for side, given in known_members(member, INTERVAL_NAMES).items()
@@ -2696,8 +2705,8 @@ def component_returned(component: JsonObject) -> JsonValue:
 # the members the reader's version defines", at every depth. Below the provenance table's own members the
 # text names their members in part only (an extraction's by its methods' rows, a locator's in provenance.md
 # section 2 item 2), so the model reads them where the version publishes them, its writer schema
-# (record_format.md:10-11 "published with the" ... "specification in `schema/`"): each definition's named
-# members, or, for an object it names none of, a map whose values it gives.
+# (record_format.md:10-11 "JSON Schema 2020-12, published with the" ... "specification in `schema/`"): each
+# definition's named members, or, for an object it names none of, a map whose values it gives.
 WRITER: Final[JsonObject] = json.loads(
     (
         Path(__file__).resolve().parents[2] / "src" / "materica" / "schema" / "0.1" / "record.writer.json"
@@ -3079,8 +3088,8 @@ def shape_by_want(
         read.members["value"] = point
         read.members["table"] = read.stored
         if read.covered is not None:
-            # read_side_contract.md:503 "and `assumption`"; read_side_contract.md:129 "the declaration it
-            # rests on"
+            # read_side_contract.md:503 "taken from inside the range, and `assumption`";
+            # read_side_contract.md:129 "the declaration it rests on"
             read.members["assumption"] = read.covered
         return
     if read.form in GIVES.get(request.want, ()):
@@ -3244,6 +3253,7 @@ def read_alternatives(
     ]
     # read_side_contract.md:248-249 "The outcome is decided once every alternative is read"
     fates = [fate_of(one) for one in reads]
+    # Open point: alternative_index_base.
     staying = [index for index, fate in enumerate(fates) if fate == "stays"]
     if "refuses" in fates or not staying:
         # read_side_contract.md:274 "where an alternative refuses the field, or every alternative is set
@@ -3373,6 +3383,7 @@ def reasons_of_alternative(read: FieldRead, index: int) -> Reasons:
 
 def reasons_where_refused(reads: Sequence[FieldRead]) -> Reasons:
     # read_side_contract.md:274-275 "`not_met`, with every alternative's reasons, those that wait included"
+    # Open point: alternative_index_base.
     return Reasons(reason for index, one in enumerate(reads) for reason in reasons_of_alternative(one, index))
 
 

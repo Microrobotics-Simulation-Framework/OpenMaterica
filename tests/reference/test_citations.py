@@ -6,6 +6,13 @@ holds `"` only inside a code span, as the text's JSON stands, so that it ends at
 The same holds of every test module that cites the text as `file:line`: the seeded faults of the model hold
 their citation in a string (the `rule` of a `Mutant`), the rest in a comment or a docstring, and a module
 that cites the text and is not listed here fails the check that lists them.
+A quote is at least `MIN_QUOTE` characters, so that it cannot sit at a neighbouring line by chance, and
+begins on a cited line. It may end on a later one, so a range may be shifted by less than its width and
+still hold its quote: a citation of lines 49 to 51 whose quote begins on 50 passes as 48 to 50 and as 50 to
+52, and fails as 47 to 49 and as 51 to 53. The controls below show which shifts pass and which fail.
+Requiring the quote to reach the last cited line too would close that; measured over the 544 citations the
+check read when this limit was set (the model's 408 and the four test modules' 136), it fails 91 of them,
+which are not re-anchored, so the check keeps the weaker rule and says so here.
 Each point the text leaves open is listed once in `OPEN_POINTS` and named
 where the model applies it, and the two agree."""
 
@@ -15,6 +22,7 @@ import re
 import tokenize
 from collections.abc import Iterable, Mapping
 from pathlib import Path
+from typing import Final
 
 import pytest
 
@@ -35,6 +43,17 @@ TEST_SOURCES = [
         "property/test_model_properties.py",
     )
 ]
+# A quote shorter than this finds its place at almost any line.
+MIN_QUOTE: Final = 20
+# The seeded faults that break an implementation property with no line in the text, each with why no line
+# states it: a row listed here cites nothing, and a row that cites nothing is listed here, names an open
+# point, or fails the check.
+NO_LINE_IN_THE_TEXT: Final[Mapping[str, str]] = {
+    "results_share_the_record": (
+        "the text says what a result holds (read_side_contract.md section 2 item 5), never that its members "
+        "are objects of their own"
+    ),
+}
 SEEDED_FAULTS_SOURCE = REPOSITORY / "tests" / "reference" / "mutants.py"
 MUTANT_KILLS_SOURCE = REPOSITORY / "tests" / "property" / "test_model_mutants.py"
 # A quote's text: characters but `"` and a backtick, and code spans, which may hold `"`.
@@ -98,7 +117,8 @@ def specification_lines(file: str) -> list[str] | None:
 
 
 def begins_before(quote: str, window: str, limit: int) -> bool:
-    """Whether `quote` begins in `window` before `limit`: on a cited line, though it may run on past it."""
+    """Whether `quote` begins in `window` before `limit`: on a cited line, though it may run on past it. A
+    range may therefore be shifted by less than its width and still hold its quote (the module docstring)."""
     position = window.find(quote)
     while position != -1:
         if position < limit:
@@ -127,11 +147,43 @@ def citation_problems(texts: Iterable[str]) -> list[str]:
                 continue
             cited = " ".join(" ".join(lines[start - 1 : end]).split())
             window = " ".join(" ".join(lines[start - 1 : end + 1]).split())
+            quotes = QUOTE.findall(citation["quotes"])
+            problems.extend(
+                f"{file}:{start}: {quote!r} is shorter than {MIN_QUOTE} characters"
+                for quote in quotes
+                if len(quote) < MIN_QUOTE
+            )
             problems.extend(
                 f"{file}:{start}: {quote!r} is not at lines {start} to {end}"
-                for quote in QUOTE.findall(citation["quotes"])
+                for quote in quotes
                 if not begins_before(quote, window, len(cited))
             )
+    return problems
+
+
+def seeded_fault_problems(
+    rules: Mapping[str, str], open_points: Mapping[str, str], no_line: Mapping[str, str]
+) -> list[str]:
+    """Each seeded fault whose rule cites neither the text, nor an open point listed, nor stands in `no_line`;
+    each open point a rule names and `open_points` does not list; each row of `no_line` that cites or names
+    a point, or that `rules` does not hold."""
+    problems = [
+        f"{name}: listed as having no line in the text, and not a seeded fault"
+        for name in no_line
+        if name not in rules
+    ]
+    for name, rule in rules.items():
+        point = OPEN_POINT_NAMED.search(rule)
+        cites = REFERENCE.search(rule) is not None
+        if name in no_line:
+            if cites or point:
+                problems.append(
+                    f"{name}: listed as having no line in the text, and cites one or names a point"
+                )
+        elif not cites and not point:
+            problems.append(f"{name}: cites neither the text nor an open point")
+        if point and point[1] not in open_points:
+            problems.append(f"{name}: names the open point {point[1]}, which is not listed")
     return problems
 
 
@@ -177,13 +229,52 @@ def test_every_seeded_fault_cites_the_text_or_names_the_open_point_it_rests_on()
         for node in ast.walk(tree)
         if isinstance(node, ast.Call) and getattr(node.func, "id", "") == "Mutant"
     ]
-    rules = [
-        str(rule.value) for rule in (mutant.args[1] for mutant in mutants) if isinstance(rule, ast.Constant)
-    ]
+    rules = {
+        str(key.value): str(mutant.args[1].value)
+        for table in ast.walk(tree)
+        if isinstance(table, ast.Dict)
+        for key, mutant in zip(table.keys, table.values, strict=True)
+        if isinstance(key, ast.Constant)
+        and isinstance(mutant, ast.Call)
+        and getattr(mutant.func, "id", "") == "Mutant"
+        and isinstance(mutant.args[1], ast.Constant)
+    }
     assert len(rules) == len(mutants)
     assert len(rules) > 120
-    named = [OPEN_POINT_NAMED.search(rule) for rule in rules if not REFERENCE.search(rule)]
-    assert all(match and match[1] in read_model.OPEN_POINTS for match in named), named
+    assert seeded_fault_problems(rules, read_model.OPEN_POINTS, NO_LINE_IN_THE_TEXT) == []
+    assert all(reason.strip() for reason in NO_LINE_IN_THE_TEXT.values())
+
+
+@pytest.mark.parametrize(
+    ("rules", "no_line", "problem"),
+    [
+        ({"a": 'read_side_contract.md:231 "Find the field (`absent`)"'}, {}, None),
+        ({"a": "an open point (OPEN_POINTS: known)"}, {}, None),
+        ({"a": "a rule the text states"}, {}, "a: cites neither the text nor an open point"),
+        ({"a": "(OPEN_POINTS: unknown)"}, {}, "names the open point unknown, which is not listed"),
+        ({"a": "an implementation property"}, {"a": "no line says it"}, None),
+        (
+            {"a": 'read_side_contract.md:231 "Find the field"'},
+            {"a": "no line"},
+            "a: listed as having no line",
+        ),
+        ({"a": "(OPEN_POINTS: known)"}, {"a": "no line"}, "a: listed as having no line"),
+        (
+            {"a": "a rule"},
+            {"b": "no line"},
+            "b: listed as having no line in the text, and not a seeded fault",
+        ),
+    ],
+)
+def test_a_seeded_fault_that_cites_nothing_is_found(
+    rules: dict[str, str], no_line: dict[str, str], problem: str | None
+) -> None:
+    found = seeded_fault_problems(rules, {"known": "a choice"}, no_line)
+    if problem is None:
+        assert found == []
+    else:
+        assert len(found) >= 1
+        assert any(problem in one for one in found)
 
 
 def test_the_model_cites_the_text_for_its_rules() -> None:
@@ -211,9 +302,14 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
         ('read_side_contract.md:230-231 "Find the field (`absent`)"', None),
         ('read_side_contract.md:232 "Find the field (`absent`)"', "is not at lines 232 to 232"),
         ('read_side_contract.md:230 "Find the field (`absent`)"', "is not at lines 230 to 230"),
-        ('read_side_contract.md:231 "Find the record"', "is not at lines 231 to 231"),
-        ('read_side_contract.md:231 "Find the field" and "a quote not there"', "'a quote not there'"),
-        ('read_side_contracts.md:222 "Find the field"', "no file read_side_contracts.md"),
+        ('read_side_contract.md:231 "Find the record of the field"', "is not at lines 231 to 231"),
+        (
+            'read_side_contract.md:231 "Find the field (`absent`)" and "a quote not there at all"',
+            "'a quote not there at all'",
+        ),
+        ('read_side_contracts.md:222 "Find the field (`absent`)"', "no file read_side_contracts.md"),
+        ('read_side_contract.md:231 "Find"', "'Find' is shorter than 20 characters"),
+        ('read_side_contract.md:231 "the"', "'the' is shorter than 20 characters"),
         (
             'record_format.md:591 "Two names are **one slip** apart when one becomes the other by '
             'inserting,"',
@@ -229,13 +325,38 @@ def test_every_open_point_is_listed_once_and_named_where_it_is_applied() -> None
             'provenance.md:265-266 "or `{"status": "unstated"}` (a ± whose kind the source does state)"',
             "is not at lines 265 to 266",
         ),
-        ('provenance.md:97 "`{"status": "not_checked"}`, or" and "with who checked"', None),
+        ('provenance.md:97 "`{"status": "not_checked"}`, or" and "with who checked the value"', None),
         ('provenance.md:97 "`{"status": "not_checked"}`, or `{"result"" and "with who', "no quote"),
     ],
 )
 def test_a_citation_that_drifts_fails(text: str, problem: str | None) -> None:
     found = citation_problems([text])
     assert found == [] if problem is None else len(found) == 1 and problem in found[0]
+
+
+@pytest.mark.parametrize(
+    ("lines", "passes"),
+    [
+        pytest.param("49-51", True, id="as-cited"),
+        pytest.param("50-52", True, id="range-shifted-one-later-passes"),
+        pytest.param("48-50", True, id="range-shifted-one-earlier-passes"),
+        pytest.param("50-51", True, id="range-narrowed-to-the-quote-passes"),
+        pytest.param("51-53", False, id="range-shifted-two-later-fails"),
+        pytest.param("47-49", False, id="range-shifted-two-earlier-fails"),
+        pytest.param("50", True, id="the-quote's-own-line"),
+        pytest.param("51", False, id="single-line-shifted-one-later-fails"),
+        pytest.param("49", False, id="single-line-shifted-one-earlier-fails"),
+    ],
+)
+def test_a_range_shifted_by_less_than_its_width_still_holds_a_quote_that_begins_in_it(
+    lines: str, passes: bool
+) -> None:
+    """The quote begins on line 50 and ends on it. A single line shifted by one fails, as a range two lines
+    wide shifted by two does; a range shifted by one passes, which is the limit the module's docstring states
+    (a range may be shifted by less than its width)."""
+    quote = '"whose `want` belongs to a suite the reader does not claim is refused at the same step"'
+    found = citation_problems([f"read_side_contract.md:{lines} {quote}"])
+    assert found == [] if passes else len(found) == 1 and "is not at lines" in found[0]
 
 
 def test_an_open_point_named_and_listed_apart_fails() -> None:
