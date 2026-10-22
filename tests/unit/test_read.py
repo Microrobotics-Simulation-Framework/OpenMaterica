@@ -2569,6 +2569,13 @@ def read_in(
 ) -> ReadResult:
     """`field` read as `read_accepting` reads it, the table and the request changed as `situation` says
     (`STEP_11_REASONS`), with `acceptances` located at the target's record."""
+    return read(*request_in(situation, field, want=want, acceptances=acceptances))
+
+
+def request_in(
+    situation: str, field: JsonValue, *, want: str = "value", acceptances: Collection[JsonValue] = ()
+) -> tuple[JsonValue, RecordStore]:
+    """`read_in`'s request, and the store it reads."""
     _, operating = STEP_11_REASONS[situation]
     request, records = stored(with_field("fluid.dynamic_viscosity", field))
     assert isinstance(request, dict)
@@ -2586,7 +2593,7 @@ def read_in(
     request["acceptances"] = [
         {**cast(dict[str, JsonValue], acceptance), "record": pin} for acceptance in acceptances
     ]
-    return read(request, records)
+    return request, records
 
 
 def table_in(situation: str) -> dict[str, JsonValue]:
@@ -2773,6 +2780,36 @@ def test_a_table_alternative_an_extrapolation_would_cover_stays_with_no_extrapol
         json.loads(json.dumps(entry.entry_json()))["value"]
         == table_in("outside a narrower source_range")["table"]
     )
+
+
+# The `no_pick` entries that hold a table as stored (section 2, the `alternative_values` row), by the
+# acceptances each is read under: a table read over an operating range of its axis, and one kept outside its
+# readable range for an extrapolation the request carries.
+TABLE_ENTRIES_AS_STORED: dict[str, list[JsonValue]] = {
+    OVER_A_RANGE: [],
+    "outside a narrower source_range": [extrapolation()],
+}
+
+
+@pytest.mark.parametrize("member", ["value", "member"])
+@pytest.mark.parametrize("situation", TABLE_ENTRIES_AS_STORED)
+def test_a_table_entry_held_as_stored_shares_nothing_with_the_stored_record(
+    situation: str, member: str
+) -> None:
+    """Rule 6 through the Python API, as for a derivation (above), for step 7's entry of a table held as
+    stored (S4d's review): beside a met constant under `no_pick`, a consumer that changes the table the
+    entry holds, its `value` or its `member`, changes no later read of the same store."""
+    field = alternatives_of(("table", "constant"), table_in(situation))
+    request, records = request_in(situation, field, acceptances=TABLE_ENTRIES_AS_STORED[situation])
+    first = read(request, records)
+    before = json.loads(json.dumps(first.to_json()))
+    assert (first.status, first.reasons) == ("unknown", (Reason("no_pick"),))
+    (entry,) = [entry for entry in first.alternative_values or () if entry.alternative == 0]
+    table = an_object(getattr(entry, member))
+    a_list(table["x"]).append(999.0)
+    table["scheme"] = "changed"
+    later = read(request, records)
+    assert json.loads(json.dumps(later.to_json())) == before
 
 
 def test_a_table_alternative_an_extrapolation_covers_is_read_with_it_as_the_one_left() -> None:
