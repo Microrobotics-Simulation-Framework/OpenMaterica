@@ -7,7 +7,8 @@ Two sets:
 - **faults of the implementation**: a step that stops at its first fault, at each of steps 0, 8, 9 and 10 (the
   S2 design's HP12 mutant, killed on two faults of one step, B5); the design's mutants of HP1 to HP11 that a
   read's result can show, taken from the mutant modules of their properties; and a broken status object
-  that reports its token, the fault HP12 found (`provenance.md:51-53`).
+  that reports its token, the fault HP12 found (provenance.md:51-53 "A status object that breaks its shape
+  is read for nothing else").
 - **faults of the model**: the seeded faults of `tests/reference/mutants.py` that no case file kills, or that
   one case file alone kills, each applied to the model while the implementation stays as it is. Those no read
   S2 builds can show are listed in `test_model_mutant_table.py` with their reasons.
