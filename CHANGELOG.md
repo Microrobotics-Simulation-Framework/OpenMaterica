@@ -14,6 +14,18 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ## [Unreleased]
 
+## [0.1.0.dev3] - 2026-10-22
+
+A development pre-release. It holds S3: a field holding a table, read through every step (its checks at steps 8 and
+9, its own axis beside the field's conditions at step 10, its form within its readable range and edges at step 11,
+its origin and its `want` at steps 12 and 13), and the `extrapolation` acceptance, which under `want: value` gives a
+table's end value outside its readable range, at no declared edge and across none; S4d: a table among a field's
+alternatives, read with no pick and no overlay; the schema's table and extrapolation shapes and the result's shape
+the maintainer ruled; a `CITATION.cff`; and the repository's move to the OpenMaterica organisation. Picks, overlays,
+a read whose target is an overlay record, a region target and `want: fit` on a field holding a fit record raise
+`NotImplementedError` until later steps. The schema 0.1 files may still change before 0.1.0. The entries below are
+everything since 0.1.0.dev2.
+
 ### Added
 - The read's steps 8 and 9 for a table (S3a; `record_format.md` section 6, table items 1, 2, 4 and 5;
   `read_side_contract.md` section 3, steps 8 and 9). Step 8 checks every member of a table: `axis`, a numeric

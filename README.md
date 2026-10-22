@@ -112,30 +112,31 @@ not curate. The full statement is in [`docs/regulatory/intended_use.md`](docs/re
 
 ## Status
 
-Pre-release. Development pre-releases are on [PyPI](https://pypi.org/project/openmaterica/); this is
-`0.1.0.dev2`. It holds strict JSON, the content hash, records, the read of a field holding a constant, an
-interval, a composition or evidence, or alternatives read with no pick (the one alternative left, or no pick
-among those that stay), and the schemas and vocabulary of 0.1. What later steps build, among it tables,
-extrapolation, picks and overlays, raises `NotImplementedError` until then, and the schema 0.1 files may change
-until 0.1.0 is released. The curated material library does
-not exist yet. The architecture concept is in [`design/ARCHITECTURE_DRAFT.md`](design/ARCHITECTURE_DRAFT.md).
+Pre-release. Development pre-releases are on [PyPI](https://pypi.org/project/openmaterica/); this is `0.1.0.dev3`.
+It holds strict JSON, the content hash, records, the read of a field holding a constant, an interval, a composition,
+evidence or a table (with the `extrapolation` acceptance, which under `want: value` gives a table's end value
+outside its readable range, at no declared edge and across none), or alternatives read with no pick (the one
+alternative left, or no pick among those that stay), and the schemas and vocabulary of 0.1. What later steps build,
+among it picks and overlays, raises `NotImplementedError` until then, and the schema 0.1 files may change until
+0.1.0 is released. The curated material library does not exist yet. The architecture concept is in
+[`design/ARCHITECTURE_DRAFT.md`](design/ARCHITECTURE_DRAFT.md).
 
 ## Install
 
 ```sh
-pip install openmaterica==0.1.0.dev2
+pip install openmaterica==0.1.0.dev3
 ```
 
 It needs Python 3.11 or later. To check where a release came from, verify its PyPI attestation (PEP 740), which
 names the repository that built it. The repository moved to the OpenMaterica organisation after 0.1.0.dev2: name
-`https://github.com/OpenMaterica/OpenMaterica` for every release from the next on, and the former
+`https://github.com/OpenMaterica/OpenMaterica` for every release from 0.1.0.dev3 on, and the former
 `https://github.com/Microrobotics-Simulation-Framework/OpenMaterica` for 0.1.0.dev1 and 0.1.0.dev2, which were built
 there:
 
 ```sh
 uvx pypi-attestations verify pypi \
-  --repository https://github.com/Microrobotics-Simulation-Framework/OpenMaterica \
-  pypi:openmaterica-0.1.0.dev2-py3-none-any.whl
+  --repository https://github.com/OpenMaterica/OpenMaterica \
+  pypi:openmaterica-0.1.0.dev3-py3-none-any.whl
 ```
 
 The command prints `OK` for a file built from the repository it names, and fails for any other repository.
