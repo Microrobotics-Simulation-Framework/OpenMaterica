@@ -3124,22 +3124,23 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
     assert any(problem in line for line in found), found
 
 
-# The slowest run of the fuzz job measured on CI, in minutes: the run 39596069518 of 2026-10-21, dispatched on
-# S3c's draft at 4f8b044b, with every step the job now holds (control 51.1, the five targets 25.4, replay
-# 34.5). The earlier runs since 2026-10-14 took 26.7, 37.0, 46.0, 55.2 (a manual run of 600 s a target) and
-# 59.5 (the weekly run 39234564233 of 2026-10-19: control 22.2, targets 20.2, replay 16.8), which held the
-# timeout until this one. The job has no interrupt, so its timeout is held to twice the slowest run itself, as
-# the Hypothesis job's interrupt is to its shards' (`MEASURED_ON_CI`).
-FUZZ_SLOWEST_ON_CI = 111.42
-# The minutes the job's steps added after that run, by estimate, until a run on CI measures them: S4d's
-# control, 45 at most (three rounds of runs of up to 900 s, one after the other), and the replay of its
-# property modules, 10 (584 s of test time at `ci` locally, 2026-10-22: HP39's two parts 120 and 109 s, HP40
-# 82, HP12's part 49 and its planned searches' checks in the mutant table 225; shared by four workers on a
-# runner up to four times slower). The 38 minutes estimated after the run of 2026-10-19 for the table's
-# control, the table value's, fuzz target 5 and its control came to 34.0 measured in that run (the control
-# step 28.9 longer, target 5's weekly run 5.1); the replay, which no estimate counted, took 17.7 minutes
-# longer.
-FUZZ_ADDED_SINCE = 55.0
+# The slowest run of the fuzz job measured on CI, in minutes: the run 39743609131 of 2026-10-22, dispatched on
+# S4d's draft at c424741e, with every step the job now holds (control 64.1, the five targets 25.4, replay
+# 36.8). Its control step ran one round of S4d's control, by its timing: the step's log does not say, but the
+# step from target 5's seeding on took 29.3 minutes against 16.1 in the run before, and a second round runs
+# only after four runs of the full 900 s, so two would have taken 16 minutes more at least. The earlier runs
+# since 2026-10-14 took 26.7, 37.0, 46.0, 55.2 (a manual run of 600 s a target), 59.5 (the weekly run
+# 39234564233 of 2026-10-19: control 22.2, targets 20.2, replay 16.8) and 111.42 (the run 39596069518 of
+# 2026-10-21 on S3c's draft: control 51.1, targets 25.4, replay 34.5), which held the timeout until this one.
+# The job has no interrupt, so its timeout is held to twice the slowest run itself, as the Hypothesis job's
+# interrupt is to its shards' (`MEASURED_ON_CI`).
+FUZZ_SLOWEST_ON_CI = 126.7
+# The minutes the job's steps may add to that run, by estimate, until a run on CI measures them: the two
+# rounds of S4d's control it did not run, 15 at most each (four runs of up to 900 s side by side). Counting
+# one round run, not two, is the larger estimate. The 55 minutes estimated after the run of 2026-10-21 for
+# S4d's control and the replay of its property modules came to 15.3 measured in that run (the control step
+# 13.0 longer, the replay 2.3).
+FUZZ_ADDED_SINCE = 30.0
 
 
 def fuzz_margin_problems(ci: Workflow) -> list[str]:
@@ -3158,12 +3159,12 @@ def test_the_fuzz_job_has_twice_its_slowest_run_on_ci() -> None:
     assert fuzz_margin_problems(workflow("ci.yml")) == []
 
 
-@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167, 195, 222, 223, 332])
+@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167, 195, 222, 223, 313])
 def test_the_fuzz_margin_check_can_fail(minutes: int) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     ci["jobs"]["fuzz"]["timeout-minutes"] = minutes
     found = fuzz_margin_problems(ci)
-    expected = f"fuzz times out at {minutes} minutes, less than twice its 111.42 on CI and the 55 added since"
+    expected = f"fuzz times out at {minutes} minutes, less than twice its 126.7 on CI and the 30 added since"
     assert found == [expected], found
 
 

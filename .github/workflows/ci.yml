@@ -980,12 +980,13 @@ jobs:
     # for the fourth's fault of step 10, 8 for its fault in a table, 15 for its fault in a table's value, 8 for
     # the fifth's fault of an extrapolation's method and 45 for the fourth's fault over a table alternative, 16
     # on average, then a replay of six property modules) and the replay of the property tests. The slowest run
-    # on CI took 111.4 minutes (run 39596069518 of 2026-10-21, dispatched on S3c's draft, every step here but
-    # S4d's among them: 51.1 for the control, 25.4 for the targets, 34.5 for the replay); S4d adds, by estimate,
-    # 45 minutes to the control at most and 10 to the replay (`FUZZ_ADDED_SINCE`). The timeout is twice their
-    # sum, as the Hypothesis job's is of its shards' slowest runs, and `tests/unit/test_ci_workflows.py` holds
-    # it there. A manual run of S seconds a target adds 5 (S - 300) / 60 minutes to the targets.
-    timeout-minutes: 333
+    # on CI took 126.7 minutes (run 39743609131 of 2026-10-22, dispatched on S4d's draft, every step here among
+    # them: 64.1 for the control, one round of the fourth's fault over a table alternative among it, by its
+    # timing, 25.4 for the targets, 36.8 for the replay); the two rounds it did not run add 30 minutes at most
+    # (`FUZZ_ADDED_SINCE`). The timeout is twice their sum, as the Hypothesis job's is of its shards' slowest
+    # runs, and `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a target adds
+    # 5 (S - 300) / 60 minutes to the targets.
+    timeout-minutes: 314
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
       # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
