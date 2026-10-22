@@ -996,17 +996,21 @@ def _entry(read: FieldRead, stored: list[JsonValue]) -> FieldRead:
     `alternative_values` row): its read, except that "where the alternative is kept outside its form's range
     or is a table read over an operating range of its axis, the entry holds its form's member as stored
     instead, with no nominal or extrapolation applied", so neither the end value, nor the `assumption`, nor
-    the extrapolation among what was applied; and that "its `labels` are those step 12 gives that alternative
-    even where its read ended at step 11", read from the alternative as stored."""
+    the extrapolation among what was applied, the implied conditions it applied kept, as a staying
+    constant's entry keeps them; and that "its `labels` are those step 12 gives that alternative even where
+    its read ended at step 11", read from the alternative as stored."""
     assert read.alternative is not None
     if read.form_range is None:
         return read
     alternative = an_object(stored[read.alternative])
+    extrapolation = read.form_range.extrapolation
     return dataclasses.replace(
         read,
         value=read.member,
         assumption=None,
-        applied=(),
+        applied=tuple(
+            index for index in read.applied if extrapolation is None or index != extrapolation.index
+        ),
         table=None,
         labels=_labels(alternative, an_object(alternative["provenance"])),
     )

@@ -2812,6 +2812,22 @@ def test_a_table_entry_held_as_stored_shares_nothing_with_the_stored_record(
     assert json.loads(json.dumps(later.to_json())) == before
 
 
+def test_a_kept_tables_entry_drops_the_extrapolation_alone_from_what_it_applied() -> None:
+    """Section 2, the `alternative_values` row: a kept table's entry holds its member "with no nominal or
+    extrapolation applied", which takes the extrapolation's index (1) from what its read applied and leaves
+    the implied condition's (0), as a staying constant's entry keeps it: both alternatives in vivo, the
+    implied condition filling the density kind neither states (S4d's review). Neither is in the JSON."""
+    field = alternatives_of(("table", "constant"), table_in("outside a narrower source_range"))
+    for alternative in a_list(field["alternatives"]):
+        an_object(alternative)["specimen"] = {"tissue_state": {"token": "in_vivo", **STATED}}
+    implied: JsonValue = {**IMPLIED, "implies": {"density_kind": {"token": "matrix"}}}
+    result = read_in("outside a narrower source_range", field, acceptances=[implied, extrapolation()])
+    assert (result.status, result.applied) == ("unknown", ())
+    assert Reason("no_pick") in result.reasons
+    entries = {entry.alternative: entry for entry in result.alternative_values or ()}
+    assert (entries[0].applied, entries[0].assumption, entries[1].applied) == ((0,), None, (0,))
+
+
 def test_a_table_alternative_an_extrapolation_covers_is_read_with_it_as_the_one_left() -> None:
     """Section 3, step 7: "An alternative kept for an extrapolation is read on through steps 12 and 13, as a
     field is (above). The extrapolation is applied only where that alternative is the one left" [PR-044]:
