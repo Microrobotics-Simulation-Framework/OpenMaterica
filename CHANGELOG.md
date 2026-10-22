@@ -192,10 +192,11 @@ every family entry goes in `families/CHANGELOG.md`.
   standing for each fuzz run, and fails with the runs removed, with three a round, with one round, with every round
   run though the first found it, with shorter runs, with the runs one after the other, with the check removed and
   with the runs without the step's dictionary; the check fails where no run finds the fault and where the only
-  finding is another disagreement. The job's timeout rises from 223 to 333 minutes: twice its slowest run on CI
-  (111.4 minutes) and the 55 minutes S4d adds by estimate (`FUZZ_ADDED_SINCE`), the control's 45 at most and 10 for
-  the replay of S4d's property modules (584 s of test time at `ci` locally, shared by four workers on a runner up to
-  four times slower). The control moves to the fuzz controls' own job when S4's piece builds it.
+  finding is another disagreement. The job's timeout rises from 223 to 314 minutes: twice its slowest run on CI,
+  126.7 minutes (the run dispatched on S4d's draft, its control step running one round of this control, by its
+  timing: the step's log does not say), and the 30 minutes of the two rounds that run did not run, 15 at most each
+  (`FUZZ_ADDED_SINCE`). The 55 minutes S4d added by estimate came to 15.3 measured there (the control step 13.0, the
+  replay 2.3). The control moves to the fuzz controls' own job when S4's piece builds it.
 - The Hypothesis job's `alternatives` parts have a `deep` timeout of 110 minutes, from 90, by estimate (S4d): S4d's
   properties (HP39's two parts and HP40) take 175 and 110 s of the parts' test time at `ci` locally; ten times that
   at `deep`, on a runner 1.9 times slower than the laptop, shared by four workers, adds about 13.9 and 8.7 minutes
