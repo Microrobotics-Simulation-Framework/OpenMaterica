@@ -65,27 +65,30 @@ and 10, as built).
 
 ## Agreement with the cases
 
-`test_cases.py` runs every case file of a read in the repository, 1,285 on S4d's branch (1,198 reads, 25
-listings and 11 reads of the hash suite, and 51 content hashes), whichever step of the implementation runs
-it, under each of the 8 configurations of claims (plain read, with or without the hash, the fits and reference
-data, and the family evaluation suites) that agrees with the case's suite and claims. Each is compared as the
-specification's README says ("Case files"), by the conformance runner's comparison. The table evaluation
-suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
-`evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
+`test_cases.py` runs every case file of a read in the repository, 1,290 on the S7 specification's branch
+(1,203 reads, 25 listings and 11 reads of the hash suite, and 51 content hashes), whichever step of the
+implementation runs it, under each of the 8 configurations of claims (plain read, with or without the hash,
+the fits and reference data, and the family evaluation suites) that agrees with the case's suite and claims.
+Each is compared as the specification's README says ("Case files"), by the conformance runner's comparison.
+The table evaluation suite's 35 files are left out, and a test holds the files left out to exactly those whose
+operation is `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which
+is no read.
 
-The model agrees with 1,178 files, under every configuration each allows (9,048 runs), and gives no verdict
-on 107, each listed in `exceptions.py` under the kind its outcome names: an overlay (71) and a pick (36). It
-disagrees with none (measured on S4d's branch, 2026-10-22: the 24 files the kind of a table alternative whose
-read gives a reason at step 11 listed, one an extrapolation covers included, each gained a verdict, the
-case's under every configuration it allows: none gives an answer the text decides against, and the kind is
-gone; at S3c's head, which reads an extrapolation, 2026-10-21:
-of the 55 files the kind of an extrapolation listed, the 45 S3c runs gained a verdict, as did S3c's arm of
-`table` under an extrapolation, the nine of a table alternative under one moved to S4d's kind, and the one
-holding a pick to the picks'; at S3b-2's head, of the 83 files of a table that steps 8 and 9 pass, listed at
-S3a's head, 68 gained a verdict and 15 moved to the new kind, and S3b-2 added seven). Until S4a it also gave
-no verdict on 21 files of alternatives with reasons of their own, with which it now agrees, as with S4a's
-three cases of `unit` under `no_pick`. A case file the model disagrees with, or gives no verdict on, fails
-unless a kind lists it, for the detail that kind names; a listed one it agrees with fails as stale.
+The model agrees with 1,182 files, under every configuration each allows (9,080 runs), and gives no verdict on
+108, each listed in `exceptions.py` under the kind its outcome names: an overlay (71), a pick (36) and a
+`trainable` acceptance (1). It disagrees with none (measured on the S7 specification's branch, 2026-10-22: of
+its five case files, the four of `label_basis` agree, and PR-339's, read under a `trainable` acceptance, which
+S7a-4 builds, is listed under the kind `trainable`; on S4d's branch, 2026-10-22: the 24 files the kind of a
+table alternative whose read gives a reason at step 11 listed, one an extrapolation covers included, each
+gained a verdict, the case's under every configuration it allows: none gives an answer the text decides
+against, and the kind is gone; at S3c's head, which reads an extrapolation, 2026-10-21: of the 55 files the
+kind of an extrapolation listed, the 45 S3c runs gained a verdict, as did S3c's arm of `table` under an
+extrapolation, the nine of a table alternative under one moved to S4d's kind, and the one holding a pick to
+the picks'; at S3b-2's head, of the 83 files of a table that steps 8 and 9 pass, listed at S3a's head, 68
+gained a verdict and 15 moved to the new kind, and S3b-2 added seven). Until S4a it also gave no verdict on 21
+files of alternatives with reasons of their own, with which it now agrees, as with S4a's three cases of `unit`
+under `no_pick`. A case file the model disagrees with, or gives no verdict on, fails unless a kind lists it,
+for the detail that kind names; a listed one it agrees with fails as stale.
 
 ## The mutant table
 
