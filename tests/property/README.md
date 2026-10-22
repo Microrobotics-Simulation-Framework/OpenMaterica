@@ -214,16 +214,15 @@ check's reader (the last bullet).
   `NotImplementedError` and held to the draw and to what the model gives (a pick, an overlay or a `trainable`
   acceptance in a request, which the implementation raises at, the model gives no verdict on, so neither
   decides; a requirement holding `review` is refused by both, at step 0, as one holding `label` is); and the
-  open points on which the two
-  read the text differently, where the model must refuse as it fails closed, and the model given the
-  implementation's reading must agree with it: none since the maintainer ruled the last, open point 1's
-  record half (`members_of_the_other_kind`: a record condition holding a member of the other kind), fail
-  closed (2026-10-19, `provenance.md` section 6.1 item 1), which the implementation now refuses. It is planted
-  still, and so are open point 1's request half (an implied value holding a member of the other kind's
-  shape; the token ruling, 2026-10-18) and a slip of a name a declaration gives a requirement
-  (`names_a_declaration_gives_a_requirement`, which the text decides: S2a-4's review, approved 2026-10-18), and
-  the two must agree on each. Can-fail controls of the check itself: `test_model_controls.py`, an open point's
-  on open point 1's record half as the implementation read it before its ruling.
+  open points on which the two read the text differently, where the model must refuse as it fails closed, and
+  the model given the implementation's reading must agree with it: none since the maintainer ruled the last,
+  open point 1's record half (`members_of_the_other_kind`: a record condition holding a member of the other
+  kind), fail closed (2026-10-19, `provenance.md` section 6.1 item 1), which the implementation now refuses.
+  It is planted still, and so are open point 1's request half (an implied value holding a member of the other
+  kind's shape; the token ruling, 2026-10-18) and a slip of a name a declaration gives a requirement
+  (`names_a_declaration_gives_a_requirement`, which the text decides: S2a-4's review, approved 2026-10-18),
+  and the two must agree on each. Can-fail controls of the check itself: `test_model_controls.py`, an open
+  point's on open point 1's record half as the implementation read it before its ruling.
 - **What a read must not look at:** (13) the S2 design's HP4 and HP10 (`test_invariance_properties.py`,
   `invariance_strategies.py`). HP4: a fault in another field, registered or not, or in another section's
   specimen never changes a read (the oracle, the read of the record without it); one in the read field's own

@@ -52,9 +52,9 @@ every family entry goes in `families/CHANGELOG.md`.
   reference model refuses both, as the text does, where it read both as without them. A request holding a
   `trainable` acceptance now raises `NotImplementedError` (the maintainer's ruling, 2026-10-22), whatever else
   it holds, as one holding a pick or an overlay does, until S7a-4 builds the read under it; it was refused,
-  `request_incomplete`, as a kind a read does not take. The model's citations of
-  the edited documents move to their new lines, some re-quoted, each saying where the model lags the text, and
-  `plain_read/CASES.md`'s PR-330 heading quotes the widened row.
+  `request_incomplete`, as a kind a read does not take. The model's citations of the edited documents move to
+  their new lines, some re-quoted, each saying where the model lags the text, and `plain_read/CASES.md`'s
+  PR-330 heading quotes the widened row.
 
   A label's basis, `label_basis` (`record_format.md` sections 4.1 and 5): an optional member of a value field,
   closed, in a condition's basis shape, in the writer schema, marked `x-materica-write-only`: no read checks
