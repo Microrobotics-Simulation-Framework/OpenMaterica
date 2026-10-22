@@ -972,14 +972,15 @@ jobs:
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     # Five targets at the default 300 s, the control (at most 3 minutes for each of the first three targets, 15
-    # for the fourth's fault of step 10, 8 for its fault in a table, 15 for its fault in a table's value and 8
-    # for the fifth's fault of an extrapolation's method, then a replay of six property modules) and the replay
-    # of the property tests. The slowest run on CI took 111.4 minutes (run 39596069518 of 2026-10-21, dispatched
-    # on S3c's draft, every step here among them: 51.1 for the control, 25.4 for the targets, 34.5 for the
-    # replay); the timeout is twice it, as the Hypothesis job's is of its shards' slowest runs, and
-    # `tests/unit/test_ci_workflows.py` holds it there. A manual run of S seconds a target adds 5 (S - 300) / 60
-    # minutes to the targets.
-    timeout-minutes: 223
+    # for the fourth's fault of step 10, 8 for its fault in a table, 15 for its fault in a table's value, 8 for
+    # the fifth's fault of an extrapolation's method and 45 for the fourth's fault over a table alternative, 16
+    # on average, then a replay of six property modules) and the replay of the property tests. The slowest run
+    # on CI took 111.4 minutes (run 39596069518 of 2026-10-21, dispatched on S3c's draft, every step here but
+    # S4d's among them: 51.1 for the control, 25.4 for the targets, 34.5 for the replay); S4d adds, by estimate,
+    # 45 minutes to the control at most and 10 to the replay (`FUZZ_ADDED_SINCE`). The timeout is twice their
+    # sum, as the Hypothesis job's is of its shards' slowest runs, and `tests/unit/test_ci_workflows.py` holds
+    # it there. A manual run of S seconds a target adds 5 (S - 300) / 60 minutes to the targets.
+    timeout-minutes: 333
     env:
       FUZZ_SECONDS: ${{ inputs.fuzz_seconds || 300 }}
       # The fuzzing and its replay run under one profile: the properties' sizes come from it, and a failure
@@ -1003,7 +1004,7 @@ jobs:
       # runs of its own, one seeded in a table and one in a table's value, and the fifth one seeded in step 0's
       # check of an extrapolation (tests/fuzz/seeded_fault.py); the replay must find what the property targets
       # saved again and shrink it.
-      - name: Control, the faults seeded in parse, the read, step 10, a table, a table's value and an extrapolation's method are found, replayed and shrunk
+      - name: Control, the faults seeded in parse, the read, step 10, a table, a table's value, an extrapolation's method and a table alternative are found, replayed and shrunk
         env:
           MATERICA_FUZZ_SEEDED_FAULT: "1"
         run: |
@@ -1087,6 +1088,32 @@ jobs:
           done
           wait || true
           cat "$control"/method-[1-4].log > "$control/extrapolation_method.log"
+          # S4d's control for fuzz target 4 (`MATERICA_FUZZ_SEEDED_FAULT=table_alternatives`): a table alternative
+          # read outside its readable range refusing the field where step 7 sets it aside, found by the model's
+          # assertion. No seed shows it, and one change to a seed does. Ten local runs, in pairs, each of up to
+          # 900 s with these arguments, found it in seven, after 125 to 866 s, and missed three times (Python 3.14,
+          # 2026-10-22): a rate of 1.1e-3 finds a second. At that rate four runs side by side all miss with about
+          # 0.06 on a runner 1.4 times slower than the laptop, and twelve with about 2e-4, under the bar of 1e-3 a
+          # week the maintainer's ruling sets, an estimate until CI's own runs measure it. So a round of four runs
+          # side by side, and another where none of a round found it, three rounds at most: about 16 minutes on
+          # average, 45 at most. The control passes where any run finds it. It moves to the fuzz controls' own
+          # job when S4's piece builds it.
+          found="^AssertionError: the implementation gives .*'outside_range'.*, the model "
+          for round in 1 2 3; do
+            for worker in 1 2 3 4; do
+              run=$(( (round - 1) * 4 + worker ))
+              cp -r "$control/fields" "$control/table-alternatives-$run"
+              MATERICA_FUZZ_SEEDED_FAULT=table_alternatives uv run python -m tests.fuzz.read_field_bytes \
+                "$control/table-alternatives-$run" -dict="$control/value_field.dict" -max_total_time=900 \
+                -entropic_scale_per_exec_time=1 -artifact_prefix="$control/findings/" \
+                > "$control/table-alternatives-$run.log" 2>&1 &
+            done
+            wait || true
+            cat "$control"/table-alternatives-*.log > "$control/table_alternatives.log"
+            if grep -qv "the model .*'outside_range'" <(grep "$found" "$control/table_alternatives.log"); then
+              break
+            fi
+          done
           uv run python -m pytest -p tests.fuzz.seeded_fault -q --hypothesis-show-statistics \
             tests/property/test_jsonio_properties.py tests/property/test_canonical_properties.py \
             tests/property/test_hashing_properties.py tests/property/test_read_properties.py \
@@ -1122,6 +1149,14 @@ jobs:
           if ! grep -q "AssertionError: an extrapolation that breaks its shape not refused" "$control/extrapolation_method.log"; then
             tail -40 "$control/extrapolation_method.log"
             echo "::error::the extrapolation_method runs did not find the fault seeded in an extrapolation's method, so they could not find a real one"
+            exit 1
+          fi
+          # The table alternatives' fault raises nothing: the model's assertion finds it, the implementation
+          # refusing with a table alternative's `outside_range` where the model sets that table aside.
+          refuses="^AssertionError: the implementation gives .*'outside_range'.*, the model "
+          if ! grep -qv "the model .*'outside_range'" <(grep "$refuses" "$control/table_alternatives.log"); then
+            tail -40 "$control/table_alternatives.log"
+            echo "::error::the table_alternatives runs did not find the fault seeded in step 7 over a table alternative, so they could not find a real one"
             exit 1
           fi
           # Only a stored example can fail in the reuse phase: the replay found what the fuzzing saved. Each

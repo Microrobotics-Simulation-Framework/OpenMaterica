@@ -3131,11 +3131,15 @@ def test_the_selection_check_can_fail(fault: Callable[[Workflow], None], problem
 # timeout until this one. The job has no interrupt, so its timeout is held to twice the slowest run itself, as
 # the Hypothesis job's interrupt is to its shards' (`MEASURED_ON_CI`).
 FUZZ_SLOWEST_ON_CI = 111.42
-# The minutes the job's steps added after that run, by estimate, until a run on CI measures them: none. The 38
-# minutes estimated after the run of 2026-10-19 for the table's control, the table value's, fuzz target 5 and
-# its control came to 34.0 measured in this one (the control step 28.9 longer, target 5's weekly run 5.1); the
-# replay, which no estimate counted, took 17.7 minutes longer.
-FUZZ_ADDED_SINCE = 0.0
+# The minutes the job's steps added after that run, by estimate, until a run on CI measures them: S4d's
+# control, 45 at most (three rounds of runs of up to 900 s, one after the other), and the replay of its
+# property modules, 10 (584 s of test time at `ci` locally, 2026-10-22: HP39's two parts 120 and 109 s, HP40
+# 82, HP12's part 49 and its planned searches' checks in the mutant table 225; shared by four workers on a
+# runner up to four times slower). The 38 minutes estimated after the run of 2026-10-19 for the table's
+# control, the table value's, fuzz target 5 and its control came to 34.0 measured in that run (the control
+# step 28.9 longer, target 5's weekly run 5.1); the replay, which no estimate counted, took 17.7 minutes
+# longer.
+FUZZ_ADDED_SINCE = 55.0
 
 
 def fuzz_margin_problems(ci: Workflow) -> list[str]:
@@ -3154,12 +3158,12 @@ def test_the_fuzz_job_has_twice_its_slowest_run_on_ci() -> None:
     assert fuzz_margin_problems(workflow("ci.yml")) == []
 
 
-@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167, 195, 222])
+@pytest.mark.parametrize("minutes", [65, 100, 119, 136, 167, 195, 222, 223, 332])
 def test_the_fuzz_margin_check_can_fail(minutes: int) -> None:
     ci = copy.deepcopy(workflow("ci.yml"))
     ci["jobs"]["fuzz"]["timeout-minutes"] = minutes
     found = fuzz_margin_problems(ci)
-    expected = f"fuzz times out at {minutes} minutes, less than twice its 111.42 on CI and the 0 added since"
+    expected = f"fuzz times out at {minutes} minutes, less than twice its 111.42 on CI and the 55 added since"
     assert found == [expected], found
 
 
@@ -8137,8 +8141,9 @@ TABLES_CASES = (
 # reuse phase with a failing example; and on a run of the table's fault, waits up to `STUB_PARTNER_WAIT`
 # seconds for the other run to start, records whether it did, and prints `STUB_FINDING` where its corpus is
 # among `STUB_FINDS`; on a run of the table value's fault, likewise for the three others, `STUB_EDGE_FINDING`
-# and `STUB_EDGE_FINDS`; and on a run of fuzz target 5's fault (S3c), likewise for the others of its runs,
-# `STUB_METHOD_FINDING` and `STUB_METHOD_FINDS`.
+# and `STUB_EDGE_FINDS`; on a run of fuzz target 5's fault (S3c), likewise for the others of its runs,
+# `STUB_METHOD_FINDING` and `STUB_METHOD_FINDS`; and on a run of the table alternatives' fault (S4d), likewise
+# for the three others, `STUB_ALTERNATIVES_FINDING` and `STUB_ALTERNATIVES_FINDS`.
 FUZZ_CONTROL_UV = """
 import json, os, sys, time
 from pathlib import Path
@@ -8163,12 +8168,12 @@ elif module == "pytest":
     print("IndexError: the seeded fault in the read")
     print("  - during reuse phase (0.00 seconds):")
     print("    - 0 passing examples, 1 failing examples, 0 invalid examples")
-elif fault in ("tables", "table_edges", "extrapolation_method"):
+elif fault in ("tables", "table_edges", "extrapolation_method", "table_alternatives"):
     corpus = Path(given[0]).name
     started = Path(os.environ["RUNNER_TEMP"], "started", fault)
     started.mkdir(parents=True, exist_ok=True)
     (started / corpus).touch()
-    others = {"tables": 1, "table_edges": 3}
+    others = {"tables": 1, "table_edges": 3, "table_alternatives": 3}
     wanted = others[fault] if fault in others else int(os.environ["STUB_METHOD_OTHERS"])
     deadline = time.monotonic() + float(os.environ["STUB_PARTNER_WAIT"])
     while (
@@ -8178,7 +8183,12 @@ elif fault in ("tables", "table_edges", "extrapolation_method"):
         time.sleep(0.05)
     record["beside"] = len([other for other in started.iterdir() if other.name != corpus])
     record["partner"] = record["beside"] > 0
-    stub = {"tables": "STUB_", "table_edges": "STUB_EDGE_", "extrapolation_method": "STUB_METHOD_"}[fault]
+    stub = {
+        "tables": "STUB_",
+        "table_edges": "STUB_EDGE_",
+        "extrapolation_method": "STUB_METHOD_",
+        "table_alternatives": "STUB_ALTERNATIVES_",
+    }[fault]
     if corpus in os.environ[stub + "FINDS"].split():
         print(os.environ[stub + "FINDING"])
 else:
@@ -8245,6 +8255,7 @@ def tables_control_problems(ci: Workflow, directory: Path) -> list[str]:
             "STUB_EDGE_FINDS": "table-edges-1",
             "STUB_EDGE_FINDING": TABLE_EDGES_FINDING,
             **METHOD_FOUND,
+            **ALTERNATIVES_FOUND,
             "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
         }
         status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
@@ -8397,6 +8408,7 @@ def table_edges_control_problems(ci: Workflow, directory: Path) -> list[str]:
             "STUB_EDGE_FINDS": finds,
             "STUB_EDGE_FINDING": finding,
             **METHOD_FOUND,
+            **ALTERNATIVES_FOUND,
             "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
         }
         status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
@@ -8592,6 +8604,7 @@ def method_control_problems(ci: Workflow, directory: Path) -> list[str]:
             "STUB_METHOD_FINDS": finds,
             "STUB_METHOD_FINDING": finding,
             "STUB_METHOD_OTHERS": str(METHOD_RUNS - 1),
+            **ALTERNATIVES_FOUND,
             "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
         }
         status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
@@ -8704,6 +8717,227 @@ def test_the_method_control_check_can_fail(tmp_path: Path, fault: Callable[[str]
     assert changed != found["run"]
     found["run"] = changed
     problems = method_control_problems(ci, tmp_path)
+    assert any(problem in line for line in problems), problems
+
+
+# Fuzz target 4's control for S4d's step 7 (`MATERICA_FUZZ_SEEDED_FAULT=table_alternatives`,
+# `tests/fuzz/seeded_fault.py`): a table alternative read outside its readable range refusing the field where
+# step 7 sets it aside, which the model's assertion finds. Its rate, 1.1e-3 finds a second over ten local runs
+# of 900 s (2026-10-22), sets its runs: a round of four side by side, and another where none of a round found
+# it, three rounds at most, so that all miss with about 2e-4 on a runner 1.4 times slower, an estimate.
+ALTERNATIVES = "table_alternatives"
+ALTERNATIVES_SIDE_BY_SIDE = 4
+ALTERNATIVES_ROUNDS = 3
+ALTERNATIVES_RUN_SECONDS = 900
+ALTERNATIVES_ERROR = (
+    "::error::the table_alternatives runs did not find the fault seeded in step 7 over a table alternative"
+)
+# The fault as fuzz target 4 reported it, a byte of the `temperature` condition's name changed beside a table
+# read outside its range (2026-10-22), shortened; and another disagreement, the model refusing where the
+# implementation reads on, which is not that fault's.
+ALTERNATIVES_FINDING = (
+    "AssertionError: the implementation gives Outcome(kind='result', result={'status': 'not_met', 'reasons': "
+    "[{'code': 'outside_range', 'condition': 'temperature', 'alternative': 0.0}, {'code': "
+    "'condition_unstated', 'condition': 'temperature', 'alternative': 1.0}], 'labels': []}, why=''), "
+    "the model Outcome(kind='result', result={'status': 'unknown', 'reasons': [{'code': "
+    "'condition_unstated', 'condition': 'temperature', 'alternative': 1.0}], 'labels': []}, why='')"
+)
+ANOTHER_ALTERNATIVES_FINDING = (
+    "AssertionError: the implementation gives Outcome(kind='result', result={'status': 'unknown', 'reasons': "
+    "[], 'labels': []}, why=''), the model Outcome(kind='result', result={'status': 'not_met', 'reasons': "
+    "[{'code': 'outside_range', 'condition': 'temperature', 'alternative': 0.0}], 'labels': []}, why='')"
+)
+# The stub's environment where every case of another fault's control finds this fault in its first run.
+ALTERNATIVES_FOUND = {
+    "STUB_ALTERNATIVES_FINDS": "table-alternatives-1",
+    "STUB_ALTERNATIVES_FINDING": ALTERNATIVES_FINDING,
+}
+EVERY_ALTERNATIVES_RUN = " ".join(
+    f"table-alternatives-{run}" for run in range(1, ALTERNATIVES_SIDE_BY_SIDE * ALTERNATIVES_ROUNDS + 1)
+)
+# Each case: the corpora of the runs that report a finding, the finding, whether the step passes, and the runs
+# it makes: a round of four side by side, and another where none of a round found the fault, three at most.
+ALTERNATIVES_CASES = (
+    ("table-alternatives-1", ALTERNATIVES_FINDING, True, 4),
+    ("table-alternatives-8", ALTERNATIVES_FINDING, True, 8),
+    ("table-alternatives-12", ALTERNATIVES_FINDING, True, 12),
+    ("", ALTERNATIVES_FINDING, False, 12),
+    (EVERY_ALTERNATIVES_RUN, ANOTHER_ALTERNATIVES_FINDING, False, 12),
+)
+
+
+def alternatives_runs_problems(runs: list[dict[str, Any]], dictionary: str | None) -> list[str]:
+    """Where the table alternatives' first round is not `ALTERNATIVES_SIDE_BY_SIDE` runs, on as many corpora,
+    side by side, each `ALTERNATIVES_RUN_SECONDS`, with the dictionary the step writes (`dictionary`), as its
+    rate was measured."""
+    problems: list[str] = []
+    if len({run["arguments"][0] for run in runs}) != len(runs):
+        problems.append("the table alternatives' runs share a corpus")
+    for run in runs:
+        seconds = [word.partition("=")[2] for word in run["arguments"] if word.startswith("-max_total_time=")]
+        if seconds != [str(ALTERNATIVES_RUN_SECONDS)]:
+            lasting = " and ".join(seconds) or "unlimited"
+            problems.append(
+                f"a run of the table alternatives' fault for {lasting} s, not {ALTERNATIVES_RUN_SECONDS}"
+            )
+        if run["beside"] < ALTERNATIVES_SIDE_BY_SIDE - 1:
+            problems.append(
+                f"a run of the table alternatives' fault beside {run['beside']} others, not side by side"
+            )
+        if dictionary is None or dictionaries(run) != [dictionary]:
+            problems.append(
+                f"a run of the table alternatives' fault with the dictionaries {dictionaries(run)}, not the "
+                "step's"
+            )
+    return problems
+
+
+def alternatives_control_problems(ci: Workflow, directory: Path) -> list[str]:
+    """The control step run as written with `FUZZ_CONTROL_UV`, in each of `ALTERNATIVES_CASES`: where it makes
+    other runs of the table alternatives' fault than the case says, where its first round is not as
+    `alternatives_runs_problems` holds it, or where it passes or fails otherwise than the case says, failing
+    at that fault's check."""
+    problems: list[str] = []
+    for index, (finds, finding, passes, made) in enumerate(ALTERNATIVES_CASES):
+        where = directory / str(index)
+        (where / "work").mkdir(parents=True)
+        environment = runner(where, FUZZ_CONTROL_UV) | {
+            "STUB_FINDS": "tables-1",
+            "STUB_FINDING": TABLES_FINDING,
+            "STUB_EDGE_FINDS": "table-edges-1",
+            "STUB_EDGE_FINDING": TABLE_EDGES_FINDING,
+            **METHOD_FOUND,
+            "STUB_ALTERNATIVES_FINDS": finds,
+            "STUB_ALTERNATIVES_FINDING": finding,
+            "STUB_PARTNER_WAIT": "5" if index == 0 else "0",
+        }
+        status, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
+        recorded = where / "calls.jsonl"
+        calls = (
+            [json.loads(line) for line in recorded.read_text("utf-8").splitlines()]
+            if recorded.exists()
+            else []
+        )
+        runs = [call for call in calls if (call["module"], call["fault"]) == (TARGET_4, ALTERNATIVES)]
+        found = "the" if finding == ALTERNATIVES_FINDING else "another"
+        case = f"{finds or 'no run'} reporting {found} finding"
+        if len(runs) != made:
+            problems.append(f"{len(runs)} runs of the table alternatives' fault, not {made}, where {case}")
+        if index == 0:
+            problems += alternatives_runs_problems(runs, control_dictionary(calls))
+        if passes and status != 0:
+            problems.append(f"the step fails where {case}")
+        if not passes and (status == 0 or ALTERNATIVES_ERROR not in printed):
+            problems.append(f"the step does not fail at the table alternatives' check where {case}")
+    return problems
+
+
+def test_the_control_step_runs_the_table_alternatives_fault_and_sees_its_finding(tmp_path: Path) -> None:
+    assert alternatives_control_problems(workflow("ci.yml"), tmp_path) == []
+
+
+# Parts of the control step's script, as YAML gives it, without the block's indentation.
+ALTERNATIVES_LOOP = """\
+for round in 1 2 3; do
+  for worker in 1 2 3 4; do
+"""
+ALTERNATIVES_RUN_END = """\
+      > "$control/table-alternatives-$run.log" 2>&1 &
+  done
+  wait || true
+  cat "$control"/table-alternatives-*.log > "$control/table_alternatives.log"
+  if grep -qv "the model .*'outside_range'" <(grep "$found" "$control/table_alternatives.log"); then
+    break
+  fi
+done
+"""
+ALTERNATIVES_STOP = """\
+  if grep -qv "the model .*'outside_range'" <(grep "$found" "$control/table_alternatives.log"); then
+    break
+  fi
+"""
+ALTERNATIVES_CHECK = """\
+refuses="^AssertionError: the implementation gives .*'outside_range'.*, the model "
+"""
+ALTERNATIVES_DICTIONARY = (
+    '"$control/table-alternatives-$run" -dict="$control/value_field.dict" -max_total_time=900'
+)
+
+
+def without_the_table_alternatives_runs(text: str) -> str:
+    start = text.index(ALTERNATIVES_LOOP)
+    end = text.index(ALTERNATIVES_RUN_END) + len(ALTERNATIVES_RUN_END)
+    return text[:start] + text[end:]
+
+
+def without_the_table_alternatives_check(text: str) -> str:
+    start = text.index(ALTERNATIVES_CHECK)
+    return text[:start] + text[text.index("\nfi\n", start) + len("\nfi\n") :]
+
+
+def with_three_table_alternatives_runs_a_round(text: str) -> str:
+    return text.replace(ALTERNATIVES_LOOP, ALTERNATIVES_LOOP.replace("in 1 2 3 4;", "in 1 2 3;"))
+
+
+def with_one_round_of_table_alternatives_runs(text: str) -> str:
+    return text.replace(ALTERNATIVES_LOOP, ALTERNATIVES_LOOP.replace("round in 1 2 3;", "round in 1;"))
+
+
+def with_every_round_of_table_alternatives_runs(text: str) -> str:
+    return text.replace(ALTERNATIVES_STOP, "")
+
+
+def with_shorter_table_alternatives_runs(text: str) -> str:
+    start = text.index(ALTERNATIVES_LOOP)
+    return text[:start] + text[start:].replace("-max_total_time=900", "-max_total_time=600", 1)
+
+
+def with_the_table_alternatives_runs_one_after_the_other(text: str) -> str:
+    return text.replace(ALTERNATIVES_RUN_END, ALTERNATIVES_RUN_END.replace("2>&1 &", "2>&1"))
+
+
+def with_the_table_alternatives_runs_without_the_dictionary(text: str) -> str:
+    return text.replace(ALTERNATIVES_DICTIONARY, '"$control/table-alternatives-$run" -max_total_time=900')
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (without_the_table_alternatives_runs, "0 runs of the table alternatives' fault, not 4"),
+        (with_three_table_alternatives_runs_a_round, "3 runs of the table alternatives' fault, not 4"),
+        (with_one_round_of_table_alternatives_runs, "4 runs of the table alternatives' fault, not 8"),
+        (with_every_round_of_table_alternatives_runs, "12 runs of the table alternatives' fault, not 4"),
+        (with_shorter_table_alternatives_runs, "for 600 s, not 900"),
+        (with_the_table_alternatives_runs_one_after_the_other, "beside 0 others, not side by side"),
+        (
+            without_the_table_alternatives_check,
+            "the step does not fail at the table alternatives' check where no run reporting",
+        ),
+        (
+            with_the_table_alternatives_runs_without_the_dictionary,
+            "the table alternatives' fault with the dictionaries [], not",
+        ),
+    ],
+    ids=[
+        "runs-removed",
+        "three-a-round",
+        "one-round",
+        "every-round",
+        "shorter",
+        "one-after-the-other",
+        "check-removed",
+        "no-dictionary",
+    ],
+)
+def test_the_table_alternatives_control_check_can_fail(
+    tmp_path: Path, fault: Callable[[str], str], problem: str
+) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    found = control_step(ci)
+    changed = fault(found["run"])
+    assert changed != found["run"]
+    found["run"] = changed
+    problems = alternatives_control_problems(ci, tmp_path)
     assert any(problem in line for line in problems), problems
 
 

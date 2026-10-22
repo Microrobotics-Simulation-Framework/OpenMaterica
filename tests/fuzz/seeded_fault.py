@@ -52,9 +52,20 @@
   holds beside a number, it is two aligned changes away, and five local runs of 600 s found it in none
   (2026-10-21).
 
-Each of the first four raises its own message, and so does the sixth, so that CI can tell which fault a run
-found; the fifth and the seventh are found by the oracle's assertion that the implementation and the model
-disagree, and the last by the oracle's assertion that an extrapolation breaking its shape is refused.
+- In step 7, S4d's control for the fourth target, which reads a field's table alternatives at their places
+  too (`field_oracle.alternative_places`): a table alternative read outside its readable range, at no edge and
+  with no extrapolation that would cover it, refuses the field where the text sets it aside
+  (`read_side_contract.md` section 3, step 7), where a value of its `y` lies below 900. Nothing raises: only
+  the model's answer tells it wrong. Ungated, four seeds would show it at once, each a density table whose `y`
+  is 916 to 1000 read just below its readable range beside a constant that stays there; no seed shows it gated
+  (2026-10-22). One change does: a value of such a table's `y` lowered below 900 (a changed digit, an erased
+  one, a minus sign), or, where a table whose `y` lies below 900 already (a viscosity's) is read outside its
+  range beside alternatives all set aside, a change that makes another stay (a byte of its condition's name,
+  which leaves the condition unstated). The control's local runs found it both ways.
+
+Each of the first four raises its own message, and so does the seventh, so that CI can tell which fault a run
+found; the fifth, the sixth and the ninth are found by the oracle's assertion that the implementation and the
+model disagree, and the eighth by the oracle's assertion that an extrapolation breaking its shape is refused.
 
 The first three targets seed the first two faults when `MATERICA_FUZZ_SEEDED_FAULT` is set, and pytest seeds
 them when loaded as a plugin, `python -m pytest -p tests.fuzz.seeded_fault`. Only the fourth target seeds the
@@ -62,7 +73,7 @@ third, since the property targets draw conditions too and would find it before t
 `composition`, the variable seeds the composition's fault alone, in the third target and the fourth; set to
 `alternatives`, step 7's alone, in the fourth; set to `tables`, step 8's table fault alone, in the fourth;
 set to `table_edges`, the table value's alone, in the fourth; set to `extrapolation_method`, step 0's method
-alone, in the fifth.
+alone, in the fifth; set to `table_alternatives`, step 7's over a table alternative alone, in the fourth.
 """
 
 import dataclasses
@@ -91,7 +102,8 @@ ALTERNATIVES = "alternatives"
 TABLES = "tables"
 TABLE_EDGES = "table_edges"
 EXTRAPOLATION_METHOD = "extrapolation_method"
-NAMED = (COMPOSITION, ALTERNATIVES, TABLES, TABLE_EDGES, EXTRAPOLATION_METHOD)
+TABLE_ALTERNATIVES = "table_alternatives"
+NAMED = (COMPOSITION, ALTERNATIVES, TABLES, TABLE_EDGES, EXTRAPOLATION_METHOD, TABLE_ALTERNATIVES)
 
 _parse = jsonio.parse
 
@@ -201,6 +213,25 @@ def faulty_extrapolation(
     return _extrapolation(index, entry, found)
 
 
+_form_range = read.form_range
+
+
+# The values of `y` below which the table alternatives' fault shows: four seeds' tables hold 916 to 1000.
+LEAST_VALUE = 900.0
+
+
+def faulty_form_range(table: JsonObject, request: read.ReadRequest) -> read.FormRange:
+    """A table read outside its readable range, at no edge and with no extrapolation covering it, a value of
+    its `y` below `LEAST_VALUE`, reported without `outside_range` standing alone, which step 7 alone reads: a
+    table alternative then refuses the field where it is set aside; a field read alone is read as before."""
+    found = _form_range(table, request)
+    values = table.get("y")
+    low = isinstance(values, list) and any(isinstance(y, float) and y < LEAST_VALUE for y in values)
+    if low and found.outside_alone and found.extrapolation is None:
+        return dataclasses.replace(found, outside_alone=False)
+    return found
+
+
 def seed() -> None:
     jsonio.parse = faulty_parse
     read.resolve_record = faulty_resolve_record  # type: ignore[attr-defined]  # read's own name for it, not exported
@@ -260,6 +291,13 @@ def seed_extrapolation_method_if_asked(instrument: Instrument) -> None:
     fourth's faults are."""
     if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == EXTRAPOLATION_METHOD:
         read._extrapolation = instrument(faulty_extrapolation)  # pyright: ignore[reportPrivateUsage]
+
+
+def seed_table_alternatives_if_asked(instrument: Instrument) -> None:
+    """S4d's control, which the fourth target seeds where the variable asks for it by name, instrumented as
+    its other faults are."""
+    if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == TABLE_ALTERNATIVES:
+        read.form_range = instrument(faulty_form_range)
 
 
 def pytest_configure(config: pytest.Config) -> None:

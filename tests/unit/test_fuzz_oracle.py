@@ -9,18 +9,23 @@ text reads or lets through what it refuses. Each on the full constants, and on t
 composition (S2b-1), with a fault of their own members. And a condition holding a member of the other
 kind's shape, HP12's open point `members_of_the_other_kind` until the maintainer's ruling of 2026-10-19, held
 to the model in a field or an alternative, the oracle failing on the core as it read the point before, and a
-step not built beside it kept; and S4a's control fault in step 7, which the model alone sees."""
+step not built beside it kept; S4a's control fault in step 7, which the model alone sees; and S4d's rows of
+step 7 for a table alternative, held to the model, read at the places of a field's table alternatives too,
+with S4d's control fault, which no seed shows and one change does."""
 
 import copy
 import json
 import math
+import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import NoReturn
 
 import pytest
 
+import materica
 from materica import shapes
-from materica.core import conditions, evaluate, fields, value_shapes
+from materica.core import conditions, evaluate, fields, jsonio, value_shapes
 from materica.core import read as read_module
 from materica.core.hashing import content_hash
 from materica.core.jsonio import JsonValue
@@ -35,6 +40,7 @@ from tests.fuzz.field_oracle import (
     OTHER_PLACES,
     REQUIRED,
     JsonObject,
+    alternative_places,
     check_against_the_model,
     check_no_refusal_missing,
     check_result_laws,
@@ -44,7 +50,7 @@ from tests.fuzz.field_oracle import (
     places,
     read_outcome,
 )
-from tests.fuzz.seeded_fault import faulty_points, faulty_standing, faulty_value
+from tests.fuzz.seeded_fault import faulty_form_range, faulty_points, faulty_standing, faulty_value
 from tests.property.full_fields import full_fields, full_forms, record_of, request_for
 from tests.reference import read_model
 
@@ -686,6 +692,167 @@ def test_the_model_oracle_holds_a_table_alternatives_step_11_rows_to_the_model(
     monkeypatch.setattr(read_module, "_set_aside_by_its_range", _never_set_aside)
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(sources, request)
+
+
+# S4d's control fault (`tests/fuzz/seeded_fault.py`, `faulty_form_range`): a table alternative read outside
+# its readable range, at no edge and with no extrapolation covering it, a value of its `y` below 900, refusing
+# the field where step 7 sets it aside. Fuzz target 4 reads a field's table alternatives at their places too
+# (`field_oracle.alternative_places`), where the fault would show at once on four seeds without its gate.
+# Its premise: no seed shows the gated fault, at the target's operating conditions or at those places; and one
+# change to a seed's table value does, found by the model's assertion.
+CONFORMANCE = Path(materica.__file__).parent / "data" / "conformance"
+
+
+def target_4_seeds() -> list[tuple[str, str, JsonValue]]:
+    """Fuzz target 4's seeds (`read_field_bytes.seeds`, whose module needs Atheris) that hold alternatives:
+    every value field of every conformance input, by the input, the registered field and the field."""
+    found: list[tuple[str, str, JsonValue]] = []
+    for path in sorted(CONFORMANCE.glob("*/inputs/*")):
+        value = jsonio.parse(path.read_bytes())
+        body = value.get("body") if isinstance(value, dict) else None
+        sections = body.get("sections") if isinstance(body, dict) else None
+        for section_name, section in sections.items() if isinstance(sections, dict) else ():
+            fields_ = section.get("fields") if isinstance(section, dict) else None
+            for name, field in fields_.items() if isinstance(fields_, dict) else ():
+                registered = f"{section_name}.{name}"
+                if registered in VOCABULARY.fields and isinstance(field, dict) and "alternatives" in field:
+                    found.append((path.name, registered, field))
+    return found
+
+
+def target_4_cases(registered: str, field: JsonValue) -> list[tuple[tuple[bytes, ...], JsonObject]]:
+    """`field` read as fuzz target 4 reads it under `want: value`, in a record of its own: at the operating
+    conditions, with a tolerance or an accept list for each condition the field's row requires, and at each
+    place of its table alternatives, the record's bytes seeding the places' sample as the target's do."""
+    section, _, name = registered.partition(".")
+    record: dict[str, JsonValue] = {
+        "schema_version": "0.1.0",
+        "record_type": "material",
+        "id": "conformance/fuzz_fixture",
+        "version": "1.0.0",
+        "name": "A value field from the fuzzer",
+        "licence": {"values": "CC0-1.0", "evidence": "excluded"},
+        "content_hash": "",
+        "body": {"sections": {section: {"fields": {name: field}}}},
+    }
+    record["content_hash"] = content_hash(record)
+    data = json.dumps(record).encode()
+    requires = VOCABULARY.fields[registered].requires
+    operating: JsonObject = {key: value for key, value in OPERATING.items() if key in requires}
+    pin: JsonObject = {member: record[member] for member in ("id", "version", "content_hash")}
+    requirement: JsonObject = {
+        "want": "value",
+        "conditions": {key: value for key, value in REQUIRED.items() if key in requires},
+    }
+    conditions_given = [operating]
+    for place in alternative_places(field, data):
+        conditions_given.append({**operating, place.axis: {"value": place.at, "unit": place.unit}})
+    return [
+        (
+            (data,),
+            {
+                "target": {"record": pin, "field": registered},
+                "operating_conditions": given,
+                "requirement": copy.deepcopy(requirement),
+            },
+        )
+        for given in conditions_given
+    ]
+
+
+def test_target_4_reads_a_fields_table_alternatives_at_their_places() -> None:
+    """Every table alternative's places, at most the target's sample of one table's, and none where the field
+    holds no alternatives; the seeds holding table alternatives each read at some, every place agreeing with
+    the model on the core as it is."""
+    seeds = target_4_seeds()
+    tables = [(registered, field) for _, registered, field in seeds if '"form": "table"' in json.dumps(field)]
+    assert len(tables) >= 20
+    for registered, field in tables:
+        cases = target_4_cases(registered, field)
+        assert 1 < len(cases) <= 1 + EDGE_PLACES + OTHER_PLACES
+        for sources, request in cases:
+            against_the_model(sources, request)
+    assert alternative_places(met_field(), b"") == []
+    assert alternative_places({"alternatives": [met_field(), met_field()]}, b"") == []
+
+
+def test_no_seed_of_target_4_shows_the_table_alternatives_seeded_fault(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cases = [case for _, registered, field in target_4_seeds() for case in target_4_cases(registered, field)]
+    outside = [case for case in cases if any(r.code == "outside_range" for r in read_case(*case).reasons)]
+    assert len(cases) >= 150
+    assert len(outside) >= 20
+    reads = [written_read(*case) for case in cases]
+    monkeypatch.setattr(read_module, "form_range", faulty_form_range)
+    assert [written_read(*case) for case in cases] == reads
+
+
+def test_four_seeds_show_the_table_alternatives_fault_without_its_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Why the fault is gated: ungated, the four seeds whose density table, read just below its readable
+    range at a place of its own, sits beside a constant that stays there show it at once."""
+    shown: list[str] = []
+    for input_name, registered, field in target_4_seeds():
+        cases = target_4_cases(registered, field)
+        reads = [written_read(*case) for case in cases]
+        with monkeypatch.context() as patch:
+            patch.setattr(read_module, "form_range", faulty_form_range)
+            patch.setattr("tests.fuzz.seeded_fault.LEAST_VALUE", math.inf)
+            if [written_read(*case) for case in cases] != reads:
+                shown.append(input_name)
+    assert shown == [
+        "density_alternatives_constant_263_and_edge.json",
+        "density_alternatives_edge_narrowed_and_constant_272.json",
+        "density_alternatives_edge_narrowed_and_constant_273.json",
+        "density_alternatives_edge_narrowed_and_constant_274.json",
+    ]
+
+
+# One change to a seed that shows the fault: a value of such a table's `y` lowered below 900 (a minus sign
+# inserted, a digit erased, a digit changed); or, beside a viscosity table, whose `y` lies below 900 already,
+# read outside its range at a place of its own, a byte of the constant's condition name changed, which leaves
+# its temperature unstated, so that the constant stays where it was set aside (the control's local runs found
+# it so, 2026-10-22).
+ONE_CHANGE: list[tuple[str, str, str]] = [
+    ("density_alternatives_constant_263_and_edge.json", "916.0", "-916.0"),
+    ("density_alternatives_edge_narrowed_and_constant_272.json", "1000.0", "100.0"),
+    ("density_alternatives_edge_narrowed_and_constant_274.json", "918.0", "818.0"),
+    (
+        "viscosity_alternatives_table_and_constant.json",
+        '"temperature": {"value": 310.15',
+        '"te}perature": {"value": 310.15',
+    ),
+]
+
+
+@pytest.mark.parametrize(("input_name", "old", "new"), ONE_CHANGE, ids=[name for name, _, _ in ONE_CHANGE])
+def test_one_change_to_a_seed_shows_the_table_alternatives_seeded_fault_to_the_model_oracle(
+    input_name: str, old: str, new: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (registered, field), *_ = [(name, held) for found, name, held in target_4_seeds() if found == input_name]
+    text = json.dumps(field)
+    assert text.count(old) == 1
+    cases = target_4_cases(registered, json.loads(text.replace(old, new)))
+    for case in cases:
+        against_the_model(*case)
+    monkeypatch.setattr(read_module, "form_range", faulty_form_range)
+    found: list[str] = []
+    for case in cases:
+        try:
+            against_the_model(*case)
+        except AssertionError as error:
+            found.append(str(error))
+    assert found
+    assert all(re.match(r"the implementation gives .*'outside_range'", finding) for finding in found), found
+
+
+def read_case(sources: tuple[bytes, ...], request: JsonObject) -> read_module.ReadResult:
+    store = RecordStore()
+    for number, source in enumerate(sources):
+        store.add(f"source_{number}", source)
+    return read(request, store)
 
 
 def _never_set_aside(read: read_module.FieldRead) -> bool:
