@@ -9,12 +9,14 @@ drift apart.
 > table's value at the operating value of its axis, with the table it is read from; a read outside the table's
 > readable range or at a declared edge is refused, unless, outside the range, the request declares an
 > extrapolation: the read then stays refused and carries the value at the range's nearest end, from which the
-> consumer computes its own. A request with a pick or an overlay is not read yet, nor a table among
-> alternatives whose read is outside its range, at an edge or without a single operating value for its axis:
-> the read raises `NotImplementedError`, rather than give an answer a later release could contradict. A field
-> holding alternatives is read one alternative at a time: one whose conditions the request does not meet is set
-> aside, one that breaks its shape, holds another unit or withholds its value refuses the field, and the one
-> left is read; where more than one is left, the result is `no_pick` until picks are read (S4).
+> consumer computes its own. A request with a pick or an overlay is not read yet: the read raises
+> `NotImplementedError`, rather than give an answer a later release could contradict. A field holding
+> alternatives is read one alternative at a time: one whose conditions the request does not meet is set
+> aside, and so is a table read outside its readable range, unless the request declares an extrapolation that
+> would cover it; one that breaks its shape, holds another unit, withholds its value or is a table read at a
+> declared edge refuses the field, and so does a table with no operating value for its axis; a table read over
+> an operating range of its axis stays, a form `want` cannot give; and the one left is read, an extrapolation
+> applied to it alone; where more than one is left, the result is `no_pick` until picks are read (S4).
 
 > **The example records are examples, not reviewed library data.** They are not yet fully human-reviewed, and
 > may change in a later commit ([`examples/README.md`](../../examples/README.md)).
@@ -143,10 +145,8 @@ that value like a stated one, and it reads `met` where the request's tolerance f
 
 ## What this release does not read yet
 
-- **Picks and overlays**, and a table among alternatives whose read is outside its range, at an edge or
-  without a single operating value for its axis, an extrapolation declared or not (S4), **scenes** (a region
-  target, and a target record that is an overlay), **fit records** (`want: fit` on a field holding one),
-  **sampling**, **USD** and **`materica check`**.
+- **Picks and overlays** (S4), **scenes** (a region target, and a target record that is an overlay), **fit
+  records** (`want: fit` on a field holding one), **sampling**, **USD** and **`materica check`**.
 
 The example `example/human_plasma` holds one constant, and reads `met` at 310.15 K when the request gives a
 shear-rate range inside 10 to 100 s⁻¹, requires tolerances on temperature (0.5 K, say) and on shear rate (0
