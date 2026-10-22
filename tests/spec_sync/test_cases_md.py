@@ -259,7 +259,7 @@ def compare_no_unused(case: JsonObject) -> None:
     ("name", "change"),
     [
         ("BC-004.two_models_both_listed.json", drop_a_refusal),
-        ("BC-005.empty_reason.json", move_the_pointer),
+        ("BC-048.empty_reason.json", move_the_pointer),
         ("BC-048.json_array.json", change_the_rule),
         ("BC-050.requirement_names_another_label.json", drop_the_rules),
         ("BC-051.checked_over_domain.json", drop_the_claims),

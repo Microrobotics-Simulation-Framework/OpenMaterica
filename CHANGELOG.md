@@ -89,18 +89,21 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ### Verification
 - S7a-1's build-check case files (S7-cases-1; the S7 design's section 5.4, its S7a-1 rows), written through the
-  case tools from the text alone, by a pass shown no implementation: 50 files of a declaration checked on its own
+  case tools from the text alone, by a pass shown no implementation: 51 files of a declaration checked on its own
   and refused at build, in a new suite, `build_checks/`, with its `CASES.md` and `README.md`: BC-004 (3), BC-005
-  (9), BC-037 (6), BC-048 (21), BC-050 (2) and BC-051 (9). Each supplies the plain-read water fixture, byte for
-  byte (one the glycerol fixture too), and one declaration, a base declaration with the arm's fault planted, and
-  expects exactly its refusals, each its rule's case and a JSON pointer into the declaration, and no results,
-  watches or unused acceptances. The design planned 51: the arm of an engine model checked over a domain is not
-  written, since two sentences of `declarations.md` section 1 item 12 give it different answers. Every file is
-  S7a-1's and not yet runnable, since no executor runs `check_build` before S7a-1. A build of the declaration's
-  check written from the text alone agrees with every file; each arm's control, its declaration with the one
-  thing it tests removed, gives that build another answer, and the two arms whose point is a refusal not given
-  are each caught by a seeded fault instead; each of 39 seeded faults of that build fails at least one file.
-  1180 of 1572 case files pass, 35 are verified against the reference evaluator, and 357 are not yet runnable.
+  (8), BC-037 (6), BC-048 (22), BC-050 (2) and BC-051 (10), as the design plans. Each supplies the plain-read water
+  fixture, byte for byte (one the glycerol fixture too), and one declaration, a base declaration with the arm's
+  fault planted, and expects exactly its refusals, each its rule's case and a JSON pointer into the declaration,
+  and no results, watches or unused acceptances. Three answers rest on the sentences ruled with them (**Schema**,
+  above): an engine model checked over a domain gives the domain's BC-051 beside item 7's refusal, a population
+  requirement without `population_level` beside `sampling` gives BC-043 and the `sampling`'s BC-051, and an empty
+  `reason` gives BC-048 at the `reason`. Every file is S7a-1's and not yet runnable, since no executor runs
+  `check_build` before S7a-1. A build of the declaration's check written from the text alone agrees with every
+  file; each arm's control, its declaration with the one thing it tests removed, gives that build another answer,
+  but for the one arm whose point is a refusal not given, which a seeded fault of that build catches instead, and
+  five more arms also carry a seeded fault each catches; each of 41 seeded faults of that build fails at least one
+  file. 1180 of 1573 case files pass, 35 are verified against the reference evaluator, and 358 are not yet
+  runnable.
 - A label's basis (**Schema**, above) comes with four case files, written through the case tools, which run
   and pass: `PR-030.near_typo_label_basi_beside_label`, `label_basi` beside the label, refused at step 8;
   `PR-030.label_basis_stated_not_returned` and `PR-030.label_basis_guessed_not_checked`, `label_basis` well
