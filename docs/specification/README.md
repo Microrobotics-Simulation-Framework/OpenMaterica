@@ -250,8 +250,26 @@ Three kinds of case take other inputs. Each names the schema files it passes in 
   "detail"?}`, with `pointer` a JSON pointer into the crosswalk, and `expected.not_compared` as above.
 - An **engine-adapter case** names a stage, a declaration and the engine crosswalks it passes in `inputs`; its
   `request` is `{"model": "<the engine model's name>"}`; and `expected` holds, per shape, the attributes
-  written and their values, or the reasons the adapter refused. A build-check case of an engine model
-  (BC-039 to BC-041) names the same inputs and expects the build's results.
+  written and their values, or the reasons the adapter refused.
+
+A **build-check case** names its records in `inputs.records` and its declaration in `inputs.declaration`, one
+file, read by `record_format.md` section 1 item 6, so that a declaration that breaks it can be given; its
+`request` is `{"operation": "check_build"}`. `expected` holds the members of the build's report it compares
+(`declarations.md` section 2):
+- `refusals`, each `{"item": "<the rule's case id>", "pointer"}`, compared as a set, `pointer` a JSON pointer
+  into the declaration (`declarations.md` section 1); where `compare.rules_compared` lists case ids, only the
+  refusals of those rules are compared, as for record checks;
+- `results`, compared as a set keyed by `model`, the location and `field`, or `fields` for a combination; each
+  result's members compared as a read result's are (above), `accepted_by` as a set of indexes, and
+  `not_accepted` as a multiset of reasons, as `reasons` are, and of specimen differences by `section` and
+  `fact`;
+- `watches`, as a set, their numbers as `compare` says;
+- `unused`, as a set of `{"model", "acceptance"}`.
+
+`compare.members` names the report's members compared, and `compare.result_members` the members of each result,
+`model`, the location and `field` always compared. A case whose answer depends on a suite the build claims (the
+scene suite, say) says so in `claims`, with a variant per claim. A build-check case of an engine model (BC-039
+to BC-041) also names a stage and the engine crosswalks it passes, and expects the engine results.
 
 A **record-check case** names its records in `inputs.records`, with the path each is given from where a rule needs
 one (RC-121), and the page-text documents it gives the checker in `inputs.page_texts` (`page_text.md` section 3

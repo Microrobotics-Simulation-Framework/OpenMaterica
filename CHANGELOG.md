@@ -66,6 +66,18 @@ every family entry goes in `families/CHANGELOG.md`.
   PR-030 (`label_basi` beside the label refuses the field; `label_basis`, well formed or not, is neither
   checked nor returned in any member a case compares) and one of PR-044, whose row now names `label_basis`
   beside `alternatives`.
+- The build-check case (S7-cases-1; the S7 design's section 5, its paragraph ruled to land with the first case
+  files on 2026-10-21). The specification README's "Case files" gains it: a build-check case names its declaration
+  in `inputs.declaration`, read by `record_format.md` section 1 item 6, asks for `{"operation": "check_build"}`,
+  and compares the members of the build's report it names: the declaration's refusals as a set of case id and
+  pointer (only those of the rules `compare.rules_compared` lists, where it lists any), the results, the watches
+  and the acceptances unused. `case.json` gains the build arm: `inputs.declaration`, the build operation, the
+  report's compared members (a build result being a read case's compared members with the build's own),
+  `compare.result_members`, and `compare.rules_compared` in a build-check case too, with the branch that holds a
+  build-check case to them; any other case naming a declaration or `result_members` is refused. The typed shapes
+  are regenerated. `tests/spec_sync/name_overlaps.json` allows the four names the build's report gives a second
+  meaning (`acceptance`, an unused acceptance's index; `fields`, a combination's list; `interval`, a watch's ends;
+  `operation`, the build's own) and `field` beside `fields`, each with the sentence that keeps them apart.
 
 ### Verification
 - A label's basis (**Schema**, above) comes with four case files, written through the case tools, which run

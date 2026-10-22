@@ -118,6 +118,166 @@ def test_the_case_schema_holds_a_table_evaluation_case_to_its_shape(broken: Json
     assert CASE(broken) != []
 
 
+WATER: JsonObject = {
+    "id": "conformance/water_fixture",
+    "version": "1.0.0",
+    "content_hash": "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d",
+}
+RESULT: JsonObject = {
+    "model": "drag",
+    "record": WATER,
+    "field": "fluid.dynamic_viscosity",
+    "status": "unknown",
+    "reasons": [{"code": "condition_unstated", "condition": "shear_rate"}],
+    "accepted": True,
+    "accepted_by": [0.0],
+    "not_accepted": [],
+}
+WATCH: JsonObject = {
+    "model": "drag",
+    "record": WATER,
+    "field": "fluid.dynamic_viscosity",
+    "condition": "temperature",
+    "unit": "K",
+    "source": "tolerance",
+    "interval": [309.15, 311.15],
+}
+
+
+def build_check(
+    *,
+    inputs: JsonValue = None,
+    request: JsonValue = None,
+    expected: JsonValue = None,
+    compare: JsonValue = None,
+) -> JsonObject:
+    """A build-check case (README "Case files"), with one member replaced."""
+    return {
+        "case": "BC-048",
+        "variant": "arm",
+        "suite": "build_checks",
+        "schema_version": "0.1.0",
+        "inputs": {"records": ["water_fixture.json"], "declaration": "declaration.json"}
+        if inputs is None
+        else inputs,
+        "request": {"operation": "check_build"} if request is None else request,
+        "expected": {"refusals": [{"item": "BC-048", "pointer": ""}]} if expected is None else expected,
+        "compare": {"members": ["refusals", "results", "watches", "unused"]} if compare is None else compare,
+    }
+
+
+@pytest.mark.parametrize(
+    "taken",
+    [
+        pytest.param(build_check(), id="refused"),
+        pytest.param(
+            build_check(compare={"members": ["refusals", "results"], "rules_compared": ["BC-051"]}),
+            id="rules_compared",
+        ),
+        pytest.param(
+            build_check(
+                expected={
+                    "refusals": [],
+                    "results": [RESULT],
+                    "watches": [WATCH],
+                    "unused": [{"model": "drag", "acceptance": 1.0}],
+                },
+                compare={
+                    "members": ["refusals", "results", "watches", "unused"],
+                    "result_members": ["status", "reasons", "accepted", "accepted_by", "not_accepted"],
+                    "exact": True,
+                },
+            ),
+            id="results_watches_unused",
+        ),
+        pytest.param(
+            build_check(
+                expected={
+                    "results": [
+                        {
+                            **{k: v for k, v in RESULT.items() if k != "field"},
+                            "fields": ["bulk.density", "fluid.dynamic_viscosity"],
+                        }
+                    ]
+                },
+                compare={"members": ["results"], "result_members": ["accepted"]},
+            ),
+            id="combination",
+        ),
+    ],
+)
+def test_the_case_schema_takes_a_build_check_case(taken: JsonObject) -> None:
+    assert CASE(taken) == []
+
+
+@pytest.mark.parametrize(
+    "broken",
+    [
+        pytest.param(build_check(inputs={"records": ["water_fixture.json"]}), id="no_declaration"),
+        pytest.param(build_check(request={"operation": "content_hash"}), id="another_operation"),
+        pytest.param(build_check(request={"operation": "check_build", "model": "drag"}), id="request_member"),
+        pytest.param(
+            build_check(
+                request={
+                    "target": {"record": WATER, "field": "fluid.dynamic_viscosity"},
+                    "requirement": {"want": "value"},
+                }
+            ),
+            id="read_request",
+        ),
+        pytest.param(build_check(expected={"status": "met", "reasons": []}), id="read_result"),
+        pytest.param(build_check(compare={"members": ["refusals", "status"]}), id="read_member_compared"),
+        pytest.param(build_check(expected={"refusals": [{"item": "BC-048"}]}), id="refusal_without_pointer"),
+        pytest.param(
+            build_check(expected={"refusals": [{"item": "BC-048", "pointer": "", "case": "BC-048"}]}),
+            id="refusal_member",
+        ),
+        pytest.param(
+            build_check(expected={"refusals": [{"item": "bc-048", "pointer": ""}]}), id="refusal_item"
+        ),
+        pytest.param(build_check(expected={"results": [{**RESULT, "x_note": 1.0}]}), id="result_member"),
+        pytest.param(
+            build_check(
+                expected={"results": [{**RESULT, "fields": ["bulk.density", "fluid.dynamic_viscosity"]}]}
+            ),
+            id="field_and_fields",
+        ),
+        pytest.param(
+            build_check(
+                expected={"results": [RESULT]}, compare={"members": ["results"], "result_members": ["x"]}
+            ),
+            id="result_members_unknown",
+        ),
+        pytest.param(
+            build_check(expected={"watches": [{**WATCH, "accept": ["bulk"]}]}), id="interval_and_accept"
+        ),
+        pytest.param(build_check(expected={"watches": [{**WATCH, "source": "stated"}]}), id="watch_source"),
+        pytest.param(build_check(expected={"unused": [{"model": "drag"}]}), id="unused_index"),
+    ],
+)
+def test_the_case_schema_holds_a_build_check_case_to_its_shape(broken: JsonObject) -> None:
+    assert CASE(build_check()) == []
+    assert CASE(broken) != []
+
+
+@pytest.mark.parametrize(
+    ("place", "member", "value"),
+    [("inputs", "declaration", "declaration.json"), ("compare", "result_members", ["accepted"])],
+)
+def test_only_a_build_check_case_names_a_declaration_or_a_results_members(
+    place: str, member: str, value: JsonValue
+) -> None:
+    read = jsonio.parse(
+        (CONFORMANCE / "plain_read" / "cases" / "PR-015.constant_with_conditions.json").read_bytes()
+    )
+    assert isinstance(read, dict)
+    held = read[place]
+    assert isinstance(held, dict)
+    assert CASE(read) == []
+    held[member] = value
+    assert CASE(read) != []
+
+
 def test_only_a_table_evaluation_case_has_a_tolerance_per_precision() -> None:
     read = jsonio.parse(
         (CONFORMANCE / "plain_read" / "cases" / "PR-015.constant_with_conditions.json").read_bytes()

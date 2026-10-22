@@ -192,6 +192,83 @@ def test_a_cases_expected_members_are_the_results() -> None:
     assert compared["additionalProperties"] is False
 
 
+# The members a build gives a result beside the read's (`declarations.md` section 2, and section 3 item 6 for
+# a combination's `fields`), as the case schema names them until the build's report has its own schema.
+BUILD_MEMBERS = (
+    "model",
+    "record",
+    "field",
+    "fields",
+    "specimen_differences",
+    "accepted",
+    "accepted_by",
+    "trainable_by",
+    "not_accepted",
+)
+
+
+def build_result_problems(case: Json) -> list[str]:
+    """Where a build-check case's result drifts from a read case's: its read members are compared_result's,
+    shaped alike, followed by the build's own; `compare.result_members` names exactly those members; and no
+    member is required by itself, as a read case's are not."""
+    defs = cast(dict[str, dict[str, JsonValue]], case["$defs"])
+    built = cast(dict[str, JsonValue], defs["compared_build_result"]["properties"])
+    read = cast(dict[str, JsonValue], defs["compared_result"]["properties"])
+    problems: list[str] = []
+    if list(built) != [*read, *BUILD_MEMBERS]:
+        problems.append(f"a build result names {list(built)}")
+    problems += [
+        f"a build result's {name} is shaped otherwise" for name in read if built.get(name) != read[name]
+    ]
+    compare = cast(dict[str, dict[str, JsonValue]], defs["case_compare"]["properties"])
+    named = cast(dict[str, list[str]], compare["result_members"]["items"])["enum"]
+    if named != list(built):
+        problems.append(f"result_members names {named}")
+    if "required" in defs["compared_build_result"]:
+        problems.append("a build result requires a member")
+    return problems
+
+
+def test_a_build_cases_result_is_a_read_cases_with_the_builds_members() -> None:
+    assert build_result_problems(CASE) == []
+
+
+def _properties(defs: Json, name: str) -> Json:
+    return cast(Json, cast(Json, defs[name])["properties"])
+
+
+def _drop_labels(defs: Json) -> None:
+    _properties(defs, "compared_build_result").pop("labels")
+
+
+def _reshape_value(defs: Json) -> None:
+    _properties(defs, "compared_build_result")["value"] = {"type": "number"}
+
+
+def _drop_a_result_member(defs: Json) -> None:
+    items = cast(Json, cast(Json, _properties(defs, "case_compare")["result_members"])["items"])
+    cast(list[JsonValue], items["enum"]).pop()
+
+
+def _require_model(defs: Json) -> None:
+    cast(Json, defs["compared_build_result"])["required"] = ["model"]
+
+
+@pytest.mark.parametrize(
+    ("change", "problem"),
+    [
+        (_drop_labels, "a build result names"),
+        (_reshape_value, "a build result's value is shaped otherwise"),
+        (_drop_a_result_member, "result_members names"),
+        (_require_model, "requires a member"),
+    ],
+)
+def test_a_build_result_that_drifts_is_found(change: Callable[[Json], None], problem: str) -> None:
+    case = copy.deepcopy(CASE)
+    change(case["$defs"])
+    assert any(problem in found for found in build_result_problems(case))
+
+
 def result_shape_problems(result: dict[str, JsonValue], writer: dict[str, JsonValue]) -> list[str]:
     """Where the result's shapes repeat the writer's: a condition entry's `record` takes each shape the
     writer's `conditions` gives a condition, and a review returned as found names the writer review's
@@ -461,8 +538,11 @@ def test_the_suites_are_the_readmes() -> None:
 
 
 def test_the_operations_are_the_readmes() -> None:
+    """Every operation the README names is the case schema's: an operation's, or a build-check case's."""
     named = re.findall(r'\{"operation": "([a-z][a-z0-9_]*)"', document("README.md"))
-    assert sorted(named) == sorted(CASE["$defs"]["case_operation"]["properties"]["operation"]["enum"])
+    operations = CASE["$defs"]["case_operation"]["properties"]["operation"]["enum"]
+    build = CASE["$defs"]["build_operation"]["properties"]["operation"]["const"]
+    assert sorted(named) == sorted([*operations, build])
 
 
 def item(document_name: str, start: str) -> str:

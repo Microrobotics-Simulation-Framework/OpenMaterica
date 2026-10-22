@@ -110,7 +110,9 @@ MEANINGS: dict[str, dict[str, Meaning]] = {
             {"species": {"ncbi_taxon": 9606}}, None, "declarations.md section 1, a model's `target`"
         ),
         "specimen_difference": Meaning(
-            {"ncbi_taxon": 9606}, None, "declarations.md section 3, a specimen difference's `target`"
+            {"ncbi_taxon": 9606},
+            "case.json#/$defs/compared_specimen_difference/properties/target",
+            "declarations.md section 3, a specimen difference's `target`",
         ),
     },
 }
@@ -149,6 +151,9 @@ REFUSES: dict[str, dict[str, tuple[str, ...]]] = {
     },
     "target": {
         "read_request.json#/properties/target": ("declared_model", "specimen_difference"),
+        # A build-check case's specimen difference holds the target's fact as the declaration gives it, any
+        # fact's shape: it refuses nothing, as a member a read returns as found refuses nothing.
+        "case.json#/$defs/compared_specimen_difference/properties/target": (),
     },
 }
 GENERATED = "record.reader.json"
