@@ -1,13 +1,17 @@
 {
-  "case": "BC-005",
-  "variant": "empty_reason",
+  "case": "BC-051",
+  "variant": "engine_over_domain",
   "suite": "build_checks",
   "schema_version": "0.1.0",
+  "claims": {
+    "scene_documents": false,
+    "usd_read": false
+  },
   "inputs": {
     "records": [
       "water_fixture.json"
     ],
-    "declaration": "bc005_empty_reason.json"
+    "declaration": "bc051_engine_over_domain.json"
   },
   "request": {
     "operation": "check_build"
@@ -15,8 +19,8 @@
   "expected": {
     "refusals": [
       {
-        "item": "BC-005",
-        "pointer": "/models/0/acceptances/0/reason"
+        "item": "BC-051",
+        "pointer": "/models/0/checked_over/domain"
       }
     ]
   },
@@ -26,6 +30,9 @@
       "results",
       "watches",
       "unused"
+    ],
+    "rules_compared": [
+      "BC-051"
     ]
   }
 }

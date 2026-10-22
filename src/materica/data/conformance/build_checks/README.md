@@ -9,7 +9,7 @@ far, the cases of the declaration checked on its own, which the build refuses be
 - an acceptance with no location where its kind needs one (BC-037);
 - a declaration that departs from its shape: not JSON or not an object, a member missing, of another type,
   unknown or one slip from a named one, a token its member does not take, a name given twice, a requirement or
-  `trainable` entry against `reads` and `checked_over` (BC-048);
+  `trainable` entry against `reads` and `checked_over`, an empty `reason` (BC-048);
 - a waiver resting on a label whose requirement does not name that label with `review: "reviewed"` (BC-050);
 - what a build refuses because it does not claim the scene suite, USD read or the sampling suite, with the
   rules that come before it (BC-051).
@@ -29,13 +29,14 @@ A build-check case names its records in `inputs.records` and its declaration in 
 - `compare.members` names `refusals`, `results`, `watches` and `unused`, and `expected` holds `refusals` alone:
   a declaration refused on its own gives no results, no watches and nothing unused (`declarations.md` section
   2), so a build that refuses and still reads fails every file.
-- Two files compare one rule's refusals alone (`compare.rules_compared`), where the text fixes another rule's
-  refusal of the same declaration less exactly than the rule the arm tests:
+- Three files compare one rule's refusals alone (`compare.rules_compared`), where the text fixes another
+  rule's refusal of the same declaration less exactly than the rule the arm tests:
   `BC-050.requirement_names_another_label` (the waiver's label is also not one its field registers, a fault
-  the token rule names too) and `BC-051.engine_over_records` (item 7 refuses the engine model, at pointers the
-  text does not fix; the arm tests that item 12 then gives none).
-- BC-051's files state the claim their answer rests on: `{"scene_documents": false}`, `{"usd_read": false}`
-  or `{"sampling": false}`.
+  the token rule names too), and `BC-051.engine_over_records` and `BC-051.engine_over_domain` (item 7 refuses
+  the engine model, at pointers the text does not fix; the arms test that its `engine` then gives no refusal
+  under item 12, and that a domain it is checked over still does).
+- BC-051's files state the claims their answer rests on: `{"scene_documents": false}`, `{"usd_read": false}`,
+  both, or `{"sampling": false}`.
 
 ## The fixtures
 
@@ -67,11 +68,7 @@ nothing about any material.
   hold that rule.
 - **The claims' other side.** BC-051's files hold for a build that does not claim the suite each names; what a
   build claiming it gives comes with that suite's cases.
-- **BC-040's refusals.** The engine arm compares BC-051's refusals alone; item 7's are BC-040's own cases.
-- **An engine model checked over a domain** by a build that claims neither the scene suite nor USD read. The
-  design planned the arm, but item 12's first sentence refuses a model checked over a domain, and its last says
-  a model with `engine` that item 7 refuses gives no refusal under item 12, which item 7 does when no crosswalk
-  is passed: the arm waits for the text to say which holds.
+- **BC-040's refusals.** The engine arms compare BC-051's refusals alone; item 7's are BC-040's own cases.
 
 ## How they were made and checked
 
@@ -84,9 +81,11 @@ on, checked against the text, and was then checked by:
 - a build of the declaration's check written from `declarations.md` sections 1 and 4.1 alone, which agrees
   with every file under the claims it states;
 - a control per arm, the arm's declaration with the one thing it tests removed, which gives that build another
-  answer; for the two arms whose point is a refusal not given (an `accepted_difference` with no location, and
-  item 12 yielding to item 7), a seeded fault of that build which the arm catches instead;
-- 39 seeded faults of that build, each of which some file catches;
+  answer; for the one arm whose point is a refusal not given (an `accepted_difference` with no location), a
+  seeded fault of that build which the arm catches instead; five more arms also carry a seeded fault each
+  catches (item 12 before item 7, before item 8 and before the `population_level` rule; item 12 sparing every
+  member of an engine model item 7 refuses; an empty `reason` taken as one without);
+- 41 seeded faults of that build, each of which some file catches;
 - a draft schema of the declaration, against which every control that passes its own check is valid and every
   refused declaration invalid, except those whose rule a schema cannot state (a name given twice by a member's
   value, a field against `reads`, a location against `checked_over`, the label rule, the build's claims), and

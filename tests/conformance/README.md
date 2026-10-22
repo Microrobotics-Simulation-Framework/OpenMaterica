@@ -51,7 +51,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | reads S7a-4 runs (plain read): under a `trainable` acceptance | 1 | not yet runnable: S7a-4, which runs it, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | run, verified against the reference evaluator under each of its four configurations |
 | record checks (`check`: RC-031, RC-032, RC-220 to RC-226) and `quote_sha256` (RC-033's vectors) | 164 and 13 | not yet runnable: no executor; C2, with S5's record checks, adds them |
-| build checks (`check_build`: BC-004, BC-005, BC-037, BC-048, BC-050, BC-051), a declaration checked on its own and refused | 50 | not yet runnable: no executor; S7a-1, which builds the declaration's own check, adds it |
+| build checks (`check_build`: BC-004, BC-005, BC-037, BC-048, BC-050, BC-051), a declaration checked on its own and refused | 51 | not yet runnable: no executor; S7a-1, which builds the declaration's own check, adds it |
 
 Each read is counted by the step whose code runs it (`case_steps.json`), not by what it reads:
 `PR-044.alternatives_beside_value` holds alternatives and is S2a-4's, and `PR-007.target_is_overlay` ends at
@@ -76,10 +76,10 @@ refuse the field. PR-339's arm across a declared edge (`PR-339.across_edge_no_va
 which builds the trainable read (the S7 design's map, 5.5): it needs S3b-2's step 11 as well, which comes
 before S7a-4.
 
-Of the 1572 case files, 1275 agree with plain read and the hash suite, 1217 with plain read alone, and 1275
+Of the 1573 case files, 1275 agree with plain read and the hash suite, 1217 with plain read alone, and 1275
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, the 197 of the record-check
-suite agree with none, since it claims no record checks, and the 50 of the build-check suite agree with none,
+suite agree with none, since it claims no record checks, and the 51 of the build-check suite agree with none,
 since it claims no build checks.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`
