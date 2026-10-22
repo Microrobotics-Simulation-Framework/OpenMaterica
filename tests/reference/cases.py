@@ -38,8 +38,9 @@ class Outcome:
 # (README.md:199 "A **table evaluation case** (`read_side_contract.md` section 7) names"), as a consumer's own
 # evaluator does, outside the read; the model, a model of the read, has no
 # answer to it, and those files are the table evaluator's to agree with. Nor are the record-check suite's
-# files, record checks and `quote_sha256` operations, which are the record checks' to agree with.
-NOT_A_READ: Final = ("table_evaluation", "record_checks")
+# files, record checks and `quote_sha256` operations, which are the record checks' to agree with, nor the
+# build-check suite's, `check_build` operations, which the build's own model agrees with from S7a-1.
+NOT_A_READ: Final = ("table_evaluation", "record_checks", "build_checks")
 
 
 @cache

@@ -70,9 +70,11 @@ and 10, as built).
 implementation runs it, under each of the 8 configurations of claims (plain read, with or without the hash,
 the fits and reference data, and the family evaluation suites) that agrees with the case's suite and claims.
 Each is compared as the specification's README says ("Case files"), by the conformance runner's comparison.
-The table evaluation suite's 35 files are left out, and a test holds the files left out to exactly those whose
-operation is `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which
-is no read.
+The table evaluation suite's 35 files are left out, and so are the record checks' and the build checks', and a
+test holds the files left out to exactly those whose operation is `evaluate`, `check`, `quote_sha256` or
+`check_build`: a table's values at points, as a consumer's own evaluator asks for them, a record's checks, a
+quote's hash and a declaration's build are no read. The build's own model agrees with the build checks' files
+from S7a-1.
 
 The model agrees with 1,182 files, under every configuration each allows (9,080 runs), and gives no verdict on
 108, each listed in `exceptions.py` under the kind its outcome names: an overlay (71), a pick (36) and a
