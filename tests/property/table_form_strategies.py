@@ -614,6 +614,119 @@ class Faulty(NamedTuple):
     expected: Outcome  # what the faulty read gives: its reasons, or PAST_STEP_9 for a near miss
 
 
+# HP13's faults, each its rule's alone: the faulty read with what its rule judges undone passes steps 8 and 9.
+# Most faults give `form_invalid`, and so does a fault built to break another member too, which only this
+# tells apart. A fault is undone by putting back the members its rule judges as the base holds them, or
+# removing them where it holds none. Where a fault changes another member first so that it can exist at all
+# (a knot made an edge, `x`'s top run lowered, the table replaced), it is undone on the table so changed:
+# without the member, or the entry, that it added, or, for a log-log table's sign, read as linear. A fault
+# whose rule judges one member of several, drawn, is undone by putting back any one of them. A near miss is
+# undone by nothing: its own read passes steps 8 and 9, which HP13 checks first.
+class Undo(NamedTuple):
+    says: str  # what it undoes
+    apply: Callable[[Json, Json], None]  # on a copy of the faulty read's field, given the base's
+
+
+def put_back(*members: str) -> Undo:
+    def apply(field: Json, base: Json) -> None:
+        table, held = mapping(field["table"]), mapping(base["table"])
+        for member in members:
+            if member in held:
+                table[member] = copy.deepcopy(held[member])
+            else:
+                table.pop(member, None)
+
+    return Undo(f"{', '.join(members)} put back", apply)
+
+
+def removed(member: str) -> Undo:
+    def apply(field: Json, _: Json) -> None:
+        mapping(field["table"]).pop(member, None)
+
+    return Undo(f"{member} removed", apply)
+
+
+def _without_the_last_edge(field: Json, _: Json) -> None:
+    listing(mapping(field["table"])["edges"]).pop()
+
+
+def _without_the_last_zero(field: Json, base: Json) -> None:
+    """`edges` without the last, and each zero of `x` and `edges` held as `0`, which table item 1 reads the
+    same: how a reader compares `-0` with `0` is the near miss's to hold (`zero_edge_both_signs`), and a
+    reader that compares them by sign bit is then reported there, not here."""
+    _without_the_last_edge(field, base)
+    table = mapping(field["table"])
+    for member in ("x", "edges"):
+        table[member] = [0.0 if value == 0 else value for value in listing(table[member])]
+
+
+def _held_twice(field: Json, _: Json) -> None:
+    """`x` and `y` without the first entry of the knot `x` holds three times, where one is."""
+    table = mapping(field["table"])
+    x, y = listing(table["x"]), listing(table["y"])
+    thrice = [at for at, value in enumerate(x) if x.count(value) >= 3]
+    if thrice:
+        del x[thrice[0]], y[thrice[0]]
+
+
+def _read_as_linear(field: Json, _: Json) -> None:
+    mapping(field["table"])["scheme"] = "linear"
+
+
+def _axis_condition_put_back(field: Json, base: Json) -> None:
+    axis = str(mapping(base["table"])["axis"])
+    mapping(field["conditions"])[axis] = copy.deepcopy(mapping(base["conditions"])[axis])
+
+
+KNOTS = put_back("x", "y", "edges")
+JUDGED: dict[str, tuple[Undo, ...]] = {
+    # The knots. A fault of `x` that changes its length changes `y`'s with it, and one that leaves `x` no
+    # interior clears `edges`, so the three are put back together; `source_range`, which such a fault
+    # removes, stays removed.
+    "y_longer": (put_back("y"),),
+    "y_shorter": (put_back("y"),),
+    "x_one_value": (KNOTS,),
+    "x_without_two_distinct_values": (KNOTS,),
+    "x_decreasing": (put_back("x"),),
+    "repeated_x_no_edge": (put_back("x", "y"),),
+    "not_numbers": tuple(put_back(member) for member in ("x", "y", "edges")),
+    "member_missing": tuple(put_back(member) for member in REQUIRED),
+    # The edges. A knot `an_edge` makes an edge, or the table over zero, stays.
+    "edge_at_an_end": (KNOTS,),
+    "edge_not_in_x": (put_back("edges"),),
+    "edge_not_repeated": (put_back("edges"),),
+    "edge_repeated_thrice": (Undo("x and y holding the edge twice", _held_twice),),
+    "edge_listed_twice": (Undo("edges without the last", _without_the_last_edge),),
+    "edges_zero_and_minus_zero": (Undo("edges without the last, zeros as 0", _without_the_last_zero),),
+    "zero_edge_both_signs": (),
+    "log_log_not_positive": (Undo("read as linear", _read_as_linear),),
+    # The tokens and the axis condition.
+    "scheme_unknown": (put_back("scheme"),),
+    "axis_unknown": (put_back("axis"),),
+    "axis_token_condition": (put_back("axis"),),
+    "token_not_a_string": (put_back("axis"), put_back("scheme")),
+    "axis_condition_held_otherwise": (Undo("the axis condition put back", _axis_condition_put_back),),
+    "axis_condition_with_a_reason": (),
+    "axis_unit_not_a_unit": (put_back("axis_unit"),),
+    # `source_range` and `points`. A `source_range` past a lowered `x`, or meeting a knot made an edge, is
+    # removed; an empty `x` is put back beside the `source_range` the fault left, the base's or `x`'s ends.
+    "source_range_reversed": (put_back("source_range"),),
+    "source_range_disjoint": (removed("source_range"),),
+    "source_range_only_at_an_edge": (removed("source_range"),),
+    "source_range_one_point_no_edge": (),
+    "source_range_not_two_numbers": (put_back("source_range"),),
+    "points": (put_back("points"),),
+    "points_null": (put_back("points"),),
+    "x_empty_beside_edges_or_a_source_range": (KNOTS,),
+}
+
+
+def undone(faulty: Faulty, undo: Undo) -> Read:
+    read = Read(copy.deepcopy(faulty.read.record), faulty.read.field)
+    undo.apply(field_of(read), field_of(faulty.base))
+    return read
+
+
 # The regions a planned search of HP13 draws alone, each a share of one fault's draws that the feature audit
 # holds to the floor of its chance: by part, each region's name and whether a faulty read shows it.
 REGIONS: dict[str, dict[str, Callable[[Faulty], bool]]] = {

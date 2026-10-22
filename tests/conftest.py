@@ -102,6 +102,8 @@ SHARDS = {
         "test_value_field_mutant_table",
         "test_table_form_mutants",
         "test_table_form_mutant_table",
+        # HP13's controls of a fault built to break another member too, derandomised, with no database.
+        "test_table_form_controls",
     ),
     # Steps 9 and 10's properties and the result's (S2a-4: HP1, HP2, HP6 and HP11), which read records end to
     # end, their mutant searches, which take seconds and set no example database, so the shard's restored one
