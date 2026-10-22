@@ -19,9 +19,11 @@ section 5 items 2 to 5), over the draws of `table_alternatives_strategies.py`.
   refusal `met`.
 
 Each part's checks hold the draw to what it says first (`check_drawn`): the others' outcome, as S4a's oracle
-gives it over them alone, and the table's standing, as HP39's gives it over its read alone."""
+gives it over them alone, and the table's standing, as HP39's gives it over its read alone, with the reasons
+that define its way."""
 
 import json
+import math
 
 import pytest
 from hypothesis import given
@@ -29,6 +31,7 @@ from hypothesis import given
 from materica.core.read import ReadResult, read
 from materica.core.record import RecordStore
 from tests.property import table_alternatives_strategies as strategies
+from tests.property import tables
 from tests.property import test_alternatives_properties as hp27
 from tests.property.alternatives_strategies import OUTCOMES, Alternatives, holding
 from tests.property.strategies import SIZE
@@ -129,13 +132,38 @@ def read_result(drawn: Alternatives) -> ReadResult:
     return read(drawn.request, store, claims=drawn.claims)
 
 
+def way_shown(alone_read: JsonObject) -> str:
+    """The way a table's read alone shows by the reasons that define it: no operating value for its axis at
+    step 11 (`request_incomplete`), an edge outside the readable range or inside it, outside it kept by an
+    extrapolation (`assumption`) or not, over an operating range of its axis, set aside at step 10, or inside
+    its readable range, giving none of these."""
+    not_met = hp27.codes_of(alone_read, "not_met")
+    if "request_incomplete" in not_met:
+        return "no_operating_value"
+    if "at_edge" in not_met:
+        return "at_an_edge_outside" if "outside_range" in not_met else "at_an_edge_inside"
+    if "outside_range" in not_met:
+        return "kept" if "assumption" in alone_read else "outside"
+    if over_a_range(alone_read):
+        return "over_an_operating_range"
+    return "no_operating_value_set_aside" if not_met else INSIDE
+
+
+# A way whose read alone shows as another's: outside under `want: bounds`, where no extrapolation applies.
+SHOWN_AS = {"kept_under_bounds": "outside"}
+
+
 def check_drawn(drawn: TableAlternatives) -> None:
     """The strategy's own check: the others alone give the outcome drawn for them, and the table stands as its
-    way says, so that the audit's counts are of what the text decides."""
+    way says and its read alone gives the reasons that define the way, so that the audit's counts are of what
+    the text decides."""
     others = hp27.expected(strategies.without_the_table(drawn))[0]
     assert others == drawn.others, f"the others drawn for {drawn.others}, the text's {others}"
-    table = standing(hp27.alone(drawn.drawn, drawn.table_index))
+    alone_read = hp27.alone(drawn.drawn, drawn.table_index)
+    table = standing(alone_read)
     assert table == STANDING[drawn.way], f"the table drawn {drawn.way}, standing {table}"
+    shown = way_shown(alone_read)
+    assert shown == SHOWN_AS.get(drawn.way, drawn.way), f"the table drawn {drawn.way}, its read alone {shown}"
 
 
 def check_outcome(drawn: TableAlternatives) -> None:
@@ -203,6 +231,44 @@ def check_narrowed(drawn: TableAlternatives) -> None:
         )
     if hp27.read_drawn(drawn.drawn)["status"] == "not_met":
         assert full["status"] != "met", "a refusal made met by moving a table's range off the operating value"
+
+
+# HP40's move of a readable range, at each of its three places, on tables written by hand: the third, where
+# both doubles beside the value are the readable range's ends and edges, `ci`'s draws reach too seldom to hold
+# it.
+ABOVE_ONE, BELOW_ONE = math.nextafter(1.0, math.inf), math.nextafter(1.0, -math.inf)
+MOVED_OFF: list[tuple[tables.Table, float, tuple[float, float]]] = [
+    (tables.Table((0.0, 4.0), (1.0, 2.0), "linear", (), None), 1.0, (ABOVE_ONE, 4.0)),
+    (
+        tables.Table(
+            (0.0, ABOVE_ONE, ABOVE_ONE, 4.0), (1.0, 2.0, 3.0, 4.0), "linear", (ABOVE_ONE,), (0.0, ABOVE_ONE)
+        ),
+        1.0,
+        (0.0, BELOW_ONE),
+    ),
+    (
+        tables.Table(
+            (0.0, BELOW_ONE, BELOW_ONE, ABOVE_ONE, ABOVE_ONE, 4.0),
+            (1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
+            "linear",
+            (BELOW_ONE, ABOVE_ONE),
+            (BELOW_ONE, ABOVE_ONE),
+        ),
+        1.0,
+        (ABOVE_ONE, 4.0),
+    ),
+]
+
+
+@pytest.mark.parametrize(("table", "at", "moved"), MOVED_OFF, ids=["above", "below", "to_the_end_of_x"])
+def test_a_readable_range_moved_off_the_value_holds_a_value_that_is_no_edge(
+    table: tables.Table, at: float, moved: tuple[float, float]
+) -> None:
+    found = strategies.off_the_value(table, at)
+    assert found == moved
+    low, high = found
+    assert not low <= at <= high
+    assert low < high or low not in table.edges
 
 
 # Each property's examples, and its check of one, which the mutant searches take too.

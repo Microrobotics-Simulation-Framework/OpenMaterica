@@ -266,23 +266,28 @@ def holding_alternatives(drawn: Alternatives, stored: list[JsonValue]) -> tuple[
     return holding(drawn, {"alternatives": stored})
 
 
+def off_the_value(table: tables.Table, at_: float) -> tuple[float, float]:
+    """A `source_range` that moves `table`'s readable range off `at_`, which lies strictly inside it at no
+    edge: from the double above `at_` to the readable range's upper end, or, where that holds no value that is
+    no edge (table item 4: the source range shares with `[x[0], x[-1]]` "at least one value that is no
+    edge"), from its lower end to the double below; and where neither does, the readable range's ends lying
+    one double from `at_` and both edges, from the double above to `x`'s end, which is no edge
+    (`record_format.md` section 6, table items 3 and 4)."""
+    low, high = tables.readable_ends(table)
+    above, below = math.nextafter(at_, math.inf), math.nextafter(at_, -math.inf)
+    candidates = [(above, high), (low, below), (above, table.x[-1])]
+    return next(
+        candidate
+        for candidate in candidates
+        if candidate[0] < candidate[1] or candidate[0] not in table.edges
+    )
+
+
 def narrowed(drawn: TableAlternatives) -> Alternatives:
-    """HP40: the field with the table's readable range moved off the operating value, which lies strictly
-    inside it at no edge: a `source_range` from the double above that value to the readable range's upper end,
-    or, where that holds no value that is no edge (table item 4: the source range shares with `[x[0], x[-1]]`
-    "at least one value that is no edge"), from its lower end to the double below; and where neither does,
-    the readable range's ends lying one double from the value and both edges, from that double to `x`'s end,
-    which is no edge (`record_format.md` section 6, table items 3 and 4)."""
+    """HP40: the field with the table's readable range moved off the operating value (`off_the_value`)."""
     at_ = drawn.at
     assert at_ is not None
-    low, high = tables.readable_ends(drawn.table)
-    above, below = math.nextafter(at_, math.inf), math.nextafter(at_, -math.inf)
-    candidates = [(above, high), (low, below), (above, drawn.table.x[-1])]
-    moved = next(
-        drawn.table._replace(source_range=candidate)
-        for candidate in candidates
-        if candidate[0] < candidate[1] or candidate[0] not in drawn.table.edges
-    )
+    moved = drawn.table._replace(source_range=off_the_value(drawn.table, at_))
     stored = copy.deepcopy(drawn.stored)
     table = stored[drawn.table_index]
     assert isinstance(table, dict)
