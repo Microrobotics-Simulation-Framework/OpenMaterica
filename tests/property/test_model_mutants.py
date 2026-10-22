@@ -20,7 +20,7 @@ from typing import Any, NamedTuple
 import pytest
 from hypothesis import strategies as st
 
-from materica.core import canonical, conditions, fields, read, value_shapes
+from materica.core import canonical, conditions, evaluate, fields, read, value_shapes
 from materica.core.conditions import ConditionsRead
 from materica.core.fields import RecordField
 from materica.core.jsonio import JsonValue
@@ -284,6 +284,27 @@ def _step_11_refusal_goes_on_to_step_12(
         return found
     step_12 = Reason("stated_without_origin", detail=f"{field.spec.name} is stated with nothing behind it")
     return dataclasses.replace(found, reasons=merged((*found.reasons, step_12)))
+
+
+RANGE_REPORT = read.range_report
+
+
+def _a_range_across_the_readable_end_outside(table: JsonObject, request: read.ReadRequest) -> read.FormRange:
+    """A read over an operating range of a table's axis that runs past the readable range's end given
+    `outside_range` beside its `want_mismatch`, its ends judged as points, where section 1 gives it "no other
+    reason of that step, since no point is read" (S4d's review)."""
+    report = RANGE_REPORT(table, request)
+    axis = str(table["axis"])
+    operating: dict[str, Any] = dict(request.operating_conditions.get(axis) or {})
+    if not report.over_a_range or "range" not in operating:
+        return report
+    x = [knot for knot in a_list(table["x"]) if isinstance(knot, float)]
+    stated = a_list(table["source_range"]) if "source_range" in table else None
+    source_range = None if stated is None else [end for end in stated if isinstance(end, float)]
+    if all(evaluate.in_readable_range(x, source_range, end) for end in operating["range"]):
+        return report
+    across = Reason("outside_range", axis, f"the range of {axis} runs past the readable range")
+    return dataclasses.replace(report, reasons=(*report.reasons, across))
 
 
 # The design's mutants of HP1 to HP11, from the mutant modules of their properties.
@@ -615,6 +636,17 @@ IMPLEMENTATION = [
         "tables' requests",
         setting(read, "read_value_field", _step_11_refusal_goes_on_to_step_12),
         (table_reads.STATED_WITHOUT_ORIGIN_DRAWN,),
+    ),
+    # A range of a table alternative's axis that runs past the readable range's end given `outside_range`
+    # (S4d's review): searched where the table is read over an operating range, it shows only where the
+    # range's upper end, drawn above an operating value inside the range, lies past the readable range's, so
+    # that it holds that draw (`table_alternatives_strategies.operating`). HP39 fails on it too, but at the
+    # check of its draw, where the table's read alone stands as set aside, not at an assertion of the read.
+    Mutant(
+        "a_range_across_the_readable_end_outside",
+        "tables among alternatives, over_an_operating_range",
+        setting(read, "range_report", _a_range_across_the_readable_end_outside),
+        ("over_an_operating_range",),
     ),
 ]
 
