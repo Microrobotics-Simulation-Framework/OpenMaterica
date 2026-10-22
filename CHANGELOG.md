@@ -739,20 +739,33 @@ every family entry goes in `families/CHANGELOG.md`.
   is the model's).
 - Every citation of the specification in the tests is held to a quote found at its line, as the reference
   model's are. The seeded faults' table (`tests/reference/mutants.py`) cited the text as `file:line` in 128 of its
-  129 `rule` strings (the 129th names an open point), 131 references in all, and one comment more, with no quote;
-  `test_model_mutants.py` and `test_model_properties.py` held one each, and `cases.py` one whose quote never
-  closed. Nothing read them, so a shifted citation passed. Each now holds a quote (136 citations in the four
-  files); `tests/reference/test_citations.py` reads their comments and their string literals, a `Mutant`'s `rule`
-  being a string that `prose` never saw, and fails a citation with no quote, a quote not found where it begins,
-  a seeded fault that cites neither the text nor a listed open point, and a test module that cites the text and is
-  not listed. Two citations moved to the line that says the rule: the `no_pick` result's `conditions`
-  (`read_side_contract.md:169-170` to 171-172) and a `dof` held as a status object under a Student's t
-  distribution (`read_side_contract.md:134-135` to `uncertainty.md:48-49`); a comment's moved too (169-171 to 164).
-  Its controls: in `mutants.py` a rule's citation shifted one line later and one line earlier, its quote removed
-  and its quote changed, and in `test_model_mutants.py` a shifted citation; the old check reads neither file, and
-  handed `mutants.py` finds none of the four. The check also closes a gap: a quote may run on to the line after the last
-  one cited, but must now begin on a cited line, where before one beginning on the next line passed; 2 of the
-  model's 408 citations began there (`record_format.md:580` to 581, and 243-244 to 243-245).
+  129 `rule` strings (the 129th names an open point), 131 `file:line` references and a bare `:64`, and one comment
+  more, with no quote; `test_model_mutants.py` and `test_model_properties.py` held one each, and `cases.py` one
+  whose quote never closed. Nothing read them, so a shifted citation passed. Each now holds a quote (136 citations
+  in the four files when first read); `tests/reference/test_citations.py` reads their comments and their string
+  literals, a `Mutant`'s `rule` being a string that `prose` never saw, and fails a citation with no quote, a quote
+  not found where it begins, a quote of fewer than 20 characters, a seeded fault that cites neither the text nor a
+  listed open point nor stands in `NO_LINE_IN_THE_TEXT`, and a test module that cites the text and is not listed.
+  Limit: a quote must begin on a cited line and may end on a later one, so a range may be shifted by less than its
+  width and still pass (a single line shifted by one, or a range shifted by its width, fails). Requiring the quote
+  to reach the last cited line too would fail 91 of the 544 citations read (the model's 408 and the four test
+  modules' 136), and is not done. Two citations moved to the line that says the rule: the `no_pick` result's
+  `conditions` (`read_side_contract.md:169-170` to 171-172) and a comment's (169-171 to 164). A `dof` held as a
+  status object under a Student's t distribution keeps `read_side_contract.md:134-135`, the rule that every check
+  is made, and cites `provenance.md:50-51`, the token check, and `uncertainty.md:48-49`, the shape. A seeded fault
+  that no line of the text states is named, not cited: `alternatives_counted_from_one` names the open point
+  `alternative_index_base` (no line says an alternative's index starts at zero; the model reads it from zero), and
+  `results_share_the_record` stands in `NO_LINE_IN_THE_TEXT` (an implementation property). Weak anchors were
+  strengthened or given a second citation (a nominal, a population level, a reviewed review, the end value, a
+  `no_pick` entry's labels, the slip rules and a requirement's names), and 15 quotes shorter than 20 characters
+  were lengthened. Its controls: in `mutants.py` a rule's citation shifted one line later and one line earlier,
+  its quote removed and its quote changed, and in `test_model_mutants.py` a shifted citation; the old check reads
+  neither file, and handed `mutants.py` finds none of the four. Also: a quote of `"the"` fails, a range shifted
+  by one passes where the quote still begins in it and a range shifted by two fails, and a row that cites
+  nothing, names an unlisted point or is listed without cause fails. The check also closes a gap: a quote may run
+  on to the line after the last one cited, but must now begin on a cited line, where before one beginning on the
+  next line passed; 2 of the model's 408 citations began there (`record_format.md:580` to 581, and 243-244 to
+  243-245). `tests/reference/README.md` holds `file:line` references in prose, unquoted and not read.
 
 ## [0.1.0.dev2] - 2026-10-20
 
