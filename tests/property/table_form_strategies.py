@@ -181,7 +181,9 @@ def interior_knot(draw: st.DrawFn, drawn: Read) -> float:
 
 
 def an_edge(draw: st.DrawFn, drawn: Read) -> float:
-    """An edge of the table: one it has, or an interior knot made one (held twice, a value above it added)."""
+    """An edge of the table: one it has, or an interior knot made one (held twice, a value above it added).
+    A `source_range` of that knot alone, which would then share with `x`'s range no value that is no edge
+    (table item 4), is removed, so that the fault made beside the edge is its rule's alone."""
     table = table_of(drawn)
     edges = listing(table["edges"])
     if edges:
@@ -192,6 +194,8 @@ def an_edge(draw: st.DrawFn, drawn: Read) -> float:
     x.insert(at + 1, knot)
     y.insert(at + 1, y[at])
     edges.append(knot)
+    if table.get("source_range") == [knot, knot]:
+        del table["source_range"]
     return knot
 
 
