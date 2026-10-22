@@ -74,10 +74,12 @@ every family entry goes in `families/CHANGELOG.md`.
   and the acceptances unused. `case.json` gains the build arm: `inputs.declaration`, the build operation, the
   report's compared members (a build result being a read case's compared members with the build's own),
   `compare.result_members`, and `compare.rules_compared` in a build-check case too, with the branch that holds a
-  build-check case to them; any other case naming a declaration or `result_members` is refused. The typed shapes
-  are regenerated. `tests/spec_sync/name_overlaps.json` allows the four names the build's report gives a second
-  meaning (`acceptance`, an unused acceptance's index; `fields`, a combination's list; `interval`, a watch's ends;
-  `operation`, the build's own) and `field` beside `fields`, each with the sentence that keeps them apart.
+  build-check case to them; any other case asking for `check_build` or naming `result_members` is refused, and so
+  is a case naming a declaration that is neither a build-check case nor an engine-adapter case, which the README
+  gives one. The typed shapes are regenerated. `tests/spec_sync/name_overlaps.json` allows the four names the
+  build's report gives a second meaning (`acceptance`, an unused acceptance's index; `fields`, a combination's
+  list; `interval`, a watch's ends; `operation`, the build's own) and `field` beside `fields`, each with the
+  sentence that keeps them apart.
 - Three sentences of `declarations.md` section 1, ruled with S7-cases-1's review on 2026-10-23
   (`docs/specification/changes.md`). Item 12's precedence holds member by member: where item 7 refuses a model with
   `engine`, its `engine` gives no refusal under item 12 and a domain it is checked over still does, and where item

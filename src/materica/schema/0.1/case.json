@@ -96,13 +96,15 @@
       }
     },
     {
-      "description": "A declaration among the inputs, and the members of a result compared, belong to a build-check case alone.",
+      "description": "The check_build operation and the members of a result compared belong to a build-check case alone; a declaration among the inputs, to a build-check case and an engine-adapter case (README.md, \"Case files\").",
       "if": {"required": ["suite"], "properties": {"suite": {"const": "build_checks"}}},
       "else": {
         "properties": {
-          "inputs": {"properties": {"declaration": false}},
+          "request": {"not": {"$ref": "#/$defs/build_operation"}},
           "compare": {"properties": {"result_members": false}}
-        }
+        },
+        "if": {"required": ["suite"], "properties": {"suite": {"const": "engine_adapter"}}},
+        "else": {"properties": {"inputs": {"properties": {"declaration": false}}}}
       }
     },
     {
@@ -172,7 +174,7 @@
           "items": {"type": "string"}
         },
         "declaration": {
-          "description": "A build-check case's declaration, one file, read by record_format.md section 1 item 6, so that a declaration that breaks it can be given.",
+          "description": "A build-check case's declaration, one file, read by record_format.md section 1 item 6, so that a declaration that breaks it can be given; an engine-adapter case names one too (README.md, \"Case files\").",
           "type": "string"
         }
       },

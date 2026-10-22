@@ -264,7 +264,7 @@ def test_the_case_schema_holds_a_build_check_case_to_its_shape(broken: JsonObjec
     ("place", "member", "value"),
     [("inputs", "declaration", "declaration.json"), ("compare", "result_members", ["accepted"])],
 )
-def test_only_a_build_check_case_names_a_declaration_or_a_results_members(
+def test_a_read_case_names_no_declaration_and_no_results_members(
     place: str, member: str, value: JsonValue
 ) -> None:
     read = jsonio.parse(
@@ -276,6 +276,43 @@ def test_only_a_build_check_case_names_a_declaration_or_a_results_members(
     assert CASE(read) == []
     held[member] = value
     assert CASE(read) != []
+
+
+def test_only_a_build_check_case_asks_for_check_build() -> None:
+    read = jsonio.parse(
+        (CONFORMANCE / "plain_read" / "cases" / "PR-015.constant_with_conditions.json").read_bytes()
+    )
+    assert isinstance(read, dict)
+    assert CASE(read) == []
+    read["request"] = {"operation": "check_build"}
+    assert CASE(read) != []
+    assert CASE(build_check()) == []
+
+
+def engine_adapter(suite: str) -> JsonObject:
+    """A case naming a declaration among its inputs, as an engine-adapter case does (README "Case files"); the
+    adapter's stage, crosswalks and expected attributes come with that suite's cases, so it compares none."""
+    return {
+        "case": "EA-001",
+        "variant": "arm",
+        "suite": suite,
+        "schema_version": "0.1.0",
+        "inputs": {"records": ["water_fixture.json"], "declaration": "declaration.json"},
+        "request": {"model": "drag"},
+        "expected": {},
+        "compare": {"members": []},
+    }
+
+
+def test_an_engine_adapter_case_names_a_declaration_and_asks_for_no_build() -> None:
+    assert CASE(engine_adapter("engine_adapter")) == []
+    assert CASE(engine_adapter("plain_read")) != []
+    asks_for_the_build = engine_adapter("engine_adapter")
+    asks_for_the_build["request"] = {"operation": "check_build"}
+    assert CASE(asks_for_the_build) != []
+    compares_results = engine_adapter("engine_adapter")
+    compares_results["compare"] = {"members": [], "result_members": ["accepted"]}
+    assert CASE(compares_results) != []
 
 
 def test_only_a_table_evaluation_case_has_a_tolerance_per_precision() -> None:
