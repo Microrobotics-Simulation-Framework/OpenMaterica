@@ -306,10 +306,14 @@ check's reader (the last bullet).
   from the text gives exactly the reasons its rule gives, and a near miss the text allows (an edge at zero held
   as `-0` and `0`, an axis condition with its `reason`, a `source_range` of one point that is no edge) gives
   none, a read that raises being an outcome no rule gives; each base passes, checked after its fault, so that a
-  reader that refuses some bases is reported at the fault wherever an example draws it; and the fault changes
-  nothing of the composition's read, which sits in the density's section. HP14: a member added to a table more
-  than one slip from every member named there, `points` included, changes nothing, and one slip from one, by each
-  kind section 10 names, refuses (`form_invalid`). HP15: an `axis_unit` of each kind HP8 draws other than the
+  reader that refuses some bases is reported at the fault wherever an example draws it; the fault changes nothing
+  of the composition's read, which sits in the density's section; and the fault is its rule's alone: its read
+  with what its rule judges undone passes steps 8 and 9 (`JUDGED`: the members put back as the base holds them,
+  or removed where it holds none; on a table the fault changed first so that it could exist, without what the
+  fault added; a log-log table's sign read as linear), so that a fault built to break another member too, which
+  most often gives `form_invalid` as the fault does, fails there. HP14: a member added to a table more than one
+  slip from every member named there, `points` included, changes nothing, and one slip from one, by each kind
+  section 10 names, refuses (`form_invalid`). HP15: an `axis_unit` of each kind HP8 draws other than the
   registered one gives `unit_mismatch` with the axis as `condition`. HP16: the row's label on a table is refused
   exactly where its axis is the condition the Label cell names. Each property declares what it draws first as
   drawn, at most eight, so each is held to a draw floor of 50 or more at `ci`. The writer's table family (7),
@@ -1603,6 +1607,14 @@ search to the core as it is for its first 500 examples at `ci` (200 at `dev`), a
 it kills dies of its fault. Over 40 seeds a size (2026-10-20, the search's settings with only the seed
 changed), each died at the first or second example, at its fault and assertion; every other table form mutant
 died at its own assertion too, none past the 267th example.
+
+Three controls hold HP13's last assertion, that a fault is its rule's alone (`test_table_form_controls.py`): a
+hand-made builder of `token_not_a_string` that also swaps `x`'s first two knots, one of `source_range_reversed`
+that also shortens `y`, and one of `y_longer` that also lists `x`'s first knot as an edge. Each read gives
+`form_invalid` as its fault's does, so HP13's other assertions pass it; on each of the first 100 derandomised
+examples of its fault, at both sizes, it fails at that assertion, and the same builder without its extra break
+passes. They hold every example, so they are not mutant searches and record no kill; they keep no example
+database.
 
 <!-- kill points of every search of test_table_form_mutants.py::test_the_table_form_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |

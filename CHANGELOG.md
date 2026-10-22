@@ -767,6 +767,31 @@ every family entry goes in `families/CHANGELOG.md`.
   on to the line after the last one cited, but must now begin on a cited line, where before one beginning on the
   next line passed; 2 of the model's 408 citations began there (`record_format.md:580` to 581, and 243-244 to
   243-245). `tests/reference/README.md` holds `file:line` references in prose, unquoted and not read.
+- HP13 tells a fault built wrongly from one built right. It held that a fault gives the reasons its rule gives and
+  that its base passes; most of its faults give `form_invalid`, and so does one built to break `x`, `y`, the edges
+  or the scheme as well, which it passed. It now also holds, on every example, that each fault is its rule's
+  alone: its read with what its rule judges undone passes steps 8 and 9 (`table_form_strategies.JUDGED`). Of the
+  31 faults, 22 are undone by putting back the members their rule judges as the base holds them, or removing them
+  where it holds none (the three that draw the member they break, by any one of those members); five, which change
+  another member first so that they can exist, on the table so changed, without the entry or the member they
+  added; `log_log_not_positive` by reading its table as linear; and the three near misses by nothing, their own
+  reads passing. Three controls (`tests/property/test_table_form_controls.py`), hand-made builders of
+  `token_not_a_string`, `source_range_reversed` and `y_longer` that also break `x`, `y` or the edges, fail at that
+  assertion on each of their first 100 derandomised examples at both sizes, the other assertions passing them, and
+  pass without the extra break; without that assertion, each passes HP13. The check found one helper building
+  faults wrongly: `an_edge`, which makes a knot an edge for three faults, kept a base's `source_range` of that
+  knot alone, which then shared no value that is no edge with `x`'s range (table item 4), so that
+  `edge_repeated_thrice` and `edge_listed_twice` broke that rule too, in 38 of their 3,728 draws over four seeded
+  streams of 2,000 a part and size; it now removes the range, and a pin holds it. No draw is added: 2,000
+  derandomised examples of each of the nine strategies the table-form properties draw are byte-identical before
+  and after, and over the four seeded streams only those 38 reads changed. No kill point moved
+  (`gen_kill_counts.py --measure`); `edges_zero_and_minus_zero` is undone with its zeros held as `0`, which table
+  item 1 reads the same, so that a reader comparing `-0` and `0` by sign bit is still reported at the near miss.
+  The check cannot see a fault whose own member breaks a second rule, which putting that member back mends too: in
+  one derandomised stream of 2,000 a part and size, the `x` of `x_decreasing` also left the `source_range` sharing
+  no value with `[x[0], x[-1]]` in 247 of its 516 draws, and broke the edges' rule in 222, and an edge put on a
+  `source_range` of one point broke item 4 in 26 of 475 draws of `edge_at_an_end` and 13 of 516 of
+  `edge_not_repeated`.
 
 ## [0.1.0.dev2] - 2026-10-20
 

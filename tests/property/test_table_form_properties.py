@@ -28,6 +28,7 @@ from tests.property.support import feature
 from tests.property.table_form_strategies import (
     CATALOGUE,
     FORM_INVALID,
+    JUDGED,
     KINDS,
     ON_ITS_ROWS_AXIS,
     PAST_STEP_9,
@@ -42,6 +43,7 @@ from tests.property.table_form_strategies import (
     neighbour,
     outcome,
     table_of,
+    undone,
 )
 from tests.property.tables import LARGEST, Table
 from tests.property.value_fields import NUMERIC_CONDITIONS, listing
@@ -51,7 +53,9 @@ from tests.property.value_fields import NUMERIC_CONDITIONS, listing
 
 def check_one_fault(faulty: Faulty) -> None:
     """The fault first, then its base, so that a reader that refuses some bases and gives a fault the wrong
-    reasons is reported at the fault wherever an example draws it; then the neighbour."""
+    reasons is reported at the fault wherever an example draws it; then the neighbour; then the fault its
+    rule's alone, the faulty read undone (`JUDGED`) passing steps 8 and 9, where a fault built to break
+    another member too fails."""
     found = outcome(faulty.read.record, faulty.read.field)
     assert found == faulty.expected, f"the fault {faulty.fault}: {found}, not {faulty.expected}"
     assert outcome(faulty.base.record, faulty.base.field) == Outcome(PAST_STEP_9), (
@@ -60,6 +64,16 @@ def check_one_fault(faulty: Faulty) -> None:
     assert neighbour(faulty.read.record) == neighbour(faulty.base.record), (
         f"the neighbour, beside the fault {faulty.fault}: {neighbour(faulty.read.record)}"
     )
+    undos = JUDGED[faulty.fault]
+    assert bool(undos) == (faulty.expected != Outcome(PAST_STEP_9)), f"{len(undos)} undos of {faulty.fault}"
+    tried: list[str] = []
+    for undo in undos:
+        read = undone(faulty, undo)
+        found = outcome(read.record, read.field)
+        if found == Outcome(PAST_STEP_9):
+            return
+        tried.append(f"{undo.says}: {found}")
+    assert not tried, f"beyond its rule: the fault {faulty.fault}, {'; '.join(tried)}"
 
 
 # The regions of HP13's planned searches, each declared by its chance, below the share measured: the axis
@@ -85,6 +99,10 @@ def test_one_table_fault_gives_the_reasons_its_rule_gives(part: str, data: st.Da
     for region, shows in REGIONS.get(part, {}).items():
         feature(region, shows(faulty))
     check_one_fault(faulty)
+
+
+def test_each_fault_of_the_catalogue_names_what_its_rule_judges() -> None:
+    assert set(JUDGED) == {fault for faults in CATALOGUE.values() for fault in faults}
 
 
 # HP13's fault `source_range_disjoint` where no finite double lies beyond either end of `x`, which holds the
@@ -133,6 +151,33 @@ def test_a_source_range_past_x_is_built_where_no_double_lies_beyond_either_end(
     assert outcome(read.record, read.field) == Outcome(PAST_STEP_9), (
         f"x {knots}, edges {table['edges']}: {outcome(read.record, read.field)}"
     )
+
+
+# HP13's faults made beside a knot `an_edge` makes an edge, on a base whose `source_range` is that knot alone:
+# the range would then share with `x`'s range no value that is no edge (table item 4), a second rule broken,
+# which HP13's last assertion found in about one draw in a hundred of each until `an_edge` removed the range.
+# The only draw here is the knot, the one `x` holds once inside.
+@st.composite
+def beside_a_knot_made_an_edge(draw: st.DrawFn, fault: str) -> Faulty:
+    base = strategies.read_of(
+        Table((1.0, 2.0, 3.0), (1.0, 2.0, 3.0), "linear", (), (2.0, 2.0)),
+        TABLE_FIELDS[0],
+        NUMERIC_CONDITIONS[0],
+    )
+    read = Read(copy.deepcopy(base.record), base.field)
+    reasons = CATALOGUE["edges"][fault](draw, read)
+    assert reasons is not None
+    return Faulty(fault, base, read, Outcome("not_met", reasons))
+
+
+@pytest.mark.parametrize("fault", ["edge_repeated_thrice", "edge_listed_twice"])
+@given(data=st.data())
+def test_a_knot_made_an_edge_takes_a_source_range_of_that_knot_alone_away(
+    fault: str, data: st.DataObject
+) -> None:
+    faulty = data.draw(beside_a_knot_made_an_edge(fault))
+    check_one_fault(faulty)
+    assert "source_range" not in table_of(faulty.read), table_of(faulty.read)
 
 
 # HP14.

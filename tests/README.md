@@ -246,7 +246,8 @@ A check that cannot fail is not a check. So each kind here comes with tests in w
   `property/test_invariance_mutants.py`, `property/test_monotonicity_mutants.py`, whose unrestricted twins
   must fail on the core), and a feature audit that fails when its examples stop reaching what the
   specification distinguishes; and the agreement with the model fails on a divergence it does not list, or
-  one that does not hold as listed (`property/test_model_controls.py`);
+  one that does not hold as listed (`property/test_model_controls.py`); and HP13 fails on a table fault built
+  to break another member too (`property/test_table_form_controls.py`);
 - the two validators' agreement: writer and reader mutants given to one side, each of the 12 writer mutants
   the drawn faults had missed among them; a pattern the two regex dialects read differently given to both; the
   pairs the properties use held to both libraries; and a module that takes jsonschema-rs's verdict alone
