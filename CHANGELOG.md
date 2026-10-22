@@ -95,12 +95,13 @@ every family entry goes in `families/CHANGELOG.md`.
   axis refuses the field, its `request_incomplete` carrying no `alternative`; one set aside at step 10 never reaches
   step 11. One read over an operating range of its axis stays, and counts as a form `want` cannot give. Under
   `no_pick` the entry of a table kept outside its range or read over a range holds its table as stored, with no end
-  value, no `assumption` and nothing applied, and the labels step 12 gives it even where its read ended at step 11.
-  Step 7 raised `NotImplementedError` there until now. The reference model decides the same rows, written from the
-  text by an agent that did not read the read's code. The 25 case files mapped to S4d run and pass (PR-013's six,
-  PR-044's fifteen and PR-308's four; the S4 design's 26th, `PR-308.table_set_aside_never_reaches_step_11`, has run
-  with S3b-2): 1176 of 1517 case files pass and 35 are verified against the reference evaluator; 306 wait for S4's
-  later pieces (109) and the record checks, C2 (197). No case file changes.
+  value, no `assumption` and no extrapolation applied, and the labels step 12 gives it even where its read ended at
+  step 11. Step 7 raised `NotImplementedError` there until now. The reference model decides the same rows,
+  written from the text by an agent that did not read the read's code. The 25 case files mapped to S4d run and
+  pass (PR-013's six, PR-044's fifteen and PR-308's four; the S4 design's 26th,
+  `PR-308.table_set_aside_never_reaches_step_11`, has run with S3b-2): 1176 of 1517 case files pass and 35 are
+  verified against the reference evaluator; 306 wait for S4's later pieces (109) and the record checks, C2
+  (197). No case file changes.
 - `CITATION.cff`, so that GitHub's "Cite this repository" gives the software's citation: its title, author with
   ORCID, licence and repository. Its version and release date are added from 0.1.0, with the first archived
   release.
