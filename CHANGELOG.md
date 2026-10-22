@@ -180,18 +180,22 @@ every family entry goes in `families/CHANGELOG.md`.
 - The fuzz job's control step runs fuzz target 4 on the fault seeded in step 7 over a table alternative
   (`MATERICA_FUZZ_SEEDED_FAULT=table_alternatives`, S4d, **Verification**), after the method's: a round of four runs
   side by side, each of up to 900 s, and another where no run of a round found it, three rounds at most (about 16
-  minutes on average, 45 at most). At the rate measured locally, all miss with about 2e-4 on a runner 1.4 times
-  slower than the laptop, under the bar of 1e-3 a week the maintainer's ruling on the fuzz controls sets, where four
-  runs alone would miss with about 0.06; an estimate until CI's own runs measure it. The step passes where any run
-  reports a line of the model's assertion in which the implementation gives a table alternative's `outside_range`
-  and the model gives none. `tests/unit/test_ci_workflows.py` runs the step as written, a stub standing for each
-  fuzz run, and fails with the runs removed, with three a round, with one round, with every round run though the
-  first found it, with shorter runs, with the runs one after the other, with the check removed and with the runs
-  without the step's dictionary; the check fails where no run finds the fault and where the only finding is another
-  disagreement. The job's timeout rises from 223 to 333 minutes: twice its slowest run on CI (111.4 minutes) and the
-  55 minutes S4d adds by estimate (`FUZZ_ADDED_SINCE`), the control's 45 at most and 10 for the replay of S4d's
-  property modules (584 s of test time at `ci` locally, shared by four workers on a runner up to four times slower).
-  The control moves to the fuzz controls' own job when S4's piece builds it.
+  minutes on average, 45 at most). Of the two parts of the bar the maintainer's ruling sets the fuzz controls, it
+  fails the first, a find in each of ten runs within 900 s on the runner's time: of its ten local runs, three missed
+  and two found it after the 643 s that 900 s are on a runner 1.4 times slower. It meets the second, a weekly miss of
+  at most 1e-3, at the rate measured locally, 1.1e-3 finds a second, a point estimate: all twelve runs miss with
+  about 2e-4 on a runner 1.4 times slower than the laptop, where four alone would miss with about 0.06; at the
+  rate's one-sided 95 % lower bound, 5.2e-4 finds a second, twelve would miss with about 0.018. The rounds stay
+  until the maintainer rules on them; the rate is an estimate until CI's own runs measure it. The step passes where
+  any run reports a line of the model's assertion in which the implementation gives a table alternative's
+  `outside_range` and the model gives none. `tests/unit/test_ci_workflows.py` runs the step as written, a stub
+  standing for each fuzz run, and fails with the runs removed, with three a round, with one round, with every round
+  run though the first found it, with shorter runs, with the runs one after the other, with the check removed and
+  with the runs without the step's dictionary; the check fails where no run finds the fault and where the only
+  finding is another disagreement. The job's timeout rises from 223 to 333 minutes: twice its slowest run on CI
+  (111.4 minutes) and the 55 minutes S4d adds by estimate (`FUZZ_ADDED_SINCE`), the control's 45 at most and 10 for
+  the replay of S4d's property modules (584 s of test time at `ci` locally, shared by four workers on a runner up to
+  four times slower). The control moves to the fuzz controls' own job when S4's piece builds it.
 - The Hypothesis job's `alternatives` parts have a `deep` timeout of 110 minutes, from 90, by estimate (S4d): S4d's
   properties (HP39's two parts and HP40) take 175 and 110 s of the parts' test time at `ci` locally; ten times that
   at `deep`, on a runner 1.9 times slower than the laptop, shared by four workers, adds about 13.9 and 8.7 minutes
