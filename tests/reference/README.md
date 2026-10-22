@@ -167,7 +167,7 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `tolerance_without_an_operating_condition` | a tolerance with no operating condition accepted | 3 |
 | `request_units_not_compared` | an operating condition's, a tolerance's or an implied value's unit not compared | 30 |
 | `negative_zero_tolerance_refused` | a tolerance of `-0` read as below zero | 2 |
-| `declaration_members_in_a_requirement_read` | a requirement holding `label`, `represents` or `population_level` read | 3 |
+| `declaration_members_in_a_requirement_read` | a requirement holding `label`, `represents`, `population_level` or `review` read | 3 |
 | `acceptances_applied_anywhere` | an acceptance applied at another record, a region, an interval or no location | 18 |
 | `two_nominals_for_one_field` | two nominals naming one field read as the first | 1, `PR-330.two_nominals_one_field` alone |
 | `unregistered_field_requested` | a field the reader's version does not register read, and found absent | 6 |

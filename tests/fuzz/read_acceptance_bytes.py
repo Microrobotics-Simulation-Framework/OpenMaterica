@@ -11,14 +11,15 @@
 `jsonio.parse` reads the bytes, which stand as the one entry of the acceptances of fixed requests: two tables
 of the conformance inputs read at the places `acceptance_oracle.PLACES` names, outside their readable ranges,
 at and beyond an edge, inside, and under `want: bounds`. Each request is read twice. The target fails when a
-read raises anything but `NotImplementedError` (a pick and an overlay, which S4 reads), when two reads differ,
-when an extrapolation that breaks its shape is not refused (`acceptance_oracle.check_shape_refused`), when a
-result breaks HP1 and HP2 as an acceptance leaves them, an extrapolation's `assumption` its entry's own
-(`acceptance_oracle.check_acceptance_laws`), or holds `table` other than beside its value
-(`field_oracle.check_table_member`), when the status is better than the same read without the entry
-(`acceptance_oracle.check_no_better`), or when the reference model (`tests/reference/read_model.py`) and the
-read disagree but as HP12 lists (`field_oracle.check_against_the_model`). The seeds are every acceptance of
-every conformance case's request, its extrapolations located at the two records the target reads among them.
+read raises anything but `NotImplementedError` (a pick and an overlay, which S4 reads, and a `trainable`
+acceptance, which S7a-4 reads), when two reads differ, when an extrapolation that breaks its shape is not
+refused (`acceptance_oracle.check_shape_refused`), when a result breaks HP1 and HP2 as an acceptance leaves
+them, an extrapolation's `assumption` its entry's own (`acceptance_oracle.check_acceptance_laws`), or holds
+`table` other than beside its value (`field_oracle.check_table_member`), when the status is better than the
+same read without the entry (`acceptance_oracle.check_no_better`), or when the reference model
+(`tests/reference/read_model.py`) and the read disagree but as HP12 lists
+(`field_oracle.check_against_the_model`). The seeds are every acceptance of every conformance case's request,
+its extrapolations located at the two records the target reads among them.
 """
 
 import importlib
