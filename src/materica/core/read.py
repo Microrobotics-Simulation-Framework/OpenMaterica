@@ -20,8 +20,9 @@ kind a read does not take.
 
 Overlays (step 6) and picks are not built yet. A read that would need one raises `NotImplementedError`, and so
 does a request whose answer a check still to come could change, whatever else is wrong with it: one with a
-region target, or a pick or an overlay among its acceptances. It raises rather than give an answer a later
-step would contradict.
+region target, or a pick, an overlay (S4) or a `trainable` acceptance (S7a-4) among its acceptances. It raises
+rather than give an answer a later step would contradict. A requirement holding `review`, a declaration's like
+`label`, is no such request: step 0 refuses it (section 1), and a build checks it.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -84,16 +85,17 @@ _WANT_SUITES: dict[Want, Suite] = {
 # The members section 1 or `declarations.md` names at each place of a request, those it refuses included: a
 # member one slip from one of them is refused too, so that a misspelt member never drops what it holds. A
 # declaration's requirement names its `field`, and each of its conditions a `reason` and a `consequence`
-# (`declarations.md` section 1), which a read ignores.
+# (`declarations.md` section 1), which a read ignores. A requirement's `review` is a declaration's, which a
+# read refuses, and so is a member one slip from it (section 1).
 _REQUEST_MEMBERS = ("records", "target", "operating_conditions", "requirement", "acceptances")
 _TARGET_MEMBERS = ("record", "region", "field")
 _RECORD_MEMBERS = ("id", "version", "content_hash")
-_REQUIREMENT_MEMBERS = ("want", "conditions", "label", "represents", "population_level", "field")
+_REQUIREMENT_MEMBERS = ("want", "conditions", "label", "represents", "population_level", "review", "field")
 _OPERATING_MEMBERS = ("value", "range", "unit")
 _REQUIREMENT_CONDITION_MEMBERS = ("tolerance", "accept", "reason", "consequence")
 _TOLERANCE_MEMBERS = ("value", "unit")
 # What a declaration's requirement holds and a read checks none of (`declarations.md` section 1).
-_DECLARATIONS_ONLY = ("label", "represents", "population_level")
+_DECLARATIONS_ONLY = ("label", "represents", "population_level", "review")
 # The members named at an implied condition's place (`declarations.md` section 4.1): every acceptance's
 # kind, location, field and reason, the basis a read ignores (section 1), and its own; and at a condition's
 # place in its `implies`, those of a record condition's shapes of either kind (`provenance.md` section 6.1),
@@ -124,9 +126,10 @@ _WANT_OF_FORM: dict[str, Want] = {
 }
 # The shape of each member of a field of each form step 8 reads, by name.
 _FIELD_HINTS = {form: get_type_hints(shape) for form, shape in FIELD_SHAPES.items()}
-# The kinds of acceptance a read takes but does not apply yet (section 1): a pick and an overlay (S4). A
-# request holding one raises, whatever else it holds.
-_APPLIED_LATER = ("pick", "overlay")
+# The kinds of acceptance a read takes but does not apply yet (section 1): a pick and an overlay, which S4
+# applies, and a `trainable` acceptance, which S7a-4 applies. A request holding one raises, whatever else it
+# holds.
+_APPLIED_LATER = ("pick", "overlay", "trainable")
 # The members named at a nominal's place (`declarations.md` section 4.1): every acceptance's kind, location,
 # field, reason and basis, the last two of which a read ignores; its `value`; and `params`, which a nominal
 # holds in place of a value only for a field whose row allows a parameter set (section 1), as no row of this
@@ -221,8 +224,9 @@ class ReadRequest:
 
         `request` is JSON text, read by `record_format.md` section 1 item 6, as a `str` or bytes-like; any
         other value is read as the JSON text `json.dumps` writes of it. A request with a region target, or
-        with a pick or an overlay, raises `NotImplementedError`, and claims no reader makes raise
-        `ValueError`, as in `read`.
+        with a pick, an overlay or a `trainable` acceptance, raises `NotImplementedError`, and claims no
+        reader makes raise `ValueError`, as in `read`. A requirement holding `review` is refused with
+        `request_incomplete`, as one holding `label` is.
         """
         _check(claims)
         value = _parsed(request)
@@ -232,7 +236,9 @@ class ReadRequest:
             return (Reason("request_incomplete", detail="the request is not an object"),)
         acceptances = value.get("acceptances", [])
         if isinstance(acceptances, list) and any(map(_applied_later, acceptances)):
-            raise NotImplementedError("a request's picks and overlays are not read yet")
+            raise NotImplementedError(
+                "a request's picks and overlays (S4) and trainable acceptances (S7a-4) are not read yet"
+            )
         named = value.get("target")
         if isinstance(named, dict) and "region" in named:
             raise NotImplementedError("a region target resolves through a scene, which is not read yet")
@@ -1363,8 +1369,8 @@ def _acceptances(
 ) -> tuple[tuple[ImpliedCondition, ...], tuple[Nominal, ...], tuple[Extrapolation, ...]]:
     """The implied conditions, nominals and extrapolations of a request's acceptances, each checked whatever
     field or location it names (section 1): an acceptance of another kind, or not an object, is refused, and
-    so are two nominals, or two extrapolations, that name one field, whatever else each holds. A pick and an
-    overlay raised before."""
+    so are two nominals, or two extrapolations, that name one field, whatever else each holds. A pick, an
+    overlay and a `trainable` acceptance raised before."""
     implied: list[ImpliedCondition] = []
     nominals: list[Nominal] = []
     extrapolations: list[Extrapolation] = []

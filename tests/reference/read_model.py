@@ -562,12 +562,19 @@ OPERATING_NAMES: Final = ("value", "range", "unit")
 # (declarations.md:64 "each with its `reason` and, where known, its `consequence`"), which a read ignores and
 # of which it refuses a slip: the text decides it, as S2a-4's review read it, the maintainer's approval
 # (2026-10-18) and ruling (2026-10-19) on the former open point `names_a_declaration_gives_a_requirement`.
-REQUIREMENT_NAMES: Final = ("want", "conditions", "label", "represents", "population_level", "field")
+REQUIREMENT_NAMES: Final = (
+    "want",
+    "conditions",
+    "label",
+    "represents",
+    "population_level",
+    "review",
+    "field",
+)
 REQUIREMENT_CONDITION_NAMES: Final = ("tolerance", "accept", "reason", "consequence")
 TOLERANCE_NAMES: Final = ("value", "unit")
-# read_side_contract.md:37 "its `requirement` holds `label`, `represents`, `population_level` or `review`":
-# the model refuses the first three; `review` waits for S7a-2, which builds its refusal in the read.
-DECLARATION_ONLY_REQUIREMENT_NAMES: Final = ("label", "represents", "population_level")
+# read_side_contract.md:37 "its `requirement` holds `label`, `represents`, `population_level` or `review`"
+DECLARATION_ONLY_REQUIREMENT_NAMES: Final = ("label", "represents", "population_level", "review")
 IMPLIED_VALUE_NAMES: Final = (*CONDITION_NAMES, "status", "reason")
 
 # read_side_contract.md:32 "its field does not match `^[a-z0-9_]+\.[a-z0-9_]+$` in full"

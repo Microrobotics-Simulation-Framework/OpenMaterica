@@ -1668,7 +1668,7 @@ MUTANTS: Mapping[str, Mutant] = {
         {"checked_requirement": negative_zero_tolerance_refused},
     ),
     "declaration_members_in_a_requirement_read": Mutant(
-        "a requirement holding `label`, `represents` or `population_level` read",
+        "a requirement holding `label`, `represents`, `population_level` or `review` read",
         'read_side_contract.md:37-39 "its `requirement` holds `label`, `represents`"',
         {"DECLARATION_ONLY_REQUIREMENT_NAMES": ()},
     ),

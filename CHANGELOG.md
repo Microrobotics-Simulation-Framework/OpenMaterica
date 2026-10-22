@@ -43,13 +43,18 @@ every family entry goes in `families/CHANGELOG.md`.
   `not_reviewed`, regenerated into `vocabulary/reasons.json` and the typed shapes' `ReasonCode`, and added to
   the reference model's table of reasons. The specification README: the case range BC-001 to BC-099; the value
   a result carries where a read goes on under a trainable acceptance; with the architecture draft (12.2, 15),
-  the build order, declarations over records before record checks and scenes. The read of a request does not
-  change yet: run on `main`, a request whose requirement holds `review` reads as without it, and so does one
-  holding a member one slip from it (`reviev`), while a control holding `label` is refused; and one holding a
-  `trainable` acceptance is refused, `request_incomplete` (a control holding a nominal reads `met`), until
-  S7a-2 and S7a-4 build them. The reference model's citations of the edited documents move to their new lines,
-  some re-quoted, each saying where the model lags the text, and `plain_read/CASES.md`'s PR-330 heading quotes
-  the widened row.
+  the build order, declarations over records before record checks and scenes. **The read of a request
+  changes**: a request whose requirement holds `review` is now refused at step 0, `request_incomplete`, as
+  one holding `label` is and as section 1 says, since `review` belongs to a declaration's requirement, which a
+  build checks (S7a-2) and a read never does; it read as without it, and could give `met` on a value its
+  consumer asked to be reviewed. A member one slip from `review` in a requirement (`reviev`) is now refused,
+  `request_incomplete`, as section 1 refuses a slip of every member it names there; it was ignored. The
+  reference model refuses both, as the text does, where it read both as without them. A request holding a
+  `trainable` acceptance now raises `NotImplementedError` (the maintainer's ruling, 2026-10-22), whatever else
+  it holds, as one holding a pick or an overlay does, until S7a-4 builds the read under it; it was refused,
+  `request_incomplete`, as a kind a read does not take. The model's citations of
+  the edited documents move to their new lines, some re-quoted, each saying where the model lags the text, and
+  `plain_read/CASES.md`'s PR-330 heading quotes the widened row.
 
   A label's basis, `label_basis` (`record_format.md` sections 4.1 and 5): an optional member of a value field,
   closed, in a condition's basis shape, in the writer schema, marked `x-materica-write-only`: no read checks
@@ -82,12 +87,10 @@ every family entry goes in `families/CHANGELOG.md`.
   S7a-4's, and not yet runnable; the map of steps (`tests/spec_sync/test_case_steps.py`) now knows the S7
   pieces, S7a-1 to S7a-5 and S7c. The reference model now gives no verdict on a request holding a `trainable`
   acceptance, as on a pick, where it refused one with `request_incomplete`, and lists the arm so; none of its
-  129 seeded faults gives the arm another outcome. HP12's agreement check, which fuzz target 5 also runs over
-  every acceptance of the case files, lists the divergence this makes, held exactly: the implementation
-  refuses a request holding a `trainable` acceptance with `request_incomplete` alone, as the text did before,
-  where the model gives no verdict; `tests/property/test_model_controls.py` holds it to failing where it is
-  unlisted and where the implementation does not refuse. 1180 of 1522 case files pass, and 307 are not yet
-  runnable.
+  129 seeded faults gives the arm another outcome. The implementation raises `NotImplementedError` on such a
+  request (**Schema**, above), so HP12's agreement check, which fuzz target 5 also runs over every acceptance
+  of the case files, finds that neither decides, as on a pick. 1180 of 1522 case files pass, and 307 are not
+  yet runnable.
 
 ## [0.1.0.dev3] - 2026-10-22
 

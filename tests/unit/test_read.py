@@ -525,7 +525,7 @@ def test_a_field_the_vocabulary_does_not_register_is_refused(field: str) -> None
     assert read(with_member(("target",), "field", field), store()).reasons == (Reason("request_incomplete"),)
 
 
-@pytest.mark.parametrize("name", ["label", "represents", "population_level"])
+@pytest.mark.parametrize("name", ["label", "represents", "population_level", "review"])
 def test_a_requirement_holding_a_declarations_member_is_refused(name: str) -> None:
     assert read(with_member(("requirement",), name, "x"), store()).reasons == (Reason("request_incomplete"),)
 
@@ -1196,6 +1196,82 @@ def test_a_pick_and_an_overlay_raise_whatever_else_the_request_holds(acceptance:
             read(with_members(acceptances=acceptances), store())
         with pytest.raises(NotImplementedError):
             read(with_members(acceptances=acceptances, target=None), store())
+
+
+# A `trainable` acceptance (section 1), the one a build makes from a declaration's `trainable` entry, which
+# S7a-4 applies: the request raises until then, as for a pick (the maintainer's ruling, 2026-10-22).
+TRAINABLES: list[JsonValue] = [
+    {
+        "acceptance": "trainable",
+        "record": {"id": "conformance/water_fixture", "version": "2.0.0", "content_hash": PIN},
+        "field": "fluid.dynamic_viscosity",
+    },
+    {"acceptance": "trainable"},
+]
+
+
+@pytest.mark.parametrize("acceptance", TRAINABLES)
+def test_a_trainable_acceptance_raises_whatever_else_the_request_holds(acceptance: JsonValue) -> None:
+    """Alone, beside refusals, beside a kind a read applies, and with no target."""
+    ways: list[list[JsonValue]] = [[acceptance], [*NOT_TAKEN, acceptance], [IMPLIED, acceptance]]
+    for acceptances in ways:
+        with pytest.raises(NotImplementedError):
+            read(with_members(acceptances=acceptances), store())
+        with pytest.raises(NotImplementedError):
+            read(with_members(acceptances=acceptances, target=None), store())
+
+
+def with_review(
+    review: JsonValue, acceptances: list[JsonValue] | None = None, **members: JsonValue
+) -> dict[str, JsonValue]:
+    """REQUEST as parsed JSON, its requirement holding `review` and `members`, and `acceptances` if given."""
+    request = with_members() if acceptances is None else with_members(acceptances=acceptances)
+    requirement = request["requirement"]
+    assert isinstance(requirement, dict)
+    requirement.update(review=review, **members)
+    return request
+
+
+@pytest.mark.parametrize("review", ["reviewed", "checked", None])
+def test_a_requirement_holding_review_is_refused_exactly_as_label_is(review: JsonValue) -> None:
+    """Section 1 refuses at step 0 a request whose requirement holds `label`, `represents`,
+    `population_level` or `review`: a declaration's requirement, which a build checks (`not_reviewed`) and a
+    read never does. A read refuses `review` with `request_incomplete`, as it refuses `label`, and raises
+    nothing: alone, beside the other refusals (a slip of `review` and of `want`, an acceptance of no kind),
+    beside a kind a read applies, and with no target."""
+    ways: list[list[JsonValue] | None] = [None, [*NOT_TAKEN], [IMPLIED]]
+    for acceptances in ways:
+        request = with_review(review, acceptances)
+        as_label = with_review(review, acceptances)
+        requirement = as_label["requirement"]
+        assert isinstance(requirement, dict)
+        del requirement["review"]
+        requirement["label"] = "materica.fluid.newtonian.v1"
+        for given, alike in (
+            (request, as_label),
+            ({**request, "target": None}, {**as_label, "target": None}),
+        ):
+            refused, label_refused = read(given, store()), read(alike, store())
+            assert (
+                (refused.status, [r.code for r in refused.reasons])
+                == (
+                    label_refused.status,
+                    [r.code for r in label_refused.reasons],
+                )
+                == ("not_met", ["request_incomplete"])
+            ), acceptances
+        beside = read(with_review(review, acceptances, wants="value", reviev="reviewed"), store())
+        assert (beside.status, [r.code for r in beside.reasons]) == ("not_met", ["request_incomplete"])
+
+
+@pytest.mark.parametrize("slip", ["reviev", "reviews", "reveiw", "rview", "re_view", "Review"])
+def test_a_member_one_slip_from_review_in_a_requirement_is_refused(slip: str) -> None:
+    """Section 1: a request is refused where "it holds, at any depth, a member one slip (`record_format.md`
+    section 10) from a member this section or `declarations.md` names at that place, refused ones included",
+    and section 1 names a requirement's `review`: a slip of it is refused, never read as without it."""
+    refused = read(with_member(("requirement",), slip, "reviewed"), store())
+    assert (refused.status, refused.reasons) == ("not_met", (Reason("request_incomplete"),)), slip
+    assert read(with_member(("requirement",), f"x_{slip}", "reviewed"), store()) == ABSENT
 
 
 def test_a_request_keeps_its_implied_conditions_with_the_members_their_shape_names() -> None:
