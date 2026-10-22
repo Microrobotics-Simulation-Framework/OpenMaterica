@@ -51,6 +51,11 @@ from tests.property.value_fields import NUMERIC_CONDITIONS, listing
 # HP13.
 
 
+# The last assertion's message: the verdict on the undone table is the reader's, so a reader that wrongly
+# refuses a valid one is reported here too, as the fault built beyond its rule.
+UNDONE_REFUSED = "beyond its rule, or the reader refuses the undone table"
+
+
 def check_one_fault(faulty: Faulty) -> None:
     """The fault first, then its base, so that a reader that refuses some bases and gives a fault the wrong
     reasons is reported at the fault wherever an example draws it; then the neighbour; then the fault its
@@ -73,7 +78,7 @@ def check_one_fault(faulty: Faulty) -> None:
         if found == Outcome(PAST_STEP_9):
             return
         tried.append(f"{undo.says}: {found}")
-    assert not tried, f"beyond its rule: the fault {faulty.fault}, {'; '.join(tried)}"
+    assert not tried, f"{UNDONE_REFUSED}: the fault {faulty.fault}, {'; '.join(tried)}"
 
 
 # The regions of HP13's planned searches, each declared by its chance, below the share measured: the axis

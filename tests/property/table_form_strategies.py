@@ -619,9 +619,14 @@ class Faulty(NamedTuple):
 # tells apart. A fault is undone by putting back the members its rule judges as the base holds them, or
 # removing them where it holds none. Where a fault changes another member first so that it can exist at all
 # (a knot made an edge, `x`'s top run lowered, the table replaced), it is undone on the table so changed:
-# without the member, or the entry, that it added, or, for a log-log table's sign, read as linear. A fault
-# whose rule judges one member of several, drawn, is undone by putting back any one of them. A near miss is
-# undone by nothing: its own read passes steps 8 and 9, which HP13 checks first.
+# without the member, or the entry, that it added. Where it adds an entry to `x` and `y` beside what it
+# judges (an edge at an end, a knot held twice with no edge), only that entry is taken away, and where it
+# writes a value (a log-log table's non-positive one), only that value is made valid again. A fault whose
+# rule judges one member of several, drawn, is undone by putting back any one of them. A near miss is
+# undone by nothing: its own read passes steps 8 and 9, which HP13 checks first. The faults that rewrite
+# `x`, `y` and the edges wholesale (`x_one_value`, `x_without_two_distinct_values`,
+# `x_empty_beside_edges_or_a_source_range`) can only be undone by putting those back, so HP13 has no power
+# against an extra break of them there.
 class Undo(NamedTuple):
     says: str  # what it undoes
     apply: Callable[[Json, Json], None]  # on a copy of the faulty read's field, given the base's
@@ -669,8 +674,39 @@ def _held_twice(field: Json, _: Json) -> None:
         del x[thrice[0]], y[thrice[0]]
 
 
-def _read_as_linear(field: Json, _: Json) -> None:
-    mapping(field["table"])["scheme"] = "linear"
+def _is_number(value: JsonValue) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _non_positive_made_positive(field: Json, _: Json) -> None:
+    """The values a log-log table's rule judges made positive, `scheme` kept: `x`'s first knot, if it is not
+    above zero, as half the second (`x` stays increasing), and each `y` not above zero as 1."""
+    table = mapping(field["table"])
+    x, y = listing(table["x"]), listing(table["y"])
+    if _is_number(x[0]) and float(str(x[0])) <= 0 and len(x) > 1 and _is_number(x[1]):
+        x[0] = float(str(x[1])) / 2
+    y[:] = [1.0 if _is_number(value) and float(str(value)) <= 0 else value for value in y]
+
+
+def _end_edge_taken_away(field: Json, _: Json) -> None:
+    """The last edge and the entry of `x` and `y` that `edge_at_an_end` added at that end, where `x` holds it
+    twice."""
+    table = mapping(field["table"])
+    x, y, edges = listing(table["x"]), listing(table["y"]), listing(table["edges"])
+    edge = edges.pop()
+    if len(x) > 1 and x[0] == edge == x[1]:
+        del x[0], y[0]
+    elif len(x) > 1 and x[-1] == edge == x[-2]:
+        del x[-1], y[-1]
+
+
+def _repeat_taken_away(field: Json, _: Json) -> None:
+    """The first entry of `x` and `y` of a knot `x` holds twice that is no edge."""
+    table = mapping(field["table"])
+    x, y, edges = listing(table["x"]), listing(table["y"]), listing(table["edges"])
+    twice = [at for at in range(len(x) - 1) if x[at] == x[at + 1] and x[at] not in edges]
+    if twice:
+        del x[twice[0]], y[twice[0]]
 
 
 def _axis_condition_put_back(field: Json, base: Json) -> None:
@@ -680,26 +716,26 @@ def _axis_condition_put_back(field: Json, base: Json) -> None:
 
 KNOTS = put_back("x", "y", "edges")
 JUDGED: dict[str, tuple[Undo, ...]] = {
-    # The knots. A fault of `x` that changes its length changes `y`'s with it, and one that leaves `x` no
-    # interior clears `edges`, so the three are put back together; `source_range`, which such a fault
-    # removes, stays removed.
+    # The knots. A fault that rewrites `x` changes `y`'s length with it, and one that leaves `x` no interior
+    # clears `edges`, so the three are put back together; `source_range`, which such a fault removes, stays
+    # removed.
     "y_longer": (put_back("y"),),
     "y_shorter": (put_back("y"),),
     "x_one_value": (KNOTS,),
     "x_without_two_distinct_values": (KNOTS,),
     "x_decreasing": (put_back("x"),),
-    "repeated_x_no_edge": (put_back("x", "y"),),
+    "repeated_x_no_edge": (Undo("the repeated entry taken away", _repeat_taken_away),),
     "not_numbers": tuple(put_back(member) for member in ("x", "y", "edges")),
     "member_missing": tuple(put_back(member) for member in REQUIRED),
     # The edges. A knot `an_edge` makes an edge, or the table over zero, stays.
-    "edge_at_an_end": (KNOTS,),
+    "edge_at_an_end": (Undo("the end edge and its entry taken away", _end_edge_taken_away),),
     "edge_not_in_x": (put_back("edges"),),
     "edge_not_repeated": (put_back("edges"),),
     "edge_repeated_thrice": (Undo("x and y holding the edge twice", _held_twice),),
     "edge_listed_twice": (Undo("edges without the last", _without_the_last_edge),),
     "edges_zero_and_minus_zero": (Undo("edges without the last, zeros as 0", _without_the_last_zero),),
     "zero_edge_both_signs": (),
-    "log_log_not_positive": (Undo("read as linear", _read_as_linear),),
+    "log_log_not_positive": (Undo("non-positive values made positive", _non_positive_made_positive),),
     # The tokens and the axis condition.
     "scheme_unknown": (put_back("scheme"),),
     "axis_unknown": (put_back("axis"),),
