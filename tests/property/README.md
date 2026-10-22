@@ -385,6 +385,36 @@ check's reader (the last bullet).
   apply, the field's `label`, and each kind of value of the lists HP26 draws from: the methods that are no
   token, the laws of white space, the laws that are no text, and a slip's name and the place of its
   character) by a mutant that shows there alone, so that a draw cut to one value leaves a mutant alive.
+- **A table among alternatives at step 11 (S4d):** (20) step 7's rows for a table alternative whose read gives a
+  reason at step 11 (`read_side_contract.md` section 3, step 7; `record_format.md` section 5 items 2 to 5), HP39 and
+  HP40 (`test_table_alternatives_properties.py`, in the `alternatives` shard), over
+  `table_alternatives_strategies.py`'s draws: S4a's alternatives, their outcome drawn first among its five and built
+  as S4a builds them, over a field that takes a constant, an interval and a table, and beside them a table over a
+  condition no other alternative states, stored at an index drawn, by a way drawn second: outside its readable range
+  with no extrapolation, over an operating range of its axis, outside under an extrapolation at the read under
+  `want: value` (its value stated without origin) and under `want: bounds`; at an edge inside the range, at one outside a
+  narrowed range, with no operating value for its axis, and with none but set aside at step 10. Each part,
+  `kept_or_set_aside` and `refuses`, draws its four ways, so that each test function draws its first choice among at
+  most five, and holds each outcome and each way to the floor of a chance declared below its least share measured:
+  0.11 and 0.14, floors of 35 and 60 at `ci`. Over 20 runs of 2,000 a size (2026-10-22), an outcome's count and a
+  way's varied up to 13.7 times a binomial's, at which the draw floor of one in five failed a run with up to 1.2e-3;
+  at these chances a correct run of a part fails with at most 2.3e-7 at the variance measured (1.6e-4 at its one-sided
+  95 % bound). HP39: the read agrees with HP27's oracle, which composes the reads of each alternative alone, with step
+  11's standings (a read alone at an edge refuses the field; outside the range, set aside, but where the read alone
+  applies an extrapolation, kept; over a range, staying, a form `want` cannot give; `request_incomplete`, refusing,
+  with no index), and, under `no_pick`, a kept or over-range table's entry its table as stored, its members and step
+  12's labels as a read of it that reaches step 12 gives them; the extrapolation is among what the read applied
+  exactly where the table it covers is the one left (`check_applied`, on the result's `applied`, outside its JSON);
+  and the draw is what its outcome and way say, by the oracles (`check_drawn`). HP40: the table read inside its range,
+  its readable range moved off the operating value by a narrower `source_range` and no edge met, gives the read of the
+  field without it, indexes moved, where another stays, and `not_met` with every alternative's reasons, its
+  `outside_range` among them, where none does; it never turns a `not_met` read `met`. HP40 draws by chance (no floor),
+  over HP39's strategy. HP12 draws the same in a part of its own, the part first. Every draw S4d adds is held: the
+  outcome and the ways by their floors, and within a way, the base form a named `want` needs, the others none in the
+  form it gives under `want_mismatch`, the extrapolation, the operating range, the absent operating value and the
+  token set aside at step 10 by `check_drawn`, the kept table's origin, its label and its stored index by a mutant
+  each that shows there alone, so that a draw cut leaves it alive; the others' own draws are S4a's, which S4a's
+  properties hold.
 - **The anomaly check's reader:** the YAML reader of `scripts/check_anomalies.py` and its specifier syntax
   against PyYAML's `safe_load` and `packaging` (`test_anomaly_reader_properties.py`, in the `agreement` shard).
   A document the reader reads is read as PyYAML reads it; one PyYAML refuses is refused; one inside the subset
@@ -575,7 +605,7 @@ hold yet passes `--check`, so that a stacked branch's older commits stand, and f
 run.
 
 <!-- kill points summary (scripts/gen_kill_counts.py) -->
-`kill_points.json` records 1,216 searches, 608 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
+`kill_points.json` records 1,300 searches, 650 mutants each at both sizes; the latest kill is at the 487th example (`upper_none_as_infinity`, original size).
 <!-- end of kill points summary -->
 
 Three searches were planned because their kill sat in a long tail. With the pin, a search's kill is fixed by
@@ -1264,6 +1294,25 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `monotone_the_tolerance_widens_the_range` | the tolerance's widening, searched by the monotonicity property (S3b-2) | tables across their range | the three ways outside | 27, 9 |
 | `monotone_source_range_widening` | a `source_range`'s widening, searched by the monotonicity property (S3b-2) | tables across their range | the three ways outside | 7, 6 |
 | `step_11_refusal_goes_on_to_step_12` | a read step 11 refused goes on to step 12, which adds `stated_without_origin` (S3b-2's review) | tables' requests | `stated_without_origin` | 3, 3 |
+| `an_edge_sets_aside` | a table alternative read at an edge set aside (S4d) | tables among alternatives, `at_an_edge_inside` (planned) | `at_an_edge_inside` | 6, 3 |
+| `an_edge_outside_the_range_sets_aside` | `outside_range` set aside beside `at_edge` (S4d) | tables among alternatives, `at_an_edge_outside` (planned) | `at_an_edge_outside` | 8, 3 |
+| `set_aside_under_a_covering_extrapolation` | `outside_range` set aside where an extrapolation the request carries covers it (S4d) | tables among alternatives, `kept` (planned) | `kept` | 4, 3 |
+| `kept_without_an_extrapolation` | `outside_range` kept with no extrapolation that covers it (S4d) | tables among alternatives, `outside` (planned) | `outside` | 4, 3 |
+| `kept_under_any_want` | a table kept where the request carries an extrapolation its place could take, under any `want` (S4d) | tables among alternatives, `kept_under_bounds` (planned) | `kept_under_bounds` | 4, 3 |
+| `kept_refuses` | a table an extrapolation covers refusing the field (S4d) | tables among alternatives, `kept` (planned) | `kept` | 4, 3 |
+| `over_a_range_sets_aside` | a table read over an operating range of its axis set aside (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 4, 3 |
+| `over_a_range_refuses` | a table read over an operating range of its axis refusing the field (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 4, 3 |
+| `over_a_range_gives` | a table read over an operating range counted as a form `want` can give (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 10, 7 |
+| `request_fault_at_step_11_sets_aside` | no operating value for a table's axis, at step 11, setting the table aside (S4d) | tables among alternatives, `no_operating_value` (planned) | `no_operating_value` | 6, 3 |
+| `request_fault_at_step_11_tagged` | step 11's `request_incomplete` given the table's index (S4d) | tables among alternatives, `no_operating_value` (planned) | `no_operating_value` | 1, 1 |
+| `set_aside_at_step_10_reaches_step_11` | a table set aside at step 10 refusing the field for its missing operating value (S4d) | tables among alternatives, `no_operating_value_set_aside` (planned) | `no_operating_value_set_aside` | 1, 1 |
+| `kept_entry_its_read` | a kept table's `no_pick` entry its read under the extrapolation: the end value (S4d) | tables among alternatives, `kept` (planned) | `kept` | 4, 4 |
+| `over_a_range_entry_without_step_12_labels` | an over-range table's `no_pick` entry with its read's labels, none (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 4, 3 |
+| `entry_labels_of_the_first_alternative` | a kept or over-range table's entry with the first stored alternative's labels (S4d) | tables among alternatives, `over_an_operating_range` (planned) | `over_an_operating_range` | 66, 19 |
+| `kept_unknown_dropped_beside_two_or_more` | a kept table's `unknown` reasons dropped beside `no_pick` or `want_mismatch` (S4d) | tables among alternatives, `kept` (planned) | `kept` | 4, 4 |
+| `outside_range_refuses` | `outside_range` refusing the field, as every other `not_met` does (S4d) | tables among alternatives, `outside` (planned) | `outside` | 6, 3 |
+| `narrowed_alternative_kept` | the table moved off its range kept (S4d) | tables among alternatives, `outside` (planned) | `outside` | 4, 3 |
+| `set_aside_by_its_range_beside_the_one_left` | the reasons of a table set aside by its range reported beside the one left (S4d) | tables among alternatives, `outside` (planned) | `outside` | 6, 3 |
 
 <!-- kill points of every search of test_model_mutants.py::test_the_models_seeded_mutant_is_killed_by_the_agreement (scripts/gen_kill_counts.py) -->
 | Fault of the model | Part | Dies at | Examples |
@@ -1305,6 +1354,9 @@ for 2,000 on 2026-10-20), so that a mutant they kill dies of its fault.
 | `set_aside_reasons_beside_no_pick` | outcomes of step 7 (planned) | `want_mismatch`, `no_pick` | 58, 39 |
 | `unit_of_the_first_stored_alternative` | evidence set aside first (planned) | `no_pick` | 52, 52 |
 | `table_returned_whole` | tables' statistics (planned, S3b-2's review) | `unknown_member` | 5, 7 |
+| `set_aside_alternative_reaches_step_11` | tables among alternatives, `no_operating_value_set_aside` (planned, S4d) | `no_operating_value_set_aside` | 1, 1 |
+| `over_a_range_entry_unlabelled` | tables among alternatives, `over_an_operating_range` (planned, S4d) | `over_an_operating_range` | 4, 3 |
+| `kept_for_an_extrapolation_under_any_want` | tables among alternatives, `kept_under_bounds` (planned, S4d) | `kept_under_bounds` | 1, 1 |
 
 S4a's five are the faults of the model's step 7 that one case file alone kills, each searched over S4a's
 alternatives alone (`model_strategies.outcomes_of_step_7`), three of them narrowed further, as HP27's planned
@@ -1332,6 +1384,15 @@ examples among all of step 0's 60, and evidence whose unit holds a reason, where
 the planned searches of `two_nominals_for_one_field`, `nominal_outside_supplies_the_value` and
 `unit_returned_without_its_reason` died within 123, 123 and 94 examples at both sizes, and HP4's
 `every_field_checked_beside_evidence`, drawn whole, within 400.
+
+S4d's part, tables among alternatives (`test_the_read_agrees_with_the_model_on_tables_among_alternatives`),
+draws one of HP39's two parts first, each held to its floor, then, as HP39 draws them, the others' outcome and
+the table's way by chance (`table_alternatives_strategies.py`). Each of S4d's mutants of step 7 but
+`extrapolation_applied_under_no_pick`, whose fault shows in what the read applied alone, outside the result's
+JSON (`APPLIED_ALONE`), is searched there as a planned search of the way where it shows, HP40's three at a
+table outside its range; and so are the three of the model's twelve faults of step 7's rows for a table that
+one case file alone kills. Each of these planned searches draws only reads the core and the model agree on
+(`test_model_mutant_table.py`).
 
 Listed, with the reason no read shows it: `results_share_the_record` (a shared object never shows in JSON; HP6
 holds the core to sharing nothing). `units_stored_differently_read_as_no_pick`, listed here until S4a, became
@@ -1572,9 +1633,9 @@ on the readable range's end (`read_side_contract.md` section 5: "or on that end"
 and the range, is two rows, one for each end (S3b-2's second fix round), searched by HP20 across an edge alone,
 the way that draws such an edge in half its draws (planned: over HP20's five ways they died after the 500th
 example on 1 or 2 of 40 streams a size, the latest at the 934th; across an edge alone, at the 150th at the
-latest). The report has no reader in a result until S3c and S4d, so HP12 cannot search those two
-(`REPORT_ALONE`). HP12's table part searches each of the sixteen others as well
-(`test_model_mutants.py`, its rows below its own), each a planned search of the part's kind of the family whose property kills it (`TABLE_PARTS`), a kind the
+latest). The report has a reader in a result only where an extrapolation meets such an edge (S3c, and S4d's
+step 7), which HP12 draws nowhere, so HP12 cannot search those two (`REPORT_ALONE`). HP12's table part
+searches each of the sixteen others as well (`test_model_mutants.py`, its rows below its own), each a planned search of the part's kind of the family whose property kills it (`TABLE_PARTS`), a kind the
 part draws first and holds to its floor: searched over the whole part, a tolerance's widening died after the
 margin guard's 500th example on some streams (the 664th and the 1,301st, in a first form of the mutant, of the 24
 and 7 streams run a size) and `at_edge` dropped beside `outside_range` at the 628th of 40, and those of a
@@ -1715,6 +1776,52 @@ on the range's end in half its draws).
 | `a_character_inside_a_name_not_read_as_a_slip` | a named member with a character put inside it ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 3, 5 |
 | `a_character_after_a_name_not_read_as_a_slip` | a named member with a character put after it ignored | HP26, read (planned: a slip) | `a_slip_of_a_member` | 5, 3 |
 | `monotone_status_met` | under an extrapolation that covers the read, `met` | monotonicity | `one_double_outside`, `far_outside` | 4, 4 |
+
+### Step 7 over a table alternative's reasons at step 11 (S4d)
+
+`test_table_alternatives_mutants.py`, each injected at a function of step 7 in `core/read.py` (`_standing`,
+`_standing_at_step_11`, `_set_aside_by_its_range`, `_gives`, `_entry`, `_found_reading`,
+`_reported_beside_two_or_more`) or around `_read_alternatives`, and each dying at the table's way and at the
+assertion it names: the S4 design's mutants of HP39 and HP40 (`test_table_alternatives_mutant_table.py` holds
+each to the row that stands for it), beside four more the code invites: a kept table and an over-range table
+each refusing the field, a table set aside at step 10 refusing the field for its missing operating value as if
+it reached step 11, and a kept or over-range table's entry given the labels of the first stored alternative,
+which holds the table's stored index: a table stored first shows it nowhere. Of the design's, "kept under
+`want: bounds`" is a step 7 that keeps a table where the request carries an extrapolation its place could
+take, under any `want`, since step 7 reads the extrapolation that applies (`FormRange.extrapolation`), which no
+`want` but `value` gives; "the extrapolation applied under `no_pick`" shows in what the read applied alone,
+outside the result's JSON, which HP39 holds (`check_applied`); and HP40's three die at a table read inside its
+range and moved off it. Every one is searched over its property's own draws: none needs a planned search.
+HP12's part over tables among alternatives searches each but the one of `applied` too, at the way where it
+shows (HP12's tables below).
+
+<!-- kill points of every search of test_table_alternatives_mutants.py::test_the_table_alternatives_mutant_is_killed (scripts/gen_kill_counts.py) -->
+| Mutant | Fault | Killed by | Dies at | Examples |
+|---|---|---|---|---|
+| `an_edge_sets_aside` | a table alternative read at an edge set aside | HP39, refuses | `at_an_edge_inside`, `at_an_edge_outside` | 10, 4 |
+| `an_edge_outside_the_range_sets_aside` | `outside_range` set aside beside `at_edge` | HP39, refuses | `at_an_edge_outside` | 26, 38 |
+| `set_aside_under_a_covering_extrapolation` | `outside_range` set aside where an extrapolation the request carries covers it | HP39, kept or set aside | `kept` | 99, 5 |
+| `kept_without_an_extrapolation` | `outside_range` kept with no extrapolation that covers it | HP39, kept or set aside | `outside`, `kept_under_bounds` | 2, 2 |
+| `kept_under_any_want` | a table kept where the request carries an extrapolation its place could take, under any `want` | HP39, kept or set aside | `kept_under_bounds` | 5, 10 |
+| `kept_refuses` | a table an extrapolation covers refusing the field | HP39, kept or set aside | `kept` | 99, 5 |
+| `over_a_range_sets_aside` | a table read over an operating range of its axis set aside | HP39, kept or set aside | `over_an_operating_range` | 6, 9 |
+| `over_a_range_refuses` | a table read over an operating range of its axis refusing the field | HP39, kept or set aside | `over_an_operating_range` | 6, 9 |
+| `over_a_range_gives` | a table read over an operating range counted as a form `want` can give | HP39, kept or set aside | `over_an_operating_range` | 11, 57 |
+| `request_fault_at_step_11_sets_aside` | no operating value for a table's axis, at step 11, setting the table aside | HP39, refuses | `no_operating_value` | 11, 6 |
+| `request_fault_at_step_11_tagged` | step 11's `request_incomplete` given the table's index | HP39, refuses | `no_operating_value` | 4, 6 |
+| `set_aside_at_step_10_reaches_step_11` | a table set aside at step 10 refusing the field for its missing operating value | HP39, refuses | `no_operating_value_set_aside` | 19, 7 |
+| `kept_entry_its_read` | a kept table's `no_pick` entry its read under the extrapolation: the end value | HP39, kept or set aside | `kept` | 99, 5 |
+| `extrapolation_applied_under_no_pick` | a kept table's extrapolation among what a `no_pick` read applied | HP39, kept or set aside | `kept` | 99, 5 |
+| `over_a_range_entry_without_step_12_labels` | an over-range table's `no_pick` entry with its read's labels, none | HP39, kept or set aside | `over_an_operating_range` | 6, 9 |
+| `entry_labels_of_the_first_alternative` | a kept or over-range table's entry with the first stored alternative's labels | HP39, kept or set aside | `over_an_operating_range`, `kept` | 7, 5 |
+| `kept_unknown_dropped_beside_two_or_more` | a kept table's `unknown` reasons dropped beside `no_pick` or `want_mismatch` | HP39, kept or set aside | `kept` | 99, 5 |
+| `outside_range_refuses` | `outside_range` refusing the field, as every other `not_met` does | HP40 | `inside` | 6, 8 |
+| `narrowed_alternative_kept` | the table moved off its range kept | HP40 | `inside` | 2, 2 |
+| `set_aside_by_its_range_beside_the_one_left` | the reasons of a table set aside by its range reported beside the one left | HP40 | `inside` | 64, 8 |
+
+Two of them are also broken implementations that S4d's case files alone catch, `an_edge_sets_aside` and
+`over_a_range_gives` (`tests/conformance/test_runner_can_fail.py`), and the reference model's step 7 has twelve
+seeded faults of its step-11 rows, each killed by a case file (`tests/reference/README.md`).
 
 ## Audits
 

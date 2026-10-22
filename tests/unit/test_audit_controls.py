@@ -9,9 +9,10 @@ the property whose own draws the search stands in for, by their chances, of S3a'
 drawing its fault, kind or way first, among them the regions of HP13's planned searches, and of S3b-2's HP20
 to HP23, HP21's relation, the monotonicity property over a table, HP12's table part and HP1, HP2 and HP11's
 table reads, each drawing its way or kind first, and the monotonicity property's worlds stated without origin,
-by their chance, and of S3c's HP24 to HP26 and the monotonicity property over an extrapolation, each drawing
-its way first, and that property's worlds stated without origin, by their chance: run at the `ci` profile's
-examples with a generator that
+by their chance, of S3c's HP24 to HP26 and the monotonicity property over an extrapolation, each drawing
+its way first, and that property's worlds stated without origin, by their chance, and of S4d's HP39, the
+others' outcome drawn first and the table's way by its chance, and HP12's part over tables among
+alternatives, its part drawn first: run at the `ci` profile's examples with a generator that
 stops producing one of them, each property fails its audit, on that feature alone; a parametrised property,
 on one of its parameters, by the marks that parameter carries. The controls of the floors held at `deep`
 alone, which run where `deep` runs, are in `tests/property/test_model_deep_floor_controls.py` and use the run
@@ -41,6 +42,7 @@ from tests.property import test_monotonicity_properties as monotonicity_properti
 from tests.property import test_read_properties as read_properties
 from tests.property import test_result_properties as result_properties
 from tests.property import test_slip_properties as slip_properties
+from tests.property import test_table_alternatives_properties as table_alternatives_properties
 from tests.property import test_table_form_properties as table_form_properties
 from tests.property import test_table_read_properties as table_read_properties
 from tests.property import test_value_field_properties as value_field_properties
@@ -439,6 +441,33 @@ CONTROLS = [
         extrapolation_properties.test_an_extrapolation_never_turns_a_read_met,
         "stated_without_origin",
         ("check_monotone",),
+    ),
+    # S4d's: HP39's two parts, each the others' outcome drawn first among S4a's five and the table's way by
+    # its chance; and HP12's part over tables among alternatives, its part drawn first.
+    Control(
+        table_alternatives_properties.test_a_table_alternative_kept_or_set_aside_by_its_range_is_read_as_the_text_says,
+        "no_pick",
+        ("check_table_alternative",),
+    ),
+    Control(
+        table_alternatives_properties.test_a_table_alternative_kept_or_set_aside_by_its_range_is_read_as_the_text_says,
+        "kept",
+        ("check_table_alternative",),
+    ),
+    Control(
+        table_alternatives_properties.test_a_table_alternative_at_an_edge_or_with_no_operating_value_is_read_as_the_text_says,
+        "all_set_aside",
+        ("check_table_alternative",),
+    ),
+    Control(
+        table_alternatives_properties.test_a_table_alternative_at_an_edge_or_with_no_operating_value_is_read_as_the_text_says,
+        "no_operating_value_set_aside",
+        ("check_table_alternative",),
+    ),
+    Control(
+        model_properties.test_the_read_agrees_with_the_model_on_tables_among_alternatives,
+        "refuses",
+        ("check_agreement",),
     ),
 ]
 

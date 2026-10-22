@@ -7,6 +7,7 @@ from hypothesis import given, settings
 
 from tests.conftest import EXAMPLES
 from tests.property import model_strategies as strategies
+from tests.property import table_alternatives_strategies as table_alternatives
 from tests.property import table_read_strategies as table_reads
 from tests.property import test_model_properties as properties
 from tests.property.alternatives_strategies import OUTCOMES
@@ -58,6 +59,9 @@ SHOWN = {
     *table_reads.REQUEST_WAYS,
     table_reads.STATED_WITHOUT_ORIGIN_DRAWN,
     table_reads.UNKNOWN_MEMBER_DRAWN,
+    # S4d's part's parts and the table's ways.
+    *properties.TABLE_ALTERNATIVE_PARTS,
+    *table_alternatives.WAYS,
 }
 
 
@@ -100,10 +104,12 @@ PLANNED_BY_S4A = (
 )
 # S3b-2's planned searches of HP12's table part (`TABLE_PARTS`), each a kind of the part drawn alone.
 PLANNED_BY_S3B2 = tuple(sorted(set(TABLE_PARTS.values())))
+# S4d's planned searches of HP12's part over tables among alternatives, each a way of the table drawn alone.
+PLANNED_BY_S4D = tuple(f"tables among alternatives, {way}" for way in table_alternatives.WAYS)
 
 
 @pytest.mark.parametrize("size", [pytest.param(SMALL, id="small"), pytest.param(ORIGINAL, id="original")])
-@pytest.mark.parametrize("name", [*PLANNED_BY_S4A, *PLANNED_BY_S3B2])
+@pytest.mark.parametrize("name", [*PLANNED_BY_S4A, *PLANNED_BY_S3B2, *PLANNED_BY_S4D])
 def test_a_planned_search_draws_only_reads_the_core_agrees_with_the_model_on(name: str, size: Size) -> None:
     @settings(max_examples=min(EXAMPLES[settings.get_current_profile_name()], MARGIN), deadline=None)
     @given(KILLERS[name](size))

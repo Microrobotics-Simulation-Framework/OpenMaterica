@@ -41,6 +41,7 @@ from tests.conformance.runner import (
     TableEvaluator,
 )
 from tests.property import test_alternatives_mutants as alternatives_mutants
+from tests.property import test_table_alternatives_mutants as table_alternatives_mutants
 from tests.property.support import Searched
 from tests.reference import table_evaluator
 from tests.reference.table_evaluator import REFUSED, Evaluation, Side, Table
@@ -816,6 +817,24 @@ def takes_the_first_stored_unit(monkeypatch: pytest.MonkeyPatch) -> Executor:
     return EXECUTORS["read"]
 
 
+# S4d's step 7 over a table alternative's reasons at step 11, the S4 cases plan's two broken readers, each
+# fault one of S4d's mutants.
+
+
+def sets_an_edge_aside(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    replaced = table_alternatives_mutants._an_edge_sets_aside  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_standing_at_step_11", replaced)
+    return EXECUTORS["read"]
+
+
+def counts_a_read_over_a_range_as_giving(monkeypatch: pytest.MonkeyPatch) -> Executor:
+    """`no_pick` where two or more stay and none has a form `want` can give, a table read over an operating
+    range of its axis counted as one."""
+    replaced = table_alternatives_mutants._over_a_range_gives  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(read, "_gives", replaced)
+    return EXECUTORS["read"]
+
+
 def _without(value: JsonValue, removed: str) -> JsonValue:
     if isinstance(value, list):
         return [_without(item, removed) for item in value]
@@ -910,7 +929,11 @@ FAULTS: list[tuple[Fault, str]] = [
     (drops_the_waiting_reasons_where_refused, "PR-044.refused_reports_waiting_want_mismatch.json"),
     (counts_an_index_among_those_that_stay, "PR-013.index_past_set_aside_and_unknown_reasons.json"),
     (takes_the_first_stored_unit, "PR-013.evidence_unit_of_the_first_that_stays.json"),
+    (sets_an_edge_aside, "PR-044.at_edge_under_extrapolation_refuses.json"),
+    (counts_a_read_over_a_range_as_giving, "PR-013.two_tables_over_operating_range_want_mismatch.json"),
 ]
+# S4d's broken readers fail S4d's case files alone: each pins a rule no earlier piece's case file reads.
+S4D_FAULTS = (sets_an_edge_aside, counts_a_read_over_a_range_as_giving)
 
 
 # Broken evaluators of a table, one fault each: the S3 design's section 6.4, and those the suite's README
@@ -1341,6 +1364,16 @@ def test_a_broken_implementation_fails_a_real_case(
     case_file = CASE_FILES[catcher]
     executors = {**EXECUTORS, case_file.operation: fault(monkeypatch)}
     assert runner.run(case_file, configurations=CONFIGURATIONS, executors=executors).outcome is Outcome.FAILED
+
+
+@pytest.mark.parametrize("fault", S4D_FAULTS, ids=[fault.__name__ for fault in S4D_FAULTS])
+def test_s4ds_broken_readers_fail_s4ds_case_files_alone(
+    fault: Fault, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    s4d = {name for name, case_file in CASE_FILES.items() if runner.steps(case_file) == ("S4d",)}
+    failed = failed_cases("read", fault(monkeypatch))
+    assert failed, fault.__name__
+    assert failed <= s4d, sorted(failed - s4d)
 
 
 @pytest.mark.parametrize("operation", sorted(EXECUTORS))

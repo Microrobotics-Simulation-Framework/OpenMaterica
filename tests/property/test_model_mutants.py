@@ -33,10 +33,12 @@ from tests.property import test_condition_mutants as condition_mutants
 from tests.property import test_invariance_mutants as invariance_mutants
 from tests.property import test_model_properties as properties
 from tests.property import test_result_mutants as result_mutants
+from tests.property import test_table_alternatives_mutants as table_alternatives_mutants
 from tests.property import test_table_read_mutants as table_read_mutants
 from tests.property import test_value_field_mutants as value_field_mutants
 from tests.property.model_strategies import Example
 from tests.property.strategies import ORIGINAL, SMALL, Size
+from tests.property.table_alternatives_strategies import INSIDE, WAYS
 from tests.property.test_condition_mutants import kill
 from tests.property.test_mutants import setting
 from tests.reference.mutants import MUTANTS as MODEL_FAULTS
@@ -117,6 +119,15 @@ KILLERS: dict[str, Callable[[Size], st.SearchStrategy[Example]]] = {
     "tables' statistics": lambda size: properties.tables_read(size, ("table_statistics",)),
     "tables' requests": lambda size: properties.tables_read(size, ("table_request",)),
 }
+
+
+# Planned searches of S4d's part, tables among alternatives, each drawing one of the table's ways alone, where
+# the mutants of step 7's rows for it show.
+def tables_among_alternatives_at(way: str) -> Callable[[Size], st.SearchStrategy[Example]]:
+    return lambda size: properties.tables_among_alternatives(size, (way,))
+
+
+KILLERS.update({f"tables among alternatives, {way}": tables_among_alternatives_at(way) for way in WAYS})
 
 
 class Mutant(NamedTuple):
@@ -304,14 +315,26 @@ TABLE_PARTS: dict[str, str] = {
 # draws across the range, and a `source_range`'s widening, show outside a narrower `source_range` as well,
 # which the relation and the monotonicity property do not draw.
 OUTSIDE = ("one_double_outside", "far_outside", "outside_a_narrower_source_range")
-# The table read mutants whose fault shows in step 11's report alone, which no result holds until S3c and S4d
-# read it: HP12 compares results, so its table part cannot search them; HP20 kills each, across an edge.
+# The table read mutants whose fault shows in step 11's report alone, which a result holds only where an
+# extrapolation the request carries meets an edge on the readable range's end (S3c's step 11 and S4d's step
+# 7): HP12's table part draws no extrapolation, and its part over tables among alternatives draws them at
+# places across no edge, so HP12 cannot search them; HP20 kills each, across an edge, and HP24 in a result.
 REPORT_ALONE = frozenset({"an_edge_on_the_lower_end_not_across", "an_edge_on_the_upper_end_not_across"})
 WHERE_THE_TABLE_PART_SHOWS: dict[str, tuple[str, ...]] = {
     "the_tolerance_widens_the_range": OUTSIDE,
     "monotone_the_tolerance_widens_the_range": OUTSIDE,
     "monotone_source_range_widening": OUTSIDE,
 }
+
+
+# S4d's mutant whose fault shows in a read's `applied` alone, which no result's JSON holds: HP39 kills it.
+APPLIED_ALONE = frozenset({"extrapolation_applied_under_no_pick"})
+
+
+def searched_at(ways: tuple[str, ...]) -> str:
+    """The way of S4d's part a planned search draws for a mutant that shows at `ways`: the first, or, for
+    HP40's (`inside`), a table outside its range."""
+    return "outside" if ways == (INSIDE,) else ways[0]
 
 
 IMPLEMENTATION = [
@@ -570,6 +593,20 @@ IMPLEMENTATION = [
         for mutant in table_read_mutants.MUTANTS
         if mutant.name not in REPORT_ALONE
     ),
+    # S4d's mutants of step 7 over a table alternative's reasons at step 11, each searched as a planned search
+    # of the way it shows at; HP40's, which a table whose range was moved off the operating value shows, at a
+    # table outside its range, where each shows as well. But the one whose fault shows in what the read
+    # applied alone, outside the result's JSON, which HP12 compares (`APPLIED_ALONE`).
+    *(
+        Mutant(
+            mutant.name,
+            f"tables among alternatives, {searched_at(mutant.dies_at)}",
+            mutant.inject,
+            (searched_at(mutant.dies_at),),
+        )
+        for mutant in table_alternatives_mutants.MUTANTS
+        if mutant.name not in APPLIED_ALONE
+    ),
     # A read step 11 refused goes on to step 12 (S3b-2's review): searched where every read is refused at
     # step 11, among tables' requests, and dying where the field is stated without origin, a region the table
     # part draws beside the way (`table_read_strategies.table_reads`).
@@ -685,6 +722,22 @@ MODEL = [
     # among tables' statistics, whose reads give a value and the table it is read from at a knot or between
     # two, and dying where the table holds such a member, a region the table part draws beside the way.
     ModelFault("table_returned_whole", "tables' statistics", (table_reads.UNKNOWN_MEMBER_DRAWN,)),
+    # S4d's: the three of its faults one case file alone kills, each searched at the way where it shows.
+    ModelFault(
+        "set_aside_alternative_reaches_step_11",
+        "tables among alternatives, no_operating_value_set_aside",
+        ("no_operating_value_set_aside",),
+    ),
+    ModelFault(
+        "over_a_range_entry_unlabelled",
+        "tables among alternatives, over_an_operating_range",
+        ("over_an_operating_range",),
+    ),
+    ModelFault(
+        "kept_for_an_extrapolation_under_any_want",
+        "tables among alternatives, kept_under_bounds",
+        ("kept_under_bounds",),
+    ),
 ]
 
 

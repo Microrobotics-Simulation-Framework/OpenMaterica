@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """(12) The S2 design's HP12: the read agrees with the test-only reference model (`tests/reference/
 read_model.py`), which is written from the text and imports nothing from `materica`, over reads drawn across
-every step S2 builds (`model_strategies.py`), in five parts that run side by side.
+every step S2 builds (`model_strategies.py`), in five parts that run side by side, and over S3b-2's table
+reads and S4d's tables among alternatives, in a part each.
 
 Both are given the same sources, the same request text and the same claims. They agree where both give a
 result and the two results are equal as `read_side_contract.md` section 2 compares them: the status, the
@@ -35,6 +36,7 @@ from hypothesis import strategies as st
 from materica.core.read import read
 from materica.core.record import RecordStore
 from tests.property import model_strategies as strategies
+from tests.property import table_alternatives_strategies as table_alternatives
 from tests.property import table_read_strategies as table_reads
 from tests.property.model_strategies import Example
 from tests.property.strategies import SIZE, Size
@@ -528,4 +530,37 @@ def tables_read(draw: st.DrawFn, size: Size = SIZE, kinds: tuple[str, ...] = TAB
 @pytest.mark.drawn(*TABLE_KINDS)
 @given(tables_read())
 def test_the_read_agrees_with_the_model_on_tables(example: Example) -> None:
+    checked(example, example.kind)
+
+
+# S4d's part: a table among alternatives whose read gives a reason at step 11
+# (`table_alternatives_strategies.py`), its part drawn first, of HP39's two (`KEPT_OR_SET_ASIDE`, `REFUSES`),
+# then, as HP39 draws them, the others' outcome among S4a's five and the table's way among the part's four,
+# each by chance; the example plants the way and the others' outcome, so that a planned search of a way names
+# it.
+TABLE_ALTERNATIVE_PARTS: dict[str, tuple[str, ...]] = {
+    "kept_or_set_aside": table_alternatives.KEPT_OR_SET_ASIDE,
+    "refuses": table_alternatives.REFUSES,
+}
+
+
+@st.composite
+def tables_among_alternatives(
+    draw: st.DrawFn, size: Size = SIZE, ways: tuple[str, ...] | None = None
+) -> Example:
+    """A part drawn first, then the table's way among its ways; or, for a planned search, among `ways`."""
+    part = draw(st.sampled_from(sorted(TABLE_ALTERNATIVE_PARTS)))
+    drawn = draw(table_alternatives.table_alternatives(size, ways or TABLE_ALTERNATIVE_PARTS[part]))
+    return Example(
+        part,
+        (json.dumps(drawn.drawn.record).encode(),),
+        json.dumps(drawn.drawn.request).encode(),
+        drawn.drawn.claims,
+        (drawn.way, drawn.others),
+    )
+
+
+@pytest.mark.drawn(*TABLE_ALTERNATIVE_PARTS)
+@given(tables_among_alternatives())
+def test_the_read_agrees_with_the_model_on_tables_among_alternatives(example: Example) -> None:
     checked(example, example.kind)
