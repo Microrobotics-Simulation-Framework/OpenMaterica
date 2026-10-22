@@ -8,7 +8,8 @@ finds the field (step 7, `fields.find_field`), and reads it (`read_value_field`)
 readable range and edges, and the two request checks that need the form, through `evaluate`), its origin and
 labels (step 12) and its value by `want` (step 13), and gives a `ReadResult`. A field holding alternatives
 is read at step 7 with no pick and no overlay (S4a): each alternative read alone, as a field, then set aside,
-kept or refusing the field, and the outcome the first that applies (`_read_alternatives`).
+kept or refusing the field, a table alternative by its reasons at step 11 too (S4d), and the outcome the first
+that applies (`_read_alternatives`).
 
 Of a request's acceptances, a read applies three (`declarations.md` section 4.1): an implied condition at
 step 10; a nominal at step 13, which supplies the value of an interval under `want: value`; and an
@@ -17,10 +18,10 @@ across none, so that the read goes on to steps 12 and 13 and the result carries 
 range's nearest end with its `assumption` (section 5, "The form's range"). Step 0 refuses an acceptance of a
 kind a read does not take.
 
-Overlays (step 6), picks and step 7's rules for a table alternative whose read gives a reason at step 11 are
-not built yet. A read that would need one raises `NotImplementedError`, and so does a request whose answer a
-check still to come could change, whatever else is wrong with it: one with a region target, or a pick or an
-overlay among its acceptances. It raises rather than give an answer a later step would contradict.
+Overlays (step 6) and picks are not built yet. A read that would need one raises `NotImplementedError`, and so
+does a request whose answer a check still to come could change, whatever else is wrong with it: one with a
+region target, or a pick or an overlay among its acceptances. It raises rather than give an answer a later
+step would contradict.
 
 A result returns from a record the members the reader's version defines, each as stored and copied (section 2
 item 5; the code design's rule 6): which members those are is read from the generated shapes, so that a
@@ -366,8 +367,10 @@ class FieldRead:
     alternative aside, and `request_fault` that step 10 or step 11 ended on a fault of the request (section 1:
     two implied conditions that disagree, or no operating value for a table's axis), which refuses a field
     holding alternatives whichever alternative found it. `form_range` is a table's step 11, where it gave a
-    reason, which ends the read but where an extrapolation covers it. The other members are those a read
-    returns, once step 8 has passed, as stored and copied: the form's member (`member`); the value as `want`
+    reason, which ends the read but where an extrapolation covers it, and by which step 7 sets a table
+    alternative aside, keeps it or refuses the field. The other members are those a read returns, once step 8
+    has passed, as stored and copied, held too by a table's read that step 11 ended over an operating range of
+    its axis, for its entry under `no_pick`: the form's member (`member`); the value as `want`
     shapes it, or as a nominal supplies it, or a table's end value under an extrapolation, with its
     `assumption`, where it can (`value`); the unit, the specimen facts, the statistics block (none for
     evidence) and the provenance; the table the value is read from (`table`); and the labels step 12 adds.
@@ -595,13 +598,20 @@ def read_value_field(
     # have none (section 5).
     ranged = None if table is None else form_range(table, request)
     if ranged is not None and ranged.reasons and ranged.extrapolation is None:
-        return FieldRead(
+        ended = FieldRead(
             merged((*found, *ranged.reasons)),
             checked.entries,
             checked.applied,
             request_fault=ranged.request_fault,
             form_range=ranged,
         )
+        if not ranged.over_a_range:
+            return ended
+        # Section 3, step 7: a table read over an operating range of its axis stays, and under `no_pick` its
+        # entry holds "its form's member as stored", its other members "as this table gives them for a read
+        # of that alternative alone" (section 2, the `alternative_values` row): what a read returns beside a
+        # value, held for that entry, though a read that step 11 ends returns none of it (item 3).
+        return _beside_the_value(ended, field, value, form, _form_member(value, form))
     # Section 3: "except step 11's `outside_range` under an extrapolation that applies (section 5), after
     # which the read goes on to steps 12 and 13"; section 5: "the result stays `not_met`, its reasons kept".
     extrapolation = None if ranged is None else ranged.extrapolation
@@ -609,8 +619,7 @@ def read_value_field(
         found += ranged.reasons
     provenance = an_object(value["provenance"])
     found += _origin(provenance, field.spec.name)
-    hints = _FIELD_HINTS[form]
-    member = _counted_member(_returned(value[FORM_MEMBERS[form]], hints[FORM_MEMBERS[form]]))
+    member = _form_member(value, form)
     mismatch = _by_want(value, field.spec.name, form, request.want)
     supplied = None
     if mismatch is not None and nominal is not None and form == "interval" and request.want == "value":
@@ -621,24 +630,42 @@ def read_value_field(
     # the table it is read from (section 2, the `table` row); under an extrapolation, "the value at the
     # range's nearest end, taken from inside the range" (section 5).
     given = member if ranged is None else ranged.value
-    return FieldRead(
+    read_to_the_end = FieldRead(
         merged(found),
         checked.entries,
         applied,
         form_range=ranged if extrapolation is not None else None,
         want_mismatch=mismatch,
-        member=member,
         value=_value(given, mismatch, supplied),
         assumption=None if rests_on is None else rests_on.assumption(),
+        labels=_labels(value, provenance),
+        table=cast(JsonObject, member) if ranged is not None and mismatch is None else None,
+    )
+    return _beside_the_value(read_to_the_end, field, value, form, member)
+
+
+def _form_member(value: JsonObject, form: str) -> JsonValue:
+    """The form's own member of a value field step 8 passed, as returned: as stored and copied, the counts of
+    a composition component's statistics block as integers."""
+    return _counted_member(_returned(value[FORM_MEMBERS[form]], _FIELD_HINTS[form][FORM_MEMBERS[form]]))
+
+
+def _beside_the_value(
+    read: FieldRead, field: RecordField, value: JsonObject, form: str, member: JsonValue
+) -> FieldRead:
+    """`read` holding what a read returns of `field` beside its value, once step 8 has passed, each as stored
+    and copied: the form's own `member`, the unit, the specimen facts, the statistics block (evidence has
+    none, section 2 item 6) and the provenance."""
+    hints = _FIELD_HINTS[form]
+    return dataclasses.replace(
+        read,
+        member=member,
         unit=_returned(value["unit"], shapes.Unit),
         specimen=cast(JsonObject, _returned(field.specimen(), shapes.Specimen)),
-        # Evidence has no statistics (section 2 item 6).
         statistics=cast(JsonObject, _returned(value["statistics"], hints["statistics"]))
         if "statistics" in hints
         else None,
-        provenance=ProvenanceSummary.of(provenance),
-        labels=_labels(value, provenance),
-        table=cast(JsonObject, member) if ranged is not None and mismatch is None else None,
+        provenance=ProvenanceSummary.of(an_object(value["provenance"])),
     )
 
 
@@ -649,13 +676,13 @@ class FormRange:
     where an extrapolation covers them, and the table's number (`value`): at the operating value where it
     gives none, and, where an extrapolation covers its `outside_range`, the value at the readable range's
     nearest end, taken from inside the range. Beside its reasons it reports what step 7's rules for a table
-    alternative read (section 3, step 7), which a later piece builds: `request_fault`, the request gave no
-    operating value for the axis; `over_a_range`, it gave a range of it; `outside_alone`, `outside_range`
-    stands without `at_edge`; `coverable`, an extrapolation that applies to the read could cover that
-    `outside_range` (section 5): outside the readable range, at no declared edge and across none, so that the
-    range's nearest end, on the operating value's side of every edge, has a value to start from; and
-    `extrapolation`, the one the request carries that covers it, "a declared extrapolation that applies to the
-    read" under `want: value`, where `coverable`."""
+    alternative read (section 3, step 7; `_standing`): `request_fault`, the request gave no operating value
+    for the axis; `over_a_range`, it gave a range of it; `outside_alone`, `outside_range` stands without
+    `at_edge`; `coverable`, an extrapolation that applies to the read could cover that `outside_range`
+    (section 5): outside the readable range, at no declared edge and across none, so that the range's nearest
+    end, on the operating value's side of every edge, has a value to start from; and `extrapolation`, the one
+    the request carries that covers it, "a declared extrapolation that applies to the read" under `want:
+    value`, where `coverable`."""
 
     reasons: tuple[Reason, ...] = ()
     value: float | None = None
@@ -816,8 +843,8 @@ def _read_alternatives(
     by steps 8 to 13, `nominal` applied at step 13 where it applies to the read; each then refuses the field,
     is set aside or stays (`_standing`), and the result is the first outcome that applies: a refusal, or every
     alternative set aside; the one left; `want_mismatch` where none that stays has a form `want` can give;
-    otherwise `no_pick`. A pick and an overlay raise at step 0, and so does a table alternative whose read
-    gives a reason at step 11, so no alternative here is set aside or kept by its range."""
+    otherwise `no_pick`, each alternative that stays an entry of `alternative_values` (`_entry`). A pick and
+    an overlay raise at step 0."""
     holder = an_object(field.value)
     shape = alternatives_problems(holder, field.spec.name)
     if shape:
@@ -832,16 +859,12 @@ def _read_alternatives(
         )
         for index, alternative in enumerate(stored)
     ]
-    if any(read.form_range is not None for read in reads):
-        # Section 3, step 7 sets aside, keeps or refuses on a table alternative's step-11 reasons
-        # (`outside_range` alone, kept for an extrapolation, `at_edge`, a read over an operating range of the
-        # axis, no operating value for it): rules a later piece builds.
-        raise NotImplementedError("step 7 over a table alternative's reason at step 11 is S4d's")
     standings: list[Standing] = [_standing(read) for read in reads]
     staying = [read for read, standing in zip(reads, standings, strict=True) if standing == "stays"]
     if "refuses" in standings or not staying:
         return _refused(merged(_reported_where_refused(reads)), labels)
     if len(staying) == 1:
+        # "The extrapolation is applied only where that alternative is the one left": its read is the result.
         (left,) = staying
         return _resting_on(left, _reported_of_the_one_left(left), labels)
     standing_beside = _reported_beside_two_or_more(staying)
@@ -856,7 +879,8 @@ def _read_alternatives(
     reasons = merged((no_pick, *standing_beside))
     # Under `no_pick` "the result holds none" of `unit`: "each `alternative_values` entry holds its own
     # alternative's unit, as stored" (section 2, the `unit` row).
-    return ReadResult(_status(reasons), reasons, labels, alternative_values=tuple(staying))
+    entries = tuple(_entry(read, stored) for read in staying)
+    return ReadResult(_status(reasons), reasons, labels, alternative_values=entries)
 
 
 # How an alternative stands, and what each outcome reports of the alternatives' reasons (section 3, step 7),
@@ -886,15 +910,19 @@ def _reported_beside_two_or_more(staying: Sequence[FieldRead]) -> tuple[Reason, 
 
 def _standing(read: FieldRead) -> Standing:
     """Whether one alternative's read refuses the field, sets it aside or leaves it standing (section 3, step
-    7), as far as the forms read so far reach: a table alternative whose read gives a reason at step 11 waits
-    for a later piece (`_read_alternatives` raises before this)."""
+    7), by the step that ended it: the request's fault at step 10 or 11; its conditions at step 10; a table's
+    reason at step 11 (`_standing_at_step_11`); steps 8 and 9; or none, its read reaching step 13."""
     if read.request_fault:
-        # "So does a fault of the request (section 1)"
+        # "So does a fault of the request (section 1): an alternative whose read reaches step 11 with no
+        # operating value for its form's axis refuses the field", as two implied conditions that disagree at
+        # step 10 do.
         return "refuses"
     if read.conditions_not_met:
         # "An alternative is set aside where its conditions, the form's own axis entry aside (section 5), give
         # `not_met` at step 10"
         return "set_aside"
+    if read.form_range is not None:
+        return _standing_at_step_11(read)
     if _ends(list(read.reasons)):
         # "Every other `not_met` in an alternative's read refuses the field": steps 8 and 9 end the read.
         return "refuses"
@@ -902,10 +930,48 @@ def _standing(read: FieldRead) -> Standing:
     return "stays"
 
 
+def _standing_at_step_11(read: FieldRead) -> Standing:
+    """How a table alternative stands whose read gave a reason at step 11 that is no fault of the request
+    (section 3, step 7; `record_format.md` section 5 items 2 to 4): set aside outside its readable range, kept
+    for an extrapolation, staying over an operating range of its axis, refusing at an edge."""
+    if _set_aside_by_its_range(read):
+        return "set_aside"
+    if _kept_by_an_extrapolation(read) or _read_over_an_operating_range(read):
+        # "These stay: ... one that an extrapolation the request carries would cover, since a pick would let
+        # the extrapolation apply; and one whose form `want` cannot give (... or a table read over an
+        # operating range of its axis, say)"
+        return "stays"
+    # `at_edge` alone or beside `outside_range`: "A table alternative read exactly at a declared edge refuses
+    # the field, wherever the edge lies, outside the readable range included."
+    return "refuses"
+
+
+def _set_aside_by_its_range(read: FieldRead) -> bool:
+    """Section 3, step 7: "An alternative is set aside where its read lies outside its form's range at step
+    11, not exactly at a declared edge, and no extrapolation the request carries would cover it (section 5)":
+    `outside_range` without `at_edge`, with no extrapolation that applies to the read covering it, as none
+    does under a `want` other than `value` or across a declared edge."""
+    ranged = read.form_range
+    return ranged is not None and ranged.outside_alone and ranged.extrapolation is None
+
+
+def _kept_by_an_extrapolation(read: FieldRead) -> bool:
+    """A table alternative read outside its readable range that an extrapolation the request carries covers,
+    which "is read on through steps 12 and 13, as a field is" (section 3, step 7)."""
+    return read.form_range is not None and read.form_range.extrapolation is not None
+
+
+def _read_over_an_operating_range(read: FieldRead) -> bool:
+    """A table alternative read over an operating range of its axis, whose read step 11 ends with
+    `want_mismatch` (section 1)."""
+    return read.form_range is not None and read.form_range.over_a_range
+
+
 def _found_reading(read: FieldRead) -> tuple[Reason, ...]:
     """Every reason of one alternative's read, each carrying the alternative's index, but a fault of the
     request, which carries none (section 2 item 2): in an alternative's read only `request_incomplete` is one,
-    from step 10's two implied conditions that disagree (section 1; section 4, the code's steps)."""
+    from step 10's two implied conditions that disagree and step 11's missing operating value for a table's
+    axis (section 1: "This fault, like step 11's `request_incomplete`, is the request's")."""
     assert read.alternative is not None
     of_the_request = tuple(reason for reason in read.found if reason.code == "request_incomplete")
     own = (reason for reason in read.found if reason.code != "request_incomplete")
@@ -915,10 +981,34 @@ def _found_reading(read: FieldRead) -> tuple[Reason, ...]:
 def _gives(read: FieldRead, stored: list[JsonValue], want: Want, nominal: Nominal | None) -> bool:
     """Whether `want` can give the form of an alternative that stays: step 13 found nothing, or the form is an
     interval under `want: value` beside a nominal that applies to the read, "since a pick would let it apply"
-    (section 3, step 7)."""
+    (section 3, step 7); never a table read over an operating range of its axis, which "counts as a form
+    `want` cannot give"."""
     assert read.alternative is not None
+    if _read_over_an_operating_range(read):
+        return False
     return read.want_mismatch is None or (
         nominal is not None and want == "value" and _is_interval(stored[read.alternative])
+    )
+
+
+def _entry(read: FieldRead, stored: list[JsonValue]) -> FieldRead:
+    """The `alternative_values` entry of an alternative that stays under `no_pick` (section 2, the
+    `alternative_values` row): its read, except that "where the alternative is kept outside its form's range
+    or is a table read over an operating range of its axis, the entry holds its form's member as stored
+    instead, with no nominal or extrapolation applied", so neither the end value, nor the `assumption`, nor
+    the extrapolation among what was applied; and that "its `labels` are those step 12 gives that alternative
+    even where its read ended at step 11", read from the alternative as stored."""
+    assert read.alternative is not None
+    if read.form_range is None:
+        return read
+    alternative = an_object(stored[read.alternative])
+    return dataclasses.replace(
+        read,
+        value=read.member,
+        assumption=None,
+        applied=(),
+        table=None,
+        labels=_labels(alternative, an_object(alternative["provenance"])),
     )
 
 

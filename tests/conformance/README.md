@@ -18,8 +18,9 @@ gets one outcome, decided in this order:
 
 1. **not yet runnable**: no executor exists for its operation (`EXECUTORS` in `runner.py`), or a step of the
    implementation its arm needs is not done: `tests/spec_sync/case_steps.json` maps each case file to the step
-   whose code first runs it (S2 and S3 in their pieces, `S2a-1` to `S2b-2` and `S3-te` to `S3c`, then `S4`,
-   or a list of pieces where their order is not fixed), and lists the steps done;
+   whose code first runs it (S2 and S3 in their pieces, `S2a-1` to `S2b-2` and `S3-te` to `S3c`, S4's built
+   pieces, `S4a` and `S4d`, then `S4` for the rest, or a list of pieces where their order is not fixed), and
+   lists the steps done;
 2. **not run**: no configuration claims its suite and agrees with its `claims`;
 3. **passed**, **verified** or **failed**: each result compared with `expected`; it fails if one run fails,
    and says under which claims. An executor that raises fails the case, as no read may raise (PR-300). A TE
@@ -45,7 +46,8 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | S3b-2's reads of a table to the end: steps 10 to 13, its readable range and edges, its axis entry, its value, statistics and labels, and among alternatives where none gives a reason at step 11, the result's `table`, a read step 11 ends before step 12, and a table's unknown member left out beside its value (plain read) | 75 | run, passed |
 | S3c's reads under an extrapolation: its shape at step 0, two naming one field, where it applies and where not (another field or location, another `want`, inside the range, at or across an edge, a constant), and a read it covers to the end, with the value at the readable range's nearest end, its `assumption` and the table it is read from (plain read) | 46 | run, passed |
 | S4a's reads over alternatives with no pick and no overlay: each alternative set aside, kept or refusing the field, and the outcome (plain read) | 24 | run, passed |
-| reads S4's later pieces run (plain read): over alternatives with a pick or a table, or through an overlay | 134 | not yet runnable: S4, which runs each, is not done |
+| S4d's reads over alternatives where a table alternative's read gives a reason at step 11: set aside outside its readable range, kept for an extrapolation, staying over an operating range of its axis, refusing the field at an edge or with no operating value for its axis, and the outcome; and one ending at step 8 on a table's `points` (plain read) | 25 | run, passed |
+| reads S4's later pieces run (plain read): over alternatives with a pick, or through an overlay | 109 | not yet runnable: S4, which runs each, is not done |
 | `evaluate` (TE-002 to TE-012) | 35 | run, verified against the reference evaluator under each of its four configurations |
 | record checks (`check`: RC-031, RC-032, RC-220 to RC-226) and `quote_sha256` (RC-033's vectors) | 164 and 13 | not yet runnable: no executor; C2, with S5's record checks, adds them |
 
@@ -62,7 +64,8 @@ holding the other kind's member (`PR-045.numeric_condition_holding_token`,
 `PR-301.other_kind_beside_unknown_basis`) are S2a-2's, whose step 8 checks a condition's shape: it ignored each
 member until that ruling (2026-10-19), and refuses it since. `PR-308.table_set_aside_never_reaches_step_11`,
 whose table alternative step 10 sets aside, is S3b-2's: it needs no rule of step 7's over a table's reasons at
-step 11, which S4 builds.
+step 11, which S4d builds. `PR-044.refused_points_unsupported`, a table alternative step 8 refuses, needs none
+either, and is S4d's, as the S4 cases left it.
 
 Of the 1517 case files, 1270 agree with plain read and the hash suite, 1212 with plain read alone, and 1270
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference

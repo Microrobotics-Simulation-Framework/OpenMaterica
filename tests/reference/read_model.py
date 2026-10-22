@@ -12,12 +12,11 @@ table's value from the reference evaluator's `exact` mode (`table_evaluator.py`)
 nominals and extrapolations, an extrapolation covering a table's `outside_range` at step 11 under `want:
 value` with the value at the readable range's nearest end; step 7 over alternatives read with no pick and no
 overlay (S4a): the shape of `alternatives`, each alternative read alone and set aside, kept or refusing the
-field, and the outcome with its reasons and members; and the operations `list_records` and `content_hash`.
+field, a table alternative whose read gives a reason at step 11 or that an extrapolation covers among them
+(S4d), and the outcome with its reasons and members; and the operations `list_records` and `content_hash`.
 
 **What it does not.** Everything else gives `NoVerdict`, a distinct outcome a test counts and never reads as
-a pass: a table alternative whose read gives a reason at step 11, one an extrapolation covers included (open
-point `table_alternatives_at_step_11`), a pick, an overlay, a region target, and `want: fit` on a field
-holding a fit record.
+a pass: a pick, an overlay, a region target, and `want: fit` on a field holding a fit record.
 
 **Where the text is silent.** The model takes the maintainer's ruling where there is one, else the fail-closed
 choice. Each such point is listed once in `OPEN_POINTS`, and named where it is applied ("Open point: <name>").
@@ -50,17 +49,9 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "of `alternatives`, each alternative of a form it reads read alone by steps 8 to 13, set aside, "
         "kept or refusing the field, and the outcome, its reasons and members. A pick or an overlay in the "
         "request gives no verdict at step 0; a table alternative is read as a field, and one that steps 8 "
-        "or 9 refuse refuses the field, one step 10 sets aside is set aside, and one read to step 13 stays "
-        "or refuses as any form's"
-    ),
-    "table_alternatives_at_step_11": (
-        "a table alternative whose read gives a reason at step 11 (`outside_range`, an extrapolation "
-        "covering it or not, `at_edge`, `want_mismatch` over an operating range of its axis, or "
-        "`request_incomplete` with no operating value for it) gives no verdict, wherever it stands among "
-        "the others, since every alternative is "
-        "read before the outcome is decided: the text decides those arms (`read_side_contract.md` section 3, "
-        "step 7: set aside, kept for an extrapolation, kept over an operating range, refusing at an edge or "
-        "for the request's fault), and a later piece (S4d) builds them, as the read raises there"
+        "or 9 refuse refuses the field, one step 10 sets aside is set aside, one step 11 ends or an "
+        "extrapolation covers is set aside, kept or refusing by the text's rows of step 7 (S4d), and one "
+        "read to step 13 stays or refuses as any form's"
     ),
     "evidence_entry_provenance": (
         "an evidence entry's `provenance` is returned holding, below the provenance table's own members, "
@@ -2885,6 +2876,7 @@ def read_the_table(read: "FieldRead", table: JsonObject, request: Request) -> fl
         # `want_mismatch`" ... "and no other reason of that step, since no point is read"
         read.own.add("want_mismatch", axis)
         read.ended_at = 11
+        read.over_a_range = True
         return None
     point = operating["value"]
     assert number(point)
@@ -2964,13 +2956,15 @@ class FieldRead:
     by_request: Reasons = field(default_factory=Reasons)  # step 10's `request_incomplete`, the request's
     ended_at: int | None = None  # the step whose `not_met` ended the read, None where it reached step 13
     covered: JsonObject | None = None  # the assumption of an extrapolation that covered step 11's reason
+    over_a_range: bool = False  # a table read over an operating range of its axis, which step 11 ends
     form: str | None = None
     conditions: list[JsonValue] | None = None
-    labels: list[str] = field(default_factory=list[str])
+    labels: list[str] = field(default_factory=list[str])  # the result's, once step 12 has run
     # what a result returns from the field: `unit`, `specimen`, `provenance`, `statistics` and `value` or
     # none, and `table` beside a value read from a table
     members: JsonObject = field(default_factory=dict[str, JsonValue])
     stored: JsonValue = None  # the form's member as stored, for an `alternative_values` entry
+    entry_labels: list[str] = field(default_factory=list[str])  # step 12's, for an `alternative_values` entry
 
     @property
     def reasons(self) -> Reasons:
@@ -3019,6 +3013,12 @@ def read_value_field(
         table = field_value["table"]
         assert isinstance(table, dict)
         point = read_the_table(read, table, request)
+        if read.over_a_range:
+            # read_side_contract.md:122 "or is a table read over an operating range of its axis, the entry
+            # holds its form's member as stored instead" ... "except that its `labels` are those step 12
+            # gives that alternative even where its read ended at step 11, as a table read over an operating
+            # range of its axis does": what an entry holds, though the read ends here
+            returned_from_the_field(read, field_value, specimen)
         if read.ended_at is not None:
             return read
     provenance = field_value["provenance"]
@@ -3026,7 +3026,19 @@ def read_value_field(
     # read_side_contract.md:351 "Give `unknown` for a value stated without origin (`stated_without_origin`)"
     if provenance["origin"] == "stated_without_origin":
         read.own.add("stated_without_origin")
-    read.labels = step_12_labels(field_value, provenance)
+    returned_from_the_field(read, field_value, specimen)
+    read.labels = list(read.entry_labels)
+    shape_by_want(read, field_value, request, nominal, point)
+    return read
+
+
+def returned_from_the_field(read: FieldRead, field_value: JsonObject, specimen: JsonObject) -> None:
+    """What a result, or an `alternative_values` entry, returns from the field beside its value: its form's
+    member as stored, `unit`, `specimen`, `provenance` and `statistics`, and the labels step 12 gives it."""
+    assert read.form is not None
+    provenance = field_value["provenance"]
+    assert isinstance(provenance, dict)
+    read.entry_labels = step_12_labels(field_value, provenance)
     read.stored = form_member_returned(read.form, field_value[FORM_MEMBERS[read.form]])
     read.members = {
         "unit": unit_returned(field_value["unit"]),
@@ -3036,8 +3048,6 @@ def read_value_field(
     if read.form != "evidence":
         # uncertainty.md:61-62 "A block on a table or a power law applies to every value the form gives"
         read.members["statistics"] = block_returned(field_value["statistics"])
-    shape_by_want(read, field_value, request, nominal, point)
-    return read
 
 
 def step_12_labels(field_value: JsonObject, provenance: JsonObject) -> list[str]:
@@ -3248,14 +3258,7 @@ def read_alternatives(
         reasons.extend(reasons_of_alternative(reads[left], left))
         return field_result(reasons, labels, reads[left])
     reasons.extend(reasons_beside_two_or_more(reads, staying))
-    can_give = [
-        index
-        for index in staying
-        if (reads[index].form in GIVES.get(request.want, ()))
-        # read_side_contract.md:280-281 "An interval counts as one `want: value` can give where a nominal the
-        # request carries applies to the read"
-        or (reads[index].form == "interval" and request.want == "value" and request.nominal is not None)
-    ]
+    can_give = [index for index in staying if form_want_gives(reads[index], request)]
     if not can_give:
         # read_side_contract.md:278-279 "where two or more stay and none has a form `want` can give,
         # `not_met`, with `want_mismatch`, since no pick could help"
@@ -3269,11 +3272,11 @@ def read_alternatives(
     for index in staying:
         one = reads[index]
         assert one.conditions is not None
-        # read_side_contract.md:122 "`value` is its value as `want` shapes it. Where `want` cannot give its
-        # form" ... "the entry holds its form's member as stored instead, with no nominal or extrapolation
-        # applied": a table's number where `want` gives the form, otherwise the member as stored.
-        value = one.members["value"] if one.form in GIVES.get(request.want, ()) else one.stored
-        entry: JsonObject = {"alternative": float(index), "value": value, "conditions": one.conditions}
+        entry: JsonObject = {
+            "alternative": float(index),
+            "value": entry_value(one, request),
+            "conditions": one.conditions,
+        }
         # read_side_contract.md:123 "each `alternative_values` entry holds its own alternative's unit, as
         # stored"
         entry.update(
@@ -3283,11 +3286,39 @@ def read_alternatives(
                 if name in one.members
             }
         )
-        entry["labels"] = list(one.labels)
+        # read_side_contract.md:122 "except that its `labels` are those step 12 gives that alternative even
+        # where its read ended at step 11"
+        entry["labels"] = list(one.entry_labels)
         entries.append(entry)
     # read_side_contract.md:170-171 "Under `no_pick` the result holds none of `unit`, `conditions`,
     # `specimen`, `statistics` and `provenance`"
     return result(reasons, labels, {"alternative_values": entries})
+
+
+def form_want_gives(read: FieldRead, request: Request) -> bool:
+    """Whether an alternative that stays has a form `want` can give, where two or more stay."""
+    # read_side_contract.md:279 "A table read over an operating range of its axis counts as a form `want`
+    # cannot give."
+    if read.over_a_range:
+        return False
+    # read_side_contract.md:280-281 "An interval counts as one `want: value` can give where a nominal the
+    # request carries applies to the read"
+    return read.form in GIVES.get(request.want, ()) or (
+        read.form == "interval" and request.want == "value" and request.nominal is not None
+    )
+
+
+def entry_value(read: FieldRead, request: Request) -> JsonValue:
+    """An `alternative_values` entry's `value`: read_side_contract.md:122 "`value` is its value as `want`
+    shapes it. Where `want` cannot give its form, or where the alternative is kept outside its form's range
+    or is a table read over an operating range of its axis, the entry holds its form's member as stored
+    instead, with no nominal or extrapolation applied"; read_side_contract.md:260-261 "The extrapolation is
+    applied only where that alternative is the one left": a table's number where `want` gives the form and
+    the table is read at a point inside its readable range, otherwise the member as stored."""
+    outside = any(reason.code == "outside_range" for reason in read.own)
+    if read.form in GIVES.get(request.want, ()) and not outside and not read.over_a_range:
+        return read.members["value"]
+    return read.stored
 
 
 Fate: TypeAlias = Literal["set_aside", "stays", "refuses"]
@@ -3296,23 +3327,40 @@ Fate: TypeAlias = Literal["set_aside", "stays", "refuses"]
 def fate_of(read: FieldRead) -> Fate:
     """What step 7 does with one alternative read with no pick: read_side_contract.md:249 "Each alternative is
     set aside, stays, or refuses the field"."""
-    # Open point: table_alternatives_at_step_11. A table alternative whose read gives a step-11 reason, its
-    # axis's `request_incomplete` included, and one whose `outside_range` an extrapolation covers.
-    if read.ended_at == 11 or read.covered is not None:
-        raise _Undecided("a table alternative's step-11 reason in step 7 is S4d's")
-    # read_side_contract.md:264-265 "So does a fault of the request (section 1)"
+    # read_side_contract.md:264-267 "So does a fault of the request (section 1): an alternative whose read
+    # reaches step 11 with no operating value for its form's axis refuses the field": step 10's two implied
+    # conditions that disagree, and step 11's `request_incomplete` for the axis
     if read.by_request:
         return "refuses"
     # read_side_contract.md:250-251 "An alternative is set aside where its conditions, the form's own axis
-    # entry aside (section 5), give `not_met` at step 10"
+    # entry aside (section 5), give `not_met` at step 10"; read_side_contract.md:266-267 "while one set aside
+    # at step 10 never reaches step 11 and refuses nothing"
     if read.ended_at == 10:
         return "set_aside"
+    # read_side_contract.md:256-259 "Nothing else sets an alternative aside. These stay" ... "and one whose
+    # form `want` cannot give" ... "or a table read over an operating range of its axis, say"
+    if read.over_a_range:
+        return "stays"
+    if read.ended_at == 11:
+        codes = {reason.code for reason in read.own}
+        # read_side_contract.md:252-253 "An alternative is set aside where its read lies outside its form's
+        # range at step 11, not exactly at a declared edge, and no extrapolation the request carries would
+        # cover it": one that an extrapolation covers reads on (below), so `outside_range` ended this read
+        if "outside_range" in codes and "at_edge" not in codes:
+            return "set_aside"
+        # read_side_contract.md:263-264 "A table alternative read exactly at a declared edge refuses the
+        # field, wherever the edge lies, outside the readable range included"; record_format.md:357-358
+        # "refuses the field, wherever the edge lies, even where `outside_range` stands beside it"
+        return "refuses"
     # read_side_contract.md:262 "Every other `not_met` in an alternative's read refuses the field"
     if read.ended_at is not None:
         return "refuses"
-    # read_side_contract.md:256-259 "These stay: one whose read gives no `not_met`" ... "and one whose form
-    # `want` cannot give": a read that reaches step 13 gives a `not_met` there alone, `want_mismatch`, or
-    # `nominal_invalid` (read_side_contract.md:269 "a nominal's outside an interval's bounds among them")
+    # read_side_contract.md:256-259 "These stay: one whose read gives no `not_met`; one that an extrapolation
+    # the request carries would cover" ... "and one whose form `want` cannot give": a read that reaches step
+    # 13 gives a `not_met` there alone, `want_mismatch`, or `nominal_invalid` (read_side_contract.md:269 "a
+    # nominal's outside an interval's bounds among them"), or the `outside_range` an extrapolation covers,
+    # after which the read goes on (read_side_contract.md:259-260 "An alternative kept for an extrapolation is
+    # read on through steps 12 and 13, as a field is")
     return "stays"
 
 

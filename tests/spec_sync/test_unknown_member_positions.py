@@ -27,8 +27,9 @@ fact, which the writer refuses. Each field host is read again with its field wra
 alternative, which reads as the field (`read_side_contract.md` section 3, step 7), so that every position at
 a field's place is read inside an alternative too. A position that names a `form` is read in the hosts of
 that form. A read that passes steps 8 and 9 goes on to steps 10 to 13, where a name `condition_names` leaves
-to step 10 adds its `condition_unknown_name` and nothing else; one that raises `NotImplementedError`, a step
-not built yet, has the outcome "past step 8".
+to step 10 adds its `condition_unknown_name` and nothing else, inside an alternative too, where step 7 may
+refuse the field with no `conditions`; one that raises `NotImplementedError`, a step not built yet, has the
+outcome "past step 8".
 """
 
 import copy
@@ -113,6 +114,8 @@ class Host(NamedTuple):
     request: JsonObject | None  # a request host's request, its target pinned to `record`
     field: str = FIELD  # the registered field read
     form: str = "constant"  # the form of the field read
+    # Where the field is its only alternative, the record holding it unwrapped.
+    alone: JsonObject | None = None
 
 
 def pin(record: JsonObject) -> JsonObject:
@@ -173,7 +176,9 @@ def hosts() -> tuple[Host, ...]:
         fields_of = an_object(an_object(an_object(an_object(record["body"])["sections"])[section])["fields"])
         fields_of[name] = {"alternatives": [fields_of[name]]}
         record["content_hash"] = content_hash(record)
-        found.append(host._replace(name=f"{host.name}, its only alternative", record=record))
+        found.append(
+            host._replace(name=f"{host.name}, its only alternative", record=record, alone=host.record)
+        )
     # An implied condition the read applies (its fact and token are the field's), holding a numeric and a
     # token condition the record does not.
     implied: JsonObject = {
@@ -239,9 +244,16 @@ def outcome(record: JsonObject, request: JsonObject | None, host: Host) -> Outco
 
 def unknown_name_added(before: Outcome) -> Outcome:
     """What a read gives once a condition name it does not know is added: step 10's `unknown` reason for it
-    beside what it gave (section 5, first row)."""
+    beside what it gave (section 5, first row), its `conditions` as before."""
     statuses = cast(tuple[ReadStatus, ...], (before.status, "unknown"))
-    return Outcome(worst(statuses), before.codes | {"condition_unknown_name"}, conditions=True)
+    return Outcome(worst(statuses), before.codes | {"condition_unknown_name"}, before.conditions)
+
+
+def step_10_ran(host: Host, before: Outcome) -> bool:
+    """Whether step 10 ran to its end on `host`'s field, or, where the field is its only alternative, on that
+    alternative read alone as a field (`read_side_contract.md` section 3, step 7): a read step 7 refuses
+    holds no `conditions`, and reports every reason the alternative's read found, step 10's among them."""
+    return before.conditions if host.alone is None else outcome(host.alone, None, host).conditions
 
 
 # Where a position is in a host.
@@ -402,7 +414,7 @@ def problems(position: JsonObject) -> list[str]:
                 allowed = kept | {refusal}
                 if refused:
                     meets = after.status == "not_met" and refusal in after.codes and after.codes <= allowed
-                elif position["verdict"] == "condition_names" and before.conditions:
+                elif position["verdict"] == "condition_names" and step_10_ran(host, before):
                     meets = after == unknown_name_added(before)
                 else:
                     meets = after == before

@@ -15,6 +15,7 @@ import copy
 import json
 import math
 from collections.abc import Callable
+from typing import NoReturn
 
 import pytest
 
@@ -45,6 +46,7 @@ from tests.fuzz.field_oracle import (
 )
 from tests.fuzz.seeded_fault import faulty_points, faulty_standing, faulty_value
 from tests.property.full_fields import full_fields, full_forms, record_of, request_for
+from tests.reference import read_model
 
 FIELD = "fluid.dynamic_viscosity"
 FORMS = full_forms()
@@ -623,10 +625,6 @@ def as_a_table(field: dict[str, JsonValue]) -> dict[str, JsonValue]:
     }
 
 
-def _a_table_refused(*arguments: object) -> value_shapes.Found:
-    return [value_shapes.invalid("a table refused by a fault")]
-
-
 def _read_as_before_its_ruling(monkeypatch: pytest.MonkeyPatch) -> None:
     """Step 8 as it read a condition until the maintainer's ruling of 2026-10-19: a member of the other kind's
     shape ignored, as a member the reader does not know."""
@@ -665,19 +663,56 @@ def test_the_model_oracle_holds_the_other_kind_to_the_model(
         against_the_model(sources, request)
 
 
-def test_the_model_oracle_keeps_a_step_not_built(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Step 7 over a table alternative whose read gives a reason at step 11 is a step neither side has built
-    (S4d's): the core says "not yet" and the model gives no verdict, so the oracle passes it, and a core that
-    answered there fails. A table read alone was that step until S3b-2 read it to the end, as evidence was
-    until S2b-2 read it; HP12's one step not built that the model decides, an overlay as the target, the
-    target never reads. Here the table over shear rate, `x` 1 to 10 1/s, is read at 100 1/s, outside its
-    range, beside the met constant."""
+def table_alternative_case() -> tuple[tuple[bytes, ...], JsonObject]:
+    """The table over shear rate, `x` 1 to 10 1/s, read at 100 1/s, outside its readable range, beside the met
+    constant: the table is set aside at step 7 and the constant is the one left (`read_side_contract.md`
+    section 3, step 7)."""
     alternatives: list[JsonValue] = [as_a_table(met_field()), met_field()]
     field: dict[str, JsonValue] = {"alternatives": alternatives}
-    sources, request = met_case(field)
+    return met_case(field)
+
+
+def test_the_model_oracle_holds_a_table_alternatives_step_11_rows_to_the_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Step 7 over a table alternative whose read gives a reason at step 11, which both sides decide since
+    S4d: quiet on the core as it is, which sets the table aside and reads the constant; failing on a core that
+    refuses the field there, as every other `not_met` in an alternative's read does."""
+    sources, request = table_alternative_case()
+    written = written_read(sources, request)
+    assert isinstance(written, dict)
+    assert (written["status"], written["value"]) == ("met", 0.000692)
+    against_the_model(sources, request)
+    monkeypatch.setattr(read_module, "_set_aside_by_its_range", _never_set_aside)
+    with pytest.raises(AssertionError, match="the implementation gives"):
+        against_the_model(sources, request)
+
+
+def _never_set_aside(read: read_module.FieldRead) -> bool:
+    return False
+
+
+def _not_built(*arguments: object) -> NoReturn:
+    raise NotImplementedError("a step not built")
+
+
+def _no_verdict(*arguments: object) -> NoReturn:
+    raise read_model._Undecided("a step not built")  # pyright: ignore[reportPrivateUsage]
+
+
+def test_the_model_oracle_keeps_a_step_not_built(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A step neither side has built: the core says "not yet" and the model gives no verdict, so the oracle
+    passes it, and a core that answers there fails. No field the target writes reaches one since S4d built
+    step 7's rows for a table alternative's step 11 (picks and overlays are the request's, which the target
+    does not write), as none reached evidence once S2b-2 read it; so one is made here, step 7 over the table
+    alternative above left unbuilt on both sides."""
+    sources, request = table_alternative_case()
+    monkeypatch.setattr(read_model, "fate_of", _no_verdict)
+    monkeypatch.setattr(read_module, "_standing_at_step_11", _not_built)
     assert written_read(sources, request) == "not yet"
     against_the_model(sources, request)
-    monkeypatch.setattr("materica.core.read.form_problems", _a_table_refused)
+    monkeypatch.undo()
+    monkeypatch.setattr(read_model, "fate_of", _no_verdict)
     with pytest.raises(AssertionError, match="the implementation gives"):
         against_the_model(sources, request)
 
