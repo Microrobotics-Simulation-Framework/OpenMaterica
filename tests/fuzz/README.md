@@ -169,17 +169,26 @@ places, table alternatives show the fault ungated at once on four seeds, each a 
 1000, read just below its range beside a constant that stays there; gated, no seed shows it (817 of 817), and one
 change does: a value of such a table's `y` lowered below 900, or, beside a viscosity table, whose `y` lies below
 900 already, read outside its range at a place of its own, a byte of a constant's condition name, which leaves its
-temperature unstated so that it stays (`tests/unit/test_fuzz_oracle.py` holds both). In ten local runs, in pairs,
-each of up to 900 s with the arguments CI's control gives the target, it was found in seven, after 125, 330, 447,
-520, 628, 726 and 866 s, and missed three times (Python 3.14, 2026-10-22, at 1,000 to 1,710 inputs a second, two
-runs slowed by a test run beside them): a rate of 1.1e-3 finds a second, 0.80 a million inputs. At that rate four
-runs side by side all miss with about 0.06 on a runner 1.4 times slower than the laptop, and twelve with about
-2e-4, under the bar of 1e-3 a week the maintainer's ruling sets for the fuzz controls. So CI's control step runs it
-in rounds of four side by side, each run of up to 900 s, another round only where no run of the round before found
-it, three rounds at most (about 16 minutes on average, 45 at most), and passes where any run reports a line of the
-model's assertion in which the implementation gives a table alternative's `outside_range` and the model gives none.
-The rate is an estimate until CI's own runs measure it; the control moves to the fuzz controls' own job when S4's
-piece builds it.
+temperature unstated so that it stays (`tests/unit/test_fuzz_oracle.py` holds both, through the target's own
+`test_one_input`). One dictionary operation reaches it by the second route alone: each of the dictionary's 279
+entries, inserted at and written over every position of the 23 seeds holding table alternatives, shows it only on
+`viscosity_alternatives_table_and_constant`, over its constant's `"temperature"` key, and none lowers a `y` below
+900. In ten local runs, in pairs, each of up to 900 s with the arguments CI's control gives the target, it was
+found in seven, after 125, 330, 447, 520, 628, 726 and 866 s, and missed three times (Python 3.14, 2026-10-22, at
+1,000 to 1,710 inputs a second, two runs slowed by a test run beside them): a rate of 1.1e-3 finds a second, 0.80
+a million inputs. The maintainer's ruling sets the fuzz controls a bar of two parts; this control fails the first
+and meets the second at the rate measured. A find in each of ten runs within 900 s on the runner's time is not
+met: three runs missed, and two found it after the 643 s that 900 s are on a runner 1.4 times slower (at 726 and
+866 s). A weekly miss of at most 1e-3 is met at the rate measured, a point estimate: at it, four runs side by side
+all miss with about 0.06 on a runner 1.4 times slower than the laptop, and twelve with about 2e-4; at its
+one-sided 95 % lower bound, 5.2e-4 finds a second, twelve would all miss with about 0.018. So CI's control step
+runs it in rounds of four side by side, each run of up to 900 s, another round only where no run of the round
+before found it, three rounds at most (about 16 minutes on average, 45 at most), and passes where any run reports
+a line of the model's assertion in which the implementation gives a table alternative's `outside_range` and the
+model gives none. The rounds stay until the maintainer rules on them, as the table-value control above keeps its
+four runs with the first part not met: accepted until the fuzz controls' own job exists, or replaced by a fault
+that target 4 finds within 643 s in every run. The rate is an estimate until CI's own runs measure it; the control
+moves to the fuzz controls' own job when S4's piece builds it.
 
 ## In CI
 

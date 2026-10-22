@@ -1097,12 +1097,15 @@ jobs:
           # read outside its readable range refusing the field where step 7 sets it aside, found by the model's
           # assertion. No seed shows it, and one change to a seed does. Ten local runs, in pairs, each of up to
           # 900 s with these arguments, found it in seven, after 125 to 866 s, and missed three times (Python 3.14,
-          # 2026-10-22): a rate of 1.1e-3 finds a second. At that rate four runs side by side all miss with about
-          # 0.06 on a runner 1.4 times slower than the laptop, and twelve with about 2e-4, under the bar of 1e-3 a
-          # week the maintainer's ruling sets, an estimate until CI's own runs measure it. So a round of four runs
-          # side by side, and another where none of a round found it, three rounds at most: about 16 minutes on
-          # average, 45 at most. The control passes where any run finds it. It moves to the fuzz controls' own
-          # job when S4's piece builds it.
+          # 2026-10-22): a rate of 1.1e-3 finds a second. Of the two parts of the bar the maintainer's ruling sets
+          # the fuzz controls, it fails the first, a find in each run within 900 s on the runner's time: three runs
+          # missed, and two found it after the 643 s that 900 s are on a runner 1.4 times slower. It meets the
+          # second, a weekly miss of at most 1e-3, at the rate measured, a point estimate: four runs side by side
+          # all miss with about 0.06 on such a runner, and twelve with about 2e-4; at the rate's one-sided 95 %
+          # lower bound, 5.2e-4 finds a second, twelve would miss with about 0.018. So a round of four runs side
+          # by side, and another where none of a round found it, three rounds at most: about 16 minutes on
+          # average, 45 at most. The control passes where any run finds it. The rounds stay until the maintainer
+          # rules on them; the control moves to the fuzz controls' own job when S4's piece builds it.
           found="^AssertionError: the implementation gives .*'outside_range'.*, the model "
           for round in 1 2 3; do
             for worker in 1 2 3 4; do
