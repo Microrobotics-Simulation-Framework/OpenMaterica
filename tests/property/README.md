@@ -310,8 +310,11 @@ check's reader (the last bullet).
   of the composition's read, which sits in the density's section; and the fault is its rule's alone: its read
   with what its rule judges undone passes steps 8 and 9 (`JUDGED`: the members put back as the base holds them,
   or removed where it holds none; on a table the fault changed first so that it could exist, without what the
-  fault added; a log-log table's sign read as linear), so that a fault built to break another member too, which
-  most often gives `form_invalid` as the fault does, fails there. HP14: a member added to a table more than one
+  fault added; only the entry or the value the fault added taken away, where it adds one beside what it judges:
+  a log-log table's non-positive values made positive, its scheme kept), so that a fault built to break another
+  member too, which most often gives `form_invalid` as the fault does, fails there, or the reader refuses the
+  undone table. The three faults that rewrite `x`, `y` and the edges wholesale can only be undone by putting those
+  back, and HP13 has no power there against an extra break of them. HP14: a member added to a table more than one
   slip from every member named there, `points` included, changes nothing, and one slip from one, by each kind
   section 10 names, refuses (`form_invalid`). HP15: an `axis_unit` of each kind HP8 draws other than the
   registered one gives `unit_mismatch` with the axis as `condition`. HP16: the row's label on a table is refused
@@ -1608,13 +1611,18 @@ it kills dies of its fault. Over 40 seeds a size (2026-10-20, the search's setti
 changed), each died at the first or second example, at its fault and assertion; every other table form mutant
 died at its own assertion too, none past the 267th example.
 
-Three controls hold HP13's last assertion, that a fault is its rule's alone (`test_table_form_controls.py`): a
-hand-made builder of `token_not_a_string` that also swaps `x`'s first two knots, one of `source_range_reversed`
-that also shortens `y`, and one of `y_longer` that also lists `x`'s first knot as an edge. Each read gives
-`form_invalid` as its fault's does, so HP13's other assertions pass it; on each of the first 100 derandomised
-examples of its fault, at both sizes, it fails at that assertion, and the same builder without its extra break
-passes. They hold every example, so they are not mutant searches and record no kill; they keep no example
-database.
+Controls hold HP13's last assertion, that a fault is its rule's alone (`test_table_form_controls.py`). Six
+hand-made builders each give `form_invalid` as their fault does, so HP13's other assertions pass them: one of
+`token_not_a_string` that also swaps `x`'s first two knots, of `source_range_reversed` that also shortens `y`, of
+`y_longer` that also lists `x`'s first knot as an edge, of `edge_at_an_end` and of `repeated_x_no_edge` that
+also shorten `y`, and of `log_log_not_positive` whose scheme is not a string. On each of the first 100
+derandomised examples of its fault, at both sizes, each fails at that assertion, and the same builder without
+its extra break passes. A control for each of the 28 faults that have an undo breaks, one at a time, every member
+its rule does not judge (declared there, apart from `JUDGED`, so that an undo made broader fails against it) on
+the faulty read, and holds that the undo leaves it broken; an undo of `edge_listed_twice` made broader by `x`,
+`y`, the `source_range`, the scheme, the axis, its unit or `points`, or by all of `x`, `y` and the edges, is
+shown failing it. They hold every example, so they are not mutant searches and record no kill; they keep no
+example database.
 
 <!-- kill points of every search of test_table_form_mutants.py::test_the_table_form_mutant_is_killed (scripts/gen_kill_counts.py) -->
 | Mutant | Fault | Killed by | Dies at | Examples |
