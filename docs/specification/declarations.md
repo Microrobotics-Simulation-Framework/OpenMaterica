@@ -147,21 +147,27 @@ missing member, the object that should hold it; of two of one name, the later en
 model entry, not its `model.name`; the requirement, not its `field`; the field in `reads` or the record in
 `checked_over.records` itself); for a waiver naming a `label` that section 4.1 item 4 refuses, that waiver's
 `label`; for a text that is not valid JSON, or a declaration that is not an object, the empty pointer, and
-nothing else is checked. A member deeper down that holds another JSON type is a member at fault like any
-other: the pointer names it, nothing inside it is checked, and the rest of the declaration is. A fault more
-than one rule names carries the case of the first of: items 3, 4, 7 and 8, the `population_level` rule and
-section 4.1's location rule [BC-004] [BC-005] [BC-040] [BC-044] [BC-043] [BC-037]; section 4.1 item 4
-[BC-050]; item 12 [BC-051]; this paragraph [BC-048]. Two faults with one case and one pointer are one refusal.
-The build reports every refusal it finds, and reads nothing for a declaration it refuses. [BC-048]
+nothing else is checked. The member at fault is the most specific one: for a value that breaks its row's
+Holds, that member; for what item 12 refuses, the member that needs the suite (`checked_over`'s `domain` or
+`path`, `region_conditions`, `sampling`, a requirement's `represents` or `population_level`, the model's
+`engine`), or the acceptance or `trainable` entry itself. A member deeper down that holds another JSON type is
+a member at fault like any other: the pointer names it, nothing inside it is checked, and the rest of the
+declaration is. A fault more than one rule names carries the case of the first of: items 3, 4, 7 and 8, the
+`population_level` rule and section 4.1's location rule [BC-004] [BC-005] [BC-040] [BC-044] [BC-043] [BC-037];
+section 4.1 item 4 [BC-050]; item 12 [BC-051]; this paragraph [BC-048]. Two faults with one case and one
+pointer are one refusal. The build reports every refusal it finds, and reads nothing for a declaration it
+refuses. [BC-048]
 
 1. Only a model that reads a field declares anything about it. A field in `reads` with no requirement gives
    `unknown` with the reason `no_requirement`; the build reads nothing for it, so its result holds `status`,
    `reasons` and the build's members alone. [BC-003]
 2. A requirement belongs to the model that reads the field, never to the experiment as a whole. [not yet
    covered]
-3. A tolerance or accept list MUST carry its reason; the build refuses one without. [BC-004]
+3. A tolerance or accept list MUST carry its reason; the build refuses one without (an empty `reason` breaks
+   its row's Holds, BC-048). [BC-004]
 4. Every acceptance MUST carry a `reason`; an extrapolation, a nominal and a distribution also carry the
-   `basis` of their number. The build refuses one without. [BC-005]
+   `basis` of their number. The build refuses one without (an empty `reason` or `basis` breaks its row's
+   Holds, BC-048). [BC-005]
 5. A requirement with a `label` gives `not_met` with the reason `label_mismatch` when the label stored on the
    value the result rests on differs or is absent (section 2 item 8). [BC-027]
 6. A layered path read with `checked_over: {"path": ...}` is named by its `name` member (`geometry.md`), and
@@ -195,9 +201,9 @@ The build reports every refusal it finds, and reads nothing for a declaration it
     or an interval; where it does not claim USD read, a model with `engine`; where it does not claim the
     sampling suite, `sampling`, a requirement's `represents` or `population_level`, and a `distribution`
     acceptance. A requirement samples where it holds `represents`. Items 7 and 8 and the `population_level`
-    rule (the members table) come first: a model with `engine` that item 7 refuses, and a requirement over
-    which item 8 or that rule refuses the declaration, give no refusal under this item. [BC-051] [BC-040]
-    [BC-043] [BC-044]
+    rule (the members table) come first, member by member: where item 7 refuses a model with `engine`, its
+    `engine` gives no refusal under this item, and where item 8 or that rule refuses the declaration over a
+    requirement, that requirement gives none. [BC-051] [BC-040] [BC-043] [BC-044]
 
 ## 2. Results
 
@@ -574,6 +580,6 @@ The sheet is one JSON document per build. [BC-033]
 | BC-048 | build checks | a declaration that departs from its shape is refused at build, before any read, each refusal its rule's case and a JSON pointer by the precedence and pointer rules: not JSON or not an object; a member missing, of another JSON type, empty where one entry or more is required, not named at its place or one slip from a named one, a `basis` inside an implied condition's `implies` aside; a token or registered name its member does not take; a name given twice; a requirement or `trainable` entry for a field not in `reads`, or a `trainable` entry at a location the model is not checked over; a value that breaks a constraint its row's Holds column states (a `range` whose `lo` is above its `hi`, a unit other than the registered one, a number below zero, an `index` with a fractional part, a combination of fewer than two fields or of fields of one section, two of a member's mutually exclusive alternatives, an empty `law`, a distribution's parameters other than its token's, a repeated `accepts` token); nothing is read for a refused declaration |
 | BC-049 | build checks | a requirement holding `review: "reviewed"` gives `unknown` (`not_reviewed`) on a result whose review is not completed, which a waiver of that code covers; a completed review gives no such reason, nor does a result that holds no `provenance` |
 | BC-050 | build checks | a waiver naming a `label` is refused at build unless the requirement for its field names that label and holds `review: "reviewed"`; it covers only a result whose stored label is that label and trusted, stated by the source or on a value whose review is completed |
-| BC-051 | build checks | a build that does not claim the scene suite, USD read or the sampling suite refuses at build what needs it: a model checked over a domain or a path, `region_conditions`, an acceptance or `trainable` entry at a region or an interval; a model with `engine`; `sampling`, a requirement's `represents` or `population_level`, a `distribution` acceptance; where items 7 and 8 or the `population_level` rule refuse the same declaration, their refusal alone |
+| BC-051 | build checks | a build that does not claim the scene suite, USD read or the sampling suite refuses at build what needs it: a model checked over a domain or a path, `region_conditions`, an acceptance or `trainable` entry at a region or an interval; a model with `engine`; `sampling`, a requirement's `represents` or `population_level`, a `distribution` acceptance; where items 7 and 8 or the `population_level` rule refuse a member, their refusal alone for that member |
 | BC-052 | build checks | a waived `condition_unstated` of a numeric condition, on an accepted result, gives a `declared` watch holding the operating condition the read was given, and none where it was given none |
 | BC-053 | build checks | the build lists, per model, each acceptance no result used in `unused`: a waiver for another field, record or code, and an acceptance given to a read and not applied; an unused acceptance refuses nothing |

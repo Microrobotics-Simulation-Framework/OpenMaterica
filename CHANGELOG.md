@@ -78,6 +78,14 @@ every family entry goes in `families/CHANGELOG.md`.
   are regenerated. `tests/spec_sync/name_overlaps.json` allows the four names the build's report gives a second
   meaning (`acceptance`, an unused acceptance's index; `fields`, a combination's list; `interval`, a watch's ends;
   `operation`, the build's own) and `field` beside `fields`, each with the sentence that keeps them apart.
+- Three sentences of `declarations.md` section 1, ruled with S7-cases-1's review on 2026-10-23
+  (`docs/specification/changes.md`). Item 12's precedence holds member by member: where item 7 refuses a model with
+  `engine`, its `engine` gives no refusal under item 12 and a domain it is checked over still does, and where item
+  8 or the `population_level` rule refuses the declaration over a requirement, that requirement gives none and a
+  `sampling` beside it still does; BC-051's Cases row says "for that member". An empty `reason` or `basis` breaks
+  its row's Holds and is BC-048's, items 3 and 4 refusing one that is absent. A refusal's pointer names the most
+  specific member at fault: for a value that breaks its row's Holds, that member; for what item 12 refuses, the
+  member that needs the suite, or the acceptance or `trainable` entry itself.
 
 ### Verification
 - S7a-1's build-check case files (S7-cases-1; the S7 design's section 5.4, its S7a-1 rows), written through the
