@@ -30,7 +30,9 @@ reaches since S4d. A table is read to the end (S3b-2): held as a constant is, it
 and its axis entry and step 11's reasons by the text (`field_oracle.table_steps_10_and_11`), and read again
 under `want: value` at the places table item 3 tells apart, each held to the model, steps 9 to 11 and HP1 and
 HP2: its knots and edges, the readable range's ends and `source_range`'s, the double either side of each, and
-a value beyond each end of `x` (`field_oracle.places`, which says how many).
+a value beyond each end of `x` (`field_oracle.places`, which says how many); and a field holding table
+alternatives at their places too, as many in all as one table's (`field_oracle.alternative_places`, S4d), so
+that step 7 meets a table alternative read at an edge, outside its range and inside it beside the others.
 The seeds are every value field of every conformance input.
 """
 
@@ -64,6 +66,7 @@ from tests.fuzz.field_oracle import (  # noqa: E402
     OPERATING,
     REQUIRED,
     WANT_OF,
+    alternative_places,
     check_against_the_model,
     check_no_refusal_missing,
     check_result_laws,
@@ -166,7 +169,7 @@ def test_one_input(data: bytes) -> None:
             check_against_the_model((data,), request, WITH_HASH, outcome)
         plain = read_json(request, store, WITHOUT_HASH)
         assert without_hash_label(plain) == first, "the hash suite changed more than its label"
-    for place in places(field, data):
+    for place in [*places(field, data), *alternative_places(field, data)]:
         at_the_place: dict[str, JsonObject] = {
             **operating,
             place.axis: {"value": place.at, "unit": place.unit},
@@ -233,6 +236,7 @@ def main(arguments: list[str]) -> None:
     seeded_fault.seed_alternatives_if_asked(atheris.instrument_func)
     seeded_fault.seed_tables_if_asked(atheris.instrument_func)
     seeded_fault.seed_table_edges_if_asked(atheris.instrument_func)
+    seeded_fault.seed_table_alternatives_if_asked(atheris.instrument_func)
     atheris.Setup(arguments, test_one_input)
     atheris.Fuzz()
 

@@ -12,7 +12,8 @@ section 4.2 and step 9; and its conditions against the request by `condition_ora
 written from section 5 alone. A table step 8 passes it holds to step 9 with its `axis_unit` among its units,
 to step 10 as the others, but its own axis's entry, section 5's first row, written here from the text, and to
 step 11's reasons, each with the axis: no operating value for it, a range of it, an edge, the readable range
-(`record_format.md` section 6, table item 3, written here too).
+(`record_format.md` section 6, table item 3, written here too). It reads a table again at the places table
+item 3 tells apart (`places`), and a field's table alternatives at theirs (`alternative_places`, S4d).
 """
 
 import json
@@ -417,3 +418,16 @@ def places(field: JsonValue, data: bytes) -> list[Place]:
         *chosen.sample(sorted(others), min(len(others), OTHER_PLACES)),
     ]
     return [Place(axis, spec.unit, at) for at in sorted(found)]
+
+
+def alternative_places(field: JsonValue, data: bytes) -> list[Place]:
+    """The places of `field`'s table alternatives, where it holds alternatives: each table alternative's own
+    (`places`), at most `EDGE_PLACES + OTHER_PLACES` of them in all, a sample seeded by `data` where there are
+    more, so that step 7 meets a table alternative read at an edge, beyond its readable range and inside it
+    beside the others (`read_side_contract.md` section 3, step 7: S4d's rows)."""
+    alternatives = field.get("alternatives") if isinstance(field, dict) else None
+    if not isinstance(alternatives, list):
+        return []
+    found = sorted({place for alternative in alternatives for place in places(alternative, data)})
+    chosen = random.Random(data)
+    return sorted(chosen.sample(found, min(len(found), EDGE_PLACES + OTHER_PLACES)))
