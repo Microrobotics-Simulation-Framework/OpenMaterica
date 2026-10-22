@@ -226,7 +226,7 @@ def test_the_case_schema_takes_a_build_check_case(taken: JsonObject) -> None:
             id="read_request",
         ),
         pytest.param(build_check(expected={"status": "met", "reasons": []}), id="read_result"),
-        pytest.param(build_check(compare={"members": ["refusals", "status"]}), id="read_member_compared"),
+        pytest.param(build_check(compare={"members": ["refusals", "value"]}), id="read_member_compared"),
         pytest.param(build_check(expected={"refusals": [{"item": "BC-048"}]}), id="refusal_without_pointer"),
         pytest.param(
             build_check(expected={"refusals": [{"item": "BC-048", "pointer": "", "case": "BC-048"}]}),
