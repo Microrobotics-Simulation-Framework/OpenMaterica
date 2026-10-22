@@ -66,11 +66,11 @@ def test_a_result_the_result_schema_refuses_is_found() -> None:
 
 def test_every_case_file_is_counted() -> None:
     runs = runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
-    assert len(runs) == 1522
+    assert len(runs) == 1572
     assert Counter(case_run.outcome for case_run in runs) == {
         Outcome.PASSED: 1180,
         Outcome.VERIFIED: 35,
-        Outcome.NOT_YET_RUNNABLE: 307,
+        Outcome.NOT_YET_RUNNABLE: 357,
     }
     by_operation = Counter((case_run.outcome, case_run.case_file.operation) for case_run in runs)
     assert by_operation == {
@@ -80,6 +80,7 @@ def test_every_case_file_is_counted() -> None:
         (Outcome.VERIFIED, "evaluate"): 35,
         (Outcome.NOT_YET_RUNNABLE, "read"): 110,
         (Outcome.NOT_YET_RUNNABLE, "check"): 184,
+        (Outcome.NOT_YET_RUNNABLE, "check_build"): 50,
         (Outcome.NOT_YET_RUNNABLE, "quote_sha256"): 13,
     }
 
@@ -128,11 +129,11 @@ def test_a_case_passes_only_where_a_variant_ran() -> None:
     outcomes = runner.case_outcomes(
         runner.run_all(CASE_FILES, configurations=CONFIGURATIONS, executors=EXECUTORS)
     )
-    assert len(outcomes) == 127
+    assert len(outcomes) == 133
     assert Counter(outcomes.values()) == {
         Outcome.PASSED: 97,
         Outcome.VERIFIED: 10,
-        Outcome.NOT_YET_RUNNABLE: 20,
+        Outcome.NOT_YET_RUNNABLE: 26,
     }
 
 

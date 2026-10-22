@@ -1,0 +1,34 @@
+{
+  "case": "BC-051",
+  "variant": "distribution_acceptance",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "claims": {
+    "sampling": false
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc051_distribution_acceptance.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [
+      {
+        "item": "BC-051",
+        "pointer": "/models/0/acceptances/1"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ]
+  }
+}

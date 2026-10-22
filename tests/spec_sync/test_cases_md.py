@@ -5,14 +5,14 @@ one row per case file, its expected column what the file states, and each headin
 
 import functools
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 import pytest
 
 from materica.core.jsonio import JsonValue
 from scripts.gen_vocabulary import SPECIFICATION, Row, only_code, table
 from tests.conformance import runner
-from tests.conformance.runner import CONFORMANCE, CaseFile
+from tests.conformance.runner import CONFORMANCE, CaseFile, JsonObject
 
 CASE_FILES = runner.discover()
 SUITES = sorted(path.name for path in CONFORMANCE.iterdir() if path.is_dir())
@@ -66,14 +66,49 @@ def found(entries: list[JsonValue]) -> str:
     return ", ".join(written) or "nothing"
 
 
+def claims_text(case_file: CaseFile) -> str:
+    return "claims " + ", ".join(
+        code(f"{suite}: {str(claim).lower()}") for suite, claim in sorted(case_file.claims.items())
+    )
+
+
+def build_column(case_file: CaseFile) -> str:
+    """A build-check case's column: its refusals, each its rule's case id at its JSON pointer, written as JSON
+    so that the empty pointer shows; the report's members compared and expected absent; the rules it compares;
+    its claims. A case expecting results, watches or unused (S7a-2 onwards) is written by the piece that adds
+    the first."""
+    expected = case_file.expected
+    assert set(expected) <= {"refusals"}, f"{case_file.path.name}: write its results' column first"
+    refusals = expected.get("refusals", [])
+    assert isinstance(refusals, list)
+    written = [
+        f"{code(refusal['item'])} at {code(json.dumps(refusal['pointer']))}"
+        for refusal in refusals
+        if isinstance(refusal, dict)
+    ]
+    parts = ["refuses " + (", ".join(written) or "nothing")]
+    absent = [code(member) for member in ("results", "watches", "unused") if member in case_file.members]
+    if absent:
+        parts.append(
+            (", ".join(absent[:-1]) + " and " + absent[-1] if len(absent) > 1 else absent[0]) + " absent"
+        )
+    if case_file.rules:
+        parts.append("rules " + ", ".join(code(rule) for rule in case_file.rules))
+    if case_file.claims:
+        parts.append(claims_text(case_file))
+    return "; ".join(parts)
+
+
 def expected_column(case_file: CaseFile) -> str:
     """The column as `CASES.md` writes it, from the case file: status and reasons with their condition and
     alternative, or that the two are not compared; the listing, the shortened hash, or a read's value, unit,
     alternative values and assumption, as JSON; then labels and claims (sorted) where the case states them. A
     table evaluation case's is its evaluations, as JSON, and its binary32 tolerance; a record-check case's its
     findings, its listing and the rules it compares; a `quote_sha256` operation's its status and shortened
-    hash."""
+    hash; a build-check case's its refusals (`build_column`)."""
     expected = case_file.expected
+    if case_file.operation == "check_build":
+        return build_column(case_file)
     if case_file.operation == "check":
         items, listing = expected["items"], expected["listing"]
         assert isinstance(items, list)
@@ -112,12 +147,7 @@ def expected_column(case_file: CaseFile) -> str:
     if isinstance(labels, list):
         parts.append("labels " + (", ".join(code(label) for label in labels) or "none"))
     if case_file.claims:
-        parts.append(
-            "claims "
-            + ", ".join(
-                code(f"{suite}: {str(claim).lower()}") for suite, claim in sorted(case_file.claims.items())
-            )
-        )
+        parts.append(claims_text(case_file))
     return "; ".join(parts)
 
 
@@ -171,3 +201,76 @@ def test_a_read_that_expects_a_value_shows_it_with_its_unit() -> None:
         'unknown; `condition_unstated (shear_rate)`; value `0.000692`; unit `"Pa.s"`; '
         "labels `materica.fluid.newtonian.v1`"
     )
+
+
+def changed(name: str, change: Callable[[JsonObject], None]) -> CaseFile:
+    """The case file `name`, changed by `change` on its document."""
+    case_file = next(case_file for case_file in CASE_FILES if case_file.path.name == name)
+    document = json.loads(case_file.path.read_bytes())
+    change(document)
+    return CaseFile.from_document(case_file.path, document)
+
+
+def _member(case: JsonObject, name: str) -> JsonObject:
+    member = case[name]
+    assert isinstance(member, dict)
+    return member
+
+
+def _refusals(case: JsonObject) -> list[JsonValue]:
+    refusals = _member(case, "expected")["refusals"]
+    assert isinstance(refusals, list)
+    return refusals
+
+
+def _first_refusal(case: JsonObject) -> JsonObject:
+    refusal = _refusals(case)[0]
+    assert isinstance(refusal, dict)
+    return refusal
+
+
+def drop_a_refusal(case: JsonObject) -> None:
+    _refusals(case).pop()
+
+
+def move_the_pointer(case: JsonObject) -> None:
+    _first_refusal(case)["pointer"] = "/models/0"
+
+
+def change_the_rule(case: JsonObject) -> None:
+    _first_refusal(case)["item"] = "BC-051"
+
+
+def drop_the_rules(case: JsonObject) -> None:
+    _member(case, "compare").pop("rules_compared")
+
+
+def drop_the_claims(case: JsonObject) -> None:
+    case.pop("claims")
+
+
+def compare_no_unused(case: JsonObject) -> None:
+    members = _member(case, "compare")["members"]
+    assert isinstance(members, list)
+    members.remove("unused")
+
+
+@pytest.mark.parametrize(
+    ("name", "change"),
+    [
+        ("BC-004.two_models_both_listed.json", drop_a_refusal),
+        ("BC-005.empty_reason.json", move_the_pointer),
+        ("BC-048.json_array.json", change_the_rule),
+        ("BC-050.requirement_names_another_label.json", drop_the_rules),
+        ("BC-051.checked_over_domain.json", drop_the_claims),
+        ("BC-051.engine_over_records.json", compare_no_unused),
+    ],
+)
+def test_a_build_check_case_that_disagrees_with_its_row_is_found(
+    name: str, change: Callable[[JsonObject], None]
+) -> None:
+    case_file = next(case_file for case_file in CASE_FILES if case_file.path.name == name)
+    _, _, rows = sections("build_checks")[case_file.case]
+    (row,) = [row for row in rows if only_code(row["Variant"]) == case_file.variant]
+    assert row["Expected"] == expected_column(case_file)
+    assert row["Expected"] != expected_column(changed(name, change))

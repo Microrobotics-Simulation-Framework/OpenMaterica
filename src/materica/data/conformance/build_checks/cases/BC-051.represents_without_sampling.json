@@ -1,0 +1,34 @@
+{
+  "case": "BC-051",
+  "variant": "represents_without_sampling",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "claims": {
+    "sampling": false
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc051_represents_without_sampling.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [
+      {
+        "item": "BC-044",
+        "pointer": ""
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ]
+  }
+}

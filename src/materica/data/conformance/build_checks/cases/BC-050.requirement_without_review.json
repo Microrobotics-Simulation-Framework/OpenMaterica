@@ -1,0 +1,31 @@
+{
+  "case": "BC-050",
+  "variant": "requirement_without_review",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc050_requirement_without_review.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [
+      {
+        "item": "BC-050",
+        "pointer": "/models/0/acceptances/0/label"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ]
+  }
+}

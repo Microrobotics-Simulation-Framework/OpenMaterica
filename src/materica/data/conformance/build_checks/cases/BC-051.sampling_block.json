@@ -1,0 +1,34 @@
+{
+  "case": "BC-051",
+  "variant": "sampling_block",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "claims": {
+    "sampling": false
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc051_sampling_block.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [
+      {
+        "item": "BC-051",
+        "pointer": "/sampling"
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ]
+  }
+}

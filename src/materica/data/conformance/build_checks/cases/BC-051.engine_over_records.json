@@ -1,0 +1,32 @@
+{
+  "case": "BC-051",
+  "variant": "engine_over_records",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "claims": {
+    "usd_read": false
+  },
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc051_engine_over_records.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": []
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "watches",
+      "unused"
+    ],
+    "rules_compared": [
+      "BC-051"
+    ]
+  }
+}
