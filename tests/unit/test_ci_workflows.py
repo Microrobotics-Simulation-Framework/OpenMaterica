@@ -8146,7 +8146,9 @@ TABLES_CASES = (
 # among `STUB_FINDS`; on a run of the table value's fault, likewise for the three others, `STUB_EDGE_FINDING`
 # and `STUB_EDGE_FINDS`; on a run of fuzz target 5's fault (S3c), likewise for the others of its runs,
 # `STUB_METHOD_FINDING` and `STUB_METHOD_FINDS`; and on a run of the table alternatives' fault (S4d), likewise
-# for the three others, `STUB_ALTERNATIVES_FINDING` and `STUB_ALTERNATIVES_FINDS`.
+# for the three others, `STUB_ALTERNATIVES_FINDING` and `STUB_ALTERNATIVES_FINDS`. A fuzz run lasts
+# `STUB_RUN_SECONDS` (none by default), then reports as libFuzzer does at the end of a run, with or without a
+# finding.
 FUZZ_CONTROL_UV = """
 import json, os, sys, time
 from pathlib import Path
@@ -8186,6 +8188,8 @@ elif fault in ("tables", "table_edges", "extrapolation_method", "table_alternati
         time.sleep(0.05)
     record["beside"] = len([other for other in started.iterdir() if other.name != corpus])
     record["partner"] = record["beside"] > 0
+    time.sleep(float(os.environ.get("STUB_RUN_SECONDS", "0")))
+    print("stat::number_of_executed_units: 0")
     stub = {
         "tables": "STUB_",
         "table_edges": "STUB_EDGE_",
@@ -8195,6 +8199,7 @@ elif fault in ("tables", "table_edges", "extrapolation_method", "table_alternati
     if corpus in os.environ[stub + "FINDS"].split():
         print(os.environ[stub + "FINDING"])
 else:
+    time.sleep(float(os.environ.get("STUB_RUN_SECONDS", "0")))
     print(f"IndexError: the seeded fault {found_in[module]}")
 with open(os.environ["STUB_CALLS"], "a", encoding="utf-8") as calls:
     print(json.dumps(record), file=calls)
@@ -8941,6 +8946,199 @@ def test_the_table_alternatives_control_check_can_fail(
     assert changed != found["run"]
     found["run"] = changed
     problems = alternatives_control_problems(ci, tmp_path)
+    assert any(problem in line for line in problems), problems
+
+
+# --- the control step's find times -------------------------------------------------------------------------
+# The maintainer's ruling of 2026-10-23: the control step prints each run's find time, so that CI's runs
+# measure the rates the fuzz controls' bar is judged by. The step prints, for every control, a line a run,
+# `fuzz-control <name> round=<r> run=<i> found=<yes|no> seconds=<s>`, and a line a control,
+# `fuzz-control-summary <name> runs=<n> found=<k> seconds=<total> rate=<finds a second>`.
+
+# Each control the step runs, with the runs it makes where the table alternatives' fault takes two rounds, and
+# how many of them run side by side.
+FIND_TIME_CONTROLS = {
+    "bytes": (1, 1),
+    "properties": (1, 1),
+    "record_properties": (1, 1),
+    "read_field_bytes": (2, 2),
+    "tables": (2, 2),
+    "table_edges": (4, 4),
+    "extrapolation_method": (METHOD_RUNS, METHOD_RUNS),
+    "table_alternatives": (8, ALTERNATIVES_SIDE_BY_SIDE),
+}
+FIND_TIME_LINE = re.compile(
+    r"^fuzz-control (\w+) round=(\d+) run=(\d+) found=(yes|no) seconds=(\d+\.\d)$", re.MULTILINE
+)
+FIND_TIME_SUMMARY = re.compile(
+    r"^fuzz-control-summary (\w+) runs=(\d+) found=(\d+) seconds=(\d+\.\d) rate=(\d\.\d\de[+-]\d\d)$",
+    re.MULTILINE,
+)
+FIND_TIME_RUN_SECONDS = 0.3
+# The disagreement of a table's control that is not its fault: the implementation and the model both refuse
+# the table, so the finding names `form_invalid` on both sides.
+BOTH_REFUSE_FINDING = (
+    "AssertionError: the implementation gives Outcome(kind='result', result={'status': 'not_met', 'reasons': "
+    "[{'code': 'form_invalid'}], 'labels': []}, why=''), the model Outcome(kind='result', result={'status': "
+    "'not_met', 'reasons': [{'code': 'form_invalid'}], 'labels': []}, why='')"
+)
+# Each case: the stub's finds, the runs that find the fault of each control, and whether the step passes. The
+# first finds the fault in the first run of every control but the table alternatives' (the fifth: a second
+# round); the second has two controls report another disagreement than their fault, which the step's checks
+# refuse, so no run of theirs found it and the table alternatives' fault takes its three rounds.
+FIND_TIME_CASES: tuple[tuple[dict[str, str], dict[str, set[int]]], ...] = (
+    (
+        {
+            "STUB_FINDS": "tables-1",
+            "STUB_FINDING": TABLES_FINDING,
+            "STUB_EDGE_FINDS": "table-edges-1",
+            "STUB_EDGE_FINDING": TABLE_EDGES_FINDING,
+            **METHOD_FOUND,
+            "STUB_ALTERNATIVES_FINDS": "table-alternatives-5",
+            "STUB_ALTERNATIVES_FINDING": ALTERNATIVES_FINDING,
+            "STUB_RUN_SECONDS": str(FIND_TIME_RUN_SECONDS),
+        },
+        {
+            "bytes": {1},
+            "properties": {1},
+            "record_properties": {1},
+            "read_field_bytes": {1, 2},
+            "tables": {1},
+            "table_edges": {1},
+            "extrapolation_method": {1},
+            "table_alternatives": {5},
+        },
+    ),
+    (
+        {
+            "STUB_FINDS": "tables-1 tables-2",
+            "STUB_FINDING": BOTH_REFUSE_FINDING,
+            "STUB_EDGE_FINDS": "table-edges-1",
+            "STUB_EDGE_FINDING": TABLE_EDGES_FINDING,
+            **METHOD_FOUND,
+            "STUB_ALTERNATIVES_FINDS": EVERY_ALTERNATIVES_RUN,
+            "STUB_ALTERNATIVES_FINDING": ANOTHER_ALTERNATIVES_FINDING,
+        },
+        {
+            "bytes": {1},
+            "properties": {1},
+            "record_properties": {1},
+            "read_field_bytes": {1, 2},
+            "tables": set(),
+            "table_edges": {1},
+            "extrapolation_method": {1},
+            "table_alternatives": set(),
+        },
+    ),
+)
+
+
+def find_time_problems(ci: Workflow, directory: Path) -> list[str]:
+    """The control step run as written with `FUZZ_CONTROL_UV`, in each of `FIND_TIME_CASES`: where it does not
+    print, for each control, a line for each run it made (rounds and runs counted in order), saying that the
+    fault was found in the runs the stub reported it in and no other, in the seconds the run lasted, and then
+    a summary line that adds the lines up."""
+    problems: list[str] = []
+    for index, (finds, found_in) in enumerate(FIND_TIME_CASES):
+        where = directory / str(index)
+        (where / "work").mkdir(parents=True)
+        environment = runner(where, FUZZ_CONTROL_UV) | finds | {"STUB_PARTNER_WAIT": "0"}
+        _, _, printed = run_step(control_step(ci), {}, where / "work", base=environment, scratch=where)
+        lines = FIND_TIME_LINE.findall(printed)
+        summaries = {name: rest for name, *rest in FIND_TIME_SUMMARY.findall(printed)}
+        for name, (runs, side_by_side) in FIND_TIME_CONTROLS.items():
+            runs = 12 if index == 1 and name == "table_alternatives" else runs
+            ours = [line for line in lines if line[0] == name]
+            if len(ours) != runs:
+                problems.append(f"case {index}: {len(ours)} lines for the runs of {name}, not {runs}")
+                continue
+            for run, (_, round_, number, found, seconds) in enumerate(ours, start=1):
+                if (int(round_), int(number)) != ((run - 1) // side_by_side + 1, run):
+                    problems.append(f"case {index}: {name} line {run} says round {round_} run {number}")
+                if (found == "yes") != (run in found_in[name]):
+                    problems.append(f"case {index}: {name} run {run} says found={found}")
+                if index == 0 and float(seconds) < 0.8 * FIND_TIME_RUN_SECONDS:
+                    problems.append(
+                        f"case {index}: {name} run {run} says {seconds} s, of {FIND_TIME_RUN_SECONDS}"
+                    )
+            if name not in summaries:
+                problems.append(f"case {index}: no summary line for {name}")
+                continue
+            counted, finds_counted, total, _ = summaries[name]
+            added = sum(float(line[4]) for line in ours)
+            if (int(counted), int(finds_counted)) != (runs, len(found_in[name])) or abs(
+                float(total) - added
+            ) > 0.1:
+                problems.append(f"case {index}: the summary of {name} reads {summaries[name]}")
+    return problems
+
+
+def test_the_control_step_prints_each_run_s_find_time_for_every_control(tmp_path: Path) -> None:
+    assert find_time_problems(workflow("ci.yml"), tmp_path) == []
+
+
+FIND_TIME_BLOCK = "# What each run found and when,"
+FIND_TIME_LAST_CALL = (
+    'fuzz_runs table_alternatives 4 "$found" "the model .*\'outside_range\'" "${alternatives[@]}"\n'
+)
+
+
+def without_the_find_times(text: str) -> str:
+    start = text.index(FIND_TIME_BLOCK)
+    return text[:start] + text[text.index(FIND_TIME_LAST_CALL) + len(FIND_TIME_LAST_CALL) :]
+
+
+def without_the_table_alternatives_find_times(text: str) -> str:
+    return text.replace(FIND_TIME_LAST_CALL, "")
+
+
+def with_find_times_of_another_shape(text: str) -> str:
+    return text.replace("seconds=$seconds", "s=$seconds")
+
+
+def with_find_times_that_measure_nothing(text: str) -> str:
+    return text.replace('born=$(stat -c %.9W "$log")', 'born=$(stat -c %.9Y "$log")')
+
+
+def with_the_tables_found_read_from_any_disagreement(text: str) -> str:
+    return text.replace(
+        '"the model .*\'form_invalid\'" "$control"/tables-[12].log', '"" "$control"/tables-[12].log'
+    )
+
+
+def with_runs_numbered_by_one_round(text: str) -> str:
+    return text.replace(" $(( (run - 1) / side_by_side + 1 )) ", " 1 ")
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (without_the_find_times, "case 0: 0 lines for the runs of bytes, not 1"),
+        (
+            without_the_table_alternatives_find_times,
+            "case 0: 0 lines for the runs of table_alternatives, not 8",
+        ),
+        (with_find_times_of_another_shape, "case 0: 0 lines for the runs of bytes, not 1"),
+        (with_find_times_that_measure_nothing, "case 0: bytes run 1 says 0.0 s"),
+        (with_the_tables_found_read_from_any_disagreement, "case 1: tables run 1 says found=yes"),
+        (with_runs_numbered_by_one_round, "case 0: table_alternatives line 5 says round 1 run 5"),
+    ],
+    ids=[
+        "removed",
+        "one-control-removed",
+        "another-shape",
+        "measures-nothing",
+        "any-disagreement",
+        "one-round",
+    ],
+)
+def test_the_find_time_check_can_fail(tmp_path: Path, fault: Callable[[str], str], problem: str) -> None:
+    ci = copy.deepcopy(workflow("ci.yml"))
+    found = control_step(ci)
+    changed = fault(found["run"])
+    assert changed != found["run"]
+    found["run"] = changed
+    problems = find_time_problems(ci, tmp_path)
     assert any(problem in line for line in problems), problems
 
 
