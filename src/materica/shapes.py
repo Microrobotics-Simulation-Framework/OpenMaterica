@@ -728,6 +728,7 @@ class CaseInputs(TypedDict):
     value: NotRequired[str]
     request: NotRequired[str]
     page_texts: NotRequired[list[str]]
+    declaration: NotRequired[str]
 
 
 RulesComparedItem: TypeAlias = str
@@ -742,6 +743,70 @@ class CheckItem(TypedDict):
     item: str
     document: str
     pointer: str
+
+
+class BuildOperation(TypedDict):
+    """
+    A build-check case's request (README.md, "Case files"): the build makes its own reads.
+    """
+
+    operation: Literal["check_build"]
+
+
+class ComparedRefusal(TypedDict):
+    """
+    A refusal of the declaration on its own (declarations.md section 1): the case id of the rule broken and a
+    JSON pointer into the declaration; detail is never compared.
+    """
+
+    item: str
+    pointer: str
+    detail: NotRequired[str]
+
+
+class ComparedWatch1(TypedDict):
+    """
+    A run-time watch (declarations.md section 8): its model, location, field and condition, its source, and
+    either the interval the condition may take, its ends compared as compare says, or the accept list.
+    """
+
+    model: str
+    record: NotRequired[MaterialRef]
+    field: FieldName
+    condition: str
+    unit: NotRequired[str]
+    source: Literal["tolerance", "form_range", "declared"]
+    interval: list[float]
+    accept: NotRequired[list[str]]
+
+
+class ComparedWatch2(TypedDict):
+    """
+    A run-time watch (declarations.md section 8): its model, location, field and condition, its source, and
+    either the interval the condition may take, its ends compared as compare says, or the accept list.
+    """
+
+    model: str
+    record: NotRequired[MaterialRef]
+    field: FieldName
+    condition: str
+    unit: NotRequired[str]
+    source: Literal["tolerance", "form_range", "declared"]
+    interval: NotRequired[list[float]]
+    accept: list[str]
+
+
+ComparedWatch: TypeAlias = ComparedWatch1 | ComparedWatch2
+
+
+class ComparedUnused(TypedDict):
+    """
+    An acceptance no result used (declarations.md section 2 item 9): its model, by name, and its 0-based index
+    in the model's acceptances.
+    """
+
+    model: str
+    acceptance: float
 
 
 class DerivativeSides(TypedDict):
@@ -1118,6 +1183,33 @@ class CaseCompare(TypedDict):
     relative_tolerance: NotRequired[float | PrecisionTolerances]
     exact: NotRequired[bool]
     rules_compared: NotRequired[list[RulesComparedItem]]
+    result_members: NotRequired[
+        list[
+            Literal[
+                "status",
+                "reasons",
+                "value",
+                "alternative_values",
+                "unit",
+                "conditions",
+                "specimen",
+                "statistics",
+                "provenance",
+                "labels",
+                "assumption",
+                "table",
+                "model",
+                "record",
+                "field",
+                "fields",
+                "specimen_differences",
+                "accepted",
+                "accepted_by",
+                "trainable_by",
+                "not_accepted",
+            ]
+        ]
+    ]
 
 
 class RecordCheckExpected(TypedDict):
@@ -1568,8 +1660,8 @@ class Case(TypedDict):
     schema_version: Version
     claims: NotRequired[dict[Suite, bool]]
     inputs: CaseInputs
-    request: NotRequired[ReadRequest | CaseOperation | JsonValue]
-    expected: ComparedResult | TableEvaluations | RecordCheckExpected
+    request: NotRequired[ReadRequest | CaseOperation | BuildOperation | JsonValue]
+    expected: ComparedResult | TableEvaluations | RecordCheckExpected | BuildExpected
     compare: CaseCompare
 
 
@@ -1738,6 +1830,64 @@ class CaseOperation(TypedDict):
     text: NotRequired[str]
     normals: NotRequired[list[JsonValue]]
     uniforms: NotRequired[list[JsonValue]]
+
+
+class BuildExpected(TypedDict):
+    """
+    The members of the build's report a build-check case compares (declarations.md section 2; README.md, "Case
+    files"): the declaration's own refusals, compared as a set, or those of the rules compare.rules_compared
+    names; the results, a set keyed by model, location and field (or fields); the watches, a set; the
+    acceptances unused, a set. A member compare names and expected omits must be absent or empty. Written
+    here, as compared_result is, until the build's report has its own schema.
+    """
+
+    refusals: NotRequired[list[ComparedRefusal]]
+    results: NotRequired[list[ComparedBuildResult]]
+    watches: NotRequired[list[ComparedWatch]]
+    unused: NotRequired[list[ComparedUnused]]
+
+
+class ComparedBuildResult(TypedDict):
+    """
+    A result of the build a case compares (declarations.md sections 2 and 3 item 6): a field result's read
+    members, as compared_result gives them (tests/spec_sync/test_schemas.py holds the two equal), and the
+    build's members, model, the record it was read for, field (or a combination's fields),
+    specimen_differences, accepted, accepted_by, trainable_by and not_accepted.
+    """
+
+    status: NotRequired[ReadStatus]
+    reasons: NotRequired[list[Reason]]
+    value: NotRequired[ResultValue]
+    alternative_values: NotRequired[list[AlternativeValue]]
+    unit: NotRequired[Unit]
+    conditions: NotRequired[list[ConditionEntry]]
+    specimen: NotRequired[ResultSpecimen]
+    statistics: NotRequired[FieldStatistics]
+    provenance: NotRequired[ResultProvenance]
+    labels: NotRequired[list[ReturnedLabel]]
+    assumption: NotRequired[Assumption]
+    table: NotRequired[Table]
+    model: NotRequired[str]
+    record: NotRequired[MaterialRef]
+    field: NotRequired[FieldName]
+    fields: NotRequired[list[FieldName]]
+    specimen_differences: NotRequired[list[ComparedSpecimenDifference]]
+    accepted: NotRequired[bool]
+    accepted_by: NotRequired[list[float]]
+    trainable_by: NotRequired[float]
+    not_accepted: NotRequired[list[Reason | ComparedSpecimenDifference]]
+
+
+class ComparedSpecimenDifference(TypedDict):
+    """
+    A specimen difference (declarations.md section 3): the section and fact, compared, and the record's fact
+    (absent where the record does not hold it) and the target's.
+    """
+
+    section: str
+    fact: str
+    record: NotRequired[JsonValue]
+    target: NotRequired[JsonValue]
 
 
 class EvaluateOperation(TypedDict):

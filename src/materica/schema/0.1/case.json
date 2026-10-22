@@ -19,16 +19,22 @@
     },
     "inputs": {"$ref": "#/$defs/case_inputs"},
     "request": {
-      "description": "A read request, an operation, or, where a case tests the request's own check, any JSON value.",
+      "description": "A read request, an operation, a build-check case's build, or, where a case tests the request's own check, any JSON value.",
       "anyOf": [
         {"$ref": "read_request.json"},
         {"$ref": "#/$defs/case_operation"},
+        {"$ref": "#/$defs/build_operation"},
         {"$ref": "record.writer.json#/$defs/json_value"}
       ]
     },
     "expected": {
-      "description": "The members of the result compared: a read result's, a table evaluation case's evaluations, or a record-check case's findings and listing.",
-      "anyOf": [{"$ref": "#/$defs/compared_result"}, {"$ref": "#/$defs/table_evaluations"}, {"$ref": "#/$defs/record_check_expected"}]
+      "description": "The members of the result compared: a read result's, a table evaluation case's evaluations, a record-check case's findings and listing, or a build-check case's members of the build's report.",
+      "anyOf": [
+        {"$ref": "#/$defs/compared_result"},
+        {"$ref": "#/$defs/table_evaluations"},
+        {"$ref": "#/$defs/record_check_expected"},
+        {"$ref": "#/$defs/build_expected"}
+      ]
     },
     "compare": {"$ref": "#/$defs/case_compare"}
   },
@@ -69,10 +75,33 @@
           }
         },
         "else": {
-          "properties": {
-            "expected": {"$ref": "#/$defs/compared_result"},
-            "compare": {"properties": {"rules_compared": false}}
+          "if": {"required": ["suite"], "properties": {"suite": {"const": "build_checks"}}},
+          "then": {
+            "description": "A build-check case (README.md, \"Case files\"): the check_build operation, the declaration among its inputs, the members of the build's report it expects, and the rules whose refusals it compares where it names any.",
+            "required": ["request"],
+            "properties": {
+              "inputs": {"required": ["declaration"]},
+              "request": {"$ref": "#/$defs/build_operation"},
+              "expected": {"$ref": "#/$defs/build_expected"},
+              "compare": {"properties": {"members": {"items": {"enum": ["refusals", "results", "watches", "unused"]}}}}
+            }
+          },
+          "else": {
+            "properties": {
+              "expected": {"$ref": "#/$defs/compared_result"},
+              "compare": {"properties": {"rules_compared": false}}
+            }
           }
+        }
+      }
+    },
+    {
+      "description": "A declaration among the inputs, and the members of a result compared, belong to a build-check case alone.",
+      "if": {"required": ["suite"], "properties": {"suite": {"const": "build_checks"}}},
+      "else": {
+        "properties": {
+          "inputs": {"properties": {"declaration": false}},
+          "compare": {"properties": {"result_members": false}}
         }
       }
     },
@@ -141,6 +170,10 @@
           "description": "A record-check case's page-text documents, given to the checker beside the records (page_text.md section 3 item 1).",
           "type": "array",
           "items": {"type": "string"}
+        },
+        "declaration": {
+          "description": "A build-check case's declaration, one file, read by record_format.md section 1 item 6, so that a declaration that breaks it can be given.",
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -157,10 +190,39 @@
         },
         "exact": {"type": "boolean"},
         "rules_compared": {
-          "description": "A record-check case's rules, by case id, whose findings and listing it compares; the items of other rules are not compared.",
+          "description": "A record-check case's rules, by case id, whose findings and listing it compares, or a build-check case's, whose refusals it compares; the items and refusals of other rules are not compared.",
           "type": "array",
           "minItems": 1,
           "items": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{3}(?![\\s\\S])"}
+        },
+        "result_members": {
+          "description": "A build-check case's members of each result compared, beside model, the location and field (or fields), which are always compared: compared_build_result's members (tests/spec_sync/test_schemas.py holds the two lists equal).",
+          "type": "array",
+          "items": {
+            "enum": [
+              "status",
+              "reasons",
+              "value",
+              "alternative_values",
+              "unit",
+              "conditions",
+              "specimen",
+              "statistics",
+              "provenance",
+              "labels",
+              "assumption",
+              "table",
+              "model",
+              "record",
+              "field",
+              "fields",
+              "specimen_differences",
+              "accepted",
+              "accepted_by",
+              "trainable_by",
+              "not_accepted"
+            ]
+          }
         }
       },
       "additionalProperties": false,
@@ -197,6 +259,111 @@
         "document": {"type": "string"},
         "pointer": {"type": "string"}
       },
+      "additionalProperties": false
+    },
+    "build_operation": {
+      "title": "BuildOperation",
+      "description": "A build-check case's request (README.md, \"Case files\"): the build makes its own reads.",
+      "type": "object",
+      "required": ["operation"],
+      "properties": {"operation": {"const": "check_build"}},
+      "additionalProperties": false
+    },
+    "build_expected": {
+      "title": "BuildExpected",
+      "description": "The members of the build's report a build-check case compares (declarations.md section 2; README.md, \"Case files\"): the declaration's own refusals, compared as a set, or those of the rules compare.rules_compared names; the results, a set keyed by model, location and field (or fields); the watches, a set; the acceptances unused, a set. A member compare names and expected omits must be absent or empty. Written here, as compared_result is, until the build's report has its own schema.",
+      "type": "object",
+      "properties": {
+        "refusals": {"type": "array", "items": {"$ref": "#/$defs/compared_refusal"}},
+        "results": {"type": "array", "items": {"$ref": "#/$defs/compared_build_result"}},
+        "watches": {"type": "array", "items": {"$ref": "#/$defs/compared_watch"}},
+        "unused": {"type": "array", "items": {"$ref": "#/$defs/compared_unused"}}
+      },
+      "additionalProperties": false
+    },
+    "compared_refusal": {
+      "title": "ComparedRefusal",
+      "description": "A refusal of the declaration on its own (declarations.md section 1): the case id of the rule broken and a JSON pointer into the declaration; detail is never compared.",
+      "type": "object",
+      "required": ["item", "pointer"],
+      "properties": {
+        "item": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{3}(?![\\s\\S])"},
+        "pointer": {"type": "string"},
+        "detail": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "compared_build_result": {
+      "title": "ComparedBuildResult",
+      "description": "A result of the build a case compares (declarations.md sections 2 and 3 item 6): a field result's read members, as compared_result gives them (tests/spec_sync/test_schemas.py holds the two equal), and the build's members, model, the record it was read for, field (or a combination's fields), specimen_differences, accepted, accepted_by, trainable_by and not_accepted.",
+      "type": "object",
+      "properties": {
+        "status": {"$ref": "read_result.json#/$defs/read_status"},
+        "reasons": {"type": "array", "items": {"$ref": "read_result.json#/$defs/reason"}},
+        "value": {"$ref": "read_result.json#/$defs/result_value"},
+        "alternative_values": {"type": "array", "items": {"$ref": "read_result.json#/$defs/alternative_value"}},
+        "unit": {"$ref": "record.writer.json#/$defs/unit"},
+        "conditions": {"type": "array", "items": {"$ref": "read_result.json#/$defs/condition_entry"}},
+        "specimen": {"$ref": "read_result.json#/$defs/result_specimen"},
+        "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
+        "provenance": {"$ref": "read_result.json#/$defs/result_provenance"},
+        "labels": {"type": "array", "items": {"$ref": "read_result.json#/$defs/returned_label"}},
+        "assumption": {"$ref": "read_result.json#/$defs/assumption"},
+        "table": {"$ref": "record.writer.json#/$defs/table"},
+        "model": {"type": "string"},
+        "record": {"$ref": "read_request.json#/$defs/material_ref"},
+        "field": {"$ref": "read_request.json#/$defs/field_name"},
+        "fields": {"type": "array", "minItems": 2, "items": {"$ref": "read_request.json#/$defs/field_name"}},
+        "specimen_differences": {"type": "array", "items": {"$ref": "#/$defs/compared_specimen_difference"}},
+        "accepted": {"type": "boolean"},
+        "accepted_by": {"description": "0-based indexes into the model's acceptances, compared as a set.", "type": "array", "items": {"type": "integer", "minimum": 0}},
+        "trainable_by": {"description": "The 0-based index of the result's entry in the model's trainable.", "type": "integer", "minimum": 0},
+        "not_accepted": {
+          "description": "Each reason and each specimen difference nothing covers, compared as a multiset.",
+          "type": "array",
+          "items": {"anyOf": [{"$ref": "read_result.json#/$defs/reason"}, {"$ref": "#/$defs/compared_specimen_difference"}]}
+        }
+      },
+      "additionalProperties": false,
+      "not": {"required": ["field", "fields"]}
+    },
+    "compared_specimen_difference": {
+      "title": "ComparedSpecimenDifference",
+      "description": "A specimen difference (declarations.md section 3): the section and fact, compared, and the record's fact (absent where the record does not hold it) and the target's.",
+      "type": "object",
+      "required": ["section", "fact"],
+      "properties": {
+        "section": {"type": "string"},
+        "fact": {"type": "string"},
+        "record": {"$ref": "record.writer.json#/$defs/json_value"},
+        "target": {"$ref": "record.writer.json#/$defs/json_value"}
+      },
+      "additionalProperties": false
+    },
+    "compared_watch": {
+      "title": "ComparedWatch",
+      "description": "A run-time watch (declarations.md section 8): its model, location, field and condition, its source, and either the interval the condition may take, its ends compared as compare says, or the accept list.",
+      "type": "object",
+      "required": ["model", "field", "condition", "source"],
+      "properties": {
+        "model": {"type": "string"},
+        "record": {"$ref": "read_request.json#/$defs/material_ref"},
+        "field": {"$ref": "read_request.json#/$defs/field_name"},
+        "condition": {"type": "string"},
+        "unit": {"type": "string"},
+        "source": {"enum": ["tolerance", "form_range", "declared"]},
+        "interval": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
+        "accept": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+      },
+      "additionalProperties": false,
+      "oneOf": [{"required": ["interval"]}, {"required": ["accept"]}]
+    },
+    "compared_unused": {
+      "title": "ComparedUnused",
+      "description": "An acceptance no result used (declarations.md section 2 item 9): its model, by name, and its 0-based index in the model's acceptances.",
+      "type": "object",
+      "required": ["model", "acceptance"],
+      "properties": {"model": {"type": "string"}, "acceptance": {"type": "integer", "minimum": 0}},
       "additionalProperties": false
     },
     "evaluate_operation": {

@@ -527,4 +527,5 @@ which the build makes from the declaration's `trainable` entries, and goes on pa
 reasons with the value as the initial value, and ends with no value at or across a declared edge; the result
 names its entry (PR-339, BC-029). Only accepted results are watched; a result accepted while not met watches
 with its operating value; a waived unstated condition gets a `declared` watch (BC-030, BC-052), and a
-form-range watch stops at a declared edge (BC-031). The case range of `declarations.md` is BC-001 to BC-099.
+form-range watch stops at a declared edge (BC-031). The build-check case shape, and BC-001 to BC-099 for
+`declarations.md`.

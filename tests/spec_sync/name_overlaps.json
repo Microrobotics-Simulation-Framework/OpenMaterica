@@ -291,6 +291,72 @@
         "quote": "one entry per condition checked (section 5): `{\"name\", \"status\", \"record\"?, \"operating\"?}`",
         "what": "Section 2's conditions row: a condition entry in a result names the condition checked, whichever its kind."
       }
+    },
+    {
+      "rule": "A",
+      "names": ["acceptance"],
+      "meanings": 2,
+      "reason": "An acceptance's kind, a token of declarations.md section 4.1, wherever an acceptance is written, and in the build's unused the acceptance's 0-based index in its model's acceptances (declarations.md section 2 item 9), which a build-check case compares.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "as `{\"model\", \"acceptance\": <its index>}`",
+        "what": "Section 2 item 9: an unused entry names its acceptance by index; case.json's unused entry takes an integer there, and an acceptance takes a kind's token."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["fields"],
+      "meanings": 2,
+      "reason": "A section's fields, a map of value fields by name, and a combination result's fields, the list of the fields it combines (declarations.md section 3 item 6), which a build-check case compares.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "returns one result per combination: `{\"model\", location, \"record\", \"fields\": [...]",
+        "what": "Section 3 item 6: a combination result's fields is a list; a section's is the object of its value fields, and case.json's build result refuses an object there."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["interval"],
+      "meanings": 2,
+      "reason": "A value form, an interval with its bounds and their basis (record_format.md section 6), and a watch's interval, the two ends within which a condition may move while its entry stays met (declarations.md section 8), which a build-check case compares.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "The interval is the set of values the condition may take while the entry stays met",
+        "what": "Section 8 item 1: a watch's interval is two numbers; case.json's watch refuses an interval form's object there."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["operation"],
+      "meanings": 2,
+      "reason": "One meaning, the operation a case asks for in place of a read: the build-check case's, check_build, is a definition of its own, so that case.json holds a build-check case to it and no other case to it; the other operations' list holds the rest, the table evaluation case's evaluate among them.",
+      "safeguard": {
+        "document": "docs/specification/README.md",
+        "quote": "its `request` is `{\"operation\": \"check_build\"}`",
+        "what": "Case files: a build-check case's request; tests/spec_sync/test_schemas.py holds the README's operations to case.json's two definitions."
+      }
+    },
+    {
+      "rule": "B",
+      "names": ["field", "fields"],
+      "owner": "compared_build_result",
+      "reason": "A field result's field and a combination result's fields (declarations.md section 2 item 2), one slip apart in the one shape case.json gives both results.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "Every result of a field holds the `field` read, and a combination's its `fields` (section 3 item 6).",
+        "what": "Section 2 item 2: a result holds one or the other; case.json's build result refuses both at once, and a build-check case compares a result by model, location and field or fields."
+      }
+    },
+    {
+      "rule": "B",
+      "names": ["field", "fields"],
+      "owner": "result_members",
+      "reason": "The members a build-check case may compare in each result name both a field result's field and a combination result's fields, as the build result holds one or the other.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "Every result of a field holds the `field` read, and a combination's its `fields` (section 3 item 6).",
+        "what": "Section 2 item 2; tests/spec_sync/test_schemas.py holds result_members to the build result's members."
+      }
     }
   ]
 }
