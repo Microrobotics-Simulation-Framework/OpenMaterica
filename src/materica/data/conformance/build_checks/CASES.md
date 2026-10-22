@@ -87,7 +87,7 @@ fixtures and what the cases cannot show.
 
 ## BC-051
 
-`declarations.md`: a build that does not claim the scene suite, USD read or the sampling suite refuses at build what needs it: a model checked over a domain or a path, `region_conditions`, an acceptance or `trainable` entry at a region or an interval; a model with `engine`; `sampling`, a requirement's `represents` or `population_level`, a `distribution` acceptance; where items 7 and 8 or the `population_level` rule refuse the same declaration, their refusal alone
+`declarations.md`: a build that does not claim the scene suite, USD read or the sampling suite refuses at build what needs it: a model checked over a domain or a path, `region_conditions`, an acceptance or `trainable` entry at a region or an interval; a model with `engine`; `sampling`, a requirement's `represents` or `population_level`, a `distribution` acceptance; where items 7 and 8 or the `population_level` rule refuse a member, their refusal alone for that member
 
 | Variant | Arm | Decided by | Expected |
 |---|---|---|---|

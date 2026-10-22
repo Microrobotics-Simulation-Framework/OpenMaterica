@@ -527,5 +527,22 @@ which the build makes from the declaration's `trainable` entries, and goes on pa
 reasons with the value as the initial value, and ends with no value at or across a declared edge; the result
 names its entry (PR-339, BC-029). Only accepted results are watched; a result accepted while not met watches
 with its operating value; a waived unstated condition gets a `declared` watch (BC-030, BC-052), and a
-form-range watch stops at a declared edge (BC-031). The build-check case shape, and BC-001 to BC-099 for
-`declarations.md`.
+form-range watch stops at a declared edge (BC-031). The build-check case shape is added, and
+`declarations.md`'s case range is BC-001 to BC-099.
+
+Settled with S7-cases-1's review (maintainer, 2026-10-23, as recommended): three sentences of
+`declarations.md` section 1, each a reading the build check's first case files had to choose. Item 12's
+precedence is per member: where item 7 refuses a model with `engine`, its `engine` gives no refusal under item
+12 and its other members still do, and where item 8 or the `population_level` rule refuses the declaration
+over a requirement, that requirement gives none and a `sampling` beside it still does. So a model with
+`engine` checked over a domain, by a build that claims neither the scene suite nor USD read and is passed no
+crosswalk, gives BC-040 and the domain's BC-051, and a population requirement without `population_level`
+beside a valid `sampling` gives BC-043 and the `sampling`'s BC-051. Before, the sentence did not say whether
+item 7 spared a model's `engine` or the whole model, and BC-051's Cases row gave the rules that come first
+"their refusal alone" over the whole declaration; the row now says "for that member" (BC-051). Items 3 and 4's
+"without" means absent: an empty `reason` or `basis` breaks its row's Holds and is BC-048's alone, at that
+member; before, items 3 and 4 could be read as naming it too, which by the precedence would have given it
+BC-004 or BC-005 (BC-048). And the pointer names the most specific member at fault: for a value that breaks
+its row's Holds, that member, such as a requirement's `field` not in `reads` or a `trainable` entry's `record`
+its model is not checked over; for what item 12 refuses, the member that needs the suite, or the acceptance or
+`trainable` entry itself, such as a `distribution` acceptance (BC-048, BC-051).
