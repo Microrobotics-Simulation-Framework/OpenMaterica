@@ -3867,7 +3867,9 @@ MEASURED_ON_CI = {
         "step8_mutants": 1.55,
         "relations": 65.22,
         "conditions": 62.42,
-        "alternatives": 38.73,
+        # By estimate: its slowest part measured, 38.73, and S4d's properties at `deep` (ci.yml's comment),
+        # until a `deep` run measures it.
+        "alternatives": 52.6,
     },
 }
 PROFILE_EVENTS = {"ci": "pull_request", "deep": "schedule"}
@@ -3953,9 +3955,9 @@ def test_each_hypothesis_shard_has_twice_its_slowest_run_on_ci() -> None:
             "hypothesis (deep, step8_mutants) is interrupted at 2 minutes, less than twice its 1.55 measured",
         ),
         (
-            "|| startsWith(matrix.shard, 'alternatives') && 90",
+            "|| startsWith(matrix.shard, 'alternatives') && 110",
             "",
-            "hypothesis (deep, alternatives_1of2) is interrupted at 42 minutes, less than twice its 38.73 "
+            "hypothesis (deep, alternatives_1of2) is interrupted at 42 minutes, less than twice its 52.6 "
             "measured",
         ),
         (

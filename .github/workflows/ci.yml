@@ -581,14 +581,19 @@ jobs:
     #   writer 63.6, 67.4, 61.4: 137.9, 180; conditions (not in the first) 62.4, 49.1: 127.8, 180;
     #   agreement 47.0 whole, then its parts 49.8 and 77.3, 25.4 and 76.1: 157.6, 360;
     #   relations (not in the first), its parts 50.3 and 49.6, 58.2 and 65.2: 133.4, 345;
-    #   alternatives (not in the first), its parts 22.0 and 20.6, 38.7 and 32.2: 80.5, 90;
+    #   alternatives (not in the first), its parts 22.0 and 20.6, 38.7 and 32.2, and with S4d's properties
+    #   about 52.6 and 40.9 by estimate (below): 108.2, 110;
     #   records 31.4, 37.2, 50.8, 64.3: 131.5, 135; json 14.1, 22.6, 23.9: 50.7, 55;
     #   step 8's mutants 1.6, 0.6, 0.7: 6.1, 45 (the default, which a shard not yet measured at `deep` has too).
     # records and json had fallen below the rule and are raised to it, rounded up to a multiple of five: records
     # twice, to 105 at 50.8 and to 135 at 64.3. The others are kept, not lowered to the rule: the same code has
     # run at least 2.7 times as long on one runner as on another (the writer shard at `ci`, below: 11 minutes,
     # and past 30), and three runs, two of them on one morning, do not bound that. Lowering them is the
-    # maintainer's call.
+    # maintainer's call. S4d's properties (HP39's two parts and HP40) take 175 and 110 s of the alternatives
+    # parts' test time at `ci` locally (2026-10-22, against 470 and 421 in all); ten times that at `deep`, on a
+    # runner 1.9 times slower than the laptop (main's parts at `ci`: 121 and 114 s locally, 197 and 218 on CI),
+    # shared by four workers, adds about 13.9 and 8.7 minutes to the parts' 38.7 and 32.2. The shard's timeout
+    # rises from 90 to 110 by that estimate, which the first `deep` run measures.
     # `ci`: each well above its shard's slowest run measured on CI, since a hosted runner has taken 1.6 to 4
     # times as long as this machine and varies from run to run: agreement 5.9 minutes, writer 5.2, records 2.5,
     # json and step 8's mutants 1.6 (run 39002323592, 2026-10-17); relations 7.4 and conditions 5.1 (run
@@ -602,7 +607,7 @@ jobs:
       && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
       || startsWith(matrix.shard, 'relations') && 345
       || startsWith(matrix.shard, 'agreement') && 360
-      || startsWith(matrix.shard, 'alternatives') && 90
+      || startsWith(matrix.shard, 'alternatives') && 110
       || matrix.shard == 'records' && 135 || matrix.shard == 'json' && 55 || 45)
       || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
       || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
@@ -633,7 +638,7 @@ jobs:
         && ((matrix.shard == 'writer' || matrix.shard == 'conditions') && 180
         || startsWith(matrix.shard, 'relations') && 345
         || startsWith(matrix.shard, 'agreement') && 360
-        || startsWith(matrix.shard, 'alternatives') && 90
+        || startsWith(matrix.shard, 'alternatives') && 110
         || matrix.shard == 'records' && 135 || matrix.shard == 'json' && 55 || 45)
         || (matrix.shard == 'writer' && 75 || (matrix.shard == 'conditions' || startsWith(matrix.shard, 'relations')) && 30
         || startsWith(matrix.shard, 'agreement') && 45 || 20) }}
