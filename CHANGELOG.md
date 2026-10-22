@@ -737,6 +737,22 @@ every family entry goes in `families/CHANGELOG.md`.
   866 s, and missed three times: a rate of 1.1e-3 finds a second, 0.80 a million inputs. CI's control step runs it
   (**Changed**, above). `seeded_fault.py`'s count of which faults raise is corrected (the seventh raises; the sixth
   is the model's).
+- Every citation of the specification in the tests is held to a quote found at its line, as the reference
+  model's are. The seeded faults' table (`tests/reference/mutants.py`) cited the text as `file:line` in 128 of its
+  129 `rule` strings (the 129th names an open point), 131 references in all, and one comment more, with no quote;
+  `test_model_mutants.py` and `test_model_properties.py` held one each, and `cases.py` one whose quote never
+  closed. Nothing read them, so a shifted citation passed. Each now holds a quote (136 citations in the four
+  files); `tests/reference/test_citations.py` reads their comments and their string literals, a `Mutant`'s `rule`
+  being a string that `prose` never saw, and fails a citation with no quote, a quote not found where it begins,
+  a seeded fault that cites neither the text nor a listed open point, and a test module that cites the text and is
+  not listed. Two citations moved to the line that says the rule: the `no_pick` result's `conditions`
+  (`read_side_contract.md:169-170` to 171-172) and a `dof` held as a status object under a Student's t
+  distribution (`read_side_contract.md:134-135` to `uncertainty.md:48-49`); a comment's moved too (169-171 to 164).
+  Its controls: in `mutants.py` a rule's citation shifted one line later and one line earlier, its quote removed
+  and its quote changed, and in `test_model_mutants.py` a shifted citation; the old check reads neither file, and
+  handed `mutants.py` finds none of the four. The check also closes a gap: a quote may run on to the line after the last
+  one cited, but must now begin on a cited line, where before one beginning on the next line passed; 2 of the
+  model's 408 citations began there (`record_format.md:580` to 581, and 243-244 to 243-245).
 
 ## [0.1.0.dev2] - 2026-10-20
 

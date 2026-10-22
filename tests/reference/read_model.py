@@ -1785,7 +1785,7 @@ def check_specimen(specimen: JsonValue, faults: Reasons) -> None:
         if name in FACTS:
             check_fact(name, fact, faults)
         elif any(one_slip(name, known) for known in FACTS):
-            # record_format.md:580 "in a section, its `specimen`"
+            # record_format.md:581 "in a section, its `specimen`"
             faults.add("form_invalid")
 
 
@@ -2691,7 +2691,7 @@ def component_returned(component: JsonObject) -> JsonValue:
     return returned
 
 
-# record_format.md:243-244 "A reader returns an entry with its statuses and its `provenance` whole" ...
+# record_format.md:243-245 "A reader returns an entry with its statuses and its `provenance` whole" ...
 # "section 2 item 5 defines": read_side_contract.md:157 "Every member a result returns from a record holds
 # the members the reader's version defines", at every depth. Below the provenance table's own members the
 # text names their members in part only (an extraction's by its methods' rows, a locator's in provenance.md
