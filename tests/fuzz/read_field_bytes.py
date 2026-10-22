@@ -24,13 +24,13 @@ of six, where under one `want` it is found as often as without the model), when 
 constant, an interval, a composition or evidence its row allows that the reader `$defs` refuse (T1's third
 relation), or when steps 9 and 10 read such a field otherwise than their text, its units by code point and its
 conditions by HP7's oracle (`field_oracle.py`). A field holding alternatives is read by step 7 with no pick
-and no overlay (S4a), and the model's step 7 decides it too. `NotImplementedError` is a step not built yet:
-step 7 over a table alternative whose read gives a reason at step 11 (S4d), which the model leaves undecided
-too. A table is read to the end (S3b-2): held as a constant is, its `axis_unit` among its units and its axis
-entry and step 11's reasons by the text (`field_oracle.table_steps_10_and_11`), and read again under `want:
-value` at the places table item 3 tells apart, each held to the model, steps 9 to 11 and HP1 and HP2: its
-knots and edges, the readable range's ends and `source_range`'s, the double either side of each, and a
-value beyond each end of `x` (`field_oracle.places`, which says how many).
+and no overlay (S4a, and S4d's rows for a table alternative whose read gives a reason at step 11), and the
+model's step 7 decides it too. `NotImplementedError` is a step not built yet, which no field the target writes
+reaches since S4d. A table is read to the end (S3b-2): held as a constant is, its `axis_unit` among its units
+and its axis entry and step 11's reasons by the text (`field_oracle.table_steps_10_and_11`), and read again
+under `want: value` at the places table item 3 tells apart, each held to the model, steps 9 to 11 and HP1 and
+HP2: its knots and edges, the readable range's ends and `source_range`'s, the double either side of each, and
+a value beyond each end of `x` (`field_oracle.places`, which says how many).
 The seeds are every value field of every conformance input.
 """
 

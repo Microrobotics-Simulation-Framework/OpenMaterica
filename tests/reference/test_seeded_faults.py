@@ -34,11 +34,12 @@ def test_the_cases_kill_the_fault_or_it_is_listed_as_a_survivor(name: str) -> No
 # The check above stops at a fault's first killing file, so a raise on a later file is not seen. Seven faults
 # once made the model raise, each found by measuring every fault over every case file of a read; each now
 # answers there, and is held to its answer on the files where it raised: a disagreement where the file kills
-# it, an agreement where it takes no effect, and no verdict on a table alternative an extrapolation covers,
-# which the model leaves to S4d. The `condition_entry` wrappers of two, before they took the table axis,
-# raised on every file they reached (353 and 330), the three table reads here among them. S3c's two raised in
-# their first form (2026-10-21), each asking the reference evaluator for a value where it gives none in range:
-# across an edge on the readable range's end, and at `x[0]` or `x[-1]` outside a narrower `source_range`.
+# it, and an agreement where it takes no effect, a table alternative across an edge under an extrapolation
+# among them, on which the model gave no verdict until S4d. The `condition_entry` wrappers of two, before they
+# took the table axis, raised on every file they reached (353 and 330), the three table reads here among them.
+# S3c's two raised in their first form (2026-10-21), each asking the reference evaluator for a value where it
+# gives none in range: across an edge on the readable range's end, and at `x[0]` or `x[-1]` outside a
+# narrower `source_range`. None of S4d's twelve raised, in its first form or since (2026-10-22).
 TABLE_READS_THE_WRAPPERS_RAISED_ON = {
     "PR-016.linear_between_knots.json": "agrees",
     "PR-017.far_above.json": "agrees",
@@ -62,7 +63,7 @@ ONCE_RAISED = {
         "PR-307.across_edge_on_range_end_above.json": "agrees",
     },
     "extrapolation_end_of_x": {
-        "PR-044.across_edge_under_extrapolation_set_aside.json": "no verdict",
+        "PR-044.across_edge_under_extrapolation_set_aside.json": "agrees",
         "PR-307.above_narrowed_range.json": "differs",
         "PR-307.above_range_edge_inside.json": "differs",
         "PR-307.across_edge.json": "agrees",

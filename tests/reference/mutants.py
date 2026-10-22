@@ -82,6 +82,7 @@ _extrapolation_covers = model.extrapolation_covers
 _at_the_read = model.at_the_read
 _readable_range = model.readable_range
 _form_member_returned = model.form_member_returned
+_form_want_gives = model.form_want_gives
 
 
 class EveryString:
@@ -367,7 +368,8 @@ def nominal_applied_to_every_alternative(
     read = _read_value_field(
         field_value, section, request, claims, record_fault=record_fault, nominal=applied
     )
-    if "assumption" in read.members:
+    # an interval's alone: a table an extrapolation covers holds an `assumption` too (S4d)
+    if read.form == "interval" and "assumption" in read.members:
         read.stored = read.members["value"]
     return read
 
@@ -420,13 +422,15 @@ def rests_on_one_alternative(answer: JsonObject) -> bool:
 
 
 def refused_alternative_set_aside(read: FieldRead) -> model.Fate:
+    # at steps 8 and 9 alone: step 11's `at_edge` refuses by a rule of its own (S4d)
     fate = _fate_of(read)
-    return "set_aside" if fate == "refuses" and not read.by_request else fate
+    return "set_aside" if fate == "refuses" and read.ended_at in (8, 9) and not read.by_request else fate
 
 
 def set_aside_alternative_refuses(read: FieldRead) -> model.Fate:
+    # at step 10 alone: step 11's `outside_range` sets aside by a rule of its own (S4d)
     fate = _fate_of(read)
-    return "refuses" if fate == "set_aside" else fate
+    return "refuses" if fate == "set_aside" and read.ended_at == 10 else fate
 
 
 def request_fault_sets_aside(read: FieldRead) -> model.Fate:
@@ -538,7 +542,9 @@ def nominal_not_applied_to_the_one_left(
     answer = _read_alternatives(
         field_value, section, request, claims, reasons, labels, record_fault=record_fault
     )
-    if "assumption" in answer:
+    # a nominal's alone: the one left an extrapolation covers holds an `assumption` too (S4d)
+    assumption = answer.get("assumption")
+    if isinstance(assumption, dict) and assumption.get("acceptance") == "nominal":
         for name in ("value", "assumption", "unit", "specimen", "statistics", "provenance"):
             answer.pop(name, None)
     return answer
@@ -1408,6 +1414,226 @@ def covered_outside_range_dropped(read: FieldRead, table: JsonObject, request: R
     return point
 
 
+# S4d's: step 7's rows for a table alternative whose read gives a reason at step 11, or that an extrapolation
+# covers.
+
+
+def step_11_codes(read: FieldRead) -> set[str]:
+    """The codes of the reasons of a read that step 11 ended, none for another read."""
+    return {reason.code for reason in read.own} if read.ended_at == 11 else set()
+
+
+def outside_alone(read: FieldRead) -> bool:
+    codes = step_11_codes(read)
+    return "outside_range" in codes and "at_edge" not in codes
+
+
+def outside_range_kept(read: FieldRead) -> model.Fate:
+    """An alternative outside its form's range, off every edge, kept with no extrapolation to cover it."""
+    return "stays" if outside_alone(read) else _fate_of(read)
+
+
+def outside_range_read_for_an_entry(
+    field_value: JsonValue,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    *,
+    record_fault: bool,
+    nominal: float | None,
+) -> FieldRead:
+    """Beside the fault above, a read step 11 ends outside the range given what an entry holds from its field,
+    as a kept alternative's is, so that the faulted model answers under `no_pick`."""
+    read = _read_value_field(
+        field_value, section, request, claims, record_fault=record_fault, nominal=nominal
+    )
+    if outside_alone(read) and isinstance(field_value, dict):
+        model.returned_from_the_field(read, field_value, model.merged_specimen(section, field_value))
+    return read
+
+
+def covered_set_aside(read: FieldRead) -> model.Fate:
+    """An alternative an extrapolation the request carries covers set aside, as one outside its range is."""
+    return "set_aside" if read.covered is not None else _fate_of(read)
+
+
+def edge_inside_the_range_sets_aside(read: FieldRead) -> model.Fate:
+    """An alternative read exactly at an edge inside its readable range set aside, not refusing the field."""
+    codes = step_11_codes(read)
+    return "set_aside" if "at_edge" in codes and "outside_range" not in codes else _fate_of(read)
+
+
+def edge_outside_the_range_sets_aside(read: FieldRead) -> model.Fate:
+    """An alternative read exactly at an edge outside its readable range, `outside_range` beside `at_edge`,
+    set aside, as one outside the range is."""
+    return "set_aside" if {"at_edge", "outside_range"} <= step_11_codes(read) else _fate_of(read)
+
+
+def set_aside_read_on_to_step_11(
+    field_value: JsonValue,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    *,
+    record_fault: bool,
+    nominal: float | None,
+) -> FieldRead:
+    """A table whose conditions give `not_met` at step 10 read on to step 11 all the same, where the request
+    gives no operating value for its axis: `request_incomplete`, which refuses the field."""
+    read = _read_value_field(
+        field_value, section, request, claims, record_fault=record_fault, nominal=nominal
+    )
+    if read.ended_at == 10 and not read.by_request and read.form == "table" and isinstance(field_value, dict):
+        table = field_value["table"]
+        assert isinstance(table, dict)
+        axis = table["axis"]
+        assert isinstance(axis, str)
+        if axis not in request.operating:
+            read.by_request.add("request_incomplete", axis)
+    return read
+
+
+def over_a_range_set_aside(read: FieldRead) -> model.Fate:
+    """A table read over an operating range of its axis set aside, not kept."""
+    return "set_aside" if read.over_a_range else _fate_of(read)
+
+
+def over_a_range_given_by_want(read: FieldRead, request: Request) -> bool:
+    """A table read over an operating range of its axis counted as a form `want` gives, as a table is."""
+    if read.over_a_range:
+        return read.form in model.GIVES.get(request.want, ())
+    return _form_want_gives(read, request)
+
+
+def over_a_range_entry_unlabelled(
+    field_value: JsonValue,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    *,
+    record_fault: bool,
+    nominal: float | None,
+) -> FieldRead:
+    """A table read over an operating range of its axis given no labels for its entry, as its read, which
+    step 11 ends, gives none."""
+    read = _read_value_field(
+        field_value, section, request, claims, record_fault=record_fault, nominal=nominal
+    )
+    if read.over_a_range:
+        read.entry_labels = []
+    return read
+
+
+def over_a_range_entry_bare(
+    field_value: JsonValue,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    *,
+    record_fault: bool,
+    nominal: float | None,
+) -> FieldRead:
+    """A table read over an operating range of its axis returning no member for its entry beside the table:
+    no `unit`, `specimen`, `statistics` or `provenance`, as its read, which step 11 ends, returns none."""
+    read = _read_value_field(
+        field_value, section, request, claims, record_fault=record_fault, nominal=nominal
+    )
+    if read.over_a_range:
+        read.members = {}
+    return read
+
+
+def kept_entries_extrapolated(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    """Under `no_pick`, the entry of an alternative an extrapolation covers holding the end value and the
+    `assumption`: the extrapolation applied, though that alternative is not the one left."""
+    answer = _read_alternatives(
+        field_value, section, request, claims, reasons, labels, record_fault=record_fault
+    )
+    entries = answer.get("alternative_values")
+    if isinstance(entries, list):
+        reads = alternatives_read(field_value, section, request, claims, record_fault=record_fault)
+        for entry in entries:
+            assert isinstance(entry, dict)
+            index = entry["alternative"]
+            assert isinstance(index, float)
+            one = reads[int(index)]
+            if one.covered is not None:
+                entry["value"], entry["assumption"] = one.members["value"], one.covered
+    return answer
+
+
+def kept_reads_ending_at_step_11(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    """Step 7 reading an alternative an extrapolation covers no further than step 11: no reason or label of
+    step 12, and no value of step 13."""
+
+    def read_to_step_11(
+        field_value: JsonValue,
+        section: JsonObject,
+        request: Request,
+        claims: frozenset[str],
+        *,
+        record_fault: bool,
+        nominal: float | None,
+    ) -> FieldRead:
+        read = _read_value_field(
+            field_value, section, request, claims, record_fault=record_fault, nominal=nominal
+        )
+        if read.covered is not None:
+            read.own = Reasons(reason for reason in read.own if reason.code != "stated_without_origin")
+            read.labels = []
+            read.members = {
+                name: member
+                for name, member in read.members.items()
+                if name not in ("value", "table", "assumption")
+            }
+        return read
+
+    with mock.patch.object(model, "read_value_field", read_to_step_11):
+        return _read_alternatives(
+            field_value, section, request, claims, reasons, labels, record_fault=record_fault
+        )
+
+
+def kept_under_any_want(
+    field_value: JsonObject,
+    section: JsonObject,
+    request: Request,
+    claims: frozenset[str],
+    reasons: Reasons,
+    labels: list[str],
+    *,
+    record_fault: bool,
+) -> JsonObject:
+    """Step 7 keeping an alternative outside its range that the request's extrapolation would cover under
+    `want: value`, whatever the `want`: an extrapolation that would cover it were it applied."""
+
+    def covers_as_under_value(table: JsonObject, point: float, given: Request) -> bool:
+        return _extrapolation_covers(table, point, dataclasses.replace(given, want="value"))
+
+    with mock.patch.object(model, "extrapolation_covers", covers_as_under_value):
+        return _read_alternatives(
+            field_value, section, request, claims, reasons, labels, record_fault=record_fault
+        )
+
+
 MUTANTS: Mapping[str, Mutant] = {
     # Step 0
     "want_outside_section_6": Mutant(
@@ -2040,5 +2266,71 @@ MUTANTS: Mapping[str, Mutant] = {
         "a read an extrapolation covers without its `outside_range`",
         "read_side_contract.md:502",
         {"read_the_table": covered_outside_range_dropped},
+    ),
+    # S4d's: step 7's rows for a table alternative at step 11, measured 2026-10-22.
+    "outside_range_kept_without_an_extrapolation": Mutant(
+        "an alternative outside its form's range, off every edge, kept with no extrapolation to cover it",
+        "read_side_contract.md:252-253",
+        {"fate_of": outside_range_kept, "read_value_field": outside_range_read_for_an_entry},
+    ),
+    "covered_alternative_set_aside": Mutant(
+        "an alternative an extrapolation the request carries would cover set aside, not kept",
+        "read_side_contract.md:256-257",
+        {"fate_of": covered_set_aside},
+    ),
+    "edge_inside_the_range_sets_aside": Mutant(
+        "a table alternative read exactly at an edge inside its readable range set aside, not refusing",
+        "read_side_contract.md:263-264",
+        {"fate_of": edge_inside_the_range_sets_aside},
+    ),
+    "edge_outside_the_range_sets_aside": Mutant(
+        "a table alternative read exactly at an edge outside its readable range, `outside_range` beside "
+        "`at_edge`, set aside, not refusing",
+        "record_format.md:356-358",
+        {"fate_of": edge_outside_the_range_sets_aside},
+    ),
+    "set_aside_alternative_reaches_step_11": Mutant(
+        "a table alternative set aside at step 10 read on to step 11, its missing operating value refusing "
+        "the field",
+        "read_side_contract.md:266-267",
+        {"read_value_field": set_aside_read_on_to_step_11},
+    ),
+    "over_a_range_set_aside": Mutant(
+        "a table alternative read over an operating range of its axis set aside, not kept",
+        "read_side_contract.md:256-259",
+        {"fate_of": over_a_range_set_aside},
+    ),
+    "over_a_range_counted_as_a_form_want_gives": Mutant(
+        "a table read over an operating range of its axis counted as a form `want` gives",
+        "read_side_contract.md:279",
+        {"form_want_gives": over_a_range_given_by_want},
+    ),
+    "over_a_range_entry_unlabelled": Mutant(
+        "the `no_pick` entry of a table read over an operating range of its axis without step 12's labels",
+        "read_side_contract.md:122",
+        {"read_value_field": over_a_range_entry_unlabelled},
+    ),
+    "over_a_range_entry_bare": Mutant(
+        "the `no_pick` entry of a table read over an operating range of its axis without its unit, "
+        "specimen, statistics and provenance",
+        "record_format.md:368-370",
+        {"read_value_field": over_a_range_entry_bare},
+    ),
+    "extrapolation_applied_under_no_pick": Mutant(
+        "under `no_pick`, the entry of an alternative an extrapolation covers holding the end value and "
+        "`assumption`",
+        "read_side_contract.md:282-283",
+        {"read_alternatives": kept_entries_extrapolated},
+    ),
+    "kept_alternative_read_no_further": Mutant(
+        "an alternative kept for an extrapolation not read on through steps 12 and 13",
+        "read_side_contract.md:259-260",
+        {"read_alternatives": kept_reads_ending_at_step_11},
+    ),
+    "kept_for_an_extrapolation_under_any_want": Mutant(
+        "an alternative outside its range kept for an extrapolation that would cover it under `want: "
+        "value`, whatever the `want`",
+        "record_format.md:349-350",
+        {"read_alternatives": kept_under_any_want},
     ),
 }

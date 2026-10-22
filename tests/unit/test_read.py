@@ -20,11 +20,12 @@ import pytest
 import materica
 from materica import shapes
 from materica.core import evaluate, value_shapes
+from materica.core import read as read_module
 from materica.core.conditions import ConditionEntry
 from materica.core.hashing import content_hash
 from materica.core.identifiers import FAMILY_ID, RECORD_ID, MaterialRef, Version, parse_version
 from materica.core.jsonio import JsonValue
-from materica.core.read import ReadRequest, ReadResult, read
+from materica.core.read import Extrapolation, FieldRead, FormRange, ReadRequest, ReadResult, read
 from materica.core.reasons import Reason, merged
 from materica.core.record import RecordStore
 from materica.core.status import worst
@@ -2467,9 +2468,8 @@ def test_a_request_keeps_its_extrapolations_with_the_members_their_shape_names()
 
 
 # A table among alternatives: step 7 reads every alternative before it decides the outcome. A table read
-# inside its readable range is read as any form is (S3b-2), and one whose read gives a reason at step 11
-# raises wherever it stands, since step 7's rules for it are a later piece's (S4d).
-STEP_11_NOT_YET = "step 7 over a table alternative's reason at step 11 is S4d's"
+# inside its readable range is read as any form is (S3b-2), and one whose read gives a reason at step 11 is
+# set aside, kept or refuses the field by step 7's rows for step 11 (S4d).
 BESIDE_A_TABLE: dict[str, Callable[[], dict[str, JsonValue]]] = {
     "constant": lambda: met_field(),
     "interval": lambda: met_interval(lower=0.0006, upper=0.0008, basis="specification_limits"),
@@ -2547,49 +2547,320 @@ STEP_11_REASONS: dict[str, tuple[dict[str, JsonValue], dict[str, JsonValue]]] = 
         {"x": [300.0, 310.15, 310.15, 320.0], "y": [1e-3, 8e-4, 7e-4, 6e-4], "edges": [310.15]},
         {},
     ),
+    "at an edge outside a narrower source_range": (
+        {
+            "x": [300.0, 310.15, 310.15, 320.0],
+            "y": [1e-3, 8e-4, 7e-4, 6e-4],
+            "edges": [310.15],
+            "source_range": [312.0, 320.0],
+        },
+        {},
+    ),
     "outside a narrower source_range": ({"source_range": [300.0, 305.0]}, {}),
     "over an operating range": ({}, {"temperature": {"range": [309.15, 311.15], "unit": "K"}}),
     "with no operating value": ({}, {"temperature": None}),
 }
+SET_ASIDE = ("outside its range", "outside a narrower source_range")
+REFUSING = ("at an edge", "at an edge outside a narrower source_range", "with no operating value")
 
 
-@pytest.mark.parametrize("want", ["value", "bounds"])
-@pytest.mark.parametrize("names", TABLE_AMONG_OTHERS, ids=" and ".join)
-@pytest.mark.parametrize("situation", STEP_11_REASONS)
-def test_a_table_alternative_whose_read_gives_a_reason_at_step_11_raises_wherever_it_stands(
-    situation: str, names: tuple[str, ...], want: str
-) -> None:
-    """Section 3, step 7 sets aside, keeps or refuses on a table alternative's reasons at step 11 (outside its
-    readable range, at an edge, over an operating range of its axis, with no operating value for it), rules a
-    later piece builds: the read raises, first or last beside each other form, whatever the others give, even
-    a broken constant's refusal, rather than give an outcome those rules could change."""
-    table, operating = STEP_11_REASONS[situation]
-    request, records = stored(
-        with_field("fluid.dynamic_viscosity", alternatives_of(names, met_table(**table)))
-    )
+def read_in(
+    situation: str, field: JsonValue, *, want: str = "value", acceptances: Collection[JsonValue] = ()
+) -> ReadResult:
+    """`field` read as `read_accepting` reads it, the table and the request changed as `situation` says
+    (`STEP_11_REASONS`), with `acceptances` located at the target's record."""
+    _, operating = STEP_11_REASONS[situation]
+    request, records = stored(with_field("fluid.dynamic_viscosity", field))
     assert isinstance(request, dict)
     request.update(copy.deepcopy(MET_REQUEST))
-    cast(dict[str, JsonValue], request["requirement"])["want"] = want
+    requirement = cast(dict[str, JsonValue], request["requirement"])
+    requirement["want"] = want
     given = cast(dict[str, JsonValue], request["operating_conditions"])
     for name, value in operating.items():
         if value is None:
             del given[name]
-            del cast(dict[str, JsonValue], cast(dict[str, JsonValue], request["requirement"])["conditions"])[
-                name
-            ]
+            del cast(dict[str, JsonValue], requirement["conditions"])[name]
         else:
             given[name] = value
-    with pytest.raises(NotImplementedError, match=STEP_11_NOT_YET):
-        read(request, records)
+    pin = cast(dict[str, JsonValue], request["target"])["record"]
+    request["acceptances"] = [
+        {**cast(dict[str, JsonValue], acceptance), "record": pin} for acceptance in acceptances
+    ]
+    return read(request, records)
 
 
+def table_in(situation: str) -> dict[str, JsonValue]:
+    return met_table(**STEP_11_REASONS[situation][0])
+
+
+def each_read_alone(situation: str, names: tuple[str, ...], want: str) -> tuple[Reason, ...]:
+    """Every alternative's reasons, as each one's read alone as a field gives them, each carrying its index
+    but `request_incomplete`, the request's fault (section 2 item 2)."""
+    found: list[Reason] = []
+    for index, name in enumerate(names):
+        alone = table_in(situation) if name == "table" else BESIDE_A_TABLE[name]()
+        for reason in read_in(situation, alone, want=want).reasons:
+            mine = reason.code != "request_incomplete"
+            found.append(dataclasses.replace(reason, alternative=index if mine else None))
+    return merged(found)
+
+
+@pytest.mark.parametrize("want", ["value", "bounds"])
 @pytest.mark.parametrize("names", TABLE_AMONG_OTHERS, ids=" and ".join)
-def test_a_table_alternative_an_extrapolation_would_cover_raises_too(names: tuple[str, ...]) -> None:
-    """Section 3, step 7 keeps one "that an extrapolation the request carries would cover", and applies it
-    "only where that alternative is the one left": S4d's rules, so the read raises, the alternative alone
-    included."""
-    with pytest.raises(NotImplementedError, match=STEP_11_NOT_YET):
-        read_at(330.0, [extrapolation()], field=alternatives_of(names, met_table()))
+@pytest.mark.parametrize("situation", SET_ASIDE)
+def test_a_table_alternative_outside_its_readable_range_is_set_aside(
+    situation: str, names: tuple[str, ...], want: str
+) -> None:
+    """Section 3, step 7: "An alternative is set aside where its read lies outside its form's range at step
+    11, not exactly at a declared edge, and no extrapolation the request carries would cover it" [PR-044]:
+    beside another, the result is what the other alone gives as the one left, its reasons carrying its index,
+    "the set-aside ones' reasons ... not reported"; alone, or beside one that is set aside too or refuses the
+    field, `not_met` "with every alternative's reasons" (`outside_range` with the axis among them), no
+    value."""
+    result = read_in(situation, alternatives_of(names, table_in(situation)), want=want)
+    at = names.index("table")
+    others = [(index, name) for index, name in enumerate(names) if name != "table"]
+    every = each_read_alone(situation, names, want)
+    assert Reason("outside_range", "temperature", alternative=at) in every
+    if not others:
+        assert (result.status, result.reasons, result.value, result.conditions) == (
+            "not_met",
+            every,
+            None,
+            None,
+        )
+        return
+    ((index, name),) = others
+    other = read_in(situation, {"alternatives": [BESIDE_A_TABLE[name]()]}, want=want)
+    if other.status == "not_met" and other.conditions is None:
+        # The other refuses the field or is set aside too.
+        assert (result.status, result.reasons, result.value) == ("not_met", every, None)
+    else:
+        assert dataclasses.replace(result, reasons=()) == dataclasses.replace(other, reasons=())
+        assert result.reasons == tuple(
+            dataclasses.replace(reason, alternative=index) for reason in other.reasons
+        )
+
+
+@pytest.mark.parametrize("extrapolated", [False, True])
+@pytest.mark.parametrize("want", ["value", "bounds"])
+@pytest.mark.parametrize("names", TABLE_AMONG_OTHERS, ids=" and ".join)
+@pytest.mark.parametrize("situation", REFUSING)
+def test_a_table_alternative_at_an_edge_or_with_no_operating_value_refuses_the_field(
+    situation: str, names: tuple[str, ...], want: str, extrapolated: bool
+) -> None:
+    """Section 3, step 7: "A table alternative read exactly at a declared edge refuses the field, wherever the
+    edge lies, outside the readable range included. So does a fault of the request (section 1): an
+    alternative whose read reaches step 11 with no operating value for its form's axis refuses the field"
+    [PR-044] [PR-308], whatever stands beside it and whatever extrapolation the request carries, none
+    applying at an edge (section 5): `not_met` "with every alternative's reasons, those that wait included",
+    each with its index but `request_incomplete`, which carries none (section 2 item 2), and no value."""
+    acceptances = [extrapolation()] if extrapolated else []
+    result = read_in(
+        situation, alternatives_of(names, table_in(situation)), want=want, acceptances=acceptances
+    )
+    at = names.index("table")
+    every = each_read_alone(situation, names, want)
+    assert (result.status, result.reasons, result.value, result.conditions) == ("not_met", every, None, None)
+    refusing = {
+        "at an edge": [Reason("at_edge", "temperature", alternative=at)],
+        "at an edge outside a narrower source_range": [
+            Reason("at_edge", "temperature", alternative=at),
+            Reason("outside_range", "temperature", alternative=at),
+        ],
+        "with no operating value": [Reason("request_incomplete", "temperature")],
+    }[situation]
+    assert set(refusing) <= set(result.reasons)
+    assert all(reason.alternative is None for reason in result.reasons if reason.code == "request_incomplete")
+
+
+def test_a_table_alternative_set_aside_at_step_10_never_reaches_step_11() -> None:
+    """Section 3, step 7: "one set aside at step 10 never reaches step 11 and refuses nothing" [PR-308]: a
+    table whose shear rate lies outside the request's, read with no operating value for its axis, beside a
+    met constant, which is the one left (its temperature unchecked)."""
+    table = table_in("with no operating value")
+    cast(dict[str, JsonValue], table["conditions"])["shear_rate"] = {"value": 5.0, "unit": "1/s", **STATED}
+    result = read_in("with no operating value", {"alternatives": [table, met_field()]})
+    assert (result.status, result.value) == ("unknown", 0.000692)
+    assert result.reasons == (Reason("condition_unchecked", "temperature", alternative=1),)
+
+
+OVER_A_RANGE = "over an operating range"
+
+
+@pytest.mark.parametrize("want", ["value", "bounds"])
+def test_a_table_alternative_read_over_an_operating_range_alone_is_its_read_with_no_labels(want: str) -> None:
+    """Section 3, step 7: "where one alternative stays, that alternative's read, `want` included": the table's
+    read over a range of its axis ends at step 11 with `want_mismatch` and the axis (section 1), with its
+    conditions and no value; and, its read ended before step 12, none of step 12's labels."""
+    result = read_in(OVER_A_RANGE, {"alternatives": [table_in(OVER_A_RANGE)]}, want=want)
+    assert (result.status, result.reasons) == (
+        "not_met",
+        (Reason("want_mismatch", "temperature", alternative=0),),
+    )
+    assert (result.value, result.labels, result.alternative_values) == (None, (), None)
+    assert result.conditions is not None
+
+
+# Under `no_pick` the table read over a range stays beside the other, whose form `want` gives; where it does
+# not, `want_mismatch`, the table counting as a form `want` cannot give.
+OVER_A_RANGE_BESIDE: dict[tuple[str, str], str] = {
+    ("constant", "value"): "no_pick",
+    ("constant", "bounds"): "want_mismatch",
+    ("interval", "value"): "want_mismatch",
+    ("interval", "bounds"): "no_pick",
+}
+
+
+@pytest.mark.parametrize(("other", "want"), OVER_A_RANGE_BESIDE)
+@pytest.mark.parametrize("first", [True, False])
+def test_a_table_alternative_read_over_an_operating_range_stays_as_a_form_want_cannot_give(
+    other: str, want: str, first: bool
+) -> None:
+    """Section 3, step 7: "These stay: ... one whose form `want` cannot give (... or a table read over an
+    operating range of its axis, say)"; "A table read over an operating range of its axis counts as a form
+    `want` cannot give" [PR-013]. Under `no_pick` its entry holds "its form's member as stored instead", the
+    other members as a read of it alone gives them, and "its `labels` are those step 12 gives that
+    alternative even where its read ended at step 11, as a table read over an operating range of its axis
+    does" (section 2): the field's label."""
+    names = ("table", other) if first else (other, "table")
+    result = read_in(OVER_A_RANGE, alternatives_of(names, table_in(OVER_A_RANGE)), want=want)
+    if OVER_A_RANGE_BESIDE[(other, want)] == "want_mismatch":
+        assert (result.status, result.reasons, result.alternative_values) == (
+            "not_met",
+            (Reason("want_mismatch"),),
+            None,
+        )
+        return
+    assert (result.status, result.reasons, result.value) == ("unknown", (Reason("no_pick"),), None)
+    entries = {entry.alternative: entry for entry in result.alternative_values or ()}
+    entry = json.loads(json.dumps(entries[names.index("table")].entry_json()))
+    stored_table = table_in(OVER_A_RANGE)
+    assert entry["value"] == stored_table["table"]
+    assert entry["labels"] == [stored_table["label"]]
+    assert (entry["unit"], entry["provenance"]["origin"]) == (stored_table["unit"], "measured_by_contributor")
+    assert "statistics" in entry
+    assert entry["specimen"] == {}
+    assert [axis["status"] for axis in entry["conditions"] if axis["name"] == "temperature"] == ["not_met"]
+
+
+@pytest.mark.parametrize("first", [True, False])
+def test_a_table_alternative_an_extrapolation_would_cover_stays_with_no_extrapolation_applied(
+    first: bool,
+) -> None:
+    """Section 3, step 7: "These stay: ... one that an extrapolation the request carries would cover, since a
+    pick would let the extrapolation apply" [PR-013], beside a met constant: `no_pick`, the table's entry
+    "its form's member as stored instead, with no nominal or extrapolation applied" (section 2), so neither
+    the end value, nor an `assumption`, nor the extrapolation among what was applied; its `outside_range`
+    waits."""
+    names = ("table", "constant") if first else ("constant", "table")
+    result = read_in(
+        "outside a narrower source_range",
+        alternatives_of(names, table_in("outside a narrower source_range")),
+        acceptances=[extrapolation()],
+    )
+    assert (result.status, result.reasons, result.applied, result.assumption) == (
+        "unknown",
+        (Reason("no_pick"),),
+        (),
+        None,
+    )
+    (entry,) = [
+        entry for entry in result.alternative_values or () if entry.alternative == names.index("table")
+    ]
+    assert (entry.value, entry.assumption, entry.applied, entry.table) == (entry.member, None, (), None)
+    assert (
+        json.loads(json.dumps(entry.entry_json()))["value"]
+        == table_in("outside a narrower source_range")["table"]
+    )
+
+
+def test_a_table_alternative_an_extrapolation_covers_is_read_with_it_as_the_one_left() -> None:
+    """Section 3, step 7: "An alternative kept for an extrapolation is read on through steps 12 and 13, as a
+    field is (above). The extrapolation is applied only where that alternative is the one left" [PR-044]:
+    beside a constant set aside for its temperature, the result is the table's read under the extrapolation,
+    `not_met` with `outside_range` carrying its index, the end value, the table and `assumption`, and the
+    extrapolation among what was applied."""
+    field: dict[str, JsonValue] = {"alternatives": [met_field(), table_in("outside its range")]}
+    result = read_in("outside its range", field, acceptances=[extrapolation()])
+    alone = read_in("outside its range", table_in("outside its range"), acceptances=[extrapolation()])
+    assert result.reasons == (Reason("outside_range", "temperature", alternative=1),)
+    assert (result.status, result.value, result.assumption, result.applied) == (
+        "not_met",
+        alone.value,
+        alone.assumption,
+        (0,),
+    )
+    assert (result.value, result.table) == (0.000577, viscosity_table()["table"])
+
+
+def test_a_table_alternative_outside_its_range_is_set_aside_where_no_extrapolation_would_cover_it() -> None:
+    """Section 3, step 7 sets aside one that "no extrapolation the request carries would cover", and section
+    5 applies one "Under `want: value`" alone: under `want: bounds` the table is set aside and the constant,
+    the one left, gives `want_mismatch`, with an extrapolation as without one."""
+    situation = "outside a narrower source_range"
+    field = alternatives_of(("table", "constant"), table_in(situation))
+    covered = read_in(situation, field, want="bounds", acceptances=[extrapolation()])
+    assert covered == read_in(situation, field, want="bounds")
+    assert (covered.status, covered.reasons) == ("not_met", (Reason("want_mismatch", alternative=1),))
+
+
+def test_a_kept_tables_unknown_reasons_stand_beside_no_pick_and_its_not_met_ones_wait() -> None:
+    """Section 3, step 7: "Where two or more stay, each one's `unknown` reasons stand beside `want_mismatch`
+    or `no_pick`, and its `not_met` reasons wait" [PR-013]: a kept table stated without origin gives step
+    12's `stated_without_origin` beside `no_pick`, its `outside_range` not."""
+    table = table_in("outside a narrower source_range")
+    cast(dict[str, JsonValue], table["provenance"])["origin"] = "stated_without_origin"
+    field: dict[str, JsonValue] = {"alternatives": [table, met_field()]}
+    result = read_in("outside a narrower source_range", field, acceptances=[extrapolation()])
+    assert (result.status, result.reasons) == (
+        "unknown",
+        (Reason("no_pick"), Reason("stated_without_origin", alternative=0)),
+    )
+
+
+def test_a_kept_tables_waiting_reasons_are_reported_once_another_refuses_the_field() -> None:
+    """Section 3, step 7: "These wait: they are reported ... once the field is refused" [PR-044]: a kept
+    table's `outside_range` beside a broken constant's `form_invalid`."""
+    situation = "outside a narrower source_range"
+    field = alternatives_of(("table", "broken constant"), table_in(situation))
+    result = read_in(situation, field, acceptances=[extrapolation()])
+    assert (result.status, set(result.reasons)) == (
+        "not_met",
+        {Reason("outside_range", "temperature", alternative=0), Reason("form_invalid", alternative=1)},
+    )
+
+
+def form_range_read(**report: object) -> FieldRead:
+    """A table alternative's read with step 11's report `report` (`FormRange`), nothing else of it read."""
+    return FieldRead((), form_range=FormRange(**cast(dict[str, Any], report)), alternative=0)
+
+
+REPORTS: list[tuple[dict[str, object], bool]] = [
+    ({"outside_alone": True}, True),
+    ({"outside_alone": True, "coverable": True}, True),
+    ({"outside_alone": True, "coverable": True, "extrapolation": "covering"}, False),
+    ({"outside_alone": False}, False),
+    ({"over_a_range": True}, False),
+    ({"request_fault": True}, False),
+]
+
+
+@pytest.mark.parametrize(("report", "set_aside"), REPORTS)
+def test_set_aside_by_its_range_takes_outside_range_alone_with_no_extrapolation_covering_it(
+    report: dict[str, object], set_aside: bool
+) -> None:
+    """`_set_aside_by_its_range`: "outside its form's range at step 11, not exactly at a declared edge, and no
+    extrapolation the request carries would cover it" (section 3, step 7): `outside_range` without `at_edge`
+    (`outside_alone`, which an edge beside it, `outside_alone` false, takes away), and no extrapolation that
+    covers it, one that could (`coverable`) but that the request does not carry included; never a read over
+    an operating range or with no operating value, nor one step 11 did not reach."""
+    if report.get("extrapolation") == "covering":
+        covering = Extrapolation(0, "fluid.dynamic_viscosity", {}, "constant", "the end value held")
+        report = {**report, "extrapolation": covering}
+    set_aside_by_its_range = read_module._set_aside_by_its_range  # pyright: ignore[reportPrivateUsage]
+    assert set_aside_by_its_range(form_range_read(**report)) is set_aside
+    assert set_aside_by_its_range(FieldRead((), alternative=0)) is False
 
 
 @pytest.mark.parametrize(

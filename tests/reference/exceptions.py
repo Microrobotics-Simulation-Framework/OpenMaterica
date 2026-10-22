@@ -18,46 +18,6 @@ class Excepted:
 
 
 EXCEPTIONS: Final[Mapping[str, Excepted]] = {
-    "table_alternatives_at_step_11": Excepted(
-        (
-            "A table alternative whose read gives a reason at step 11 (`outside_range`, an extrapolation "
-            "covering it or not, `at_edge`, `want_mismatch` over an operating range of its axis, or "
-            "`request_incomplete` with no operating value for it) is set aside, kept or refuses the field "
-            "by step 7's rules (`read_side_contract.md` section 3, step 7), which a later piece builds; the "
-            "read raises there, and the model gives no verdict (its open point "
-            "`table_alternatives_at_step_11`)."
-        ),
-        "no verdict",
-        frozenset(
-            {
-                "PR-013.kept_table_step12_reason_beside_no_pick.json",
-                "PR-013.table_outside_under_extrapolation.json",
-                "PR-013.table_over_operating_range_as_stored.json",
-                "PR-013.table_over_operating_range_keeps_labels.json",
-                "PR-013.two_tables_over_operating_range_want_mismatch.json",
-                "PR-013.want_mismatch_unknown_reasons_stand.json",
-                "PR-044.across_edge_under_extrapolation_set_aside.json",
-                "PR-044.all_set_aside.json",
-                "PR-044.at_edge_under_extrapolation_refuses.json",
-                "PR-044.beside_edge_outside_narrowed_range_set_aside.json",
-                "PR-044.beside_edge_under_extrapolation_kept.json",
-                "PR-044.edge_outside_narrowed_range_refuses.json",
-                "PR-044.edge_outside_narrowed_range_under_extrapolation_refuses.json",
-                "PR-044.one_not_set_aside_refuses.json",
-                "PR-044.operating_range_one_left.json",
-                "PR-044.outside_under_extrapolation_one_left.json",
-                "PR-044.outside_under_extrapolation_want_bounds_set_aside.json",
-                "PR-044.refused_reports_waiting_outside_range.json",
-                "PR-044.table_at_edge_not_set_aside.json",
-                "PR-044.table_outside_range_set_aside.json",
-                "PR-308.no_operating_value_beside_unchecked_constant.json",
-                "PR-308.no_operating_value_in_alternative.json",
-                "PR-308.no_operating_value_one_not_set_aside_refuses.json",
-                "PR-308.no_operating_value_reverse_order.json",
-            }
-        ),
-        detail="a table alternative's step-11 reason in step 7 is S4d's",
-    ),
     "picks": Excepted(
         ("A pick is checked and applied at step 7 (S4); the model reads alternatives with no pick alone."),
         "no verdict",

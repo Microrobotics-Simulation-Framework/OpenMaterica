@@ -26,12 +26,21 @@ a table's `outside_range` at step 11 under `want: value` with the value at the r
 operations `list_records` and `content_hash`; and step 7 over alternatives read with no pick and no overlay
 (S4a): the shape of `alternatives`, each alternative read alone and set aside, kept or refusing the
 field, and the outcome with its reasons, each found reading one alternative carrying its index, and its
-members. S4a's step 7 was written from the text by an agent that did not read the implementation's.
+members. S4a's step 7 was written from the text by an agent that did not read the implementation's. So were
+step 7's rows for a table alternative whose read gives a reason at step 11, or that an extrapolation covers
+(S4d, `read_side_contract.md` section 3, step 7; `record_format.md` section 5 items 2 to 5): one outside its
+readable range, off every edge, is set aside where no extrapolation the request carries would cover it, and
+kept where one would, read on through steps 12 and 13, the extrapolation applied only where it is the one
+left (under `no_pick` its entry holds the table as stored, with no end value and no `assumption`); one read
+exactly at an edge refuses the field wherever the edge lies, `outside_range` beside `at_edge` or not; one
+read with no operating value for its axis refuses the field with `request_incomplete`, which carries no
+`alternative`, while one set aside at step 10 never reaches step 11; and one read over an operating range of
+its axis stays, counts as a form `want` cannot give, and under `no_pick` its entry holds the table as stored,
+beside its unit, conditions, specimen, statistics and provenance, with the labels step 12 gives it.
 
-Anything else gives `NoVerdict`, an outcome of its own, which a test counts and never reads as a pass: a table
-alternative whose read gives a reason at step 11, one an extrapolation covers included (S4d), a pick or an
-overlay (S4), a region target (the scene suite), and `want: fit` on a field holding a fit record (the fits and
-reference data suite).
+Anything else gives `NoVerdict`, an outcome of its own, which a test counts and never reads as a pass: a pick
+or an overlay (S4), a region target (the scene suite), and `want: fit` on a field holding a fit record (the
+fits and reference data suite).
 
 Each rule cites the text as `file:line` and a short quote. Where the text leaves a point open, the model takes
 the maintainer's ruling where there is one, else the fail-closed choice, each listed once in `OPEN_POINTS` and
@@ -40,7 +49,7 @@ named where it is applied:
 | Open point | The model's choice |
 |---|---|
 | `form_not_allowed_by_its_row` | a composition whose basis the row does not allow is refused as a form the row does not allow is: `form_not_registered` and the shared checks' reasons, its member not checked (maintainer, 2026-10-15; the text says so of a form) |
-| `alternatives_without_a_pick` | step 7 for a read with no pick and no overlay (S4a); a table alternative gives no verdict wherever it stands among the others, since every alternative is read before the outcome is decided, and step 11's set-aside, `at_edge` and `request_incomplete` are a table's |
+| `alternatives_without_a_pick` | step 7 for a read with no pick and no overlay (S4a), a pick or an overlay giving no verdict at step 0; since S4d a table alternative whose read gives a reason at step 11, or that an extrapolation covers, is set aside, kept or refuses the field by the text's rows of step 7, and the point `table_alternatives_at_step_11`, under which it gave no verdict wherever it stood among the others, is gone |
 | `evidence_entry_provenance` | an entry's `provenance` is returned whole, holding the members the version defines at every depth, read from the writer schema below the provenance table's own, since the text names them in part only |
 
 The model was first written to check the expected answers of S2's case files on 2026-10-15, as an independent
@@ -56,7 +65,7 @@ and 10, as built).
 
 ## Agreement with the cases
 
-`test_cases.py` runs every case file of a read in the repository, 1,260 at S4a's head (1,173 reads, 25
+`test_cases.py` runs every case file of a read in the repository, 1,285 on S4d's branch (1,198 reads, 25
 listings and 11 reads of the hash suite, and 51 content hashes), whichever step of the implementation runs
 it, under each of the 8 configurations of claims (plain read, with or without the hash, the fits and reference
 data, and the family evaluation suites) that agrees with the case's suite and claims. Each is compared as the
@@ -64,10 +73,12 @@ specification's README says ("Case files"), by the conformance runner's comparis
 suite's 35 files are left out, and a test holds the files left out to exactly those whose operation is
 `evaluate`: each asks for a table's values at points, as a consumer's own evaluator does, which is no read.
 
-The model agrees with 1154 files, under every configuration each allows (8,856 runs), and gives no verdict on
-131, each listed in `exceptions.py` under the kind its outcome names: an overlay (71), a pick (36), and a
-table alternative whose read gives a reason at step 11, one an extrapolation covers included (24), whose rules
-of step 7 are S4d's. It disagrees with none (measured at S3c's head, which reads an extrapolation, 2026-10-21:
+The model agrees with 1,178 files, under every configuration each allows (9,048 runs), and gives no verdict
+on 107, each listed in `exceptions.py` under the kind its outcome names: an overlay (71) and a pick (36). It
+disagrees with none (measured on S4d's branch, 2026-10-22: the 24 files the kind of a table alternative whose
+read gives a reason at step 11 listed, one an extrapolation covers included, each gained a verdict, the
+case's under every configuration it allows: none gives an answer the text decides against, and the kind is
+gone; at S3c's head, which reads an extrapolation, 2026-10-21:
 of the 55 files the kind of an extrapolation listed, the 45 S3c runs gained a verdict, as did S3c's arm of
 `table` under an extrapolation, the nine of a table alternative under one moved to S4d's kind, and the one
 holding a pick to the picks'; at S3b-2's head, of the 83 files of a table that steps 8 and 9 pass, listed at
@@ -113,7 +124,16 @@ reading an implied value for a numeric condition that holds a `token` beside a u
 one as `request_incomplete` alone, where the text gives `request_unit_mismatch` beside it, its unit "checked
 as an operating condition is", "whatever else is wrong with that entry" (`read_side_contract.md:51-53,
 :82-83`): the model is corrected, and an arm pins it (`PR-320.implied_value_holding_a_token_in_another_unit`),
-which moves three rows; every fault was measured again with it, none raising.
+which moves three rows; every fault was measured again with it, none raising. S4d adds twelve faults of step
+7's rows for a table alternative at step 11, each killed (below the table), and its 24 case files, to which
+the model now gives a verdict, move 32 rows; every fault was measured over every case file of a read on
+S4d's branch (2026-10-22), and none made the model raise, in its first form or since: 129 faults, 116 killed,
+13 survive. Four older faults of step 7 took effect beyond their rule once those files had a verdict, and
+each is narrowed to it, so that its row counts its own rule's kills: `refused_alternative_set_aside` sets
+aside an alternative refused at steps 8 and 9 alone, not one `at_edge` refuses, and
+`set_aside_alternative_refuses` refuses one set aside at step 10 alone, not one outside the range;
+`nominal_applied_under_no_pick` takes an interval's nominal alone, and `nominal_not_applied_to_the_one_left`
+drops a nominal's value alone, not an extrapolation's, whose `assumption` each had read as a nominal's.
 
 A fault that makes the model raise on a case file its search reads fails the search, with the model's
 traceback and a note naming the file and the claims (`cases.py`, `outcome`): a raise shows that the fault broke
@@ -158,9 +178,9 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `other_minor_versions_read` | a record of another `MAJOR.MINOR` read | 15 |
 | `alternatives_shape_unchecked` | an `alternatives` that is empty, not a list or beside a value field's members read | 5 |
 | `want_mismatch_beside_no_pick` | `want_mismatch` reported under `no_pick` for an alternative whose form `want` cannot give | 7 |
-| `conditions_kept_under_no_pick` | a `no_pick` result holding `conditions` of its own | 15 |
-| `alternatives_counted_from_one` | an `alternative_values` entry's index counted from one | 15 |
-| `labels_raised_from_an_alternative` | an alternative's labels on the `no_pick` result's own | 2 |
+| `conditions_kept_under_no_pick` | a `no_pick` result holding `conditions` of its own | 20 |
+| `alternatives_counted_from_one` | an `alternative_values` entry's index counted from one | 20 |
+| `labels_raised_from_an_alternative` | an alternative's labels on the `no_pick` result's own | 3 |
 | `nominal_ignored_over_alternatives` | an interval beside other alternatives not counted as a form `want: value` gives under a nominal | 3 |
 | `nominal_applied_under_no_pick` | a nominal applied to an interval alternative under `no_pick` | 1, `PR-338.no_pick_two_intervals_nominal` alone |
 | `unknown_tokens_read_as_shape_faults` | a token the reader knows for no member of that name gives `form_invalid` | 32 |
@@ -194,21 +214,21 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `token_condition_unit_accepted` | a `unit` on a token condition passes step 9 | 1, `PR-037.unit_on_token_condition` alone |
 | `plus_minus_units_unchecked` | a `plus_minus` entry's unit not compared | 1, `PR-037.plus_minus_unit` alone |
 | `floating_point_as_written` | section 5's tests computed in floating point as written | 3 |
-| `strict_inequalities` | `<` for `<=` in section 5's table | 11 |
+| `strict_inequalities` | `<` for `<=` in section 5's table | 12 |
 | `plus_minus_ignored` | a stated plus or minus ignored | 15 |
-| `unchecked_read_as_met` | a stated condition the request gives no tolerance or accept list for read as `met` | 4 |
-| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 324 |
+| `unchecked_read_as_met` | a stated condition the request gives no tolerance or accept list for read as `met` | 7 |
+| `operating_omitted_from_entries` | a condition entry without the request's operating condition | 335 |
 | `implied_fills_any_condition` | an implied condition fills a stated condition, or one held as another status object | 2 |
 | `disagreeing_implied_conditions_read` | two implied conditions that disagree read as the first | 8 |
 | `implied_values_compared_by_value` | two implied values compared as numbers, so that `0` and `-0` agree | 1, `PR-316.implied_zero_beside_minus_zero` alone |
 | `required_with_ignored` | a condition another condition requires with its token not checked | 4 |
 | `unknown_condition_names_ignored` | a condition name the reader does not know gives no entry and no reason | 6 |
-| `stated_without_origin_unreported` | a value stated without origin not `unknown` | 2, `PR-307.steps_12_and_13_run` and `PR-309.stated_without_origin` |
-| `step_12_labels_dropped` | the field's label and `mixed_conditions` not added | 158 |
-| `bounds_given_by_a_constant` | `want: bounds` gives a constant's value | 3 |
+| `stated_without_origin_unreported` | a value stated without origin not `unknown` | 3, `PR-013.kept_table_step12_reason_beside_no_pick`, `PR-307.steps_12_and_13_run` and `PR-309.stated_without_origin` |
+| `step_12_labels_dropped` | the field's label and `mixed_conditions` not added | 159 |
+| `bounds_given_by_a_constant` | `want: bounds` gives a constant's value | 4 |
 | `value_given_by_an_interval` | `want: value` gives an interval's bounds without a nominal | 22 |
 | `nominal_outside_supplies_the_value` | a nominal outside an interval's bounds supplies the value | 3 |
-| `best_status` | the status the best of the reasons, not the worst | 20 |
+| `best_status` | the status the best of the reasons, not the worst | 28 |
 | `value_beside_not_met` | a value returned beside `not_met` without an assumption, as beside `condition_outside` | 22 |
 | `unknown_members_returned` | a member the reader does not know returned | 15 |
 | `review_returned_as_its_result` | a known review returned as its `result` alone | 2 |
@@ -220,42 +240,54 @@ three, the search reached a raise of `tolerance_without_an_operating_condition` 
 | `review_of_both_shapes_read_as_its_status` | a review holding both `status` and `result` read as its status object | survives: no case holds one |
 | `reviewed_review_keeps_a_status_objects_members` | a reviewed review returned with a status object's members, its `reason` among them | survives: no case holds one |
 | `unit_of_the_last_remaining_alternative` | under `no_pick`, every entry's `unit` the last remaining alternative's | 3, the three `PR-013.evidence_unit*` arms |
-| `refused_alternative_set_aside` | an alternative refused at step 8 or 9 set aside, not refusing the field | 10 |
-| `set_aside_alternative_refuses` | an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside | 9 |
-| `request_fault_sets_aside` | an alternative whose read a fault of the request ends set aside, not refusing the field | 5 |
-| `want_mismatch_sets_aside` | an alternative whose form `want` cannot give set aside, not kept | 12 |
-| `set_aside_reasons_dropped_where_refused` | the set-aside alternatives' reasons dropped where another refuses the field | 3 |
-| `waiting_reasons_dropped_where_refused` | the `not_met` reasons of an alternative that stays dropped where the field is refused | 2, `PR-044.refused_reports_waiting_nominal_invalid` and `PR-044.refused_reports_waiting_want_mismatch` |
+| `refused_alternative_set_aside` | an alternative refused at step 8 or 9 set aside, not refusing the field | 11 |
+| `set_aside_alternative_refuses` | an alternative whose conditions give `not_met` at step 10 refusing the field, not set aside | 11 |
+| `request_fault_sets_aside` | an alternative whose read a fault of the request ends set aside, not refusing the field | 3 |
+| `want_mismatch_sets_aside` | an alternative whose form `want` cannot give set aside, not kept | 13 |
+| `set_aside_reasons_dropped_where_refused` | the set-aside alternatives' reasons dropped where another refuses the field | 5 |
+| `waiting_reasons_dropped_where_refused` | the `not_met` reasons of an alternative that stays dropped where the field is refused | 3, `PR-044.refused_reports_waiting_nominal_invalid`, `PR-044.refused_reports_waiting_outside_range` and `PR-044.refused_reports_waiting_want_mismatch` |
 | `labels_kept_where_refused` | the alternatives' labels on the result where the field is refused or every alternative set aside | 2, `PR-316.implied_two_disagree_in_alternative` and `PR-336.refused_over_alternatives_no_hs` |
-| `set_aside_reasons_beside_the_one_left` | the set-aside alternatives' reasons reported beside the one left | 7 |
-| `one_left_reasons_without_their_alternative` | the one left's reasons without their `alternative` | 4 |
+| `set_aside_reasons_beside_the_one_left` | the set-aside alternatives' reasons reported beside the one left | 13 |
+| `one_left_reasons_without_their_alternative` | the one left's reasons without their `alternative` | 7 |
 | `nominal_not_applied_to_the_one_left` | a nominal not applied to the interval left, which gives no value | 1, `PR-338.one_left_interval_nominal_applied` alone |
-| `not_met_reasons_beside_no_pick` | the `not_met` reasons of the alternatives that stay reported beside `no_pick` or `want_mismatch` | 10 |
-| `unknown_reasons_dropped_beside_no_pick` | the `unknown` reasons of the alternatives that stay dropped beside `no_pick` or `want_mismatch` | 2, `PR-013.evidence_unit_of_the_first_that_stays` and `PR-013.index_past_set_aside_and_unknown_reasons` |
+| `not_met_reasons_beside_no_pick` | the `not_met` reasons of the alternatives that stay reported beside `no_pick` or `want_mismatch` | 17 |
+| `unknown_reasons_dropped_beside_no_pick` | the `unknown` reasons of the alternatives that stay dropped beside `no_pick` or `want_mismatch` | 4, `PR-013.evidence_unit_of_the_first_that_stays`, `PR-013.index_past_set_aside_and_unknown_reasons`, `PR-013.kept_table_step12_reason_beside_no_pick` and `PR-013.want_mismatch_unknown_reasons_stand` |
 | `set_aside_reasons_beside_no_pick` | the set-aside alternatives' reasons reported beside `no_pick` or `want_mismatch` | 2, `PR-013.evidence_unit_of_the_first_that_stays` and `PR-013.index_past_set_aside_and_unknown_reasons` |
-| `request_fault_given_an_alternative` | a fault of the request found reading one alternative given that `alternative` | 2, PR-316's two arms in an alternative |
-| `index_among_those_that_stay` | an alternative's index counted among the alternatives that stay, in its reasons and its entry | 3 |
+| `request_fault_given_an_alternative` | a fault of the request found reading one alternative given that `alternative` | 6, PR-316's two arms in an alternative and PR-308's four with no operating value for a table alternative's axis |
+| `index_among_those_that_stay` | an alternative's index counted among the alternatives that stay, in its reasons and its entry | 5 |
 | `unit_of_the_first_stored_alternative` | under `no_pick`, every entry's `unit` the first stored alternative's, set aside or not | 3, the three `PR-013.evidence_unit*` arms |
 | `edge_unseen_by_the_axis_entry` | the axis entry `met` at an edge inside the readable range | 7 |
-| `outside_range_dropped_at_an_edge` | at an edge outside the readable range, `at_edge` alone | 4, PR-018's and PR-307's arms at an edge outside the readable range, below it and above it |
-| `source_range_never_narrows` | the readable range `x`'s, whatever `source_range` holds | 21 |
+| `outside_range_dropped_at_an_edge` | at an edge outside the readable range, `at_edge` alone | 6, PR-018's and PR-307's arms at an edge outside the readable range, below it and above it, and PR-044's two at an edge outside a narrowed readable range |
+| `source_range_never_narrows` | the readable range `x`'s, whatever `source_range` holds | 23 |
 | `outside_range_beside_a_range` | over an operating range of the axis that leaves the readable range, `outside_range` beside `want_mismatch` | 3, `PR-321.range_outside`, `PR-321.range_outside_under_extrapolation` and `PR-321.range_straddling_end` |
-| `step_11_reasons_without_the_axis` | step 11's reasons without the axis as their `condition` | 59 |
+| `step_11_reasons_without_the_axis` | step 11's reasons without the axis as their `condition` | 72 |
 | `table_returned_whole` | a table returned as stored with the members the reader does not know | 2, `PR-337.unknown_member_in_table_as_stored` and `PR-337.unknown_member_left_out_of_the_table_beside_its_value` |
 | `table_member_dropped` | a value read from a table returned without the table it is read from | 4 |
-| `extrapolation_under_any_want` | an extrapolation applied under any `want` | 3, PR-307's arms under `want: bounds`, `components` and `evidence` |
-| `extrapolation_at_an_edge` | an extrapolation applied at an edge outside the readable range | 2, `PR-307.at_edge_outside_readable_range` and `PR-307.at_edge_outside_readable_range_above` |
-| `extrapolation_across_an_edge` | an extrapolation applied across an edge strictly between the read and the readable range's nearest end | 2, `PR-307.across_edge` and `PR-307.across_edge_above` |
+| `extrapolation_under_any_want` | an extrapolation applied under any `want` | 4, PR-307's arms under `want: bounds`, `components` and `evidence`, and `PR-044.outside_under_extrapolation_want_bounds_set_aside` |
+| `extrapolation_at_an_edge` | an extrapolation applied at an edge outside the readable range | 3, `PR-044.edge_outside_narrowed_range_under_extrapolation_refuses`, `PR-307.at_edge_outside_readable_range` and `PR-307.at_edge_outside_readable_range_above` |
+| `extrapolation_across_an_edge` | an extrapolation applied across an edge strictly between the read and the readable range's nearest end | 3, `PR-044.across_edge_under_extrapolation_set_aside`, `PR-307.across_edge` and `PR-307.across_edge_above` |
 | `extrapolation_end_of_x` | the end value `y[0]` or `y[-1]` where `source_range` narrows the range | 7 |
-| `extrapolation_far_end` | the end value taken at the readable range's far end | 14 |
-| `extrapolated_read_ends_at_step_11` | a read an extrapolation covers given no step-12 reason or label | 1, `PR-307.steps_12_and_13_run` alone |
+| `extrapolation_far_end` | the end value taken at the readable range's far end | 15 |
+| `extrapolated_read_ends_at_step_11` | a read an extrapolation covers given no step-12 reason or label | 2, `PR-013.kept_table_step12_reason_beside_no_pick` and `PR-307.steps_12_and_13_run` |
 | `extrapolation_located_anywhere` | an extrapolation applied wherever it is located | 5 |
 | `two_extrapolations_read_as_the_first` | two extrapolations naming one field read as the first | 2, `PR-330.two_extrapolations_one_field` and `PR-330.two_extrapolations_one_field_one_without_location` |
 | `empty_law_accepted` | an empty `law` accepted | 3, PR-330's three arms of an empty `law` |
 | `white_space_law_refused` | a `law` of white space refused | 1, `PR-330.extrapolation_law_white_space_read` alone |
 | `extrapolation_method_unchecked` | an extrapolation's `method` unchecked | 2, `PR-330.extrapolation_method_missing` and `PR-330.extrapolation_method_unknown` |
-| `assumption_with_its_basis` | an extrapolation's `assumption` holding its `basis` | 13 |
-| `covered_outside_range_dropped` | a read an extrapolation covers without its `outside_range` | 14 |
+| `assumption_with_its_basis` | an extrapolation's `assumption` holding its `basis` | 14 |
+| `covered_outside_range_dropped` | a read an extrapolation covers without its `outside_range` | 19 |
+| `outside_range_kept_without_an_extrapolation` | an alternative outside its form's range, off every edge, kept with no extrapolation to cover it | 5 |
+| `covered_alternative_set_aside` | an alternative an extrapolation the request carries would cover set aside, not kept | 4 |
+| `edge_inside_the_range_sets_aside` | a table alternative read exactly at an edge inside its readable range set aside, not refusing | 2, `PR-044.at_edge_under_extrapolation_refuses` and `PR-044.table_at_edge_not_set_aside` |
+| `edge_outside_the_range_sets_aside` | a table alternative read exactly at an edge outside its readable range, `outside_range` beside `at_edge`, set aside | 2, `PR-044.edge_outside_narrowed_range_refuses` and `PR-044.edge_outside_narrowed_range_under_extrapolation_refuses` |
+| `set_aside_alternative_reaches_step_11` | a table alternative set aside at step 10 read on to step 11, its missing operating value refusing the field | 1, `PR-308.table_set_aside_never_reaches_step_11` alone |
+| `over_a_range_set_aside` | a table alternative read over an operating range of its axis set aside, not kept | 5 |
+| `over_a_range_counted_as_a_form_want_gives` | a table read over an operating range of its axis counted as a form `want` gives | 2, `PR-013.two_tables_over_operating_range_want_mismatch` and `PR-013.want_mismatch_unknown_reasons_stand` |
+| `over_a_range_entry_unlabelled` | the `no_pick` entry of a table read over an operating range of its axis without step 12's labels | 1, `PR-013.table_over_operating_range_keeps_labels` alone |
+| `over_a_range_entry_bare` | the `no_pick` entry of a table read over an operating range of its axis without its unit, specimen, statistics and provenance | 2, `PR-013.table_over_operating_range_as_stored` and `PR-013.table_over_operating_range_keeps_labels` |
+| `extrapolation_applied_under_no_pick` | under `no_pick`, the entry of an alternative an extrapolation covers holding the end value and `assumption` | 3, `PR-013.kept_table_step12_reason_beside_no_pick`, `PR-013.table_outside_under_extrapolation` and `PR-044.beside_edge_under_extrapolation_kept` |
+| `kept_alternative_read_no_further` | an alternative kept for an extrapolation not read on through steps 12 and 13 | 2, `PR-013.kept_table_step12_reason_beside_no_pick` and `PR-044.outside_under_extrapolation_one_left` |
+| `kept_for_an_extrapolation_under_any_want` | an alternative outside its range kept for an extrapolation that would cover it under `want: value`, whatever the `want` | 1, `PR-044.outside_under_extrapolation_want_bounds_set_aside` alone |
 
 Ten faults die to one case file alone; a change to that file would let each live, so the properties of phase
 B should kill them as well. Of the eight survivors, three were the open points (`members_of_the_other_kind_read`,
@@ -311,7 +343,10 @@ Since S3b-2 (the maintainer's ruling of 2026-10-19 on the result's shape) each e
 alternative's unit, and both `unit` faults set every entry's unit to one alternative's, so each dies to the
 three evidence arms, whose entries' units differ.
 Since S3b-2, `request_fault_sets_aside` dies to four more, PR-308's table alternatives read with no
-operating value for the axis, a fault of the request that refuses the field.
+operating value for the axis, a fault of the request that refuses the field. While those gave no verdict, any
+verdict there killed it; since S4d gives them one, it dies to two of them, those beside a constant that
+stays, and to `PR-316.implied_two_disagree_in_alternative`. It lets the other two through: where no other
+alternative stays, the fault sets every alternative aside, and that result reports what the refusal does.
 
 S3b-2's seven break each rule of a table's steps 10 to 13 the model decides: the axis entry `not_met` at an edge
 (`read_side_contract.md:461`), `outside_range` beside `at_edge` at an edge outside the readable range
@@ -337,6 +372,26 @@ wrappers of `tolerance_without_an_operating_condition` and `condition_shapes_unc
 took the table axis S3b-2's model passes, raised on every file they reached (330 and 353 files), and which
 are held on three table reads among them.
 
+S4d's twelve break each rule of step 7 for a table alternative whose read gives a reason at step 11, or that
+an extrapolation covers: an alternative outside its range, off every edge, set aside unless an extrapolation
+the request carries would cover it (`read_side_contract.md:252-253`), and kept where one would
+(`read_side_contract.md:256-257`), as `want: value` alone lets it (`record_format.md:349-350`), read on through
+steps 12 and 13 (`read_side_contract.md:259-260`), with no extrapolation applied under `no_pick`
+(`read_side_contract.md:282-283`); one at an edge refusing the field inside the readable range and outside it
+(`read_side_contract.md:263-264`, `record_format.md:356-358`); one set aside at step 10 never reaching step 11
+(`read_side_contract.md:266-267`); and one over an operating range of its axis kept
+(`read_side_contract.md:256-259`), counted as a form `want` cannot give (`read_side_contract.md:279`), its
+`no_pick` entry holding step 12's labels (`read_side_contract.md:122`) and its own unit, conditions, specimen,
+statistics and provenance (`record_format.md:368-370`). The two rows of the request's fault at step 11, that it
+refuses the field and that its reason carries no `alternative`, are S4a's `request_fault_sets_aside` and
+`request_fault_given_an_alternative`, which read every fault of the request, step 10's and step 11's alike;
+the second dies to PR-308's four arms since. Each kill is a disagreement, none a raise of the model (measured
+over every case file, 2026-10-22). Three die to one case file alone (`set_aside_alternative_reaches_step_11`,
+`over_a_range_entry_unlabelled` and `kept_for_an_extrapolation_under_any_want`), and
+`extrapolated_read_ends_at_step_11` no longer does, now dying to the arm of a kept table's step-12 reason
+beside `no_pick` as well: fifteen faults die to one case file alone. HP12 does not search S4d's three yet; its
+table of the model's faults is `tests/property/test_model_mutants.py`'s.
+
 The agreement property HP12 (`tests/property/test_model_properties.py`) kills 13 of the 14 survivors, the two
 the token ruling's cases kill, and `member_checked_off_its_row`, which it searched as a survivor before two
 cases came to kill it, every one of the 17 faults one case file alone kills (S4a's five among them, and
@@ -353,4 +408,5 @@ in JSON.
 uv run pytest tests/reference -n 6
 ```
 
-The whole directory runs in about 14 s on eight workers, the mutant searches most of it.
+The whole directory runs in about a minute on eight workers (57 s, 2026-10-22), the mutant searches most of
+it: a survivor's search reads every case file under every configuration it allows, about 6 s alone.
