@@ -150,6 +150,11 @@ SHARDS = {
         "test_alternatives_properties",
         "test_alternatives_mutants",
         "test_alternatives_mutant_table",
+        # S4d's step 7 over a table alternative whose read gives a reason at step 11 (HP39 and HP40), each
+        # example reading a field of alternatives and each alternative alone, as S4a's do.
+        "test_table_alternatives_properties",
+        "test_table_alternatives_mutants",
+        "test_table_alternatives_mutant_table",
     ),
 }
 

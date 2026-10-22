@@ -348,8 +348,9 @@ MUTANTS = [
         "^the (at_an_edge_outside read's step 11|across_an_edge read reported coverable)",
     ),
     # The review's hand mutant of step 11's report on an edge on the readable range's end, on each end,
-    # searched by HP20 across an edge (planned). The report has no reader in a result yet (S3c and S4d read
-    # it), so HP12's table part cannot search these (`test_model_mutants.REPORT_ALONE`).
+    # searched by HP20 across an edge (planned). The report has a reader in a result only where an
+    # extrapolation meets such an edge (S3c, and S4d's step 7), which HP12 draws nowhere, so HP12 cannot
+    # search these (`test_model_mutants.REPORT_ALONE`).
     Mutant(
         "an_edge_on_the_lower_end_not_across",
         "HP20, across an edge",

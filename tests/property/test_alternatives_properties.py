@@ -173,11 +173,16 @@ def unique(reasons: list[JsonObject]) -> list[JsonValue]:
     return list(kept.values())
 
 
-def expected(drawn: Alternatives) -> tuple[str, JsonObject]:
+def expected(
+    drawn: Alternatives,
+    standing_of: Callable[[JsonObject], str] = standing,
+    entry_of: Callable[[Alternatives, int], JsonObject] = entry,
+) -> tuple[str, JsonObject]:
     """The outcome and the result step 7's text gives the drawn read, composed of the reads of each
-    alternative alone."""
+    alternative alone, each standing as `standing_of` its read alone says, and each entry as `entry_of`
+    gives it (S4d's HP39 gives a table's step-11 rows)."""
     reads = [alone(drawn, index) for index in range(len(drawn.stored))]
-    standings = [standing(alone_read) for alone_read in reads]
+    standings = [standing_of(alone_read) for alone_read in reads]
     staying = [index for index, found in enumerate(standings) if found == "stays"]
     # "and its `labels` holds at most `hash_not_checked`" for a result that rests on no single alternative
     labels: list[JsonValue] = [] if "hash" in drawn.claims else ["hash_not_checked"]
@@ -207,7 +212,7 @@ def expected(drawn: Alternatives) -> tuple[str, JsonObject]:
         }
     # the `unit` row: "Under `no_pick` the result holds none: each `alternative_values` entry holds its own
     # alternative's unit, as stored"
-    entries: list[JsonValue] = [entry(drawn, index) for index in staying]
+    entries: list[JsonValue] = [entry_of(drawn, index) for index in staying]
     return "no_pick", {
         "status": "unknown",
         "reasons": unique([{"code": "no_pick"}, *beside]),
