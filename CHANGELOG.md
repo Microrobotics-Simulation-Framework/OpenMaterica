@@ -17,16 +17,19 @@ every family entry goes in `families/CHANGELOG.md`.
 ### Added
 - `scripts/check_claims.py`, a check of a branch's claims that a builder runs before asking for review
   (approved by the maintainer on 2026-10-23; CONTRIBUTING, "Before asking for review"). It holds a pull
-  request's description and the branch's commit messages to git: a commit name resolves, the head and the base
-  they name are the branch's, and a count of its commits, files changed or lines added and removed is git's.
-  It holds each figure of the description and of the CHANGELOG lines the branch adds to a recorded fact
-  (`record` writes one, with how it was measured and at which commit), unless the figure is marked an estimate
-  or is of a kind that is no measurement. Given the maintainer's rulings file, which is private and named when
-  it runs, it holds each specification sentence the branch adds that nearly matches a ruling to the ruling's
-  words, and prints both. `scripts/claims_baseline.json` holds what the figure check finds in this file before
-  it, 610 entries, each a figure by its words with its reason: 433 measured and stated with no recorded
-  measurement, and 177 that are no measurement. Prose claims, counts written in words and what a figure counts
-  stay with the reviewer.
+  request's description and the branch's commit messages to git: a commit name names one commit on the branch
+  or on `main` (unless its sentence names a pull request), the head and the base they name are the branch's,
+  and a count of its commits, files changed or lines added and removed is git's. It holds each figure of the
+  description and of the CHANGELOG lines the branch adds to a recorded fact (`record` writes one, with how it
+  was measured and at which commit; one measured before the head holds only where the commits since change
+  Markdown alone), unless the figure is marked an estimate or is of a kind that is no measurement. Given the
+  maintainer's rulings file, which is private and named when it runs, it holds each specification sentence the
+  branch adds that nearly matches a ruling to the ruling's words, and prints both; a wording the rulings file
+  accepts is counted instead. `scripts/claims_baseline.json` holds what the figure check finds in this file at
+  its commit on `main`, 676 entries, each a figure by its words with its reason: 488 measured and stated with no
+  recorded measurement, and 188 that are no measurement; the check refuses an entry that is no figure there, and
+  `baseline` writes the file. Prose claims, counts written in words and what a figure counts stay with the
+  reviewer.
 
 ### Changed
 - CI's fuzz control step prints each run's find time (the maintainer's ruling of 2026-10-23), so that CI's runs
