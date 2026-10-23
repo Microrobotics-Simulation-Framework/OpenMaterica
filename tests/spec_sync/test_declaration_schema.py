@@ -777,6 +777,71 @@ def _a_pointer_that_is_not_one(report: Json) -> None:
     cast(list[Json], report["refusals"])[0]["pointer"] = "models/0"
 
 
+def _without(member: str) -> Callable[[Json], None]:
+    """A report whose first result lacks the member."""
+
+    def change(report: Json) -> None:
+        del cast(list[Json], report["results"])[0][member]
+
+    return change
+
+
+def _a_combination_without(member: str) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        _a_combination(report)
+        del cast(list[Json], report["results"])[0][member]
+
+    return change
+
+
+def _a_watch_changed(removed: str | None = None, **given: JsonValue) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        watch = {name: held for name, held in WATCH.items() if name != removed} | given
+        report["watches"] = [watch]
+
+    return change
+
+
+def _an_unused_acceptance(**given: JsonValue) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        unused: Json = {"model": "drag", "acceptance": 0, **given}
+        report["unused"] = [unused]
+
+    return change
+
+
+def _an_unused_acceptance_without_its_index(report: Json) -> None:
+    report["unused"] = [{"model": "drag"}]
+
+
+def _a_refused_report_with(member: str, held: JsonValue) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        _refused_alone(report)
+        report[member] = held
+
+    return change
+
+
+def _a_refusal_changed(removed: str | None = None, **given: JsonValue) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        _refused_alone(report)
+        refusal = cast(list[Json], report["refusals"])[0]
+        report["refusals"] = [{name: held for name, held in refusal.items() if name != removed} | given]
+
+    return change
+
+
+def _a_report_without(member: str) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        del report[member]
+
+    return change
+
+
+def _records_that_are_no_references(report: Json) -> None:
+    report["records"] = [{"id": "conformance/water_fixture"}]
+
+
 def _unchanged(report: Json) -> None:
     pass
 
@@ -796,6 +861,34 @@ def _unchanged(report: Json) -> None:
         (_a_combination, True),
         (_a_combination_with_a_status, False),
         (_a_pointer_that_is_not_one, False),
+        (_without("not_accepted"), False),
+        (_without("model"), False),
+        (_without("record"), False),
+        (_without("specimen_differences"), False),
+        (_a_combination_without("fields"), False),
+        (_a_combination_without("record"), False),
+        (_a_watch_changed("condition"), False),
+        (_a_watch_changed("interval"), False),
+        (_a_watch_changed("record"), False),
+        (_a_watch_changed("record", region="lumen"), True),
+        (_a_watch_changed("interval", accept=["pycnometer"]), True),
+        (_a_watch_changed("interval", accept=["pycnometer"], unit="K"), True),
+        (_a_watch_changed(source="declared"), True),
+        (_a_watch_changed(source="measured"), False),
+        (_a_refused_report_with("unused", [{"model": "drag", "acceptance": 0}]), False),
+        (_a_refused_report_with("watches", [WATCH]), False),
+        (_a_refused_report_with("watches", []), True),
+        (_records_that_are_no_references, False),
+        (_a_report_without("unused"), False),
+        (_a_report_without("records"), False),
+        (_a_report_without("results"), False),
+        (_a_report_without("refusals"), False),
+        (_an_unused_acceptance(), True),
+        (_an_unused_acceptance(acceptance=-1), False),
+        (_an_unused_acceptance_without_its_index, False),
+        (_a_refusal_changed(item="bc-048"), False),
+        (_a_refusal_changed(removed="pointer"), False),
+        (_a_refusal_changed(removed="item"), False),
     ],
     ids=[
         "a_report",
@@ -810,6 +903,34 @@ def _unchanged(report: Json) -> None:
         "a_combination",
         "a_combination_with_a_status",
         "a_pointer_that_is_not_one",
+        "a_result_without_not_accepted",
+        "a_result_without_its_model",
+        "a_result_without_its_record",
+        "a_result_without_specimen_differences",
+        "a_combination_without_its_fields",
+        "a_combination_without_its_record",
+        "a_watch_without_its_condition",
+        "a_watch_with_neither_interval_nor_accept",
+        "a_watch_at_no_location",
+        "a_watch_at_a_region",
+        "an_accept_list_watch_without_a_unit",
+        "an_accept_list_watch_with_a_unit",
+        "a_watch_of_source_declared",
+        "a_watch_of_a_source_that_is_none",
+        "a_refused_report_listing_unused",
+        "a_refused_report_holding_watches",
+        "a_refused_report_holding_no_watches",
+        "records_that_are_no_references",
+        "a_report_without_unused",
+        "a_report_without_records",
+        "a_report_without_results",
+        "a_report_without_refusals",
+        "an_unused_acceptance",
+        "an_unused_acceptance_of_index_minus_one",
+        "an_unused_acceptance_without_its_index",
+        "a_refusal_whose_item_is_no_case",
+        "a_refusal_without_its_pointer",
+        "a_refusal_without_its_item",
     ],
 )
 def test_the_report_schema_takes_a_report_and_refuses_what_section_2_does_not_give(
@@ -856,6 +977,177 @@ def test_a_report_that_drifts_from_the_cases_is_found(
     case, report, result = copy.deepcopy(CASE), copy.deepcopy(REPORT), copy.deepcopy(RESULT)
     change(case, report, result)
     assert any(found.startswith(problem) for found in report_problems(case, report, result))
+
+
+# The report's required members, by section 2, section 3 item 6, section 8 item 1 and section 1's refusals.
+
+# The members the report requires only when it holds no refusal (`refusal_rule`), and the one a build that
+# does not yet emit watches omits (section 2 lists it; S7a-4 makes it required).
+REQUIRED_WITHOUT_A_REFUSAL = {"consumer", "declaration"}
+OMITTED_WITHOUT_WATCHES = {"watches"}
+BRACED = re.compile(r"\{([^{}]*)\}")
+BRACED_MEMBER = re.compile(r'(?:(?<=\{)|(?<=, ))"(\w+)"(\?)?')
+
+
+def flat(text: str) -> str:
+    return re.sub(r"\s+", " ", text)
+
+
+def braced(text: str, anchor: str) -> list[tuple[str, bool]]:
+    """The members of the first object written in braces after `anchor`, each with whether it is required (not
+    followed by `?`). A member's value, `"source": "tolerance"`, is no member."""
+    after = flat(text).partition(anchor)[2]
+    assert after, anchor
+    found = BRACED.search(after)
+    assert found, anchor
+    return [(member[1], not member[2]) for member in BRACED_MEMBER.finditer(found[0])]
+
+
+def required_braced(text: str, anchor: str) -> set[str]:
+    return {name for name, needed in braced(text, anchor) if needed}
+
+
+def section_8(text: str) -> str:
+    return text[text.index("## 8. Run-time watches") :]
+
+
+def report_required_problems(text: str, report: Json, result: Json) -> list[str]:
+    """Where the report's members and required lists differ from the text's: the seven members of the report
+    (section 2), the members a field result adds to the read result's, a combination result's (section 3
+    item 6), a watch's (section 8 item 1), an unused acceptance's (section 2 item 9) and a refusal's
+    (section 1)."""
+    problems: list[str] = []
+
+    def agree(place: str, schema: set[str], text_gives: set[str]) -> None:
+        if schema != text_gives:
+            problems.append(f"{place} requires {sorted(schema)}, the text {sorted(text_gives)}")
+
+    definition_of = definitions(report)
+    paragraph = flat(text).partition("The build gives one report:")[2].partition("A declaration the build")[0]
+    members = set(re.findall(r"- `([a-z_]+)`", paragraph))
+    agree("the report's members", set(properties(report)), members)
+    agree(
+        "the report",
+        set(required(report)),
+        members - REQUIRED_WITHOUT_A_REFUSAL - OMITTED_WITHOUT_WATCHES,
+    )
+    without_a_refusal = at(definition_of["refusal_rule"], "else")
+    agree("a report without a refusal", set(required(without_a_refusal)), REQUIRED_WITHOUT_A_REFUSAL)
+
+    added = flat(text).partition("The build reads every required field")[2].partition(" and, on a result")[0]
+    agree(
+        "a field result",
+        set(required(definition_of["field_result"])),
+        set(required(result)) | set(re.findall(r"`([a-z_]+)`", added.partition("with")[2])),
+    )
+    agree(
+        "a combination result",
+        set(required(definition_of["combination_result"])),
+        required_braced(text, "returns one result per combination:"),
+    )
+    agree(
+        "a watch",
+        set(required(definition_of["watch"])) | set(required(at(definition_of["watch_rule"], "then"))),
+        required_braced(section_8(text), "1. The build emits watches"),
+    )
+    agree(
+        "an unused acceptance",
+        set(required(definition_of["unused_acceptance"])),
+        required_braced(text, "9. The build lists in `unused`"),
+    )
+    agree(
+        "a refusal", set(required(definition_of["build_refusal"])), required_braced(text, "Each refusal is")
+    )
+    return problems
+
+
+def test_the_reports_required_members_are_those_of_the_text() -> None:
+    assert report_required_problems(document("declarations.md"), REPORT, RESULT) == []
+
+
+def _no_longer_required(place: str, member: str) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        required(definitions(report)[place]).remove(member)
+
+    return change
+
+
+def _newly_required(place: str, member: str) -> Callable[[Json], None]:
+    def change(report: Json) -> None:
+        required(definitions(report)[place]).append(member)
+
+    return change
+
+
+def _report_no_longer_requiring_unused(report: Json) -> None:
+    required(report).remove("unused")
+
+
+def _report_requiring_watches(report: Json) -> None:
+    required(report).append("watches")
+
+
+def _report_without_watches(report: Json) -> None:
+    del properties(report)["watches"]
+
+
+def _a_refusal_rule_without_the_consumer(report: Json) -> None:
+    required(at(definitions(report)["refusal_rule"], "else")).remove("consumer")
+
+
+@pytest.mark.parametrize(
+    ("change", "problem"),
+    [
+        (_no_longer_required("field_result", "not_accepted"), "a field result requires"),
+        (_no_longer_required("field_result", "specimen_differences"), "a field result requires"),
+        (_newly_required("field_result", "trainable_by"), "a field result requires"),
+        (_newly_required("field_result", "region"), "a field result requires"),
+        (_no_longer_required("combination_result", "fields"), "a combination result requires"),
+        (_newly_required("combination_result", "region"), "a combination result requires"),
+        (_no_longer_required("watch", "condition"), "a watch requires"),
+        (_newly_required("watch", "record"), "a watch requires"),
+        (_no_longer_required("unused_acceptance", "acceptance"), "an unused acceptance requires"),
+        (_no_longer_required("build_refusal", "pointer"), "a refusal requires"),
+        (_newly_required("build_refusal", "detail"), "a refusal requires"),
+        (_report_no_longer_requiring_unused, "the report requires"),
+        (_report_requiring_watches, "the report requires"),
+        (_report_without_watches, "the report's members"),
+        (_a_refusal_rule_without_the_consumer, "a report without a refusal requires"),
+    ],
+)
+def test_a_required_list_that_drifts_from_the_text_is_found(
+    change: Callable[[Json], None], problem: str
+) -> None:
+    report = copy.deepcopy(REPORT)
+    change(report)
+    assert any(
+        found.startswith(problem)
+        for found in report_required_problems(document("declarations.md"), report, RESULT)
+    )
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        ("- `unused` (item 9).", "- `unused_items` (item 9).", "the report's members"),
+        ("`not_accepted` and, on a result", "and, on a result", "a field result requires"),
+        (
+            '"accepted_by", "not_accepted"}`, each difference',
+            '"accepted_by"}`, each difference',
+            "a combination result",
+        ),
+        ('"unit",\n   "source": "tolerance"}', '"source": "tolerance"}', "a watch requires"),
+        ('"acceptance": <its index>}', '"index": <its index>}', "an unused acceptance requires"),
+        ('"pointer", "detail"?}', '"pointer", "detail"}', "a refusal requires"),
+    ],
+)
+def test_a_text_that_drifts_from_the_required_lists_is_found(old: str, new: str, problem: str) -> None:
+    text = document("declarations.md")
+    assert text.count(old) == 1, old
+    assert any(
+        found.startswith(problem)
+        for found in report_required_problems(text.replace(old, new), REPORT, RESULT)
+    )
 
 
 # The build-check cases against declaration.json.
@@ -973,6 +1265,33 @@ def test_a_schema_that_judges_otherwise_is_found(monkeypatch: pytest.MonkeyPatch
     assert "BC-048.target_missing: taken by the schema and not listed" in found
 
 
+def test_a_schema_that_refuses_what_its_case_expects_taken_is_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control: declaration.json with `mixing` required refuses the files that expect no refusal and
+    hold none, and the check lists them as expected to pass and refused."""
+    schema = copy.deepcopy(DECLARATION)
+    required(definitions(schema)["model_entry"]).append("mixing")
+    taken_by = agreed
+
+    def mutant(reference: str) -> Callable[[JsonValue], bool]:
+        return taken_by(BASE + reference, (schema,))
+
+    monkeypatch.setattr(f"{__name__}.agreed", mutant)
+    found = case_problems(CASES, SCHEMA_DOES_NOT_STATE)
+    assert "BC-016.waiver_at_one_of_two_records: expected to pass, refused" in found
+
+
+def test_a_refusal_at_another_place_than_the_cases_is_found() -> None:
+    """The control: a file the schema refuses at its acceptance 0, whose case is made to expect the refusal
+    at acceptance 1, is refused nowhere at or above where the case points."""
+    name = "BC-005.waiver_without_reason"
+    pointer = "/models/0/acceptances/1"
+    assert [pointers for found, _, pointers in CASES if found == name] == [["/models/0/acceptances/0"]]
+    moved = [(found, value, [pointer] if found == name else pointers) for found, value, pointers in CASES]
+    assert f"{name}: refused, but nowhere at or above ['{pointer}']" in case_problems(
+        moved, SCHEMA_DOES_NOT_STATE
+    )
+
+
 # Closure: every place a valid declaration reaches refuses a member the table does not name.
 
 # The maps whose keys are the consumer's own names: a member added there is a key, not an unknown member.
@@ -991,24 +1310,33 @@ def objects(value: JsonValue, pointer: str = "", key: str = "") -> Iterator[str]
             yield from objects(held, f"{pointer}/{index}", key)
 
 
-def with_member(value: JsonValue, pointer: str) -> JsonValue:
+UNKNOWN = "unknown_member"
+
+
+def with_member(value: JsonValue, pointer: str, shaped: bool) -> JsonValue:
+    """The declaration with a member the table does not name added at `pointer`: a string, or, where the
+    object holds a member, a copy of its first member's value, which is well shaped where that member is (a
+    string is refused wherever a type is checked, not wherever the place is closed)."""
     changed = copy.deepcopy(value)
     node = changed
     for step in filter(None, pointer.split("/")):
         node = node[int(step)] if isinstance(node, list) else cast(dict[str, JsonValue], node)[step]
-    cast(dict[str, JsonValue], node)["unknown_member"] = "a member the table does not name"
+    members = cast(dict[str, JsonValue], node)
+    members[UNKNOWN] = copy.deepcopy(next(iter(members.values()))) if shaped and members else "a member"
     return changed
 
 
 def open_places(schema_reference: str, files: tuple[Json, ...] = ()) -> list[str]:
-    """Each place of a valid build-check declaration that takes a member the table does not name."""
+    """Each place of a valid build-check declaration that takes a member the table does not name, as a string
+    and as a copy of a sibling's value."""
     takes = agreed(schema_reference, files)
     found: list[str] = []
-    for name, value, pointers in CASES:
-        if pointers or not isinstance(value, dict):
-            continue
-        found += [f"{name}{pointer}" for pointer in objects(value) if takes(with_member(value, pointer))]
-    return found
+    for name, value in valid_declarations():
+        for pointer in objects(value):
+            found += [
+                f"{name}{pointer}" for shaped in (False, True) if takes(with_member(value, pointer, shaped))
+            ]
+    return sorted(set(found))
 
 
 def test_every_place_a_declaration_reaches_is_closed() -> None:
@@ -1021,6 +1349,77 @@ def test_an_open_place_is_found() -> None:
     found = open_places(BASE + "declaration.json", (schema,))
     assert found
     assert all(re.search(r"/models/\d+/requirements/\d+$", place) for place in found)
+
+
+def test_a_place_that_checks_its_values_but_not_its_members_is_found() -> None:
+    """`implies` refuses a string it is given as a member by the type of its values (the read request's), and
+    a well-shaped value, a copy of the condition beside it, only by being closed. The control opens it."""
+    schema = copy.deepcopy(DECLARATION)
+    definitions(schema)["implies"].pop("additionalProperties")
+    found = open_places(BASE + "declaration.json", (schema,))
+    assert found
+    assert all(place.endswith("/implies") for place in found)
+    takes = agreed("declaration.json", (schema,))
+    shaped = [
+        (value, pointer)
+        for _, value in valid_declarations()
+        for pointer in objects(value)
+        if pointer.endswith("/implies")
+    ]
+    assert shaped
+    assert not any(takes(with_member(value, pointer, shaped=False)) for value, pointer in shaped)
+
+
+def visited() -> tuple[set[str], set[str]]:
+    """The kinds of place and the acceptance kinds of the valid declarations the closure check visits."""
+    places: set[str] = set()
+    kinds: set[str] = set()
+    for _, value in valid_declarations():
+        for pointer in objects(value):
+            places.add(re.sub(r"/\d+", "/N", pointer))
+            node = copy.deepcopy(cast(JsonValue, value))
+            for step in filter(None, pointer.split("/")):
+                node = node[int(step)] if isinstance(node, list) else cast(dict[str, JsonValue], node)[step]
+            kind = cast(Json, node).get("acceptance")
+            if isinstance(kind, str):
+                kinds.add(kind)
+    return places, kinds
+
+
+# The places the closure check must reach, one for each place of the table of the shape.
+REACHED = {
+    "",
+    "/consumer",
+    "/models/N",
+    "/models/N/model",
+    "/models/N/checked_over",
+    "/models/N/checked_over/records/N",
+    "/models/N/requirements/N",
+    "/models/N/requirements/N/conditions/temperature",
+    "/models/N/acceptances/N",
+    "/models/N/trainable/N",
+    "/models/N/mixing",
+    "/models/N/engine",
+    "/models/N/engine/crosswalk",
+    "/models/N/region_conditions/lumen",
+    "/sampling",
+    "/sampling/independence/N",
+}
+
+
+def test_the_closure_check_reaches_every_place_of_the_table() -> None:
+    places, kinds = visited()
+    assert REACHED <= places
+    assert kinds == set(KINDS)
+
+
+def test_a_closure_check_that_skips_a_place_is_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The control: with the acceptances taken for a free map, as the check once did not know them not to be,
+    no acceptance object is visited and the check above says so."""
+    monkeypatch.setattr(f"{__name__}.FREE_MAPS", FREE_MAPS | {"acceptances"})
+    places, kinds = visited()
+    assert not REACHED <= places
+    assert kinds != set(KINDS)
 
 
 # Each rule and binding of declaration.json, applied where it belongs: a declaration with one fault it refuses
@@ -1134,6 +1533,86 @@ def families(declaration: Json) -> None:
     model(declaration)["families"] = {"fluid.dynamic_viscosity": "materica.fluid.cross.v1"}
 
 
+def at_other_location(location: Json) -> Callable[[Json], None]:
+    """A waiver that names the location given in place of a record."""
+    members: Json = {"acceptance": "waiver", "field": "fluid.dynamic_viscosity", "code": "no_requirement"}
+    return with_acceptance(members | location | {"reason": "a reason"})
+
+
+def a_pick(members: Json) -> Callable[[Json], None]:
+    kind: Json = {"acceptance": "pick", "index": 0}
+    return with_acceptance(at_water(kind | members))
+
+
+def an_overlay_scope(accepts: JsonValue) -> Callable[[Json], None]:
+    scope: Json = {"acceptance": "overlay_scope", "overlay": WATER, "accepts": accepts, "reason": "a reason"}
+    return with_acceptance(scope)
+
+
+def trainable(*entries: Json) -> Callable[[Json], None]:
+    return lambda declaration: model(declaration).update(trainable=list(entries))
+
+
+def population_level(level: Json) -> Callable[[Json], None]:
+    def change(declaration: Json) -> None:
+        sampled("population", level=False)(declaration)
+        requirement(declaration)["population_level"] = level
+
+    return change
+
+
+def independence(entry: Json) -> Callable[[Json], None]:
+    def change(declaration: Json) -> None:
+        sampled("estimate", level=False)(declaration)
+        cast(Json, declaration["sampling"])["independence"] = [entry]
+
+    return change
+
+
+def engine_value(value: Json) -> Callable[[Json], None]:
+    pin: Json = {"id": "a crosswalk", "version": "1", "sha256": "a hash"}
+    return lambda declaration: model(declaration).update(engine={"crosswalk": pin, "values": {"a": value}})
+
+
+def mixing(tolerance: float) -> Callable[[Json], None]:
+    return lambda declaration: model(declaration).update(
+        mixing={"fraction_sum_tolerance": tolerance, "rules": {}}
+    )
+
+
+def region_conditions(conditions: Json) -> Callable[[Json], None]:
+    return lambda declaration: model(declaration).update(region_conditions={"lumen": conditions})
+
+
+def twice(place: str) -> Callable[[Json], None]:
+    """The first entry of a list, given again unchanged: a model, a requirement or a trainable entry."""
+
+    def change(declaration: Json) -> None:
+        if place == "models":
+            cast(list[Json], declaration["models"]).append(copy.deepcopy(model(declaration)))
+        else:
+            entries = cast(
+                list[Json], model(declaration).setdefault(place, [{"field": "bulk.density", "record": WATER}])
+            )
+            entries.append(copy.deepcopy(entries[0]))
+
+    return change
+
+
+def requirement_again(**given: JsonValue) -> Callable[[Json], None]:
+    """A second requirement for the field of the first, which differs from it by the members given."""
+
+    def change(declaration: Json) -> None:
+        cast(list[Json], model(declaration)["requirements"]).append(requirement(declaration) | given)
+
+    return change
+
+
+def a_sampling_acceptance_of_zero(declaration: Json) -> None:
+    sampled("estimate", level=False)(declaration)
+    cast(Json, declaration["sampling"])["min_acceptance"] = 0
+
+
 PROBES: list[tuple[str, Callable[[Json], None], bool]] = [
     ("the_requirement_labels_its_field", requirement_label("materica.fluid.newtonian.v1"), True),
     ("another_fields_label", requirement_label("materica.magnetic.linear.v1"), False),
@@ -1210,6 +1689,184 @@ PROBES: list[tuple[str, Callable[[Json], None], bool]] = [
         target({"donor_age": {"value": 1.0, "range": [1.0, 2.0], "unit": "s"}}),
         False,
     ),
+    # The constraints the table's Holds cells give as keywords, and the rules beside them.
+    ("a_waiver_at_a_region", at_other_location({"region": "lumen"}), True),
+    ("a_waiver_at_an_interval", at_other_location({"interval": [1.0, 2.0]}), True),
+    ("a_pick_at_a_record_and_a_region", a_pick({"region": "lumen"}), True),
+    ("a_pick_index_of_one", a_pick({"index": 1}), True),
+    # Pinned as the table gives it, not as a ruling: `basis` is named on every acceptance kind.
+    ("a_pick_with_a_basis", a_pick({"basis": "a basis"}), True),
+    (
+        "an_implied_condition_with_a_basis_of_its_own",
+        lambda d: with_acceptance(
+            at_water(
+                {
+                    "acceptance": "implied_condition",
+                    "fact": "tissue_state",
+                    "token": "in_vivo",
+                    "implies": {},
+                    "basis": "a basis",
+                }
+            )
+        )(d),
+        True,
+    ),
+    ("a_waiver_with_a_basis", waiver({"code": "no_requirement", "basis": "a basis"}), True),
+    (
+        "an_accepted_difference_with_a_basis",
+        with_acceptance(
+            {
+                "acceptance": "accepted_difference",
+                "section": "fluid",
+                "fact": "species",
+                "value": "any",
+                "reason": "a reason",
+                "basis": "a basis",
+            }
+        ),
+        True,
+    ),
+    (
+        "an_overlay_with_a_basis",
+        with_acceptance(
+            {
+                "acceptance": "overlay",
+                "field": "fluid.dynamic_viscosity",
+                "overlay": WATER,
+                "reason": "a reason",
+                "basis": "a basis",
+            }
+        ),
+        True,
+    ),
+    (
+        "an_overlay_scope_with_a_basis",
+        with_acceptance(
+            {
+                "acceptance": "overlay_scope",
+                "overlay": WATER,
+                "accepts": ["model"],
+                "reason": "a reason",
+                "basis": "a basis",
+            }
+        ),
+        True,
+    ),
+    ("two_identical_models", twice("models"), False),
+    ("two_identical_requirements", twice("requirements"), False),
+    ("two_identical_trainable_entries", twice("trainable"), False),
+    # A name given twice where the members differ is the build's, not the schema's (the description's list).
+    ("two_requirements_for_one_field_that_differ", requirement_again(want="bounds"), True),
+    ("a_pick_index_of_minus_one", a_pick({"index": -1}), False),
+    ("a_pick_index_with_a_fraction", a_pick({"index": 1.5}), False),
+    (
+        "an_overlay",
+        with_acceptance(
+            {
+                "acceptance": "overlay",
+                "field": "fluid.dynamic_viscosity",
+                "overlay": WATER,
+                "reason": "a reason",
+            }
+        ),
+        True,
+    ),
+    ("an_overlay_scope_accepting_two_tokens", an_overlay_scope(["model", "consumer"]), True),
+    ("an_overlay_scope_accepting_a_token_twice", an_overlay_scope(["model", "model"]), False),
+    ("an_overlay_scope_accepting_nothing", an_overlay_scope([]), False),
+    (
+        "a_trainable_entry_at_a_record",
+        trainable({"field": "fluid.dynamic_viscosity", "record": WATER}),
+        True,
+    ),
+    (
+        "a_trainable_entry_at_a_record_and_a_region",
+        trainable({"field": "fluid.dynamic_viscosity", "record": WATER, "region": "lumen"}),
+        False,
+    ),
+    ("a_trainable_entry_at_no_location", trainable({"field": "fluid.dynamic_viscosity"}), False),
+    ("a_sampling_acceptance_of_zero", a_sampling_acceptance_of_zero, False),
+    (
+        "an_independence_entry_with_its_basis",
+        independence({"fields": ["fluid.dynamic_viscosity"], "reason": "a reason", "basis": "a basis"}),
+        True,
+    ),
+    (
+        "an_independence_entry_without_its_basis",
+        independence({"fields": ["fluid.dynamic_viscosity"], "reason": "a reason"}),
+        False,
+    ),
+    ("a_mixing_tolerance_of_zero", mixing(0.0), True),
+    ("a_negative_mixing_tolerance", mixing(-1.0e-9), False),
+    (
+        "a_combination_of_two_fields",
+        lambda d: model(d).update(combinations=[["bulk.density", "fluid.dynamic_viscosity"]]),
+        True,
+    ),
+    ("a_combination_of_one_field", lambda d: model(d).update(combinations=[["bulk.density"]]), False),
+    (
+        "an_engine_value_with_its_basis",
+        engine_value({"value": 1.0, "reason": "a reason", "basis": "a basis"}),
+        True,
+    ),
+    ("an_engine_value_without_its_basis", engine_value({"value": 1.0, "reason": "a reason"}), False),
+    (
+        "an_implied_condition_with_a_basis",
+        implied(
+            "tissue_state", "in_vivo", {"temperature": {"value": 310.15, "unit": "K", "basis": "stated"}}
+        ),
+        True,
+    ),
+    (
+        "an_implied_condition_naming_an_unregistered_condition",
+        implied("tissue_state", "in_vivo", {"pressure": {"value": 1.0, "unit": "Pa"}}),
+        False,
+    ),
+    (
+        "a_waiver_naming_an_unregistered_condition",
+        waiver({"code": "outside_range", "condition": "pressure"}),
+        False,
+    ),
+    # Pinned as the table gives it, not as a ruling: a waiver of `condition_unknown_name` takes a registered
+    # condition only, so no declaration can name the condition the reader did not know.
+    (
+        "a_waiver_of_an_unknown_conditions_name_naming_it",
+        waiver({"code": "condition_unknown_name", "condition": "pressure"}),
+        False,
+    ),
+    ("a_target_species_by_its_taxon", target({"species": {"ncbi_taxon": 9606}}), True),
+    ("a_target_species_with_a_fractional_taxon", target({"species": {"ncbi_taxon": 9606.5}}), False),
+    ("a_target_species_as_a_status_object", target({"species": {"status": "unstated"}}), False),
+    (
+        "a_target_disease_state_by_its_token",
+        target({"disease_and_treatment_state": {"token": "normal"}}),
+        True,
+    ),
+    (
+        "a_target_disease_state_holding_a_basis",
+        target({"disease_and_treatment_state": {"token": "normal", "basis": "stated"}}),
+        False,
+    ),
+    (
+        "a_balanced_population_level",
+        population_level({"level": "donor", "balanced_over": "lot"}),
+        True,
+    ),
+    (
+        "a_balanced_population_level_with_a_slip",
+        population_level({"level": "donor", "balanced_over": "lots"}),
+        False,
+    ),
+    (
+        "a_region_with_its_operating_conditions",
+        region_conditions({"temperature": {"value": 310.15, "unit": "K"}}),
+        True,
+    ),
+    (
+        "a_region_with_an_unregistered_operating_condition",
+        region_conditions({"pressure": {"value": 1.0, "unit": "Pa"}}),
+        False,
+    ),
 ]
 
 
@@ -1221,3 +1878,33 @@ def test_each_rule_and_binding_judges_its_own_fault(change: Callable[[Json], Non
     assert agreed("declaration.json")(declaration)
     change(declaration)
     assert agreed("declaration.json")(declaration) is valid
+
+
+def printed_example() -> Json:
+    """The declaration printed at the head of section 1."""
+    text = document("declarations.md")
+    start = text.index("## 1. The declaration")
+    block = text[start:].partition("```json\n")[2].partition("\n```")[0]
+    return cast(Json, json.loads(block))
+
+
+def test_section_1s_printed_example_is_taken_and_a_fault_in_it_is_not() -> None:
+    """The text's own example is a declaration. The controls: it holds a waiver located at a region, the
+    location rule's second arm, and the schema refuses it with a member one slip off a named one."""
+    example = printed_example()
+    assert agreed("declaration.json")(example)
+    assert any("region" in found for found in cast(list[Json], model(example)["acceptances"]))
+    model(example)["model_configuration_hsh"] = "a slip"
+    assert not agreed("declaration.json")(example)
+
+
+def valid_declarations() -> list[tuple[str, Json]]:
+    """The declarations the closure check adds a member to: the build-check cases that expect no refusal, and
+    each probe the schema takes, which reaches places those cases do not (a trainable entry, an engine)."""
+    found = [(name, value) for name, value, pointers in CASES if not pointers and isinstance(value, dict)]
+    for name, change, valid in PROBES:
+        if valid:
+            declaration = a_declaration()
+            change(declaration)
+            found.append((name, declaration))
+    return found
