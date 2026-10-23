@@ -561,3 +561,159 @@ def test_a_ruled_sentence_with_words_added_is_flagged_with_both_forms_and_the_ru
     assert run(capsys, written, "--rulings", str(rulings)) == (0, [])
     commit("docs(specification): in the ruling's words", {SPECIFICATION: ROW.format("")})
     assert run(capsys, base, "--rulings", str(rulings)) == (0, [])
+
+
+SWEPT = (
+    "an over-range or kept entry holds its unit, specimen, statistics and provenance as `record_format.md` "
+    "section 5 gives them, and an alternative's index counts from 0 in stored order."
+)
+PHRASE = (
+    "holds its unit, specimen, statistics and provenance as `record_format.md` section 5 gives them".split()
+)
+OWN_LEAD = "An entry whose alternative is kept outside its form's range"
+RULED_LEAD = "An over-range or kept entry"
+
+
+def ruled(rulings: str, text: str) -> list[str]:
+    return check_claims.ruling_findings(
+        rulings, [("s.md", sentence) for sentence in check_claims.sentences(text)]
+    )[0]
+
+
+@pytest.mark.parametrize("lead", [OWN_LEAD, RULED_LEAD])
+@pytest.mark.parametrize("tail", [".", ", and an alternative's index counts from 0 in stored order."])
+@pytest.mark.parametrize(
+    ("change", "position"),
+    [
+        *((change, position) for change in ("substitute", "delete", "insert") for position in range(13)),
+        *(("insert four", position) for position in range(1, 13)),
+        ("insert", 13),
+    ],
+)
+def test_a_ruled_phrase_with_a_word_changed_anywhere_is_flagged(
+    lead: str, tail: str, change: str, position: int
+) -> None:
+    words: list[str] = list(PHRASE)
+    if change == "substitute":
+        words[position] = "XYZ"
+    elif change == "delete":
+        del words[position]
+    else:
+        words[position:position] = ["XYZ"] * (4 if change == "insert four" else 1)
+    assert ruled(SWEPT, f"{lead} {' '.join(PHRASE)}{tail}") == []
+    # The one form left to the reviewer: the run's first word changed where the words before it are the text's
+    # own, which no shared word sets apart from the text's wording around the ruling.
+    unseen = lead == OWN_LEAD and position == 0 and change in {"substitute", "delete", "insert"}
+    assert bool(ruled(SWEPT, f"{lead} {' '.join(words)}{tail}")) is not unseen
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "flagged"),
+    [
+        ("holds", "holds only", True),
+        ("gives them", "describes them", True),
+        ("its unit", "unit", True),
+        ("provenance as", "provenance as they were stored, as", True),
+        ("provenance as", "provenance not as", True),
+        ("specimen, statistics and", "specimen and", True),
+        # 13 words in common of 17, 0.76 of the longer run: flagged at `NEAR` 0.7, missed at 0.8.
+        ("as `record_format.md` section 5", "as stored, as `record_format.md` section 5 item 5", True),
+        # 9 words in common of 13, 0.69: a paraphrase past `NEAR`.
+        ("its unit, specimen, statistics and provenance", "its provenance", False),
+    ],
+)
+def test_the_ruled_sentence_reworded_naturally_is_flagged_while_near(
+    old: str, new: str, flagged: bool
+) -> None:
+    text = f"{OWN_LEAD} {' '.join(PHRASE).replace(old, new, 1)}."
+    assert bool(ruled(RULING + ".", text)) is flagged
+
+
+def test_a_ruled_clause_cut_short_or_run_on_is_flagged_and_the_text_s_own_lead_is_not() -> None:
+    phrase = " ".join(PHRASE)
+    assert ruled(RULING + " in stored order.", f"{OWN_LEAD} {phrase}.")
+    assert ruled(RULING + ".", f"{OWN_LEAD} {phrase} as stored.")
+    merged = (
+        "An entry whose alternative is kept outside its form's range, or is a table read over an operating "
+        "range of its axis, holds its `unit`, `specimen`, `statistics` and `provenance` as "
+        "`record_format.md` section 5 gives them, even where its read ended at step 11."
+    )
+    assert ruled(f"{RULING}; and an index counts from 0.", merged) == []
+
+
+def test_a_word_that_would_make_a_run_far_is_not_its() -> None:
+    found = ruled(
+        "x is the test method only of a value of origin y, held by a writer.",
+        "x is the test method of a value evaluated from a reference formulation or an equation of state of "
+        "origin y.",
+    )
+    assert found == [
+        's.md:1: a ruled sentence differs: the ruling has "x is the test method only of a value", '
+        'this line "x is the test method of a value"'
+    ]
+
+
+WORDS = (
+    "every reader of a record refuses it where its unit names no quantity the field allows here today".split()
+)
+LONGER = [*WORDS, "and", "where", "its", "value", "lies", "outside"]
+
+
+@pytest.mark.parametrize(
+    ("ruling", "text", "flagged"),
+    [
+        # Pieces apart by `MAX_GAP` words on both sides form one run; by one more, two identical runs.
+        (WORDS, [*WORDS[:5], "x", "y", "z", *WORDS[8:]], True),
+        (WORDS, [*WORDS[:5], "w", "x", "y", "z", *WORDS[9:]], False),
+        # An insertion of `MAX_INSERT` words joins a run; one more word splits it.
+        (LONGER, [*LONGER[:10], *(f"x{n}" for n in range(8)), *LONGER[10:]], True),
+        (LONGER, [*LONGER[:10], *(f"x{n}" for n in range(9)), *LONGER[10:]], False),
+        # `MIN_WORDS` words in common are compared, one fewer are not.
+        (WORDS[:7], [*WORDS[:6], "other"], True),
+        (WORDS[:6], [*WORDS[:5], "other"], False),
+        # Two shared runs of three words make a pair to compare.
+        (WORDS[:7], [*WORDS[:3], "other", *WORDS[4:7]], True),
+    ],
+)
+def test_the_ruled_wording_constants_hold_at_their_bounds(
+    ruling: list[str], text: list[str], flagged: bool
+) -> None:
+    assert bool(ruled(" ".join(ruling) + ".", " ".join(text) + ".")) is flagged
+
+
+def test_a_ruling_is_printed_without_its_markup_attribution_or_labels(repository: Path) -> None:
+    rulings = (
+        '- **S3b-2** (maintainer, 2026-10-19, "confirmed"): each entry holds its unit as the row gives it '
+        "(A1Q1); (7) every reader refuses a record whose unit names no quantity.\n"
+    )
+    text = "Each entry holds its unit as the table gives it.\n\nA reader refuses a record whose unit names no"
+    found = ruled(rulings, text + " quantity.")
+    assert found == [
+        's.md:1: a ruled sentence differs: the ruling has "each entry holds its unit as the row gives it", '
+        'this line "Each entry holds its unit as the table gives it."',
+        's.md:3: a ruled sentence differs: the ruling has "every reader refuses a record whose unit names no '
+        'quantity.", this line "A reader refuses a record whose unit names no quantity."',
+    ]
+
+
+def test_a_wording_the_rulings_file_accepts_is_counted_not_reported(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rulings = repository.parent / "rulings.md"
+    accepted = (
+        '- Accepted wording: "holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as '
+        '`record_format.md` section 5 gives them"\n'
+    )
+    rulings.write_text(f"- {RULING}.\n{accepted}", encoding="utf-8")
+    base = check_claims.git("rev-parse", "HEAD").strip()
+    commit("docs(specification): as stored, accepted", {SPECIFICATION: ROW.format(" as stored,")})
+    assert run(capsys, base, "--rulings", str(rulings)) == (0, [])
+    assert (
+        check_claims.main(
+            ["check", base, "--facts", str(repository.parent / "facts.json"), "--rulings", str(rulings)]
+        )
+        == 0
+    )
+    assert "the ruled wording: 1 differences the rulings file accepts" in capsys.readouterr().out
+    commit("docs(specification): in the ruling's words", {SPECIFICATION: ROW.format("")})
+    assert run(capsys, base, "--rulings", str(rulings)) == (0, [])  # the accepted line is no ruling

@@ -34,19 +34,26 @@ its commits, never the working tree. Three checks:
    baseline holds only such figures, and `baseline` writes it. Anything else fails, and no option turns this
    part off. A fact matches every figure with its value and words: record words that tell two figures apart.
 3. Ruled wording, given the rulings file (private: its path is given at run time, and nothing of it is
-   printed but the words compared). Where a run of a ruling's words and of a specification sentence the
-   branch adds nearly match (`MIN_WORDS` words in common or more, in pieces of two words or more apart by at
-   most `MAX_GAP`, and `NEAR` of the longer run), they match word for word, case and punctuation aside; a
-   difference prints both.
+   printed but the words compared, without its bold markup or the maintainer's attribution). Where a run of a
+   ruling's words and of a specification sentence the branch adds nearly match, they match word for word,
+   case and punctuation aside; a difference prints both. A run is made of pieces of two words or more, apart
+   by at most `MAX_GAP` words on both sides or by an insertion or deletion of at most `MAX_INSERT` words on
+   one; it takes in one word more at either end where that word matches across such a gap, and runs on to its
+   clause's end (or back to its start) where one side's clause ends within a word of the run and the other's
+   within `MAX_INSERT`. It is compared where it holds `MIN_WORDS` words in common or more, and `NEAR` of the
+   longer side. A line of the rulings file that reads `accepted wording: "..."` is no ruling: the words it
+   quotes, landed otherwise on purpose, are not reported (and are counted).
 
 Left to the reviewer: prose claims ("the bar is met"), counts written in words ("three controls"), whether a
 figure counts what its words say, a ruling paraphrased beyond `NEAR`, a git fact in another form, and these
-forms the rules read wrongly, rare in the merged descriptions and the CHANGELOG: a ratio such as `3.14 times`,
-read as a Python version; a clock duration (`7:16`), not read; a year-like count after `in` (`in 1995 of 2000
-runs`); a count of commits not the branch's (`a test makes 260 commits`), read as a git fact; a count of eight
-digits or more without commas (`12000000 examples`), read as a run's number; and `about N` where `about` means
-"concerning". A short commit name is checked in the object store the check runs in: one that names two objects
-there may name one in a fresh clone.
+forms the rules read wrongly, rare in the merged descriptions and the CHANGELOG: an edit at the first or last
+word of a run where the words beyond it are the text's own and no clause ends there (that word may belong to
+the text's own wording around the ruling); a ratio such as `3.14 times`, read as a Python version; a clock
+duration (`7:16`), not read; a year-like count after `in` (`in 1995 of 2000 runs`); a count of commits not the
+branch's (`a test makes 260 commits`), read as a git fact; a count of eight digits or more without commas
+(`12000000 examples`), read as a run's number; and `about N` where `about` means "concerning". A short commit
+name is checked in the object store the check runs in: one that names two objects there may name one in a
+fresh clone.
 """
 
 import argparse
@@ -147,7 +154,15 @@ MARKER = re.compile(r"^(?:[-*+>]|#+|\[[ x]\])$")
 
 MIN_WORDS = 6
 MAX_GAP = 3
+MAX_INSERT = 8
 NEAR = 0.7
+# The rulings file's bold markup, the maintainer's attribution, a parenthesis naming a question by its label
+# and an item's mark (`(7)`, `(a)`) end a ruling's sentence; a line naming an accepted wording is no ruling.
+ATTRIBUTION = re.compile(
+    r"\*\*|(?i:\((?:the\s+)?maintainer\b[^)]*\))|\([^()]*\b[A-Z][\w-]*Q\d+\b[^()]*\)"
+    r"|(?<!\S)\((?:\d{1,2}|[A-Za-z])\)(?!\S)"
+)
+ACCEPTED = re.compile(r"accepted wording:\s*\"(.+)\"", re.I)
 
 Word = tuple[str, str, int]
 
@@ -668,14 +683,24 @@ def trigrams(sentence: list[Word]) -> set[tuple[str, ...]]:
     return {tuple(word for word, _, _ in sentence[index : index + 3]) for index in range(len(sentence) - 2)}
 
 
-def ruling_findings(rulings: str, added: list[tuple[str, list[Word]]]) -> list[str]:
+def ruling_findings(rulings: str, added: list[tuple[str, list[Word]]]) -> tuple[list[str], int]:
     """Check 3: each run of a ruling's words that an added specification sentence nearly matches, not word for
-    word. Two sentences are compared where they share two runs of three words."""
+    word, and how many differences an accepted wording holds. Two sentences are compared where they share two
+    runs of three words."""
+    accepted = [
+        [word for word, _, _ in words]
+        for match in ACCEPTED.finditer(rulings)
+        for words in sentences(match.group(1))
+    ]
+    rulings = "\n".join(
+        "" if ACCEPTED.search(row) else ATTRIBUTION.sub("\n\n", row) for row in rulings.split("\n")
+    )
     index: dict[tuple[str, ...], set[int]] = {}
     for position, (_, sentence) in enumerate(added):
         for trigram in trigrams(sentence):
             index.setdefault(trigram, set()).add(position)
     found: set[str] = set()
+    waived: set[str] = set()
     for ruled in sentences(rulings):
         shared: dict[int, int] = {}
         for trigram in trigrams(ruled):
@@ -684,12 +709,43 @@ def ruling_findings(rulings: str, added: list[tuple[str, list[Word]]]) -> list[s
         for position in (position for position, count in shared.items() if count >= 2):
             path, sentence = added[position]
             for ours, theirs in near_runs(ruled, sentence):
-                found.add(
+                finding = (
                     f"{path}:{theirs[0][2]}: a ruled sentence differs: the ruling has "
                     f'"{" ".join(token for _, token, _ in ours)}", this line '
                     f'"{" ".join(token for _, token, _ in theirs)}"'
                 )
-    return sorted(found)
+                (waived if any(within(theirs, words) for words in accepted) else found).add(finding)
+    return sorted(found), len(waived)
+
+
+def within(run: list[Word], words: list[str]) -> bool:
+    compared = [word for word, _, _ in run]
+    return any(words[start : start + len(compared)] == compared for start in range(len(words)))
+
+
+def ends_clause(token: str) -> bool:
+    return token.rstrip("`*_\"')]}" + QUOTES).endswith((",", ";", ":", ".", "!", "?"))
+
+
+def to_clause_start(words: list[Word], start: int) -> int:
+    back = 0
+    while start - back > 0 and not ends_clause(words[start - back - 1][1]):
+        back += 1
+    return back
+
+
+def to_clause_end(words: list[Word], end: int) -> int:
+    on = 0
+    while end + on < len(words) and not ends_clause(words[end + on - 1][1]):
+        on += 1
+    return on
+
+
+def joins(left: difflib.Match, right: difflib.Match, gap: int) -> bool:
+    """Whether two matching pieces belong to one run: apart by at most `gap` words on both sides, or by an
+    insertion or a deletion of at most `MAX_INSERT` words."""
+    apart = (right.a - left.a - left.size, right.b - left.b - left.size)
+    return max(apart) <= gap or (min(apart) == 0 and max(apart) <= MAX_INSERT)
 
 
 def near_runs(ruled: list[Word], sentence: list[Word]) -> Iterator[tuple[list[Word], list[Word]]]:
@@ -697,20 +753,52 @@ def near_runs(ruled: list[Word], sentence: list[Word]) -> Iterator[tuple[list[Wo
     matcher = difflib.SequenceMatcher(
         None, [w for w, _, _ in ruled], [w for w, _, _ in sentence], autojunk=False
     )
+    blocks = [block for block in matcher.get_matching_blocks() if block.size]
     chains: list[list[difflib.Match]] = []
-    for block in (block for block in matcher.get_matching_blocks() if block.size > 1):
-        last = chains[-1][-1] if chains else None
-        if last and block.a - last.a - last.size <= MAX_GAP and block.b - last.b - last.size <= MAX_GAP:
+    for block in (block for block in blocks if block.size > 1):
+        if chains and joins(chains[-1][-1], block, MAX_GAP):
             chains[-1].append(block)
         else:
             chains.append([block])
     for chain in chains:
+        first, last = blocks.index(chain[0]), blocks.index(chain[-1])
+        start, end = (chain[0].a, chain[0].b), (chain[-1].a + chain[-1].size, chain[-1].b + chain[-1].size)
         common = sum(block.size for block in chain)
-        ours = ruled[chain[0].a : chain[-1].a + chain[-1].size]
-        theirs = sentence[chain[0].b : chain[-1].b + chain[-1].size]
-        longer = max(len(ours), len(theirs))
-        if MIN_WORDS <= common < longer and common >= NEAR * longer:
+        # Each step outward is taken only where the run stays near: a word that would make it far is not its.
+        if first and blocks[first - 1].size == 1 and joins(blocks[first - 1], chain[0], 1):
+            start, end, common = taken(start, end, common, (blocks[first - 1].a, blocks[first - 1].b), end, 1)
+        if last + 1 < len(blocks) and blocks[last + 1].size == 1 and joins(chain[-1], blocks[last + 1], 1):
+            further = (blocks[last + 1].a + 1, blocks[last + 1].b + 1)
+            start, end, common = taken(start, end, common, start, further, 1)
+        back = (to_clause_start(ruled, start[0]), to_clause_start(sentence, start[1]))
+        if max(back) <= 1:
+            start, end, common = taken(start, end, common, (start[0] - back[0], start[1] - back[1]), end, 0)
+        on = (to_clause_end(ruled, end[0]), to_clause_end(sentence, end[1]))
+        if min(on) <= 1 and max(on) <= MAX_INSERT:
+            start, end, common = taken(start, end, common, start, (end[0] + on[0], end[1] + on[1]), 0)
+        ours, theirs = ruled[start[0] : end[0]], sentence[start[1] : end[1]]
+        if (
+            common >= MIN_WORDS
+            and near(start, end, common)
+            and [w for w, _, _ in ours] != [w for w, _, _ in theirs]
+        ):
             yield ours, theirs
+
+
+def near(start: tuple[int, int], end: tuple[int, int], common: int) -> bool:
+    return common >= NEAR * max(end[0] - start[0], end[1] - start[1])
+
+
+def taken(
+    start: tuple[int, int],
+    end: tuple[int, int],
+    common: int,
+    wider: tuple[int, int],
+    further: tuple[int, int],
+    more: int,
+) -> tuple[tuple[int, int], tuple[int, int], int]:
+    """The run widened to `wider` and `further`, with `more` words in common, where it stays near."""
+    return (wider, further, common + more) if near(wider, further, common + more) else (start, end, common)
 
 
 def check(options: argparse.Namespace) -> int:
@@ -744,8 +832,10 @@ def check(options: argparse.Namespace) -> int:
         found += more
         notes += noted
         tally = {name: tally[name] + counted[name] for name in tally}
+    waived = 0
     if options.rulings:
-        found += ruling_findings(options.rulings.read_text(encoding="utf-8"), added_sentences(span))
+        more, waived = ruling_findings(options.rulings.read_text(encoding="utf-8"), added_sentences(span))
+        found += more
     print("\n".join(found) if found else "no claim found that git, the facts or the rulings contradict")
     for note in notes:
         print(f"measured before the head: {note}")
@@ -756,6 +846,8 @@ def check(options: argparse.Namespace) -> int:
     )
     if not options.rulings:
         print("the ruled wording was not checked: no rulings file was given (--rulings)")
+    elif waived:
+        print(f"the ruled wording: {waived} differences the rulings file accepts")
     return 1 if found else 0
 
 
