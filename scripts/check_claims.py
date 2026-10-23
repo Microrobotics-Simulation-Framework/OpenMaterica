@@ -100,7 +100,7 @@ OPENING = r"(?:^|[.!?]\s)\s*(?:[-*]\s+)?(?:\[[ x]\]\s+)?(?:\*\*)?"
 COUNTS = [
     (
         "commits",
-        rf"\b{COUNT}\s+commits?,?\s+on\s+(?:top\s+of\s+)?(?:`?(?:origin/)?main\b|(?:the|this)\s+branch\b)",
+        rf"\b{COUNT}\s+commits,?\s+on\s+(?:top\s+of\s+)?(?:`?(?:origin/)?main\b|(?:the|this)\s+branch\b)",
     ),
     ("commits", rf"{OPENING}{COUNT}\s+commits?(?:\*\*)?(?=[,.:;]|\s+each)"),
     (

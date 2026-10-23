@@ -190,6 +190,7 @@ def test_a_head_or_base_named_as_another_is_not_read(text: str, known_commits: c
         ("The two commits after it change only a README.", None, 0),
         ("76 commits of `main` lie underneath.", None, 0),
         ("More than 256 commits fail the gate.", None, 0),
+        ("A name must now be one commit on the branch or on main.", None, 0),
     ],
 )
 def test_a_commit_count_is_checked_in_its_forms_and_a_partial_count_is_not(
