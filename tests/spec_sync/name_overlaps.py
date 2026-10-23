@@ -8,8 +8,11 @@ place: the members of one object, those of the definitions its `allOf` refers to
 Names come from:
 - every schema file but the generated reader schema, `$ref`s followed across files, and the vocabulary, less
   its bindings, which declare no member: like a condition, a binding restricts members a schema declares
-  elsewhere (a field's `unit` to its registered one), so neither its names nor its lists are a namespace;
-- the specification's fenced JSON examples, and its tables of members and of tokens (member names only);
+  elsewhere (a field's `unit` to its registered one), so neither its names nor its lists are a namespace; and
+  less `declaration.json`'s rules and bindings (`*_rule`, `*_binding`), likewise;
+- the specification's fenced JSON examples, and its tables of members and of tokens (member names only), an
+  example object read as a map where its keys are registered names, or where a schema gives its member a map
+  keyed freely (`additionalProperties`);
 - its name-keyed sentences: "`x`, wherever it sits", "a member named `x`".
 
 Two rules, each giving flags:
@@ -209,6 +212,17 @@ class Schemas:
             else UNKNOWN
         )
 
+    def keyed_freely(self, node: JsonValue, current: str, depth: int = 0) -> bool:
+        """Whether a map's keys are free, its values given by `additionalProperties`. An object whose members
+        are all registered names (a target's specimen facts) is a map too, but its examples are known as maps
+        by their keys, so its name is not taken as a map's wherever it stands: a request's `target` is not a
+        model's."""
+        if not isinstance(node, dict) or depth > 12:
+            return False
+        if "$ref" in node:
+            return self.keyed_freely(*self.resolve(str(node["$ref"]), current), depth + 1)
+        return isinstance(node.get("additionalProperties"), dict)
+
     def members(self, node: dict[str, JsonValue], current: str) -> dict[str, tuple[JsonValue, str]]:
         """The members valid at `node`: its own, and those of each definition its `allOf` refers to, which
         the same object holds (a value field's `unit` beside its form's `form`), each with its file; a binding
@@ -217,7 +231,7 @@ class Schemas:
         for conjunct in listing(node.get("allOf", [])):
             if isinstance(conjunct, dict) and "$ref" in conjunct:
                 base, file = self.resolve(str(conjunct["$ref"]), current)
-                if not binding(base, file):
+                if not (binding(base, file) or rule(str(conjunct["$ref"]))):
                     found |= self.members(mapping(base), file)
         properties = node.get("properties", {})
         return found | {name: (subschema, current) for name, subschema in mapping(properties).items()}
@@ -236,7 +250,7 @@ class Schemas:
                 self.corpus.registries.add(id(members))
             for member, (subschema, file) in valid.items():
                 members.add(member, self.shape(subschema, file))
-                if members.shapes[member].kind == "map":
+                if members.shapes[member].kind == "map" and self.keyed_freely(subschema, file):
                     self.corpus.maps.add(member)
         if isinstance(tokens := node.get("enum"), list):
             namespace = self.corpus.new("tokens", owner, origin)
@@ -245,10 +259,20 @@ class Schemas:
         for keyword, value in node.items():
             if keyword in ("properties", "$defs") and isinstance(value, dict):
                 for name, subschema in value.items():
-                    if not (keyword == "$defs" and (binding(subschema, current) or twin(name, current))):
+                    if not (
+                        keyword == "$defs"
+                        and (binding(subschema, current) or twin(name, current) or rule(name))
+                    ):
                         self.walk(subschema, current, f"{pointer}/{keyword}/{name}", name)
             elif keyword not in CONSTRAINTS:
                 self.walk(value, current, f"{pointer}/{keyword}", owner)
+
+
+def rule(reference: str) -> bool:
+    """Whether a definition, by its name or a local reference to it, is one of a schema's rules or bindings
+    (`*_rule`, `*_binding`, as declaration.json names them): it narrows members the definition applying it
+    declares, as a binding of the vocabulary does, and declares none of its own."""
+    return re.fullmatch(r"(?:#/\$defs/)?\w+_(?:rule|binding)", reference) is not None
 
 
 def twin(name: str, file: str) -> bool:

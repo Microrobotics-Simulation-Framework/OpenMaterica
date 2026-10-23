@@ -1,0 +1,843 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3id.org/materica/schema/0.1/declaration.json",
+  "$comment": "Hand-edited. The package's typed shapes are generated from it. tests/spec_sync/test_declaration_schema.py holds its members, their required lists and their tokens to declarations.md section 1's table of the declaration's shape, its lists of names to the vocabulary, and every build-check case's declaration to the answer its case expects.",
+  "title": "Declaration",
+  "description": "A consumer's declaration (declarations.md section 1), as the build checks it on its own before any record is read: every member its table of the declaration's shape names, at its place, with the members each place requires, the tokens and registered names each member takes, and the constraints its values hold. Closed at every level: a member the table does not name at a place is refused there, a member one slip from a named one included. Members a build over records does not check (a domain, a path, region_conditions, a region or interval location, sampling, a requirement's represents and population_level, a distribution, engine) are named, so that they are refused by the rule that refuses them (section 1 item 12) and never as unknown. What the schema cannot state is the build's own check, by the same table: a name given twice where the members differ beside it (two models of one name, two requirements for one field, two trainable entries for one field at one location); a requirement or a trainable entry for a field its model does not list in reads, or a trainable entry at a location its model is not checked over; a range whose lo is above its hi; a combination of fields of one section, or of a field not in reads; which of several rules a fault breaks, and so its case and pointer (the precedence rule); a text that is not JSON by record_format.md section 1 item 6, which a schema never sees. And the rules beside the table, which are not the declaration's shape: section 1 items 7, 9, 10 and 12, and section 4.1 item 4.",
+  "type": "object",
+  "required": ["consumer", "operating_conditions", "models"],
+  "properties": {
+    "consumer": {"$ref": "#/$defs/consumer"},
+    "operating_conditions": {"$ref": "#/$defs/operating_conditions"},
+    "sampling": {"$ref": "#/$defs/sampling"},
+    "models": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/model_entry"}}
+  },
+  "additionalProperties": false,
+  "allOf": [{"$ref": "#/$defs/sampling_rule"}],
+  "$defs": {
+    "sampling_rule": {
+      "description": "sampling, where a requirement samples (section 1 item 8): a requirement samples where it holds represents (section 1 item 12).",
+      "if": {
+        "required": ["models"],
+        "properties": {
+          "models": {
+            "contains": {
+              "required": ["requirements"],
+              "properties": {"requirements": {"contains": {"required": ["represents"]}}}
+            }
+          }
+        }
+      },
+      "then": {"required": ["sampling"]}
+    },
+    "text": {
+      "description": "A reason or a basis: a string of at least one character, which the build checks for nothing else.",
+      "type": "string",
+      "minLength": 1
+    },
+    "registered_field": {
+      "description": "A registered field (record_format.md section 4.1): a field name, as a read request writes one, that the vocabulary lists.",
+      "$ref": "read_request.json#/$defs/field_name",
+      "enum": [
+        "bulk.density",
+        "bulk.elemental_composition",
+        "fluid.dynamic_viscosity",
+        "magnetic.remanence",
+        "magnetic.saturation_magnetisation",
+        "magnetic.volume_susceptibility",
+        "biocompatibility.evidence"
+      ]
+    },
+    "parameter_set_field_name": {
+      "description": "A registered field whose row allows the form parameter_set (record_format.md section 4.1): none of schema 0.1.0's, so a registered field outside the list of those whose rows do not.",
+      "$ref": "#/$defs/registered_field",
+      "not": {
+        "enum": [
+          "bulk.density",
+          "bulk.elemental_composition",
+          "fluid.dynamic_viscosity",
+          "magnetic.remanence",
+          "magnetic.saturation_magnetisation",
+          "magnetic.volume_susceptibility",
+          "biocompatibility.evidence"
+        ]
+      }
+    },
+    "registered_section": {
+      "description": "A registered section (record_format.md section 4.1).",
+      "enum": ["bulk", "fluid", "magnetic", "biocompatibility"]
+    },
+    "registered_condition": {
+      "description": "A registered condition (provenance.md section 6.1).",
+      "enum": [
+        "temperature",
+        "shear_rate",
+        "magnetic_flux_density",
+        "density_kind",
+        "specimen_shape",
+        "specimen_size",
+        "measurement_geometry",
+        "measurement_dimension",
+        "test_method"
+      ]
+    },
+    "registered_fact": {
+      "description": "A specimen fact (provenance.md section 6.2).",
+      "enum": [
+        "species",
+        "anatomical_site",
+        "tissue_state",
+        "disease_and_treatment_state",
+        "preparation",
+        "preservation",
+        "post_mortem_interval",
+        "donor_age",
+        "mimics",
+        "supply_form",
+        "lot"
+      ]
+    },
+    "material_reference": {
+      "description": "A material reference: id, version and content_hash, each a string (the table's last row).",
+      "$ref": "read_request.json#/$defs/material_ref",
+      "unevaluatedProperties": false
+    },
+    "consumer": {
+      "title": "Consumer",
+      "description": "Who declares: name and version, both required.",
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {"name": {"type": "string"}, "version": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "operating_conditions": {
+      "title": "OperatingConditions",
+      "description": "A registered numeric condition to its value or range, in its registered unit (the vocabulary's binding, applied by allOf). A token condition takes no operating condition (read_side_contract.md section 1). An empty object is allowed. lo not above hi is the build's.",
+      "type": "object",
+      "allOf": [{"$ref": "vocabulary/conditions.json#/$defs/units"}],
+      "properties": {
+        "temperature": {"$ref": "#/$defs/operating_condition"},
+        "shear_rate": {"$ref": "#/$defs/operating_condition"},
+        "magnetic_flux_density": {"$ref": "#/$defs/operating_condition"},
+        "specimen_size": {"$ref": "#/$defs/operating_condition"},
+        "measurement_dimension": {"$ref": "#/$defs/operating_condition"}
+      },
+      "additionalProperties": false
+    },
+    "operating_condition": {
+      "description": "{\"value\", \"unit\"} or {\"range\": [lo, hi], \"unit\"}, the read request's shape, closed.",
+      "$ref": "read_request.json#/$defs/operating_condition",
+      "unevaluatedProperties": false
+    },
+    "sampling": {
+      "title": "Sampling",
+      "description": "Where a requirement samples (section 1 items 8 and 9): the lowest joint acceptance, a number in (0, 1], with its reason, and the fields declared independent.",
+      "type": "object",
+      "required": ["min_acceptance", "reason", "independence"],
+      "properties": {
+        "min_acceptance": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "reason": {"$ref": "#/$defs/text"},
+        "independence": {"type": "array", "items": {"$ref": "#/$defs/independence_entry"}}
+      },
+      "additionalProperties": false
+    },
+    "independence_entry": {
+      "title": "IndependenceEntry",
+      "description": "Fields sampled as independent (section 1 item 9). The shape of a field's location and field in fields is the sampling suite's, not yet specified.",
+      "type": "object",
+      "required": ["fields", "reason", "basis"],
+      "properties": {
+        "fields": {"type": "array", "items": {"$ref": "record.writer.json#/$defs/json_value"}},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false
+    },
+    "model_entry": {
+      "title": "ModelEntry",
+      "description": "One model that reads material fields (section 1).",
+      "type": "object",
+      "required": [
+        "model",
+        "model_configuration_hash",
+        "checked_over",
+        "target",
+        "reads",
+        "consumer_parameters",
+        "families",
+        "combinations",
+        "chains"
+      ],
+      "properties": {
+        "model": {"$ref": "record.writer.json#/$defs/scope_model", "description": "The model's name and version, both required."},
+        "model_configuration_hash": {"type": "string"},
+        "region_conditions": {
+          "description": "Region to operating conditions that override the experiment's there.",
+          "type": "object",
+          "additionalProperties": {"$ref": "#/$defs/operating_conditions"}
+        },
+        "checked_over": {"$ref": "#/$defs/checked_over"},
+        "target": {"$ref": "#/$defs/target"},
+        "reads": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/registered_field"}},
+        "consumer_parameters": {"type": "array", "items": {"type": "string"}},
+        "requirements": {"type": "array", "items": {"$ref": "#/$defs/requirement"}},
+        "families": {
+          "description": "A parameter-set field to the family version its evaluator implements (model_families.md).",
+          "type": "object",
+          "propertyNames": {"$ref": "#/$defs/parameter_set_field_name"},
+          "additionalProperties": {"type": "string"}
+        },
+        "mixing": {"$ref": "#/$defs/mixing"},
+        "combinations": {
+          "description": "Lists of two or more fields in reads, from different sections (section 3 item 6).",
+          "type": "array",
+          "items": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/registered_field"}}
+        },
+        "acceptances": {"type": "array", "items": {"$ref": "#/$defs/declared_acceptance"}},
+        "chains": {"type": "array", "items": {"$ref": "#/$defs/chain"}},
+        "trainable": {"type": "array", "items": {"$ref": "#/$defs/trainable_entry"}},
+        "precision": {"enum": ["binary32", "binary64"]},
+        "engine": {"$ref": "#/$defs/engine"}
+      },
+      "additionalProperties": false
+    },
+    "checked_over": {
+      "title": "CheckedOver",
+      "description": "Exactly one of a scene domain's name, a layered path's name, and the records read with no scene.",
+      "oneOf": [
+        {"$ref": "#/$defs/checked_over_domain"},
+        {"$ref": "#/$defs/checked_over_path"},
+        {"$ref": "#/$defs/checked_over_records"}
+      ]
+    },
+    "checked_over_domain": {
+      "title": "CheckedOverDomain",
+      "type": "object",
+      "required": ["domain"],
+      "properties": {"domain": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "checked_over_path": {
+      "title": "CheckedOverPath",
+      "type": "object",
+      "required": ["path"],
+      "properties": {"path": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "checked_over_records": {
+      "title": "CheckedOverRecords",
+      "description": "At least one material reference, none twice.",
+      "type": "object",
+      "required": ["records"],
+      "properties": {
+        "records": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/material_reference"}}
+      },
+      "additionalProperties": false
+    },
+    "target": {
+      "title": "DeclaredTarget",
+      "description": "The specimen facts the model stands for: a fact to its shape in provenance.md section 6.2 without basis, its text members optional, never a status object. An empty object names no fact. A fact's fixed unit is bound by the vocabulary, applied by allOf.",
+      "type": "object",
+      "allOf": [{"$ref": "vocabulary/specimen_facts.json#/$defs/units"}],
+      "properties": {
+        "species": {"$ref": "#/$defs/declared_species", "unevaluatedProperties": false},
+        "anatomical_site": {"$ref": "#/$defs/declared_anatomical_site", "unevaluatedProperties": false},
+        "tissue_state": {"$ref": "#/$defs/declared_tissue_state", "unevaluatedProperties": false},
+        "disease_and_treatment_state": {"$ref": "#/$defs/declared_disease_and_treatment_state", "unevaluatedProperties": false},
+        "preparation": {"$ref": "#/$defs/declared_preparation", "unevaluatedProperties": false},
+        "preservation": {"$ref": "#/$defs/declared_preservation", "unevaluatedProperties": false},
+        "post_mortem_interval": {"$ref": "#/$defs/declared_post_mortem_interval", "unevaluatedProperties": false},
+        "donor_age": {"$ref": "#/$defs/declared_donor_age", "unevaluatedProperties": false},
+        "mimics": {"$ref": "#/$defs/declared_mimics", "unevaluatedProperties": false},
+        "supply_form": {"$ref": "#/$defs/declared_supply_form", "unevaluatedProperties": false},
+        "lot": {"$ref": "#/$defs/declared_lot", "unevaluatedProperties": false}
+      },
+      "additionalProperties": false
+    },
+    "declared_species": {
+      "title": "DeclaredSpecies",
+      "description": "A fact as a declaration gives it: its members in provenance.md section 6.2 but basis, its text members optional. Closed where it is used: a target holds it alone, an accepted difference's value with an optional basis.",
+      "type": "object",
+      "required": ["ncbi_taxon"],
+      "properties": {"ncbi_taxon": {"type": "integer"}, "label": {"type": "string"}}
+    },
+    "declared_anatomical_site": {
+      "title": "DeclaredAnatomicalSite",
+      "type": "object",
+      "required": ["uberon"],
+      "properties": {
+        "uberon": {"$ref": "vocabulary/specimen_facts.json#/$defs/anatomical_site_uberon"},
+        "label": {"type": "string"}
+      }
+    },
+    "declared_tissue_state": {
+      "title": "DeclaredTissueState",
+      "type": "object",
+      "required": ["token"],
+      "properties": {"token": {"$ref": "vocabulary/specimen_facts.json#/$defs/tissue_state_token"}}
+    },
+    "declared_disease_and_treatment_state": {
+      "title": "DeclaredDiseaseAndTreatmentState",
+      "type": "object",
+      "required": ["token"],
+      "properties": {
+        "token": {"$ref": "vocabulary/specimen_facts.json#/$defs/disease_and_treatment_state_token"},
+        "text": {"type": "string"}
+      }
+    },
+    "declared_preparation": {
+      "title": "DeclaredPreparation",
+      "type": "object",
+      "properties": {"text": {"type": "string"}}
+    },
+    "declared_preservation": {
+      "title": "DeclaredPreservation",
+      "type": "object",
+      "required": ["token"],
+      "properties": {
+        "token": {"$ref": "vocabulary/specimen_facts.json#/$defs/preservation_token"},
+        "text": {"type": "string"}
+      }
+    },
+    "declared_post_mortem_interval": {
+      "title": "DeclaredPostMortemInterval",
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": {"type": "number"},
+        "unit": {"type": "string"}
+      }
+    },
+    "declared_donor_age": {
+      "title": "DeclaredDonorAge",
+      "description": "A value or a range [lo, hi], in seconds.",
+      "type": "object",
+      "required": ["unit"],
+      "properties": {
+        "value": {"type": "number"},
+        "range": {"$ref": "record.writer.json#/$defs/range"},
+        "unit": {"type": "string"}
+      },
+      "if": {"required": ["value"]},
+      "then": {"not": {"required": ["range"]}},
+      "else": {"required": ["range"]}
+    },
+    "declared_mimics": {
+      "title": "DeclaredMimics",
+      "type": "object",
+      "properties": {"text": {"type": "string"}}
+    },
+    "declared_supply_form": {
+      "title": "DeclaredSupplyForm",
+      "type": "object",
+      "required": ["token"],
+      "properties": {"token": {"$ref": "vocabulary/specimen_facts.json#/$defs/supply_form_token"}}
+    },
+    "declared_lot": {
+      "title": "DeclaredLot",
+      "type": "object",
+      "properties": {"text": {"type": "string"}}
+    },
+    "requirement": {
+      "title": "DeclaredRequirement",
+      "description": "A model's requirement on one field it reads (section 1). label, review, represents and population_level are a declaration's alone: a read request refuses a requirement holding one (read_side_contract.md section 1). A label is one registered for the field (the vocabulary's binding, applied by allOf).",
+      "type": "object",
+      "required": ["field", "want"],
+      "properties": {
+        "field": {"$ref": "#/$defs/registered_field"},
+        "want": {"$ref": "read_request.json#/$defs/want"},
+        "conditions": {"$ref": "#/$defs/requirement_conditions"},
+        "label": {"$ref": "vocabulary/fields.json#/$defs/label"},
+        "review": {"description": "The one token of schema 0.1.0 (section 1 item 11).", "const": "reviewed"},
+        "represents": {"$ref": "vocabulary/statistics.json#/$defs/represents"},
+        "population_level": {"$ref": "#/$defs/declared_population_level"}
+      },
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/label_binding"}, {"$ref": "#/$defs/population_level_rule"}]
+    },
+    "population_level_rule": {
+      "description": "population_level, where represents is population (the members table).",
+      "if": {"required": ["represents"], "properties": {"represents": {"const": "population"}}},
+      "then": {"required": ["population_level"]}
+    },
+    "label_binding": {
+      "description": "A requirement's or a waiver's label: one registered for its field, by the vocabulary's row for that field.",
+      "allOf": [
+        {"if": {"required": ["field"], "properties": {"field": {"const": "bulk.density"}}}, "then": {"properties": {"label": {"$ref": "vocabulary/fields.json#/$defs/bulk.density/properties/label"}}}},
+        {"if": {"required": ["field"], "properties": {"field": {"const": "bulk.elemental_composition"}}}, "then": {"properties": {"label": {"$ref": "vocabulary/fields.json#/$defs/bulk.elemental_composition/properties/label"}}}},
+        {"if": {"required": ["field"], "properties": {"field": {"const": "fluid.dynamic_viscosity"}}}, "then": {"properties": {"label": {"$ref": "vocabulary/fields.json#/$defs/fluid.dynamic_viscosity/properties/label"}}}},
+        {"if": {"required": ["field"], "properties": {"field": {"const": "magnetic.remanence"}}}, "then": {"properties": {"label": {"$ref": "vocabulary/fields.json#/$defs/magnetic.remanence/properties/label"}}}},
+        {"if": {"required": ["field"], "properties": {"field": {"const": "magnetic.saturation_magnetisation"}}}, "then": {"properties": {"label": {"$ref": "vocabulary/fields.json#/$defs/magnetic.saturation_magnetisation/properties/label"}}}},
+        {"if": {"required": ["field"], "properties": {"field": {"const": "magnetic.volume_susceptibility"}}}, "then": {"properties": {"label": {"$ref": "vocabulary/fields.json#/$defs/magnetic.volume_susceptibility/properties/label"}}}},
+        {"if": {"required": ["field"], "properties": {"field": {"const": "biocompatibility.evidence"}}}, "then": {"properties": {"label": {"$ref": "vocabulary/fields.json#/$defs/biocompatibility.evidence/properties/label"}}}}
+      ]
+    },
+    "declared_population_level": {
+      "title": "DeclaredPopulationLevel",
+      "description": "{\"level\", \"within\"} as in uncertainty.md section 1, or {\"level\", \"balanced_over\"} for a balanced draw from an ensemble.",
+      "oneOf": [
+        {"$ref": "record.writer.json#/$defs/population_level"},
+        {"$ref": "#/$defs/balanced_population_level"}
+      ]
+    },
+    "balanced_population_level": {
+      "title": "BalancedPopulationLevel",
+      "type": "object",
+      "required": ["level", "balanced_over"],
+      "properties": {
+        "level": {"$ref": "vocabulary/statistics.json#/$defs/level"},
+        "balanced_over": {"$ref": "vocabulary/statistics.json#/$defs/level"}
+      },
+      "additionalProperties": false
+    },
+    "requirement_conditions": {
+      "title": "RequirementConditions",
+      "description": "A registered condition to a requirement condition: a tolerance in the condition's registered unit for a numeric condition, an accept list of its row's tokens for a token condition (the vocabulary's binding, applied by allOf).",
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/registered_condition"},
+      "additionalProperties": {"$ref": "#/$defs/declared_requirement_condition"},
+      "allOf": [{"$ref": "#/$defs/requirement_condition_binding"}]
+    },
+    "requirement_condition_binding": {
+      "description": "Each numeric condition's tolerance, in its registered unit, and each token condition's accept list, of its row's tokens: the vocabulary's unit or tokens for that condition.",
+      "properties": {
+        "temperature": {"required": ["tolerance"], "properties": {"tolerance": {"properties": {"unit": {"$ref": "vocabulary/conditions.json#/$defs/units/properties/temperature/properties/unit"}}}}},
+        "shear_rate": {"required": ["tolerance"], "properties": {"tolerance": {"properties": {"unit": {"$ref": "vocabulary/conditions.json#/$defs/units/properties/shear_rate/properties/unit"}}}}},
+        "magnetic_flux_density": {"required": ["tolerance"], "properties": {"tolerance": {"properties": {"unit": {"$ref": "vocabulary/conditions.json#/$defs/units/properties/magnetic_flux_density/properties/unit"}}}}},
+        "density_kind": {"required": ["accept"], "properties": {"accept": {"items": {"$ref": "vocabulary/conditions.json#/$defs/density_kind_token"}}}},
+        "specimen_shape": {"required": ["accept"], "properties": {"accept": {"items": {"$ref": "vocabulary/conditions.json#/$defs/specimen_shape_token"}}}},
+        "specimen_size": {"required": ["tolerance"], "properties": {"tolerance": {"properties": {"unit": {"$ref": "vocabulary/conditions.json#/$defs/units/properties/specimen_size/properties/unit"}}}}},
+        "measurement_geometry": {"required": ["accept"], "properties": {"accept": {"items": {"$ref": "vocabulary/conditions.json#/$defs/measurement_geometry_token"}}}},
+        "measurement_dimension": {"required": ["tolerance"], "properties": {"tolerance": {"properties": {"unit": {"$ref": "vocabulary/conditions.json#/$defs/units/properties/measurement_dimension/properties/unit"}}}}},
+        "test_method": {"required": ["accept"], "properties": {"accept": {"items": {"$ref": "vocabulary/conditions.json#/$defs/test_method_token"}}}}
+      }
+    },
+    "declared_requirement_condition": {
+      "title": "DeclaredRequirementCondition",
+      "description": "Exactly one of tolerance and accept, with its reason (section 1 item 3) and, where known, its consequence.",
+      "oneOf": [{"$ref": "#/$defs/tolerance_condition"}, {"$ref": "#/$defs/accept_condition"}]
+    },
+    "tolerance_condition": {
+      "title": "ToleranceCondition",
+      "description": "An absolute tolerance, not below zero, in the condition's unit: the read request's shape, with the declaration's reason and consequence.",
+      "type": "object",
+      "required": ["tolerance", "reason"],
+      "properties": {
+        "tolerance": {"$ref": "read_request.json#/$defs/tolerance", "unevaluatedProperties": false},
+        "reason": {"$ref": "#/$defs/text"},
+        "consequence": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "accept_condition": {
+      "title": "AcceptCondition",
+      "description": "At least one token of the condition's row: the read request's shape, with the declaration's reason and consequence.",
+      "type": "object",
+      "required": ["accept", "reason"],
+      "properties": {
+        "accept": {"$ref": "read_request.json#/$defs/accept_requirement/properties/accept", "minItems": 1},
+        "reason": {"$ref": "#/$defs/text"},
+        "consequence": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "mixing": {
+      "title": "Mixing",
+      "description": "The fraction-sum tolerance, a number not below zero, and per field the rule the model applies in a cell holding more than one material (mixing_rules.md section 1 item 3).",
+      "type": "object",
+      "required": ["fraction_sum_tolerance", "rules"],
+      "properties": {
+        "fraction_sum_tolerance": {"type": "number", "minimum": 0},
+        "rules": {
+          "type": "object",
+          "propertyNames": {"$ref": "#/$defs/registered_field"},
+          "additionalProperties": {
+            "description": "identity, a rule mixing_rules.md section 3 names, or refuse.",
+            "enum": ["identity", "arithmetic", "harmonic", "wood", "refuse"]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chain": {
+      "title": "Chain",
+      "description": "A hand-over at an event, from one family and record to another, with a mapping of state (section 6).",
+      "type": "object",
+      "required": ["from", "event", "to", "state_mapping"],
+      "properties": {
+        "from": {"$ref": "#/$defs/chain_end"},
+        "event": {"type": "string"},
+        "to": {"$ref": "#/$defs/chain_end"},
+        "state_mapping": {"type": "object", "additionalProperties": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "chain_end": {
+      "title": "ChainEnd",
+      "type": "object",
+      "required": ["family", "record"],
+      "properties": {"family": {"type": "string"}, "record": {"$ref": "#/$defs/material_reference"}},
+      "additionalProperties": false
+    },
+    "trainable_entry": {
+      "title": "TrainableEntry",
+      "description": "A field the model fits, with exactly one location, its record, region or interval (section 7 item 1): two members.",
+      "type": "object",
+      "required": ["field"],
+      "properties": {
+        "field": {"$ref": "#/$defs/registered_field"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"}
+      },
+      "minProperties": 2,
+      "maxProperties": 2,
+      "additionalProperties": false
+    },
+    "interval_location": {
+      "description": "An interval of a layered path (geometry.md; section 1 item 6), as a location. Its shape is not yet specified: a build that does not claim the scene suite refuses it (section 1 item 12).",
+      "$ref": "record.writer.json#/$defs/json_value"
+    },
+    "engine": {
+      "title": "Engine",
+      "description": "For a model that is a physics engine (section 1 item 7): its crosswalk's pin, its declared values and optionally per-region values.",
+      "type": "object",
+      "required": ["crosswalk", "values"],
+      "properties": {
+        "crosswalk": {"$ref": "#/$defs/crosswalk_pin"},
+        "values": {"$ref": "#/$defs/engine_values"},
+        "region_values": {"type": "object", "additionalProperties": {"$ref": "#/$defs/engine_values"}}
+      },
+      "additionalProperties": false
+    },
+    "crosswalk_pin": {
+      "title": "CrosswalkPin",
+      "description": "An engine crosswalk's pin (usd_binding.md section 10.1 item 5).",
+      "type": "object",
+      "required": ["id", "version", "sha256"],
+      "properties": {"id": {"type": "string"}, "version": {"type": "string"}, "sha256": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "engine_values": {
+      "description": "Per crosswalk attribute with no OpenMaterica field, a value in SI, with no unit for an attribute with no dimension.",
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/engine_value"}
+    },
+    "engine_value": {
+      "title": "EngineValue",
+      "type": "object",
+      "required": ["value", "reason", "basis"],
+      "properties": {
+        "value": {"type": "number"},
+        "unit": {"type": "string"},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false
+    },
+    "declared_acceptance": {
+      "title": "DeclaredAcceptance",
+      "description": "An acceptance (section 4.1): one of its nine kinds, each with the members every acceptance holds and its kind's own. Where a kind needs a location (the table's Location column) it names one (section 4.1's location rule); a pick names its record. reason is required of every kind (section 1 item 4), basis of an extrapolation, a nominal and a distribution, and named for every kind. An accepted difference names its section in place of a field, an overlay_scope neither, and an overlay and an overlay_scope no location.",
+      "oneOf": [
+        {"$ref": "#/$defs/pick"},
+        {"$ref": "#/$defs/waiver"},
+        {"$ref": "#/$defs/implied_condition"},
+        {"$ref": "#/$defs/accepted_difference"},
+        {"$ref": "#/$defs/extrapolation"},
+        {"$ref": "#/$defs/nominal"},
+        {"$ref": "#/$defs/distribution"},
+        {"$ref": "#/$defs/overlay"},
+        {"$ref": "#/$defs/overlay_scope"}
+      ]
+    },
+    "location_rule": {
+      "description": "An acceptance whose kind needs a location names one (section 4.1: \"An acceptance whose kind needs a location and names none is refused\").",
+      "anyOf": [{"required": ["record"]}, {"required": ["region"]}, {"required": ["interval"]}]
+    },
+    "pick": {
+      "title": "Pick",
+      "description": "A stored alternative of the field, by its 0-based index; located at its record, pinned by hash, and also at a region or an interval where it names one.",
+      "type": "object",
+      "required": ["acceptance", "record", "field", "index", "reason"],
+      "properties": {
+        "acceptance": {"const": "pick"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"},
+        "field": {"$ref": "#/$defs/registered_field"},
+        "index": {"type": "integer", "minimum": 0},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false
+    },
+    "waiver": {
+      "title": "Waiver",
+      "description": "Covers one reason of one result (section 4.2). It names its code's condition where the code names one: a code whose reasons always carry one, the six condition_* codes, outside_range, at_edge and range_unstated; any other code, or one that is no reason, names none. Its label is one registered for its field.",
+      "type": "object",
+      "required": ["acceptance", "field", "code", "reason"],
+      "properties": {
+        "acceptance": {"const": "waiver"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"},
+        "field": {"$ref": "#/$defs/registered_field"},
+        "code": {"$ref": "vocabulary/reasons.json#/$defs/reason_code"},
+        "condition": {"$ref": "#/$defs/registered_condition"},
+        "label": {"$ref": "vocabulary/fields.json#/$defs/label"},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {"$ref": "#/$defs/location_rule"},
+        {"$ref": "#/$defs/label_binding"},
+        {"$ref": "#/$defs/waiver_condition_rule"}
+      ]
+    },
+    "waiver_condition_rule": {
+      "description": "A waiver names its code's condition where the code names one, a code whose reasons always carry one (section 1, an acceptance's own members), and names none where it does not.",
+      "if": {
+        "required": ["code"],
+        "properties": {
+          "code": {
+            "enum": [
+              "condition_unstated",
+              "condition_unknown_name",
+              "condition_unchecked",
+              "condition_outside",
+              "condition_not_accepted",
+              "condition_uncertain",
+              "outside_range",
+              "at_edge",
+              "range_unstated"
+            ]
+          }
+        }
+      },
+      "then": {"required": ["condition"]},
+      "else": {"not": {"required": ["condition"]}}
+    },
+    "implied_condition": {
+      "title": "ImpliedCondition",
+      "description": "A value for each condition in implies, on fields whose specimen states the fact and its token (section 4.1): the read request's shape, closed, with the declaration's members.",
+      "type": "object",
+      "required": ["acceptance", "field", "fact", "token", "implies", "reason"],
+      "properties": {
+        "acceptance": {"const": "implied_condition"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"},
+        "field": {"$ref": "#/$defs/registered_field"},
+        "fact": {
+          "description": "A specimen fact whose shape has a token member.",
+          "enum": ["tissue_state", "disease_and_treatment_state", "preservation", "supply_form"]
+        },
+        "token": {"type": "string"},
+        "implies": {"$ref": "#/$defs/implies"},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {"$ref": "read_request.json#/$defs/implied_condition_acceptance"},
+        {"$ref": "#/$defs/location_rule"},
+        {"$ref": "#/$defs/fact_token_binding"}
+      ]
+    },
+    "fact_token_binding": {
+      "description": "An implied condition's token, one of its fact's tokens: the vocabulary's tokens for that fact.",
+      "allOf": [
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "tissue_state"}}}, "then": {"properties": {"token": {"$ref": "vocabulary/specimen_facts.json#/$defs/tissue_state_token"}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "disease_and_treatment_state"}}}, "then": {"properties": {"token": {"$ref": "vocabulary/specimen_facts.json#/$defs/disease_and_treatment_state_token"}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "preservation"}}}, "then": {"properties": {"token": {"$ref": "vocabulary/specimen_facts.json#/$defs/preservation_token"}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "supply_form"}}}, "then": {"properties": {"token": {"$ref": "vocabulary/specimen_facts.json#/$defs/supply_form_token"}}}}
+      ]
+    },
+    "implies": {
+      "title": "Implies",
+      "description": "Per registered condition, a record condition's shape of that condition's kind without basis (one there is ignored), plus_minus or set_or_measured, and never a status object, in the condition's registered unit (the vocabulary's binding).",
+      "type": "object",
+      "allOf": [{"$ref": "vocabulary/conditions.json#/$defs/units"}, {"$ref": "#/$defs/implied_token_binding"}],
+      "properties": {
+        "temperature": {"$ref": "#/$defs/implied_numeric"},
+        "shear_rate": {"$ref": "#/$defs/implied_numeric"},
+        "magnetic_flux_density": {"$ref": "#/$defs/implied_numeric"},
+        "density_kind": {"$ref": "#/$defs/implied_token"},
+        "specimen_shape": {"$ref": "#/$defs/implied_token"},
+        "specimen_size": {"$ref": "#/$defs/implied_numeric"},
+        "measurement_geometry": {"$ref": "#/$defs/implied_token"},
+        "measurement_dimension": {"$ref": "#/$defs/implied_numeric"},
+        "test_method": {"$ref": "#/$defs/implied_token"}
+      },
+      "additionalProperties": false
+    },
+    "implied_token_binding": {
+      "description": "Each token condition's token, one of its row's: the vocabulary's tokens for that condition.",
+      "properties": {
+        "density_kind": {"properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/density_kind_token"}}},
+        "specimen_shape": {"properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/specimen_shape_token"}}},
+        "measurement_geometry": {"properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/measurement_geometry_token"}}},
+        "test_method": {"properties": {"token": {"$ref": "vocabulary/conditions.json#/$defs/test_method_token"}}}
+      }
+    },
+    "implied_numeric": {
+      "description": "{\"value\", \"unit\"} or {\"range\": [lo, hi], \"unit\"}; a basis beside them is ignored, any value.",
+      "$ref": "read_request.json#/$defs/operating_condition",
+      "properties": {"basis": true},
+      "unevaluatedProperties": false
+    },
+    "implied_token": {
+      "description": "{\"token\"}; a basis beside it is ignored, any value.",
+      "$ref": "read_request.json#/$defs/implies_token",
+      "properties": {"basis": true},
+      "unevaluatedProperties": false
+    },
+    "accepted_difference": {
+      "title": "AcceptedDifference",
+      "description": "Covers specimen differences in its section and fact whose record value equals its value (section 4.1 item 2). Its location is optional: absent, every location its model is checked over. It names a section in place of a field.",
+      "type": "object",
+      "required": ["acceptance", "section", "fact", "value", "reason"],
+      "properties": {
+        "acceptance": {"const": "accepted_difference"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"},
+        "section": {"$ref": "#/$defs/registered_section"},
+        "fact": {"$ref": "#/$defs/registered_fact"},
+        "value": {
+          "description": "The fact's shape, its basis and text members optional; a status object; or \"any\".",
+          "anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"type": "object"}]
+        },
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/difference_value_binding"}]
+    },
+    "difference_value_binding": {
+      "description": "An accepted difference's value: \"any\", a status object, or its fact's shape with its basis and text members optional, by the vocabulary's tokens and units for that fact.",
+      "allOf": [
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "species"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_species", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "anatomical_site"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_anatomical_site", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "tissue_state"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_tissue_state", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "disease_and_treatment_state"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_disease_and_treatment_state", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "preparation"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_preparation", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "preservation"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_preservation", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "post_mortem_interval"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_post_mortem_interval", "properties": {"unit": {"$ref": "vocabulary/specimen_facts.json#/$defs/post_mortem_interval_unit"}, "basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "donor_age"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_donor_age", "properties": {"unit": {"$ref": "vocabulary/specimen_facts.json#/$defs/donor_age_unit"}, "basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "mimics"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_mimics", "properties": {"basis": {"$ref": "vocabulary/specimen_facts.json#/$defs/mimics_basis"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "supply_form"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_supply_form", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}},
+        {"if": {"required": ["fact"], "properties": {"fact": {"const": "lot"}}}, "then": {"properties": {"value": {"anyOf": [{"const": "any"}, {"$ref": "record.writer.json#/$defs/status_object"}, {"$ref": "#/$defs/declared_lot", "properties": {"basis": {"$ref": "vocabulary/provenance.json#/$defs/basis"}, "inferred_from": {"type": "string"}}, "unevaluatedProperties": false}]}}}}
+      ]
+    },
+    "extrapolation": {
+      "title": "Extrapolation",
+      "description": "How the consumer computes a value outside a form's range (section 4.1): the read request's shape, closed, with the declaration's members.",
+      "type": "object",
+      "required": ["acceptance", "field", "method", "law", "reason", "basis"],
+      "properties": {
+        "acceptance": {"const": "extrapolation"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"},
+        "field": {"$ref": "#/$defs/registered_field"},
+        "method": {"$ref": "vocabulary/acceptances.json#/$defs/extrapolation_method"},
+        "law": {"type": "string", "minLength": 1},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false,
+      "allOf": [{"$ref": "read_request.json#/$defs/extrapolation_acceptance"}, {"$ref": "#/$defs/location_rule"}]
+    },
+    "nominal": {
+      "title": "Nominal",
+      "description": "A value for an interval, in the field's registered unit, or for a parameter set its parameter vector in params in place of value: exactly one of the two, params only for a field whose row allows the form parameter_set (section 4.1).",
+      "type": "object",
+      "required": ["acceptance", "field", "reason", "basis"],
+      "properties": {
+        "acceptance": {"const": "nominal"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"},
+        "field": {"$ref": "#/$defs/registered_field"},
+        "value": {"type": "number"},
+        "params": {"$ref": "record.writer.json#/$defs/json_value", "description": "A parameter set's nominal vector (model_families.md)."},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/location_rule"}, {"$ref": "#/$defs/value_or_params_rule"}]
+    },
+    "value_or_params_rule": {
+      "description": "A nominal holds exactly one of value and params, and params only for a field whose row allows the form parameter_set.",
+      "if": {"required": ["value"]},
+      "then": {"not": {"required": ["params"]}},
+      "else": {"required": ["params"], "properties": {"field": {"$ref": "#/$defs/parameter_set_field_name"}}}
+    },
+    "distribution": {
+      "title": "DeclaredDistribution",
+      "description": "A distribution declared where the record gives none (section 4.3): a token of uncertainty.md section 4, that token's parameters, named as there, and the space it is drawn in.",
+      "type": "object",
+      "required": ["acceptance", "field", "distribution", "distribution_parameters", "space", "reason", "basis"],
+      "properties": {
+        "acceptance": {"const": "distribution"},
+        "record": {"$ref": "#/$defs/material_reference"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "#/$defs/interval_location"},
+        "field": {"$ref": "#/$defs/registered_field"},
+        "distribution": {"$ref": "vocabulary/statistics.json#/$defs/distribution"},
+        "distribution_parameters": {"type": "object", "additionalProperties": {"type": "number"}},
+        "space": {"enum": ["identity", "log"]},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/location_rule"}, {"$ref": "#/$defs/distribution_parameters_binding"}]
+    },
+    "distribution_parameters_binding": {
+      "description": "A declared distribution's parameters: exactly its token's, named as uncertainty.md section 4 names them.",
+      "allOf": [
+        {"if": {"required": ["distribution"], "properties": {"distribution": {"const": "normal"}}}, "then": {"properties": {"distribution_parameters": {"required": ["mean", "sd"], "propertyNames": {"enum": ["mean", "sd"]}}}}},
+        {"if": {"required": ["distribution"], "properties": {"distribution": {"const": "lognormal"}}}, "then": {"properties": {"distribution_parameters": {"required": ["mean", "sd"], "propertyNames": {"enum": ["mean", "sd"]}}}}},
+        {"if": {"required": ["distribution"], "properties": {"distribution": {"const": "uniform"}}}, "then": {"properties": {"distribution_parameters": {"required": ["lower", "upper"], "propertyNames": {"enum": ["lower", "upper"]}}}}},
+        {"if": {"required": ["distribution"], "properties": {"distribution": {"const": "triangular"}}}, "then": {"properties": {"distribution_parameters": {"required": ["lower", "mode", "upper"], "propertyNames": {"enum": ["lower", "mode", "upper"]}}}}},
+        {"if": {"required": ["distribution"], "properties": {"distribution": {"const": "student_t"}}}, "then": {"properties": {"distribution_parameters": {"required": ["location", "scale", "dof"], "propertyNames": {"enum": ["location", "scale", "dof"]}}}}},
+        {"if": {"required": ["distribution"], "properties": {"distribution": {"const": "beta"}}}, "then": {"properties": {"distribution_parameters": {"required": ["lower", "upper", "p", "q"], "propertyNames": {"enum": ["lower", "upper", "p", "q"]}}}}}
+      ]
+    },
+    "overlay": {
+      "title": "Overlay",
+      "description": "Applies the overlay it names, by identifier, version and content hash (section 5); it names no location.",
+      "type": "object",
+      "required": ["acceptance", "field", "overlay", "reason"],
+      "properties": {
+        "acceptance": {"const": "overlay"},
+        "field": {"$ref": "#/$defs/registered_field"},
+        "overlay": {"$ref": "#/$defs/material_reference"},
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false
+    },
+    "overlay_scope": {
+      "title": "DeclaredOverlayScope",
+      "description": "Covers overlay_scope_mismatch for the overlay it names, in the members it accepts, at least one, none twice (section 5 item 2); it names no field and no location.",
+      "type": "object",
+      "required": ["acceptance", "overlay", "accepts", "reason"],
+      "properties": {
+        "acceptance": {"const": "overlay_scope"},
+        "overlay": {"$ref": "#/$defs/material_reference"},
+        "accepts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["consumer", "model", "configuration"]}
+        },
+        "reason": {"$ref": "#/$defs/text"},
+        "basis": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
