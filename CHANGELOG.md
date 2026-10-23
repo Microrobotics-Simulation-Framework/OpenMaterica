@@ -26,6 +26,13 @@ every family entry goes in `families/CHANGELOG.md`.
   a step without them, or reading a find otherwise than the checks do, fails.
 
 ### Schema
+- Three sentences of `declarations.md` (the maintainer's ruling of 2026-10-23, as recommended after
+  S7-cases-2's review; `docs/specification/changes.md`): a code names a condition, for a waiver's `condition`,
+  where its reasons always carry one, the six `condition_*` codes, `outside_range`, `at_edge` and
+  `range_unstated` (BC-048); a build result keeps the read's members, including `value`, where the read
+  returned one, so a `label_mismatch` the build adds to an `unknown` read leaves its value (BC-027); and the
+  build's own read request holds the requirement's `want` and `conditions`, and the declared operating
+  conditions (BC-009). No case file changes.
 - The specification of declarations and the build check over records (S7-spec; the maintainer's rulings of
   2026-10-20 on the build order and of 2026-10-21 on the build check; `docs/specification/changes.md`).
   `declarations.md` gains:
