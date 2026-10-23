@@ -77,14 +77,22 @@
         "else": {
           "if": {"required": ["suite"], "properties": {"suite": {"const": "build_checks"}}},
           "then": {
-            "description": "A build-check case (README.md, \"Case files\"): the check_build operation, the declaration among its inputs, the members of the build's report it expects, and the rules whose refusals it compares where it names any.",
+            "description": "A build-check case (README.md, \"Case files\"): the check_build operation, the declaration among its inputs, the members of the build's report it expects, the rules whose refusals it compares where it names any, and, where it compares results it expects, the members of each result it compares.",
             "required": ["request"],
             "properties": {
               "inputs": {"required": ["declaration"]},
               "request": {"$ref": "#/$defs/build_operation"},
               "expected": {"$ref": "#/$defs/build_expected"},
               "compare": {"properties": {"members": {"items": {"enum": ["refusals", "results", "watches", "unused"]}}}}
-            }
+            },
+            "if": {
+              "required": ["compare", "expected"],
+              "properties": {
+                "compare": {"required": ["members"], "properties": {"members": {"contains": {"const": "results"}}}},
+                "expected": {"required": ["results"]}
+              }
+            },
+            "then": {"properties": {"compare": {"required": ["result_members"]}}}
           },
           "else": {
             "properties": {
