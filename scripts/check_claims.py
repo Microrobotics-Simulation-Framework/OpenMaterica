@@ -298,12 +298,15 @@ def kind(
     """Why the number at `index` needs no fact, or "" where it needs one."""
     raw = tokens[index][1].strip("*")
     bare = raw.strip(TRAILING).lstrip("(*[")
+    # The word that names the number, through a list of numbers ("items 1, 2 and 4") but not across the end
+    # of a phrase ("in section 2: 1,180 files", "the fast stage, 15 of 15").
     before = index - 1
-    while before >= 0 and (
-        words[before] in {"and", "or", "to", "through", ""} or NUMBER.match(words[before])
-    ):
+    while before >= 0 and not tokens[before][1].endswith((";", ":", ".", ")")):
+        if words[before] not in {"and", "or", "to", "through", ""} and not NUMBER.match(words[before]):
+            break
         before -= 1
-    named = words[before] if before >= 0 else ""
+    ended = before < 0 or tokens[before][1].endswith((",", ";", ":", ".", ")"))
+    named = "" if ended else words[before]
     previous = tokens[index - 1][1].lstrip("([*") if index else ""
     if re.match(r"^\(\d+\)", raw) or (tokens[index][2] and re.match(r"^\d+[.)]$", raw)):
         return "a list or heading number"
