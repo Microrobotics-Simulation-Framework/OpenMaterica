@@ -248,12 +248,13 @@ DATA_RULES = (
     DataRule(
         "the main workflow, which more tests read than hold it",
         r"\.github/workflows/ci\.yml",
-        "the script's own lists of CI's paths, the Python versions and the source-file rules are compared "
-        "with its text",
+        "the script's own lists of CI's paths, the Python versions, the source-file rules and the fuzz "
+        "controls of the measurement tool are compared with its text",
         tests=(
             "tests/unit/test_pre_review.py",
             "tests/unit/test_python_versions.py",
             "tests/unit/test_source_files.py",
+            "tests/unit/test_measure.py",
         ),
     ),
     DataRule(
@@ -274,7 +275,7 @@ DATA_RULES = (
         "the kill counts' generator holds the README to the file, and its tests read both; a run of every "
         "mutant search holds the file to the code (planned with the property shards)",
         tests=("tests/unit/test_gen_kill_counts.py",),
-        readers=("scripts/gen_kill_counts.py",),
+        readers=("scripts/gen_kill_counts.py", "scripts/measure.py"),
     ),
     DataRule(
         "the claims check's baseline",
