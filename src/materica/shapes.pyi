@@ -2079,15 +2079,17 @@ class Declaration(TypedDict):
     from a named one included. Members a build over records does not check (a domain, a path,
     region_conditions, a region or interval location, sampling, a requirement's represents and
     population_level, a distribution, engine) are named, so that they are refused by the rule that refuses
-    them (section 1 item 12) and never as unknown. What the schema cannot state is the build's own check, by
-    the same table: a name given twice where the members differ beside it (two models of one name, two
-    requirements for one field, two trainable entries for one field at one location); a requirement or a
-    trainable entry for a field its model does not list in reads, or a trainable entry at a location its model
-    is not checked over; a range whose lo is above its hi; a combination of fields of one section, or of a
-    field not in reads; which of several rules a fault breaks, and so its case and pointer (the precedence
-    rule); a text that is not JSON by record_format.md section 1 item 6, which a schema never sees. And the
-    rules beside the table, which are not the declaration's shape: section 1 items 7, 9, 10 and 12, and
-    section 4.1 item 4.
+    them (section 1 item 12) and never as unknown. What the schema does not state is the build's own check, by
+    the same table. A schema could state some of it, but only with one conjunct for each registered name,
+    written again for each name the vocabulary adds, where the build's check states each once: a name given
+    twice where the members differ beside it (two models of one name, two requirements for one field, two
+    trainable entries for one field at one location; the schema refuses an identical duplicate in models,
+    requirements or trainable, by uniqueItems); a requirement or a trainable entry for a field its model does
+    not list in reads; a combination of fields of one section, or of a field not in reads. No JSON Schema can
+    state a trainable entry at a location its model is not checked over; a range whose lo is above its hi;
+    which of several rules a fault breaks, and so its case and pointer (the precedence rule); or a text that
+    is not JSON by record_format.md section 1 item 6, which a schema never sees. And the rules beside the
+    table, which are not the declaration's shape: section 1 items 7, 9, 10 and 12, and section 4.1 item 4.
     """
 
     consumer: Consumer

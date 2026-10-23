@@ -37,10 +37,12 @@ every family entry goes in `families/CHANGELOG.md`.
   `build_report.json`, written by hand. The declaration as the build checks it on its own: closed at every
   place, each place's members, required members and tokens those of `declarations.md` section 1's table of the
   declaration's shape, each kind's own members those of section 4.1's row, its lists of registered names held to
-  the vocabulary, and, in its description, what no JSON Schema states and the build's own check does (a name
+  the vocabulary, and, in its description, what the schema does not state and the build's own check does (a name
   given twice where the members beside it differ, a field or location set against another member, the case and
-  pointer of a refusal). The report: its field results the read result's members with the build's, its
-  combination results, refusals, watches and unused acceptances; `watches` is optional, so that a build that does
+  pointer of a refusal), with the reason: a schema would take one conjunct for each registered name, written
+  again for each name the vocabulary adds, where the build's check states each once. An identical duplicate in
+  `models`, `requirements` or `trainable` the schema refuses, by `uniqueItems`. The report: its field results the
+  read result's members with the build's, its combination results, refusals, watches and unused acceptances; `watches` is optional, so that a build that does
   not yet emit watches omits the member. The typed shapes gain `Declaration`, `BuildReport` and the shapes they
   hold; the declaration's requirement, requirement condition, overlay scope and distribution are
   `DeclaredRequirement`, `DeclaredRequirementCondition`, `DeclaredOverlayScope` and `DeclaredDistribution`, since

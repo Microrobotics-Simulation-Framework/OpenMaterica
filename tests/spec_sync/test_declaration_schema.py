@@ -8,8 +8,8 @@ build-check cases.
 - The report's field result holds `read_result.json`'s members as `case.json` gives them, and `case.json`'s
   build result and watch are the report's, member for member.
 - Every build-check declaration whose case expects no refusal is valid against declaration.json; every one
-  expected refused is invalid, where the case's refusal points, or is listed with the rule the schema cannot
-  state; and the schema is closed at every place those declarations reach.
+  expected refused is invalid, where the case's refusal points, or is listed with the rule the schema does
+  not state; and the schema is closed at every place those declarations reach.
 
 Each check returns its problems, and its controls change a copy of the text or of a schema and find one.
 """
@@ -862,9 +862,12 @@ def test_a_report_that_drifts_from_the_cases_is_found(
 
 BUILD_CHECKS = PACKAGE / "data" / "conformance" / "build_checks"
 # Each file whose case expects the declaration refused and which declaration.json takes, with the rule that
-# refuses it, which no JSON Schema states: a name given twice where the members beside it differ, a field or
-# location set against another member, a rule beside the table of the shape, a build's claims.
-SCHEMA_CANNOT_STATE = {
+# refuses it, which the schema does not state: a name given twice where the members beside it differ, a field
+# or location set against another member, a rule beside the table of the shape, a build's claims. A schema
+# could state some of these, but only with one conjunct for each registered name, written again for each name
+# the vocabulary adds, where the build's check states each once. An identical duplicate it refuses, by
+# `uniqueItems`.
+SCHEMA_DOES_NOT_STATE = {
     "BC-048.duplicate_member_not_json": "not JSON by record_format.md section 1 item 6: a member given twice",
     "BC-048.requirement_for_field_not_read": "a requirement for a field its model does not list in reads",
     "BC-048.trainable_field_not_read": "a trainable entry for a field its model does not list in reads",
@@ -907,7 +910,7 @@ def error_paths(value: JsonValue) -> set[str]:
     return {"".join(f"/{step}" for step in error.absolute_path) for error in found}
 
 
-def case_problems(cases: list[Case], cannot_state: dict[str, str]) -> list[str]:
+def case_problems(cases: list[Case], not_stated: dict[str, str]) -> list[str]:
     """Where a build-check case and declaration.json disagree: a declaration expected to pass that the
     schema refuses; one expected refused that it takes and the table does not list, or that it refuses
     nowhere at or above a pointer the case expects; and a listed file that is not one of those."""
@@ -927,9 +930,9 @@ def case_problems(cases: list[Case], cannot_state: dict[str, str]) -> list[str]:
         elif not any(pointer.startswith(path) for path in error_paths(value) for pointer in pointers):
             problems.append(f"{name}: refused, but nowhere at or above {pointers}")
     problems += [
-        f"{name}: refused by the schema, or not a file, but listed" for name in set(cannot_state) - listed_now
+        f"{name}: refused by the schema, or not a file, but listed" for name in set(not_stated) - listed_now
     ]
-    problems += [f"{name}: taken by the schema and not listed" for name in listed_now - set(cannot_state)]
+    problems += [f"{name}: taken by the schema and not listed" for name in listed_now - set(not_stated)]
     return problems
 
 
@@ -937,14 +940,14 @@ CASES = list(build_cases())
 
 
 def test_every_build_check_declaration_is_judged_as_its_case_expects() -> None:
-    assert case_problems(CASES, SCHEMA_CANNOT_STATE) == []
+    assert case_problems(CASES, SCHEMA_DOES_NOT_STATE) == []
 
 
 def test_a_listing_that_drifts_from_the_cases_is_found() -> None:
-    stale = SCHEMA_CANNOT_STATE | {"BC-048.json_array": "a JSON array"}
+    stale = SCHEMA_DOES_NOT_STATE | {"BC-048.json_array": "a JSON array"}
     missing = {
         name: rule
-        for name, rule in SCHEMA_CANNOT_STATE.items()
+        for name, rule in SCHEMA_DOES_NOT_STATE.items()
         if name != "BC-050.requirement_without_review"
     }
     assert "BC-048.json_array: refused by the schema, or not a file, but listed" in case_problems(
@@ -966,7 +969,7 @@ def test_a_schema_that_judges_otherwise_is_found(monkeypatch: pytest.MonkeyPatch
         return taken_by(BASE + reference, (schema,))
 
     monkeypatch.setattr(f"{__name__}.agreed", mutant)
-    found = case_problems(CASES, SCHEMA_CANNOT_STATE)
+    found = case_problems(CASES, SCHEMA_DOES_NOT_STATE)
     assert "BC-048.target_missing: taken by the schema and not listed" in found
 
 
