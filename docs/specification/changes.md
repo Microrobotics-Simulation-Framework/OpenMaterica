@@ -560,3 +560,24 @@ section 4.1 (PR-013, PR-331). In `declarations.md` section 1, a waiver whose `co
 condition, so a `condition` beside it is refused, not required, and such a waiver without one gives one
 refusal, at its `code`; before, a `code` one slip from a condition reason could be read as still naming the
 condition, which would have added a refusal at the waiver for its missing `condition` (BC-048).
+
+Settled with S7-cases-2's review (maintainer, 2026-10-23, as recommended): which codes name a condition, for a
+waiver's `condition` (`declarations.md` section 1, an acceptance's own members). A code names a condition where
+its reasons always carry one: the six `condition_*` codes, `outside_range`, `at_edge` and `range_unstated`
+(`read_side_contract.md` section 2 item 2). A waiver of one of them needs its `condition`, and a waiver of any
+other code is refused if it holds one, `unit_mismatch`, `request_incomplete`, `request_unit_mismatch` and
+`want_mismatch` among them, whose reasons carry a condition only where they concern one. Before, "where the code
+names one" did not say which codes, and could be read as the `condition_*` codes alone, or as every code whose
+reasons can carry a condition (BC-048).
+
+Settled with the same review (maintainer, 2026-10-23, as recommended): a build result keeps every member the
+read returned, including `value`, where the read returned one (`declarations.md` section 2 item 8). So where
+the build's own `label_mismatch` makes the result of an `unknown` read `not_met`, the result still carries the
+read's value. Before, `read_side_contract.md` section 2 item 3, which gives a `not_met` result no value, could be
+read as applying to the build's result as well as to the read's (BC-027).
+
+Settled with the same review (maintainer, 2026-10-23, as recommended): the build's own read request holds the
+requirement's `want` and `conditions`, and the declared operating conditions (`declarations.md` section 2 item
+7). Before, item 7 said only which acceptances a read is given; a build that copied the whole requirement into
+its request would have had every read of a requirement holding `label` or `review` refused, since
+`read_side_contract.md` section 1 refuses a request whose requirement holds either (BC-009).

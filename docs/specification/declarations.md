@@ -115,7 +115,7 @@ the build's version registers. [BC-048]
 | | `field` | yes, but an `accepted_difference` names `section` and an `overlay_scope` neither | a registered field |
 | | `reason` | yes (item 4) | a string of at least one character |
 | | `basis` | for `extrapolation`, `nominal` and `distribution` (item 4) | a string of at least one character |
-| | its kind's own members | as section 4.1's row gives them: required; or, where the row gives a condition ("where the code names one"), required where it holds and refused where it does not; or optional where the row says "optionally" | a pick's `index`, a whole number not below zero; a waiver's `code`, a reason of `read_side_contract.md` section 4 (a waiver whose `code` is no reason names no condition), and `label` as above; an implied condition's `fact` and `token`, of `provenance.md` section 6.2, and its `implies`, per registered condition as section 4.1's row gives it, in the condition's registered unit, `lo` not above `hi`, a `basis` there ignored; an extrapolation's `method`, `constant` or `consumer_law`, and its `law`, a string of at least one character; an accepted difference's `section`, a registered section, and `fact`, a fact of `provenance.md` section 6.2, its `value` that fact's shape (its `basis` and text members optional), a status object or `"any"`; a nominal's `value` or `params`, exactly one, `params` only for a field whose row allows the form `parameter_set` (`read_side_contract.md` section 1); a distribution's `distribution`, a token of `uncertainty.md` section 4, `distribution_parameters`, that token's parameters, named as there, and `space`, `identity` or `log` (section 4.3); an overlay's and an `overlay_scope`'s `overlay`, a material reference; an `overlay_scope`'s `accepts`, at least one of `consumer`, `model` and `configuration`, none twice |
+| | its kind's own members | as section 4.1's row gives them: required; or, where the row gives a condition ("where the code names one"), required where it holds and refused where it does not; or optional where the row says "optionally" | a pick's `index`, a whole number not below zero; a waiver's `code`, a reason of `read_side_contract.md` section 4 (a code names a condition where its reasons always carry one: the six `condition_*` codes, `outside_range`, `at_edge` and `range_unstated`; a waiver whose `code` is no reason names no condition), and `label` as above; an implied condition's `fact` and `token`, of `provenance.md` section 6.2, and its `implies`, per registered condition as section 4.1's row gives it, in the condition's registered unit, `lo` not above `hi`, a `basis` there ignored; an extrapolation's `method`, `constant` or `consumer_law`, and its `law`, a string of at least one character; an accepted difference's `section`, a registered section, and `fact`, a fact of `provenance.md` section 6.2, its `value` that fact's shape (its `basis` and text members optional), a status object or `"any"`; a nominal's `value` or `params`, exactly one, `params` only for a field whose row allows the form `parameter_set` (`read_side_contract.md` section 1); a distribution's `distribution`, a token of `uncertainty.md` section 4, `distribution_parameters`, that token's parameters, named as there, and `space`, `identity` or `log` (section 4.3); an overlay's and an `overlay_scope`'s `overlay`, a material reference; an `overlay_scope`'s `accepts`, at least one of `consumer`, `model` and `configuration`, none twice |
 | trainable entry | `field` and one of `record`, `region`, `interval` | yes | a field in `reads`, at a location the model is checked over |
 | material reference | `id`, `version`, `content_hash` | yes | strings |
 
@@ -297,17 +297,18 @@ on (item 8) with a `label_basis` whose `basis` is `stated` (`record_format.md` s
 result's review is a completed review (section 1 item 11). An acceptance is **used** where it covers a reason
 or a specimen difference of a result, or a read applied it. [BC-009] [BC-053] [BC-050]
 
-7. The build gives each read the acceptances of the kinds a read takes (`read_side_contract.md` section 1),
-   overlays aside (which overlays it gives a read is [not yet covered]), that name the read's field and are
-   located at its location, and the `trainable` acceptance section 7 gives. It maps the ones the read applied
-   to their indexes in the model's `acceptances` for `accepted_by`. [BC-009]
+7. The build's own read request holds the requirement's `want` and `conditions`, and the declared operating
+   conditions. The build gives each read the acceptances of the kinds a read takes (`read_side_contract.md`
+   section 1), overlays aside (which overlays it gives a read is [not yet covered]), that name the read's field
+   and are located at its location, and the `trainable` acceptance section 7 gives. It maps the ones the read
+   applied to their indexes in the model's `acceptances` for `accepted_by`. [BC-009]
 8. The build's own reasons (`no_requirement`, `label_mismatch`, `not_reviewed`) join the read's, and the
-   result's status is the worst of them all. Every other member of the result is as the read returned it. The
-   build checks a requirement's `label` against the label stored on the value the result rests on (the field,
-   or the alternative read), whether or not the read reached step 12, so a label never hides behind another
-   refusal. A result that rests on no stored value (its record or field not found, a refusal before step 7
-   finds the field, or no single alternative: `read_side_contract.md` section 3, step 7) is checked against
-   none. [BC-027] [BC-049]
+   result's status is the worst of them all. Every other member of the result is as the read returned it,
+   including `value`, where the read returned one. The build checks a requirement's `label` against the label
+   stored on the value the result rests on (the field, or the alternative read), whether or not the read
+   reached step 12, so a label never hides behind another refusal. A result that rests on no stored value (its
+   record or field not found, a refusal before step 7 finds the field, or no single alternative:
+   `read_side_contract.md` section 3, step 7) is checked against none. [BC-027] [BC-049]
 9. The build lists in `unused`, per model, each acceptance not used (the build's terms), as `{"model",
    "acceptance": <its index>}`, so a waiver for another field, record or code is seen. An unused acceptance
    refuses nothing. [BC-053]
