@@ -9,7 +9,7 @@ Names come from:
 - every schema file but the generated reader schema, `$ref`s followed across files, and the vocabulary, less
   its bindings, which declare no member: like a condition, a binding restricts members a schema declares
   elsewhere (a field's `unit` to its registered one), so neither its names nor its lists are a namespace; and
-  less `declaration.json`'s rules and bindings (`*_rule`, `*_binding`), likewise;
+  less the rules and bindings of `declaration.json` and `build_report.json` (`*_rule`, `*_binding`), likewise;
 - the specification's fenced JSON examples, and its tables of members and of tokens (member names only), an
   example object read as a map where its keys are registered names, or where a schema gives its member a map
   keyed freely (`additionalProperties`);
