@@ -4,6 +4,7 @@
 
     python scripts/check_claims.py check [BASE] [--head REV] [--description FILE] [--facts F] [--rulings F]
     python scripts/check_claims.py record VALUE WHAT --how HOW [--at REV] [--facts FILE]
+    python scripts/check_claims.py baseline [--at REV]
 
 The branch runs from the merge base of `BASE` (`origin/main`) and `--head` (`HEAD`) to that head, read from
 its commits, never the working tree. Three checks:
@@ -20,14 +21,18 @@ its commits, never the working tree. Three checks:
    it), and a table with `Added` and `Removed` columns (and `Files`, where it has one; its row that opens
    `total`, with `N files` there, or else its column sums) equal git's over the branch. A quotation is not
    read.
-2. Measured figures, in the description and the CHANGELOG lines the branch adds. A number that is no git
-   fact and of no kind `kind` names (a numbered thing, a version, a flag, an identifier, a date, a value in a
-   physical unit, a confidence level; anything in code, a link or quotation marks) matches a recorded fact:
-   its value, and its `what` among the eight words after it, measured at a commit the head holds. A number
-   marked an estimate (a word of `ESTIMATE` before it, or `estimate` among the five words after it) needs
-   none. A CHANGELOG figure the baseline (`claims_baseline.json`: what the check found in the CHANGELOG as it
-   stood, each with its reason) holds, by its three words either side, was there before; anything else
-   fails, and no option turns this off.
+2. Measured figures, in the description and the CHANGELOG lines the branch adds (a line moved whole is not
+   added). A number that is no git fact and of no kind `kind` names (a numbered thing, a version, a flag, an
+   identifier, a date, a value in a physical unit, a confidence level; anything in code, a link or quotation
+   marks) matches a recorded fact: its value, and its `what` starting in the figure's own phrase (before the
+   next number) among the eight words after it. The fact is measured at the head, or at an earlier commit of
+   the head's after which only Markdown files changed (printed with the commits since); any other change since
+   fails it. A number marked an estimate (a word of `ESTIMATE` just before it, or `estimate` after it within
+   its phrase) needs none. A CHANGELOG figure the baseline holds (`claims_baseline.json`: what the check
+   finds, with no fact, in the CHANGELOG at its commit `at`, on `main`; each figure by its three words either
+   side, with its reason) passes while the CHANGELOG holds that key no more often than it did at `at`; the
+   baseline holds only such figures, and `baseline` writes it. Anything else fails, and no option turns this
+   part off. A fact matches every figure with its value and words: record words that tell two figures apart.
 3. Ruled wording, given the rulings file (private: its path is given at run time, and nothing of it is
    printed but the words compared). Where a run of a ruling's words and of a specification sentence the
    branch adds nearly match (`MIN_WORDS` words in common or more, in pieces of two words or more apart by at
@@ -35,9 +40,13 @@ its commits, never the working tree. Three checks:
    difference prints both.
 
 Left to the reviewer: prose claims ("the bar is met"), counts written in words ("three controls"), whether a
-figure counts what its words say, a ruling paraphrased beyond `NEAR`, and a git fact in another form. A
-short commit name is checked in the object store the check runs in: one that names two objects there may
-name one in a fresh clone.
+figure counts what its words say, a ruling paraphrased beyond `NEAR`, a git fact in another form, and these
+forms the rules read wrongly, rare in the merged descriptions and the CHANGELOG: a ratio such as `3.14 times`,
+read as a Python version; a clock duration (`7:16`), not read; a year-like count after `in` (`in 1995 of 2000
+runs`); a count of commits not the branch's (`a test makes 260 commits`), read as a git fact; a count of eight
+digits or more without commas (`12000000 examples`), read as a run's number; and `about N` where `about` means
+"concerning". A short commit name is checked in the object store the check runs in: one that names two objects
+there may name one in a fresh clone.
 """
 
 import argparse
@@ -47,11 +56,13 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import NamedTuple
 
 BASELINE = Path(__file__).resolve().parent / "claims_baseline.json"
 DEFAULT_BASE = "origin/main"
@@ -103,18 +114,24 @@ APPROXIMATE = "~\u2248"
 NUMBER = re.compile(
     rf"^[{APPROXIMATE}]?[-{MINUS}]?(?:\d{{1,3}}(?:,\d{{3}})+|\d+)(?:\.\d+)?(?:[eE][-{MINUS}]?\d+)?%?$"
 )
-# A word just before a number, or before a list of numbers joined by `and`, `or` and `to`, that numbers it.
-NUMBERED = set(
+# A word just before a number, or before a list of numbers joined by `and`, `or` and `to`, that numbers it;
+# those of `DOTTED` also number a section or a version such as 4.1 or 3.11, the others a whole number only.
+DOTTED = set(
     "section sections item items step steps point points question questions rule rules constraint "
-    "constraints target targets seed seeds round rounds phase phases table tables figure figures equation "
-    "equations page pages chapter column columns row rows line lines level levels principle principles "
-    "commit part parts case example issue issues pr run runs job shard arm arms stage stages piece pieces "
-    "group groups version versions python pythons git uv pip hypothesis pytest usd-core mypy pyright ruff "
-    "release dev rfc pep iso".split()
+    "constraints table tables figure figures equation equations page pages chapter principle principles "
+    "version versions python pythons git uv pip hypothesis pytest usd-core mypy pyright ruff release dev rfc "
+    "pep iso".split()
 )
+NUMBERED = DOTTED | set(
+    "target targets seed seeds round rounds phase phases column columns row rows line lines level levels "
+    "commit part parts case example issue issues pr run runs job shard arm arms stage stages piece pieces "
+    "group groups".split()
+)
+LINKS = {"and", "or", "to", "through", ""}
+FLAG = re.compile(r"^--?[A-Za-z][\w-]*$")
 MONTHS = set("january february march april may june july august september october november december".split())
 PHYSICAL = set("k \u00b0c \u00b0 pa kpa mpa gpa kg mg mm cm \u00b5m nm mol ml hz khz mhz m/s".split())
-LEVEL = {"bound", "confidence", "one-sided", "two-sided", "upper", "lower", "interval"}
+LEVEL = {"bound", "confidence", "one-sided", "two-sided", "interval"}
 ESTIMATE = {"about", "around", "roughly", "approximately", "nearly", "almost", "estimated", *APPROXIMATE}
 QUOTES = "\u201c\u201d\u2018\u2019"
 STRIP = "`*_\"'()[]{},;:.!?<>|" + QUOTES
@@ -123,6 +140,7 @@ TRAILING = ",;:.!?)]}*\"'|" + QUOTES
 QUOTED = rf"\"(?:[^\"\n]|\n(?!\s*\n)){{0,400}}\"|{QUOTES[0]}[^{QUOTES[1]}]{{0,400}}{QUOTES[1]}"
 INTERVAL = rf"[\[(][-{MINUS}]?\d[\d.e{MINUS}-]*,\s*[-{MINUS}]?\d[\d.e{MINUS}-]*[\])]"
 BLANKED = re.compile(rf"```.*?```|`[^`\n]*`|https?://\S+|\]\([^)]*\)|<!--.*?-->|{QUOTED}|{INTERVAL}", re.S)
+BLANK = "\x00"
 
 BREAK = "\u00b6"
 MARKER = re.compile(r"^(?:[-*+>]|#+|\[[ x]\])$")
@@ -295,6 +313,13 @@ def table_counts(text: str, table: range) -> dict[int, tuple[str, str]]:
     return stated
 
 
+class Token(NamedTuple):
+    line: int
+    text: str
+    leading: bool  # the first on its line, after list or quotation markers
+    cut: bool  # code, a link, a quotation or an interval lies just before it
+
+
 @dataclass(frozen=True)
 class Figure:
     line: int
@@ -313,8 +338,9 @@ def normalised(token: str) -> str:
 
 
 def prose(text: str) -> str:
-    """`text` with code, links, quotations, intervals and the tables of check 1 blanked, lines kept."""
-    lines = BLANKED.sub(lambda match: re.sub(r"[^\n]", " ", match.group(0)), text).split("\n")
+    """`text` with code, links, quotations and intervals blanked to `BLANK` and the tables of check 1 emptied,
+    lines kept."""
+    lines = BLANKED.sub(lambda match: re.sub(r"[^\n]", BLANK, match.group(0)), text).split("\n")
     for table in tables(text.split("\n")):
         for index in table:
             lines[index] = ""
@@ -324,20 +350,24 @@ def prose(text: str) -> str:
 def figures(text: str, lines: set[int] | None = None) -> tuple[list[Figure], dict[str, int]]:
     """The figures of `text`, on `lines` alone where given, that a fact must match; and how many numbers each
     reason of `kind` left out. A figure's words stop at its paragraph or list item."""
-    tokens: list[tuple[int, str, bool]] = []
+    tokens: list[Token] = []
+    cut = False  # a blanked span at the end of a line cuts the next line's first word from the words before
     for line, row in enumerate(prose(text).split("\n"), 1):
-        if not row.strip() or re.match(r"\s*(?:[-*+]|\d+\.)\s", row):
-            tokens.append((line, BREAK, False))
+        if not row.replace(BLANK, " ").strip() or re.match(r"\s*(?:[-*+]|\d+\.)\s", row):
+            tokens.append(Token(line, BREAK, False, False))
         leading = True
-        for token in row.split():
-            tokens.append((line, token, leading))
-            leading = leading and MARKER.match(token) is not None
-    words = ["" if leading and MARKER.match(token) else normalised(token) for _, token, leading in tokens]
+        for piece in re.finditer(rf"[^\s{BLANK}]+|{BLANK}+", row):
+            if piece.group().startswith(BLANK):
+                cut = True
+                continue
+            tokens.append(Token(line, piece.group(), leading, cut))
+            leading, cut = leading and MARKER.match(piece.group()) is not None, False
+    words = ["" if token.leading and MARKER.match(token.text) else normalised(token.text) for token in tokens]
     found: list[Figure] = []
     left: dict[str, int] = {}
-    for index, (line, token, _) in enumerate(tokens):
-        bare = token.strip(TRAILING).lstrip("(*[")
-        if (lines is not None and line not in lines) or not NUMBER.match(bare):
+    for index, token in enumerate(tokens):
+        bare = token.text.strip(TRAILING).lstrip("(*[")
+        if (lines is not None and token.line not in lines) or not NUMBER.match(bare):
             continue
         following = tuple(word for word in words[index + 1 : index + 9] if word)
         following = following[: following.index(BREAK)] if BREAK in following else following
@@ -348,40 +378,75 @@ def figures(text: str, lines: set[int] | None = None) -> tuple[list[Figure], dic
         else:
             found.append(
                 Figure(
-                    line, bare, before[before.index(BREAK) + 1 :] if BREAK in before else before, following
+                    token.line,
+                    bare,
+                    before[before.index(BREAK) + 1 :] if BREAK in before else before,
+                    following,
                 )
             )
     return found, left
 
 
-def kind(
-    tokens: list[tuple[int, str, bool]], words: list[str], index: int, following: tuple[str, ...]
-) -> str:
+def opens(token: Token) -> bool:
+    """Whether a parenthesis or a blanked span opens `token`, so that no word before it numbers it."""
+    return token.cut or token.text.lstrip("*").startswith("(")
+
+
+def opens_sentence(tokens: list[Token], index: int) -> bool:
+    return (
+        index == 0
+        or tokens[index].leading
+        or tokens[index - 1].text == BREAK
+        or tokens[index - 1].text.endswith((".", "!", "?", ":"))
+    )
+
+
+def opens_clause(tokens: list[Token], index: int) -> bool:
+    """Whether the token at `index` opens a clause, as an item's mark does: "(1) the first; (2) ..."."""
+    previous = tokens[index - 1] if index else None
+    return (
+        previous is None
+        or previous.text == BREAK
+        or previous.text.endswith((":", ";", ".", "!", "?"))
+        or (previous.leading and MARKER.match(previous.text) is not None)
+    )
+
+
+def kind(tokens: list[Token], words: list[str], index: int, following: tuple[str, ...]) -> str:
     """Why the number at `index` needs no fact, or "" where it needs one."""
-    raw = tokens[index][1].strip("*")
+    raw = tokens[index].text.strip("*")
     bare = raw.strip(TRAILING).lstrip("(*[")
     # The word that names the number, through a list of numbers ("items 1, 2 and 4") but not across the end
-    # of a phrase ("in section 2: 1,180 files", "the fast stage, 15 of 15").
-    before = index - 1
-    while before >= 0 and not tokens[before][1].endswith((";", ":", ".", ")")):
-        if words[before] not in {"and", "or", "to", "through", ""} and not NUMBER.match(words[before]):
+    # of a phrase ("in section 2: 1,180 files", "the fast stage, 15 of 15"), a parenthesis or code.
+    before, cut = index - 1, opens(tokens[index])
+    while not cut and before >= 0 and not tokens[before].text.rstrip(",").endswith((";", ":", ".", ")")):
+        if words[before] not in LINKS and not NUMBER.match(words[before]):
             break
+        cut = opens(tokens[before])
         before -= 1
-    ended = before < 0 or tokens[before][1].endswith((",", ";", ":", ".", ")"))
+    ended = cut or before < 0 or tokens[before].text.endswith((",", ";", ":", ".", ")"))
     first = next((place for place in range(before + 1, index) if words[place]), index)
     listed = first == index or NUMBER.match(words[first]) is not None  # "figures and 6 settings" is no list
     named = "" if ended or not listed else words[before]
-    previous = tokens[index - 1][1].lstrip("([*") if index else ""
-    if re.match(r"^\(\d+\)", raw) or (tokens[index][2] and re.match(r"^\d+[.)]$", raw)):
+    if named in NUMBERED and "." in bare and (named not in DOTTED or bare.startswith("0.")):
+        named = ""  # "the shard 0.72 to 0.79 of its CPU", "the slowest part 67.4"
+    previous = tokens[index - 1].text.lstrip("([*") if index else ""
+    prior = words[index - 1] if index else ""  # "about 45 s", not "a note about the 12 files"
+    if (re.match(r"^\(\d+\)", raw) and opens_clause(tokens, index)) or (
+        tokens[index].leading and re.match(r"^\d+[.)]$", raw)
+    ):
         return "a list or heading number"
-    if named in NUMBERED or previous.startswith("-") or re.match(r"^3\.1\d$", bare):
+    if re.match(r"^(?:19\d\d|20[0-3]\d)$", bare) and (
+        named in MONTHS
+        or previous == "in"
+        or re.match(r"^\(\d{4}\)", raw)
+        or (previous[:1].isupper() and not opens_sentence(tokens, index - 1))
+    ):
+        return "a year"
+    if named in NUMBERED or FLAG.match(previous) or re.match(r"^3\.1\d$", bare):
         return "a numbered thing, a version or a flag"
     if re.match(r"^\d{8,}$", bare):
         return "a run's or a job's number"
-    if re.match(r"^(?:19\d\d|20[0-3]\d)$", bare) and (
-        named in MONTHS or previous[:1].isupper() or previous == "in"
-    ):
-        return "a year"
     counted = re.sub(r"\(.*", "", following[0]) if following else ""
     if counted in GIT_COUNTED or following[:2] in {("file", "changed"), ("files", "changed")}:
         return "a git fact"
@@ -389,10 +454,17 @@ def kind(
         return "a value in a physical unit"
     if LEVEL & set(following[:3]) and (bare.endswith("%") or following[:1] == ("%",)):
         return "a confidence level"
-    if bare[0] in APPROXIMATE or named in ESTIMATE or ESTIMATE & set(words[max(0, index - 2) : index]):
+    if bare[0] in APPROXIMATE or named in ESTIMATE or prior in ESTIMATE:
         return "an estimate"
-    if {"estimate", "estimated"} & set(following[:5]):
-        return "an estimate"
+    place = index  # `estimate` after the number, within its phrase: "55 minutes by estimate"
+    while place < min(len(tokens) - 1, index + 5) and not tokens[place].text.endswith(
+        (",", ";", ":", ".", "!", "?")
+    ):
+        place += 1
+        if words[place] in {"estimate", "estimated"}:
+            return "an estimate"
+        if NUMBER.match(words[place]) or tokens[place].text == BREAK:
+            break
     return ""
 
 
@@ -427,37 +499,66 @@ def load_facts(path: Path) -> list[Fact]:
         raise ClaimsError(f"{path} is not a facts file: {error}") from error
 
 
+@functools.cache
+def since(commit: str, head: str) -> tuple[int, tuple[str, ...]]:
+    """The commits from `commit` to `head`, and the files they change that are not Markdown."""
+    changed = git("diff", "--name-only", "--find-renames", commit, head).split()
+    return int(git("rev-list", "--count", f"{commit}..{head}")), tuple(
+        path for path in changed if not path.endswith(".md")
+    )
+
+
 def figure_findings(
     text: str,
     place: str,
     span: Range,
     facts: list[Fact],
     lines: set[int] | None = None,
-    known: frozenset[str] = frozenset(),
-) -> tuple[list[str], dict[str, int]]:
-    """Check 2 over `text`: the findings, and how many figures a fact matched, the baseline held and an
-    estimate marked."""
+    baseline: dict[str, int] | None = None,
+) -> tuple[list[str], dict[str, int], list[str]]:
+    """Check 2 over `text`: the findings; how many figures a fact matched, the baseline held and an estimate
+    marked; and, for each figure a fact measured before the head holds, the commits since."""
     found: list[str] = []
+    notes: list[str] = []
     stated, left = figures(text, lines)
+    held: Counter[str] = Counter(figure.key() for figure in figures(text)[0] if baseline is not None)
     tally = {"matched": 0, "baseline": 0, "estimates": left.get("an estimate", 0)}
     for figure in stated:
-        width = len(figure.after)
+        phrase = next((at for at, word in enumerate(figure.after) if NUMBER.match(word)), len(figure.after))
         matching = [
             fact
             for fact in facts
             if decimal(figure.text) == fact.value
-            and any(figure.after[start : start + len(fact.what)] == fact.what for start in range(width))
+            and any(
+                figure.after[start : start + len(fact.what)] == fact.what for start in range(max(phrase, 1))
+            )
         ]
         about = f"{figure.text} ({' '.join(figure.after[:4])} ...)"
-        if figure.key() in known:
+        earlier = sorted(
+            (since(fact.at, span.head), fact.at) for fact in matching if is_ancestor(fact.at, span.head)
+        )
+        markdown = [(commits, at) for (commits, changed), at in earlier if not changed]
+        if baseline is not None and held[figure.key()] <= baseline.get(figure.key(), 0):
             tally["baseline"] += 1
         elif not matching:
             found.append(f"{place}:{figure.line}: {about} matches no recorded fact")
-        elif not any(is_ancestor(fact.at, span.head) for fact in matching):
+        elif not earlier:
             found.append(f"{place}:{figure.line}: {about} was measured at a commit the head does not hold")
-        else:
+        elif markdown:
             tally["matched"] += 1
-    return found, tally
+            commits, at = markdown[0]
+            if commits:
+                notes.append(
+                    f"{place}:{figure.line}: {about} was measured at `{at[:8]}`, {commits} commits "
+                    "before the head, which change Markdown files alone"
+                )
+        else:
+            (commits, changed), at = earlier[0]
+            found.append(
+                f"{place}:{figure.line}: {about} was measured at `{at[:8]}`, {commits} commits before the "
+                f"head, which change {len(changed)} files that are not Markdown: {', '.join(changed[:5])}"
+            )
+    return found, tally, notes
 
 
 def added_lines(span: Range, path: str) -> dict[str, set[int]]:
@@ -472,6 +573,61 @@ def added_lines(span: Range, path: str) -> dict[str, set[int]]:
             first, length = int(hunk.group(1)), int(hunk.group(2) or 1)
             added.setdefault(current, set()).update(range(first, first + length))
     return added
+
+
+def new_lines(span: Range, path: str, text: str) -> set[int]:
+    """The lines the branch adds to `path` (whose text at the head is `text`), but for lines moved whole: a
+    line's text the base holds as often."""
+    before = subprocess.run(["git", "show", f"{span.base}:{path}"], capture_output=True, text=True).stdout
+    rows = text.split("\n")
+    there, here = Counter(row.strip() for row in before.split("\n")), Counter(row.strip() for row in rows)
+    added = added_lines(span, path).get(path, set())
+    return {line for line in added if here[rows[line - 1].strip()] > there[rows[line - 1].strip()]}
+
+
+def load_baseline(span: Range) -> dict[str, int]:
+    """Each key the baseline holds, with how often the CHANGELOG held it at the baseline's commit, after
+    checking that each entry is a figure there, with a listed reason, and that the commit is on `main`."""
+    stored = json.loads(BASELINE.read_text(encoding="utf-8"))
+    at = resolve(stored["at"])
+    if at is None or not (is_ancestor(at, span.main or span.base) or is_ancestor(at, DEFAULT_BASE)):
+        raise ClaimsError(f"the baseline's commit {stored['at']} is not on main here")
+    there: dict[str, list[int]] = {}
+    for figure in figures(git("show", f"{at}:CHANGELOG.md"))[0]:
+        there.setdefault(figure.key(), []).append(figure.line)
+    for key, line, reason in stored["changelog"]:
+        if line not in there.get(key, []):
+            raise ClaimsError(
+                f"the baseline holds {key!r} at line {line}, where CHANGELOG.md at {at[:8]} has no such "
+                "figure"
+            )
+        if reason not in stored["reasons"]:
+            raise ClaimsError(
+                f"the baseline holds {key!r} with the reason {reason!r}, which it does not list"
+            )
+    return {key: len(there[key]) for key, _, _ in stored["changelog"]}
+
+
+def write_baseline(at: str | None) -> int:
+    """Write the baseline from the CHANGELOG at `at` (by default the baseline's own commit), keeping each kept
+    figure's reason; a new figure's reason is "unlabelled" until a person labels it."""
+    stored = json.loads(BASELINE.read_text(encoding="utf-8"))
+    commit = resolve(at or stored["at"])
+    if commit is None:
+        raise ClaimsError(f"cannot resolve {at or stored['at']}")
+    reasons = {key: reason for key, _, reason in stored["changelog"]}
+    entries: dict[str, list[object]] = {}
+    for figure in figures(git("show", f"{commit}:CHANGELOG.md"))[0]:
+        entries.setdefault(figure.key(), [figure.key(), figure.line, reasons.get(figure.key(), "unlabelled")])
+    head = {"about": stored["about"], "at": commit, "reasons": stored["reasons"]}
+    rows = ",\n".join("    " + json.dumps(entry, ensure_ascii=False) for entry in entries.values())
+    text = json.dumps(head, indent=2, ensure_ascii=False)[:-2] + f',\n  "changelog": [\n{rows}\n  ]\n}}\n'
+    BASELINE.write_text(text, encoding="utf-8")
+    labelled = sum(entry[2] != "unlabelled" for entry in entries.values())
+    print(
+        f"wrote {len(entries)} entries at {commit[:8]}, {len(entries) - labelled} unlabelled, to {BASELINE}"
+    )
+    return 0
 
 
 def sentences(text: str) -> Iterator[list[Word]]:
@@ -562,33 +718,41 @@ def check(options: argparse.Namespace) -> int:
     if head is None or base is None:
         raise ClaimsError(f"cannot resolve {options.head if head is None else options.base}")
     span = Range(git("merge-base", base, head).strip(), head, base)
-    facts = load_facts(options.facts or default_facts())
+    facts_path = options.facts or default_facts()
+    facts = load_facts(facts_path)
     found: list[str] = []
+    notes: list[str] = []
     tally = {"matched": 0, "baseline": 0, "estimates": 0}
-    texts: list[tuple[str, str, set[int] | None]] = []
+    texts: list[tuple[str, str, set[int] | None, dict[str, int] | None]] = []
     if options.description:
         text = options.description.read_text(encoding="utf-8")
         found += git_findings(text, str(options.description), span)
-        texts.append((text, str(options.description), None))
+        texts.append((text, str(options.description), None, None))
     for entry in git("log", "--format=%H%x00%B%x1e", f"{span.base}..{span.head}").split("\x1e"):
         name, _, message = entry.strip("\n").partition("\x00")
         if name:
             found += git_findings(message, f"commit {name[:8]}, message", span)
-    changelog = added_lines(span, "CHANGELOG.md").get("CHANGELOG.md")
-    if changelog:
-        texts.append((git("show", f"{span.head}:CHANGELOG.md"), "CHANGELOG.md", changelog))
-    known = frozenset(key for key, *_ in json.loads(BASELINE.read_text(encoding="utf-8"))["changelog"])
-    for text, place, lines in texts:
-        more, counted = figure_findings(text, place, span, facts, lines, known)
+    baseline = load_baseline(span)
+    changelog = subprocess.run(
+        ["git", "show", f"{span.head}:CHANGELOG.md"], capture_output=True, text=True
+    ).stdout
+    added = new_lines(span, "CHANGELOG.md", changelog)
+    if added:
+        texts.append((changelog, "CHANGELOG.md", added, baseline))
+    for text, place, lines, known in texts:
+        more, counted, noted = figure_findings(text, place, span, facts, lines, known)
         found += more
+        notes += noted
         tally = {name: tally[name] + counted[name] for name in tally}
     if options.rulings:
         found += ruling_findings(options.rulings.read_text(encoding="utf-8"), added_sentences(span))
     print("\n".join(found) if found else "no claim found that git, the facts or the rulings contradict")
-    matched, estimates, baseline = tally["matched"], tally["estimates"], tally["baseline"]
+    for note in notes:
+        print(f"measured before the head: {note}")
+    matched, estimates, held = tally["matched"], tally["estimates"], tally["baseline"]
     print(
-        f"figures: {matched} matched a fact, {estimates} marked estimates, {baseline} in the CHANGELOG's "
-        f"baseline; {len(found)} findings"
+        f"figures: {matched} matched a fact of the {len(facts)} in {facts_path}, {estimates} marked "
+        f"estimates, {held} in the CHANGELOG's baseline; {len(found)} findings"
     )
     if not options.rulings:
         print("the ruled wording was not checked: no rulings file was given (--rulings)")
@@ -636,8 +800,14 @@ def main(arguments: Sequence[str] | None = None) -> int:
         command.add_argument(
             "--facts", type=Path, help=f"the facts file, the git directory's {FACTS_NAME} by default"
         )
+    writing = commands.add_parser(
+        "baseline", help="write claims_baseline.json from the CHANGELOG at a commit"
+    )
+    writing.add_argument("--at", help="the commit on main, the baseline's own by default")
     options = parser.parse_args(arguments)
     try:
+        if options.command == "baseline":
+            return write_baseline(options.at)
         return check(options) if options.command == "check" else record(options)
     except (ClaimsError, OSError, subprocess.CalledProcessError) as error:
         detail = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) else error

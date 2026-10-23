@@ -314,9 +314,10 @@ def test_git_s_own_shortstat_of_a_rename_passes(repository: Path, capsys: pytest
         "section 4.1 and steps 8 to 13, items 1, 2 and 4",
         "on Python 3.11 and 3.15; `pytest -n 8`, -n 12 and `1723 passed` in code",
         "BC-048, HP13, S7a-2, PR-339 and #77, U+2212 and the 500th example",
-        "on 2026-10-23 at 10:24, in run 39404674681 (Marcinkowska-Gapinska 2013)",
+        "on 2026-10-23 at 10:24, in run 39404674681 (Marcinkowska-Gapinska 2013), and in 2026 (2013)",
         '(1) the first; "1180 of 1522 case files" as quoted; the interval [275, 283]',
         "at 37 °C, at the one-sided 95 % bound, about 45 s, ~3 runs and 55 minutes by estimate",
+        "Its checks: (1) the reader; (2) the writer, with seeds 0 and 3",
     ],
 )
 def test_a_number_of_a_kind_that_is_no_measurement_needs_no_fact(text: str) -> None:
@@ -329,6 +330,25 @@ def test_a_number_of_a_kind_that_is_no_measurement_needs_no_fact(text: str) -> N
         ("the fast stage, 15 of 15 ok", ["15", "15"]),
         ("In section 2: 1,180 of 1,522", ["1,180", "1,522"]),
         ("143 measured figures and 6 settings", ["143", "6"]),
+        ("The site checker's tests pass (71).", ["71"]),
+        ("Unused acceptances: BC-001 (3), BC-002 (5).", ["3", "5"]),
+        ("- 24 case files now pass at the head.", ["24"]),
+        ("The new shard - 41 tests - passes alone.", ["41"]),
+        ("The set-up time of a job (6 to 8 s) is the same.", ["6", "8"]),
+        ("Timeouts: `writer` 180 (slowest part 67.4), `json` 55 (23.9).", ["180", "67.4", "55", "23.9"]),
+        ("The shard 0.72 to 0.79 of its CPU at the head.", ["0.72", "0.79"]),
+        ("Its CPU time was 25% lower than the old rule's.", ["25%"]),
+        ("The kill share sits 3 % upper of the floor.", ["3"]),
+        ("The job took 38 minutes, against the 45 estimated.", ["38"]),
+        ("The reader is about the 1,180 case files that pass.", ["1,180"]),
+        ("Of 2000 runs, 1995 found the fault.", ["2000", "1995"]),
+        ("the rate's 0.031 upper bound", ["0.031"]),
+        ("The suite ran 2010 tests.", ["2010"]),
+        ("The model drifts by 0.4 per K.", ["0.4"]),
+        ("It drew 1234567 examples.", ["1234567"]),
+        ("Its slowest part `writer` 67 s at the head.", ["67"]),
+        ("Its slowest part `writer`\n67 s at the head.", ["67"]),
+        ("The set-up took 6 s, where it estimated less.", ["6"]),
     ],
 )
 def test_a_number_a_numbering_word_does_not_reach_needs_a_fact(text: str, stated: list[str]) -> None:
@@ -362,7 +382,8 @@ def test_a_figure_needs_a_recorded_fact_measured_at_a_commit_the_head_holds(
         assert check_claims.main(["record", value, what, *how]) == 0
     assert run(capsys, base, "--description", str(description)) == (1, found[2:])
     assert check_claims.main(["record", "35", "are verified", *how]) == 0
-    assert run(capsys, base, "--description", str(description)) == (0, [])
+    assert check_claims.main(["check", base, "--description", str(description), *facts]) == 0
+    assert f"3 matched a fact of the 5 in {repository.parent / 'facts.json'}" in capsys.readouterr().out
     elsewhere = check_claims.git(*IDENTITY, "commit-tree", "HEAD^{tree}", "-m", "elsewhere").strip()
     stored = json.loads((repository.parent / "facts.json").read_text(encoding="utf-8"))
     stored["facts"][4]["at"] = elsewhere
@@ -375,13 +396,61 @@ def test_a_figure_needs_a_recorded_fact_measured_at_a_commit_the_head_holds(
     assert check_claims.main(["record", "3", "tests", "--how", " ", *facts]) == 2
 
 
-def test_a_changelog_figure_the_branch_adds_fails_unless_a_fact_or_the_baseline_holds_it(
+def test_a_fact_s_words_start_in_its_figure_s_own_phrase(repository: Path) -> None:
+    head = check_claims.git("rev-parse", "HEAD").strip()
+    span = check_claims.Range(head, head, head)
+
+    def fact(value: str, what: str) -> check_claims.Fact:
+        return check_claims.Fact(check_claims.decimal(value), tuple(what.split()), head)
+
+    text = "35 tests pass, in 12 files; 35 of the tests pass.\n"
+    found, tally, _ = check_claims.figure_findings(
+        text, "d", span, [fact("35", "files"), fact("12", "files")]
+    )
+    assert found == [
+        "d:1: 35 (tests pass in 12 ...) matches no recorded fact",
+        "d:1: 35 (of the tests pass ...) matches no recorded fact",
+    ]
+    found, tally, _ = check_claims.figure_findings(
+        text, "d", span, [fact("35", "tests pass"), fact("12", "files")]
+    )
+    assert (found, tally["matched"]) == ([], 3)
+
+
+def test_a_fact_measured_before_the_head_holds_only_across_commits_that_change_markdown_alone(
     repository: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     base = check_claims.git("rev-parse", "HEAD").strip()
+    commit("feat: one", {"a.py": "x = 1\n"})
+    description = repository.parent / "description.md"
+    description.write_text("The suite: 41 tests pass.\n", encoding="utf-8")
+    facts = ["--facts", str(repository.parent / "facts.json")]
+    assert check_claims.main(["record", "41", "tests pass", "--how", "pytest -q", *facts]) == 0
+    measured = check_claims.git("rev-parse", "HEAD").strip()
+    commit("docs: a note", {"NOTES.md": "a note\n"})
+    status, found = run(capsys, base, "--description", str(description))
+    assert (status, found) == (0, [])
+    assert check_claims.main(["check", base, "--description", str(description), *facts]) == 0
+    assert (
+        f"measured before the head: {description}:1: 41 (tests pass ...) was measured at `{measured[:8]}`, "
+        "1 commits before the head, which change Markdown files alone"
+    ) in capsys.readouterr().out.splitlines()
+    commit("fix: two", {"a.py": "x = 2\n", "b.py": "y = 1\n"})
+    status, found = run(capsys, base, "--description", str(description))
+    assert [line.partition(": ")[2] for line in found] == [
+        f"41 (tests pass ...) was measured at `{measured[:8]}`, 2 commits before the head, which change 2 "
+        "files that are not Markdown: a.py, b.py"
+    ]
+
+
+def test_a_changelog_figure_the_branch_adds_fails_unless_a_fact_or_the_baseline_holds_it(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    line = "- The runner: 1180 of 1573 case files pass, and the suite took 23.7 minutes.\n"
+    base = commit("docs: the counts on main", {"CHANGELOG.md": f"# Changelog\n\n{line}- Older: 12 tests.\n"})
     text = "# Changelog\n\n- The runner: 1180 of 1573 case files pass,\n  and the suite took 23.7 minutes.\n"
     text += "- Older: 12 tests.\n"
-    commit("docs: the counts", {"CHANGELOG.md": text})
+    commit("docs: the counts rewrapped", {"CHANGELOG.md": text})
     status, found = run(capsys, base)
     assert status == 1
     assert [line.split(": ")[0] for line in found] == ["CHANGELOG.md:3", "CHANGELOG.md:3", "CHANGELOG.md:4"]
@@ -392,18 +461,77 @@ def test_a_changelog_figure_the_branch_adds_fails_unless_a_fact_or_the_baseline_
         "the suite took 23.7 minutes",
         "older 12 tests",
     ]
-    entries = [[key, 3, "measured"] for key in keys[:2]]
-    check_claims.BASELINE.write_text(json.dumps({"changelog": entries}), encoding="utf-8")
+    baseline(base, [[key, 3, "measured"] for key in keys[:2]])
     status, found = run(capsys, base)
     assert [line.split(": ")[0] for line in found] == ["CHANGELOG.md:4"]
 
 
+def test_the_baseline_holds_no_description_figure_and_no_figure_added_more_often_than_it_was(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    older, newer = "- Older: 12 tests.\n", "- Newer: 3 runs, recorded where they were measured.\n"
+    baseline(check_claims.git("rev-parse", "HEAD").strip(), [["older 12 tests", 3, "measured"]])
+    base = commit("docs: a newer entry", {"CHANGELOG.md": "# Changelog\n\n" + newer + older})
+    commit(
+        "docs: the changelog moves",
+        {"CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n\n" + older + "\n## [Released]\n\n" + newer},
+    )
+    assert "+" + newer in check_claims.git("diff", base, "HEAD")
+    assert run(capsys, base) == (0, [])  # nothing added: the lines moved whole
+    description = repository.parent / "description.md"
+    description.write_text("Older: 12 tests.\n", encoding="utf-8")
+    commit(
+        "docs: an entry copied",
+        {"CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n\n" + older + older + newer},
+    )
+    _, found = run(capsys, base, "--description", str(description))
+    assert found[0].rpartition("/")[2] == "description.md:1: 12 (tests ...) matches no recorded fact"
+    assert found[1:] in (  # either copy, as git's diff sees it
+        [f"CHANGELOG.md:{line}: 12 (tests ...) matches no recorded fact"] for line in (5, 6)
+    )
+
+
+def test_the_baseline_holds_only_figures_of_the_changelog_at_its_commit_with_a_listed_reason(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    at = check_claims.git("rev-parse", "HEAD").strip()
+    for entries, error in (
+        ([["older 12 tests", 3, "measured"]], ""),
+        ([["older 12 tests", 3, "measured"], ["a check of a branch claims that a", 15, "measured"]], "holds"),
+        ([["older 12 tests", 4, "measured"]], "at line 4"),
+        ([["older 12 tests", 3, "declared"]], "the reason 'declared'"),
+    ):
+        baseline(at, entries)
+        assert check_claims.main(["check", at, "--facts", str(repository.parent / "facts.json")]) == (
+            2 if error else 0
+        )
+        assert error in capsys.readouterr().err
+    commit("docs: two figures", {"CHANGELOG.md": "# Changelog\n\n- Older: 12 tests.\n- Newer: 3 runs.\n"})
+    baseline(check_claims.git("rev-parse", "HEAD").strip(), [["older 12 tests", 3, "declared"]])
+    assert check_claims.main(["check", at, "--facts", str(repository.parent / "facts.json")]) == 2
+    assert "is not on main here" in capsys.readouterr().err
+    assert check_claims.main(["baseline", "--at", "HEAD"]) == 0
+    stored = json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))
+    assert stored["changelog"] == [["older 12 tests", 3, "declared"], ["newer 3 runs", 4, "unlabelled"]]
+
+
 def test_the_committed_baseline_holds_each_figure_once_with_a_listed_reason() -> None:
-    baseline = json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))
-    keys = [key for key, _, _ in baseline["changelog"]]
+    stored = json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))
+    keys = [key for key, _, _ in stored["changelog"]]
     assert len(keys) == len(set(keys))
-    assert {reason for _, _, reason in baseline["changelog"]} == set(baseline["reasons"])
-    assert all(isinstance(line, int) and line > 0 for _, line, _ in baseline["changelog"])
+    assert {reason for _, _, reason in stored["changelog"]} == set(stored["reasons"])
+    assert all(isinstance(line, int) and line > 0 for _, line, _ in stored["changelog"])
+
+
+def test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(check_claims.BASELINE.parent.parent)
+    at = json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))["at"]
+    if check_claims.resolve(at) is None:
+        pytest.skip(f"a shallow clone holds no {at[:8]}; the check itself holds the baseline to it each run")
+    held = check_claims.load_baseline(check_claims.Range(at, at, at))
+    assert len(held) == len(json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))["changelog"])
 
 
 @pytest.mark.parametrize("added", [" as stored,", " stored"])
