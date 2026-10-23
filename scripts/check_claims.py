@@ -9,13 +9,17 @@ The branch runs from the merge base of `BASE` (`origin/main`) and `--head` (`HEA
 its commits, never the working tree. Three checks:
 
 1. Git facts, in the description and the branch's commit messages. A commit name (7 to 40 hexadecimal digits,
-   a letter and a digit among them) resolves to a commit; one called the head (`head X`, `the head X`) is the
-   head, one called the base (`N commits on main at X`, `main's X`, `rebased onto main at X`, `based on main
-   at X`, `draft, on main at X`) is the merge base. A count of the branch's commits (`N commits on main`, a
-   sentence that opens `N commits,` or `N commits:`, `the N commits`, `N commits on the branch`), git's `N
-   files changed`, `N insertions(+)` and `N deletions(-)`, and a table with `Added` and `Removed` columns (and
-   `Files`, where it has one; its row that opens `total`, with `N files` there, or else its column sums) equal
-   git's over the branch. A quotation is not read.
+   a letter and a digit among them) names one commit, on the branch or on `BASE`, unless its sentence names a
+   pull request (`#N`). One called the head (`head X`, `Head: X`, `head is now X`, `head (X)`, after any word
+   but one naming another head: `earlier`, `old`, `previous`, `rebase`, `review`, a possessive such as
+   `#77's`) is the head; one called the base (`base X`, `the base is X`, `merge base X`, `main's X`, `N
+   commits on main at X`, `rebased onto main at X`, `based on main at X`, `draft, on main at X`) is the merge
+   base. A count of the branch's commits (`N commits on main`, `N commits on top of main`, a sentence that
+   opens `N commits,` or `N commits:`, `the N commits`, `the same N commits`, `(N commits)`, `N commits on the
+   branch`), git's `N files changed`, `N insertions(+)` and `N deletions(-)` (a rename one file, as git counts
+   it), and a table with `Added` and `Removed` columns (and `Files`, where it has one; its row that opens
+   `total`, with `N files` there, or else its column sums) equal git's over the branch. A quotation is not
+   read.
 2. Measured figures, in the description and the CHANGELOG lines the branch adds. A number that is no git
    fact and of no kind `kind` names (a numbered thing, a version, a flag, an identifier, a date, a value in a
    physical unit, a confidence level; anything in code, a link or quotation marks) matches a recorded fact:
@@ -31,7 +35,9 @@ its commits, never the working tree. Three checks:
    difference prints both.
 
 Left to the reviewer: prose claims ("the bar is met"), counts written in words ("three controls"), whether a
-figure counts what its words say, a ruling paraphrased beyond `NEAR`, and a git fact in another form.
+figure counts what its words say, a ruling paraphrased beyond `NEAR`, and a git fact in another form. A
+short commit name is checked in the object store the check runs in: one that names two objects there may
+name one in a fresh clone.
 """
 
 import argparse
@@ -60,24 +66,36 @@ TENS: tuple[str, ...] = tuple("twenty thirty forty fifty sixty seventy eighty ni
 COUNT = rf"(\d[\d,]*|(?:{'|'.join(TENS)})(?:-(?:{'|'.join(UNITS[:9])}))?|{'|'.join(UNITS)})"
 NAMED = r"`?([0-9a-f]{7,40})`?(?![\w-])"
 COMMIT_NAME = re.compile(r"(?<![\w/.-])`?([0-9a-f]{7,40})`?(?![\w/-])")
-HEAD_CLAIM = re.compile(r"(?:^|[(,;:]\s*|\b(?:the|this|its)\s+)head\s+(?:is\s+|at\s+)?" + NAMED, re.I | re.M)
+HEAD_OR_BASE = re.compile(
+    r"\b(head|base)\b(?:\*\*)?:?(?:\*\*)?,?\s+(?:is\s+(?:now\s+)?|at\s+|commit\s+|=\s*)?\(?" + NAMED, re.I
+)
+MAINS = re.compile(r"`?(?:origin/)?main`?['\u2019]s\s+" + NAMED, re.I)
 BASE_CLAIM = re.compile(
     r"\b(?:commits?|rebased|based|moved|draft|stacked),?(?:\s+from\s+`?[0-9a-f]{7,40}`?)?\s+(?:on|onto)\s+"
     r"`?(?:origin/)?main`?(?:'s|\s+at)?\s+" + NAMED,
     re.I,
 )
+# The word before `head` or `base` that names another one ("the earlier head", "#77's head").
+ANOTHER = set("earlier old older previous prior former original first stale rebase review reviewed".split())
+OWN = {"branch's", "request's", "pr's"}
 OPENING = r"(?:^|[.!?]\s)\s*(?:[-*]\s+)?(?:\[[ x]\]\s+)?(?:\*\*)?"
 COUNTS = [
-    ("commits", rf"\b{COUNT}\s+commits?,?\s+on\s+(?:`?(?:origin/)?main\b|(?:the|this)\s+branch\b)"),
+    (
+        "commits",
+        rf"\b{COUNT}\s+commits?,?\s+on\s+(?:top\s+of\s+)?(?:`?(?:origin/)?main\b|(?:the|this)\s+branch\b)",
+    ),
     ("commits", rf"{OPENING}{COUNT}\s+commits?(?:\*\*)?(?=[,.:;]|\s+each)"),
     (
         "commits",
-        rf"\b(?:the|all|all\s+the|each\s+of\s+the)\s+{COUNT}\s+commits?\b(?!\s+(?:of|after|before|since)\b)",
+        rf"\b(?:the|all|all\s+the|each\s+of\s+the|the\s+same)\s+{COUNT}\s+commits?\b"
+        r"(?!\s+(?:of|after|before|since)\b)",
     ),
+    ("commits", rf"\(\s*{COUNT}\s+commits?\s*\)"),
     ("files", rf"\b{COUNT}\s+files?\s+changed\b"),
     ("added", rf"\b{COUNT}\s+insertions?\(\+\)"),
     ("removed", rf"\b{COUNT}\s+deletions?\(-\)"),
 ]
+SENTENCE_END = re.compile(r"[.!?](?=\s)|\n\s*\n|\n(?=\s*(?:[-*+|]|\d+\.)\s)")
 GIT_COUNTED = {"commit", "commits", "insertion", "insertions", "deletion", "deletions"}
 
 MINUS = "\u2212"
@@ -131,13 +149,29 @@ def resolve(name: str) -> str | None:
     return found.stdout.strip() or None
 
 
+def ambiguous(name: str) -> bool:
+    found = subprocess.run(["git", "rev-parse", f"--disambiguate={name}"], capture_output=True, text=True)
+    return len(found.stdout.split()) > 1
+
+
+def is_ancestor(commit: str, head: str) -> bool:
+    return (
+        subprocess.run(["git", "merge-base", "--is-ancestor", commit, head], capture_output=True).returncode
+        == 0
+    )
+
+
 @dataclass(frozen=True)
 class Range:
     base: str
     head: str
+    main: str = ""
 
     def count(self, kind: str) -> int:
         return counts(self.base, self.head)[kind]
+
+    def holds(self, commit: str) -> bool:
+        return is_ancestor(commit, self.head) or is_ancestor(commit, self.main or self.base)
 
 
 @functools.cache
@@ -148,7 +182,7 @@ def counts(base: str, head: str) -> dict[str, int]:
         "added": 0,
         "removed": 0,
     }
-    for line in git("diff", "--numstat", "--no-renames", base, head).splitlines():
+    for line in git("diff", "--numstat", "--find-renames", base, head).splitlines():
         added, removed, _ = line.split("\t", 2)
         totals["files"] += 1
         totals["added"] += int(added) if added.isdigit() else 0
@@ -170,20 +204,48 @@ def line_of(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
+def sentence_of(text: str, offset: int) -> str:
+    start = max((end.end() for end in SENTENCE_END.finditer(text, 0, offset)), default=0)
+    stop = next((end.start() for end in SENTENCE_END.finditer(text, offset)), len(text))
+    return text[start:stop]
+
+
+def names_another(text: str, start: int) -> bool:
+    """Whether the word before `head` or `base` at `start` names another one than the branch's."""
+    previous = re.search(r"(\S+)\s*$", text[:start])
+    if previous is None or previous.group(1).endswith((".", ",", ";", ":", "!", "?", "(", "|")):
+        return False
+    word = previous.group(1).lower().replace("`", "").strip("*_\"'()[]")
+    return word in ANOTHER or (re.search(r"['\u2019]s$", word) is not None and word not in OWN)
+
+
 def git_findings(text: str, place: str, span: Range) -> list[str]:
     """Check 1 over `text`, each finding as `place:line: what`. A quotation, someone else's claim, is not
     read."""
     found: list[str] = []
     text = re.sub(QUOTED, lambda match: re.sub(r"[^\n]", " ", match.group(0)), text)
-    for match in COMMIT_NAME.finditer(text):
-        name = match.group(1)
-        if re.search("[a-f]", name) and re.search("[0-9]", name) and resolve(name) is None:
-            found.append(f"{place}:{line_of(text, match.start())}: `{name}` names no commit here")
-    for claim, which, expected in ((HEAD_CLAIM, "head", span.head), (BASE_CLAIM, "base", span.base)):
+    claims: dict[int, tuple[str, str]] = {}
+    for match in HEAD_OR_BASE.finditer(text):
+        if not names_another(text, match.start()):
+            claims[match.start(2)] = (match.group(1).lower(), match.group(2))
+    for claim in (MAINS, BASE_CLAIM):
         for match in claim.finditer(text):
-            if (resolve(match.group(1)) or match.group(1)) != expected:
-                where = line_of(text, match.start(1))
-                found.append(f"{place}:{where}: the {which} is `{expected[:8]}`, not `{match.group(1)}`")
+            claims[match.start(1)] = ("base", match.group(1))
+    for match in COMMIT_NAME.finditer(text):
+        name, where = match.group(1), f"{place}:{line_of(text, match.start())}"
+        if not (re.search("[a-f]", name) and re.search("[0-9]", name)) or match.start(1) in claims:
+            continue
+        commit = resolve(name)
+        if commit is None:
+            found.append(f"{where}: `{name}` names no commit here")
+        elif len(name) < 40 and ambiguous(name):
+            found.append(f"{where}: `{name}` names more than one object here")
+        elif not span.holds(commit) and not re.search(r"#\d", sentence_of(text, match.start())):
+            found.append(f"{where}: `{name}` is not on this branch or main")
+    for offset, (which, name) in sorted(claims.items()):
+        expected = span.head if which == "head" else span.base
+        if (resolve(name) or name) != expected:
+            found.append(f"{place}:{line_of(text, offset)}: the {which} is `{expected[:8]}`, not `{name}`")
     stated: dict[int, tuple[str, str]] = {}
     for kind_, pattern in COUNTS:
         for match in re.finditer(pattern, text, re.I | re.M):
@@ -192,8 +254,8 @@ def git_findings(text: str, place: str, span: Range) -> list[str]:
         stated.update(table_counts(text, table))
     for offset, (kind_, value) in sorted(stated.items()):
         if number(value) != span.count(kind_):
-            where = line_of(text, offset)
-            found.append(f"{place}:{where}: {value} {kind_}, where git counts {span.count(kind_)}")
+            line = line_of(text, offset)
+            found.append(f"{place}:{line}: {value} {kind_}, where git counts {span.count(kind_)}")
     return found
 
 
@@ -398,13 +460,6 @@ def figure_findings(
     return found, tally
 
 
-def is_ancestor(commit: str, head: str) -> bool:
-    return (
-        subprocess.run(["git", "merge-base", "--is-ancestor", commit, head], capture_output=True).returncode
-        == 0
-    )
-
-
 def added_lines(span: Range, path: str) -> dict[str, set[int]]:
     """The lines each file under `path` gains on the branch, numbered as at the head."""
     added: dict[str, set[int]] = {}
@@ -506,7 +561,7 @@ def check(options: argparse.Namespace) -> int:
     head, base = resolve(options.head), resolve(options.base)
     if head is None or base is None:
         raise ClaimsError(f"cannot resolve {options.head if head is None else options.base}")
-    span = Range(git("merge-base", base, head).strip(), head)
+    span = Range(git("merge-base", base, head).strip(), head, base)
     facts = load_facts(options.facts or default_facts())
     found: list[str] = []
     tally = {"matched": 0, "baseline": 0, "estimates": 0}

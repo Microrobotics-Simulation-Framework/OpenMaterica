@@ -4,6 +4,7 @@ each correct form, in a throwaway repository with a rulings file written for the
 
 import json
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -20,9 +21,8 @@ ROW = (
     "| `alternative_values` | An entry whose alternative is kept outside its form's range holds its `unit`, "
     "`specimen`, `statistics` and `provenance`{} as `record_format.md` section 5 gives them. [PR-013] |\n"
 )
-
-
 IDENTITY = ["-c", "user.name=Author", "-c", "user.email=author@example.org"]
+REASONS = {"measured": "a measured figure", "setting": "a setting"}
 
 
 def commit(message: str, files: dict[str, str] | None = None) -> str:
@@ -34,17 +34,21 @@ def commit(message: str, files: dict[str, str] | None = None) -> str:
     return check_claims.git("rev-parse", "HEAD").strip()
 
 
+def baseline(at: str, entries: Sequence[Sequence[object]] = ()) -> None:
+    stored = {"about": "", "at": at, "reasons": REASONS, "changelog": [list(entry) for entry in entries]}
+    check_claims.BASELINE.write_text(json.dumps(stored), encoding="utf-8")
+
+
 @pytest.fixture
 def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A throwaway repository on its first commit, an empty baseline and an empty facts file beside it."""
+    """A throwaway repository on its first commit, with an empty baseline at it and an empty facts file."""
     root = tmp_path / "repository"
     root.mkdir()
     throwaway_repository(root, monkeypatch)
-    (tmp_path / "baseline.json").write_text('{"changelog": []}', encoding="utf-8")
     (tmp_path / "facts.json").write_text('{"facts": []}', encoding="utf-8")
     monkeypatch.setattr(check_claims, "BASELINE", tmp_path / "baseline.json")
     changelog = "# Changelog\n\n- Older: 12 tests.\n"
-    commit("docs: on main", {"CHANGELOG.md": changelog, SPECIFICATION: "| member | text |\n"})
+    baseline(commit("docs: on main", {"CHANGELOG.md": changelog, SPECIFICATION: "| member | text |\n"}))
     return root
 
 
@@ -53,7 +57,8 @@ def run(capsys: pytest.CaptureFixture[str], base: str, *arguments: str) -> tuple
     facts = str(Path.cwd().parent / "facts.json")
     status = check_claims.main(["check", base, "--facts", facts, *arguments])
     lines = capsys.readouterr().out.splitlines()
-    return status, [line for line in lines if ": " in line and not line.startswith(("figures:", "the ruled"))]
+    summary = ("figures:", "the ruled", "measured before the head:")
+    return status, [line for line in lines if ": " in line and not line.startswith(summary)]
 
 
 def test_a_stale_head_base_or_count_is_flagged_and_the_true_ones_pass(
@@ -96,6 +101,78 @@ def test_a_stale_head_base_or_count_is_flagged_and_the_true_ones_pass(
     ]
 
 
+HEAD = "52d25837" + "0" * 32
+BASE = "1c42af03" + "0" * 32
+STALE = "35f50802" + "0" * 32
+
+
+@pytest.fixture
+def known_commits(monkeypatch: pytest.MonkeyPatch) -> check_claims.Range:
+    """Git stood in for: three commits, each on the branch, and the branch's counts."""
+
+    def resolve(name: str) -> str | None:
+        return next((full for full in (HEAD, BASE, STALE) if full.startswith(name)), None)
+
+    def counts(base: str, head: str) -> dict[str, int]:
+        return dict.fromkeys(("commits", "files"), 7)
+
+    def holds(commit: str, head: str) -> bool:
+        return True
+
+    def ambiguous(name: str) -> bool:
+        return False
+
+    monkeypatch.setattr(check_claims, "resolve", resolve)
+    monkeypatch.setattr(check_claims, "ambiguous", ambiguous)
+    monkeypatch.setattr(check_claims, "is_ancestor", holds)
+    monkeypatch.setattr(check_claims, "counts", counts)
+    return check_claims.Range(BASE, HEAD, BASE)
+
+
+@pytest.mark.parametrize(
+    ("text", "which"),
+    [
+        ("Head `{}`, 7 commits.", "head"),
+        ("- Head `{}`, 7 commits.", "head"),
+        ("All checks ran at head `{}`.", "head"),
+        ("**Head:** `{}`.", "head"),
+        ("Head: `{}`.", "head"),
+        ("The head is now `{}`.", "head"),
+        ("The head is `{}`.", "head"),
+        ("Its head at `{}` passes.", "head"),
+        ("The new head `{}`.", "head"),
+        ("The head (`{}`) passes.", "head"),
+        (f"Merge base `{BASE[:8]}`, head `{{}}`.", "head"),
+        ("The branch sits on `main`'s `{}`.", "base"),
+        ("The base is `{}`.", "base"),
+        ("Seven commits on `main`'s `{}`.", "base"),
+        ("Stacked on `main` at `{}`.", "base"),
+    ],
+)
+def test_a_head_or_base_is_read_in_the_forms_the_docstring_names(
+    text: str, which: str, known_commits: check_claims.Range
+) -> None:
+    right = HEAD if which == "head" else BASE
+    assert check_claims.git_findings(text.format(right[:8]), "d", known_commits) == []
+    assert check_claims.git_findings(text.format(STALE[:8]), "d", known_commits) == [
+        f"d:1: the {which} is `{right[:8]}`, not `{STALE[:8]}`"
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The earlier head `{}` passed too.",
+        "#77's head `{}` is another pull request's.",
+        "the review's head `{}` held the old reader.",
+        "It passed on the old\nhead `{}` as well.",
+        "The previous base `{}` is gone.",
+    ],
+)
+def test_a_head_or_base_named_as_another_is_not_read(text: str, known_commits: check_claims.Range) -> None:
+    assert check_claims.git_findings(text.format(STALE[:8]), "d", known_commits) == []
+
+
 @pytest.mark.parametrize(
     ("text", "stated", "count"),
     [
@@ -106,6 +183,9 @@ def test_a_stale_head_base_or_count_is_flagged_and_the_true_ones_pass(
         ("Each of the 1,012 commits, exported.", "1,012", 1012),
         ("Four commits on the branch now.", "Four", 4),
         ("21 commits on `origin/main` `e1647082`.", "21", 21),
+        ("This branch has 8 commits on top of `main`.", "8", 8),
+        ("The same 14 commits in the same order, now on #36.", "14", 14),
+        ("Rebased (8 commits) onto the new main.", "8", 8),
         ("The last two commits fix it; the first nine commits pass.", None, 0),
         ("The two commits after it change only a README.", None, 0),
         ("76 commits of `main` lie underneath.", None, 0),
@@ -129,6 +209,103 @@ def test_a_commit_count_is_checked_in_its_forms_and_a_partial_count_is_not(
         found = check_claims.git_findings(text, "d", check_claims.Range(base, "f" * 40))
         stale = stated and counted != count
         assert found == ([f"d:1: {stated} commits, where git counts {counted}"] if stale else [])
+
+
+def short(name: str) -> str:
+    """The shortest name of 7 hexadecimal digits or more with a letter and a digit, as the check reads."""
+    return next(
+        name[:size]
+        for size in range(7, 40)
+        if len(set(name[:size]) & set("abcdef")) and len(set(name[:size]) - set("abcdef"))
+    )
+
+
+def test_a_commit_name_is_one_commit_on_the_branch_or_main_unless_its_sentence_names_a_pull_request(
+    repository: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = short(check_claims.git("rev-parse", "HEAD").strip())
+    blob = short(check_claims.git("rev-parse", "HEAD:CHANGELOG.md").strip())
+    commit("feat: one", {"a.txt": "a\n"})
+    elsewhere = short(check_claims.git(*IDENTITY, "commit-tree", "HEAD^{tree}", "-m", "elsewhere").strip())
+    description = repository.parent / "description.md"
+    description.write_text(
+        f"The file's content is `{blob}`.\n\nIts reader was fixed at `{elsewhere}`.\n\n"
+        f"Rebased from #12, whose reader was at `{elsewhere}`.\n\nOn `main` at `{base}`.\n",
+        encoding="utf-8",
+    )
+    _, found = run(capsys, base, "--description", str(description))
+    assert [line.partition(": ")[2] for line in found] == [
+        f"`{blob}` names no commit here",
+        f"`{elsewhere}` is not on this branch or main",
+    ]
+
+    upstream = check_claims.git(
+        *IDENTITY, "commit-tree", f"{base}^{{tree}}", "-p", base, "-m", "on main"
+    ).strip()
+    description.write_text(f"Main's newer reader is at `{short(upstream)}`.\n", encoding="utf-8")
+    assert run(capsys, upstream, "--description", str(description)) == (0, [])
+
+    def ambiguous(name: str) -> bool:
+        return name == base
+
+    monkeypatch.setattr(check_claims, "ambiguous", ambiguous)
+    description.write_text(f"On `main` at `{base}`.\n", encoding="utf-8")
+    _, found = run(capsys, base, "--description", str(description))
+    assert f"description.md:1: `{base}` names more than one object here" in [
+        line.rpartition("/")[2] for line in found
+    ]
+
+
+def test_a_short_name_two_objects_share_is_ambiguous(repository: Path) -> None:
+    for content in ("195\n", "389\n"):  # two blobs whose names both open 6bb2
+        subprocess.run(["git", "hash-object", "-w", "--stdin"], input=content, text=True, check=True)
+    assert check_claims.ambiguous("6bb2")
+    assert not check_claims.ambiguous("6bb2f4e")
+
+
+def test_the_branch_s_commit_messages_are_held_to_git(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = check_claims.git("rev-parse", "HEAD").strip()
+    commit("feat: one", {"a.txt": "a\n"})
+    second = commit(f"feat: two\n\nTwo commits on `main` at `{base[:8]}`.", {"b.txt": "b\n"})
+    assert run(capsys, base) == (0, [])
+    third = commit(f"fix: three\n\nThe head is now `{second[:8]}`.", {"a.txt": "b\n"})
+    status, found = run(capsys, base)
+    assert status == 1
+    assert found == [
+        f"commit {third[:8]}, message:3: the head is `{third[:8]}`, not `{second[:8]}`",
+        f"commit {second[:8]}, message:3: Two commits, where git counts 3",
+    ]
+
+
+def test_a_table_of_one_total_row_and_git_s_deletions_are_read(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = commit("docs: the file", {"a.txt": "a\nb\nc\n"})
+    commit("fix: one line less", {"a.txt": "a\nb\n"})
+    description = repository.parent / "description.md"
+    for removed, status in ((1, 0), (2, 1)):
+        description.write_text(
+            f"1 file changed, {removed} deletion(-)\n\n"
+            f"| Part | Files | Added | Removed |\n|---|---|---|---|\n| total, 1 file | 1 | 0 | {removed} |\n",
+            encoding="utf-8",
+        )
+        found = run(capsys, base, "--description", str(description))
+        assert found[0] == status
+        assert [line.partition(": ")[2] for line in found[1]] == [
+            f"{removed} removed, where git counts 1"
+        ] * (2 * status)
+
+
+def test_git_s_own_shortstat_of_a_rename_passes(repository: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    base = commit("docs: a file", {"a.txt": "".join(f"line {n}\n" for n in range(5))})
+    subprocess.run(["git", "mv", "a.txt", "b.txt"], check=True)
+    commit("refactor: renamed")
+    description = repository.parent / "description.md"
+    description.write_text(check_claims.git("diff", "--shortstat", "-M", base, "HEAD"), encoding="utf-8")
+    assert "1 file changed" in description.read_text(encoding="utf-8")
+    assert run(capsys, base, "--description", str(description)) == (0, [])
 
 
 @pytest.mark.parametrize(
