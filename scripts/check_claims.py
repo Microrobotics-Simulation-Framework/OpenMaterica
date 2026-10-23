@@ -306,7 +306,9 @@ def kind(
             break
         before -= 1
     ended = before < 0 or tokens[before][1].endswith((",", ";", ":", ".", ")"))
-    named = "" if ended else words[before]
+    first = next((place for place in range(before + 1, index) if words[place]), index)
+    listed = first == index or NUMBER.match(words[first]) is not None  # "figures and 6 settings" is no list
+    named = "" if ended or not listed else words[before]
     previous = tokens[index - 1][1].lstrip("([*") if index else ""
     if re.match(r"^\(\d+\)", raw) or (tokens[index][2] and re.match(r"^\d+[.)]$", raw)):
         return "a list or heading number"

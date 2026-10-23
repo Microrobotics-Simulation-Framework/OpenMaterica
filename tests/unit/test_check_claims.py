@@ -146,9 +146,13 @@ def test_a_number_of_a_kind_that_is_no_measurement_needs_no_fact(text: str) -> N
 
 @pytest.mark.parametrize(
     ("text", "stated"),
-    [("the fast stage, 15 of 15 ok", ["15", "15"]), ("In section 2: 1,180 of 1,522", ["1,180", "1,522"])],
+    [
+        ("the fast stage, 15 of 15 ok", ["15", "15"]),
+        ("In section 2: 1,180 of 1,522", ["1,180", "1,522"]),
+        ("143 measured figures and 6 settings", ["143", "6"]),
+    ],
 )
-def test_a_number_after_the_end_of_a_phrase_that_numbers_needs_a_fact(text: str, stated: list[str]) -> None:
+def test_a_number_a_numbering_word_does_not_reach_needs_a_fact(text: str, stated: list[str]) -> None:
     assert [figure.text for figure in check_claims.figures(text)[0]] == stated
 
 
