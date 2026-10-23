@@ -34,7 +34,8 @@ and the vocabulary. Every file's `$id` is its path under
   as write-only. Cross-member rules (a range in order, no component twice), a member one slip from a named
   one, and a token or status token where its row does not allow it are step 8's but no JSON Schema's.
 - **The typed shapes** (`materica/shapes.py`, `shapes.pyi`) are generated from the writer schema,
-  `case.json` and the request and result it refers to, by `scripts/gen_shapes.py`.
+  `case.json` and the request and result it refers to, the declaration and the build's report, by
+  `scripts/gen_shapes.py`.
 
 CI regenerates every derived file and fails where one differs (CONTRIBUTING, "Changing the schema"). Every
 pattern starts with `^` and ends with `(?![\s\S])`: a validator's `$` also matches before a final newline.

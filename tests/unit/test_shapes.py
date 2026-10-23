@@ -17,7 +17,14 @@ from materica.core.jsonio import JsonValue
 from tests.spec_sync.schemas import SCHEMA
 
 # The schemas the shapes are generated from (`scripts/gen_shapes.py`).
-SOURCES = ("record.writer.json", "case.json", "read_request.json", "read_result.json")
+SOURCES = (
+    "record.writer.json",
+    "case.json",
+    "read_request.json",
+    "read_result.json",
+    "declaration.json",
+    "build_report.json",
+)
 WRAPPERS = (NotRequired, Required, ReadOnly)
 
 
@@ -36,13 +43,15 @@ def whole(subschema: JsonValue, definitions: dict[str, JsonValue]) -> bool:
 
 
 def integer_members() -> Iterator[tuple[str, str]]:
-    """Each definition of the schemas, as the shape generated from it, and each member it declares whole."""
+    """Each definition of the schemas, as the shape generated from it (named by its title, where it has one),
+    and each member it declares whole."""
     for name in SOURCES:
         definitions = json.loads((SCHEMA / name).read_text(encoding="utf-8")).get("$defs", {})
         for definition, schema in definitions.items():
+            shape = schema.get("title") or "".join(part.capitalize() for part in definition.split("_"))
             for member, subschema in schema.get("properties", {}).items():
                 if whole(subschema, definitions):
-                    yield "".join(part.capitalize() for part in definition.split("_")), member
+                    yield shape, member
 
 
 def admits(annotation: object, value: object) -> bool:
@@ -80,6 +89,10 @@ def test_the_schemas_declare_the_whole_members_the_review_found() -> None:
         ("StatisticsBlock", "n_sources"),
         ("Locator", "page"),
         ("InputSpecimen", "input"),
+        ("Pick", "index"),
+        ("DeclaredSpecies", "ncbi_taxon"),
+        ("BuildResultJson", "trainable_by"),
+        ("UnusedAcceptance", "acceptance"),
     } <= set(INTEGER_MEMBERS)
 
 
