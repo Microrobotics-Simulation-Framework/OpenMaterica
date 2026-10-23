@@ -74,10 +74,9 @@ nothing about any material.
     `not_checked`. Other copies of that id and version, each with its own hash but two: its review completed
     (`water_review_reviewed.json`) or holding a `result` the reader does not know
     (`water_review_unknown_result.json`), both with water's hash, since a review lies outside it; its label
-    absent (`water_label_missing.json`) or the linear label (`water_linear_label_on_viscosity.json`); its unit
-    `pa.s` (`water_field_unit_lowercase.json`); two constant alternatives
-    (`water_two_constant_alternatives.json`); an in vivo specimen with the temperature stated, unstated or
-    `not_checked` (`water_in_vivo.json`, `water_in_vivo_temperature_unstated.json`,
+    absent (`water_label_missing.json`) or the linear label (`water_linear_label_on_viscosity.json`); two
+    constant alternatives (`water_two_constant_alternatives.json`); an in vivo specimen with the temperature
+    stated, unstated or `not_checked` (`water_in_vivo.json`, `water_in_vivo_temperature_unstated.json`,
     `water_in_vivo_temperature_not_checked.json`), its shear rate stated over 10 to 1000 1/s.
   - `glycerol_fixture.json`, `conformance/glycerol_fixture` 1.0.0, a density stated at 293.15 K;
     `grade_density_bounds_specification_limits.json`, `conformance/polymer_grade_fixture` 1.0.0, a density
@@ -98,7 +97,8 @@ nothing about any material.
   or `trainable`, which S7a-3 and S7a-4 build: the viscosity read under the same operating conditions with a
   requirement naming the Newtonian label, a temperature tolerance of 1 K and a shear rate tolerance of 0 1/s,
   or a density or a composition read under its own; and the acceptances each arm needs, none a `pick` or an
-  `overlay`, which S7c builds.
+  `overlay`, which S7c builds. A model that reads a table states `"precision": "binary64"` (`declarations.md`
+  section 1 item 10); no rule these files test reads it.
 
 ## What the cases cannot show
 
@@ -127,14 +127,20 @@ on, checked against the text, and was then checked by:
   (`tests/conformance/reference_reader.py`), every input read alike, the one that is not JSON refused alike;
   every record's hash recomputed by two RFC 8785 implementations, and every pin of a record in a declaration;
   the plasma fixture validated against the writer schema;
-- a build written from `declarations.md` sections 1, 2 and 4 alone, over a read written from
-  `read_side_contract.md` alone, which agrees with every file under the claims it states; that read agrees
-  with every one of the 165 plain-read case files over this suite's fixtures that it takes;
+- a build written from `declarations.md` sections 1, 2 and 4 alone, over a read written from the text alone
+  (`read_side_contract.md`, with `provenance.md` section 2 item 6 and `record_format.md` sections 4.1 and 6
+  where it rests on them), which agrees with every file under the claims it states; that read agrees with
+  every one of the 165 plain-read case files over this suite's fixtures that it takes;
 - a control per arm, the arm's declaration with the one thing it tests removed, or, for three result arms,
   the records it is read over changed (the review completed or not, the record supplied or not), which gives
   that build another answer; for the one arm whose point is a refusal not given (an `accepted_difference` with
   no location), a seeded fault of that build which the arm catches instead; 42 more arms also carry a seeded
-  fault each catches;
+  fault each catches. Two pairs of files share a declaration, its records and its answer, and differ in their
+  controls, each testing its own rule on the same build: `BC-006.waived_unknown_stays_unknown` (its control
+  drops the waiver: the status does not move) and `BC-028.one_model_one_record` (its control renames the
+  model: the result names it), and `BC-010.all_accepted` (its control drops one model's waiver: the verdict
+  follows every model) and `BC-028.two_models_over_one_record` (its control drops the second model: each
+  result names its own);
 - 76 seeded faults of that build, each of which some file catches: among them a waiver covering a reason
   section 4.2 does not list, or ignoring its condition, code, field or record; an implied condition counted
   applied though it filled nothing; `accepted_by` without what the read applied; the status raised when
