@@ -991,6 +991,14 @@ NAMED_NOT_READ = {
         "CHANGELOG.md",
     ): "a path the selection tests pass as a changed file, and one a throwaway repository commits",
     (
+        "scripts/check_claims.py",
+        "CHANGELOG.md",
+    ): "the lines a branch adds to it, read from git for the figures they state; no test takes it as input",
+    (
+        "tests/unit/test_check_claims.py",
+        "CHANGELOG.md",
+    ): "a file its throwaway repository commits",
+    (
         "tests/unit/test_pre_review.py",
         "CONTRIBUTING.md",
     ): "a path the selection tests pass as a changed file, as the gate's tests do",

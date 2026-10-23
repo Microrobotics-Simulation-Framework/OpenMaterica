@@ -277,6 +277,13 @@ DATA_RULES = (
         readers=("scripts/gen_kill_counts.py",),
     ),
     DataRule(
+        "the claims check's baseline",
+        r"scripts/claims_baseline\.json",
+        "the claims check reads it, and its tests hold the committed file to its shape",
+        tests=("tests/unit/test_check_claims.py",),
+        readers=("scripts/check_claims.py",),
+    ),
+    DataRule(
         "the confidential digests and the hook that runs the scan",
         r"scripts/confidential_digests\.txt|scripts/pre-push",
         "the digests are read by the scan, whose tests run it on them, and its tests run the hook",
