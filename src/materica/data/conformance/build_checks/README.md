@@ -22,13 +22,16 @@ A declaration over records that passes its own check, and what the build gives a
 - a field read with no requirement, for which nothing is read (BC-003);
 - a status no declaration changes (BC-006);
 - `accepted`, `accepted_by` with the indexes of the acceptances used, the ones a read applied included, and
-  `not_accepted` (BC-009); the verdict, every result not accepted listed (BC-010);
-- a waiver's reach: its record, condition, code and field, and one that names no label (BC-016);
+  `not_accepted` (BC-009); the verdict, every result not accepted listed, each model's results judged by its
+  own acceptances (BC-010);
+- a waiver's reach: its record (equal in `id`, `version` and `content_hash`), condition, code and field,
+  whatever the reason's `alternative`, and one that names no label (BC-016);
 - an implied condition that fills an unstated condition and no other (BC-017); an extrapolation under
   `outside_range` (BC-019); a nominal on an interval (BC-020);
 - `label_mismatch` against the label stored on the value read (BC-027); each result naming its model and
   record (BC-028); waivers of reasons no row of section 4.2 lets a waiver cover (BC-038);
-- the `review` requirement and `not_reviewed` (BC-049); acceptances no result used (BC-053).
+- the `review` requirement and `not_reviewed`, never on a result that holds no `provenance` (BC-049);
+  acceptances no result used, per model (BC-053).
 
 None runs yet: S7a-1 builds the declaration's own check, and with it the runner's `check_build` executor, and
 S7a-2 builds the results (`tests/spec_sync/case_steps.json` maps each file to `S7a-1` or `S7a-2`). `CASES.md`
@@ -68,7 +71,7 @@ A build-check case names its records in `inputs.records` and its declaration in 
 Every record here is a conformance fixture (`record_format.md` section 7 item 1): illustrative, stating
 nothing about any material.
 
-- **The records** are the plain-read suite's inputs of the same names, byte for byte, but for one:
+- **The records** are the plain-read suite's inputs of the same names, byte for byte, but for two:
   - `water_fixture.json`, `conformance/water_fixture` 1.0.0: the viscosity, a constant of 0.000692 Pa.s at
     310.15 K, its shear rate unstated, its Newtonian label stored with no `label_basis`, its review
     `not_checked`. Other copies of that id and version, each with its own hash but two: its review completed
@@ -83,9 +86,11 @@ nothing about any material.
     interval of [1150, 1250] kg/m3; `density_table.json` and `density_edge_table.json`, density tables over
     temperature, the second with a declared edge at 273 K; `composition_components_partial.json`, an elemental
     composition.
-  - `plasma_fixture.json`, `conformance/plasma_fixture` 1.0.0, the one record written for this suite: the
-    water fixture's shape with its own id and name and a viscosity of 0.0012 Pa.s, so that two records of
-    different ids leave the same condition unstated.
+  - written for this suite: `plasma_fixture.json`, `conformance/plasma_fixture` 1.0.0, the water fixture's
+    shape with its own id and name and a viscosity of 0.0012 Pa.s, so that two records of different ids leave
+    the same condition unstated; and `glycerol_review_reviewed.json`, the glycerol fixture with its review
+    completed as a writer records one (who, their ORCID, the date, their independence, the checklist) and
+    glycerol's hash, since a review lies outside it, so that a reviewed value is `met`.
 - **The declarations**, one per file, named after the case and variant (`bc048_json_array.json`). A refusal
   case's is one base declaration with the arm's fault planted. The base: the consumer `conformance_consumer`
   1.0.0; operating conditions of 310.15 K and 50 to 500 1/s; one model, `drag` 1.0.0, checked over the water
@@ -110,10 +115,20 @@ nothing about any material.
   field, so only an accepted difference, with no location or covering a section, reaches two results: S7a-3's.
 - **A review added after a pin.** A review lies outside the content hash (`declarations.md` section 1 item
   11), so a pinned record's review can change while the pin holds; a case supplies one copy of a record, and
-  BC-049's files supply copies of the water fixture with the same hash and different reviews, one per file.
+  BC-049's files supply copies of the water and glycerol fixtures, each with its record's hash and its own
+  review, one per file.
 - **One refusal given twice.** Refusals are compared as a set, so a build that reports a refusal twice, where
   "Two faults with one case and one pointer are one refusal", passes every file. The build's property tests
   hold that rule.
+- **Seven faults of the build, beyond the declarations here.** S7a-2's property tests (HP43 to HP46) are to
+  hold these over drawn declarations: `unused` naming every acceptance after the first model; one set of used
+  acceptances shared by every model; a model's reason covered by another model's acceptance; `not_reviewed`
+  given to a result that holds no `provenance`; `not_reviewed` making the status `unknown` over a read's
+  `not_met`; an acceptance located at a record by its `id` alone; and a waiver that covers no reason carrying
+  an `alternative`. Six of them each fail the arm written for it here (`BC-053.unused_per_model` the first
+  two, `BC-010.each_model_judged_by_its_own_acceptances`, `BC-049.absent_record_gives_no_not_reviewed`,
+  `BC-016.waiver_at_another_copy_of_the_record` and `BC-016.waiver_covers_each_alternatives_reason`); the
+  fifth fails no file, since no file requires a review of a `not_met` result that carries a value.
 - **The claims' other side.** BC-051's files hold for a build that does not claim the suite each names; what a
   build claiming it gives comes with that suite's cases.
 - **BC-040's refusals.** The engine arms compare BC-051's refusals alone; item 7's are BC-040's own cases.
@@ -126,26 +141,28 @@ on, checked against the text, and was then checked by:
 - the case schema (`schema/0.1/case.json`), every file; the reference reader
   (`tests/conformance/reference_reader.py`), every input read alike, the one that is not JSON refused alike;
   every record's hash recomputed by two RFC 8785 implementations, and every pin of a record in a declaration;
-  the plasma fixture validated against the writer schema;
+  the two records written here validated against the writer schema;
 - a build written from `declarations.md` sections 1, 2 and 4 alone, over a read written from the text alone
   (`read_side_contract.md`, with `provenance.md` section 2 item 6 and `record_format.md` sections 4.1 and 6
   where it rests on them), which agrees with every file under the claims it states; that read agrees with
   every one of the 165 plain-read case files over this suite's fixtures that it takes;
-- a control per arm, the arm's declaration with the one thing it tests removed, or, for three result arms,
+- a control per arm, the arm's declaration with the one thing it tests removed, or, for five result arms,
   the records it is read over changed (the review completed or not, the record supplied or not), which gives
   that build another answer; for the one arm whose point is a refusal not given (an `accepted_difference` with
-  no location), a seeded fault of that build which the arm catches instead; 42 more arms also carry a seeded
+  no location), a seeded fault of that build which the arm catches instead; 47 more arms also carry a seeded
   fault each catches. Two pairs of files share a declaration, its records and its answer, and differ in their
   controls, each testing its own rule on the same build: `BC-006.waived_unknown_stays_unknown` (its control
   drops the waiver: the status does not move) and `BC-028.one_model_one_record` (its control renames the
   model: the result names it), and `BC-010.all_accepted` (its control drops one model's waiver: the verdict
   follows every model) and `BC-028.two_models_over_one_record` (its control drops the second model: each
   result names its own);
-- 76 seeded faults of that build, each of which some file catches: among them a waiver covering a reason
-  section 4.2 does not list, or ignoring its condition, code, field or record; an implied condition counted
-  applied though it filled nothing; `accepted_by` without what the read applied; the status raised when
-  accepted; the label checked against the result's labels, or on no stored value; `not_reviewed` not given;
-  every record of the store read; a field with no requirement read;
+- 82 seeded faults of that build, each of which some file catches: among them a waiver covering a reason
+  section 4.2 does not list, or ignoring its condition, code, field or record, or a reason that carries an
+  `alternative`; an acceptance located by `id` alone; an implied condition counted applied though it filled
+  nothing; `accepted_by` without what the read applied; the status raised when accepted; a model's reason
+  covered by another model's acceptance; `unused` not kept per model; the label checked against the result's
+  labels, or on no stored value; `not_reviewed` not given, or given to a result with no `provenance`; every
+  record of the store read; a field with no requirement read;
 - a draft schema of the declaration, against which every declaration a result case expects to pass, and every
   control that passes its own check, is valid, and every refused declaration invalid, except those whose rule
   a schema cannot state (a name given twice by a member's value, a field against `reads`, a location against

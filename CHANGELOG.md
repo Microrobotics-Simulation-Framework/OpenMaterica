@@ -113,23 +113,28 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ### Verification
 - S7a-2's build-check case files (S7-cases-2; the S7 design's section 5.4, its S7a-2 rows), written through the
-  case tools from the text alone, by a pass shown no implementation: 51 files of a declaration over records that
+  case tools from the text alone, by a pass shown no implementation: 57 files of a declaration over records that
   passes its own check, each expecting the build's results and the acceptances it leaves unused: BC-001 (3),
-  BC-002 (3), BC-003 (2), BC-006 (3), BC-009 (5), BC-010 (3), BC-016 (5), BC-017 (4), BC-019 (4), BC-020 (4),
-  BC-027 (3), BC-028 (2), BC-038 (4), BC-049 (4) and BC-053 (2). Of the design's 59, BC-050's six label-trust
+  BC-002 (3), BC-003 (2), BC-006 (3), BC-009 (5), BC-010 (4), BC-016 (7), BC-017 (4), BC-019 (4), BC-020 (4),
+  BC-027 (3), BC-028 (2), BC-038 (4), BC-049 (6) and BC-053 (3). Of the design's 59, BC-050's six label-trust
   files are ruled to come after 0.1.0.dev4, and one arm of BC-053, an acceptance used by two results, is left out:
-  over records an acceptance is located at one record and names one field, so it cannot arise before S7a-3. Each
+  over records an acceptance is located at one record and names one field, so it cannot arise before S7a-3. Six
+  arms are added: five where a seeded fault of the build that no other file caught showed one was needed (an
+  acceptance located by `id` alone, a waiver skipping a reason that carries an `alternative`, `not_reviewed` on a
+  result with no `provenance`, a model's reason covered by another model's acceptance, `unused` not kept per
+  model), and BC-049's reviewed value that is `met`. Each
   result is keyed by model, record and field and compares its status, reasons, value, `assumption`, `accepted`,
   `accepted_by` and `not_accepted` (BC-049's also its `provenance`, BC-003's also every member of a read, each
   absent); no file compares watches, which are S7a-4's. The records are fourteen plain-read inputs, byte for byte,
-  and one new fixture, `plasma_fixture.json`. Every file is S7a-2's and not yet runnable. With them, PR-330's arm
+  and two new fixtures, `plasma_fixture.json` and `glycerol_review_reviewed.json`. Every file is S7a-2's and not
+  yet runnable. With them, PR-330's arm
   of a requirement holding `review` (`PR-330.review_in_requirement`), refused at step 0, which S2a-2's step 0
   runs, and passes. A build written from the text alone, over a read written from it that agrees with the 165
   plain-read case files over these fixtures that it takes, agrees with every file; each arm's control, its
-  declaration with the one thing it tests removed (for three, the records changed), gives that build another
-  answer; each of 76 seeded faults of that build fails at least one file. `CASES.md`'s column of a build-check
+  declaration with the one thing it tests removed (for five, the records changed), gives that build another
+  answer; each of 82 seeded faults of that build fails at least one file. `CASES.md`'s column of a build-check
   case writes its results and unused acceptances, and the runner's case file holds `compare.result_members`. 1181
-  of 1625 case files pass, 35 are verified against the reference evaluator, and 409 are not yet runnable.
+  of 1631 case files pass, 35 are verified against the reference evaluator, and 415 are not yet runnable.
 - S7a-1's build-check case files (S7-cases-1; the S7 design's section 5.4, its S7a-1 rows), written through the
   case tools from the text alone, by a pass shown no implementation: 51 files of a declaration checked on its own
   and refused at build, in a new suite, `build_checks/`, with its `CASES.md` and `README.md`: BC-004 (3), BC-005

@@ -1,0 +1,61 @@
+{
+  "case": "BC-049",
+  "variant": "absent_record_gives_no_not_reviewed",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_fixture.json"
+    ],
+    "declaration": "bc049_absent_record_gives_no_not_reviewed.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/plasma_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:b1f42e0a1770b14e3e5a2e64060b1055f4c49e08814c949634a3463e545415a4"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "not_met",
+        "reasons": [
+          {
+            "code": "absent"
+          }
+        ],
+        "accepted": false,
+        "accepted_by": [],
+        "not_accepted": [
+          {
+            "code": "absent"
+          }
+        ]
+      }
+    ],
+    "unused": []
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted",
+      "provenance"
+    ],
+    "exact": true
+  }
+}

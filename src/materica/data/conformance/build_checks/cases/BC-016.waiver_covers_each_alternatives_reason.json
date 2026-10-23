@@ -1,0 +1,72 @@
+{
+  "case": "BC-016",
+  "variant": "waiver_covers_each_alternatives_reason",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_two_constant_alternatives.json"
+    ],
+    "declaration": "bc016_waiver_covers_each_alternatives_reason.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:51895f5ad03d80773e5374fd118e028653a1bf665edf7cfdb8dbcdbd758aeb38"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "no_pick"
+          },
+          {
+            "code": "condition_unstated",
+            "condition": "test_method",
+            "alternative": 0
+          },
+          {
+            "code": "condition_unstated",
+            "condition": "test_method",
+            "alternative": 1
+          }
+        ],
+        "accepted": false,
+        "accepted_by": [
+          0
+        ],
+        "not_accepted": [
+          {
+            "code": "no_pick"
+          }
+        ]
+      }
+    ],
+    "unused": []
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}
