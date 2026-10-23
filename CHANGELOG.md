@@ -156,6 +156,13 @@ every family entry goes in `families/CHANGELOG.md`.
   `model`, location and `field` alone. A refusal case, which compares results and expects none, names none.
 
 ### Verification
+- The measurements a property piece makes before review run on CI as a matrix (maintainer, 2026-10-23), with
+  the counts and judgement of a local run: `scripts/measure.py` (floors at the variance measured, kill drift over
+  streams, regions of a base against the head with every mutant search's kill, a fuzz control's rate), run alike
+  here at a small scale and as the jobs of `.github/workflows/measure.yml`, dispatched by hand; each job keeps a
+  record, and a summary counts them before it merges them into one table a kind. A pull request that changes the
+  workflow or its script runs its self-test, each kind with the answer it must give. `pre_review.py --stage
+  whole` runs every test of the tree but the property modules, which CI runs in its shards.
 - S7a-2's build-check case files (S7-cases-2; the S7 design's section 5.4, its S7a-2 rows), written through the
   case tools from the text alone, by a pass shown no implementation: 57 files of a declaration over records that
   passes its own check, each expecting the build's results and the acceptances it leaves unused: BC-001 (3),
