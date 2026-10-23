@@ -1,0 +1,235 @@
+# The measurements a property piece makes before review, run as a matrix of jobs on CI rather than one after
+# another on the shared laptop (maintainer, 2026-10-23): floors at the variance measured, the kills' drift over
+# streams, regions of a base against the head, and a fuzz control's rate. The runs, their counts and their
+# judgement are the repository's own; only the machine changes. Dispatched by hand; tests/README.md,
+# "Measurements on CI", says how to ask for one and how to read its table. A pull request that changes this
+# workflow or its script runs the self-test instead (`SELF_TEST` in scripts/measure.py), each kind at its rule's
+# count on one small selection, with the answer it must give: GitHub dispatches a workflow only from the default
+# branch's copy of it, so a draft could not run its own workflow otherwise.
+# Every input is checked by the request job, and the jobs after it read the checked values alone; each reaches
+# its steps through the environment, never through a script's text. tests/unit/test_ci_workflows.py holds each
+# of these.
+
+name: Measure
+
+run-name: "${{ github.event_name == 'pull_request' && 'Measure: the self-test' || format('Measure {0} of {1}', inputs.kind, inputs.selection) }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: What to measure
+        type: choice
+        options: [floors, drift, regions, fuzz]
+        default: floors
+      selection:
+        description: "Paths or nodes under tests/property, space-separated (floors, regions: property tests; drift: mutant searches); for fuzz, controls of scripts/measure.py's CONTROLS, each alone or as NAME:none"
+        type: string
+        required: true
+      count:
+        description: "Streams (floors, drift, regions) or runs (fuzz); empty for the rule's: 20, 40, 18, 10"
+        type: string
+        default: ""
+      per_job:
+        description: "Streams a job (floors, drift, regions); empty for all of a test function's in one job"
+        type: string
+        default: ""
+      base:
+        description: "regions: the base, a branch, tag or commit of the repository"
+        type: string
+        default: main
+      python:
+        description: The Python (fuzz runs on 3.14, Atheris's)
+        type: choice
+        options: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        default: "3.15"
+  pull_request:
+    paths:
+      - .github/workflows/measure.yml
+      - scripts/measure.py
+
+# A dispatch waits while another of the same inputs runs on the same ref; one of other inputs runs beside it.
+# None is cancelled, and `queue: max` keeps those pending in order (repeat.yml says why).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.kind }}-${{ inputs.selection }}-${{ inputs.count }}-${{ inputs.per_job }}-${{ inputs.base }}-${{ inputs.python }}
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.13.0"
+
+# Under bash with `-eo pipefail`, as every workflow here (ci.yml says why).
+defaults:
+  run:
+    shell: bash
+
+# On ubuntu-24.04, as every job of every workflow here (ci.yml says why, above its jobs).
+jobs:
+  request:
+    name: the request, checked
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      matrix: ${{ steps.jobs.outputs.matrix }}
+      max_parallel: ${{ steps.cap.outputs.max_parallel }}
+    steps:
+      # The whole history, so that a base names a commit the jobs can export.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # The only step that reads an input (scripts/measure.py, `request`, says what it refuses), on the runner's
+      # Python; on a pull request, the self-test.
+      - name: The inputs, checked
+        id: checked
+        env:
+          EVENT: ${{ github.event_name }}
+          KIND: ${{ inputs.kind }}
+          SELECTION: ${{ inputs.selection }}
+          COUNT: ${{ inputs.count }}
+          PER_JOB: ${{ inputs.per_job }}
+          BASE: ${{ inputs.base }}
+          PYTHON_VERSION: ${{ inputs.python }}
+        run: python3 scripts/measure.py request
+      # The uv cache CI saved is restored, and none is saved: no other run reads what this workflow writes.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ steps.checked.outputs.python }}
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # pytest collects the selection at `ci`, and the script keeps what the kind measures (property tests, or
+      # mutant searches), one job a test function and chunk of streams, and resolves the base to its commit:
+      # a selection that holds none, a base that is no commit, or more jobs than a matrix holds fail here,
+      # before any job starts.
+      - name: The selection, as jobs
+        id: jobs
+        env:
+          KIND: ${{ steps.checked.outputs.kind }}
+          SELECTION: ${{ steps.checked.outputs.selection }}
+          COUNT: ${{ steps.checked.outputs.count }}
+          PER_JOB: ${{ steps.checked.outputs.per_job }}
+          BASE: ${{ steps.checked.outputs.base }}
+          PYTHON: ${{ steps.checked.outputs.python }}
+        run: uv run --locked python scripts/measure.py matrix
+      # The jobs' cap, as ci.yml's gate checks the per-commit jobs' (its step says why): a whole number from 1
+      # to 20, or no job starts. The value it took is the request job's output `max_parallel`, the only place
+      # the jobs read it.
+      - name: The cap of jobs at once is a whole number from 1 to 20
+        id: cap
+        env:
+          VARIABLE: MEASURE_MAX_PARALLEL
+          MAX_PARALLEL: ${{ vars.MEASURE_MAX_PARALLEL || '10' }}
+        run: |
+          if [[ ! "$MAX_PARALLEL" =~ ^([123456789]|1[0123456789]|20)$ ]]; then
+            printf -v shown '%q' "$MAX_PARALLEL"
+            echo "::error title=Runner cap::the repository variable $VARIABLE is $shown, not a whole number from 1 to 20: set it to one, or delete it for the workflow's default"
+            exit 1
+          fi
+          echo "max_parallel=$MAX_PARALLEL" >> "$GITHUB_OUTPUT"
+          echo "$VARIABLE: at most $MAX_PARALLEL jobs at once"
+
+  measure:
+    name: ${{ matrix.job.id }}
+    needs: request
+    runs-on: ubuntu-24.04
+    # A fuzz job is one run of up to 900 s with its corpus written first; another job a test function's
+    # streams, split among a worker per vCPU. The measurement is interrupted three minutes before this, counted
+    # from the job's start, so that the job keeps the record of what it measured.
+    timeout-minutes: ${{ matrix.job.kind == 'fuzz' && 30 || 120 }}
+    env:
+      JOB_MINUTES: ${{ matrix.job.kind == 'fuzz' && 30 || 120 }}
+    # At most MEASURE_MAX_PARALLEL jobs at once, a repository variable, 10 where it is unset, as the request job
+    # checks it and gives it. A job that fails cancels no other, so that every job keeps its record.
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.request.outputs.max_parallel) }}
+      matrix:
+        job: ${{ fromJSON(needs.request.outputs.matrix) }}
+    steps:
+      - name: The job's start
+        id: started
+        run: echo "at=$(date +%s)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ matrix.job.python }}
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: uv.lock
+      - name: The environment, with Atheris for a fuzz job
+        env:
+          KIND: ${{ matrix.job.kind }}
+        run: |
+          if [ "$KIND" = fuzz ]; then
+            uv sync --locked --group fuzz
+          else
+            uv sync --locked
+          fi
+      # The script checks the job again and runs it: a base exported from its commit into an environment of
+      # its own; pytest with the script as its plugin, a process per vCPU, each a share of the streams; or one
+      # run of a fuzz control as ci.yml's control step runs it. `timeout --foreground --signal=INT` interrupts it
+      # three minutes before the job's timeout; the script passes the interrupt on to its pytest processes and
+      # writes the record of what finished.
+      - name: The measurement
+        id: run
+        env:
+          JOB: ${{ toJSON(matrix.job) }}
+          JOB_STARTED: ${{ steps.started.outputs.at }}
+        run: |
+          left=$((JOB_STARTED + (JOB_MINUTES - 3) * 60 - $(date +%s)))
+          uv run --locked timeout --foreground --signal=INT "${left}s" python scripts/measure.py job "$RUNNER_TEMP/record"
+      # Under a name of each job's and each attempt's own; the report refuses any attempt but the first.
+      - name: Keep the record
+        if: always() && steps.run.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: record-${{ matrix.job.id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/record
+          if-no-files-found: error
+          retention-days: 90
+
+  report:
+    name: the table
+    needs: [request, measure]
+    # After every job, whatever their outcome, once the request was checked.
+    if: always() && needs.request.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fetch the records
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: record-*
+          path: ${{ runner.temp }}/records
+      # The records counted first, one for each job of the matrix (a missing one named as that), then merged
+      # into one table a kind, on the run's page and kept as an artifact; fails where a record is missing or
+      # duplicated, a job failed, a self-test job gave another answer than its own, or the run is not on its
+      # first attempt (scripts/measure.py, `summary`). To measure again, dispatch anew.
+      - name: The table
+        id: table
+        env:
+          MATRIX: ${{ needs.request.outputs.matrix }}
+          RESULT: ${{ needs.measure.result }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: python3 scripts/measure.py summary "$RUNNER_TEMP/records" "$RUNNER_TEMP/table"
+      - name: Keep the table
+        if: always() && steps.table.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: measure-table-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/table
+          if-no-files-found: error
+          retention-days: 90

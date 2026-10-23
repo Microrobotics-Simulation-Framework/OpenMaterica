@@ -29,7 +29,7 @@ from typing import Any, NamedTuple, cast
 import pytest
 import yaml
 
-from scripts import check_confidential, mutant_runs, repeat_runs, schema_index
+from scripts import check_confidential, measure, mutant_runs, repeat_runs, schema_index
 from tests import partition
 from tests.conftest import SHARDS
 from tests.unit.test_report_test_durations import INTERRUPT_AS_CI
@@ -167,7 +167,15 @@ def starts_with(text: object, prefix: object) -> bool:
     return as_text(text).casefold().startswith(as_text(prefix).casefold())
 
 
-FUNCTIONS: dict[str, Callable[..., object]] = {"fromJSON": from_json, "startsWith": starts_with}
+def to_json(value: object) -> str:
+    return json.dumps(value, indent=2)
+
+
+FUNCTIONS: dict[str, Callable[..., object]] = {
+    "fromJSON": from_json,
+    "startsWith": starts_with,
+    "toJSON": to_json,
+}
 
 
 def as_number(value: object) -> float:
@@ -4031,6 +4039,7 @@ CAPS = (
     Cap("ci.yml", "site_commit", "gate", "per_commit_max_parallel", "PER_COMMIT_MAX_PARALLEL", "6"),
     Cap("repeat.yml", "runs", "request", "max_parallel", "REPEAT_MAX_PARALLEL", "10"),
     Cap("mutants.yml", "mutants", "request", "max_parallel", "MUTANT_MAX_PARALLEL", "10"),
+    Cap("measure.yml", "measure", "request", "max_parallel", "MEASURE_MAX_PARALLEL", "10"),
 )
 # Values of a cap's variable the check takes, beside its being unset, and values it refuses: out of range;
 # written otherwise than plainly as a whole number, which fromJSON may still parse (`6.0`, `1e1`, ` 6`); not a
@@ -4889,7 +4898,7 @@ def test_the_table_check_can_fail(old: str, new: str, problem: str) -> None:
 # pytest, which records what each run was given and fails the seeds it is told to.
 REPEAT = "repeat.yml"
 # The workflows run by hand alone, which the safety check holds to the others' pins.
-BY_HAND = (REPEAT, "mutants.yml")
+BY_HAND = (REPEAT, "mutants.yml", "measure.yml")
 CHECK_STEP, COLLECT_STEP = "The inputs, checked", "The node collects a test"
 RUNS_STEP, KEEP_STEP = "Run the node under each seed", "Keep the records"
 FETCH_STEP, SUM_STEP = "Fetch the records", "Sum the runs"
@@ -9353,3 +9362,452 @@ def test_the_kill_points_step_fails_unless_it_has_the_report_of_every_part(
     status, arguments = kill_points_run(tmp_path, reports=reports, parts=4)
     assert status == 1
     assert arguments == []
+
+
+# --- measure.yml ------------------------------------------------------------------------------------------
+
+MEASURE = "measure.yml"
+# The files whose change runs the workflow's self-test on a pull request: its own two.
+MEASURE_OWN = (".github/workflows/measure.yml", "scripts/measure.py")
+MEASURE_INPUTS = ("kind", "selection", "count", "per_job", "base", "python")
+MEASURE_CHECK, MEASURE_JOBS, MEASURE_RUN = "The inputs, checked", "The selection, as jobs", "The measurement"
+MEASURE_KEEP, MEASURE_FETCH, MEASURE_TABLE = "Keep the record", "Fetch the records", "The table"
+MEASURE_HEADING = "## Measurements (`measure.yml`)"
+
+
+def measure_trigger_problems(found: Workflow) -> list[str]:
+    """Where the workflow runs on anything but a dispatch by hand of its inputs, or a pull request that
+    changes its own files alone (its self-test)."""
+    triggers = dispatch(found)
+    problems = (
+        [] if set(triggers) == {"workflow_dispatch", "pull_request"} else [f"runs on {sorted(triggers)}"]
+    )
+    pull = cast(dict[str, Any], triggers.get("pull_request") or {})
+    if list(pull) != ["paths"] or not pull["paths"] or not set(pull["paths"]) <= set(MEASURE_OWN):
+        problems.append(f"a pull request runs it beyond its own files: {pull!r}")
+    dispatched = cast(dict[str, Any], triggers.get("workflow_dispatch") or {})
+    inputs = cast(dict[str, Any], dispatched.get("inputs", {}))
+    if tuple(inputs) != MEASURE_INPUTS:
+        problems.append(f"its inputs are {list(inputs)}")
+    if inputs.get("kind", {}).get("options") != list(measure.REQUESTABLE):
+        problems.append(f"its kinds are {inputs.get('kind', {}).get('options')}")
+    if inputs.get("python", {}).get("options") != list(measure.PYTHONS):
+        problems.append(f"its Pythons are {inputs.get('python', {}).get('options')}")
+    return problems
+
+
+def a_push_too_measured(found: Workflow) -> None:
+    dispatch(found)["push"] = {}
+
+
+def every_pull_request(found: Workflow) -> None:
+    dispatch(found)["pull_request"] = {}
+
+
+def a_pull_request_of_the_source(found: Workflow) -> None:
+    dispatch(found)["pull_request"]["paths"].append("src/**")
+
+
+def another_input(found: Workflow) -> None:
+    dispatch(found)["workflow_dispatch"]["inputs"]["profile"] = {"type": "string"}
+
+
+def a_kind_more(found: Workflow) -> None:
+    dispatch(found)["workflow_dispatch"]["inputs"]["kind"]["options"].append("cuts")
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (None, ""),
+        (a_push_too_measured, "runs on ['pull_request', 'push', 'workflow_dispatch']"),
+        (every_pull_request, "a pull request runs it beyond its own files: {}"),
+        (a_pull_request_of_the_source, "beyond its own files"),
+        (another_input, "its inputs are"),
+        (a_kind_more, "its kinds are"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_measure_workflow_runs_by_hand_or_on_a_change_to_itself(
+    fault: Callable[[Workflow], None] | None, problem: str
+) -> None:
+    found = workflow(MEASURE)
+    if fault is not None:
+        fault(found)
+    problems = measure_trigger_problems(found)
+    assert (problems == []) if not problem else any(problem in line for line in problems), problems
+    assert measure.PYTHONS == repeat_runs.PYTHONS
+
+
+def a_secret_measured(found: Workflow) -> None:
+    step(found["jobs"]["measure"], MEASURE_RUN)["env"]["TOKEN"] = "${{ secrets.CONFIDENTIAL_SCAN_KEY }}"
+
+
+def the_measure_uv_cache_saved(found: Workflow) -> None:
+    del found["jobs"]["measure"]["steps"][2]["with"]["save-cache"]
+
+
+def the_measure_token_kept(found: Workflow) -> None:
+    del found["jobs"]["request"]["steps"][0]["with"]["persist-credentials"]
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (None, ""),
+        (written_permissions, "measure.yml has the permissions {'contents': 'write'}"),
+        (a_secret_measured, "measure.yml reads secrets"),
+        (the_measure_uv_cache_saved, "measure saves the uv cache"),
+        (the_measure_token_kept, "request keeps the token in its checkout"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_measure_workflow_reads_and_writes_nothing_beyond_its_own_run(
+    fault: Callable[[Workflow], None] | None, problem: str
+) -> None:
+    found = workflow(MEASURE)
+    if fault is not None:
+        fault(found)
+    problems = safety_problems(found, workflows(), MEASURE)
+    assert (problems == []) if not problem else any(problem in line for line in problems), problems
+
+
+MEASURE_REQUESTED = {
+    "kind": "floors",
+    "selection": measure.SELF_TEST[0][1],
+    "count": "1",
+    "per_job": "",
+    "base": "main",
+    "python": "3.15",
+}
+MEASURE_DISPATCHED = {"github.ref": "refs/heads/a", "github.run_id": "1"} | {
+    f"inputs.{name}": value for name, value in MEASURE_REQUESTED.items()
+}
+MEASURE_DIFFERING = {
+    "github.ref": "refs/heads/b",
+    "inputs.kind": "drift",
+    "inputs.selection": "tests/property",
+    "inputs.count": "2",
+    "inputs.per_job": "1",
+    "inputs.base": "other",
+    "inputs.python": "3.11",
+}
+
+
+def measure_concurrency_problems(found: Workflow) -> list[str]:
+    """Where two dispatches of one request on one ref could run at once, or a dispatch could cancel another or
+    wait behind another request."""
+    settings = cast(dict[str, object], found.get("concurrency") or {})
+    context = MEASURE_DISPATCHED | {"github.workflow": found["name"]}
+    problems: list[str] = []
+    if truthy(setting(settings.get("cancel-in-progress", False), context)):
+        problems.append("a dispatch cancels the one running in its group")
+    if settings.get("queue") != "max":
+        problems.append(PENDING_CANCELLED)
+    group = setting(settings.get("group"), context)
+    if group in (None, "") or setting(settings.get("group"), context | {"github.run_id": "2"}) != group:
+        problems.append("two dispatches of one request on one ref do not share a group")
+    problems += [
+        f"a dispatch of another {key} shares the group {group!r}"
+        for key, value in MEASURE_DIFFERING.items()
+        if setting(settings.get("group"), context | {key: value}) == group
+    ]
+    return problems
+
+
+@pytest.mark.parametrize(
+    ("concurrency", "problem"),
+    [
+        ("as written", ""),
+        ({"group": "${{ github.workflow }}-${{ github.ref }}", "queue": "max"}, "another inputs.kind shares"),
+        ({"group": "${{ github.workflow }}-${{ github.run_id }}", "queue": "max"}, "do not share a group"),
+        ({"group": "${{ github.workflow }}", "cancel-in-progress": True}, "cancels the one running"),
+        ("no queue", PENDING_CANCELLED),
+    ],
+    ids=["as-written", "a-group-per-ref", "a-group-per-run", "cancelling", "no-queue"],
+)
+def test_a_measure_dispatch_waits_only_behind_one_of_the_same_request(
+    concurrency: object, problem: str
+) -> None:
+    found = workflow(MEASURE)
+    if concurrency == "no queue":
+        del found["concurrency"]["queue"]
+    elif concurrency != "as written":
+        found["concurrency"] = concurrency
+    problems = measure_concurrency_problems(found)
+    assert (problems == []) if not problem else any(problem in line for line in problems), problems
+
+
+def measure_wiring_problems(found: Workflow) -> list[str]:
+    """Where the jobs are not the request, the matrix of measurements and the report as the README says:
+    a job's failure cancelling another, a record not kept whatever the job's outcome or under a name of its
+    own attempt, the report not run after every job or reading another matrix, result or attempt, a step
+    carrying on after a failure, or an input read anywhere but the check, the run's name and the group."""
+    jobs = found["jobs"]
+    problems = [] if list(jobs) == ["request", "measure", "report"] else [f"the jobs are {list(jobs)}"]
+    job, summary = jobs["measure"], jobs["report"]
+    expected = {
+        "request outputs": (
+            jobs["request"]["outputs"],
+            {"matrix": "${{ steps.jobs.outputs.matrix }}", "max_parallel": CAP_OUTPUT},
+        ),
+        "measure needs": (job.get("needs"), "request"),
+        "fail-fast": (job["strategy"].get("fail-fast"), False),
+        "the matrix": (
+            job["strategy"].get("matrix"),
+            {"job": "${{ fromJSON(needs.request.outputs.matrix) }}"},
+        ),
+        "the record kept": (step(job, MEASURE_KEEP).get("if"), "always() && steps.run.outcome != 'skipped'"),
+        "the record's name": (
+            step(job, MEASURE_KEEP)["with"].get("name"),
+            "record-${{ matrix.job.id }}-${{ github.run_attempt }}",
+        ),
+        "a record kept": (step(job, MEASURE_KEEP)["with"].get("if-no-files-found"), "error"),
+        "report needs": (summary.get("needs"), ["request", "measure"]),
+        "report runs": (condition(summary), "always() && needs.request.result == 'success'"),
+        "records fetched": (step(summary, MEASURE_FETCH)["with"].get("pattern"), "record-*"),
+        "the table's env": (
+            step(summary, MEASURE_TABLE).get("env"),
+            {
+                "MATRIX": "${{ needs.request.outputs.matrix }}",
+                "RESULT": "${{ needs.measure.result }}",
+                "ATTEMPT": "${{ github.run_attempt }}",
+            },
+        ),
+    }
+    problems += [
+        f"{what}: {value!r}, not {wanted!r}" for what, (value, wanted) in expected.items() if value != wanted
+    ]
+    problems += [
+        f"{job_id} carries on after a failure"
+        for job_id, each in jobs.items()
+        if "continue-on-error" in each
+        or any("continue-on-error" in found_step for found_step in each["steps"])
+    ]
+    check = str(jobs["request"]["steps"].index(step(jobs["request"], MEASURE_CHECK)))
+    problems += [
+        f"an input is read at {'.'.join(at)}"
+        for at, text in places(found)
+        if INPUT.search(text)
+        and at[0] not in ("run-name", "concurrency", "True")
+        and at[:5] != ("jobs", "request", "steps", check, "env")
+    ]
+    return problems
+
+
+def a_failure_cancelling(found: Workflow) -> None:
+    found["jobs"]["measure"]["strategy"]["fail-fast"] = True
+
+
+def the_report_after_success_alone(found: Workflow) -> None:
+    found["jobs"]["report"]["if"] = "needs.request.result == 'success'"
+
+
+def a_measure_record_kept_on_success_alone(found: Workflow) -> None:
+    del step(found["jobs"]["measure"], MEASURE_KEEP)["if"]
+
+
+def the_attempt_left_out(found: Workflow) -> None:
+    step(found["jobs"]["measure"], MEASURE_KEEP)["with"]["name"] = "record-${{ matrix.job.id }}"
+
+
+def another_result_read(found: Workflow) -> None:
+    step(found["jobs"]["report"], MEASURE_TABLE)["env"]["RESULT"] = "success"
+
+
+def a_measurement_carrying_on(found: Workflow) -> None:
+    step(found["jobs"]["measure"], MEASURE_RUN)["continue-on-error"] = True
+
+
+def an_input_in_the_measurement(found: Workflow) -> None:
+    step(found["jobs"]["measure"], MEASURE_RUN)["env"]["KIND"] = "${{ inputs.kind }}"
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (None, ""),
+        (a_failure_cancelling, "fail-fast: True"),
+        (the_report_after_success_alone, "report runs"),
+        (a_measure_record_kept_on_success_alone, "the record kept: None"),
+        (the_attempt_left_out, "the record's name"),
+        (another_result_read, "the table's env"),
+        (a_measurement_carrying_on, "measure carries on after a failure"),
+        (an_input_in_the_measurement, "an input is read at jobs.measure.steps"),
+    ],
+    ids=lambda value: value.__name__ if callable(value) else None,
+)
+def test_the_measure_jobs_are_wired_as_the_readme_says(
+    fault: Callable[[Workflow], None] | None, problem: str
+) -> None:
+    found = workflow(MEASURE)
+    if fault is not None:
+        fault(found)
+    problems = measure_wiring_problems(found)
+    assert (problems == []) if not problem else any(problem in line for line in problems), problems
+
+
+def measure_timeout_problems(found: Workflow) -> list[str]:
+    """Where a job has no timeout, or the measurement is not interrupted three minutes before its job's, as
+    counted from the job's start, by one SIGINT to the script that passes it on."""
+    job = found["jobs"]["measure"]
+    problems = [
+        f"{job_id} has no timeout" for job_id, each in found["jobs"].items() if "timeout-minutes" not in each
+    ]
+    minutes = {kind: setting(job.get("timeout-minutes"), {"matrix.job.kind": kind}) for kind in measure.KINDS}
+    if minutes != {kind: 30 if kind == "fuzz" else 120 for kind in measure.KINDS}:
+        problems.append(f"the jobs' minutes are {minutes}")
+    if job.get("env", {}).get("JOB_MINUTES") != job.get("timeout-minutes"):
+        problems.append("JOB_MINUTES is not the job's timeout")
+    if job["steps"][0].get("run") != 'echo "at=$(date +%s)" >> "$GITHUB_OUTPUT"':
+        problems.append("the job's first step does not note its start")
+    run = step(job, MEASURE_RUN)
+    if run.get("env", {}).get("JOB_STARTED") != "${{ steps.started.outputs.at }}":
+        problems.append("the interrupt is not counted from the job's start")
+    for text in (
+        "left=$((JOB_STARTED + (JOB_MINUTES - 3) * 60 - $(date +%s)))",
+        'timeout --foreground --signal=INT "${left}s" python scripts/measure.py job',
+    ):
+        if text not in run["run"]:
+            problems.append(f"the measurement lacks {text!r}")
+    return problems
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "problem"),
+    [
+        ("", "", ""),
+        ("(JOB_MINUTES - 3)", "(JOB_MINUTES - 0)", "the measurement lacks"),
+        ('timeout --foreground --signal=INT "${left}s"', 'timeout "${left}s"', "the measurement lacks"),
+        ("'fuzz' && 30 || 120 }}\n    env", "'fuzz' && 30 || 360 }}\n    env", "the jobs' minutes"),
+    ],
+)
+def test_the_measurement_is_interrupted_before_its_jobs_timeout(old: str, new: str, problem: str) -> None:
+    text = (WORKFLOWS / MEASURE).read_text(encoding="utf-8")
+    assert text.count(old) >= 1
+    found: Workflow = yaml.safe_load(text.replace(old, new, 1) if old else text)
+    problems = measure_timeout_problems(found)
+    assert (problems == []) if not problem else any(problem in line for line in problems), problems
+
+
+def test_the_workflows_readme_names_the_jobs_of_the_measure_workflow() -> None:
+    readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
+    assert repeat_table_problems(readme, workflow(MEASURE), MEASURE_HEADING) == []
+    assert repeat_table_problems(
+        readme.replace("| `measure` |", "| `jobs` |"), workflow(MEASURE), MEASURE_HEADING
+    )
+
+
+# A uv that runs what `uv run --locked` is given, with this Python as `python`.
+UV_RUN_LOCKED = """import os, sys
+arguments = sys.argv[1:]
+assert arguments[:2] == ["run", "--locked"], arguments
+os.execvp(arguments[2], arguments[2:])
+"""
+
+
+def measure_steps(
+    directory: Path, inputs: Mapping[str, str], event: str = "workflow_dispatch"
+) -> dict[str, Any]:
+    """The request job's steps and each measurement's, run as written on this repository, and the records
+    they wrote, under the runner's temporary directory in `directory`."""
+    found = workflow(MEASURE)
+    environment = runner(directory, UV_RUN_LOCKED)
+    (directory / "bin" / "python").write_text(
+        f'#!/bin/sh\nexec {shlex.quote(sys.executable)} "$@"\n', "utf-8"
+    )
+    (directory / "bin" / "python").chmod(0o755)
+    context: dict[str, object] = {f"inputs.{name}": value for name, value in inputs.items()}
+    context["github.event_name"] = event
+    request = found["jobs"]["request"]
+    status, checked, printed = run_step(
+        step(request, MEASURE_CHECK), context, REPOSITORY, environment, directory
+    )
+    if status != 0:
+        return {"status": status, "printed": printed}
+    context |= {f"steps.checked.outputs.{name}": value for name, value in checked.items()}
+    status, jobs, printed = run_step(step(request, MEASURE_JOBS), context, REPOSITORY, environment, directory)
+    assert status == 0, printed
+    records = directory / "records"
+    for each in json.loads(jobs["matrix"]):
+        job = found["jobs"]["measure"]
+        here = context | {
+            "matrix.job": each,
+            "matrix.job.kind": each["kind"],
+            "steps.started.outputs.at": "0",
+        }
+        minutes = as_text(setting(job["env"]["JOB_MINUTES"], here))
+        started = str(int(time.time()))
+        here["steps.started.outputs.at"] = started
+        status, _, printed = run_step(
+            step(job, MEASURE_RUN), here, REPOSITORY, environment | {"JOB_MINUTES": minutes}, directory
+        )
+        assert status == 0, printed
+        shutil.move(directory / "runner" / "record", records / f"record-{each['id']}-1")
+    return {"status": 0, "checked": checked, "matrix": jobs["matrix"], "records": records}
+
+
+def measure_table(
+    directory: Path, matrix: str, result: str = "success", attempt: str = "1"
+) -> tuple[int, str]:
+    context = {
+        "needs.request.outputs.matrix": matrix,
+        "needs.measure.result": result,
+        "github.run_attempt": attempt,
+    }
+    table = step(workflow(MEASURE)["jobs"]["report"], MEASURE_TABLE)
+    renamed = directory / "runner" / "records"
+    if not renamed.exists():
+        shutil.copytree(directory / "records", renamed)
+    status, _, printed = run_step(table, context, REPOSITORY, runner(directory, UV_RUN_LOCKED), directory)
+    return status, printed
+
+
+def test_the_measure_steps_as_written_measure_and_the_report_refuses_what_is_missing(tmp_path: Path) -> None:
+    ran = measure_steps(tmp_path, MEASURE_REQUESTED)
+    assert ran["checked"]["kind"] == "floors"
+    (job,) = json.loads(ran["matrix"])
+    assert (job["kind"], job["first"], job["length"]) == ("floors", 0, 1)
+    status, printed = measure_table(tmp_path, ran["matrix"])
+    assert status == 0, printed
+    assert "| `through_an_empty_word` | chances 0.1 |" in printed
+    assert (tmp_path / "runner" / "table" / "table.md").exists()
+    assert measure_table(tmp_path, ran["matrix"], result="failure")[0] == 1
+    assert measure_table(tmp_path, ran["matrix"], attempt="2")[0] == 1
+    records = tmp_path / "runner" / "records"
+    shutil.copytree(next(records.iterdir()), records / "record-again-1")
+    status, printed = measure_table(tmp_path, ran["matrix"])
+    assert (status, "2 records" in printed) == (1, True)
+    for each in list(records.iterdir()):
+        shutil.rmtree(each)
+    status, printed = measure_table(tmp_path, ran["matrix"])
+    assert (status, "no record" in printed) == (1, True)
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "problem"),
+    [
+        ("selection", "tests/property/test_missing.py", "names no file or directory"),
+        ("selection", "tests/property/x.py;touch ran", "not a path or node"),
+        ("count", "$(touch ran)", "not a whole number"),
+        ("kind", "cuts", "the kind 'cuts' is not one of"),
+    ],
+)
+def test_the_measure_request_refuses_an_input_before_any_job(
+    name: str, value: str, problem: str, tmp_path: Path
+) -> None:
+    ran = measure_steps(tmp_path, MEASURE_REQUESTED | {name: value})
+    assert ran["status"] == 1
+    assert "::error title=Measure::" in ran["printed"]
+    assert problem in ran["printed"], ran["printed"]
+    assert not (REPOSITORY / "ran").exists()
+
+
+def test_a_pull_request_asks_for_the_self_test(tmp_path: Path) -> None:
+    found = workflow(MEASURE)
+    environment = runner(tmp_path, UV_RUN_LOCKED)
+    context = {f"inputs.{name}": "" for name in MEASURE_INPUTS} | {"github.event_name": "pull_request"}
+    status, checked, _ = run_step(
+        step(found["jobs"]["request"], MEASURE_CHECK), context, REPOSITORY, environment, tmp_path
+    )
+    assert (status, checked["kind"]) == (0, "self")
