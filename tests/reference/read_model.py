@@ -54,11 +54,6 @@ OPEN_POINTS: Final[Mapping[str, str]] = {
         "extrapolation covers is set aside, kept or refusing by the text's rows of step 7 (S4d), and one "
         "read to step 13 stays or refuses as any form's"
     ),
-    "alternative_index_base": (
-        "an alternative's index, in an `alternative_values` entry and in a reason's `alternative`, counts "
-        "from zero, as `declarations.md` states of intervals and acceptances; no line of the text states a "
-        'base for alternatives (the nearest, a pick\'s `index` "not below zero", implies it for a pick)'
-    ),
     "evidence_entry_provenance": (
         "an evidence entry's `provenance` is returned holding, below the provenance table's own members, "
         "those the writer schema defines at every depth, a member it does not define left out, since the "
@@ -3269,7 +3264,7 @@ def read_alternatives(
     ]
     # read_side_contract.md:260-261 "The outcome is decided once every alternative is read"
     fates = [fate_of(one) for one in reads]
-    # Open point: alternative_index_base.
+    # read_side_contract.md:126 "counts from 0, in stored order"
     staying = [index for index, fate in enumerate(fates) if fate == "stays"]
     if "refuses" in fates or not staying:
         # read_side_contract.md:286 "where an alternative refuses the field, or every alternative is set
@@ -3399,7 +3394,7 @@ def reasons_of_alternative(read: FieldRead, index: int) -> Reasons:
 
 def reasons_where_refused(reads: Sequence[FieldRead]) -> Reasons:
     # read_side_contract.md:286-287 "`not_met`, with every alternative's reasons, those that wait included"
-    # Open point: alternative_index_base.
+    # read_side_contract.md:126 "counts from 0, in stored order"
     return Reasons(reason for index, one in enumerate(reads) for reason in reasons_of_alternative(one, index))
 
 

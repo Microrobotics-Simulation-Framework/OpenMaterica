@@ -1755,7 +1755,7 @@ MUTANTS: Mapping[str, Mutant] = {
     "alternatives_counted_from_one": Mutant(
         "an `alternative_values` entry's index counted from one",
         'read_side_contract.md:126 "`alternative` is its index among the stored alternatives of the field '
-        'read" gives the index and no base (OPEN_POINTS: alternative_index_base)',
+        'read" and "counts from 0, in stored order"',
         {"read_alternatives": alternatives_counted_from_one},
     ),
     "labels_raised_from_an_alternative": Mutant(
