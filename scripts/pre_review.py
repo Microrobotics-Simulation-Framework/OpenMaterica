@@ -2,7 +2,8 @@
 """Run the mechanical checks that apply to what a branch changed, before asking for review (CONTRIBUTING,
 "Before asking for review").
 
-    python scripts/pre_review.py [BASE] [--list] [--stage fast|tests|properties] [--workers N] [--keep-going]
+    python scripts/pre_review.py [BASE] [--list] [--stage fast|tests|properties|whole] [--workers N]
+                                 [--keep-going]
 
 `BASE` is a ref, `origin/main` where none is given. The changed files are those from the merge base of `BASE`
 and `HEAD` to the working tree, committed or not, with the files git does not track yet. From them it plans
@@ -17,6 +18,11 @@ points or their README changed, every mutant search's kill against the recorded 
 the run before the next, unless `--keep-going` is given: what the fast checks find is fixed before any test
 runs. After the plan it prints reminders for what no test can check: a figure stated in a CHANGELOG line or a
 commit message to recount, code changed beside a CHANGELOG that was not.
+
+A fourth stage, `whole`, runs only when asked for (`--stage whole`): every test under `tests/` but those left
+to CI by name (`LEFT_TO_CI`, each with why), its selection the tree's own, so that a new directory of tests
+joins it with no edit. Run it once at the head, after the other stages pass and before handing back: a
+builder's targeted tests miss a directory nothing they changed imports, which CI then fails on.
 
 It adds to CI's checks and replaces none. It runs the checks that apply to the change, not every check; CI
 runs them all, on every Python, and its result is the one that counts. A change it selects no check for is
@@ -53,7 +59,20 @@ from pathlib import Path
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 DEFAULT_BASE = "origin/main"
-STAGES = ("fast", "tests", "properties")
+STAGES = ("fast", "tests", "properties", "whole")
+# The whole tree's stage runs when asked for alone (`--stage whole`): before review, at the head, as the last
+# check (CONTRIBUTING, "Before asking for review").
+DEFAULT_STAGES = STAGES[:-1]
+
+# The whole-tree stage: every test under `tests/` but these, each left to CI by name, with why. Its selection
+# is the tree's own (`pytest tests`), so a new directory of tests joins it with no edit here; it runs in parts
+# (`--partition`, by the times CI's test jobs measured) one after another, each under the 15 minutes an
+# agent's command may take (`WHOLE_PARTS`).
+LEFT_TO_CI = {
+    "tests/property": "the property modules: CI's hypothesis job runs their shards at `ci`, and its tests "
+    "and controls jobs at `dev`; the properties stage runs the shards a change reaches",
+}
+WHOLE_PARTS = 1
 
 # CI's own lists of the paths that are not code (`.github/workflows/ci.yml`, step "Changed paths"):
 # `tests/unit/test_pre_review.py` holds these to the workflow's text.
@@ -973,7 +992,30 @@ def plan_checks(
         for cause in dict.fromkeys(searching):
             plan.add(planned, cause)
 
+    for planned in whole_tree(tree.root, workers):
+        plan.add(planned, "every change")
     return plan.checks(), [path for path in changed if path not in covered]
+
+
+def whole_tree(root: Path, workers: int, parts: int = WHOLE_PARTS) -> list[Planned]:
+    """Every test of the tree but those `LEFT_TO_CI`, in `parts` runs one after another."""
+    ignored = tuple(f"--ignore={path}" for path in LEFT_TO_CI)
+    held = sorted(
+        path.relative_to(root).as_posix()
+        for path in (root / "tests").iterdir()
+        if path.is_dir()
+        and path.name != "__pycache__"
+        and path.relative_to(root).as_posix() not in LEFT_TO_CI
+    )
+    split = [("--partition", f"{part}/{parts}") for part in range(1, parts + 1)] if parts > 1 else [()]
+    left = "; ".join(f"{path}, {why}" for path, why in LEFT_TO_CI.items())
+    why = f"every test of the tree but those left to CI ({left}): {', '.join(held)}"
+    return [
+        Planned(
+            "whole", pytest_command(("tests",), workers, *ignored, *part), why, paths=("tests", *LEFT_TO_CI)
+        )
+        for part in split
+    ]
 
 
 # A figure a message states as a count of something a recount can show: "69,617 test cases", "24 hand
@@ -1025,7 +1067,7 @@ def print_plan(
         staged = [planned for planned in checks if planned.stage == stage]
         if not staged:
             continue
-        print(f"\n[{stage}]")
+        print(f"\n[{stage}]" + ("" if stage in DEFAULT_STAGES else f" (runs only with --stage {stage})"))
         for planned in staged:
             print(f"  {describe(planned)}")
             print(f"      why: {planned.why}")
@@ -1185,10 +1227,10 @@ def main(arguments: Sequence[str] | None = None) -> int:
     print_plan(checks, uncovered, files, reminders(files, added_figures(options.base)), tree.notes)
     if options.list:
         return 0
-    status, summary = execute(checks, options.stage or STAGES, options.keep_going)
+    status, summary = execute(checks, options.stage or DEFAULT_STAGES, options.keep_going)
     print("\nsummary")
     print("\n".join(summary))
-    skipped = [stage for stage in STAGES if options.stage and stage not in options.stage]
+    skipped = [stage for stage in STAGES if stage not in (options.stage or DEFAULT_STAGES)]
     if skipped:
         print(f"stages not run: {', '.join(skipped)}")
     print("pre-review checks failed" if status else "the pre-review checks that ran passed; CI runs the rest")

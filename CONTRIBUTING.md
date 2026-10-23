@@ -149,7 +149,12 @@ every Python, and its result is the one that counts. Every `uv run` it plans is 
 --check` comes first: a lock file out of date with `pyproject.toml` is refused, never rewritten behind you. A
 change it cannot map to a test (a Python file no test imports, a file under `tests/` in no group of tests)
 selects the whole of `tests/unit`, and the plan says why. It does not run the site job (the site staged as Pages
-stages it, and its links and images checked), the fuzz job, or the two controls of the wheel check.
+stages it, and its links and images checked), the fuzz job, or the two controls of the wheel check. Its last
+stage, `--stage whole`, which runs only when asked for, runs every test of the tree but the property modules
+(`LEFT_TO_CI`, each with why; CI's shards run them): run it once, at your head, after the other stages pass and
+before you hand back, so that a directory no targeted check reached (`tests/reference`, say) runs too. The
+measurements a property piece makes (floors, kill drift, regions, a fuzz control's rate) run on CI as a matrix
+(`tests/README.md`, "Measurements on CI").
 
 | What it catches | Check |
 |---|---|
