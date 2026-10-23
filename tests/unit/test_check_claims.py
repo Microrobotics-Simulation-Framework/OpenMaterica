@@ -81,6 +81,7 @@ def test_a_stale_head_base_or_count_is_flagged_and_the_true_ones_pass(
     ]
     description.write_text(
         f"On `main` at `{base[:8]}`, rebased onto `main` at `{old[:8]}`; see `0123abcd`.\n\n"
+        f'Quoted, not read: "head `{base[:8]}`, Nine commits, each signed off".\n\n'
         "| Part | Files | Added | Removed |\n|---|---|---|---|\n"
         "| a.txt | 1 | 1 | 1 |\n| b.txt | 2 | 1 | 0 |\n"
     )
