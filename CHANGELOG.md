@@ -102,7 +102,7 @@ every family entry goes in `families/CHANGELOG.md`.
 - Three clarifying sentences, ruled on 2026-10-23 (`docs/specification/changes.md`), each settling a reading the
   build check's case files would otherwise choose; no reader, schema or case file changes. `read_side_contract.md`
   section 2: an `alternative_values` entry whose alternative is kept outside its form's range, or is a table read
-  over an operating range of its axis, holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as
+  over an operating range of its axis, holds its `unit`, `specimen`, `statistics` and `provenance` as
   `record_format.md` section 5 gives them, even where its read ended at step 11; and an alternative's index, an
   entry's and a reason's `alternative`, counts from 0, in stored order. `declarations.md` section 1: a waiver
   whose `code` is no reason names no condition, so such a waiver without `condition` is refused at its `code`

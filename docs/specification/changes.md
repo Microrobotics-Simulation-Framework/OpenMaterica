@@ -550,8 +550,8 @@ its model is not checked over; for what item 12 refuses, the member that needs t
 Settled after S7-cases-1 (maintainer, 2026-10-23, as recommended): three sentences, each a reading the build
 check's case files would otherwise have had to choose. In `read_side_contract.md` section 2, an
 `alternative_values` entry whose alternative is kept outside its form's range, or is a table read over an
-operating range of its axis, holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as
-`record_format.md` section 5 item 5 gives them, even where its read ended at step 11; before, the row gave the
+operating range of its axis, holds its `unit`, `specimen`, `statistics` and `provenance` as
+`record_format.md` section 5 gives them, even where its read ended at step 11; before, the row gave the
 entry's other members "for a read of that alternative alone", and such a read, ending `not_met` at step 11
 with no value, holds none of the four, while `record_format.md` lists each entry with them (PR-013). And an
 alternative's index, an entry's and a reason's `alternative`, counts from 0 in stored order; before, the row
