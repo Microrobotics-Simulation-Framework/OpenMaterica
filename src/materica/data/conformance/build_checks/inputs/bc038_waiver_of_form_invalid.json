@@ -28,7 +28,7 @@
           {
             "id": "conformance/water_fixture",
             "version": "1.0.0",
-            "content_hash": "sha256:91b5ca1ca8bbd8575271aadbe6a689d5a0c69d430c32b85768a38dfe815f3bae"
+            "content_hash": "sha256:21d3c268d027e861d3f303eda0fda0223c45242c1bf01a852fd764a4d2df99bb"
           }
         ]
       },
@@ -43,7 +43,6 @@
         {
           "field": "fluid.dynamic_viscosity",
           "want": "value",
-          "label": "materica.fluid.newtonian.v1",
           "conditions": {
             "temperature": {
               "tolerance": {
@@ -71,11 +70,11 @@
           "record": {
             "id": "conformance/water_fixture",
             "version": "1.0.0",
-            "content_hash": "sha256:91b5ca1ca8bbd8575271aadbe6a689d5a0c69d430c32b85768a38dfe815f3bae"
+            "content_hash": "sha256:21d3c268d027e861d3f303eda0fda0223c45242c1bf01a852fd764a4d2df99bb"
           },
           "field": "fluid.dynamic_viscosity",
-          "code": "unit_mismatch",
-          "reason": "the consumer accepts `unit_mismatch` here, on its own judgement"
+          "code": "form_invalid",
+          "reason": "the consumer accepts `form_invalid` here, on its own judgement"
         }
       ],
       "chains": []

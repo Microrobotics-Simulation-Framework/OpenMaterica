@@ -121,7 +121,7 @@ every family entry goes in `families/CHANGELOG.md`.
   over records an acceptance is located at one record and names one field, so it cannot arise before S7a-3. Each
   result is keyed by model, record and field and compares its status, reasons, value, `assumption`, `accepted`,
   `accepted_by` and `not_accepted` (BC-049's also its `provenance`, BC-003's also every member of a read, each
-  absent); no file compares watches, which are S7a-4's. The records are fifteen plain-read inputs, byte for byte,
+  absent); no file compares watches, which are S7a-4's. The records are fourteen plain-read inputs, byte for byte,
   and one new fixture, `plasma_fixture.json`. Every file is S7a-2's and not yet runnable. With them, PR-330's arm
   of a requirement holding `review` (`PR-330.review_in_requirement`), refused at step 0, which S2a-2's step 0
   runs, and passes. A build written from the text alone, over a read written from it that agrees with the 165

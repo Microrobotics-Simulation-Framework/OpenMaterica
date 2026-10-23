@@ -54,6 +54,7 @@
       "accepted",
       "accepted_by",
       "not_accepted",
+      "alternative_values",
       "unit",
       "conditions",
       "specimen",

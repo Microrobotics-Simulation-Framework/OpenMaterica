@@ -75,7 +75,8 @@
           "reason": "the operating temperature lies below the tabulated range"
         }
       ],
-      "chains": []
+      "chains": [],
+      "precision": "binary64"
     }
   ]
 }
