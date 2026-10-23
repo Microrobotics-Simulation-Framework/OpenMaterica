@@ -196,6 +196,8 @@ def shape_problems(text: str, schema: Json) -> list[str]:
     rows = shape_rows(text)
     kinds = kind_rows(text)
     problems: list[str] = []
+    if unmapped := {row["Place"] for row in rows} - set(PLACES):
+        problems.append(f"the table's places {sorted(unmapped)} have no definition here")
     for place, names in PLACES.items():
         at_place = [row for row in rows if row["Place"] == place]
         if place == "acceptance":
@@ -243,8 +245,64 @@ def shape_problems(text: str, schema: Json) -> list[str]:
     return problems
 
 
+# The members the table's Holds cells give as an object (`{"name", "version"}`, both required), and the
+# definition that holds them; a model's name and version are the writer's `scope_model`.
+HELD_OBJECTS = {
+    ("declaration", "consumer"): "consumer",
+    ("declaration", "sampling"): "sampling",
+    ("model entry", "model"): "record.writer.json#/$defs/scope_model",
+    ("model entry", "mixing"): "mixing",
+    ("model entry", "chains"): "chain",
+    ("model entry", "engine"): "engine",
+}
+WRITER: Json = json.loads((SCHEMA / "record.writer.json").read_text(encoding="utf-8"))
+
+
+def held_problems(text: str, schema: Json) -> list[str]:
+    """Where an object a Holds cell gives (its members, `"name"` each, and an `optionally` member after it)
+    differs from its definition's members, or from its required members: all of them, unless the cell says
+    which are optional."""
+    rows = shape_rows(text)
+    problems: list[str] = []
+    for (place, member), name in HELD_OBJECTS.items():
+        cell = holds(rows, place, member)
+        shape = re.match(r"`\{([^}]*)\}`", cell)
+        if shape is None:
+            problems.append(f"the {place}'s {member} holds no object")
+            continue
+        given = set(re.findall(r'"([a-z_]+)"', shape[1]))
+        optional = set(re.findall(r"optionally `([a-z_]+)`", cell))
+        found = (
+            definitions(WRITER)[name.rpartition("/")[2]]
+            if name.startswith("record.writer")
+            else definitions(schema)[name]
+        )
+        if set(properties(found)) != given | optional:
+            text_gives = sorted(given | optional)
+            problems.append(
+                f"the {place}'s {member} holds {sorted(properties(found))}, the text {text_gives}"
+            )
+        if set(required(found)) != given:
+            problems.append(
+                f"the {place}'s {member} requires {sorted(required(found))}, the text {sorted(given)}"
+            )
+    return problems
+
+
 def test_the_shape_table_is_the_declaration_schemas() -> None:
     assert shape_problems(document("declarations.md"), DECLARATION) == []
+    assert held_problems(document("declarations.md"), DECLARATION) == []
+
+
+def test_an_object_a_holds_cell_gives_that_drifts_is_found() -> None:
+    schema = copy.deepcopy(DECLARATION)
+    properties(definitions(schema)["sampling"]).pop("independence")
+    required(definitions(schema)["engine"]).append("region_values")
+    found = held_problems(document("declarations.md"), schema)
+    assert any(problem.startswith("the declaration's sampling holds") for problem in found)
+    assert any(problem.startswith("the model entry's engine requires") for problem in found)
+    text = document("declarations.md").replace("| | `precision` |", "| place | `precision` |")
+    assert any("have no definition here" in problem for problem in shape_problems(text, DECLARATION))
 
 
 def _drop_member(schema: Json) -> None:
