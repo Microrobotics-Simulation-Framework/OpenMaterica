@@ -164,6 +164,7 @@ stages it, and its links and images checked), the fuzz job, or the two controls 
 | a mutant a property no longer kills, or a mutant table that no longer matches its module | the same shard run, which holds the group's mutant searches and `test_*mutant_table.py` |
 | a kill point that moved, a mutant search not recorded, or a README row naming a search that does not run | `uv run python scripts/gen_kill_counts.py --measure`, which runs every mutant search (about 45 seconds on 12 workers) and checks its kills against `tests/property/kill_points.json`; `--measure --record` records them and writes the README's counts. An edit to a `kill` helper (the function that runs a mutant search), or a Hypothesis upgrade, re-seeds hundreds of searches at once; the check names it, and `--measure --record` is the cure |
 | a table of `pre_review.py` (the tests that read the whole tree, the data files tests open) that a test you wrote or changed now opens or lists and the table misses | `MATERICA_TRACE_SELECTION=1 uv run --locked pytest tests/unit/test_pre_review.py -k trace`: the trace test runs the whole suite once, about a minute of wall time and three of CPU, so it is skipped unless that variable is `1`; CI sets it in one job, the `tests` job on Python 3.15, and `pre_review.py` does not set it |
+| a head, base or commit count in the description or a commit message that git does not show; a figure in the description or the CHANGELOG lines added that no recorded measurement holds; a specification sentence that words a ruling otherwise | `python3 scripts/check_claims.py check origin/main --description FILE --rulings FILE`, after `check_claims.py record` for each figure measured (`scripts/README.md`); `pre_review.py` does not run it, since it needs the description |
 | a script, a workflow or the build broken | the script's own test in `tests/unit` (`test_<script>.py`; `test_generators.py` for the three generators, `test_check_confidential.py` for `pre-push`); `tests/unit/test_ci_workflows.py` |
 
 The rest only you can decide. Read your change once as the reviewer will:
@@ -182,7 +183,8 @@ The rest only you can decide. Read your change once as the reviewer will:
   you can name, at the profile and on the machine they apply to. Three local runs do not show 1e-6, and a local
   rate is not CI's: ask for the repeat workflow (`tests/README.md`).
 - **A claim says what the tests show.** In the pull request, the CHANGELOG and each commit message, say what is
-  bounded and what is estimated. Recount every figure by what counts that thing: a test is not a case file, nor a
+  bounded and what is estimated. `check_claims.py` holds the git facts and the figures it can read to git and to
+  the facts recorded; a prose claim, a count written in words and what a figure counts are yours to check. Recount every figure by what counts that thing: a test is not a case file, nor a
   Hypothesis example, nor a line of a trace. Where you write "neither X nor Y", name the control that could have
   shown one.
 - **A citation says it.** The line is right, the quote is whole (a check may stop at an inner `"`), and the
