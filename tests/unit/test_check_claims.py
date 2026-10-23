@@ -81,7 +81,7 @@ def test_a_stale_head_base_or_count_is_flagged_and_the_true_ones_pass(
     ]
     description.write_text(
         f"On `main` at `{base[:8]}`, rebased onto `main` at `{old[:8]}`; see `0123abcd`.\n\n"
-        f'Quoted, not read: "head `{base[:8]}`, Nine commits, each signed off".\n\n'
+        f'Quoted, not read: "the head is `{base[:8]}`. Nine commits, each signed off."\n\n'
         "| Part | Files | Added | Removed |\n|---|---|---|---|\n"
         "| a.txt | 1 | 1 | 1 |\n| b.txt | 2 | 1 | 0 |\n"
     )
@@ -144,6 +144,14 @@ def test_a_number_of_a_kind_that_is_no_measurement_needs_no_fact(text: str) -> N
     assert check_claims.figures(text)[0] == []
 
 
+@pytest.mark.parametrize(
+    ("text", "stated"),
+    [("the fast stage, 15 of 15 ok", ["15", "15"]), ("In section 2: 1,180 of 1,522", ["1,180", "1,522"])],
+)
+def test_a_number_after_the_end_of_a_phrase_that_numbers_needs_a_fact(text: str, stated: list[str]) -> None:
+    assert [figure.text for figure in check_claims.figures(text)[0]] == stated
+
+
 def test_a_figure_needs_a_recorded_fact_measured_at_a_commit_the_head_holds(
     repository: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -151,7 +159,7 @@ def test_a_figure_needs_a_recorded_fact_measured_at_a_commit_the_head_holds(
     commit("feat: one", {"a.txt": "a\n"})
     description = repository.parent / "description.md"
     description.write_text(
-        "Conformance: 1,180 of 1,522 case files pass; 35 are verified.\n", encoding="utf-8"
+        "In section 2: 1,180 of 1,522 case files pass; 35 are verified.\n", encoding="utf-8"
     )
     facts = ["--facts", str(repository.parent / "facts.json")]
     status, found = run(capsys, base, "--description", str(description))

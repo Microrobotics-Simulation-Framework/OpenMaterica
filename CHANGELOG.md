@@ -24,8 +24,8 @@ every family entry goes in `families/CHANGELOG.md`.
   or is of a kind that is no measurement. Given the maintainer's rulings file, which is private and named when
   it runs, it holds each specification sentence the branch adds that nearly matches a ruling to the ruling's
   words, and prints both. `scripts/claims_baseline.json` holds what the figure check finds in this file before
-  it, 601 entries, each a figure by its words with its reason: 426 measured and stated with no recorded
-  measurement, and 175 that are no measurement. Prose claims, counts written in words and what a figure counts
+  it, 610 entries, each a figure by its words with its reason: 433 measured and stated with no recorded
+  measurement, and 177 that are no measurement. Prose claims, counts written in words and what a figure counts
   stay with the reviewer.
 
 ### Changed
