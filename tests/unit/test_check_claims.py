@@ -22,13 +22,15 @@ ROW = (
 )
 
 
+IDENTITY = ["-c", "user.name=Author", "-c", "user.email=author@example.org"]
+
+
 def commit(message: str, files: dict[str, str] | None = None) -> str:
     for name, text in (files or {}).items():
         Path(name).parent.mkdir(parents=True, exist_ok=True)
         Path(name).write_text(text, encoding="utf-8")
     subprocess.run(["git", "add", "--all"], check=True)
-    identity = ["-c", "user.name=Author", "-c", "user.email=author@example.org"]
-    subprocess.run(["git", *identity, "commit", "-q", "--allow-empty", "-m", message], check=True)
+    subprocess.run(["git", *IDENTITY, "commit", "-q", "--allow-empty", "-m", message], check=True)
     return check_claims.git("rev-parse", "HEAD").strip()
 
 
@@ -184,7 +186,7 @@ def test_a_figure_needs_a_recorded_fact_measured_at_a_commit_the_head_holds(
     assert run(capsys, base, "--description", str(description)) == (1, found[2:])
     assert check_claims.main(["record", "35", "are verified", *how]) == 0
     assert run(capsys, base, "--description", str(description)) == (0, [])
-    elsewhere = check_claims.git("commit-tree", "HEAD^{tree}", "-m", "elsewhere").strip()
+    elsewhere = check_claims.git(*IDENTITY, "commit-tree", "HEAD^{tree}", "-m", "elsewhere").strip()
     stored = json.loads((repository.parent / "facts.json").read_text(encoding="utf-8"))
     stored["facts"][4]["at"] = elsewhere
     (repository.parent / "facts.json").write_text(json.dumps(stored), encoding="utf-8")
