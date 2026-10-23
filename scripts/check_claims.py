@@ -15,7 +15,7 @@ its commits, never the working tree. Three checks:
    sentence that opens `N commits,` or `N commits:`, `the N commits`, `N commits on the branch`), git's `N
    files changed`, `N insertions(+)` and `N deletions(-)`, and a table with `Added` and `Removed` columns (and
    `Files`, where it has one; its row that opens `total`, with `N files` there, or else its column sums) equal
-   git's over the branch.
+   git's over the branch. A quotation is not read.
 2. Measured figures, in the description and the CHANGELOG lines the branch adds. A number that is no git
    fact and of no kind `kind` names (a numbered thing, a version, a flag, an identifier, a date, a value in a
    physical unit, a confidence level; anything in code, a link or quotation marks) matches a recorded fact:
@@ -171,8 +171,10 @@ def line_of(text: str, offset: int) -> int:
 
 
 def git_findings(text: str, place: str, span: Range) -> list[str]:
-    """Check 1 over `text`, each finding as `place:line: what`."""
+    """Check 1 over `text`, each finding as `place:line: what`. A quotation, someone else's claim, is not
+    read."""
     found: list[str] = []
+    text = re.sub(QUOTED, lambda match: re.sub(r"[^\n]", " ", match.group(0)), text)
     for match in COMMIT_NAME.finditer(text):
         name = match.group(1)
         if re.search("[a-f]", name) and re.search("[0-9]", name) and resolve(name) is None:
