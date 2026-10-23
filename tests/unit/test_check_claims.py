@@ -642,10 +642,10 @@ def test_a_ruled_clause_cut_short_or_run_on_is_flagged_and_the_text_s_own_lead_i
 
 
 def test_a_word_that_would_make_a_run_far_is_not_its() -> None:
+    # "of" matches seven words on in the text: joined, it would make the run far, and the run would go unseen.
     found = ruled(
         "x is the test method only of a value of origin y, held by a writer.",
-        "x is the test method of a value evaluated from a reference formulation or an equation of state of "
-        "origin y.",
+        "x is the test method of a value evaluated from a reference formulation, an equation of state.",
     )
     assert found == [
         's.md:1: a ruled sentence differs: the ruling has "x is the test method only of a value", '
