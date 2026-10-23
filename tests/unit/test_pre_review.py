@@ -1589,3 +1589,90 @@ def test_the_declared_readers_hold_against_a_trace_of_the_files_the_tests_open(
         } <= absent_without
         # test_read lists the core when it is first imported, which test_conditions may do first and be named
         assert absent_without & {"tests/unit/test_read.py", "tests/unit/test_conditions.py"}
+
+
+# --- the whole tree's stage ------------------------------------------------------------------------------
+
+
+def whole_problems(checks: Sequence[Planned]) -> list[str]:
+    """Where the whole-tree stage leaves out a test that `LEFT_TO_CI` does not name with a reason, or runs a
+    selection other than the tree's own: `tests`, one `--ignore` for each path left to CI, and nothing else
+    that narrows it."""
+    whole = [check for check in checks if check.stage == "whole"]
+    problems = [] if whole else ["no whole-tree check"]
+    narrowing = ("--ignore", "--deselect", "-k", "-m", "--shard", "--property-controls", "--ignore-glob")
+    for check in whole:
+        words = list(check.command)
+        start = words.index("pytest") + 1
+        if words[start] != "tests":
+            problems.append(f"the whole stage runs {words[start]!r}, not the tree's tests")
+        ignored = [word.partition("=")[2] for word in words if word.startswith("--ignore=")]
+        problems += [
+            f"{path} left out with no reason" for path in ignored if not pre_review.LEFT_TO_CI.get(path)
+        ]
+        problems += [
+            f"{path} listed but not left out" for path in pre_review.LEFT_TO_CI if path not in ignored
+        ]
+        problems += [
+            f"the whole stage narrows by {word}"
+            for word in words
+            if word.split("=")[0] in narrowing and not word.startswith("--ignore=")
+        ]
+    return problems
+
+
+def test_the_whole_tree_stage_runs_every_test_but_those_left_to_ci_each_with_its_reason() -> None:
+    checks, _ = plan("CHANGELOG.md")
+    assert whole_problems(checks) == []
+    (whole,) = [check for check in checks if check.stage == "whole"]
+    assert "tests/reference" in whole.why
+    assert "tests/property:" not in whole.why.partition("): ")[2]
+    left = [check for check in checks if check.stage != "whole"]
+    assert whole_problems(left) == ["no whole-tree check"]
+
+
+@pytest.mark.parametrize(
+    ("extra", "problem"),
+    [
+        ("--ignore=tests/reference", "tests/reference left out with no reason"),
+        ("--deselect=tests/unit/test_read.py", "narrows by --deselect"),
+        ("-k", "narrows by -k"),
+    ],
+)
+def test_the_whole_tree_check_fails_where_a_test_is_left_out_unlisted(extra: str, problem: str) -> None:
+    checks, _ = plan("CHANGELOG.md")
+    changed = [
+        Planned(check.stage, (*check.command, extra), check.why) if check.stage == "whole" else check
+        for check in checks
+    ]
+    assert problem in "; ".join(whole_problems(changed))
+
+
+def test_a_new_directory_of_tests_joins_the_whole_tree_stage_with_no_edit(tmp_path: Path) -> None:
+    for directory in ("unit", "property", "newly_added"):
+        (tmp_path / "tests" / directory).mkdir(parents=True)
+    (whole,) = pre_review.whole_tree(tmp_path, 8)
+    assert whole.why.endswith("): tests/newly_added, tests/unit")
+    assert whole_problems([whole]) == []
+
+
+def test_the_whole_tree_stage_runs_in_parts_one_after_another_when_asked() -> None:
+    parts = pre_review.whole_tree(REPOSITORY, 8, parts=3)
+    assert [check.command[check.command.index("--partition") + 1] for check in parts] == ["1/3", "2/3", "3/3"]
+    assert whole_problems(parts) == []
+
+
+def test_the_whole_tree_stage_runs_only_when_asked_for() -> None:
+    assert pre_review.DEFAULT_STAGES == ("fast", "tests", "properties")
+    ran: list[str] = []
+
+    def runner(planned: Planned, root: Path) -> int:
+        ran.append(planned.stage)
+        return 0
+
+    checks = [*checks_of_every_stage(), Planned("whole", ("whole-1",), "why")]
+    _, summary = pre_review.execute(checks, pre_review.DEFAULT_STAGES, False, runner=runner)
+    assert "whole" not in ran
+    assert "[whole] not asked for" in summary
+    pre_review.execute(checks, ["whole"], False, runner=runner)
+    assert ran[-1] == "whole"
