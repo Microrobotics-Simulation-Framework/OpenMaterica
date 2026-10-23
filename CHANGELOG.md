@@ -33,6 +33,20 @@ every family entry goes in `families/CHANGELOG.md`.
   returned one, so a `label_mismatch` the build adds to an `unknown` read leaves its value (BC-027); and the
   build's own read request holds the requirement's `want` and `conditions`, and the declared operating
   conditions (BC-009). No case file changes.
+- The declaration's and the build report's schemas (S7a-1a), `schema/0.1/declaration.json` and
+  `build_report.json`, written by hand. The declaration as the build checks it on its own: closed at every
+  place, each place's members, required members and tokens those of `declarations.md` section 1's table of the
+  declaration's shape, each kind's own members those of section 4.1's row, its lists of registered names held to
+  the vocabulary, and, in its description, what no JSON Schema states and the build's own check does (a name
+  given twice where the members beside it differ, a field or location set against another member, the case and
+  pointer of a refusal). The report: its field results the read result's members with the build's, its
+  combination results, refusals, watches and unused acceptances; `watches` is optional, so that a build that does
+  not yet emit watches omits the member. The typed shapes gain `Declaration`, `BuildReport` and the shapes they
+  hold; the declaration's requirement, requirement condition, overlay scope and distribution are
+  `DeclaredRequirement`, `DeclaredRequirementCondition`, `DeclaredOverlayScope` and `DeclaredDistribution`, since
+  the shorter names are the read request's, an overlay record's and a statistics token's, and no existing shape
+  changes. `tests/spec_sync/test_declaration_schema.py` holds the schemas to the text, the vocabulary,
+  `case.json` and every build-check case.
 - The specification of declarations and the build check over records (S7-spec; the maintainer's rulings of
   2026-10-20 on the build order and of 2026-10-21 on the build check; `docs/specification/changes.md`).
   `declarations.md` gains:
