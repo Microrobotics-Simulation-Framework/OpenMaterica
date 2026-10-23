@@ -1,0 +1,75 @@
+{
+  "consumer": {
+    "name": "conformance_consumer",
+    "version": "1.0.0"
+  },
+  "operating_conditions": {
+    "temperature": {
+      "value": 293.15,
+      "unit": "K"
+    }
+  },
+  "models": [
+    {
+      "model": {
+        "name": "drag",
+        "version": "1.0.0"
+      },
+      "model_configuration_hash": "sha256:46df0c2b3082576d2848959f99adb425293d93f6ebcc0b73552c124b3c2106d3",
+      "checked_over": {
+        "records": [
+          {
+            "id": "conformance/polymer_grade_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:2dd13cc5a0a9abb5e910892f9ca7403866e4492f32d7f4dc8b0af86be493dc97"
+          }
+        ]
+      },
+      "target": {},
+      "reads": [
+        "bulk.density"
+      ],
+      "consumer_parameters": [
+        "drag.density"
+      ],
+      "requirements": [
+        {
+          "field": "bulk.density",
+          "want": "reference_data",
+          "conditions": {
+            "temperature": {
+              "tolerance": {
+                "value": 1.0,
+                "unit": "K"
+              },
+              "reason": "the density changes by under 0.1 % per kelvin"
+            },
+            "density_kind": {
+              "accept": [
+                "apparent"
+              ],
+              "reason": "the buoyancy acts on the whole specimen, pores included"
+            }
+          }
+        }
+      ],
+      "families": {},
+      "combinations": [],
+      "acceptances": [
+        {
+          "acceptance": "nominal",
+          "record": {
+            "id": "conformance/polymer_grade_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:2dd13cc5a0a9abb5e910892f9ca7403866e4492f32d7f4dc8b0af86be493dc97"
+          },
+          "field": "bulk.density",
+          "value": 1180.0,
+          "basis": "a value the consumer takes within the stated limits",
+          "reason": "the model needs one number"
+        }
+      ],
+      "chains": []
+    }
+  ]
+}

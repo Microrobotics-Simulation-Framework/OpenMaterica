@@ -12,7 +12,7 @@ file or the ones beside it differ. These files only help you find your way.
 | `hash/` | hash (HS) | `record_format.md` section 9; `read_side_contract.md` steps 1 and 4 | the content hash, as an operation on any JSON value, and the reads of a reader that recomputes it |
 | `table_evaluation/` | table evaluation (TE) | `read_side_contract.md` section 7; `record_format.md` section 6 | what a consumer's own evaluator of a table returns: the value, `in_range`, the derivative by side, and the refusal at or across an edge, at each precision |
 | `record_checks/` | record checks (RC) | `page_text.md`; `provenance.md` section 4 | what a checker of records finds and lists: page-text documents, the place of a quote in a copy, the comparison of a quote with its place, the copy hash's form, and the `quote_sha256` vectors |
-| `build_checks/` | build checks (BC) | `declarations.md` | what a build gives a consumer's declaration over records: so far, the declaration checked on its own and refused at build, each refusal its rule's case and a JSON pointer into the declaration |
+| `build_checks/` | build checks (BC) | `declarations.md` | what a build gives a consumer's declaration over records: so far, the declaration checked on its own and refused at build, each refusal its rule's case and a JSON pointer into the declaration; and, for a declaration that passes, the results over the records it lists, what accepts each, and the acceptances unused |
 
 The tree grows with the implementation. The plain-read cases cover the read through step 13 for the forms
 0.1.0's fields use: constant, table, interval, composition and evidence, and reads under an extrapolation.
@@ -117,9 +117,9 @@ checked their answers yet.
 The record-check cases (C0) were written the same way, before any code that runs them; `record_checks/README.md`
 says how their hashes and answers were checked, and what they cannot show.
 
-The build-check cases (S7-cases-1) were written the same way, from the text alone, before any code that runs
-them, by a pass shown no implementation; `build_checks/README.md` says how their answers were checked, and what
-they cannot show.
+The build-check cases (S7-cases-1 and S7-cases-2) were written the same way, from the text alone, before any
+code that runs them, by a pass shown no implementation; `build_checks/README.md` says how their answers were
+checked, and what they cannot show.
 
 The scripts that first generated these files are not part of the repository. The files are the source.
 

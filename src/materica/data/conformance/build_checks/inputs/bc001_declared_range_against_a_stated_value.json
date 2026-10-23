@@ -1,0 +1,65 @@
+{
+  "consumer": {
+    "name": "conformance_consumer",
+    "version": "1.0.0"
+  },
+  "operating_conditions": {
+    "temperature": {
+      "range": [
+        292.5,
+        294.5
+      ],
+      "unit": "K"
+    }
+  },
+  "models": [
+    {
+      "model": {
+        "name": "drag",
+        "version": "1.0.0"
+      },
+      "model_configuration_hash": "sha256:46df0c2b3082576d2848959f99adb425293d93f6ebcc0b73552c124b3c2106d3",
+      "checked_over": {
+        "records": [
+          {
+            "id": "conformance/glycerol_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:53c34b5a18568f0ad10a1bf0be0ecef258a7f26048cf37c0fe8077c39af12b43"
+          }
+        ]
+      },
+      "target": {},
+      "reads": [
+        "bulk.density"
+      ],
+      "consumer_parameters": [
+        "drag.density"
+      ],
+      "requirements": [
+        {
+          "field": "bulk.density",
+          "want": "value",
+          "conditions": {
+            "temperature": {
+              "tolerance": {
+                "value": 1.0,
+                "unit": "K"
+              },
+              "reason": "the density changes by under 0.1 % per kelvin"
+            },
+            "density_kind": {
+              "accept": [
+                "apparent"
+              ],
+              "reason": "the buoyancy acts on the whole specimen, pores included"
+            }
+          }
+        }
+      ],
+      "families": {},
+      "combinations": [],
+      "acceptances": [],
+      "chains": []
+    }
+  ]
+}

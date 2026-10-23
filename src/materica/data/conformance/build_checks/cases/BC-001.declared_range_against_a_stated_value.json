@@ -1,0 +1,62 @@
+{
+  "case": "BC-001",
+  "variant": "declared_range_against_a_stated_value",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "glycerol_fixture.json"
+    ],
+    "declaration": "bc001_declared_range_against_a_stated_value.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/glycerol_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:53c34b5a18568f0ad10a1bf0be0ecef258a7f26048cf37c0fe8077c39af12b43"
+        },
+        "field": "bulk.density",
+        "status": "not_met",
+        "reasons": [
+          {
+            "code": "condition_outside",
+            "condition": "temperature"
+          }
+        ],
+        "accepted": false,
+        "accepted_by": [],
+        "not_accepted": [
+          {
+            "code": "condition_outside",
+            "condition": "temperature"
+          }
+        ]
+      }
+    ],
+    "unused": []
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}

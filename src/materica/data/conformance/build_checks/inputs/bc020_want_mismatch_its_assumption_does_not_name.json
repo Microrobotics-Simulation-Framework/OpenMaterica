@@ -1,0 +1,55 @@
+{
+  "consumer": {
+    "name": "conformance_consumer",
+    "version": "1.0.0"
+  },
+  "operating_conditions": {},
+  "models": [
+    {
+      "model": {
+        "name": "drag",
+        "version": "1.0.0"
+      },
+      "model_configuration_hash": "sha256:46df0c2b3082576d2848959f99adb425293d93f6ebcc0b73552c124b3c2106d3",
+      "checked_over": {
+        "records": [
+          {
+            "id": "conformance/composition_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:20d08333562744d1aa6c06a428f27ca07b3d0b4dda73421dff14cdc974a5c3a4"
+          }
+        ]
+      },
+      "target": {},
+      "reads": [
+        "bulk.elemental_composition"
+      ],
+      "consumer_parameters": [
+        "drag.elemental_composition"
+      ],
+      "requirements": [
+        {
+          "field": "bulk.elemental_composition",
+          "want": "value"
+        }
+      ],
+      "families": {},
+      "combinations": [],
+      "acceptances": [
+        {
+          "acceptance": "nominal",
+          "record": {
+            "id": "conformance/composition_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:20d08333562744d1aa6c06a428f27ca07b3d0b4dda73421dff14cdc974a5c3a4"
+          },
+          "field": "bulk.elemental_composition",
+          "value": 0.5,
+          "basis": "a value the consumer takes within the stated limits",
+          "reason": "the model needs one number"
+        }
+      ],
+      "chains": []
+    }
+  ]
+}

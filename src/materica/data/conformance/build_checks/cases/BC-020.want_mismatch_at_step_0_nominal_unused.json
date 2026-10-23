@@ -1,0 +1,68 @@
+{
+  "case": "BC-020",
+  "variant": "want_mismatch_at_step_0_nominal_unused",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "claims": {
+    "fits_and_reference_data": false
+  },
+  "inputs": {
+    "records": [
+      "grade_density_bounds_specification_limits.json"
+    ],
+    "declaration": "bc020_want_mismatch_at_step_0_nominal_unused.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/polymer_grade_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:2dd13cc5a0a9abb5e910892f9ca7403866e4492f32d7f4dc8b0af86be493dc97"
+        },
+        "field": "bulk.density",
+        "status": "not_met",
+        "reasons": [
+          {
+            "code": "want_mismatch"
+          }
+        ],
+        "accepted": false,
+        "accepted_by": [],
+        "not_accepted": [
+          {
+            "code": "want_mismatch"
+          }
+        ]
+      }
+    ],
+    "unused": [
+      {
+        "model": "drag",
+        "acceptance": 0
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}

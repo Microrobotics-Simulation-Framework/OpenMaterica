@@ -1767,6 +1767,7 @@ See `README.md` beside this file for how to read a case.
 | `requirement_not_object` | step 0 refuses: requirement a string | 0 | not_met; `request_incomplete` |
 | `requirement_population_level` | the requirement holds `population_level`, as a declaration's does: `request_incomplete` | 0 | not_met; `request_incomplete`; labels none |
 | `requirement_represents` | the requirement holds `represents`, as a declaration's does: `request_incomplete` | 0 | not_met; `request_incomplete`; labels none |
+| `review_in_requirement` | the requirement holds `review: "reviewed"`, as a declaration's does: `request_incomplete` at step 0, never a read that is `met` on an unreviewed value | 0 | not_met; `request_incomplete`; labels none |
 | `target_missing` | step 0 refuses: no target | 0 | not_met; `request_incomplete` |
 | `target_neither_record_nor_region` | step 0 refuses: target with neither record nor region | 0 | not_met; `request_incomplete` |
 | `target_not_object` | step 0 refuses: target a string | 0 | not_met; `request_incomplete` |

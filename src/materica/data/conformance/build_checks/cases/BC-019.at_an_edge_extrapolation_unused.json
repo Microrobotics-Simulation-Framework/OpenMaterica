@@ -1,0 +1,67 @@
+{
+  "case": "BC-019",
+  "variant": "at_an_edge_extrapolation_unused",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "density_edge_table.json"
+    ],
+    "declaration": "bc019_at_an_edge_extrapolation_unused.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/density_edge_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:7367bd6800216cf924d628c9b9e9a0cace53df378320177134da6307750c3197"
+        },
+        "field": "bulk.density",
+        "status": "not_met",
+        "reasons": [
+          {
+            "code": "at_edge",
+            "condition": "temperature"
+          }
+        ],
+        "accepted": false,
+        "accepted_by": [],
+        "not_accepted": [
+          {
+            "code": "at_edge",
+            "condition": "temperature"
+          }
+        ]
+      }
+    ],
+    "unused": [
+      {
+        "model": "drag",
+        "acceptance": 0
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}
