@@ -3,14 +3,14 @@
   "$id": "https://w3id.org/materica/schema/0.1/declaration.json",
   "$comment": "Hand-edited. The package's typed shapes are generated from it. tests/spec_sync/test_declaration_schema.py holds its members, their required lists and their tokens to declarations.md section 1's table of the declaration's shape, its lists of names to the vocabulary, and every build-check case's declaration to the answer its case expects.",
   "title": "Declaration",
-  "description": "A consumer's declaration (declarations.md section 1), as the build checks it on its own before any record is read: every member its table of the declaration's shape names, at its place, with the members each place requires, the tokens and registered names each member takes, and the constraints its values hold. Closed at every level: a member the table does not name at a place is refused there, a member one slip from a named one included. Members a build over records does not check (a domain, a path, region_conditions, a region or interval location, sampling, a requirement's represents and population_level, a distribution, engine) are named, so that they are refused by the rule that refuses them (section 1 item 12) and never as unknown. What the schema cannot state is the build's own check, by the same table: a name given twice where the members differ beside it (two models of one name, two requirements for one field, two trainable entries for one field at one location); a requirement or a trainable entry for a field its model does not list in reads, or a trainable entry at a location its model is not checked over; a range whose lo is above its hi; a combination of fields of one section, or of a field not in reads; which of several rules a fault breaks, and so its case and pointer (the precedence rule); a text that is not JSON by record_format.md section 1 item 6, which a schema never sees. And the rules beside the table, which are not the declaration's shape: section 1 items 7, 9, 10 and 12, and section 4.1 item 4.",
+  "description": "A consumer's declaration (declarations.md section 1), as the build checks it on its own before any record is read: every member its table of the declaration's shape names, at its place, with the members each place requires, the tokens and registered names each member takes, and the constraints its values hold. Closed at every level: a member the table does not name at a place is refused there, a member one slip from a named one included. Members a build over records does not check (a domain, a path, region_conditions, a region or interval location, sampling, a requirement's represents and population_level, a distribution, engine) are named, so that they are refused by the rule that refuses them (section 1 item 12) and never as unknown. What the schema does not state is the build's own check, by the same table. A schema could state some of it, but only with one conjunct for each registered name, written again for each name the vocabulary adds, where the build's check states each once: a name given twice where the members differ beside it (two models of one name, two requirements for one field, two trainable entries for one field at one location; the schema refuses an identical duplicate in models, requirements or trainable, by uniqueItems); a requirement or a trainable entry for a field its model does not list in reads; a combination of fields of one section, or of a field not in reads. No JSON Schema can state a trainable entry at a location its model is not checked over; a range whose lo is above its hi; which of several rules a fault breaks, and so its case and pointer (the precedence rule); or a text that is not JSON by record_format.md section 1 item 6, which a schema never sees. And the rules beside the table, which are not the declaration's shape: section 1 items 7, 9, 10 and 12, and section 4.1 item 4.",
   "type": "object",
   "required": ["consumer", "operating_conditions", "models"],
   "properties": {
     "consumer": {"$ref": "#/$defs/consumer"},
     "operating_conditions": {"$ref": "#/$defs/operating_conditions"},
     "sampling": {"$ref": "#/$defs/sampling"},
-    "models": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/model_entry"}}
+    "models": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/model_entry"}}
   },
   "additionalProperties": false,
   "allOf": [{"$ref": "#/$defs/sampling_rule"}],
@@ -180,7 +180,7 @@
         "target": {"$ref": "#/$defs/target"},
         "reads": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/registered_field"}},
         "consumer_parameters": {"type": "array", "items": {"type": "string"}},
-        "requirements": {"type": "array", "items": {"$ref": "#/$defs/requirement"}},
+        "requirements": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/requirement"}},
         "families": {
           "description": "A parameter-set field to the family version its evaluator implements (model_families.md).",
           "type": "object",
@@ -195,7 +195,7 @@
         },
         "acceptances": {"type": "array", "items": {"$ref": "#/$defs/declared_acceptance"}},
         "chains": {"type": "array", "items": {"$ref": "#/$defs/chain"}},
-        "trainable": {"type": "array", "items": {"$ref": "#/$defs/trainable_entry"}},
+        "trainable": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/trainable_entry"}},
         "precision": {"enum": ["binary32", "binary64"]},
         "engine": {"$ref": "#/$defs/engine"}
       },
