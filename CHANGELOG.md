@@ -14,6 +14,20 @@ every family entry goes in `families/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Added
+- `scripts/check_claims.py`, a check of a branch's claims that a builder runs before asking for review
+  (approved by the maintainer on 2026-10-23; CONTRIBUTING, "Before asking for review"). It holds a pull
+  request's description and the branch's commit messages to git: a commit name resolves, the head and the base
+  they name are the branch's, and a count of its commits, files changed or lines added and removed is git's.
+  It holds each figure of the description and of the CHANGELOG lines the branch adds to a recorded fact
+  (`record` writes one, with how it was measured and at which commit), unless the figure is marked an estimate
+  or is of a kind that is no measurement. Given the maintainer's rulings file, which is private and named when
+  it runs, it holds each specification sentence the branch adds that nearly matches a ruling to the ruling's
+  words, and prints both. `scripts/claims_baseline.json` holds what the figure check finds in this file before
+  it, 601 entries, each a figure by its words with its reason: 426 measured and stated with no recorded
+  measurement, and 175 that are no measurement. Prose claims, counts written in words and what a figure counts
+  stay with the reviewer.
+
 ### Changed
 - CI's fuzz control step prints each run's find time (the maintainer's ruling of 2026-10-23), so that CI's runs
   measure the rates the fuzz controls' bar is judged by, which the rates in `ci.yml` and `tests/fuzz/README.md`
