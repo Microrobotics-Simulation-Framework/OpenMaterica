@@ -96,6 +96,9 @@ every family entry goes in `families/CHANGELOG.md`.
   entry's and a reason's `alternative`, counts from 0, in stored order. `declarations.md` section 1: a waiver
   whose `code` is no reason names no condition, so such a waiver without `condition` is refused at its `code`
   alone (BC-048).
+- A build-check case that compares results it expects names the members of each result it compares:
+  `case.json` requires `compare.result_members` there. Before, such a case without it compared each result's
+  `model`, location and `field` alone. A refusal case, which compares results and expects none, names none.
 
 ### Verification
 - S7a-2's build-check case files (S7-cases-2; the S7 design's section 5.4, its S7a-2 rows), written through the

@@ -144,6 +144,9 @@ WATCH: JsonObject = {
 }
 
 
+COMPARING_RESULTS: JsonObject = {"members": ["results"], "result_members": ["accepted"]}
+
+
 def build_check(
     *,
     inputs: JsonValue = None,
@@ -235,12 +238,22 @@ def test_the_case_schema_takes_a_build_check_case(taken: JsonObject) -> None:
         pytest.param(
             build_check(expected={"refusals": [{"item": "bc-048", "pointer": ""}]}), id="refusal_item"
         ),
-        pytest.param(build_check(expected={"results": [{**RESULT, "x_note": 1.0}]}), id="result_member"),
+        pytest.param(
+            build_check(expected={"results": [{**RESULT, "x_note": 1.0}]}, compare=COMPARING_RESULTS),
+            id="result_member",
+        ),
         pytest.param(
             build_check(
-                expected={"results": [{**RESULT, "fields": ["bulk.density", "fluid.dynamic_viscosity"]}]}
+                expected={"results": [{**RESULT, "fields": ["bulk.density", "fluid.dynamic_viscosity"]}]},
+                compare=COMPARING_RESULTS,
             ),
             id="field_and_fields",
+        ),
+        pytest.param(
+            build_check(
+                expected={"refusals": [], "results": [RESULT]}, compare={"members": ["refusals", "results"]}
+            ),
+            id="results_without_result_members",
         ),
         pytest.param(
             build_check(
