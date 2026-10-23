@@ -81,13 +81,15 @@ def test_a_stale_head_base_or_count_is_flagged_and_the_true_ones_pass(
     ]
     description.write_text(
         f"On `main` at `{base[:8]}`, rebased onto `main` at `{old[:8]}`; see `0123abcd`.\n\n"
-        "| Part | Added | Removed |\n|---|---|---|\n| a.txt | 1 | 1 |\n| b.txt | 1 | 0 |\n"
+        "| Part | Files | Added | Removed |\n|---|---|---|---|\n"
+        "| a.txt | 1 | 1 | 1 |\n| b.txt | 2 | 1 | 0 |\n"
     )
     status, found = run(capsys, base, "--description", str(description))
     assert [line.partition(": ")[2] for line in found] == [
         "`0123abcd` names no commit here",
         f"the base is `{base[:8]}`, not `{old[:8]}`",
         "1 removed, where git counts 0",
+        "3 files, where git counts 2",
     ]
 
 

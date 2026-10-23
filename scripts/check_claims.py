@@ -13,8 +13,9 @@ its commits, never the working tree. Three checks:
    head, one called the base (`N commits on main at X`, `main's X`, `rebased onto main at X`, `based on main
    at X`, `draft, on main at X`) is the merge base. A count of the branch's commits (`N commits on main`, a
    sentence that opens `N commits,` or `N commits:`, `the N commits`, `N commits on the branch`), git's `N
-   files changed`, `N insertions(+)` and `N deletions(-)`, and a table with `Added` and `Removed` columns (its
-   row that opens `total`, with `N files` there, or else its column sums) equal git's over the branch.
+   files changed`, `N insertions(+)` and `N deletions(-)`, and a table with `Added` and `Removed` columns (and
+   `Files`, where it has one; its row that opens `total`, with `N files` there, or else its column sums) equal
+   git's over the branch.
 2. Measured figures, in the description and the CHANGELOG lines the branch adds. A number that is no git
    fact and of no kind `kind` names (a numbered thing, a version, a flag, an identifier, a date, a value in a
    physical unit, a confidence level; anything in code, a link or quotation marks) matches a recorded fact:
@@ -211,21 +212,22 @@ def tables(lines: list[str]) -> Iterator[range]:
 
 
 def table_counts(text: str, table: range) -> dict[int, tuple[str, str]]:
-    """What a table of lines added and removed states: its total row, or else its column sums."""
+    """What a table of lines added and removed (and of files, where it has the column) states: its total
+    row, or else its column sums."""
     lines = text.split("\n")
     offset = len("\n".join(lines[: table.start])) + 1
     header = [cell.lower() for cell in cells(lines[table.start])]
     body = [cells(lines[index]) for index in table[2:]]
     totals = [row for row in body if row[0].lower().startswith("total")]
     stated: dict[int, tuple[str, str]] = {}
-    for step, kind_ in enumerate(("added", "removed")):
+    for step, kind_ in enumerate(kind_ for kind_ in ("added", "removed", "files") if kind_ in header):
         column = header.index(kind_)
         values = [number(row[column]) if column < len(row) else None for row in totals or body]
         if None not in values:
             stated[offset + step] = (kind_, str(sum(value or 0 for value in values)))
     files = re.search(r"(\d[\d,]*)\s+files?\b", totals[0][0]) if totals else None
     if files:
-        stated[offset + 2] = ("files", files.group(1))
+        stated[offset + 3] = ("files", files.group(1))
     return stated
 
 
