@@ -1156,9 +1156,12 @@ BUILD_CHECKS = PACKAGE / "data" / "conformance" / "build_checks"
 # Each file whose case expects the declaration refused and which declaration.json takes, with the rule that
 # refuses it, which the schema does not state: a name given twice where the members beside it differ, a field
 # or location set against another member, a rule beside the table of the shape, a build's claims. A schema
-# could state some of these, but only with one conjunct for each registered name, written again for each name
-# the vocabulary adds, where the build's check states each once. An identical duplicate it refuses, by
-# `uniqueItems`.
+# could state some of these (two requirements for one field, a field not in `reads`, a combination of one
+# section), but only with one conjunct for each registered name, written again for each name the vocabulary
+# adds, where the build's check states each once. None can state two models of one name or two trainable
+# entries for one field at one location: a model's name and an entry's location are values no registry lists,
+# and no JSON Schema compares a free value across the items of an array. An identical duplicate it refuses,
+# by `uniqueItems`, which compares whole items.
 SCHEMA_DOES_NOT_STATE = {
     "BC-048.duplicate_member_not_json": "not JSON by record_format.md section 1 item 6: a member given twice",
     "BC-048.requirement_for_field_not_read": "a requirement for a field its model does not list in reads",
@@ -1414,8 +1417,8 @@ def test_the_closure_check_reaches_every_place_of_the_table() -> None:
 
 
 def test_a_closure_check_that_skips_a_place_is_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The control: with the acceptances taken for a free map, as the check once did not know them not to be,
-    no acceptance object is visited and the check above says so."""
+    """The control: with the acceptances taken for a free map, no acceptance object is visited and the check
+    above says so."""
     monkeypatch.setattr(f"{__name__}.FREE_MAPS", FREE_MAPS | {"acceptances"})
     places, kinds = visited()
     assert not REACHED <= places
