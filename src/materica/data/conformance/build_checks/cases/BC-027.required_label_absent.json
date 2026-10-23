@@ -1,0 +1,67 @@
+{
+  "case": "BC-027",
+  "variant": "required_label_absent",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_label_missing.json"
+    ],
+    "declaration": "bc027_required_label_absent.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:31faad91a1fdcc1215bd0b43e3116e20f2d0fef502c462dbffd572e9e3489791"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "not_met",
+        "reasons": [
+          {
+            "code": "condition_unstated",
+            "condition": "shear_rate"
+          },
+          {
+            "code": "label_mismatch"
+          }
+        ],
+        "value": 0.000692,
+        "accepted": false,
+        "accepted_by": [
+          0
+        ],
+        "not_accepted": [
+          {
+            "code": "label_mismatch"
+          }
+        ]
+      }
+    ],
+    "unused": []
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}

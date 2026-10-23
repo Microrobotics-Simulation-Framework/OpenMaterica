@@ -1,0 +1,58 @@
+{
+  "case": "BC-017",
+  "variant": "stated_condition_not_filled",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_in_vivo.json"
+    ],
+    "declaration": "bc017_stated_condition_not_filled.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:8cc39e9eec2c55ed89fe94defb9691604edd364e9f6a4c664205e501745c5e80"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "met",
+        "reasons": [],
+        "value": 0.000692,
+        "accepted": true,
+        "accepted_by": [],
+        "not_accepted": []
+      }
+    ],
+    "unused": [
+      {
+        "model": "drag",
+        "acceptance": 0
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}

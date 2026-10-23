@@ -1,0 +1,65 @@
+{
+  "case": "BC-038",
+  "variant": "waiver_of_unit_mismatch",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_field_unit_lowercase.json"
+    ],
+    "declaration": "bc038_waiver_of_unit_mismatch.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:91b5ca1ca8bbd8575271aadbe6a689d5a0c69d430c32b85768a38dfe815f3bae"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "not_met",
+        "reasons": [
+          {
+            "code": "unit_mismatch"
+          }
+        ],
+        "accepted": false,
+        "accepted_by": [],
+        "not_accepted": [
+          {
+            "code": "unit_mismatch"
+          }
+        ]
+      }
+    ],
+    "unused": [
+      {
+        "model": "drag",
+        "acceptance": 0
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}

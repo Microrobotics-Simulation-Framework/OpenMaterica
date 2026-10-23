@@ -1,0 +1,74 @@
+{
+  "case": "BC-049",
+  "variant": "reviewed_value",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_review_reviewed.json"
+    ],
+    "declaration": "bc049_reviewed_value.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:c21a2c7f46e66bcfb5e74f18d2a08644468d5a92bafb4fa57a03651facf96e2d"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "condition_unstated",
+            "condition": "shear_rate"
+          }
+        ],
+        "value": 0.000692,
+        "provenance": {
+          "origin": "measured_by_contributor",
+          "review": {
+            "result": "reviewed",
+            "reviewer": "conformance fixture",
+            "date": "2026-10-15",
+            "independent_of_extraction": true,
+            "checklist": [
+              "value",
+              "unit"
+            ]
+          }
+        },
+        "accepted": true,
+        "accepted_by": [
+          0
+        ],
+        "not_accepted": []
+      }
+    ],
+    "unused": []
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted",
+      "provenance"
+    ],
+    "exact": true
+  }
+}

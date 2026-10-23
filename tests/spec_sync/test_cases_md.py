@@ -72,13 +72,56 @@ def claims_text(case_file: CaseFile) -> str:
     )
 
 
+# The read members a build result may compare, in the order `CASES.md` writes them.
+READ_MEMBERS = (
+    "value",
+    "unit",
+    "assumption",
+    "provenance",
+    "conditions",
+    "specimen",
+    "statistics",
+    "labels",
+    "table",
+    "alternative_values",
+)
+
+
+def result_text(result: JsonObject) -> str:
+    """One expected build result, in brackets: its model, the record read by `id` and the field; then its
+    status, reasons, every other member it states, whether it is accepted, the indexes in `accepted_by`, and
+    what is not accepted."""
+    items = [str(result["status"])] if "status" in result else []
+    reasons = result.get("reasons")
+    if isinstance(reasons, list):
+        stated = [code(reason_text(reason)) for reason in reasons if isinstance(reason, dict)]
+        items.append(", ".join(stated) or "no reasons")
+    for member in READ_MEMBERS:
+        if member in result:
+            items.append(f"{member} {code(json.dumps(result[member], ensure_ascii=False))}")
+    if "accepted" in result:
+        items.append("accepted" if result["accepted"] is True else "not accepted")
+    accepted_by = result.get("accepted_by")
+    if isinstance(accepted_by, list) and accepted_by:
+        indexes = [int(index) for index in accepted_by if isinstance(index, (int, float))]
+        items.append(f"by {code(json.dumps(indexes))}")
+    not_accepted = result.get("not_accepted")
+    if isinstance(not_accepted, list) and not_accepted:
+        uncovered = [code(reason_text(reason)) for reason in not_accepted if isinstance(reason, dict)]
+        items.append("uncovered " + ", ".join(uncovered))
+    record = result["record"]
+    assert isinstance(record, dict)
+    return f"[{code(result['model'])} at {code(record['id'])}, {code(result['field'])}: {', '.join(items)}]"
+
+
 def build_column(case_file: CaseFile) -> str:
     """A build-check case's column: its refusals, each its rule's case id at its JSON pointer, written as JSON
-    so that the empty pointer shows; the report's members compared and expected absent; the rules it compares;
-    its claims. A case expecting results, watches or unused (S7a-2 onwards) is written by the piece that adds
-    the first."""
+    so that the empty pointer shows; its results (`result_text`), the members of each it compares, and the
+    acceptances unused, by model and index; the report's members compared and expected absent; the rules it
+    compares; its claims. A case expecting watches (S7a-4 onwards) is written by the piece that adds the
+    first."""
     expected = case_file.expected
-    assert set(expected) <= {"refusals"}, f"{case_file.path.name}: write its results' column first"
+    assert set(expected) <= {"refusals", "results", "unused"}, f"{case_file.path.name}: write watches first"
     refusals = expected.get("refusals", [])
     assert isinstance(refusals, list)
     written = [
@@ -87,7 +130,24 @@ def build_column(case_file: CaseFile) -> str:
         if isinstance(refusal, dict)
     ]
     parts = ["refuses " + (", ".join(written) or "nothing")]
-    absent = [code(member) for member in ("results", "watches", "unused") if member in case_file.members]
+    results = expected.get("results")
+    if isinstance(results, list):
+        found = [result_text(result) for result in results if isinstance(result, dict)]
+        parts.append("results " + (" ".join(found) or "none"))
+        parts.append("comparing " + ", ".join(code(member) for member in case_file.result_members))
+    unused = expected.get("unused")
+    if isinstance(unused, list):
+        listed = [
+            f"{code(entry['model'])} {int(entry['acceptance'])}"
+            for entry in unused
+            if isinstance(entry, dict) and isinstance(entry["acceptance"], (int, float))
+        ]
+        parts.append("unused " + (", ".join(listed) or "none"))
+    absent = [
+        code(member)
+        for member in ("results", "watches", "unused")
+        if member in case_file.members and member not in expected
+    ]
     if absent:
         parts.append(
             (", ".join(absent[:-1]) + " and " + absent[-1] if len(absent) > 1 else absent[0]) + " absent"
@@ -255,6 +315,48 @@ def compare_no_unused(case: JsonObject) -> None:
     members.remove("unused")
 
 
+def _results(case: JsonObject) -> list[JsonValue]:
+    results = _member(case, "expected")["results"]
+    assert isinstance(results, list)
+    return results
+
+
+def _result(case: JsonObject, index: int) -> JsonObject:
+    result = _results(case)[index]
+    assert isinstance(result, dict)
+    return result
+
+
+def drop_an_index(case: JsonObject) -> None:
+    accepted_by = _result(case, 0)["accepted_by"]
+    assert isinstance(accepted_by, list)
+    accepted_by.pop()
+
+
+def accept_the_second_result(case: JsonObject) -> None:
+    _result(case, 1)["accepted"] = True
+
+
+def drop_the_unused(case: JsonObject) -> None:
+    _member(case, "expected")["unused"] = []
+
+
+def change_the_value(case: JsonObject) -> None:
+    _result(case, 0)["value"] = 1181.0
+
+
+def compare_no_value(case: JsonObject) -> None:
+    members = _member(case, "compare")["result_members"]
+    assert isinstance(members, list)
+    members.remove("value")
+
+
+def drop_an_uncovered_reason(case: JsonObject) -> None:
+    not_accepted = _result(case, 0)["not_accepted"]
+    assert isinstance(not_accepted, list)
+    not_accepted.pop()
+
+
 @pytest.mark.parametrize(
     ("name", "change"),
     [
@@ -264,6 +366,12 @@ def compare_no_unused(case: JsonObject) -> None:
         ("BC-050.requirement_names_another_label.json", drop_the_rules),
         ("BC-051.checked_over_domain.json", drop_the_claims),
         ("BC-051.engine_over_records.json", compare_no_unused),
+        ("BC-009.two_acceptances_indexes.json", drop_an_index),
+        ("BC-016.waiver_at_one_of_two_records.json", accept_the_second_result),
+        ("BC-053.waiver_at_another_record.json", drop_the_unused),
+        ("BC-020.nominal_inside_the_bounds.json", change_the_value),
+        ("BC-003.field_read_with_no_requirement.json", compare_no_value),
+        ("BC-027.label_mismatch_beside_condition_outside.json", drop_an_uncovered_reason),
     ],
 )
 def test_a_build_check_case_that_disagrees_with_its_row_is_found(

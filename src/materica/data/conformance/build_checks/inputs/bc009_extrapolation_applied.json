@@ -1,0 +1,81 @@
+{
+  "consumer": {
+    "name": "conformance_consumer",
+    "version": "1.0.0"
+  },
+  "operating_conditions": {
+    "temperature": {
+      "value": 270.0,
+      "unit": "K"
+    }
+  },
+  "models": [
+    {
+      "model": {
+        "name": "drag",
+        "version": "1.0.0"
+      },
+      "model_configuration_hash": "sha256:46df0c2b3082576d2848959f99adb425293d93f6ebcc0b73552c124b3c2106d3",
+      "checked_over": {
+        "records": [
+          {
+            "id": "conformance/density_table_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:b9b82cc6c3611f1fef7e12d6ff2f21e663d4984b316b6c1f0f9e02c5f0c202a7"
+          }
+        ]
+      },
+      "target": {},
+      "reads": [
+        "bulk.density"
+      ],
+      "consumer_parameters": [
+        "drag.density"
+      ],
+      "requirements": [
+        {
+          "field": "bulk.density",
+          "want": "value",
+          "conditions": {
+            "density_kind": {
+              "accept": [
+                "apparent"
+              ],
+              "reason": "the buoyancy acts on the whole specimen, pores included"
+            }
+          }
+        }
+      ],
+      "families": {},
+      "combinations": [],
+      "acceptances": [
+        {
+          "acceptance": "nominal",
+          "record": {
+            "id": "conformance/density_table_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:b9b82cc6c3611f1fef7e12d6ff2f21e663d4984b316b6c1f0f9e02c5f0c202a7"
+          },
+          "field": "bulk.density",
+          "value": 1000.0,
+          "basis": "a value the consumer takes within the stated limits",
+          "reason": "the model needs one number"
+        },
+        {
+          "acceptance": "extrapolation",
+          "record": {
+            "id": "conformance/density_table_fixture",
+            "version": "1.0.0",
+            "content_hash": "sha256:b9b82cc6c3611f1fef7e12d6ff2f21e663d4984b316b6c1f0f9e02c5f0c202a7"
+          },
+          "field": "bulk.density",
+          "method": "constant",
+          "law": "the value at the readable range's nearest end, held constant",
+          "basis": "the density varies little below the tabulated range over the operating band",
+          "reason": "the operating temperature lies below the tabulated range"
+        }
+      ],
+      "chains": []
+    }
+  ]
+}

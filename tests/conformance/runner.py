@@ -70,6 +70,8 @@ class CaseFile:
     precision_tolerances: dict[str, float] | None = None
     # A record-check case's rules, by case id, whose findings and listing it compares (README, "Case files").
     rules: tuple[str, ...] = ()
+    # A build-check case's members of each result compared (README, "Case files": `compare.result_members`).
+    result_members: tuple[str, ...] = ()
 
     @classmethod
     def from_document(cls, path: Path, document: JsonValue) -> "CaseFile":
@@ -101,6 +103,10 @@ class CaseFile:
             _string(rule, "compare.rules_compared")
             for rule in _list(compare.get("rules_compared", []), "rules_compared")
         )
+        result_members = tuple(
+            _string(member, "compare.result_members")
+            for member in _list(compare.get("result_members", []), "result_members")
+        )
         claims = _object(document.get("claims", {}), "claims")
         if not all(isinstance(claimed, bool) for claimed in claims.values()):
             raise CaseFileError(f"{path.name}: a claim is not true or false")
@@ -119,6 +125,7 @@ class CaseFile:
             exact=exact,
             precision_tolerances=precision_tolerances,
             rules=rules,
+            result_members=result_members,
         )
 
     def input_bytes(self, member: str) -> bytes:

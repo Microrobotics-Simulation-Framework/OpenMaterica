@@ -1,0 +1,66 @@
+{
+  "case": "BC-027",
+  "variant": "stored_label_differs",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_linear_label_on_viscosity.json"
+    ],
+    "declaration": "bc027_stored_label_differs.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:21d3c268d027e861d3f303eda0fda0223c45242c1bf01a852fd764a4d2df99bb"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "not_met",
+        "reasons": [
+          {
+            "code": "form_invalid"
+          },
+          {
+            "code": "label_mismatch"
+          }
+        ],
+        "accepted": false,
+        "accepted_by": [],
+        "not_accepted": [
+          {
+            "code": "form_invalid"
+          },
+          {
+            "code": "label_mismatch"
+          }
+        ]
+      }
+    ],
+    "unused": []
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}

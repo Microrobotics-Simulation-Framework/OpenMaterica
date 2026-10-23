@@ -37,7 +37,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | `content_hash` (HS-001 to HS-003) | 51 | run, passed |
 | reads S1 runs, which end by step 5 (plain read, HS-010, HS-011) | 341 | run, passed |
 | `list_records` | 25 | run, passed |
-| S2's reads that end at step 0, 7 or 8 (plain read) | 170 | run, passed |
+| S2's reads that end at step 0, 7 or 8 (plain read) | 171 | run, passed |
 | S2's reads that end at step 9 or 10, or at step 0 on an implied condition (plain read) | 58 | run, passed |
 | S2's reads that go on to steps 11 to 13 for a constant, or end at step 7 on alternatives as far as S4's decision 12 lets S2 go, or at step 0 on an implied value holding a member of the other kind of condition's shape, its unit compared beside it (plain read) | 170 | run, passed |
 | S2's reads of an interval or a composition, to their bounds or components, or ending at step 8 on their own member, or at step 7 over alternatives that hold one (plain read) | 54 | run, passed |
@@ -52,6 +52,7 @@ so nothing that did not run can show as a pass or a skip. `test_cases.py` assert
 | `evaluate` (TE-002 to TE-012) | 35 | run, verified against the reference evaluator under each of its four configurations |
 | record checks (`check`: RC-031, RC-032, RC-220 to RC-226) and `quote_sha256` (RC-033's vectors) | 164 and 13 | not yet runnable: no executor; C2, with S5's record checks, adds them |
 | build checks (`check_build`: BC-004, BC-005, BC-037, BC-048, BC-050, BC-051), a declaration checked on its own and refused | 51 | not yet runnable: no executor; S7a-1, which builds the declaration's own check, adds it |
+| build checks (`check_build`: BC-001, BC-002, BC-003, BC-006, BC-009, BC-010, BC-016, BC-017, BC-019, BC-020, BC-027, BC-028, BC-038, BC-049, BC-053), a declaration over records that passes its own check: the results and the verdict | 51 | not yet runnable: no executor before S7a-1, and S7a-2, which builds the results, is not done |
 
 Each read is counted by the step whose code runs it (`case_steps.json`), not by what it reads:
 `PR-044.alternatives_beside_value` holds alternatives and is S2a-4's, and `PR-007.target_is_overlay` ends at
@@ -74,12 +75,14 @@ are S2a-2's (`PR-030.near_typo_label_basi_beside_label`, at step 8) and S2a-4's
 members they did not know, and since a value field names it, the slip and `label_basis` beside `alternatives`
 refuse the field. PR-339's arm across a declared edge (`PR-339.across_edge_no_value`, 2026-10-21) is S7a-4's,
 which builds the trainable read (the S7 design's map, 5.5): it needs S3b-2's step 11 as well, which comes
-before S7a-4.
+before S7a-4. PR-330's arm of a requirement holding `review` (`PR-330.review_in_requirement`, 2026-10-23),
+which the S7 design gives S7a-2, is S2a-2's: since the S7 specification the read refuses it at step 0, as it
+refuses a requirement's `label`, and S2a-2's step 0 runs PR-330's other requirement arms.
 
-Of the 1573 case files, 1275 agree with plain read and the hash suite, 1217 with plain read alone, and 1275
+Of the 1625 case files, 1276 agree with plain read and the hash suite, 1218 with plain read alone, and 1276
 with the fits and reference data suite too; the 35 of the table evaluation suite agree with the reference
 evaluator's configuration alone, since this implementation claims no evaluator, the 197 of the record-check
-suite agree with none, since it claims no record checks, and the 51 of the build-check suite agree with none,
+suite agree with none, since it claims no record checks, and the 102 of the build-check suite agree with none,
 since it claims no build checks.
 
 A read executor reads the case's request, or the file `inputs.request` names, among the files `inputs.records`

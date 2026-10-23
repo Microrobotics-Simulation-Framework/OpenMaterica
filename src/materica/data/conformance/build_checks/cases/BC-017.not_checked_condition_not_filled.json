@@ -1,0 +1,68 @@
+{
+  "case": "BC-017",
+  "variant": "not_checked_condition_not_filled",
+  "suite": "build_checks",
+  "schema_version": "0.1.0",
+  "inputs": {
+    "records": [
+      "water_in_vivo_temperature_not_checked.json"
+    ],
+    "declaration": "bc017_not_checked_condition_not_filled.json"
+  },
+  "request": {
+    "operation": "check_build"
+  },
+  "expected": {
+    "refusals": [],
+    "results": [
+      {
+        "model": "drag",
+        "record": {
+          "id": "conformance/water_fixture",
+          "version": "1.0.0",
+          "content_hash": "sha256:0446451a37b88c4aff7dad98848ae25c0d533104ac2c2d00e554d14f5053accf"
+        },
+        "field": "fluid.dynamic_viscosity",
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "condition_unstated",
+            "condition": "temperature"
+          }
+        ],
+        "value": 0.000692,
+        "accepted": false,
+        "accepted_by": [],
+        "not_accepted": [
+          {
+            "code": "condition_unstated",
+            "condition": "temperature"
+          }
+        ]
+      }
+    ],
+    "unused": [
+      {
+        "model": "drag",
+        "acceptance": 0
+      }
+    ]
+  },
+  "compare": {
+    "members": [
+      "refusals",
+      "results",
+      "unused"
+    ],
+    "result_members": [
+      "status",
+      "reasons",
+      "value",
+      "assumption",
+      "accepted",
+      "accepted_by",
+      "not_accepted"
+    ],
+    "exact": true
+  }
+}
