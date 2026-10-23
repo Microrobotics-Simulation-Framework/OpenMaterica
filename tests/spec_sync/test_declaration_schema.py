@@ -960,3 +960,203 @@ def test_an_open_place_is_found() -> None:
     found = open_places(BASE + "declaration.json", (schema,))
     assert found
     assert all(re.search(r"/models/\d+/requirements/\d+$", place) for place in found)
+
+
+# Each rule and binding of declaration.json, applied where it belongs: a declaration with one fault it refuses
+# is refused, and one beside it that it takes is taken.
+
+WATER: JsonValue = {"id": "conformance/water_fixture", "version": "1.0.0", "content_hash": "sha256:0"}
+
+
+def a_declaration() -> Json:
+    """BC-016's declaration, valid: one model over two records, a requirement with a label and two
+    tolerances, and a waiver."""
+    case = json.loads(
+        (BUILD_CHECKS / "cases" / "BC-016.waiver_at_one_of_two_records.json").read_text("utf-8")
+    )
+    return cast(
+        Json, json.loads((BUILD_CHECKS / "inputs" / case["inputs"]["declaration"]).read_text("utf-8"))
+    )
+
+
+def model(declaration: Json) -> Json:
+    return cast(list[Json], declaration["models"])[0]
+
+
+def requirement(declaration: Json) -> Json:
+    return cast(list[Json], model(declaration)["requirements"])[0]
+
+
+def conditions(declaration: Json) -> Json:
+    return at(requirement(declaration), "conditions")
+
+
+def with_acceptance(acceptance: Json) -> Callable[[Json], None]:
+    def change(declaration: Json) -> None:
+        cast(list[JsonValue], model(declaration)["acceptances"]).append(acceptance)
+
+    return change
+
+
+def at_water(members: Json) -> Json:
+    return {"record": WATER, "field": "fluid.dynamic_viscosity", "reason": "a reason"} | members
+
+
+def sampled(represents: str, level: bool) -> Callable[[Json], None]:
+    def change(declaration: Json) -> None:
+        declaration["sampling"] = {"min_acceptance": 0.9, "reason": "a reason", "independence": []}
+        requirement(declaration)["represents"] = represents
+        if level:
+            requirement(declaration)["population_level"] = {"level": "donor", "within": {"status": "none"}}
+
+    return change
+
+
+def implied(fact: str, token: str, implies: Json) -> Callable[[Json], None]:
+    members: Json = {"acceptance": "implied_condition", "fact": fact, "token": token, "implies": implies}
+    return with_acceptance(at_water(members))
+
+
+def difference(fact: str, value: JsonValue) -> Callable[[Json], None]:
+    members: Json = {"acceptance": "accepted_difference", "section": "fluid", "fact": fact, "value": value}
+    return with_acceptance(members | {"reason": "a reason"})
+
+
+def distribution(parameters: Json) -> Callable[[Json], None]:
+    members: Json = {
+        "acceptance": "distribution",
+        "distribution": "normal",
+        "space": "identity",
+        "distribution_parameters": parameters,
+        "basis": "a basis",
+    }
+    return with_acceptance(at_water(members))
+
+
+def nominal(members: Json) -> Callable[[Json], None]:
+    kind: Json = {"acceptance": "nominal", "basis": "a basis"}
+    return with_acceptance(at_water(kind | members))
+
+
+def waiver(members: Json) -> Callable[[Json], None]:
+    kind: Json = {"acceptance": "waiver"}
+    return with_acceptance(at_water(kind | members))
+
+
+def requirement_label(label: str) -> Callable[[Json], None]:
+    return lambda declaration: requirement(declaration).update(label=label)
+
+
+def tolerance_unit(unit: str) -> Callable[[Json], None]:
+    return lambda declaration: at(conditions(declaration), "temperature", "tolerance").update(unit=unit)
+
+
+def accepted(tokens: JsonValue) -> Callable[[Json], None]:
+    return lambda declaration: conditions(declaration).update(
+        test_method={"accept": tokens, "reason": "a reason"}
+    )
+
+
+def temperature_as_accept_list(declaration: Json) -> None:
+    conditions(declaration)["temperature"] = {"accept": ["apparent"], "reason": "a reason"}
+
+
+def operating_unit(declaration: Json) -> None:
+    at(declaration, "operating_conditions", "temperature")["unit"] = "Cel"
+
+
+def target(fact: Json) -> Callable[[Json], None]:
+    return lambda declaration: model(declaration).update(target=fact)
+
+
+def families(declaration: Json) -> None:
+    model(declaration)["families"] = {"fluid.dynamic_viscosity": "materica.fluid.cross.v1"}
+
+
+PROBES: list[tuple[str, Callable[[Json], None], bool]] = [
+    ("the_requirement_labels_its_field", requirement_label("materica.fluid.newtonian.v1"), True),
+    ("another_fields_label", requirement_label("materica.magnetic.linear.v1"), False),
+    ("a_tolerance_in_another_unit", tolerance_unit("Cel"), False),
+    ("a_numeric_condition_given_an_accept_list", temperature_as_accept_list, False),
+    ("an_accept_list_of_the_rows_tokens", accepted(["pycnometer"]), True),
+    ("an_accept_list_with_a_slip", accepted(["pycnometr"]), False),
+    ("an_empty_accept_list", accepted([]), False),
+    ("an_operating_condition_in_another_unit", operating_unit, False),
+    ("a_population_with_its_level", sampled("population", level=True), True),
+    ("a_population_without_its_level", sampled("population", level=False), False),
+    ("an_estimate_beside_sampling", sampled("estimate", level=False), True),
+    ("an_estimate_without_sampling", lambda d: requirement(d).update(represents="estimate"), False),
+    (
+        "a_waiver_naming_its_codes_condition",
+        waiver({"code": "outside_range", "condition": "temperature"}),
+        True,
+    ),
+    ("a_waiver_without_its_codes_condition", waiver({"code": "range_unstated"}), False),
+    (
+        "a_waiver_naming_a_condition_its_code_does_not",
+        waiver({"code": "unit_mismatch", "condition": "temperature"}),
+        False,
+    ),
+    (
+        "a_waiver_with_no_location",
+        with_acceptance(
+            {
+                "acceptance": "waiver",
+                "field": "fluid.dynamic_viscosity",
+                "code": "no_requirement",
+                "reason": "a reason",
+            }
+        ),
+        False,
+    ),
+    (
+        "an_implied_token_of_its_fact",
+        implied("tissue_state", "in_vivo", {"temperature": {"value": 310.15, "unit": "K"}}),
+        True,
+    ),
+    ("an_implied_token_of_another_fact", implied("tissue_state", "normal", {}), False),
+    (
+        "an_implied_token_condition_off_its_row",
+        implied("tissue_state", "in_vivo", {"density_kind": {"token": "bulk"}}),
+        False,
+    ),
+    (
+        "an_implied_value_in_another_unit",
+        implied("tissue_state", "in_vivo", {"temperature": {"value": 37.0, "unit": "Cel"}}),
+        False,
+    ),
+    ("a_differences_value_in_its_facts_shape", difference("species", {"ncbi_taxon": 9606}), True),
+    (
+        "a_differences_value_in_another_facts_shape",
+        difference("species", {"uberon": "UBERON:0000178"}),
+        False,
+    ),
+    (
+        "a_mimics_value_inferred",
+        difference("mimics", {"text": "blood", "basis": "inferred", "inferred_from": "a"}),
+        False,
+    ),
+    ("a_normals_parameters", distribution({"mean": 1.0, "sd": 0.1}), True),
+    ("a_normal_with_a_uniforms_parameters", distribution({"lower": 0.0, "upper": 1.0}), False),
+    ("a_nominal_value", nominal({"value": 0.001}), True),
+    ("a_nominal_value_and_params", nominal({"value": 0.001, "params": {"mu": 1.0}}), False),
+    ("a_nominal_params_for_a_field_with_no_parameter_set", nominal({"params": {"mu": 1.0}}), False),
+    ("a_family_for_a_field_with_no_parameter_set", families, False),
+    ("a_target_age_in_seconds", target({"donor_age": {"range": [1.0e8, 2.0e9], "unit": "s"}}), True),
+    ("a_target_age_in_years", target({"donor_age": {"range": [3.0, 60.0], "unit": "a"}}), False),
+    (
+        "a_target_age_holding_value_and_range",
+        target({"donor_age": {"value": 1.0, "range": [1.0, 2.0], "unit": "s"}}),
+        False,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("change", "valid"), [probe[1:] for probe in PROBES], ids=[probe[0] for probe in PROBES]
+)
+def test_each_rule_and_binding_judges_its_own_fault(change: Callable[[Json], None], valid: bool) -> None:
+    declaration = a_declaration()
+    assert agreed("declaration.json")(declaration)
+    change(declaration)
+    assert agreed("declaration.json")(declaration) is valid
