@@ -7,6 +7,8 @@ selects; no job or step carries on after a failure (`continue-on-error`).
 `repeat.yml` runs one test many times, each run under a seed of its own, when dispatched by hand (below).
 `mutants.yml` runs a branch's hand mutants, each against a pytest selection in a job of its own, and writes
 one table of what became of each, when dispatched by hand (below).
+`measure.yml` runs the measurements a property piece makes before review as a matrix of jobs, and writes one
+table a kind, when dispatched by hand, or as its own self-test on a pull request that changes it (below).
 
 | Job | Runs | When |
 |---|---|---|
@@ -159,6 +161,34 @@ one of the same inputs on the same ref, and others pending behind it wait in tur
 its steps as written on a throwaway repository, with a stub in place of pytest and with this Python's
 pytest, end to end on mutants that are killed, survive and are broken.
 
+## Measurements (`measure.yml`)
+
+Dispatched by hand (`workflow_dispatch`): the measurements of `scripts/measure.py` (floors at the variance
+measured, kill drift over streams, regions of a base against the head, a fuzz control's rate) as a matrix of
+jobs, with the counts and judgement of a local run (maintainer, 2026-10-23); `tests/README.md`, "Measurements
+on CI", says how to ask for one and how to read its table. Its inputs: the kind, `floors`, `drift`, `regions` or
+`fuzz`; the selection, paths or nodes under `tests/property`, or fuzz controls by name; the count, streams or
+runs (the rule's: 20, 40, 18 and 10); the streams a job; the base, for regions; and the Python. It also runs on a
+pull request that changes `measure.yml` or `scripts/measure.py`, and on no other: GitHub dispatches a workflow
+only from the default branch's copy of it, so a draft would otherwise never run its own. There the request is
+the self-test (`SELF_TEST`), each kind at its rule's count on one small selection, with the answer it must give: stream 0 the
+recorded kill, a tree against itself every share's ratio 1 and every kill its record, the fastest fuzz control
+finding its fault and finding nothing with none seeded.
+
+| Job | Runs | When |
+|---|---|---|
+| `request` | checks the inputs (`scripts/measure.py request`, on the runner's Python) and writes them, checked, as its outputs; collects the selection at `ci` and makes the matrix, one job a test function and chunk of streams (for regions a job of each side, and one of every mutant search at the head) or a fuzz control's run, and resolves the base to its commit (`measure.py matrix`), so that a selection holding nothing to measure, a base that is no commit or more jobs than a matrix holds fails before any job starts; then checks the jobs' cap, `MEASURE_MAX_PARALLEL` (below) | every dispatch, and a pull request that changes the workflow or its script |
+| `measure` | each job of the matrix: the job checked again, then run (`measure.py job`): a base exported with `git archive` into an environment of its own; pytest with the script as its plugin, a process per vCPU, each a share of the streams, the property's checks run and its audit's judgement left to the report; every mutant search at the head as `gen_kill_counts.py --measure` runs them; or one run of a fuzz control as `ci.yml`'s control step runs it, on Python 3.14 with Atheris. Interrupted three minutes before its timeout (120 minutes, 30 for a fuzz run), counted from the job's start, by one SIGINT the script passes on to its processes, so that the record keeps what finished; its record kept 90 days as the artifact `record-<job>-<attempt>`; fails where its record holds a problem | after `request`, at most `MEASURE_MAX_PARALLEL` at once (`max-parallel`), 10 where it is unset (below), none cancelled by another's failure (`fail-fast: false`) |
+| `report` | counts the records first (`measure.py summary`), one for each job of the matrix, naming a missing one as that, then merges them into one table a kind with its flags, on the run's page and kept 90 days as the artifact `measure-table-<attempt>` (`table.md`); fails where a record is missing or doubled, a record holds a problem, a job did not succeed, a self-test job gave another answer than its own, or the run is on an attempt but its first. A flag (a floor above 1e-6 at the variance measured, a kill near or past the guard, a share below 0.8 of the base's) is a finding the table reports, not a failure | after the jobs, whatever their result, once the request was checked |
+
+No input reaches a profile's example count, deadline or health checks: every run is at `ci`, the profile of
+`tests/conftest.py`, derandomised, each stream salting the test's digest. Each input reaches a step through its
+environment alone and is checked before any job reads it. The workflow reads the repository alone
+(`contents: read`), reads no secret, restores the uv cache CI saved and saves none, and never cancels another
+dispatch; a dispatch waits behind a running one of the same inputs on the same ref (`queue: max`, above).
+`tests/unit/test_ci_workflows.py` holds it to each of these, and runs the request, a measurement and the report
+as written on this repository, the report's failure cases among them.
+
 ## The whole suite on CI
 
 A branch's whole suite runs on CI without a workflow of its own. A push to a pull request, a draft
@@ -187,6 +217,7 @@ repository variables cap how many of this repository's matrix jobs run at once (
 | `PER_COMMIT_MAX_PARALLEL` | `ci.yml`'s `commit` job, and its `site_commit` job apart: each may run that many at once | 6 |
 | `REPEAT_MAX_PARALLEL` | `repeat.yml`'s `runs`, for each dispatch | 10 |
 | `MUTANT_MAX_PARALLEL` | `mutants.yml`'s `mutants`, for each dispatch | 10 |
+| `MEASURE_MAX_PARALLEL` | `measure.yml`'s `measure`, for each dispatch | 10 |
 
 Raise `PER_COMMIT_MAX_PARALLEL` so that a pull request's commits are checked sooner; lower it where the head's
 jobs wait behind the per-commit ones. Where it is unset the cap is 6. A repository's variable can change
