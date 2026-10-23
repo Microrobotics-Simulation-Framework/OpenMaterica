@@ -107,7 +107,9 @@ MEANINGS: dict[str, dict[str, Meaning]] = {
             "read_request.json#/properties/target",
         ),
         "declared_model": Meaning(
-            {"species": {"ncbi_taxon": 9606}}, None, "declarations.md section 1, a model's `target`"
+            {"species": {"ncbi_taxon": 9606}},
+            "declaration.json#/$defs/model_entry/properties/target",
+            "declarations.md section 1, a model's `target`",
         ),
         "specimen_difference": Meaning(
             {"ncbi_taxon": 9606},
@@ -148,12 +150,16 @@ REFUSES: dict[str, dict[str, tuple[str, ...]]] = {
         "record.writer.json#/$defs/derivation/properties/method": (),
         "read_request.json#/$defs/extrapolation_acceptance/properties/method": ("extraction", "free_text"),
         "read_result.json#/$defs/extrapolation_assumption/properties/method": ("extraction", "free_text"),
+        "declaration.json#/$defs/extrapolation/properties/method": ("extraction", "free_text"),
     },
     "target": {
         "read_request.json#/properties/target": ("declared_model", "specimen_difference"),
-        # A build-check case's specimen difference holds the target's fact as the declaration gives it, any
-        # fact's shape: it refuses nothing, as a member a read returns as found refuses nothing.
+        "declaration.json#/$defs/model_entry/properties/target": ("request", "specimen_difference"),
+        # A specimen difference, a build-check case's or a build report's, holds the target's fact as the
+        # declaration gives it, any fact's shape: it refuses nothing, as a member a read returns as found
+        # refuses nothing.
         "case.json#/$defs/compared_specimen_difference/properties/target": (),
+        "build_report.json#/$defs/specimen_difference/properties/target": (),
     },
 }
 GENERATED = "record.reader.json"

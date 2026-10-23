@@ -3,7 +3,8 @@
 The JSON Schemas (layer L0, AD 7.1), in the dialect of JSON Schema 2020-12, one directory per schema version.
 Each version has a closed writer schema and an open reader schema for records (`record_format.md` section 1
 item 2), schemas for the read request and result, a schema for conformance case files, a schema for page-text
-documents (`page_text.md`), and the vocabulary. Every file's `$id` is its path under
+documents (`page_text.md`), schemas for a consumer's declaration and the build's report (`declarations.md`),
+and the vocabulary. Every file's `$id` is its path under
 `https://w3id.org/materica/schema/`; an `$id` is an identifier and need not resolve.
 
 ## Where each fact is edited

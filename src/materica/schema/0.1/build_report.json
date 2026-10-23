@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://w3id.org/materica/schema/0.1/build_report.json",
+  "$comment": "Hand-edited. The package's typed shapes are generated from it. tests/spec_sync/test_declaration_schema.py holds a field result's read members to read_result.json's, and case.json's build result and watch to this file's, member for member.",
+  "title": "BuildReport",
+  "description": "The build's report (declarations.md section 2): consumer, as declared; records, every record a read resolved; declaration, as given; refusals, the declaration's own (section 1); results, every field result of section 2 and every combination result of section 3 item 6; watches (section 8); and unused (section 2 item 9). watches is optional, so that a build that does not yet emit watches omits it rather than hold an empty list; every other list is required, and may be empty. A declaration the build refuses on its own gives no results, no watches and nothing unused, so a report holding a refusal holds those lists empty, and its consumer and declaration, where it holds them, as given, whatever their shape: the text says what a refused declaration's report compares and nothing of the rest. A report holding no refusal holds its consumer and a declaration valid against declaration.json.",
+  "type": "object",
+  "required": ["records", "refusals", "results", "unused"],
+  "properties": {
+    "consumer": {"$ref": "record.writer.json#/$defs/json_value", "description": "As declared."},
+    "records": {
+      "description": "Every record a read resolved, by id, version and content_hash.",
+      "type": "array",
+      "items": {"$ref": "declaration.json#/$defs/material_reference"}
+    },
+    "declaration": {"$ref": "record.writer.json#/$defs/json_value", "description": "As given."},
+    "refusals": {"type": "array", "items": {"$ref": "#/$defs/build_refusal"}},
+    "results": {
+      "type": "array",
+      "items": {"anyOf": [{"$ref": "#/$defs/field_result"}, {"$ref": "#/$defs/combination_result"}]}
+    },
+    "watches": {"type": "array", "items": {"$ref": "#/$defs/watch"}},
+    "unused": {"type": "array", "items": {"$ref": "#/$defs/unused_acceptance"}}
+  },
+  "additionalProperties": false,
+  "allOf": [{"$ref": "#/$defs/refusal_rule"}],
+  "$defs": {
+    "refusal_rule": {
+      "description": "A report holding a refusal holds no results, no watches and nothing unused (section 2); one holding none holds its consumer, as declared, and its declaration, valid against declaration.json.",
+      "if": {"properties": {"refusals": {"minItems": 1}}},
+      "then": {
+        "properties": {
+          "results": {"maxItems": 0},
+          "watches": {"maxItems": 0},
+          "unused": {"maxItems": 0}
+        }
+      },
+      "else": {
+        "required": ["consumer", "declaration"],
+        "properties": {
+          "consumer": {"$ref": "declaration.json#/$defs/consumer"},
+          "declaration": {"$ref": "declaration.json"}
+        }
+      }
+    },
+    "build_refusal": {
+      "title": "BuildRefusalJson",
+      "description": "A refusal of the declaration on its own (section 1): the case of the rule broken, a JSON pointer (RFC 6901) into the declaration, and optionally detail, text for people that no case compares.",
+      "type": "object",
+      "required": ["item", "pointer"],
+      "properties": {
+        "item": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]{3}(?![\\s\\S])"},
+        "pointer": {"type": "string", "pattern": "^(?:/(?:[^~/]|~[01])*)*(?![\\s\\S])"},
+        "detail": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "field_result": {
+      "title": "BuildResultJson",
+      "description": "A field's result (section 2): the read result, its members each as read_result.json gives it, with the build's members added: the model, the location it was read for (over records, the record read; a result read for a region or an interval holds it beside record), the field, its specimen differences, whether it is accepted and by which acceptances (0-based indexes into the model's acceptances), on a trainable field its trainable entry's index, and what nothing covers. Its status and reasons hold the build's own reasons joined to the read's (section 2 item 8).",
+      "type": "object",
+      "required": ["status", "reasons", "model", "record", "field", "specimen_differences", "accepted", "accepted_by", "not_accepted"],
+      "properties": {
+        "status": {"$ref": "read_result.json#/$defs/read_status"},
+        "reasons": {"type": "array", "items": {"$ref": "read_result.json#/$defs/reason"}},
+        "value": {"$ref": "read_result.json#/$defs/result_value"},
+        "alternative_values": {"type": "array", "items": {"$ref": "read_result.json#/$defs/alternative_value"}},
+        "unit": {"$ref": "record.writer.json#/$defs/unit"},
+        "conditions": {"type": "array", "items": {"$ref": "read_result.json#/$defs/condition_entry"}},
+        "specimen": {"$ref": "read_result.json#/$defs/result_specimen"},
+        "statistics": {"$ref": "record.writer.json#/$defs/field_statistics"},
+        "provenance": {"$ref": "read_result.json#/$defs/result_provenance"},
+        "labels": {"type": "array", "items": {"$ref": "read_result.json#/$defs/returned_label"}},
+        "assumption": {"$ref": "read_result.json#/$defs/assumption"},
+        "table": {"$ref": "record.writer.json#/$defs/table"},
+        "model": {"type": "string"},
+        "record": {"$ref": "read_request.json#/$defs/material_ref"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "declaration.json#/$defs/interval_location"},
+        "field": {"$ref": "read_request.json#/$defs/field_name"},
+        "specimen_differences": {"type": "array", "items": {"$ref": "#/$defs/specimen_difference"}},
+        "accepted": {"type": "boolean"},
+        "accepted_by": {"$ref": "#/$defs/accepted_by"},
+        "trainable_by": {
+          "description": "The 0-based index of the result's entry in the model's trainable.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "not_accepted": {"$ref": "#/$defs/not_accepted"}
+      },
+      "additionalProperties": false
+    },
+    "combination_result": {
+      "title": "CombinationResultJson",
+      "description": "A combination's result (section 3 item 6): the model, the location, the record, the fields combined, the specimen differences between them, and whether they are accepted, as a field result's are.",
+      "type": "object",
+      "required": ["model", "record", "fields", "specimen_differences", "accepted", "accepted_by", "not_accepted"],
+      "properties": {
+        "model": {"type": "string"},
+        "record": {"$ref": "read_request.json#/$defs/material_ref"},
+        "region": {"type": "string"},
+        "interval": {"$ref": "declaration.json#/$defs/interval_location"},
+        "fields": {"type": "array", "minItems": 2, "items": {"$ref": "read_request.json#/$defs/field_name"}},
+        "specimen_differences": {"type": "array", "items": {"$ref": "#/$defs/specimen_difference"}},
+        "accepted": {"type": "boolean"},
+        "accepted_by": {"$ref": "#/$defs/accepted_by"},
+        "not_accepted": {"$ref": "#/$defs/not_accepted"}
+      },
+      "additionalProperties": false
+    },
+    "accepted_by": {
+      "description": "0-based indexes into the model's acceptances, of every acceptance used for the result, those the read applied included (section 2 item 4).",
+      "type": "array",
+      "items": {"type": "integer", "minimum": 0}
+    },
+    "not_accepted": {
+      "description": "Each reason and each specimen difference that nothing covers, empty exactly when accepted is true (section 2 item 4).",
+      "type": "array",
+      "items": {"anyOf": [{"$ref": "read_result.json#/$defs/reason"}, {"$ref": "#/$defs/specimen_difference"}]}
+    },
+    "specimen_difference": {
+      "title": "SpecimenDifference",
+      "description": "A fact the target names where the record's differs (section 3): its section and fact, the record's fact, absent where the record does not hold it, and the target's.",
+      "type": "object",
+      "required": ["section", "fact"],
+      "properties": {
+        "section": {"type": "string"},
+        "fact": {"type": "string"},
+        "record": {"$ref": "record.writer.json#/$defs/json_value"},
+        "target": {"$ref": "record.writer.json#/$defs/json_value"}
+      },
+      "additionalProperties": false
+    },
+    "watch": {
+      "title": "Watch",
+      "description": "A run-time watch (section 8): its model, its location (over records, the record read), the field and the condition, the condition's unit, its source, and either interval, the values the condition may take, its ends rounded inward to doubles, or accept, a token condition's accept list. Its interval member holds the watch's ends, never a location: a watch at an interval location is not yet specified.",
+      "type": "object",
+      "required": ["model", "field", "condition", "source"],
+      "properties": {
+        "model": {"type": "string"},
+        "record": {"$ref": "read_request.json#/$defs/material_ref"},
+        "region": {"type": "string"},
+        "field": {"$ref": "read_request.json#/$defs/field_name"},
+        "condition": {"type": "string"},
+        "unit": {"type": "string"},
+        "source": {"enum": ["tolerance", "form_range", "declared"]},
+        "interval": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "number"}
+        },
+        "accept": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/watch_rule"}]
+    },
+    "watch_rule": {
+      "description": "Exactly one of interval, with the condition's unit, and accept; and a location, the record unless a region.",
+      "if": {"required": ["interval"]},
+      "then": {"required": ["unit"], "not": {"required": ["accept"]}},
+      "else": {"required": ["accept"]},
+      "anyOf": [{"required": ["record"]}, {"required": ["region"]}]
+    },
+    "unused_acceptance": {
+      "title": "UnusedAcceptance",
+      "description": "An acceptance no result used (section 2 item 9): its model, by name, and its 0-based index in the model's acceptances.",
+      "type": "object",
+      "required": ["model", "acceptance"],
+      "properties": {"model": {"type": "string"}, "acceptance": {"type": "integer", "minimum": 0}},
+      "additionalProperties": false
+    }
+  }
+}

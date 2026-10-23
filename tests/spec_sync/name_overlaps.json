@@ -215,7 +215,7 @@
       "reason": "A request's target (a record or region, and a field), a declared model's target (specimen facts, declarations.md section 1), and a specimen difference's target value (section 3).",
       "safeguard": {
         "test": "tests/spec_sync/test_name_overlap_safeguards.py::test_each_meaning_is_refused_at_the_others_places[target]",
-        "what": "The read request refuses a model's target and a specimen difference's. Declarations have no schema yet; once they have, the test fails until it says what their places refuse."
+        "what": "The read request refuses a model's target and a specimen difference's, and a declaration's model entry a request's target and a specimen difference's; a specimen difference's target, in a case or a build report, holds the target's fact as declared and refuses nothing."
       }
     },
     {
@@ -284,8 +284,8 @@
     {
       "rule": "A",
       "names": ["name"],
-      "owner": "axis",
-      "reason": "A result's condition entry names its condition, numeric or token, so it takes the numeric conditions a table's axis takes and the token conditions beside them; elsewhere a name names what its own object describes (a family's input or parameter, an admissibility rule, a model, a consumer). No member takes the other's place.",
+      "owner": "condition",
+      "reason": "A result's condition entry names its condition, numeric or token, so it takes the registered conditions a waiver's condition takes (and a table's axis the numeric ones); elsewhere a name names what its own object describes (a family's input or parameter, an admissibility rule, a model, a consumer). No member takes the other's place.",
       "safeguard": {
         "document": "docs/specification/read_side_contract.md",
         "quote": "one entry per condition checked (section 5): `{\"name\", \"status\", \"record\"?, \"operating\"?}`",
@@ -356,6 +356,39 @@
         "document": "docs/specification/declarations.md",
         "quote": "Every result of a field holds the `field` read, and a combination's its `fields` (section 3 item 6).",
         "what": "Section 2 item 2; tests/spec_sync/test_schemas.py holds result_members to the build result's members."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["records"],
+      "meanings": 2,
+      "reason": "A case's and a read request's records, the record files or texts a read resolves references against (README.md, \"Case files\"; read_side_contract.md section 1), and the records a declaration's model is checked over and a build report's records, material references (declarations.md sections 1 and 2). One is never written where the other belongs: a case's inputs name files, a declaration and a report pin records.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "`{\"records\": [<material references>]}` (records read with no scene)",
+        "what": "Section 1's checked_over row: a declaration's records are material references, which declaration.json closes; a case's are file names, which a material reference is not."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["review"],
+      "meanings": 2,
+      "reason": "A value's review, the object provenance.md section 2 gives, and a requirement's review, the token asking for a reviewed value (declarations.md section 1 item 11). A read request refuses a requirement holding review, so a requirement's token never reaches the place a review object is read.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "A requirement's `review` holds `reviewed`, the one token of schema 0.1.0.",
+        "what": "Section 1 item 11: a requirement's review is that token; declaration.json takes it alone there, and a review object is no token."
+      }
+    },
+    {
+      "rule": "A",
+      "names": ["values"],
+      "meanings": 2,
+      "reason": "A licence's values, the SPDX expression the record's values are under (record_format.md section 2), and an engine model's values, per crosswalk attribute a declared value (declarations.md section 1). Neither object holds the other's member.",
+      "safeguard": {
+        "document": "docs/specification/declarations.md",
+        "quote": "`values`, per crosswalk attribute with no OpenMaterica field, `{\"value\", \"unit\", \"reason\", \"basis\"}` in SI",
+        "what": "Section 1's engine row: an engine's values are a map of declared values, which declaration.json closes; a licence's values a string."
       }
     }
   ]

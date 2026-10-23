@@ -211,6 +211,7 @@ Edit = tuple[str, str, str]
 FACTS = "src/materica/schema/0.1/vocabulary/specimen_facts.json"
 WRITER = "src/materica/schema/0.1/record.writer.json"
 RESULT = "src/materica/schema/0.1/read_result.json"
+DECLARATION = "src/materica/schema/0.1/declaration.json"
 SET_OR_MEASURED = '"set_or_measured": {"$ref": "vocabulary/provenance.json#/$defs/set_or_measured"}'
 # Each form's value field holds the members of `field_members` by `allOf`, beside its own `form`.
 FORMS = json.loads(
@@ -235,6 +236,8 @@ SUPPLY_FORM = [
     (WRITER, '"supply_form": {"anyOf"', '"material_form": {"anyOf"'),
     # read_result.json's twin of the writer's specimen follows it (`test_schemas.py` holds the two equal).
     (RESULT, '"supply_form": {"anyOf"', '"material_form": {"anyOf"'),
+    # declaration.json names the facts a target, an implied condition and an accepted difference take.
+    (DECLARATION, '"supply_form"', '"material_form"'),
 ]
 LOTS = [
     (
@@ -503,3 +506,23 @@ def test_a_binding_of_the_vocabulary_declares_no_namespace() -> None:
     assert f"{vocabulary}fields.json#/$defs/label" in origins
     replaces = [origin for origin in origins if origin.endswith("record.writer.json#/$defs/replaces")]
     assert replaces == []
+
+
+def test_a_rule_of_the_declaration_declares_no_namespace() -> None:
+    """declaration.json's rules and bindings narrow members the definitions applying them declare (a
+    tolerance's unit to its condition's): their names are no namespace, and the members they narrow keep the
+    shapes their own definitions give. The controls: a binding there declares members a walk would read, and
+    the definitions applying the rules are read."""
+    assert name_overlaps.rule("#/$defs/requirement_condition_binding")
+    assert name_overlaps.rule("waiver_condition_rule")
+    assert not name_overlaps.rule("#/$defs/requirement")
+    files = name_overlaps.load(REPOSITORY)
+    definitions = name_overlaps.mapping(name_overlaps.mapping(files["declaration.json"])["$defs"])
+    binding = name_overlaps.mapping(definitions["requirement_condition_binding"])
+    assert "temperature" in name_overlaps.mapping(binding["properties"])
+    origins = [namespace.origin for namespace in name_overlaps.collect(REPOSITORY).namespaces]
+    declaration = "src/materica/schema/0.1/declaration.json#/$defs/"
+    under = [origin.removeprefix(declaration).partition("/")[0] for origin in origins]
+    assert not [name for name in under if name_overlaps.rule(name)]
+    assert f"{declaration}requirement" in origins
+    assert f"{declaration}waiver" in origins
