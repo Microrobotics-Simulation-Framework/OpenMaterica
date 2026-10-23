@@ -51,6 +51,7 @@ from scripts.gen_vocabulary import cells
 from tests.spec_sync.schemas import RESULT_TWINS
 
 SCHEMA = Path("src/materica/schema/0.1")
+RULE_FILES = frozenset({"declaration.json", "build_report.json"})
 SPECIFICATION = Path("docs/specification")
 # Generated from record.writer.json with every token list opened on purpose.
 GENERATED = ("record.reader.json",)
@@ -231,7 +232,7 @@ class Schemas:
         for conjunct in listing(node.get("allOf", [])):
             if isinstance(conjunct, dict) and "$ref" in conjunct:
                 base, file = self.resolve(str(conjunct["$ref"]), current)
-                if not (binding(base, file) or rule(str(conjunct["$ref"]))):
+                if not (binding(base, file) or rule(str(conjunct["$ref"]), file)):
                     found |= self.members(mapping(base), file)
         properties = node.get("properties", {})
         return found | {name: (subschema, current) for name, subschema in mapping(properties).items()}
@@ -261,18 +262,20 @@ class Schemas:
                 for name, subschema in value.items():
                     if not (
                         keyword == "$defs"
-                        and (binding(subschema, current) or twin(name, current) or rule(name))
+                        and (binding(subschema, current) or twin(name, current) or rule(name, current))
                     ):
                         self.walk(subschema, current, f"{pointer}/{keyword}/{name}", name)
             elif keyword not in CONSTRAINTS:
                 self.walk(value, current, f"{pointer}/{keyword}", owner)
 
 
-def rule(reference: str) -> bool:
-    """Whether a definition, by its name or a local reference to it, is one of a schema's rules or bindings
-    (`*_rule`, `*_binding`, as declaration.json names them): it narrows members the definition applying it
-    declares, as a binding of the vocabulary does, and declares none of its own."""
-    return re.fullmatch(r"(?:#/\$defs/)?\w+_(?:rule|binding)", reference) is not None
+def rule(reference: str, file: str) -> bool:
+    """Whether a definition, by its name or a local reference to it, is one of the rules or bindings the
+    declaration's and the build report's schemas define (`*_rule`, `*_binding`): it narrows members the
+    definition applying it declares, as a binding of the vocabulary does, and declares none of its own. Only
+    those two files: the vocabulary's `sum_rule` is an enumeration of tokens, a namespace like any other."""
+    named = re.fullmatch(r"(?:#/\$defs/)?\w+_(?:rule|binding)", reference) is not None
+    return named and file in RULE_FILES
 
 
 def twin(name: str, file: str) -> bool:

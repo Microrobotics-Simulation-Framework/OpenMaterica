@@ -266,6 +266,17 @@ LOTS = [
         pytest.param(
             [
                 (
+                    "src/materica/schema/0.1/vocabulary/forms.json",
+                    '"sums_to_one",\n        "partial"\n',
+                    '"sums_to_one",\n        "partial",\n        "partials"\n',
+                )
+            ],
+            {"[B] partial ~ partials (owner sum_rule)"},
+            id="partials_in_the_vocabularys_sum_rule",
+        ),
+        pytest.param(
+            [
+                (
                     WRITER,
                     '"purpose": {"enum": ["fit", "fill_in",',
                     '"purpose": {"enum": ["fit", "fill_in", "fillin",',
@@ -513,9 +524,12 @@ def test_a_rule_of_the_declaration_declares_no_namespace() -> None:
     tolerance's unit to its condition's): their names are no namespace, and the members they narrow keep the
     shapes their own definitions give. The controls: a binding there declares members a walk would read, and
     the definitions applying the rules are read."""
-    assert name_overlaps.rule("#/$defs/requirement_condition_binding")
-    assert name_overlaps.rule("waiver_condition_rule")
-    assert not name_overlaps.rule("#/$defs/requirement")
+    assert name_overlaps.rule("#/$defs/requirement_condition_binding", "declaration.json")
+    assert name_overlaps.rule("waiver_condition_rule", "declaration.json")
+    assert name_overlaps.rule("watch_rule", "build_report.json")
+    assert not name_overlaps.rule("#/$defs/requirement", "declaration.json")
+    # The vocabulary's `sum_rule` is named like a rule and is an enumeration: it is read, not skipped.
+    assert not name_overlaps.rule("sum_rule", "vocabulary/forms.json")
     files = name_overlaps.load(REPOSITORY)
     definitions = name_overlaps.mapping(name_overlaps.mapping(files["declaration.json"])["$defs"])
     binding = name_overlaps.mapping(definitions["requirement_condition_binding"])
@@ -523,6 +537,6 @@ def test_a_rule_of_the_declaration_declares_no_namespace() -> None:
     origins = [namespace.origin for namespace in name_overlaps.collect(REPOSITORY).namespaces]
     declaration = "src/materica/schema/0.1/declaration.json#/$defs/"
     under = [origin.removeprefix(declaration).partition("/")[0] for origin in origins]
-    assert not [name for name in under if name_overlaps.rule(name)]
+    assert not [name for name in under if name_overlaps.rule(name, "declaration.json")]
     assert f"{declaration}requirement" in origins
     assert f"{declaration}waiver" in origins
