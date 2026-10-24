@@ -473,6 +473,7 @@ def measured_before(repository: Path) -> tuple[str, str, Path, list[str]]:
         ("docs/specification/record_format.md", False),
         ("tests/property/README.md", False),  # a README a test reads: the kill counts' table
         ("NOTES.md", False),  # Markdown that is neither a README nor documentation
+        ("docs/make.cmd", False),  # documentation's place, but no Markdown
     ],
 )
 def test_a_fact_measured_before_the_head_holds_only_across_commits_that_change_prose_markdown_alone(
@@ -882,7 +883,7 @@ KEPT = (
 )
 LANDED = ROW.format(" as stored,")
 ACCEPTED_LINE = (
-    '  accepted wording: "holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as '
+    '  Accepted wording: "holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as '
     '`record_format.md` section 5 gives them"'
 )
 
