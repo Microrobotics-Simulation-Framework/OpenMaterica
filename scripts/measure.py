@@ -1339,7 +1339,9 @@ def counted_problems(record: dict[str, Any]) -> list[str]:
         return [f"{job}: no run was counted"]
     problems: list[str] = []
     for run in runs:
-        if run.get("outcome", "passed") != "passed" or not run["examples"]:
+        if run.get("outcome", "passed") != "passed":
+            problems.append(f"{job}: {run['node']} stream {run['stream']} ended {run['outcome']}")
+        elif not run["examples"]:
             problems.append(f"{job}: {run['node']} stream {run['stream']} counted no examples")
     declared: dict[str, int] = {}
     for run in runs:
@@ -1349,6 +1351,16 @@ def counted_problems(record: dict[str, Any]) -> list[str]:
         f"{job}: the declared feature `{name}` was never counted" for name, n in declared.items() if not n
     ]
     return problems
+
+
+def drew_examples(record: dict[str, Any]) -> list[str]:
+    """Where a self-test stream drew other than the examples the `ci` profile gives its property."""
+    return [
+        f"{record['job']['id']}: stream {run['stream']} drew {run['examples']} examples, not"
+        f" {SELF_FLOORS_EXAMPLES}"
+        for run in record.get("runs", [])
+        if run["examples"] != SELF_FLOORS_EXAMPLES
+    ]
 
 
 def expectations(records: Sequence[dict[str, Any]], flags: Sequence[str]) -> list[str]:
@@ -1369,14 +1381,10 @@ def expectations(records: Sequence[dict[str, Any]], flags: Sequence[str]) -> lis
             first = {run["stream"]: run for run in record.get("runs", [])}.get(0)
             if first is None or first["features"] != SELF_FLOORS_STREAM_0:
                 problems.append(f"{job['id']}: stream 0 did not count what it counted before")
-            problems += [
-                f"{job['id']}: stream {run['stream']} drew {run['examples']} examples, not"
-                f" {SELF_FLOORS_EXAMPLES}"
-                for run in record.get("runs", [])
-                if run["examples"] != SELF_FLOORS_EXAMPLES
-            ]
+            problems += drew_examples(record)
         elif expect == "ratio_one":
-            problems += counted_problems(record) if job["kind"] == "regions" else []
+            if job["kind"] == "regions":
+                problems += counted_problems(record) + drew_examples(record)
             if any("of the base's mean share" in flag or "alone" in flag for flag in flags):
                 problems.append(f"{job['id']}: a tree against itself gave a share ratio other than 1")
         elif expect in ("finds", "no_finds") and record["found"] != (expect == "finds"):
