@@ -421,23 +421,58 @@ def test_a_job_is_checked_again_as_its_job_reads_it() -> None:
             measure.job_from(json.dumps(job.data() | changed))
 
 
-def test_fetch_reports_a_runs_records(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("matrix", "status", "said"),
+    [
+        (["floors-head-0-0"], 0, ""),
+        (["floors-head-0-0", "floors-head-0-1"], 1, "job floors-head-0-1: no record"),
+        (["other"], 1, "a record of no requested job: floors-head-0-0"),
+        (None, 1, "the run kept no table"),
+    ],
+)
+def test_fetch_reports_a_runs_records_counted_against_the_runs_matrix(
+    matrix: list[str] | None,
+    status: int,
+    said: str,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     bin_directory = tmp_path / "bin"
     bin_directory.mkdir()
     payload = json.dumps(record(JOBS[0]) | {"streams": [0, 1]})
     gh = bin_directory / "gh"
+    table = (
+        ""
+        if matrix is None
+        else 'd = base / "measure-table-1"\nd.mkdir()\n'
+        f'(d / "matrix.json").write_text({json.dumps(matrix)!r})\n'
+    )
     gh.write_text(
         f"#!{sys.executable}\nimport sys, pathlib\n"
-        'd = pathlib.Path(sys.argv[sys.argv.index("-D") + 1]) / "record-x"\n'
-        f'd.mkdir(parents=True)\n(d / "record.json").write_text({payload!r})\n',
+        'base = pathlib.Path(sys.argv[sys.argv.index("-D") + 1])\n'
+        'd = base / "record-x"\n'
+        f'd.mkdir(parents=True)\n(d / "record.json").write_text({payload!r})\n' + table,
         encoding="utf-8",
     )
     gh.chmod(gh.stat().st_mode | stat.S_IXUSR)
     monkeypatch.setenv("PATH", f"{bin_directory}{os.pathsep}{os.environ['PATH']}")
-    assert measure.main(["fetch", "123"]) == 0
-    assert "## floors" in capsys.readouterr().out
+    assert measure.main(["fetch", "123"]) == status
+    out = capsys.readouterr().out
+    assert "## floors" in out
+    assert said in out
+
+
+def test_the_summary_keeps_the_matrix_beside_the_table_for_fetch_to_count_against(tmp_path: Path) -> None:
+    write_records(tmp_path / "records", [record(JOBS[0]), record(JOBS[1])])
+    environment = {"MATRIX": json.dumps([job.data() for job in JOBS]), "RESULT": "success", "ATTEMPT": "1"}
+    with pytest.MonkeyPatch.context() as patch:
+        for name, value in environment.items():
+            patch.setenv(name, value)
+        measure.main(["summary", str(tmp_path / "records"), str(tmp_path / "table")])
+    assert json.loads((tmp_path / "table" / "matrix.json").read_text(encoding="utf-8")) == [
+        job.id for job in JOBS
+    ]
 
 
 def test_the_self_test_resolves_to_a_job_of_each_kind_with_its_answer() -> None:

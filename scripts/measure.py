@@ -1400,19 +1400,23 @@ def expectations(records: Sequence[dict[str, Any]], flags: Sequence[str]) -> lis
     return problems
 
 
+def counted_against(ids: Sequence[str], found: Sequence[dict[str, Any]]) -> list[str]:
+    """The records counted against the matrix's jobs: one each, none missing, none of a job not asked for."""
+    counted = Counter(record["job"]["id"] for record in found)
+    problems = [
+        f"job {name}: no record (its job failed before writing one, or was cancelled)"
+        for name in ids
+        if counted[name] == 0
+    ]
+    problems += [f"job {name}: {number} records" for name, number in sorted(counted.items()) if number > 1]
+    problems += [f"a record of no requested job: {name}" for name in sorted(set(counted) - set(ids))]
+    return problems
+
+
 def summary(directory: Path, jobs: Sequence[Job], result: str, attempt: int) -> tuple[str, bool]:
     """The run's table, after counting each job's record: one each, every one finished."""
     found = records_in([directory])
-    problems: list[str] = []
-    counted = Counter(record["job"]["id"] for record in found)
-    expected = {job.id for job in jobs}
-    problems += [
-        f"job {job.id}: no record (its job failed before writing one, or was cancelled)"
-        for job in jobs
-        if counted[job.id] == 0
-    ]
-    problems += [f"job {name}: {number} records" for name, number in sorted(counted.items()) if number > 1]
-    problems += [f"a record of no requested job: {name}" for name in sorted(set(counted) - expected)]
+    problems = counted_against([job.id for job in jobs], found)
     problems += [
         f"job {record['job']['id']}: {problem}" for record in found for problem in record.get("problems", [])
     ]
@@ -1446,11 +1450,16 @@ def write_outputs(values: Mapping[str, str]) -> None:
         print(lines, end="")
 
 
+MATRIX_FILE = "matrix.json"  # beside the table: the ids of the matrix's jobs, for `fetch` to count against
+WANTED = ("record-*", "measure-table-*")
+
+
 def fetched(run: str, directory: Path, tries: int = 3) -> list[str]:
-    """A run's record artifacts downloaded into `directory`: all at once, or where that fails one by one, each
-    tried `tries` times; the names of those that could not be had."""
+    """A run's record artifacts, and its tables (which hold the run's matrix), downloaded into `directory`:
+    all at once, or where that fails one by one, each tried `tries` times; the names of those not had."""
     command = ["gh", "run", "download", run, "-R", REPO]
-    if subprocess.run([*command, "-D", str(directory), "-p", "record-*"], check=False).returncode == 0:
+    patterns = [item for pattern in WANTED for item in ("-p", pattern)]
+    if subprocess.run([*command, "-D", str(directory), *patterns], check=False).returncode == 0:
         return []
     listed = subprocess.run(
         [
@@ -1465,7 +1474,7 @@ def fetched(run: str, directory: Path, tries: int = 3) -> list[str]:
         text=True,
         check=False,
     )
-    names = sorted(name for name in listed.stdout.split() if name.startswith("record-"))
+    names = sorted(name for name in listed.stdout.split() if name.startswith(("record-", "measure-table-")))
     if listed.returncode != 0 or not names:
         raise MeasureError([f"the artifacts of run {run} could not be listed: {listed.stderr[-300:]}"])
     return [
@@ -1571,6 +1580,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             arguments.output.mkdir(parents=True, exist_ok=True)
             (arguments.output / "table.md").write_text(text + "\n", encoding="utf-8")
+            (arguments.output / MATRIX_FILE).write_text(
+                json.dumps([job.id for job in jobs]), encoding="utf-8"
+            )
             if target := os.environ.get("GITHUB_STEP_SUMMARY"):
                 with Path(target).open("a", encoding="utf-8") as markdown:
                     markdown.write(text + "\n")
@@ -1579,10 +1591,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             directory = Path(tempfile.mkdtemp(prefix="measure-fetch-"))
             missing = fetched(arguments.run, directory)
-            print(report(records_in([directory]))[0])
-            if missing:
-                print(f"\n{len(missing)} record artifacts not downloaded, so this report is partial:")
-                print("\n".join(f"- {name}" for name in missing))
+            found = records_in([directory])
+            print(report(found)[0])
+            matrices = sorted(directory.rglob(MATRIX_FILE))
+            problems = [f"{len(missing)} artifacts not downloaded: {', '.join(missing)}"] if missing else []
+            if matrices:
+                problems += counted_against(json.loads(matrices[0].read_text(encoding="utf-8")), found)
+            else:
+                problems.append("the run kept no table, so its records are not counted against its matrix")
+            if problems:
+                print("\nThis report is partial or wrong:")
+                print("\n".join(f"- {problem}" for problem in problems))
                 return 1
     except MeasureError as error:
         for problem in error.problems:

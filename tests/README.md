@@ -237,13 +237,15 @@ the workflow or its script runs its self-test, each kind at its rule's count on 
 The inputs: `kind`; `selection`, paths or nodes under `tests/property` (property tests for floors and regions,
 mutant searches for drift), or for fuzz the controls of `CONTROLS`, each alone or as `NAME:none`, its commands
 with no fault seeded; `count`, streams or runs, the rule's by default; `per_job`, streams a job, all of a
-function's by default; `base`, for regions; `python`. A count below the rule's is reported as such: it
+function's by default; `base`, for regions; `python`. The base of a regions run must be a commit that registers the `deep_controls` marker and holds
+`tests/property/kill_points.json` (2026-10-21 and later); an older one cannot be measured. A count below the rule's is reported as such: it
 measures, and does not meet the rule. Each job keeps its record (`record.json`: the job, the commit, the
 Python, the Hypothesis version, the profile, the streams, the raw counts and the timings); the `report` job
 counts them first and fails where one is missing or doubled, a job failed, or the run is on an attempt but its
 first, then writes one table a kind with its flags. A flag is a finding, not a failure: a floor above 1e-6 at
 the variance measured and the least share, a kill near or past the guard, a share below 0.8 of the base's. `fetch` prints a run's
-report as a local run prints its own.
+report as a local run prints its own, after counting its records against the run's matrix (kept beside its table) and naming
+any that is missing, doubled or of no requested job.
 
 A new kind is one small change: a function that runs one job and returns its record, one that reports a list
 of records as a table and flags, and an entry of `KINDS` with the rule's count (`main` makes the subcommands
