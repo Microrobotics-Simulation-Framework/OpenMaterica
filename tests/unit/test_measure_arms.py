@@ -280,12 +280,30 @@ def test_the_floors_answer_fails_where_nothing_was_counted_or_not_what_was_recor
         assert any("stream 0 did not count" in each for each in problems)  # both answers see it
 
 
-def regions_pair(base_features: dict[str, int], head_features: dict[str, int]) -> list[dict[str, Any]]:
+def regions_pair(
+    base_features: dict[str, int],
+    head_features: dict[str, int],
+    streams: int = 2,
+    head_examples: int = 2000,
+    head_outcome: str = "passed",
+) -> list[dict[str, Any]]:
     declared = {"a": {"how": "features", "value": 0.3}}
     pair: list[dict[str, Any]] = []
     for side, features in (("base", base_features), ("head", head_features)):
-        job = Job(f"self2-regions-{side}", "regions", SLIP, 0, 2, side, "c" * 40, expect="ratio_one")
-        pair.append(floors_record([drawn(SLIP, s, features, declared) for s in range(2)], job))
+        job = Job(f"self2-regions-{side}", "regions", SLIP, 0, streams, side, "c" * 40, expect="ratio_one")
+        head = side == "head"
+        runs = [
+            drawn(
+                SLIP,
+                s,
+                features,
+                declared,
+                examples=head_examples if head else 2000,
+                outcome=head_outcome if head else "passed",
+            )
+            for s in range(streams)
+        ]
+        pair.append(floors_record(runs, job))
     return pair
 
 
@@ -414,6 +432,31 @@ def test_a_search_is_killed_killed_elsewhere_survived_or_in_error_as_it_ends(tmp
     }
 
 
+def test_a_failed_stream_that_drew_examples_and_counted_features_is_a_problem_of_the_self_test() -> None:
+    runs = slip_runs()
+    runs[4] = drawn(SLIP, 4, runs[4]["features"], SLIP_DECLARED, outcome="failed")
+    found = self_floors(runs)
+    assert measure.counted_problems(found) == [f"self0-floors: {SLIP} stream 4 ended failed"]
+    assert f"self0-floors: {SLIP} stream 4 ended failed" in measure.expectations([found], [])
+    # the regions answer has no count of its own to catch it: a head whose every stream failed is a problem
+    pair = regions_pair({"a": 600}, {"a": 600}, head_outcome="failed")
+    flags = measure.report(pair)[1]
+    assert flags, "the report flags the failed streams, and a flag does not fail the self-test"
+    problems = measure.expectations(pair, flags)
+    assert [each for each in problems if "ended failed" in each] == [
+        f"self2-regions-head: {SLIP} stream {stream} ended failed" for stream in range(2)
+    ]
+
+
+def test_the_regions_answer_holds_each_stream_to_the_examples_the_floors_answer_does() -> None:
+    assert measure.expectations(regions_pair({"a": 600}, {"a": 600}), []) == []
+    pair = regions_pair({"a": 600}, {"a": 600}, head_examples=1999)
+    problems = measure.expectations(pair, measure.report(pair)[1])
+    assert problems == [
+        f"self2-regions-head: stream {stream} drew 1999 examples, not 2000" for stream in range(2)
+    ], problems
+
+
 # --- the summary's report: the rule's count over a split job ------------------------------------------------
 
 
@@ -430,6 +473,41 @@ def test_a_count_below_the_rules_is_said_over_all_the_records_of_a_function_not_
     assert "10 streams, fewer than the rule's 20: this measures, and does not meet the rule." in short
     overlap = measure.report([split(0, 10), split(10, 15)])[0]
     assert "15 streams, fewer than the rule's 20" in overlap
+
+
+def test_the_rules_count_is_held_against_the_least_function_the_least_side_and_the_least_fuzz_control() -> (
+    None
+):
+    # two functions, 20 streams and 12: the least is the short one's, whichever job runs which
+    other = "tests/property/test_other_properties.py::test_other"
+    short = floors_record(
+        [drawn(other, s, {"a": 600}, {"a": {"how": "features", "value": 0.3}}) for s in range(12)],
+        Job("floors-head-1-0", "floors", other, 0, 12),
+    )
+    both = [split(0, 20), short]
+    assert measure.least_counted(both) == 12
+    assert "12 streams, fewer than the rule's 20: this measures" in measure.report(both)[0]
+    # regions: 10 streams a side are 10, not the 20 of both sides; the short side is the count
+    assert measure.least_counted(regions_pair({"a": 600}, {"a": 600}, streams=10)) == 10
+    assert (
+        "10 streams, fewer than the rule's 18" in measure.report(regions_pair({"a": 600}, {"a": 600}, 10))[0]
+    )
+    assert measure.least_counted(regions_pair({"a": 600}, {"a": 600}, streams=18)) == 18
+    uneven = [regions_pair({"a": 600}, {"a": 600}, streams=18)[0], regions_pair({"a": 600}, {"a": 600}, 5)[1]]
+    assert measure.least_counted(uneven) == 5
+    # fuzz: a control's runs, the least over the controls and their faults
+    assert measure.least_counted(fuzz_records(10, 10, 5.0)) == 10
+    assert "fewer than the rule's" not in measure.report(fuzz_records(10, 10, 5.0))[0]
+    assert "7 runs, fewer than the rule's 10" in measure.report(fuzz_records(7, 7, 5.0))[0]
+    mixed = fuzz_records(10, 10, 5.0) + fuzz_records(0, 4, 180.0, "none")
+    assert measure.least_counted(mixed) == 4
+    # a job that wrote no run: the streams it was given
+    assert (
+        measure.least_counted(
+            [floors_record([], Job("floors-head-0-0", "floors", SLIP, 0, 6), list(range(6)))]
+        )
+        == 6
+    )
 
 
 # --- regions: the base's own tree ---------------------------------------------------------------------------
@@ -673,7 +751,8 @@ def fuzz_records(
     finds: int, runs: int, seconds: float, fault: str = "1", name: str = "properties"
 ) -> list[dict[str, Any]]:
     return [
-        {
+        record(Job(f"fuzz-{name}-{number}", "fuzz", first=number, control=name, fault=fault))
+        | {
             "control": name,
             "fault": fault,
             "found": number < finds,
@@ -681,7 +760,6 @@ def fuzz_records(
             "seconds": seconds,
             "inputs": 1000,
             "limit": measure.CONTROLS[name].seconds,
-            "problems": [],
         }
         for number in range(runs)
     ]
