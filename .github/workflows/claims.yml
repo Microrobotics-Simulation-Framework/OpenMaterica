@@ -1,0 +1,111 @@
+# The claims check of a pull request (maintainer, 2026-10-24): what the description and the commit messages say
+# about git (the head, the base, the commits and lines counted) is held to git on every push and every edit of
+# the description, by scripts/check_claims.py, and its figures are printed and do not fail (`--figures-advisory`)
+# until measurement runs write the facts that would hold them (maintainer, 2026-10-23). The ruled wording is not
+# checked here: the rulings file is private and CI never reads it.
+#
+# A workflow of its own, not a step of ci.yml's gate: ci.yml cancels a pull request's running workflow on each
+# new event (`cancel-in-progress`), so an `edited` trigger there would cancel the whole run whenever the
+# description changes, and without it a description corrected after the push would never be checked again. The
+# cost is that the ruleset on main requires ci.yml's `result` alone, so this check does not block a merge until
+# the maintainer adds it to the ruleset as a required check.
+#
+# One run stands for a pull request: a new event cancels the one running or pending for the same pull request.
+# Each event's payload is the pull request as it was when the event was made, its description and its head both,
+# so the last event's run reads the latest of a push and an edit that come close together, and is the one whose
+# verdict stands; a run cancelled by it reports as cancelled, and checked a state that is no longer current.
+#
+# The description is the event's, written to a file through the environment and never through a script's text, so
+# that a pull request's words reach no shell. The checkout is GitHub's merge commit, whose parents are the base
+# and the head; at full depth both are in it, and the check reads the history from them, not the merge's tree.
+# tests/unit/test_ci_workflows.py holds each of these.
+
+name: Claims
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.13.0"
+
+# Under bash with `-eo pipefail`, as every workflow here (ci.yml says why).
+defaults:
+  run:
+    shell: bash
+
+# On ubuntu-24.04, as every job of every workflow here (ci.yml says why, above its jobs).
+jobs:
+  claims:
+    name: git facts held, figures advised
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      # The whole history: the check reads the commits from the base to the head, the baseline's commit on main and
+      # the guard below the baseline's CHANGELOG at that commit.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # The description as this event holds it, byte for byte, in a file the check reads.
+      - name: The description, from the event
+        env:
+          DESCRIPTION: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$DESCRIPTION" > "$RUNNER_TEMP/description.md"
+      # The uv cache CI saved is restored, and none is saved: no other run reads what this workflow writes.
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.11"
+          enable-cache: true
+          save-cache: false
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked
+      # Check 1 of the script (git facts) fails the job and check 2 (figures) does not; check 3 (ruled wording) is
+      # not run, as no rulings file is given. The script runs on the runner's Python, which it needs nothing else
+      # of (standard library only). Its output holds the pull request's words, so it is printed with workflow
+      # commands stopped, as ci.yml's gate prints the changed paths.
+      - name: The pull request's git facts, and its figures as advice
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status=0
+          python3 -I scripts/check_claims.py check "$PR_BASE" --head "$PR_HEAD" --description "$RUNNER_TEMP/description.md" --figures-advisory > "$RUNNER_TEMP/claims.txt" 2>&1 || status=$?
+          stop=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
+          echo "::stop-commands::$stop"
+          cat "$RUNNER_TEMP/claims.txt"
+          echo "::$stop::"
+          advisory=$(grep -c '^advisory figure finding: ' "$RUNNER_TEMP/claims.txt" || true)
+          {
+            echo "### Claims check"
+            echo
+            echo "Head \`$PR_HEAD\`, base \`$PR_BASE\`. A git fact the description or a commit message states wrongly fails this job. A figure is advice: it fails nothing until measurement runs record the facts that would hold it."
+            echo
+            echo '````text'
+            cat "$RUNNER_TEMP/claims.txt"
+            echo '````'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$advisory" -gt 0 ]; then
+            echo "::notice title=Figures are advice::$advisory figures in the description or the CHANGELOG lines have no recorded measurement; listed in the job summary"
+          fi
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Claims check::the check exited $status; its findings are above and in the job summary"
+            exit "$status"
+          fi
+      # The guard that holds the committed baseline to the CHANGELOG at its commit skips where the commit is
+      # missing, as CI's test jobs (depth 1) leave it; here the history is whole, and a skip is a failure
+      # (CLAIMS_REQUIRE_HISTORY), which pytest also reports as no test collected. It runs after a failed check
+      # too, so that one run shows both.
+      - name: The baseline guard, where the history is whole
+        if: ${{ !cancelled() }}
+        env:
+          CLAIMS_REQUIRE_HISTORY: "1"
+        run: uv run --locked pytest tests/unit/test_check_claims.py::test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commit -p no:cacheprovider

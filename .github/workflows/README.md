@@ -9,6 +9,8 @@ selects; no job or step carries on after a failure (`continue-on-error`).
 one table of what became of each, when dispatched by hand (below).
 `measure.yml` runs the measurements a property piece makes before review as a matrix of jobs, and writes one
 table a kind, when dispatched by hand, or as its own self-test on a pull request that changes it (below).
+`claims.yml` checks a pull request's description and commit messages against git on every push and every edit of
+the description, and prints its figures as advice (below).
 
 | Job | Runs | When |
 |---|---|---|
@@ -190,6 +192,42 @@ environment alone and is checked before any job reads it. The workflow reads the
 dispatch; a dispatch waits behind a running one of the same inputs on the same ref (`queue: max`, above).
 `tests/unit/test_ci_workflows.py` holds it to each of these, and runs the request, a measurement and the report
 as written on this repository, the report's failure cases among them.
+
+## Claims (`claims.yml`)
+
+On a pull request opened, reopened, pushed to or edited (`opened`, `reopened`, `synchronize` and `edited`;
+maintainer, 2026-10-24): `scripts/check_claims.py check` on the pull request's description and its commit
+messages, in one job, `claims`, on the whole history (`fetch-depth: 0`). A head, a base, a commit, or a count of
+commits, files or lines that either states and git does not show fails the job. The figures (a number that
+no recorded measurement holds, in the description or the CHANGELOG lines the branch adds) are advice, not a
+failure, until measurement runs write the facts that would hold them (maintainer, 2026-10-23): the job passes
+`--figures-advisory`, which prints each as `advisory figure finding:` and leaves the git facts to fail. The job
+summary holds the output, and one notice counts the figures. The ruled wording, the script's third check, is not
+run: the rulings file is private and CI never reads it.
+
+The same job runs the baseline guard of `tests/unit/test_check_claims.py`, which holds
+`scripts/claims_baseline.json` to the CHANGELOG at its commit on `main`. The test jobs check out at depth 1,
+where that commit is missing and the guard skips; this job has the history, and sets `CLAIMS_REQUIRE_HISTORY=1`,
+under which the guard fails where the commit is missing, since a skip there would pass unseen. It runs after a
+failed check too, so that one run shows both.
+
+| Job | Runs | When |
+|---|---|---|
+| `claims` | the description, written from the event through the environment to a file (`printf '%s'`; no pull request's words reach a script's text); the check with the event's base and head, whose output is printed with workflow commands stopped; the baseline guard | a pull request opened, reopened, pushed to or edited |
+
+It is a workflow of its own because `ci.yml` cancels a pull request's running workflow on each new event
+(`cancel-in-progress`): an `edited` trigger there would cancel the whole run whenever the description changed,
+and without it a description corrected after the push would never be checked again. Its concurrency is one group
+for each pull request, and a new event cancels the run before it. Each event's payload holds the pull request as it
+was when the event was made, its description and its head both, so when a push and an edit come close together
+the later event's run reads the latest of each and is the run whose verdict stands; the earlier run reports as
+cancelled, and checked a state that is no longer current.
+
+Open point: the ruleset on `main` requires `ci.yml`'s `result` alone, so this check does not block a merge until
+the maintainer adds `claims` to the ruleset as a required check. A pull request with a merge conflict has no merge
+commit to check out, and runs neither workflow. `tests/unit/test_ci_workflows.py` holds the workflow to each of
+these, and runs its steps as written on a throwaway repository, with the controls: a description that states the
+head, the base and the count truly passes, and one that names a head the branch replaced, or a wrong count, fails.
 
 ## The whole suite on CI
 

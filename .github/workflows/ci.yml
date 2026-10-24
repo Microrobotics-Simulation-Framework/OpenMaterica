@@ -175,7 +175,7 @@ jobs:
           site_paths='site/.+|assets/.+'
           docs_paths='CHANGELOG\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|docs/regulatory/.+|docs/validation/.+|\.github/ISSUE_TEMPLATE/.+|\.github/pull_request_template\.md'
           python_paths='.*\.pyi?'
-          hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_confidential|check_signoff|check_site|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|scripts/pre-push|\.github/workflows/(pages|release)\.yml|\.github/workflows/README\.md'
+          hypothesis_free='site/.+|assets/.+|design/.+|DOCUMENTATION_ARCHITECTURE\.md|typings/.+|scripts/(check_claims|check_confidential|check_signoff|check_site|check_wheel|freeze_schema|gen_shapes|schema_index)\.py|scripts/README\.md|scripts/confidential_digests\.txt|scripts/pre-push|\.github/workflows/(claims|pages|release)\.yml|\.github/workflows/README\.md'
           commits=()
           site_commits=()
           workflow_blob=

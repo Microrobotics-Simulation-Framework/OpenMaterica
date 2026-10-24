@@ -4897,8 +4897,9 @@ def test_the_table_check_can_fail(old: str, new: str, problem: str) -> None:
 # script, the collect step on this repository, and the runs and the summary with a stub `uv` in place of
 # pytest, which records what each run was given and fails the seeds it is told to.
 REPEAT = "repeat.yml"
-# The workflows run by hand alone, which the safety check holds to the others' pins.
-BY_HAND = (REPEAT, "mutants.yml", "measure.yml")
+# The workflows that are no source of the pins the safety check holds the others to: those run by hand alone,
+# and the claims workflow, for which ci.yml's pins are the reference.
+BY_HAND = (REPEAT, "mutants.yml", "measure.yml", "claims.yml")
 CHECK_STEP, COLLECT_STEP = "The inputs, checked", "The node collects a test"
 RUNS_STEP, KEEP_STEP = "Run the node under each seed", "Keep the records"
 FETCH_STEP, SUM_STEP = "Fetch the records", "Sum the runs"
@@ -9811,3 +9812,338 @@ def test_a_pull_request_asks_for_the_self_test(tmp_path: Path) -> None:
         step(found["jobs"]["request"], MEASURE_CHECK), context, REPOSITORY, environment, tmp_path
     )
     assert (status, checked["kind"]) == (0, "self")
+
+
+# --- claims.yml -------------------------------------------------------------------------------------------
+
+CLAIMS = "claims.yml"
+CLAIMS_DESCRIPTION = "The description, from the event"
+CLAIMS_CHECK = "The pull request's git facts, and its figures as advice"
+CLAIMS_GUARD = "The baseline guard, where the history is whole"
+CLAIMS_TYPES = ["opened", "edited", "synchronize", "reopened"]
+CLAIMS_GUARD_TEST = "test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commit"
+CLAIMS_HEADING = "## Claims (`claims.yml`)"
+
+
+def claims_problems(found: Workflow, others: dict[str, Workflow]) -> list[str]:
+    """Where the claims workflow could run on more than a pull request's events, let one event's run stand
+    beside another's, fail to check the pull request's whole history, reach a script with the pull request's
+    words, fail on a figure, check a ruled wording, or skip the baseline's guard."""
+    problems = safety_problems(found, others, CLAIMS)
+    if cast(dict[object, object], found).get(True) != {"pull_request": {"types": CLAIMS_TYPES}}:
+        problems.append(f"{CLAIMS} runs on {cast(dict[object, object], found).get(True)!r}")
+    if found.get("concurrency") != {
+        "group": "${{ github.workflow }}-${{ github.event.pull_request.number }}",
+        "cancel-in-progress": True,
+    }:
+        problems.append(f"{CLAIMS}'s concurrency is {found.get('concurrency')!r}")
+    if list(found["jobs"]) != ["claims"]:
+        return [*problems, f"{CLAIMS} holds the jobs {list(found['jobs'])}"]
+    job = found["jobs"]["claims"]
+    steps = job["steps"]
+    if steps[0].get("with", {}).get("fetch-depth") != 0:
+        problems.append("the checkout is not of the whole history")
+    if "continue-on-error" in json.dumps(found):
+        problems.append(f"{CLAIMS} sets continue-on-error")
+    problems += [
+        f"a step runs a script that holds an expression: {each['run']!r}"
+        for each in steps
+        if "${{" in each.get("run", "")
+    ]
+    written = step(job, CLAIMS_DESCRIPTION)
+    if written.get("env") != {"DESCRIPTION": "${{ github.event.pull_request.body }}"}:
+        problems.append(f"the description is read from {written.get('env')!r}")
+    if written["run"] != 'printf \'%s\' "$DESCRIPTION" > "$RUNNER_TEMP/description.md"':
+        problems.append(f"the description is written by {written['run']!r}")
+    check = step(job, CLAIMS_CHECK)
+    if check.get("env") != {
+        "PR_BASE": "${{ github.event.pull_request.base.sha }}",
+        "PR_HEAD": "${{ github.event.pull_request.head.sha }}",
+    }:
+        problems.append(f"the check reads the base and head from {check.get('env')!r}")
+    for text in (
+        'python3 -I scripts/check_claims.py check "$PR_BASE" --head "$PR_HEAD" --description',
+        '"$RUNNER_TEMP/description.md" --figures-advisory >',
+        "|| status=$?",
+        'exit "$status"',
+        "::stop-commands::$stop",
+    ):
+        if text not in check["run"]:
+            problems.append(f"the check lacks {text!r}")
+    if "--rulings" in check["run"]:
+        problems.append("the check is given a rulings file, which CI never reads")
+    guard = step(job, CLAIMS_GUARD)
+    if guard.get("env") != {"CLAIMS_REQUIRE_HISTORY": "1"}:
+        problems.append(f"the guard runs under {guard.get('env')!r}")
+    if guard.get("if") != "${{ !cancelled() }}":
+        problems.append(f"the guard runs if {guard.get('if')!r}")
+    if f"tests/unit/test_check_claims.py::{CLAIMS_GUARD_TEST}" not in guard["run"]:
+        problems.append("the guard step does not run the baseline guard")
+    return problems
+
+
+def test_the_claims_workflow_checks_a_pull_request_s_whole_history_on_every_push_and_edit() -> None:
+    assert claims_problems(workflow(CLAIMS), workflows()) == []
+    guard = (REPOSITORY / "tests" / "unit" / "test_check_claims.py").read_text(encoding="utf-8")
+    assert f"def {CLAIMS_GUARD_TEST}(" in guard
+
+
+def claims_without_edited(found: Workflow) -> None:
+    cast(dict[object, Any], found)[True]["pull_request"]["types"].remove("edited")
+
+
+def claims_on_a_push(found: Workflow) -> None:
+    cast(dict[object, Any], found)[True]["push"] = {"branches": ["main"]}
+
+
+def claims_on_the_target(found: Workflow) -> None:
+    cast(dict[object, Any], found)[True] = {"pull_request_target": {"types": CLAIMS_TYPES}}
+
+
+def claims_not_cancelling(found: Workflow) -> None:
+    found["concurrency"]["cancel-in-progress"] = False
+
+
+def claims_in_one_group(found: Workflow) -> None:
+    found["concurrency"]["group"] = "${{ github.workflow }}"
+
+
+def claims_shallow(found: Workflow) -> None:
+    del found["jobs"]["claims"]["steps"][0]["with"]["fetch-depth"]
+
+
+def claims_with_the_body_in_the_script(found: Workflow) -> None:
+    step(found["jobs"]["claims"], CLAIMS_DESCRIPTION)["run"] = (
+        "echo '${{ github.event.pull_request.body }}' > d"
+    )
+
+
+def claims_with_a_ruling(found: Workflow) -> None:
+    step(found["jobs"]["claims"], CLAIMS_CHECK)["run"] += " --rulings private.md"
+
+
+def claims_failing_on_figures(found: Workflow) -> None:
+    check = step(found["jobs"]["claims"], CLAIMS_CHECK)
+    check["run"] = check["run"].replace(" --figures-advisory", "")
+
+
+def claims_carrying_on(found: Workflow) -> None:
+    step(found["jobs"]["claims"], CLAIMS_CHECK)["continue-on-error"] = True
+
+
+def claims_unrequired_guard(found: Workflow) -> None:
+    del step(found["jobs"]["claims"], CLAIMS_GUARD)["env"]["CLAIMS_REQUIRE_HISTORY"]
+
+
+def claims_guard_after_a_pass_alone(found: Workflow) -> None:
+    del step(found["jobs"]["claims"], CLAIMS_GUARD)["if"]
+
+
+def claims_guard_another_test(found: Workflow) -> None:
+    guard = step(found["jobs"]["claims"], CLAIMS_GUARD)
+    guard["run"] = guard["run"].replace(CLAIMS_GUARD_TEST, "test_the_script_runs_as_a_file_in_isolated_mode")
+
+
+def claims_with_a_secret(found: Workflow) -> None:
+    step(found["jobs"]["claims"], CLAIMS_CHECK)["env"]["TOKEN"] = "${{ secrets.CONFIDENTIAL_SCAN_KEY }}"
+
+
+def claims_keeping_the_token(found: Workflow) -> None:
+    found["jobs"]["claims"]["steps"][0]["with"]["persist-credentials"] = True
+
+
+@pytest.mark.parametrize(
+    ("fault", "problem"),
+    [
+        (claims_without_edited, "claims.yml runs on {'pull_request': {'types': ['opened', 'synchronize'"),
+        (claims_on_a_push, "claims.yml runs on {'pull_request'"),
+        (claims_on_the_target, "claims.yml runs on {'pull_request_target'"),
+        (claims_not_cancelling, "claims.yml's concurrency is"),
+        (claims_in_one_group, "claims.yml's concurrency is"),
+        (claims_shallow, "the checkout is not of the whole history"),
+        (claims_with_the_body_in_the_script, "a step runs a script that holds an expression"),
+        (claims_with_a_ruling, "the check is given a rulings file"),
+        (claims_failing_on_figures, "the check lacks"),
+        (claims_carrying_on, "claims.yml sets continue-on-error"),
+        (claims_unrequired_guard, "the guard runs under {}"),
+        (claims_guard_after_a_pass_alone, "the guard runs if None"),
+        (claims_guard_another_test, "the guard step does not run the baseline guard"),
+        (claims_with_a_secret, "claims.yml reads secrets"),
+        (claims_keeping_the_token, "claims keeps the token in its checkout"),
+    ],
+)
+def test_the_claims_check_can_fail(fault: Callable[[Workflow], None], problem: str) -> None:
+    found = copy.deepcopy(workflow(CLAIMS))
+    fault(found)
+    problems = claims_problems(found, workflows())
+    assert any(problem in line for line in problems), problems
+
+
+def test_the_gate_lets_the_claims_workflow_and_script_skip_the_hypothesis_job() -> None:
+    pattern = gate_pattern("hypothesis_free")
+    for path in (".github/workflows/claims.yml", "scripts/check_claims.py"):
+        assert re.fullmatch(pattern, path), f"the gate runs the Hypothesis job for {path}"
+    assert not re.fullmatch(pattern, "scripts/check_claims.pyc")
+
+
+def test_the_workflows_readme_names_the_claims_workflow_and_what_it_leaves_unrequired() -> None:
+    readme = (WORKFLOWS / "README.md").read_text(encoding="utf-8")
+    assert "`claims.yml` checks" in readme.split("| Job | Runs | When |", 1)[0]
+    section = readme.split(CLAIMS_HEADING, 1)[1].split("\n## ", 1)[0]
+    for text in (
+        "--figures-advisory",
+        "CLAIMS_REQUIRE_HISTORY",
+        "required check",
+        "cancel-in-progress",
+        "`edited`",
+    ):
+        assert text in section, text
+
+
+CLAIMS_IDENTITY = ["-c", "user.name=Author", "-c", "user.email=author@example.org"]
+
+
+def claims_checkout(directory: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, str, str]:
+    """A throwaway repository holding the check and its baseline, as the workflow's checkout holds them: on
+    `main` two commits (the second adds the scripts and a baseline at the first), and a pull request's two
+    commits on it. The repository, the base (main's tip) and the head."""
+    root = directory / "checkout"
+    root.mkdir()
+    throwaway_repository(root, monkeypatch)
+
+    def commit(message: str, files: dict[str, str]) -> str:
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_text(text, encoding="utf-8")
+        subprocess.run(["git", "add", "--all"], check=True)
+        subprocess.run(["git", *CLAIMS_IDENTITY, "commit", "-q", "--allow-empty", "-m", message], check=True)
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+    first = commit("docs: on main", {"CHANGELOG.md": "# Changelog\n"})
+    baseline: dict[str, object] = {"about": "", "at": first, "reasons": {}, "changelog": []}
+    base = commit(
+        "build: the scripts",
+        {
+            "scripts/check_claims.py": (REPOSITORY / "scripts" / "check_claims.py").read_text("utf-8"),
+            "scripts/pre_review.py": (REPOSITORY / "scripts" / "pre_review.py").read_text("utf-8"),
+            "scripts/claims_baseline.json": json.dumps(baseline),
+        },
+    )
+    commit("feat: one", {"a.txt": "a\n"})
+    head = commit("feat: two", {"b.txt": "b\n"})
+    return root, base, head
+
+
+def claims_run(
+    directory: Path, root: Path, base: str, head: str, description: str
+) -> tuple[int, str, str, dict[str, str]]:
+    """The description step and then the check step as written, on an event of `base`, `head` and the
+    description `description`: the check's status and what it printed, the job summary it wrote, and the
+    description file's text."""
+    found = workflow(CLAIMS)["jobs"]["claims"]
+    environment = runner(directory, UV_RUN_LOCKED)
+    context = {
+        "github.event.pull_request.body": description,
+        "github.event.pull_request.base.sha": base,
+        "github.event.pull_request.head.sha": head,
+    }
+    status, _, printed = run_step(step(found, CLAIMS_DESCRIPTION), context, root, environment, directory)
+    assert (status, printed) == (0, "")
+    written = (directory / "runner" / "description.md").read_bytes().decode("utf-8")
+    status, _, printed = run_step(step(found, CLAIMS_CHECK), context, root, environment, directory)
+    summary = directory / "step_summary.md"
+    return status, printed, summary.read_text(encoding="utf-8") if summary.exists() else "", {"text": written}
+
+
+def test_the_claims_step_passes_the_true_head_base_and_count_and_fails_the_stale_ones(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The workflow's controls, with the steps as written: a description that states the base, the head and
+    the count truly passes; a head the branch no longer has, and a wrong count, each fail, naming it."""
+    root, base, head = claims_checkout(tmp_path, monkeypatch)
+    true = f"Draft, head `{head[:8]}`, 2 commits on `main` at `{base[:8]}`.\n"
+    status, printed, summary, written = claims_run(tmp_path, root, base, head, true)
+    assert (status, written["text"]) == (0, true), printed
+    assert "no claim found that git, the facts or the rulings contradict" in printed
+    assert "### Claims check" in summary
+    replaced = head[:7] + ("0" if head[7] != "0" else "1")
+    stale = true.replace(head[:8], replaced)
+    status, printed, summary, _ = claims_run(tmp_path, root, base, head, stale)
+    assert status == 1
+    assert (
+        f"the head is `{head[:8]}`, not `{replaced}`" in printed or f"`{replaced}` names no commit" in printed
+    )
+    assert "::error title=Claims check::the check exited 1" in printed
+    assert replaced in summary
+    status, printed, _, _ = claims_run(tmp_path, root, base, head, true.replace("2 commits", "3 commits"))
+    assert status == 1
+    assert "3 commits, where git counts 2" in printed
+
+
+def test_the_claims_step_fails_where_the_check_cannot_run_as_well_as_where_it_finds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A base the repository does not hold is no finding but an error (the check exits 2): the job fails on it
+    too, rather than pass a check that never ran."""
+    root, _, head = claims_checkout(tmp_path, monkeypatch)
+    status, printed, _, _ = claims_run(tmp_path, root, "0" * 40, head, "Nothing to find.\n")
+    assert status == 2
+    assert "check_claims: cannot resolve" in printed
+    assert "::error title=Claims check::the check exited 2" in printed
+
+
+def test_the_claims_step_prints_a_figure_as_a_notice_and_passes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, base, head = claims_checkout(tmp_path, monkeypatch)
+    description = f"Head `{head[:8]}`. In section 2: 1,180 of 1,522 case files pass.\n"
+    status, printed, summary, _ = claims_run(tmp_path, root, base, head, description)
+    assert status == 0, printed
+    assert "advisory figure finding: " in printed
+    assert "::notice title=Figures are advice::2 figures" in printed
+    assert "advisory figure finding: " in summary
+    wrong = description.replace(head[:8], base[:8])
+    status, printed, _, _ = claims_run(tmp_path, root, base, head, wrong)
+    assert status == 1
+    assert "::error title=Claims check::" in printed
+
+
+def test_the_claims_step_prints_the_check_s_output_with_workflow_commands_stopped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, base, head = claims_checkout(tmp_path, monkeypatch)
+    status, printed, _, _ = claims_run(tmp_path, root, base, head, "1,180 of 1,522 case files pass\n")
+    assert status == 0, printed
+    lines = printed.splitlines()
+    (stop,) = [line for line in lines if line.startswith("::stop-commands::")]
+    token = stop.removeprefix("::stop-commands::")
+    assert re.fullmatch(r"[0-9a-f]{32}", token)
+    assert lines.index(stop) < lines.index(f"::{token}::")
+    figure = next(line for line in lines if line.startswith("advisory figure finding: "))
+    assert lines.index(stop) < lines.index(figure) < lines.index(f"::{token}::")
+    assert lines.index(f"::{token}::") < next(
+        at for at, line in enumerate(lines) if line.startswith("::notice title=Figures are advice::")
+    )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "",
+        "$(touch ran)\n`touch ran`",
+        "'; touch ran; echo '",
+        "100%s and %d\\n \\x41",
+        "no newline at the end",
+        "a\r\nb\n\n",
+    ],
+    ids=["empty", "expansions", "quotes", "format", "no-newline", "crlf"],
+)
+def test_the_claims_step_writes_the_description_byte_for_byte_and_runs_none_of_it(
+    body: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, base, head = claims_checkout(tmp_path, monkeypatch)
+    _, _, _, written = claims_run(tmp_path, root, base, head, body)
+    assert written["text"] == body
+    assert not (root / "ran").exists()
