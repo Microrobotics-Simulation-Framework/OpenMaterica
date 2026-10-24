@@ -93,6 +93,9 @@ jobs:
             cat "$RUNNER_TEMP/claims.txt"
             echo '````'
           } >> "$GITHUB_STEP_SUMMARY"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/description.md"; then
+            echo "::notice title=Description::the description is empty: no claim to check"
+          fi
           if [ "$advisory" -gt 0 ]; then
             echo "::notice title=Figures are advice::$advisory figures in the description or the CHANGELOG lines have no recorded measurement; listed in the job summary"
           fi
