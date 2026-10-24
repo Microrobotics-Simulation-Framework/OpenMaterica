@@ -57,7 +57,7 @@ def run(capsys: pytest.CaptureFixture[str], base: str, *arguments: str) -> tuple
     facts = str(Path.cwd().parent / "facts.json")
     status = check_claims.main(["check", base, "--facts", facts, *arguments])
     lines = capsys.readouterr().out.splitlines()
-    summary = ("figures:", "the ruled", "measured before the head:")
+    summary = ("figures:", "the ruled", "measured before the head:", "accepted by the rulings file:")
     return status, [line for line in lines if ": " in line and not line.startswith(summary)]
 
 
@@ -617,10 +617,15 @@ OWN_LEAD = "An entry whose alternative is kept outside its form's range"
 RULED_LEAD = "An over-range or kept entry"
 
 
-def ruled(rulings: str, text: str) -> list[str]:
+def judged(rulings: str, text: str) -> tuple[list[str], list[str]]:
+    """Check 3's findings over `text` against `rulings`, and apart those an accepted wording holds."""
     return check_claims.ruling_findings(
         rulings, [("s.md", sentence) for sentence in check_claims.sentences(text)]
-    )[0]
+    )
+
+
+def ruled(rulings: str, text: str) -> list[str]:
+    return judged(rulings, text)[0]
 
 
 @pytest.mark.parametrize("lead", [OWN_LEAD, RULED_LEAD])
@@ -739,24 +744,56 @@ def test_a_ruling_is_printed_without_its_markup_attribution_or_labels(repository
     ]
 
 
-def test_a_wording_the_rulings_file_accepts_is_counted_not_reported(
+def test_a_wording_accepted_for_a_ruling_is_printed_with_the_run_it_waives_not_reported(
     repository: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     rulings = repository.parent / "rulings.md"
-    accepted = (
-        '- Accepted wording: "holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as '
-        '`record_format.md` section 5 gives them"\n'
-    )
-    rulings.write_text(f"- {RULING}.\n{accepted}", encoding="utf-8")
+    rulings.write_text(f"- {RULING}.\n{ACCEPTED_LINE}\n", encoding="utf-8")
     base = check_claims.git("rev-parse", "HEAD").strip()
-    commit("docs(specification): as stored, accepted", {SPECIFICATION: ROW.format(" as stored,")})
+    commit("docs(specification): as stored, accepted", {SPECIFICATION: LANDED})
     assert run(capsys, base, "--rulings", str(rulings)) == (0, [])
+    facts = str(repository.parent / "facts.json")
+    assert check_claims.main(["check", base, "--facts", facts, "--rulings", str(rulings)]) == 0
     assert (
-        check_claims.main(
-            ["check", base, "--facts", str(repository.parent / "facts.json"), "--rulings", str(rulings)]
-        )
-        == 0
-    )
-    assert "the ruled wording: 1 differences the rulings file accepts" in capsys.readouterr().out
+        f"accepted by the rulings file: {SPECIFICATION}:1: a ruled sentence differs: the ruling has "
+        '"holds its unit, specimen, statistics and provenance as `record_format.md` section 5 gives them.", '
+        'this line "holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as '
+        '`record_format.md` section 5 gives them."'
+    ) in capsys.readouterr().out.splitlines()
     commit("docs(specification): in the ruling's words", {SPECIFICATION: ROW.format("")})
     assert run(capsys, base, "--rulings", str(rulings)) == (0, [])  # the accepted line is no ruling
+
+
+KEPT = (
+    "a kept entry holds its unit, specimen, statistics and provenance exactly as `record_format.md` "
+    "section 5 gives them, never as stored."
+)
+LANDED = ROW.format(" as stored,")
+ACCEPTED_LINE = (
+    '  accepted wording: "holds its `unit`, `specimen`, `statistics` and `provenance` as stored, as '
+    '`record_format.md` section 5 gives them"'
+)
+
+
+@pytest.mark.parametrize(
+    ("rulings", "reported", "waived"),
+    [
+        # Just under a ruling, it waives that ruling's difference and no other ruling's.
+        (f"- {RULING}.\n{ACCEPTED_LINE}\n- {KEPT}\n", ["kept"], ["ruled"]),
+        (f"- {RULING}.\n- {KEPT}\n{ACCEPTED_LINE}\n", ["ruled"], ["kept"]),
+        # Under no ruling it waives nothing; inside a ruling's line it is that ruling's, compared as usual.
+        (f"- {RULING}.\n\n{ACCEPTED_LINE}\n- {KEPT}\n", ["kept", "ruled"], []),
+        (f"- {RULING}. ({ACCEPTED_LINE.strip()})\n- {KEPT}\n", ["kept", "ruled"], []),
+        # A wording that differs from the landed one by a word waives nothing, though it shares the rest.
+        (f"- {RULING}.\n{ACCEPTED_LINE.replace('stored', 'kept')}\n- {KEPT}\n", ["kept", "ruled"], []),
+    ],
+    ids=["under-the-first", "under-the-second", "under-none", "in-a-ruling-s-line", "another-wording"],
+)
+def test_an_accepted_wording_waives_only_the_ruling_just_above_it_and_only_the_words_it_quotes(
+    rulings: str, reported: list[str], waived: list[str]
+) -> None:
+    def which(findings: list[str]) -> list[str]:
+        return sorted("kept" if "exactly" in finding else "ruled" for finding in findings)
+
+    found, accepted = judged(rulings, LANDED)
+    assert (which(found), which(accepted)) == (reported, waived)

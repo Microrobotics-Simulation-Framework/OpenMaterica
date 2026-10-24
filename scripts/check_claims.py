@@ -43,8 +43,10 @@ its commits, never the working tree. Three checks:
    one; it takes in one word more at either end where that word matches across such a gap, and runs on to its
    clause's end (or back to its start) where one side's clause ends within a word of the run and the other's
    within `MAX_INSERT`. It is compared where it holds `MIN_WORDS` words in common or more, and `NEAR` of the
-   longer side. A line of the rulings file that reads `accepted wording: "..."` is no ruling: the words it
-   quotes, landed otherwise on purpose, are not reported (and are counted).
+   longer side. A line of its own that reads `accepted wording: "..."` (a list item's mark allowed), just
+   under a ruling, names a wording of that ruling landed otherwise on purpose: a difference from that ruling
+   whose text lies within the words it quotes is printed apart, with the run it waives, not reported. A
+   ruling's line that merely holds the phrase is compared as any other.
 
 Left to the reviewer: prose claims ("the bar is met"), counts written in words ("three controls"), whether a
 figure counts what its words say, a ruling paraphrased beyond `NEAR`, a git fact in another form, and these
@@ -167,12 +169,14 @@ MAX_GAP = 3
 MAX_INSERT = 8
 NEAR = 0.7
 # The rulings file's bold markup, the maintainer's attribution, a parenthesis naming a question by its label
-# and an item's mark (`(7)`, `(a)`) end a ruling's sentence; a line naming an accepted wording is no ruling.
+# and an item's mark (`(7)`, `(a)`) end a ruling's sentence. A line of its own in the form `ACCEPTED` names a
+# wording accepted for the ruling just above it, and is no ruling.
 ATTRIBUTION = re.compile(
     r"\*\*|(?i:\((?:the\s+)?maintainer\b[^)]*\))|\([^()]*\b[A-Z][\w-]*Q\d+\b[^()]*\)"
     r"|(?<!\S)\((?:\d{1,2}|[A-Za-z])\)(?!\S)"
 )
-ACCEPTED = re.compile(r"accepted wording:\s*\"(.+)\"", re.I)
+ACCEPTED = re.compile(r"^\s*(?:[-*]\s+)?accepted wording:\s*\"(.+)\"\s*$", re.I)
+ITEM = re.compile(r"\s*(?:[-*]|\d+\.)\s")
 
 Word = tuple[str, str, int]
 
@@ -674,7 +678,7 @@ def sentences(text: str) -> Iterator[list[Word]]:
     semicolon, a list item, a blank line and a table cell."""
     sentence: list[Word] = []
     for line, row in enumerate(text.split("\n"), 1):
-        if (not row.strip() or re.match(r"\s*(?:[-*]|\d+\.)\s", row)) and sentence:
+        if (not row.strip() or ITEM.match(row)) and sentence:
             yield sentence
             sentence = []
         for token in row.split():
@@ -707,25 +711,40 @@ def trigrams(sentence: list[Word]) -> set[tuple[str, ...]]:
     return {tuple(word for word, _, _ in sentence[index : index + 3]) for index in range(len(sentence) - 2)}
 
 
-def ruling_findings(rulings: str, added: list[tuple[str, list[Word]]]) -> tuple[list[str], int]:
+def rulings_of(text: str) -> Iterator[tuple[list[Word], list[list[str]]]]:
+    """Each sentence of the rulings file, with the wordings accepted for its ruling (a paragraph or a list
+    item): those the `ACCEPTED` lines just under the ruling quote."""
+    items: list[tuple[list[str], list[list[str]]]] = []
+    last = "blank"  # what the line before was: blank, a ruling's or an accepted wording under one
+    for row in text.split("\n"):
+        quoted = ACCEPTED.match(row)
+        if quoted and last != "blank":
+            items[-1][1].extend([word for word, _, _ in words] for words in sentences(quoted.group(1)))
+            last = "accepted"
+        elif quoted or not row.strip():
+            last = "blank"
+        else:
+            if last == "ruling" and not ITEM.match(row):
+                items[-1][0].append(row)
+            else:
+                items.append(([row], []))
+            last = "ruling"
+    for rows, accepted in items:
+        for sentence in sentences("\n".join(ATTRIBUTION.sub("\n\n", row) for row in rows)):
+            yield sentence, accepted
+
+
+def ruling_findings(rulings: str, added: list[tuple[str, list[Word]]]) -> tuple[list[str], list[str]]:
     """Check 3: each run of a ruling's words that an added specification sentence nearly matches, not word for
-    word, and how many differences an accepted wording holds. Two sentences are compared where they share two
-    runs of three words."""
-    accepted = [
-        [word for word, _, _ in words]
-        for match in ACCEPTED.finditer(rulings)
-        for words in sentences(match.group(1))
-    ]
-    rulings = "\n".join(
-        "" if ACCEPTED.search(row) else ATTRIBUTION.sub("\n\n", row) for row in rulings.split("\n")
-    )
+    word; and apart, those a wording accepted for that ruling holds. Two sentences are compared where they
+    share two runs of three words."""
     index: dict[tuple[str, ...], set[int]] = {}
     for position, (_, sentence) in enumerate(added):
         for trigram in trigrams(sentence):
             index.setdefault(trigram, set()).add(position)
     found: set[str] = set()
     waived: set[str] = set()
-    for ruled in sentences(rulings):
+    for ruled, accepted in rulings_of(rulings):
         shared: dict[int, int] = {}
         for trigram in trigrams(ruled):
             for position in index.get(trigram, ()):
@@ -739,7 +758,7 @@ def ruling_findings(rulings: str, added: list[tuple[str, list[Word]]]) -> tuple[
                     f'"{" ".join(token for _, token, _ in theirs)}"'
                 )
                 (waived if any(within(theirs, words) for words in accepted) else found).add(finding)
-    return sorted(found), len(waived)
+    return sorted(found), sorted(waived)
 
 
 def within(run: list[Word], words: list[str]) -> bool:
@@ -856,13 +875,15 @@ def check(options: argparse.Namespace) -> int:
         found += more
         notes += noted
         tally = {name: tally[name] + counted[name] for name in tally}
-    waived = 0
+    waived: list[str] = []
     if options.rulings:
         more, waived = ruling_findings(options.rulings.read_text(encoding="utf-8"), added_sentences(span))
         found += more
     print("\n".join(found) if found else "no claim found that git, the facts or the rulings contradict")
     for note in notes:
         print(f"measured before the head: {note}")
+    for line in waived:
+        print(f"accepted by the rulings file: {line}")
     matched, estimates, held = tally["matched"], tally["estimates"], tally["baseline"]
     print(
         f"figures: {matched} matched a fact of the {len(facts)} in {facts_path}, {estimates} marked "
@@ -870,8 +891,6 @@ def check(options: argparse.Namespace) -> int:
     )
     if not options.rulings:
         print("the ruled wording was not checked: no rulings file was given (--rulings)")
-    elif waived:
-        print(f"the ruled wording: {waived} differences the rulings file accepts")
     return 1 if found else 0
 
 
