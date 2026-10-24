@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import check_claims
+from scripts import check_claims, pre_review
 from tests.unit.throwaway_git import throwaway_repository
 
 SPECIFICATION = "docs/specification/read_side_contract.md"
@@ -418,30 +418,72 @@ def test_a_fact_s_words_start_in_its_figure_s_own_phrase(repository: Path) -> No
     assert (found, tally["matched"]) == ([], 3)
 
 
-def test_a_fact_measured_before_the_head_holds_only_across_commits_that_change_markdown_alone(
-    repository: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def measured_before(repository: Path) -> tuple[str, str, Path, list[str]]:
+    """A branch with a fact recorded at its first commit: its base, that commit, its description and facts."""
     base = check_claims.git("rev-parse", "HEAD").strip()
     commit("feat: one", {"a.py": "x = 1\n"})
     description = repository.parent / "description.md"
     description.write_text("The suite: 41 tests pass.\n", encoding="utf-8")
     facts = ["--facts", str(repository.parent / "facts.json")]
     assert check_claims.main(["record", "41", "tests pass", "--how", "pytest -q", *facts]) == 0
-    measured = check_claims.git("rev-parse", "HEAD").strip()
-    commit("docs: a note", {"NOTES.md": "a note\n"})
-    status, found = run(capsys, base, "--description", str(description))
-    assert (status, found) == (0, [])
-    assert check_claims.main(["check", base, "--description", str(description), *facts]) == 0
-    assert (
-        f"measured before the head: {description}:1: 41 (tests pass ...) was measured at `{measured[:8]}`, "
-        "1 commits before the head, which change Markdown files alone"
-    ) in capsys.readouterr().out.splitlines()
-    commit("fix: two", {"a.py": "x = 2\n", "b.py": "y = 1\n"})
-    status, found = run(capsys, base, "--description", str(description))
+    return base, check_claims.git("rev-parse", "HEAD").strip(), description, facts
+
+
+@pytest.mark.parametrize(
+    ("path", "prose"),
+    [
+        ("CHANGELOG.md", True),
+        ("notes/README.md", True),  # a README no test reads
+        ("docs/specification/record_format.md", False),
+        ("tests/property/README.md", False),  # a README a test reads: the kill counts' table
+        ("NOTES.md", False),  # Markdown that is neither a README nor documentation
+    ],
+)
+def test_a_fact_measured_before_the_head_holds_only_across_commits_that_change_prose_markdown_alone(
+    path: str, prose: bool, repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base, measured, description, facts = measured_before(repository)
+    commit("docs: a note", {path: "a note\n"})
+    status = check_claims.main(["check", base, "--description", str(description), *facts])
+    lines = capsys.readouterr().out.splitlines()
+    about = f"{description}:1: 41 (tests pass ...) was measured at `{measured[:8]}`, 1 commits"
+    if prose:
+        assert status == 0
+        assert (
+            f"measured before the head: {about} before the head, which change prose Markdown alone" in lines
+        )
+    else:
+        assert status == 1
+        assert (
+            f"{about} before the head, which change 1 files that are code or that a test reads: {path}"
+            in lines
+        )
+
+
+def test_a_file_moved_to_a_prose_name_counts_by_both_its_names(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base, measured, description, _ = measured_before(repository)
+    subprocess.run(["git", "mv", "a.py", "docs/a.md"], check=True)
+    commit("docs: the module becomes a page")
+    _, found = run(capsys, base, "--description", str(description))
     assert [line.partition(": ")[2] for line in found] == [
-        f"41 (tests pass ...) was measured at `{measured[:8]}`, 2 commits before the head, which change 2 "
-        "files that are not Markdown: a.py, b.py"
+        f"41 (tests pass ...) was measured at `{measured[:8]}`, 1 commits before the head, which change 1 "
+        "files that are code or that a test reads: a.py"
     ]
+
+
+def test_markdown_a_reader_table_names_is_code_and_the_specification_is_code_whatever_the_tables_say(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readme, read = "notes/README.md", "tests/property/README.md"
+    assert check_claims.prose_markdown(readme)
+    rule = pre_review.DataRule("a README a test reads", r"notes/README\.md", "a test reads it", ("tests",))
+    monkeypatch.setattr(pre_review, "DATA_RULES", (*pre_review.DATA_RULES, rule))
+    assert not check_claims.prose_markdown(readme)
+    monkeypatch.setattr(pre_review, "DATA_RULES", ())
+    assert check_claims.prose_markdown(read)
+    assert not check_claims.prose_markdown(SPECIFICATION)
 
 
 def test_a_changelog_figure_the_branch_adds_fails_unless_a_fact_or_the_baseline_holds_it(
