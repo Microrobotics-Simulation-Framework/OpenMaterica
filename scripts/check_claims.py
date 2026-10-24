@@ -144,6 +144,8 @@ NUMBER = re.compile(
 )
 # A word just before a number, or before a list of numbers joined by `and`, `or` and `to`, that numbers it;
 # those of `DOTTED` also number a section or a version such as 4.1 or 3.11, the others a whole number only.
+# A word that is also a verb taking a count is none (`runs 30 jobs`, `seeds 76 faults`), its noun's numbering
+# use flagged with it (`seeds 1 to 4`); a singular noun stays one (`fuzz target 4`).
 DOTTED = set(
     "section sections item items step steps point points question questions rule rules constraint "
     "constraints table tables figure figures equation equations page pages chapter principle principles "
@@ -151,9 +153,8 @@ DOTTED = set(
     "pep iso".split()
 )
 NUMBERED = DOTTED | set(
-    "target targets seed seeds round rounds phase phases column columns row rows line lines level levels "
-    "commit part parts case example issue issues pr run runs job shard arm arms stage stages piece pieces "
-    "group groups".split()
+    "target seed round phase phases column columns row rows line lines level levels commit part parts case "
+    "example issue pr job shard arm arms stage stages piece pieces group".split()
 )
 LINKS = {"and", "or", "to", "through", ""}
 FLAG = re.compile(r"^--?[A-Za-z][\w-]*$")

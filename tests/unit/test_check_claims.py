@@ -318,7 +318,8 @@ def test_git_s_own_shortstat_of_a_rename_passes(repository: Path, capsys: pytest
         "on 2026-10-23 at 10:24, in run 39404674681 (Marcinkowska-Gapinska 2013), and in 2026 (2013)",
         '(1) the first; "1180 of 1522 case files" as quoted; the interval [275, 283]',
         "at 37 °C, at the one-sided 95 % bound, about 45 s, ~3 runs and 55 minutes by estimate",
-        "Its checks: (1) the reader; (2) the writer, with seeds 0 and 3",
+        "Its checks: (1) the reader; (2) the writer, with items 0 and 3",
+        "fuzz target 4 reads it, and seed 2 draws it",
     ],
 )
 def test_a_number_of_a_kind_that_is_no_measurement_needs_no_fact(text: str) -> None:
@@ -350,6 +351,8 @@ def test_a_number_of_a_kind_that_is_no_measurement_needs_no_fact(text: str) -> N
         ("Its slowest part `writer` 67 s at the head.", ["67"]),
         ("Its slowest part `writer`\n67 s at the head.", ["67"]),
         ("The set-up took 6 s, where it estimated less.", ["6"]),
+        ("So a push's head runs 30 jobs at once where it ran 18.", ["30", "18"]),
+        ("The suite can run 3266 tests in 4 minutes.", ["3266", "4"]),
     ],
 )
 def test_a_number_a_numbering_word_does_not_reach_needs_a_fact(text: str, stated: list[str]) -> None:
