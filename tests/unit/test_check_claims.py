@@ -762,6 +762,41 @@ def test_a_word_changed_at_a_ruled_run_s_edge_is_flagged(ruling: str, text: str)
 
 
 @pytest.mark.parametrize(
+    ("ruling", "text", "ours", "theirs"),
+    [
+        # A word added where the text's clause opens, before the ruling clause's first word.
+        (
+            "Readers refuse a record whose unit names no quantity.",
+            "In this profile, all readers refuse a record whose unit names no quantity.",
+            "Readers refuse a record whose unit names no quantity.",
+            "all readers refuse a record whose unit names no quantity.",
+        ),
+        # The text's words before the run, as many as the ruling's, within its own clause.
+        (
+            "Alpha beta refuses a record whose unit names no quantity the field allows.",
+            "It holds, refuses a record whose unit names no quantity the field allows.",
+            "Alpha beta refuses a record whose unit names no quantity the field allows.",
+            "refuses a record whose unit names no quantity the field allows.",
+        ),
+        # And after it.
+        (
+            "Every reader refuses it where its unit names no quantity the field allows, whatever its source.",
+            "Every reader refuses it where its unit names no quantity it reads, and so on.",
+            "Every reader refuses it where its unit names no quantity the field allows,",
+            "Every reader refuses it where its unit names no quantity it reads,",
+        ),
+    ],
+    ids=["added-where-its-clause-opens", "before-within-its-clause", "after-within-its-clause"],
+)
+def test_a_run_takes_the_text_s_words_at_its_edges_within_the_text_s_own_clause(
+    ruling: str, text: str, ours: str, theirs: str
+) -> None:
+    assert ruled(ruling, text) == [
+        f's.md:1: a ruled sentence differs: the ruling has "{ours}", this line "{theirs}"'
+    ]
+
+
+@pytest.mark.parametrize(
     ("old", "new", "flagged"),
     [
         ("holds", "holds only", True),
@@ -906,8 +941,17 @@ ACCEPTED_LINE = (
         (f"- {RULING}. ({ACCEPTED_LINE.strip()})\n- {KEPT}\n", ["kept", "ruled"], []),
         # A wording that differs from the landed one by a word waives nothing, though it shares the rest.
         (f"- {RULING}.\n{ACCEPTED_LINE.replace('stored', 'kept')}\n- {KEPT}\n", ["kept", "ruled"], []),
+        # It closes its ruling: a paragraph's line after it opens another ruling.
+        (f"{RULING}.\n{ACCEPTED_LINE}\n{KEPT}\n", ["kept"], ["ruled"]),
     ],
-    ids=["under-the-first", "under-the-second", "under-none", "in-a-ruling-s-line", "another-wording"],
+    ids=[
+        "under-the-first",
+        "under-the-second",
+        "under-none",
+        "in-a-ruling-s-line",
+        "another-wording",
+        "closing-its-paragraph",
+    ],
 )
 def test_an_accepted_wording_waives_only_the_ruling_just_above_it_and_only_the_words_it_quotes(
     rulings: str, reported: list[str], waived: list[str]
