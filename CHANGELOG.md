@@ -25,8 +25,7 @@ every family entry goes in `families/CHANGELOG.md`.
   changed. The job also runs the baseline guard of `tests/unit/test_check_claims.py` on the whole history, with
   `CLAIMS_REQUIRE_HISTORY=1`, under which the guard fails where the baseline's commit is missing instead of
   skipping, as it does at the test jobs' depth. `scripts/check_claims.py` is among the gate's paths that run no
-  Hypothesis job, with the new workflow. The ruleset on `main` requires `ci.yml`'s `result` alone: the check
-  blocks no merge until the maintainer adds it as a required check.
+  Hypothesis job, with the new workflow.
 - `scripts/check_claims.py`, a check of a branch's claims that a builder runs before asking for review
   (approved by the maintainer on 2026-10-23; CONTRIBUTING, "Before asking for review"). It holds a pull
   request's description and the branch's commit messages to git: a commit name names one commit on the branch

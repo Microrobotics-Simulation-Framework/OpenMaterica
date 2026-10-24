@@ -6,14 +6,13 @@
 #
 # A workflow of its own, not a step of ci.yml's gate: ci.yml cancels a pull request's running workflow on each
 # new event (`cancel-in-progress`), so an `edited` trigger there would cancel the whole run whenever the
-# description changes, and without it a description corrected after the push would never be checked again. The
-# cost is that the ruleset on main requires ci.yml's `result` alone, so this check does not block a merge until
-# the maintainer adds it to the ruleset as a required check.
+# description changes, and without it a description corrected after the push would never be checked again.
 #
 # One run stands for a pull request: a new event cancels the one running or pending for the same pull request.
 # Each event's payload is the pull request as it was when the event was made, its description and its head both,
 # so the last event's run reads the latest of a push and an edit that come close together, and is the one whose
-# verdict stands; a run cancelled by it reports as cancelled, and checked a state that is no longer current.
+# verdict stands; a run cancelled by it reports as cancelled, and checked a state that is no longer current. A
+# manual re-run is the exception: it re-reads its own event's payload, the description as it was then.
 #
 # The description is the event's, written to a file through the environment and never through a script's text, so
 # that a pull request's words reach no shell. The checkout is GitHub's merge commit, whose parents are the base

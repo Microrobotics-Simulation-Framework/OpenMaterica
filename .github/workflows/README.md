@@ -222,7 +222,9 @@ and without it a description corrected after the push would never be checked aga
 for each pull request, and a new event cancels the run before it. Each event's payload holds the pull request as it
 was when the event was made, its description and its head both, so when a push and an edit come close together
 the later event's run reads the latest of each and is the run whose verdict stands; the earlier run reports as
-cancelled, and checked a state that is no longer current.
+cancelled, and checked a state that is no longer current. A manual re-run is the exception: GitHub re-runs a run
+with its own event's payload, so it reads the description as it was then; to check a corrected description, edit
+it or push.
 
 Open point: the ruleset on `main` requires `ci.yml`'s `result` alone, so this check does not block a merge until
 the maintainer adds `claims` to the ruleset as a required check. A pull request with a merge conflict has no merge
