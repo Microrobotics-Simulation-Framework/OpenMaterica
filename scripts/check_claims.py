@@ -12,15 +12,15 @@ its commits, never the working tree. Three checks:
 1. Git facts, in the description and the branch's commit messages. A commit name (7 to 40 hexadecimal digits,
    a letter and a digit among them) names one commit, on the branch or on `BASE`, unless its sentence names a
    pull request (`#N`). One called the head (`head X`, `Head: X`, `head is now X`, `head (X)`, after any word
-   but one naming another head: `earlier`, `old`, `previous`, `rebase`, `review`, a possessive such as
-   `#77's`) is the head; one called the base (`base X`, `the base is X`, `merge base X`, `main's X`, `N
-   commits on main at X`, `rebased onto main at X`, `based on main at X`, `draft, on main at X`) is the merge
-   base. A count of the branch's commits (`N commits on main`, `N commits on top of main`, a sentence that
-   opens `N commits,` or `N commits:`, `the N commits`, `the same N commits`, `(N commits)`, `N commits on the
-   branch`), git's `N files changed`, `N insertions(+)` and `N deletions(-)` (a rename one file, as git counts
-   it), and a table with `Added` and `Removed` columns (and `Files`, where it has one; its row that opens
-   `total`, with `N files` there, or else its column sums) equal git's over the branch. A quotation is not
-   read.
+   but one naming another head: `earlier`, `old`, `previous`, `rebase`, `review`, any possessive but the
+   branch's or the pull request's, so `#77's` and `the draft's` too) is the head; one called the base (`base
+   X`, `the base is X`, `merge base X`, `main's X`, `N commits on main at X`, `rebased onto main at X`, `based
+   on main at X`, `draft, on main at X`) is the merge base. A count of the branch's commits (`N commits on
+   main`, `N commits on top of main`, a sentence that opens `N commits,` or `N commits:`, `the N commits`,
+   `the same N commits`, `(N commits)`, `N commits on the branch`), git's `N files changed`, `N insertions(+)`
+   and `N deletions(-)` (a rename one file, as git counts it), and a table with `Added` and `Removed` columns
+   (and `Files`, where it has one; its row that opens `total`, with `N files` there, or else its column sums)
+   equal git's over the branch. A quotation is not read.
 2. Measured figures, in the description and the CHANGELOG lines the branch adds (a line moved whole is not
    added). A number that is no git fact and of no kind `kind` names (a numbered thing, a version, a flag, an
    identifier, a date, a value in a physical unit, a confidence level; anything in code, a link or quotation
@@ -53,7 +53,8 @@ its commits, never the working tree. Three checks:
    any other.
 
 Left to the reviewer: prose claims ("the bar is met"), counts written in words ("three controls"), whether a
-figure counts what its words say, a ruling paraphrased beyond `NEAR`, a git fact in another form; in the ruled
+figure counts what its words say, a figure in code, a quotation or an interval, which is not read (test output
+pasted in backticks among them), a ruling paraphrased beyond `NEAR`, a git fact in another form; in the ruled
 wording, a word added before a ruling clause's first word where the words before it are the text's own, and a
 word changed just before a run whose ruling clause starts more than `MAX_LEAD` words before it, where the text
 words that start its own way, such as a negation of the ruled verb under a subject of the text's own (no
