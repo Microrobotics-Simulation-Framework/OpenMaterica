@@ -784,12 +784,18 @@ def test_a_control_that_missed_a_run_or_whose_pair_misses_over_the_bar_is_flagge
 # --- fetch, where a download fails --------------------------------------------------------------------------
 
 
-def test_fetch_downloads_the_artifacts_one_by_one_where_the_bulk_download_fails_and_names_any_missing(
+def test_fetch_downloads_the_artifacts_one_by_one_where_the_bulk_download_fails_and_counts_them(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     bin_directory = tmp_path / "bin"
     bin_directory.mkdir()
-    payload = json.dumps(record(Job("floors-head-0-0", "floors", SLIP, 0, 2)) | {"streams": [0, 1]})
+    ids = {"record-a": "floors-head-0-0", "record-flaky": "floors-head-0-1", "record-bad": "floors-head-0-2"}
+    payloads = {
+        name: json.dumps(record(Job(job, "floors", SLIP, 0, 2)) | {"streams": [0, 1]})
+        for name, job in ids.items()
+    }
+    # the matrix has a fourth job, which kept no record at all
+    matrix = json.dumps([*ids.values(), "floors-head-0-3"])
     gh = bin_directory / "gh"
     gh.write_text(
         f"#!{sys.executable}\nimport sys, pathlib\nargs = sys.argv[1:]\n"
@@ -801,7 +807,9 @@ def test_fetch_downloads_the_artifacts_one_by_one_where_the_bulk_download_fails_
         "flaky = pathlib.Path(sys.argv[0]).parent / 'flaky-tried'\n"
         "if name == 'record-flaky' and not flaky.exists():\n    flaky.write_text('x')\n    sys.exit(1)\n"
         "d = pathlib.Path(args[args.index('-D') + 1])\nd.mkdir(parents=True)\n"
-        f"(d / 'record.json').write_text({payload!r})\n",
+        f"payloads = {payloads!r}\n"
+        f"(d / 'matrix.json' if name.startswith('measure-table') else d / 'record.json').write_text("
+        f"{matrix!r} if name.startswith('measure-table') else payloads[name])\n",
         encoding="utf-8",
     )
     gh.chmod(gh.stat().st_mode | stat.S_IXUSR)
@@ -809,7 +817,10 @@ def test_fetch_downloads_the_artifacts_one_by_one_where_the_bulk_download_fails_
     assert measure.main(["fetch", "123"]) == 1
     out = capsys.readouterr().out
     assert "## floors" in out
-    assert "1 record artifacts not downloaded" in out
-    assert "- record-bad" in out
+    assert "1 artifacts not downloaded: record-bad" in out
     assert "record-flaky" not in out  # downloaded on its second try
     assert "2 records;" in out
+    # counted against the matrix: the artifact that was not had and the job that never ran are both named
+    assert "job floors-head-0-2: no record" in out
+    assert "job floors-head-0-3: no record" in out
+    assert "job floors-head-0-1: no record" not in out
