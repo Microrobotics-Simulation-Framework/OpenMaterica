@@ -299,6 +299,20 @@ def test_a_table_of_one_total_row_and_git_s_deletions_are_read(
         ] * (2 * status)
 
 
+def test_a_line_table_s_total_row_names_its_files_where_it_has_no_files_column(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = commit("docs: the file", {"a.txt": "a\n"})
+    commit("fix: one line more", {"a.txt": "a\nb\n"})
+    description = repository.parent / "description.md"
+    for files, stale in ((1, []), (2, ["2 files, where git counts 1"])):
+        description.write_text(
+            f"| Part | Added | Removed |\n|---|---|---|\n| total, {files} files | 1 | 0 |\n", encoding="utf-8"
+        )
+        _, found = run(capsys, base, "--description", str(description))
+        assert [line.partition(": ")[2] for line in found] == stale
+
+
 def test_git_s_own_shortstat_of_a_rename_passes(repository: Path, capsys: pytest.CaptureFixture[str]) -> None:
     base = commit("docs: a file", {"a.txt": "".join(f"line {n}\n" for n in range(5))})
     subprocess.run(["git", "mv", "a.txt", "b.txt"], check=True)
@@ -419,6 +433,25 @@ def test_a_fact_s_words_start_in_its_figure_s_own_phrase(repository: Path) -> No
         text, "d", span, [fact("35", "tests pass"), fact("12", "files")]
     )
     assert (found, tally["matched"]) == ([], 3)
+
+
+def test_a_fact_s_words_start_within_the_eight_words_after_its_figure(repository: Path) -> None:
+    head = check_claims.git("rev-parse", "HEAD").strip()
+    span = check_claims.Range(head, head, head)
+    fact = check_claims.Fact(check_claims.decimal("41"), ("tests",), head)
+    found, tally, _ = check_claims.figure_findings("41 a b c d e f g tests pass.\n", "d", span, [fact])
+    assert (found, tally["matched"]) == ([], 1)
+    found, _, _ = check_claims.figure_findings("41 a b c d e f g h tests pass.\n", "d", span, [fact])
+    assert found == ["d:1: 41 (a b c d ...) matches no recorded fact"]
+
+
+def test_a_fact_is_recorded_in_the_git_directory_by_default_and_the_tree_stays_clean(
+    repository: Path,
+) -> None:
+    assert check_claims.main(["record", "3", "tests pass", "--how", "pytest -q"]) == 0
+    stored = Path(check_claims.git("rev-parse", "--git-path", check_claims.FACTS_NAME).strip())
+    assert json.loads(stored.read_text(encoding="utf-8"))["facts"][0]["value"] == "3"
+    assert check_claims.git("status", "--porcelain") == ""
 
 
 def measured_before(repository: Path) -> tuple[str, str, Path, list[str]]:
@@ -575,7 +608,10 @@ def test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commi
     monkeypatch.chdir(check_claims.BASELINE.parent.parent)
     at = json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))["at"]
     if check_claims.resolve(at) is None:
-        pytest.skip(f"a shallow clone holds no {at[:8]}; the check itself holds the baseline to it each run")
+        pytest.skip(
+            f"a shallow clone holds no {at[:8]}: CI's test jobs check out at depth 1, so this guard runs "
+            "only where the history is (an open point for CI); the check refuses a grown baseline on each run"
+        )
     held = check_claims.load_baseline(check_claims.Range(at, at, at))
     assert len(held) == len(json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))["changelog"])
 
@@ -806,6 +842,17 @@ def test_a_ruling_is_printed_without_its_markup_attribution_or_labels(repository
         'this line "Each entry holds its unit as the table gives it."',
         's.md:3: a ruled sentence differs: the ruling has "every reader refuses a record whose unit names no '
         'quantity.", this line "A reader refuses a record whose unit names no quantity."',
+    ]
+
+
+def test_a_ruling_s_bold_markup_ends_its_sentence_and_is_not_printed() -> None:
+    found = ruled(
+        "Each entry holds its unit as the row gives it **Settled**\n",
+        "Each entry holds its unit as the table gives it.",
+    )
+    assert found == [
+        's.md:1: a ruled sentence differs: the ruling has "Each entry holds its unit as the row gives it", '
+        'this line "Each entry holds its unit as the table gives it."'
     ]
 
 
