@@ -18,7 +18,8 @@ records into one table a kind. Locally the jobs run one after another; on CI eac
 - `floors`: each property test function over N derandomised runs at `ci`, each its own stream: every
   feature's mean and least share, its count's variance ratio, and for each feature `ci` judges, its false
   failure by `tests/property/audits.py`'s model at the declared chance and at the variance measured (the count
-  as r Bin(n / r, p), r the variance ratio, p the mean share): flagged above the model's 1e-6.
+  as r Bin(n / r, p), r the variance ratio), reported at the mean share and at the least share, and flagged
+  above the model's 1e-6 at the least, as the S4d review's probe judged; and the most draws a run rejected.
 - `drift`: each mutant search over K streams a size: the kill per stream, whether the search's own assertions
   (the way and the assertion it names) passed, the latest kill, stream 0 against `kill_points.json`, and any
   kill past four fifths of the margin guard (`NEAR`).
@@ -166,6 +167,22 @@ CONTROLS = {
 }
 NO_FAULT = "none"
 
+# The counts of stream 0 of the floors self-test's property, as the draft's own CI run recorded them (a
+# stream's draws are the same on any machine): a Hypothesis or property change that moves them is a change to
+# look at.
+SELF_FLOORS_EXAMPLES = 2000
+SELF_FLOORS_STREAM_0 = {
+    "added": 618,
+    "far_swap": 150,
+    "none": 797,
+    "plural": 163,
+    "substituted": 246,
+    "swapped": 132,
+    "through_an_empty_word": 303,
+    "two_edits": 496,
+    "underscore": 147,
+}
+
 # The measurement a pull request that changes this tool runs on CI (`measure.yml`'s `pull_request` trigger),
 # each kind at its rule's count on one small selection, with the answer it must give: stream 0 the recorded
 # kill; a tree against itself
@@ -175,7 +192,7 @@ SELF_TEST: tuple[tuple[str, str, str], ...] = (
     (
         "floors",
         "tests/property/test_slip_properties.py::test_one_slip_is_what_the_neighbour_generator_reaches",
-        "",
+        "counted",
     ),
     (
         "drift",
@@ -292,19 +309,26 @@ def checked_request(environment: Mapping[str, str], root: Path) -> dict[str, str
     }
 
 
-def collected(nodes: Sequence[str], root: Path = REPOSITORY) -> list[dict[str, str]]:
+def collected(
+    nodes: Sequence[str],
+    root: Path = REPOSITORY,
+    python: Sequence[str] = (),
+    tolerated: Sequence[int] = (),
+) -> list[dict[str, str]]:
     """What the tree's pytest collects of `nodes` at `ci`: each item's node id and whether it is a property
     (a Hypothesis test) or a mutant search (a test of a `*mutants` module that records its kill)."""
     with tempfile.TemporaryDirectory(prefix="measure-collect-") as scratch:
         lines = Path(scratch) / "lines.jsonl"
         done = subprocess.run(
-            [*measuring_pytest(), "--collect-only", "-q", *nodes],
+            [*measuring_pytest(python), "--collect-only", "-q", *nodes],
             cwd=root,
             env=plugin_environment(Path(scratch), lines, "collect", ()),
             capture_output=True,
             text=True,
             check=False,
         )
+        if done.returncode in tolerated:
+            return []
         if done.returncode != 0:
             raise MeasureError(
                 [
@@ -475,23 +499,44 @@ def measuring_pytest(python: Sequence[str] = ()) -> list[str]:
     return [*(python or [sys.executable]), "-m", "pytest", "-p", "measure", "-p", "no:cacheprovider", "-q"]
 
 
-def exported(commit: str) -> Path:
-    """The tree of `commit`, exported with `git archive`, to run in an environment of its own."""
+def exported(commit: str, root: Path = REPOSITORY) -> tuple[Path, str]:
+    """The tree of `commit`, exported with `git archive`, to run in an environment of its own, and the commit
+    the archive itself names."""
     tree = Path(tempfile.mkdtemp(prefix="measure-base-"))
     archive = subprocess.run(
-        ["git", "archive", "--format=tar", commit], cwd=REPOSITORY, capture_output=True, check=True
+        ["git", "archive", "--format=tar", commit], cwd=root, capture_output=True, check=True
     ).stdout
     with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        named = str(tar.pax_headers.get("comment", ""))
         tar.extractall(tree, filter="data")
-    return tree
+    return tree, named
+
+
+def base_interpreter(tree: Path) -> list[str]:
+    """The Python of the base's own locked environment."""
+    return ["uv", "run", "--locked", "--quiet", "--directory", str(tree), "python"]
+
+
+def present_in(tree: Path, python: Sequence[str], nodes: Sequence[str]) -> list[str]:
+    """The `nodes` the tree has: its pytest collects each node's test function, and a function or file it
+    lacks (pytest's exit 4 or 5) holds none of them."""
+    have: set[str] = set()
+    for function in sorted({node.partition("[")[0] for node in nodes}):
+        for item in collected([function], tree, python, tolerated=(4, 5)):
+            have.add(item["node"])
+    return [node for node in nodes if node in have]
 
 
 def run_pytest_kind(job: Job, out: Path, workers: int, root: Path = REPOSITORY) -> dict[str, Any]:
     """A job of floors, drift or regions: its streams split among `workers` pytest processes of the tree."""
-    tree, python = root, [sys.executable]
+    tree, python, names = root, [sys.executable], job.nodes.split()
+    commit = ""
     if job.side == "base":
-        tree = exported(job.base)
-        python = ["uv", "run", "--locked", "--quiet", "--directory", str(tree), "python"]
+        tree, commit = exported(job.base, root)
+        python = base_interpreter(tree)
+        names = present_in(
+            tree, python, names
+        )  # a node the base lacks is the head's alone: a flag, no problem
     mode = "searches" if job.kind == "drift" else "draws"
     streams = list(range(job.first, job.first + job.length))
     slices = [streams[index::workers] for index in range(min(workers, len(streams)))]
@@ -501,7 +546,9 @@ def run_pytest_kind(job: Job, out: Path, workers: int, root: Path = REPOSITORY) 
             lines = out / f"lines-{index}.jsonl"
             log = logs.enter_context((out / f"pytest-{index}.log").open("wb"))
             environment = plugin_environment(Path(scratch) / str(index), lines, mode, part)
-            command = [*measuring_pytest(python), *job.nodes.split()]
+            if not names:
+                break
+            command = [*measuring_pytest(python), *names]
             process = subprocess.Popen(
                 command, cwd=tree, stdout=log, stderr=subprocess.STDOUT, env=environment
             )
@@ -527,14 +574,26 @@ def run_pytest_kind(job: Job, out: Path, workers: int, root: Path = REPOSITORY) 
         for stream in streams
         if not any(run["node"] == node and run["stream"] == stream for run in runs)
     ]
-    if not nodes:
+    if not nodes and (job.side != "base" or names):
         problems.append("no test of the job ran")
     record: dict[str, Any] = {
-        "commit": job.base if job.side == "base" else git_commit(tree),
+        "commit": commit or git_commit(tree),
         "streams": streams,
         "runs": runs,
         "problems": problems,
     }
+    if job.side == "base":
+        version = subprocess.run(
+            [*python, "-c", "import sys; print(sys.version.split()[0])"],
+            cwd=tree,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        if version:
+            record["python"] = version  # the base environment's own, not this interpreter's
+        if not commit:
+            problems.append("git archive named no commit for the base tree")
     if job.kind == "drift":
         record["recorded"] = recorded_kills(tree, nodes)
     if job.side == "base":
@@ -646,11 +705,19 @@ def run_fuzz(job: Job, out: Path, workers: int, root: Path = REPOSITORY, seconds
             stdout=output,
             stderr=subprocess.STDOUT,
         )
-        _, problems = waited([process])
+        statuses, problems = waited([process])
     took = time.monotonic() - started
     shutil.rmtree(work, ignore_errors=True)
     text = log.read_text(encoding="utf-8", errors="replace")
     find = found_in(text, control)
+    inputs = inputs_run(text)
+    if not inputs:
+        problems.append("the target ran no input (see fuzz.log)")
+    if not find and (statuses[0] != 0 or took < seconds - 1) and not problems:
+        problems.append(
+            f"the target ended with status {statuses[0]} after {took:.0f} s of its {seconds}, without the"
+            " control's find (see fuzz.log)"
+        )
     return {
         "commit": git_commit(root),
         "control": job.control,
@@ -660,7 +727,8 @@ def run_fuzz(job: Job, out: Path, workers: int, root: Path = REPOSITORY, seconds
         "found": bool(find),
         "line": find[:500],
         "seconds": round(took, 3),
-        "inputs": inputs_run(text),
+        "inputs": inputs,
+        "status": statuses[0],
         "problems": problems,
     }
 
@@ -765,6 +833,7 @@ def drawn_runs(item: Any, test: Any, arguments: dict[str, Any], streams: Sequenc
         "false_failure": audits.FALSE_FAILURE,
         "least_draws": audits.LEAST_DRAWS,
         "judged_from": audits.JUDGED_FROM,
+        "max_rejection": audits.MAX_REJECTION,
     }
     try:
         for stream in streams:
@@ -949,17 +1018,28 @@ def failed_runs(records: Sequence[dict[str, Any]]) -> list[str]:
 def report_floors(records: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
     lines = [
         "| Test | Feature | Judged as | Runs | Mean | Least | Variance ratio | Floor | P at the model |"
-        " P at the variance measured |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        " P at the variance measured, mean share | P at the variance measured, least share |"
+        " Most rejected |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     flags = failed_runs(records)
     for node, runs in sorted(by_node(records).items()):
         last = runs[-1]
+        rejected = max(
+            (run["invalid"] / (run["invalid"] + run["examples"]) for run in runs if run["examples"]),
+            default=0.0,
+        )
+        allowed = last["model"].get("max_rejection", 0.40)
+        if rejected > allowed:
+            flags.append(
+                f"{node}: up to {rejected:.0%} of the draws rejected in a run, above the audit's"
+                f" {allowed:.0%}"
+            )
         for name, spec in sorted(last["declared"].items()):
             mean, least, ratio, examples = shares(runs, name)
             threshold = judged(spec, last["floors"].get(name), examples, last["model"])
             model = last["model"]
-            at_model = measured = None
+            at_model = at_mean = at_least = None
             if threshold is not None and spec["how"] != "features" and threshold < model["least_draws"]:
                 flags.append(
                     f"{node} `{name}`: a floor of {threshold:g}, below {model['least_draws']}, which"
@@ -969,11 +1049,12 @@ def report_floors(records: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
                 if spec["how"] != "features":
                     at_model = below(examples // model["cluster"], spec["value"], threshold / model["shown"])
                 stretch = max(ratio, 1.0)
-                measured = below(examples / stretch, mean, threshold / stretch)
-                if measured > model["false_failure"]:
+                at_mean = below(examples / stretch, mean, threshold / stretch)
+                at_least = below(examples / stretch, least, threshold / stretch)
+                if at_least > model["false_failure"]:  # the least share, as the S4d review's probe judged
                     flags.append(
-                        f"{node} `{name}`: false failure {measured:.1e} a run at the variance measured,"
-                        f" above {model['false_failure']:.0e}"
+                        f"{node} `{name}`: false failure {at_least:.1e} a run at the variance measured and"
+                        f" the least share ({at_mean:.1e} at the mean), above {model['false_failure']:.0e}"
                     )
             lines.append(
                 row(
@@ -986,7 +1067,9 @@ def report_floors(records: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
                     f"{ratio:.2f}",
                     "not at ci" if threshold is None else f"{threshold:g}",
                     "" if at_model is None else f"{at_model:.1e}",
-                    "" if measured is None else f"{measured:.1e}",
+                    "" if at_mean is None else f"{at_mean:.1e}",
+                    "" if at_least is None else f"{at_least:.1e}",
+                    f"{rejected:.0%}",
                 )
             )
     return lines, flags
@@ -1196,6 +1279,22 @@ def records_in(paths: Sequence[Path]) -> list[dict[str, Any]]:
     return found
 
 
+def least_counted(records: Sequence[dict[str, Any]]) -> int:
+    """The least a test function's streams over all the records (however the jobs split them), or a fuzz
+    control's runs: what the rule's count is held against."""
+    streams = Counter(
+        (record["job"]["side"], run["node"]) for record in records for run in record.get("runs", [])
+    )
+    if streams:
+        return min(streams.values())
+    controls = Counter(
+        (record.get("control"), record.get("fault")) for record in records if "control" in record
+    )
+    if controls:
+        return min(controls.values())
+    return min((len(record["streams"]) for record in records if "streams" in record), default=0)
+
+
 def report(records: Sequence[dict[str, Any]]) -> tuple[str, list[str]]:
     """One Markdown section a kind, and every flag."""
     text: list[str] = []
@@ -1209,9 +1308,7 @@ def report(records: Sequence[dict[str, Any]]) -> tuple[str, list[str]]:
         if not mine:
             continue
         lines, found = KINDS[kind].report(mine)
-        streams = [len(record["streams"]) for record in mine if "streams" in record]
-        runs = Counter((record.get("control"), record.get("fault")) for record in mine)
-        counted = min(streams or runs.values())  # a job's streams, or a fuzz control's runs
+        counted = least_counted(mine)
         meta = sorted(
             {
                 f"{record['commit'][:12]} on Python {record['python']}"
@@ -1232,19 +1329,55 @@ def report(records: Sequence[dict[str, Any]]) -> tuple[str, list[str]]:
     return "\n".join(text), flags
 
 
+def counted_problems(record: dict[str, Any]) -> list[str]:
+    """Where a measured run of a self-test job counted nothing, or not what it counted before: every run
+    its examples, and every feature the test declares counted."""
+    job = record["job"]["id"]
+    runs = record.get("runs", [])
+    if not runs:
+        return [f"{job}: no run was counted"]
+    problems: list[str] = []
+    for run in runs:
+        if run.get("outcome", "passed") != "passed" or not run["examples"]:
+            problems.append(f"{job}: {run['node']} stream {run['stream']} counted no examples")
+    declared: dict[str, int] = {}
+    for run in runs:
+        for name in run["declared"]:
+            declared[name] = declared.get(name, 0) + run["features"].get(name, 0)
+    problems += [
+        f"{job}: the declared feature `{name}` was never counted" for name, n in declared.items() if not n
+    ]
+    return problems
+
+
 def expectations(records: Sequence[dict[str, Any]], flags: Sequence[str]) -> list[str]:
-    """Where a self-test job's answer is not the one it must give."""
+    """Where a self-test job's answer is not the one it must give. A flag is a finding about the tree, not an
+    answer: only these fail the self-test."""
     problems: list[str] = []
     for record in records:
         expect, job = record["job"]["expect"], record["job"]
         if expect == "recorded":
             runs = [run for run in record.get("runs", []) if run["stream"] == 0]
-            if not runs or any(run["kill"] != record["recorded"].get(run["node"]) for run in runs):
+            if not runs or any(
+                record["recorded"].get(run["node"]) is None or run["kill"] != record["recorded"][run["node"]]
+                for run in runs
+            ):
                 problems.append(f"{job['id']}: stream 0 is not the recorded kill")
-        elif expect == "ratio_one" and any(
-            "of the base's mean share" in flag or "alone" in flag for flag in flags
-        ):
-            problems.append(f"{job['id']}: a tree against itself gave a share ratio other than 1")
+        elif expect == "counted":
+            problems += counted_problems(record)
+            first = {run["stream"]: run for run in record.get("runs", [])}.get(0)
+            if first is None or first["features"] != SELF_FLOORS_STREAM_0:
+                problems.append(f"{job['id']}: stream 0 did not count what it counted before")
+            problems += [
+                f"{job['id']}: stream {run['stream']} drew {run['examples']} examples, not"
+                f" {SELF_FLOORS_EXAMPLES}"
+                for run in record.get("runs", [])
+                if run["examples"] != SELF_FLOORS_EXAMPLES
+            ]
+        elif expect == "ratio_one":
+            problems += counted_problems(record) if job["kind"] == "regions" else []
+            if any("of the base's mean share" in flag or "alone" in flag for flag in flags):
+                problems.append(f"{job['id']}: a tree against itself gave a share ratio other than 1")
         elif expect in ("finds", "no_finds") and record["found"] != (expect == "finds"):
             problems.append(f"{job['id']}: expected {'a find' if expect == 'finds' else 'no find'}")
     kills = [record for record in records if record["job"]["kind"] == "kills" and record["job"]["expect"]]
@@ -1302,6 +1435,38 @@ def write_outputs(values: Mapping[str, str]) -> None:
             output.write(lines)
     else:
         print(lines, end="")
+
+
+def fetched(run: str, directory: Path, tries: int = 3) -> list[str]:
+    """A run's record artifacts downloaded into `directory`: all at once, or where that fails one by one, each
+    tried `tries` times; the names of those that could not be had."""
+    command = ["gh", "run", "download", run, "-R", REPO]
+    if subprocess.run([*command, "-D", str(directory), "-p", "record-*"], check=False).returncode == 0:
+        return []
+    listed = subprocess.run(
+        [
+            "gh",
+            "api",
+            f"repos/{REPO}/actions/runs/{run}/artifacts",
+            "--paginate",
+            "--jq",
+            ".artifacts[].name",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    names = sorted(name for name in listed.stdout.split() if name.startswith("record-"))
+    if listed.returncode != 0 or not names:
+        raise MeasureError([f"the artifacts of run {run} could not be listed: {listed.stderr[-300:]}"])
+    return [
+        name
+        for name in names
+        if not any(
+            subprocess.run([*command, "-D", str(directory / name), "-n", name], check=False).returncode == 0
+            for _ in range(tries)
+        )
+    ]
 
 
 def local(kind: str, words: Sequence[str], count: int, base: str, out: Path, workers: int) -> int:
@@ -1404,11 +1569,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0 if ok else 1
         else:
             directory = Path(tempfile.mkdtemp(prefix="measure-fetch-"))
-            subprocess.run(
-                ["gh", "run", "download", arguments.run, "-R", REPO, "-D", str(directory), "-p", "record-*"],
-                check=True,
-            )
+            missing = fetched(arguments.run, directory)
             print(report(records_in([directory]))[0])
+            if missing:
+                print(f"\n{len(missing)} record artifacts not downloaded, so this report is partial:")
+                print("\n".join(f"- {name}" for name in missing))
+                return 1
     except MeasureError as error:
         for problem in error.problems:
             print(f"::error title=Measure::{problem}")

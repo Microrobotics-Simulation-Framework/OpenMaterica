@@ -206,7 +206,7 @@ small scale, and in each of `measure.yml`'s jobs; `.github/workflows/README.md` 
 
 | Kind | Measures | Count (the rule's default) | A job |
 |---|---|---|---|
-| `floors` | each property function over derandomised streams of 2,000 examples at `ci`: each feature's mean and least share, its variance ratio, and each floor's false failure at the audits' model and at the variance measured, flagged above 1e-6 | 20 streams | a function, its streams split among a process per vCPU |
+| `floors` | each property function over derandomised streams of 2,000 examples at `ci`: each feature's mean and least share, its variance ratio, and each floor's false failure at the audits' model and at the variance measured (at the mean share and at the least; flagged above 1e-6 at the least), and the most draws a run rejected | 20 streams | a function, its streams split among a process per vCPU |
 | `drift` | each mutant search over streams: its kill, whether it died where it names, the latest, stream 0 against `kill_points.json`, a kill from the 400th example (near the guard) or past the 500th | 40 streams | a search function, each of its selected mutants at each size |
 | `regions` | each recorded feature's mean share at the head against the base's (flagged below 0.8) and its least share against its floor; and every mutant search at the head, its kills against the base's and the head's records | 18 streams | a function on one side, the base exported into an environment of its own; one job runs the searches |
 | `fuzz` | a seeded control run as `ci.yml`'s control step runs it: each run's find, seconds and inputs, the rate a second and a million inputs, and the miss of a pair and of CI's runs at the fitted rate | 10 runs | one run, with the runner to itself |
@@ -242,12 +242,14 @@ measures, and does not meet the rule. Each job keeps its record (`record.json`: 
 Python, the Hypothesis version, the profile, the streams, the raw counts and the timings); the `report` job
 counts them first and fails where one is missing or doubled, a job failed, or the run is on an attempt but its
 first, then writes one table a kind with its flags. A flag is a finding, not a failure: a floor above 1e-6 at
-the variance measured, a kill near or past the guard, a share below 0.8 of the base's. `fetch` prints a run's
+the variance measured and the least share, a kill near or past the guard, a share below 0.8 of the base's. `fetch` prints a run's
 report as a local run prints its own.
 
 A new kind is one small change: a function that runs one job and returns its record, one that reports a list
-of records as a table and flags, an entry of `KINDS` with the rule's count, and a subcommand in `main`; the
-workflow's `kind` input lists it, and `tests/unit/test_measure.py` holds its known answer and a changed input
+of records as a table and flags, and an entry of `KINDS` with the rule's count (`main` makes the subcommands
+from `REQUESTABLE`); a kind that runs pytest also needs a line in `matrix`'s `wanted`, a mode in
+`run_pytest_kind` and a hook in the plugin. The workflow's `kind` input lists it, and
+`tests/unit/test_measure.py` and `tests/unit/test_measure_arms.py` hold its known answer and a changed input
 changing it.
 
 ## The whole suite on CI

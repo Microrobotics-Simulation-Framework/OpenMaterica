@@ -61,14 +61,17 @@ def pytest_runtest_call(item):
         pytest.fail("the audit judged a measured run")
     return (yield)
 """
-# A fuzz target that runs as libFuzzer prints, and finds the fault where one is seeded.
+# A fuzz target that runs as libFuzzer does: it finds the fault only where the control's own is seeded, and
+# otherwise runs its seconds.
 TARGET = """
-import os, sys
+import os, sys, time
+limit = [int(a.partition("=")[2]) for a in sys.argv if a.startswith("-max_total_time=")][0]
 print("#2\\tINITED cov: 1")
 print("#1024\\tpulse  cov: 2")
-if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT"):
+if os.environ.get("MATERICA_FUZZ_SEEDED_FAULT") == "1":
     print("IndexError: the seeded fault in parse")
     sys.exit(1)
+time.sleep(limit)
 print("Done 4096 runs in 1 second(s)")
 """
 
@@ -174,8 +177,8 @@ def fuzz_job(fault: str) -> Job:
 
 def test_the_fastest_control_finds_its_fault_and_finds_nothing_with_none_seeded(tmp_path: Path) -> None:
     tree = sample_tree(tmp_path / "tree")
-    found = measure.run_fuzz(fuzz_job("1"), tmp_path / "found", 1, tree, seconds=5)
-    missed = measure.run_fuzz(fuzz_job("none"), tmp_path / "missed", 1, tree, seconds=5)
+    found = measure.run_fuzz(fuzz_job("1"), tmp_path / "found", 1, tree, seconds=3)
+    missed = measure.run_fuzz(fuzz_job("none"), tmp_path / "missed", 1, tree, seconds=3)
     assert (found["found"], found["inputs"], found["line"]) == (
         True,
         1024,
@@ -184,9 +187,10 @@ def test_the_fastest_control_finds_its_fault_and_finds_nothing_with_none_seeded(
     assert (missed["found"], missed["inputs"]) == (False, 4096)
     _, flags = measure.report_fuzz([found, missed])
     assert flags == [
-        "properties: a run of 5 s, not the control's 180",
-        "properties: a run of 5 s, not the control's 180",
+        "properties: a run of 3 s, not the control's 180",
+        "properties: a run of 3 s, not the control's 180",
     ]
+    assert found["problems"] == missed["problems"] == []
     missed["found"], missed["line"] = True, "IndexError: x"
     assert "properties with no fault seeded found one: IndexError: x" in measure.report_fuzz([missed])[1]
 
@@ -441,7 +445,7 @@ def test_the_self_test_resolves_to_a_job_of_each_kind_with_its_answer() -> None:
     jobs = measure.matrix(request)
     assert sorted({(job.kind, job.side, job.expect) for job in jobs}) == [
         ("drift", "head", "recorded"),
-        ("floors", "head", ""),
+        ("floors", "head", "counted"),
         ("fuzz", "head", "finds"),
         ("fuzz", "head", "no_finds"),
         ("kills", "head", "ratio_one"),
