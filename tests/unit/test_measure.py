@@ -445,8 +445,8 @@ def test_fetch_reports_a_runs_records_counted_against_the_runs_matrix(
     table = (
         ""
         if matrix is None
-        else 'd = base / "measure-table-1"\nd.mkdir()\n'
-        f'(d / "matrix.json").write_text({json.dumps(matrix)!r})\n'
+        else 'if "measure-table-*" in sys.argv:\n  d = base / "measure-table-1"\n  d.mkdir()\n'
+        f'  (d / "matrix.json").write_text({json.dumps(matrix)!r})\n'
     )
     gh.write_text(
         f"#!{sys.executable}\nimport sys, pathlib\n"
