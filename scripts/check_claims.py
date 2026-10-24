@@ -3,6 +3,7 @@
 (CONTRIBUTING, "Before asking for review").
 
     python scripts/check_claims.py check [BASE] [--head REV] [--description FILE] [--facts F] [--rulings F]
+                                         [--figures-advisory]
     python scripts/check_claims.py record VALUE WHAT --how HOW [--at REV] [--facts FILE]
     python scripts/check_claims.py baseline [--at REV]
 
@@ -33,8 +34,12 @@ its commits, never the working tree. Three checks:
    none. A CHANGELOG figure the baseline holds (`claims_baseline.json`: what the check
    finds, with no fact, in the CHANGELOG at its commit `at`, on `main`; each figure by its three words either
    side, with its reason) passes while the CHANGELOG holds that key no more often than it did at `at`; the
-   baseline holds only such figures, and `baseline` writes it. Anything else fails, and no option turns this
-   part off. A fact matches every figure with its value and words: record words that tell two figures apart.
+   baseline holds only such figures, and `baseline` writes it. Anything else fails, and one option alone turns
+   this part off: `--figures-advisory`, which prints each finding of this check (the CHANGELOG's too) as
+   `advisory figure finding:` and does not fail on it. It reaches nothing of checks 1 and 3: CI's pull-request
+   job passes it, until measurement runs write the facts it would hold the figures to (maintainer,
+   2026-10-23). A fact matches every figure with its value and words: record words that tell two figures
+   apart.
 3. Ruled wording, given the rulings file (private: its path is given at run time, and nothing of it is
    printed but the words compared, without its bold markup or the maintainer's attribution). Where a run of a
    ruling's words and of a specification sentence the branch adds nearly match, they match word for word,
@@ -887,16 +892,24 @@ def check(options: argparse.Namespace) -> int:
     added = new_lines(span, "CHANGELOG.md", changelog)
     if added:
         texts.append((changelog, "CHANGELOG.md", added, baseline))
+    advisory: list[str] = []
     for text, place, lines, known in texts:
         more, counted, noted = figure_findings(text, place, span, facts, lines, known)
-        found += more
+        (advisory if options.figures_advisory else found).extend(more)
         notes += noted
         tally = {name: tally[name] + counted[name] for name in tally}
     waived: list[str] = []
     if options.rulings:
         more, waived = ruling_findings(options.rulings.read_text(encoding="utf-8"), added_sentences(span))
         found += more
-    print("\n".join(found) if found else "no claim found that git, the facts or the rulings contradict")
+    if found:
+        print("\n".join(found))
+    elif advisory:
+        print("no git fact or ruled wording found that git or the rulings contradict")
+    else:
+        print("no claim found that git, the facts or the rulings contradict")
+    for finding in advisory:
+        print(f"advisory figure finding: {finding}")
     for note in notes:
         print(f"measured before the head: {note}")
     for line in waived:
@@ -905,6 +918,7 @@ def check(options: argparse.Namespace) -> int:
     print(
         f"figures: {matched} matched a fact of the {len(facts)} in {facts_path}, {estimates} marked "
         f"estimates, {held} in the CHANGELOG's baseline; {len(found)} findings"
+        + (f", {len(advisory)} advisory figure findings" if options.figures_advisory else "")
     )
     if not options.rulings:
         print("the ruled wording was not checked: no rulings file was given (--rulings)")
@@ -941,6 +955,11 @@ def main(arguments: Sequence[str] | None = None) -> int:
     checking.add_argument("--head", default="HEAD", help="the head, HEAD by default")
     checking.add_argument("--description", type=Path, help="the pull request's description, in a file")
     checking.add_argument("--rulings", type=Path, help="the rulings file")
+    checking.add_argument(
+        "--figures-advisory",
+        action="store_true",
+        help="print the figure findings (check 2) without failing on them; checks 1 and 3 still fail",
+    )
     recording = commands.add_parser("record", help="record a measured figure as a fact")
     recording.add_argument("value", help="the figure as stated")
     recording.add_argument("what", help="the words after it where it is stated, such as 'case files pass'")
