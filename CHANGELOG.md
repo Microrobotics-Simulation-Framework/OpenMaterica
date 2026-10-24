@@ -22,14 +22,15 @@ every family entry goes in `families/CHANGELOG.md`.
   and a count of its commits, files changed or lines added and removed is git's. It holds each figure of the
   description and of the CHANGELOG lines the branch adds to a recorded fact (`record` writes one, with how it
   was measured and at which commit; one measured before the head holds only where the commits since change
-  Markdown alone), unless the figure is marked an estimate or is of a kind that is no measurement. Given the
+  prose Markdown alone: the CHANGELOG, a README, the documentation, but not the specification or a file a test
+  reads), unless the figure is marked an estimate or is of a kind that is no measurement. Given the
   maintainer's rulings file, which is private and named when it runs, it holds each specification sentence the
   branch adds that nearly matches a ruling to the ruling's words, and prints both; a wording the rulings file
-  accepts is counted instead. `scripts/claims_baseline.json` holds what the figure check finds in this file at
-  its commit on `main`, 676 entries, each a figure by its words with its reason: 488 measured and stated with no
-  recorded measurement, and 188 that are no measurement; the check refuses an entry that is no figure there, and
-  `baseline` writes the file. Prose claims, counts written in words and what a figure counts stay with the
-  reviewer.
+  accepts for a ruling is printed apart instead. `scripts/claims_baseline.json` holds what the figure check
+  finds in this file at its commit on `main`, 680 entries, each a figure by its words with its reason: 488
+  measured and stated with no recorded measurement, and 192 that are no measurement; the check refuses an entry
+  that is no figure there, and `baseline` writes the file. Prose claims, counts written in words and what a
+  figure counts stay with the reviewer.
 
 ### Changed
 - CI's fuzz control step prints each run's find time (the maintainer's ruling of 2026-10-23), so that CI's runs
