@@ -40,24 +40,33 @@ its commits, never the working tree. Three checks:
    ruling's words and of a specification sentence the branch adds nearly match, they match word for word,
    case and punctuation aside; a difference prints both. A run is made of pieces of two words or more, apart
    by at most `MAX_GAP` words on both sides or by an insertion or deletion of at most `MAX_INSERT` words on
-   one; it takes in one word more at either end where that word matches across such a gap, and runs on to its
-   clause's end (or back to its start) where one side's clause ends within a word of the run and the other's
-   within `MAX_INSERT`. It is compared where it holds `MIN_WORDS` words in common or more, and `NEAR` of the
-   longer side. A line of its own that reads `accepted wording: "..."` (a list item's mark allowed), just
-   under a ruling, names a wording of that ruling landed otherwise on purpose: a difference from that ruling
-   whose text lies within the words it quotes is printed apart, with the run it waives, not reported. A
-   ruling's line that merely holds the phrase is compared as any other.
+   one. It takes in one word more before it that matches across such a gap, and one after it across a gap of a
+   word on both sides or such an insertion. It reaches back to its clause's start where both sides' clauses
+   start within a word of it, or where the ruling's starts within `MAX_LEAD` words, as many of the text's
+   words before it as its clause holds; and on to its clause's end where one side's ends within a word of it
+   and the other's within `MAX_INSERT`, or else to the ruling clause's end, as many of the text's words after
+   it as its clause holds. Each step is taken only where the run stays near. It is compared where it holds
+   `MIN_WORDS` words in common or more, and `NEAR` of the longer side. A line of its own that reads `accepted
+   wording: "..."` (a list item's mark allowed), just under a ruling, names a wording of that ruling landed
+   otherwise on purpose: a difference from that ruling whose text lies within the words it quotes is printed
+   apart, with the run it waives, not reported. A ruling's line that merely holds the phrase is compared as
+   any other.
 
 Left to the reviewer: prose claims ("the bar is met"), counts written in words ("three controls"), whether a
-figure counts what its words say, a ruling paraphrased beyond `NEAR`, a git fact in another form, and these
-forms the rules read wrongly, rare in the merged descriptions and the CHANGELOG: an edit at the first or last
-word of a run where the words beyond it are the text's own and no clause ends there (that word may belong to
-the text's own wording around the ruling); a ratio such as `3.14 times`, read as a Python version; a clock
-duration (`7:16`), not read; a year-like count after `in` (`in 1995 of 2000 runs`); a count of commits not the
-branch's (`a test makes 260 commits`), read as a git fact; a count of eight digits or more without commas
-(`12000000 examples`), read as a run's number; and `about N` where `about` means "concerning". A short commit
-name is checked in the object store the check runs in: one that names two objects there may name one in a
-fresh clone.
+figure counts what its words say, a ruling paraphrased beyond `NEAR`, a git fact in another form; in the ruled
+wording, a word added before a ruling clause's first word where the words before it are the text's own, and a
+word changed just before a run whose ruling clause starts more than `MAX_LEAD` words before it, where the text
+words that start its own way, such as a negation of the ruled verb under a subject of the text's own (no
+shared word sets such a word apart from the text's own wording around the ruling: over 144 real ruled
+sentences, each under a lead of the text's own, a word added before the first is unseen in each, the first
+word changed or removed in 7 % of them, the second in 1 % and the last in 3 %), while a ruled subject of one
+or two words that the text words its own way is flagged; and these forms of figures the rules read wrongly,
+rare in the merged descriptions and the CHANGELOG: a ratio such as `3.14 times`, read as a Python version; a
+clock duration (`7:16`), not read; a year-like count after `in` (`in 1995 of 2000 runs`); a count of commits
+not the branch's (`a test makes 260 commits`), read as a git fact; a count of eight digits or more without
+commas (`12000000 examples`), read as a run's number; and `about N` where `about` means "concerning". A short
+commit name is checked in the object store the check runs in: one that names two objects there may name one in
+a fresh clone.
 """
 
 import argparse
@@ -167,6 +176,7 @@ MARKER = re.compile(r"^(?:[-*+>]|#+|\[[ x]\])$")
 MIN_WORDS = 6
 MAX_GAP = 3
 MAX_INSERT = 8
+MAX_LEAD = 2
 NEAR = 0.7
 # The rulings file's bold markup, the maintainer's attribution, a parenthesis naming a question by its label
 # and an item's mark (`(7)`, `(a)`) end a ruling's sentence. A line of its own in the form `ACCEPTED` names a
@@ -808,7 +818,7 @@ def near_runs(ruled: list[Word], sentence: list[Word]) -> Iterator[tuple[list[Wo
         start, end = (chain[0].a, chain[0].b), (chain[-1].a + chain[-1].size, chain[-1].b + chain[-1].size)
         common = sum(block.size for block in chain)
         # Each step outward is taken only where the run stays near: a word that would make it far is not its.
-        if first and blocks[first - 1].size == 1 and joins(blocks[first - 1], chain[0], 1):
+        if first and blocks[first - 1].size == 1 and joins(blocks[first - 1], chain[0], MAX_GAP):
             start, end, common = taken(start, end, common, (blocks[first - 1].a, blocks[first - 1].b), end, 1)
         if last + 1 < len(blocks) and blocks[last + 1].size == 1 and joins(chain[-1], blocks[last + 1], 1):
             further = (blocks[last + 1].a + 1, blocks[last + 1].b + 1)
@@ -816,9 +826,13 @@ def near_runs(ruled: list[Word], sentence: list[Word]) -> Iterator[tuple[list[Wo
         back = (to_clause_start(ruled, start[0]), to_clause_start(sentence, start[1]))
         if max(back) <= 1:
             start, end, common = taken(start, end, common, (start[0] - back[0], start[1] - back[1]), end, 0)
+        elif back[0] <= MAX_LEAD:
+            start, end, common = taken(start, end, common, (start[0] - back[0], start[1] - min(back)), end, 0)
         on = (to_clause_end(ruled, end[0]), to_clause_end(sentence, end[1]))
         if min(on) <= 1 and max(on) <= MAX_INSERT:
             start, end, common = taken(start, end, common, start, (end[0] + on[0], end[1] + on[1]), 0)
+        on = (to_clause_end(ruled, end[0]), to_clause_end(sentence, end[1]))
+        start, end, common = taken(start, end, common, start, (end[0] + on[0], end[1] + min(on)), 0)
         ours, theirs = ruled[start[0] : end[0]], sentence[start[1] : end[1]]
         if (
             common >= MIN_WORDS
