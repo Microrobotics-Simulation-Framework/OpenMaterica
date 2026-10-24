@@ -15,6 +15,18 @@ every family entry goes in `families/CHANGELOG.md`.
 ## [Unreleased]
 
 ### Added
+- `.github/workflows/claims.yml`, the claims check on every pull request (approved by the maintainer on
+  2026-10-24): on each push and each edit of the description, `check_claims.py` holds the description and the
+  commit messages to git, and a head, base, commit or count that git does not show fails the job; the figures
+  are printed as advice and fail nothing, until measurement runs write the facts that would hold them (the new
+  `check_claims.py check --figures-advisory`, which reaches no git fact and no ruled wording; the rulings file is
+  private and CI never reads it). A workflow of its own, since `ci.yml` cancels a running pull request's workflow
+  on each new event, and one that did so on an `edited` trigger would lose the run whenever the description
+  changed. The job also runs the baseline guard of `tests/unit/test_check_claims.py` on the whole history, with
+  `CLAIMS_REQUIRE_HISTORY=1`, under which the guard fails where the baseline's commit is missing instead of
+  skipping, as it does at the test jobs' depth. `scripts/check_claims.py` is among the gate's paths that run no
+  Hypothesis job, with the new workflow. The ruleset on `main` requires `ci.yml`'s `result` alone: the check
+  blocks no merge until the maintainer adds it as a required check.
 - `scripts/check_claims.py`, a check of a branch's claims that a builder runs before asking for review
   (approved by the maintainer on 2026-10-23; CONTRIBUTING, "Before asking for review"). It holds a pull
   request's description and the branch's commit messages to git: a commit name names one commit on the branch
