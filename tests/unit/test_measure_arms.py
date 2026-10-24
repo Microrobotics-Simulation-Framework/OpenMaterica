@@ -435,9 +435,43 @@ def test_a_count_below_the_rules_is_said_over_all_the_records_of_a_function_not_
 # --- regions: the base's own tree ---------------------------------------------------------------------------
 
 
-def own_python(_tree: Path) -> list[str]:
-    """The base measured with this interpreter: the test holds the export, not uv's environment."""
-    return [sys.executable]
+FAKE_UV = """#!PYTHON
+import os, sys
+from pathlib import Path
+
+args = sys.argv[1:]
+if args[:4] != ["run", "--locked", "--quiet", "--directory"] or args[5:6] != ["python"]:
+    print("uv: not the base's locked environment: " + " ".join(args), file=sys.stderr)
+    sys.exit(97)
+tree = Path(args[4])
+with open("CALLS", "a", encoding="utf-8") as calls:
+    calls.write(str(tree) + "\\n")
+rest = args[6:]
+pretend = tree / "pretend-python"
+if rest[:1] == ["-c"] and pretend.exists():
+    print(pretend.read_text().strip())
+    sys.exit(0)
+if "--collect-only" not in rest and (tree / "quiet-pytest").exists():
+    sys.exit(0)
+os.execv("PYTHON", ["PYTHON", *rest])
+"""
+
+
+def fake_uv(directory: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A `uv` first on the PATH that stands for the base's own environment: it refuses any call but
+    `uv run --locked --quiet --directory <tree> python ...`, runs the tree's pytest with this interpreter, and
+    reports the Python a tree pretends to have (its file `pretend-python`), as a tree whose lock and Python
+    differ from the head's would. It writes the tree of each call to the file it returns."""
+    directory.mkdir()
+    calls = directory / "calls.txt"
+    uv = directory / "uv"
+    uv.write_text(
+        FAKE_UV.replace("PYTHON", sys.executable).replace("CALLS", str(calls)),
+        encoding="utf-8",
+    )
+    uv.chmod(uv.stat().st_mode | stat.S_IXUSR)
+    monkeypatch.setenv("PATH", f"{directory}{os.pathsep}{os.environ['PATH']}")
+    return calls
 
 
 def git(root: Path, *words: str) -> str:
@@ -450,44 +484,45 @@ def git(root: Path, *words: str) -> str:
     ).stdout.strip()
 
 
-def test_the_base_is_measured_in_its_own_exported_tree_and_a_node_it_lacks_is_the_heads_alone(
+def committed(tree: Path, message: str) -> str:
+    git(tree, "add", "-A")
+    git(tree, "commit", "-q", "-m", message)
+    return git(tree, "rev-parse", "HEAD")
+
+
+def test_the_base_is_measured_in_its_own_exported_tree_and_environment_and_a_node_it_lacks_is_the_heads_alone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    calls = fake_uv(tmp_path / "bin", monkeypatch)
     thin_at = SAMPLE.index('\n\n@settings(max_examples=2000)\n@pytest.mark.drawn("common"')
     ways_only = SAMPLE[:thin_at] + "\n"
     tree = sample_tree(tmp_path / "tree")
     path = tree / "tests" / "property" / "test_sample_properties.py"
     path.write_text(ways_only, encoding="utf-8")
+    (tree / "pretend-python").write_text("9.9.9\n", encoding="utf-8")  # the base's lock and Python differ
     git(tree, "init", "-q")
-    git(tree, "add", "-A")
-    git(tree, "commit", "-q", "-m", "base: three ways, no thin property")
-    base = git(tree, "rev-parse", "HEAD")
+    base = committed(tree, "base: three ways, no thin property, its own Python")
     head_text = SAMPLE.replace("st.sampled_from(WAYS)", 'st.sampled_from(("a", "b"))')  # a way dropped
     path.write_text(head_text, encoding="utf-8")
-    git(tree, "commit", "-q", "-am", "head: way c dropped, a thin property added")
-    wrapper = tmp_path / "base-python"  # this interpreter, reporting a version of its own to `-c`
-    wrapper.write_text(
-        f'#!/bin/sh\n[ "$1" = "-c" ] && {{ echo 9.9.9; exit 0; }}\nexec {sys.executable} "$@"\n',
-        encoding="utf-8",
-    )
-    wrapper.chmod(wrapper.stat().st_mode | stat.S_IXUSR)
-
-    def versioned_python(_tree: Path) -> list[str]:
-        return [str(wrapper)]
-
-    monkeypatch.setattr(measure, "base_interpreter", versioned_python)
+    (tree / "pretend-python").unlink()
+    committed(tree, "head: way c dropped, a thin property added")
     file = "tests/property/test_sample_properties.py"
     nodes = f"{file}::test_ways {file}::test_thin"
     # the base given as a ref: the record names the commit the archive resolved it to
     base_job = Job("b", "regions", nodes, 0, 2, "base", "HEAD~1")
     base_record = measure.run_job(base_job, tmp_path / "base", 2, tree)
     head_record = measure.run_job(Job("h", "regions", nodes, 0, 2, "head", base), tmp_path / "head", 2, tree)
-    # run in the exported tree, which git archive named: the commit it holds and the Python it ran
+    # run in the exported tree, which git archive named: the commit it holds and the Python of its environment
     assert base_record["commit"] == base
     assert base_record["python"] == "9.9.9"
     assert base_record["problems"] == [], base_record["problems"]
     assert {run["node"] for run in base_record["runs"]} == {f"{file}::test_ways"}
     assert head_record["commit"].startswith(git(tree, "rev-parse", "HEAD"))
+    assert "python" not in head_record or head_record["python"] != "9.9.9"
+    # every `uv run --locked` of the base was in a tree exported for it (the head's tree is not one)
+    used = set(calls.read_text(encoding="utf-8").split())
+    assert used
+    assert all(Path(each).name.startswith("measure-base-") for each in used), used
     flags = measure.report_regions([base_record, head_record])[1]
     assert flags == [
         f"{file}::test_thin: measured on the head alone",
@@ -496,23 +531,77 @@ def test_the_base_is_measured_in_its_own_exported_tree_and_a_node_it_lacks_is_th
     ], flags
 
 
+@pytest.mark.parametrize("held", ["a file the base lacks", "a file the base holds no test in"])
 def test_a_base_that_holds_none_of_the_nodes_is_a_flag_for_each_and_no_problem(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    held: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    fake_uv(tmp_path / "bin", monkeypatch)
     tree = sample_tree(tmp_path / "tree")
-    (tree / "tests" / "property" / "test_sample_properties.py").unlink()
-    (tree / "tests" / "property" / "test_other_properties.py").write_text(
-        "def test_x():\n    pass\n", encoding="utf-8"
-    )
+    sample = tree / "tests" / "property" / "test_sample_properties.py"
+    if held == "a file the base lacks":
+        sample.unlink()
+        (tree / "tests" / "property" / "test_other_properties.py").write_text(
+            "def test_x():\n    pass\n", encoding="utf-8"
+        )
+    else:
+        sample.write_text("# no test yet\n", encoding="utf-8")  # pytest exits 5: no tests collected
     git(tree, "init", "-q")
-    git(tree, "add", "-A")
-    git(tree, "commit", "-q", "-m", "base")
-    base = git(tree, "rev-parse", "HEAD")
-    monkeypatch.setattr(measure, "base_interpreter", own_python)
+    base = committed(tree, "base")
     node = "tests/property/test_sample_properties.py::test_thin"
     done = measure.run_job(Job("b", "regions", node, 0, 2, "base", base), tmp_path / "base", 2, tree)
     assert done["problems"] == []
     assert done["runs"] == []
+
+
+@pytest.mark.parametrize(
+    ("break_it", "named"),
+    [
+        ("conftest", "ImportError"),  # pytest exits 4
+        ("options", "unrecognized arguments"),  # pytest exits 4
+        ("test_file", "SyntaxError"),  # pytest exits 2
+    ],
+)
+def test_a_base_whose_own_collection_fails_is_a_problem_not_a_base_that_lacks_the_nodes(
+    break_it: str, named: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_uv(tmp_path / "bin", monkeypatch)
+    tree = sample_tree(tmp_path / "tree")
+    match break_it:
+        case "conftest":
+            (tree / "tests" / "conftest.py").write_text(
+                "import a_dependency_the_lock_lacks\n", encoding="utf-8"
+            )
+        case "options":
+            (tree / "pytest.ini").write_text(
+                (tree / "pytest.ini").read_text(encoding="utf-8") + "addopts = --a-flag-pytest-lacks\n",
+                encoding="utf-8",
+            )
+        case _:
+            (tree / "tests" / "property" / "test_sample_properties.py").write_text(
+                "def (:\n", encoding="utf-8"
+            )
+    git(tree, "init", "-q")
+    base = committed(tree, "base: a collection that fails")
+    node = "tests/property/test_sample_properties.py::test_thin"
+    with pytest.raises(measure.MeasureError) as raised:
+        measure.run_job(Job("b", "regions", node, 0, 2, "base", base), tmp_path / "base", 2, tree)
+    assert named in str(raised.value), raised.value
+
+
+def test_a_base_with_nodes_whose_pytest_ran_none_of_them_is_a_problem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_uv(tmp_path / "bin", monkeypatch)
+    tree = sample_tree(tmp_path / "tree")
+    (tree / "quiet-pytest").write_text(
+        "", encoding="utf-8"
+    )  # the fake uv's pytest run exits 0 and writes nothing
+    git(tree, "init", "-q")
+    base = committed(tree, "base")
+    node = "tests/property/test_sample_properties.py::test_thin"
+    done = measure.run_job(Job("b", "regions", node, 0, 2, "base", base), tmp_path / "base", 2, tree)
+    assert done["runs"] == []
+    assert done["problems"] == ["no test of the job ran"], done["problems"]
 
 
 # --- fuzz: the control's fault, find, miss and bar ----------------------------------------------------------
