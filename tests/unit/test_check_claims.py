@@ -4,6 +4,7 @@ each correct form, in a throwaway repository with a rulings file written for the
 
 import json
 import subprocess
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -59,6 +60,12 @@ def run(capsys: pytest.CaptureFixture[str], base: str, *arguments: str) -> tuple
     lines = capsys.readouterr().out.splitlines()
     summary = ("figures:", "the ruled", "measured before the head:", "accepted by the rulings file:")
     return status, [line for line in lines if ": " in line and not line.startswith(summary)]
+
+
+def test_the_script_runs_as_a_file_in_isolated_mode() -> None:
+    script = Path(check_claims.__file__)
+    done = subprocess.run([sys.executable, "-I", str(script), "--help"], capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
 
 
 def test_a_stale_head_base_or_count_is_flagged_and_the_true_ones_pass(

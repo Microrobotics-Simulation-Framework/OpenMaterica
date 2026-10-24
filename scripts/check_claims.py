@@ -87,7 +87,8 @@ from typing import NamedTuple
 
 try:
     from scripts import pre_review
-except ModuleNotFoundError:  # run as `python scripts/check_claims.py`: the repository is not on the path
+except ModuleNotFoundError:  # run as a file, `python [-I] scripts/check_claims.py`: import its neighbour
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
     import pre_review  # type: ignore[import-not-found, no-redef]
 
 BASELINE = Path(__file__).resolve().parent / "claims_baseline.json"
