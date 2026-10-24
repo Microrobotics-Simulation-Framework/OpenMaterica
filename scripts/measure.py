@@ -518,12 +518,13 @@ def base_interpreter(tree: Path) -> list[str]:
 
 
 def present_in(tree: Path, python: Sequence[str], nodes: Sequence[str]) -> list[str]:
-    """The `nodes` the tree has: its pytest collects each node's test function, and a function or file it
-    lacks (pytest's exit 4 or 5) holds none of them."""
+    """The `nodes` the tree has, from its own collection of their files: a file it lacks, or one that holds no
+    test (pytest's exit 5), holds none of them. Any other failure of its collection (a conftest that cannot
+    be imported, options it refuses) is the base's problem, and fails the job."""
     have: set[str] = set()
-    for function in sorted({node.partition("[")[0] for node in nodes}):
-        for item in collected([function], tree, python, tolerated=(4, 5)):
-            have.add(item["node"])
+    for file in sorted({node.partition("::")[0] for node in nodes}):
+        if (tree / file).exists():
+            have.update(item["node"] for item in collected([file], tree, python, tolerated=(5,)))
     return [node for node in nodes if node in have]
 
 
