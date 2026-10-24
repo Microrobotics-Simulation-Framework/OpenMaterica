@@ -26,9 +26,11 @@ its commits, never the working tree. Three checks:
    identifier, a date, a value in a physical unit, a confidence level; anything in code, a link or quotation
    marks) matches a recorded fact: its value, and its `what` starting in the figure's own phrase (before the
    next number) among the eight words after it. The fact is measured at the head, or at an earlier commit of
-   the head's after which only Markdown files changed (printed with the commits since); any other change since
-   fails it. A number marked an estimate (a word of `ESTIMATE` just before it, or `estimate` after it within
-   its phrase) needs none. A CHANGELOG figure the baseline holds (`claims_baseline.json`: what the check
+   the head's after which only prose Markdown changed (`prose_markdown`: the CHANGELOG, a README, the
+   documentation, but not the specification or a file a test reads by `pre_review.py`'s declared readers; a
+   moved file counts by both its names), printed with the commits since; any other change fails it. A number
+   marked an estimate (a word of `ESTIMATE` just before it, or `estimate` after it within its phrase) needs
+   none. A CHANGELOG figure the baseline holds (`claims_baseline.json`: what the check
    finds, with no fact, in the CHANGELOG at its commit `at`, on `main`; each figure by its three words either
    side, with its reason) passes while the CHANGELOG holds that key no more often than it did at `at`; the
    baseline holds only such figures, and `baseline` writes it. Anything else fails, and no option turns this
@@ -71,10 +73,18 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import NamedTuple
 
+try:
+    from scripts import pre_review
+except ModuleNotFoundError:  # run as `python scripts/check_claims.py`: the repository is not on the path
+    import pre_review  # type: ignore[import-not-found, no-redef]
+
 BASELINE = Path(__file__).resolve().parent / "claims_baseline.json"
 DEFAULT_BASE = "origin/main"
 FACTS_NAME = "claims-facts.json"
 SPECIFICATION = "docs/specification/"
+# Prose Markdown by its place (maintainer, 2026-10-24): a README, the documentation and the paths CI's gate
+# calls documentation, the CHANGELOG among them.
+PROSE = rf"(?:.+/)?README\.md|docs/.+|{pre_review.DOCUMENTATION_PATHS}"
 
 UNITS: list[str] = [
     *"one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen".split(),
@@ -516,10 +526,20 @@ def load_facts(path: Path) -> list[Fact]:
 
 @functools.cache
 def since(commit: str, head: str) -> tuple[int, tuple[str, ...]]:
-    """The commits from `commit` to `head`, and the files they change that are not Markdown."""
-    changed = git("diff", "--name-only", "--find-renames", commit, head).split()
-    return int(git("rev-list", "--count", f"{commit}..{head}")), tuple(
-        path for path in changed if not path.endswith(".md")
+    """The commits from `commit` to `head`, and the files they change, a moved file by both its names."""
+    changed = git("diff", "--name-only", "--no-renames", commit, head).split()
+    return int(git("rev-list", "--count", f"{commit}..{head}")), tuple(changed)
+
+
+def prose_markdown(path: str) -> bool:
+    """Whether `path` is prose Markdown, which a fact measured before it changed still holds across: the
+    CHANGELOG, a README or the documentation, but neither the specification nor a file a test reads, by the
+    readers `pre_review.py` declares (its trace test holds them to the files the tests open)."""
+    return (
+        path.endswith(".md")
+        and re.fullmatch(PROSE, path) is not None
+        and not path.startswith(SPECIFICATION)
+        and not any(re.fullmatch(rule.pattern, path) for rule in pre_review.DATA_RULES)
     )
 
 
@@ -549,29 +569,33 @@ def figure_findings(
             )
         ]
         about = f"{figure.text} ({' '.join(figure.after[:4])} ...)"
-        earlier = sorted(
-            (since(fact.at, span.head), fact.at) for fact in matching if is_ancestor(fact.at, span.head)
-        )
-        markdown = [(commits, at) for (commits, changed), at in earlier if not changed]
+        earlier = [
+            (commits, at, [path for path in changed if not prose_markdown(path)])
+            for (commits, changed), at in sorted(
+                (since(fact.at, span.head), fact.at) for fact in matching if is_ancestor(fact.at, span.head)
+            )
+        ]
+        across_prose = [(commits, at) for commits, at, code in earlier if not code]
         if baseline is not None and held[figure.key()] <= baseline.get(figure.key(), 0):
             tally["baseline"] += 1
         elif not matching:
             found.append(f"{place}:{figure.line}: {about} matches no recorded fact")
         elif not earlier:
             found.append(f"{place}:{figure.line}: {about} was measured at a commit the head does not hold")
-        elif markdown:
+        elif across_prose:
             tally["matched"] += 1
-            commits, at = markdown[0]
+            commits, at = across_prose[0]
             if commits:
                 notes.append(
                     f"{place}:{figure.line}: {about} was measured at `{at[:8]}`, {commits} commits "
-                    "before the head, which change Markdown files alone"
+                    "before the head, which change prose Markdown alone"
                 )
         else:
-            (commits, changed), at = earlier[0]
+            commits, at, code = earlier[0]
             found.append(
                 f"{place}:{figure.line}: {about} was measured at `{at[:8]}`, {commits} commits before the "
-                f"head, which change {len(changed)} files that are not Markdown: {', '.join(changed[:5])}"
+                f"head, which change {len(code)} files that are code or that a test reads: "
+                f"{', '.join(code[:5])}"
             )
     return found, tally, notes
 
