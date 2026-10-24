@@ -610,6 +610,129 @@ def test_the_committed_baseline_holds_each_figure_once_with_a_listed_reason() ->
     assert all(isinstance(line, int) and line > 0 for _, line, _ in stored["changelog"])
 
 
+ADVISORY = "advisory figure finding: "
+
+
+def advised(
+    capsys: pytest.CaptureFixture[str], base: str, *arguments: str
+) -> tuple[int, list[str], list[str]]:
+    """The status of the check under `--figures-advisory`, its advisory figure findings and its other
+    findings, without the summary lines."""
+    facts = str(Path.cwd().parent / "facts.json")
+    status = check_claims.main(["check", base, "--facts", facts, "--figures-advisory", *arguments])
+    lines = capsys.readouterr().out.splitlines()
+    summary = ("figures:", "the ruled", "measured before the head:", "accepted by the rulings file:", "no ")
+    advisory = [line.removeprefix(ADVISORY) for line in lines if line.startswith(ADVISORY)]
+    others = [line for line in lines if ": " in line and not line.startswith((*summary, ADVISORY))]
+    return status, advisory, others
+
+
+def test_a_figure_finding_is_printed_and_passes_under_the_option_and_fails_without_it(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = check_claims.git("rev-parse", "HEAD").strip()
+    commit("feat: one", {"a.txt": "a\n"})
+    description = repository.parent / "description.md"
+    description.write_text("In section 2: 1,180 of 1,522 case files pass.\n", encoding="utf-8")
+    status, found = run(capsys, base, "--description", str(description))
+    assert status == 1
+    assert len(found) == 2
+    status, advisory, others = advised(capsys, base, "--description", str(description))
+    assert (status, others) == (0, [])
+    assert advisory == found
+    facts = str(repository.parent / "facts.json")
+    status = check_claims.main(
+        ["check", base, "--facts", facts, "--figures-advisory", "--description", str(description)]
+    )
+    out = capsys.readouterr().out
+    assert status == 0
+    assert "no git fact or ruled wording found that git or the rulings contradict" in out
+    assert "2 findings" not in out
+    assert "0 findings, 2 advisory figure findings" in out
+
+
+def test_the_output_without_the_option_names_no_advisory_finding(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = check_claims.git("rev-parse", "HEAD").strip()
+    commit("feat: one", {"a.txt": "a\n"})
+    description = repository.parent / "description.md"
+    description.write_text("In section 2: 35 are verified.\n", encoding="utf-8")
+    assert run(capsys, base, "--description", str(description))[0] == 1
+    status = check_claims.main(
+        ["check", base, "--facts", str(repository.parent / "facts.json"), "--description", str(description)]
+    )
+    out = capsys.readouterr().out
+    assert status == 1
+    assert "advisory" not in out
+    assert "baseline; 1 findings\n" in out
+
+
+def test_a_changelog_figure_is_advisory_under_the_option_too(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = check_claims.git("rev-parse", "HEAD").strip()
+    commit(
+        "docs: a count",
+        {"CHANGELOG.md": "# Changelog\n\n- Older: 12 tests.\n- Newer: 1180 of 1573 files pass.\n"},
+    )
+    assert run(capsys, base)[0] == 1
+    status, advisory, others = advised(capsys, base)
+    assert (status, others) == (0, [])
+    assert advisory
+    assert all(line.startswith("CHANGELOG.md:4: ") for line in advisory)
+
+
+def test_a_git_fact_still_fails_under_the_option_whatever_it_is_found_in(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = check_claims.git("rev-parse", "HEAD").strip()
+    commit("feat: one\n\nThe branch has 7 commits on top of main.", {"a.txt": "a\n"})
+    head = commit("feat: two", {"b.txt": "b\n"})
+    description = repository.parent / "description.md"
+    description.write_text(f"Head `{base[:8]}`; 9 commits on `main`. Also 1,180 of 1,522 case files pass.\n")
+    status, advisory, others = advised(capsys, base, "--description", str(description))
+    assert status == 1
+    assert [line.partition(": ")[2] for line in others] == [
+        f"the head is `{head[:8]}`, not `{base[:8]}`",
+        "9 commits, where git counts 2",
+        "7 commits, where git counts 2",
+    ]
+    assert len(advisory) == 2
+    # Each alone in the description, with no figure beside it, and the commit message's count beside it.
+    for text, finding in (
+        (f"The head is `{base[:8]}`.\n", f"the head is `{head[:8]}`, not `{base[:8]}`"),
+        ("It has 9 commits on `main`.\n", "9 commits, where git counts 2"),
+    ):
+        description.write_text(text, encoding="utf-8")
+        status, advisory, others = advised(capsys, base, "--description", str(description))
+        assert (status, advisory) == (1, [])
+        assert [line.partition(": ")[2] for line in others] == [finding, "7 commits, where git counts 2"]
+    description.write_text("Nothing to find.\n", encoding="utf-8")
+    commit("feat: three\n\nIts 8 commits on main.", {"c.txt": "c\n"})
+    status, advisory, others = advised(capsys, base, "--description", str(description))
+    assert (status, advisory) == (1, [])
+    assert [line.partition(": ")[2] for line in others] == [
+        "8 commits, where git counts 3",
+        "7 commits, where git counts 3",
+    ]
+
+
+def test_a_ruled_wording_still_fails_under_the_option(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rulings = repository.parent / "rulings.md"
+    rulings.write_text(f"- **A ruling** (maintainer: yes): {RULING}.\n", encoding="utf-8")
+    base = check_claims.git("rev-parse", "HEAD").strip()
+    commit("docs(specification): as first written", {SPECIFICATION: ROW.format(" as stored,")})
+    status, advisory, others = advised(capsys, base, "--rulings", str(rulings))
+    assert (status, advisory) == (1, [])
+    assert len(others) == 1
+    assert "a ruled sentence differs" in others[0]
+    commit("docs(specification): in the ruling's words", {SPECIFICATION: ROW.format("")})
+    assert advised(capsys, base, "--rulings", str(rulings)) == (0, [], [])
+
+
 def test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
