@@ -3,6 +3,7 @@
 each correct form, in a throwaway repository with a rulings file written for the tests."""
 
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -733,16 +734,97 @@ def test_a_ruled_wording_still_fails_under_the_option(
     assert advised(capsys, base, "--rulings", str(rulings)) == (0, [], [])
 
 
+# The variable under which the guard below fails where the baseline's commit is missing, instead of
+# skipping: the claims workflow sets it, in a checkout of the whole history.
+REQUIRE_HISTORY = "CLAIMS_REQUIRE_HISTORY"
+
+
+def history_is_missing(at: str) -> None:
+    """The guard's answer where the baseline's commit `at` is not in this checkout: a skip, as CI's test
+    jobs check out at depth 1, or a failure where `REQUIRE_HISTORY` is `1`, as the claims workflow's job runs
+    it, in a checkout of the whole history."""
+    if os.environ.get(REQUIRE_HISTORY) == "1":
+        pytest.fail(
+            f"the baseline's commit {at[:8]} is not here, where {REQUIRE_HISTORY}=1 asks for the history"
+        )
+    pytest.skip(
+        f"a shallow clone holds no {at[:8]}: CI's test jobs check out at depth 1, so this guard runs only "
+        f"where the history is (the claims workflow's job, with {REQUIRE_HISTORY}=1); the check refuses a "
+        "grown baseline on each run"
+    )
+
+
+@pytest.mark.parametrize(
+    ("value", "outcome"),
+    [
+        (None, pytest.skip.Exception),
+        ("", pytest.skip.Exception),
+        ("0", pytest.skip.Exception),
+        ("1", pytest.fail.Exception),
+    ],
+    ids=["unset", "empty", "zero", "one"],
+)
+def test_the_history_guard_skips_without_the_variable_and_fails_with_it(
+    value: str | None, outcome: type[BaseException], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if value is None:
+        monkeypatch.delenv(REQUIRE_HISTORY, raising=False)
+    else:
+        monkeypatch.setenv(REQUIRE_HISTORY, value)
+    with pytest.raises(outcome):
+        history_is_missing("0123456789abcdef")
+
+
+GUARD = "test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commit"
+
+
+@pytest.mark.parametrize(("required", "outcome"), [(False, "1 skipped"), (True, "1 failed")])
+def test_the_guard_on_a_shallow_clone_skips_without_the_variable_and_fails_with_it(
+    required: bool, outcome: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The guard itself, with this file's text and the script's, in a clone of the repository at depth 1,
+    where the baseline's commit is not: the control that the variable turns the skip into a failure."""
+    root = Path(check_claims.BASELINE).parent.parent
+    if not (root / ".git").exists():
+        pytest.skip("this checkout has no git directory to clone")
+    for name in [name for name in os.environ if name.startswith(("GIT_", "PYTEST_"))]:
+        monkeypatch.delenv(name)
+    clone = tmp_path / "clone"
+    subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{root}", str(clone)], check=True)
+    at = json.loads((clone / "scripts" / "claims_baseline.json").read_text(encoding="utf-8"))["at"]
+    held = subprocess.run(["git", "cat-file", "-e", f"{at}^{{commit}}"], cwd=clone, capture_output=True)
+    if held.returncode == 0:
+        pytest.skip("the baseline's commit is this checkout's head, which a clone at depth 1 holds")
+    for name in ("tests/unit/test_check_claims.py", "scripts/check_claims.py"):
+        (clone / name).write_text((root / name).read_text(encoding="utf-8"), encoding="utf-8")
+    if required:
+        monkeypatch.setenv(REQUIRE_HISTORY, "1")
+    else:
+        monkeypatch.delenv(REQUIRE_HISTORY, raising=False)
+    done = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            f"tests/unit/test_check_claims.py::{GUARD}",
+            "-p",
+            "no:cacheprovider",
+        ],
+        cwd=clone,
+        capture_output=True,
+        text=True,
+    )
+    assert outcome in done.stdout, done.stdout[-1500:]
+    assert (done.returncode == 0) is (not required)
+
+
 def test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(check_claims.BASELINE.parent.parent)
     at = json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))["at"]
     if check_claims.resolve(at) is None:
-        pytest.skip(
-            f"a shallow clone holds no {at[:8]}: CI's test jobs check out at depth 1, so this guard runs "
-            "only where the history is (an open point for CI); the check refuses a grown baseline on each run"
-        )
+        history_is_missing(at)
     held = check_claims.load_baseline(check_claims.Range(at, at, at))
     assert len(held) == len(json.loads(check_claims.BASELINE.read_text(encoding="utf-8"))["changelog"])
 
