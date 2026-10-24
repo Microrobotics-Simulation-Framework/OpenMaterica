@@ -649,10 +649,69 @@ def test_a_ruled_phrase_with_a_word_changed_anywhere_is_flagged(
     else:
         words[position:position] = ["XYZ"] * (4 if change == "insert four" else 1)
     assert ruled(SWEPT, f"{lead} {' '.join(PHRASE)}{tail}") == []
-    # The one form left to the reviewer: the run's first word changed where the words before it are the text's
-    # own, which no shared word sets apart from the text's wording around the ruling.
+    # Left to the reviewer: the run's first word changed where the words before it are the text's own and its
+    # ruling's clause starts more than `MAX_LEAD` words before it ("an over-range or kept entry").
     unseen = lead == OWN_LEAD and position == 0 and change in {"substitute", "delete", "insert"}
     assert bool(ruled(SWEPT, f"{lead} {' '.join(words)}{tail}")) is not unseen
+
+
+OPENING = (
+    "every reader of a record refuses it where its unit names no quantity the field allows here today".split()
+)
+
+
+@pytest.mark.parametrize(
+    ("change", "position"),
+    [
+        *((change, position) for change in ("substitute", "delete") for position in range(len(OPENING))),
+        *((change, position) for change in ("insert", "insert four") for position in range(len(OPENING) + 1)),
+    ],
+)
+def test_a_ruled_clause_with_a_word_changed_at_either_end_under_the_text_s_own_lead_is_flagged(
+    change: str, position: int
+) -> None:
+    ruling = " ".join(OPENING).capitalize() + "."
+    words: list[str] = list(OPENING)
+    if change == "substitute":
+        words[position] = "XYZ"
+    elif change == "delete":
+        del words[position]
+    else:
+        words[position:position] = ["XYZ"] * (4 if change == "insert four" else 1)
+    assert ruled(ruling, f"Under this profile {' '.join(OPENING)}; and nothing more follows.") == []
+    # Left to the reviewer: a word added before the ruling clause's first word, as the text's own lead is.
+    unseen = position == 0 and change.startswith("insert")
+    assert (
+        bool(ruled(ruling, f"Under this profile {' '.join(words)}; and nothing more follows.")) is not unseen
+    )
+
+
+OBJECT = "its unit, specimen, statistics and provenance as `record_format.md` section 5 gives them."
+
+
+@pytest.mark.parametrize(
+    ("ruling", "text"),
+    [
+        # A negation or a modal before the ruled verb, where the text keeps a word of the ruling's subject.
+        (SWEPT, f"An over-range entry does not hold {OBJECT}"),
+        (SWEPT, f"An over-range entry may hold {OBJECT}"),
+        (SWEPT, f"Such an entry must hold {OBJECT}"),
+        # A negation under the text's own subject, where the ruling's clause opens within `MAX_LEAD` words.
+        (
+            "Readers refuse a record whose unit names no quantity.",
+            "Under this profile they do not refuse a record whose unit names no quantity.",
+        ),
+        # The ruled clause's last word changed, where the text goes on in its own words.
+        (
+            "Every reader refuses a record whose unit names no quantity, whatever its source.",
+            "Under this profile every reader refuses a record whose unit names no XYZ that the field allows "
+            "in this release.",
+        ),
+    ],
+    ids=["negated", "may", "must", "negated-under-its-own-subject", "last-word-and-on"],
+)
+def test_a_word_changed_at_a_ruled_run_s_edge_is_flagged(ruling: str, text: str) -> None:
+    assert ruled(ruling, text)
 
 
 @pytest.mark.parametrize(
@@ -719,6 +778,9 @@ LONGER = [*WORDS, "and", "where", "its", "value", "lies", "outside"]
         # `MIN_WORDS` words in common are compared, one fewer are not.
         (WORDS[:7], [*WORDS[:6], "other"], True),
         (WORDS[:6], [*WORDS[:5], "other"], False),
+        # A run reaches back to its ruling clause's start `MAX_LEAD` words before it, and no further.
+        (["alpha", "beta", *WORDS[5:]], ["gamma", "delta", *WORDS[5:]], True),
+        (["alpha", "beta", "omega", *WORDS[5:]], ["gamma", "delta", "sigma", *WORDS[5:]], False),
         # Two shared runs of three words make a pair to compare.
         (WORDS[:7], [*WORDS[:3], "other", *WORDS[4:7]], True),
     ],
