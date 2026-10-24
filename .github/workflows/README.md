@@ -202,8 +202,9 @@ commits, files or lines that either states and git does not show fails the job. 
 no recorded measurement holds, in the description or the CHANGELOG lines the branch adds) are advice, not a
 failure, until measurement runs write the facts that would hold them (maintainer, 2026-10-23): the job passes
 `--figures-advisory`, which prints each as `advisory figure finding:` and leaves the git facts to fail. The job
-summary holds the output, and one notice counts the figures. The ruled wording, the script's third check, is not
-run: the rulings file is private and CI never reads it.
+summary holds the output, and one notice counts the figures. An empty description passes, with a notice that
+there is no claim to check (the commit messages are checked all the same). The ruled wording, the script's third
+check, is not run: the rulings file is private and CI never reads it.
 
 The same job runs the baseline guard of `tests/unit/test_check_claims.py`, which holds
 `scripts/claims_baseline.json` to the CHANGELOG at its commit on `main`. The test jobs check out at depth 1,

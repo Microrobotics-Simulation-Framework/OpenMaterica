@@ -32,6 +32,7 @@ import yaml
 from scripts import check_confidential, measure, mutant_runs, repeat_runs, schema_index
 from tests import partition
 from tests.conftest import SHARDS
+from tests.unit.test_check_claims import REQUIRE_HISTORY
 from tests.unit.test_report_test_durations import INTERRUPT_AS_CI
 from tests.unit.throwaway_git import throwaway_repository
 
@@ -9822,6 +9823,11 @@ CLAIMS_CHECK = "The pull request's git facts, and its figures as advice"
 CLAIMS_GUARD = "The baseline guard, where the history is whole"
 CLAIMS_TYPES = ["opened", "edited", "synchronize", "reopened"]
 CLAIMS_GUARD_TEST = "test_the_committed_baseline_holds_only_figures_of_the_changelog_at_its_commit"
+CLAIMS_GUARD_COMMAND = (
+    f"uv run --locked pytest tests/unit/test_check_claims.py::{CLAIMS_GUARD_TEST} -p no:cacheprovider"
+)
+CLAIMS_MINUTES = 15
+CLAIMS_EMPTY = "the description is empty: no claim to check"
 CLAIMS_HEADING = "## Claims (`claims.yml`)"
 
 
@@ -9841,6 +9847,8 @@ def claims_problems(found: Workflow, others: dict[str, Workflow]) -> list[str]:
         return [*problems, f"{CLAIMS} holds the jobs {list(found['jobs'])}"]
     job = found["jobs"]["claims"]
     steps = job["steps"]
+    if job.get("timeout-minutes") != CLAIMS_MINUTES:
+        problems.append(f"the job's timeout-minutes is {job.get('timeout-minutes')!r}")
     if steps[0].get("with", {}).get("fetch-depth") != 0:
         problems.append("the checkout is not of the whole history")
     if "continue-on-error" in json.dumps(found):
@@ -9867,18 +9875,19 @@ def claims_problems(found: Workflow, others: dict[str, Workflow]) -> list[str]:
         "|| status=$?",
         'exit "$status"',
         "::stop-commands::$stop",
+        CLAIMS_EMPTY,
     ):
         if text not in check["run"]:
             problems.append(f"the check lacks {text!r}")
     if "--rulings" in check["run"]:
         problems.append("the check is given a rulings file, which CI never reads")
     guard = step(job, CLAIMS_GUARD)
-    if guard.get("env") != {"CLAIMS_REQUIRE_HISTORY": "1"}:
+    if guard.get("env") != {REQUIRE_HISTORY: "1"}:
         problems.append(f"the guard runs under {guard.get('env')!r}")
     if guard.get("if") != "${{ !cancelled() }}":
         problems.append(f"the guard runs if {guard.get('if')!r}")
-    if f"tests/unit/test_check_claims.py::{CLAIMS_GUARD_TEST}" not in guard["run"]:
-        problems.append("the guard step does not run the baseline guard")
+    if guard["run"] != CLAIMS_GUARD_COMMAND:
+        problems.append(f"the guard step runs {guard['run']!r}, not the baseline guard alone")
     return problems
 
 
@@ -9932,7 +9941,12 @@ def claims_carrying_on(found: Workflow) -> None:
 
 
 def claims_unrequired_guard(found: Workflow) -> None:
-    del step(found["jobs"]["claims"], CLAIMS_GUARD)["env"]["CLAIMS_REQUIRE_HISTORY"]
+    del step(found["jobs"]["claims"], CLAIMS_GUARD)["env"][REQUIRE_HISTORY]
+
+
+def claims_with_a_renamed_variable(found: Workflow) -> None:
+    env = step(found["jobs"]["claims"], CLAIMS_GUARD)["env"]
+    env[REQUIRE_HISTORY + "_X"] = env.pop(REQUIRE_HISTORY)
 
 
 def claims_guard_after_a_pass_alone(found: Workflow) -> None:
@@ -9942,6 +9956,18 @@ def claims_guard_after_a_pass_alone(found: Workflow) -> None:
 def claims_guard_another_test(found: Workflow) -> None:
     guard = step(found["jobs"]["claims"], CLAIMS_GUARD)
     guard["run"] = guard["run"].replace(CLAIMS_GUARD_TEST, "test_the_script_runs_as_a_file_in_isolated_mode")
+
+
+def claims_guard_swallowed(found: Workflow) -> None:
+    step(found["jobs"]["claims"], CLAIMS_GUARD)["run"] += " || true"
+
+
+def claims_guard_followed_by_another_command(found: Workflow) -> None:
+    step(found["jobs"]["claims"], CLAIMS_GUARD)["run"] += "; true"
+
+
+def claims_without_a_timeout(found: Workflow) -> None:
+    del found["jobs"]["claims"]["timeout-minutes"]
 
 
 def claims_with_a_secret(found: Workflow) -> None:
@@ -9966,8 +9992,12 @@ def claims_keeping_the_token(found: Workflow) -> None:
         (claims_failing_on_figures, "the check lacks"),
         (claims_carrying_on, "claims.yml sets continue-on-error"),
         (claims_unrequired_guard, "the guard runs under {}"),
+        (claims_with_a_renamed_variable, "the guard runs under {'" + REQUIRE_HISTORY + "_X': '1'}"),
+        (claims_guard_swallowed, "the guard step runs"),
+        (claims_guard_followed_by_another_command, "the guard step runs"),
+        (claims_without_a_timeout, "the job's timeout-minutes is None"),
         (claims_guard_after_a_pass_alone, "the guard runs if None"),
-        (claims_guard_another_test, "the guard step does not run the baseline guard"),
+        (claims_guard_another_test, "the guard step runs"),
         (claims_with_a_secret, "claims.yml reads secrets"),
         (claims_keeping_the_token, "claims keeps the token in its checkout"),
     ],
@@ -9992,7 +10022,7 @@ def test_the_workflows_readme_names_the_claims_workflow_and_what_it_leaves_unreq
     section = readme.split(CLAIMS_HEADING, 1)[1].split("\n## ", 1)[0]
     for text in (
         "--figures-advisory",
-        "CLAIMS_REQUIRE_HISTORY",
+        REQUIRE_HISTORY,
         "required check",
         "cancel-in-progress",
         "`edited`",
@@ -10094,6 +10124,22 @@ def test_the_claims_step_fails_where_the_check_cannot_run_as_well_as_where_it_fi
     assert "::error title=Claims check::the check exited 2" in printed
 
 
+def test_the_claims_step_prints_and_summarises_what_the_check_writes_to_standard_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The check's error (it writes to standard error) is in the file the step prints between the stopped
+    commands and copies into the job summary, as its findings are: a step that left standard error out of
+    the file would print it after the resume line, and the summary would not hold it."""
+    root, _, head = claims_checkout(tmp_path, monkeypatch)
+    _, printed, summary, _ = claims_run(tmp_path, root, "0" * 40, head, "Nothing to find.\n")
+    lines = printed.splitlines()
+    error = next(at for at, line in enumerate(lines) if line.startswith("check_claims: cannot resolve"))
+    stop = next(at for at, line in enumerate(lines) if line.startswith("::stop-commands::"))
+    resume = next(at for at, line in enumerate(lines) if re.fullmatch(r"::[0-9a-f]{32}::", line))
+    assert stop < error < resume
+    assert "check_claims: cannot resolve" in summary
+
+
 def test_the_claims_step_prints_a_figure_as_a_notice_and_passes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -10108,6 +10154,32 @@ def test_the_claims_step_prints_a_figure_as_a_notice_and_passes(
     status, printed, _, _ = claims_run(tmp_path, root, base, head, wrong)
     assert status == 1
     assert "::error title=Claims check::" in printed
+
+
+def test_the_claims_step_prints_the_notice_for_one_figure_as_for_several(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, base, head = claims_checkout(tmp_path, monkeypatch)
+    status, printed, _, _ = claims_run(tmp_path, root, base, head, "In section 2: 35 are verified.\n")
+    assert status == 0, printed
+    assert printed.count("advisory figure finding: ") == 1
+    assert "::notice title=Figures are advice::1 figures" in printed
+    status, printed, _, _ = claims_run(tmp_path, root, base, head, "Nothing to find.\n")
+    assert status == 0, printed
+    assert "::notice title=Figures are advice" not in printed
+
+
+@pytest.mark.parametrize("body", ["", "\n", " \r\n\t\n"], ids=["empty", "newline", "blanks"])
+def test_the_claims_step_notes_an_empty_description_and_passes(
+    body: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, base, head = claims_checkout(tmp_path, monkeypatch)
+    status, printed, _, _ = claims_run(tmp_path, root, base, head, body)
+    assert status == 0, printed
+    assert f"::notice title=Description::{CLAIMS_EMPTY}" in printed
+    status, printed, _, _ = claims_run(tmp_path, root, base, head, "Nothing to find.\n")
+    assert status == 0, printed
+    assert CLAIMS_EMPTY not in printed
 
 
 def test_the_claims_step_prints_the_check_s_output_with_workflow_commands_stopped(

@@ -6,7 +6,7 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -717,6 +717,85 @@ def test_a_git_fact_still_fails_under_the_option_whatever_it_is_found_in(
         "8 commits, where git counts 3",
         "7 commits, where git counts 3",
     ]
+
+
+class Kinds:
+    """The names of a branch of two commits (two files, one line added and one removed) that a git fact is
+    stated wrongly against: its base and head as the check prints them (8 digits) and as a description may
+    write them (`base`, `head`), and a commit on neither."""
+
+    def __init__(self, base: str, head: str, elsewhere: str) -> None:
+        self.printed_base, self.printed_head = base[:8], head[:8]
+        self.base, self.head, self.elsewhere = short(base), short(head), short(elsewhere)
+
+
+Statement = Callable[[Kinds], str]
+
+# One wrong statement of each kind of git fact the module's check 1 names: the text, and git's finding of it.
+GIT_FACT_KINDS: dict[str, tuple[Statement, Statement]] = {
+    "head": (
+        lambda k: f"The head is `{k.base}`.\n",
+        lambda k: f"the head is `{k.printed_head}`, not `{k.base}`",
+    ),
+    "base": (
+        lambda k: f"Based on `main` at `{k.head}`.\n",
+        lambda k: f"the base is `{k.printed_base}`, not `{k.head}`",
+    ),
+    "no such commit": (lambda k: "See `0123abcd`.\n", lambda k: "`0123abcd` names no commit here"),
+    "off the branch": (
+        lambda k: f"See `{k.elsewhere}`.\n",
+        lambda k: f"`{k.elsewhere}` is not on this branch or main",
+    ),
+    "ambiguous": (lambda k: f"See `{k.head}`.\n", lambda k: f"`{k.head}` names more than one object here"),
+    "commit count": (lambda k: "It has 9 commits on `main`.\n", lambda k: "9 commits, where git counts 2"),
+    "file count": (lambda k: "9 files changed\n", lambda k: "9 files, where git counts 2"),
+    "insertions": (lambda k: "9 insertions(+)\n", lambda k: "9 added, where git counts 1"),
+    "deletions": (lambda k: "9 deletions(-)\n", lambda k: "9 removed, where git counts 1"),
+    "table": (
+        lambda k: "| Part | Added | Removed |\n|---|---|---|\n| total, 2 files | 9 | 9 |\n",
+        lambda k: "9 added, where git counts 1",
+    ),
+}
+
+
+@pytest.mark.parametrize("kind", GIT_FACT_KINDS)
+def test_each_kind_of_git_fact_fails_with_the_option_and_without_it(
+    kind: str, repository: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = commit("docs: the file", {"a.txt": "a\nb\nc\n"})
+    commit("fix: one line less", {"a.txt": "a\nb\n"})
+    head = commit("feat: a file", {"b.txt": "x\n"})
+    elsewhere = check_claims.git(*IDENTITY, "commit-tree", "HEAD^{tree}", "-m", "elsewhere").strip()
+    kinds = Kinds(base, head, elsewhere)
+    if kind == "ambiguous":
+
+        def ambiguous(name: str) -> bool:
+            return name == kinds.head
+
+        monkeypatch.setattr(check_claims, "ambiguous", ambiguous)
+    text, finding = GIT_FACT_KINDS[kind]
+    description = repository.parent / "description.md"
+    description.write_text(text(kinds), encoding="utf-8")
+    status, found = run(capsys, base, "--description", str(description))
+    assert status == 1
+    assert finding(kinds) in [line.partition(": ")[2] for line in found]
+    advised_status, advisory, others = advised(capsys, base, "--description", str(description))
+    assert (advised_status, advisory) == (1, [])
+    assert [line.partition(": ")[2] for line in others] == [line.partition(": ")[2] for line in found]
+
+
+def test_a_fact_measured_before_the_head_is_still_noted_under_the_option(
+    repository: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base, measured, description, facts = measured_before(repository)
+    commit("docs: a note", {"CHANGELOG.md": "a note\n"})
+    status = check_claims.main(
+        ["check", base, "--description", str(description), *facts, "--figures-advisory"]
+    )
+    lines = capsys.readouterr().out.splitlines()
+    assert status == 0
+    about = f"{description}:1: 41 (tests pass ...) was measured at `{measured[:8]}`, 1 commits"
+    assert f"measured before the head: {about} before the head, which change prose Markdown alone" in lines
 
 
 def test_a_ruled_wording_still_fails_under_the_option(
